@@ -40,7 +40,7 @@ function getFileExtension(mimeType: string, filename?: string): string {
 	}
 
 	// Default fallback - webm is widely supported
-	console.warn(`[Transcribe] Unknown MIME type: ${mimeType}, defaulting to webm`);
+	// console.warn(`[Transcribe] Unknown MIME type: ${mimeType}, defaulting to webm`);
 	return 'webm';
 }
 
