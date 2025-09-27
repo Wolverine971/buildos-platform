@@ -2,7 +2,7 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"installCommand": "pnpm install --frozen-lockfile",
 	"buildCommand": "pnpm turbo build --filter=@buildos/web",
-	"outputDirectory": "apps/web/.svelte-kit",
+	"outputDirectory": "apps/web/.vercel/output",
 	"framework": "sveltekit",
 	"ignoreCommand": "git diff HEAD^ HEAD --quiet -- packages/ apps/web/ turbo.json package.json pnpm-lock.yaml",
 	"crons": [
