@@ -1,5 +1,8 @@
 # Build OS - Personal Productivity Operating System
 
+
+## Lets go
+
 **A comprehensive productivity platform with AI-powered insights, project management, and intelligent task automation.**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
