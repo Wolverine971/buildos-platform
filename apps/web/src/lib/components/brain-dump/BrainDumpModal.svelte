@@ -507,7 +507,6 @@
 			brainDumpV2Store.releaseMutex();
 		}
 
-		console.log('[BrainDumpModal] Cleanup complete');
 
 		// Reset abort controller
 		abortController = null;
@@ -529,7 +528,6 @@
 				displayedQuestions = [];
 			}
 		} catch (error) {
-			console.error('Failed to fetch project questions:', error);
 			displayedQuestions = [];
 		}
 	}
