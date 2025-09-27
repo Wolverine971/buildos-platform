@@ -1145,7 +1145,7 @@
 								}
 
 								// FIXED: Load all essential data eagerly on project init
-								console.log('[Page] Loading essential data...');
+								// console.log('[Page] Loading essential data...');
 								await Promise.allSettled([
 									dataService.loadPhases(),
 									dataService.loadTasks(),

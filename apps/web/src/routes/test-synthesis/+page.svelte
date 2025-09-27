@@ -159,7 +159,7 @@
 	const comparison = testData.synthesis.synthesis_content.comparison;
 
 	function handleOperationEdit(operation: ParsedOperation) {
-		console.log('Edit operation:', operation);
+		// console.log('Edit operation:', operation);
 		alert(`Edit operation: ${operation.data.title}`);
 	}
 </script>
