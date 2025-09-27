@@ -1154,7 +1154,6 @@
 									dataService.loadCalendarStatus() // FIXED: Load calendar status for tasks
 								]);
 
-								console.log('[Page] Essential data loaded');
 
 								// FIXED: Load overview component AFTER data is loaded and await it
 								console.log('[Page] Loading PhasesSection component...');
