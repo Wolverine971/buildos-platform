@@ -5,23 +5,29 @@ This directory contains all business-related documentation for BuildOS, organize
 ## 🎯 Directory Structure
 
 ### `/strategy/`
+
 Strategic planning documentation including product vision, roadmap, success metrics, and competitive analysis.
 
 ### `/product/`
+
 Product management documentation including feature specifications, user stories, user personas (ADHD, writers, etc.), and user feedback synthesis.
 
 ### `/marketing/`
+
 Marketing and growth documentation including brand guidelines, content strategy, social media strategy, and campaign documentation.
 
 ### `/sales/`
+
 Sales and revenue documentation including pricing strategy, Stripe product configuration, and customer success documentation.
 
 ### `/fundraising/`
+
 Investor relations documentation including pitch decks, due diligence data room, and investor updates.
 
 ## 🎯 Purpose
 
 This business documentation is designed for:
+
 - Product managers planning features
 - Marketing team executing campaigns
 - Sales team understanding pricing and positioning
@@ -38,6 +44,7 @@ This business documentation is designed for:
 ## 📝 Maintenance
 
 Business documentation should be updated when:
+
 - Product strategy changes
 - New features are planned
 - Marketing campaigns are launched

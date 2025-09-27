@@ -203,7 +203,7 @@ class DocumentationLinkValidator {
 		if (stats.isDirectory()) {
 			// Check for index.md or README.md
 			const indexFiles = ['index.md', 'README.md'];
-			const hasIndex = indexFiles.some(file => existsSync(join(targetPath, file)));
+			const hasIndex = indexFiles.some((file) => existsSync(join(targetPath, file)));
 			if (!hasIndex) {
 				return {
 					valid: false,

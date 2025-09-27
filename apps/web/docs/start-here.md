@@ -20,21 +20,21 @@ Start with these documents in order:
 
 ### Common Tasks - Find What You Need Fast
 
-| I need to...                         | Go to...                                            |
-| ------------------------------------ | --------------------------------------------------- |
-| **View API documentation**           | `technical/api/routes-reference.md` (134 endpoints) |
-| **Understand brain dump processing** | `technical/architecture/brain-dump-flow.md`         |
-| **Work with AI prompts**             | `prompts/architecture.md`                           |
+| I need to...                         | Go to...                                                   |
+| ------------------------------------ | ---------------------------------------------------------- |
+| **View API documentation**           | `technical/api/routes-reference.md` (134 endpoints)        |
+| **Understand brain dump processing** | `technical/architecture/brain-dump-flow.md`                |
+| **Work with AI prompts**             | `prompts/architecture.md`                                  |
 | **Add a new feature**                | `technical/development/templates/FEATURE_PLAN_TEMPLATE.md` |
-| **Understand the database**          | `technical/database/schema.md` (64 tables)          |
-| **Set up Stripe payments**           | `technical/integrations/stripe-setup.md`            |
-| **Deploy to production**             | `technical/deployment/DEPLOYMENT_CHECKLIST.md`      |
-| **Handle production issues**         | `technical/deployment/runbooks/`                    |
-| **Create marketing content**         | `business/` or `marketing/brand/`                   |
-| **Find investor profiles**           | `archive/marketing/investors/` (moved to archive)   |
-| **Fix a brain dump issue**           | `technical/services/brain-dump-service.md`          |
-| **Understand calendar sync**         | `technical/architecture/CALENDAR_SERVICE_FLOW.md`   |
-| **Review architecture decisions**    | `technical/architecture/decisions/` (ADRs)          |
+| **Understand the database**          | `technical/database/schema.md` (64 tables)                 |
+| **Set up Stripe payments**           | `technical/integrations/stripe-setup.md`                   |
+| **Deploy to production**             | `technical/deployment/DEPLOYMENT_CHECKLIST.md`             |
+| **Handle production issues**         | `technical/deployment/runbooks/`                           |
+| **Create marketing content**         | `business/` or `marketing/brand/`                          |
+| **Find investor profiles**           | `archive/marketing/investors/` (moved to archive)          |
+| **Fix a brain dump issue**           | `technical/services/brain-dump-service.md`                 |
+| **Understand calendar sync**         | `technical/architecture/CALENDAR_SERVICE_FLOW.md`          |
+| **Review architecture decisions**    | `technical/architecture/decisions/` (ADRs)                 |
 
 ---
 
@@ -109,17 +109,19 @@ The heart of BuildOS - a revolutionary approach to task capture:
 Comprehensive technical documentation for developers and engineers.
 
 #### API Documentation (`technical/api/`)
+
 - **routes-reference.md** - Complete API route documentation (134 endpoints)
 - **types.md** - TypeScript type definitions
 - **templates.md** - Request/response templates
 - **summary.md** - API overview and statistics
 - **endpoints/** - Detailed endpoint documentation
-  - braindumps.md
-  - calendar.md
-  - daily-briefs.md
-  - projects.md
+    - braindumps.md
+    - calendar.md
+    - daily-briefs.md
+    - projects.md
 
 #### Architecture (`technical/architecture/`)
+
 - **BUILD_OS_MASTER_CONTEXT.md** - Complete system overview
 - **brain-dump-flow.md** - Consolidated brain dump architecture
 - **CALENDAR_SERVICE_FLOW.md** - Calendar sync architecture
@@ -129,22 +131,25 @@ Comprehensive technical documentation for developers and engineers.
 - **ai-pipeline.md** - AI integration patterns
 - **supabase-design.md** - Database architecture
 - **decisions/** - Architecture Decision Records (ADRs)
-  - ADR-001-supabase.md - Supabase selection
-  - ADR-002-dual-processing.md - Dual processing pattern
-  - ADR-003-project-calendars.md - Calendar strategy
+    - ADR-001-supabase.md - Supabase selection
+    - ADR-002-dual-processing.md - Dual processing pattern
+    - ADR-003-project-calendars.md - Calendar strategy
 
 #### Services (`technical/services/`)
+
 - **brain-dump-service.md** - Brain dump processing service
 - **calendar-service.md** - Calendar integration service
 - **project-service.md** - Project management service
 - **prompt-service.md** - AI prompt management
 
 #### Database (`technical/database/`)
+
 - **schema.md** - Database schema documentation
 - **rls-policies.md** - Row Level Security policies
 - **indexes.md** - Performance optimization
 
 #### Components (`technical/components/`)
+
 - **BUILDOS_STYLE_GUIDE.md** - Design system
 - **DESIGN_SYSTEM_GUIDE.md** - Component standards
 - **MODAL_STANDARDS.md** - Modal patterns
@@ -152,6 +157,7 @@ Comprehensive technical documentation for developers and engineers.
 - **projects/** - Project UI components
 
 #### Development (`technical/development/`)
+
 - **DEVELOPMENT_PROCESS.md** - Development workflow
 - **GIT_WORKFLOW.md** - Git conventions
 - **getting-started.md** - Quick setup guide
@@ -159,20 +165,22 @@ Comprehensive technical documentation for developers and engineers.
 - **svelte5-runes.md** - Svelte 5 patterns
 
 #### Testing (`technical/testing/`)
+
 - **strategy.md** - Testing approach
 - **vitest-setup.md** - Unit test configuration
 - **llm-testing.md** - LLM test patterns
 - **TESTING_CHECKLIST.md** - Test requirements
 
 #### Deployment (`technical/deployment/`)
+
 - **DEPLOYMENT_CHECKLIST.md** - Pre-deployment checks
 - **VERCEL_DEPLOYMENT.md** - Vercel configuration
 - **runbooks/** - Operational procedures
-  - incident-response.md
-  - calendar-webhook-failures.md
-  - openai-rate-limiting.md
-  - stripe-webhook-validation.md
-  - supabase-recovery.md
+    - incident-response.md
+    - calendar-webhook-failures.md
+    - openai-rate-limiting.md
+    - stripe-webhook-validation.md
+    - supabase-recovery.md
 
 ### 💼 /docs/business/ - Business & Strategy Documentation
 
@@ -183,12 +191,14 @@ Business strategy, planning, and organizational documents.
 User-facing documentation and guides.
 
 #### Features (`user-guide/features/`)
+
 - **brain-dump.md** - How to use brain dumps
 - **projects.md** - Project management guide
 - **calendar-sync.md** - Calendar setup
 - **daily-briefs.md** - Daily brief configuration
 
 #### Support
+
 - **getting-started.md** - User onboarding
 - **faq.md** - Frequently asked questions
 - **troubleshooting.md** - Common issues
@@ -199,8 +209,8 @@ Reorganized prompt architecture.
 
 - **architecture.md** - Prompt system design
 - **brain-dump/** - All brain dump prompts
-  - **new-project/** - New project flows
-  - **existing-project/** - Existing project updates
+    - **new-project/** - New project flows
+    - **existing-project/** - Existing project updates
 
 ### 🗄️ /archive/ - Archived Documentation
 

@@ -26,11 +26,7 @@ interface Property {
 	description: string;
 }
 
-const TYPE_DIRS = [
-	'src/lib/types',
-	'src/lib/database.types.ts',
-	'src/lib/database.schema.ts'
-];
+const TYPE_DIRS = ['src/lib/types', 'src/lib/database.types.ts', 'src/lib/database.schema.ts'];
 
 async function extractTypes(): Promise<TypeDefinition[]> {
 	const types: TypeDefinition[] = [];
@@ -109,7 +105,7 @@ async function extractTypesFromFile(filePath: string, types: TypeDefinition[]): 
 function extractInterfaceProperties(node: t.TSInterfaceDeclaration): Property[] {
 	const properties: Property[] = [];
 
-	node.body.body.forEach(member => {
+	node.body.body.forEach((member) => {
 		if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
 			const name = member.key.name;
 			const optional = member.optional || false;
@@ -130,16 +126,18 @@ function extractInterfaceProperties(node: t.TSInterfaceDeclaration): Property[] 
 }
 
 function generateTypeDefinition(node: t.TSInterfaceDeclaration): string {
-	const properties = node.body.body.map(member => {
-		if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
-			const optional = member.optional ? '?' : '';
-			const type = member.typeAnnotation
-				? generateTypeAnnotation(member.typeAnnotation.typeAnnotation)
-				: 'any';
-			return `  ${member.key.name}${optional}: ${type}`;
-		}
-		return '';
-	}).filter(Boolean);
+	const properties = node.body.body
+		.map((member) => {
+			if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
+				const optional = member.optional ? '?' : '';
+				const type = member.typeAnnotation
+					? generateTypeAnnotation(member.typeAnnotation.typeAnnotation)
+					: 'any';
+				return `  ${member.key.name}${optional}: ${type}`;
+			}
+			return '';
+		})
+		.filter(Boolean);
 
 	return `interface ${node.id.name} {\n${properties.join(';\n')};\n}`;
 }
@@ -175,12 +173,13 @@ function generateTypeAnnotation(node: t.TSType): string {
 
 function extractJSDocDescription(path: any): string {
 	const comments = path.node.leadingComments || [];
-	const jsDocComment = comments.find((comment: any) =>
-		comment.type === 'CommentBlock' && comment.value.includes('*')
+	const jsDocComment = comments.find(
+		(comment: any) => comment.type === 'CommentBlock' && comment.value.includes('*')
 	);
 
 	if (jsDocComment) {
-		const lines = jsDocComment.value.split('\n')
+		const lines = jsDocComment.value
+			.split('\n')
 			.map((line: string) => line.trim().replace(/^\*\s?/, ''))
 			.filter((line: string) => line && !line.startsWith('*'));
 
@@ -201,13 +200,13 @@ This documentation covers all TypeScript interfaces and types used in the BuildO
 
 ## Table of Contents
 
-${sortedTypes.map(type => `- [${type.name}](#${type.name.toLowerCase()})`).join('\n')}
+${sortedTypes.map((type) => `- [${type.name}](#${type.name.toLowerCase()})`).join('\n')}
 
 ---
 
 `;
 
-	sortedTypes.forEach(type => {
+	sortedTypes.forEach((type) => {
 		markdown += `## ${type.name}
 
 **File:** \`${type.file}\`
@@ -225,7 +224,7 @@ ${type.definition}
 
 | Property | Type | Optional | Description |
 |----------|------|----------|-------------|
-${type.properties.map(p => `| ${p.name} | \`${p.type}\` | ${p.optional ? 'Yes' : 'No'} | ${p.description || '-'} |`).join('\n')}
+${type.properties.map((p) => `| ${p.name} | \`${p.type}\` | ${p.optional ? 'Yes' : 'No'} | ${p.description || '-'} |`).join('\n')}
 
 `;
 		}
@@ -543,7 +542,6 @@ Generated on: ${new Date().toISOString()}
 		console.log('\n🎉 Comprehensive API documentation generation complete!');
 		console.log(`📁 Documentation files: ${docsDir}`);
 		console.log(`🌐 Interactive docs: /docs/api.html`);
-
 	} catch (error) {
 		console.error('❌ Error generating API documentation:', error);
 		process.exit(1);

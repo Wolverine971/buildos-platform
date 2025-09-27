@@ -62,10 +62,7 @@ interface ComponentExample {
 }
 
 class ComponentDocumentationGenerator {
-	private readonly componentDirs = [
-		'src/lib/components',
-		'src/routes',
-	];
+	private readonly componentDirs = ['src/lib/components', 'src/routes'];
 	private readonly outputDir = 'docs/technical/components';
 	private readonly components: ComponentInfo[] = [];
 
@@ -116,7 +113,10 @@ class ComponentDocumentationGenerator {
 		}
 	}
 
-	private async extractComponentInfo(filePath: string, content: string): Promise<ComponentInfo | null> {
+	private async extractComponentInfo(
+		filePath: string,
+		content: string
+	): Promise<ComponentInfo | null> {
 		const componentName = this.getComponentName(filePath);
 
 		// Skip if this is a page component (contains +page.svelte)
@@ -156,12 +156,14 @@ class ComponentDocumentationGenerator {
 		// Look for JSDoc comment at the top of the script section
 		const scriptMatch = content.match(/<script[^>]*>(.*?)<\/script>/s);
 		if (scriptMatch) {
-			const jsdocMatch = scriptMatch[1].match(/\/\*\*\s*\n\s*\*\s*(.+?)(?:\n\s*\*\s*@|\*\/)/s);
+			const jsdocMatch = scriptMatch[1].match(
+				/\/\*\*\s*\n\s*\*\s*(.+?)(?:\n\s*\*\s*@|\*\/)/s
+			);
 			if (jsdocMatch) {
 				return jsdocMatch[1]
 					.split('\n')
-					.map(line => line.replace(/^\s*\*\s?/, '').trim())
-					.filter(line => line)
+					.map((line) => line.replace(/^\s*\*\s?/, '').trim())
+					.filter((line) => line)
 					.join(' ');
 			}
 		}
@@ -199,7 +201,7 @@ class ComponentDocumentationGenerator {
 		const exportLetRegex = /export\s+let\s+(\w+)(?:\s*:\s*([^=\s]+))?\s*(?:=\s*([^;]+))?/g;
 		let match;
 		while ((match = exportLetRegex.exec(content)) !== null) {
-			const existing = props.find(p => p.name === match[1]);
+			const existing = props.find((p) => p.name === match[1]);
 			if (!existing) {
 				props.push({
 					name: match[1],
@@ -212,10 +214,11 @@ class ComponentDocumentationGenerator {
 		}
 
 		// Extract descriptions from JSDoc comments
-		const jsdocRegex = /\/\*\*\s*\n\s*\*\s*@prop\s+\{([^}]+)\}\s+(\w+)(?:\s+(.+?))?(?=\n\s*\*(?:\s*@|\/))/gs;
+		const jsdocRegex =
+			/\/\*\*\s*\n\s*\*\s*@prop\s+\{([^}]+)\}\s+(\w+)(?:\s+(.+?))?(?=\n\s*\*(?:\s*@|\/))/gs;
 		while ((match = jsdocRegex.exec(content)) !== null) {
 			const propName = match[2];
-			const prop = props.find(p => p.name === propName);
+			const prop = props.find((p) => p.name === propName);
 			if (prop) {
 				prop.type = match[1];
 				prop.description = match[3] || prop.description;
@@ -241,9 +244,10 @@ class ComponentDocumentationGenerator {
 		}
 
 		// Extract from JSDoc @event comments
-		const eventJsdocRegex = /\/\*\*\s*\n\s*\*\s*@event\s+(\w+)(?:\s+(.+?))?(?=\n\s*\*(?:\s*@|\/))/gs;
+		const eventJsdocRegex =
+			/\/\*\*\s*\n\s*\*\s*@event\s+(\w+)(?:\s+(.+?))?(?=\n\s*\*(?:\s*@|\/))/gs;
 		while ((match = eventJsdocRegex.exec(content)) !== null) {
-			const existing = events.find(e => e.name === match[1]);
+			const existing = events.find((e) => e.name === match[1]);
 			if (existing) {
 				existing.description = match[2] || existing.description;
 			} else {
@@ -299,7 +303,7 @@ class ComponentDocumentationGenerator {
 		}
 
 		// Check for default slot
-		if (content.includes('<slot') && !slots.some(s => s.name === 'default')) {
+		if (content.includes('<slot') && !slots.some((s) => s.name === 'default')) {
 			slots.unshift({
 				name: 'default',
 				description: 'Default slot content'
@@ -346,8 +350,8 @@ class ComponentDocumentationGenerator {
 		while ((match = exampleRegex.exec(content)) !== null) {
 			const exampleText = match[1]
 				.split('\n')
-				.map(line => line.replace(/^\s*\*\s?/, '').trim())
-				.filter(line => line)
+				.map((line) => line.replace(/^\s*\*\s?/, '').trim())
+				.filter((line) => line)
 				.join('\n');
 
 			examples.push({
@@ -428,7 +432,10 @@ class ComponentDocumentationGenerator {
 			}
 		}
 
-		content += component.slots.length > 0 ? '>\n  <!-- slot content -->\n</${component.name}>\n' : ' />\n';
+		content +=
+			component.slots.length > 0
+				? '>\n  <!-- slot content -->\n</${component.name}>\n'
+				: ' />\n';
 		content += '```\n\n';
 
 		// Props section
@@ -576,8 +583,8 @@ ${Object.entries(runeStats)
 Components specifically for the brain dump workflow:
 
 ${this.components
-	.filter(c => c.path.includes('brain-dump'))
-	.map(c => `- [${c.name}](./brain-dump/${c.name}.md) - ${c.description}`)
+	.filter((c) => c.path.includes('brain-dump'))
+	.map((c) => `- [${c.name}](./brain-dump/${c.name}.md) - ${c.description}`)
 	.join('\n')}
 
 ### Project Management Components
@@ -585,8 +592,8 @@ ${this.components
 Components for project and task management:
 
 ${this.components
-	.filter(c => c.path.includes('project'))
-	.map(c => `- [${c.name}](./projects/${c.name}.md) - ${c.description}`)
+	.filter((c) => c.path.includes('project'))
+	.map((c) => `- [${c.name}](./projects/${c.name}.md) - ${c.description}`)
 	.join('\n')}
 
 ### UI Components
@@ -594,8 +601,11 @@ ${this.components
 Reusable UI components:
 
 ${this.components
-	.filter(c => c.path.includes('ui') || (!c.path.includes('brain-dump') && !c.path.includes('project')))
-	.map(c => `- [${c.name}](./ui/${c.name}.md) - ${c.description}`)
+	.filter(
+		(c) =>
+			c.path.includes('ui') || (!c.path.includes('brain-dump') && !c.path.includes('project'))
+	)
+	.map((c) => `- [${c.name}](./ui/${c.name}.md) - ${c.description}`)
 	.join('\n')}
 
 ## Common Patterns
@@ -696,7 +706,7 @@ All components should include:
 
 ${this.components
 	.sort((a, b) => a.name.localeCompare(b.name))
-	.map(c => {
+	.map((c) => {
 		const category = this.categorizeComponent(c.path);
 		return `- [${c.name}](./${category}/${c.name}.md) - ${c.description}`;
 	})
@@ -706,24 +716,34 @@ ${this.components
 
 ### Brain Dump Components
 
-${this.components
-	.filter(c => c.path.includes('brain-dump'))
-	.map(c => `- [${c.name}](./brain-dump/${c.name}.md)`)
-	.join('\n') || '- No brain dump specific components found'}
+${
+	this.components
+		.filter((c) => c.path.includes('brain-dump'))
+		.map((c) => `- [${c.name}](./brain-dump/${c.name}.md)`)
+		.join('\n') || '- No brain dump specific components found'
+}
 
 ### Project Components
 
-${this.components
-	.filter(c => c.path.includes('project'))
-	.map(c => `- [${c.name}](./projects/${c.name}.md)`)
-	.join('\n') || '- No project specific components found'}
+${
+	this.components
+		.filter((c) => c.path.includes('project'))
+		.map((c) => `- [${c.name}](./projects/${c.name}.md)`)
+		.join('\n') || '- No project specific components found'
+}
 
 ### UI Components
 
-${this.components
-	.filter(c => c.path.includes('ui') || (!c.path.includes('brain-dump') && !c.path.includes('project')))
-	.map(c => `- [${c.name}](./ui/${c.name}.md)`)
-	.join('\n') || '- No UI components found'}
+${
+	this.components
+		.filter(
+			(c) =>
+				c.path.includes('ui') ||
+				(!c.path.includes('brain-dump') && !c.path.includes('project'))
+		)
+		.map((c) => `- [${c.name}](./ui/${c.name}.md)`)
+		.join('\n') || '- No UI components found'
+}
 
 ---
 

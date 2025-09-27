@@ -78,7 +78,8 @@ class MonitoringDocumentationGenerator {
 			},
 			{
 				name: 'core_web_vitals_fid',
-				description: 'First Input Delay - time from first user interaction to browser response',
+				description:
+					'First Input Delay - time from first user interaction to browser response',
 				type: 'histogram',
 				unit: 'milliseconds',
 				source: 'vercel',
@@ -234,13 +235,22 @@ class MonitoringDocumentationGenerator {
 			{
 				name: 'Performance Overview',
 				description: 'Core Web Vitals and page performance metrics',
-				metrics: ['page_load_time', 'core_web_vitals_lcp', 'core_web_vitals_fid', 'core_web_vitals_cls'],
+				metrics: [
+					'page_load_time',
+					'core_web_vitals_lcp',
+					'core_web_vitals_fid',
+					'core_web_vitals_cls'
+				],
 				url: 'https://vercel.com/analytics'
 			},
 			{
 				name: 'Brain Dump Analytics',
 				description: 'Monitoring brain dump processing performance and success rates',
-				metrics: ['brain_dump_processing_time', 'brain_dump_success_rate', 'brain_dump_daily_count']
+				metrics: [
+					'brain_dump_processing_time',
+					'brain_dump_success_rate',
+					'brain_dump_daily_count'
+				]
 			},
 			{
 				name: 'OpenAI Usage',
@@ -250,7 +260,11 @@ class MonitoringDocumentationGenerator {
 			{
 				name: 'Database Health',
 				description: 'Supabase database performance and connections',
-				metrics: ['database_query_time', 'database_connection_count', 'realtime_subscriptions'],
+				metrics: [
+					'database_query_time',
+					'database_connection_count',
+					'realtime_subscriptions'
+				],
 				url: 'https://supabase.com/dashboard/project/_/logs'
 			},
 			{
@@ -338,13 +352,17 @@ BuildOS uses a multi-layered monitoring approach to ensure system reliability an
 
 ## Dashboards
 
-${this.dashboards.map(dashboard => `### ${dashboard.name}
+${this.dashboards
+	.map(
+		(dashboard) => `### ${dashboard.name}
 
 ${dashboard.description}
 
 **Metrics**: ${dashboard.metrics.join(', ')}
 ${dashboard.url ? `**URL**: ${dashboard.url}` : ''}
-`).join('\n')}
+`
+	)
+	.join('\n')}
 
 ## Alert Channels
 
@@ -393,19 +411,23 @@ ${dashboard.url ? `**URL**: ${dashboard.url}` : ''}
 
 ## Metrics by Source
 
-${Object.entries(groupedMetrics).map(([source, metrics]) => {
-	const sourceTitle = source.charAt(0).toUpperCase() + source.slice(1);
-	return `### ${sourceTitle} Metrics
+${Object.entries(groupedMetrics)
+	.map(([source, metrics]) => {
+		const sourceTitle = source.charAt(0).toUpperCase() + source.slice(1);
+		return `### ${sourceTitle} Metrics
 
 | Metric | Type | Unit | Description | Warning | Critical |
 |--------|------|------|-------------|---------|----------|
-${metrics.map(m => {
-	const warning = m.alertThresholds?.warning || '-';
-	const critical = m.alertThresholds?.critical || '-';
-	return `| ${m.name} | ${m.type} | ${m.unit} | ${m.description} | ${warning} | ${critical} |`;
-}).join('\n')}
+${metrics
+	.map((m) => {
+		const warning = m.alertThresholds?.warning || '-';
+		const critical = m.alertThresholds?.critical || '-';
+		return `| ${m.name} | ${m.type} | ${m.unit} | ${m.description} | ${warning} | ${critical} |`;
+	})
+	.join('\n')}
 `;
-}).join('\n')}
+	})
+	.join('\n')}
 
 ## Metric Types
 
@@ -558,7 +580,7 @@ ORDER BY date;
 	}
 
 	private async generateAlertsGuide(): Promise<void> {
-		const alertingMetrics = this.metrics.filter(m => m.alertThresholds);
+		const alertingMetrics = this.metrics.filter((m) => m.alertThresholds);
 
 		const content = `# Alerts Guide
 
@@ -580,13 +602,17 @@ ORDER BY date;
 
 ## Alerting Metrics
 
-${alertingMetrics.map(m => `### ${m.name}
+${alertingMetrics
+	.map(
+		(m) => `### ${m.name}
 
 **Description**: ${m.description}
 **Warning Threshold**: ${m.alertThresholds!.warning} ${m.unit}
 **Critical Threshold**: ${m.alertThresholds!.critical} ${m.unit}
 **Response**: See [${m.name} runbook](./runbooks/${m.name.replace(/_/g, '-')}.md)
-`).join('\n')}
+`
+	)
+	.join('\n')}
 
 ## Alert Channels
 
@@ -755,7 +781,7 @@ curl -X POST /api/test/alert \\
 
 ## Available Runbooks
 
-${runbooks.map(r => `- [${r.title}](./${r.name}.md) - Procedures for handling ${r.title.toLowerCase()}`).join('\n')}
+${runbooks.map((r) => `- [${r.title}](./${r.name}.md) - Procedures for handling ${r.title.toLowerCase()}`).join('\n')}
 
 ## Using Runbooks
 

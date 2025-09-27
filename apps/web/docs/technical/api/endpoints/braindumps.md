@@ -1,2 +1,3 @@
 # Brain Dumps API
-PLACEHOLDER - Document /api/braindumps/* endpoints
+
+PLACEHOLDER - Document /api/braindumps/\* endpoints

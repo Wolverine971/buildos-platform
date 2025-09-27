@@ -1,176 +1,176 @@
 name: Documentation Generation
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'src/routes/api/**'
-      - 'src/lib/database.schema.ts'
-      - 'src/lib/database.types.ts'
-      - 'src/lib/services/**'
-      - 'src/lib/components/**'
-      - 'docs/**'
-      - 'scripts/generate-*.ts'
-      - 'scripts/generate-*.js'
-      - '.github/workflows/docs.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'src/routes/api/**'
-      - 'src/lib/database.schema.ts'
-      - 'src/lib/database.types.ts'
-      - 'src/lib/services/**'
-      - 'src/lib/components/**'
-      - 'docs/**'
-      - 'scripts/generate-*.ts'
-      - 'scripts/generate-*.js'
-  workflow_dispatch: # Allow manual trigger
+    push:
+        branches: [main, develop]
+        paths:
+            - 'src/routes/api/**'
+            - 'src/lib/database.schema.ts'
+            - 'src/lib/database.types.ts'
+            - 'src/lib/services/**'
+            - 'src/lib/components/**'
+            - 'docs/**'
+            - 'scripts/generate-*.ts'
+            - 'scripts/generate-*.js'
+            - '.github/workflows/docs.yml'
+    pull_request:
+        branches: [main, develop]
+        paths:
+            - 'src/routes/api/**'
+            - 'src/lib/database.schema.ts'
+            - 'src/lib/database.types.ts'
+            - 'src/lib/services/**'
+            - 'src/lib/components/**'
+            - 'docs/**'
+            - 'scripts/generate-*.ts'
+            - 'scripts/generate-*.js'
+    workflow_dispatch: # Allow manual trigger
 
 jobs:
-  generate-docs:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    generate-docs:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full history for better diffs
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Full history for better diffs
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 8
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+            - name: Get pnpm store directory
+              shell: bash
+              run: |
+                  echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            - name: Setup pnpm cache
+              uses: actions/cache@v4
+              with:
+                  path: ${{ env.STORE_PATH }}
+                  key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Generate database schema documentation
-        run: pnpm run gen:schema
+            - name: Generate database schema documentation
+              run: pnpm run gen:schema
 
-      - name: Generate API route documentation
-        run: pnpm run gen:api-docs
+            - name: Generate API route documentation
+              run: pnpm run gen:api-docs
 
-      - name: Generate component documentation
-        run: pnpm run gen:component-docs
+            - name: Generate component documentation
+              run: pnpm run gen:component-docs
 
-      - name: Generate ADR documentation
-        run: pnpm run gen:adr-index
+            - name: Generate ADR documentation
+              run: pnpm run gen:adr-index
 
-      - name: Generate monitoring documentation
-        run: pnpm run gen:monitoring-docs
+            - name: Generate monitoring documentation
+              run: pnpm run gen:monitoring-docs
 
-      - name: Generate master documentation index
-        run: pnpm run gen:docs-index
+            - name: Generate master documentation index
+              run: pnpm run gen:docs-index
 
-      - name: Format generated documentation
-        run: pnpm run format
+            - name: Format generated documentation
+              run: pnpm run format
 
-      - name: Check for documentation changes
-        id: docs-changes
-        run: |
-          if git diff --quiet HEAD -- docs/ || git diff --cached --quiet -- docs/; then
-            echo "changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "changes=true" >> $GITHUB_OUTPUT
-          fi
+            - name: Check for documentation changes
+              id: docs-changes
+              run: |
+                  if git diff --quiet HEAD -- docs/ || git diff --cached --quiet -- docs/; then
+                    echo "changes=false" >> $GITHUB_OUTPUT
+                  else
+                    echo "changes=true" >> $GITHUB_OUTPUT
+                  fi
 
-      - name: Commit and push documentation changes
-        if: steps.docs-changes.outputs.changes == 'true' && github.event_name == 'push'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add docs/
-          git commit -m "docs: auto-generate documentation [skip ci]" || exit 0
-          git push
+            - name: Commit and push documentation changes
+              if: steps.docs-changes.outputs.changes == 'true' && github.event_name == 'push'
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git add docs/
+                  git commit -m "docs: auto-generate documentation [skip ci]" || exit 0
+                  git push
 
-      - name: Create documentation summary comment (PR only)
-        if: steps.docs-changes.outputs.changes == 'true' && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
+            - name: Create documentation summary comment (PR only)
+              if: steps.docs-changes.outputs.changes == 'true' && github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const { execSync } = require('child_process');
 
-            // Get the diff of documentation changes
-            const diffOutput = execSync('git diff HEAD -- docs/', { encoding: 'utf8' });
+                      // Get the diff of documentation changes
+                      const diffOutput = execSync('git diff HEAD -- docs/', { encoding: 'utf8' });
 
-            const comment = `
-            ## 📚 Documentation Changes Generated
+                      const comment = `
+                      ## 📚 Documentation Changes Generated
 
-            This PR includes automatically generated documentation updates:
+                      This PR includes automatically generated documentation updates:
 
-            - ✅ Database schema documentation
-            - ✅ API route documentation
-            - ✅ Component documentation
-            - ✅ Architecture Decision Records index
-            - ✅ Monitoring documentation
+                      - ✅ Database schema documentation
+                      - ✅ API route documentation
+                      - ✅ Component documentation
+                      - ✅ Architecture Decision Records index
+                      - ✅ Monitoring documentation
 
-            <details>
-            <summary>View documentation diff</summary>
+                      <details>
+                      <summary>View documentation diff</summary>
 
-            \`\`\`diff
-            ${diffOutput.slice(0, 2000)}${diffOutput.length > 2000 ? '\n... (truncated)' : ''}
-            \`\`\`
+                      \`\`\`diff
+                      ${diffOutput.slice(0, 2000)}${diffOutput.length > 2000 ? '\n... (truncated)' : ''}
+                      \`\`\`
 
-            </details>
+                      </details>
 
-            The documentation will be automatically committed when this PR is merged.
-            `;
+                      The documentation will be automatically committed when this PR is merged.
+                      `;
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+                      github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: comment
+                      });
 
-  validate-docs:
-    runs-on: ubuntu-latest
-    needs: generate-docs
-    if: github.event_name == 'pull_request'
+    validate-docs:
+        runs-on: ubuntu-latest
+        needs: generate-docs
+        if: github.event_name == 'pull_request'
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 8
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Validate documentation links
-        run: pnpm run validate:docs-links
+            - name: Validate documentation links
+              run: pnpm run validate:docs-links
 
-      - name: Check documentation coverage
-        run: pnpm run check:docs-coverage
+            - name: Check documentation coverage
+              run: pnpm run check:docs-coverage
 
-      - name: Lint documentation
-        run: pnpm run lint:docs
+            - name: Lint documentation
+              run: pnpm run lint:docs

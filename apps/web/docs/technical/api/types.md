@@ -1,6 +1,6 @@
 # API Types Documentation
 
-*Auto-generated on 2025-09-27T04:23:16.655Z*
+_Auto-generated on 2025-09-27T04:23:16.655Z_
 
 This documentation covers all TypeScript interfaces and types used in the BuildOS API.
 
@@ -217,27 +217,25 @@ This documentation covers all TypeScript interfaces and types used in the BuildO
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ActivityLog {
-  id: string;
-  user_id: string;
-  activity_type: string;
-  metadata?: Record;
-  created_at: string;
+	id: string;
+	user_id: string;
+	activity_type: string;
+	metadata?: Record;
+	created_at: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| user_id | `string` | No | - |
-| activity_type | `string` | No | - |
-| metadata | `Record` | Yes | - |
-| created_at | `string` | No | - |
+| Property      | Type     | Optional | Description |
+| ------------- | -------- | -------- | ----------- |
+| id            | `string` | No       | -           |
+| user_id       | `string` | No       | -           |
+| activity_type | `string` | No       | -           |
+| metadata      | `Record` | Yes      | -           |
+| created_at    | `string` | No       | -           |
 
 ---
 
@@ -245,25 +243,23 @@ interface ActivityLog {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ApiResponse {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
+	success: boolean;
+	data?: T;
+	error?: string;
+	message?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| success | `boolean` | No | - |
-| data | `T` | Yes | - |
-| error | `string` | Yes | - |
-| message | `string` | Yes | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| success  | `boolean` | No       | -           |
+| data     | `T`       | Yes      | -           |
+| error    | `string`  | Yes      | -           |
+| message  | `string`  | Yes      | -           |
 
 ---
 
@@ -271,21 +267,19 @@ interface ApiResponse {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface BaseSSEMessage {
-  type: string;
-  message?: string;
+	type: string;
+	message?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `string` | No | - |
-| message | `string` | Yes | - |
+| Property | Type     | Optional | Description |
+| -------- | -------- | -------- | ----------- |
+| type     | `string` | No       | -           |
+| message  | `string` | Yes      | -           |
 
 ---
 
@@ -293,21 +287,19 @@ interface BaseSSEMessage {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface BottomSectionsData {
-  todaysBrief?: any;
-  stats?: Partial;
+	todaysBrief?: any;
+	stats?: Partial;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| todaysBrief | `any` | Yes | - |
-| stats | `Partial` | Yes | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- |
+| todaysBrief | `any`     | Yes      | -           |
+| stats       | `Partial` | Yes      | -           |
 
 ---
 
@@ -315,10 +307,8 @@ interface BottomSectionsData {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type BrainDump = unknown
+type BrainDump = unknown;
 ```
 
 ---
@@ -327,10 +317,8 @@ type BrainDump = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type BrainDumpLink = unknown
+type BrainDumpLink = unknown;
 ```
 
 ---
@@ -339,41 +327,39 @@ type BrainDumpLink = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface BrainDumpMetadata {
-  totalOperations: number;
-  tableBreakdown: Record;
-  processingTime: number;
-  timestamp: string;
-  processingNote?: string;
-  project_info?: unknown | null;
-  processingMode?: unknown | unknown;
-  attemptNumber?: number;
-  partialFailure?: boolean;
-  projectReference?: string;
-  failureDetails?: string[];
-  projectCreate?: boolean;
+	totalOperations: number;
+	tableBreakdown: Record;
+	processingTime: number;
+	timestamp: string;
+	processingNote?: string;
+	project_info?: unknown | null;
+	processingMode?: unknown | unknown;
+	attemptNumber?: number;
+	partialFailure?: boolean;
+	projectReference?: string;
+	failureDetails?: string[];
+	projectCreate?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| totalOperations | `number` | No | - |
-| tableBreakdown | `Record` | No | - |
-| processingTime | `number` | No | - |
-| timestamp | `string` | No | - |
-| processingNote | `string` | Yes | - |
-| project_info | `unknown | null` | Yes | - |
-| processingMode | `unknown | unknown` | Yes | - |
-| attemptNumber | `number` | Yes | - |
-| partialFailure | `boolean` | Yes | - |
-| projectReference | `string` | Yes | - |
-| failureDetails | `string[]` | Yes | - |
-| projectCreate | `boolean` | Yes | - |
+| Property         | Type       | Optional | Description |
+| ---------------- | ---------- | -------- | ----------- | --- |
+| totalOperations  | `number`   | No       | -           |
+| tableBreakdown   | `Record`   | No       | -           |
+| processingTime   | `number`   | No       | -           |
+| timestamp        | `string`   | No       | -           |
+| processingNote   | `string`   | Yes      | -           |
+| project_info     | `unknown   | null`    | Yes         | -   |
+| processingMode   | `unknown   | unknown` | Yes         | -   |
+| attemptNumber    | `number`   | Yes      | -           |
+| partialFailure   | `boolean`  | Yes      | -           |
+| projectReference | `string`   | Yes      | -           |
+| failureDetails   | `string[]` | Yes      | -           |
+| projectCreate    | `boolean`  | Yes      | -           |
 
 ---
 
@@ -381,25 +367,23 @@ interface BrainDumpMetadata {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface BrainDumpOptions {
-  autoExecute?: boolean;
-  streamResults?: boolean;
-  useDualProcessing?: boolean;
-  retryAttempts?: number;
+	autoExecute?: boolean;
+	streamResults?: boolean;
+	useDualProcessing?: boolean;
+	retryAttempts?: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| autoExecute | `boolean` | Yes | - |
-| streamResults | `boolean` | Yes | - |
-| useDualProcessing | `boolean` | Yes | - |
-| retryAttempts | `number` | Yes | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- |
+| autoExecute       | `boolean` | Yes      | -           |
+| streamResults     | `boolean` | Yes      | -           |
+| useDualProcessing | `boolean` | Yes      | -           |
+| retryAttempts     | `number`  | Yes      | -           |
 
 ---
 
@@ -407,39 +391,37 @@ interface BrainDumpOptions {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface BrainDumpParseResult {
-  title: string;
-  summary: string;
-  insights: string;
-  operations: ParsedOperation[];
-  tags?: string[];
-  metadata: BrainDumpMetadata;
-  executionResult?: ExecutionResult;
-  projectInfo?: unknown;
-  questionAnalysis?: Record;
-  projectQuestions?: Array;
-  contextResult?: ProjectContextResult | null;
+	title: string;
+	summary: string;
+	insights: string;
+	operations: ParsedOperation[];
+	tags?: string[];
+	metadata: BrainDumpMetadata;
+	executionResult?: ExecutionResult;
+	projectInfo?: unknown;
+	questionAnalysis?: Record;
+	projectQuestions?: Array;
+	contextResult?: ProjectContextResult | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| title | `string` | No | - |
-| summary | `string` | No | - |
-| insights | `string` | No | - |
-| operations | `ParsedOperation[]` | No | - |
-| tags | `string[]` | Yes | - |
-| metadata | `BrainDumpMetadata` | No | - |
-| executionResult | `ExecutionResult` | Yes | - |
-| projectInfo | `unknown` | Yes | - |
-| questionAnalysis | `Record` | Yes | - |
-| projectQuestions | `Array` | Yes | - |
-| contextResult | `ProjectContextResult | null` | Yes | - |
+| Property         | Type                  | Optional | Description |
+| ---------------- | --------------------- | -------- | ----------- | --- |
+| title            | `string`              | No       | -           |
+| summary          | `string`              | No       | -           |
+| insights         | `string`              | No       | -           |
+| operations       | `ParsedOperation[]`   | No       | -           |
+| tags             | `string[]`            | Yes      | -           |
+| metadata         | `BrainDumpMetadata`   | No       | -           |
+| executionResult  | `ExecutionResult`     | Yes      | -           |
+| projectInfo      | `unknown`             | Yes      | -           |
+| questionAnalysis | `Record`              | Yes      | -           |
+| projectQuestions | `Array`               | Yes      | -           |
+| contextResult    | `ProjectContextResult | null`    | Yes         | -   |
 
 ---
 
@@ -447,10 +429,8 @@ interface BrainDumpParseResult {
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
-type BrainDumpStatus = unknown | unknown | unknown | unknown
+type BrainDumpStatus = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -459,10 +439,8 @@ type BrainDumpStatus = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
-type BrainDumpTableType = unknown | unknown | unknown
+type BrainDumpTableType = unknown | unknown | unknown;
 ```
 
 ---
@@ -471,23 +449,21 @@ type BrainDumpTableType = unknown | unknown | unknown
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefAnalytics {
-  generation_frequency: unknown;
-  engagement_metrics: unknown;
-  template_usage: unknown;
+	generation_frequency: unknown;
+	engagement_metrics: unknown;
+	template_usage: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| generation_frequency | `unknown` | No | - |
-| engagement_metrics | `unknown` | No | - |
-| template_usage | `unknown` | No | - |
+| Property             | Type      | Optional | Description |
+| -------------------- | --------- | -------- | ----------- |
+| generation_frequency | `unknown` | No       | -           |
+| engagement_metrics   | `unknown` | No       | -           |
+| template_usage       | `unknown` | No       | -           |
 
 ---
 
@@ -495,10 +471,8 @@ interface BriefAnalytics {
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
-type BriefDateRange = unknown | unknown | unknown | unknown
+type BriefDateRange = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -507,29 +481,27 @@ type BriefDateRange = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  projectIds?: string[];
-  templateIds?: string[];
-  hasInsights?: boolean;
-  hasPriorityActions?: boolean;
+	dateFrom?: string;
+	dateTo?: string;
+	projectIds?: string[];
+	templateIds?: string[];
+	hasInsights?: boolean;
+	hasPriorityActions?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| dateFrom | `string` | Yes | - |
-| dateTo | `string` | Yes | - |
-| projectIds | `string[]` | Yes | - |
-| templateIds | `string[]` | Yes | - |
-| hasInsights | `boolean` | Yes | - |
-| hasPriorityActions | `boolean` | Yes | - |
+| Property           | Type       | Optional | Description |
+| ------------------ | ---------- | -------- | ----------- |
+| dateFrom           | `string`   | Yes      | -           |
+| dateTo             | `string`   | Yes      | -           |
+| projectIds         | `string[]` | Yes      | -           |
+| templateIds        | `string[]` | Yes      | -           |
+| hasInsights        | `boolean`  | Yes      | -           |
+| hasPriorityActions | `boolean`  | Yes      | -           |
 
 ---
 
@@ -537,25 +509,23 @@ interface BriefFilters {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefGenerationOptions {
-  briefDate?: string;
-  includeProjects?: boolean;
-  customTemplateIds?: unknown;
-  regenerate?: boolean;
+	briefDate?: string;
+	includeProjects?: boolean;
+	customTemplateIds?: unknown;
+	regenerate?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| briefDate | `string` | Yes | - |
-| includeProjects | `boolean` | Yes | - |
-| customTemplateIds | `unknown` | Yes | - |
-| regenerate | `boolean` | Yes | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- |
+| briefDate         | `string`  | Yes      | -           |
+| includeProjects   | `boolean` | Yes      | -           |
+| customTemplateIds | `unknown` | Yes      | -           |
+| regenerate        | `boolean` | Yes      | -           |
 
 ---
 
@@ -563,29 +533,27 @@ interface BriefGenerationOptions {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface BriefGenerationOptions {
-  briefDate?: string;
-  includeProjects?: boolean;
-  customTemplateIds?: unknown;
-  regenerate?: boolean;
-  streaming?: boolean;
-  background?: boolean;
+	briefDate?: string;
+	includeProjects?: boolean;
+	customTemplateIds?: unknown;
+	regenerate?: boolean;
+	streaming?: boolean;
+	background?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| briefDate | `string` | Yes | - |
-| includeProjects | `boolean` | Yes | - |
-| customTemplateIds | `unknown` | Yes | - |
-| regenerate | `boolean` | Yes | - |
-| streaming | `boolean` | Yes | - |
-| background | `boolean` | Yes | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- |
+| briefDate         | `string`  | Yes      | -           |
+| includeProjects   | `boolean` | Yes      | -           |
+| customTemplateIds | `unknown` | Yes      | -           |
+| regenerate        | `boolean` | Yes      | -           |
+| streaming         | `boolean` | Yes      | -           |
+| background        | `boolean` | Yes      | -           |
 
 ---
 
@@ -593,27 +561,25 @@ interface BriefGenerationOptions {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefGenerationResult {
-  success: boolean;
-  daily_brief: unknown;
-  project_briefs: Array;
-  errors?: string[];
-  warnings?: string[];
+	success: boolean;
+	daily_brief: unknown;
+	project_briefs: Array;
+	errors?: string[];
+	warnings?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| success | `boolean` | No | - |
-| daily_brief | `unknown` | No | - |
-| project_briefs | `Array` | No | - |
-| errors | `string[]` | Yes | - |
-| warnings | `string[]` | Yes | - |
+| Property       | Type       | Optional | Description |
+| -------------- | ---------- | -------- | ----------- |
+| success        | `boolean`  | No       | -           |
+| daily_brief    | `unknown`  | No       | -           |
+| project_briefs | `Array`    | No       | -           |
+| errors         | `string[]` | Yes      | -           |
+| warnings       | `string[]` | Yes      | -           |
 
 ---
 
@@ -621,31 +587,29 @@ interface BriefGenerationResult {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface BriefGenerationResult {
-  success: boolean;
-  daily_brief?: unknown;
-  project_briefs?: Array;
-  errors?: string[];
-  warnings?: string[];
-  brief_id?: string;
-  result?: unknown;
+	success: boolean;
+	daily_brief?: unknown;
+	project_briefs?: Array;
+	errors?: string[];
+	warnings?: string[];
+	brief_id?: string;
+	result?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| success | `boolean` | No | - |
-| daily_brief | `unknown` | Yes | - |
-| project_briefs | `Array` | Yes | - |
-| errors | `string[]` | Yes | - |
-| warnings | `string[]` | Yes | - |
-| brief_id | `string` | Yes | - |
-| result | `unknown` | Yes | - |
+| Property       | Type       | Optional | Description |
+| -------------- | ---------- | -------- | ----------- |
+| success        | `boolean`  | No       | -           |
+| daily_brief    | `unknown`  | Yes      | -           |
+| project_briefs | `Array`    | Yes      | -           |
+| errors         | `string[]` | Yes      | -           |
+| warnings       | `string[]` | Yes      | -           |
+| brief_id       | `string`   | Yes      | -           |
+| result         | `unknown`  | Yes      | -           |
 
 ---
 
@@ -653,33 +617,31 @@ interface BriefGenerationResult {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface BriefGenerationStatus {
-  isGenerating: boolean;
-  briefId?: string;
-  briefDate?: string;
-  status?: unknown | unknown | unknown;
-  progress?: unknown;
-  error?: string;
-  startedAt?: string;
-  started_at?: string;
+	isGenerating: boolean;
+	briefId?: string;
+	briefDate?: string;
+	status?: unknown | unknown | unknown;
+	progress?: unknown;
+	error?: string;
+	startedAt?: string;
+	started_at?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isGenerating | `boolean` | No | - |
-| briefId | `string` | Yes | - |
-| briefDate | `string` | Yes | - |
-| status | `unknown | unknown | unknown` | Yes | - |
-| progress | `unknown` | Yes | - |
-| error | `string` | Yes | - |
-| startedAt | `string` | Yes | - |
-| started_at | `string` | Yes | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | --- | --- |
+| isGenerating | `boolean` | No       | -           |
+| briefId      | `string`  | Yes      | -           |
+| briefDate    | `string`  | Yes      | -           |
+| status       | `unknown  | unknown  | unknown`    | Yes | -   |
+| progress     | `unknown` | Yes      | -           |
+| error        | `string`  | Yes      | -           |
+| startedAt    | `string`  | Yes      | -           |
+| started_at   | `string`  | Yes      | -           |
 
 ---
 
@@ -687,23 +649,21 @@ interface BriefGenerationStatus {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefMetadata {
-  createdBy?: string;
-  tags?: string[];
-  notes?: string;
+	createdBy?: string;
+	tags?: string[];
+	notes?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| createdBy | `string` | Yes | - |
-| tags | `string[]` | Yes | - |
-| notes | `string` | Yes | - |
+| Property  | Type       | Optional | Description |
+| --------- | ---------- | -------- | ----------- |
+| createdBy | `string`   | Yes      | -           |
+| tags      | `string[]` | Yes      | -           |
+| notes     | `string`   | Yes      | -           |
 
 ---
 
@@ -711,27 +671,25 @@ interface BriefMetadata {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefSearchResult {
-  briefs: DailyBrief[];
-  project_briefs: ProjectDailyBrief[];
-  total: number;
-  page: number;
-  pageSize: number;
+	briefs: DailyBrief[];
+	project_briefs: ProjectDailyBrief[];
+	total: number;
+	page: number;
+	pageSize: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| briefs | `DailyBrief[]` | No | - |
-| project_briefs | `ProjectDailyBrief[]` | No | - |
-| total | `number` | No | - |
-| page | `number` | No | - |
-| pageSize | `number` | No | - |
+| Property       | Type                  | Optional | Description |
+| -------------- | --------------------- | -------- | ----------- |
+| briefs         | `DailyBrief[]`        | No       | -           |
+| project_briefs | `ProjectDailyBrief[]` | No       | -           |
+| total          | `number`              | No       | -           |
+| page           | `number`              | No       | -           |
+| pageSize       | `number`              | No       | -           |
 
 ---
 
@@ -739,29 +697,27 @@ interface BriefSearchResult {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefSummary {
-  type: BriefType;
-  id: string;
-  date: string;
-  title: string;
-  preview: string;
-  metadata: BriefMetadata;
+	type: BriefType;
+	id: string;
+	date: string;
+	title: string;
+	preview: string;
+	metadata: BriefMetadata;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `BriefType` | No | - |
-| id | `string` | No | - |
-| date | `string` | No | - |
-| title | `string` | No | - |
-| preview | `string` | No | - |
-| metadata | `BriefMetadata` | No | - |
+| Property | Type            | Optional | Description |
+| -------- | --------------- | -------- | ----------- |
+| type     | `BriefType`     | No       | -           |
+| id       | `string`        | No       | -           |
+| date     | `string`        | No       | -           |
+| title    | `string`        | No       | -           |
+| preview  | `string`        | No       | -           |
+| metadata | `BriefMetadata` | No       | -           |
 
 ---
 
@@ -769,33 +725,31 @@ interface BriefSummary {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface BriefTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  template_content: string;
-  is_default: boolean | null;
-  variables: any;
-  created_at: string | null;
-  updated_at: string | null;
+	id: string;
+	name: string;
+	description: string | null;
+	template_content: string;
+	is_default: boolean | null;
+	variables: any;
+	created_at: string | null;
+	updated_at: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| description | `string | null` | No | - |
-| template_content | `string` | No | - |
-| is_default | `boolean | null` | No | - |
-| variables | `any` | No | - |
-| created_at | `string | null` | No | - |
-| updated_at | `string | null` | No | - |
+| Property         | Type     | Optional | Description |
+| ---------------- | -------- | -------- | ----------- | --- |
+| id               | `string` | No       | -           |
+| name             | `string` | No       | -           |
+| description      | `string  | null`    | No          | -   |
+| template_content | `string` | No       | -           |
+| is_default       | `boolean | null`    | No          | -   |
+| variables        | `any`    | No       | -           |
+| created_at       | `string  | null`    | No          | -   |
+| updated_at       | `string  | null`    | No          | -   |
 
 ---
 
@@ -803,39 +757,37 @@ interface BriefTemplate {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface BriefTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  template_content: string;
-  is_default: boolean | null;
-  variables: Record;
-  created_at: string | null;
-  updated_at: string | null;
-  user_id?: string | null;
-  project_id?: string | null;
-  in_use?: boolean;
+	id: string;
+	name: string;
+	description: string | null;
+	template_content: string;
+	is_default: boolean | null;
+	variables: Record;
+	created_at: string | null;
+	updated_at: string | null;
+	user_id?: string | null;
+	project_id?: string | null;
+	in_use?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| description | `string | null` | No | - |
-| template_content | `string` | No | - |
-| is_default | `boolean | null` | No | - |
-| variables | `Record` | No | - |
-| created_at | `string | null` | No | - |
-| updated_at | `string | null` | No | - |
-| user_id | `string | null` | Yes | - |
-| project_id | `string | null` | Yes | - |
-| in_use | `boolean` | Yes | - |
+| Property         | Type      | Optional | Description |
+| ---------------- | --------- | -------- | ----------- | --- |
+| id               | `string`  | No       | -           |
+| name             | `string`  | No       | -           |
+| description      | `string   | null`    | No          | -   |
+| template_content | `string`  | No       | -           |
+| is_default       | `boolean  | null`    | No          | -   |
+| variables        | `Record`  | No       | -           |
+| created_at       | `string   | null`    | No          | -   |
+| updated_at       | `string   | null`    | No          | -   |
+| user_id          | `string   | null`    | Yes         | -   |
+| project_id       | `string   | null`    | Yes         | -   |
+| in_use           | `boolean` | Yes      | -           |
 
 ---
 
@@ -843,10 +795,8 @@ interface BriefTemplate {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
-type BriefType = unknown | unknown
+type BriefType = unknown | unknown;
 ```
 
 ---
@@ -855,27 +805,25 @@ type BriefType = unknown | unknown
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
 interface BrowserInfo {
-  userAgent?: string;
-  platform?: string;
-  language?: string;
-  screenResolution?: string;
-  timezone?: string;
+	userAgent?: string;
+	platform?: string;
+	language?: string;
+	screenResolution?: string;
+	timezone?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| userAgent | `string` | Yes | - |
-| platform | `string` | Yes | - |
-| language | `string` | Yes | - |
-| screenResolution | `string` | Yes | - |
-| timezone | `string` | Yes | - |
+| Property         | Type     | Optional | Description |
+| ---------------- | -------- | -------- | ----------- |
+| userAgent        | `string` | Yes      | -           |
+| platform         | `string` | Yes      | -           |
+| language         | `string` | Yes      | -           |
+| screenResolution | `string` | Yes      | -           |
+| timezone         | `string` | Yes      | -           |
 
 ---
 
@@ -883,10 +831,8 @@ interface BrowserInfo {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type CalendarEvent = unknown
+type CalendarEvent = unknown;
 ```
 
 ---
@@ -895,23 +841,21 @@ type CalendarEvent = unknown
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface CalendarStatus {
-  isConnected: boolean;
-  loading: boolean;
-  error: string | null;
+	isConnected: boolean;
+	loading: boolean;
+	error: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isConnected | `boolean` | No | - |
-| loading | `boolean` | No | - |
-| error | `string | null` | No | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- | --- |
+| isConnected | `boolean` | No       | -           |
+| loading     | `boolean` | No       | -           |
+| error       | `string   | null`    | No          | -   |
 
 ---
 
@@ -919,25 +863,23 @@ interface CalendarStatus {
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface CalendarStatus {
-  isConnected: boolean;
-  needsRefresh: boolean;
-  scope: string | null;
-  lastSync: string | null;
+	isConnected: boolean;
+	needsRefresh: boolean;
+	scope: string | null;
+	lastSync: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isConnected | `boolean` | No | - |
-| needsRefresh | `boolean` | No | - |
-| scope | `string | null` | No | - |
-| lastSync | `string | null` | No | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | --- |
+| isConnected  | `boolean` | No       | -           |
+| needsRefresh | `boolean` | No       | -           |
+| scope        | `string   | null`    | No          | -   |
+| lastSync     | `string   | null`    | No          | -   |
 
 ---
 
@@ -945,21 +887,19 @@ interface CalendarStatus {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface CleanedData {
-  data: T;
-  validation: ValidationResult;
+	data: T;
+	validation: ValidationResult;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| data | `T` | No | - |
-| validation | `ValidationResult` | No | - |
+| Property   | Type               | Optional | Description |
+| ---------- | ------------------ | -------- | ----------- |
+| data       | `T`                | No       | -           |
+| validation | `ValidationResult` | No       | -           |
 
 ---
 
@@ -967,21 +907,19 @@ interface CleanedData {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface CompletedBrainDump {
-  executionResult: ExecutionResult;
-  brainDumpId: string;
+	executionResult: ExecutionResult;
+	brainDumpId: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| executionResult | `ExecutionResult` | No | - |
-| brainDumpId | `string` | No | - |
+| Property        | Type              | Optional | Description |
+| --------------- | ----------------- | -------- | ----------- |
+| executionResult | `ExecutionResult` | No       | -           |
+| brainDumpId     | `string`          | No       | -           |
 
 ---
 
@@ -989,10 +927,8 @@ interface CompletedBrainDump {
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type CompositeTypes = unknown
+type CompositeTypes = unknown;
 ```
 
 ---
@@ -1001,27 +937,25 @@ type CompositeTypes = unknown
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface CreateProjectBriefTemplate {
-  name: string;
-  description?: string;
-  template_content: string;
-  is_default?: boolean;
-  variables?: string[];
+	name: string;
+	description?: string;
+	template_content: string;
+	is_default?: boolean;
+	variables?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| name | `string` | No | - |
-| description | `string` | Yes | - |
-| template_content | `string` | No | - |
-| is_default | `boolean` | Yes | - |
-| variables | `string[]` | Yes | - |
+| Property         | Type       | Optional | Description |
+| ---------------- | ---------- | -------- | ----------- |
+| name             | `string`   | No       | -           |
+| description      | `string`   | Yes      | -           |
+| template_content | `string`   | No       | -           |
+| is_default       | `boolean`  | Yes      | -           |
+| variables        | `string[]` | Yes      | -           |
 
 ---
 
@@ -1029,47 +963,45 @@ interface CreateProjectBriefTemplate {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface DailyBrief {
-  id: string;
-  user_id: string;
-  brief_date: string;
-  summary_content: string;
-  project_brief_ids?: string[];
-  insights?: string;
-  priority_actions?: string[];
-  generation_status?: unknown | unknown | unknown;
-  generation_error?: string;
-  generation_started_at?: string;
-  generation_completed_at?: string;
-  generation_progress?: any;
-  metadata?: any;
-  created_at?: string;
-  updated_at?: string;
+	id: string;
+	user_id: string;
+	brief_date: string;
+	summary_content: string;
+	project_brief_ids?: string[];
+	insights?: string;
+	priority_actions?: string[];
+	generation_status?: unknown | unknown | unknown;
+	generation_error?: string;
+	generation_started_at?: string;
+	generation_completed_at?: string;
+	generation_progress?: any;
+	metadata?: any;
+	created_at?: string;
+	updated_at?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| user_id | `string` | No | - |
-| brief_date | `string` | No | - |
-| summary_content | `string` | No | - |
-| project_brief_ids | `string[]` | Yes | - |
-| insights | `string` | Yes | - |
-| priority_actions | `string[]` | Yes | - |
-| generation_status | `unknown | unknown | unknown` | Yes | - |
-| generation_error | `string` | Yes | - |
-| generation_started_at | `string` | Yes | - |
-| generation_completed_at | `string` | Yes | - |
-| generation_progress | `any` | Yes | - |
-| metadata | `any` | Yes | - |
-| created_at | `string` | Yes | - |
-| updated_at | `string` | Yes | - |
+| Property                | Type       | Optional | Description |
+| ----------------------- | ---------- | -------- | ----------- | --- | --- |
+| id                      | `string`   | No       | -           |
+| user_id                 | `string`   | No       | -           |
+| brief_date              | `string`   | No       | -           |
+| summary_content         | `string`   | No       | -           |
+| project_brief_ids       | `string[]` | Yes      | -           |
+| insights                | `string`   | Yes      | -           |
+| priority_actions        | `string[]` | Yes      | -           |
+| generation_status       | `unknown   | unknown  | unknown`    | Yes | -   |
+| generation_error        | `string`   | Yes      | -           |
+| generation_started_at   | `string`   | Yes      | -           |
+| generation_completed_at | `string`   | Yes      | -           |
+| generation_progress     | `any`      | Yes      | -           |
+| metadata                | `any`      | Yes      | -           |
+| created_at              | `string`   | Yes      | -           |
+| updated_at              | `string`   | Yes      | -           |
 
 ---
 
@@ -1077,10 +1009,8 @@ interface DailyBrief {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type DailyBrief = unknown
+type DailyBrief = unknown;
 ```
 
 ---
@@ -1089,21 +1019,19 @@ type DailyBrief = unknown
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface DailyBriefResult {
-  project_briefs: Array;
-  main_brief?: unknown;
+	project_briefs: Array;
+	main_brief?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| project_briefs | `Array` | No | - |
-| main_brief | `unknown` | Yes | - |
+| Property       | Type      | Optional | Description |
+| -------------- | --------- | -------- | ----------- |
+| project_briefs | `Array`   | No       | -           |
+| main_brief     | `unknown` | Yes      | -           |
 
 ---
 
@@ -1111,19 +1039,17 @@ interface DailyBriefResult {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface DailyBriefWithRelations {
-  project_daily_briefs?: ProjectDailyBriefWithProject[];
+	project_daily_briefs?: ProjectDailyBriefWithProject[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| project_daily_briefs | `ProjectDailyBriefWithProject[]` | Yes | - |
+| Property             | Type                             | Optional | Description |
+| -------------------- | -------------------------------- | -------- | ----------- |
+| project_daily_briefs | `ProjectDailyBriefWithProject[]` | Yes      | -           |
 
 ---
 
@@ -1131,25 +1057,23 @@ interface DailyBriefWithRelations {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface DashboardProps {
-  user: User;
-  initialData: DashboardData | null;
-  isLoadingDashboard?: boolean;
-  dashboardError?: string | null;
+	user: User;
+	initialData: DashboardData | null;
+	isLoadingDashboard?: boolean;
+	dashboardError?: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| user | `User` | No | - |
-| initialData | `DashboardData | null` | No | - |
-| isLoadingDashboard | `boolean` | Yes | - |
-| dashboardError | `string | null` | Yes | - |
+| Property           | Type           | Optional | Description |
+| ------------------ | -------------- | -------- | ----------- | --- |
+| user               | `User`         | No       | -           |
+| initialData        | `DashboardData | null`    | No          | -   |
+| isLoadingDashboard | `boolean`      | Yes      | -           |
+| dashboardError     | `string        | null`    | Yes         | -   |
 
 ---
 
@@ -1157,27 +1081,25 @@ interface DashboardProps {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface DashboardStats {
-  totalProjects: number;
-  activeTasks: number;
-  completedToday: number;
-  upcomingDeadlines: number;
-  weeklyProgress?: unknown;
+	totalProjects: number;
+	activeTasks: number;
+	completedToday: number;
+	upcomingDeadlines: number;
+	weeklyProgress?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| totalProjects | `number` | No | - |
-| activeTasks | `number` | No | - |
-| completedToday | `number` | No | - |
-| upcomingDeadlines | `number` | No | - |
-| weeklyProgress | `unknown` | Yes | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- |
+| totalProjects     | `number`  | No       | -           |
+| activeTasks       | `number`  | No       | -           |
+| completedToday    | `number`  | No       | -           |
+| upcomingDeadlines | `number`  | No       | -           |
+| weeklyProgress    | `unknown` | Yes      | -           |
 
 ---
 
@@ -1185,10 +1107,8 @@ interface DashboardStats {
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type Database = unknown
+type Database = unknown;
 ```
 
 ---
@@ -1197,10 +1117,8 @@ type Database = unknown
 
 **File:** `src/lib/database.schema.ts`
 
-
-
 ```typescript
-type DatabaseSchema = unknown
+type DatabaseSchema = unknown;
 ```
 
 ---
@@ -1209,10 +1127,8 @@ type DatabaseSchema = unknown
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type DatabaseWithoutInternals = Omit
+type DatabaseWithoutInternals = Omit;
 ```
 
 ---
@@ -1221,10 +1137,8 @@ type DatabaseWithoutInternals = Omit
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type DeepPartial = unknown
+type DeepPartial = unknown;
 ```
 
 ---
@@ -1233,10 +1147,8 @@ type DeepPartial = unknown
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type DefaultSchema = unknown
+type DefaultSchema = unknown;
 ```
 
 ---
@@ -1245,10 +1157,8 @@ type DefaultSchema = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
-type DisplayedBrainDumpQuestion = unknown
+type DisplayedBrainDumpQuestion = unknown;
 ```
 
 ---
@@ -1257,33 +1167,31 @@ type DisplayedBrainDumpQuestion = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface DualProcessingStatus {
-  type: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
-  message?: string;
-  data?: any;
-  attempt?: number;
-  maxAttempts?: number;
-  processName?: string;
-  result?: BrainDumpParseResult;
-  error?: string;
+	type: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
+	message?: string;
+	data?: any;
+	attempt?: number;
+	maxAttempts?: number;
+	processName?: string;
+	result?: BrainDumpParseResult;
+	error?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| message | `string` | Yes | - |
-| data | `any` | Yes | - |
-| attempt | `number` | Yes | - |
-| maxAttempts | `number` | Yes | - |
-| processName | `string` | Yes | - |
-| result | `BrainDumpParseResult` | Yes | - |
-| error | `string` | Yes | - |
+| Property    | Type                   | Optional | Description |
+| ----------- | ---------------------- | -------- | ----------- | ------- | ------- | ------- | -------- | --- | --- |
+| type        | `unknown               | unknown  | unknown     | unknown | unknown | unknown | unknown` | No  | -   |
+| message     | `string`               | Yes      | -           |
+| data        | `any`                  | Yes      | -           |
+| attempt     | `number`               | Yes      | -           |
+| maxAttempts | `number`               | Yes      | -           |
+| processName | `string`               | Yes      | -           |
+| result      | `BrainDumpParseResult` | Yes      | -           |
+| error       | `string`               | Yes      | -           |
 
 ---
 
@@ -1291,29 +1199,27 @@ interface DualProcessingStatus {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface EnhancementOptions {
-  useEnhancedContext?: boolean;
-  includeTimeContext?: boolean;
-  includeActivityMetrics?: boolean;
-  includeUpcomingEvents?: boolean;
-  includeMotivationalContext?: boolean;
-  includeEnergyAssessment?: boolean;
+	useEnhancedContext?: boolean;
+	includeTimeContext?: boolean;
+	includeActivityMetrics?: boolean;
+	includeUpcomingEvents?: boolean;
+	includeMotivationalContext?: boolean;
+	includeEnergyAssessment?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| useEnhancedContext | `boolean` | Yes | - |
-| includeTimeContext | `boolean` | Yes | - |
-| includeActivityMetrics | `boolean` | Yes | - |
-| includeUpcomingEvents | `boolean` | Yes | - |
-| includeMotivationalContext | `boolean` | Yes | - |
-| includeEnergyAssessment | `boolean` | Yes | - |
+| Property                   | Type      | Optional | Description |
+| -------------------------- | --------- | -------- | ----------- |
+| useEnhancedContext         | `boolean` | Yes      | -           |
+| includeTimeContext         | `boolean` | Yes      | -           |
+| includeActivityMetrics     | `boolean` | Yes      | -           |
+| includeUpcomingEvents      | `boolean` | Yes      | -           |
+| includeMotivationalContext | `boolean` | Yes      | -           |
+| includeEnergyAssessment    | `boolean` | Yes      | -           |
 
 ---
 
@@ -1321,27 +1227,25 @@ interface EnhancementOptions {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface EnrichedBraindump {
-  brain_dump_links: any;
-  isNote: boolean;
-  isNewProject: boolean;
-  linkedProject: any;
-  linkedTypes: BrainDumpTableType[];
+	brain_dump_links: any;
+	isNote: boolean;
+	isNewProject: boolean;
+	linkedProject: any;
+	linkedTypes: BrainDumpTableType[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| brain_dump_links | `any` | No | - |
-| isNote | `boolean` | No | - |
-| isNewProject | `boolean` | No | - |
-| linkedProject | `any` | No | - |
-| linkedTypes | `BrainDumpTableType[]` | No | - |
+| Property         | Type                   | Optional | Description |
+| ---------------- | ---------------------- | -------- | ----------- |
+| brain_dump_links | `any`                  | No       | -           |
+| isNote           | `boolean`              | No       | -           |
+| isNewProject     | `boolean`              | No       | -           |
+| linkedProject    | `any`                  | No       | -           |
+| linkedTypes      | `BrainDumpTableType[]` | No       | -           |
 
 ---
 
@@ -1349,10 +1253,8 @@ interface EnrichedBraindump {
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type Enums = unknown
+type Enums = unknown;
 ```
 
 ---
@@ -1361,43 +1263,41 @@ type Enums = unknown
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
 interface ErrorContext {
-  userId?: string;
-  projectId?: string;
-  brainDumpId?: string;
-  endpoint?: string;
-  httpMethod?: string;
-  requestId?: string;
-  operationType?: string;
-  tableName?: string;
-  recordId?: string;
-  operationPayload?: Record;
-  llmMetadata?: LLMMetadata;
-  browserInfo?: BrowserInfo;
-  metadata?: Record;
+	userId?: string;
+	projectId?: string;
+	brainDumpId?: string;
+	endpoint?: string;
+	httpMethod?: string;
+	requestId?: string;
+	operationType?: string;
+	tableName?: string;
+	recordId?: string;
+	operationPayload?: Record;
+	llmMetadata?: LLMMetadata;
+	browserInfo?: BrowserInfo;
+	metadata?: Record;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| userId | `string` | Yes | - |
-| projectId | `string` | Yes | - |
-| brainDumpId | `string` | Yes | - |
-| endpoint | `string` | Yes | - |
-| httpMethod | `string` | Yes | - |
-| requestId | `string` | Yes | - |
-| operationType | `string` | Yes | - |
-| tableName | `string` | Yes | - |
-| recordId | `string` | Yes | - |
-| operationPayload | `Record` | Yes | - |
-| llmMetadata | `LLMMetadata` | Yes | - |
-| browserInfo | `BrowserInfo` | Yes | - |
-| metadata | `Record` | Yes | - |
+| Property         | Type          | Optional | Description |
+| ---------------- | ------------- | -------- | ----------- |
+| userId           | `string`      | Yes      | -           |
+| projectId        | `string`      | Yes      | -           |
+| brainDumpId      | `string`      | Yes      | -           |
+| endpoint         | `string`      | Yes      | -           |
+| httpMethod       | `string`      | Yes      | -           |
+| requestId        | `string`      | Yes      | -           |
+| operationType    | `string`      | Yes      | -           |
+| tableName        | `string`      | Yes      | -           |
+| recordId         | `string`      | Yes      | -           |
+| operationPayload | `Record`      | Yes      | -           |
+| llmMetadata      | `LLMMetadata` | Yes      | -           |
+| browserInfo      | `BrowserInfo` | Yes      | -           |
+| metadata         | `Record`      | Yes      | -           |
 
 ---
 
@@ -1405,151 +1305,149 @@ interface ErrorContext {
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
 interface ErrorLogEntry {
-  id?: string;
-  error_type?: ErrorType;
-  errorType?: ErrorType;
-  error_code?: string;
-  errorCode?: string;
-  error_message?: string;
-  errorMessage?: string;
-  error_stack?: string;
-  errorStack?: string;
-  severity?: ErrorSeverity;
-  user_id?: string;
-  userId?: string;
-  user?: unknown;
-  project_id?: string;
-  projectId?: string;
-  brain_dump_id?: string;
-  brainDumpId?: string;
-  endpoint?: string;
-  http_method?: string;
-  httpMethod?: string;
-  request_id?: string;
-  requestId?: string;
-  user_agent?: string;
-  userAgent?: string;
-  ip_address?: string;
-  ipAddress?: string;
-  llm_provider?: string;
-  llmProvider?: string;
-  llm_model?: string;
-  llmModel?: string;
-  prompt_tokens?: number;
-  promptTokens?: number;
-  completion_tokens?: number;
-  completionTokens?: number;
-  total_tokens?: number;
-  totalTokens?: number;
-  response_time_ms?: number;
-  responseTimeMs?: number;
-  llm_temperature?: number;
-  llmTemperature?: number;
-  llm_max_tokens?: number;
-  llmMaxTokens?: number;
-  operation_type?: string;
-  operationType?: string;
-  table_name?: string;
-  tableName?: string;
-  record_id?: string;
-  recordId?: string;
-  operation_payload?: Record;
-  operationPayload?: Record;
-  metadata?: Record;
-  environment?: unknown | unknown | unknown;
-  app_version?: string;
-  appVersion?: string;
-  browser_info?: BrowserInfo;
-  browserInfo?: BrowserInfo;
-  resolved?: boolean;
-  resolved_at?: string;
-  resolvedAt?: string;
-  resolved_by?: string;
-  resolvedBy?: string;
-  resolution_notes?: string;
-  resolutionNotes?: string;
-  created_at?: string;
-  createdAt?: string;
-  updated_at?: string;
-  updatedAt?: string;
+	id?: string;
+	error_type?: ErrorType;
+	errorType?: ErrorType;
+	error_code?: string;
+	errorCode?: string;
+	error_message?: string;
+	errorMessage?: string;
+	error_stack?: string;
+	errorStack?: string;
+	severity?: ErrorSeverity;
+	user_id?: string;
+	userId?: string;
+	user?: unknown;
+	project_id?: string;
+	projectId?: string;
+	brain_dump_id?: string;
+	brainDumpId?: string;
+	endpoint?: string;
+	http_method?: string;
+	httpMethod?: string;
+	request_id?: string;
+	requestId?: string;
+	user_agent?: string;
+	userAgent?: string;
+	ip_address?: string;
+	ipAddress?: string;
+	llm_provider?: string;
+	llmProvider?: string;
+	llm_model?: string;
+	llmModel?: string;
+	prompt_tokens?: number;
+	promptTokens?: number;
+	completion_tokens?: number;
+	completionTokens?: number;
+	total_tokens?: number;
+	totalTokens?: number;
+	response_time_ms?: number;
+	responseTimeMs?: number;
+	llm_temperature?: number;
+	llmTemperature?: number;
+	llm_max_tokens?: number;
+	llmMaxTokens?: number;
+	operation_type?: string;
+	operationType?: string;
+	table_name?: string;
+	tableName?: string;
+	record_id?: string;
+	recordId?: string;
+	operation_payload?: Record;
+	operationPayload?: Record;
+	metadata?: Record;
+	environment?: unknown | unknown | unknown;
+	app_version?: string;
+	appVersion?: string;
+	browser_info?: BrowserInfo;
+	browserInfo?: BrowserInfo;
+	resolved?: boolean;
+	resolved_at?: string;
+	resolvedAt?: string;
+	resolved_by?: string;
+	resolvedBy?: string;
+	resolution_notes?: string;
+	resolutionNotes?: string;
+	created_at?: string;
+	createdAt?: string;
+	updated_at?: string;
+	updatedAt?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | Yes | - |
-| error_type | `ErrorType` | Yes | - |
-| errorType | `ErrorType` | Yes | - |
-| error_code | `string` | Yes | - |
-| errorCode | `string` | Yes | - |
-| error_message | `string` | Yes | - |
-| errorMessage | `string` | Yes | - |
-| error_stack | `string` | Yes | - |
-| errorStack | `string` | Yes | - |
-| severity | `ErrorSeverity` | Yes | - |
-| user_id | `string` | Yes | - |
-| userId | `string` | Yes | - |
-| user | `unknown` | Yes | - |
-| project_id | `string` | Yes | - |
-| projectId | `string` | Yes | - |
-| brain_dump_id | `string` | Yes | - |
-| brainDumpId | `string` | Yes | - |
-| endpoint | `string` | Yes | - |
-| http_method | `string` | Yes | - |
-| httpMethod | `string` | Yes | - |
-| request_id | `string` | Yes | - |
-| requestId | `string` | Yes | - |
-| user_agent | `string` | Yes | - |
-| userAgent | `string` | Yes | - |
-| ip_address | `string` | Yes | - |
-| ipAddress | `string` | Yes | - |
-| llm_provider | `string` | Yes | - |
-| llmProvider | `string` | Yes | - |
-| llm_model | `string` | Yes | - |
-| llmModel | `string` | Yes | - |
-| prompt_tokens | `number` | Yes | - |
-| promptTokens | `number` | Yes | - |
-| completion_tokens | `number` | Yes | - |
-| completionTokens | `number` | Yes | - |
-| total_tokens | `number` | Yes | - |
-| totalTokens | `number` | Yes | - |
-| response_time_ms | `number` | Yes | - |
-| responseTimeMs | `number` | Yes | - |
-| llm_temperature | `number` | Yes | - |
-| llmTemperature | `number` | Yes | - |
-| llm_max_tokens | `number` | Yes | - |
-| llmMaxTokens | `number` | Yes | - |
-| operation_type | `string` | Yes | - |
-| operationType | `string` | Yes | - |
-| table_name | `string` | Yes | - |
-| tableName | `string` | Yes | - |
-| record_id | `string` | Yes | - |
-| recordId | `string` | Yes | - |
-| operation_payload | `Record` | Yes | - |
-| operationPayload | `Record` | Yes | - |
-| metadata | `Record` | Yes | - |
-| environment | `unknown | unknown | unknown` | Yes | - |
-| app_version | `string` | Yes | - |
-| appVersion | `string` | Yes | - |
-| browser_info | `BrowserInfo` | Yes | - |
-| browserInfo | `BrowserInfo` | Yes | - |
-| resolved | `boolean` | Yes | - |
-| resolved_at | `string` | Yes | - |
-| resolvedAt | `string` | Yes | - |
-| resolved_by | `string` | Yes | - |
-| resolvedBy | `string` | Yes | - |
-| resolution_notes | `string` | Yes | - |
-| resolutionNotes | `string` | Yes | - |
-| created_at | `string` | Yes | - |
-| createdAt | `string` | Yes | - |
-| updated_at | `string` | Yes | - |
-| updatedAt | `string` | Yes | - |
+| Property          | Type            | Optional | Description |
+| ----------------- | --------------- | -------- | ----------- | --- | --- |
+| id                | `string`        | Yes      | -           |
+| error_type        | `ErrorType`     | Yes      | -           |
+| errorType         | `ErrorType`     | Yes      | -           |
+| error_code        | `string`        | Yes      | -           |
+| errorCode         | `string`        | Yes      | -           |
+| error_message     | `string`        | Yes      | -           |
+| errorMessage      | `string`        | Yes      | -           |
+| error_stack       | `string`        | Yes      | -           |
+| errorStack        | `string`        | Yes      | -           |
+| severity          | `ErrorSeverity` | Yes      | -           |
+| user_id           | `string`        | Yes      | -           |
+| userId            | `string`        | Yes      | -           |
+| user              | `unknown`       | Yes      | -           |
+| project_id        | `string`        | Yes      | -           |
+| projectId         | `string`        | Yes      | -           |
+| brain_dump_id     | `string`        | Yes      | -           |
+| brainDumpId       | `string`        | Yes      | -           |
+| endpoint          | `string`        | Yes      | -           |
+| http_method       | `string`        | Yes      | -           |
+| httpMethod        | `string`        | Yes      | -           |
+| request_id        | `string`        | Yes      | -           |
+| requestId         | `string`        | Yes      | -           |
+| user_agent        | `string`        | Yes      | -           |
+| userAgent         | `string`        | Yes      | -           |
+| ip_address        | `string`        | Yes      | -           |
+| ipAddress         | `string`        | Yes      | -           |
+| llm_provider      | `string`        | Yes      | -           |
+| llmProvider       | `string`        | Yes      | -           |
+| llm_model         | `string`        | Yes      | -           |
+| llmModel          | `string`        | Yes      | -           |
+| prompt_tokens     | `number`        | Yes      | -           |
+| promptTokens      | `number`        | Yes      | -           |
+| completion_tokens | `number`        | Yes      | -           |
+| completionTokens  | `number`        | Yes      | -           |
+| total_tokens      | `number`        | Yes      | -           |
+| totalTokens       | `number`        | Yes      | -           |
+| response_time_ms  | `number`        | Yes      | -           |
+| responseTimeMs    | `number`        | Yes      | -           |
+| llm_temperature   | `number`        | Yes      | -           |
+| llmTemperature    | `number`        | Yes      | -           |
+| llm_max_tokens    | `number`        | Yes      | -           |
+| llmMaxTokens      | `number`        | Yes      | -           |
+| operation_type    | `string`        | Yes      | -           |
+| operationType     | `string`        | Yes      | -           |
+| table_name        | `string`        | Yes      | -           |
+| tableName         | `string`        | Yes      | -           |
+| record_id         | `string`        | Yes      | -           |
+| recordId          | `string`        | Yes      | -           |
+| operation_payload | `Record`        | Yes      | -           |
+| operationPayload  | `Record`        | Yes      | -           |
+| metadata          | `Record`        | Yes      | -           |
+| environment       | `unknown        | unknown  | unknown`    | Yes | -   |
+| app_version       | `string`        | Yes      | -           |
+| appVersion        | `string`        | Yes      | -           |
+| browser_info      | `BrowserInfo`   | Yes      | -           |
+| browserInfo       | `BrowserInfo`   | Yes      | -           |
+| resolved          | `boolean`       | Yes      | -           |
+| resolved_at       | `string`        | Yes      | -           |
+| resolvedAt        | `string`        | Yes      | -           |
+| resolved_by       | `string`        | Yes      | -           |
+| resolvedBy        | `string`        | Yes      | -           |
+| resolution_notes  | `string`        | Yes      | -           |
+| resolutionNotes   | `string`        | Yes      | -           |
+| created_at        | `string`        | Yes      | -           |
+| createdAt         | `string`        | Yes      | -           |
+| updated_at        | `string`        | Yes      | -           |
+| updatedAt         | `string`        | Yes      | -           |
 
 ---
 
@@ -1557,10 +1455,8 @@ interface ErrorLogEntry {
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
-type ErrorSeverity = unknown | unknown | unknown | unknown
+type ErrorSeverity = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -1569,10 +1465,17 @@ type ErrorSeverity = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
-type ErrorType = unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown
+type ErrorType =
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown;
 ```
 
 ---
@@ -1581,27 +1484,25 @@ type ErrorType = unknown | unknown | unknown | unknown | unknown | unknown | unk
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface EventData {
-  type: unknown | unknown | unknown;
-  entity: unknown | unknown | unknown | unknown;
-  data: T;
-  id?: string;
-  timestamp: string;
+	type: unknown | unknown | unknown;
+	entity: unknown | unknown | unknown | unknown;
+	data: T;
+	id?: string;
+	timestamp: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown` | No | - |
-| entity | `unknown | unknown | unknown | unknown` | No | - |
-| data | `T` | No | - |
-| id | `string` | Yes | - |
-| timestamp | `string` | No | - |
+| Property  | Type     | Optional | Description |
+| --------- | -------- | -------- | ----------- | -------- | --- | --- |
+| type      | `unknown | unknown  | unknown`    | No       | -   |
+| entity    | `unknown | unknown  | unknown     | unknown` | No  | -   |
+| data      | `T`      | No       | -           |
+| id        | `string` | Yes      | -           |
+| timestamp | `string` | No       | -           |
 
 ---
 
@@ -1609,25 +1510,23 @@ interface EventData {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface ExecutionResult {
-  successful: ParsedOperation[];
-  failed: Array;
-  results?: Array;
-  error?: string;
+	successful: ParsedOperation[];
+	failed: Array;
+	results?: Array;
+	error?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| successful | `ParsedOperation[]` | No | - |
-| failed | `Array` | No | - |
-| results | `Array` | Yes | - |
-| error | `string` | Yes | - |
+| Property   | Type                | Optional | Description |
+| ---------- | ------------------- | -------- | ----------- |
+| successful | `ParsedOperation[]` | No       | -           |
+| failed     | `Array`             | No       | -           |
+| results    | `Array`             | Yes      | -           |
+| error      | `string`            | Yes      | -           |
 
 ---
 
@@ -1635,41 +1534,49 @@ interface ExecutionResult {
 
 **File:** `src/lib/types/form.ts`
 
-
-
 ```typescript
 interface FieldConfig {
-  type: unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown;
-  label: string;
-  required?: boolean;
-  placeholder?: string;
-  description?: string;
-  options?: string[];
-  min?: number;
-  max?: number;
-  rows?: number;
-  markdown?: boolean;
-  defaultValue?: any;
-  copyButton?: boolean;
+	type:
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown;
+	label: string;
+	required?: boolean;
+	placeholder?: string;
+	description?: string;
+	options?: string[];
+	min?: number;
+	max?: number;
+	rows?: number;
+	markdown?: boolean;
+	defaultValue?: any;
+	copyButton?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| label | `string` | No | - |
-| required | `boolean` | Yes | - |
-| placeholder | `string` | Yes | - |
-| description | `string` | Yes | - |
-| options | `string[]` | Yes | - |
-| min | `number` | Yes | - |
-| max | `number` | Yes | - |
-| rows | `number` | Yes | - |
-| markdown | `boolean` | Yes | - |
-| defaultValue | `any` | Yes | - |
-| copyButton | `boolean` | Yes | - |
+| Property     | Type       | Optional | Description |
+| ------------ | ---------- | -------- | ----------- | ------- | ------- | ------- | ------- | ------- | ------- | -------- | --- | --- |
+| type         | `unknown   | unknown  | unknown     | unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No  | -   |
+| label        | `string`   | No       | -           |
+| required     | `boolean`  | Yes      | -           |
+| placeholder  | `string`   | Yes      | -           |
+| description  | `string`   | Yes      | -           |
+| options      | `string[]` | Yes      | -           |
+| min          | `number`   | Yes      | -           |
+| max          | `number`   | Yes      | -           |
+| rows         | `number`   | Yes      | -           |
+| markdown     | `boolean`  | Yes      | -           |
+| defaultValue | `any`      | Yes      | -           |
+| copyButton   | `boolean`  | Yes      | -           |
 
 ---
 
@@ -1677,35 +1584,31 @@ interface FieldConfig {
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
 interface FilterCounts {
-  all: number;
-  active: number;
-  paused: number;
-  completed: number;
-  archived: number;
+	all: number;
+	active: number;
+	paused: number;
+	completed: number;
+	archived: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| all | `number` | No | - |
-| active | `number` | No | - |
-| paused | `number` | No | - |
-| completed | `number` | No | - |
-| archived | `number` | No | - |
+| Property  | Type     | Optional | Description |
+| --------- | -------- | -------- | ----------- |
+| all       | `number` | No       | -           |
+| active    | `number` | No       | -           |
+| paused    | `number` | No       | -           |
+| completed | `number` | No       | -           |
+| archived  | `number` | No       | -           |
 
 ---
 
 ## FormConfig
 
 **File:** `src/lib/types/form.ts`
-
-
 
 ```typescript
 interface FormConfig {
@@ -1719,35 +1622,33 @@ interface FormConfig {
 
 **File:** `src/lib/types/form.ts`
 
-
-
 ```typescript
 interface FormModalProps {
-  isOpen: boolean;
-  title: string;
-  submitText: string;
-  loadingText: string;
-  formConfig: FormConfig;
-  initialData?: Record;
-  onSubmit: unknown;
-  onClose: unknown;
-  size?: unknown | unknown | unknown | unknown;
+	isOpen: boolean;
+	title: string;
+	submitText: string;
+	loadingText: string;
+	formConfig: FormConfig;
+	initialData?: Record;
+	onSubmit: unknown;
+	onClose: unknown;
+	size?: unknown | unknown | unknown | unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isOpen | `boolean` | No | - |
-| title | `string` | No | - |
-| submitText | `string` | No | - |
-| loadingText | `string` | No | - |
-| formConfig | `FormConfig` | No | - |
-| initialData | `Record` | Yes | - |
-| onSubmit | `unknown` | No | - |
-| onClose | `unknown` | No | - |
-| size | `unknown | unknown | unknown | unknown` | Yes | - |
+| Property    | Type         | Optional | Description |
+| ----------- | ------------ | -------- | ----------- | -------- | --- | --- |
+| isOpen      | `boolean`    | No       | -           |
+| title       | `string`     | No       | -           |
+| submitText  | `string`     | No       | -           |
+| loadingText | `string`     | No       | -           |
+| formConfig  | `FormConfig` | No       | -           |
+| initialData | `Record`     | Yes      | -           |
+| onSubmit    | `unknown`    | No       | -           |
+| onClose     | `unknown`    | No       | -           |
+| size        | `unknown     | unknown  | unknown     | unknown` | Yes | -   |
 
 ---
 
@@ -1755,23 +1656,21 @@ interface FormModalProps {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface FullProjectData {
-  user_id: string;
-  fullProjectWithRelations: ProjectWithRelations | null;
-  timestamp: string;
+	user_id: string;
+	fullProjectWithRelations: ProjectWithRelations | null;
+	timestamp: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| user_id | `string` | No | - |
-| fullProjectWithRelations | `ProjectWithRelations | null` | No | - |
-| timestamp | `string` | No | - |
+| Property                 | Type                  | Optional | Description |
+| ------------------------ | --------------------- | -------- | ----------- | --- |
+| user_id                  | `string`              | No       | -           |
+| fullProjectWithRelations | `ProjectWithRelations | null`    | No          | -   |
+| timestamp                | `string`              | No       | -           |
 
 ---
 
@@ -1779,23 +1678,21 @@ interface FullProjectData {
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
 interface GroupedSearchResults {
-  braindumps: SearchResult[];
-  projects: SearchResult[];
-  tasks: SearchResult[];
+	braindumps: SearchResult[];
+	projects: SearchResult[];
+	tasks: SearchResult[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| braindumps | `SearchResult[]` | No | - |
-| projects | `SearchResult[]` | No | - |
-| tasks | `SearchResult[]` | No | - |
+| Property   | Type             | Optional | Description |
+| ---------- | ---------------- | -------- | ----------- |
+| braindumps | `SearchResult[]` | No       | -           |
+| projects   | `SearchResult[]` | No       | -           |
+| tasks      | `SearchResult[]` | No       | -           |
 
 ---
 
@@ -1803,21 +1700,19 @@ interface GroupedSearchResults {
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
 interface HighlightedText {
-  text: string;
-  highlighted: boolean;
+	text: string;
+	highlighted: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| text | `string` | No | - |
-| highlighted | `boolean` | No | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- |
+| text        | `string`  | No       | -           |
+| highlighted | `boolean` | No       | -           |
 
 ---
 
@@ -1825,10 +1720,8 @@ interface HighlightedText {
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type Json = string | number | boolean | null | unknown | Json[]
+type Json = string | number | boolean | null | unknown | Json[];
 ```
 
 ---
@@ -1837,10 +1730,8 @@ type Json = string | number | boolean | null | unknown | Json[]
 
 **File:** `src/lib/database.schema.ts`
 
-
-
 ```typescript
-type Json = string | number | boolean | null | unknown | Json[]
+type Json = string | number | boolean | null | unknown | Json[];
 ```
 
 ---
@@ -1849,33 +1740,31 @@ type Json = string | number | boolean | null | unknown | Json[]
 
 **File:** `src/lib/types/error-logging.ts`
 
-
-
 ```typescript
 interface LLMMetadata {
-  provider?: string;
-  model?: string;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  responseTimeMs?: number;
-  temperature?: number;
-  maxTokens?: number;
+	provider?: string;
+	model?: string;
+	promptTokens?: number;
+	completionTokens?: number;
+	totalTokens?: number;
+	responseTimeMs?: number;
+	temperature?: number;
+	maxTokens?: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| provider | `string` | Yes | - |
-| model | `string` | Yes | - |
-| promptTokens | `number` | Yes | - |
-| completionTokens | `number` | Yes | - |
-| totalTokens | `number` | Yes | - |
-| responseTimeMs | `number` | Yes | - |
-| temperature | `number` | Yes | - |
-| maxTokens | `number` | Yes | - |
+| Property         | Type     | Optional | Description |
+| ---------------- | -------- | -------- | ----------- |
+| provider         | `string` | Yes      | -           |
+| model            | `string` | Yes      | -           |
+| promptTokens     | `number` | Yes      | -           |
+| completionTokens | `number` | Yes      | -           |
+| totalTokens      | `number` | Yes      | -           |
+| responseTimeMs   | `number` | Yes      | -           |
+| temperature      | `number` | Yes      | -           |
+| maxTokens        | `number` | Yes      | -           |
 
 ---
 
@@ -1883,49 +1772,47 @@ interface LLMMetadata {
 
 **File:** `src/lib/types/llm.ts`
 
-
-
 ```typescript
 interface LLMModel {
-  id: string;
-  name: string;
-  maxOutputTokens?: number;
-  supportsJsonMode?: boolean;
-  defaultTemperature?: number;
-  supportsSystemPrompt?: boolean;
-  supportsTemperature?: boolean;
-  description?: string;
-  smartness?: number;
-  inputCost?: number;
-  outputCost?: number;
-  maxContextTokens: number;
-  recommendedMaxTokens: number;
-  isReasoningModel?: boolean;
-  timeoutMs?: number;
-  knowledgeCutoff?: string;
+	id: string;
+	name: string;
+	maxOutputTokens?: number;
+	supportsJsonMode?: boolean;
+	defaultTemperature?: number;
+	supportsSystemPrompt?: boolean;
+	supportsTemperature?: boolean;
+	description?: string;
+	smartness?: number;
+	inputCost?: number;
+	outputCost?: number;
+	maxContextTokens: number;
+	recommendedMaxTokens: number;
+	isReasoningModel?: boolean;
+	timeoutMs?: number;
+	knowledgeCutoff?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| maxOutputTokens | `number` | Yes | - |
-| supportsJsonMode | `boolean` | Yes | - |
-| defaultTemperature | `number` | Yes | - |
-| supportsSystemPrompt | `boolean` | Yes | - |
-| supportsTemperature | `boolean` | Yes | - |
-| description | `string` | Yes | - |
-| smartness | `number` | Yes | - |
-| inputCost | `number` | Yes | - |
-| outputCost | `number` | Yes | - |
-| maxContextTokens | `number` | No | - |
-| recommendedMaxTokens | `number` | No | - |
-| isReasoningModel | `boolean` | Yes | - |
-| timeoutMs | `number` | Yes | - |
-| knowledgeCutoff | `string` | Yes | - |
+| Property             | Type      | Optional | Description |
+| -------------------- | --------- | -------- | ----------- |
+| id                   | `string`  | No       | -           |
+| name                 | `string`  | No       | -           |
+| maxOutputTokens      | `number`  | Yes      | -           |
+| supportsJsonMode     | `boolean` | Yes      | -           |
+| defaultTemperature   | `number`  | Yes      | -           |
+| supportsSystemPrompt | `boolean` | Yes      | -           |
+| supportsTemperature  | `boolean` | Yes      | -           |
+| description          | `string`  | Yes      | -           |
+| smartness            | `number`  | Yes      | -           |
+| inputCost            | `number`  | Yes      | -           |
+| outputCost           | `number`  | Yes      | -           |
+| maxContextTokens     | `number`  | No       | -           |
+| recommendedMaxTokens | `number`  | No       | -           |
+| isReasoningModel     | `boolean` | Yes      | -           |
+| timeoutMs            | `number`  | Yes      | -           |
+| knowledgeCutoff      | `string`  | Yes      | -           |
 
 ---
 
@@ -1933,35 +1820,33 @@ interface LLMModel {
 
 **File:** `src/lib/types/llm.ts`
 
-
-
 ```typescript
 interface LLMProvider {
-  id: string;
-  name: string;
-  url: string;
-  apiKey?: string;
-  models: LLMModel[];
-  stream: boolean;
-  priority: number;
-  timeout?: number;
-  healthCheckEndpoint?: string;
+	id: string;
+	name: string;
+	url: string;
+	apiKey?: string;
+	models: LLMModel[];
+	stream: boolean;
+	priority: number;
+	timeout?: number;
+	healthCheckEndpoint?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| url | `string` | No | - |
-| apiKey | `string` | Yes | - |
-| models | `LLMModel[]` | No | - |
-| stream | `boolean` | No | - |
-| priority | `number` | No | - |
-| timeout | `number` | Yes | - |
-| healthCheckEndpoint | `string` | Yes | - |
+| Property            | Type         | Optional | Description |
+| ------------------- | ------------ | -------- | ----------- |
+| id                  | `string`     | No       | -           |
+| name                | `string`     | No       | -           |
+| url                 | `string`     | No       | -           |
+| apiKey              | `string`     | Yes      | -           |
+| models              | `LLMModel[]` | No       | -           |
+| stream              | `boolean`    | No       | -           |
+| priority            | `number`     | No       | -           |
+| timeout             | `number`     | Yes      | -           |
+| healthCheckEndpoint | `string`     | Yes      | -           |
 
 ---
 
@@ -1969,29 +1854,27 @@ interface LLMProvider {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface LLMRequest {
-  systemPrompt: string;
-  userPrompt: string;
-  userId?: string;
-  responseFormat?: unknown | unknown;
-  temperature?: number;
-  preferredModels?: string[];
+	systemPrompt: string;
+	userPrompt: string;
+	userId?: string;
+	responseFormat?: unknown | unknown;
+	temperature?: number;
+	preferredModels?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| systemPrompt | `string` | No | - |
-| userPrompt | `string` | No | - |
-| userId | `string` | Yes | - |
-| responseFormat | `unknown | unknown` | Yes | - |
-| temperature | `number` | Yes | - |
-| preferredModels | `string[]` | Yes | - |
+| Property        | Type       | Optional | Description |
+| --------------- | ---------- | -------- | ----------- | --- |
+| systemPrompt    | `string`   | No       | -           |
+| userPrompt      | `string`   | No       | -           |
+| userId          | `string`   | Yes      | -           |
+| responseFormat  | `unknown   | unknown` | Yes         | -   |
+| temperature     | `number`   | Yes      | -           |
+| preferredModels | `string[]` | Yes      | -           |
 
 ---
 
@@ -1999,31 +1882,29 @@ interface LLMRequest {
 
 **File:** `src/lib/types/llm.ts`
 
-
-
 ```typescript
 interface LLMRequest {
-  systemPrompt: string;
-  userPrompt: string;
-  userId: string | null;
-  temperature?: number;
-  responseFormat?: unknown | unknown;
-  preferredModels?: string[];
-  maxRetries?: number;
+	systemPrompt: string;
+	userPrompt: string;
+	userId: string | null;
+	temperature?: number;
+	responseFormat?: unknown | unknown;
+	preferredModels?: string[];
+	maxRetries?: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| systemPrompt | `string` | No | - |
-| userPrompt | `string` | No | - |
-| userId | `string | null` | No | - |
-| temperature | `number` | Yes | - |
-| responseFormat | `unknown | unknown` | Yes | - |
-| preferredModels | `string[]` | Yes | - |
-| maxRetries | `number` | Yes | - |
+| Property        | Type       | Optional | Description |
+| --------------- | ---------- | -------- | ----------- | --- |
+| systemPrompt    | `string`   | No       | -           |
+| userPrompt      | `string`   | No       | -           |
+| userId          | `string    | null`    | No          | -   |
+| temperature     | `number`   | Yes      | -           |
+| responseFormat  | `unknown   | unknown` | Yes         | -   |
+| preferredModels | `string[]` | Yes      | -           |
+| maxRetries      | `number`   | Yes      | -           |
 
 ---
 
@@ -2031,25 +1912,23 @@ interface LLMRequest {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface LLMResponse {
-  result: any;
-  model: string;
-  tokensUsed?: number;
-  duration?: number;
+	result: any;
+	model: string;
+	tokensUsed?: number;
+	duration?: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| result | `any` | No | - |
-| model | `string` | No | - |
-| tokensUsed | `number` | Yes | - |
-| duration | `number` | Yes | - |
+| Property   | Type     | Optional | Description |
+| ---------- | -------- | -------- | ----------- |
+| result     | `any`    | No       | -           |
+| model      | `string` | No       | -           |
+| tokensUsed | `number` | Yes      | -           |
+| duration   | `number` | Yes      | -           |
 
 ---
 
@@ -2057,29 +1936,27 @@ interface LLMResponse {
 
 **File:** `src/lib/types/llm.ts`
 
-
-
 ```typescript
 interface LLMResponse {
-  result: T;
-  provider: string;
-  model: string;
-  duration: number;
-  attemptedProviders: string[];
-  tokenUsage?: unknown;
+	result: T;
+	provider: string;
+	model: string;
+	duration: number;
+	attemptedProviders: string[];
+	tokenUsage?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| result | `T` | No | - |
-| provider | `string` | No | - |
-| model | `string` | No | - |
-| duration | `number` | No | - |
-| attemptedProviders | `string[]` | No | - |
-| tokenUsage | `unknown` | Yes | - |
+| Property           | Type       | Optional | Description |
+| ------------------ | ---------- | -------- | ----------- |
+| result             | `T`        | No       | -           |
+| provider           | `string`   | No       | -           |
+| model              | `string`   | No       | -           |
+| duration           | `number`   | No       | -           |
+| attemptedProviders | `string[]` | No       | -           |
+| tokenUsage         | `unknown`  | Yes      | -           |
 
 ---
 
@@ -2087,23 +1964,21 @@ interface LLMResponse {
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface ModalCallbacks {
-  onUpdate?: unknown | null;
-  onDelete?: OnDeleteCallback | null;
-  onClose: OnCloseCallback;
+	onUpdate?: unknown | null;
+	onDelete?: OnDeleteCallback | null;
+	onClose: OnCloseCallback;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| onUpdate | `unknown | null` | Yes | - |
-| onDelete | `OnDeleteCallback | null` | Yes | - |
-| onClose | `OnCloseCallback` | No | - |
+| Property | Type              | Optional | Description |
+| -------- | ----------------- | -------- | ----------- | --- |
+| onUpdate | `unknown          | null`    | Yes         | -   |
+| onDelete | `OnDeleteCallback | null`    | Yes         | -   |
+| onClose  | `OnCloseCallback` | No       | -           |
 
 ---
 
@@ -2111,23 +1986,21 @@ interface ModalCallbacks {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ModalState {
-  show: boolean;
-  type: unknown | unknown | unknown | unknown | unknown | string;
-  data: any;
+	show: boolean;
+	type: unknown | unknown | unknown | unknown | unknown | string;
+	data: any;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| show | `boolean` | No | - |
-| type | `unknown | unknown | unknown | unknown | unknown | string` | No | - |
-| data | `any` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- | ------- | ------- | ------- | --- | --- |
+| show     | `boolean` | No       | -           |
+| type     | `unknown  | unknown  | unknown     | unknown | unknown | string` | No  | -   |
+| data     | `any`     | No       | -           |
 
 ---
 
@@ -2135,23 +2008,21 @@ interface ModalState {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface ModalState {
-  show: boolean;
-  type: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
-  data: any;
+	show: boolean;
+	type: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
+	data: any;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| show | `boolean` | No | - |
-| type | `unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| data | `any` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- | ------- | ------- | ------- | -------- | --- | --- |
+| show     | `boolean` | No       | -           |
+| type     | `unknown  | unknown  | unknown     | unknown | unknown | unknown | unknown` | No  | -   |
+| data     | `any`     | No       | -           |
 
 ---
 
@@ -2159,10 +2030,8 @@ interface ModalState {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type Note = unknown
+type Note = unknown;
 ```
 
 ---
@@ -2171,23 +2040,21 @@ type Note = unknown
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface NoteCallbacks {
-  onUpdate?: unknown | null;
-  onDelete?: OnDeleteCallback | null;
-  onClose: OnCloseCallback;
+	onUpdate?: unknown | null;
+	onDelete?: OnDeleteCallback | null;
+	onClose: OnCloseCallback;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| onUpdate | `unknown | null` | Yes | - |
-| onDelete | `OnDeleteCallback | null` | Yes | - |
-| onClose | `OnCloseCallback` | No | - |
+| Property | Type              | Optional | Description |
+| -------- | ----------------- | -------- | ----------- | --- |
+| onUpdate | `unknown          | null`    | Yes         | -   |
+| onDelete | `OnDeleteCallback | null`    | Yes         | -   |
+| onClose  | `OnCloseCallback` | No       | -           |
 
 ---
 
@@ -2195,10 +2062,8 @@ interface NoteCallbacks {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type NoteCategory = unknown | unknown | unknown | unknown | unknown | unknown
+type NoteCategory = unknown | unknown | unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -2206,8 +2071,6 @@ type NoteCategory = unknown | unknown | unknown | unknown | unknown | unknown
 ## NoteCreatePayload
 
 **File:** `src/lib/types/project.ts`
-
-
 
 ```typescript
 interface NoteCreatePayload {
@@ -2221,23 +2084,21 @@ interface NoteCreatePayload {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface NoteFilters {
-  category?: NoteCategory[];
-  tags?: string[];
-  search?: string;
+	category?: NoteCategory[];
+	tags?: string[];
+	search?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| category | `NoteCategory[]` | Yes | - |
-| tags | `string[]` | Yes | - |
-| search | `string` | Yes | - |
+| Property | Type             | Optional | Description |
+| -------- | ---------------- | -------- | ----------- |
+| category | `NoteCategory[]` | Yes      | -           |
+| tags     | `string[]`       | Yes      | -           |
+| search   | `string`         | Yes      | -           |
 
 ---
 
@@ -2245,10 +2106,8 @@ interface NoteFilters {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type NoteInsert = unknown
+type NoteInsert = unknown;
 ```
 
 ---
@@ -2257,23 +2116,21 @@ type NoteInsert = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface NoteOperation {
-  table: unknown;
-  operation: unknown | unknown;
-  data: unknown;
+	table: unknown;
+	operation: unknown | unknown;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| table | `unknown` | No | - |
-| operation | `unknown | unknown` | No | - |
-| data | `unknown` | No | - |
+| Property  | Type      | Optional | Description |
+| --------- | --------- | -------- | ----------- | --- |
+| table     | `unknown` | No       | -           |
+| operation | `unknown  | unknown` | No          | -   |
+| data      | `unknown` | No       | -           |
 
 ---
 
@@ -2281,10 +2138,8 @@ interface NoteOperation {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type NoteUpdate = unknown
+type NoteUpdate = unknown;
 ```
 
 ---
@@ -2293,29 +2148,27 @@ type NoteUpdate = unknown
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface NudgeCard {
-  type: string;
-  title: string;
-  description: string;
-  action: unknown;
-  icon: any;
-  color: string;
+	type: string;
+	title: string;
+	description: string;
+	action: unknown;
+	icon: any;
+	color: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `string` | No | - |
-| title | `string` | No | - |
-| description | `string` | No | - |
-| action | `unknown` | No | - |
-| icon | `any` | No | - |
-| color | `string` | No | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- |
+| type        | `string`  | No       | -           |
+| title       | `string`  | No       | -           |
+| description | `string`  | No       | -           |
+| action      | `unknown` | No       | -           |
+| icon        | `any`     | No       | -           |
+| color       | `string`  | No       | -           |
 
 ---
 
@@ -2323,10 +2176,8 @@ interface NudgeCard {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type Nullable = T | null
+type Nullable = T | null;
 ```
 
 ---
@@ -2335,25 +2186,23 @@ type Nullable = T | null
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface OnboardingCategory {
-  id: unknown | unknown | unknown | unknown | unknown | unknown;
-  title: string;
-  description: string;
-  fields: string[];
+	id: unknown | unknown | unknown | unknown | unknown | unknown;
+	title: string;
+	description: string;
+	fields: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| title | `string` | No | - |
-| description | `string` | No | - |
-| fields | `string[]` | No | - |
+| Property    | Type       | Optional | Description |
+| ----------- | ---------- | -------- | ----------- | ------- | ------- | -------- | --- | --- |
+| id          | `unknown   | unknown  | unknown     | unknown | unknown | unknown` | No  | -   |
+| title       | `string`   | No       | -           |
+| description | `string`   | No       | -           |
+| fields      | `string[]` | No       | -           |
 
 ---
 
@@ -2361,31 +2210,29 @@ interface OnboardingCategory {
 
 **File:** `src/lib/types/user-context.ts`
 
-
-
 ```typescript
 interface OnboardingField {
-  key: unknown;
-  label: string;
-  placeholder: string;
-  type: unknown | unknown | unknown;
-  required?: boolean;
-  helpText?: string;
-  examples?: string[];
+	key: unknown;
+	label: string;
+	placeholder: string;
+	type: unknown | unknown | unknown;
+	required?: boolean;
+	helpText?: string;
+	examples?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| key | `unknown` | No | - |
-| label | `string` | No | - |
-| placeholder | `string` | No | - |
-| type | `unknown | unknown | unknown` | No | - |
-| required | `boolean` | Yes | - |
-| helpText | `string` | Yes | - |
-| examples | `string[]` | Yes | - |
+| Property    | Type       | Optional | Description |
+| ----------- | ---------- | -------- | ----------- | --- | --- |
+| key         | `unknown`  | No       | -           |
+| label       | `string`   | No       | -           |
+| placeholder | `string`   | No       | -           |
+| type        | `unknown   | unknown  | unknown`    | No  | -   |
+| required    | `boolean`  | Yes      | -           |
+| helpText    | `string`   | Yes      | -           |
+| examples    | `string[]` | Yes      | -           |
 
 ---
 
@@ -2393,25 +2240,23 @@ interface OnboardingField {
 
 **File:** `src/lib/types/user-context.ts`
 
-
-
 ```typescript
 interface OnboardingProgress {
-  currentStep: number;
-  totalSteps: number;
-  completedSteps: string[];
-  skippedSteps: string[];
+	currentStep: number;
+	totalSteps: number;
+	completedSteps: string[];
+	skippedSteps: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| currentStep | `number` | No | - |
-| totalSteps | `number` | No | - |
-| completedSteps | `string[]` | No | - |
-| skippedSteps | `string[]` | No | - |
+| Property       | Type       | Optional | Description |
+| -------------- | ---------- | -------- | ----------- |
+| currentStep    | `number`   | No       | -           |
+| totalSteps     | `number`   | No       | -           |
+| completedSteps | `string[]` | No       | -           |
+| skippedSteps   | `string[]` | No       | -           |
 
 ---
 
@@ -2419,29 +2264,27 @@ interface OnboardingProgress {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface OnboardingProgressData {
-  completed: boolean;
-  progress: number;
-  missingFields: string[];
-  completedFields: string[];
-  missingRequiredFields: string[];
-  categoryProgress: Record;
+	completed: boolean;
+	progress: number;
+	missingFields: string[];
+	completedFields: string[];
+	missingRequiredFields: string[];
+	categoryProgress: Record;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| completed | `boolean` | No | - |
-| progress | `number` | No | - |
-| missingFields | `string[]` | No | - |
-| completedFields | `string[]` | No | - |
-| missingRequiredFields | `string[]` | No | - |
-| categoryProgress | `Record` | No | - |
+| Property              | Type       | Optional | Description |
+| --------------------- | ---------- | -------- | ----------- |
+| completed             | `boolean`  | No       | -           |
+| progress              | `number`   | No       | -           |
+| missingFields         | `string[]` | No       | -           |
+| completedFields       | `string[]` | No       | -           |
+| missingRequiredFields | `string[]` | No       | -           |
+| categoryProgress      | `Record`   | No       | -           |
 
 ---
 
@@ -2449,31 +2292,29 @@ interface OnboardingProgressData {
 
 **File:** `src/lib/types/user-context.ts`
 
-
-
 ```typescript
 interface OnboardingStep {
-  id: string;
-  title: string;
-  subtitle: string;
-  category: unknown | unknown | unknown | unknown | unknown | unknown;
-  fields: OnboardingField[];
-  icon?: string;
-  voicePrompt?: string;
+	id: string;
+	title: string;
+	subtitle: string;
+	category: unknown | unknown | unknown | unknown | unknown | unknown;
+	fields: OnboardingField[];
+	icon?: string;
+	voicePrompt?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| title | `string` | No | - |
-| subtitle | `string` | No | - |
-| category | `unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| fields | `OnboardingField[]` | No | - |
-| icon | `string` | Yes | - |
-| voicePrompt | `string` | Yes | - |
+| Property    | Type                | Optional | Description |
+| ----------- | ------------------- | -------- | ----------- | ------- | ------- | -------- | --- | --- |
+| id          | `string`            | No       | -           |
+| title       | `string`            | No       | -           |
+| subtitle    | `string`            | No       | -           |
+| category    | `unknown            | unknown  | unknown     | unknown | unknown | unknown` | No  | -   |
+| fields      | `OnboardingField[]` | No       | -           |
+| icon        | `string`            | Yes      | -           |
+| voicePrompt | `string`            | Yes      | -           |
 
 ---
 
@@ -2481,10 +2322,8 @@ interface OnboardingStep {
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
-type OnCloseCallback = unknown
+type OnCloseCallback = unknown;
 ```
 
 ---
@@ -2493,10 +2332,8 @@ type OnCloseCallback = unknown
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
-type OnDeleteCallback = unknown
+type OnDeleteCallback = unknown;
 ```
 
 ---
@@ -2505,10 +2342,8 @@ type OnDeleteCallback = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
-type OperationType = unknown | unknown | unknown
+type OperationType = unknown | unknown | unknown;
 ```
 
 ---
@@ -2517,10 +2352,8 @@ type OperationType = unknown | unknown | unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
-type PageData = ProjectPageData
+type PageData = ProjectPageData;
 ```
 
 ---
@@ -2529,27 +2362,25 @@ type PageData = ProjectPageData
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface PageMetadata {
-  activeTab: string;
-  loadedAt: string;
-  dataSize: unknown;
-  loadStrategy: string;
-  calendarConnected: boolean;
+	activeTab: string;
+	loadedAt: string;
+	dataSize: unknown;
+	loadStrategy: string;
+	calendarConnected: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| activeTab | `string` | No | - |
-| loadedAt | `string` | No | - |
-| dataSize | `unknown` | No | - |
-| loadStrategy | `string` | No | - |
-| calendarConnected | `boolean` | No | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- |
+| activeTab         | `string`  | No       | -           |
+| loadedAt          | `string`  | No       | -           |
+| dataSize          | `unknown` | No       | -           |
+| loadStrategy      | `string`  | No       | -           |
+| calendarConnected | `boolean` | No       | -           |
 
 ---
 
@@ -2557,27 +2388,25 @@ interface PageMetadata {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface PaginatedResponse {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
+	data: T[];
+	total: number;
+	page: number;
+	pageSize: number;
+	hasMore: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| data | `T[]` | No | - |
-| total | `number` | No | - |
-| page | `number` | No | - |
-| pageSize | `number` | No | - |
-| hasMore | `boolean` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| data     | `T[]`     | No       | -           |
+| total    | `number`  | No       | -           |
+| page     | `number`  | No       | -           |
+| pageSize | `number`  | No       | -           |
+| hasMore  | `boolean` | No       | -           |
 
 ---
 
@@ -2585,39 +2414,37 @@ interface PaginatedResponse {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface ParsedOperation {
-  id: string;
-  table: TableName;
-  operation: OperationType;
-  data: unknown;
-  ref?: string;
-  searchQuery?: string;
-  conditions?: Record;
-  enabled: boolean;
-  error?: string;
-  reasoning?: string;
-  result?: Record;
+	id: string;
+	table: TableName;
+	operation: OperationType;
+	data: unknown;
+	ref?: string;
+	searchQuery?: string;
+	conditions?: Record;
+	enabled: boolean;
+	error?: string;
+	reasoning?: string;
+	result?: Record;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| table | `TableName` | No | - |
-| operation | `OperationType` | No | - |
-| data | `unknown` | No | - |
-| ref | `string` | Yes | - |
-| searchQuery | `string` | Yes | - |
-| conditions | `Record` | Yes | - |
-| enabled | `boolean` | No | - |
-| error | `string` | Yes | - |
-| reasoning | `string` | Yes | - |
-| result | `Record` | Yes | - |
+| Property    | Type            | Optional | Description |
+| ----------- | --------------- | -------- | ----------- |
+| id          | `string`        | No       | -           |
+| table       | `TableName`     | No       | -           |
+| operation   | `OperationType` | No       | -           |
+| data        | `unknown`       | No       | -           |
+| ref         | `string`        | Yes      | -           |
+| searchQuery | `string`        | Yes      | -           |
+| conditions  | `Record`        | Yes      | -           |
+| enabled     | `boolean`       | No       | -           |
+| error       | `string`        | Yes      | -           |
+| reasoning   | `string`        | Yes      | -           |
+| result      | `Record`        | Yes      | -           |
 
 ---
 
@@ -2625,10 +2452,8 @@ interface ParsedOperation {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type Phase = unknown
+type Phase = unknown;
 ```
 
 ---
@@ -2637,10 +2462,8 @@ type Phase = unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type Phase = unknown
+type Phase = unknown;
 ```
 
 ---
@@ -2649,29 +2472,27 @@ type Phase = unknown
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface PhaseCallbacks {
-  onUpdate?: unknown | null;
-  onDelete?: OnDeleteCallback | null;
-  onClose: OnCloseCallback;
-  onPhasesUpdate?: unknown | null;
-  onTasksUpdate?: unknown | null;
-  onProjectUpdate?: unknown | null;
+	onUpdate?: unknown | null;
+	onDelete?: OnDeleteCallback | null;
+	onClose: OnCloseCallback;
+	onPhasesUpdate?: unknown | null;
+	onTasksUpdate?: unknown | null;
+	onProjectUpdate?: unknown | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| onUpdate | `unknown | null` | Yes | - |
-| onDelete | `OnDeleteCallback | null` | Yes | - |
-| onClose | `OnCloseCallback` | No | - |
-| onPhasesUpdate | `unknown | null` | Yes | - |
-| onTasksUpdate | `unknown | null` | Yes | - |
-| onProjectUpdate | `unknown | null` | Yes | - |
+| Property        | Type              | Optional | Description |
+| --------------- | ----------------- | -------- | ----------- | --- |
+| onUpdate        | `unknown          | null`    | Yes         | -   |
+| onDelete        | `OnDeleteCallback | null`    | Yes         | -   |
+| onClose         | `OnCloseCallback` | No       | -           |
+| onPhasesUpdate  | `unknown          | null`    | Yes         | -   |
+| onTasksUpdate   | `unknown          | null`    | Yes         | -   |
+| onProjectUpdate | `unknown          | null`    | Yes         | -   |
 
 ---
 
@@ -2679,27 +2500,25 @@ interface PhaseCallbacks {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface PhaseGenerationResult {
-  phases: Array;
-  task_assignments: unknown;
-  recurring_tasks: string[];
-  backlog_tasks: string[];
-  summary: string;
+	phases: Array;
+	task_assignments: unknown;
+	recurring_tasks: string[];
+	backlog_tasks: string[];
+	summary: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| phases | `Array` | No | - |
-| task_assignments | `unknown` | No | - |
-| recurring_tasks | `string[]` | No | - |
-| backlog_tasks | `string[]` | No | - |
-| summary | `string` | No | - |
+| Property         | Type       | Optional | Description |
+| ---------------- | ---------- | -------- | ----------- |
+| phases           | `Array`    | No       | -           |
+| task_assignments | `unknown`  | No       | -           |
+| recurring_tasks  | `string[]` | No       | -           |
+| backlog_tasks    | `string[]` | No       | -           |
+| summary          | `string`   | No       | -           |
 
 ---
 
@@ -2707,31 +2526,29 @@ interface PhaseGenerationResult {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface PhaseGenerationResult {
-  phases: Array;
-  task_assignments: unknown;
-  recurring_tasks: string[];
-  backlog_tasks: string[];
-  summary: string;
-  recurring_task_suggestions?: unknown;
-  recurring_task_warnings?: string[];
+	phases: Array;
+	task_assignments: unknown;
+	recurring_tasks: string[];
+	backlog_tasks: string[];
+	summary: string;
+	recurring_task_suggestions?: unknown;
+	recurring_task_warnings?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| phases | `Array` | No | - |
-| task_assignments | `unknown` | No | - |
-| recurring_tasks | `string[]` | No | - |
-| backlog_tasks | `string[]` | No | - |
-| summary | `string` | No | - |
-| recurring_task_suggestions | `unknown` | Yes | - |
-| recurring_task_warnings | `string[]` | Yes | - |
+| Property                   | Type       | Optional | Description |
+| -------------------------- | ---------- | -------- | ----------- |
+| phases                     | `Array`    | No       | -           |
+| task_assignments           | `unknown`  | No       | -           |
+| recurring_tasks            | `string[]` | No       | -           |
+| backlog_tasks              | `string[]` | No       | -           |
+| summary                    | `string`   | No       | -           |
+| recurring_task_suggestions | `unknown`  | Yes      | -           |
+| recurring_task_warnings    | `string[]` | Yes      | -           |
 
 ---
 
@@ -2739,10 +2556,8 @@ interface PhaseGenerationResult {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type PhaseInsert = unknown
+type PhaseInsert = unknown;
 ```
 
 ---
@@ -2751,10 +2566,8 @@ type PhaseInsert = unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type PhaseInsert = unknown
+type PhaseInsert = unknown;
 ```
 
 ---
@@ -2763,21 +2576,19 @@ type PhaseInsert = unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface PhaseTask {
-  suggested_start_date?: string | null;
-  assignment_reason?: string | null;
+	suggested_start_date?: string | null;
+	assignment_reason?: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| suggested_start_date | `string | null` | Yes | - |
-| assignment_reason | `string | null` | Yes | - |
+| Property             | Type    | Optional | Description |
+| -------------------- | ------- | -------- | ----------- | --- |
+| suggested_start_date | `string | null`    | Yes         | -   |
+| assignment_reason    | `string | null`    | Yes         | -   |
 
 ---
 
@@ -2785,10 +2596,8 @@ interface PhaseTask {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type PhaseUpdate = unknown
+type PhaseUpdate = unknown;
 ```
 
 ---
@@ -2797,23 +2606,21 @@ type PhaseUpdate = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface PhaseWithTasks {
-  tasks: Task[];
-  task_count: number;
-  completed_tasks: number;
+	tasks: Task[];
+	task_count: number;
+	completed_tasks: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `Task[]` | No | - |
-| task_count | `number` | No | - |
-| completed_tasks | `number` | No | - |
+| Property        | Type     | Optional | Description |
+| --------------- | -------- | -------- | ----------- |
+| tasks           | `Task[]` | No       | -           |
+| task_count      | `number` | No       | -           |
+| completed_tasks | `number` | No       | -           |
 
 ---
 
@@ -2821,10 +2628,8 @@ interface PhaseWithTasks {
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
-type PhaseWithTasks = ProcessedPhase
+type PhaseWithTasks = ProcessedPhase;
 ```
 
 ---
@@ -2833,23 +2638,21 @@ type PhaseWithTasks = ProcessedPhase
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface PhaseWithTasks {
-  tasks: Task[];
-  task_count: number;
-  completed_tasks: number;
+	tasks: Task[];
+	task_count: number;
+	completed_tasks: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `Task[]` | No | - |
-| task_count | `number` | No | - |
-| completed_tasks | `number` | No | - |
+| Property        | Type     | Optional | Description |
+| --------------- | -------- | -------- | ----------- |
+| tasks           | `Task[]` | No       | -           |
+| task_count      | `number` | No       | -           |
+| completed_tasks | `number` | No       | -           |
 
 ---
 
@@ -2857,25 +2660,23 @@ interface PhaseWithTasks {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface PrimaryCTA {
-  title: string;
-  subtitle?: string;
-  description: string;
-  primaryAction: unknown;
+	title: string;
+	subtitle?: string;
+	description: string;
+	primaryAction: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| title | `string` | No | - |
-| subtitle | `string` | Yes | - |
-| description | `string` | No | - |
-| primaryAction | `unknown` | No | - |
+| Property      | Type      | Optional | Description |
+| ------------- | --------- | -------- | ----------- |
+| title         | `string`  | No       | -           |
+| subtitle      | `string`  | Yes      | -           |
+| description   | `string`  | No       | -           |
+| primaryAction | `unknown` | No       | -           |
 
 ---
 
@@ -2883,10 +2684,8 @@ interface PrimaryCTA {
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
-type PriorityLevel = unknown | unknown | unknown
+type PriorityLevel = unknown | unknown | unknown;
 ```
 
 ---
@@ -2895,23 +2694,21 @@ type PriorityLevel = unknown | unknown | unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface ProcessedPhase {
-  tasks: PhaseTask[];
-  task_count: number;
-  completed_tasks: number;
+	tasks: PhaseTask[];
+	task_count: number;
+	completed_tasks: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `PhaseTask[]` | No | - |
-| task_count | `number` | No | - |
-| completed_tasks | `number` | No | - |
+| Property        | Type          | Optional | Description |
+| --------------- | ------------- | -------- | ----------- |
+| tasks           | `PhaseTask[]` | No       | -           |
+| task_count      | `number`      | No       | -           |
+| completed_tasks | `number`      | No       | -           |
 
 ---
 
@@ -2919,10 +2716,8 @@ interface ProcessedPhase {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type Project = unknown
+type Project = unknown;
 ```
 
 ---
@@ -2931,10 +2726,8 @@ type Project = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type ProjectBriefTemplate = unknown
+type ProjectBriefTemplate = unknown;
 ```
 
 ---
@@ -2943,39 +2736,37 @@ type ProjectBriefTemplate = unknown
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface ProjectBriefTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  template_content: string;
-  variables: ProjectBriefVariables | null;
-  project_id: string | null;
-  user_id: string | null;
-  in_use: boolean | null;
-  is_default: boolean | null;
-  created_at: string | null;
-  updated_at: string | null;
+	id: string;
+	name: string;
+	description: string | null;
+	template_content: string;
+	variables: ProjectBriefVariables | null;
+	project_id: string | null;
+	user_id: string | null;
+	in_use: boolean | null;
+	is_default: boolean | null;
+	created_at: string | null;
+	updated_at: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| description | `string | null` | No | - |
-| template_content | `string` | No | - |
-| variables | `ProjectBriefVariables | null` | No | - |
-| project_id | `string | null` | No | - |
-| user_id | `string | null` | No | - |
-| in_use | `boolean | null` | No | - |
-| is_default | `boolean | null` | No | - |
-| created_at | `string | null` | No | - |
-| updated_at | `string | null` | No | - |
+| Property         | Type                   | Optional | Description |
+| ---------------- | ---------------------- | -------- | ----------- | --- |
+| id               | `string`               | No       | -           |
+| name             | `string`               | No       | -           |
+| description      | `string                | null`    | No          | -   |
+| template_content | `string`               | No       | -           |
+| variables        | `ProjectBriefVariables | null`    | No          | -   |
+| project_id       | `string                | null`    | No          | -   |
+| user_id          | `string                | null`    | No          | -   |
+| in_use           | `boolean               | null`    | No          | -   |
+| is_default       | `boolean               | null`    | No          | -   |
+| created_at       | `string                | null`    | No          | -   |
+| updated_at       | `string                | null`    | No          | -   |
 
 ---
 
@@ -2983,43 +2774,41 @@ interface ProjectBriefTemplate {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface ProjectBriefVariables {
-  project_name?: string;
-  project_description?: string;
-  brief_date?: string;
-  executive_summary?: string;
-  task_summary?: string;
-  active_tasks?: string;
-  blocked_tasks?: string;
-  high_priority_tasks?: string;
-  upcoming_tasks?: string;
-  recent_notes?: string;
-  key_context?: Record;
-  progress_metrics?: string;
-  next_actions?: string;
+	project_name?: string;
+	project_description?: string;
+	brief_date?: string;
+	executive_summary?: string;
+	task_summary?: string;
+	active_tasks?: string;
+	blocked_tasks?: string;
+	high_priority_tasks?: string;
+	upcoming_tasks?: string;
+	recent_notes?: string;
+	key_context?: Record;
+	progress_metrics?: string;
+	next_actions?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| project_name | `string` | Yes | - |
-| project_description | `string` | Yes | - |
-| brief_date | `string` | Yes | - |
-| executive_summary | `string` | Yes | - |
-| task_summary | `string` | Yes | - |
-| active_tasks | `string` | Yes | - |
-| blocked_tasks | `string` | Yes | - |
-| high_priority_tasks | `string` | Yes | - |
-| upcoming_tasks | `string` | Yes | - |
-| recent_notes | `string` | Yes | - |
-| key_context | `Record` | Yes | - |
-| progress_metrics | `string` | Yes | - |
-| next_actions | `string` | Yes | - |
+| Property            | Type     | Optional | Description |
+| ------------------- | -------- | -------- | ----------- |
+| project_name        | `string` | Yes      | -           |
+| project_description | `string` | Yes      | -           |
+| brief_date          | `string` | Yes      | -           |
+| executive_summary   | `string` | Yes      | -           |
+| task_summary        | `string` | Yes      | -           |
+| active_tasks        | `string` | Yes      | -           |
+| blocked_tasks       | `string` | Yes      | -           |
+| high_priority_tasks | `string` | Yes      | -           |
+| upcoming_tasks      | `string` | Yes      | -           |
+| recent_notes        | `string` | Yes      | -           |
+| key_context         | `Record` | Yes      | -           |
+| progress_metrics    | `string` | Yes      | -           |
+| next_actions        | `string` | Yes      | -           |
 
 ---
 
@@ -3027,23 +2816,21 @@ interface ProjectBriefVariables {
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface ProjectCallbacks {
-  onUpdate?: unknown | null;
-  onDelete?: OnDeleteCallback | null;
-  onClose: OnCloseCallback;
+	onUpdate?: unknown | null;
+	onDelete?: OnDeleteCallback | null;
+	onClose: OnCloseCallback;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| onUpdate | `unknown | null` | Yes | - |
-| onDelete | `OnDeleteCallback | null` | Yes | - |
-| onClose | `OnCloseCallback` | No | - |
+| Property | Type              | Optional | Description |
+| -------- | ----------------- | -------- | ----------- | --- |
+| onUpdate | `unknown          | null`    | Yes         | -   |
+| onDelete | `OnDeleteCallback | null`    | Yes         | -   |
+| onClose  | `OnCloseCallback` | No       | -           |
 
 ---
 
@@ -3051,23 +2838,21 @@ interface ProjectCallbacks {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface ProjectContextField {
-  key: string;
-  value: string;
-  metadata?: unknown;
+	key: string;
+	value: string;
+	metadata?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| key | `string` | No | - |
-| value | `string` | No | - |
-| metadata | `unknown` | Yes | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| key      | `string`  | No       | -           |
+| value    | `string`  | No       | -           |
+| metadata | `unknown` | Yes      | -           |
 
 ---
 
@@ -3075,37 +2860,33 @@ interface ProjectContextField {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface ProjectContextResult {
-  title?: string;
-  summary?: string;
-  insights?: string;
-  tags?: string[];
-  projectUpdate?: unknown;
-  projectCreate?: unknown;
+	title?: string;
+	summary?: string;
+	insights?: string;
+	tags?: string[];
+	projectUpdate?: unknown;
+	projectCreate?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| title | `string` | Yes | - |
-| summary | `string` | Yes | - |
-| insights | `string` | Yes | - |
-| tags | `string[]` | Yes | - |
-| projectUpdate | `unknown` | Yes | - |
-| projectCreate | `unknown` | Yes | - |
+| Property      | Type       | Optional | Description |
+| ------------- | ---------- | -------- | ----------- |
+| title         | `string`   | Yes      | -           |
+| summary       | `string`   | Yes      | -           |
+| insights      | `string`   | Yes      | -           |
+| tags          | `string[]` | Yes      | -           |
+| projectUpdate | `unknown`  | Yes      | -           |
+| projectCreate | `unknown`  | Yes      | -           |
 
 ---
 
 ## ProjectCreatePayload
 
 **File:** `src/lib/types/project.ts`
-
-
 
 ```typescript
 interface ProjectCreatePayload {
@@ -3119,39 +2900,37 @@ interface ProjectCreatePayload {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface ProjectDailyBrief {
-  id: string;
-  user_id: string;
-  project_id: string;
-  template_id?: string;
-  brief_content: string;
-  brief_date: string;
-  generation_status?: unknown | unknown | unknown;
-  metadata?: any;
-  created_at?: string;
-  updated_at?: string;
-  projects?: unknown;
+	id: string;
+	user_id: string;
+	project_id: string;
+	template_id?: string;
+	brief_content: string;
+	brief_date: string;
+	generation_status?: unknown | unknown | unknown;
+	metadata?: any;
+	created_at?: string;
+	updated_at?: string;
+	projects?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| user_id | `string` | No | - |
-| project_id | `string` | No | - |
-| template_id | `string` | Yes | - |
-| brief_content | `string` | No | - |
-| brief_date | `string` | No | - |
-| generation_status | `unknown | unknown | unknown` | Yes | - |
-| metadata | `any` | Yes | - |
-| created_at | `string` | Yes | - |
-| updated_at | `string` | Yes | - |
-| projects | `unknown` | Yes | - |
+| Property          | Type      | Optional | Description |
+| ----------------- | --------- | -------- | ----------- | --- | --- |
+| id                | `string`  | No       | -           |
+| user_id           | `string`  | No       | -           |
+| project_id        | `string`  | No       | -           |
+| template_id       | `string`  | Yes      | -           |
+| brief_content     | `string`  | No       | -           |
+| brief_date        | `string`  | No       | -           |
+| generation_status | `unknown  | unknown  | unknown`    | Yes | -   |
+| metadata          | `any`     | Yes      | -           |
+| created_at        | `string`  | Yes      | -           |
+| updated_at        | `string`  | Yes      | -           |
+| projects          | `unknown` | Yes      | -           |
 
 ---
 
@@ -3159,10 +2938,8 @@ interface ProjectDailyBrief {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type ProjectDailyBrief = unknown
+type ProjectDailyBrief = unknown;
 ```
 
 ---
@@ -3171,19 +2948,17 @@ type ProjectDailyBrief = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ProjectDailyBriefWithProject {
-  projects?: unknown;
+	projects?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projects | `unknown` | Yes | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| projects | `unknown` | Yes      | -           |
 
 ---
 
@@ -3191,10 +2966,8 @@ interface ProjectDailyBriefWithProject {
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
-type ProjectFilter = unknown | unknown | unknown | unknown | unknown
+type ProjectFilter = unknown | unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -3203,25 +2976,23 @@ type ProjectFilter = unknown | unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface ProjectFilters {
-  status?: ProjectStatus[];
-  tags?: string[];
-  dateRange?: unknown;
-  search?: string;
+	status?: ProjectStatus[];
+	tags?: string[];
+	dateRange?: unknown;
+	search?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| status | `ProjectStatus[]` | Yes | - |
-| tags | `string[]` | Yes | - |
-| dateRange | `unknown` | Yes | - |
-| search | `string` | Yes | - |
+| Property  | Type              | Optional | Description |
+| --------- | ----------------- | -------- | ----------- |
+| status    | `ProjectStatus[]` | Yes      | -           |
+| tags      | `string[]`        | Yes      | -           |
+| dateRange | `unknown`         | Yes      | -           |
+| search    | `string`          | Yes      | -           |
 
 ---
 
@@ -3229,10 +3000,8 @@ interface ProjectFilters {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type ProjectInsert = unknown
+type ProjectInsert = unknown;
 ```
 
 ---
@@ -3241,25 +3010,23 @@ type ProjectInsert = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface ProjectOperation {
-  table: unknown;
-  operation: unknown | unknown;
-  ref?: string;
-  data: unknown;
+	table: unknown;
+	operation: unknown | unknown;
+	ref?: string;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| table | `unknown` | No | - |
-| operation | `unknown | unknown` | No | - |
-| ref | `string` | Yes | - |
-| data | `unknown` | No | - |
+| Property  | Type      | Optional | Description |
+| --------- | --------- | -------- | ----------- | --- |
+| table     | `unknown` | No       | -           |
+| operation | `unknown  | unknown` | No          | -   |
+| ref       | `string`  | Yes      | -           |
+| data      | `unknown` | No       | -           |
 
 ---
 
@@ -3267,45 +3034,43 @@ interface ProjectOperation {
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface ProjectPageData {
-  project: Project;
-  tasks: TaskWithCalendarEvents[];
-  doneTasks: TaskWithCalendarEvents[];
-  deletedTasks: TaskWithCalendarEvents[];
-  backlogTasks: TaskWithCalendarEvents[];
-  scheduledTasks: TaskWithCalendarEvents[];
-  notes: Note[];
-  phases: ProcessedPhase[];
-  calendarStatus: CalendarStatus;
-  user: unknown;
-  isFirstProject: boolean;
-  taskStats: TaskStats;
-  tabCounts: TabCounts;
-  __meta: PageMetadata;
+	project: Project;
+	tasks: TaskWithCalendarEvents[];
+	doneTasks: TaskWithCalendarEvents[];
+	deletedTasks: TaskWithCalendarEvents[];
+	backlogTasks: TaskWithCalendarEvents[];
+	scheduledTasks: TaskWithCalendarEvents[];
+	notes: Note[];
+	phases: ProcessedPhase[];
+	calendarStatus: CalendarStatus;
+	user: unknown;
+	isFirstProject: boolean;
+	taskStats: TaskStats;
+	tabCounts: TabCounts;
+	__meta: PageMetadata;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| project | `Project` | No | - |
-| tasks | `TaskWithCalendarEvents[]` | No | - |
-| doneTasks | `TaskWithCalendarEvents[]` | No | - |
-| deletedTasks | `TaskWithCalendarEvents[]` | No | - |
-| backlogTasks | `TaskWithCalendarEvents[]` | No | - |
-| scheduledTasks | `TaskWithCalendarEvents[]` | No | - |
-| notes | `Note[]` | No | - |
-| phases | `ProcessedPhase[]` | No | - |
-| calendarStatus | `CalendarStatus` | No | - |
-| user | `unknown` | No | - |
-| isFirstProject | `boolean` | No | - |
-| taskStats | `TaskStats` | No | - |
-| tabCounts | `TabCounts` | No | - |
-| __meta | `PageMetadata` | No | - |
+| Property       | Type                       | Optional | Description |
+| -------------- | -------------------------- | -------- | ----------- |
+| project        | `Project`                  | No       | -           |
+| tasks          | `TaskWithCalendarEvents[]` | No       | -           |
+| doneTasks      | `TaskWithCalendarEvents[]` | No       | -           |
+| deletedTasks   | `TaskWithCalendarEvents[]` | No       | -           |
+| backlogTasks   | `TaskWithCalendarEvents[]` | No       | -           |
+| scheduledTasks | `TaskWithCalendarEvents[]` | No       | -           |
+| notes          | `Note[]`                   | No       | -           |
+| phases         | `ProcessedPhase[]`         | No       | -           |
+| calendarStatus | `CalendarStatus`           | No       | -           |
+| user           | `unknown`                  | No       | -           |
+| isFirstProject | `boolean`                  | No       | -           |
+| taskStats      | `TaskStats`                | No       | -           |
+| tabCounts      | `TabCounts`                | No       | -           |
+| \_\_meta       | `PageMetadata`             | No       | -           |
 
 ---
 
@@ -3313,10 +3078,8 @@ interface ProjectPageData {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type ProjectQuestion = unknown
+type ProjectQuestion = unknown;
 ```
 
 ---
@@ -3325,10 +3088,8 @@ type ProjectQuestion = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
-type ProjectQuestionRow = unknown
+type ProjectQuestionRow = unknown;
 ```
 
 ---
@@ -3337,25 +3098,23 @@ type ProjectQuestionRow = unknown
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
 interface ProjectsFilterState {
-  projectFilter: ProjectFilter;
-  briefDateRange: BriefDateRange;
-  selectedProjectFilter: string;
-  searchQuery: string;
+	projectFilter: ProjectFilter;
+	briefDateRange: BriefDateRange;
+	selectedProjectFilter: string;
+	searchQuery: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectFilter | `ProjectFilter` | No | - |
-| briefDateRange | `BriefDateRange` | No | - |
-| selectedProjectFilter | `string` | No | - |
-| searchQuery | `string` | No | - |
+| Property              | Type             | Optional | Description |
+| --------------------- | ---------------- | -------- | ----------- |
+| projectFilter         | `ProjectFilter`  | No       | -           |
+| briefDateRange        | `BriefDateRange` | No       | -           |
+| selectedProjectFilter | `string`         | No       | -           |
+| searchQuery           | `string`         | No       | -           |
 
 ---
 
@@ -3363,37 +3122,35 @@ interface ProjectsFilterState {
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
 interface ProjectsPageState {
-  activeTab: TabType;
-  filters: ProjectsFilterState;
-  briefsLoaded: boolean;
-  loadingBriefs: boolean;
-  projectBriefs: any[];
-  selectedBrief: any | null;
-  showBriefModal: boolean;
-  showNewProjectModal: boolean;
-  creatingProject: boolean;
-  loadingProjectId: string;
+	activeTab: TabType;
+	filters: ProjectsFilterState;
+	briefsLoaded: boolean;
+	loadingBriefs: boolean;
+	projectBriefs: any[];
+	selectedBrief: any | null;
+	showBriefModal: boolean;
+	showNewProjectModal: boolean;
+	creatingProject: boolean;
+	loadingProjectId: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| activeTab | `TabType` | No | - |
-| filters | `ProjectsFilterState` | No | - |
-| briefsLoaded | `boolean` | No | - |
-| loadingBriefs | `boolean` | No | - |
-| projectBriefs | `any[]` | No | - |
-| selectedBrief | `any | null` | No | - |
-| showBriefModal | `boolean` | No | - |
-| showNewProjectModal | `boolean` | No | - |
-| creatingProject | `boolean` | No | - |
-| loadingProjectId | `string` | No | - |
+| Property            | Type                  | Optional | Description |
+| ------------------- | --------------------- | -------- | ----------- | --- |
+| activeTab           | `TabType`             | No       | -           |
+| filters             | `ProjectsFilterState` | No       | -           |
+| briefsLoaded        | `boolean`             | No       | -           |
+| loadingBriefs       | `boolean`             | No       | -           |
+| projectBriefs       | `any[]`               | No       | -           |
+| selectedBrief       | `any                  | null`    | No          | -   |
+| showBriefModal      | `boolean`             | No       | -           |
+| showNewProjectModal | `boolean`             | No       | -           |
+| creatingProject     | `boolean`             | No       | -           |
+| loadingProjectId    | `string`              | No       | -           |
 
 ---
 
@@ -3401,10 +3158,8 @@ interface ProjectsPageState {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type ProjectStatus = unknown | unknown | unknown | unknown
+type ProjectStatus = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -3413,10 +3168,8 @@ type ProjectStatus = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
-type ProjectStatus = unknown | unknown | unknown | unknown
+type ProjectStatus = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -3425,10 +3178,8 @@ type ProjectStatus = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type ProjectSynthesis = unknown
+type ProjectSynthesis = unknown;
 ```
 
 ---
@@ -3437,27 +3188,25 @@ type ProjectSynthesis = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ProjectSynthesisResult {
-  id: string;
-  operations: ParsedOperation[];
-  insights: string;
-  comparison: TaskComparison[];
-  summary: string;
+	id: string;
+	operations: ParsedOperation[];
+	insights: string;
+	comparison: TaskComparison[];
+	summary: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| operations | `ParsedOperation[]` | No | - |
-| insights | `string` | No | - |
-| comparison | `TaskComparison[]` | No | - |
-| summary | `string` | No | - |
+| Property   | Type                | Optional | Description |
+| ---------- | ------------------- | -------- | ----------- |
+| id         | `string`            | No       | -           |
+| operations | `ParsedOperation[]` | No       | -           |
+| insights   | `string`            | No       | -           |
+| comparison | `TaskComparison[]`  | No       | -           |
+| summary    | `string`            | No       | -           |
 
 ---
 
@@ -3465,10 +3214,8 @@ interface ProjectSynthesisResult {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type ProjectUpdate = unknown
+type ProjectUpdate = unknown;
 ```
 
 ---
@@ -3477,23 +3224,21 @@ type ProjectUpdate = unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface ProjectWithRelations {
-  tasks: Task[];
-  notes: Note[];
-  phases?: PhaseWithTasks[];
+	tasks: Task[];
+	notes: Note[];
+	phases?: PhaseWithTasks[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `Task[]` | No | - |
-| notes | `Note[]` | No | - |
-| phases | `PhaseWithTasks[]` | Yes | - |
+| Property | Type               | Optional | Description |
+| -------- | ------------------ | -------- | ----------- |
+| tasks    | `Task[]`           | No       | -           |
+| notes    | `Note[]`           | No       | -           |
+| phases   | `PhaseWithTasks[]` | Yes      | -           |
 
 ---
 
@@ -3501,31 +3246,29 @@ interface ProjectWithRelations {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface PromptTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  template_content: string;
-  variables?: string[];
-  is_default?: boolean;
-  user_id?: string;
+	id: string;
+	name: string;
+	description?: string;
+	template_content: string;
+	variables?: string[];
+	is_default?: boolean;
+	user_id?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| description | `string` | Yes | - |
-| template_content | `string` | No | - |
-| variables | `string[]` | Yes | - |
-| is_default | `boolean` | Yes | - |
-| user_id | `string` | Yes | - |
+| Property         | Type       | Optional | Description |
+| ---------------- | ---------- | -------- | ----------- |
+| id               | `string`   | No       | -           |
+| name             | `string`   | No       | -           |
+| description      | `string`   | Yes      | -           |
+| template_content | `string`   | No       | -           |
+| variables        | `string[]` | Yes      | -           |
+| is_default       | `boolean`  | Yes      | -           |
+| user_id          | `string`   | Yes      | -           |
 
 ---
 
@@ -3533,10 +3276,8 @@ interface PromptTemplate {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type RequireAtLeastOne = unknown
+type RequireAtLeastOne = unknown;
 ```
 
 ---
@@ -3545,43 +3286,41 @@ type RequireAtLeastOne = unknown
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
 interface SearchResult {
-  item_type: unknown | unknown | unknown;
-  item_id: string;
-  title: string;
-  description: string;
-  tags: string[] | null;
-  status: string;
-  project_id: string | null;
-  created_at: string;
-  updated_at: string;
-  relevance_score: number;
-  is_completed: boolean;
-  is_deleted: boolean;
-  matched_fields: string[];
+	item_type: unknown | unknown | unknown;
+	item_id: string;
+	title: string;
+	description: string;
+	tags: string[] | null;
+	status: string;
+	project_id: string | null;
+	created_at: string;
+	updated_at: string;
+	relevance_score: number;
+	is_completed: boolean;
+	is_deleted: boolean;
+	matched_fields: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| item_type | `unknown | unknown | unknown` | No | - |
-| item_id | `string` | No | - |
-| title | `string` | No | - |
-| description | `string` | No | - |
-| tags | `string[] | null` | No | - |
-| status | `string` | No | - |
-| project_id | `string | null` | No | - |
-| created_at | `string` | No | - |
-| updated_at | `string` | No | - |
-| relevance_score | `number` | No | - |
-| is_completed | `boolean` | No | - |
-| is_deleted | `boolean` | No | - |
-| matched_fields | `string[]` | No | - |
+| Property        | Type       | Optional | Description |
+| --------------- | ---------- | -------- | ----------- | --- | --- |
+| item_type       | `unknown   | unknown  | unknown`    | No  | -   |
+| item_id         | `string`   | No       | -           |
+| title           | `string`   | No       | -           |
+| description     | `string`   | No       | -           |
+| tags            | `string[]  | null`    | No          | -   |
+| status          | `string`   | No       | -           |
+| project_id      | `string    | null`    | No          | -   |
+| created_at      | `string`   | No       | -           |
+| updated_at      | `string`   | No       | -           |
+| relevance_score | `number`   | No       | -           |
+| is_completed    | `boolean`  | No       | -           |
+| is_deleted      | `boolean`  | No       | -           |
+| matched_fields  | `string[]` | No       | -           |
 
 ---
 
@@ -3589,27 +3328,25 @@ interface SearchResult {
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
 interface SearchState {
-  query: string;
-  results: GroupedSearchResults;
-  isLoading: boolean;
-  error: string | null;
-  hasMore: unknown;
+	query: string;
+	results: GroupedSearchResults;
+	isLoading: boolean;
+	error: string | null;
+	hasMore: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| query | `string` | No | - |
-| results | `GroupedSearchResults` | No | - |
-| isLoading | `boolean` | No | - |
-| error | `string | null` | No | - |
-| hasMore | `unknown` | No | - |
+| Property  | Type                   | Optional | Description |
+| --------- | ---------------------- | -------- | ----------- | --- |
+| query     | `string`               | No       | -           |
+| results   | `GroupedSearchResults` | No       | -           |
+| isLoading | `boolean`              | No       | -           |
+| error     | `string                | null`    | No          | -   |
+| hasMore   | `unknown`              | No       | -           |
 
 ---
 
@@ -3617,19 +3354,17 @@ interface SearchState {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface SoftDeletable {
-  deleted_at: string | null;
+	deleted_at: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| deleted_at | `string | null` | No | - |
+| Property   | Type    | Optional | Description |
+| ---------- | ------- | -------- | ----------- | --- |
+| deleted_at | `string | null`    | No          | -   |
 
 ---
 
@@ -3637,23 +3372,21 @@ interface SoftDeletable {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSEComplete {
-  type: unknown;
-  message: string;
-  result: BrainDumpParseResult;
+	type: unknown;
+	message: string;
+	result: BrainDumpParseResult;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| result | `BrainDumpParseResult` | No | - |
+| Property | Type                   | Optional | Description |
+| -------- | ---------------------- | -------- | ----------- |
+| type     | `unknown`              | No       | -           |
+| message  | `string`               | No       | -           |
+| result   | `BrainDumpParseResult` | No       | -           |
 
 ---
 
@@ -3661,23 +3394,21 @@ interface SSEComplete {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSEContextProgress {
-  type: unknown;
-  message: string;
-  data: unknown;
+	type: unknown;
+	message: string;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| data | `unknown` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| type     | `unknown` | No       | -           |
+| message  | `string`  | No       | -           |
+| data     | `unknown` | No       | -           |
 
 ---
 
@@ -3685,23 +3416,21 @@ interface SSEContextProgress {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSEContextUpdateRequired {
-  type: unknown;
-  message: string;
-  data: unknown;
+	type: unknown;
+	message: string;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| data | `unknown` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| type     | `unknown` | No       | -           |
+| message  | `string`  | No       | -           |
+| data     | `unknown` | No       | -           |
 
 ---
 
@@ -3709,27 +3438,25 @@ interface SSEContextUpdateRequired {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSEError {
-  type: unknown;
-  message: string;
-  error: string;
-  context?: unknown | unknown | unknown;
-  recoverable?: boolean;
+	type: unknown;
+	message: string;
+	error: string;
+	context?: unknown | unknown | unknown;
+	recoverable?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| error | `string` | No | - |
-| context | `unknown | unknown | unknown` | Yes | - |
-| recoverable | `boolean` | Yes | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- | --- | --- |
+| type        | `unknown` | No       | -           |
+| message     | `string`  | No       | -           |
+| error       | `string`  | No       | -           |
+| context     | `unknown  | unknown  | unknown`    | Yes | -   |
+| recoverable | `boolean` | Yes      | -           |
 
 ---
 
@@ -3737,27 +3464,25 @@ interface SSEError {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSERetry {
-  type: unknown;
-  message: string;
-  attempt: number;
-  maxAttempts: number;
-  processName: string;
+	type: unknown;
+	message: string;
+	attempt: number;
+	maxAttempts: number;
+	processName: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| attempt | `number` | No | - |
-| maxAttempts | `number` | No | - |
-| processName | `string` | No | - |
+| Property    | Type      | Optional | Description |
+| ----------- | --------- | -------- | ----------- |
+| type        | `unknown` | No       | -           |
+| message     | `string`  | No       | -           |
+| attempt     | `number`  | No       | -           |
+| maxAttempts | `number`  | No       | -           |
+| processName | `string`  | No       | -           |
 
 ---
 
@@ -3765,23 +3490,21 @@ interface SSERetry {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSEStatus {
-  type: unknown;
-  message: string;
-  data: unknown;
+	type: unknown;
+	message: string;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| data | `unknown` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| type     | `unknown` | No       | -           |
+| message  | `string`  | No       | -           |
+| data     | `unknown` | No       | -           |
 
 ---
 
@@ -3789,23 +3512,21 @@ interface SSEStatus {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface SSETasksProgress {
-  type: unknown;
-  message: string;
-  data: unknown;
+	type: unknown;
+	message: string;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown` | No | - |
-| message | `string` | No | - |
-| data | `unknown` | No | - |
+| Property | Type      | Optional | Description |
+| -------- | --------- | -------- | ----------- |
+| type     | `unknown` | No       | -           |
+| message  | `string`  | No       | -           |
+| data     | `unknown` | No       | -           |
 
 ---
 
@@ -3813,21 +3534,19 @@ interface SSETasksProgress {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface StreamEvent {
-  type: unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown;
-  data: any;
+	type: unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown;
+	data: any;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| data | `any` | No | - |
+| Property | Type     | Optional | Description |
+| -------- | -------- | -------- | ----------- | ------- | ------- | ------- | ------- | -------- | --- | --- |
+| type     | `unknown | unknown  | unknown     | unknown | unknown | unknown | unknown | unknown` | No  | -   |
+| data     | `any`    | No       | -           |
 
 ---
 
@@ -3835,21 +3554,19 @@ interface StreamEvent {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface StreamEvent {
-  type: unknown | unknown | unknown | unknown | unknown | unknown;
-  data: any;
+	type: unknown | unknown | unknown | unknown | unknown | unknown;
+	data: any;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| data | `any` | No | - |
+| Property | Type     | Optional | Description |
+| -------- | -------- | -------- | ----------- | ------- | ------- | -------- | --- | --- |
+| type     | `unknown | unknown  | unknown     | unknown | unknown | unknown` | No  | -   |
+| data     | `any`    | No       | -           |
 
 ---
 
@@ -3857,21 +3574,19 @@ interface StreamEvent {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface StreamingBriefData {
-  projectBriefs: ProjectDailyBrief[];
-  mainBrief?: unknown;
+	projectBriefs: ProjectDailyBrief[];
+	mainBrief?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectBriefs | `ProjectDailyBrief[]` | No | - |
-| mainBrief | `unknown` | Yes | - |
+| Property      | Type                  | Optional | Description |
+| ------------- | --------------------- | -------- | ----------- |
+| projectBriefs | `ProjectDailyBrief[]` | No       | -           |
+| mainBrief     | `unknown`             | Yes      | -           |
 
 ---
 
@@ -3879,21 +3594,19 @@ interface StreamingBriefData {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface StreamingBriefData {
-  projectBriefs: ProjectDailyBrief[];
-  mainBrief?: unknown;
+	projectBriefs: ProjectDailyBrief[];
+	mainBrief?: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectBriefs | `ProjectDailyBrief[]` | No | - |
-| mainBrief | `unknown` | Yes | - |
+| Property      | Type                  | Optional | Description |
+| ------------- | --------------------- | -------- | ----------- |
+| projectBriefs | `ProjectDailyBrief[]` | No       | -           |
+| mainBrief     | `unknown`             | Yes      | -           |
 
 ---
 
@@ -3901,10 +3614,15 @@ interface StreamingBriefData {
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
-type StreamingMessage = SSEContextProgress | SSETasksProgress | SSEStatus | SSEContextUpdateRequired | SSERetry | SSEComplete | SSEError
+type StreamingMessage =
+	| SSEContextProgress
+	| SSETasksProgress
+	| SSEStatus
+	| SSEContextUpdateRequired
+	| SSERetry
+	| SSEComplete
+	| SSEError;
 ```
 
 ---
@@ -3913,35 +3631,33 @@ type StreamingMessage = SSEContextProgress | SSETasksProgress | SSEStatus | SSEC
 
 **File:** `src/lib/types/sse-messages.ts`
 
-
-
 ```typescript
 interface StreamingState {
-  contextStatus: unknown | unknown | unknown | unknown | unknown;
-  tasksStatus: unknown | unknown | unknown | unknown;
-  contextResult?: ProjectContextResult;
-  tasksResult?: TaskNoteExtractionResult;
-  contextProgress?: string;
-  tasksProgress?: string;
-  isShortBraindump?: boolean;
-  isDualProcessing?: boolean;
-  showContextPanel?: boolean;
+	contextStatus: unknown | unknown | unknown | unknown | unknown;
+	tasksStatus: unknown | unknown | unknown | unknown;
+	contextResult?: ProjectContextResult;
+	tasksResult?: TaskNoteExtractionResult;
+	contextProgress?: string;
+	tasksProgress?: string;
+	isShortBraindump?: boolean;
+	isDualProcessing?: boolean;
+	showContextPanel?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| contextStatus | `unknown | unknown | unknown | unknown | unknown` | No | - |
-| tasksStatus | `unknown | unknown | unknown | unknown` | No | - |
-| contextResult | `ProjectContextResult` | Yes | - |
-| tasksResult | `TaskNoteExtractionResult` | Yes | - |
-| contextProgress | `string` | Yes | - |
-| tasksProgress | `string` | Yes | - |
-| isShortBraindump | `boolean` | Yes | - |
-| isDualProcessing | `boolean` | Yes | - |
-| showContextPanel | `boolean` | Yes | - |
+| Property         | Type                       | Optional | Description |
+| ---------------- | -------------------------- | -------- | ----------- | -------- | -------- | --- | --- |
+| contextStatus    | `unknown                   | unknown  | unknown     | unknown  | unknown` | No  | -   |
+| tasksStatus      | `unknown                   | unknown  | unknown     | unknown` | No       | -   |
+| contextResult    | `ProjectContextResult`     | Yes      | -           |
+| tasksResult      | `TaskNoteExtractionResult` | Yes      | -           |
+| contextProgress  | `string`                   | Yes      | -           |
+| tasksProgress    | `string`                   | Yes      | -           |
+| isShortBraindump | `boolean`                  | Yes      | -           |
+| isDualProcessing | `boolean`                  | Yes      | -           |
+| showContextPanel | `boolean`                  | Yes      | -           |
 
 ---
 
@@ -3949,27 +3665,39 @@ interface StreamingState {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface StreamingStatus {
-  isGenerating: boolean;
-  currentStep: unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | string;
-  message: string;
-  progress: unknown;
-  error?: string;
+	isGenerating: boolean;
+	currentStep:
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| unknown
+		| string;
+	message: string;
+	progress: unknown;
+	error?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isGenerating | `boolean` | No | - |
-| currentStep | `unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | string` | No | - |
-| message | `string` | No | - |
-| progress | `unknown` | No | - |
-| error | `string` | Yes | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | --- | --- |
+| isGenerating | `boolean` | No       | -           |
+| currentStep  | `unknown  | unknown  | unknown     | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | string` | No  | -   |
+| message      | `string`  | No       | -           |
+| progress     | `unknown` | No       | -           |
+| error        | `string`  | Yes      | -           |
 
 ---
 
@@ -3977,27 +3705,25 @@ interface StreamingStatus {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface StreamingStatus {
-  isGenerating: boolean;
-  currentStep: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
-  message: string;
-  progress: unknown;
-  error?: string;
+	isGenerating: boolean;
+	currentStep: unknown | unknown | unknown | unknown | unknown | unknown | unknown;
+	message: string;
+	progress: unknown;
+	error?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isGenerating | `boolean` | No | - |
-| currentStep | `unknown | unknown | unknown | unknown | unknown | unknown | unknown` | No | - |
-| message | `string` | No | - |
-| progress | `unknown` | No | - |
-| error | `string` | Yes | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | ------- | ------- | ------- | -------- | --- | --- |
+| isGenerating | `boolean` | No       | -           |
+| currentStep  | `unknown  | unknown  | unknown     | unknown | unknown | unknown | unknown` | No  | -   |
+| message      | `string`  | No       | -           |
+| progress     | `unknown` | No       | -           |
+| error        | `string`  | Yes      | -           |
 
 ---
 
@@ -4005,25 +3731,23 @@ interface StreamingStatus {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface SynthesisContent {
-  operations: ParsedOperation[];
-  insights: string;
-  comparison: TaskComparison[];
-  summary: string;
+	operations: ParsedOperation[];
+	insights: string;
+	comparison: TaskComparison[];
+	summary: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| operations | `ParsedOperation[]` | No | - |
-| insights | `string` | No | - |
-| comparison | `TaskComparison[]` | No | - |
-| summary | `string` | No | - |
+| Property   | Type                | Optional | Description |
+| ---------- | ------------------- | -------- | ----------- |
+| operations | `ParsedOperation[]` | No       | -           |
+| insights   | `string`            | No       | -           |
+| comparison | `TaskComparison[]`  | No       | -           |
+| summary    | `string`            | No       | -           |
 
 ---
 
@@ -4031,33 +3755,31 @@ interface SynthesisContent {
 
 **File:** `src/lib/types/synthesis.ts`
 
-
-
 ```typescript
 interface SynthesisOption {
-  id: string;
-  name: string;
-  description: string;
-  detailedDescription?: string;
-  enabled: boolean;
-  available: boolean;
-  config?: any;
-  icon?: string;
+	id: string;
+	name: string;
+	description: string;
+	detailedDescription?: string;
+	enabled: boolean;
+	available: boolean;
+	config?: any;
+	icon?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| name | `string` | No | - |
-| description | `string` | No | - |
-| detailedDescription | `string` | Yes | - |
-| enabled | `boolean` | No | - |
-| available | `boolean` | No | - |
-| config | `any` | Yes | - |
-| icon | `string` | Yes | - |
+| Property            | Type      | Optional | Description |
+| ------------------- | --------- | -------- | ----------- |
+| id                  | `string`  | No       | -           |
+| name                | `string`  | No       | -           |
+| description         | `string`  | No       | -           |
+| detailedDescription | `string`  | Yes      | -           |
+| enabled             | `boolean` | No       | -           |
+| available           | `boolean` | No       | -           |
+| config              | `any`     | Yes      | -           |
+| icon                | `string`  | Yes      | -           |
 
 ---
 
@@ -4065,21 +3787,19 @@ interface SynthesisOption {
 
 **File:** `src/lib/types/synthesis.ts`
 
-
-
 ```typescript
 interface SynthesisOptions {
-  selectedModules: string[];
-  config: unknown;
+	selectedModules: string[];
+	config: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| selectedModules | `string[]` | No | - |
-| config | `unknown` | No | - |
+| Property        | Type       | Optional | Description |
+| --------------- | ---------- | -------- | ----------- |
+| selectedModules | `string[]` | No       | -           |
+| config          | `unknown`  | No       | -           |
 
 ---
 
@@ -4087,25 +3807,23 @@ interface SynthesisOptions {
 
 **File:** `src/lib/types/synthesis.ts`
 
-
-
 ```typescript
 interface SynthesisRequest {
-  projectId: string;
-  options: SynthesisOptions;
-  regenerate?: boolean;
-  includeDeleted?: boolean;
+	projectId: string;
+	options: SynthesisOptions;
+	regenerate?: boolean;
+	includeDeleted?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectId | `string` | No | - |
-| options | `SynthesisOptions` | No | - |
-| regenerate | `boolean` | Yes | - |
-| includeDeleted | `boolean` | Yes | - |
+| Property       | Type               | Optional | Description |
+| -------------- | ------------------ | -------- | ----------- |
+| projectId      | `string`           | No       | -           |
+| options        | `SynthesisOptions` | No       | -           |
+| regenerate     | `boolean`          | Yes      | -           |
+| includeDeleted | `boolean`          | Yes      | -           |
 
 ---
 
@@ -4113,27 +3831,25 @@ interface SynthesisRequest {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface SystemMetric {
-  metric_name: string;
-  value: number;
-  unit?: string;
-  description?: string;
-  timestamp: string;
+	metric_name: string;
+	value: number;
+	unit?: string;
+	description?: string;
+	timestamp: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| metric_name | `string` | No | - |
-| value | `number` | No | - |
-| unit | `string` | Yes | - |
-| description | `string` | Yes | - |
-| timestamp | `string` | No | - |
+| Property    | Type     | Optional | Description |
+| ----------- | -------- | -------- | ----------- |
+| metric_name | `string` | No       | -           |
+| value       | `number` | No       | -           |
+| unit        | `string` | Yes      | -           |
+| description | `string` | Yes      | -           |
+| timestamp   | `string` | No       | -           |
 
 ---
 
@@ -4141,31 +3857,29 @@ interface SystemMetric {
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface TabCounts {
-  tasks: number;
-  notes: number;
-  deletedTasks: number;
-  doneTasks: number;
-  phases: number;
-  scheduled: number;
-  briefs: number;
+	tasks: number;
+	notes: number;
+	deletedTasks: number;
+	doneTasks: number;
+	phases: number;
+	scheduled: number;
+	briefs: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `number` | No | - |
-| notes | `number` | No | - |
-| deletedTasks | `number` | No | - |
-| doneTasks | `number` | No | - |
-| phases | `number` | No | - |
-| scheduled | `number` | No | - |
-| briefs | `number` | No | - |
+| Property     | Type     | Optional | Description |
+| ------------ | -------- | -------- | ----------- |
+| tasks        | `number` | No       | -           |
+| notes        | `number` | No       | -           |
+| deletedTasks | `number` | No       | -           |
+| doneTasks    | `number` | No       | -           |
+| phases       | `number` | No       | -           |
+| scheduled    | `number` | No       | -           |
+| briefs       | `number` | No       | -           |
 
 ---
 
@@ -4173,10 +3887,17 @@ interface TabCounts {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
-type TableName = unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown | unknown
+type TableName =
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown
+	| unknown;
 ```
 
 ---
@@ -4185,10 +3906,8 @@ type TableName = unknown | unknown | unknown | unknown | unknown | unknown | unk
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type Tables = unknown
+type Tables = unknown;
 ```
 
 ---
@@ -4197,10 +3916,8 @@ type Tables = unknown
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type TablesInsert = unknown
+type TablesInsert = unknown;
 ```
 
 ---
@@ -4209,10 +3926,8 @@ type TablesInsert = unknown
 
 **File:** `src/lib/database.types.ts`
 
-
-
 ```typescript
-type TablesUpdate = unknown
+type TablesUpdate = unknown;
 ```
 
 ---
@@ -4221,10 +3936,8 @@ type TablesUpdate = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type TabType = unknown | unknown | unknown | unknown
+type TabType = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -4233,10 +3946,8 @@ type TabType = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TabType = unknown | unknown | unknown | unknown
+type TabType = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -4245,10 +3956,8 @@ type TabType = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/projects-page.ts`
 
-
-
 ```typescript
-type TabType = unknown | unknown
+type TabType = unknown | unknown;
 ```
 
 ---
@@ -4257,10 +3966,8 @@ type TabType = unknown | unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type Task = unknown
+type Task = unknown;
 ```
 
 ---
@@ -4269,37 +3976,35 @@ type Task = unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface TaskCalendarEvent {
-  id: string;
-  calendar_event_id: string;
-  calendar_id: string;
-  event_start: string;
-  event_end: string;
-  event_link: string | null;
-  event_title: string | null;
-  sync_status: unknown | unknown | unknown | unknown;
-  sync_error: string | null;
-  last_synced_at: string | null;
+	id: string;
+	calendar_event_id: string;
+	calendar_id: string;
+	event_start: string;
+	event_end: string;
+	event_link: string | null;
+	event_title: string | null;
+	sync_status: unknown | unknown | unknown | unknown;
+	sync_error: string | null;
+	last_synced_at: string | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
-| calendar_event_id | `string` | No | - |
-| calendar_id | `string` | No | - |
-| event_start | `string` | No | - |
-| event_end | `string` | No | - |
-| event_link | `string | null` | No | - |
-| event_title | `string | null` | No | - |
-| sync_status | `unknown | unknown | unknown | unknown` | No | - |
-| sync_error | `string | null` | No | - |
-| last_synced_at | `string | null` | No | - |
+| Property          | Type     | Optional | Description |
+| ----------------- | -------- | -------- | ----------- | -------- | --- | --- |
+| id                | `string` | No       | -           |
+| calendar_event_id | `string` | No       | -           |
+| calendar_id       | `string` | No       | -           |
+| event_start       | `string` | No       | -           |
+| event_end         | `string` | No       | -           |
+| event_link        | `string  | null`    | No          | -        |
+| event_title       | `string  | null`    | No          | -        |
+| sync_status       | `unknown | unknown  | unknown     | unknown` | No  | -   |
+| sync_error        | `string  | null`    | No          | -        |
+| last_synced_at    | `string  | null`    | No          | -        |
 
 ---
 
@@ -4307,23 +4012,21 @@ interface TaskCalendarEvent {
 
 **File:** `src/lib/types/events.ts`
 
-
-
 ```typescript
 interface TaskCallbacks {
-  onUpdate?: unknown | null;
-  onDelete?: OnDeleteCallback | null;
-  onClose: OnCloseCallback;
+	onUpdate?: unknown | null;
+	onDelete?: OnDeleteCallback | null;
+	onClose: OnCloseCallback;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| onUpdate | `unknown | null` | Yes | - |
-| onDelete | `OnDeleteCallback | null` | Yes | - |
-| onClose | `OnCloseCallback` | No | - |
+| Property | Type              | Optional | Description |
+| -------- | ----------------- | -------- | ----------- | --- |
+| onUpdate | `unknown          | null`    | Yes         | -   |
+| onDelete | `OnDeleteCallback | null`    | Yes         | -   |
+| onClose  | `OnCloseCallback` | No       | -           |
 
 ---
 
@@ -4331,33 +4034,29 @@ interface TaskCallbacks {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface TaskComparison {
-  type: unknown | unknown | unknown;
-  originalTasks?: string[] | Task[];
-  newTask?: Partial;
-  reasoning: string;
+	type: unknown | unknown | unknown;
+	originalTasks?: string[] | Task[];
+	newTask?: Partial;
+	reasoning: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| type | `unknown | unknown | unknown` | No | - |
-| originalTasks | `string[] | Task[]` | Yes | - |
-| newTask | `Partial` | Yes | - |
-| reasoning | `string` | No | - |
+| Property      | Type      | Optional | Description |
+| ------------- | --------- | -------- | ----------- | --- | --- |
+| type          | `unknown  | unknown  | unknown`    | No  | -   |
+| originalTasks | `string[] | Task[]`  | Yes         | -   |
+| newTask       | `Partial` | Yes      | -           |
+| reasoning     | `string`  | No       | -           |
 
 ---
 
 ## TaskCreatePayload
 
 **File:** `src/lib/types/project.ts`
-
-
 
 ```typescript
 interface TaskCreatePayload {
@@ -4371,10 +4070,8 @@ interface TaskCreatePayload {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
-type TaskFilter = unknown | unknown | unknown | unknown | unknown | unknown
+type TaskFilter = unknown | unknown | unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -4383,27 +4080,25 @@ type TaskFilter = unknown | unknown | unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface TaskFilters {
-  status?: TaskStatus[];
-  priority?: TaskPriority[];
-  type?: TaskType[];
-  phaseId?: string;
-  search?: string;
+	status?: TaskStatus[];
+	priority?: TaskPriority[];
+	type?: TaskType[];
+	phaseId?: string;
+	search?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| status | `TaskStatus[]` | Yes | - |
-| priority | `TaskPriority[]` | Yes | - |
-| type | `TaskType[]` | Yes | - |
-| phaseId | `string` | Yes | - |
-| search | `string` | Yes | - |
+| Property | Type             | Optional | Description |
+| -------- | ---------------- | -------- | ----------- |
+| status   | `TaskStatus[]`   | Yes      | -           |
+| priority | `TaskPriority[]` | Yes      | -           |
+| type     | `TaskType[]`     | Yes      | -           |
+| phaseId  | `string`         | Yes      | -           |
+| search   | `string`         | Yes      | -           |
 
 ---
 
@@ -4411,10 +4106,8 @@ interface TaskFilters {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TaskInsert = unknown
+type TaskInsert = unknown;
 ```
 
 ---
@@ -4423,21 +4116,19 @@ type TaskInsert = unknown
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface TaskNoteExtractionResult {
-  tasks: Array;
-  notes: Array;
+	tasks: Array;
+	notes: Array;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tasks | `Array` | No | - |
-| notes | `Array` | No | - |
+| Property | Type    | Optional | Description |
+| -------- | ------- | -------- | ----------- |
+| tasks    | `Array` | No       | -           |
+| notes    | `Array` | No       | -           |
 
 ---
 
@@ -4445,23 +4136,21 @@ interface TaskNoteExtractionResult {
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface TaskOperation {
-  table: unknown;
-  operation: unknown | unknown;
-  data: unknown;
+	table: unknown;
+	operation: unknown | unknown;
+	data: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| table | `unknown` | No | - |
-| operation | `unknown | unknown` | No | - |
-| data | `unknown` | No | - |
+| Property  | Type      | Optional | Description |
+| --------- | --------- | -------- | ----------- | --- |
+| table     | `unknown` | No       | -           |
+| operation | `unknown  | unknown` | No          | -   |
+| data      | `unknown` | No       | -           |
 
 ---
 
@@ -4469,10 +4158,8 @@ interface TaskOperation {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TaskPriority = unknown | unknown | unknown
+type TaskPriority = unknown | unknown | unknown;
 ```
 
 ---
@@ -4481,33 +4168,31 @@ type TaskPriority = unknown | unknown | unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface TaskStats {
-  total: number;
-  completed: number;
-  inProgress: number;
-  blocked: number;
-  deleted: number;
-  active: number;
-  backlog: number;
-  scheduled: number;
+	total: number;
+	completed: number;
+	inProgress: number;
+	blocked: number;
+	deleted: number;
+	active: number;
+	backlog: number;
+	scheduled: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| total | `number` | No | - |
-| completed | `number` | No | - |
-| inProgress | `number` | No | - |
-| blocked | `number` | No | - |
-| deleted | `number` | No | - |
-| active | `number` | No | - |
-| backlog | `number` | No | - |
-| scheduled | `number` | No | - |
+| Property   | Type     | Optional | Description |
+| ---------- | -------- | -------- | ----------- |
+| total      | `number` | No       | -           |
+| completed  | `number` | No       | -           |
+| inProgress | `number` | No       | -           |
+| blocked    | `number` | No       | -           |
+| deleted    | `number` | No       | -           |
+| active     | `number` | No       | -           |
+| backlog    | `number` | No       | -           |
+| scheduled  | `number` | No       | -           |
 
 ---
 
@@ -4515,10 +4200,8 @@ interface TaskStats {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TaskStatus = unknown | unknown | unknown | unknown
+type TaskStatus = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -4527,10 +4210,8 @@ type TaskStatus = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/search.ts`
 
-
-
 ```typescript
-type TaskStatus = unknown | unknown | unknown | unknown
+type TaskStatus = unknown | unknown | unknown | unknown;
 ```
 
 ---
@@ -4539,29 +4220,27 @@ type TaskStatus = unknown | unknown | unknown | unknown
 
 **File:** `src/lib/types/synthesis.ts`
 
-
-
 ```typescript
 interface TaskSynthesisConfig {
-  consolidation: unknown;
-  sequencing: unknown;
-  grouping: unknown;
-  timeEstimation: unknown;
-  gapAnalysis: unknown;
-  dependencies: unknown;
+	consolidation: unknown;
+	sequencing: unknown;
+	grouping: unknown;
+	timeEstimation: unknown;
+	gapAnalysis: unknown;
+	dependencies: unknown;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| consolidation | `unknown` | No | - |
-| sequencing | `unknown` | No | - |
-| grouping | `unknown` | No | - |
-| timeEstimation | `unknown` | No | - |
-| gapAnalysis | `unknown` | No | - |
-| dependencies | `unknown` | No | - |
+| Property       | Type      | Optional | Description |
+| -------------- | --------- | -------- | ----------- |
+| consolidation  | `unknown` | No       | -           |
+| sequencing     | `unknown` | No       | -           |
+| grouping       | `unknown` | No       | -           |
+| timeEstimation | `unknown` | No       | -           |
+| gapAnalysis    | `unknown` | No       | -           |
+| dependencies   | `unknown` | No       | -           |
 
 ---
 
@@ -4569,10 +4248,8 @@ interface TaskSynthesisConfig {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TaskType = unknown | unknown
+type TaskType = unknown | unknown;
 ```
 
 ---
@@ -4581,10 +4258,8 @@ type TaskType = unknown | unknown
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
-type TaskUpdate = unknown
+type TaskUpdate = unknown;
 ```
 
 ---
@@ -4593,19 +4268,17 @@ type TaskUpdate = unknown
 
 **File:** `src/lib/types/project-page.types.ts`
 
-
-
 ```typescript
 interface TaskWithCalendarEvents {
-  task_calendar_events?: TaskCalendarEvent[];
+	task_calendar_events?: TaskCalendarEvent[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| task_calendar_events | `TaskCalendarEvent[]` | Yes | - |
+| Property             | Type                  | Optional | Description |
+| -------------------- | --------------------- | -------- | ----------- |
+| task_calendar_events | `TaskCalendarEvent[]` | Yes      | -           |
 
 ---
 
@@ -4613,25 +4286,23 @@ interface TaskWithCalendarEvents {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface TemplateGenerationRequest {
-  projectId: string;
-  userId: string;
-  templateName?: string;
-  description?: string;
+	projectId: string;
+	userId: string;
+	templateName?: string;
+	description?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectId | `string` | No | - |
-| userId | `string` | No | - |
-| templateName | `string` | Yes | - |
-| description | `string` | Yes | - |
+| Property     | Type     | Optional | Description |
+| ------------ | -------- | -------- | ----------- |
+| projectId    | `string` | No       | -           |
+| userId       | `string` | No       | -           |
+| templateName | `string` | Yes      | -           |
+| description  | `string` | Yes      | -           |
 
 ---
 
@@ -4639,27 +4310,25 @@ interface TemplateGenerationRequest {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface TemplateGenerationResponse {
-  success: boolean;
-  template?: ProjectBriefTemplate;
-  error?: string;
-  details?: string;
-  regenerated?: boolean;
+	success: boolean;
+	template?: ProjectBriefTemplate;
+	error?: string;
+	details?: string;
+	regenerated?: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| success | `boolean` | No | - |
-| template | `ProjectBriefTemplate` | Yes | - |
-| error | `string` | Yes | - |
-| details | `string` | Yes | - |
-| regenerated | `boolean` | Yes | - |
+| Property    | Type                   | Optional | Description |
+| ----------- | ---------------------- | -------- | ----------- |
+| success     | `boolean`              | No       | -           |
+| template    | `ProjectBriefTemplate` | Yes      | -           |
+| error       | `string`               | Yes      | -           |
+| details     | `string`               | Yes      | -           |
+| regenerated | `boolean`              | Yes      | -           |
 
 ---
 
@@ -4667,31 +4336,29 @@ interface TemplateGenerationResponse {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface TemplateMetadata {
-  projectType?: unknown | unknown | unknown | unknown | unknown | unknown;
-  focusAreas?: string[];
-  updateFrequency?: unknown | unknown | unknown;
-  complexity?: unknown | unknown | unknown;
-  generatedAt?: string;
-  lastUsed?: string;
-  usageCount?: number;
+	projectType?: unknown | unknown | unknown | unknown | unknown | unknown;
+	focusAreas?: string[];
+	updateFrequency?: unknown | unknown | unknown;
+	complexity?: unknown | unknown | unknown;
+	generatedAt?: string;
+	lastUsed?: string;
+	usageCount?: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projectType | `unknown | unknown | unknown | unknown | unknown | unknown` | Yes | - |
-| focusAreas | `string[]` | Yes | - |
-| updateFrequency | `unknown | unknown | unknown` | Yes | - |
-| complexity | `unknown | unknown | unknown` | Yes | - |
-| generatedAt | `string` | Yes | - |
-| lastUsed | `string` | Yes | - |
-| usageCount | `number` | Yes | - |
+| Property        | Type       | Optional | Description |
+| --------------- | ---------- | -------- | ----------- | ------- | ------- | -------- | --- | --- |
+| projectType     | `unknown   | unknown  | unknown     | unknown | unknown | unknown` | Yes | -   |
+| focusAreas      | `string[]` | Yes      | -           |
+| updateFrequency | `unknown   | unknown  | unknown`    | Yes     | -       |
+| complexity      | `unknown   | unknown  | unknown`    | Yes     | -       |
+| generatedAt     | `string`   | Yes      | -           |
+| lastUsed        | `string`   | Yes      | -           |
+| usageCount      | `number`   | Yes      | -           |
 
 ---
 
@@ -4699,27 +4366,25 @@ interface TemplateMetadata {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface TemplateSection {
-  title: string;
-  icon?: string;
-  condition?: string;
-  content: string;
-  order: number;
+	title: string;
+	icon?: string;
+	condition?: string;
+	content: string;
+	order: number;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| title | `string` | No | - |
-| icon | `string` | Yes | - |
-| condition | `string` | Yes | - |
-| content | `string` | No | - |
-| order | `number` | No | - |
+| Property  | Type     | Optional | Description |
+| --------- | -------- | -------- | ----------- |
+| title     | `string` | No       | -           |
+| icon      | `string` | Yes      | -           |
+| condition | `string` | Yes      | -           |
+| content   | `string` | No       | -           |
+| order     | `number` | No       | -           |
 
 ---
 
@@ -4727,27 +4392,25 @@ interface TemplateSection {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
 interface TemplateValidation {
-  isValid: boolean;
-  errors?: string[];
-  warnings?: string[];
-  requiredVariables?: string[];
-  availableVariables?: string[];
+	isValid: boolean;
+	errors?: string[];
+	warnings?: string[];
+	requiredVariables?: string[];
+	availableVariables?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isValid | `boolean` | No | - |
-| errors | `string[]` | Yes | - |
-| warnings | `string[]` | Yes | - |
-| requiredVariables | `string[]` | Yes | - |
-| availableVariables | `string[]` | Yes | - |
+| Property           | Type       | Optional | Description |
+| ------------------ | ---------- | -------- | ----------- |
+| isValid            | `boolean`  | No       | -           |
+| errors             | `string[]` | Yes      | -           |
+| warnings           | `string[]` | Yes      | -           |
+| requiredVariables  | `string[]` | Yes      | -           |
+| availableVariables | `string[]` | Yes      | -           |
 
 ---
 
@@ -4755,25 +4418,23 @@ interface TemplateValidation {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface TemplateValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  variables: TemplateVariable[];
+	isValid: boolean;
+	errors: string[];
+	warnings: string[];
+	variables: TemplateVariable[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isValid | `boolean` | No | - |
-| errors | `string[]` | No | - |
-| warnings | `string[]` | No | - |
-| variables | `TemplateVariable[]` | No | - |
+| Property  | Type                 | Optional | Description |
+| --------- | -------------------- | -------- | ----------- |
+| isValid   | `boolean`            | No       | -           |
+| errors    | `string[]`           | No       | -           |
+| warnings  | `string[]`           | No       | -           |
+| variables | `TemplateVariable[]` | No       | -           |
 
 ---
 
@@ -4781,27 +4442,25 @@ interface TemplateValidationResult {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface TemplateVariable {
-  name: string;
-  description: string;
-  required: boolean;
-  type: unknown | unknown | unknown | unknown;
-  defaultValue?: string | number | boolean | any[];
+	name: string;
+	description: string;
+	required: boolean;
+	type: unknown | unknown | unknown | unknown;
+	defaultValue?: string | number | boolean | any[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| name | `string` | No | - |
-| description | `string` | No | - |
-| required | `boolean` | No | - |
-| type | `unknown | unknown | unknown | unknown` | No | - |
-| defaultValue | `string | number | boolean | any[]` | Yes | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | -------- | --- | --- |
+| name         | `string`  | No       | -           |
+| description  | `string`  | No       | -           |
+| required     | `boolean` | No       | -           |
+| type         | `unknown  | unknown  | unknown     | unknown` | No  | -   |
+| defaultValue | `string   | number   | boolean     | any[]`   | Yes | -   |
 
 ---
 
@@ -4809,10 +4468,8 @@ interface TemplateVariable {
 
 **File:** `src/lib/types/project-brief-template.ts`
 
-
-
 ```typescript
-type TemplateVariableMap = Map
+type TemplateVariableMap = Map;
 ```
 
 ---
@@ -4821,27 +4478,25 @@ type TemplateVariableMap = Map
 
 **File:** `src/lib/types/brain-dump.ts`
 
-
-
 ```typescript
 interface ThresholdCalculation {
-  brainDumpLength: number;
-  existingProjectContextLength: number;
-  totalLength: number;
-  shouldUseDualProcessing: boolean;
-  reason?: string;
+	brainDumpLength: number;
+	existingProjectContextLength: number;
+	totalLength: number;
+	shouldUseDualProcessing: boolean;
+	reason?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| brainDumpLength | `number` | No | - |
-| existingProjectContextLength | `number` | No | - |
-| totalLength | `number` | No | - |
-| shouldUseDualProcessing | `boolean` | No | - |
-| reason | `string` | Yes | - |
+| Property                     | Type      | Optional | Description |
+| ---------------------------- | --------- | -------- | ----------- |
+| brainDumpLength              | `number`  | No       | -           |
+| existingProjectContextLength | `number`  | No       | -           |
+| totalLength                  | `number`  | No       | -           |
+| shouldUseDualProcessing      | `boolean` | No       | -           |
+| reason                       | `string`  | Yes      | -           |
 
 ---
 
@@ -4849,19 +4504,17 @@ interface ThresholdCalculation {
 
 **File:** `src/lib/types/daily-brief.ts`
 
-
-
 ```typescript
 interface UpdateProjectBriefTemplate {
-  id: string;
+	id: string;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| id | `string` | No | - |
+| Property | Type     | Optional | Description |
+| -------- | -------- | -------- | ----------- |
+| id       | `string` | No       | -           |
 
 ---
 
@@ -4869,10 +4522,8 @@ interface UpdateProjectBriefTemplate {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
-type User = unknown
+type User = unknown;
 ```
 
 ---
@@ -4881,10 +4532,8 @@ type User = unknown
 
 **File:** `src/lib/types/user-context.ts`
 
-
-
 ```typescript
-type UserContext = unknown
+type UserContext = unknown;
 ```
 
 ---
@@ -4893,21 +4542,19 @@ type UserContext = unknown
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface UserDataResult {
-  projects: ProjectWithRelations[];
-  userContext: UserContext | null;
+	projects: ProjectWithRelations[];
+	userContext: UserContext | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projects | `ProjectWithRelations[]` | No | - |
-| userContext | `UserContext | null` | No | - |
+| Property    | Type                     | Optional | Description |
+| ----------- | ------------------------ | -------- | ----------- | --- |
+| projects    | `ProjectWithRelations[]` | No       | -           |
+| userContext | `UserContext             | null`    | No          | -   |
 
 ---
 
@@ -4915,21 +4562,19 @@ interface UserDataResult {
 
 **File:** `src/lib/types/project.ts`
 
-
-
 ```typescript
 interface UserDataResult {
-  projects: ProjectWithRelations[];
-  userContext: UserContext | null;
+	projects: ProjectWithRelations[];
+	userContext: UserContext | null;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| projects | `ProjectWithRelations[]` | No | - |
-| userContext | `UserContext | null` | No | - |
+| Property    | Type                     | Optional | Description |
+| ----------- | ------------------------ | -------- | ----------- | --- |
+| projects    | `ProjectWithRelations[]` | No       | -           |
+| userContext | `UserContext             | null`    | No          | -   |
 
 ---
 
@@ -4937,29 +4582,27 @@ interface UserDataResult {
 
 **File:** `src/lib/types/dashboard.ts`
 
-
-
 ```typescript
 interface UserFamiliarity {
-  tier: unknown | unknown | unknown;
-  level: unknown | unknown | unknown;
-  projectCount: number;
-  taskCount: number;
-  isStale: boolean;
-  isVeryStale: boolean;
+	tier: unknown | unknown | unknown;
+	level: unknown | unknown | unknown;
+	projectCount: number;
+	taskCount: number;
+	isStale: boolean;
+	isVeryStale: boolean;
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| tier | `unknown | unknown | unknown` | No | - |
-| level | `unknown | unknown | unknown` | No | - |
-| projectCount | `number` | No | - |
-| taskCount | `number` | No | - |
-| isStale | `boolean` | No | - |
-| isVeryStale | `boolean` | No | - |
+| Property     | Type      | Optional | Description |
+| ------------ | --------- | -------- | ----------- | --- | --- |
+| tier         | `unknown  | unknown  | unknown`    | No  | -   |
+| level        | `unknown  | unknown  | unknown`    | No  | -   |
+| projectCount | `number`  | No       | -           |
+| taskCount    | `number`  | No       | -           |
+| isStale      | `boolean` | No       | -           |
+| isVeryStale  | `boolean` | No       | -           |
 
 ---
 
@@ -4967,25 +4610,22 @@ interface UserFamiliarity {
 
 **File:** `src/lib/types/index.ts`
 
-
-
 ```typescript
 interface ValidationResult {
-  isValid: boolean;
-  errors?: string[];
-  warnings?: string[];
-  missingFields?: string[];
+	isValid: boolean;
+	errors?: string[];
+	warnings?: string[];
+	missingFields?: string[];
 }
 ```
 
 ### Properties
 
-| Property | Type | Optional | Description |
-|----------|------|----------|-------------|
-| isValid | `boolean` | No | - |
-| errors | `string[]` | Yes | - |
-| warnings | `string[]` | Yes | - |
-| missingFields | `string[]` | Yes | - |
+| Property      | Type       | Optional | Description |
+| ------------- | ---------- | -------- | ----------- |
+| isValid       | `boolean`  | No       | -           |
+| errors        | `string[]` | Yes      | -           |
+| warnings      | `string[]` | Yes      | -           |
+| missingFields | `string[]` | Yes      | -           |
 
 ---
-

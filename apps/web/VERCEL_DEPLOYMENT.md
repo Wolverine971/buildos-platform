@@ -3,9 +3,11 @@
 ## Step-by-Step Instructions
 
 ### 1. Go to Your Vercel Dashboard
+
 Navigate to: https://vercel.com/dashboard
 
 ### 2. Find Your Existing BuildOS Project
+
 Click on your existing BuildOS web app project
 
 ### 3. Update Git Repository
@@ -50,6 +52,7 @@ Go to **Settings** → **Environment Variables**
 <!-- PUBLIC_RAILWAY_WORKER_URL=http://localhost:3001
 # PUBLIC_RAILWAY_WORKER_URL=https://daily-brief-worker-production.up.railway.app
 PUBLIC_RAILWAY_WORKER_URL_PRODUCTION=https://daily-brief-worker-production.up.railway.app -->
+
 ```bash
 # If not already present: already added
 PUBLIC_RAILWAY_WORKER_URL=https://buildos-worker.up.railway.app
@@ -101,6 +104,7 @@ This prevents rebuilds when only the worker changes.
 ### 8. Node.js Version
 
 In **Settings** → **General**, ensure Node.js version is set to:
+
 ```
 20.x
 ```
@@ -129,48 +133,48 @@ After deployment:
 **This is likely caused by incorrect Output Directory settings!**
 
 1. **In Vercel Dashboard:**
-   - Go to Settings → General → Build & Development Settings
-   - Check if "Override" is enabled for Output Directory
-   - If yes, either:
-     a. **Disable the Override toggle** to use vercel.json settings
-     b. **Update Output Directory** to `apps/web/.vercel/output`
+    - Go to Settings → General → Build & Development Settings
+    - Check if "Override" is enabled for Output Directory
+    - If yes, either:
+      a. **Disable the Override toggle** to use vercel.json settings
+      b. **Update Output Directory** to `apps/web/.vercel/output`
 
 2. **The hanging happens because:**
-   - Build creates files in `/vercel/output`
-   - But Vercel looks for them in wrong location (e.g., `.svelte-kit`)
-   - No files found = deployment hangs forever
+    - Build creates files in `/vercel/output`
+    - But Vercel looks for them in wrong location (e.g., `.svelte-kit`)
+    - No files found = deployment hangs forever
 
 3. **Quick Fix:**
-   - In Vercel UI, change Output Directory to: `apps/web/.vercel/output`
-   - Redeploy
+    - In Vercel UI, change Output Directory to: `apps/web/.vercel/output`
+    - Redeploy
 
 ### If Build Fails:
 
 1. **Error: "Cannot find package '@buildos/shared-types'"**
-   - Make sure Install Command is `pnpm install --frozen-lockfile`
-   - Ensure Root Directory is set to `./`
+    - Make sure Install Command is `pnpm install --frozen-lockfile`
+    - Ensure Root Directory is set to `./`
 
 2. **Error: "Module '$env/static/private' has no exported member"**
-   - You're missing an environment variable
-   - Add the missing variable in Settings → Environment Variables
+    - You're missing an environment variable
+    - Add the missing variable in Settings → Environment Variables
 
 3. **Error: "pnpm: command not found"**
-   - Vercel should auto-detect pnpm from package.json
-   - If not, contact Vercel support
+    - Vercel should auto-detect pnpm from package.json
+    - If not, contact Vercel support
 
 ### If Site Loads But Features Don't Work:
 
 1. **Calendar/OAuth not working:**
-   - Verify Google OAuth variables are set
-   - Update authorized redirect URIs in Google Console
+    - Verify Google OAuth variables are set
+    - Update authorized redirect URIs in Google Console
 
 2. **Worker communication failing:**
-   - Check PUBLIC_RAILWAY_WORKER_URL is set correctly
-   - Verify worker is deployed and running
+    - Check PUBLIC_RAILWAY_WORKER_URL is set correctly
+    - Verify worker is deployed and running
 
 3. **Email not sending:**
-   - Check email app passwords are set
-   - Verify Gmail app passwords are valid
+    - Check email app passwords are set
+    - Verify Gmail app passwords are valid
 
 ## Important Notes
 
@@ -178,7 +182,7 @@ After deployment:
 - The `vercel.json` in root has the correct settings
 - Build output is in `apps/web/.vercel/output` (NOT `.svelte-kit`)
 - The SvelteKit Vercel adapter v5+ outputs to `.vercel/output` directory
-- All PUBLIC_ variables are available in browser, PRIVATE_ are server-only
+- All PUBLIC* variables are available in browser, PRIVATE* are server-only
 
 ---
 

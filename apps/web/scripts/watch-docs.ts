@@ -68,10 +68,7 @@ class DocumentationWatcher {
 			const key = rule.patterns.join(',');
 			this.debouncedHandlers.set(
 				key,
-				debounce(
-					() => this.handleFileChange(rule),
-					rule.debounceMs || 1000
-				)
+				debounce(() => this.handleFileChange(rule), rule.debounceMs || 1000)
 			);
 		}
 
@@ -98,19 +95,15 @@ class DocumentationWatcher {
 				const watchPath = this.resolveWatchPath(pattern);
 				console.log(`📁 Watching: ${pattern} → ${rule.description}`);
 
-				const watcher = watch(
-					watchPath,
-					{ recursive: true },
-					(eventType, filename) => {
-						if (filename && this.shouldProcessFile(filename, rule)) {
-							const key = rule.patterns.join(',');
-							const handler = this.debouncedHandlers.get(key);
-							if (handler) {
-								handler();
-							}
+				const watcher = watch(watchPath, { recursive: true }, (eventType, filename) => {
+					if (filename && this.shouldProcessFile(filename, rule)) {
+						const key = rule.patterns.join(',');
+						const handler = this.debouncedHandlers.get(key);
+						if (handler) {
+							handler();
 						}
 					}
-				);
+				});
 
 				this.watchers.push(watcher);
 			} catch (error) {

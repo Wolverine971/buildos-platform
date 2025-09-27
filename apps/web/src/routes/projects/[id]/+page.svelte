@@ -1078,7 +1078,6 @@
 					return;
 				}
 
-
 				// FIXED: Start performance monitoring
 				startTimer('page-initialization', {
 					projectId,
@@ -1091,7 +1090,6 @@
 					effectCleanup();
 					effectCleanup = null;
 				}
-
 
 				// Reset store completely
 				projectStoreV2.reset();
@@ -1120,7 +1118,6 @@
 						// Start async initialization
 						(async () => {
 							try {
-
 								timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 								// Initialize services
@@ -1143,7 +1140,6 @@
 									dataService.loadStats(),
 									dataService.loadCalendarStatus() // FIXED: Load calendar status for tasks
 								]);
-
 
 								// FIXED: Load overview component AFTER data is loaded and await it
 								// console.log('[Page] Loading PhasesSection component...');

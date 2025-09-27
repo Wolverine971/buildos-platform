@@ -10,10 +10,7 @@
 <div class="min-h-screen bg-gray-50">
 	<div class="max-w-7xl mx-auto px-4 py-8">
 		<nav class="flex gap-4 mb-8">
-			<a
-				href="/docs/api"
-				class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"
-			>
+			<a href="/docs/api" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">
 				Interactive API
 			</a>
 			<a

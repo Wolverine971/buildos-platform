@@ -9,6 +9,7 @@
 ## 🚨 Performance Triage (< 5 minutes)
 
 ### 1. Quick Performance Check
+
 ```bash
 # Check Vercel function performance
 vercel logs --filter="duration" --limit=20
@@ -26,24 +27,29 @@ curl -s https://your-app.vercel.app/api/metrics/performance
 ### 2. Identify Performance Category
 
 #### Frontend Performance Issues
+
 - **Symptoms**: Slow page loads, UI lag, large bundle sizes
 - **Check**: Browser DevTools, Lighthouse scores, bundle analysis
 
 #### API Performance Issues
+
 - **Symptoms**: Slow API responses, timeouts, high latency
 - **Check**: Vercel function logs, response times, cold starts
 
 #### Database Performance Issues
+
 - **Symptoms**: Slow queries, connection timeouts, high CPU
 - **Check**: Query execution times, connection counts, index usage
 
 #### External Service Issues
+
 - **Symptoms**: OpenAI/Google/Stripe API slowness
 - **Check**: External service status, rate limiting, network latency
 
 ## 🔍 Frontend Performance Diagnostics
 
 ### Bundle Size Analysis
+
 ```bash
 # Analyze bundle size
 npm run build
@@ -59,6 +65,7 @@ npx lighthouse https://your-app.vercel.app --output=json --output-path=./lightho
 ### Common Frontend Issues & Fixes
 
 #### 1. Large JavaScript Bundles
+
 ```typescript
 // ❌ Problem: Importing entire libraries
 import * as _ from 'lodash';
@@ -73,6 +80,7 @@ const BrainDumpModal = lazy(() => import('./BrainDumpModal.svelte'));
 ```
 
 #### 2. Unoptimized Images
+
 ```typescript
 // ❌ Problem: Large unoptimized images
 <img src="/large-image.png" alt="..." />
@@ -89,6 +97,7 @@ const BrainDumpModal = lazy(() => import('./BrainDumpModal.svelte'));
 ```
 
 #### 3. Inefficient Svelte Components
+
 ```svelte
 <!-- ❌ Problem: No reactivity optimization -->
 <script>
@@ -108,6 +117,7 @@ const BrainDumpModal = lazy(() => import('./BrainDumpModal.svelte'));
 ## 🖥️ API Performance Diagnostics
 
 ### Response Time Analysis
+
 ```bash
 # Check function execution times
 vercel logs --filter="Duration" --limit=50 | grep -E "Duration: [0-9]+ms"
@@ -122,6 +132,7 @@ vercel logs --filter="Cold Boot" --limit=10
 ### Common API Performance Issues
 
 #### 1. Cold Start Optimization
+
 ```typescript
 // ❌ Problem: Heavy imports causing cold starts
 import { OpenAI } from 'openai';
@@ -129,62 +140,62 @@ import { GoogleAuth } from 'google-auth-library';
 import Stripe from 'stripe';
 
 // ✅ Solution: Lazy load heavy dependencies
-const getOpenAI = () => import('openai').then(mod => new mod.OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-}));
+const getOpenAI = () =>
+	import('openai').then(
+		(mod) =>
+			new mod.OpenAI({
+				apiKey: process.env.OPENAI_API_KEY
+			})
+	);
 
-const getStripe = () => import('stripe').then(mod => new mod.default(
-  process.env.STRIPE_SECRET_KEY!
-));
+const getStripe = () =>
+	import('stripe').then((mod) => new mod.default(process.env.STRIPE_SECRET_KEY!));
 ```
 
 #### 2. Database Connection Pooling
+
 ```typescript
 // ❌ Problem: Creating new connections per request
 export async function POST(request: Request) {
-  const supabase = createClient(url, key); // New connection each time
-  // ...
+	const supabase = createClient(url, key); // New connection each time
+	// ...
 }
 
 // ✅ Solution: Reuse connections
 let globalSupabase: SupabaseClient | null = null;
 
 function getSupabaseClient() {
-  if (!globalSupabase) {
-    globalSupabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!,
-      {
-        auth: { persistSession: false }
-      }
-    );
-  }
-  return globalSupabase;
+	if (!globalSupabase) {
+		globalSupabase = createClient(
+			process.env.SUPABASE_URL!,
+			process.env.SUPABASE_SERVICE_KEY!,
+			{
+				auth: { persistSession: false }
+			}
+		);
+	}
+	return globalSupabase;
 }
 ```
 
 #### 3. Inefficient Data Fetching
+
 ```typescript
 // ❌ Problem: N+1 query pattern
 async function getProjectsWithTasks(userId: string) {
-  const projects = await supabase
-    .from('projects')
-    .select('*')
-    .eq('user_id', userId);
+	const projects = await supabase.from('projects').select('*').eq('user_id', userId);
 
-  for (const project of projects.data || []) {
-    project.tasks = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', project.id); // N+1 queries!
-  }
+	for (const project of projects.data || []) {
+		project.tasks = await supabase.from('tasks').select('*').eq('project_id', project.id); // N+1 queries!
+	}
 }
 
 // ✅ Solution: Single query with joins
 async function getProjectsWithTasks(userId: string) {
-  const { data } = await supabase
-    .from('projects')
-    .select(`
+	const { data } = await supabase
+		.from('projects')
+		.select(
+			`
       *,
       tasks (
         id,
@@ -192,16 +203,18 @@ async function getProjectsWithTasks(userId: string) {
         status,
         created_at
       )
-    `)
-    .eq('user_id', userId);
+    `
+		)
+		.eq('user_id', userId);
 
-  return data;
+	return data;
 }
 ```
 
 ## 🗄️ Database Performance Diagnostics
 
 ### Query Performance Analysis
+
 ```sql
 -- Enable query logging (if needed)
 ALTER SYSTEM SET log_statement = 'all';
@@ -241,6 +254,7 @@ ORDER BY p.created_at DESC;
 ### Database Optimization Actions
 
 #### 1. Add Strategic Indexes
+
 ```sql
 -- Common query patterns in BuildOS
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brain_dumps_user_created
@@ -261,6 +275,7 @@ ON brain_dumps(status, created_at) WHERE status IN ('processing', 'queued');
 ```
 
 #### 2. Optimize Common Queries
+
 ```sql
 -- ❌ Slow: Counting all tasks for each project
 SELECT p.*,
@@ -281,32 +296,34 @@ WHERE p.user_id = $1;
 ```
 
 #### 3. Connection Pool Configuration
+
 ```typescript
 // Optimize Supabase client for performance
 const supabase = createClient(url, key, {
-  db: {
-    schema: 'public',
-  },
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  global: {
-    headers: {
-      'x-client-info': 'buildos-server'
-    }
-  }
+	db: {
+		schema: 'public'
+	},
+	auth: {
+		autoRefreshToken: false,
+		persistSession: false
+	},
+	global: {
+		headers: {
+			'x-client-info': 'buildos-server'
+		}
+	}
 });
 
 // Use read replicas for heavy read operations
 const supabaseRead = createClient(readReplicaUrl, key, {
-  // Same config but pointing to read replica
+	// Same config but pointing to read replica
 });
 ```
 
 ## 🌐 External Service Performance
 
 ### OpenAI API Optimization
+
 ```typescript
 // ❌ Problem: Sequential API calls
 async function processBrainDump(content: string) {
@@ -340,82 +357,86 @@ async function processBrainDumpStream(content: string) {
 ```
 
 ### Calendar API Optimization
+
 ```typescript
 // ❌ Problem: Multiple API calls
 async function syncCalendarEvents(calendarId: string) {
-  const events = await calendar.events.list({ calendarId });
-  for (const event of events.data.items || []) {
-    await updateLocalEvent(event); // Multiple DB calls
-  }
+	const events = await calendar.events.list({ calendarId });
+	for (const event of events.data.items || []) {
+		await updateLocalEvent(event); // Multiple DB calls
+	}
 }
 
 // ✅ Solution: Batch operations
 async function syncCalendarEvents(calendarId: string) {
-  const events = await calendar.events.list({
-    calendarId,
-    maxResults: 100,
-    timeMin: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  });
+	const events = await calendar.events.list({
+		calendarId,
+		maxResults: 100,
+		timeMin: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+	});
 
-  // Batch database updates
-  const updates = events.data.items?.map(event => ({
-    google_event_id: event.id,
-    title: event.summary,
-    start_time: event.start?.dateTime,
-    end_time: event.end?.dateTime,
-    updated_at: new Date().toISOString()
-  })) || [];
+	// Batch database updates
+	const updates =
+		events.data.items?.map((event) => ({
+			google_event_id: event.id,
+			title: event.summary,
+			start_time: event.start?.dateTime,
+			end_time: event.end?.dateTime,
+			updated_at: new Date().toISOString()
+		})) || [];
 
-  await supabase.from('calendar_events').upsert(updates);
+	await supabase.from('calendar_events').upsert(updates);
 }
 ```
 
 ## 📊 Performance Monitoring
 
 ### Real-time Metrics Collection
+
 ```typescript
 // Performance monitoring middleware
 export async function performanceMiddleware(request: Request, handler: Function) {
-  const start = Date.now();
-  const url = new URL(request.url);
+	const start = Date.now();
+	const url = new URL(request.url);
 
-  try {
-    const response = await handler(request);
-    const duration = Date.now() - start;
+	try {
+		const response = await handler(request);
+		const duration = Date.now() - start;
 
-    // Log performance metrics
-    await supabase.from('performance_metrics').insert({
-      endpoint: url.pathname,
-      method: request.method,
-      duration_ms: duration,
-      status: response.status,
-      timestamp: new Date().toISOString()
-    });
+		// Log performance metrics
+		await supabase.from('performance_metrics').insert({
+			endpoint: url.pathname,
+			method: request.method,
+			duration_ms: duration,
+			status: response.status,
+			timestamp: new Date().toISOString()
+		});
 
-    // Alert on slow responses
-    if (duration > 5000) {
-      await sendSlackAlert(`🐌 Slow response: ${url.pathname} took ${duration}ms`);
-    }
+		// Alert on slow responses
+		if (duration > 5000) {
+			await sendSlackAlert(`🐌 Slow response: ${url.pathname} took ${duration}ms`);
+		}
 
-    return response;
-  } catch (error) {
-    const duration = Date.now() - start;
+		return response;
+	} catch (error) {
+		const duration = Date.now() - start;
 
-    await supabase.from('performance_metrics').insert({
-      endpoint: url.pathname,
-      method: request.method,
-      duration_ms: duration,
-      status: 500,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
+		await supabase.from('performance_metrics').insert({
+			endpoint: url.pathname,
+			method: request.method,
+			duration_ms: duration,
+			status: 500,
+			error: error.message,
+			timestamp: new Date().toISOString()
+		});
 
-    throw error;
-  }
+		throw error;
+	}
 }
 ```
 
 ### Performance Dashboard Queries
+
 ```sql
 -- API response time percentiles (last 24 hours)
 SELECT
@@ -445,23 +466,24 @@ ORDER BY error_rate_percent DESC;
 ```
 
 ### Automated Performance Alerts
+
 ```typescript
 // Daily performance report
 async function generatePerformanceReport() {
-  const slowEndpoints = await supabase
-    .from('performance_metrics')
-    .select('endpoint, avg(duration_ms) as avg_duration')
-    .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .group('endpoint')
-    .having('avg(duration_ms) > 2000');
+	const slowEndpoints = await supabase
+		.from('performance_metrics')
+		.select('endpoint, avg(duration_ms) as avg_duration')
+		.gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+		.group('endpoint')
+		.having('avg(duration_ms) > 2000');
 
-  if (slowEndpoints.data?.length > 0) {
-    const report = slowEndpoints.data
-      .map(ep => `${ep.endpoint}: ${ep.avg_duration}ms`)
-      .join('\n');
+	if (slowEndpoints.data?.length > 0) {
+		const report = slowEndpoints.data
+			.map((ep) => `${ep.endpoint}: ${ep.avg_duration}ms`)
+			.join('\n');
 
-    await sendSlackAlert(`📊 Daily Performance Report:\nSlow endpoints (>2s):\n${report}`);
-  }
+		await sendSlackAlert(`📊 Daily Performance Report:\nSlow endpoints (>2s):\n${report}`);
+	}
 }
 
 // Run daily at 9 AM
@@ -470,6 +492,7 @@ async function generatePerformanceReport() {
 ## 🛠️ Performance Optimization Checklist
 
 ### Frontend Optimizations
+
 - [ ] Bundle size analysis completed
 - [ ] Images optimized and using Next.js Image component
 - [ ] Unnecessary re-renders eliminated
@@ -478,6 +501,7 @@ async function generatePerformanceReport() {
 - [ ] Service Worker implemented for caching
 
 ### API Optimizations
+
 - [ ] Database connection pooling implemented
 - [ ] N+1 queries eliminated
 - [ ] Appropriate indexes created
@@ -486,6 +510,7 @@ async function generatePerformanceReport() {
 - [ ] Response compression enabled
 
 ### Database Optimizations
+
 - [ ] Query execution plans reviewed
 - [ ] Missing indexes identified and created
 - [ ] Table statistics updated
@@ -494,6 +519,7 @@ async function generatePerformanceReport() {
 - [ ] Regular VACUUM/ANALYZE scheduled
 
 ### Monitoring & Alerting
+
 - [ ] Performance metrics collection in place
 - [ ] Alerting thresholds configured
 - [ ] Dashboard for performance tracking

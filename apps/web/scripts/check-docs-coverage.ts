@@ -146,7 +146,8 @@ class DocumentationCoverageChecker {
 
 	private extractHTTPMethods(content: string): string[] {
 		const methods: string[] = [];
-		const methodRegex = /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)/g;
+		const methodRegex =
+			/export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)/g;
 		let match;
 
 		while ((match = methodRegex.exec(content)) !== null) {
@@ -158,16 +159,18 @@ class DocumentationCoverageChecker {
 
 	private filePathToAPIRoute(filePath: string): string {
 		const relativePath = relative('src/routes/api', filePath);
-		const routePath = '/' + relativePath
-			.replace(/\/\+server\.ts$/, '')
-			.split('/')
-			.map(segment => {
-				if (segment.startsWith('[') && segment.endsWith(']')) {
-					return `{${segment.slice(1, -1)}}`;
-				}
-				return segment;
-			})
-			.join('/');
+		const routePath =
+			'/' +
+			relativePath
+				.replace(/\/\+server\.ts$/, '')
+				.split('/')
+				.map((segment) => {
+					if (segment.startsWith('[') && segment.endsWith(']')) {
+						return `{${segment.slice(1, -1)}}`;
+					}
+					return segment;
+				})
+				.join('/');
 
 		return routePath === '/.' ? '/' : routePath;
 	}
@@ -192,7 +195,7 @@ class DocumentationCoverageChecker {
 			}
 		}
 
-		const documented = this.components.filter(c => c.documented).length;
+		const documented = this.components.filter((c) => c.documented).length;
 		console.log(`   ${documented}/${this.components.length} components documented\n`);
 	}
 
@@ -244,7 +247,7 @@ class DocumentationCoverageChecker {
 			}
 		}
 
-		const documented = this.services.filter(s => s.documented).length;
+		const documented = this.services.filter((s) => s.documented).length;
 		console.log(`   ${documented}/${this.services.length} services documented\n`);
 	}
 
@@ -286,7 +289,7 @@ class DocumentationCoverageChecker {
 			}
 		}
 
-		const documented = this.apiEndpoints.filter(e => e.documented).length;
+		const documented = this.apiEndpoints.filter((e) => e.documented).length;
 		console.log(`   ${documented}/${this.apiEndpoints.length} API endpoints documented\n`);
 	}
 
@@ -301,13 +304,20 @@ class DocumentationCoverageChecker {
 		const apiCoverage = this.calculateCoverage(this.apiEndpoints);
 
 		console.log('\n📈 Coverage Summary:');
-		console.log(`   Components: ${componentCoverage.documented}/${componentCoverage.total} (${componentCoverage.percentage}%)`);
-		console.log(`   Services: ${serviceCoverage.documented}/${serviceCoverage.total} (${serviceCoverage.percentage}%)`);
-		console.log(`   API Endpoints: ${apiCoverage.documented}/${apiCoverage.total} (${apiCoverage.percentage}%)`);
+		console.log(
+			`   Components: ${componentCoverage.documented}/${componentCoverage.total} (${componentCoverage.percentage}%)`
+		);
+		console.log(
+			`   Services: ${serviceCoverage.documented}/${serviceCoverage.total} (${serviceCoverage.percentage}%)`
+		);
+		console.log(
+			`   API Endpoints: ${apiCoverage.documented}/${apiCoverage.total} (${apiCoverage.percentage}%)`
+		);
 
 		const overallCoverage = Math.round(
 			((componentCoverage.documented + serviceCoverage.documented + apiCoverage.documented) /
-			(componentCoverage.total + serviceCoverage.total + apiCoverage.total)) * 100
+				(componentCoverage.total + serviceCoverage.total + apiCoverage.total)) *
+				100
 		);
 		console.log(`\n🎯 Overall Coverage: ${overallCoverage}%`);
 
@@ -326,12 +336,14 @@ class DocumentationCoverageChecker {
 		}
 	}
 
-	private calculateCoverage<T extends { documented: boolean }>(items: T[]): {
+	private calculateCoverage<T extends { documented: boolean }>(
+		items: T[]
+	): {
 		documented: number;
 		total: number;
 		percentage: number;
 	} {
-		const documented = items.filter(item => item.documented).length;
+		const documented = items.filter((item) => item.documented).length;
 		const total = items.length;
 		const percentage = total > 0 ? Math.round((documented / total) * 100) : 100;
 
@@ -339,9 +351,9 @@ class DocumentationCoverageChecker {
 	}
 
 	private reportUndocumented(): void {
-		const undocumentedComponents = this.components.filter(c => !c.documented);
-		const undocumentedServices = this.services.filter(s => !s.documented);
-		const undocumentedEndpoints = this.apiEndpoints.filter(e => !e.documented);
+		const undocumentedComponents = this.components.filter((c) => !c.documented);
+		const undocumentedServices = this.services.filter((s) => !s.documented);
+		const undocumentedEndpoints = this.apiEndpoints.filter((e) => !e.documented);
 
 		if (undocumentedComponents.length > 0) {
 			console.log('\n❌ Undocumented Components:');

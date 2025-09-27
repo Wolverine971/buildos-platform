@@ -9,6 +9,7 @@
 ## 🚨 Emergency Response (< 5 minutes)
 
 ### 1. Assess Database Status
+
 ```bash
 # Test basic database connectivity
 psql $DATABASE_URL -c "SELECT 1;"
@@ -22,6 +23,7 @@ curl -s https://your-app.vercel.app/api/health/database
 ```
 
 ### 2. Identify Issue Type
+
 ```sql
 -- Quick health check queries
 SELECT version(); -- PostgreSQL version
@@ -30,6 +32,7 @@ SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'; --
 ```
 
 ### 3. Check Recent Activity
+
 ```sql
 -- Active connections
 SELECT count(*) as active_connections,
@@ -51,11 +54,13 @@ WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes'
 ### Type 1: Connection Pool Exhaustion
 
 **Symptoms**:
+
 - "too many connections" errors
 - Application timeouts
 - Cannot establish new connections
 
 **Diagnosis**:
+
 ```sql
 -- Check connection limits and usage
 SELECT setting FROM pg_settings WHERE name = 'max_connections';
@@ -76,6 +81,7 @@ ORDER BY connection_count DESC;
 ```
 
 **Immediate Recovery**:
+
 ```sql
 -- Kill idle connections (use carefully!)
 SELECT pg_terminate_backend(pid)
@@ -93,51 +99,57 @@ WHERE state != 'idle'
 ```
 
 **Application-Level Fix**:
+
 ```typescript
 // Update Supabase client configuration
 const supabase = createClient(url, key, {
-  db: {
-    schema: 'public',
-  },
-  auth: {
-    autoRefreshToken: true,
-    persistSession: false, // Important for server-side usage
-  },
-  global: {
-    headers: { 'x-my-custom-header': 'buildos' },
-  },
+	db: {
+		schema: 'public'
+	},
+	auth: {
+		autoRefreshToken: true,
+		persistSession: false // Important for server-side usage
+	},
+	global: {
+		headers: { 'x-my-custom-header': 'buildos' }
+	}
 });
 
 // Implement connection pooling
 class DatabasePool {
-  private connections: Map<string, any> = new Map();
-  private maxConnections = 10;
+	private connections: Map<string, any> = new Map();
+	private maxConnections = 10;
 
-  async getConnection(userId: string) {
-    if (this.connections.size >= this.maxConnections) {
-      // Reuse existing connection or wait
-      const oldestKey = this.connections.keys().next().value;
-      const connection = this.connections.get(oldestKey);
-      this.connections.delete(oldestKey);
-      this.connections.set(userId, connection);
-      return connection;
-    }
+	async getConnection(userId: string) {
+		if (this.connections.size >= this.maxConnections) {
+			// Reuse existing connection or wait
+			const oldestKey = this.connections.keys().next().value;
+			const connection = this.connections.get(oldestKey);
+			this.connections.delete(oldestKey);
+			this.connections.set(userId, connection);
+			return connection;
+		}
 
-    const connection = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-    this.connections.set(userId, connection);
-    return connection;
-  }
+		const connection = createClient(
+			process.env.SUPABASE_URL!,
+			process.env.SUPABASE_SERVICE_KEY!
+		);
+		this.connections.set(userId, connection);
+		return connection;
+	}
 }
 ```
 
 ### Type 2: Performance Degradation
 
 **Symptoms**:
+
 - Slow query responses
 - High CPU/memory usage
 - Query timeouts
 
 **Diagnosis**:
+
 ```sql
 -- Check for missing indexes
 SELECT schemaname, tablename, attname, n_distinct, correlation
@@ -172,6 +184,7 @@ ORDER BY created_at DESC;
 ```
 
 **Performance Recovery**:
+
 ```sql
 -- Add missing indexes for common queries
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brain_dumps_user_created
@@ -195,11 +208,13 @@ VACUUM (ANALYZE, VERBOSE) brain_dumps;
 ### Type 3: Data Corruption
 
 **Symptoms**:
+
 - Constraint violation errors
 - Data inconsistencies
 - Unexpected query results
 
 **Diagnosis**:
+
 ```sql
 -- Check for constraint violations
 SELECT conname, conrelid::regclass
@@ -225,6 +240,7 @@ HAVING count(*) > 1;
 ```
 
 **Data Recovery**:
+
 ```sql
 -- Fix orphaned tasks
 UPDATE tasks
@@ -244,11 +260,13 @@ ALTER TABLE projects VALIDATE CONSTRAINT projects_user_id_fkey;
 ### Type 4: Row Level Security Issues
 
 **Symptoms**:
+
 - Users seeing other users' data
 - Permission denied errors
 - RLS policy conflicts
 
 **Diagnosis**:
+
 ```sql
 -- Check RLS status
 SELECT schemaname, tablename, rowsecurity, forcerowsecurity
@@ -269,6 +287,7 @@ RESET ROLE;
 ```
 
 **RLS Recovery**:
+
 ```sql
 -- Ensure RLS is enabled on all user tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -297,6 +316,7 @@ CREATE POLICY "Users can manage project tasks" ON tasks
 ## 💾 Backup & Recovery Procedures
 
 ### Immediate Backup Creation
+
 ```bash
 # Create manual backup before major recovery operations
 pg_dump $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).sql
@@ -309,6 +329,7 @@ pg_dump $DATABASE_URL -t public.projects -t public.tasks > critical_tables_backu
 ```
 
 ### Point-in-Time Recovery (Supabase)
+
 ```bash
 # Supabase provides automated backups, but you can request point-in-time recovery
 # Contact Supabase support for production database restoration
@@ -318,6 +339,7 @@ psql $DATABASE_URL < backup_20250926_120000.sql
 ```
 
 ### Data Export for Critical Tables
+
 ```sql
 -- Export critical data to CSV for manual recovery
 COPY (
@@ -336,6 +358,7 @@ COPY (
 ## 🔧 Preventive Maintenance
 
 ### Daily Health Checks
+
 ```sql
 -- Create a daily health check procedure
 CREATE OR REPLACE FUNCTION daily_health_check()
@@ -366,6 +389,7 @@ SELECT * FROM daily_health_check();
 ```
 
 ### Weekly Maintenance
+
 ```sql
 -- Update table statistics (run during low-traffic periods)
 DO $$
@@ -388,35 +412,32 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 ```
 
 ### Monitoring Setup
+
 ```typescript
 // Application-level database monitoring
 async function monitorDatabaseHealth() {
-  try {
-    const start = Date.now();
+	try {
+		const start = Date.now();
 
-    // Test basic connectivity
-    const { data: connectionTest } = await supabase
-      .from('users')
-      .select('count')
-      .limit(1);
+		// Test basic connectivity
+		const { data: connectionTest } = await supabase.from('users').select('count').limit(1);
 
-    const duration = Date.now() - start;
+		const duration = Date.now() - start;
 
-    // Log metrics
-    await supabase.from('system_metrics').insert({
-      metric_name: 'database_response_time',
-      value: duration,
-      timestamp: new Date().toISOString(),
-    });
+		// Log metrics
+		await supabase.from('system_metrics').insert({
+			metric_name: 'database_response_time',
+			value: duration,
+			timestamp: new Date().toISOString()
+		});
 
-    // Alert if response time > 2 seconds
-    if (duration > 2000) {
-      await sendSlackAlert(`⚠️ Database response time: ${duration}ms`);
-    }
-
-  } catch (error) {
-    await sendSlackAlert(`🚨 Database connectivity error: ${error.message}`);
-  }
+		// Alert if response time > 2 seconds
+		if (duration > 2000) {
+			await sendSlackAlert(`⚠️ Database response time: ${duration}ms`);
+		}
+	} catch (error) {
+		await sendSlackAlert(`🚨 Database connectivity error: ${error.message}`);
+	}
 }
 
 // Run every 5 minutes

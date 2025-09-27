@@ -118,19 +118,21 @@ class DocumentationMaster {
 	private results: GenerationResult[] = [];
 	private startTime = Date.now();
 
-	async generate(options: {
-		categories?: string[];
-		skipOptional?: boolean;
-		skipValidation?: boolean;
-		parallel?: boolean;
-	} = {}): Promise<void> {
+	async generate(
+		options: {
+			categories?: string[];
+			skipOptional?: boolean;
+			skipValidation?: boolean;
+			parallel?: boolean;
+		} = {}
+	): Promise<void> {
 		console.log('🚀 Starting BuildOS documentation generation...\n');
 
 		// Filter tasks based on options
 		let tasksToRun = this.filterTasks(options);
 
 		console.log(`📋 Running ${tasksToRun.length} documentation tasks:\n`);
-		tasksToRun.forEach(task => {
+		tasksToRun.forEach((task) => {
 			const optional = task.optional ? ' (optional)' : '';
 			console.log(`  • ${task.name}: ${task.description}${optional}`);
 		});
@@ -159,17 +161,17 @@ class DocumentationMaster {
 
 		// Filter by categories
 		if (options.categories && options.categories.length > 0) {
-			tasks = tasks.filter(task => options.categories!.includes(task.category));
+			tasks = tasks.filter((task) => options.categories!.includes(task.category));
 		}
 
 		// Skip optional tasks
 		if (options.skipOptional) {
-			tasks = tasks.filter(task => !task.optional);
+			tasks = tasks.filter((task) => !task.optional);
 		}
 
 		// Skip validation tasks
 		if (options.skipValidation) {
-			tasks = tasks.filter(task => task.category !== 'validation');
+			tasks = tasks.filter((task) => task.category !== 'validation');
 		}
 
 		return tasks;
@@ -186,15 +188,15 @@ class DocumentationMaster {
 		const taskGroups = this.groupTasksByDependencies(tasks);
 
 		for (const group of taskGroups) {
-			const promises = group.map(task => this.runTask(task));
+			const promises = group.map((task) => this.runTask(task));
 			await Promise.all(promises);
 		}
 	}
 
 	private groupTasksByDependencies(tasks: GeneratorTask[]): GeneratorTask[][] {
 		// Simple dependency grouping - tasks with no dependencies first
-		const noDeps = tasks.filter(t => !t.dependencies || t.dependencies.length === 0);
-		const withDeps = tasks.filter(t => t.dependencies && t.dependencies.length > 0);
+		const noDeps = tasks.filter((t) => !t.dependencies || t.dependencies.length === 0);
+		const withDeps = tasks.filter((t) => t.dependencies && t.dependencies.length > 0);
 
 		return [noDeps, withDeps]; // Simplified for now
 	}
@@ -267,8 +269,8 @@ class DocumentationMaster {
 
 	private async generateReport(): Promise<void> {
 		const totalDuration = Date.now() - this.startTime;
-		const successful = this.results.filter(r => r.success).length;
-		const failed = this.results.filter(r => !r.success).length;
+		const successful = this.results.filter((r) => r.success).length;
+		const failed = this.results.filter((r) => !r.success).length;
 
 		const report = `# Documentation Generation Report
 
@@ -286,16 +288,22 @@ class DocumentationMaster {
 
 | Task | Status | Duration | Category | Description |
 |------|--------|----------|----------|-------------|
-${this.results.map(result => {
-	const task = this.tasks.find(t => t.name === result.task);
-	const status = result.success ? '✅ Success' : '❌ Failed';
-	const duration = `${result.duration}ms`;
-	return `| ${result.task} | ${status} | ${duration} | ${task?.category || 'unknown'} | ${task?.description || ''} |`;
-}).join('\n')}
+${this.results
+	.map((result) => {
+		const task = this.tasks.find((t) => t.name === result.task);
+		const status = result.success ? '✅ Success' : '❌ Failed';
+		const duration = `${result.duration}ms`;
+		return `| ${result.task} | ${status} | ${duration} | ${task?.category || 'unknown'} | ${task?.description || ''} |`;
+	})
+	.join('\n')}
 
 ## Failed Tasks
 
-${this.results.filter(r => !r.success).map(result => `### ${result.task}
+${
+	this.results
+		.filter((r) => !r.success)
+		.map(
+			(result) => `### ${result.task}
 
 **Error**: ${result.error || 'Unknown error'}
 
@@ -303,20 +311,28 @@ ${this.results.filter(r => !r.success).map(result => `### ${result.task}
 \`\`\`
 ${result.output.join('')}
 \`\`\`
-`).join('\n') || 'No failed tasks.'}
+`
+		)
+		.join('\n') || 'No failed tasks.'
+}
 
 ## Performance Analysis
 
 ### By Category
 
-${this.getCategoryStats().map(stat => `- **${stat.category}**: ${stat.count} tasks, ${stat.totalDuration}ms total, ${stat.avgDuration}ms average`).join('\n')}
+${this.getCategoryStats()
+	.map(
+		(stat) =>
+			`- **${stat.category}**: ${stat.count} tasks, ${stat.totalDuration}ms total, ${stat.avgDuration}ms average`
+	)
+	.join('\n')}
 
 ### Slowest Tasks
 
 ${this.results
 	.sort((a, b) => b.duration - a.duration)
 	.slice(0, 5)
-	.map(r => `- **${r.task}**: ${r.duration}ms`)
+	.map((r) => `- **${r.task}**: ${r.duration}ms`)
 	.join('\n')}
 
 ## Generated Documentation
@@ -361,17 +377,20 @@ The following documentation has been generated or updated:
 			await mkdir(outputDir, { recursive: true });
 		}
 
-		const reportPath = join(outputDir, `generation-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.md`);
+		const reportPath = join(
+			outputDir,
+			`generation-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.md`
+		);
 		await writeFile(reportPath, report);
 
 		console.log(`\n📊 Detailed report saved to: ${reportPath}`);
 	}
 
 	private getCategoryStats() {
-		const categories = [...new Set(this.tasks.map(t => t.category))];
-		return categories.map(category => {
-			const categoryResults = this.results.filter(r => {
-				const task = this.tasks.find(t => t.name === r.task);
+		const categories = [...new Set(this.tasks.map((t) => t.category))];
+		return categories.map((category) => {
+			const categoryResults = this.results.filter((r) => {
+				const task = this.tasks.find((t) => t.name === r.task);
 				return task?.category === category;
 			});
 
@@ -389,8 +408,8 @@ The following documentation has been generated or updated:
 
 	private printSummary(): void {
 		const totalDuration = Date.now() - this.startTime;
-		const successful = this.results.filter(r => r.success).length;
-		const failed = this.results.filter(r => !r.success).length;
+		const successful = this.results.filter((r) => r.success).length;
+		const failed = this.results.filter((r) => !r.success).length;
 
 		console.log(`\n${'='.repeat(50)}`);
 		console.log('📈 DOCUMENTATION GENERATION SUMMARY');
@@ -401,10 +420,12 @@ The following documentation has been generated or updated:
 
 		if (failed > 0) {
 			console.log(`\n⚠️  Failed Tasks (${failed}):`);
-			this.results.filter(r => !r.success).forEach(result => {
-				const task = this.tasks.find(t => t.name === result.task);
-				console.log(`  • ${result.task}: ${result.error}`);
-			});
+			this.results
+				.filter((r) => !r.success)
+				.forEach((result) => {
+					const task = this.tasks.find((t) => t.name === result.task);
+					console.log(`  • ${result.task}: ${result.error}`);
+				});
 		}
 
 		console.log(`\n🎉 Documentation generation complete!`);

@@ -1,2 +1,3 @@
 # Calendar API
-PLACEHOLDER - Document /api/calendar/* endpoints
+
+PLACEHOLDER - Document /api/calendar/\* endpoints

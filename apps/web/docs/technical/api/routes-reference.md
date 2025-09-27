@@ -1,6 +1,6 @@
 # API Routes Documentation
 
-*Auto-generated on 2025-09-27T04:23:00.929Z*
+_Auto-generated on 2025-09-27T04:23:00.929Z_
 
 This documentation is automatically generated from the SvelteKit route structure.
 
@@ -149,11 +149,7 @@ Total endpoints: 134
 
 **File:** `src/routes/api/account/password/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -161,11 +157,11 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 400 | Bad request | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
+| 400    | Bad request      | application/json |
 
 ---
 
@@ -173,11 +169,7 @@ No parameters
 
 **File:** `src/routes/api/account/settings/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -185,11 +177,11 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 400 | Bad request | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
+| 400    | Bad request      | application/json |
 
 ---
 
@@ -197,26 +189,22 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/brief-stats/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -224,25 +212,21 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/comprehensive/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -250,26 +234,22 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/daily-signups/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -277,26 +257,22 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/daily-users/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -304,26 +280,22 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/daily-visitors/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -331,24 +303,20 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/export/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -356,11 +324,7 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/overview/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -368,12 +332,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -381,11 +345,7 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/recent-activity/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -393,12 +353,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -406,11 +366,7 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/system-metrics/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -418,12 +374,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -431,11 +387,7 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/template-usage/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -443,12 +395,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -456,11 +408,7 @@ No parameters
 
 **File:** `src/routes/api/admin/analytics/visitor-overview/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -468,12 +416,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -481,21 +429,17 @@ No parameters
 
 **File:** `src/routes/api/admin/beta/feedback/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| type | string | query | No | Query parameter: type |
-| status | string | query | No | Query parameter: status |
-| search | string | query | No | Query parameter: search |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| page       | string | query    | No       | Query parameter: page       |
+| limit      | string | query    | No       | Query parameter: limit      |
+| type       | string | query    | No       | Query parameter: type       |
+| status     | string | query    | No       | Query parameter: status     |
+| search     | string | query    | No       | Query parameter: search     |
+| sort_by    | string | query    | No       | Query parameter: sort_by    |
+| sort_order | string | query    | No       | Query parameter: sort_order |
 
 ### Responses
 
@@ -507,21 +451,17 @@ No documented responses
 
 **File:** `src/routes/api/admin/beta/members/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| tier | string | query | No | Query parameter: tier |
-| active_only | string | query | No | Query parameter: active_only |
-| search | string | query | No | Query parameter: search |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name        | Type   | Location | Required | Description                  |
+| ----------- | ------ | -------- | -------- | ---------------------------- |
+| page        | string | query    | No       | Query parameter: page        |
+| limit       | string | query    | No       | Query parameter: limit       |
+| tier        | string | query    | No       | Query parameter: tier        |
+| active_only | string | query    | No       | Query parameter: active_only |
+| search      | string | query    | No       | Query parameter: search      |
+| sort_by     | string | query    | No       | Query parameter: sort_by     |
+| sort_order  | string | query    | No       | Query parameter: sort_order  |
 
 ### Responses
 
@@ -533,11 +473,7 @@ No documented responses
 
 **File:** `src/routes/api/admin/beta/overview/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -545,12 +481,12 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -558,20 +494,16 @@ No parameters
 
 **File:** `src/routes/api/admin/beta/signups/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| status | string | query | No | Query parameter: status |
-| search | string | query | No | Query parameter: search |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| page       | string | query    | No       | Query parameter: page       |
+| limit      | string | query    | No       | Query parameter: limit      |
+| status     | string | query    | No       | Query parameter: status     |
+| search     | string | query    | No       | Query parameter: search     |
+| sort_by    | string | query    | No       | Query parameter: sort_by    |
+| sort_order | string | query    | No       | Query parameter: sort_order |
 
 ### Responses
 
@@ -583,29 +515,25 @@ No documented responses
 
 **File:** `src/routes/api/admin/calendar-errors/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeRange | string | query | No | Query parameter: timeRange |
-| taskId | string | query | No | Query parameter: taskId |
-| userId | string | query | No | Query parameter: userId |
-| action | string | query | No | Query parameter: action |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeRange | string | query    | No       | Query parameter: timeRange |
+| taskId    | string | query    | No       | Query parameter: taskId    |
+| userId    | string | query    | No       | Query parameter: userId    |
+| action    | string | query    | No       | Query parameter: action    |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -613,29 +541,25 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| status | string | query | No | Query parameter: status |
-| category | string | query | No | Query parameter: category |
-| search | string | query | No | Query parameter: search |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| page       | string | query    | No       | Query parameter: page       |
+| limit      | string | query    | No       | Query parameter: limit      |
+| status     | string | query    | No       | Query parameter: status     |
+| category   | string | query    | No       | Query parameter: category   |
+| search     | string | query    | No       | Query parameter: search     |
+| sort_by    | string | query    | No       | Query parameter: sort_by    |
+| sort_order | string | query    | No       | Query parameter: sort_order |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -643,24 +567,20 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/[id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -668,15 +588,11 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/[id]/send/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -688,18 +604,14 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/attachments/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| email_id | string | query | No | Query parameter: email_id |
-| shared_only | string | query | No | Query parameter: shared_only |
-| images_only | string | query | No | Query parameter: images_only |
-| id | string | query | No | Query parameter: id |
+| Name        | Type   | Location | Required | Description                  |
+| ----------- | ------ | -------- | -------- | ---------------------------- |
+| email_id    | string | query    | No       | Query parameter: email_id    |
+| shared_only | string | query    | No       | Query parameter: shared_only |
+| images_only | string | query    | No       | Query parameter: images_only |
+| id          | string | query    | No       | Query parameter: id          |
 
 ### Responses
 
@@ -711,19 +623,15 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/generate/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -731,17 +639,13 @@ No parameters
 
 **File:** `src/routes/api/admin/emails/recipients/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| source | string | query | No | Query parameter: source |
-| search | string | query | No | Query parameter: search |
-| limit | string | query | No | Query parameter: limit |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| source | string | query    | No       | Query parameter: source |
+| search | string | query    | No       | Query parameter: search |
+| limit  | string | query    | No       | Query parameter: limit  |
 
 ### Responses
 
@@ -753,19 +657,15 @@ No documented responses
 
 **File:** `src/routes/api/admin/emails/send/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -773,30 +673,26 @@ No parameters
 
 **File:** `src/routes/api/admin/errors/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| severity | string | query | No | Query parameter: severity |
-| type | string | query | No | Query parameter: type |
-| resolved | string | query | No | Query parameter: resolved |
-| userId | string | query | No | Query parameter: userId |
-| projectId | string | query | No | Query parameter: projectId |
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| severity  | string | query    | No       | Query parameter: severity  |
+| type      | string | query    | No       | Query parameter: type      |
+| resolved  | string | query    | No       | Query parameter: resolved  |
+| userId    | string | query    | No       | Query parameter: userId    |
+| projectId | string | query    | No       | Query parameter: projectId |
+| page      | string | query    | No       | Query parameter: page      |
+| limit     | string | query    | No       | Query parameter: limit     |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ---
 
@@ -804,25 +700,21 @@ No parameters
 
 **File:** `src/routes/api/admin/errors/[id]/resolve/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -830,39 +722,31 @@ No parameters
 
 **File:** `src/routes/api/admin/feedback/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| status | string | query | No | Query parameter: status |
-| category | string | query | No | Query parameter: category |
-| search | string | query | No | Query parameter: search |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| page       | string | query    | No       | Query parameter: page       |
+| limit      | string | query    | No       | Query parameter: limit      |
+| status     | string | query    | No       | Query parameter: status     |
+| category   | string | query    | No       | Query parameter: category   |
+| search     | string | query    | No       | Query parameter: search     |
+| sort_by    | string | query    | No       | Query parameter: sort_by    |
+| sort_order | string | query    | No       | Query parameter: sort_order |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
 ## GET /api/admin/feedback/overview
 
 **File:** `src/routes/api/admin/feedback/overview/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -878,27 +762,23 @@ No documented responses
 
 **File:** `src/routes/api/admin/revenue/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| period | string | query | No | Query parameter: period |
-| year | string | query | No | Query parameter: year |
-| month | string | query | No | Query parameter: month |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| period | string | query    | No       | Query parameter: period |
+| year   | string | query    | No       | Query parameter: year   |
+| month  | string | query    | No       | Query parameter: month  |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -906,17 +786,13 @@ No documented responses
 
 **File:** `src/routes/api/admin/revenue/export/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| period | string | query | No | Query parameter: period |
-| year | string | query | No | Query parameter: year |
-| month | string | query | No | Query parameter: month |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| period | string | query    | No       | Query parameter: period |
+| year   | string | query    | No       | Query parameter: year   |
+| month  | string | query    | No       | Query parameter: month  |
 
 ### Responses
 
@@ -928,11 +804,7 @@ No documented responses
 
 **File:** `src/routes/api/admin/subscriptions/overview/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -940,11 +812,11 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -952,29 +824,25 @@ No parameters
 
 **File:** `src/routes/api/admin/subscriptions/users/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| status | string | query | No | Query parameter: status |
-| search | string | query | No | Query parameter: search |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| page   | string | query    | No       | Query parameter: page   |
+| limit  | string | query    | No       | Query parameter: limit  |
+| status | string | query    | No       | Query parameter: status |
+| search | string | query    | No       | Query parameter: search |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -982,32 +850,28 @@ No parameters
 
 **File:** `src/routes/api/admin/users/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| search | string | query | No | Query parameter: search |
-| admin_filter | string | query | No | Query parameter: admin_filter |
-| onboarding_filter | string | query | No | Query parameter: onboarding_filter |
-| sort_by | string | query | No | Query parameter: sort_by |
-| sort_order | string | query | No | Query parameter: sort_order |
+| Name              | Type   | Location | Required | Description                        |
+| ----------------- | ------ | -------- | -------- | ---------------------------------- |
+| page              | string | query    | No       | Query parameter: page              |
+| limit             | string | query    | No       | Query parameter: limit             |
+| search            | string | query    | No       | Query parameter: search            |
+| admin_filter      | string | query    | No       | Query parameter: admin_filter      |
+| onboarding_filter | string | query    | No       | Query parameter: onboarding_filter |
+| sort_by           | string | query    | No       | Query parameter: sort_by           |
+| sort_order        | string | query    | No       | Query parameter: sort_order        |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1015,24 +879,20 @@ No parameters
 
 **File:** `src/routes/api/admin/users/[id]/context/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| beta | string | query | No | Query parameter: beta |
-| email | string | query | No | Query parameter: email |
-| name | string | query | No | Query parameter: name |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| id    | string | path     | Yes      | Path parameter: id     |
+| beta  | string | query    | No       | Query parameter: beta  |
+| email | string | query    | No       | Query parameter: email |
+| name  | string | query    | No       | Query parameter: name  |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -1040,35 +900,27 @@ No parameters
 
 **File:** `src/routes/api/admin/users/[userId]/activity/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| userId | string | path | Yes | Path parameter: userId |
+| Name   | Type   | Location | Required | Description            |
+| ------ | ------ | -------- | -------- | ---------------------- |
+| userId | string | path     | Yes      | Path parameter: userId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
 ## POST, GET /api/agent/google-calendar
 
 **File:** `src/routes/api/agent/google-calendar/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1121,15 +973,11 @@ interface MCPErrorResponse {
 
 **File:** `src/routes/api/analytics/briefs/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timeframe | string | query | No | Query parameter: timeframe |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| timeframe | string | query    | No       | Query parameter: timeframe |
 
 ### Responses
 
@@ -1140,10 +988,6 @@ No documented responses
 ## POST /api/auth/login
 
 **File:** `src/routes/api/auth/login/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1159,10 +1003,6 @@ No documented responses
 
 **File:** `src/routes/api/auth/register/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1177,11 +1017,7 @@ No documented responses
 
 **File:** `src/routes/api/auth/user/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1189,10 +1025,10 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ---
 
@@ -1200,15 +1036,11 @@ No parameters
 
 **File:** `src/routes/api/beta/signup/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| email | string | query | No | Query parameter: email |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| email | string | query    | No       | Query parameter: email |
 
 ### Responses
 
@@ -1239,30 +1071,26 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| search | string | query | No | Query parameter: search |
-| year | string | query | No | Query parameter: year |
-| day | string | query | No | Query parameter: day |
-| limit | string | query | No | Query parameter: limit |
-| offset | string | query | No | Query parameter: offset |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| search | string | query    | No       | Query parameter: search |
+| year   | string | query    | No       | Query parameter: year   |
+| day    | string | query    | No       | Query parameter: day    |
+| limit  | string | query    | No       | Query parameter: limit  |
+| offset | string | query    | No       | Query parameter: offset |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -1270,27 +1098,23 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/[id]/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1298,28 +1122,24 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/[id]/link/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1327,26 +1147,22 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/contribution-data/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| year | string | query | No | Query parameter: year |
-| search | string | query | No | Query parameter: search |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| year   | string | query    | No       | Query parameter: year   |
+| search | string | query    | No       | Query parameter: search |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -1354,26 +1170,22 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/draft/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| projectId | string | query | No | Query parameter: projectId |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| projectId | string | query    | No       | Query parameter: projectId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1381,11 +1193,7 @@ interface BetaSignupRequest {
 
 **File:** `src/routes/api/braindumps/draft/status/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1393,13 +1201,13 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1407,11 +1215,7 @@ No parameters
 
 **File:** `src/routes/api/braindumps/generate/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1419,13 +1223,13 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -1443,35 +1247,27 @@ interface CacheEntry {
 
 **File:** `src/routes/api/braindumps/init/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| projectId | string | query | No | Query parameter: projectId |
+| Name      | Type   | Location | Required | Description                |
+| --------- | ------ | -------- | -------- | -------------------------- |
+| projectId | string | query    | No       | Query parameter: projectId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
 ## POST /api/braindumps/stream
 
 **File:** `src/routes/api/braindumps/stream/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1487,10 +1283,6 @@ No documented responses
 
 **File:** `src/routes/api/braindumps/stream-short/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1505,18 +1297,14 @@ No documented responses
 
 **File:** `src/routes/api/brief-jobs/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| job_type | string | query | No | Query parameter: job_type |
-| status | string | query | No | Query parameter: status |
-| limit | string | query | No | Query parameter: limit |
-| offset | string | query | No | Query parameter: offset |
+| Name     | Type   | Location | Required | Description               |
+| -------- | ------ | -------- | -------- | ------------------------- |
+| job_type | string | query    | No       | Query parameter: job_type |
+| status   | string | query    | No       | Query parameter: status   |
+| limit    | string | query    | No       | Query parameter: limit    |
+| offset   | string | query    | No       | Query parameter: offset   |
 
 ### Responses
 
@@ -1528,15 +1316,11 @@ No documented responses
 
 **File:** `src/routes/api/brief-jobs/[id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -1547,10 +1331,6 @@ No documented responses
 ## POST /api/brief-jobs/cancel
 
 **File:** `src/routes/api/brief-jobs/cancel/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1566,10 +1346,6 @@ No documented responses
 
 **File:** `src/routes/api/brief-jobs/next-scheduled/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1583,10 +1359,6 @@ No documented responses
 ## GET, POST, PUT /api/brief-preferences
 
 **File:** `src/routes/api/brief-preferences/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1602,10 +1374,6 @@ No documented responses
 
 **File:** `src/routes/api/brief-templates/project/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1620,15 +1388,11 @@ No documented responses
 
 **File:** `src/routes/api/brief-templates/project/[id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -1640,11 +1404,7 @@ No documented responses
 
 **File:** `src/routes/api/calendar/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1652,10 +1412,10 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 401 | Unauthorized | application/json |
-| 400 | Bad request | application/json |
+| Status | Description  | Content Type     |
+| ------ | ------------ | ---------------- |
+| 401    | Unauthorized | application/json |
+| 400    | Bad request  | application/json |
 
 ### Types
 
@@ -1672,11 +1432,7 @@ interface CalendarRequest {
 
 **File:** `src/routes/api/calendar/process/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1684,13 +1440,13 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -1709,19 +1465,15 @@ interface CalendarRequest {
 
 **Description:** GET /api/calendar/projects
 
-
-
-
-
 ### Parameters
 
 No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -1729,11 +1481,7 @@ No parameters
 
 **File:** `src/routes/api/calendar/remove-task/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -1741,22 +1489,18 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
 ## GET /api/calendar/retry-failed
 
 **File:** `src/routes/api/calendar/retry-failed/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1772,10 +1516,6 @@ No documented responses
 
 **File:** `src/routes/api/calendar/webhook/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1789,10 +1529,6 @@ No documented responses
 ## GET /api/cron/dunning
 
 **File:** `src/routes/api/cron/dunning/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1808,10 +1544,6 @@ No documented responses
 
 **File:** `src/routes/api/cron/renew-webhooks/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -1825,10 +1557,6 @@ No documented responses
 ## GET /api/cron/trial-reminders
 
 **File:** `src/routes/api/cron/trial-reminders/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1844,15 +1572,11 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| date | string | query | No | Query parameter: date |
+| Name | Type   | Location | Required | Description           |
+| ---- | ------ | -------- | -------- | --------------------- |
+| date | string | query    | No       | Query parameter: date |
 
 ### Responses
 
@@ -1864,15 +1588,11 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/[id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -1883,10 +1603,6 @@ No documented responses
 ## POST /api/daily-briefs/cancel
 
 **File:** `src/routes/api/daily-briefs/cancel/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -1902,28 +1618,24 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/generate/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| briefDate | string | query | No | Query parameter: briefDate |
-| forceRegenerate | string | query | No | Query parameter: forceRegenerate |
-| streaming | string | query | No | Query parameter: streaming |
+| Name            | Type   | Location | Required | Description                      |
+| --------------- | ------ | -------- | -------- | -------------------------------- |
+| briefDate       | string | query    | No       | Query parameter: briefDate       |
+| forceRegenerate | string | query    | No       | Query parameter: forceRegenerate |
+| streaming       | string | query    | No       | Query parameter: streaming       |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -1931,19 +1643,15 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/history/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| start_date | string | query | No | Query parameter: start_date |
-| end_date | string | query | No | Query parameter: end_date |
-| search | string | query | No | Query parameter: search |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| page       | string | query    | No       | Query parameter: page       |
+| limit      | string | query    | No       | Query parameter: limit      |
+| start_date | string | query    | No       | Query parameter: start_date |
+| end_date   | string | query    | No       | Query parameter: end_date   |
+| search     | string | query    | No       | Query parameter: search     |
 
 ### Responses
 
@@ -1955,15 +1663,11 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/progress/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| date | string | query | No | Query parameter: date |
+| Name | Type   | Location | Required | Description           |
+| ---- | ------ | -------- | -------- | --------------------- |
+| date | string | query    | No       | Query parameter: date |
 
 ### Responses
 
@@ -1975,16 +1679,12 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/search/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| q | string | query | No | Query parameter: q |
-| limit | string | query | No | Query parameter: limit |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| q     | string | query    | No       | Query parameter: q     |
+| limit | string | query    | No       | Query parameter: limit |
 
 ### Responses
 
@@ -1995,10 +1695,6 @@ No documented responses
 ## GET /api/daily-briefs/stats
 
 **File:** `src/routes/api/daily-briefs/stats/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -2014,16 +1710,12 @@ No documented responses
 
 **File:** `src/routes/api/daily-briefs/status/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| date | string | query | No | Query parameter: date |
-| userId | string | query | No | Query parameter: userId |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| date   | string | query    | No       | Query parameter: date   |
+| userId | string | query    | No       | Query parameter: userId |
 
 ### Responses
 
@@ -2037,25 +1729,21 @@ No documented responses
 
 **Description:** Optimized dashboard handler using RPC function
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| timezone | string | query | No | Query parameter: timezone |
+| Name     | Type   | Location | Required | Description               |
+| -------- | ------ | -------- | -------- | ------------------------- |
+| timezone | string | query    | No       | Query parameter: timezone |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2063,11 +1751,7 @@ No documented responses
 
 **File:** `src/routes/api/dashboard/bottom-sections/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -2075,11 +1759,11 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2087,15 +1771,11 @@ No parameters
 
 **File:** `src/routes/api/email-tracking/[tracking_id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| tracking_id | string | path | Yes | Path parameter: tracking_id |
+| Name        | Type   | Location | Required | Description                 |
+| ----------- | ------ | -------- | -------- | --------------------------- |
+| tracking_id | string | path     | Yes      | Path parameter: tracking_id |
 
 ### Responses
 
@@ -2107,21 +1787,17 @@ No documented responses
 
 **File:** `src/routes/api/feedback/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -2141,10 +1817,6 @@ interface FeedbackRequest {
 
 **File:** `src/routes/api/health/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -2159,30 +1831,26 @@ No documented responses
 
 **File:** `src/routes/api/notes/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| project_id | string | query | No | Query parameter: project_id |
-| limit | string | query | No | Query parameter: limit |
-| search | string | query | No | Query parameter: search |
-| offset | string | query | No | Query parameter: offset |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| project_id | string | query    | No       | Query parameter: project_id |
+| limit      | string | query    | No       | Query parameter: limit      |
+| search     | string | query    | No       | Query parameter: search     |
+| offset     | string | query    | No       | Query parameter: offset     |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2190,28 +1858,24 @@ No documented responses
 
 **File:** `src/routes/api/notes/[id]/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2219,38 +1883,30 @@ No documented responses
 
 **File:** `src/routes/api/notes/[id]/link/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
 ## POST /api/onboarding
 
 **File:** `src/routes/api/onboarding/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -2266,28 +1922,24 @@ No documented responses
 
 **File:** `src/routes/api/phases-jobs/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| status | string | query | No | Query parameter: status |
-| project_id | string | query | No | Query parameter: project_id |
-| limit | string | query | No | Query parameter: limit |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| status     | string | query    | No       | Query parameter: status     |
+| project_id | string | query    | No       | Query parameter: project_id |
+| limit      | string | query    | No       | Query parameter: limit      |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2295,25 +1947,21 @@ No documented responses
 
 **File:** `src/routes/api/project-briefs/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| date | string | query | No | Query parameter: date |
-| userId | string | query | No | Query parameter: userId |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| date   | string | query    | No       | Query parameter: date   |
+| userId | string | query    | No       | Query parameter: userId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
+| Status | Description    | Content Type     |
+| ------ | -------------- | ---------------- |
+| 401    | Unauthorized   | application/json |
+| 500    | Database error | application/json |
 
 ---
 
@@ -2321,27 +1969,23 @@ No documented responses
 
 **File:** `src/routes/api/project-briefs/[id]/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2349,28 +1993,24 @@ No documented responses
 
 **File:** `src/routes/api/projects/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| page  | string | query    | No       | Query parameter: page  |
+| limit | string | query    | No       | Query parameter: limit |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2378,28 +2018,24 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2407,26 +2043,22 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/briefs/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
+| 500    | Database error   | application/json |
+| 400    | Bad request      | application/json |
 
 ---
 
@@ -2434,15 +2066,11 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/briefs/latest/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -2456,25 +2084,21 @@ No documented responses
 
 **Description:** Background process to migrate all project tasks to use the new project calendar
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2482,21 +2106,17 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/calendar-status/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -2506,26 +2126,22 @@ No documented responses
 
 **Description:** POST /api/projects/[id]/calendar/share
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2535,25 +2151,21 @@ No documented responses
 
 **Description:** POST /api/projects/[id]/calendar/sync
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2563,15 +2175,11 @@ No documented responses
 
 **Description:** Handle calendar event deletion with comprehensive error handling
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -2583,27 +2191,23 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/details/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -2611,15 +2215,11 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/generate-brief-template/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -2631,15 +2231,11 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/history/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -2651,23 +2247,19 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/notes/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| id    | string | path     | Yes      | Path parameter: id     |
+| page  | string | query    | No       | Query parameter: page  |
+| limit | string | query    | No       | Query parameter: limit |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -2675,28 +2267,24 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/phases/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| phaseId | string | query | No | Query parameter: phaseId |
+| Name    | Type   | Location | Required | Description              |
+| ------- | ------ | -------- | -------- | ------------------------ |
+| id      | string | path     | Yes      | Path parameter: id       |
+| phaseId | string | query    | No       | Query parameter: phaseId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2704,29 +2292,25 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/phases/[phaseId]/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| phaseId | string | path | Yes | Path parameter: phaseId |
+| Name    | Type   | Location | Required | Description             |
+| ------- | ------ | -------- | -------- | ----------------------- |
+| id      | string | path     | Yes      | Path parameter: id      |
+| phaseId | string | path     | Yes      | Path parameter: phaseId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2736,16 +2320,12 @@ No documented responses
 
 **Description:** Phase Task Scheduling Endpoint
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| phaseId | string | path | Yes | Path parameter: phaseId |
+| Name    | Type   | Location | Required | Description             |
+| ------- | ------ | -------- | -------- | ----------------------- |
+| id      | string | path     | Yes      | Path parameter: id      |
+| phaseId | string | path     | Yes      | Path parameter: phaseId |
 
 ### Responses
 
@@ -2790,27 +2370,23 @@ interface TaskToSchedule {
 
 **Description:** Phase Generation API Handler
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2820,28 +2396,24 @@ interface TaskToSchedule {
 
 **Description:** Analyze task scheduling conflicts and rescheduling needs based on scheduling method
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -2889,26 +2461,22 @@ interface PreviewResponse {
 
 **File:** `src/routes/api/projects/[id]/phases/tasks/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -2916,24 +2484,20 @@ interface PreviewResponse {
 
 **File:** `src/routes/api/projects/[id]/questions/random/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ---
 
@@ -2941,21 +2505,17 @@ interface PreviewResponse {
 
 **File:** `src/routes/api/projects/[id]/stats/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -2963,15 +2523,11 @@ interface PreviewResponse {
 
 **File:** `src/routes/api/projects/[id]/synthesize/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -2983,15 +2539,11 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/synthesize/apply/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -3005,28 +2557,24 @@ No documented responses
 
 **Description:** Handle phase assignment logic for new tasks
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -3036,28 +2584,24 @@ No documented responses
 
 **Description:** Intelligently determine what calendar operations are needed with timezone support
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| taskId | string | path | Yes | Path parameter: taskId |
+| Name   | Type   | Location | Required | Description            |
+| ------ | ------ | -------- | -------- | ---------------------- |
+| id     | string | path     | Yes      | Path parameter: id     |
+| taskId | string | path     | Yes      | Path parameter: taskId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -3065,26 +2609,22 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/tasks/[taskId]/calendar-status/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| taskId | string | path | Yes | Path parameter: taskId |
+| Name   | Type   | Location | Required | Description            |
+| ------ | ------ | -------- | -------- | ---------------------- |
+| id     | string | path     | Yes      | Path parameter: id     |
+| taskId | string | path     | Yes      | Path parameter: taskId |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
+| 500    | Database error   | application/json |
 
 ---
 
@@ -3092,24 +2632,20 @@ No documented responses
 
 **File:** `src/routes/api/projects/[id]/tasks/assign-backlog/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ### Types
 
@@ -3152,28 +2688,24 @@ type AssignmentMethod = 'phases_only' | 'with_dates' | 'with_calendar';
 
 **File:** `src/routes/api/projects/[id]/tasks/batch/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -3183,24 +2715,20 @@ type AssignmentMethod = 'phases_only' | 'with_dates' | 'with_calendar';
 
 **Description:** Find all phases that a task falls within (handles overlapping phases)
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ### Types
 
@@ -3238,24 +2766,20 @@ interface CalendarOperation {
 
 **File:** `src/routes/api/projects/[id]/tasks/unschedule-all/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
+| 401    | Unauthorized     | application/json |
 
 ---
 
@@ -3263,21 +2787,17 @@ interface CalendarOperation {
 
 **File:** `src/routes/api/projects/briefs-count/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| projectIds | string | query | No | Query parameter: projectIds |
+| Name       | Type   | Location | Required | Description                 |
+| ---------- | ------ | -------- | -------- | --------------------------- |
+| projectIds | string | query    | No       | Query parameter: projectIds |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -3285,24 +2805,20 @@ interface CalendarOperation {
 
 **File:** `src/routes/api/projects/list/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
-| status | string | query | No | Query parameter: status |
-| search | string | query | No | Query parameter: search |
+| Name   | Type   | Location | Required | Description             |
+| ------ | ------ | -------- | -------- | ----------------------- |
+| page   | string | query    | No       | Query parameter: page   |
+| limit  | string | query    | No       | Query parameter: limit  |
+| status | string | query    | No       | Query parameter: status |
+| search | string | query    | No       | Query parameter: search |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
+| Status | Description      | Content Type     |
+| ------ | ---------------- | ---------------- |
+| 200    | Success response | application/json |
 
 ---
 
@@ -3310,28 +2826,24 @@ interface CalendarOperation {
 
 **File:** `src/routes/api/projects/search/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| q | string | query | No | Query parameter: q |
-| page | string | query | No | Query parameter: page |
-| limit | string | query | No | Query parameter: limit |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| q     | string | query    | No       | Query parameter: q     |
+| page  | string | query    | No       | Query parameter: page  |
+| limit | string | query    | No       | Query parameter: limit |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
 
@@ -3339,15 +2851,11 @@ interface CalendarOperation {
 
 **File:** `src/routes/api/queue-jobs/[id]/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -3359,11 +2867,7 @@ No documented responses
 
 **File:** `src/routes/api/search/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -3371,13 +2875,13 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -3394,11 +2898,7 @@ interface SearchRequest {
 
 **File:** `src/routes/api/search/more/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -3406,13 +2906,13 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ### Types
 
@@ -3431,10 +2931,6 @@ interface LoadMoreRequest {
 
 **File:** `src/routes/api/stripe/checkout/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -3449,15 +2945,11 @@ No documented responses
 
 **File:** `src/routes/api/stripe/invoice/[id]/download/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
+| Name | Type   | Location | Required | Description        |
+| ---- | ------ | -------- | -------- | ------------------ |
+| id   | string | path     | Yes      | Path parameter: id |
 
 ### Responses
 
@@ -3468,10 +2960,6 @@ No documented responses
 ## POST /api/stripe/portal
 
 **File:** `src/routes/api/stripe/portal/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -3487,10 +2975,6 @@ No documented responses
 
 **File:** `src/routes/api/stripe/webhook/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
@@ -3505,29 +2989,25 @@ No documented responses
 
 **File:** `src/routes/api/tasks/[id]/recurrence/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| id | string | path | Yes | Path parameter: id |
-| scope | string | query | No | Query parameter: scope |
-| date | string | query | No | Query parameter: date |
+| Name  | Type   | Location | Required | Description            |
+| ----- | ------ | -------- | -------- | ---------------------- |
+| id    | string | path     | Yes      | Path parameter: id     |
+| scope | string | query    | No       | Query parameter: scope |
+| date  | string | query    | No       | Query parameter: date  |
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 404 | Resource not found | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 404    | Resource not found    | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
@@ -3535,16 +3015,12 @@ No documented responses
 
 **File:** `src/routes/api/templates/+server.ts`
 
-
-
-
-
 ### Parameters
 
-| Name | Type | Location | Required | Description |
-|------|------|----------|----------|-------------|
-| type | string | query | No | Query parameter: type |
-| id | string | query | No | Query parameter: id |
+| Name | Type   | Location | Required | Description           |
+| ---- | ------ | -------- | -------- | --------------------- |
+| type | string | query    | No       | Query parameter: type |
+| id   | string | query    | No       | Query parameter: id   |
 
 ### Responses
 
@@ -3556,11 +3032,7 @@ No documented responses
 
 **File:** `src/routes/api/transcribe/+server.ts`
 
-
-
 🔒 **Authentication Required**
-
-
 
 ### Parameters
 
@@ -3568,22 +3040,18 @@ No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 401 | Unauthorized | application/json |
-| 500 | Internal server error | application/json |
-| 400 | Bad request | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 401    | Unauthorized          | application/json |
+| 500    | Internal server error | application/json |
+| 400    | Bad request           | application/json |
 
 ---
 
 ## GET, PUT /api/users/calendar-preferences
 
 **File:** `src/routes/api/users/calendar-preferences/+server.ts`
-
-
-
-
 
 ### Parameters
 
@@ -3599,21 +3067,16 @@ No documented responses
 
 **File:** `src/routes/api/visitors/+server.ts`
 
-
-
-
-
 ### Parameters
 
 No parameters
 
 ### Responses
 
-| Status | Description | Content Type |
-|--------|-------------|--------------|
-| 200 | Success response | application/json |
-| 500 | Database error | application/json |
-| 500 | Internal server error | application/json |
+| Status | Description           | Content Type     |
+| ------ | --------------------- | ---------------- |
+| 200    | Success response      | application/json |
+| 500    | Database error        | application/json |
+| 500    | Internal server error | application/json |
 
 ---
-

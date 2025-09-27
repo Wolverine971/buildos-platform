@@ -1,6 +1,6 @@
 # BuildOS Documentation System
 
-*Comprehensive automated documentation generation and maintenance system*
+_Comprehensive automated documentation generation and maintenance system_
 
 ## Overview
 
@@ -9,6 +9,7 @@ BuildOS now features a fully automated documentation system that keeps documenta
 ## Quick Start
 
 ### Generate All Documentation
+
 ```bash
 # Generate all documentation at once
 pnpm run docs:generate
@@ -21,6 +22,7 @@ pnpm run docs:watch
 ```
 
 ### Individual Generators
+
 ```bash
 # Database schema documentation
 pnpm run gen:schema
@@ -41,55 +43,65 @@ pnpm run gen:monitoring-docs
 ## Documentation Categories
 
 ### 1. API Documentation (`docs/technical/api/`)
+
 - **Routes Reference**: Complete list of all API endpoints
 - **Type Definitions**: TypeScript interfaces and types
 - **Interactive Docs**: Swagger UI for testing endpoints
 - **Request/Response Templates**: Standard formats and examples
 
 **Generated from:**
+
 - `/src/routes/api/**/*.ts` - API route files
 - `/src/lib/types/**/*.ts` - Type definitions
 - `/src/lib/database.schema.ts` - Database types
 
 ### 2. Component Documentation (`docs/technical/components/`)
+
 - **Design System**: Svelte 5 patterns and architecture
 - **Component Catalog**: Individual component documentation
 - **Runes Usage**: Svelte 5 state management patterns
 - **Dependencies**: Component relationship mapping
 
 **Generated from:**
+
 - `/src/lib/components/**/*.svelte` - Component files
 - JSDoc comments and prop definitions
 - Svelte 5 runes usage analysis
 
 ### 3. Architecture Documentation (`docs/technical/architecture/`)
+
 - **ADR Index**: Architecture Decision Records
 - **Decision Templates**: Standardized decision documentation
 - **System Overview**: High-level architecture diagrams
 - **Design Patterns**: Common patterns and practices
 
 **Generated from:**
+
 - `/docs/technical/architecture/decisions/*.md` - Existing ADRs
 - Codebase analysis for architectural patterns
 
 ### 4. Monitoring Documentation (`docs/technical/deployment/`)
+
 - **Metrics Reference**: Complete list of tracked metrics
 - **Alerts Guide**: Alert thresholds and procedures
 - **Runbooks**: Operational response procedures
 - **Performance Monitoring**: System health dashboards
 
 **Generated from:**
+
 - System configuration analysis
 - Monitoring setup and alert definitions
 - Operational procedures and best practices
 
 ### 5. Database Documentation (`docs/technical/database/`)
+
 - **Schema Documentation**: Complete database schema
 - **Type Definitions**: Generated TypeScript types
 - **Migration Guides**: Schema change procedures
 - **Query Examples**: Common database operations
 
 **Generated from:**
+
 - `/src/lib/database.schema.ts` - Schema definitions
 - `/src/lib/database.types.ts` - Type definitions
 
@@ -98,11 +110,13 @@ pnpm run gen:monitoring-docs
 ### GitHub Actions Integration
 
 Documentation is automatically generated on:
+
 - Push to `main` or `develop` branches
 - Changes to API routes, schemas, or components
 - Pull request creation
 
 The CI pipeline:
+
 1. Generates updated documentation
 2. Validates all links and references
 3. Checks documentation coverage
@@ -111,6 +125,7 @@ The CI pipeline:
 ### Development Watching
 
 During development, the watch system monitors:
+
 - API route changes → Regenerates API docs
 - Component changes → Updates component docs
 - Schema changes → Regenerates database docs
@@ -119,6 +134,7 @@ During development, the watch system monitors:
 ### Validation and Quality Checks
 
 The system includes comprehensive validation:
+
 - **Link Validation**: Checks all internal and external links
 - **Coverage Analysis**: Ensures all code is documented
 - **Format Verification**: Maintains consistent documentation style
@@ -128,38 +144,39 @@ The system includes comprehensive validation:
 
 ### Generation Scripts
 
-| Script | Purpose | Source Files |
-|--------|---------|--------------|
-| `gen:api-docs` | API endpoint documentation | `/src/routes/api/**/*.ts` |
-| `gen:component-docs` | Svelte component docs | `/src/lib/components/**/*.svelte` |
-| `gen:schema` | Database schema docs | `/src/lib/database.schema.ts` |
-| `gen:adr-index` | Architecture decisions | `/docs/technical/architecture/decisions/` |
-| `gen:monitoring-docs` | Operational documentation | System configuration |
-| `gen:docs-master` | Master coordinator | All documentation |
+| Script                | Purpose                    | Source Files                              |
+| --------------------- | -------------------------- | ----------------------------------------- |
+| `gen:api-docs`        | API endpoint documentation | `/src/routes/api/**/*.ts`                 |
+| `gen:component-docs`  | Svelte component docs      | `/src/lib/components/**/*.svelte`         |
+| `gen:schema`          | Database schema docs       | `/src/lib/database.schema.ts`             |
+| `gen:adr-index`       | Architecture decisions     | `/docs/technical/architecture/decisions/` |
+| `gen:monitoring-docs` | Operational documentation  | System configuration                      |
+| `gen:docs-master`     | Master coordinator         | All documentation                         |
 
 ### Watch Scripts
 
-| Script | Purpose | Watched Files |
-|--------|---------|---------------|
-| `docs:watch` | Watch all documentation | Multiple patterns |
-| `watch:schema` | Database schema only | Schema and type files |
-| `watch:api` | API routes only | `/src/routes/api/` |
-| `watch:components` | Components only | `/src/lib/components/` |
+| Script             | Purpose                 | Watched Files          |
+| ------------------ | ----------------------- | ---------------------- |
+| `docs:watch`       | Watch all documentation | Multiple patterns      |
+| `watch:schema`     | Database schema only    | Schema and type files  |
+| `watch:api`        | API routes only         | `/src/routes/api/`     |
+| `watch:components` | Components only         | `/src/lib/components/` |
 
 ### Validation Scripts
 
-| Script | Purpose | Scope |
-|--------|---------|-------|
-| `validate:docs-links` | Check all links | All documentation files |
-| `check:docs-coverage` | Coverage analysis | Entire codebase |
-| `lint:docs` | Format validation | Markdown files |
-| `docs:validate` | Complete validation | All checks combined |
+| Script                | Purpose             | Scope                   |
+| --------------------- | ------------------- | ----------------------- |
+| `validate:docs-links` | Check all links     | All documentation files |
+| `check:docs-coverage` | Coverage analysis   | Entire codebase         |
+| `lint:docs`           | Format validation   | Markdown files          |
+| `docs:validate`       | Complete validation | All checks combined     |
 
 ## Configuration
 
 ### GitHub Actions
 
 The documentation workflow (`.github/workflows/docs.yml`) is configured to:
+
 - Run on code changes affecting documentation
 - Generate comprehensive reports
 - Automatically commit updates
@@ -168,6 +185,7 @@ The documentation workflow (`.github/workflows/docs.yml`) is configured to:
 ### Watch Configuration
 
 The watch system can be customized in `/scripts/watch-docs.ts`:
+
 - Add new file patterns to monitor
 - Adjust debounce timings
 - Configure generation scripts per pattern
@@ -196,52 +214,57 @@ docs/
 To ensure high-quality generated documentation:
 
 1. **Use JSDoc Comments**:
-   ```typescript
-   /**
-    * Processes a brain dump and extracts actionable tasks
-    * @param input - The raw brain dump text
-    * @param options - Processing configuration
-    * @returns Structured project and task data
-    */
-   export async function processBrainDump(input: string, options: ProcessingOptions) {
-     // Implementation
-   }
-   ```
+
+    ```typescript
+    /**
+     * Processes a brain dump and extracts actionable tasks
+     * @param input - The raw brain dump text
+     * @param options - Processing configuration
+     * @returns Structured project and task data
+     */
+    export async function processBrainDump(input: string, options: ProcessingOptions) {
+    	// Implementation
+    }
+    ```
 
 2. **Document Component Props**:
-   ```svelte
-   <script lang="ts">
-   /**
-    * @component BrainDumpModal
-    * @description Main interface for capturing and processing brain dumps
-    */
 
-   interface Props {
-     /** Whether the modal is currently open */
-     open: boolean;
-     /** Callback when processing completes */
-     onComplete: (result: BrainDumpResult) => void;
-   }
+    ```svelte
+    <script lang="ts">
+    	/**
+    	 * @component BrainDumpModal
+    	 * @description Main interface for capturing and processing brain dumps
+    	 */
 
-   let { open, onComplete }: Props = $props();
-   </script>
-   ```
+    	interface Props {
+    		/** Whether the modal is currently open */
+    		open: boolean;
+    		/** Callback when processing completes */
+    		onComplete: (result: BrainDumpResult) => void;
+    	}
+
+    	let { open, onComplete }: Props = $props();
+    </script>
+    ```
 
 3. **Maintain Clear API Responses**:
-   ```typescript
-   // In API routes, use consistent response patterns
-   export async function GET({ params }) {
-     try {
-       const data = await getProject(params.id);
-       return json({ success: true, data });
-     } catch (error) {
-       return json({
-         success: false,
-         error: { message: error.message }
-       }, { status: 500 });
-     }
-   }
-   ```
+    ```typescript
+    // In API routes, use consistent response patterns
+    export async function GET({ params }) {
+    	try {
+    		const data = await getProject(params.id);
+    		return json({ success: true, data });
+    	} catch (error) {
+    		return json(
+    			{
+    				success: false,
+    				error: { message: error.message }
+    			},
+    			{ status: 500 }
+    		);
+    	}
+    }
+    ```
 
 ### Documentation Maintenance
 
@@ -255,6 +278,7 @@ To ensure high-quality generated documentation:
 ### Common Issues
 
 **Generation Fails with Type Errors**
+
 ```bash
 # Fix TypeScript errors first
 pnpm run check
@@ -264,6 +288,7 @@ pnpm run docs:generate
 ```
 
 **Watch Script Not Responding**
+
 ```bash
 # Restart the watch process
 # Kill existing process and restart
@@ -271,6 +296,7 @@ pnpm run docs:watch
 ```
 
 **Broken Links After Refactoring**
+
 ```bash
 # Validate and fix links
 pnpm run validate:docs-links
@@ -282,6 +308,7 @@ pnpm run check:docs-coverage
 ### Performance Optimization
 
 For large codebases:
+
 - Use `--skip-optional` to skip non-critical documentation
 - Run generation in parallel with `--parallel` flag
 - Focus on specific categories with `--categories` option
@@ -299,6 +326,7 @@ pnpm run gen:docs-master -- --categories api
 ### Pre-commit Hooks
 
 Add to `.husky/pre-commit`:
+
 ```bash
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
@@ -314,8 +342,10 @@ Configure your IDE to run documentation generation on file save for rapid feedba
 ### Pull Request Templates
 
 Include documentation checks in PR templates:
+
 ```markdown
 ## Documentation
+
 - [ ] Updated relevant documentation
 - [ ] Ran `pnpm run docs:validate`
 - [ ] Verified all links work
@@ -335,6 +365,7 @@ Include documentation checks in PR templates:
 ### Custom Documentation Types
 
 The system is extensible for new documentation types:
+
 - Business process documentation
 - User guides and tutorials
 - API client libraries
@@ -342,4 +373,4 @@ The system is extensible for new documentation types:
 
 ---
 
-*This documentation system ensures BuildOS maintains high-quality, up-to-date documentation that evolves with the codebase.*
+_This documentation system ensures BuildOS maintains high-quality, up-to-date documentation that evolves with the codebase._

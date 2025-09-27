@@ -507,7 +507,6 @@
 			brainDumpV2Store.releaseMutex();
 		}
 
-
 		// Reset abort controller
 		abortController = null;
 	}

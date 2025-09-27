@@ -1,6 +1,5 @@
 # Build OS - Personal Productivity Operating System
 
-
 ## Lets go
 
 **A comprehensive productivity platform with AI-powered insights, project management, and intelligent task automation.**

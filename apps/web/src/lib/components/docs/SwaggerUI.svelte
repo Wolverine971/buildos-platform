@@ -23,11 +23,8 @@
 			SwaggerUIBundle.default({
 				url: specUrl,
 				dom_id: '#swagger-ui-container',
-				presets: [
-					SwaggerUIBundle.default.presets.apis,
-					SwaggerUIStandalonePreset.default
-				],
-				layout: "StandaloneLayout",
+				presets: [SwaggerUIBundle.default.presets.apis, SwaggerUIStandalonePreset.default],
+				layout: 'StandaloneLayout',
 				deepLinking: true,
 				showExtensions: true,
 				showCommonExtensions: true,
@@ -37,11 +34,11 @@
 				supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
 				docExpansion: 'list',
 				filter: true,
-				onComplete: function() {
+				onComplete: function () {
 					console.log('Swagger UI loaded successfully');
 					isLoading = false;
 				},
-				onFailure: function(err: any) {
+				onFailure: function (err: any) {
 					console.error('Swagger UI failed to load:', err);
 					error = 'Failed to load API documentation';
 					isLoading = false;
@@ -56,7 +53,11 @@
 </script>
 
 <svelte:head>
-	<link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css" />
+	<link
+		rel="stylesheet"
+		type="text/css"
+		href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css"
+	/>
 </svelte:head>
 
 <div class="swagger-ui-wrapper">
@@ -141,8 +142,12 @@
 	}
 
 	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 
 	.error-container {

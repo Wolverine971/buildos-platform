@@ -6,10 +6,12 @@ Total routes: 134
 ## Routes by category:
 
 ### account
+
 - PUT /api/account/password
 - PUT, DELETE /api/account/settings
 
 ### admin
+
 - GET /api/admin/analytics/brief-stats
 - GET /api/admin/analytics/comprehensive
 - GET /api/admin/analytics/daily-signups
@@ -46,20 +48,25 @@ Total routes: 134
 - GET /api/admin/users/{userId}/activity
 
 ### agent
+
 - POST, GET /api/agent/google-calendar
 
 ### analytics
+
 - GET /api/analytics/briefs
 
 ### auth
+
 - POST /api/auth/login
 - POST /api/auth/register
 - GET /api/auth/user
 
 ### beta
+
 - POST, GET /api/beta/signup
 
 ### braindumps
+
 - GET /api/braindumps
 - GET, PUT, DELETE /api/braindumps/{id}
 - PATCH, DELETE /api/braindumps/{id}/link
@@ -72,19 +79,23 @@ Total routes: 134
 - POST /api/braindumps/stream-short
 
 ### brief-jobs
+
 - GET /api/brief-jobs
 - GET /api/brief-jobs/{id}
 - POST /api/brief-jobs/cancel
 - GET /api/brief-jobs/next-scheduled
 
 ### brief-preferences
+
 - GET, POST, PUT /api/brief-preferences
 
 ### brief-templates
+
 - GET, POST /api/brief-templates/project
 - GET, PUT, DELETE /api/brief-templates/project/{id}
 
 ### calendar
+
 - POST, GET /api/calendar
 - POST, GET /api/calendar/process
 - GET /api/calendar/projects
@@ -93,11 +104,13 @@ Total routes: 134
 - POST, DELETE /api/calendar/webhook
 
 ### cron
+
 - GET /api/cron/dunning
 - POST /api/cron/renew-webhooks
 - GET /api/cron/trial-reminders
 
 ### daily-briefs
+
 - GET /api/daily-briefs
 - GET, PUT, DELETE /api/daily-briefs/{id}
 - POST /api/daily-briefs/cancel
@@ -109,34 +122,43 @@ Total routes: 134
 - GET /api/daily-briefs/status
 
 ### dashboard
+
 - GET /api/dashboard
 - GET /api/dashboard/bottom-sections
 
 ### email-tracking
+
 - GET /api/email-tracking/{tracking_id}
 
 ### feedback
+
 - POST /api/feedback
 
 ### health
+
 - GET /api/health
 
 ### notes
+
 - POST, GET /api/notes
 - PUT, DELETE, GET /api/notes/{id}
 - PATCH, DELETE /api/notes/{id}/link
 
 ### onboarding
+
 - POST /api/onboarding
 
 ### phases-jobs
+
 - GET, POST /api/phases-jobs
 
 ### project-briefs
+
 - GET /api/project-briefs
 - GET, DELETE /api/project-briefs/{id}
 
 ### projects
+
 - GET, POST /api/projects
 - GET, PUT, DELETE /api/projects/{id}
 - GET /api/projects/{id}/briefs
@@ -172,29 +194,37 @@ Total routes: 134
 - GET /api/projects/search
 
 ### queue-jobs
+
 - GET, DELETE /api/queue-jobs/{id}
 
 ### search
+
 - POST /api/search
 - POST /api/search/more
 
 ### stripe
+
 - POST /api/stripe/checkout
 - GET /api/stripe/invoice/{id}/download
 - POST /api/stripe/portal
 - POST /api/stripe/webhook
 
 ### tasks
+
 - GET, PATCH, DELETE /api/tasks/{id}/recurrence
 
 ### templates
+
 - GET, POST, PUT, DELETE /api/templates
 
 ### transcribe
+
 - POST /api/transcribe
 
 ### users
+
 - GET, PUT /api/users/calendar-preferences
 
 ### visitors
+
 - POST /api/visitors

@@ -185,7 +185,6 @@ async function sendBetaApprovalNotification(signupData: any) {
 				html: emailHTML
 			};
 
-			
 			try {
 				const result = await transporter.sendMail(mailOptions);
 			} catch (emailError: any) {

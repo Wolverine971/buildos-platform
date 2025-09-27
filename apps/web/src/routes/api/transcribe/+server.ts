@@ -118,7 +118,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		});
 
 		const duration = Date.now() - startTime;
-		
 
 		if (transcription?.text) {
 			return ApiResponse.success({

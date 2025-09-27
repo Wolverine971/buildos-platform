@@ -1,2 +1,3 @@
 # Projects API
-PLACEHOLDER - Document /api/projects/* endpoints
+
+PLACEHOLDER - Document /api/projects/\* endpoints

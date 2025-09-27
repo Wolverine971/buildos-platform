@@ -47,9 +47,10 @@ async function scanRoutes(dir: string, basePath = ''): Promise<RouteInfo[]> {
 
 		if (entry.isDirectory()) {
 			// Handle directory-based routing (including dynamic routes)
-			const nestedPath = entry.name.startsWith('[') && entry.name.endsWith(']')
-				? `${basePath}/{${entry.name.slice(1, -1)}}` // Convert [id] to {id}
-				: `${basePath}/${entry.name}`;
+			const nestedPath =
+				entry.name.startsWith('[') && entry.name.endsWith(']')
+					? `${basePath}/{${entry.name.slice(1, -1)}}` // Convert [id] to {id}
+					: `${basePath}/${entry.name}`;
 
 			const nestedRoutes = await scanRoutes(fullPath, nestedPath);
 			routes.push(...nestedRoutes);
@@ -90,8 +91,11 @@ async function analyzeRouteFile(filePath: string, routePath: string): Promise<Ro
 		babelTraverse(ast, {
 			ExportNamedDeclaration(path) {
 				if (t.isVariableDeclaration(path.node.declaration)) {
-					path.node.declaration.declarations.forEach(declarator => {
-						if (t.isIdentifier(declarator.id) && HTTP_METHODS.includes(declarator.id.name)) {
+					path.node.declaration.declarations.forEach((declarator) => {
+						if (
+							t.isIdentifier(declarator.id) &&
+							HTTP_METHODS.includes(declarator.id.name)
+						) {
 							routeInfo.methods.push(declarator.id.name);
 						}
 					});
@@ -103,8 +107,10 @@ async function analyzeRouteFile(filePath: string, routePath: string): Promise<Ro
 					const obj = path.node.callee.object;
 					const prop = path.node.callee.property;
 
-					if (t.isIdentifier(obj, { name: 'ApiResponse' }) &&
-						t.isIdentifier(prop, { name: 'unauthorized' })) {
+					if (
+						t.isIdentifier(obj, { name: 'ApiResponse' }) &&
+						t.isIdentifier(prop, { name: 'unauthorized' })
+					) {
 						routeInfo.authRequired = true;
 					}
 				}
@@ -113,9 +119,8 @@ async function analyzeRouteFile(filePath: string, routePath: string): Promise<Ro
 
 		// Extract JSDoc comments and other metadata
 		const comments = ast.comments || [];
-		const fileComment = comments.find(comment =>
-			comment.value.includes('@description') ||
-			comment.value.includes('*')
+		const fileComment = comments.find(
+			(comment) => comment.value.includes('@description') || comment.value.includes('*')
 		);
 
 		if (fileComment) {
@@ -130,7 +135,6 @@ async function analyzeRouteFile(filePath: string, routePath: string): Promise<Ro
 
 		// Extract TypeScript interfaces and types
 		routeInfo.types = extractTypes(content);
-
 	} catch (error) {
 		console.warn(`Warning: Could not parse ${filePath}:`, error);
 	}
@@ -139,15 +143,15 @@ async function analyzeRouteFile(filePath: string, routePath: string): Promise<Ro
 }
 
 function extractDescription(comment: string): string {
-	const lines = comment.split('\n').map(line => line.trim().replace(/^\*\s?/, ''));
-	const descriptionLine = lines.find(line => line.includes('@description'));
+	const lines = comment.split('\n').map((line) => line.trim().replace(/^\*\s?/, ''));
+	const descriptionLine = lines.find((line) => line.includes('@description'));
 
 	if (descriptionLine) {
 		return descriptionLine.replace('@description', '').trim();
 	}
 
 	// Fallback: use first non-empty line
-	const firstLine = lines.find(line => line && !line.startsWith('//'));
+	const firstLine = lines.find((line) => line && !line.startsWith('//'));
 	return firstLine || '';
 }
 
@@ -157,7 +161,7 @@ function extractParameters(content: string, routePath: string): Parameter[] {
 	// Extract path parameters from route
 	const pathParams = routePath.match(/\{(\w+)\}/g);
 	if (pathParams) {
-		pathParams.forEach(param => {
+		pathParams.forEach((param) => {
 			const name = param.slice(1, -1);
 			parameters.push({
 				name,
@@ -174,7 +178,7 @@ function extractParameters(content: string, routePath: string): Parameter[] {
 	let match;
 	while ((match = queryParamRegex.exec(content)) !== null) {
 		const name = match[1];
-		if (!parameters.some(p => p.name === name)) {
+		if (!parameters.some((p) => p.name === name)) {
 			parameters.push({
 				name,
 				type: 'string',
@@ -197,7 +201,11 @@ function extractResponses(content: string): Response[] {
 		{ pattern: /ApiResponse\.unauthorized/, status: 401, description: 'Unauthorized' },
 		{ pattern: /ApiResponse\.notFound/, status: 404, description: 'Resource not found' },
 		{ pattern: /ApiResponse\.databaseError/, status: 500, description: 'Database error' },
-		{ pattern: /ApiResponse\.internalError/, status: 500, description: 'Internal server error' },
+		{
+			pattern: /ApiResponse\.internalError/,
+			status: 500,
+			description: 'Internal server error'
+		},
 		{ pattern: /ApiResponse\.badRequest/, status: 400, description: 'Bad request' }
 	];
 
@@ -233,13 +241,13 @@ This documentation is automatically generated from the SvelteKit route structure
 
 Total endpoints: ${routes.length}
 
-${sortedRoutes.map(route => `- [${route.methods.join(', ')} ${route.path}](#${route.path.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()})`).join('\n')}
+${sortedRoutes.map((route) => `- [${route.methods.join(', ')} ${route.path}](#${route.path.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()})`).join('\n')}
 
 ---
 
 `;
 
-	sortedRoutes.forEach(route => {
+	sortedRoutes.forEach((route) => {
 		markdown += `## ${route.methods.join(', ')} ${route.path}
 
 **File:** \`${route.relativePath}\`
@@ -255,7 +263,7 @@ ${route.authRequired ? '🔒 **Authentication Required**\n\n' : ''}
 		if (route.parameters.length > 0) {
 			markdown += `| Name | Type | Location | Required | Description |
 |------|------|----------|----------|-------------|
-${route.parameters.map(p => `| ${p.name} | ${p.type} | ${p.location} | ${p.required ? 'Yes' : 'No'} | ${p.description} |`).join('\n')}
+${route.parameters.map((p) => `| ${p.name} | ${p.type} | ${p.location} | ${p.required ? 'Yes' : 'No'} | ${p.description} |`).join('\n')}
 
 `;
 		} else {
@@ -267,7 +275,7 @@ ${route.parameters.map(p => `| ${p.name} | ${p.type} | ${p.location} | ${p.requi
 		if (route.responses.length > 0) {
 			markdown += `| Status | Description | Content Type |
 |--------|-------------|--------------|
-${route.responses.map(r => `| ${r.status} | ${r.description} | ${r.type} |`).join('\n')}
+${route.responses.map((r) => `| ${r.status} | ${r.description} | ${r.type} |`).join('\n')}
 
 `;
 		} else {
@@ -316,17 +324,17 @@ function generateOpenAPISpec(routes: RouteInfo[]): any {
 		}
 	};
 
-	routes.forEach(route => {
+	routes.forEach((route) => {
 		const pathKey = route.path.replace(/^\/api/, '') || '/';
 
 		if (!spec.paths[pathKey]) {
 			spec.paths[pathKey] = {};
 		}
 
-		route.methods.forEach(method => {
+		route.methods.forEach((method) => {
 			const operation: any = {
 				summary: route.description || `${method} ${route.path}`,
-				parameters: route.parameters.map(p => ({
+				parameters: route.parameters.map((p) => ({
 					name: p.name,
 					in: p.location,
 					required: p.required,
@@ -340,7 +348,7 @@ function generateOpenAPISpec(routes: RouteInfo[]): any {
 				operation.security = [{ cookieAuth: [] }];
 			}
 
-			route.responses.forEach(r => {
+			route.responses.forEach((r) => {
 				operation.responses[r.status] = {
 					description: r.description,
 					content: {
@@ -404,15 +412,21 @@ Total routes: ${routes.length}
 ## Routes by category:
 
 ${Object.entries(
-	routes.reduce((acc, route) => {
-		const category = route.path.split('/')[2] || 'root';
-		if (!acc[category]) acc[category] = [];
-		acc[category].push(route);
-		return acc;
-	}, {} as Record<string, RouteInfo[]>)
-).map(([category, routes]) =>
-	`### ${category}\n${routes.map(r => `- ${r.methods.join(', ')} ${r.path}`).join('\n')}`
-).join('\n\n')}
+	routes.reduce(
+		(acc, route) => {
+			const category = route.path.split('/')[2] || 'root';
+			if (!acc[category]) acc[category] = [];
+			acc[category].push(route);
+			return acc;
+		},
+		{} as Record<string, RouteInfo[]>
+	)
+)
+	.map(
+		([category, routes]) =>
+			`### ${category}\n${routes.map((r) => `- ${r.methods.join(', ')} ${r.path}`).join('\n')}`
+	)
+	.join('\n\n')}
 `;
 
 		await writeFile(join(docsDir, 'summary.md'), summary);
@@ -421,7 +435,6 @@ ${Object.entries(
 		console.log('\n🎉 API documentation generation complete!');
 		console.log(`📁 Files generated in: ${docsDir}`);
 		console.log(`📁 OpenAPI spec: static/openapi.json`);
-
 	} catch (error) {
 		console.error('❌ Error generating documentation:', error);
 		process.exit(1);

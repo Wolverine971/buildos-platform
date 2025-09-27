@@ -11,19 +11,23 @@ The prompt system is built around modular, reusable components that can be compo
 ## 📁 Directory Structure
 
 ### `/brain-dump/` - Brain Dump Processing
+
 Contains prompts for the core brain dump feature:
 
 #### `/new-project/` - New Project Creation
+
 - Prompts for creating projects from scratch
 - Handles different input lengths and complexity levels
 - Includes phase generation and task organization
 
 #### `/existing-project/` - Project Updates
+
 - Prompts for updating existing projects
 - Includes dual-processing architecture for efficiency
 - Handles both major updates and quick task additions
 
 ### `/daily-briefs/` - Daily Brief Generation
+
 - Prompts for generating personalized daily summaries
 - Includes context awareness and user preference handling
 - Email formatting and delivery templates

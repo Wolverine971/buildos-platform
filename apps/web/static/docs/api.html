@@ -1,104 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BuildOS API Documentation</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .header {
-            background: #1a1a1a;
-            color: white;
-            padding: 1rem 2rem;
-            border-bottom: 1px solid #333;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-        }
-        .header p {
-            margin: 0.5rem 0 0 0;
-            opacity: 0.8;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .nav {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .nav a {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background: #f0f0f0;
-            color: #333;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-        .nav a:hover {
-            background: #e0e0e0;
-        }
-        .nav a.active {
-            background: #007acc;
-            color: white;
-        }
-        #swagger-ui {
-            min-height: 600px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>BuildOS API Documentation</h1>
-        <p>Interactive API documentation and testing interface</p>
-    </div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>BuildOS API Documentation</title>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			}
+			.header {
+				background: #1a1a1a;
+				color: white;
+				padding: 1rem 2rem;
+				border-bottom: 1px solid #333;
+			}
+			.header h1 {
+				margin: 0;
+				font-size: 1.5rem;
+			}
+			.header p {
+				margin: 0.5rem 0 0 0;
+				opacity: 0.8;
+			}
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+			}
+			.nav {
+				display: flex;
+				gap: 1rem;
+				margin-bottom: 2rem;
+			}
+			.nav a {
+				display: inline-block;
+				padding: 0.5rem 1rem;
+				background: #f0f0f0;
+				color: #333;
+				text-decoration: none;
+				border-radius: 4px;
+				transition: background 0.2s;
+			}
+			.nav a:hover {
+				background: #e0e0e0;
+			}
+			.nav a.active {
+				background: #007acc;
+				color: white;
+			}
+			#swagger-ui {
+				min-height: 600px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="header">
+			<h1>BuildOS API Documentation</h1>
+			<p>Interactive API documentation and testing interface</p>
+		</div>
 
-    <div class="container">
-        <div class="nav">
-            <a href="#" class="active" onclick="showSwagger()">Interactive API</a>
-            <a href="/docs/technical/api/routes-reference.md" target="_blank">Route Reference</a>
-            <a href="/docs/technical/api/types.md" target="_blank">Type Definitions</a>
-            <a href="/docs/technical/api/templates.md" target="_blank">Request/Response Templates</a>
-        </div>
+		<div class="container">
+			<div class="nav">
+				<a href="#" class="active" onclick="showSwagger()">Interactive API</a>
+				<a href="/docs/technical/api/routes-reference.md" target="_blank"
+					>Route Reference</a
+				>
+				<a href="/docs/technical/api/types.md" target="_blank">Type Definitions</a>
+				<a href="/docs/technical/api/templates.md" target="_blank"
+					>Request/Response Templates</a
+				>
+			</div>
 
-        <div id="swagger-ui"></div>
-    </div>
+			<div id="swagger-ui"></div>
+		</div>
 
-    <script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js"></script>
-    <script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-standalone-preset.js"></script>
-    <script>
-        function showSwagger() {
-            SwaggerUIBundle({
-                url: '/openapi.json',
-                dom_id: '#swagger-ui',
-                presets: [
-                    SwaggerUIBundle.presets.apis,
-                    SwaggerUIStandalonePreset
-                ],
-                layout: "StandaloneLayout",
-                deepLinking: true,
-                showExtensions: true,
-                showCommonExtensions: true,
-                defaultModelsExpandDepth: 2,
-                defaultModelExpandDepth: 2,
-                tryItOutEnabled: true,
-                supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
-                onComplete: function() {
-                    console.log('Swagger UI loaded');
-                }
-            });
-        }
+		<script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js"></script>
+		<script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-standalone-preset.js"></script>
+		<script>
+			function showSwagger() {
+				SwaggerUIBundle({
+					url: '/openapi.json',
+					dom_id: '#swagger-ui',
+					presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+					layout: 'StandaloneLayout',
+					deepLinking: true,
+					showExtensions: true,
+					showCommonExtensions: true,
+					defaultModelsExpandDepth: 2,
+					defaultModelExpandDepth: 2,
+					tryItOutEnabled: true,
+					supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+					onComplete: function () {
+						console.log('Swagger UI loaded');
+					}
+				});
+			}
 
-        // Initialize Swagger UI on page load
-        document.addEventListener('DOMContentLoaded', showSwagger);
-    </script>
-</body>
+			// Initialize Swagger UI on page load
+			document.addEventListener('DOMContentLoaded', showSwagger);
+		</script>
+	</body>
 </html>

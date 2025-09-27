@@ -47,7 +47,7 @@ class ADRGenerator {
 		if (!existsSync(this.adrDir)) return;
 
 		const files = await readdir(this.adrDir);
-		const adrFiles = files.filter(f => f.match(/^ADR-\d{3}-.*\.md$/));
+		const adrFiles = files.filter((f) => f.match(/^ADR-\d{3}-.*\.md$/));
 
 		for (const file of adrFiles) {
 			const filePath = join(this.adrDir, file);
@@ -85,7 +85,8 @@ class ADRGenerator {
 		// Extract sections
 		const context = this.extractSection(content, 'Context') || 'No context provided';
 		const decision = this.extractSection(content, 'Decision') || 'No decision documented';
-		const consequences = this.extractSection(content, 'Consequences') || 'No consequences documented';
+		const consequences =
+			this.extractSection(content, 'Consequences') || 'No consequences documented';
 
 		return {
 			number,
@@ -110,42 +111,60 @@ class ADRGenerator {
 			{
 				number: 1,
 				title: 'Use Supabase for Backend Services',
-				context: 'BuildOS needs a scalable backend for user management, database, and real-time features. We considered custom Node.js backend, Firebase, and Supabase.',
-				decision: 'We will use Supabase as our primary backend service. It provides PostgreSQL database, authentication, real-time subscriptions, and row-level security.',
-				consequences: 'Positive: Rapid development, built-in auth, real-time features, SQL familiarity. Negative: Vendor lock-in, less control over infrastructure.'
+				context:
+					'BuildOS needs a scalable backend for user management, database, and real-time features. We considered custom Node.js backend, Firebase, and Supabase.',
+				decision:
+					'We will use Supabase as our primary backend service. It provides PostgreSQL database, authentication, real-time subscriptions, and row-level security.',
+				consequences:
+					'Positive: Rapid development, built-in auth, real-time features, SQL familiarity. Negative: Vendor lock-in, less control over infrastructure.'
 			},
 			{
 				number: 2,
 				title: 'Implement Dual-Processing for Brain Dumps',
-				context: 'Initial brain dump processing was inconsistent in extracting both project context and actionable tasks. Single-stage processing often missed nuanced requirements.',
-				decision: 'Implement a two-stage processing system: Stage 1 extracts overall context and project intent, Stage 2 extracts specific tasks and actions based on the context.',
-				consequences: 'Positive: Higher accuracy, better task extraction, clearer project context. Negative: Increased processing time, higher OpenAI API costs.'
+				context:
+					'Initial brain dump processing was inconsistent in extracting both project context and actionable tasks. Single-stage processing often missed nuanced requirements.',
+				decision:
+					'Implement a two-stage processing system: Stage 1 extracts overall context and project intent, Stage 2 extracts specific tasks and actions based on the context.',
+				consequences:
+					'Positive: Higher accuracy, better task extraction, clearer project context. Negative: Increased processing time, higher OpenAI API costs.'
 			},
 			{
 				number: 3,
 				title: 'Use Project-Specific Google Calendars',
-				context: 'Users wanted to segregate tasks by project in their calendar systems. Single calendar integration was insufficient for project organization.',
-				decision: 'Each project can optionally have its own Google Calendar. Tasks are scheduled to project-specific calendars when enabled.',
-				consequences: 'Positive: Better organization, project isolation, user control. Negative: Increased complexity, more calendar management overhead.'
+				context:
+					'Users wanted to segregate tasks by project in their calendar systems. Single calendar integration was insufficient for project organization.',
+				decision:
+					'Each project can optionally have its own Google Calendar. Tasks are scheduled to project-specific calendars when enabled.',
+				consequences:
+					'Positive: Better organization, project isolation, user control. Negative: Increased complexity, more calendar management overhead.'
 			},
 			{
 				number: 4,
 				title: 'Adopt Svelte 5 with Runes',
-				context: 'BuildOS was built with Svelte 4. Svelte 5 introduced runes for better state management and improved developer experience.',
-				decision: 'Migrate to Svelte 5 and adopt the new runes syntax ($state, $derived, $effect, $props) for all new components.',
-				consequences: 'Positive: Better state management, improved performance, future-proofing. Negative: Migration effort, learning curve, potential breaking changes.'
+				context:
+					'BuildOS was built with Svelte 4. Svelte 5 introduced runes for better state management and improved developer experience.',
+				decision:
+					'Migrate to Svelte 5 and adopt the new runes syntax ($state, $derived, $effect, $props) for all new components.',
+				consequences:
+					'Positive: Better state management, improved performance, future-proofing. Negative: Migration effort, learning curve, potential breaking changes.'
 			},
 			{
 				number: 5,
 				title: 'Use OpenAI GPT-4 for AI Processing',
-				context: 'Brain dump processing requires sophisticated natural language understanding. We evaluated OpenAI GPT-4, Claude, and local models.',
-				decision: 'Use OpenAI GPT-4 as the primary AI model for brain dump processing, with fallback to GPT-3.5 for cost optimization.',
-				consequences: 'Positive: Best-in-class understanding, reliable API, good documentation. Negative: API costs, external dependency, rate limits.'
+				context:
+					'Brain dump processing requires sophisticated natural language understanding. We evaluated OpenAI GPT-4, Claude, and local models.',
+				decision:
+					'Use OpenAI GPT-4 as the primary AI model for brain dump processing, with fallback to GPT-3.5 for cost optimization.',
+				consequences:
+					'Positive: Best-in-class understanding, reliable API, good documentation. Negative: API costs, external dependency, rate limits.'
 			}
 		];
 
 		for (const adrData of defaultADRs) {
-			const filename = `ADR-${adrData.number.toString().padStart(3, '0')}-${adrData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md`;
+			const filename = `ADR-${adrData.number.toString().padStart(3, '0')}-${adrData.title
+				.toLowerCase()
+				.replace(/\s+/g, '-')
+				.replace(/[^a-z0-9-]/g, '')}.md`;
 			const filePath = join(this.adrDir, filename);
 
 			if (!existsSync(filePath)) {
@@ -163,7 +182,13 @@ class ADRGenerator {
 		}
 	}
 
-	private generateADRContent(adr: { number: number; title: string; context: string; decision: string; consequences: string }): string {
+	private generateADRContent(adr: {
+		number: number;
+		title: string;
+		context: string;
+		decision: string;
+		consequences: string;
+	}): string {
 		return `# ADR-${adr.number.toString().padStart(3, '0')}: ${adr.title}
 
 **Status:** Accepted
@@ -215,9 +240,15 @@ Each ADR follows a standard format:
 
 | Number | Title | Status | Date |
 |--------|-------|--------|------|
-${this.adrs.map(adr =>
-	`| [ADR-${adr.number.toString().padStart(3, '0')}](./ADR-${adr.number.toString().padStart(3, '0')}-${adr.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md) | ${adr.title} | ${adr.status} | ${adr.date} |`
-).join('\n')}
+${this.adrs
+	.map(
+		(adr) =>
+			`| [ADR-${adr.number.toString().padStart(3, '0')}](./ADR-${adr.number.toString().padStart(3, '0')}-${adr.title
+				.toLowerCase()
+				.replace(/\s+/g, '-')
+				.replace(/[^a-z0-9-]/g, '')}.md) | ${adr.title} | ${adr.status} | ${adr.date} |`
+	)
+	.join('\n')}
 
 ## ADR Lifecycle
 
@@ -231,7 +262,7 @@ ${this.adrs.map(adr =>
 To create a new ADR:
 
 1. Use the [ADR template](./ADR-TEMPLATE.md)
-2. Number it sequentially (next number: ${Math.max(...this.adrs.map(a => a.number), 0) + 1})
+2. Number it sequentially (next number: ${Math.max(...this.adrs.map((a) => a.number), 0) + 1})
 3. Follow the naming convention: \`ADR-XXX-short-descriptive-title.md\`
 4. Submit as a pull request for team review
 
@@ -239,37 +270,106 @@ To create a new ADR:
 
 ### By Status
 
-**Accepted** (${this.adrs.filter(a => a.status === 'Accepted').length})
-${this.adrs.filter(a => a.status === 'Accepted').map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n')}
+**Accepted** (${this.adrs.filter((a) => a.status === 'Accepted').length})
+${this.adrs
+	.filter((a) => a.status === 'Accepted')
+	.map(
+		(a) =>
+			`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+				.toLowerCase()
+				.replace(/\s+/g, '-')
+				.replace(/[^a-z0-9-]/g, '')}.md)`
+	)
+	.join('\n')}
 
-**Proposed** (${this.adrs.filter(a => a.status === 'Proposed').length})
-${this.adrs.filter(a => a.status === 'Proposed').map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n') || '- None'}
+**Proposed** (${this.adrs.filter((a) => a.status === 'Proposed').length})
+${
+	this.adrs
+		.filter((a) => a.status === 'Proposed')
+		.map(
+			(a) =>
+				`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')}.md)`
+		)
+		.join('\n') || '- None'
+}
 
 ### By Topic
 
 **Backend & Database**
-${this.adrs.filter(a => a.title.toLowerCase().includes('supabase') || a.title.toLowerCase().includes('database')).map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n') || '- None'}
+${
+	this.adrs
+		.filter(
+			(a) =>
+				a.title.toLowerCase().includes('supabase') ||
+				a.title.toLowerCase().includes('database')
+		)
+		.map(
+			(a) =>
+				`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')}.md)`
+		)
+		.join('\n') || '- None'
+}
 
 **AI & Processing**
-${this.adrs.filter(a => a.title.toLowerCase().includes('ai') || a.title.toLowerCase().includes('processing') || a.title.toLowerCase().includes('openai')).map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n') || '- None'}
+${
+	this.adrs
+		.filter(
+			(a) =>
+				a.title.toLowerCase().includes('ai') ||
+				a.title.toLowerCase().includes('processing') ||
+				a.title.toLowerCase().includes('openai')
+		)
+		.map(
+			(a) =>
+				`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')}.md)`
+		)
+		.join('\n') || '- None'
+}
 
 **Frontend & UI**
-${this.adrs.filter(a => a.title.toLowerCase().includes('svelte') || a.title.toLowerCase().includes('frontend')).map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n') || '- None'}
+${
+	this.adrs
+		.filter(
+			(a) =>
+				a.title.toLowerCase().includes('svelte') ||
+				a.title.toLowerCase().includes('frontend')
+		)
+		.map(
+			(a) =>
+				`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')}.md)`
+		)
+		.join('\n') || '- None'
+}
 
 **Integration & APIs**
-${this.adrs.filter(a => a.title.toLowerCase().includes('calendar') || a.title.toLowerCase().includes('integration')).map(a =>
-	`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.md)`
-).join('\n') || '- None'}
+${
+	this.adrs
+		.filter(
+			(a) =>
+				a.title.toLowerCase().includes('calendar') ||
+				a.title.toLowerCase().includes('integration')
+		)
+		.map(
+			(a) =>
+				`- [ADR-${a.number.toString().padStart(3, '0')}: ${a.title}](./ADR-${a.number.toString().padStart(3, '0')}-${a.title
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')}.md)`
+		)
+		.join('\n') || '- None'
+}
 
 ---
 
