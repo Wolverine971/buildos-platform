@@ -1,5 +1,5 @@
 // worker-queue/src/lib/supabaseQueue.ts
-import type { Database } from './database.types';
+import type { Database } from '@buildos/shared-types';
 import { updateJobProgress } from './progressTracker';
 import { supabase } from './supabase';
 

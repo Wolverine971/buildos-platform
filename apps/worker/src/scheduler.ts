@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 
 import { supabase } from './lib/supabase';
 import { queue } from './worker';
-import type { Database } from './lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 

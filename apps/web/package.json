@@ -123,6 +123,8 @@
 		"pnpm": ">=8.0.0"
 	},
 	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
+		"@buildos/supabase-client": "workspace:*",
 		"@supabase/ssr": "^0.6.1",
 		"@supabase/supabase-js": "^2.53.0",
 		"@tiptap/core": "^3.0.9",

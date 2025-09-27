@@ -4,7 +4,7 @@ import { BriefJobData } from '../shared/queueUtils';
 
 import { format, parseISO } from 'date-fns';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
-import type { Database } from '../../lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { getHoliday } from '../../lib/utils/holiday-finder';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { DailyBriefAnalysisPrompt, DailyBriefAnalysisProject } from './prompts';
