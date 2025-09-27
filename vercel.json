@@ -2,7 +2,6 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"installCommand": "pnpm install --frozen-lockfile",
 	"buildCommand": "pnpm build",
-	"ignoreCommand": "git diff HEAD^ HEAD --quiet -- packages/ apps/web/ turbo.json package.json pnpm-lock.yaml",
 	"crons": [
 		{
 			"path": "/api/cron/dunning",
