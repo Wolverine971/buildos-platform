@@ -107,7 +107,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		const audioBlob = new Blob([await audioFile.arrayBuffer()], { type: audioFile.type });
 		const whisperFile = new File([audioBlob], filename, { type: audioFile.type });
 
-		console.log(`[Transcribe] Sending to OpenAI: ${filename} (${audioFile.size} bytes)`);
+		// console.log(`[Transcribe] Sending to OpenAI: ${filename} (${audioFile.size} bytes)`);
 
 		// Call OpenAI Whisper API with optimized parameters
 		const transcription = await openai.audio.transcriptions.create({
