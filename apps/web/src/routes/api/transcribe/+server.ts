@@ -118,9 +118,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		});
 
 		const duration = Date.now() - startTime;
-		console.log(
-			`[Transcribe] Success in ${duration}ms: "${transcription.text?.substring(0, 100)}..."`
-		);
+		
 
 		if (transcription?.text) {
 			return ApiResponse.success({
@@ -129,7 +127,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				audio_duration: transcription.duration || null
 			});
 		} else {
-			console.error('[Transcribe] No text in transcription response:', transcription);
 			return ApiResponse.internalError('Failed to transcribe audio. No text returned.');
 		}
 	} catch (error: any) {

@@ -1078,12 +1078,6 @@
 					return;
 				}
 
-				console.log(
-					'[Page] Initializing for project:',
-					projectId,
-					'Previous:',
-					initializedProjectId
-				);
 
 				// FIXED: Start performance monitoring
 				startTimer('page-initialization', {
@@ -1094,13 +1088,10 @@
 
 				// Cleanup previous initialization if needed
 				if (effectCleanup) {
-					console.log('[Page] Cleaning up previous initialization');
 					effectCleanup();
 					effectCleanup = null;
 				}
 
-				// FIXED: Reset all state when switching projects
-				console.log('[Page] Resetting state for new project');
 
 				// Reset store completely
 				projectStoreV2.reset();
@@ -1129,7 +1120,6 @@
 						// Start async initialization
 						(async () => {
 							try {
-								console.log('[Page] Starting async initialization for:', projectId);
 
 								timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
