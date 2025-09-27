@@ -1,48 +1,19 @@
 // src/lib/services/railwayWorker.service.ts
 import { browser } from '$app/environment';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
+import type {
+	QueueJob,
+	DailyBriefQueueJob,
+	PhaseQueueJob,
+	OnboardingAnalysisJobMetadata,
+	QueueJobType,
+	ApiResponse
+} from '@buildos/shared-types';
 
-export interface QueueJob {
-	id: string;
-	user_id: string;
-	job_type: 'generate_daily_brief' | 'generate_phases' | 'onboarding_analysis';
-	scheduled_for: string;
-	status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-	queue_job_id: string;
-	created_at: string;
-	processed_at: string | null;
-	error_message: string | null;
-	metadata: Record<string, any>;
-}
-
-export interface BriefGenerationJob extends QueueJob {
-	job_type: 'generate_daily_brief';
-}
-
-export interface PhasesGenerationJob extends QueueJob {
-	job_type: 'generate_phases';
-	metadata: {
-		projectId: string;
-		projectName?: string;
-		options?: Record<string, any>;
-	};
-}
-
-export interface OnboardingAnalysisJob extends QueueJob {
-	job_type: 'onboarding_analysis';
-	metadata: {
-		userContext: {
-			input_projects?: string | null;
-			input_work_style?: string | null;
-			input_challenges?: string | null;
-			input_help_focus?: string | null;
-		};
-		options?: {
-			forceRegenerate?: boolean;
-			maxQuestions?: number;
-		};
-	};
-}
+// Legacy type aliases for backward compatibility
+export type BriefGenerationJob = DailyBriefQueueJob;
+export type PhasesGenerationJob = PhaseQueueJob;
+export type OnboardingAnalysisJob = QueueJob<'onboarding_analysis'>;
 
 export interface QueueBriefResponse {
 	success: boolean;
@@ -257,10 +228,7 @@ export class RailwayWorkerService {
 	/**
 	 * Get pending jobs for a user
 	 */
-	static async getUserPendingJobs(
-		userId: string,
-		jobType?: 'generate_daily_brief' | 'generate_phases' | 'onboarding_analysis'
-	): Promise<QueueJob[]> {
+	static async getUserPendingJobs(userId: string, jobType?: QueueJobType): Promise<QueueJob[]> {
 		try {
 			const params = new URLSearchParams();
 			if (jobType) {
@@ -410,8 +378,8 @@ export class RailwayWorkerService {
 	static async getUserJobs(
 		userId: string,
 		options?: {
-			jobType?: 'generate_daily_brief' | 'generate_phases' | 'onboarding_analysis';
-			status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+			jobType?: QueueJobType;
+			status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'retrying';
 			limit?: number;
 			offset?: number;
 		}

@@ -2,7 +2,12 @@
 export * from "./database.types";
 export type { Database, Json } from "./database.types";
 
-// Common types used across apps
+// Export queue types with correct enums
+export * from "./queue-types";
+export * from "./validation";
+export * from "./api-types";
+
+// Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
   id: string;
   user_id: string;
@@ -12,19 +17,7 @@ export interface BriefGenerationJob {
   metadata?: Record<string, any>;
 }
 
-export interface QueueJob {
-  id: string;
-  job_type: "daily_brief" | "project_brief" | "phase_generation";
-  status: "pending" | "processing" | "completed" | "failed";
-  user_id: string;
-  scheduled_for: string;
-  metadata?: Record<string, any>;
-  attempts?: number;
-  max_attempts?: number;
-  error_message?: string;
-  result?: any;
-}
-
+// Common types used across apps
 export interface UserPreferences {
   timezone?: string;
   email_daily_brief?: boolean;

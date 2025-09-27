@@ -1,6 +1,6 @@
 // worker-queue/src/workers/brief/briefWorker.ts
 import { format } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
+import { utcToZonedTime, getTimezoneOffset } from "date-fns-tz";
 
 import { supabase } from "../../lib/supabase";
 import {
@@ -11,6 +11,21 @@ import {
 import { LegacyJob } from "../shared/jobAdapter";
 import { generateDailyBrief } from "./briefGenerator";
 import { DailyBriefEmailSender } from "../../lib/services/email-sender";
+
+/**
+ * Validates if a timezone string is valid
+ * @param timezone The timezone string to validate
+ * @returns true if valid, false otherwise
+ */
+function isValidTimezone(timezone: string): boolean {
+  try {
+    // Try to get the timezone offset - this will throw if invalid
+    getTimezoneOffset(timezone, new Date());
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 export async function processBriefJob(job: LegacyJob<BriefJobData>) {
   console.log(`🏃 Processing brief job ${job.id} for user ${job.data.userId}`);
@@ -32,7 +47,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
     }
 
     // Use timezone from preferences, fallback to job data, then UTC
-    const timezone = preferences?.timezone || job.data.timezone || "UTC";
+    let timezone = preferences?.timezone || job.data.timezone || "UTC";
+
+    // Validate the timezone and fallback to UTC if invalid
+    if (!isValidTimezone(timezone)) {
+      console.warn(
+        `Invalid timezone "${timezone}" detected, falling back to UTC`,
+      );
+      timezone = "UTC";
+    }
 
     // Calculate briefDate based on the user's timezone
     let briefDate = job.data.briefDate;
@@ -69,6 +92,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
     );
 
     // Send email if user has opted in
+    let emailStatus = { sent: false, error: null as string | null };
     try {
       const emailSender = new DailyBriefEmailSender(supabase);
       const emailSent = await emailSender.sendDailyBriefEmail(
@@ -79,21 +103,61 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
       if (emailSent) {
         console.log(`📧 Email notification sent for brief ${brief.id}`);
+        emailStatus.sent = true;
       }
     } catch (emailError) {
-      // Don't fail the job if email sending fails, just log the error
-      console.error(
-        `Failed to send email notification: ${emailError instanceof Error ? emailError.message : "Unknown error"}`,
-      );
+      // Track email failures but don't fail the job
+      const errorMessage =
+        emailError instanceof Error ? emailError.message : "Unknown error";
+      console.error(`Failed to send email notification: ${errorMessage}`);
+      emailStatus.error = errorMessage;
+
+      // Update brief metadata to track email failure
+      try {
+        await supabase
+          .from("daily_briefs")
+          .update({
+            metadata: {
+              ...(brief.metadata || {}),
+              email_status: {
+                sent: false,
+                error: errorMessage,
+                failed_at: new Date().toISOString(),
+              },
+            },
+          })
+          .eq("id", brief.id);
+
+        // Track email failure in error_logs table
+        await supabase.from("error_logs").insert({
+          user_id: job.data.userId,
+          error_type: "email_send_failure",
+          error_message: errorMessage,
+          endpoint: "/worker/brief/email",
+          operation_type: "send_daily_brief_email",
+          record_id: brief.id,
+          metadata: {
+            brief_id: brief.id,
+            brief_date: briefDate,
+            job_id: job.id,
+            email_type: "daily_brief",
+          },
+        });
+      } catch (trackingError) {
+        console.error("Failed to track email failure:", trackingError);
+      }
     }
 
     await updateJobStatus(job.id, "completed", "brief");
 
+    // Include email status in notification
     await notifyUser(job.data.userId, "brief_completed", {
       briefId: brief.id,
       briefDate: brief.brief_date,
       timezone: timezone,
       message: `Your daily brief for ${briefDate} is ready!`,
+      emailSent: emailStatus.sent,
+      emailError: emailStatus.error,
     });
 
     console.log(

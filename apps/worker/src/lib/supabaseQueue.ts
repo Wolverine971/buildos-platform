@@ -1,26 +1,17 @@
 // worker-queue/src/lib/supabaseQueue.ts
-import type { Database } from "@buildos/shared-types";
+import type {
+  Database,
+  QueueJobType,
+  QueueJobStatus,
+  QueueJob as SharedQueueJob,
+  JobMetadataMap,
+} from "@buildos/shared-types";
 import { updateJobProgress } from "./progressTracker";
 import { supabase } from "./supabase";
 
 type QueueJob = Database["public"]["Tables"]["queue_jobs"]["Row"];
-type JobStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "retrying";
-type JobType =
-  | "generate_daily_brief"
-  | "generate_phases"
-  | "onboarding_analysis"
-  | "sync_calendar"
-  | "process_brain_dump"
-  | "send_email"
-  | "update_recurring_tasks"
-  | "cleanup_old_data"
-  | "other";
+type JobStatus = QueueJobStatus;
+type JobType = QueueJobType;
 
 export interface JobOptions {
   priority?: number;

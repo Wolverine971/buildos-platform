@@ -7,7 +7,7 @@ import type { UserContext } from '$lib/types/user-context';
 
 export interface UserData {
 	projects: ProjectWithRelations[];
-	userContext: UserContext;
+	userContext: UserContext | null;
 }
 
 export class DailyBriefRepository {
@@ -85,14 +85,22 @@ export class DailyBriefRepository {
 
 		return {
 			projects: projectsWithRelations,
-			userContext: userContext!
+			userContext: userContext
 		};
 	}
 
 	async checkConcurrentGenerations(userId: string): Promise<{
 		canStart: boolean;
 		message: string;
+		staleBriefs?: Array<{ id: string; brief_date: string }>;
 	}> {
+		// First, clean up any stale generations atomically
+		const { data: cleanedBriefs } = await this.supabase.rpc('cleanup_stale_brief_generations', {
+			p_user_id: userId,
+			p_timeout_minutes: 10
+		});
+
+		// Now check for active generations
 		const { data: activeGenerations } = await this.supabase
 			.from('daily_briefs')
 			.select('id, brief_date, generation_started_at')
@@ -100,86 +108,55 @@ export class DailyBriefRepository {
 			.eq('generation_status', 'processing');
 
 		if (!activeGenerations || activeGenerations.length === 0) {
-			return { canStart: true, message: 'Can start generation' };
-		}
-
-		// Check for stale generations (over 10 minutes)
-		const now = Date.now();
-		const activeNonStale = activeGenerations.filter((gen) => {
-			if (!gen.generation_started_at) return true;
-			const elapsed = now - new Date(gen.generation_started_at).getTime();
-			return elapsed < 10 * 60 * 1000;
-		});
-
-		if (activeNonStale.length > 0) {
 			return {
-				canStart: false,
-				message: `You already have a brief generating for ${activeNonStale[0].brief_date}.`
+				canStart: true,
+				message: 'Can start generation',
+				staleBriefs: cleanedBriefs || []
 			};
 		}
 
-		// Clean up stale generations
-		for (const staleGen of activeGenerations) {
-			if (staleGen.generation_started_at) {
-				const elapsed = now - new Date(staleGen.generation_started_at).getTime();
-				if (elapsed >= 10 * 60 * 1000) {
-					await this.markGenerationFailed(
-						userId,
-						staleGen.brief_date,
-						'Generation timeout after 10 minutes'
-					);
-				}
-			}
-		}
-
-		return { canStart: true, message: 'Can start generation' };
+		// All remaining generations are non-stale (cleanup already happened)
+		return {
+			canStart: false,
+			message: `You already have a brief generating for ${activeGenerations[0].brief_date}.`,
+			staleBriefs: cleanedBriefs || []
+		};
 	}
 
 	async startGeneration(userId: string, briefDate: string, forceRegenerate: boolean) {
-		const { data: existingBrief } = await this.supabase
-			.from('daily_briefs')
-			.select('id, generation_status')
-			.eq('user_id', userId)
-			.eq('brief_date', briefDate)
-			.single();
-
-		if (existingBrief && !forceRegenerate) {
-			if (existingBrief.generation_status === 'processing') {
-				return {
-					started: false,
-					message: 'Brief generation already in progress'
-				};
-			} else if (existingBrief.generation_status === 'completed') {
-				return {
-					started: false,
-					message: 'Brief already exists for this date'
-				};
-			}
-		}
-
-		if (forceRegenerate && existingBrief) {
-			await this.supabase
-				.from('daily_briefs')
-				.update({
-					generation_status: 'processing',
-					generation_started_at: new Date().toISOString(),
-					generation_error: null,
-					generation_completed_at: null
-				})
-				.eq('id', existingBrief.id);
-
-			return { started: true, brief_id: existingBrief.id };
-		}
-
+		// Use atomic RPC function to handle concurrent requests safely
 		const { data, error } = await this.supabase
-			.rpc('start_daily_brief_generation', {
+			.rpc('start_or_resume_brief_generation', {
 				p_user_id: userId,
-				p_brief_date: briefDate
+				p_brief_date: briefDate,
+				p_force_regenerate: forceRegenerate
 			})
 			.single();
 
-		if (error) throw error;
-		return { started: true, brief_id: data.brief_id };
+		if (error) {
+			// Check for specific error codes
+			if (error.code === 'P0001' && error.message?.includes('already in progress')) {
+				return {
+					started: false,
+					message: 'Brief generation already in progress',
+					brief_id: null
+				};
+			}
+			if (error.code === 'P0002' && error.message?.includes('already completed')) {
+				return {
+					started: false,
+					message: 'Brief already exists for this date',
+					brief_id: null
+				};
+			}
+			throw error;
+		}
+
+		return {
+			started: data.started,
+			brief_id: data.brief_id,
+			message: data.message || 'Generation started successfully'
+		};
 	}
 
 	async markGenerationCompleted(briefId: string, result: any) {

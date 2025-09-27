@@ -56,7 +56,7 @@ export class ProjectBriefGenerator {
 		userId: string,
 		projects: ProjectWithRelations[],
 		briefDate: string,
-		userContext: UserContext,
+		userContext: UserContext | null,
 		sendEvent?: (event: StreamEvent) => void
 	): Promise<ProjectBriefResult[]> {
 		const briefs: ProjectBriefResult[] = [];
@@ -193,7 +193,7 @@ export class ProjectBriefGenerator {
 		userId: string,
 		project: ProjectWithRelations,
 		briefDate: string,
-		userContext: UserContext,
+		userContext: UserContext | null,
 		generateCondensed: boolean
 	): Promise<{ id: string; content: string; condensed_content?: string; metadata?: any }> {
 		// Check if project has minimal data

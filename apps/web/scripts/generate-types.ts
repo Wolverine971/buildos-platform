@@ -15,17 +15,24 @@ if (!projectId) {
 	process.exit(1);
 }
 
-const outputPath = 'src/lib/database.types.ts';
+// Output to both locations for compatibility
+const webOutputPath = 'src/lib/database.types.ts';
+const sharedTypesOutputPath = '../../packages/shared-types/src/database.types.ts';
 
 try {
-	// Ensure the directory exists
-	const outputDir = dirname(outputPath);
-	if (!existsSync(outputDir)) {
-		mkdirSync(outputDir, { recursive: true });
+	// Ensure the directories exist
+	const webOutputDir = dirname(webOutputPath);
+	const sharedTypesOutputDir = dirname(sharedTypesOutputPath);
+
+	if (!existsSync(webOutputDir)) {
+		mkdirSync(webOutputDir, { recursive: true });
+	}
+	if (!existsSync(sharedTypesOutputDir)) {
+		mkdirSync(sharedTypesOutputDir, { recursive: true });
 	}
 
 	console.log('🔄 Generating Supabase types...');
-	console.log(`📁 Output: ${outputPath}`);
+	console.log(`📁 Output: ${webOutputPath} and ${sharedTypesOutputPath}`);
 	console.log(`🎯 Project ID: ${projectId}`);
 
 	const command = `npx supabase gen types typescript --project-id ${projectId} --schema public`;
@@ -33,11 +40,14 @@ try {
 	// Execute the command and capture output
 	const output = execSync(command, { encoding: 'utf8' });
 
-	// Write to file
+	// Write to both files
 	const fs = await import('fs/promises');
-	await fs.writeFile(outputPath, output);
+	await fs.writeFile(webOutputPath, output);
+	await fs.writeFile(sharedTypesOutputPath, output);
 
-	console.log('✅ Types generated successfully!');
+	console.log('✅ Types generated successfully to:');
+	console.log(`   - ${webOutputPath}`);
+	console.log(`   - ${sharedTypesOutputPath}`);
 } catch (error: any) {
 	console.error('❌ Failed to generate types:');
 	if (error.message.includes('project-id')) {

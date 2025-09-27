@@ -3863,6 +3863,13 @@ export type Database = {
 				Args: { target_project_id: string };
 				Returns: undefined;
 			};
+			cleanup_stale_brief_generations: {
+				Args: { p_timeout_minutes?: number; p_user_id: string };
+				Returns: {
+					brief_date: string;
+					id: string;
+				}[];
+			};
 			complete_queue_job: {
 				Args: { p_job_id: string; p_result?: Json };
 				Returns: boolean;
@@ -4127,6 +4134,15 @@ export type Database = {
 				Args: { '': string } | { '': unknown } | { '': unknown };
 				Returns: string;
 			};
+			normalize_queue_job_metadata: {
+				Args: Record<PropertyKey, never>;
+				Returns: {
+					details: string;
+					error_count: number;
+					fixed_count: number;
+					skipped_count: number;
+				}[];
+			};
 			refresh_system_metrics: {
 				Args: Record<PropertyKey, never>;
 				Returns: undefined;
@@ -4243,6 +4259,18 @@ export type Database = {
 				Args: { p_brief_date?: string; p_user_id: string };
 				Returns: Json;
 			};
+			start_or_resume_brief_generation: {
+				Args: {
+					p_brief_date: string;
+					p_force_regenerate?: boolean;
+					p_user_id: string;
+				};
+				Returns: {
+					brief_id: string;
+					message: string;
+					started: boolean;
+				}[];
+			};
 			unaccent: {
 				Args: { '': string };
 				Returns: string;
@@ -4264,6 +4292,17 @@ export type Database = {
 			user_has_payment_issues: {
 				Args: { p_user_id: string };
 				Returns: boolean;
+			};
+			validate_all_queue_jobs: {
+				Args: { p_fix?: boolean };
+				Returns: {
+					fixed: boolean;
+					is_valid: boolean;
+					issue: string;
+					job_id: string;
+					job_type: string;
+					status: string;
+				}[];
 			};
 			vector_avg: {
 				Args: { '': number[] };

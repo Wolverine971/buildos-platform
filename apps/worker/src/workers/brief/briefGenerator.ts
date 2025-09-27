@@ -86,63 +86,58 @@ export async function generateDailyBrief(
   const briefDateInUserTz =
     briefDate || getDateInTimezone(new Date(), userTimezone);
 
-  // Create or update daily brief record
-  const { data: existingBrief } = await supabase
-    .from("daily_briefs")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("brief_date", briefDateInUserTz)
-    .single();
-
-  let dailyBrief: any;
+  // Atomic create or update using upsert with conflict resolution
   const briefMetadata = {
     queue_job_id: jobId,
     generated_via: "railway_worker",
     timezone: userTimezone,
+  };
+
+  // First, try to get existing brief metadata to preserve it
+  const { data: existingBrief } = await supabase
+    .from("daily_briefs")
+    .select("metadata")
+    .eq("user_id", userId)
+    .eq("brief_date", briefDateInUserTz)
+    .single();
+
+  // Merge existing metadata with new metadata
+  const mergedMetadata = {
     ...(typeof existingBrief?.metadata === "object" &&
     existingBrief?.metadata !== null
       ? existingBrief.metadata
       : {}),
+    ...briefMetadata,
   };
 
-  if (existingBrief) {
-    const { data: updatedBrief, error } = await supabase
-      .from("daily_briefs")
-      .update({
+  // Use atomic upsert operation - this handles both create and update cases
+  const { data: dailyBrief, error } = await supabase
+    .from("daily_briefs")
+    .upsert(
+      {
+        user_id: userId,
+        brief_date: briefDateInUserTz,
+        summary_content: "", // Will only be set on first creation
         generation_status: "processing",
         generation_started_at: new Date().toISOString(),
         generation_progress: { step: "starting", progress: 0 },
-        metadata: briefMetadata, // Include job metadata
-      })
-      .eq("id", existingBrief.id)
-      .select()
-      .single();
+        metadata: mergedMetadata,
+      },
+      {
+        onConflict: "user_id, brief_date",
+        ignoreDuplicates: false, // Always update if exists
+      },
+    )
+    .select()
+    .single();
 
-    if (error) throw error;
-    dailyBrief = updatedBrief;
-  } else {
-    const { data: newBrief, error } = await supabase
-      .from("daily_briefs")
-      .upsert(
-        {
-          user_id: userId,
-          brief_date: briefDateInUserTz,
-          summary_content: "",
-          generation_status: "processing",
-          generation_started_at: new Date().toISOString(),
-          generation_progress: { step: "starting", progress: 0 },
-          metadata: briefMetadata, // Include job metadata
-        },
-        {
-          onConflict: "user_id, brief_date",
-          ignoreDuplicates: false,
-        },
-      )
-      .select()
-      .single();
-
-    if (error) throw error;
-    dailyBrief = newBrief;
+  if (error) {
+    // Check if error is due to concurrent generation
+    if (error.code === "23505") {
+      // Unique constraint violation
+      throw new Error("Brief generation already in progress for this date");
+    }
+    throw error;
   }
 
   try {

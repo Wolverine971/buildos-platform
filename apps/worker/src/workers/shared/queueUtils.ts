@@ -1,13 +1,21 @@
 // worker-queue/src/workers/shared/queueUtils.ts
 // Utility functions for queue operations (Redis-free version)
 
+import type {
+  QueueJobStatus,
+  DailyBriefJobMetadata,
+  PhaseGenerationJobMetadata,
+  OnboardingAnalysisJobMetadata,
+} from "@buildos/shared-types";
 import { supabase } from "../../lib/supabase";
 
-// Job data interfaces (same as before)
-export interface BriefJobData {
+// Legacy job data interfaces - kept for backward compatibility
+// These map to the new metadata types
+export interface BriefJobData
+  extends Omit<DailyBriefJobMetadata, "briefDate" | "timezone"> {
   userId: string;
-  briefDate?: string;
-  timezone?: string;
+  briefDate?: string; // Made optional for backward compat
+  timezone?: string; // Made optional for backward compat
   options?: {
     includeProjects?: string[];
     excludeProjects?: string[];
@@ -42,13 +50,7 @@ export interface OnboardingAnalysisJobData {
 // Update job status in database
 export async function updateJobStatus(
   queueJobId: string,
-  status:
-    | "pending"
-    | "processing"
-    | "completed"
-    | "failed"
-    | "cancelled"
-    | "retrying",
+  status: QueueJobStatus,
   jobType: "brief" | "phases" | "onboarding",
   errorMessage?: string,
 ) {

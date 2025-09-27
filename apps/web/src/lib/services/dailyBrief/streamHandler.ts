@@ -1,14 +1,54 @@
 // src/lib/services/dailyBrief/streamHandler.ts
-import type { DailyBriefGenerator, StreamEvent } from './generator';
+import type { DailyBriefGenerator } from './generator';
 import type { DailyBriefRepository } from './repository';
+import type { StreamEvent } from '@buildos/shared-types';
 
 export class BriefStreamHandler {
-	private activeStreams = new Map<string, AbortController>();
+	private activeStreams = new Map<string, { controller: AbortController; startTime: number }>();
+	private cleanupInterval: NodeJS.Timeout | null = null;
+	private readonly STREAM_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes max stream duration
+	private readonly CLEANUP_INTERVAL_MS = 60 * 1000; // Check every minute
 
 	constructor(
 		private generator: DailyBriefGenerator,
 		private repository: DailyBriefRepository
-	) {}
+	) {
+		this.startCleanupTask();
+	}
+
+	private startCleanupTask(): void {
+		// Clean up stale streams periodically
+		this.cleanupInterval = setInterval(() => {
+			const now = Date.now();
+			const staleStreams: string[] = [];
+
+			this.activeStreams.forEach((stream, id) => {
+				if (now - stream.startTime > this.STREAM_TIMEOUT_MS) {
+					staleStreams.push(id);
+					// Abort the stale stream
+					if (!stream.controller.signal.aborted) {
+						stream.controller.abort();
+					}
+				}
+			});
+
+			// Remove stale streams from the map
+			staleStreams.forEach((id) => {
+				this.activeStreams.delete(id);
+				console.warn(`Cleaned up stale stream: ${id}`);
+			});
+		}, this.CLEANUP_INTERVAL_MS);
+	}
+
+	destroy(): void {
+		// Clean up when the handler is destroyed
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+			this.cleanupInterval = null;
+		}
+		// Abort all active streams
+		this.abortAllStreams();
+	}
 
 	createStreamResponse(userId: string, targetDate: string, briefId: string): Response {
 		// Store references outside the stream
@@ -18,7 +58,10 @@ export class BriefStreamHandler {
 		// Create abort controller for this stream
 		const abortController = new AbortController();
 		const streamId = `${userId}_${briefId}`;
-		this.activeStreams.set(streamId, abortController);
+		this.activeStreams.set(streamId, {
+			controller: abortController,
+			startTime: Date.now()
+		});
 
 		const stream = new ReadableStream({
 			start: async (controller) => {
@@ -46,8 +89,9 @@ export class BriefStreamHandler {
 				keepAliveInterval = setInterval(() => {
 					if (!abortController.signal.aborted) {
 						sendEvent({
-							type: 'ping',
-							data: { timestamp: Date.now() }
+							event: 'heartbeat' as any,
+							data: { timestamp: Date.now() },
+							timestamp: new Date().toISOString()
 						});
 					}
 				}, 30000);
@@ -58,8 +102,9 @@ export class BriefStreamHandler {
 						clearInterval(keepAliveInterval);
 					}
 					sendEvent({
-						type: 'abort',
-						data: { message: 'Stream aborted by client' }
+						event: 'error' as any,
+						data: { message: 'Stream aborted by client' },
+						timestamp: new Date().toISOString()
 					});
 					controller.close();
 				});
@@ -67,8 +112,9 @@ export class BriefStreamHandler {
 				try {
 					// Send initial connection event
 					sendEvent({
-						type: 'status',
-						data: { status: 'connected', message: 'Connection established' }
+						event: 'started' as any,
+						data: { status: 'connected', message: 'Connection established' },
+						timestamp: new Date().toISOString()
 					});
 
 					// Generate brief with streaming
@@ -83,12 +129,13 @@ export class BriefStreamHandler {
 
 					// Send completion event
 					sendEvent({
-						type: 'complete',
+						event: 'completed' as any,
 						data: {
 							briefId,
 							message: 'Brief generation completed successfully',
 							result
-						}
+						},
+						timestamp: new Date().toISOString()
 					});
 				} catch (error: any) {
 					console.error('Stream generation error:', error);
@@ -103,13 +150,14 @@ export class BriefStreamHandler {
 					);
 
 					sendEvent({
-						type: 'error',
+						event: 'error' as any,
 						data: {
 							message:
 								error instanceof Error ? error.message : 'Failed to generate brief',
 							retryable: isRetryable,
 							status: error.status
-						}
+						},
+						timestamp: new Date().toISOString()
 					});
 				} finally {
 					// Clean up
@@ -123,9 +171,11 @@ export class BriefStreamHandler {
 			cancel: () => {
 				// Handle stream cancellation
 				const streamId = `${userId}_${briefId}`;
-				const controller = this.activeStreams.get(streamId);
-				if (controller) {
-					controller.abort();
+				const stream = this.activeStreams.get(streamId);
+				if (stream) {
+					if (!stream.controller.signal.aborted) {
+						stream.controller.abort();
+					}
 					this.activeStreams.delete(streamId);
 				}
 			}
@@ -160,17 +210,21 @@ export class BriefStreamHandler {
 	// Method to abort active streams (useful for cleanup)
 	abortStream(userId: string, briefId: string): void {
 		const streamId = `${userId}_${briefId}`;
-		const controller = this.activeStreams.get(streamId);
-		if (controller) {
-			controller.abort();
+		const stream = this.activeStreams.get(streamId);
+		if (stream) {
+			if (!stream.controller.signal.aborted) {
+				stream.controller.abort();
+			}
 			this.activeStreams.delete(streamId);
 		}
 	}
 
 	// Cleanup all active streams
 	abortAllStreams(): void {
-		for (const controller of this.activeStreams.values()) {
-			controller.abort();
+		for (const stream of this.activeStreams.values()) {
+			if (!stream.controller.signal.aborted) {
+				stream.controller.abort();
+			}
 		}
 		this.activeStreams.clear();
 	}

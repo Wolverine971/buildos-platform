@@ -124,9 +124,22 @@ class UnifiedBriefGenerationStore {
 
 			// Calculate percentage if projects data is updated
 			if (updates.progress?.projects) {
-				const { completed, total } = updates.progress.projects;
-				newState.progress.percentage =
-					total > 0 ? Math.round((completed / total) * 100) : 0;
+				let { completed, total } = updates.progress.projects;
+
+				// Validate and sanitize progress values
+				total = Math.max(0, total); // Ensure non-negative
+				completed = Math.max(0, Math.min(completed, total)); // Ensure 0 <= completed <= total
+
+				// Update the sanitized values
+				newState.progress.projects.completed = completed;
+				newState.progress.projects.total = total;
+
+				// Calculate percentage with bounds checking
+				const rawPercentage = total > 0 ? (completed / total) * 100 : 0;
+				newState.progress.percentage = Math.max(
+					0,
+					Math.min(100, Math.round(rawPercentage))
+				);
 
 				// Update target for smooth animation
 				this.targetProgress = newState.progress.percentage;
@@ -158,29 +171,58 @@ class UnifiedBriefGenerationStore {
 		return newSourcePriority >= lastSourcePriority || isStale;
 	}
 
-	// Smooth progress animation
+	// Smooth progress animation with safeguards
 	private animateProgress(): void {
 		if (this.progressAnimationFrame) {
 			cancelAnimationFrame(this.progressAnimationFrame);
 		}
 
+		const startTime = Date.now();
+		const MAX_ANIMATION_DURATION = 5000; // Maximum 5 seconds for animation
+		const MAX_ITERATIONS = 100; // Maximum iterations to prevent infinite loops
+		let iterations = 0;
+
 		const animate = () => {
+			iterations++;
+			const elapsedTime = Date.now() - startTime;
+
+			// Safety checks to prevent infinite loops
+			if (iterations > MAX_ITERATIONS || elapsedTime > MAX_ANIMATION_DURATION) {
+				console.warn('Animation loop exceeded limits, forcing completion');
+				this.store.update((state) => ({
+					...state,
+					progress: {
+						...state.progress,
+						smoothedPercentage: Math.max(0, Math.min(100, this.targetProgress))
+					}
+				}));
+				this.progressAnimationFrame = null;
+				return;
+			}
+
 			this.store.update((state) => {
 				const current = state.progress.smoothedPercentage;
-				const target = this.targetProgress;
+				const target = Math.max(0, Math.min(100, this.targetProgress)); // Ensure target is bounded
 
+				// Check if we're close enough to the target
 				if (Math.abs(current - target) < 0.5) {
+					this.progressAnimationFrame = null; // Clear the animation frame
 					return {
 						...state,
 						progress: { ...state.progress, smoothedPercentage: target }
 					};
 				}
 
-				// Smooth interpolation
+				// Smooth interpolation with bounds checking
 				const step = (target - current) * 0.1;
-				const newSmoothed = current + step;
+				const newSmoothed = Math.max(0, Math.min(100, current + step));
 
-				this.progressAnimationFrame = requestAnimationFrame(animate);
+				// Only continue if we haven't reached the target
+				if (Math.abs(newSmoothed - target) >= 0.5) {
+					this.progressAnimationFrame = requestAnimationFrame(animate);
+				} else {
+					this.progressAnimationFrame = null;
+				}
 
 				return {
 					...state,

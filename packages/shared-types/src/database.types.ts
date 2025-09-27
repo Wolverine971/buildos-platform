@@ -1,4 +1,3 @@
-// worker-queue/src/lib/database.types.ts
 export type Json =
   | string
   | number
@@ -3888,6 +3887,13 @@ export type Database = {
         Args: { target_project_id: string };
         Returns: undefined;
       };
+      cleanup_stale_brief_generations: {
+        Args: { p_timeout_minutes?: number; p_user_id: string };
+        Returns: {
+          brief_date: string;
+          id: string;
+        }[];
+      };
       complete_queue_job: {
         Args: { p_job_id: string; p_result?: Json };
         Returns: boolean;
@@ -4068,6 +4074,26 @@ export type Database = {
           visitors_7d: number;
         }[];
       };
+      gtrgm_compress: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_decompress: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_in: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_options: {
+        Args: { "": unknown };
+        Returns: undefined;
+      };
+      gtrgm_out: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
       halfvec_avg: {
         Args: { "": number[] };
         Returns: unknown;
@@ -4132,6 +4158,15 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown };
         Returns: string;
       };
+      normalize_queue_job_metadata: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          details: string;
+          error_count: number;
+          fixed_count: number;
+          skipped_count: number;
+        }[];
+      };
       refresh_system_metrics: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
@@ -4153,6 +4188,28 @@ export type Database = {
         Args: { task_id_param: string };
         Returns: boolean;
       };
+      search_all_content: {
+        Args: {
+          current_user_id: string;
+          items_per_category?: number;
+          search_query: string;
+        };
+        Returns: {
+          created_at: string;
+          description: string;
+          is_completed: boolean;
+          is_deleted: boolean;
+          item_id: string;
+          item_type: string;
+          matched_fields: string[];
+          project_id: string;
+          relevance_score: number;
+          status: string;
+          tags: string[];
+          title: string;
+          updated_at: string;
+        }[];
+      };
       search_all_similar: {
         Args: { query_embedding: string; similarity_threshold?: number };
         Returns: {
@@ -4160,6 +4217,29 @@ export type Database = {
           id: string;
           similarity: number;
           table_name: string;
+        }[];
+      };
+      search_by_type: {
+        Args: {
+          current_user_id: string;
+          page_limit?: number;
+          page_offset?: number;
+          search_query: string;
+          search_type: string;
+        };
+        Returns: {
+          created_at: string;
+          description: string;
+          is_completed: boolean;
+          is_deleted: boolean;
+          item_id: string;
+          matched_fields: string[];
+          project_id: string;
+          relevance_score: number;
+          status: string;
+          tags: string[];
+          title: string;
+          updated_at: string;
         }[];
       };
       search_similar_items: {
@@ -4174,6 +4254,18 @@ export type Database = {
           id: string;
           similarity: number;
         }[];
+      };
+      set_limit: {
+        Args: { "": number };
+        Returns: number;
+      };
+      show_limit: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      show_trgm: {
+        Args: { "": string };
+        Returns: string[];
       };
       sparsevec_out: {
         Args: { "": unknown };
@@ -4191,6 +4283,26 @@ export type Database = {
         Args: { p_brief_date?: string; p_user_id: string };
         Returns: Json;
       };
+      start_or_resume_brief_generation: {
+        Args: {
+          p_brief_date: string;
+          p_force_regenerate?: boolean;
+          p_user_id: string;
+        };
+        Returns: {
+          brief_id: string;
+          message: string;
+          started: boolean;
+        }[];
+      };
+      unaccent: {
+        Args: { "": string };
+        Returns: string;
+      };
+      unaccent_init: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
       update_brief_generation_progress: {
         Args: {
           p_brief_id: string;
@@ -4204,6 +4316,17 @@ export type Database = {
       user_has_payment_issues: {
         Args: { p_user_id: string };
         Returns: boolean;
+      };
+      validate_all_queue_jobs: {
+        Args: { p_fix?: boolean };
+        Returns: {
+          fixed: boolean;
+          is_valid: boolean;
+          issue: string;
+          job_id: string;
+          job_type: string;
+          status: string;
+        }[];
       };
       vector_avg: {
         Args: { "": number[] };

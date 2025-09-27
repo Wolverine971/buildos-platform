@@ -28,11 +28,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/dashboard/Dashboard.svelte",
-			"type": "component",
-			"components": ["BraindumpWeekView", "PhaseCalendarView", "TaskModal", "DailyBriefModal"]
-		},
-		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -54,6 +49,11 @@
 				"OperationEditModal",
 				"SuccessView"
 			]
+		},
+		{
+			"file": "src/lib/components/dashboard/Dashboard.svelte",
+			"type": "component",
+			"components": ["BraindumpWeekView", "PhaseCalendarView", "TaskModal", "DailyBriefModal"]
 		},
 		{
 			"file": "src/lib/components/project/PhasesSection.svelte",

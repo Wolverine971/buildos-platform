@@ -102,6 +102,7 @@ buildos-platform/
 ## Code Patterns and Conventions
 
 ### Route Structure
+
 ```
 /                        # Dashboard (auth-aware)
 /projects               # Project list
@@ -115,6 +116,7 @@ buildos-platform/
 ```
 
 ### Component Naming Conventions
+
 - **Domain Components**: `[Domain][Action/Type].svelte`
   - `BrainDumpModal.svelte`, `ProjectHeader.svelte`, `TasksList.svelte`
 - **UI Components**: Generic, reusable (`/lib/components/ui/`)
@@ -125,6 +127,7 @@ buildos-platform/
 ### State Management
 
 #### Store Architecture
+
 - **Unified stores** for complex flows: `brain-dump-v2.store.ts`
 - **Domain stores**: `project.store.ts`, `dashboard.store.ts`
 - **UI stores**: `toast.store.ts`, `modal.store.ts`
@@ -132,11 +135,14 @@ buildos-platform/
 - **Session persistence** for processing state
 
 #### Svelte 5 Patterns
+
 ```javascript
 // ✅ Use these patterns:
 let count = $state(0);
 let doubled = $derived(count * 2);
-$effect(() => { /* side effects */ });
+$effect(() => {
+  /* side effects */
+});
 
 // ❌ Avoid old syntax:
 // let count = 0;
@@ -144,7 +150,9 @@ $effect(() => { /* side effects */ });
 ```
 
 ### API Service Pattern
+
 All services extend `base/api-service.ts`:
+
 ```typescript
 class MyService extends ApiService {
   private static instance: MyService;
@@ -217,20 +225,23 @@ Core tables managed through Supabase:
 ### AI/LLM Integration
 
 **Model Routing Strategy:**
+
 - Primary: DeepSeek (cost-effective, $0.14/1M tokens)
 - Fallback: Qwen → Claude Haiku → GPT-4o
 - Premium: Claude Sonnet/Opus for complex tasks
 
 **Dual Processing Pattern:**
+
 ```typescript
 // For brain dumps > 800 chars or complex projects
 const [contextResult, tasksResult] = await Promise.allSettled([
   extractProjectContext(brainDump),
-  extractTasks(brainDump)
+  extractTasks(brainDump),
 ]);
 ```
 
 **Smart LLM Service (`/lib/services/llm/`):**
+
 - Automatic model selection based on complexity
 - Native JSON mode support for compatible models
 - SSE streaming for real-time progress updates
@@ -239,12 +250,14 @@ const [contextResult, tasksResult] = await Promise.allSettled([
 ### Database Patterns
 
 **67 tables** with comprehensive Row Level Security (RLS):
+
 - User isolation: `auth.uid() = user_id`
 - Optimized RPC functions to eliminate N+1 queries
 - Safe enum migrations for type safety
 - Automatic `updated_at` triggers
 
 **Key RPC Functions:**
+
 ```sql
 -- Optimized project statistics
 get_project_statistics(p_project_id, p_user_id)
@@ -255,19 +268,22 @@ get_projects_with_stats(p_user_id, p_status, p_search, p_limit, p_offset)
 ### Error Handling
 
 **Centralized Error Logger:**
+
 ```typescript
 ErrorLoggerService.getInstance().logError(error, {
   userId: user.id,
   projectId: project?.id,
-  operation: 'brain_dump_processing'
+  operation: "brain_dump_processing",
 });
 ```
 
 **Error Types:**
+
 - `brain_dump_processing`, `api_error`, `database_error`
 - `validation_error`, `llm_error`, `calendar_sync_error`
 
 **User Feedback:**
+
 - Toast notifications for all user-facing errors
 - Context-aware messages with actionable guidance
 - Error boundaries to prevent UI crashes
@@ -275,6 +291,7 @@ ErrorLoggerService.getInstance().logError(error, {
 ### Testing Strategy
 
 **Test Categories:**
+
 ```bash
 # Regular unit/integration tests
 pnpm test            # All tests (excludes LLM)
@@ -292,6 +309,7 @@ pnpm pre-push        # typecheck + test + lint + build
 ```
 
 **Mock Patterns:**
+
 - Supabase: Chain-able mock objects
 - LLM: Structured response fixtures
 - Test data: `/lib/utils/__tests__/fixtures/`
@@ -299,16 +317,19 @@ pnpm pre-push        # typecheck + test + lint + build
 ### Performance Optimizations
 
 **Progressive Loading:**
+
 - Lazy component loading with dynamic imports
 - Skeleton states for perceived performance
 - Background data fetching
 
 **Caching Strategy:**
+
 - Service-level: LRU cache with TTL
 - HTTP: ETag support, conditional requests
 - Database: RPC functions for bulk operations
 
 **Bundle Optimization:**
+
 ```javascript
 // vite.config.ts manual chunks
 'ui-vendor': ['lucide-svelte', '@tiptap/*'],
@@ -369,6 +390,7 @@ Run `pnpm pre-push` to validate everything (typecheck, tests, lint, and producti
 ## Common Gotchas and Solutions
 
 ### Svelte 5 Migration Issues
+
 ```javascript
 // ❌ Old reactive syntax (will break)
 export let value;
@@ -380,9 +402,10 @@ let doubled = $derived(value * 2);
 ```
 
 ### State Store Access
+
 ```javascript
 // ❌ Direct store access (deprecated)
-$brainDumpStore.someValue
+$brainDumpStore.someValue;
 
 // ✅ Use derived with store
 let storeState = $derived($brainDumpV2Store);
@@ -390,31 +413,34 @@ let value = $derived(storeState?.someValue);
 ```
 
 ### API Response Handling
+
 ```typescript
 // Always check success flag
-const response = await fetch('/api/endpoint');
+const response = await fetch("/api/endpoint");
 const data = await response.json();
 
 if (!data.success) {
-  toastService.error(data.error || 'Operation failed');
+  toastService.error(data.error || "Operation failed");
   return;
 }
 ```
 
 ### Supabase RLS
+
 ```typescript
 // Always include user_id in queries
 const { data, error } = await supabase
-  .from('projects')
-  .select('*')
-  .eq('user_id', user.id); // Required by RLS
+  .from("projects")
+  .select("*")
+  .eq("user_id", user.id); // Required by RLS
 ```
 
 ### Form Validation
+
 ```typescript
 // Use validation schemas from:
 // /lib/utils/operations/validation-schemas.ts
-const isValid = validateField('projects', 'name', value);
+const isValid = validateField("projects", "name", value);
 ```
 
 ## File Organization
@@ -446,6 +472,7 @@ apps/web/src/
 ## API Endpoint Patterns
 
 ### RESTful Conventions
+
 ```
 GET    /api/projects          # List
 POST   /api/projects          # Create
@@ -455,6 +482,7 @@ DELETE /api/projects/[id]     # Delete
 ```
 
 ### Streaming Endpoints
+
 ```
 POST /api/braindumps/stream       # SSE for long content
 POST /api/braindumps/stream-short # SSE for short content
@@ -462,6 +490,7 @@ GET  /api/daily-briefs/progress   # SSE for generation progress
 ```
 
 ### Background Jobs
+
 ```
 POST /api/brief-jobs          # Queue job
 GET  /api/brief-jobs/[id]     # Check status
@@ -471,6 +500,7 @@ POST /api/queue/cleanup       # Maintenance
 ## Quick Reference
 
 ### Key Services
+
 - `BrainDumpProcessor` - Core AI processing
 - `ProjectService` - Project CRUD operations
 - `SmartLLMService` - Intelligent model routing
@@ -478,18 +508,21 @@ POST /api/queue/cleanup       # Maintenance
 - `DashboardDataService` - Optimistic updates
 
 ### Key Stores
+
 - `brain-dump-v2.store.ts` - Unified brain dump state
 - `project.store.ts` - Project management with caching
 - `dashboard.store.ts` - Dashboard data with optimistic updates
 - `toast.store.ts` - User notifications
 
 ### Key Database Functions
+
 - `get_project_statistics()` - Project metrics
 - `get_projects_with_stats()` - Optimized project list
 - `complete_queue_job()` - Job completion
 - `reset_stalled_jobs()` - Job recovery
 
 ### Performance Commands
+
 ```bash
 # Bundle analysis
 pnpm build:analyze

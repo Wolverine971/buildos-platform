@@ -34,11 +34,13 @@ buildos-worker
 Railway will find and use the `railway.toml` or `nixpacks.toml` configuration files in the repository root. These files are configured specifically for building the worker service with all its dependencies.
 
 **DO NOT manually override the build/start commands** unless absolutely necessary. The configuration files handle:
+
 - Building shared packages (`@buildos/shared-types`, `@buildos/supabase-client`)
 - Installing dependencies from the monorepo root
 - Using Turbo to orchestrate the build process
 
 If you need to verify the commands being used:
+
 - **Build Command** (from config): `pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
 - **Start Command** (from config): `node apps/worker/dist/index.js`
 
@@ -159,10 +161,10 @@ Click **Redeploy** from the latest deployment
 
 **CRITICAL: Railway uses DIFFERENT variable names than Vercel!**
 
-| Vercel (Web)                     | Railway (Worker)            | Value      |
-| -------------------------------- | --------------------------- | ---------- |
-| `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`              | Same value |
-| `PRIVATE_SUPABASE_SERVICE_KEY`   | `SUPABASE_SERVICE_ROLE_KEY` | Same value |
+| Vercel (Web)                     | Railway (Worker)                 | Value      |
+| -------------------------------- | -------------------------------- | ---------- |
+| `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`                   | Same value |
+| `PRIVATE_SUPABASE_SERVICE_KEY`   | `SUPABASE_SERVICE_ROLE_KEY`      | Same value |
 | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | Same value |
 
 ## Verification Steps
