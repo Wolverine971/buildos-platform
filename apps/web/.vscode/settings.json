@@ -1,0 +1,30 @@
+{
+	"json.schemas": [],
+	// --- universal formatting ---
+	"editor.formatOnSave": true,
+	// let Prettier run first, ESLint fix‑alls second
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit",
+		"source.fixAll": "explicit"
+	},
+
+	// --- make Prettier the *only* formatter everywhere ---
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"[svelte]": {
+		// disable the Svelte LS formatter
+		"editor.defaultFormatter": "svelte.svelte-vscode"
+	},
+
+	// --- make the extension use the repo copy of Prettier v3 ---
+	"prettier.prettierPath": "node_modules/prettier",
+	"prettier.documentSelectors": ["**/*.svelte"],
+	"prettier.requireConfig": true, // don't run if no config
+	"prettier.useEditorConfig": true, // honour .editorconfig (next step)
+
+	// --- indentation parity with your .prettierrc ---
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"[typescript]": {
+		"editor.defaultFormatter": "vscode.typescript-language-features"
+	}
+}

@@ -1,0 +1,9 @@
+# Existing Project Prompt Audits
+
+This directory contains automatically generated prompt audits for existing project update scenarios:
+
+- `existing-project-long-braindump-prompt.md` - Generated when updating an existing project with braindump ≥500 characters
+- `existing-project-short-braindump-prompt.md` - Generated when updating an existing project with braindump <500 characters
+- `existing-project-context-update-prompt.md` - Generated when context-only update is triggered for short braindumps
+
+These files are automatically overwritten in development mode each time the corresponding scenario is triggered.

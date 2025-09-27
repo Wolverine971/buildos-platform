@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Test Minimal Header</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+				padding: 20px;
+				background: #f5f5f5;
+			}
+			.instructions {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				margin-bottom: 20px;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			}
+			h2 {
+				color: #333;
+			}
+			ul {
+				line-height: 1.8;
+			}
+			code {
+				background: #f0f0f0;
+				padding: 2px 6px;
+				border-radius: 3px;
+				font-size: 14px;
+			}
+			.feature-list {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 15px;
+				margin-top: 20px;
+			}
+			.feature {
+				background: #f9f9f9;
+				padding: 15px;
+				border-radius: 6px;
+				border-left: 3px solid #3b82f6;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="instructions">
+			<h2>🎉 Minimal ProjectHeader Implementation Complete!</h2>
+
+			<p>
+				<strong>The new minimalist ProjectHeader has been successfully implemented.</strong>
+			</p>
+
+			<h3>📍 Access the Component</h3>
+			<p>
+				Visit:
+				<a href="http://localhost:5175/projects" target="_blank"
+					>http://localhost:5175/projects</a
+				>
+			</p>
+			<p>Then click on any project to see the new minimal header in action.</p>
+
+			<h3>✨ Key Features Implemented</h3>
+			<div class="feature-list">
+				<div class="feature">
+					<strong>Collapsed State (44px height)</strong>
+					<ul>
+						<li>Shows only project title</li>
+						<li>Settings & Context buttons always accessible</li>
+						<li>Click title to expand</li>
+					</ul>
+				</div>
+				<div class="feature">
+					<strong>Smooth Animations</strong>
+					<ul>
+						<li>350ms Apple-inspired easing curve</li>
+						<li>Progressive content reveal</li>
+						<li>Rotating chevron indicator</li>
+					</ul>
+				</div>
+				<div class="feature">
+					<strong>Glass Morphism Design</strong>
+					<ul>
+						<li>85% opacity with 20px blur</li>
+						<li>Adaptive shadows on expansion</li>
+						<li>Dark mode support</li>
+					</ul>
+				</div>
+				<div class="feature">
+					<strong>Performance Optimizations</strong>
+					<ul>
+						<li>Lazy-loaded timeline visualization</li>
+						<li>Deferred computation when collapsed</li>
+						<li>LocalStorage preference persistence</li>
+					</ul>
+				</div>
+			</div>
+
+			<h3>🔄 Toggle Between Headers</h3>
+			<p>You can switch between the minimal and legacy headers using localStorage:</p>
+			<code>localStorage.setItem('useMinimalHeader', 'false')</code> - Use legacy header<br />
+			<code>localStorage.setItem('useMinimalHeader', 'true')</code> - Use minimal header
+			(default)
+
+			<h3>📁 Files Created/Modified</h3>
+			<ul>
+				<li>
+					<code>src/lib/components/project/ProjectHeaderMinimal.svelte</code> - Main
+					component
+				</li>
+				<li>
+					<code>src/lib/components/project/ProjectTimelineCompact.svelte</code> - Timeline
+					visualization
+				</li>
+				<li>
+					<code>src/routes/projects/[id]/+page.svelte</code> - Integration with feature
+					flag
+				</li>
+			</ul>
+
+			<h3>🎯 Design Philosophy</h3>
+			<p>Following Apple's principles of <strong>progressive disclosure</strong>:</p>
+			<ul>
+				<li><strong>Clarity:</strong> Essential information first (just the title)</li>
+				<li><strong>Deference:</strong> Content over chrome (minimal UI elements)</li>
+				<li><strong>Depth:</strong> Layered information revealed through animation</li>
+				<li><strong>Simplicity:</strong> Reduced cognitive load</li>
+			</ul>
+
+			<h3>🚀 Next Steps</h3>
+			<ul>
+				<li>Test on various screen sizes</li>
+				<li>Gather user feedback on the collapsed/expanded states</li>
+				<li>Consider adding a "pin" feature to keep expanded</li>
+				<li>Monitor performance improvements</li>
+			</ul>
+		</div>
+	</body>
+</html>

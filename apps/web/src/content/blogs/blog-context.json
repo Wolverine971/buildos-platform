@@ -1,0 +1,275 @@
+{
+	"categories": {
+		"advanced-guides": {
+			"metadata": {
+				"name": "Advanced Guides",
+				"description": "Deep-dive tutorials for power users",
+				"color": "red"
+			},
+			"posts": {
+				"troubleshooting-common-issues": {
+					"title": "Troubleshooting Common Build OS Issues: Solutions and Workarounds",
+					"description": "Solutions to the most common problems users encounter with Build OS. Quick fixes, diagnostic steps, and optimization tips to keep your personal operating system running smoothly.",
+					"author": "DJ Wayne",
+					"date": "2025-6-27",
+					"lastmod": "2025-6-27",
+					"changefreq": "weekly",
+					"priority": "0.6",
+					"published": true,
+					"tags": [
+						"troubleshooting",
+						"support",
+						"solutions",
+						"advanced-guides",
+						"optimization"
+					],
+					"readingTime": 11,
+					"excerpt": "Comprehensive troubleshooting guide for Build OS users. Find solutions to common issues, optimization tips, and preventive measures to ensure smooth productivity system operation.",
+					"pic": "troubleshooting-guide",
+					"slug": "troubleshooting-common-issues",
+					"category": "advanced-guides",
+					"filePath": "src/content/blogs/advanced-guides/troubleshooting-common-issues.md"
+				}
+			}
+		},
+		"getting-started": {
+			"metadata": {
+				"name": "Getting Started",
+				"description": "Essential guides to help you master Build OS fundamentals",
+				"color": "purple"
+			},
+			"posts": {
+				"daily-brief-guide": {
+					"title": "Using Daily Briefs Effectively: Your Personal Intelligence System",
+					"description": "Make the most of your daily AI-generated briefs and insights. Learn how to leverage Build OS intelligence for better decision-making and focused productivity.",
+					"author": "DJ Wayne",
+					"date": "2025-6-26",
+					"lastmod": "2025-6-26",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"daily-briefs",
+						"ai-intelligence",
+						"productivity",
+						"getting-started",
+						"decision-making"
+					],
+					"readingTime": 10,
+					"excerpt": "Transform your daily productivity with AI-powered briefs that provide personalized insights, priority guidance, and strategic recommendations based on your unique context.",
+					"pic": "daily-briefs-guide",
+					"slug": "daily-brief-guide",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/daily-brief-guide.md"
+				},
+				"effective-brain-dumping": {
+					"title": "How to Master the Art of Brain Dumping in Build OS",
+					"description": "Transform chaotic thoughts into structured projects with our complete guide to effective brain dumping. Learn proven techniques to capture ideas and convert them into actionable tasks.",
+					"author": "DJ Wayne",
+					"date": "2025-06-28",
+					"lastmod": "2025-06-28",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": ["brain-dumping", "getting-started", "productivity", "idea-capture"],
+					"readingTime": 7,
+					"excerpt": "Master the foundational skill of transforming scattered thoughts into organized, actionable projects using Build OS intelligent parsing.",
+					"pic": "brain-dumping-guide",
+					"slug": "effective-brain-dumping",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/effective-brain-dumping.md"
+				},
+				"first-project-setup": {
+					"title": "Setting Up Your First Project in Build OS: A Complete Guide",
+					"description": "A step-by-step guide to creating and organizing your first project in Build OS. Learn how to transform ideas into structured, actionable project plans.",
+					"author": "DJ Wayne",
+					"date": "2025-6-26",
+					"lastmod": "2025-6-26",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": ["first-project", "getting-started", "project-management", "setup"],
+					"readingTime": 8,
+					"excerpt": "Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.",
+					"pic": "first-project-setup",
+					"slug": "first-project-setup",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/first-project-setup.md"
+				},
+				"understanding-life-goals": {
+					"title": "Understanding Life Goals vs Projects: Strategic vs Tactical Thinking",
+					"description": "Learn the crucial difference between strategic life goals and tactical projects in Build OS. Discover how to align your daily work with long-term vision for maximum impact.",
+					"author": "DJ Wayne",
+					"date": "2025-6-27",
+					"lastmod": "2025-6-27",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": ["life-goals", "projects", "strategy", "getting-started", "alignment"],
+					"readingTime": 9,
+					"excerpt": "Master the fundamental distinction between enduring life goals and executable projects to create perfect alignment between your daily actions and long-term vision.",
+					"pic": "goals-vs-projects",
+					"slug": "understanding-life-goals",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/understanding-life-goals.md"
+				}
+			}
+		},
+		"philosophy": {
+			"metadata": {
+				"name": "Philosophy",
+				"description": "Our vision for the future of personal productivity",
+				"color": "indigo"
+			},
+			"posts": {
+				"agentic-vrs-context-engineering": {
+					"title": "Why Context Engineering Will Matter More Than Agentic Engineering",
+					"description": "As AI agents gain more capabilities, the real differentiator becomes context engineering—the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.",
+					"author": "DJ Wayne",
+					"date": "2025-08-12",
+					"lastmod": "2025-08-12",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"context-engineering",
+						"agentic-engineering",
+						"AI-agents",
+						"AI-systems",
+						"knowledge-management",
+						"AI-judgment",
+						"AI-productivity",
+						"build-os",
+						"AI-architecture",
+						"future-of-ai"
+					],
+					"readingTime": 6,
+					"excerpt": "While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering—teaching them judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.",
+					"pic": "context-vs-agentic",
+					"slug": "agentic-vrs-context-engineering",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/agentic-vrs-context-engineering.md"
+				},
+				"anti-ai-assistant-execution-engine": {
+					"title": "Build OS: The Anti-AI-Assistant That Actually Helps You Ship",
+					"description": "Why Build OS isn't trying to do everything for you – and why that's exactly what makes it work",
+					"author": "DJ Wayne",
+					"date": "2025-08-24",
+					"lastmod": "2025-08-24",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"AI-productivity",
+						"workflow-management",
+						"task-management",
+						"AI-philosophy",
+						"productivity-tools",
+						"execution",
+						"brain-dump",
+						"project-management",
+						"build-os",
+						"AI-assistants",
+						"clarity",
+						"organization"
+					],
+					"readingTime": 7,
+					"excerpt": "While everyone races to build AI that does everything for you, Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Learn why clarity beats automation for actually shipping products.",
+					"pic": "ai-clarity-execution",
+					"slug": "anti-ai-assistant-execution-engine",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
+				}
+			}
+		},
+		"productivity-tips": {
+			"metadata": {
+				"name": "Productivity Tips",
+				"description": "Optimize your workflow and boost your efficiency",
+				"color": "blue"
+			},
+			"posts": {
+				"context-engineering-101": {
+					"title": "Prompt Engineering is Out. Context Engineering is In.",
+					"description": "Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems that remember and build upon your work over time.",
+					"author": "DJ Wayne",
+					"date": "2025-08-05",
+					"lastmod": "2025-08-05",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"prompt-engineering",
+						"context-engineering",
+						"AI-productivity",
+						"AI-workflows",
+						"LLM-optimization",
+						"knowledge-management",
+						"AI-systems",
+						"build-os",
+						"ai-context",
+						"prompt-optimization"
+					],
+					"readingTime": 8,
+					"excerpt": "The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts, and how to implement context engineering in your workflows today.",
+					"pic": "",
+					"slug": "context-engineering-101",
+					"category": "productivity-tips",
+					"filePath": "src/content/blogs/productivity-tips/context-engineering-101.md"
+				},
+				"evolution-of-note-taking": {
+					"title": "The Evolution of Note-Taking: From Paper to AI-Powered Organization",
+					"description": "Explore the progression from traditional note-taking systems like GTD and Zettelkasten to modern digital tools and AI-native platforms that eliminate organizational overhead through intelligent automation.",
+					"author": "DJ Wayne",
+					"date": "2025-07-08",
+					"lastmod": "2025-07-08",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"note-taking",
+						"organization",
+						"AI",
+						"productivity",
+						"information-management",
+						"knowledge-management",
+						"voice-ai",
+						"context-building"
+					],
+					"readingTime": 9,
+					"excerpt": "From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to intelligent automation. Discover why AI-first approaches like Build-OS solve fundamental problems that traditional productivity systems never could.",
+					"pic": "note-taking-evolution",
+					"slug": "evolution-of-note-taking",
+					"category": "productivity-tips",
+					"filePath": "src/content/blogs/productivity-tips/evolution-of-note-taking.md"
+				},
+				"task-management-best-practices": {
+					"title": "Task Management Best Practices: Beyond To-Do Lists",
+					"description": "Learn how to organize and prioritize your tasks for maximum productivity using Build OS intelligent task management system. Master advanced techniques for sustained execution.",
+					"author": "DJ Wayne",
+					"date": "2025-06-28",
+					"lastmod": "2025-07-08",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"task-management",
+						"productivity-tips",
+						"organization",
+						"execution",
+						"calendar-integration"
+					],
+					"readingTime": 12,
+					"excerpt": "Transform scattered to-do lists into a systematic task management approach that integrates seamlessly with your projects, calendar, and energy patterns for sustained productivity.",
+					"pic": "task-management-mastery",
+					"slug": "task-management-best-practices",
+					"category": "productivity-tips",
+					"filePath": "src/content/blogs/productivity-tips/task-management-best-practices.md"
+				}
+			}
+		}
+	},
+	"generatedAt": "2025-09-27T02:44:01.365Z",
+	"totalPosts": 10,
+	"totalCategories": 4
+}

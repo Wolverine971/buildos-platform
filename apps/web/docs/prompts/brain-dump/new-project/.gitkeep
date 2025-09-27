@@ -1,0 +1,8 @@
+# New Project Prompt Audits
+
+This directory contains automatically generated prompt audits for new project creation scenarios:
+
+- `new-project-long-braindump-prompt.md` - Generated when creating a new project with braindump ≥500 characters
+- `new-project-short-braindump-prompt.md` - Generated when creating a new project with braindump <500 characters
+
+These files are automatically overwritten in development mode each time the corresponding scenario is triggered.

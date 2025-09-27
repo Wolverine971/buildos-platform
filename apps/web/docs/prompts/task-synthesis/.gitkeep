@@ -1,0 +1,7 @@
+# Task Synthesis Prompt Audits
+
+This directory contains automatically generated prompt audits for task synthesis scenarios:
+
+- `task-synthesis-reorganization-prompt.md` - Generated for three-step task reorganization process
+
+These files are automatically overwritten in development mode each time the corresponding scenario is triggered.

@@ -1,0 +1,30 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(npm run build:*)",
+			"Bash(dir \".svelte-kit\\output\" /s /b)",
+			"Bash(npm run check:*)",
+			"Bash(npm run lint)",
+			"Bash(npm run dev:*)",
+			"Bash(npm run lint:*)",
+			"Bash(npx tsc:*)",
+			"Bash(rm:*)",
+			"Bash(pnpm run:*)",
+			"mcp__ide__getDiagnostics",
+			"Bash(find:*)",
+			"Bash(pnpm add:*)",
+			"Bash(wc:*)",
+			"Bash(powershell:*)",
+			"Bash(ls:*)",
+			"Bash(for file in *.PNG *.png)",
+			"Bash(do if [ -f \"$file\" ])",
+			"Bash(then cwebp -q 85 \"$file\" -o \"$file%.*.webp\")",
+			"Bash(fi)",
+			"Bash(done)",
+			"Bash(cwebp:*)",
+			"Bash(pnpm check:*)",
+			"Bash(pnpm lint:*)"
+		],
+		"deny": []
+	}
+}

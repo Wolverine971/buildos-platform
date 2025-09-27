@@ -1,0 +1,50 @@
+{
+	"crons": [
+		{
+			"path": "/api/cron/dunning",
+			"schedule": "0 9 * * *"
+		},
+		{
+			"path": "/api/cron/trial-reminders",
+			"schedule": "0 10 * * *"
+		}
+	],
+	"headers": [
+		{
+			"source": "/(.*).webp",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		},
+		{
+			"source": "/(.*).mp4",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		},
+		{
+			"source": "/(.*).js",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		},
+		{
+			"source": "/(.*).css",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		}
+	]
+}

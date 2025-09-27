@@ -1,0 +1,621 @@
+/* src/app.css */
+
+/* Import performance optimizations */
+@import './lib/styles/performance-optimizations.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─ design tokens ─────────────────────────────────────────────────── */
+@layer base {
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 222.2 84% 4.9%;
+		--border: 214.3 31.8% 91.4%;
+	}
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
+		--border: 217.2 32.6% 17.5%;
+	}
+
+	html {
+		overflow-y: scroll; /* Always show scrollbar space */
+		/* Prevent zoom on input focus */
+		-webkit-text-size-adjust: 100%;
+		/* Smooth scrolling */
+		scroll-behavior: smooth;
+		/* Better font rendering on mobile */
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	* {
+		/* Only apply border color to elements that don't have explicit border classes */
+		border-color: hsl(var(--border));
+		/* Prevent tap highlight on all elements by default */
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+		/* Prevent horizontal scrolling */
+		overflow-x: hidden;
+		/* Prevent iOS bounce scrolling if desired */
+		overscroll-behavior-y: none;
+		/* Ensure minimum height without viewport issues */
+		min-height: 100dvh; /* Dynamic viewport height for modern browsers */
+		min-height: 100vh; /* Fallback */
+		/* Better text rendering */
+		text-rendering: optimizeLegibility;
+	}
+
+	/* Safe area support for iPhone notches */
+	@supports (padding: max(0px)) {
+		body {
+			padding-left: max(0px, env(safe-area-inset-left));
+			padding-right: max(0px, env(safe-area-inset-right));
+		}
+	}
+
+	/* Better form elements globally */
+	input,
+	textarea,
+	select {
+		/* Prevent zoom on iOS */
+		font-size: max(16px, 1rem);
+		/* Better mobile interaction */
+		-webkit-appearance: none;
+		appearance: none;
+	}
+
+	/* Better button defaults - FIXED: Don't remove borders by default */
+	button {
+		/* Remove default button styles that interfere with mobile */
+		-webkit-appearance: none;
+		appearance: none;
+		/* DON'T remove borders by default - let Tailwind classes control this */
+		/* border: none; <-- REMOVED THIS LINE */
+		background: none;
+		padding: 0;
+		margin: 0;
+		/* Better touch interaction */
+		touch-action: manipulation;
+		cursor: pointer;
+	}
+
+	/* If you need borderless buttons, create a specific class for them */
+	.btn-borderless {
+		border: none;
+	}
+}
+
+main {
+	min-height: calc(100vh - 200px); /* Adjust based on your layout */
+}
+
+@layer components {
+	/* Ensure prose elements respect dark mode automatically */
+	.prose {
+		@apply prose-gray;
+	}
+
+	.dark .prose {
+		@apply prose-invert;
+	}
+
+	/* Override specific prose elements if needed */
+	.prose-custom {
+		@apply prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
+		       prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700;
+	}
+
+	.dark .prose-custom {
+		@apply prose-headings:text-white prose-p:text-gray-300 prose-li:text-gray-300
+		       prose-strong:text-white prose-a:text-blue-400 prose-blockquote:text-gray-300;
+	}
+
+	/* Enhanced touch-friendly button sizing */
+	.touch-target {
+		min-height: 44px;
+		min-width: 44px;
+		/* Prevent text selection on touch */
+		-webkit-user-select: none;
+		user-select: none;
+		/* Improve touch responsiveness */
+		touch-action: manipulation;
+		/* Add subtle tap feedback */
+		transition: transform 0.1s ease;
+	}
+
+	.touch-target:active {
+		transform: scale(0.98);
+	}
+
+	/* Better scrollable areas - universal need */
+	.scroll-area {
+		/* Better momentum scrolling on iOS */
+		-webkit-overflow-scrolling: touch;
+		/* Hide scrollbars but keep functionality */
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	.scroll-area::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Enhanced horizontal scroll with fade edges */
+	.scroll-fade {
+		position: relative;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	.scroll-fade::-webkit-scrollbar {
+		display: none;
+	}
+
+	.scroll-fade::before,
+	.scroll-fade::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 1rem;
+		pointer-events: none;
+		z-index: 10;
+	}
+
+	.scroll-fade::before {
+		left: 0;
+		background: linear-gradient(to right, rgb(255 255 255 / 1), rgb(255 255 255 / 0));
+	}
+
+	.scroll-fade::after {
+		right: 0;
+		background: linear-gradient(to left, rgb(255 255 255 / 1), rgb(255 255 255 / 0));
+	}
+
+	.dark .scroll-fade::before {
+		background: linear-gradient(to right, rgb(17 24 39 / 1), rgb(17 24 39 / 0));
+	}
+
+	.dark .scroll-fade::after {
+		background: linear-gradient(to left, rgb(17 24 39 / 1), rgb(17 24 39 / 0));
+	}
+
+	/* Modal and overlay improvements for mobile */
+	.modal-overlay {
+		/* Ensure modals cover full viewport on mobile */
+		position: fixed;
+		inset: 0;
+		z-index: 50;
+		/* Prevent body scroll when modal is open */
+		overscroll-behavior: contain;
+	}
+
+	.modal-content {
+		/* Better modal sizing on mobile */
+		max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+		max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Card component improvements */
+	.card-interactive {
+		/* Better touch feedback for cards */
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
+		cursor: pointer;
+	}
+
+	.card-interactive:hover {
+		transform: translateY(-1px);
+		box-shadow:
+			0 10px 25px -5px rgb(0 0 0 / 0.1),
+			0 8px 10px -6px rgb(0 0 0 / 0.1);
+	}
+
+	.card-interactive:active {
+		transform: translateY(0);
+	}
+
+	/* Better focus states globally */
+	.focus-ring {
+		@apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+	}
+
+	.dark .focus-ring {
+		@apply focus:ring-offset-gray-900;
+	}
+}
+
+@layer utilities {
+	/* Enhanced text utilities */
+	.line-clamp-1 {
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.line-clamp-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.line-clamp-3 {
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.line-clamp-4 {
+		display: -webkit-box;
+		-webkit-line-clamp: 4;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	/* Prevent horizontal overflow - crucial for mobile everywhere */
+	.no-horizontal-overflow {
+		max-width: 100vw;
+		overflow-x: hidden;
+	}
+
+	/* Safe area padding utilities - enhanced */
+	.safe-top {
+		padding-top: max(1rem, env(safe-area-inset-top));
+	}
+
+	.safe-bottom {
+		padding-bottom: max(1rem, env(safe-area-inset-bottom));
+	}
+
+	.safe-left {
+		padding-left: max(1rem, env(safe-area-inset-left));
+	}
+
+	.safe-right {
+		padding-right: max(1rem, env(safe-area-inset-right));
+	}
+
+	.safe-x {
+		padding-left: max(1rem, env(safe-area-inset-left));
+		padding-right: max(1rem, env(safe-area-inset-right));
+	}
+
+	.safe-y {
+		padding-top: max(1rem, env(safe-area-inset-top));
+		padding-bottom: max(1rem, env(safe-area-inset-bottom));
+	}
+
+	.safe-all {
+		padding-top: max(1rem, env(safe-area-inset-top));
+		padding-bottom: max(1rem, env(safe-area-inset-bottom));
+		padding-left: max(1rem, env(safe-area-inset-left));
+		padding-right: max(1rem, env(safe-area-inset-right));
+	}
+
+	/* Responsive spacing utilities */
+	.space-mobile {
+		@apply space-y-3 sm:space-y-4 lg:space-y-6;
+	}
+
+	.gap-mobile {
+		@apply gap-3 sm:gap-4 lg:gap-6;
+	}
+
+	.p-mobile {
+		@apply p-3 sm:p-4 lg:p-6;
+	}
+
+	.px-mobile {
+		@apply px-3 sm:px-4 lg:px-6;
+	}
+
+	.py-mobile {
+		@apply py-3 sm:py-4 lg:py-6;
+	}
+
+	/* Responsive text utilities */
+	.text-mobile-sm {
+		@apply text-sm sm:text-base;
+	}
+
+	.text-mobile-base {
+		@apply text-base sm:text-lg;
+	}
+
+	.text-mobile-lg {
+		@apply text-lg sm:text-xl;
+	}
+
+	.text-mobile-xl {
+		@apply text-xl sm:text-2xl;
+	}
+
+	/* Grid utilities for responsive layouts */
+	.grid-mobile-1 {
+		@apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+	}
+
+	.grid-mobile-2 {
+		@apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4;
+	}
+
+	.grid-mobile-auto {
+		@apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+	}
+
+	/* Better button touch states */
+	.btn-mobile {
+		@apply touch-target min-h-[44px] px-4 py-2 rounded-lg font-medium transition-all duration-200;
+	}
+
+	/* Drag and drop utilities for mobile */
+	.draggable-mobile {
+		/* Disable drag on touch devices */
+		-webkit-user-drag: none;
+		-khtml-user-drag: none;
+		-moz-user-drag: none;
+		-o-user-drag: none;
+		user-drag: none;
+		/* Better cursor states */
+		cursor: grab;
+	}
+
+	.draggable-mobile:active {
+		cursor: grabbing;
+	}
+
+	/* Animation performance utilities */
+	.animate-performance {
+		/* Optimize animations for mobile */
+		will-change: transform;
+		transform: translateZ(0);
+		backface-visibility: hidden;
+	}
+
+	/* Remove animations for users who prefer reduced motion */
+	@media (prefers-reduced-motion: reduce) {
+		.animate-performance {
+			animation: none !important;
+			transition: none !important;
+		}
+	}
+}
+
+.markdown-content {
+	@apply text-gray-900 dark:text-gray-100 leading-relaxed;
+}
+.pulse,
+.pulse-mobile {
+	position: relative;
+	overflow: hidden;
+}
+
+/* Light mode pulse animation */
+.pulse {
+	animation: pulse-light 1.2s ease-in-out;
+}
+
+.pulse-mobile {
+	animation: pulse-mobile-light 1.2s ease-in-out;
+}
+
+/* Dark mode pulse animation */
+:global(.dark) .pulse {
+	animation: pulse-dark 1.2s ease-in-out;
+}
+
+:global(.dark) .pulse-mobile {
+	animation: pulse-mobile-dark 1.2s ease-in-out;
+}
+
+/* Light mode keyframes */
+@keyframes pulse-light {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.02);
+		box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+		opacity: 0.9;
+	}
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+		opacity: 1;
+	}
+}
+
+@keyframes pulse-mobile-light {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3);
+		background-color: rgba(59, 130, 246, 0.05);
+	}
+	50% {
+		transform: scale(1.01);
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+		background-color: rgba(59, 130, 246, 0.1);
+	}
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+		background-color: transparent;
+	}
+}
+
+/* Dark mode keyframes */
+@keyframes pulse-dark {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.4);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.02);
+		box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
+		opacity: 0.9;
+	}
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+		opacity: 1;
+	}
+}
+
+@keyframes pulse-mobile-dark {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3);
+		background-color: rgba(96, 165, 250, 0.05);
+	}
+	50% {
+		transform: scale(1.01);
+		box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+		background-color: rgba(96, 165, 250, 0.1);
+	}
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+		background-color: transparent;
+	}
+}
+
+/* Smooth transition for better visual flow */
+.pulse,
+.pulse-mobile {
+	transition: all 0.2s ease-in-out;
+}
+
+/* Enhanced mobile accessibility and interactions */
+@media (max-width: 767px) {
+	/* Ensure minimum touch target sizes everywhere */
+	button,
+	a,
+	input,
+	select,
+	textarea,
+	[role='button'],
+	[tabindex='0'] {
+		min-height: 20px !important;
+		min-width: 20px !important;
+	}
+
+	/* Better focus indicators for mobile */
+	button:focus,
+	a:focus,
+	input:focus,
+	select:focus,
+	textarea:focus,
+	[role='button']:focus,
+	[tabindex='0']:focus {
+		outline: 2px solid #3b82f6 !important;
+		outline-offset: 2px !important;
+	}
+
+	/* Better spacing for readability everywhere */
+	p {
+		line-height: 1.6 !important;
+	}
+
+	/* Improve list spacing on mobile */
+	ul,
+	ol {
+		padding-left: 1.5rem !important;
+	}
+
+	li {
+		margin-bottom: 0.25rem !important;
+	}
+
+	/* Better table handling on mobile */
+	table {
+		font-size: 0.875rem !important;
+	}
+
+	/* Ensure modals work well on mobile */
+	.modal-content {
+		margin: 0.5rem !important;
+		max-height: calc(100vh - 1rem) !important;
+		border-radius: 0.75rem !important;
+	}
+
+	/* Better form layout on mobile */
+	.form-grid {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 1rem !important;
+	}
+
+	/* Better horizontal scrolling areas */
+	.overflow-x-auto {
+		-webkit-overflow-scrolling: touch !important;
+		scroll-snap-type: x mandatory;
+	}
+
+	.overflow-x-auto > * {
+		scroll-snap-align: start;
+	}
+
+	/* Better card grids on mobile */
+	.grid {
+		gap: 0.75rem !important;
+	}
+
+	/* Ensure tab navigation works well on mobile */
+	.nav-tabs {
+		gap: 0.25rem !important;
+	}
+
+	.nav-tab {
+		flex-shrink: 0 !important;
+		padding: 0.75rem 1rem !important;
+		white-space: nowrap !important;
+	}
+}
+
+/* Tablet specific improvements */
+@media (min-width: 768px) and (max-width: 1023px) {
+	/* Optimize layouts for tablet */
+	.grid-tablet-2 {
+		grid-template-columns: repeat(2, 1fr) !important;
+	}
+
+	.grid-tablet-3 {
+		grid-template-columns: repeat(3, 1fr) !important;
+	}
+}
+
+/* Better print styles */
+@media print {
+	.no-print {
+		display: none !important;
+	}
+
+	* {
+		background: white !important;
+		color: black !important;
+	}
+}
+
+@supports (scrollbar-gutter: stable) {
+	html {
+		overflow-y: auto;
+		scrollbar-gutter: stable;
+	}
+}
