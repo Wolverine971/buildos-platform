@@ -1158,7 +1158,7 @@
 								// FIXED: Load overview component AFTER data is loaded and await it
 								console.log('[Page] Loading PhasesSection component...');
 								await loadComponent('PhasesSection', 'overview');
-								console.log('[Page] PhasesSection component loaded');
+								// console.log('[Page] PhasesSection component loaded');
 
 								// Mark all tabs as having data loaded
 								loadingStateManager.setDataLoading('overview', 'success', true);
