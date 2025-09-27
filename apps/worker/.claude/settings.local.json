@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(rm:*)",
+      "Bash(pnpm run:*)",
+      "Bash(find:*)",
+      "Bash(pnpm add:*)",
+      "Bash(wc:*)",
+      "Bash(powershell:*)",
+      "Bash(mv:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx tsx:*)",
+      "Bash(grep:*)",
+      "Bash(tail:*)",
+      "Bash(curl:*)",
+      "Bash(rg:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(pnpm tsx:*)",
+      "Bash(source .env)",
+      "Read(//Users/annawayne/Desktop/**)",
+      "Bash(cat:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(pnpm build:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(pnpm test:run:*)",
+      "WebSearch",
+      "Bash(git remote get-url:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits"
+  }
+}
