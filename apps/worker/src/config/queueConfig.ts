@@ -193,7 +193,7 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Check required environment variables
-  const requiredVars = ["SUPABASE_URL", "PRIVATE_SUPABASE_SERVICE_KEY"];
+  const requiredVars = ["PUBLIC_SUPABASE_URL", "PRIVATE_SUPABASE_SERVICE_KEY"];
 
   for (const varName of requiredVars) {
     if (!process.env[varName]) {
