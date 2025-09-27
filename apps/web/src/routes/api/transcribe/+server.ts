@@ -139,7 +139,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		// Handle specific OpenAI API errors
 		if (error?.response?.data) {
 			const apiError = error.response.data.error;
-			console.error('[Transcribe] OpenAI API Error:', apiError);
+			// console.error('[Transcribe] OpenAI API Error:', apiError);
 
 			// Check for format-related errors
 			if (apiError?.message?.includes('format') || apiError?.message?.includes('file')) {
