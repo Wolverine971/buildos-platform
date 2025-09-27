@@ -26,22 +26,19 @@ buildos-worker
 #### Root Directory
 
 ```
-/
+/apps/worker
 ```
 
-(Leave as root - the build commands handle the navigation)
+**IMPORTANT**: Railway will automatically use the `railway.json` and `railway.toml` configuration files in the `/apps/worker` directory. These files contain the correct build and start commands that properly build all dependencies.
 
-#### Build Command
+**DO NOT manually override the build/start commands** unless absolutely necessary. The configuration files handle:
+- Building shared packages (`@buildos/shared-types`, `@buildos/supabase-client`)
+- Installing dependencies from the monorepo root
+- Using Turbo to orchestrate the build process
 
-```
-cd apps/worker && pnpm install --frozen-lockfile && pnpm build
-```
-
-#### Start Command
-
-```
-cd apps/worker && node dist/index.js
-```
+If you need to verify the commands being used:
+- **Build Command** (from config): `cd ../.. && pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
+- **Start Command** (from config): `node dist/index.js`
 
 #### Watch Paths (for auto-redeploy)
 
@@ -127,10 +124,11 @@ If you already have a Railway project for the worker:
 
 In **Settings** → **Deploy**:
 
-```
-Build Command: cd apps/worker && pnpm install --frozen-lockfile && pnpm build
-Start Command: cd apps/worker && node dist/index.js
-```
+**IMPORTANT**: The project includes `railway.json` and `railway.toml` configuration files that contain the correct build commands. Railway should automatically use these.
+
+**Verify the Root Directory is set to**: `/apps/worker`
+
+**DO NOT manually override** the build/start commands unless the automatic configuration isn't working. The configuration files ensure dependencies are built correctly.
 
 ### 4. Update Environment Variables
 
@@ -201,10 +199,13 @@ After deployment:
 - Railway should auto-detect pnpm from package.json
 - Try adding nixpacks.toml configuration
 
-**Error: "Cannot find module"**
+**Error: "Cannot find module @buildos/shared-types" or similar**
 
-- Ensure build command includes `cd apps/worker`
-- Check that `pnpm install` runs successfully
+- This means the shared packages weren't built before the worker
+- Ensure Railway is using the configuration files (`railway.json` or `railway.toml`)
+- The build command must run from the monorepo root and use Turbo
+- Correct build command: `cd ../.. && pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
+- DO NOT use: `cd apps/worker && pnpm build` (this skips dependency building)
 
 ### Runtime Failures
 
