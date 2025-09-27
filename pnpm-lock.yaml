@@ -147,7 +147,7 @@ importers:
         specifier: ^6.0.1
         version: 6.1.0(@sveltejs/kit@2.43.5(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.6)(vite@7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)))(svelte@5.39.6)(vite@7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)))
       '@sveltejs/adapter-vercel':
-        specifier: ^5.9.0
+        specifier: ^5.8.0
         version: 5.10.2(@sveltejs/kit@2.43.5(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.6)(vite@7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)))(svelte@5.39.6)(vite@7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)))(rollup@4.52.2)
       '@sveltejs/kit':
         specifier: ^2.31.0
