@@ -1,0 +1,44 @@
+{
+	"name": "BuildOS - AI-Powered Project Organization",
+	"short_name": "BuildOS",
+	"description": "Never forget, continue to build. Brain dump into BuildOS and let AI organize your thoughts into structured projects.",
+	"start_url": "/",
+	"scope": "/",
+	"icons": [
+		{
+			"src": "/web-app-manifest-192x192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/web-app-manifest-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"theme_color": "#1f2937",
+	"background_color": "#0f172a",
+	"display": "standalone",
+	"orientation": "portrait-primary",
+	"categories": ["productivity", "business"],
+	"lang": "en-US",
+	"dir": "ltr",
+	"prefer_related_applications": false,
+	"edge_side_panel": {
+		"preferred_width": 412
+	},
+	"theme_color_variants": [
+		{
+			"color": "#1f2937",
+			"media": "(prefers-color-scheme: dark)"
+		}
+	],
+	"background_color_variants": [
+		{
+			"color": "#111827",
+			"media": "(prefers-color-scheme: dark)"
+		}
+	]
+}

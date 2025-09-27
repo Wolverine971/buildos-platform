@@ -1,0 +1,45 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"strict": true,
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"sourceMap": true,
+		"allowJs": true,
+		"checkJs": true,
+
+		// Performance improvements
+		"incremental": true,
+		"tsBuildInfoFile": ".tsbuildinfo",
+
+		// Stricter type checking
+		"noUncheckedIndexedAccess": true,
+		"noPropertyAccessFromIndexSignature": false,
+
+		// Better imports
+		"allowImportingTsExtensions": false,
+		"verbatimModuleSyntax": false,
+
+		// Performance
+		"assumeChangesOnlyAffectDirectDependencies": true
+	},
+
+	// Exclude heavy directories
+	"exclude": [
+		"node_modules",
+		"build",
+		".svelte-kit/output",
+		".svelte-kit/generated",
+		"coverage",
+		"**/*.spec.ts",
+		"**/*.test.ts",
+		"scripts/**/*.js",
+		"*.config.js",
+		"*.config.ts"
+	]
+}

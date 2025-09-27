@@ -1,0 +1,52 @@
+# https://www.robotstxt.org/robotstxt.html
+# BuildOS robots.txt
+
+# Default - Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow authentication pages
+Disallow: /auth/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /projects/
+Disallow: /brain-dump
+Disallow: /briefs
+Disallow: /history
+Disallow: /_app/
+
+# Allow specific public pages
+Allow: /about
+Allow: /pricing
+Allow: /contact
+Allow: /help
+Allow: /docs
+Allow: /blogs
+Allow: /terms
+Allow: /privacy
+Allow: /beta
+Allow: /feedback
+Allow: /road-map
+Allow: /investors
+
+# Common AI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Sitemap location
+Sitemap: https://build-os.com/sitemap.xml
+
+# Crawl-delay for respectful crawling
+User-agent: *
+Crawl-delay: 1

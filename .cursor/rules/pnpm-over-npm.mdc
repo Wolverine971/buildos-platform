@@ -1,0 +1,5 @@
+---
+description: Always use pnpm instead of npm
+globs: Always use pnpm instead of npm
+alwaysApply: true
+---

@@ -1,0 +1,204 @@
+// src/lib/utils/pwa-enhancements.ts
+
+/**
+ * PWA Enhancement utilities for better mobile experience
+ * Especially for iOS/Safari PWA integration
+ */
+
+import { browser } from '$app/environment';
+
+/**
+ * Update theme colors dynamically based on dark mode
+ */
+export function updateThemeColors(isDarkMode: boolean) {
+	if (!browser) return;
+
+	// Update meta theme-color tags
+	const lightThemeMetaTag = document.querySelector(
+		'meta[name="theme-color"][media="(prefers-color-scheme: light)"]'
+	);
+	const darkThemeMetaTag = document.querySelector(
+		'meta[name="theme-color"][media="(prefers-color-scheme: dark)"]'
+	);
+	const defaultThemeMetaTag = document.querySelector('meta[name="theme-color"]:not([media])');
+
+	if (isDarkMode) {
+		// Dark mode colors
+		if (defaultThemeMetaTag) {
+			defaultThemeMetaTag.setAttribute('content', '#1e40af'); // primary-800
+		}
+		// Update status bar for iOS
+		updateIOSStatusBar('black-translucent');
+	} else {
+		// Light mode colors
+		if (defaultThemeMetaTag) {
+			defaultThemeMetaTag.setAttribute('content', '#3b82f6'); // primary-500
+		}
+		// Update status bar for iOS
+		updateIOSStatusBar('default');
+	}
+}
+
+/**
+ * Update iOS status bar style
+ */
+function updateIOSStatusBar(style: 'default' | 'black' | 'black-translucent') {
+	if (!browser) return;
+
+	const statusBarMeta = document.querySelector(
+		'meta[name="apple-mobile-web-app-status-bar-style"]'
+	);
+	if (statusBarMeta) {
+		statusBarMeta.setAttribute('content', style);
+	}
+}
+
+/**
+ * Check if running as installed PWA
+ */
+export function isInstalledPWA(): boolean {
+	if (!browser) return false;
+
+	// Check for iOS standalone mode
+	const isIOSStandalone =
+		'standalone' in window.navigator && window.navigator.standalone === true;
+
+	// Check for display-mode media query
+	const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+	// Check for Samsung Internet
+	const isSamsungStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+	return isIOSStandalone || isStandalone || isSamsungStandalone;
+}
+
+/**
+ * Initialize PWA enhancements
+ */
+export function initializePWAEnhancements() {
+	if (!browser) return;
+
+	// Handle theme changes
+	const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+	// Initial setup
+	updateThemeColors(darkModeMediaQuery.matches);
+
+	// Listen for changes
+	darkModeMediaQuery.addEventListener('change', (e) => {
+		updateThemeColors(e.matches);
+	});
+
+	// Also listen for manual theme changes if you have a theme toggle
+	// This assumes you store theme preference in localStorage
+	const handleStorageChange = () => {
+		const theme = localStorage.getItem('theme');
+		if (theme) {
+			updateThemeColors(theme === 'dark');
+		}
+	};
+
+	window.addEventListener('storage', handleStorageChange);
+
+	// Add PWA-specific body class for custom styling
+	if (isInstalledPWA()) {
+		document.body.classList.add('pwa-installed');
+	}
+
+	// Prevent pull-to-refresh on iOS PWA (optional)
+	let lastTouchY = 0;
+	let preventPullToRefresh = false;
+
+	document.addEventListener(
+		'touchstart',
+		(e) => {
+			if (e.touches.length !== 1) return;
+			lastTouchY = e.touches[0].clientY;
+			preventPullToRefresh = window.scrollY === 0;
+		},
+		{ passive: false }
+	);
+
+	document.addEventListener(
+		'touchmove',
+		(e) => {
+			if (!preventPullToRefresh || e.touches.length !== 1) return;
+
+			const touchY = e.touches[0].clientY;
+			const touchYDelta = touchY - lastTouchY;
+			lastTouchY = touchY;
+
+			if (touchYDelta > 0 && window.scrollY === 0) {
+				e.preventDefault();
+			}
+		},
+		{ passive: false }
+	);
+
+	// Add viewport meta tag adjustments for notch handling
+	adjustViewportForNotch();
+}
+
+/**
+ * Adjust viewport for devices with notches (iPhone X and later)
+ */
+function adjustViewportForNotch() {
+	if (!browser) return;
+
+	const viewport = document.querySelector('meta[name="viewport"]');
+	if (viewport) {
+		viewport.setAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
+	}
+}
+
+/**
+ * Request app installation (for supported browsers)
+ */
+export async function requestInstall() {
+	if (!browser) return;
+
+	// Check if installation is available
+	const beforeInstallPromptEvent = (window as any).deferredPrompt;
+
+	if (beforeInstallPromptEvent) {
+		// Show the install prompt
+		beforeInstallPromptEvent.prompt();
+
+		// Wait for the user's response
+		const { outcome } = await beforeInstallPromptEvent.userChoice;
+
+		// Clear the deferred prompt
+		(window as any).deferredPrompt = null;
+
+		return outcome === 'accepted';
+	}
+
+	return false;
+}
+
+/**
+ * Set up install prompt handling
+ */
+export function setupInstallPrompt() {
+	if (!browser) return;
+
+	window.addEventListener('beforeinstallprompt', (e) => {
+		// Prevent the default prompt
+		e.preventDefault();
+
+		// Store the event for later use
+		(window as any).deferredPrompt = e;
+
+		// Optionally show your custom install UI
+		document.dispatchEvent(new CustomEvent('pwa-install-available'));
+	});
+
+	// Listen for successful installation
+	window.addEventListener('appinstalled', () => {
+		// Clear any stored prompt
+		(window as any).deferredPrompt = null;
+
+		// Optionally track or celebrate the installation
+		document.dispatchEvent(new CustomEvent('pwa-installed'));
+	});
+}

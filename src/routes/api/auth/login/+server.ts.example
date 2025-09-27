@@ -1,0 +1,19 @@
+// Example: How to use rate limiting in an API route
+import type { RequestHandler } from './$types';
+import { json } from '@sveltejs/kit';
+import { rateLimits } from '$lib/middleware/rate-limiter';
+
+export const POST: RequestHandler = async (event) => {
+	// Apply rate limiting for auth endpoints
+	const rateLimitResponse = await rateLimits.auth(event);
+	if (rateLimitResponse.status === 429) {
+		return rateLimitResponse;
+	}
+
+	// Your login logic here
+	const { email, password } = await event.request.json();
+	
+	// ... authentication logic ...
+	
+	return json({ success: true });
+};

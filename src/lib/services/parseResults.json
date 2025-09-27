@@ -1,0 +1,83 @@
+{
+	"title": "Quick update: 2 tasks",
+	"operations": [
+		{
+			"id": "op-1756247481971-task-0",
+			"table": "tasks",
+			"operation": "create",
+			"data": {
+				"title": "Create a TikTok posting strategy",
+				"project_id": "ec4db993-0d60-4aa0-94af-21fbce4c54a8",
+				"description": "Develop a plan of attack for updating TikTok to leverage its viral growth.",
+				"details": "Create a comprehensive strategy for posting on TikTok, focusing on content types, posting frequency, and engagement tactics.",
+				"status": "backlog",
+				"priority": "high",
+				"task_type": "one_off",
+				"duration_minutes": 120,
+				"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435"
+			},
+			"enabled": true
+		},
+		{
+			"id": "op-1756247481971-task-1",
+			"table": "tasks",
+			"operation": "create",
+			"data": {
+				"title": "Collaborate with Casey Neistat on the project",
+				"project_id": "ec4db993-0d60-4aa0-94af-21fbce4c54a8",
+				"description": "Work with Casey Neistat on the project as he has expressed interest in helping.",
+				"details": "Coordinate with Casey Neistat to define roles, responsibilities, and project goals.",
+				"status": "backlog",
+				"priority": "high",
+				"task_type": "one_off",
+				"duration_minutes": 240,
+				"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435"
+			},
+			"enabled": true
+		},
+		{
+			"id": "op-1756247481971-context-update",
+			"table": "projects",
+			"operation": "update",
+			"data": {
+				"id": "ec4db993-0d60-4aa0-94af-21fbce4c54a8",
+				"context": "## Objective\n\nFinalize and launch Part 2 of the Chaos-to-Cash Kickstart Bundle, including course content completion, sales funnel setup, and ad campaign execution.\n\n### Situation & Environment\nPart 1 is complete, and Part 2 is in progress. The goal is to launch Part 2 to drive sales.\n\n### Purpose & Vision\nSuccessfully launch Part 2 to expand the product offering and increase revenue.\n\n### Scope & Boundaries\nDeliverables include completed course content, a functioning sales funnel, and live ad campaigns.\n\n### Approach & Execution\nRecord, edit, and organize course content; set up sales funnel with compliance; create and launch ad campaigns. Additionally, develop a strategy for TikTok engagement to capitalize on its viral growth potential.\n\n### Coordination & Control\nMonitor ad performance and adjust strategies based on metrics. Collaborate with Casey Neistat to enhance project visibility and reach.\n\n### Knowledge & Learning\nApply lessons from Part 1 and previous campaigns to optimize Part 2 launch. Incorporate insights from TikTok trends and influencer collaboration to maximize impact.\n\n[2025-08-26] New effort to create a plan for TikTok engagement.\n[2025-08-26] Collaboration with Casey Neistat confirmed for project support.",
+				"executive_summary": "The project will now include a strategic focus on TikTok engagement to leverage its viral potential, alongside a collaboration with Casey Neistat to enhance project visibility.",
+				"tags": ["course", "sales", "ads", "launch", "TikTok", "collaboration"],
+				"status": "active",
+				"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435"
+			},
+			"conditions": {
+				"id": "ec4db993-0d60-4aa0-94af-21fbce4c54a8"
+			},
+			"enabled": true
+		}
+	],
+	"summary": "Extracted 2 tasks and updated project context",
+	"insights": "Environment & Stakeholders",
+	"metadata": {
+		"totalOperations": 3,
+		"tableBreakdown": {
+			"tasks": 2,
+			"projects": 1
+		},
+		"processingTime": 26292,
+		"timestamp": "2025-08-26T22:31:31.585Z",
+		"processingMode": "single",
+		"compartmentalization_note": "Short braindump processing. Context update: true"
+	},
+	"questionAnalysis": {
+		"ca5187bb-66a9-4334-aa80-5bbcad1d139b": {
+			"wasAnswered": false,
+			"answerContent": null
+		},
+		"50518c2d-fde0-4956-b264-1b741245ba2d": {
+			"wasAnswered": false,
+			"answerContent": null
+		},
+		"5705ed0f-f157-448e-beb9-76b97143c783": {
+			"wasAnswered": false,
+			"answerContent": null
+		}
+	}
+}

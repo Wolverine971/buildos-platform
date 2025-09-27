@@ -1,0 +1,465 @@
+{
+	"components": [
+		{
+			"file": "src/routes/+layout.svelte",
+			"type": "page",
+			"components": [
+				"OnboardingModal",
+				"ToastContainer",
+				"PaymentWarning",
+				"TrialBanner",
+				"BackgroundJobIndicator",
+				"BrainDumpProcessingNotification"
+			]
+		},
+		{
+			"file": "src/routes/+page.svelte",
+			"type": "page",
+			"components": ["Dashboard"]
+		},
+		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": [
+				"NewProjectModal",
+				"ProjectBriefModal",
+				"BrainDumpModal",
+				"QuickProjectModal"
+			]
+		},
+		{
+			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
+			"type": "component",
+			"components": [
+				"ProjectSelectionView",
+				"RecordingView",
+				"ProcessingModal",
+				"ParseResultsDiffView",
+				"SuccessView",
+				"OperationEditModal"
+			]
+		},
+		{
+			"file": "src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte",
+			"type": "component",
+			"components": [
+				"ParseResultsDiffView",
+				"ProcessingModal",
+				"DualProcessingResults",
+				"OperationEditModal",
+				"SuccessView"
+			]
+		},
+		{
+			"file": "src/lib/components/dashboard/Dashboard.svelte",
+			"type": "component",
+			"components": ["BraindumpWeekView", "PhaseCalendarView", "TaskModal", "DailyBriefModal"]
+		},
+		{
+			"file": "src/lib/components/project/PhasesSection.svelte",
+			"type": "component",
+			"components": [
+				"PhaseGenerationLoadingOverlay",
+				"KanbanView",
+				"TimelineView",
+				"PhaseForm"
+			]
+		},
+		{
+			"file": "src/lib/components/project/ProjectHeaderMinimal.svelte",
+			"type": "component",
+			"components": ["ProjectTimelineCompact"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectModals.svelte",
+			"type": "component",
+			"components": [
+				"ProjectEditModal",
+				"ProjectContextModal",
+				"ProjectHistoryModal",
+				"ProjectCalendarSettingsModal",
+				"ProjectCalendarConnectModal",
+				"ProjectBriefModal",
+				"TaskModal",
+				"NoteModal",
+				"PhaseSchedulingModal",
+				"ScheduleAllPhasesModal",
+				"ProjectDatesModal",
+				"PhaseGenerationConfirmationModal",
+				"AssignBacklogTasksModal",
+				"UnscheduleAllTasksModal",
+				"RescheduleOverdueTasksModal"
+			]
+		},
+		{
+			"file": "src/lib/components/project/ProjectSynthesis.svelte",
+			"type": "component",
+			"components": ["SynthesisLoadingState"]
+		},
+		{
+			"file": "src/lib/components/ui/RadioGroup.svelte",
+			"type": "component",
+			"components": ["Radio"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
+		},
+		{
+			"file": "src/lib/services/braindump-api.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["brainDumpService"]
+		},
+		{
+			"file": "src/lib/services/braindump-background.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["backgroundBrainDumpService"]
+		},
+		{
+			"file": "src/lib/services/braindump-status.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["BrainDumpStatusService"]
+		},
+		{
+			"file": "src/lib/services/briefClient.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["BriefClientService"]
+		},
+		{
+			"file": "src/lib/services/calendar-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["CalendarService"]
+		},
+		{
+			"file": "src/lib/services/calendar-webhook-check.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["checkAndRegisterWebhookIfNeeded", "batchCheckAndRegisterWebhooks"]
+		},
+		{
+			"file": "src/lib/services/calendar-webhook-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["CalendarWebhookService"]
+		},
+		{
+			"file": "src/lib/services/dashboardData.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["DashboardDataService", "dashboardDataService"]
+		},
+		{
+			"file": "src/lib/services/dunning-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["DunningService"]
+		},
+		{
+			"file": "src/lib/services/email-generation-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["EmailGenerationService"]
+		},
+		{
+			"file": "src/lib/services/email-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["EmailService"]
+		},
+		{
+			"file": "src/lib/services/errorLogger.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ErrorLoggerService"]
+		},
+		{
+			"file": "src/lib/services/google-oauth-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
+		},
+		{
+			"file": "src/lib/services/onboardingClient.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OnboardingClientService"]
+		},
+		{
+			"file": "src/lib/services/onboardingProgress.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OnboardingProgressService"]
+		},
+		{
+			"file": "src/lib/services/project-calendar.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectCalendarService"]
+		},
+		{
+			"file": "src/lib/services/project-synthesis.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectSynthesisService"]
+		},
+		{
+			"file": "src/lib/services/projectBriefTemplateGenerator.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectBriefTemplateGeneratorService"]
+		},
+		{
+			"file": "src/lib/services/projectData.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectDataService"]
+		},
+		{
+			"file": "src/lib/services/projectService.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectService", "projectService"]
+		},
+		{
+			"file": "src/lib/services/projectSynthesis.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectSynthesisService"]
+		},
+		{
+			"file": "src/lib/services/promptEnhancer.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["PromptEnhancerService"]
+		},
+		{
+			"file": "src/lib/services/promptTemplate.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["PromptTemplateService"]
+		},
+		{
+			"file": "src/lib/services/railwayWorker.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["RailwayWorkerService"]
+		},
+		{
+			"file": "src/lib/services/realtimeBrief.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["briefNotificationStatus", "RealtimeBriefService"]
+		},
+		{
+			"file": "src/lib/services/realtimeProject.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["RealtimeProjectService"]
+		},
+		{
+			"file": "src/lib/services/recurrence-pattern.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["RecurrencePatternBuilder", "recurrencePatternBuilder"]
+		},
+		{
+			"file": "src/lib/services/recurring-instance.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["RecurringInstanceService"]
+		},
+		{
+			"file": "src/lib/services/smart-llm-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["SmartLLMService"]
+		},
+		{
+			"file": "src/lib/services/stripe-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["StripeService"]
+		},
+		{
+			"file": "src/lib/services/task-time-slot-finder.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["TaskTimeSlotFinder"]
+		},
+		{
+			"file": "src/lib/services/visitor.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["VisitorService", "visitorService"]
+		},
+		{
+			"file": "src/lib/stores/backgroundJobs.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"backgroundJobs",
+				"activeBackgroundJobs",
+				"processingJobs",
+				"completedJobs",
+				"failedJobs"
+			]
+		},
+		{
+			"file": "src/lib/stores/brain-dump-transition.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["brainDumpActions", "isUsingNewStore", "setUseNewStore"]
+		},
+		{
+			"file": "src/lib/stores/brain-dump-v2.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"brainDumpV2Store",
+				"selectedProjectName",
+				"hasUnsavedChanges",
+				"canParse",
+				"canApply",
+				"enabledOperationsCount",
+				"disabledOperationsCount",
+				"hasOperationErrors",
+				"hasCriticalErrors",
+				"operationErrorSummary",
+				"isProcessingActive",
+				"hasParseResults",
+				"canAutoAccept",
+				"isModalOpen",
+				"isNotificationOpen",
+				"isNotificationMinimized",
+				"processingStatus"
+			]
+		},
+		{
+			"file": "src/lib/stores/brain-dump.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"brainDumpStore",
+				"isNewProject",
+				"selectedProjectName",
+				"hasUnsavedChanges",
+				"canParse",
+				"canApply",
+				"enabledOperationsCount",
+				"hasOperationErrors",
+				"criticalErrors",
+				"operationErrorSummary"
+			]
+		},
+		{
+			"file": "src/lib/stores/brainDumpPreferences.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["brainDumpAutoAccept"]
+		},
+		{
+			"file": "src/lib/stores/brainDumpProcessing.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"processingNotificationStore",
+				"processingNotificationActions",
+				"isProcessingVisible",
+				"isProcessingMinimized",
+				"isProcessingActive",
+				"hasParseResults",
+				"processingStatus",
+				"canAutoAccept",
+				"default"
+			]
+		},
+		{
+			"file": "src/lib/stores/briefPreferences.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["briefPreferencesStore"]
+		},
+		{
+			"file": "src/lib/stores/dashboard.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["dashboardStore"]
+		},
+		{
+			"file": "src/lib/stores/modal.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["modalStore"]
+		},
+		{
+			"file": "src/lib/stores/navigation.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["navigationStore"]
+		},
+		{
+			"file": "src/lib/stores/project.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["projectStoreV2", "projectStoreV2Internal"]
+		},
+		{
+			"file": "src/lib/stores/schedulingStore.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["schedulingStore"]
+		},
+		{
+			"file": "src/lib/stores/searchStore.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["searchStore", "totalResultCount"]
+		},
+		{
+			"file": "src/lib/stores/toast.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["toasts", "toastService"]
+		},
+		{
+			"file": "src/lib/stores/unifiedBriefGeneration.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"unifiedBriefGenerationStore",
+				"streamingStatus",
+				"streamingBriefData",
+				"briefGenerationCompletedWritable",
+				"briefGenerationCompleted"
+			]
+		},
+		{
+			"file": "src/lib/stores/userContext.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["userContextStore"]
+		}
+	],
+	"dependencies": {
+		"src/routes/+layout.svelte": [
+			"src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte"
+		],
+		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
+		"src/routes/projects/+page.svelte": ["src/lib/components/brain-dump/BrainDumpModal.svelte"],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectSynthesis.svelte",
+			"src/lib/components/project/PhasesSection.svelte"
+		]
+	},
+	"unusedComponents": [
+		"src/lib/components/project/ProjectHeaderMinimal.svelte",
+		"src/lib/components/project/ProjectModals.svelte",
+		"src/lib/components/ui/RadioGroup.svelte"
+	]
+}

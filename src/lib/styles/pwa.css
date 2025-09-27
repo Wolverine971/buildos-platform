@@ -1,0 +1,141 @@
+/* src/lib/styles/pwa.css */
+
+/* Safe area adjustments for devices with notches */
+.pwa-installed {
+	padding-top: env(safe-area-inset-top);
+	padding-left: env(safe-area-inset-left);
+	padding-right: env(safe-area-inset-right);
+	padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Adjust header/navigation for PWA */
+.pwa-installed header,
+.pwa-installed nav {
+	/* Add extra padding for status bar on iOS */
+	padding-top: calc(1rem + env(safe-area-inset-top));
+}
+
+/* Bottom navigation adjustments for home indicator */
+.pwa-installed .bottom-nav,
+.pwa-installed .tab-bar {
+	padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* Prevent text selection on UI elements in PWA */
+.pwa-installed button,
+.pwa-installed .btn,
+.pwa-installed nav,
+.pwa-installed .tab-bar {
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+}
+
+/* Improve tap targets for mobile */
+.pwa-installed button,
+.pwa-installed a,
+.pwa-installed .clickable {
+	min-height: 44px;
+	min-width: 44px;
+}
+
+/* Smooth transitions for theme changes */
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: dark;
+	}
+}
+
+@media (prefers-color-scheme: light) {
+	:root {
+		color-scheme: light;
+	}
+}
+
+/* iOS-specific overscroll behavior */
+.pwa-installed {
+	overscroll-behavior-y: contain;
+}
+
+/* Hide scrollbars on iOS PWA for cleaner look */
+.pwa-installed::-webkit-scrollbar {
+	display: none;
+}
+
+.pwa-installed {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+/* Optimize for iOS rubber band scrolling */
+.pwa-installed .scrollable {
+	-webkit-overflow-scrolling: touch;
+}
+
+/* Loading states optimized for PWA */
+.pwa-installed .loading-skeleton {
+	background: linear-gradient(
+		90deg,
+		rgba(59, 130, 246, 0.05) 25%,
+		rgba(59, 130, 246, 0.1) 50%,
+		rgba(59, 130, 246, 0.05) 75%
+	);
+	background-size: 400% 100%;
+	animation: pwa-skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes pwa-skeleton-loading {
+	0% {
+		background-position: 100% 0;
+	}
+	100% {
+		background-position: -100% 0;
+	}
+}
+
+/* Dark mode loading skeleton */
+.dark .pwa-installed .loading-skeleton {
+	background: linear-gradient(
+		90deg,
+		rgba(30, 64, 175, 0.1) 25%,
+		rgba(30, 64, 175, 0.2) 50%,
+		rgba(30, 64, 175, 0.1) 75%
+	);
+	background-size: 400% 100%;
+}
+
+/* Pull to refresh indicator styling */
+.pwa-pull-to-refresh {
+	position: fixed;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%) translateY(-100%);
+	transition: transform 0.3s ease;
+	z-index: 9999;
+	padding: 0.5rem 1rem;
+	background: #3b82f6;
+	color: white;
+	border-radius: 0 0 0.5rem 0.5rem;
+	font-size: 0.875rem;
+}
+
+.pwa-pull-to-refresh.active {
+	transform: translateX(-50%) translateY(0);
+}
+
+/* iOS bounce effect containment */
+.pwa-installed .modal,
+.pwa-installed .drawer {
+	overscroll-behavior: contain;
+}
+
+/* Optimize touch feedback */
+.pwa-installed button:active,
+.pwa-installed a:active,
+.pwa-installed .clickable:active {
+	transform: scale(0.98);
+	opacity: 0.9;
+	transition:
+		transform 0.1s ease,
+		opacity 0.1s ease;
+}

@@ -1,0 +1,170 @@
+[
+	{
+		"tablename": "brain_dumps",
+		"indexname": "brain_dumps_pkey",
+		"index_type": "UNIQUE",
+		"indexdef": "CREATE UNIQUE INDEX brain_dumps_pkey ON public.brain_dumps USING btree (id)"
+	},
+	{
+		"tablename": "brain_dumps",
+		"indexname": "idx_brain_dumps_latest_active",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_brain_dumps_latest_active ON public.brain_dumps USING btree (user_id, updated_at DESC) WHERE (status = ANY (ARRAY['pending'::brain_dump_status, 'parsed'::brain_dump_status]))"
+	},
+	{
+		"tablename": "brain_dumps",
+		"indexname": "idx_brain_dumps_status_user",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_brain_dumps_status_user ON public.brain_dumps USING btree (user_id, status, created_at DESC)"
+	},
+	{
+		"tablename": "brain_dumps",
+		"indexname": "idx_brain_dumps_user_status",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_brain_dumps_user_status ON public.brain_dumps USING btree (user_id, status)"
+	},
+	{
+		"tablename": "projects",
+		"indexname": "idx_projects_id",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_projects_id ON public.projects USING btree (id)"
+	},
+	{
+		"tablename": "projects",
+		"indexname": "idx_projects_updated_at",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_projects_updated_at ON public.projects USING btree (updated_at DESC)"
+	},
+	{
+		"tablename": "projects",
+		"indexname": "projects_pkey",
+		"index_type": "UNIQUE",
+		"indexdef": "CREATE UNIQUE INDEX projects_pkey ON public.projects USING btree (id)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "idx_recurring_instances_status",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_recurring_instances_status ON public.recurring_task_instances USING btree (status) WHERE (status <> 'completed'::text)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "idx_recurring_instances_task",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_recurring_instances_task ON public.recurring_task_instances USING btree (task_id, instance_date)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "idx_recurring_instances_user_date",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_recurring_instances_user_date ON public.recurring_task_instances USING btree (user_id, instance_date)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "idx_recurring_task_instances_task_id",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_recurring_task_instances_task_id ON public.recurring_task_instances USING btree (task_id)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "recurring_task_instances_pkey",
+		"index_type": "UNIQUE",
+		"indexdef": "CREATE UNIQUE INDEX recurring_task_instances_pkey ON public.recurring_task_instances USING btree (id)"
+	},
+	{
+		"tablename": "recurring_task_instances",
+		"indexname": "recurring_task_instances_task_id_instance_date_key",
+		"index_type": "UNIQUE",
+		"indexdef": "CREATE UNIQUE INDEX recurring_task_instances_task_id_instance_date_key ON public.recurring_task_instances USING btree (task_id, instance_date)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_deleted_at",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_deleted_at ON public.tasks USING btree (deleted_at)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_outdated",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_outdated ON public.tasks USING btree (outdated)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_parent_task_id",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_parent_task_id ON public.tasks USING btree (parent_task_id)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_dates",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_dates ON public.tasks USING btree (project_id, start_date, status) WHERE (deleted_at IS NULL)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_id",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_id ON public.tasks USING btree (project_id)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_not_outdated",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_not_outdated ON public.tasks USING btree (project_id, outdated)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_outdated",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_outdated ON public.tasks USING btree (project_id, outdated)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_status",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_status ON public.tasks USING btree (project_id, status)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_project_updated",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_project_updated ON public.tasks USING btree (project_id, updated_at DESC)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_start_date",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_start_date ON public.tasks USING btree (start_date) WHERE ((start_date IS NOT NULL) AND (outdated = false))"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_synthesis",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_synthesis ON public.tasks USING btree (project_id, user_id, status) WHERE (deleted_at IS NULL)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_updated_at",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_updated_at ON public.tasks USING btree (updated_at DESC)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_user_id",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_user_id ON public.tasks USING btree (user_id)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "idx_tasks_user_outdated",
+		"index_type": "BTREE",
+		"indexdef": "CREATE INDEX idx_tasks_user_outdated ON public.tasks USING btree (user_id, outdated)"
+	},
+	{
+		"tablename": "tasks",
+		"indexname": "tasks_pkey",
+		"index_type": "UNIQUE",
+		"indexdef": "CREATE UNIQUE INDEX tasks_pkey ON public.tasks USING btree (id)"
+	}
+]

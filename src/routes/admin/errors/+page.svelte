@@ -1,0 +1,979 @@
+<!-- src/routes/admin/errors/+page.svelte -->
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { invalidate } from '$app/navigation';
+	import type { PageData } from './$types';
+	import type { ErrorLogEntry, ErrorSeverity, ErrorType } from '$lib/types/error-logging';
+	import Button from '$components/ui/Button.svelte';
+	import Select from '$components/ui/Select.svelte';
+	import TextInput from '$components/ui/TextInput.svelte';
+	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import InfoModal from '$components/ui/InfoModal.svelte';
+	import {
+		Check,
+		AlertTriangle,
+		RefreshCw,
+		Search,
+		Filter,
+		ChevronLeft,
+		ChevronRight
+	} from 'lucide-svelte';
+
+	export let data: PageData;
+
+	let errors: ErrorLogEntry[] = data.errors || [];
+	let summary = data.summary || [];
+	let loading = false;
+	let selectedError: ErrorLogEntry | null = null;
+	let selectedErrorIds: Set<string> = new Set();
+	let selectAll = false;
+	let bulkProcessing = false;
+
+	// Modal state
+	let infoModal = {
+		isOpen: false,
+		title: '',
+		message: ''
+	};
+	let resolutionNotes = '';
+	let resolveModalOpen = false;
+	let currentErrorToResolve: string | null = null;
+	let bulkResolveModalOpen = false;
+
+	// Filters - Default to showing only unresolved errors
+	let filterSeverity: ErrorSeverity | '' = '';
+	let filterType: ErrorType | '' = '';
+	let filterResolved: boolean | null = false; // Default to unresolved only
+	let filterUserId = '';
+	let filterProjectId = '';
+
+	// Pagination
+	let currentPage = 1;
+	let itemsPerPage = 50;
+	let hasMore = false;
+	let totalErrors = 0;
+
+	async function loadErrors() {
+		loading = true;
+		try {
+			const params = new URLSearchParams();
+			if (filterSeverity) params.append('severity', filterSeverity);
+			if (filterType) params.append('type', filterType);
+			if (filterResolved !== null) params.append('resolved', filterResolved.toString());
+			if (filterUserId) params.append('userId', filterUserId);
+			if (filterProjectId) params.append('projectId', filterProjectId);
+			params.append('page', currentPage.toString());
+			params.append('limit', itemsPerPage.toString());
+
+			const response = await fetch(`/api/admin/errors?${params}`);
+			const result = await response.json();
+
+			if (result.success) {
+				errors = result.data.errors;
+				summary = result.data.summary;
+				hasMore = result.data.pagination?.hasMore || false;
+				// Reset selection when loading new data
+				selectedErrorIds.clear();
+				selectAll = false;
+			}
+		} catch (error) {
+			console.error('Failed to load errors:', error);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function openResolveModal(errorId: string) {
+		currentErrorToResolve = errorId;
+		resolutionNotes = '';
+		resolveModalOpen = true;
+	}
+
+	async function resolveError() {
+		if (!currentErrorToResolve) return;
+
+		resolveModalOpen = false;
+		const errorId = currentErrorToResolve;
+		const notes = resolutionNotes;
+		currentErrorToResolve = null;
+
+		try {
+			const response = await fetch(`/api/admin/errors/${errorId}/resolve`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ notes })
+			});
+
+			if (response.ok) {
+				await loadErrors();
+				selectedError = null;
+			}
+		} catch (error) {
+			console.error('Failed to resolve error:', error);
+			infoModal = {
+				isOpen: true,
+				title: 'Error',
+				message: 'Failed to resolve error. Please try again.'
+			};
+		}
+	}
+
+	function openBulkResolveModal() {
+		if (selectedErrorIds.size === 0) {
+			infoModal = {
+				isOpen: true,
+				title: 'No Errors Selected',
+				message: 'Please select errors to resolve.'
+			};
+			return;
+		}
+		resolutionNotes = '';
+		bulkResolveModalOpen = true;
+	}
+
+	async function bulkResolveErrors() {
+		bulkResolveModalOpen = false;
+		const notes = resolutionNotes;
+		bulkProcessing = true;
+		try {
+			const promises = Array.from(selectedErrorIds).map((errorId) =>
+				fetch(`/api/admin/errors/${errorId}/resolve`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ notes })
+				})
+			);
+
+			const results = await Promise.allSettled(promises);
+			const successCount = results.filter((r) => r.status === 'fulfilled').length;
+			const failCount = results.filter((r) => r.status === 'rejected').length;
+
+			if (successCount > 0) {
+				await loadErrors();
+			}
+
+			if (failCount > 0) {
+				infoModal = {
+					isOpen: true,
+					title: 'Partial Success',
+					message: `Resolved ${successCount} error(s). Failed to resolve ${failCount} error(s).`
+				};
+			} else {
+				infoModal = {
+					isOpen: true,
+					title: 'Success',
+					message: `Successfully resolved ${successCount} error(s).`
+				};
+			}
+		} catch (error) {
+			console.error('Failed to bulk resolve errors:', error);
+			infoModal = {
+				isOpen: true,
+				title: 'Error',
+				message: 'Failed to resolve errors. Please try again.'
+			};
+		} finally {
+			bulkProcessing = false;
+		}
+	}
+
+	function toggleSelectAll() {
+		selectAll = !selectAll;
+		if (selectAll) {
+			// Select all visible errors
+			errors.forEach((error) => {
+				if (error.id) selectedErrorIds.add(error.id);
+			});
+		} else {
+			// Deselect all
+			selectedErrorIds.clear();
+		}
+		selectedErrorIds = selectedErrorIds; // Trigger reactivity
+	}
+
+	function toggleErrorSelection(errorId: string) {
+		if (selectedErrorIds.has(errorId)) {
+			selectedErrorIds.delete(errorId);
+		} else {
+			selectedErrorIds.add(errorId);
+		}
+		selectedErrorIds = selectedErrorIds; // Trigger reactivity
+
+		// Update selectAll state
+		const allSelected = errors.every((error) => error.id && selectedErrorIds.has(error.id));
+		selectAll = allSelected;
+	}
+
+	function changePage(newPage: number) {
+		currentPage = newPage;
+		loadErrors();
+	}
+
+	function getSeverityColor(severity: ErrorSeverity) {
+		switch (severity) {
+			case 'critical':
+				return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
+			case 'error':
+				return 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20';
+			case 'warning':
+				return 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/20';
+			case 'info':
+				return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20';
+			default:
+				return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
+		}
+	}
+
+	function formatDate(date: string | undefined) {
+		if (!date) return '-';
+
+		const dateObj = new Date(date);
+
+		// Format: "Jan 5, 2025 3:45:12 PM"
+		const options: Intl.DateTimeFormatOptions = {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: true
+		};
+
+		return dateObj.toLocaleString(undefined, options);
+	}
+
+	function truncate(str: string, length: number) {
+		if (str && str?.length <= length) return str;
+		return str ? str.substring(0, length) + '...' : '';
+	}
+
+	// Reset page when filters change
+	$: if (
+		filterSeverity ||
+		filterType ||
+		filterResolved !== null ||
+		filterUserId ||
+		filterProjectId
+	) {
+		currentPage = 1;
+	}
+
+	// Load initial data if empty
+	onMount(() => {
+		if (errors.length === 0 && !loading) {
+			loadErrors();
+		}
+	});
+
+	// Handle escape key for modal
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && selectedError) {
+			selectedError = null;
+		}
+	}
+</script>
+
+<svelte:window on:keydown={handleKeydown} />
+
+<svelte:head>
+	<title>Error Logs - BuildOS Admin</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+		<!-- Header -->
+		<AdminPageHeader
+			title="Error Logs"
+			description="Monitor and resolve system errors"
+			icon={AlertTriangle}
+			showBack={true}
+		>
+			<div slot="actions" class="flex items-center space-x-4">
+				{#if selectedErrorIds.size > 0}
+					<Button
+						on:click={openBulkResolveModal}
+						disabled={bulkProcessing}
+						variant="primary"
+						size="sm"
+						icon={Check}
+						loading={bulkProcessing}
+					>
+						Resolve {selectedErrorIds.size} Error{selectedErrorIds.size > 1 ? 's' : ''}
+					</Button>
+				{/if}
+				<Button
+					on:click={() => {
+						filterResolved = filterResolved === false ? null : false;
+						loadErrors();
+					}}
+					variant="secondary"
+					size="sm"
+				>
+					{filterResolved === false ? 'Show All' : 'Show Unresolved'}
+				</Button>
+				<Button
+					on:click={loadErrors}
+					disabled={loading}
+					variant="secondary"
+					size="sm"
+					icon={RefreshCw}
+					{loading}
+				>
+					Refresh
+				</Button>
+			</div>
+		</AdminPageHeader>
+
+		<!-- Summary Cards -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+			{#each summary as item}
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+					<h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+						{item.error_type}
+					</h3>
+					<div class="flex items-baseline justify-between">
+						<span
+							class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white"
+							>{item.error_count}</span
+						>
+						<span class="{getSeverityColor(item.severity)} px-2 py-1 rounded text-xs">
+							{item.severity}
+						</span>
+					</div>
+					<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2">
+						{item.resolved_count} resolved
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Filters -->
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6">
+			<div class="flex items-center mb-4">
+				<Filter class="h-5 w-5 text-gray-400 mr-2" />
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
+			</div>
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>Severity</label
+					>
+					<Select
+						bind:value={filterSeverity}
+						on:change={loadErrors}
+						size="md"
+						placeholder="All Severities"
+					>
+						<option value="">All</option>
+						<option value="critical">Critical</option>
+						<option value="error">Error</option>
+						<option value="warning">Warning</option>
+						<option value="info">Info</option>
+					</Select>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>Type</label
+					>
+					<Select
+						bind:value={filterType}
+						on:change={loadErrors}
+						size="md"
+						placeholder="All Types"
+					>
+						<option value="">All</option>
+						<option value="brain_dump_processing">Brain Dump</option>
+						<option value="llm_error">LLM Error</option>
+						<option value="database_error">Database</option>
+						<option value="api_error">API</option>
+						<option value="validation_error">Validation</option>
+					</Select>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>Status</label
+					>
+					<Select
+						bind:value={filterResolved}
+						on:change={loadErrors}
+						size="md"
+						placeholder="Unresolved"
+					>
+						<option value={false}>Unresolved</option>
+						<option value={true}>Resolved</option>
+						<option value={null}>All</option>
+					</Select>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>User</label
+					>
+					<TextInput
+						type="text"
+						bind:value={filterUserId}
+						on:blur={loadErrors}
+						placeholder="Email or User ID..."
+						size="md"
+					/>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>Project ID</label
+					>
+					<TextInput
+						type="text"
+						bind:value={filterProjectId}
+						on:blur={loadErrors}
+						placeholder="Filter by project..."
+						size="md"
+					/>
+				</div>
+			</div>
+		</div>
+
+		<!-- Error List -->
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full">
+					<thead
+						class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600"
+					>
+						<tr>
+							<th class="px-4 py-3 text-left">
+								<input
+									type="checkbox"
+									checked={selectAll}
+									on:change={toggleSelectAll}
+									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+									aria-label="Select all errors"
+								/>
+							</th>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Time</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Severity</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Type</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Message</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>User</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Status</th
+							>
+							<th
+								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Actions</th
+							>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+						{#each errors as error}
+							<tr
+								class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors {error.id &&
+								selectedErrorIds.has(error.id)
+									? 'bg-blue-50 dark:bg-blue-900/20'
+									: ''}"
+							>
+								<td class="px-4 py-3">
+									<input
+										type="checkbox"
+										checked={error.id && selectedErrorIds.has(error.id)}
+										on:change={() => error.id && toggleErrorSelection(error.id)}
+										class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+										aria-label="Select error {error.id}"
+									/>
+								</td>
+								<td
+									class="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap"
+									>{formatDate(error.created_at || error.createdAt)}</td
+								>
+								<td class="px-4 py-3">
+									<span
+										class="{getSeverityColor(
+											error.severity
+										)} px-2 py-1 rounded text-xs font-medium"
+									>
+										{error.severity}
+									</span>
+								</td>
+								<td class="px-4 py-3 text-sm text-gray-900 dark:text-white"
+									>{error.error_type || error.errorType}</td
+								>
+								<td
+									class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-md"
+								>
+									{truncate(error.error_message || error.errorMessage, 100)}
+								</td>
+								<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+									{#if error.user}
+										<div class="flex flex-col">
+											<span class="text-gray-900 dark:text-white font-medium">
+												{error.user.email}
+											</span>
+											{#if error.user.name}
+												<span
+													class="text-xs text-gray-500 dark:text-gray-400"
+												>
+													{error.user.name}
+												</span>
+											{/if}
+										</div>
+									{:else if error.user_id || error.userId}
+										<span class="font-mono text-xs">
+											{truncate(error.user_id || error.userId, 8)}
+										</span>
+									{:else}
+										-
+									{/if}
+								</td>
+								<td class="px-4 py-3">
+									{#if error.resolved}
+										<span
+											class="text-green-600 dark:text-green-400 text-sm font-medium"
+											>Resolved</span
+										>
+									{:else}
+										<span
+											class="text-red-600 dark:text-red-400 text-sm font-medium"
+											>Open</span
+										>
+									{/if}
+								</td>
+								<td class="px-4 py-3">
+									<button
+										on:click={() => (selectedError = error)}
+										class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-2 transition-colors"
+									>
+										View
+									</button>
+									{#if !error.resolved}
+										<button
+											on:click={() => openResolveModal(error.id)}
+											class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 text-sm transition-colors"
+										>
+											Resolve
+										</button>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+
+			{#if errors.length === 0}
+				<div class="text-center py-8 text-gray-500 dark:text-gray-400">No errors found</div>
+			{/if}
+		</div>
+
+		<!-- Pagination -->
+		{#if errors.length > 0 || currentPage > 1}
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-6">
+				<div
+					class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0"
+				>
+					<div class="flex items-center space-x-2">
+						<Button
+							on:click={() => changePage(1)}
+							disabled={currentPage === 1 || loading}
+							variant="secondary"
+							size="sm"
+							title="First page"
+						>
+							First
+						</Button>
+						<Button
+							on:click={() => changePage(Math.max(1, currentPage - 1))}
+							disabled={currentPage === 1 || loading}
+							variant="secondary"
+							size="sm"
+							icon={ChevronLeft}
+						>
+							Previous
+						</Button>
+					</div>
+
+					<div class="flex items-center space-x-4">
+						<span class="text-sm text-gray-600 dark:text-gray-400">
+							Page {currentPage}
+						</span>
+						{#if errors.length > 0}
+							<span class="text-sm text-gray-500 dark:text-gray-400">
+								Showing {errors.length} error{errors.length === 1 ? '' : 's'}
+							</span>
+						{/if}
+					</div>
+
+					<div class="flex items-center space-x-2">
+						<Button
+							on:click={() => changePage(currentPage + 1)}
+							disabled={!hasMore || loading}
+							variant="secondary"
+							size="sm"
+							icon={ChevronRight}
+							iconPosition="right"
+						>
+							Next
+						</Button>
+						<Select
+							bind:value={itemsPerPage}
+							on:change={() => {
+								currentPage = 1;
+								loadErrors();
+							}}
+							size="sm"
+							class="w-20"
+						>
+							<option value={25}>25</option>
+							<option value={50}>50</option>
+							<option value={100}>100</option>
+						</Select>
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
+</div>
+
+<!-- Error Detail Modal -->
+{#if selectedError}
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<div
+		class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50"
+		on:click={() => (selectedError = null)}
+		on:keydown={(e) => e.key === 'Escape' && (selectedError = null)}
+	>
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+			on:click|stopPropagation
+		>
+			<!-- Modal Header -->
+			<div
+				class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center"
+			>
+				<h2 class="text-xl font-bold text-gray-900 dark:text-white">Error Details</h2>
+				<button
+					on:click={() => (selectedError = null)}
+					class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 transition-colors"
+					aria-label="Close modal"
+				>
+					<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Modal Content -->
+			<div class="flex-1 overflow-y-auto px-6 py-4">
+				<div class="space-y-4">
+					<!-- Basic Info -->
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Error ID:</label
+							>
+							<p class="text-gray-900 dark:text-white font-mono text-sm">
+								{selectedError.id}
+							</p>
+						</div>
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Occurred At:</label
+							>
+							<p class="text-gray-900 dark:text-white text-sm">
+								{formatDate(selectedError.created_at || selectedError.createdAt)}
+							</p>
+						</div>
+					</div>
+
+					<!-- Severity and Type -->
+					<div class="flex items-center space-x-4">
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Severity:</label
+							>
+							<span
+								class="{getSeverityColor(
+									selectedError.severity
+								)} px-2 py-1 rounded text-xs font-medium inline-block"
+							>
+								{selectedError.severity}
+							</span>
+						</div>
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Type:</label
+							>
+							<span
+								class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs font-medium inline-block"
+							>
+								{selectedError.error_type || selectedError.errorType}
+							</span>
+						</div>
+						{#if selectedError.user || selectedError.user_id || selectedError.userId}
+							<div>
+								<label
+									class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+									>User:</label
+								>
+								{#if selectedError.user}
+									<div
+										class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block"
+									>
+										<span
+											class="text-sm text-gray-900 dark:text-white font-medium"
+										>
+											{selectedError.user.email}
+										</span>
+										{#if selectedError.user.name}
+											<span
+												class="text-xs text-gray-600 dark:text-gray-400 ml-2"
+											>
+												({selectedError.user.name})
+											</span>
+										{/if}
+									</div>
+								{:else}
+									<span
+										class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs font-medium inline-block font-mono"
+									>
+										{truncate(
+											selectedError.user_id || selectedError.userId,
+											12
+										)}
+									</span>
+								{/if}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Error Message -->
+					<div>
+						<label
+							class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+							>Message:</label
+						>
+						<p
+							class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded"
+						>
+							{selectedError.error_message || selectedError.errorMessage}
+						</p>
+					</div>
+
+					{#if selectedError.error_stack || selectedError.errorStack}
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Stack Trace:</label
+							>
+							<pre
+								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{selectedError.error_stack ||
+									selectedError.errorStack}</pre>
+						</div>
+					{/if}
+
+					{#if selectedError.llm_provider || selectedError.llmProvider}
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>LLM Details:</label
+							>
+							<div class="bg-gray-100 dark:bg-gray-900 p-3 rounded space-y-1">
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Provider: <span
+										class="text-gray-900 dark:text-white font-medium"
+										>{selectedError.llm_provider ||
+											selectedError.llmProvider}</span
+									>
+								</p>
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Model: <span class="text-gray-900 dark:text-white font-medium"
+										>{selectedError.llm_model || selectedError.llmModel}</span
+									>
+								</p>
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Tokens: <span class="text-gray-900 dark:text-white font-medium"
+										>{selectedError.total_tokens ||
+											selectedError.totalTokens}</span
+									>
+								</p>
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Response Time: <span
+										class="text-gray-900 dark:text-white font-medium"
+										>{selectedError.response_time_ms ||
+											selectedError.responseTimeMs}ms</span
+									>
+								</p>
+							</div>
+						</div>
+					{/if}
+
+					{#if selectedError.metadata}
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Metadata:</label
+							>
+							<pre
+								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{JSON.stringify(
+									selectedError.metadata,
+									null,
+									2
+								)}</pre>
+						</div>
+					{/if}
+
+					{#if selectedError.resolved}
+						<div>
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								>Resolution:</label
+							>
+							<p class="text-sm text-gray-900 dark:text-white">
+								Resolved at: {formatDate(
+									selectedError.resolved_at || selectedError.resolvedAt
+								)}
+							</p>
+							{#if selectedError.resolution_notes || selectedError.resolutionNotes}
+								<p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
+									Notes: {selectedError.resolution_notes ||
+										selectedError.resolutionNotes}
+								</p>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Modal Footer -->
+			<div
+				class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			>
+				<div class="flex justify-end space-x-3">
+					{#if !selectedError.resolved}
+						<Button
+							on:click={() => openResolveModal(selectedError.id)}
+							variant="primary"
+							size="sm"
+							icon={Check}
+							class="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+						>
+							Mark as Resolved
+						</Button>
+					{/if}
+					<Button on:click={() => (selectedError = null)} variant="secondary" size="sm">
+						Close
+					</Button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Info Modal -->
+<InfoModal
+	isOpen={infoModal.isOpen}
+	title={infoModal.title}
+	on:close={() => (infoModal.isOpen = false)}
+>
+	<p class="text-gray-600 dark:text-gray-400">{infoModal.message}</p>
+</InfoModal>
+
+<!-- Resolve Error Modal -->
+<InfoModal
+	isOpen={resolveModalOpen}
+	title="Resolve Error"
+	buttonText="Resolve"
+	on:close={resolveError}
+	size="md"
+>
+	<div class="space-y-4">
+		<p class="text-gray-600 dark:text-gray-400">
+			Add optional notes about how this error was resolved:
+		</p>
+		<TextInput
+			type="text"
+			bind:value={resolutionNotes}
+			placeholder="Resolution notes (optional)..."
+			size="md"
+		/>
+	</div>
+	<div
+		slot="footer"
+		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+	>
+		<Button onclick={() => (resolveModalOpen = false)} variant="outline" size="sm">
+			Cancel
+		</Button>
+		<Button onclick={resolveError} variant="primary" size="sm">Resolve</Button>
+	</div>
+</InfoModal>
+
+<!-- Bulk Resolve Modal -->
+<InfoModal
+	isOpen={bulkResolveModalOpen}
+	title="Bulk Resolve Errors"
+	buttonText="Resolve All"
+	on:close={bulkResolveErrors}
+	size="md"
+>
+	<div class="space-y-4">
+		<p class="text-gray-600 dark:text-gray-400">
+			You are about to resolve {selectedErrorIds.size} error{selectedErrorIds.size > 1
+				? 's'
+				: ''}. Add optional notes about how these errors were resolved:
+		</p>
+		<TextInput
+			type="text"
+			bind:value={resolutionNotes}
+			placeholder="Resolution notes for all selected errors (optional)..."
+			size="md"
+		/>
+	</div>
+	<div
+		slot="footer"
+		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+	>
+		<Button onclick={() => (bulkResolveModalOpen = false)} variant="outline" size="sm">
+			Cancel
+		</Button>
+		<Button onclick={bulkResolveErrors} variant="primary" size="sm" disabled={bulkProcessing}>
+			{#if bulkProcessing}
+				Resolving...
+			{:else}
+				Resolve {selectedErrorIds.size} Error{selectedErrorIds.size > 1 ? 's' : ''}
+			{/if}
+		</Button>
+	</div>
+</InfoModal>

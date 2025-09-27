@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Format Current File",
+			"type": "shell",
+			"command": "npx",
+			"args": ["prettier", "--write", "${file}"],
+			"group": "none",
+			"presentation": {
+				"reveal": "silent"
+			},
+			"problemMatcher": []
+		}
+	]
+}
