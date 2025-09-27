@@ -185,17 +185,9 @@ async function sendBetaApprovalNotification(signupData: any) {
 				html: emailHTML
 			};
 
-			console.log(`[sendBetaApprovalNotification] Sending email to: ${adminEmail}`);
-			console.log(`[sendBetaApprovalNotification] From: ${mailOptions.from}`);
-			console.log(`[sendBetaApprovalNotification] Subject: ${mailOptions.subject}`);
-
+			
 			try {
 				const result = await transporter.sendMail(mailOptions);
-				console.log(
-					`[sendBetaApprovalNotification] ✅ SUCCESS: Email sent to ${adminEmail}`
-				);
-				console.log(`[sendBetaApprovalNotification] Message ID: ${result.messageId}`);
-				console.log(`[sendBetaApprovalNotification] Response: ${result.response}`);
 			} catch (emailError: any) {
 				console.error(
 					`[sendBetaApprovalNotification] ❌ FAILED to send email to ${adminEmail}`
