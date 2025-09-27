@@ -1156,7 +1156,7 @@
 
 
 								// FIXED: Load overview component AFTER data is loaded and await it
-								console.log('[Page] Loading PhasesSection component...');
+								// console.log('[Page] Loading PhasesSection component...');
 								await loadComponent('PhasesSection', 'overview');
 								// console.log('[Page] PhasesSection component loaded');
 
