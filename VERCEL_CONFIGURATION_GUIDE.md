@@ -143,6 +143,7 @@ The SvelteKit adapter-vercel v5+ changed from outputting to `.svelte-kit` to `.v
 - Let Turborepo handle the monorepo complexity
 - The adapter knows where to output files
 - Trust the configuration in vercel.json over dashboard overrides
+- trying
 
 ---
 
