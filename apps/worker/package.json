@@ -1,5 +1,5 @@
 {
-  "name": "daily-brief-worker",
+  "name": "@buildos/worker",
   "version": "1.0.0",
   "description": "Background worker for generating daily briefs",
   "main": "dist/index.js",
