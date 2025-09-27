@@ -5,6 +5,7 @@
 ### For Vercel (Web App)
 
 **NEW Variables to ADD:**
+
 ```bash
 PUBLIC_RAILWAY_WORKER_URL=https://buildos-worker.up.railway.app  # After you get Railway URL
 PUBLIC_BRIEF_POLLING_INTERVAL=5000
@@ -13,6 +14,7 @@ PRIVATE_BUILDOS_WEBHOOK_SECRET=<generate with: openssl rand -hex 32>
 ```
 
 **ADD if Using OpenRouter (Primary AI):**
+
 ```bash
 PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY
 ```
@@ -20,6 +22,7 @@ PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY
 ### For Railway (Worker)
 
 **ALL Variables Need to be Added (Different Names!):**
+
 ```bash
 # These are SAME values but DIFFERENT names
 SUPABASE_URL=<copy from PUBLIC_SUPABASE_URL in Vercel>
@@ -43,6 +46,7 @@ QUEUE_BATCH_SIZE=10
 ## ✅ Variables That Should Already Exist (No Change)
 
 ### In Vercel - Keep These As-Is:
+
 ```bash
 PUBLIC_SUPABASE_URL
 PUBLIC_SUPABASE_ANON_KEY
@@ -75,11 +79,13 @@ PRIVATE_ANTHROPIC_API_KEY  # Keep as fallback if you have it
 ## 🔑 Generate Shared Secret
 
 Generate ONE secret to use in both places:
+
 ```bash
 openssl rand -hex 32
 ```
 
 Use this value for:
+
 - `PRIVATE_BUILDOS_WEBHOOK_SECRET` in Vercel
 - `BUILDOS_WEBHOOK_SECRET` in Railway
 
@@ -93,6 +99,7 @@ Use this value for:
 ## 🧪 Quick Test After Deployment
 
 1. **Test Railway Health**:
+
    ```bash
    curl https://buildos-worker.up.railway.app/health
    ```

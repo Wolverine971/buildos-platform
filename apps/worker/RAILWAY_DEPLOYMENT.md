@@ -3,9 +3,11 @@
 ## Option A: Creating New Railway Project (Recommended)
 
 ### 1. Go to Railway Dashboard
+
 Navigate to: https://railway.app/dashboard
 
 ### 2. Create New Project
+
 1. Click **New Project**
 2. Select **Deploy from GitHub repo**
 3. Choose `Wolverine971/buildos-platform`
@@ -16,27 +18,33 @@ Navigate to: https://railway.app/dashboard
 Once deployed, click on the service card, then go to **Settings**:
 
 #### Service Name
+
 ```
 buildos-worker
 ```
 
 #### Root Directory
+
 ```
 /
 ```
+
 (Leave as root - the build commands handle the navigation)
 
 #### Build Command
+
 ```
 cd apps/worker && pnpm install --frozen-lockfile && pnpm build
 ```
 
 #### Start Command
+
 ```
 cd apps/worker && node dist/index.js
 ```
 
 #### Watch Paths (for auto-redeploy)
+
 ```
 apps/worker/**
 packages/**
@@ -128,10 +136,10 @@ Start Command: cd apps/worker && node dist/index.js
 
 **IMPORTANT: Variable names are DIFFERENT from your old setup!**
 
-| Old Variable Name | New Variable Name |
-|------------------|-------------------|
-| `SUPABASE_URL` | Keep the same |
-| `SUPABASE_SERVICE_ROLE_KEY` | Keep the same |
+| Old Variable Name           | New Variable Name |
+| --------------------------- | ----------------- |
+| `SUPABASE_URL`              | Keep the same     |
+| `SUPABASE_SERVICE_ROLE_KEY` | Keep the same     |
 
 **Add these NEW variables:**
 
@@ -151,11 +159,11 @@ Click **Redeploy** from the latest deployment
 
 **CRITICAL: Railway uses DIFFERENT variable names than Vercel!**
 
-| Vercel (Web) | Railway (Worker) | Value |
-|--------------|------------------|-------|
-| `PUBLIC_SUPABASE_URL` | `SUPABASE_URL` | Same value |
-| `PRIVATE_SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_ROLE_KEY` | Same value |
-| `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `BUILDOS_WEBHOOK_SECRET` | Same value |
+| Vercel (Web)                     | Railway (Worker)            | Value      |
+| -------------------------------- | --------------------------- | ---------- |
+| `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`              | Same value |
+| `PRIVATE_SUPABASE_SERVICE_KEY`   | `SUPABASE_SERVICE_ROLE_KEY` | Same value |
+| `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `BUILDOS_WEBHOOK_SECRET`    | Same value |
 
 ## Verification Steps
 
@@ -166,12 +174,15 @@ After deployment:
    - Should see: "Queue worker initialized"
 
 2. **Test Health Endpoint**:
+
    ```bash
    curl https://buildos-worker.up.railway.app/health
    ```
+
    Should return: `{"status":"healthy","timestamp":"..."}`
 
 3. **Check Queue Status**:
+
    ```bash
    curl https://buildos-worker.up.railway.app/queue/stats
    ```
@@ -186,24 +197,29 @@ After deployment:
 ### Build Failures
 
 **Error: "pnpm: not found"**
+
 - Railway should auto-detect pnpm from package.json
 - Try adding nixpacks.toml configuration
 
 **Error: "Cannot find module"**
+
 - Ensure build command includes `cd apps/worker`
 - Check that `pnpm install` runs successfully
 
 ### Runtime Failures
 
 **Error: "Missing Supabase environment variables"**
+
 - Remember: Use `SUPABASE_URL` not `PUBLIC_SUPABASE_URL`
 - Use `SUPABASE_SERVICE_ROLE_KEY` not `PRIVATE_SUPABASE_SERVICE_KEY`
 
 **Error: "Cannot connect to Supabase"**
+
 - Verify your service role key is correct
 - Check Supabase project is not paused
 
 **Error: "Webhook email failed"**
+
 - Verify `BUILDOS_WEBHOOK_URL` points to your Vercel app
 - Ensure webhook secrets match between Railway and Vercel
 - Check Vercel logs for webhook endpoint errors
@@ -232,6 +248,7 @@ openssl rand -hex 32
 ```
 
 Use this value for:
+
 - `PRIVATE_BUILDOS_WEBHOOK_SECRET` in Vercel
 - `BUILDOS_WEBHOOK_SECRET` in Railway
 

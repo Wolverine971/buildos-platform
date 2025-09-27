@@ -2,31 +2,31 @@
 // Queue configuration management with environment variable support
 // This addresses Moderate Issue #6 in QUEUE_FIXES_DESIGN.md
 
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 export interface QueueConfiguration {
   // Core queue settings
-  pollInterval: number;       // How often to check for new jobs (ms)
-  batchSize: number;         // Max jobs to process concurrently
-  stalledTimeout: number;    // When to consider jobs stalled (ms)
-  
+  pollInterval: number; // How often to check for new jobs (ms)
+  batchSize: number; // Max jobs to process concurrently
+  stalledTimeout: number; // When to consider jobs stalled (ms)
+
   // Retry settings
-  maxRetries: number;        // Default max retry attempts
-  retryBackoffBase: number;  // Base delay for exponential backoff (ms)
-  
+  maxRetries: number; // Default max retry attempts
+  retryBackoffBase: number; // Base delay for exponential backoff (ms)
+
   // Progress tracking
   enableProgressTracking: boolean;
   progressUpdateRetries: number;
-  
+
   // Health and monitoring
   statsUpdateInterval: number; // How often to log queue stats (ms)
   enableHealthChecks: boolean;
-  
+
   // Performance tuning
-  workerTimeout: number;     // Max time for a single job (ms)
+  workerTimeout: number; // Max time for a single job (ms)
   enableConcurrentProcessing: boolean;
 }
 
@@ -36,13 +36,15 @@ export interface QueueConfiguration {
 function parseEnvInt(envVar: string, defaultValue: number): number {
   const value = process.env[envVar];
   if (!value) return defaultValue;
-  
+
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) {
-    console.warn(`⚠️ Invalid integer value for ${envVar}: "${value}", using default: ${defaultValue}`);
+    console.warn(
+      `⚠️ Invalid integer value for ${envVar}: "${value}", using default: ${defaultValue}`,
+    );
     return defaultValue;
   }
-  
+
   return parsed;
 }
 
@@ -52,12 +54,14 @@ function parseEnvInt(envVar: string, defaultValue: number): number {
 function parseEnvBool(envVar: string, defaultValue: boolean): boolean {
   const value = process.env[envVar];
   if (!value) return defaultValue;
-  
+
   const normalizedValue = value.toLowerCase();
-  if (normalizedValue === 'true' || normalizedValue === '1') return true;
-  if (normalizedValue === 'false' || normalizedValue === '0') return false;
-  
-  console.warn(`⚠️ Invalid boolean value for ${envVar}: "${value}", using default: ${defaultValue}`);
+  if (normalizedValue === "true" || normalizedValue === "1") return true;
+  if (normalizedValue === "false" || normalizedValue === "0") return false;
+
+  console.warn(
+    `⚠️ Invalid boolean value for ${envVar}: "${value}", using default: ${defaultValue}`,
+  );
   return defaultValue;
 }
 
@@ -66,16 +70,19 @@ function parseEnvBool(envVar: string, defaultValue: boolean): boolean {
  */
 function validateConfig(config: QueueConfiguration): QueueConfiguration {
   const validated = { ...config };
-  
+
   // Ensure minimum values
   validated.pollInterval = Math.max(1000, validated.pollInterval); // Min 1 second
   validated.batchSize = Math.max(1, Math.min(20, validated.batchSize)); // 1-20 jobs
   validated.stalledTimeout = Math.max(30000, validated.stalledTimeout); // Min 30 seconds
   validated.maxRetries = Math.max(0, Math.min(10, validated.maxRetries)); // 0-10 retries
   validated.retryBackoffBase = Math.max(100, validated.retryBackoffBase); // Min 100ms
-  validated.statsUpdateInterval = Math.max(10000, validated.statsUpdateInterval); // Min 10 seconds
+  validated.statsUpdateInterval = Math.max(
+    10000,
+    validated.statsUpdateInterval,
+  ); // Min 10 seconds
   validated.workerTimeout = Math.max(10000, validated.workerTimeout); // Min 10 seconds
-  
+
   return validated;
 }
 
@@ -85,27 +92,33 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 function loadQueueConfig(): QueueConfiguration {
   const config: QueueConfiguration = {
     // Core settings
-    pollInterval: parseEnvInt('QUEUE_POLL_INTERVAL', 5000),
-    batchSize: parseEnvInt('QUEUE_BATCH_SIZE', 5),
-    stalledTimeout: parseEnvInt('QUEUE_STALLED_TIMEOUT', 300000),
-    
+    pollInterval: parseEnvInt("QUEUE_POLL_INTERVAL", 5000),
+    batchSize: parseEnvInt("QUEUE_BATCH_SIZE", 5),
+    stalledTimeout: parseEnvInt("QUEUE_STALLED_TIMEOUT", 300000),
+
     // Retry settings
-    maxRetries: parseEnvInt('QUEUE_MAX_RETRIES', 3),
-    retryBackoffBase: parseEnvInt('QUEUE_RETRY_BACKOFF_BASE', 1000),
-    
+    maxRetries: parseEnvInt("QUEUE_MAX_RETRIES", 3),
+    retryBackoffBase: parseEnvInt("QUEUE_RETRY_BACKOFF_BASE", 1000),
+
     // Progress tracking
-    enableProgressTracking: parseEnvBool('QUEUE_ENABLE_PROGRESS_TRACKING', true),
-    progressUpdateRetries: parseEnvInt('QUEUE_PROGRESS_UPDATE_RETRIES', 3),
-    
+    enableProgressTracking: parseEnvBool(
+      "QUEUE_ENABLE_PROGRESS_TRACKING",
+      true,
+    ),
+    progressUpdateRetries: parseEnvInt("QUEUE_PROGRESS_UPDATE_RETRIES", 3),
+
     // Health and monitoring
-    statsUpdateInterval: parseEnvInt('QUEUE_STATS_UPDATE_INTERVAL', 60000),
-    enableHealthChecks: parseEnvBool('QUEUE_ENABLE_HEALTH_CHECKS', true),
-    
+    statsUpdateInterval: parseEnvInt("QUEUE_STATS_UPDATE_INTERVAL", 60000),
+    enableHealthChecks: parseEnvBool("QUEUE_ENABLE_HEALTH_CHECKS", true),
+
     // Performance tuning
-    workerTimeout: parseEnvInt('QUEUE_WORKER_TIMEOUT', 600000), // 10 minutes default
-    enableConcurrentProcessing: parseEnvBool('QUEUE_ENABLE_CONCURRENT_PROCESSING', true),
+    workerTimeout: parseEnvInt("QUEUE_WORKER_TIMEOUT", 600000), // 10 minutes default
+    enableConcurrentProcessing: parseEnvBool(
+      "QUEUE_ENABLE_CONCURRENT_PROCESSING",
+      true,
+    ),
   };
-  
+
   return validateConfig(config);
 }
 
@@ -114,9 +127,9 @@ export const queueConfig = loadQueueConfig();
 
 // Development configuration profile
 export const developmentConfig: Partial<QueueConfiguration> = {
-  pollInterval: 2000,        // Faster polling in development
-  batchSize: 2,             // Smaller batches for easier debugging
-  stalledTimeout: 120000,   // Shorter timeout for faster feedback
+  pollInterval: 2000, // Faster polling in development
+  batchSize: 2, // Smaller batches for easier debugging
+  stalledTimeout: 120000, // Shorter timeout for faster feedback
   statsUpdateInterval: 30000, // More frequent stats
   enableProgressTracking: true,
   enableHealthChecks: true,
@@ -124,9 +137,9 @@ export const developmentConfig: Partial<QueueConfiguration> = {
 
 // Production configuration profile
 export const productionConfig: Partial<QueueConfiguration> = {
-  pollInterval: 5000,        // Standard polling
-  batchSize: 10,            // Larger batches for better throughput
-  stalledTimeout: 600000,   // Longer timeout for complex jobs
+  pollInterval: 5000, // Standard polling
+  batchSize: 10, // Larger batches for better throughput
+  stalledTimeout: 600000, // Longer timeout for complex jobs
   statsUpdateInterval: 300000, // Less frequent stats (5 minutes)
   enableProgressTracking: true,
   enableHealthChecks: true,
@@ -137,37 +150,39 @@ export const productionConfig: Partial<QueueConfiguration> = {
  */
 export function getEnvironmentConfig(): QueueConfiguration {
   const baseConfig = loadQueueConfig();
-  const env = process.env.NODE_ENV || 'development';
-  
+  const env = process.env.NODE_ENV || "development";
+
   let profileConfig: Partial<QueueConfiguration> = {};
-  
+
   switch (env.toLowerCase()) {
-    case 'production':
+    case "production":
       profileConfig = productionConfig;
-      console.log('🏭 Using production queue configuration profile');
+      console.log("🏭 Using production queue configuration profile");
       break;
-    case 'development':
-    case 'dev':
+    case "development":
+    case "dev":
       profileConfig = developmentConfig;
-      console.log('🔧 Using development queue configuration profile');
+      console.log("🔧 Using development queue configuration profile");
       break;
     default:
-      console.log('⚙️ Using default queue configuration');
+      console.log("⚙️ Using default queue configuration");
       break;
   }
-  
+
   // Merge base config with profile config
   const mergedConfig = { ...baseConfig, ...profileConfig };
-  
+
   // Log the final configuration (without sensitive data)
-  console.log('📋 Queue Configuration:');
+  console.log("📋 Queue Configuration:");
   console.log(`   - Poll interval: ${mergedConfig.pollInterval}ms`);
   console.log(`   - Batch size: ${mergedConfig.batchSize}`);
   console.log(`   - Stalled timeout: ${mergedConfig.stalledTimeout}ms`);
   console.log(`   - Max retries: ${mergedConfig.maxRetries}`);
   console.log(`   - Worker timeout: ${mergedConfig.workerTimeout}ms`);
-  console.log(`   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? 'enabled' : 'disabled'}`);
-  
+  console.log(
+    `   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? "enabled" : "disabled"}`,
+  );
+
   return validateConfig(mergedConfig);
 }
 
@@ -176,33 +191,34 @@ export function getEnvironmentConfig(): QueueConfiguration {
  */
 export function validateEnvironment(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
+
   // Check required environment variables
-  const requiredVars = [
-    'SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY'
-  ];
-  
+  const requiredVars = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+
   for (const varName of requiredVars) {
     if (!process.env[varName]) {
       errors.push(`Missing required environment variable: ${varName}`);
     }
   }
-  
+
   // Check for common configuration mistakes
-  const pollInterval = parseEnvInt('QUEUE_POLL_INTERVAL', 5000);
-  const batchSize = parseEnvInt('QUEUE_BATCH_SIZE', 5);
-  
+  const pollInterval = parseEnvInt("QUEUE_POLL_INTERVAL", 5000);
+  const batchSize = parseEnvInt("QUEUE_BATCH_SIZE", 5);
+
   if (pollInterval < 1000) {
-    errors.push('QUEUE_POLL_INTERVAL should be at least 1000ms to avoid overwhelming the database');
+    errors.push(
+      "QUEUE_POLL_INTERVAL should be at least 1000ms to avoid overwhelming the database",
+    );
   }
-  
+
   if (batchSize > 20) {
-    errors.push('QUEUE_BATCH_SIZE should be 20 or less to prevent resource exhaustion');
+    errors.push(
+      "QUEUE_BATCH_SIZE should be 20 or less to prevent resource exhaustion",
+    );
   }
-  
+
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }

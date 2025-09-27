@@ -1,15 +1,15 @@
 // worker-queue/vitest.config.ts
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: "node",
     globals: true,
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ["./tests/setup.ts"],
   },
   resolve: {
     alias: {
-      '@': './src',
+      "@": "./src",
     },
   },
 });

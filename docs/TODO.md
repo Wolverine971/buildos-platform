@@ -3,6 +3,7 @@
 ## 🚀 Immediate Actions (Priority 1)
 
 ### 1. GitHub Repository Setup
+
 - [ ] Create new repository `buildos-platform` on GitHub
 - [ ] Push monorepo to GitHub:
   ```bash
@@ -13,12 +14,14 @@
 - [ ] Configure branch protection rules for `main` branch
 
 ### 2. Environment Configuration
+
 - [ ] Create `.env.example` at root with all required variables
 - [ ] Document which env vars are shared vs app-specific
 - [ ] Set up `.env` file locally with your credentials
 - [ ] Add environment variable validation on startup
 
 ### 3. Fix TypeScript Issues
+
 - [ ] Add missing environment variable types to `$env` modules
 - [ ] Fix Stripe API version mismatch (update to latest)
 - [ ] Resolve database type inconsistencies between apps
@@ -29,6 +32,7 @@
 ### 4. Deployment Configuration
 
 #### Vercel (Web App)
+
 - [ ] Update `vercel.json` in `apps/web`:
   ```json
   {
@@ -42,6 +46,7 @@
 - [ ] Update environment variables in Vercel dashboard
 
 #### Railway (Worker)
+
 - [ ] Update `railway.json` in `apps/worker`:
   ```json
   {
@@ -60,6 +65,7 @@
 - [ ] Update root directory settings
 
 ### 5. CI/CD Pipeline
+
 - [ ] Create `.github/workflows/ci.yml` for automated testing
 - [ ] Add build caching for Turborepo
 - [ ] Set up preview deployments for PRs
@@ -70,23 +76,27 @@
 ### 6. Create More Shared Packages
 
 #### @buildos/email-templates
+
 - [ ] Extract email template logic from both apps
 - [ ] Create shared email components
 - [ ] Standardize email styling
 
 #### @buildos/utils
+
 - [ ] Date formatting utilities
 - [ ] Validation functions
 - [ ] Common helper functions
 - [ ] LLM prompt utilities
 
 #### @buildos/config
+
 - [ ] Shared ESLint configuration
 - [ ] Shared Prettier configuration
 - [ ] Shared TypeScript base config
 - [ ] Shared Tailwind config (for web app)
 
 ### 7. Code Quality Improvements
+
 - [ ] Set up shared ESLint rules at root
 - [ ] Configure Prettier for entire monorepo
 - [ ] Add pre-commit hooks with Husky
@@ -95,12 +105,14 @@
 ## 🎯 Optimization & Features (Priority 4)
 
 ### 8. Performance Optimizations
+
 - [ ] Implement Turborepo remote caching
 - [ ] Optimize build times with better task dependencies
 - [ ] Add bundle size monitoring for web app
 - [ ] Implement code splitting in shared packages
 
 ### 9. Developer Experience
+
 - [ ] Create comprehensive README with setup instructions
 - [ ] Add VS Code workspace settings and recommendations
 - [ ] Create development container configuration
@@ -118,6 +130,7 @@
   ```
 
 ### 10. Testing Infrastructure
+
 - [ ] Set up shared testing utilities package
 - [ ] Configure test coverage reporting
 - [ ] Add integration tests for shared packages
@@ -126,12 +139,14 @@
 ## 🔍 Monitoring & Observability (Priority 5)
 
 ### 11. Error Tracking
+
 - [ ] Integrate Sentry for both apps
 - [ ] Set up error boundaries in web app
 - [ ] Add structured logging in worker
 - [ ] Create shared error handling utilities
 
 ### 12. Analytics & Monitoring
+
 - [ ] Set up application monitoring (APM)
 - [ ] Add performance tracking
 - [ ] Implement custom metrics collection
@@ -140,6 +155,7 @@
 ## 📚 Documentation (Ongoing)
 
 ### 13. Documentation Updates
+
 - [ ] Update both CLAUDE.md files for monorepo context
 - [ ] Document the migration process
 - [ ] Create architecture diagrams
@@ -147,6 +163,7 @@
 - [ ] Add API documentation
 
 ### 14. Migration Cleanup
+
 - [ ] Archive old repositories with deprecation notice
 - [ ] Update all external links and references
 - [ ] Migrate open issues and PRs
@@ -155,12 +172,14 @@
 ## 🎉 Nice-to-Have Features
 
 ### 15. Advanced Monorepo Features
+
 - [ ] Implement changesets for version management
 - [ ] Add automatic changelog generation
 - [ ] Set up package publishing workflow (if needed)
 - [ ] Create custom Turborepo generators
 
 ### 16. Development Tools
+
 - [ ] Add Storybook for component development (web)
 - [ ] Create API documentation with OpenAPI
 - [ ] Set up database migration management
@@ -169,18 +188,21 @@
 ## 📝 Notes
 
 ### Current Status
+
 - ✅ Phase 1: Monorepo structure created
 - ✅ Phase 2: Shared packages extracted
 - 🔄 Phase 3: Deployment and CI/CD setup needed
 - ⏳ Phase 4: Optimization and polish
 
 ### Important Considerations
+
 1. **Don't delete old repos yet** - Keep them as archives for at least 3 months
 2. **Test deployments thoroughly** before switching production
 3. **Keep old deployment configs** as backup during transition
 4. **Document everything** as you make changes
 
 ### Quick Commands Reference
+
 ```bash
 # Development
 pnpm dev                    # Run all apps

@@ -71,6 +71,7 @@ To send emails from a custom address like `noreply@build-os.com`:
 #### Option B: Using Google Workspace
 
 If you have Google Workspace for your domain:
+
 1. Create a user or group alias for `noreply@build-os.com`
 2. Add it as a sending alias in Gmail
 3. No additional verification needed
@@ -78,6 +79,7 @@ If you have Google Workspace for your domain:
 #### Option C: Email Forwarding Service
 
 If you can't receive emails at the alias:
+
 1. Set up email forwarding from `noreply@build-os.com` to your Gmail
 2. Use a service like Cloudflare Email Routing or your domain registrar's forwarding
 3. Once forwarding works, follow Option A to add and verify the alias
@@ -121,6 +123,7 @@ curl -X POST http://localhost:3001/queue/brief \
 ## Email Template
 
 The daily brief emails include:
+
 - Styled HTML formatting with responsive design
 - Your daily brief content with tasks, notes, and priorities
 - Links to view the brief in the BuildOS app
@@ -130,22 +133,26 @@ The daily brief emails include:
 ## Troubleshooting
 
 ### "Invalid login" Error
+
 - Ensure you're using an app password, not your regular Gmail password
 - Check that 2-factor authentication is enabled
 - Verify the app password is entered correctly (no spaces)
 
 ### "Invalid sender" Error
+
 - The alias must be verified in Gmail settings
 - Check Gmail → Settings → Accounts → "Send mail as"
 - Ensure the alias email address actually exists and can receive mail
 
 ### Emails Not Sending
+
 1. Check environment variables are set correctly
 2. Verify user has `email_daily_brief = true` in preferences
 3. Check `email_logs` table for error messages
 4. Review worker logs for detailed error information
 
 ### Gmail Limits
+
 - Gmail has sending limits: 500 emails/day for regular accounts
 - Consider using Google Workspace or a dedicated email service for higher volumes
 
@@ -160,6 +167,7 @@ The daily brief emails include:
 ## Alternative Email Services
 
 If Gmail doesn't meet your needs, the email service can be adapted for:
+
 - SendGrid
 - AWS SES
 - Postmark
@@ -188,3 +196,4 @@ email_logs (
   metadata: json
   sent_at: timestamp
 )
+```

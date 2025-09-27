@@ -5,6 +5,7 @@ You are tasked with conducting comprehensive research across the codebase to ans
 ## Initial Setup:
 
 When this command is invoked, respond with:
+
 ```
 I'm ready to research the codebase. Please provide your research question or area of interest, and I'll analyze it thoroughly by exploring relevant components and connections.
 ```
@@ -54,6 +55,7 @@ Then wait for the user's research query.
 6. **Generate research document:**
    - Use the metadata gathered in step 4
    - Structure the document with YAML frontmatter followed by content:
+
      ```markdown
      ---
      date: [Current date and time with timezone in ISO format]
@@ -77,38 +79,48 @@ Then wait for the user's research query.
      **Repository**: [Repository name]
 
      ## Research Question
+
      [Original user query]
 
      ## Summary
+
      [High-level findings answering the user's question]
 
      ## Detailed Findings
 
      ### [Component/Area 1]
+
      - Finding with reference ([file.ext:line](link))
      - Connection to other components
      - Implementation details
 
      ### [Component/Area 2]
+
      ...
 
      ## Code References
+
      - `path/to/file.py:123` - Description of what's there
      - `another/file.ts:45-67` - Description of the code block
 
      ## Architecture Insights
+
      [Patterns, conventions, and design decisions discovered]
 
      ## Historical Context (from thoughts/)
+
      [Relevant insights from thoughts/ directory with references]
+
      - `thoughts/shared/something.md` - Historical decision about X
      - `thoughts/local/notes.md` - Past exploration of Y
-     Note: Paths exclude "searchable/" even if found there
+       Note: Paths exclude "searchable/" even if found there
 
      ## Related Research
+
      [Links to other research documents in thoughts/shared/research/]
 
      ## Open Questions
+
      [Any areas that need further investigation]
      ```
 
@@ -133,6 +145,7 @@ Then wait for the user's research query.
    - Continue updating the document and syncing
 
 ## Important notes:
+
 - Always use parallel Task agents to maximize efficiency and minimize context usage
 - Always run fresh codebase research - never rely solely on existing research documents
 - The thoughts/ directory provides historical context to supplement live findings

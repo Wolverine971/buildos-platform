@@ -11,7 +11,7 @@ export function getHoliday(date: Date): string[] {
 
   const holidays: string[] = [];
 
-  const mmdd = `${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const mmdd = `${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
   // --- Fixed Holidays ---
   const fixedHolidays: Record<string, string> = {
@@ -45,13 +45,22 @@ export function getHoliday(date: Date): string[] {
   if (fixedHolidays[mmdd]) holidays.push(fixedHolidays[mmdd]);
 
   // --- Helpers for Movable Holidays ---
-  const getNthWeekdayOfMonth = (y: number, m: number, weekday: number, n: number): Date => {
+  const getNthWeekdayOfMonth = (
+    y: number,
+    m: number,
+    weekday: number,
+    n: number,
+  ): Date => {
     const firstDay = new Date(y, m, 1);
     const offset = (7 + weekday - firstDay.getDay()) % 7;
     return new Date(y, m, 1 + offset + 7 * (n - 1));
   };
 
-  const getLastWeekdayOfMonth = (y: number, m: number, weekday: number): Date => {
+  const getLastWeekdayOfMonth = (
+    y: number,
+    m: number,
+    weekday: number,
+  ): Date => {
     const lastDay = new Date(y, m + 1, 0);
     const offset = (7 + lastDay.getDay() - weekday) % 7;
     return new Date(y, m + 1, 0 - offset);
@@ -72,7 +81,10 @@ export function getHoliday(date: Date): string[] {
 
   // --- Movable Holidays ---
   const movableHolidays: Holiday[] = [
-    { name: "Martin Luther King Jr. Day", date: getNthWeekdayOfMonth(year, 0, 1, 3) }, // 3rd Monday of Jan
+    {
+      name: "Martin Luther King Jr. Day",
+      date: getNthWeekdayOfMonth(year, 0, 1, 3),
+    }, // 3rd Monday of Jan
     { name: "Presidents' Day", date: getNthWeekdayOfMonth(year, 1, 1, 3) }, // 3rd Monday of Feb
     { name: "Mother's Day", date: getNthWeekdayOfMonth(year, 4, 0, 2) }, // 2nd Sunday of May
     { name: "Memorial Day", date: getLastWeekdayOfMonth(year, 4, 1) }, // Last Monday of May
@@ -80,8 +92,14 @@ export function getHoliday(date: Date): string[] {
     { name: "Labor Day", date: getNthWeekdayOfMonth(year, 8, 1, 1) }, // 1st Monday of Sep
     { name: "Columbus Day", date: getNthWeekdayOfMonth(year, 9, 1, 2) }, // 2nd Monday of Oct
     { name: "Thanksgiving", date: getNthWeekdayOfMonth(year, 10, 4, 4) }, // 4th Thursday of Nov
-    { name: "Black Friday", date: new Date(getNthWeekdayOfMonth(year, 10, 4, 4).getTime() + 86400000) },
-    { name: "National Entrepreneurs Day", date: getNthWeekdayOfMonth(year, 10, 2, 3) }, // 3rd Tuesday of Nov
+    {
+      name: "Black Friday",
+      date: new Date(getNthWeekdayOfMonth(year, 10, 4, 4).getTime() + 86400000),
+    },
+    {
+      name: "National Entrepreneurs Day",
+      date: getNthWeekdayOfMonth(year, 10, 2, 3),
+    }, // 3rd Tuesday of Nov
     { name: "National Donut Day", date: getNthWeekdayOfMonth(year, 5, 5, 1) }, // 1st Friday of June
     { name: "Easter", date: getEasterDate(year) },
   ];

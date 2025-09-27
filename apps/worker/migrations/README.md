@@ -57,6 +57,7 @@ To rollback this migration, run `001_add_phases_generation_rollback.sql`
 ### Running the Migration:
 
 In Supabase:
+
 1. Go to SQL Editor
 2. Paste the migration SQL
 3. Run the query

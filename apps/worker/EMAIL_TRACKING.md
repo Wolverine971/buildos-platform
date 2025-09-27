@@ -7,16 +7,19 @@ The daily brief emails now include comprehensive tracking capabilities to monito
 ## Features
 
 ### 1. **Tracking Pixel**
+
 - 1x1 transparent PNG pixel embedded in email HTML
 - Loads from `/api/email-tracking/:trackingId` endpoint
 - Fires when email is opened in clients that load images
 
 ### 2. **Database Records**
+
 - **emails table**: Main email record with tracking ID
 - **email_recipients table**: Recipient-specific tracking
 - **email_tracking_events table**: Detailed event logging
 
 ### 3. **Tracking Data Collected**
+
 - First open timestamp
 - Total open count
 - Last opened timestamp
@@ -40,9 +43,15 @@ The daily brief emails now include comprehensive tracking capabilities to monito
    - Tracks delivery and open metrics
 
 4. **Embed Tracking Pixel**: Add to email HTML:
+
    ```html
-   <img src="https://build-os.com/api/email-tracking/{trackingId}" 
-        width="1" height="1" style="display:none;" alt="" />
+   <img
+     src="https://build-os.com/api/email-tracking/{trackingId}"
+     width="1"
+     height="1"
+     style="display:none;"
+     alt=""
+   />
    ```
 
 5. **Send Email**: Via Gmail SMTP with tracking metadata
@@ -60,6 +69,7 @@ The `/api/email-tracking/:trackingId` endpoint:
 ### Database Schema
 
 #### emails table
+
 ```sql
 - id: UUID
 - tracking_id: String (unique)
@@ -71,6 +81,7 @@ The `/api/email-tracking/:trackingId` endpoint:
 ```
 
 #### email_recipients table
+
 ```sql
 - id: UUID
 - email_id: Foreign key to emails
@@ -83,6 +94,7 @@ The `/api/email-tracking/:trackingId` endpoint:
 ```
 
 #### email_tracking_events table
+
 ```sql
 - id: UUID
 - email_id: Foreign key to emails
@@ -105,11 +117,13 @@ The `/api/email-tracking/:trackingId` endpoint:
 ## Testing
 
 Run the tracking tests:
+
 ```bash
 pnpm tsx tests/test-email-tracking.ts
 ```
 
 This verifies:
+
 - Tracking ID generation
 - Pixel embedding
 - URL transformation compatibility
@@ -118,6 +132,7 @@ This verifies:
 ## Configuration
 
 Tracking can be controlled via:
+
 - User preferences: `email_daily_brief` in `user_brief_preferences`
 - Per-email basis: `tracking_enabled` flag
 - Environment: Can be disabled globally if needed
@@ -125,6 +140,7 @@ Tracking can be controlled via:
 ## Monitoring
 
 Track email performance via:
+
 - Email open rates by querying `email_recipients`
 - Delivery success via `emails.status`
 - Event timeline in `email_tracking_events`
@@ -133,16 +149,20 @@ Track email performance via:
 ## API Endpoints
 
 ### Email Tracking Pixel
+
 ```
 GET /api/email-tracking/:trackingId
 ```
+
 Returns: 1x1 transparent PNG
 Side effects: Updates tracking metrics
 
 ### Queue Stats (includes email metrics)
+
 ```
 GET /queue/stats
 ```
+
 Returns: Queue statistics including email job counts
 
 ## Future Enhancements

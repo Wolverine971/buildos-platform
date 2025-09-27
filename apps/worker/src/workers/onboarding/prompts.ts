@@ -1,7 +1,7 @@
 // worker-queue/src/workers/onboarding/prompts.ts
 export class OnboardingAnalysisPrompt {
-    static getSystemPrompt(): string {
-        return `You are a BuildOS onboarding analyst that generates personalized questions to help users start thinking through and braindumping ideas for the specific projects they mentioned during onboarding.
+  static getSystemPrompt(): string {
+    return `You are a BuildOS onboarding analyst that generates personalized questions to help users start thinking through and braindumping ideas for the specific projects they mentioned during onboarding.
 
 ## Your Role
 Analyze the user's onboarding responses to:
@@ -224,43 +224,48 @@ Generate 3-7 highly targeted questions that will help this specific user:
 - Define and create NEW projects they mentioned but haven't started
 - Make progress on EXISTING projects that match what they mentioned
 - Focus on the right depth of questioning based on project maturity`;
-    }
+  }
 
-    static getUserPrompt(onboardingData: {
-        input_projects?: string;
-        input_work_style?: string;
-        input_challenges?: string;
-        input_help_focus?: string;
-        existing_projects?: Array<{
-            id: string;
-            name: string;
-            description: string | null;
-        }>;
-    }): string {
-        const existingProjectsSection = onboardingData.existing_projects && onboardingData.existing_projects.length > 0
-            ? `
+  static getUserPrompt(onboardingData: {
+    input_projects?: string;
+    input_work_style?: string;
+    input_challenges?: string;
+    input_help_focus?: string;
+    existing_projects?: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+    }>;
+  }): string {
+    const existingProjectsSection =
+      onboardingData.existing_projects &&
+      onboardingData.existing_projects.length > 0
+        ? `
 **User's Existing Projects:**
-${onboardingData.existing_projects.map(p => 
-    `- ID: ${p.id}
+${onboardingData.existing_projects
+  .map(
+    (p) =>
+      `- ID: ${p.id}
   Name: ${p.name}
-  Description: ${p.description || 'No description'}`
-).join('\n\n')}
+  Description: ${p.description || "No description"}`,
+  )
+  .join("\n\n")}
 `
-            : '\n**User has no existing projects yet**\n';
+        : "\n**User has no existing projects yet**\n";
 
-        return `Analyze this user's onboarding responses and generate personalized questions that help them think through the specific projects they mentioned:
+    return `Analyze this user's onboarding responses and generate personalized questions that help them think through the specific projects they mentioned:
 
 **Projects they mentioned in onboarding:**
-${onboardingData.input_projects || 'Not provided'}
+${onboardingData.input_projects || "Not provided"}
 
 **How they work:**
-${onboardingData.input_work_style || 'Not provided'}
+${onboardingData.input_work_style || "Not provided"}
 
 **Their challenges:**
-${onboardingData.input_challenges || 'Not provided'}
+${onboardingData.input_challenges || "Not provided"}
 
 **What they need help with:**
-${onboardingData.input_help_focus || 'Not provided'}
+${onboardingData.input_help_focus || "Not provided"}
 ${existingProjectsSection}
 CRITICAL MATCHING INSTRUCTIONS:
 1. Compare each mentioned project with existing projects
@@ -283,5 +288,5 @@ REMEMBER:
 Generate specific questions that help them either:
 1. Define and create NEW projects they mentioned but haven't started
 2. Make meaningful progress on EXISTING projects that match what they mentioned`;
-    }
+  }
 }

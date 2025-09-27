@@ -13,7 +13,8 @@
     "typecheck": "turbo typecheck",
     "format": "prettier --write .",
     "clean": "turbo clean",
-    "pre-push": "turbo pre-push"
+    "pre-push": "turbo pre-push",
+    "gen:all": "pnpm --filter=@buildos/web gen:all && pnpm format && pnpm typecheck"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

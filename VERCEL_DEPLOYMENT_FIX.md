@@ -1,6 +1,7 @@
 # URGENT: Vercel Deployment Fix
 
 ## The Issue
+
 Your build completes but Vercel shows "Build Completed in /vercel/output" and then hangs. This means the build files are being created but Vercel can't find them.
 
 ## IMMEDIATE FIX - Do This Now in Vercel Dashboard:
@@ -12,11 +13,13 @@ Your build completes but Vercel shows "Build Completed in /vercel/output" and th
 1. **Framework Preset**: Other (not SvelteKit)
 
 2. **Build Command** (if override enabled):
+
    ```
    cd apps/web && pnpm build
    ```
 
 3. **Output Directory** (CRITICAL - if override enabled):
+
    ```
    apps/web/.vercel/output
    ```
@@ -43,17 +46,20 @@ The Vercel build environment is having trouble with the monorepo structure. The 
 ## Quick Test:
 
 After changing settings:
+
 1. Go to Deployments tab
 2. Click on latest deployment
 3. Click "..." → Redeploy
 4. Watch the logs carefully
 
 If it still hangs, try clearing the build cache:
+
 - Settings → Advanced → Clear Build Cache → Clear Cache
 
 ## Nuclear Option (Last Resort):
 
 If nothing works, create a new Vercel project:
+
 1. Delete current project
 2. Import repository again
 3. When importing:
@@ -62,7 +68,9 @@ If nothing works, create a new Vercel project:
    - Don't override any settings initially
 
 ## Expected Success Log:
+
 You should see something like:
+
 ```
 Build Completed in /vercel/output [2m]
 Uploading build outputs...

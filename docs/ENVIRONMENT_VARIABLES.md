@@ -42,6 +42,7 @@ This document explains all environment variables used in the BuildOS Platform mo
 ### 🌐 Vercel (Web App)
 
 #### Required
+
 ```bash
 # Supabase
 PUBLIC_SUPABASE_URL
@@ -71,6 +72,7 @@ PRIVATE_ZACH_GMAIL_APP_PASSWORD
 ```
 
 #### Optional
+
 ```bash
 # Stripe Payments
 ENABLE_STRIPE
@@ -91,6 +93,7 @@ PUBLIC_BRIEF_MAX_POLLING_TIME
 ### 🚂 Railway (Worker)
 
 #### Required
+
 ```bash
 # Supabase (different naming)
 SUPABASE_URL                 # Same as PUBLIC_SUPABASE_URL
@@ -104,6 +107,7 @@ NODE_ENV=production
 #### Email Configuration (choose one)
 
 **Option 1: Webhook to Main App (Recommended)**
+
 ```bash
 USE_WEBHOOK_EMAIL=true
 BUILDOS_WEBHOOK_URL=https://your-app.vercel.app/webhooks/daily-brief-email
@@ -111,12 +115,14 @@ BUILDOS_WEBHOOK_SECRET      # Must match PRIVATE_BUILDOS_WEBHOOK_SECRET
 ```
 
 **Option 2: Direct SMTP**
+
 ```bash
 GMAIL_USER=your-email@gmail.com
 GMAIL_APP_PASSWORD=your-app-password
 ```
 
 #### Optional Queue Settings
+
 ```bash
 QUEUE_POLL_INTERVAL=5000
 QUEUE_BATCH_SIZE=5
@@ -130,23 +136,25 @@ QUEUE_MAX_RETRIES=3
 
 These pairs must have the **same value** but use different names:
 
-| Web App Variable | Worker Variable | Description |
-|-----------------|-----------------|-------------|
-| `PUBLIC_SUPABASE_URL` | `SUPABASE_URL` | Supabase project URL |
-| `PRIVATE_SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
-| `PUBLIC_GOOGLE_CLIENT_ID` | `PRIVATE_GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | `PRIVATE_GOOGLE_CLIENT_SECRET` | Google OAuth secret |
+| Web App Variable               | Worker Variable                | Description            |
+| ------------------------------ | ------------------------------ | ---------------------- |
+| `PUBLIC_SUPABASE_URL`          | `SUPABASE_URL`                 | Supabase project URL   |
+| `PRIVATE_SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_ROLE_KEY`    | Service role key       |
+| `PUBLIC_GOOGLE_CLIENT_ID`      | `PRIVATE_GOOGLE_CLIENT_ID`     | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET`         | `PRIVATE_GOOGLE_CLIENT_SECRET` | Google OAuth secret    |
 
 ## Setting Up Variables
 
 ### For Local Development
 
 1. Copy `.env.example` to `.env` in the root:
+
 ```bash
 cp .env.example .env
 ```
 
 2. Fill in your values:
+
 ```bash
 # Edit .env with your actual values
 ```
@@ -217,6 +225,7 @@ QUEUE_BATCH_SIZE=5
 **Cause:** Variable naming mismatch
 
 **Solution:** Ensure:
+
 - Worker uses `SUPABASE_URL` (not `PUBLIC_SUPABASE_URL`)
 - Worker uses `SUPABASE_SERVICE_ROLE_KEY` (not `PRIVATE_SUPABASE_SERVICE_KEY`)
 
@@ -225,10 +234,12 @@ QUEUE_BATCH_SIZE=5
 **Cause:** Email configuration missing or incorrect
 
 **Solution for Web App:**
+
 - Add `PRIVATE_DJ_GMAIL_APP_PASSWORD` and `PRIVATE_ZACH_GMAIL_APP_PASSWORD`
 - Or update code to use generic email config
 
 **Solution for Worker:**
+
 - Use webhook method with matching secrets
 - Or configure Gmail SMTP directly
 
@@ -241,12 +252,14 @@ QUEUE_BATCH_SIZE=5
 ## Generating Secure Secrets
 
 ### For webhook secrets and cron secrets:
+
 ```bash
 # Generate a secure random secret
 openssl rand -hex 32
 ```
 
 ### For Gmail app passwords:
+
 1. Go to https://myaccount.google.com/security
 2. Enable 2-factor authentication
 3. Go to "App passwords"
@@ -255,6 +268,7 @@ openssl rand -hex 32
 ## Environment-Specific Configurations
 
 ### Development
+
 ```env
 NODE_ENV=development
 PUBLIC_APP_URL=http://localhost:5173
@@ -265,6 +279,7 @@ QUEUE_BATCH_SIZE=2
 ```
 
 ### Staging
+
 ```env
 NODE_ENV=staging
 PUBLIC_APP_URL=https://staging-buildos.vercel.app
@@ -275,6 +290,7 @@ QUEUE_BATCH_SIZE=5
 ```
 
 ### Production
+
 ```env
 NODE_ENV=production
 PUBLIC_APP_URL=https://buildos.app
@@ -294,6 +310,7 @@ node scripts/validate-env.js
 ```
 
 This will check for:
+
 - Required variables presence
 - Variable format validation
 - Cross-service consistency

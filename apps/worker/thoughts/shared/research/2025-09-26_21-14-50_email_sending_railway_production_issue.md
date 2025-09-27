@@ -48,6 +48,7 @@ This explains why the same code works locally but fails on Railway deployment.
 ### Current Email Implementation
 
 #### Gmail SMTP Configuration
+
 - **Transport**: nodemailer v7.0.6 with Gmail service
 - **Configuration**: `/Users/annawayne/daily-brief-worker/src/lib/services/gmail-transporter.ts:26-34`
 - **Required Env Variables**:
@@ -58,11 +59,13 @@ This explains why the same code works locally but fails on Railway deployment.
   - `EMAIL_FROM_NAME`: Display name (default: "BuildOS")
 
 #### Email Service Architecture
+
 - **Main Service**: `/Users/annawayne/daily-brief-worker/src/lib/services/email-service.ts:26`
 - **Email Sender**: `/Users/annawayne/daily-brief-worker/src/lib/services/email-sender.ts:22`
 - **Brief Worker Integration**: `/Users/annawayne/daily-brief-worker/src/workers/brief/briefWorker.ts:61-76`
 
 #### Error Handling Strategy
+
 - **Graceful Degradation**: Email failures don't fail the entire job
 - **Database Tracking**: Failed emails logged to `email_logs` table with error details
 - **Status Updates**: `emails` and `email_recipients` tables updated with failure status
@@ -71,6 +74,7 @@ This explains why the same code works locally but fails on Railway deployment.
 ### Log Analysis
 
 From production logs:
+
 ```
 ✉️ Gmail transporter initialized  // Transporter created successfully
 🎉 Daily brief generated successfully for user 255735ad-a34b-4ca9-942c-397ed8cc1435
@@ -85,6 +89,7 @@ From production logs:
 ## Code References
 
 ### Key Implementation Files
+
 - `src/lib/services/gmail-transporter.ts:26-34` - Gmail transporter creation
 - `src/lib/services/email-service.ts:37` - "Gmail transporter initialized" log
 - `src/lib/services/email-service.ts:134-162` - Email error handling
@@ -93,6 +98,7 @@ From production logs:
 - `railway.json` - Railway deployment configuration
 
 ### Database Tables for Email Tracking
+
 - `emails` - Main email records with status tracking
 - `email_recipients` - Per-recipient tracking
 - `email_tracking_events` - Event logging (sent, opened, failed)
@@ -101,12 +107,14 @@ From production logs:
 ## Architecture Insights
 
 ### Current Design Patterns
+
 1. **Separation of Concerns**: Email sending isolated from core brief generation
 2. **Graceful Degradation**: System continues functioning when email fails
 3. **Comprehensive Tracking**: All email attempts logged for debugging
 4. **Opt-in Compliance**: Checks user preferences before sending
 
 ### Limitations Discovered
+
 1. **No Email Retries**: Failed emails not automatically retried
 2. **No Dead Letter Queue**: No mechanism for persistent failures
 3. **No Circuit Breaker**: No protection against cascading failures
@@ -117,7 +125,8 @@ From production logs:
 ### Immediate Solutions (Ranked by Feasibility)
 
 #### 1. **Implement AWS SES (Recommended)**
-- **Advantages**: 
+
+- **Advantages**:
   - SDK already installed (`@aws-sdk/client-sesv2@3.883.0`)
   - HTTP-based (bypasses SMTP restrictions)
   - 200 free emails/day, 62,000/month from EC2
@@ -129,13 +138,15 @@ From production logs:
   ```
 
 #### 2. **Add SendGrid Integration**
-- **Advantages**: 
+
+- **Advantages**:
   - 100 free emails/day forever
   - Excellent deliverability and analytics
   - Simple HTTP API
 - **Implementation**: Add `@sendgrid/mail` package and API key
 
 #### 3. **Use Resend (Modern Alternative)**
+
 - **Advantages**:
   - Developer-friendly API
   - 100 free emails/day
@@ -143,6 +154,7 @@ From production logs:
 - **Implementation**: Add `resend` package and API key
 
 #### 4. **Upgrade to Railway Pro Plan**
+
 - **Cost**: $5-10/month
 - **Advantages**: No code changes needed
 - **Disadvantages**: Ongoing cost, still dependent on SMTP
@@ -150,12 +162,13 @@ From production logs:
 ### Long-term Architecture Improvements
 
 1. **Provider Abstraction Layer**:
+
    ```typescript
    interface EmailProvider {
      send(data: EmailData): Promise<void>;
      validateConfig(): boolean;
    }
-   
+
    class GmailProvider implements EmailProvider { ... }
    class SESProvider implements EmailProvider { ... }
    class SendGridProvider implements EmailProvider { ... }

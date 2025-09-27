@@ -5,6 +5,7 @@ This document explains how BuildOS persists and tracks outgoing email, the table
 ## LLM Model Configuration for Email Generation
 
 ### Cost-Optimized Model Selection
+
 The email system now uses **DeepSeek Chat V3** as the primary LLM for generating email content, replacing Anthropic models for significant cost savings:
 
 - **Previous**: Claude 3.5 Sonnet ($3.00/$15.00 per 1M tokens input/output)
@@ -12,6 +13,7 @@ The email system now uses **DeepSeek Chat V3** as the primary LLM for generating
 - **Cost Reduction**: ~95% reduction in LLM costs
 
 ### Configuration Details
+
 - The `SmartLLMService` (`src/lib/services/smart-llm-service.ts`) has been configured to prioritize DeepSeek across all quality profiles
 - Daily brief generation uses `profile: 'quality'` which now routes to DeepSeek instead of Claude
 - Fallback models: Qwen 2.5 72B, Google Gemini Flash 1.5
@@ -20,23 +22,27 @@ The email system now uses **DeepSeek Chat V3** as the primary LLM for generating
 ## Data Model
 
 ### `emails`
+
 - Represents a composed email message.
 - Key columns: `id`, `subject`, `content` (HTML body), `from_email`, `from_name`, `tracking_enabled`, `tracking_id`, `status`, `sent_at`, `created_by`, `template_data`.
 - When `tracking_enabled` is true, `tracking_id` stores the UUID used by `/api/email-tracking/[tracking_id]` to log opens.
 - `template_data` is a JSON payload for templating metadata (LLM prompts, campaign tags, etc.).
 
 ### `email_recipients`
+
 - Child table linking messages to each recipient.
 - Key columns: `id`, `email_id`, `recipient_email`, `recipient_id` (nullable user FK), `recipient_type`, `status`, `sent_at`, `opened_at`, `last_opened_at`, `open_count`, `error_message`.
 - Populated when a message is sent so we can track delivery/open status per recipient.
 
 ### `email_logs`
+
 - Audit log of every attempt (success or failure) to send an email.
 - Key columns: `id`, `user_id` (nullable), `to_email`, `subject`, `body`, `status`, `sent_at`, `error_message`, `metadata`.
 - `metadata` includes service specific context (e.g. `message_id`, `sender_type`, `tracking_id`, campaign identifiers).
 - `user_id` enables rate limiting and user scoped queries.
 
 ### `email_tracking_events`
+
 - Append-only table recording `sent`, `failed`, or `opened` events.
 - Key columns: `id`, `email_id`, `recipient_id`, `event_type`, `event_data`, `user_agent`, `ip_address`, `created_at`.
 - Populated by `/api/email-tracking/[tracking_id]` when the tracking pixel is requested and by sender flows for `sent`/`failed` events.
@@ -60,23 +66,25 @@ The email system now uses **DeepSeek Chat V3** as the primary LLM for generating
 ```ts
 const emailService = new EmailService(supabase);
 await emailService.sendEmail({
-	to: user.email,
-	subject: 'Welcome to BuildOS',
-	body: plainTextBody,
-	html: renderedHtml,
-	userId: user.id,
-	metadata: {
-		campaign: 'welcome-series',
-		generated_by_llm: false
-	}
+  to: user.email,
+  subject: "Welcome to BuildOS",
+  body: plainTextBody,
+  html: renderedHtml,
+  userId: user.id,
+  metadata: {
+    campaign: "welcome-series",
+    generated_by_llm: false,
+  },
 });
 ```
 
 ### LLM generated messages
+
 - `EmailGenerationService.logGeneratedEmail` writes a draft record into `email_logs` with `metadata.generated_by_llm = true` and `user_id` set for rate limiting.
 - When promoted to an actual send, call `EmailService.sendEmail` so the final message routes through the same tracking pipeline.
 
 ### Scheduled/Admin sends
+
 - Admin UI saves content into `emails` first, then calls `/api/admin/emails/[id]/send` which loops through recipients, dispatches via Gmail, emits `email_tracking_events`, and relies on the shared HTML renderer to append the pixel.
 
 ## Best Practices

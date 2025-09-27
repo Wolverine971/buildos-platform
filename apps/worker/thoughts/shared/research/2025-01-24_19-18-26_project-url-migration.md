@@ -20,40 +20,53 @@ last_updated_by: Claude
 **Repository**: daily-brief-worker
 
 ## Research Question
+
 Find and create a list of all the places where markdown links to projects need to be updated from using slugs to using project IDs.
 
 ## Summary
+
 Identified **4 files** containing **11 distinct markdown link patterns** that need updating from slug-based (`/projects/{slug}`) to ID-based (`/projects/{id}`) URLs. The primary file requiring updates is `briefGenerator.ts` which generates all project-related markdown links in daily briefs.
 
 ## Files Requiring Updates
 
 ### 1. **src/workers/brief/briefGenerator.ts** (PRIMARY - Production Code)
+
 This is the main file that generates markdown links for daily briefs.
 
 #### Lines to Update:
+
 - **Line 625**: Project header link
+
   ```typescript
   ## [${project.name}](/projects/${project.slug})
   ```
+
   Should become:
+
   ```typescript
   ## [${project.name}](/projects/${project.id})
   ```
 
 - **Line 518**: Task links within projects
+
   ```typescript
   [${task.title}](/projects/${projectSlug}/tasks/${task.id})
   ```
+
   Should become:
+
   ```typescript
   [${task.title}](/projects/${projectId}/tasks/${task.id})
   ```
 
 - **Line 554**: Note links within projects
+
   ```typescript
   [${note.title || 'Untitled Note'}](/projects/${projectSlug}/notes/${note.id})
   ```
+
   Should become:
+
   ```typescript
   [${note.title || 'Untitled Note'}](/projects/${projectId}/notes/${note.id})
   ```
@@ -68,66 +81,76 @@ This is the main file that generates markdown links for daily briefs.
   ```
 
 ### 2. **tests/test-url-transform.ts** (Test File)
+
 Contains test cases for URL transformation that use slug-based project URLs.
 
 #### Lines to Update:
+
 - **Line 18**: Test input
   ```typescript
-  'Check out [this project](/projects/my-project) for details.'
+  "Check out [this project](/projects/my-project) for details.";
   ```
-  
 - **Line 19**: Expected output
+
   ```typescript
-  'Check out [this project](https://build-os.com/projects/my-project) for details.'
+  "Check out [this project](https://build-os.com/projects/my-project) for details.";
   ```
 
 - **Line 23**: Test input with multiple links
+
   ```typescript
-  'See [Project A](/projects/project-a) and [Task B](/tasks/task-123)'
+  "See [Project A](/projects/project-a) and [Task B](/tasks/task-123)";
   ```
 
 - **Line 24**: Expected output
+
   ```typescript
-  'See [Project A](https://build-os.com/projects/project-a) and [Task B](https://build-os.com/tasks/task-123)'
+  "See [Project A](https://build-os.com/projects/project-a) and [Task B](https://build-os.com/tasks/task-123)";
   ```
 
 - **Line 55**: Test content
+
   ```typescript
   Check [Project Alpha](/projects/alpha) for updates.
   ```
 
 - **Line 64**: Expected transformation
+
   ```typescript
   Check [Project Alpha](https://build-os.com/projects/alpha) for updates.
   ```
 
 - **Line 74**: Test with mixed links
+
   ```typescript
-  'External link: [Google](https://google.com) and internal [project](/projects/test)'
+  "External link: [Google](https://google.com) and internal [project](/projects/test)";
   ```
 
 - **Line 75**: Expected output
   ```typescript
-  'External link: [Google](https://google.com) and internal [project](https://build-os.com/projects/test)'
+  "External link: [Google](https://google.com) and internal [project](https://build-os.com/projects/test)";
   ```
 
 ### 3. **tests/test-email-tracking.ts** (Test File)
+
 Contains a test case with a project link.
 
 #### Line to Update:
+
 - **Line 23**: Test content
   ```typescript
   Check out [Project Alpha](/projects/alpha) for updates.
   ```
 
 ### 4. **src/lib/services/email-sender.ts** (URL Transformation Logic)
+
 While this file doesn't contain hardcoded project links, it contains the regex patterns that handle URL transformation. The patterns themselves don't need updating as they're generic, but you should verify they still work correctly with ID-based URLs.
 
 ## Impact Analysis
 
 ### Code Changes Required:
 
-1. **Variable Updates**: 
+1. **Variable Updates**:
    - Replace `projectSlug` with `projectId` variables
    - Update function parameters to pass `project.id` instead of `project.slug`
    - Ensure `project_id` is available in all contexts where links are generated
@@ -163,11 +186,13 @@ While this file doesn't contain hardcoded project links, it contains the regex p
 ## Pattern Summary
 
 ### Current Pattern (Slug-based):
+
 - `/projects/{slug}`
 - `/projects/{slug}/tasks/{task-id}`
 - `/projects/{slug}/notes/{note-id}`
 
 ### New Pattern (ID-based):
+
 - `/projects/{id}`
 - `/projects/{id}/tasks/{task-id}`
 - `/projects/{id}/notes/{note-id}`

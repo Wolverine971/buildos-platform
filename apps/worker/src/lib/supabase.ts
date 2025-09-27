@@ -1,14 +1,14 @@
 // worker-queue/src/lib/supabase.ts
-import { createCustomClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
-import dotenv from 'dotenv';
+import { createCustomClient } from "@buildos/supabase-client";
+import type { Database } from "@buildos/shared-types";
+import dotenv from "dotenv";
 
 dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
 export const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
@@ -104,7 +104,13 @@ export interface BriefGenerationJob {
   user_id: string;
   job_type: string;
   scheduled_for: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'retrying';
+  status:
+    | "pending"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "retrying";
   queue_job_id: string;
   created_at: string;
   processed_at: string | null;

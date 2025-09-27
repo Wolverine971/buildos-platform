@@ -38,7 +38,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["apps/web/.vercel/**", "apps/web/.svelte-kit/**", "dist/**", "build/**", ".tsbuildinfo"],
+      "outputs": [
+        "apps/web/.vercel/**",
+        "apps/web/.svelte-kit/**",
+        "dist/**",
+        "build/**",
+        ".tsbuildinfo"
+      ],
       "env": [
         "NODE_ENV",
         "PUBLIC_SUPABASE_URL",

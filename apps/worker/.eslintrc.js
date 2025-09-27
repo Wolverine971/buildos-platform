@@ -3,17 +3,13 @@
 
 module.exports = {
   root: true,
-  parser: '@typescript-eslint/parser',
-  plugins: [
-    '@typescript-eslint',
-  ],
-  extends: [
-    'eslint:recommended'
-  ],
+  parser: "@typescript-eslint/parser",
+  plugins: ["@typescript-eslint"],
+  extends: ["eslint:recommended"],
   parserOptions: {
     ecmaVersion: 2022,
-    sourceType: 'module',
-    project: './tsconfig.json',
+    sourceType: "module",
+    project: "./tsconfig.json",
     tsconfigRootDir: __dirname,
   },
   env: {
@@ -21,86 +17,92 @@ module.exports = {
     es2022: true,
   },
   globals: {
-    NodeJS: 'readonly'
+    NodeJS: "readonly",
   },
   rules: {
     // Error Prevention
-    'no-console': 'off', // Allow console in worker/server code
-    'no-unused-vars': 'off', // Let TypeScript handle this
-    '@typescript-eslint/no-unused-vars': ['error', { 
-      argsIgnorePattern: '^_',
-      varsIgnorePattern: '^_' 
-    }],
-    '@typescript-eslint/no-explicit-any': 'warn', // Warn but don't error on any
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    
+    "no-console": "off", // Allow console in worker/server code
+    "no-unused-vars": "off", // Let TypeScript handle this
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
+    "@typescript-eslint/no-explicit-any": "warn", // Warn but don't error on any
+    "@typescript-eslint/explicit-function-return-type": "off",
+
     // Code Quality
-    '@typescript-eslint/no-var-requires': 'error',
-    '@typescript-eslint/prefer-optional-chain': 'warn',
-    '@typescript-eslint/prefer-nullish-coalescing': 'off', // Too noisy for migration
-    
+    "@typescript-eslint/no-var-requires": "error",
+    "@typescript-eslint/prefer-optional-chain": "warn",
+    "@typescript-eslint/prefer-nullish-coalescing": "off", // Too noisy for migration
+
     // Style
-    'indent': ['error', 2, { SwitchCase: 1 }],
-    'quotes': ['error', 'single', { avoidEscape: true }],
-    'semi': ['error', 'always'],
-    'comma-trailing': 'off', // Let Prettier handle this
-    'object-curly-spacing': ['error', 'always'],
-    'array-bracket-spacing': ['error', 'never'],
-    
+    indent: ["error", 2, { SwitchCase: 1 }],
+    quotes: ["error", "single", { avoidEscape: true }],
+    semi: ["error", "always"],
+    "comma-trailing": "off", // Let Prettier handle this
+    "object-curly-spacing": ["error", "always"],
+    "array-bracket-spacing": ["error", "never"],
+
     // Best Practices
-    'eqeqeq': ['error', 'always'],
-    'no-eval': 'error',
-    'no-implied-eval': 'error',
-    'no-new-wrappers': 'error',
-    'no-throw-literal': 'error',
-    'prefer-promise-reject-errors': 'error',
-    'no-return-await': 'error',
-    
+    eqeqeq: ["error", "always"],
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-wrappers": "error",
+    "no-throw-literal": "error",
+    "prefer-promise-reject-errors": "error",
+    "no-return-await": "error",
+
     // Async/Promise handling
-    'no-async-promise-executor': 'error',
-    'require-await': 'warn',
-    
+    "no-async-promise-executor": "error",
+    "require-await": "warn",
+
     // Import organization
-    'sort-imports': ['warn', {
-      ignoreCase: false,
-      ignoreDeclarationSort: true, // Let import/order handle this
-      ignoreMemberSort: false,
-      memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single']
-    }]
+    "sort-imports": [
+      "warn",
+      {
+        ignoreCase: false,
+        ignoreDeclarationSort: true, // Let import/order handle this
+        ignoreMemberSort: false,
+        memberSyntaxSortOrder: ["none", "all", "multiple", "single"],
+      },
+    ],
   },
   overrides: [
     {
       // Test files
-      files: ['**/*.test.ts', '**/*.spec.ts'],
+      files: ["**/*.test.ts", "**/*.spec.ts"],
       env: {
         jest: true,
       },
       rules: {
-        '@typescript-eslint/no-explicit-any': 'off',
-        '@typescript-eslint/no-non-null-assertion': 'off'
-      }
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+      },
     },
     {
       // Migration files
-      files: ['migrations/**/*.sql'],
+      files: ["migrations/**/*.sql"],
       parser: null,
-      rules: {}
+      rules: {},
     },
     {
       // Config files
-      files: ['*.config.js', '*.config.ts'],
+      files: ["*.config.js", "*.config.ts"],
       rules: {
-        '@typescript-eslint/no-var-requires': 'off'
-      }
-    }
+        "@typescript-eslint/no-var-requires": "off",
+      },
+    },
   ],
   ignorePatterns: [
-    'dist/',
-    'node_modules/',
-    '*.js.map',
-    'coverage/',
-    '.env*',
-    '*.sql',
-    'src/lib/database.types.ts' // Generated file
-  ]
+    "dist/",
+    "node_modules/",
+    "*.js.map",
+    "coverage/",
+    ".env*",
+    "*.sql",
+    "src/lib/database.types.ts", // Generated file
+  ],
 };

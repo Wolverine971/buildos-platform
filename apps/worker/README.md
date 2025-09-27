@@ -57,6 +57,7 @@ Run these SQL migrations in your Supabase SQL editor:
 ```
 
 These migrations add:
+
 - Queue job management columns and indexes
 - Atomic job claiming functions
 - Stalled job recovery
@@ -137,17 +138,17 @@ Add these API routes to your SvelteKit app:
 export async function POST({ request, locals }) {
   const { immediate = false, forceRegenerate = false } = await request.json();
   const userId = locals.user.id;
-  
+
   const response = await fetch(`${WORKER_SERVICE_URL}/queue/brief`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      userId, 
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
       forceImmediate: immediate,
-      forceRegenerate 
-    })
+      forceRegenerate,
+    }),
   });
-  
+
   return response;
 }
 ```
@@ -159,18 +160,16 @@ export async function POST({ request, locals }) {
 export async function POST({ request, locals }) {
   const { frequency, dayOfWeek, timeOfDay, timezone } = await request.json();
   const userId = locals.user.id;
-  
-  await supabase
-    .from('user_brief_preferences')
-    .upsert({
-      user_id: userId,
-      frequency,
-      day_of_week: dayOfWeek,
-      time_of_day: timeOfDay,
-      timezone,
-      is_active: true
-    });
-    
+
+  await supabase.from("user_brief_preferences").upsert({
+    user_id: userId,
+    frequency,
+    day_of_week: dayOfWeek,
+    time_of_day: timeOfDay,
+    timezone,
+    is_active: true,
+  });
+
   return json({ success: true });
 }
 ```
@@ -181,29 +180,29 @@ Add to your SvelteKit layout:
 
 ```typescript
 // src/app.html or +layout.svelte
-import { supabase } from '$lib/supabase';
-import { onMount } from 'svelte';
+import { supabase } from "$lib/supabase";
+import { onMount } from "svelte";
 
 onMount(() => {
   if ($user) {
     const channel = supabase.channel(`user:${$user.id}`);
-    
+
     channel
-      .on('broadcast', { event: 'brief_completed' }, (payload) => {
+      .on("broadcast", { event: "brief_completed" }, (payload) => {
         // Show success notification
-        showNotification('Your daily brief is ready!', {
-          action: () => goto(`/briefs/${payload.briefId}`)
+        showNotification("Your daily brief is ready!", {
+          action: () => goto(`/briefs/${payload.briefId}`),
         });
       })
-      .on('broadcast', { event: 'brief_failed' }, (payload) => {
+      .on("broadcast", { event: "brief_failed" }, (payload) => {
         // Show error notification
-        showNotification('Brief generation failed. Click to retry.', {
-          type: 'error',
-          action: () => retryBrief(payload.jobId)
+        showNotification("Brief generation failed. Click to retry.", {
+          type: "error",
+          action: () => retryBrief(payload.jobId),
         });
       })
       .subscribe();
-      
+
     return () => channel.unsubscribe();
   }
 });
@@ -249,6 +248,7 @@ VALUES ('your-user-id', 'daily', '09:00:00', 'America/New_York');
 ### Request/Response Examples
 
 #### Queue Brief
+
 ```json
 // Request
 POST /queue/brief
@@ -273,7 +273,7 @@ POST /queue/brief
 
 ```typescript
 interface UserBriefPreference {
-  frequency: 'daily' | 'weekly' | 'custom';
+  frequency: "daily" | "weekly" | "custom";
   day_of_week?: number; // 0-6, for weekly briefs
   time_of_day: string; // HH:MM:SS format
   timezone: string; // IANA timezone
@@ -286,8 +286,8 @@ interface UserBriefPreference {
 ```typescript
 interface BriefJobData {
   userId: string;
-  briefDate?: string;  // Date in YYYY-MM-DD format
-  timezone?: string;   // User's timezone
+  briefDate?: string; // Date in YYYY-MM-DD format
+  timezone?: string; // User's timezone
   options?: {
     includeProjects?: string[];
     excludeProjects?: string[];
@@ -312,21 +312,21 @@ interface BriefJobData {
 
 ```sql
 -- View queue depth
-SELECT job_type, status, COUNT(*) 
-FROM queue_jobs 
+SELECT job_type, status, COUNT(*)
+FROM queue_jobs
 WHERE created_at > NOW() - INTERVAL '1 hour'
 GROUP BY job_type, status;
 
 -- View average processing time
-SELECT job_type, 
+SELECT job_type,
   AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) as avg_seconds
 FROM queue_jobs
 WHERE status = 'completed'
 GROUP BY job_type;
 
 -- Find failed jobs
-SELECT * FROM queue_jobs 
-WHERE status = 'failed' 
+SELECT * FROM queue_jobs
+WHERE status = 'failed'
 ORDER BY created_at DESC
 LIMIT 10;
 ```
@@ -359,11 +359,13 @@ LIMIT 10;
 ## Cost Analysis
 
 ### Before (with Redis)
+
 - Railway: ~$5-10/month
 - Upstash Redis: $10-50/month
 - **Total**: $15-60/month
 
 ### After (Supabase-only)
+
 - Railway: ~$5-10/month
 - Supabase: Already included
 - **Total**: $5-10/month

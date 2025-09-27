@@ -7,6 +7,7 @@ After analyzing both projects, I recommend migrating to a **pnpm + Turborepo mon
 ## Current State Analysis
 
 ### build_os (Main Application)
+
 - **Type**: SvelteKit application (Svelte 5 with runes)
 - **Purpose**: AI-powered productivity platform for ADHD minds
 - **Dependencies**: Supabase, OpenAI, Stripe, Google Calendar
@@ -14,6 +15,7 @@ After analyzing both projects, I recommend migrating to a **pnpm + Turborepo mon
 - **Key Features**: Brain dump processing, project management, daily briefs UI
 
 ### daily-brief-worker (Background Service)
+
 - **Type**: Node.js background worker
 - **Purpose**: Async processing for daily briefs generation
 - **Dependencies**: Supabase, BullMQ, Express, Node Cron
@@ -21,6 +23,7 @@ After analyzing both projects, I recommend migrating to a **pnpm + Turborepo mon
 - **Key Features**: Queue processing, scheduled jobs, email delivery
 
 ### Shared Elements
+
 - **Database**: Same Supabase instance and schema
 - **Dependencies**: @supabase/supabase-js, nodemailer, marked, sanitize-html, date-fns
 - **Types**: Database types are duplicated across both projects
@@ -37,6 +40,7 @@ After analyzing both projects, I recommend migrating to a **pnpm + Turborepo mon
 5. **Incremental Adoption**: Can be implemented gradually without breaking changes
 
 ### Alternative Considered
+
 - **Nx**: More complex, better for enterprise-scale projects
 - **Pure pnpm workspaces**: Lacks advanced caching and task orchestration
 - **Lerna**: Being phased out in favor of Nx
@@ -84,12 +88,14 @@ buildos-monorepo/
 ## Migration Strategy
 
 ### Phase 1: Repository Preparation (Keep Separate Repos)
+
 1. **Create new monorepo repository** on GitHub
 2. **Preserve history** using `git subtree` or `git filter-branch`
 3. **Setup base structure** with Turborepo and pnpm workspaces
 4. **Keep old repos as archives** (don't delete immediately)
 
 ### Phase 2: Code Migration (1-2 days)
+
 1. **Move build_os → apps/web/**
    - Update import paths
    - Adjust build scripts
@@ -105,6 +111,7 @@ buildos-monorepo/
    - Common utilities
 
 ### Phase 3: Integration (2-3 days)
+
 1. **Setup Turborepo pipelines**
    - Define task dependencies
    - Configure caching strategies
@@ -120,6 +127,7 @@ buildos-monorepo/
    - App-specific overrides
 
 ### Phase 4: Testing & Validation (1 day)
+
 1. **Comprehensive testing**
    - Run all test suites
    - Verify builds
@@ -132,18 +140,22 @@ buildos-monorepo/
 ## GitHub Repository Approach
 
 ### Option 1: New Repository (Recommended)
+
 **Create `buildos-platform` repository**
 
 **Pros:**
+
 - Clean history without merge conflicts
 - Proper monorepo structure from start
 - Easier CI/CD setup
 
 **Cons:**
+
 - Need to migrate issues/PRs
 - Update documentation links
 
 **Migration Steps:**
+
 ```bash
 # 1. Create new repo on GitHub
 # 2. Clone and setup monorepo structure
@@ -164,19 +176,23 @@ git subtree add --prefix=apps/worker worker/main
 ```
 
 ### Option 2: Transform Existing Repository
+
 **Use `build_os` as base**
 
 **Pros:**
+
 - Preserves issues, stars, watchers
 - No link updates needed
 
 **Cons:**
+
 - More complex git history
 - Potential merge conflicts
 
 ## Implementation Files
 
 ### 1. Root package.json
+
 ```json
 {
   "name": "buildos-platform",
@@ -202,13 +218,15 @@ git subtree add --prefix=apps/worker worker/main
 ```
 
 ### 2. pnpm-workspace.yaml
+
 ```yaml
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - "apps/*"
+  - "packages/*"
 ```
 
 ### 3. turbo.json
+
 ```json
 {
   "$schema": "https://turbo.build/schema.json",
@@ -241,6 +259,7 @@ packages:
 ```
 
 ### 4. packages/shared-types/package.json
+
 ```json
 {
   "name": "@buildos/shared-types",
@@ -260,12 +279,14 @@ packages:
 ## Benefits After Migration
 
 ### Immediate Benefits
+
 1. **Shared Types**: No more type duplication between projects
 2. **Atomic Commits**: Changes to both services in single commits
 3. **Unified Testing**: Run all tests with single command
 4. **Better DX**: Faster builds with Turborepo caching
 
 ### Long-term Benefits
+
 1. **Code Reuse**: Extract and share common utilities
 2. **Consistent Standards**: Single source of truth for configs
 3. **Simplified Dependencies**: Update shared deps once
@@ -274,6 +295,7 @@ packages:
 ## Deployment Changes
 
 ### Vercel (apps/web)
+
 ```json
 {
   "buildCommand": "cd ../.. && pnpm turbo build --filter=web",
@@ -284,6 +306,7 @@ packages:
 ```
 
 ### Railway (apps/worker)
+
 ```json
 {
   "build": {
