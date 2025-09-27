@@ -11,7 +11,7 @@ import nodemailer from 'nodemailer';
 
 /**
  * Environment variables needed:
- * - BUILDOS_WEBHOOK_SECRET: Shared secret with daily-brief-worker
+ * - PRIVATE_BUILDOS_WEBHOOK_SECRET: Shared secret with daily-brief-worker
  * - GMAIL_USER: Gmail account for sending
  * - GMAIL_APP_PASSWORD: App-specific password
  * - SUPABASE_URL: Your Supabase project URL
@@ -70,10 +70,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // 2. Parse and validate payload
     const rawBody = await request.text();
-    const webhookSecret = import.meta.env.VITE_BUILDOS_WEBHOOK_SECRET || process.env.BUILDOS_WEBHOOK_SECRET;
+    const webhookSecret = import.meta.env.VITE_PRIVATE_BUILDOS_WEBHOOK_SECRET || process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error('BUILDOS_WEBHOOK_SECRET not configured');
+      console.error('PRIVATE_BUILDOS_WEBHOOK_SECRET not configured');
       throw error(500, 'Webhook secret not configured');
     }
 
@@ -315,7 +315,7 @@ function renderMarkdown(markdown: string): string {
 // ============================================
 /**
  * 1. Set environment variables in your BuildOS deployment:
- *    - BUILDOS_WEBHOOK_SECRET (same as in daily-brief-worker)
+ *    - PRIVATE_BUILDOS_WEBHOOK_SECRET (same as in daily-brief-worker)
  *    - GMAIL_USER
  *    - GMAIL_APP_PASSWORD
  *    - SUPABASE_URL

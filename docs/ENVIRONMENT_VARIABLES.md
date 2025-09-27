@@ -108,6 +108,8 @@ NODE_ENV=production
 
 **Option 1: Webhook to Main App (Recommended)**
 
+<!-- double check -->
+
 ```bash
 USE_WEBHOOK_EMAIL=true
 BUILDOS_WEBHOOK_URL=https://your-app.vercel.app/webhooks/daily-brief-email

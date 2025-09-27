@@ -8,10 +8,9 @@ export type TypedSupabaseClient = SupabaseClient<Database>;
  */
 export function createServerClient(): TypedSupabaseClient {
   const supabaseUrl =
-    process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    process.env.PUBLIC_SUPABASE_URL;
   const supabaseKey =
-    process.env.PRIVATE_SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.PRIVATE_SUPABASE_SERVICE_KEY 
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error("Missing Supabase environment variables");

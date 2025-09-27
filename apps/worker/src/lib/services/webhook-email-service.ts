@@ -22,11 +22,11 @@ export class WebhookEmailService {
     const webhookUrl =
       process.env.BUILDOS_WEBHOOK_URL ||
       "https://build-os.com/webhooks/daily-brief-email";
-    const webhookSecret = process.env.BUILDOS_WEBHOOK_SECRET;
+    const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
       throw new Error(
-        "BUILDOS_WEBHOOK_SECRET environment variable is required",
+        "PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable is required",
       );
     }
 

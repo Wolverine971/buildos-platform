@@ -71,7 +71,7 @@ PORT=${{PORT}}  # Railway provides this automatically
 # Webhook Configuration (for sending emails via web app)
 USE_WEBHOOK_EMAIL=true
 BUILDOS_WEBHOOK_URL=https://YOUR-VERCEL-APP.vercel.app/webhooks/daily-brief-email
-BUILDOS_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET_HERE  # Must match PRIVATE_BUILDOS_WEBHOOK_SECRET in Vercel
+PRIVATE_BUILDOS_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET_HERE  # Must match the same variable in Vercel
 WEBHOOK_TIMEOUT=30000
 ```
 
@@ -146,7 +146,7 @@ Start Command: cd apps/worker && node dist/index.js
 ```bash
 USE_WEBHOOK_EMAIL=true
 BUILDOS_WEBHOOK_URL=https://YOUR-VERCEL-APP.vercel.app/webhooks/daily-brief-email
-BUILDOS_WEBHOOK_SECRET=<same as PRIVATE_BUILDOS_WEBHOOK_SECRET in Vercel>
+PRIVATE_BUILDOS_WEBHOOK_SECRET=<same value as in Vercel>
 ```
 
 ### 5. Trigger Redeploy
@@ -163,7 +163,7 @@ Click **Redeploy** from the latest deployment
 | -------------------------------- | --------------------------- | ---------- |
 | `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`              | Same value |
 | `PRIVATE_SUPABASE_SERVICE_KEY`   | `SUPABASE_SERVICE_ROLE_KEY` | Same value |
-| `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `BUILDOS_WEBHOOK_SECRET`    | Same value |
+| `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | Same value |
 
 ## Verification Steps
 
@@ -249,8 +249,7 @@ openssl rand -hex 32
 
 Use this value for:
 
-- `PRIVATE_BUILDOS_WEBHOOK_SECRET` in Vercel
-- `BUILDOS_WEBHOOK_SECRET` in Railway
+- `PRIVATE_BUILDOS_WEBHOOK_SECRET` in both Vercel and Railway
 
 ---
 
