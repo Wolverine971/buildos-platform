@@ -1,0 +1,13 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm-9_x"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["cd ../.. && pnpm turbo build --filter=@buildos/worker"]
+
+[start]
+cmd = "node dist/index.js"

@@ -1,4 +1,10 @@
 {
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+	"buildCommand": "cd ../.. && pnpm turbo build --filter=@buildos/web",
+	"outputDirectory": ".svelte-kit",
+	"framework": "sveltekit",
+	"ignoreCommand": "git diff HEAD^ HEAD --quiet -- ../../packages/ ../../apps/web/ ../../turbo.json ../../package.json ../../pnpm-lock.yaml",
 	"crons": [
 		{
 			"path": "/api/cron/dunning",
