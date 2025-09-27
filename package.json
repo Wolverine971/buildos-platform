@@ -1,0 +1,27 @@
+{
+  "name": "buildos-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BuildOS Platform - AI-powered productivity platform monorepo",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "test:run": "turbo test:run",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write .",
+    "clean": "turbo clean",
+    "pre-push": "turbo pre-push"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.3.3"
+  },
+  "packageManager": "pnpm@9.15.2",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
