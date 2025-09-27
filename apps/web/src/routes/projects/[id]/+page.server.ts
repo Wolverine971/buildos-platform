@@ -82,7 +82,6 @@ export const load: PageServerLoad = async ({
 			activeTab
 		};
 	} catch (err) {
-		console.error('Error in project page server load:', err);
 		throw error(500, 'Failed to load project data');
 	}
 };
