@@ -72,7 +72,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		}
 
 		if (!PRIVATE_OPENAI_API_KEY) {
-			console.error('OpenAI API key not configured');
 			return ApiResponse.internalError('OpenAI API key not configured');
 		}
 
