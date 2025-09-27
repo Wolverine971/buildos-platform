@@ -1,0 +1,23 @@
+# Railway configuration for worker service deployment
+# This file must be at the repository root for Railway to find it
+# when the root directory is set to /
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker"
+watchPatterns = [
+  "apps/worker/**",
+  "packages/**",
+  "turbo.json",
+  "package.json",
+  "pnpm-lock.yaml"
+]
+
+[deploy]
+startCommand = "node apps/worker/dist/index.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[variables]
+NODE_ENV = "production"

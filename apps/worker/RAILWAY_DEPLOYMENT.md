@@ -31,7 +31,7 @@ buildos-worker
 
 **IMPORTANT**: Set the root directory to `/` (repository root) - NOT `/apps/worker`. This is required for the monorepo build process to access all packages.
 
-Railway will find and use the `railway.toml` or `nixpacks.toml` configuration files in the `/apps/worker` directory. These files contain the correct build and start commands that properly build all dependencies.
+Railway will find and use the `railway.toml` or `nixpacks.toml` configuration files in the repository root. These files are configured specifically for building the worker service with all its dependencies.
 
 **DO NOT manually override the build/start commands** unless absolutely necessary. The configuration files handle:
 - Building shared packages (`@buildos/shared-types`, `@buildos/supabase-client`)

@@ -1,0 +1,16 @@
+# Nixpacks configuration for worker service deployment on Railway
+# This file must be at the repository root for Railway to find it
+# when the root directory is set to /
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm-9_x"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["pnpm turbo build --filter=@buildos/worker"]
+
+[start]
+cmd = "node apps/worker/dist/index.js"
