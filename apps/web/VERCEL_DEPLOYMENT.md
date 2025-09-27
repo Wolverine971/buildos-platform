@@ -30,19 +30,16 @@ Root Directory: ./  (leave empty or set to ./)
 
 Still in **Settings** → **General**, scroll to **Build & Development Settings**:
 
-```
-Build Command: cd apps/web && npm run build
-Output Directory: apps/web/.svelte-kit
-Install Command: pnpm install --frozen-lockfile
-```
-
-**OR** if the above doesn't work, use:
+**IMPORTANT:** Either disable the "Override" toggles OR update these settings:
 
 ```
 Build Command: pnpm turbo build --filter=@buildos/web
-Output Directory: apps/web/.svelte-kit
+Output Directory: apps/web/.vercel/output
 Install Command: pnpm install --frozen-lockfile
 ```
+
+⚠️ **CRITICAL:** The Output Directory MUST be `apps/web/.vercel/output` (not `.svelte-kit`)
+This is where the SvelteKit Vercel adapter outputs the final deployment files.
 
 ### 6. Environment Variables to ADD/UPDATE
 
@@ -127,6 +124,26 @@ After deployment:
 
 ## Troubleshooting
 
+### If Build Succeeds But Deployment Hangs:
+
+**This is likely caused by incorrect Output Directory settings!**
+
+1. **In Vercel Dashboard:**
+   - Go to Settings → General → Build & Development Settings
+   - Check if "Override" is enabled for Output Directory
+   - If yes, either:
+     a. **Disable the Override toggle** to use vercel.json settings
+     b. **Update Output Directory** to `apps/web/.vercel/output`
+
+2. **The hanging happens because:**
+   - Build creates files in `/vercel/output`
+   - But Vercel looks for them in wrong location (e.g., `.svelte-kit`)
+   - No files found = deployment hangs forever
+
+3. **Quick Fix:**
+   - In Vercel UI, change Output Directory to: `apps/web/.vercel/output`
+   - Redeploy
+
 ### If Build Fails:
 
 1. **Error: "Cannot find package '@buildos/shared-types'"**
@@ -158,8 +175,9 @@ After deployment:
 ## Important Notes
 
 - The monorepo uses `pnpm` workspaces, so Vercel needs to install from root
-- The `vercel.json` in `apps/web` has the correct settings
-- Build output is in `apps/web/.svelte-kit` not just `.svelte-kit`
+- The `vercel.json` in root has the correct settings
+- Build output is in `apps/web/.vercel/output` (NOT `.svelte-kit`)
+- The SvelteKit Vercel adapter v5+ outputs to `.vercel/output` directory
 - All PUBLIC_ variables are available in browser, PRIVATE_ are server-only
 
 ---
