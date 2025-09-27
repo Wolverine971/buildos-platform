@@ -100,7 +100,7 @@ export const DELETE: RequestHandler = async ({ cookies, locals: { safeGetSession
 			.eq('id', user.id);
 
 		if (dbError) {
-			console.error('Error marking user as restricted:', dbError);
+			// console.error('Error marking user as restricted:', dbError);
 			return ApiResponse.error('Failed to delete account', 500);
 		}
 
