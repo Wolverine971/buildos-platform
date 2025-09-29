@@ -3,21 +3,56 @@ import { TwilioClient, SMSService } from "@buildos/twilio-service";
 import { createClient } from "@supabase/supabase-js";
 import { updateJobStatus, notifyUser } from "./shared/queueUtils";
 
-const twilioClient = new TwilioClient({
-  accountSid: process.env.TWILIO_ACCOUNT_SID!,
-  authToken: process.env.TWILIO_AUTH_TOKEN!,
-  messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID!,
-  statusCallbackUrl: process.env.TWILIO_STATUS_CALLBACK_URL,
-});
+// Conditional Twilio initialization
+let twilioClient: TwilioClient | null = null;
+let smsService: SMSService | null = null;
+
+const twilioConfig = {
+  accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID,
+  authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN,
+  messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
+  statusCallbackUrl: process.env.PRIVATE_TWILIO_STATUS_CALLBACK_URL,
+};
+
+// Only initialize if all required Twilio credentials are present
+if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingServiceSid) {
+  try {
+    twilioClient = new TwilioClient({
+      accountSid: twilioConfig.accountSid,
+      authToken: twilioConfig.authToken,
+      messagingServiceSid: twilioConfig.messagingServiceSid,
+      statusCallbackUrl: twilioConfig.statusCallbackUrl,
+    });
+
+    const supabase = createClient(
+      process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    smsService = new SMSService(twilioClient, supabase);
+    console.log('Twilio SMS service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Twilio client:', error);
+    twilioClient = null;
+    smsService = null;
+  }
+} else {
+  console.warn('Twilio credentials not configured - SMS functionality disabled');
+}
 
 const supabase = createClient(
   process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const smsService = new SMSService(twilioClient, supabase);
-
 export async function processSMSJob(job: LegacyJob<any>) {
+  // Check if SMS service is available
+  if (!twilioClient || !smsService) {
+    const errorMessage = 'SMS service not available - Twilio credentials not configured';
+    console.error(errorMessage);
+    await updateJobStatus(job.id, "failed", "send_sms", errorMessage);
+    throw new Error(errorMessage);
+  }
   const { message_id, phone_number, message, priority } = job.data;
 
   try {

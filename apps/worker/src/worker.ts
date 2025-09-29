@@ -125,7 +125,20 @@ export async function startWorker() {
   queue.process("generate_daily_brief", processBrief);
   queue.process("generate_phases", processPhases);
   queue.process("onboarding_analysis", processOnboarding);
+
+  // Register SMS processor (will fail gracefully if Twilio not configured)
   queue.process("send_sms", processSMS);
+
+  // Check if Twilio is configured
+  const twilioEnabled = !!(
+    process.env.PRIVATE_TWILIO_ACCOUNT_SID &&
+    process.env.PRIVATE_TWILIO_AUTH_TOKEN &&
+    process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID
+  );
+
+  if (!twilioEnabled) {
+    console.warn("⚠️  SMS functionality disabled - Twilio credentials not configured");
+  }
 
   // Start processing
   await queue.start();
@@ -161,9 +174,19 @@ export async function startWorker() {
   });
 
   console.log("✅ Worker started successfully");
-  console.log(
-    "📋 Processing job types: brief_generation, phases_generation, onboarding_analysis, send_sms",
-  );
+
+  // List enabled job types
+  const jobTypes = [
+    "brief_generation",
+    "phases_generation",
+    "onboarding_analysis",
+  ];
+
+  if (twilioEnabled) {
+    jobTypes.push("send_sms");
+  }
+
+  console.log(`📋 Processing job types: ${jobTypes.join(", ")}`);
 
   return queue;
 }

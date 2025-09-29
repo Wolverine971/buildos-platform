@@ -845,10 +845,10 @@ import { updateJobStatus } from "../lib/supabase";
 import { notifyUser } from "../lib/services/notification-service";
 
 const twilioClient = new TwilioClient({
-  accountSid: process.env.TWILIO_ACCOUNT_SID!,
-  authToken: process.env.TWILIO_AUTH_TOKEN!,
-  messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID!,
-  statusCallbackUrl: process.env.TWILIO_STATUS_CALLBACK_URL,
+  accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
+  authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
+  messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID!,
+  statusCallbackUrl: process.env.PRIVATE_TWILIO_STATUS_CALLBACK_URL,
 });
 
 const supabase = createClient(

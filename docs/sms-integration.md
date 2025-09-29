@@ -244,9 +244,9 @@ SELECT queue_sms_message(
 import { TwilioClient, SMSService } from "@buildos/twilio-service";
 
 const twilioClient = new TwilioClient({
-  accountSid: process.env.TWILIO_ACCOUNT_SID,
-  authToken: process.env.TWILIO_AUTH_TOKEN,
-  messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
+  accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID,
+  authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN,
+  messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
 });
 
 const smsService = new SMSService(twilioClient, supabase);
