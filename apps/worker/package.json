@@ -24,6 +24,7 @@
   "dependencies": {
     "@buildos/shared-types": "workspace:*",
     "@buildos/supabase-client": "workspace:*",
+    "@buildos/twilio-service": "workspace:*",
     "@supabase/supabase-js": "^2.38.4",
     "@types/nodemailer": "^7.0.1",
     "bullmq": "^5.58.1",

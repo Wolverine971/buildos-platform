@@ -1,3 +1,4 @@
+<!-- src/routes/docs/api/+page.svelte -->
 <script lang="ts">
 	import SwaggerUI from '$lib/components/docs/SwaggerUI.svelte';
 </script>

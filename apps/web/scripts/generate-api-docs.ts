@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/generate-api-docs.ts
 /**
  * Generate comprehensive API documentation including types and examples
  * Complements the route documentation generator

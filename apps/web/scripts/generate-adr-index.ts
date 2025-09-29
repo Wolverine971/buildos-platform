@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/generate-adr-index.ts
 
 /**
  * Generate Architecture Decision Records (ADRs) index and templates

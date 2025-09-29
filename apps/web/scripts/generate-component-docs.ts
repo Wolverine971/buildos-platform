@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/generate-component-docs.ts
 
 /**
  * Generate comprehensive component documentation for Svelte 5 components

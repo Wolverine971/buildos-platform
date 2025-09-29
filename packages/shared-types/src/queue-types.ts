@@ -99,6 +99,17 @@ export interface CleanupJobMetadata {
   entities?: string[]; // Which entities to clean
 }
 
+export interface SendSMSJobMetadata {
+  message_id: string;
+  phone_number: string;
+  message: string;
+  user_id: string;
+  priority?: "normal" | "urgent";
+  template_key?: string;
+  variables?: Record<string, string | number | boolean>;
+  scheduled_for?: string;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
   generate_daily_brief: DailyBriefJobMetadata;
@@ -109,6 +120,7 @@ export interface JobMetadataMap {
   send_email: EmailJobMetadata;
   update_recurring_tasks: RecurringTaskJobMetadata;
   cleanup_old_data: CleanupJobMetadata;
+  send_sms: SendSMSJobMetadata;
   other: Record<string, unknown>;
 }
 
@@ -122,6 +134,7 @@ export interface JobResultMap {
   send_email: EmailSendResult;
   update_recurring_tasks: RecurringTaskResult;
   cleanup_old_data: CleanupResult;
+  send_sms: SendSMSResult;
   other: unknown;
 }
 
@@ -182,6 +195,14 @@ export interface CleanupResult {
   errors?: string[];
 }
 
+export interface SendSMSResult {
+  success: boolean;
+  twilio_sid?: string;
+  delivered_at?: string;
+  error?: string;
+  attempt?: number;
+}
+
 // Generic queue job with type-safe metadata
 export interface QueueJob<T extends QueueJobType = QueueJobType> {
   id: string;
@@ -208,6 +229,7 @@ export type DailyBriefQueueJob = QueueJob<"generate_daily_brief">;
 export type PhaseQueueJob = QueueJob<"generate_phases">;
 export type EmailQueueJob = QueueJob<"send_email">;
 export type BrainDumpQueueJob = QueueJob<"process_brain_dump">;
+export type SendSMSQueueJob = QueueJob<"send_sms">;
 
 // Type guards
 export function isValidJobMetadata<T extends QueueJobType>(
@@ -231,6 +253,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
       return isRecurringTaskMetadata(metadata);
     case "cleanup_old_data":
       return isCleanupMetadata(metadata);
+    case "send_sms":
+      return isSendSMSMetadata(metadata);
     default:
       return true;
   }
@@ -309,6 +333,17 @@ function isRecurringTaskMetadata(
 function isCleanupMetadata(obj: unknown): obj is CleanupJobMetadata {
   if (!obj || typeof obj !== "object") return false;
   return true; // All fields are optional
+}
+
+function isSendSMSMetadata(obj: unknown): obj is SendSMSJobMetadata {
+  if (!obj || typeof obj !== "object") return false;
+  const meta = obj as Record<string, unknown>;
+  return (
+    typeof meta.message_id === "string" &&
+    typeof meta.phone_number === "string" &&
+    typeof meta.message === "string" &&
+    typeof meta.user_id === "string"
+  );
 }
 
 // Helper function to create a typed queue job

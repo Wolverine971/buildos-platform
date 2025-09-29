@@ -1,4 +1,4 @@
-<!-- src/lib/components/LoadingSpinner.svelte -->
+<!-- src/lib/components/icons/LoadingSpinner.svelte -->
 <script lang="ts">
 	export let size: 'small' | 'medium' | 'large' = 'medium';
 

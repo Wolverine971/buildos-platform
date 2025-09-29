@@ -1,0 +1,36 @@
+{
+  "name": "@buildos/twilio-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Twilio SMS integration for BuildOS platform",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "clean": "rm -rf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@buildos/shared-types": "workspace:*",
+    "@buildos/supabase-client": "workspace:*",
+    "@supabase/supabase-js": "^2.39.8",
+    "twilio": "^4.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.10",
+    "tsup": "^8.3.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

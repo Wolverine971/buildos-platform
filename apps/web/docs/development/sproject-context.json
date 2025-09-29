@@ -281,6 +281,12 @@
 			"exports": ["SmartLLMService"]
 		},
 		{
+			"file": "src/lib/services/sms.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["SMSService", "smsService"]
+		},
+		{
 			"file": "src/lib/services/stripe-service.ts",
 			"type": "service",
 			"components": [],

@@ -1,4 +1,4 @@
-#!/bin/bash
+# docs/technical/create_placeholders.sh
 
 # Architecture placeholders
 echo "# Brain Dump Flow Architecture

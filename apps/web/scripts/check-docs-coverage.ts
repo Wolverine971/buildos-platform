@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/check-docs-coverage.ts
 
 /**
  * Check documentation coverage across the codebase

@@ -2785,6 +2785,174 @@ export type Database = {
 					}
 				];
 			};
+			sms_messages: {
+				Row: {
+					attempt_count: number | null;
+					created_at: string | null;
+					delivered_at: string | null;
+					id: string;
+					max_attempts: number | null;
+					message_content: string;
+					metadata: Json | null;
+					next_retry_at: string | null;
+					phone_number: string;
+					priority: Database['public']['Enums']['sms_priority'];
+					project_id: string | null;
+					queue_job_id: string | null;
+					scheduled_for: string | null;
+					sent_at: string | null;
+					status: Database['public']['Enums']['sms_status'];
+					task_id: string | null;
+					template_id: string | null;
+					template_vars: Json | null;
+					twilio_error_code: number | null;
+					twilio_error_message: string | null;
+					twilio_sid: string | null;
+					twilio_status: string | null;
+					updated_at: string | null;
+					user_id: string;
+				};
+				Insert: {
+					attempt_count?: number | null;
+					created_at?: string | null;
+					delivered_at?: string | null;
+					id?: string;
+					max_attempts?: number | null;
+					message_content: string;
+					metadata?: Json | null;
+					next_retry_at?: string | null;
+					phone_number: string;
+					priority?: Database['public']['Enums']['sms_priority'];
+					project_id?: string | null;
+					queue_job_id?: string | null;
+					scheduled_for?: string | null;
+					sent_at?: string | null;
+					status?: Database['public']['Enums']['sms_status'];
+					task_id?: string | null;
+					template_id?: string | null;
+					template_vars?: Json | null;
+					twilio_error_code?: number | null;
+					twilio_error_message?: string | null;
+					twilio_sid?: string | null;
+					twilio_status?: string | null;
+					updated_at?: string | null;
+					user_id: string;
+				};
+				Update: {
+					attempt_count?: number | null;
+					created_at?: string | null;
+					delivered_at?: string | null;
+					id?: string;
+					max_attempts?: number | null;
+					message_content?: string;
+					metadata?: Json | null;
+					next_retry_at?: string | null;
+					phone_number?: string;
+					priority?: Database['public']['Enums']['sms_priority'];
+					project_id?: string | null;
+					queue_job_id?: string | null;
+					scheduled_for?: string | null;
+					sent_at?: string | null;
+					status?: Database['public']['Enums']['sms_status'];
+					task_id?: string | null;
+					template_id?: string | null;
+					template_vars?: Json | null;
+					twilio_error_code?: number | null;
+					twilio_error_message?: string | null;
+					twilio_sid?: string | null;
+					twilio_status?: string | null;
+					updated_at?: string | null;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'sms_messages_project_id_fkey';
+						columns: ['project_id'];
+						isOneToOne: false;
+						referencedRelation: 'projects';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'sms_messages_queue_job_id_fkey';
+						columns: ['queue_job_id'];
+						isOneToOne: false;
+						referencedRelation: 'queue_jobs';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'sms_messages_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'recurring_task_summary';
+						referencedColumns: ['task_id'];
+					},
+					{
+						foreignKeyName: 'sms_messages_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'tasks';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'sms_messages_template_id_fkey';
+						columns: ['template_id'];
+						isOneToOne: false;
+						referencedRelation: 'sms_templates';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			sms_templates: {
+				Row: {
+					created_at: string | null;
+					created_by: string | null;
+					description: string | null;
+					id: string;
+					is_active: boolean | null;
+					last_used_at: string | null;
+					max_length: number | null;
+					message_template: string;
+					name: string;
+					required_vars: Json | null;
+					template_key: string;
+					template_vars: Json | null;
+					updated_at: string | null;
+					usage_count: number | null;
+				};
+				Insert: {
+					created_at?: string | null;
+					created_by?: string | null;
+					description?: string | null;
+					id?: string;
+					is_active?: boolean | null;
+					last_used_at?: string | null;
+					max_length?: number | null;
+					message_template: string;
+					name: string;
+					required_vars?: Json | null;
+					template_key: string;
+					template_vars?: Json | null;
+					updated_at?: string | null;
+					usage_count?: number | null;
+				};
+				Update: {
+					created_at?: string | null;
+					created_by?: string | null;
+					description?: string | null;
+					id?: string;
+					is_active?: boolean | null;
+					last_used_at?: string | null;
+					max_length?: number | null;
+					message_template?: string;
+					name?: string;
+					required_vars?: Json | null;
+					template_key?: string;
+					template_vars?: Json | null;
+					updated_at?: string | null;
+					usage_count?: number | null;
+				};
+				Relationships: [];
+			};
 			subscription_plans: {
 				Row: {
 					billing_interval: string | null;
@@ -3507,6 +3675,72 @@ export type Database = {
 					}
 				];
 			};
+			user_sms_preferences: {
+				Row: {
+					created_at: string | null;
+					daily_brief_sms: boolean | null;
+					daily_count_reset_at: string | null;
+					daily_sms_count: number | null;
+					daily_sms_limit: number | null;
+					id: string;
+					opt_out_reason: string | null;
+					opted_out: boolean | null;
+					opted_out_at: string | null;
+					phone_number: string | null;
+					phone_verified: boolean | null;
+					phone_verified_at: string | null;
+					quiet_hours_end: string | null;
+					quiet_hours_start: string | null;
+					task_reminders: boolean | null;
+					timezone: string | null;
+					updated_at: string | null;
+					urgent_alerts: boolean | null;
+					user_id: string;
+				};
+				Insert: {
+					created_at?: string | null;
+					daily_brief_sms?: boolean | null;
+					daily_count_reset_at?: string | null;
+					daily_sms_count?: number | null;
+					daily_sms_limit?: number | null;
+					id?: string;
+					opt_out_reason?: string | null;
+					opted_out?: boolean | null;
+					opted_out_at?: string | null;
+					phone_number?: string | null;
+					phone_verified?: boolean | null;
+					phone_verified_at?: string | null;
+					quiet_hours_end?: string | null;
+					quiet_hours_start?: string | null;
+					task_reminders?: boolean | null;
+					timezone?: string | null;
+					updated_at?: string | null;
+					urgent_alerts?: boolean | null;
+					user_id: string;
+				};
+				Update: {
+					created_at?: string | null;
+					daily_brief_sms?: boolean | null;
+					daily_count_reset_at?: string | null;
+					daily_sms_count?: number | null;
+					daily_sms_limit?: number | null;
+					id?: string;
+					opt_out_reason?: string | null;
+					opted_out?: boolean | null;
+					opted_out_at?: string | null;
+					phone_number?: string | null;
+					phone_verified?: boolean | null;
+					phone_verified_at?: string | null;
+					quiet_hours_end?: string | null;
+					quiet_hours_start?: string | null;
+					task_reminders?: boolean | null;
+					timezone?: string | null;
+					updated_at?: string | null;
+					urgent_alerts?: boolean | null;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			users: {
 				Row: {
 					access_restricted: boolean | null;
@@ -4143,6 +4377,17 @@ export type Database = {
 					skipped_count: number;
 				}[];
 			};
+			queue_sms_message: {
+				Args: {
+					p_message: string;
+					p_metadata?: Json;
+					p_phone_number: string;
+					p_priority?: Database['public']['Enums']['sms_priority'];
+					p_scheduled_for?: string;
+					p_user_id: string;
+				};
+				Returns: string;
+			};
 			refresh_system_metrics: {
 				Args: Record<PropertyKey, never>;
 				Returns: undefined;
@@ -4351,7 +4596,8 @@ export type Database = {
 				| 'update_recurring_tasks'
 				| 'cleanup_old_data'
 				| 'onboarding_analysis'
-				| 'other';
+				| 'other'
+				| 'send_sms';
 			recurrence_end_reason:
 				| 'indefinite'
 				| 'project_inherited'
@@ -4369,6 +4615,17 @@ export type Database = {
 				| 'monthly'
 				| 'quarterly'
 				| 'yearly';
+			sms_priority: 'low' | 'normal' | 'high' | 'urgent';
+			sms_status:
+				| 'pending'
+				| 'queued'
+				| 'sending'
+				| 'sent'
+				| 'delivered'
+				| 'failed'
+				| 'undelivered'
+				| 'scheduled'
+				| 'cancelled';
 			sync_status: 'pending' | 'synced' | 'failed' | 'cancelled';
 			task_status: 'backlog' | 'in_progress' | 'done' | 'blocked';
 			task_type: 'one_off' | 'recurring';
@@ -4514,7 +4771,8 @@ export const Constants = {
 				'update_recurring_tasks',
 				'cleanup_old_data',
 				'onboarding_analysis',
-				'other'
+				'other',
+				'send_sms'
 			],
 			recurrence_end_reason: [
 				'indefinite',
@@ -4534,6 +4792,18 @@ export const Constants = {
 				'monthly',
 				'quarterly',
 				'yearly'
+			],
+			sms_priority: ['low', 'normal', 'high', 'urgent'],
+			sms_status: [
+				'pending',
+				'queued',
+				'sending',
+				'sent',
+				'delivered',
+				'failed',
+				'undelivered',
+				'scheduled',
+				'cancelled'
 			],
 			sync_status: ['pending', 'synced', 'failed', 'cancelled'],
 			task_status: ['backlog', 'in_progress', 'done', 'blocked'],

@@ -51,7 +51,7 @@ export interface OnboardingAnalysisJobData {
 export async function updateJobStatus(
   queueJobId: string,
   status: QueueJobStatus,
-  jobType: "brief" | "phases" | "onboarding",
+  jobType: "brief" | "phases" | "onboarding" | "send_sms",
   errorMessage?: string,
 ) {
   // Status is now consistent - no mapping needed

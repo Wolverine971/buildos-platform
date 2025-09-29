@@ -1,3 +1,4 @@
+// src/lib/stores/unifiedBriefGeneration.store.ts
 import { writable, derived, get } from 'svelte/store';
 import type { StreamingStatus, StreamingBriefData } from '$lib/types/daily-brief';
 

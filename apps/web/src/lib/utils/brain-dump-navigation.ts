@@ -1,3 +1,4 @@
+// src/lib/utils/brain-dump-navigation.ts
 /**
  * Smart navigation and refresh decision logic for brain dump flow
  * Optimizes user experience based on context

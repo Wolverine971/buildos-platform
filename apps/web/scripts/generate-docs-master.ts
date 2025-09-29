@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/generate-docs-master.ts
 
 /**
  * Master documentation generation script

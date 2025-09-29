@@ -1,5 +1,5 @@
-// Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-09-27T23:44:12.435Z
+// src/lib/database.schema.ts
+// Generated on: 2025-09-29T00:59:03.703Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -708,6 +708,48 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	sms_messages: {
+		attempt_count: number | null;
+		created_at: string | null;
+		delivered_at: string | null;
+		id: string;
+		max_attempts: number | null;
+		message_content: string;
+		metadata: Json | null;
+		next_retry_at: string | null;
+		phone_number: string;
+		priority: Database['public']['Enums']['sms_priority'];
+		project_id: string | null;
+		queue_job_id: string | null;
+		scheduled_for: string | null;
+		sent_at: string | null;
+		status: Database['public']['Enums']['sms_status'];
+		task_id: string | null;
+		template_id: string | null;
+		template_vars: Json | null;
+		twilio_error_code: number | null;
+		twilio_error_message: string | null;
+		twilio_sid: string | null;
+		twilio_status: string | null;
+		updated_at: string | null;
+		user_id: string;
+	};
+	sms_templates: {
+		created_at: string | null;
+		created_by: string | null;
+		description: string | null;
+		id: string;
+		is_active: boolean | null;
+		last_used_at: string | null;
+		max_length: number | null;
+		message_template: string;
+		name: string;
+		required_vars: Json | null;
+		template_key: string;
+		template_vars: Json | null;
+		updated_at: string | null;
+		usage_count: number | null;
+	};
 	subscription_plans: {
 		billing_interval: string | null;
 		created_at: string;
@@ -892,6 +934,27 @@ export type DatabaseSchema = {
 		type: string;
 		user_id: string;
 	};
+	user_sms_preferences: {
+		created_at: string | null;
+		daily_brief_sms: boolean | null;
+		daily_count_reset_at: string | null;
+		daily_sms_count: number | null;
+		daily_sms_limit: number | null;
+		id: string;
+		opt_out_reason: string | null;
+		opted_out: boolean | null;
+		opted_out_at: string | null;
+		phone_number: string | null;
+		phone_verified: boolean | null;
+		phone_verified_at: string | null;
+		quiet_hours_end: string | null;
+		quiet_hours_start: string | null;
+		task_reminders: boolean | null;
+		timezone: string | null;
+		updated_at: string | null;
+		urgent_alerts: boolean | null;
+		user_id: string;
+	};
 	users: {
 		access_restricted: boolean | null;
 		access_restricted_at: string | null;
@@ -981,6 +1044,8 @@ export const tableNames = [
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',
+	'sms_messages',
+	'sms_templates',
 	'subscription_plans',
 	'system_metrics',
 	'task_calendar_events',
@@ -993,6 +1058,7 @@ export const tableNames = [
 	'user_context',
 	'user_discounts',
 	'user_notifications',
+	'user_sms_preferences',
 	'users',
 	'visitors',
 	'webhook_events'

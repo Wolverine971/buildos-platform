@@ -8,6 +8,7 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { renderMarkdown } from '$lib/utils/markdown';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 interface WebhookPayload {
 	userId: string;
@@ -46,10 +47,43 @@ export const POST: RequestHandler = async ({ request }) => {
 		const source = request.headers.get('x-source');
 
 		if (!signature || !timestamp) {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			});
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logAPIError(
+				new Error(
+					`Missing webhook signature or timestamp - signature: ${!!signature}, timestamp: ${!!timestamp}`
+				),
+				'/webhooks/daily-brief-email',
+				'POST',
+				undefined,
+				{
+					source: request.headers.get('x-source'),
+					headers: Object.fromEntries(request.headers)
+				}
+			);
 			throw error(401, 'Missing webhook signature or timestamp');
 		}
 
 		if (source !== 'daily-brief-worker') {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			});
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logAPIError(
+				new Error(`Invalid webhook source: ${source}`),
+				'/webhooks/daily-brief-email',
+				'POST',
+				undefined,
+				{ expectedSource: 'daily-brief-worker', receivedSource: source }
+			);
 			throw error(401, 'Invalid webhook source');
 		}
 
@@ -58,12 +92,40 @@ export const POST: RequestHandler = async ({ request }) => {
 		const webhookSecret = PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
 		if (!webhookSecret) {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			});
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logAPIError(
+				new Error('PRIVATE_BUILDOS_WEBHOOK_SECRET not configured'),
+				'/webhooks/daily-brief-email',
+				'POST',
+				undefined,
+				{ error: 'Configuration issue: missing webhook secret' }
+			);
 			console.error('PRIVATE_BUILDOS_WEBHOOK_SECRET not configured');
 			throw error(500, 'Webhook secret not configured');
 		}
 
 		// Verify signature
 		if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			});
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logAPIError(
+				new Error('Invalid webhook signature'),
+				'/webhooks/daily-brief-email',
+				'POST',
+				undefined,
+				{ signature, timestamp, bodyLength: rawBody.length }
+			);
 			throw error(401, 'Invalid webhook signature');
 		}
 
@@ -73,6 +135,25 @@ export const POST: RequestHandler = async ({ request }) => {
 		const MAX_AGE = 5 * 60 * 1000; // 5 minutes
 
 		if (Math.abs(now - requestTime) > MAX_AGE) {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			});
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logAPIError(
+				new Error(`Webhook timestamp too old: ${Math.abs(now - requestTime)}ms difference`),
+				'/webhooks/daily-brief-email',
+				'POST',
+				undefined,
+				{
+					timestamp,
+					now: new Date().toISOString(),
+					requestTime: new Date(requestTime).toISOString(),
+					difference: Math.abs(now - requestTime)
+				}
+			);
 			throw error(401, 'Webhook timestamp too old');
 		}
 
@@ -86,6 +167,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
+		// Initialize error logger
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
+
 		// 4. Fetch the daily brief data with llm_analysis
 		const { data: brief, error: briefError } = await supabase
 			.from('daily_briefs')
@@ -94,6 +178,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			.single();
 
 		if (briefError || !brief) {
+			await errorLogger.logAPIError(
+				briefError || new Error('Brief not found'),
+				'/webhooks/daily-brief-email',
+				'POST',
+				payload.userId,
+				{ briefId: payload.briefId, error: briefError?.message, payload }
+			);
 			console.error('Failed to fetch brief:', briefError);
 			throw error(404, 'Brief not found');
 		}
@@ -102,6 +193,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		const briefContent = brief.llm_analysis || brief.summary_content || '';
 
 		if (!briefContent) {
+			await errorLogger.logAPIError(
+				new Error('No content found in brief'),
+				'/webhooks/daily-brief-email',
+				'POST',
+				payload.userId,
+				{
+					briefId: payload.briefId,
+					hasLlmAnalysis: !!brief.llm_analysis,
+					hasSummaryContent: !!brief.summary_content
+				}
+			);
 			console.error('No content found in brief');
 			throw error(400, 'Brief has no content to send');
 		}
@@ -183,24 +285,47 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		if (!emailResult.success) {
+			await errorLogger.logAPIError(
+				new Error(emailResult.error || 'Failed to send email'),
+				'/webhooks/daily-brief-email',
+				'POST',
+				payload.userId,
+				{
+					briefId: payload.briefId,
+					recipientEmail: payload.recipientEmail,
+					emailError: emailResult.error,
+					metadata: payload.metadata
+				}
+			);
 			console.error('Failed to send email:', emailResult.error);
 			throw error(500, 'Failed to send email');
 		}
 
 		// 10. Update tracking records if provided
 		if (payload.metadata?.recipientRecordId) {
-			await supabase
+			const { error: recipientUpdateError } = await supabase
 				.from('email_recipients')
 				.update({
 					status: 'sent',
 					sent_at: new Date().toISOString()
 				})
 				.eq('id', payload.metadata.recipientRecordId);
+
+			if (recipientUpdateError) {
+				await errorLogger.logDatabaseError(
+					recipientUpdateError,
+					'update',
+					'email_recipients',
+					payload.metadata.recipientRecordId,
+					{ status: 'sent', sent_at: new Date().toISOString() }
+				);
+				console.error('Failed to update email recipient record:', recipientUpdateError);
+			}
 		}
 
 		// 11. Log email tracking event
 		if (payload.metadata?.trackingId) {
-			await supabase.from('email_tracking_events').insert({
+			const { error: trackingError } = await supabase.from('email_tracking_events').insert({
 				tracking_id: payload.metadata.trackingId,
 				event_type: 'sent',
 				recipient_email: payload.recipientEmail,
@@ -211,16 +336,42 @@ export const POST: RequestHandler = async ({ request }) => {
 					message_id: emailResult.messageId
 				}
 			});
+
+			if (trackingError) {
+				await errorLogger.logDatabaseError(
+					trackingError,
+					'insert',
+					'email_tracking_events',
+					undefined,
+					{
+						tracking_id: payload.metadata.trackingId,
+						event_type: 'sent',
+						recipient_email: payload.recipientEmail
+					}
+				);
+				console.error('Failed to log email tracking event:', trackingError);
+			}
 		}
 
 		// 12. Update daily_briefs table to mark as emailed
-		await supabase
+		const { error: briefUpdateError } = await supabase
 			.from('daily_briefs')
 			.update({
 				email_sent: true,
 				email_sent_at: new Date().toISOString()
 			})
 			.eq('id', payload.briefId);
+
+		if (briefUpdateError) {
+			await errorLogger.logDatabaseError(
+				briefUpdateError,
+				'update',
+				'daily_briefs',
+				payload.briefId,
+				{ email_sent: true, email_sent_at: new Date().toISOString() }
+			);
+			console.error('Failed to update daily_briefs table:', briefUpdateError);
+		}
 
 		// 13. Return success response
 		return json({
@@ -231,6 +382,40 @@ export const POST: RequestHandler = async ({ request }) => {
 			timestamp: new Date().toISOString()
 		});
 	} catch (err) {
+		// Try to log the error if we haven't already
+		if (
+			err instanceof Error &&
+			!err.message.includes('Missing webhook') &&
+			!err.message.includes('Invalid webhook') &&
+			!err.message.includes('Webhook timestamp')
+		) {
+			try {
+				const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+					auth: {
+						autoRefreshToken: false,
+						persistSession: false
+					}
+				});
+				const errorLogger = ErrorLoggerService.getInstance(supabase);
+				const payload = request.headers.get('x-webhook-payload')
+					? JSON.parse(request.headers.get('x-webhook-payload') as string)
+					: undefined;
+				await errorLogger.logAPIError(
+					err,
+					'/webhooks/daily-brief-email',
+					'POST',
+					payload?.userId,
+					{
+						errorType: 'unexpected_webhook_error',
+						errorMessage: err.message,
+						errorStack: err.stack
+					}
+				);
+			} catch (logError) {
+				console.error('Failed to log webhook error:', logError);
+			}
+		}
+
 		console.error('Webhook error:', err);
 
 		// Return appropriate error response

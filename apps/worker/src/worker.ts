@@ -3,6 +3,7 @@ import { SupabaseQueue, ProcessingJob } from "./lib/supabaseQueue";
 import { processBriefJob } from "./workers/brief/briefWorker";
 import { processPhasesJob } from "./workers/phases/phasesWorker";
 import { processOnboardingAnalysisJob } from "./workers/onboarding/onboardingWorker";
+import { processSMSJob } from "./workers/smsWorker";
 import { createLegacyJob } from "./workers/shared/jobAdapter";
 import {
   getEnvironmentConfig,
@@ -95,6 +96,26 @@ async function processOnboarding(job: ProcessingJob) {
 }
 
 /**
+ * SMS sending processor
+ */
+async function processSMS(job: ProcessingJob) {
+  await job.log(`Sending SMS to ${job.data.phone_number}`);
+
+  try {
+    // Convert ProcessingJob to type-safe legacy format
+    const legacyJob = createLegacyJob(job);
+
+    await processSMSJob(legacyJob);
+    await job.log("✅ SMS sent successfully");
+
+    return { success: true };
+  } catch (error: any) {
+    await job.log(`❌ SMS send failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -104,6 +125,7 @@ export async function startWorker() {
   queue.process("generate_daily_brief", processBrief);
   queue.process("generate_phases", processPhases);
   queue.process("onboarding_analysis", processOnboarding);
+  queue.process("send_sms", processSMS);
 
   // Start processing
   await queue.start();
@@ -140,7 +162,7 @@ export async function startWorker() {
 
   console.log("✅ Worker started successfully");
   console.log(
-    "📋 Processing job types: brief_generation, phases_generation, onboarding_analysis",
+    "📋 Processing job types: brief_generation, phases_generation, onboarding_analysis, send_sms",
   );
 
   return queue;

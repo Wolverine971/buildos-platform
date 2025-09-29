@@ -1,4 +1,4 @@
-#!/bin/bash
+# migrate-docs.sh
 
 echo "🚀 Starting comprehensive documentation migration..."
 

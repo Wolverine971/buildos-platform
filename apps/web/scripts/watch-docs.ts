@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/watch-docs.ts
 
 /**
  * Watch script for automatic documentation generation during development

@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+// scripts/generate-monitoring-docs.ts
 
 /**
  * Generate monitoring and metrics documentation from Vercel Analytics and system configurations
