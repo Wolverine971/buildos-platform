@@ -12,7 +12,7 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LLMMetadata } from '$lib/types/error-logging';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { shouldUseDualProcessing } from '$lib/constants/brain-dump-thresholds';
 
 import { OperationsExecutor, OperationValidator } from './operations-executor';

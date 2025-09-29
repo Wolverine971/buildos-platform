@@ -29,6 +29,8 @@ function createModalStore() {
 		calendarRefresh: { isOpen: false },
 		markDeleted: { isOpen: false },
 		scheduling: { isOpen: false },
+		calendarAnalysis: { isOpen: false },
+		calendarAnalysisResults: { isOpen: false },
 
 		// Phase modals
 		projectDates: { isOpen: false },

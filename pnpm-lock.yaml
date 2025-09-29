@@ -123,6 +123,9 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
+      ts-morph:
+        specifier: ^27.0.0
+        version: 27.0.0
       twilio:
         specifier: ^4.23.0
         version: 4.23.0
@@ -1620,6 +1623,20 @@ packages:
         integrity: sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ==,
       }
 
+  "@isaacs/balanced-match@4.0.1":
+    resolution:
+      {
+        integrity: sha512-yzMTt9lEb8Gv7zRioUilSglI0c0smZ9k5D65677DLWLtWJaXIS3CqcGyUFByYKlnUj6TkjLVs54fBl6+TiGQDQ==,
+      }
+    engines: { node: 20 || >=22 }
+
+  "@isaacs/brace-expansion@5.0.0":
+    resolution:
+      {
+        integrity: sha512-ZT55BDLV0yv0RBm2czMiZ+SqCGO7AvmOM3G/w2xhVPH+te0aKgFjmBvGlL1dH+ql2tgGO3MVrbb3jCKyvpgnxA==,
+      }
+    engines: { node: 20 || >=22 }
+
   "@isaacs/cliui@8.0.2":
     resolution:
       {
@@ -2958,6 +2975,12 @@ packages:
     resolution:
       {
         integrity: sha512-kMnZz+vGGHi4GoHnLmMhGNjm44kGtKUXGnOvrKmMwAuvNjM/PgKVGfUnL7IDvK7Jb2QQ82jq3Zmp04Gy+r3Dkg==,
+      }
+
+  "@ts-morph/common@0.28.0":
+    resolution:
+      {
+        integrity: sha512-4w6X/oFmvXcwux6y6ExfM/xSqMHw20cYwFJH+BlYrtGa6nwY9qGq8GXnUs1sVYeF2o/KT3S8hAH6sKBI3VOkBg==,
       }
 
   "@types/aria-query@5.0.4":
@@ -6733,6 +6756,13 @@ packages:
       }
     engines: { node: ">=6" }
 
+  minimatch@10.0.3:
+    resolution:
+      {
+        integrity: sha512-IPZ167aShDZZUMdRk66cyQAW3qr0WzbHkPdMYa8bzZhlHhO3jALbKdxcaak7W9FfT2rZNpQuUu4Od7ILEpXSaw==,
+      }
+    engines: { node: 20 || >=22 }
+
   minimatch@3.1.2:
     resolution:
       {
@@ -8944,6 +8974,12 @@ packages:
         integrity: sha512-2OAOg/Ob5yx9Et7ZX4CvTCc0UFoZHwLEJ+dpDPSUi5TgwwlTlX47w+iFRrEwzUZwYACjq83cgjS/Da50Ga37uw==,
       }
 
+  ts-morph@27.0.0:
+    resolution:
+      {
+        integrity: sha512-xcqelpTR5PCuZMs54qp9DE3t7tPgA2v/P1/qdW4ke5b3Y5liTGTYj6a/twT35EQW/H5okRqp1UOqwNlgg0K0eQ==,
+      }
+
   ts-toolbelt@9.6.0:
     resolution:
       {
@@ -10620,6 +10656,12 @@ snapshots:
 
   "@ioredis/commands@1.4.0": {}
 
+  "@isaacs/balanced-match@4.0.1": {}
+
+  "@isaacs/brace-expansion@5.0.0":
+    dependencies:
+      "@isaacs/balanced-match": 4.0.1
+
   "@isaacs/cliui@8.0.2":
     dependencies:
       string-width: 5.1.2
@@ -11776,6 +11818,12 @@ snapshots:
   "@ts-morph/common@0.25.0":
     dependencies:
       minimatch: 9.0.5
+      path-browserify: 1.0.1
+      tinyglobby: 0.2.15
+
+  "@ts-morph/common@0.28.0":
+    dependencies:
+      minimatch: 10.0.3
       path-browserify: 1.0.1
       tinyglobby: 0.2.15
 
@@ -14302,6 +14350,10 @@ snapshots:
     dependencies:
       lodash: 4.17.21
 
+  minimatch@10.0.3:
+    dependencies:
+      "@isaacs/brace-expansion": 5.0.0
+
   minimatch@3.1.2:
     dependencies:
       brace-expansion: 4.0.1
@@ -15770,6 +15822,11 @@ snapshots:
   ts-morph@24.0.0:
     dependencies:
       "@ts-morph/common": 0.25.0
+      code-block-writer: 13.0.3
+
+  ts-morph@27.0.0:
+    dependencies:
+      "@ts-morph/common": 0.28.0
       code-block-writer: 13.0.3
 
   ts-toolbelt@9.6.0: {}

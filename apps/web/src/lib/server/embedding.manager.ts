@@ -2,7 +2,7 @@
 // Server-side embedding operations and CRUD management
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { toVectorLiteral } from '$lib/utils/pgvector';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 

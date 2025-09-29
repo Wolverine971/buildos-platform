@@ -2,7 +2,8 @@
 
 // deprecated - no longer using project_context table
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import * as dotenv from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -20,7 +21,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 	process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 
 async function migrateProjectContext() {
 	console.log('Starting project context migration...');

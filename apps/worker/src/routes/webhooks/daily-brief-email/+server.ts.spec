@@ -15,7 +15,7 @@ import nodemailer from 'nodemailer';
  * - GMAIL_USER: Gmail account for sending
  * - GMAIL_APP_PASSWORD: App-specific password
  * - SUPABASE_URL: Your Supabase project URL
- * - SUPABASE_SERVICE_ROLE_KEY: Service role key
+ * - PRIVATE_SUPABASE_SERVICE_KEY: Service role key
  */
 
 interface WebhookPayload {
@@ -96,7 +96,7 @@ export const POST: RequestHandler = async ({ request }) => {
     // 3. Initialize Supabase client
     const supabase = createClient(
       import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
-      import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      import.meta.env.VITE_PRIVATE_SUPABASE_SERVICE_KEY || process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
       {
         auth: {
           autoRefreshToken: false,
@@ -319,7 +319,7 @@ function renderMarkdown(markdown: string): string {
  *    - GMAIL_USER
  *    - GMAIL_APP_PASSWORD
  *    - SUPABASE_URL
- *    - SUPABASE_SERVICE_ROLE_KEY
+ *    - PRIVATE_SUPABASE_SERVICE_KEY
  *
  * 2. The endpoint will be available at:
  *    https://build-os.com/webhooks/daily-brief-email

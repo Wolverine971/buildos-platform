@@ -1,6 +1,6 @@
 // src/lib/utils/braindump-processor-stream-short.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { PromptTemplateService } from '$lib/services/promptTemplate.service';
 import { ActivityLogger } from './activityLogger';
 import type {

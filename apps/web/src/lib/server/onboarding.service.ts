@@ -1,7 +1,7 @@
 // src/lib/server/onboarding.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
 import type { UserContext } from '$lib/types/user-context';
 

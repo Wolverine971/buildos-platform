@@ -4,7 +4,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { recurrencePatternBuilder } from '$lib/services/recurrence-pattern.service';
-	import type { Database } from '$lib/database.types';
+	import type { Database } from '@buildos/shared-types';
 
 	type RecurrencePattern = Database['public']['Enums']['recurrence_pattern'];
 

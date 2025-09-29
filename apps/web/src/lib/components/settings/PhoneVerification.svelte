@@ -89,8 +89,14 @@
 
 <div class="space-y-6">
 	{#if !verificationSent}
-		<div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-			<FormField label="Phone Number" labelFor="phone" hint="Enter your phone number to receive SMS notifications">
+		<div
+			class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800"
+		>
+			<FormField
+				label="Phone Number"
+				labelFor="phone"
+				hint="Enter your phone number to receive SMS notifications"
+			>
 				<div class="flex gap-2">
 					<TextInput
 						type="tel"
@@ -116,7 +122,9 @@
 			</FormField>
 		</div>
 	{:else}
-		<div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-6 border border-green-200 dark:border-green-800">
+		<div
+			class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-6 border border-green-200 dark:border-green-800"
+		>
 			<div class="mb-4">
 				<div class="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
 					<Check class="w-5 h-5" />
@@ -124,7 +132,11 @@
 				</div>
 			</div>
 
-			<FormField label="Verification Code" labelFor="code" hint="Enter the 6-digit code from your SMS">
+			<FormField
+				label="Verification Code"
+				labelFor="code"
+				hint="Enter the 6-digit code from your SMS"
+			>
 				<div class="flex gap-2">
 					<TextInput
 						type="text"

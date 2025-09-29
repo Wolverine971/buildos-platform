@@ -1,6 +1,6 @@
 // src/lib/utils/calendar-error-monitor.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export interface CalendarErrorSummary {
 	totalErrors: number;

@@ -431,8 +431,8 @@ export class SMSWorkerService {
 
   constructor() {
     this.consumer = new MessageQueueConsumer(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.PUBLIC_SUPABASE_URL!,
+      process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
       {
         accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
         authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
@@ -507,7 +507,7 @@ export class MessagingService {
 # .env.local (both apps)
 SUPABASE_URL=your-supabase-url
 SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PRIVATE_SUPABASE_SERVICE_KEY=your-service-role-key
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx

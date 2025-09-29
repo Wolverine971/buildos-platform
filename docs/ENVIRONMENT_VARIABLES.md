@@ -96,8 +96,8 @@ PUBLIC_BRIEF_MAX_POLLING_TIME
 
 ```bash
 # Supabase (different naming)
-SUPABASE_URL                 # Same as PUBLIC_SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY    # Same as PRIVATE_SUPABASE_SERVICE_KEY
+PUBILC_SUPABASE_URL                 # Same as PUBLIC_SUPABASE_URL
+PRIVATE_SUPABASE_SERVICE_KEY    # Same as PRIVATE_SUPABASE_SERVICE_KEY
 
 # Server
 PORT=3001
@@ -140,8 +140,8 @@ These pairs must have the **same value** but use different names:
 
 | Web App Variable               | Worker Variable                | Description            |
 | ------------------------------ | ------------------------------ | ---------------------- |
-| `PUBLIC_SUPABASE_URL`          | `SUPABASE_URL`                 | Supabase project URL   |
-| `PRIVATE_SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_ROLE_KEY`    | Service role key       |
+| `PUBLIC_SUPABASE_URL`          | `PUBLIC_SUPABASE_URL`                 | Supabase project URL   |
+| `PRIVATE_SUPABASE_SERVICE_KEY` | `PRIVATE_SUPABASE_SERVICE_KEY`    | Service role key       |
 | `PUBLIC_GOOGLE_CLIENT_ID`      | `PRIVATE_GOOGLE_CLIENT_ID`     | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET`         | `PRIVATE_GOOGLE_CLIENT_SECRET` | Google OAuth secret    |
 
@@ -199,8 +199,8 @@ Add these in Railway dashboard → Variables:
 
 ```bash
 # Core (Required)
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+PRIVATE_SUPABASE_SERVICE_KEY=eyJ...
 PORT=3001
 NODE_ENV=production
 
@@ -228,8 +228,8 @@ QUEUE_BATCH_SIZE=5
 
 **Solution:** Ensure:
 
-- Worker uses `SUPABASE_URL` (not `PUBLIC_SUPABASE_URL`)
-- Worker uses `SUPABASE_SERVICE_ROLE_KEY` (not `PRIVATE_SUPABASE_SERVICE_KEY`)
+- Worker uses `PUBLIC_SUPABASE_URL`
+- Worker uses `PRIVATE_SUPABASE_SERVICE_KEY`
 
 ### Issue: Email sending fails
 

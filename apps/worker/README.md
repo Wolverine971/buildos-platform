@@ -75,8 +75,8 @@ Fill in your environment variables:
 
 ```env
 # Supabase (REQUIRED)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+PRIVATE_SUPABASE_SERVICE_KEY=your-service-role-key
 
 # Port (optional, Railway will override)
 PORT=3001
@@ -107,7 +107,7 @@ curl http://localhost:3001/health
 4. Select your repository
 5. Add environment variables in Railway dashboard:
    - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `PRIVATE_SUPABASE_SERVICE_KEY`
 
 #### Option B: Railway CLI
 
@@ -120,8 +120,8 @@ railway login
 railway init
 
 # Add environment variables
-railway variables:set SUPABASE_URL=your-url
-railway variables:set SUPABASE_SERVICE_ROLE_KEY=your-key
+railway variables:set PUBLIC_SUPABASE_URL=your-url
+railway variables:set PRIVATE_SUPABASE_SERVICE_KEY=your-key
 
 # Deploy
 railway up

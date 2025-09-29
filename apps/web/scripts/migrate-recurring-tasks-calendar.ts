@@ -6,13 +6,13 @@
  * Run with: npx tsx scripts/migrate-recurring-tasks-calendar.ts
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import { google } from 'googleapis';
 import { GoogleOAuthService } from '../src/lib/services/google-oauth-service';
-import type { Database } from '../src/lib/database.types';
 
 // Initialize Supabase client with service role key for admin operations
-const supabase = createClient<Database>(
+const supabase = createCustomClient(
 	process.env.PUBLIC_SUPABASE_URL!,
 	process.env.SUPABASE_SERVICE_KEY!
 );

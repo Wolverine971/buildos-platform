@@ -1,6 +1,6 @@
 // src/lib/services/projectSynthesis.service.ts
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import type { ActivityLogger } from '$lib/utils/activityLogger';
 import type { ProjectSynthesisResult } from '$lib/types';
 import { BrainDumpProcessor } from '$utils/braindump-processor';
@@ -10,7 +10,7 @@ import { TaskSynthesisPrompt } from '$lib/services/synthesis/task-synthesis-prom
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
 import { SmartLLMService } from './smart-llm-service';
 
-type SupabaseClient = ReturnType<typeof createClient<Database>>;
+type SupabaseClient = ReturnType<typeof createCustomClient>;
 
 interface SynthesisResult {
 	summary: string;

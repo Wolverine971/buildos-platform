@@ -10,7 +10,8 @@
  */
 
 import { existsSync } from 'fs';
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -116,7 +117,7 @@ async function validateDatabase(): Promise<ValidationResult> {
 	const checks: any[] = [];
 
 	try {
-		const supabase = createClient(
+		const supabase = createCustomClient(
 			process.env.PUBLIC_SUPABASE_URL!,
 			process.env.PRIVATE_SUPABASE_SERVICE_KEY!
 		);

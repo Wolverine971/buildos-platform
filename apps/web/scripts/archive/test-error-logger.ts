@@ -5,9 +5,9 @@
  * Run with: npx tsx scripts/test-error-logger.ts
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
 import { ErrorLoggerService } from '../src/lib/services/errorLogger.service';
-import type { Database } from '../src/lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -22,7 +22,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Create Supabase client with service role for testing
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 
 // Get error logger instance
 const errorLogger = ErrorLoggerService.getInstance(supabase);

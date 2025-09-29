@@ -1,6 +1,6 @@
 // scripts/audit-enum-values.ts
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../src/lib/database.types';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 	process.exit(1);
 }
 
-const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+const supabase = createCustomClient(supabaseUrl, supabaseAnonKey);
 
 interface EnumFieldAudit {
 	table: string;

@@ -12,10 +12,10 @@
  * - PRIVATE_GOOGLE_CLIENT_SECRET
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import type { Database } from '../src/lib/database.types';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
@@ -39,7 +39,7 @@ for (const envVar of requiredEnvVars) {
 }
 
 // Initialize Supabase client with service role key for admin operations
-const supabase = createClient<Database>(
+const supabase = createCustomClient(
 	process.env.PUBLIC_SUPABASE_URL!,
 	process.env.PRIVATE_SUPABASE_SERVICE_KEY!
 );

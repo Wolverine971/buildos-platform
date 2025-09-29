@@ -1,7 +1,7 @@
 // src/routes/api/projects/[id]/phases/preview/+server.ts
 
 import type { RequestHandler } from './$types';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 
 interface TaskPreview {

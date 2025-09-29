@@ -93,8 +93,8 @@ The service expects these Supabase tables:
 ### Required Variables:
 
 ```bash
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+PUBLIC_SUPABASE_URL=your_supabase_project_url
+PRIVATE_SUPABASE_SERVICE_KEY=your_service_role_key
 PORT=3001  # Optional, defaults to 3001
 ```
 

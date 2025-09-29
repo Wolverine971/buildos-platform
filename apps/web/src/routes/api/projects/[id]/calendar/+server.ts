@@ -1,7 +1,7 @@
 // src/routes/api/projects/[id]/calendar/+server.ts
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarService } from '$lib/services/calendar-service';

@@ -1,6 +1,6 @@
 // src/lib/services/projectBriefTemplateGenerator.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { Project } from '$lib/types/project';
 import type { UserContext } from '$lib/types/user-context';
 import { SmartLLMService } from './smart-llm-service';

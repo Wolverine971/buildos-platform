@@ -1,7 +1,7 @@
 // src/routes/api/braindumps/draft/status/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 // Status flow validation function (same as in parent file)
 function validateStatusTransition(

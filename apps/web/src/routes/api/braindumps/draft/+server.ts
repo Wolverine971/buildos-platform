@@ -1,7 +1,7 @@
 // src/routes/api/braindumps/draft/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {

@@ -131,6 +131,12 @@
 			"exports": ["BriefClientService"]
 		},
 		{
+			"file": "src/lib/services/calendar-analysis.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["CalendarAnalysisService"]
+		},
+		{
 			"file": "src/lib/services/calendar-service.ts",
 			"type": "service",
 			"components": [],

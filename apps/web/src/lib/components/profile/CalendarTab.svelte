@@ -18,12 +18,23 @@
 		Sun,
 		Loader2,
 		AlertCircle,
-		RefreshCw
+		RefreshCw,
+		Brain,
+		Sparkles,
+		FolderOpen,
+		ExternalLink
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import CalendarAnalysisModal from '$lib/components/calendar/CalendarAnalysisModal.svelte';
+	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
+	import { modalStore } from '$lib/stores/modal.store'; // this is an error need to remove it
+	import { goto } from '$app/navigation';
+	import { toastService } from '$lib/stores/toast.store';
+	// import { getSupabase } from '$lib/supabase';
+	import { getSupabase } from '$lib/supabase-helpers';
 
 	// Props
 	export let data: any;
@@ -38,6 +49,11 @@
 	let calendarPreferences: any = null;
 	let isSavingCalendar = false;
 	let refreshingCalendar = false;
+	let showAnalysisModal = false;
+	let showAnalysisResults = false;
+	let analysisInProgress = false;
+	let calendarAnalysisHistory: any[] = [];
+	let calendarProjects: any[] = [];
 
 	// Calendar timezones
 	const CALENDAR_TIMEZONES = [
@@ -87,9 +103,28 @@
 		refreshCalendarData();
 		dispatch('success', { message: 'Google Calendar connected successfully!' });
 
+		// Check if this is first-time calendar connection
+		const hasShownAnalysis =
+			localStorage.getItem('calendar_analysis_requested') ||
+			localStorage.getItem('calendar_analysis_skipped');
+
+		if (!hasShownAnalysis) {
+			// Show the analysis modal for first-time users
+			showAnalysisModal = true;
+		}
+
 		// Clean up URL parameters
 		const newUrl = new URL($page.url);
 		newUrl.searchParams.delete('success');
+		replaceState(newUrl.toString(), {});
+	}
+
+	// Handle analyze parameter from URL
+	$: if (browser && $page.url.searchParams.get('analyze') === 'true') {
+		startCalendarAnalysis();
+		// Clean up URL parameter
+		const newUrl = new URL($page.url);
+		newUrl.searchParams.delete('analyze');
 		replaceState(newUrl.toString(), {});
 	}
 
@@ -127,6 +162,9 @@
 
 	onMount(() => {
 		loadCalendarData();
+		if (calendarConnected) {
+			loadCalendarAnalysisHistory();
+		}
 	});
 
 	// Function to load calendar data
@@ -151,6 +189,11 @@
 
 			calendarData = result;
 			calendarPreferences = result.calendarPreferences;
+
+			// Also load analysis history if connected
+			if (result.calendarStatus?.isConnected) {
+				loadCalendarAnalysisHistory();
+			}
 		} catch (error) {
 			console.error('Error loading calendar settings:', error);
 			dispatch('error', { message: 'Error loading calendar settings' });
@@ -233,6 +276,67 @@
 				minute: '2-digit'
 			});
 		}
+	}
+
+	// Calendar Analysis functions
+	async function startCalendarAnalysis() {
+		if (analysisInProgress) return;
+
+		analysisInProgress = true;
+		showAnalysisResults = true;
+		// The CalendarAnalysisResults component will handle the actual analysis
+	}
+
+	async function loadCalendarAnalysisHistory() {
+		try {
+			const response = await fetch('/api/calendar/analyze');
+			if (!response.ok) return;
+
+			const result = await response.json();
+			if (result.success && result.analyses) {
+				calendarAnalysisHistory = result.analyses;
+				// Load projects created from calendar
+				await loadCalendarProjects();
+			}
+		} catch (error) {
+			console.error('Error loading calendar analysis history:', error);
+		}
+	}
+
+	async function loadCalendarProjects() {
+		try {
+			const supabase = getSupabase();
+			const { data, error } = await supabase
+				.from('projects')
+				.select('id, name, created_at, description, task_count')
+				.eq('source', 'calendar_analysis')
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			calendarProjects = data || [];
+		} catch (error) {
+			console.error('Error loading calendar projects:', error);
+		}
+	}
+
+	function formatRelativeTime(dateString: string | null) {
+		if (!dateString) return 'Never';
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		if (diffMins < 1) return 'Just now';
+		if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+		if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+		if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+		return date.toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
 	}
 </script>
 
@@ -698,6 +802,136 @@
 					{/if}
 				</div>
 			{/if}
+
+			<!-- Calendar Intelligence Section -->
+			{#if calendarConnected}
+				<div
+					class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				>
+					<div class="p-6 border-b border-gray-200 dark:border-gray-700">
+						<h2
+							class="text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+						>
+							<Brain class="w-6 h-6 mr-2 text-purple-600 dark:text-purple-400" />
+							Calendar Intelligence
+						</h2>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							Discover projects from your calendar events
+						</p>
+					</div>
+
+					<div class="p-6">
+						<!-- Analysis Button -->
+						<div
+							class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4"
+						>
+							<div class="flex items-start justify-between">
+								<div>
+									<h4
+										class="font-medium text-gray-900 dark:text-white flex items-center"
+									>
+										<Sparkles class="w-4 h-4 mr-2 text-purple-500" />
+										Analyze Your Calendar
+									</h4>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+										Let BuildOS find projects in your calendar events
+									</p>
+								</div>
+								<Button
+									variant="primary"
+									size="sm"
+									on:click={startCalendarAnalysis}
+									disabled={analysisInProgress}
+									loading={analysisInProgress}
+									icon={Brain}
+								>
+									{analysisInProgress ? 'Analyzing...' : 'Analyze Calendar'}
+								</Button>
+							</div>
+
+							<!-- Last Analysis Info -->
+							{#if calendarAnalysisHistory.length > 0}
+								{@const lastAnalysis = calendarAnalysisHistory[0]}
+								<div class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+									Last analyzed: {formatRelativeTime(lastAnalysis.completed_at)}
+									• {lastAnalysis.projects_created} projects created
+								</div>
+							{/if}
+						</div>
+
+						<!-- Calendar Projects -->
+						{#if calendarProjects.length > 0}
+							<div class="mt-6">
+								<h4
+									class="font-medium text-gray-900 dark:text-white mb-3 flex items-center"
+								>
+									<FolderOpen class="w-4 h-4 mr-2 text-gray-500" />
+									Projects from Calendar ({calendarProjects.length})
+								</h4>
+								<div class="space-y-2">
+									{#each calendarProjects.slice(0, 5) as project}
+										<a
+											href="/projects/{project.id}"
+											class="block p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:shadow-sm transition-all hover:border-purple-300 dark:hover:border-purple-600"
+										>
+											<div class="flex items-center justify-between">
+												<div class="flex-1">
+													<h5
+														class="font-medium text-gray-900 dark:text-white"
+													>
+														{project.name}
+													</h5>
+													{#if project.description}
+														<p
+															class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1"
+														>
+															{project.description}
+														</p>
+													{/if}
+													<p
+														class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+													>
+														Created {formatRelativeTime(
+															project.created_at
+														)}
+														{#if project.task_count > 0}
+															• {project.task_count} task{project.task_count !==
+															1
+																? 's'
+																: ''}
+														{/if}
+													</p>
+												</div>
+												<div class="flex items-center space-x-2">
+													<span
+														class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md dark:bg-gray-700 dark:text-gray-300"
+													>
+														<Calendar class="w-3 h-3 mr-1" />
+														From Calendar
+													</span>
+													<ExternalLink class="w-4 h-4 text-gray-400" />
+												</div>
+											</div>
+										</a>
+									{/each}
+
+									{#if calendarProjects.length > 5}
+										<div class="text-center pt-2">
+											<Button
+												variant="ghost"
+												size="sm"
+												on:click={() => goto('/projects?source=calendar')}
+											>
+												View all {calendarProjects.length} calendar projects
+											</Button>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		{/if}
 	{:else}
 		<div class="text-center py-12">
@@ -711,3 +945,16 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Calendar Analysis Modals -->
+<CalendarAnalysisModal bind:isOpen={showAnalysisModal} onFirstConnection={true} />
+
+<CalendarAnalysisResults
+	bind:isOpen={showAnalysisResults}
+	autoStart={true}
+	onClose={() => {
+		showAnalysisResults = false;
+		analysisInProgress = false;
+		loadCalendarAnalysisHistory();
+	}}
+/>

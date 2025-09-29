@@ -1,6 +1,6 @@
 // src/lib/services/braindump-status.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { ParsedOperation, BrainDumpParseResult, ExecutionResult } from '$lib/types/brain-dump';
 import { ErrorLoggerService } from './errorLogger.service';
 

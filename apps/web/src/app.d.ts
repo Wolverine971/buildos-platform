@@ -1,6 +1,6 @@
 // src/app.d.ts
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from './lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 type User = Database['public']['Tables']['users']['Row'];
 

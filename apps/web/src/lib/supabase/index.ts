@@ -3,7 +3,7 @@ import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import { browser, dev } from '$app/environment';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 // Helper function to get the correct base URL for redirects
 export function getRedirectURL(path: string = '') {

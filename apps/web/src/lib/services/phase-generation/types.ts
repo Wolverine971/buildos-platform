@@ -1,7 +1,7 @@
 // src/lib/services/phase-generation/types.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { Project, Phase } from '$lib/types/project';
 
 export interface PhaseGenerationConfig {

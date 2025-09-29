@@ -62,8 +62,8 @@ Go to **Variables** tab and add:
 
 ```bash
 # Supabase (DIFFERENT NAMES than web app!)
-SUPABASE_URL=YOUR_SUPABASE_URL_HERE
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_KEY_HERE
+PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL_HERE
+PRIVATE_SUPABASE_SERVICE_KEY=YOUR_SERVICE_KEY_HERE
 
 # Node Environment
 NODE_ENV=production
@@ -138,10 +138,10 @@ In **Settings** → **Deploy**:
 
 **IMPORTANT: Variable names are DIFFERENT from your old setup!**
 
-| Old Variable Name           | New Variable Name |
-| --------------------------- | ----------------- |
-| `SUPABASE_URL`              | Keep the same     |
-| `SUPABASE_SERVICE_ROLE_KEY` | Keep the same     |
+| Old Variable Name              | New Variable Name |
+| ------------------------------ | ----------------- |
+| `PUBLIC_SUPABASE_URL`          | Keep the same     |
+| `PRIVATE_SUPABASE_SERVICE_KEY` | Keep the same     |
 
 **Add these NEW variables:**
 
@@ -164,7 +164,7 @@ Click **Redeploy** from the latest deployment
 | Vercel (Web)                     | Railway (Worker)                 | Value      |
 | -------------------------------- | -------------------------------- | ---------- |
 | `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`                   | Same value |
-| `PRIVATE_SUPABASE_SERVICE_KEY`   | `SUPABASE_SERVICE_ROLE_KEY`      | Same value |
+| `PRIVATE_SUPABASE_SERVICE_KEY`   | `PRIVATE_SUPABASE_SERVICE_KEY`   | Same value |
 | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | Same value |
 
 ## Verification Steps
@@ -217,7 +217,7 @@ After deployment:
 **Error: "Missing Supabase environment variables"**
 
 - Remember: Use `SUPABASE_URL` not `PUBLIC_SUPABASE_URL`
-- Use `SUPABASE_SERVICE_ROLE_KEY` not `PRIVATE_SUPABASE_SERVICE_KEY`
+- Use `PRIVATE_SUPABASE_SERVICE_KEY` not `PRIVATE_SUPABASE_SERVICE_KEY`
 
 **Error: "Cannot connect to Supabase"**
 

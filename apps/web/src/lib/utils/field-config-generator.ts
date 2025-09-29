@@ -1,5 +1,5 @@
 // src/lib/utils/field-config-generator.ts
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 // Extract table names from the database
 type TableName = keyof Database['public']['Tables'];

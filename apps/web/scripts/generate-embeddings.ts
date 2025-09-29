@@ -1,6 +1,6 @@
 // scripts/generate-embeddings.ts
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
 import { EmbeddingManager } from '../src/lib/server/embedding.manager';
 import { SmartLLMService } from '../src/lib/services/smart-llm-service';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
@@ -11,7 +11,7 @@ const supabaseServiceKey = PRIVATE_SUPABASE_SERVICE_KEY!;
 const openAIApiKey = PRIVATE_OPENAI_API_KEY!;
 
 async function generateEmbeddings() {
-	const supabase = createClient(supabaseUrl, supabaseServiceKey);
+	const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 	const llmService = new SmartLLMService({
 		httpReferer: 'https://buildos.dev',
 		appName: 'BuildOS Embedding Generator',

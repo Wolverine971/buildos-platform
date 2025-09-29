@@ -2,7 +2,7 @@
 // Migration script to register webhooks for users with existing calendar connections
 // This script is idempotent and can be run multiple times safely
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
 import { CalendarWebhookMigrationService } from './lib/calendar-webhook-migration-service';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -58,7 +58,7 @@ if (!SUPABASE_URL || !PRIVATE_SUPABASE_SERVICE_KEY || !GOOGLE_CLIENT_ID || !GOOG
 	process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+const supabase = createCustomClient(SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 	auth: {
 		autoRefreshToken: false,
 		persistSession: false

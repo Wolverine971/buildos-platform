@@ -1,6 +1,6 @@
 // src/lib/utils/operations/reference-resolver.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { ReferenceInfo } from './types';
 import { isValidUUID } from './validation-utils';
 import type { ParsedOperation } from '$lib/types/brain-dump';

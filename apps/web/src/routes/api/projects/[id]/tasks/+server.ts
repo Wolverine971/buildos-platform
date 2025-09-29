@@ -1,6 +1,6 @@
 // src/routes/api/projects/[id]/tasks/+server.ts
 import type { RequestHandler } from './$types';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 import { sanitizeTaskData } from '$lib/utils/sanitize-data';
 import { ApiResponse, parseRequestBody, validateRequiredFields } from '$lib/utils/api-response';

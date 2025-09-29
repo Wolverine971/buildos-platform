@@ -1,7 +1,7 @@
 // src/lib/services/email-generation-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SmartLLMService } from './smart-llm-service';
-import type { Database } from '../database.types';
+import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 
 export interface UserBasicInfo {

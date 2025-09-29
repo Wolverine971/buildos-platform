@@ -25,8 +25,8 @@ PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY
 
 ```bash
 # These are SAME values but DIFFERENT names
-SUPABASE_URL=<copy from PUBLIC_SUPABASE_URL in Vercel>
-SUPABASE_SERVICE_ROLE_KEY=<copy from PRIVATE_SUPABASE_SERVICE_KEY in Vercel>
+PUBLIC_SUPABASE_URL=<copy from PUBLIC_SUPABASE_URL in Vercel>
+PRIVATE_SUPABASE_SERVICE_KEY=<copy from PRIVATE_SUPABASE_SERVICE_KEY in Vercel>
 
 # Railway specific
 NODE_ENV=production
@@ -91,8 +91,6 @@ Use this value for:
 
 ## ⚠️ Common Mistakes to Avoid
 
-1. **DON'T use `PUBLIC_SUPABASE_URL` in Railway** - use `SUPABASE_URL`
-2. **DON'T use `PRIVATE_SUPABASE_SERVICE_KEY` in Railway** - use `SUPABASE_SERVICE_ROLE_KEY`
 3. **DON'T forget** to set the webhook secret to the SAME value in both places
 4. **DON'T skip** adding `PUBLIC_RAILWAY_WORKER_URL` to Vercel
 

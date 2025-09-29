@@ -2,7 +2,7 @@
 import { redirect } from '@sveltejs/kit';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;

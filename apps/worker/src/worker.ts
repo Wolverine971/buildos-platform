@@ -137,7 +137,9 @@ export async function startWorker() {
   );
 
   if (!twilioEnabled) {
-    console.warn("⚠️  SMS functionality disabled - Twilio credentials not configured");
+    console.warn(
+      "⚠️  SMS functionality disabled - Twilio credentials not configured",
+    );
   }
 
   // Start processing

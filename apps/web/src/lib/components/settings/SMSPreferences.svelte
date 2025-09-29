@@ -132,12 +132,16 @@
 		</div>
 	{:else}
 		<!-- Phone Verification Section -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
+		>
 			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 				<div class="flex items-center gap-3">
 					<Phone class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Phone Number</h3>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Phone Number
+						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
 							Verify your phone number to receive SMS notifications
 						</p>
@@ -149,12 +153,18 @@
 					<PhoneVerification />
 				{:else}
 					<div class="space-y-4">
-						<div class="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+						<div
+							class="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
+						>
 							<div class="flex items-center gap-3">
 								<Phone class="w-5 h-5 text-green-600 dark:text-green-400" />
 								<div>
-									<p class="font-medium text-gray-900 dark:text-white">Verified Phone</p>
-									<p class="text-sm text-gray-600 dark:text-gray-400">{phoneNumber}</p>
+									<p class="font-medium text-gray-900 dark:text-white">
+										Verified Phone
+									</p>
+									<p class="text-sm text-gray-600 dark:text-gray-400">
+										{phoneNumber}
+									</p>
 								</div>
 							</div>
 							<div class="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -164,8 +174,12 @@
 						</div>
 
 						{#if isOptedOut}
-							<div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-								<AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+							<div
+								class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800"
+							>
+								<AlertTriangle
+									class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+								/>
 								<p class="text-sm text-amber-800 dark:text-amber-200">
 									You have opted out of SMS notifications. Re-enable notifications
 									below to start receiving them again.
@@ -179,12 +193,16 @@
 
 		<!-- Notification Settings -->
 		{#if isPhoneVerified}
-			<div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
+			<div
+				class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
+			>
 				<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 					<div class="flex items-center gap-3">
 						<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400" />
 						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">SMS Notifications</h3>
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								SMS Notifications
+							</h3>
 							<p class="text-sm text-gray-600 dark:text-gray-400">
 								Choose which notifications you want to receive via SMS
 							</p>
@@ -193,11 +211,18 @@
 				</div>
 				<div class="p-6 space-y-6">
 					<!-- Task Reminders -->
-					<div class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+					<div
+						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					>
 						<div class="flex items-start gap-3">
-							<MessageSquare class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+							<MessageSquare
+								class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5"
+							/>
 							<div>
-								<label for="task-reminders" class="font-medium text-gray-900 dark:text-white cursor-pointer">
+								<label
+									for="task-reminders"
+									class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								>
 									Task Reminders
 								</label>
 								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -213,16 +238,23 @@
 								bind:checked={taskReminders}
 								disabled={isOptedOut}
 							/>
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+							<div
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							></div>
 						</label>
 					</div>
 
 					<!-- Daily Brief -->
-					<div class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+					<div
+						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					>
 						<div class="flex items-start gap-3">
 							<Sun class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
 							<div>
-								<label for="daily-brief" class="font-medium text-gray-900 dark:text-white cursor-pointer">
+								<label
+									for="daily-brief"
+									class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								>
 									Daily Brief Notifications
 								</label>
 								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -238,16 +270,23 @@
 								bind:checked={dailyBriefSms}
 								disabled={isOptedOut}
 							/>
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+							<div
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							></div>
 						</label>
 					</div>
 
 					<!-- Urgent Alerts -->
-					<div class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+					<div
+						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					>
 						<div class="flex items-start gap-3">
 							<AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
 							<div>
-								<label for="urgent-alerts" class="font-medium text-gray-900 dark:text-white cursor-pointer">
+								<label
+									for="urgent-alerts"
+									class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								>
 									Urgent Alerts
 								</label>
 								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -263,7 +302,9 @@
 								bind:checked={urgentAlerts}
 								disabled={isOptedOut}
 							/>
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 dark:peer-focus:ring-red-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+							<div
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 dark:peer-focus:ring-red-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							></div>
 						</label>
 					</div>
 
@@ -272,9 +313,12 @@
 						<div class="flex items-start gap-3 mb-4">
 							<Moon class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
 							<div>
-								<h4 class="font-medium text-gray-900 dark:text-white">Quiet Hours</h4>
+								<h4 class="font-medium text-gray-900 dark:text-white">
+									Quiet Hours
+								</h4>
 								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									Set times when you don't want to receive non-urgent notifications
+									Set times when you don't want to receive non-urgent
+									notifications
 								</p>
 							</div>
 						</div>
@@ -299,7 +343,9 @@
 					</div>
 
 					<!-- Save Button -->
-					<div class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
+					<div
+						class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700"
+					>
 						<Button
 							on:click={savePreferences}
 							disabled={isSaving || isOptedOut}

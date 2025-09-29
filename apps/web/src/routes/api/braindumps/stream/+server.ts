@@ -15,7 +15,7 @@ import type {
 } from '$lib/types/sse-messages';
 import type { BrainDumpOptions, DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import {
 	convertToProjectContextResult,
 	convertToTaskNoteExtractionResult

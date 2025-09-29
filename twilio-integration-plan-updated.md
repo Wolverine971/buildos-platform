@@ -853,7 +853,7 @@ const twilioClient = new TwilioClient({
 
 const supabase = createClient(
   process.env.PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
 );
 
 const smsService = new SMSService(twilioClient, supabase);

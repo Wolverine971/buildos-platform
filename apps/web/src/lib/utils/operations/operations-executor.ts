@@ -2,7 +2,7 @@
 import { ActivityLogger } from '../activityLogger';
 import type { ActivityType } from '../activityLogger';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type {
 	ParsedOperation,
 	TableName,

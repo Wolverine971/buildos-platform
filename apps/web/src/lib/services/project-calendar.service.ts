@@ -1,6 +1,6 @@
 // src/lib/services/project-calendar.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { CalendarService } from './calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';

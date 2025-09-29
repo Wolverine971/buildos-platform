@@ -1,7 +1,7 @@
 // src/lib/services/smart-llm-service.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 
 // ============================================

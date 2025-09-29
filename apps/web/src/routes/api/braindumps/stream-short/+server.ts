@@ -21,7 +21,7 @@ import { SSEResponse } from '$lib/utils/sse-response';
 import { validateSynthesisResult } from '$lib/services/prompts/core/validations';
 import { BrainDumpValidator } from '$lib/utils/braindump-validation';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {

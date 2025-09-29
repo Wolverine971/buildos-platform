@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "clean": "turbo clean",
     "pre-push": "turbo pre-push",
-    "gen:all": "pnpm --filter=@buildos/web gen:all && pnpm format && pnpm typecheck"
+    "gen:all": "pnpm --filter=@buildos/web gen:all && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

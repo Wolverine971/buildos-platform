@@ -15,7 +15,11 @@ const twilioConfig = {
 };
 
 // Only initialize if all required Twilio credentials are present
-if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingServiceSid) {
+if (
+  twilioConfig.accountSid &&
+  twilioConfig.authToken &&
+  twilioConfig.messagingServiceSid
+) {
   try {
     twilioClient = new TwilioClient({
       accountSid: twilioConfig.accountSid,
@@ -24,31 +28,35 @@ if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingS
       statusCallbackUrl: twilioConfig.statusCallbackUrl,
     });
 
+    console.log();
     const supabase = createClient(
-      process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
+      process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
     );
 
     smsService = new SMSService(twilioClient, supabase);
-    console.log('Twilio SMS service initialized successfully');
+    console.log("Twilio SMS service initialized successfully");
   } catch (error) {
-    console.error('Failed to initialize Twilio client:', error);
+    console.error("Failed to initialize Twilio client:", error);
     twilioClient = null;
     smsService = null;
   }
 } else {
-  console.warn('Twilio credentials not configured - SMS functionality disabled');
+  console.warn(
+    "Twilio credentials not configured - SMS functionality disabled",
+  );
 }
 
 const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
+  process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
 );
 
 export async function processSMSJob(job: LegacyJob<any>) {
   // Check if SMS service is available
   if (!twilioClient || !smsService) {
-    const errorMessage = 'SMS service not available - Twilio credentials not configured';
+    const errorMessage =
+      "SMS service not available - Twilio credentials not configured";
     console.error(errorMessage);
     await updateJobStatus(job.id, "failed", "send_sms", errorMessage);
     throw new Error(errorMessage);

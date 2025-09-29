@@ -1,5 +1,5 @@
 // src/lib/services/task-time-slot-finder.ts
-import { Database } from '$lib/database.types';
+import { Database } from '@buildos/shared-types';
 import { Task } from '$lib/types/project';
 import {
 	format,
@@ -463,9 +463,9 @@ export class TaskTimeSlotFinder {
 
 // Example usage:
 /*
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
 
-const supabase = createClient('your-supabase-url', 'your-anon-key');
+const supabase = createCustomClient('your-supabase-url', 'your-anon-key');
 
 const tasks = [...]; // Your tasks array
 const preferences = {...}; // User calendar preferences

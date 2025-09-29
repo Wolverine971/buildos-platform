@@ -1,5 +1,5 @@
 // src/lib/utils/data-cleaner.ts
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 // --- Validation utilities --------------------------------------------------
 const validators = {

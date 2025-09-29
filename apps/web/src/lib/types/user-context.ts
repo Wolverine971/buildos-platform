@@ -1,6 +1,6 @@
 // src/lib/types/user-context.ts
 
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 export type UserContext = Database['public']['Tables']['user_context']['Row'];
 

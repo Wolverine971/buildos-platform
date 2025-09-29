@@ -599,6 +599,321 @@ export type Database = {
 					}
 				];
 			};
+			calendar_analyses: {
+				Row: {
+					ai_model: string | null;
+					ai_model_version: string | null;
+					calendars_analyzed: string[] | null;
+					completed_at: string | null;
+					confidence_average: number | null;
+					created_at: string | null;
+					date_range_end: string | null;
+					date_range_start: string | null;
+					error_message: string | null;
+					events_analyzed: number | null;
+					events_excluded: number | null;
+					id: string;
+					processing_time_ms: number | null;
+					projects_created: number | null;
+					projects_suggested: number | null;
+					started_at: string | null;
+					status: string | null;
+					tasks_created: number | null;
+					total_tokens_used: number | null;
+					updated_at: string | null;
+					user_feedback: string | null;
+					user_id: string;
+					user_rating: number | null;
+				};
+				Insert: {
+					ai_model?: string | null;
+					ai_model_version?: string | null;
+					calendars_analyzed?: string[] | null;
+					completed_at?: string | null;
+					confidence_average?: number | null;
+					created_at?: string | null;
+					date_range_end?: string | null;
+					date_range_start?: string | null;
+					error_message?: string | null;
+					events_analyzed?: number | null;
+					events_excluded?: number | null;
+					id?: string;
+					processing_time_ms?: number | null;
+					projects_created?: number | null;
+					projects_suggested?: number | null;
+					started_at?: string | null;
+					status?: string | null;
+					tasks_created?: number | null;
+					total_tokens_used?: number | null;
+					updated_at?: string | null;
+					user_feedback?: string | null;
+					user_id: string;
+					user_rating?: number | null;
+				};
+				Update: {
+					ai_model?: string | null;
+					ai_model_version?: string | null;
+					calendars_analyzed?: string[] | null;
+					completed_at?: string | null;
+					confidence_average?: number | null;
+					created_at?: string | null;
+					date_range_end?: string | null;
+					date_range_start?: string | null;
+					error_message?: string | null;
+					events_analyzed?: number | null;
+					events_excluded?: number | null;
+					id?: string;
+					processing_time_ms?: number | null;
+					projects_created?: number | null;
+					projects_suggested?: number | null;
+					started_at?: string | null;
+					status?: string | null;
+					tasks_created?: number | null;
+					total_tokens_used?: number | null;
+					updated_at?: string | null;
+					user_feedback?: string | null;
+					user_id?: string;
+					user_rating?: number | null;
+				};
+				Relationships: [];
+			};
+			calendar_analysis_events: {
+				Row: {
+					analysis_id: string;
+					attendee_count: number | null;
+					attendee_emails: string[] | null;
+					calendar_event_id: string;
+					calendar_id: string;
+					created_at: string | null;
+					event_description: string | null;
+					event_end: string | null;
+					event_location: string | null;
+					event_start: string | null;
+					event_title: string | null;
+					exclusion_reason: string | null;
+					id: string;
+					included_in_analysis: boolean | null;
+					is_organizer: boolean | null;
+					is_recurring: boolean | null;
+					recurrence_pattern: string | null;
+					suggestion_id: string | null;
+				};
+				Insert: {
+					analysis_id: string;
+					attendee_count?: number | null;
+					attendee_emails?: string[] | null;
+					calendar_event_id: string;
+					calendar_id: string;
+					created_at?: string | null;
+					event_description?: string | null;
+					event_end?: string | null;
+					event_location?: string | null;
+					event_start?: string | null;
+					event_title?: string | null;
+					exclusion_reason?: string | null;
+					id?: string;
+					included_in_analysis?: boolean | null;
+					is_organizer?: boolean | null;
+					is_recurring?: boolean | null;
+					recurrence_pattern?: string | null;
+					suggestion_id?: string | null;
+				};
+				Update: {
+					analysis_id?: string;
+					attendee_count?: number | null;
+					attendee_emails?: string[] | null;
+					calendar_event_id?: string;
+					calendar_id?: string;
+					created_at?: string | null;
+					event_description?: string | null;
+					event_end?: string | null;
+					event_location?: string | null;
+					event_start?: string | null;
+					event_title?: string | null;
+					exclusion_reason?: string | null;
+					id?: string;
+					included_in_analysis?: boolean | null;
+					is_organizer?: boolean | null;
+					is_recurring?: boolean | null;
+					recurrence_pattern?: string | null;
+					suggestion_id?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'calendar_analysis_events_analysis_id_fkey';
+						columns: ['analysis_id'];
+						isOneToOne: false;
+						referencedRelation: 'calendar_analyses';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'calendar_analysis_events_suggestion_id_fkey';
+						columns: ['suggestion_id'];
+						isOneToOne: false;
+						referencedRelation: 'calendar_project_suggestions';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			calendar_analysis_preferences: {
+				Row: {
+					analysis_frequency: string | null;
+					auto_accept_confidence: number | null;
+					auto_analyze_on_connect: boolean | null;
+					create_tasks_from_events: boolean | null;
+					created_at: string | null;
+					exclude_all_day_events: boolean | null;
+					exclude_declined_events: boolean | null;
+					exclude_personal_events: boolean | null;
+					exclude_tentative_events: boolean | null;
+					excluded_calendar_ids: string[] | null;
+					id: string;
+					included_calendar_ids: string[] | null;
+					last_auto_analysis_at: string | null;
+					minimum_attendees: number | null;
+					minimum_confidence_to_show: number | null;
+					updated_at: string | null;
+					user_id: string;
+				};
+				Insert: {
+					analysis_frequency?: string | null;
+					auto_accept_confidence?: number | null;
+					auto_analyze_on_connect?: boolean | null;
+					create_tasks_from_events?: boolean | null;
+					created_at?: string | null;
+					exclude_all_day_events?: boolean | null;
+					exclude_declined_events?: boolean | null;
+					exclude_personal_events?: boolean | null;
+					exclude_tentative_events?: boolean | null;
+					excluded_calendar_ids?: string[] | null;
+					id?: string;
+					included_calendar_ids?: string[] | null;
+					last_auto_analysis_at?: string | null;
+					minimum_attendees?: number | null;
+					minimum_confidence_to_show?: number | null;
+					updated_at?: string | null;
+					user_id: string;
+				};
+				Update: {
+					analysis_frequency?: string | null;
+					auto_accept_confidence?: number | null;
+					auto_analyze_on_connect?: boolean | null;
+					create_tasks_from_events?: boolean | null;
+					created_at?: string | null;
+					exclude_all_day_events?: boolean | null;
+					exclude_declined_events?: boolean | null;
+					exclude_personal_events?: boolean | null;
+					exclude_tentative_events?: boolean | null;
+					excluded_calendar_ids?: string[] | null;
+					id?: string;
+					included_calendar_ids?: string[] | null;
+					last_auto_analysis_at?: string | null;
+					minimum_attendees?: number | null;
+					minimum_confidence_to_show?: number | null;
+					updated_at?: string | null;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
+			calendar_project_suggestions: {
+				Row: {
+					ai_reasoning: string | null;
+					analysis_id: string;
+					calendar_event_ids: string[];
+					calendar_ids: string[] | null;
+					confidence_score: number;
+					created_at: string | null;
+					created_project_id: string | null;
+					detected_keywords: string[] | null;
+					event_count: number | null;
+					event_patterns: Json | null;
+					id: string;
+					rejection_reason: string | null;
+					status: string | null;
+					status_changed_at: string | null;
+					suggested_context: string | null;
+					suggested_description: string | null;
+					suggested_name: string;
+					suggested_priority: string | null;
+					suggested_tasks: Json | null;
+					tasks_created_count: number | null;
+					updated_at: string | null;
+					user_id: string;
+					user_modified_context: string | null;
+					user_modified_description: string | null;
+					user_modified_name: string | null;
+				};
+				Insert: {
+					ai_reasoning?: string | null;
+					analysis_id: string;
+					calendar_event_ids: string[];
+					calendar_ids?: string[] | null;
+					confidence_score: number;
+					created_at?: string | null;
+					created_project_id?: string | null;
+					detected_keywords?: string[] | null;
+					event_count?: number | null;
+					event_patterns?: Json | null;
+					id?: string;
+					rejection_reason?: string | null;
+					status?: string | null;
+					status_changed_at?: string | null;
+					suggested_context?: string | null;
+					suggested_description?: string | null;
+					suggested_name: string;
+					suggested_priority?: string | null;
+					suggested_tasks?: Json | null;
+					tasks_created_count?: number | null;
+					updated_at?: string | null;
+					user_id: string;
+					user_modified_context?: string | null;
+					user_modified_description?: string | null;
+					user_modified_name?: string | null;
+				};
+				Update: {
+					ai_reasoning?: string | null;
+					analysis_id?: string;
+					calendar_event_ids?: string[];
+					calendar_ids?: string[] | null;
+					confidence_score?: number;
+					created_at?: string | null;
+					created_project_id?: string | null;
+					detected_keywords?: string[] | null;
+					event_count?: number | null;
+					event_patterns?: Json | null;
+					id?: string;
+					rejection_reason?: string | null;
+					status?: string | null;
+					status_changed_at?: string | null;
+					suggested_context?: string | null;
+					suggested_description?: string | null;
+					suggested_name?: string;
+					suggested_priority?: string | null;
+					suggested_tasks?: Json | null;
+					tasks_created_count?: number | null;
+					updated_at?: string | null;
+					user_id?: string;
+					user_modified_context?: string | null;
+					user_modified_description?: string | null;
+					user_modified_name?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'calendar_project_suggestions_analysis_id_fkey';
+						columns: ['analysis_id'];
+						isOneToOne: false;
+						referencedRelation: 'calendar_analyses';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'calendar_project_suggestions_created_project_id_fkey';
+						columns: ['created_project_id'];
+						isOneToOne: false;
+						referencedRelation: 'projects';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			calendar_themes: {
 				Row: {
 					color_mappings: Json;
@@ -2426,6 +2741,8 @@ export type Database = {
 					id: string;
 					name: string;
 					slug: string;
+					source: string | null;
+					source_metadata: Json | null;
 					start_date: string | null;
 					status: Database['public']['Enums']['project_status'];
 					tags: string[] | null;
@@ -2444,6 +2761,8 @@ export type Database = {
 					id?: string;
 					name: string;
 					slug: string;
+					source?: string | null;
+					source_metadata?: Json | null;
 					start_date?: string | null;
 					status?: Database['public']['Enums']['project_status'];
 					tags?: string[] | null;
@@ -2462,6 +2781,8 @@ export type Database = {
 					id?: string;
 					name?: string;
 					slug?: string;
+					source?: string | null;
+					source_metadata?: Json | null;
 					start_date?: string | null;
 					status?: Database['public']['Enums']['project_status'];
 					tags?: string[] | null;
@@ -3164,6 +3485,8 @@ export type Database = {
 						| null;
 					recurrence_ends: string | null;
 					recurrence_pattern: Database['public']['Enums']['recurrence_pattern'] | null;
+					source: string | null;
+					source_calendar_event_id: string | null;
 					start_date: string | null;
 					status: Database['public']['Enums']['task_status'];
 					task_steps: string | null;
@@ -3190,6 +3513,8 @@ export type Database = {
 						| null;
 					recurrence_ends?: string | null;
 					recurrence_pattern?: Database['public']['Enums']['recurrence_pattern'] | null;
+					source?: string | null;
+					source_calendar_event_id?: string | null;
 					start_date?: string | null;
 					status?: Database['public']['Enums']['task_status'];
 					task_steps?: string | null;
@@ -3216,6 +3541,8 @@ export type Database = {
 						| null;
 					recurrence_ends?: string | null;
 					recurrence_pattern?: Database['public']['Enums']['recurrence_pattern'] | null;
+					source?: string | null;
+					source_calendar_event_id?: string | null;
 					start_date?: string | null;
 					status?: Database['public']['Enums']['task_status'];
 					task_steps?: string | null;
@@ -4139,6 +4466,17 @@ export type Database = {
 					unique_users: number;
 				}[];
 			};
+			get_calendar_analysis_stats: {
+				Args: { p_user_id: string };
+				Returns: {
+					average_confidence: number;
+					completed_analyses: number;
+					last_analysis_at: string;
+					total_analyses: number;
+					total_projects_created: number;
+					total_tasks_created: number;
+				}[];
+			};
 			get_daily_active_users: {
 				Args: { end_date: string; start_date: string };
 				Returns: {
@@ -4162,6 +4500,17 @@ export type Database = {
 					p_user_id: string;
 				};
 				Returns: Json;
+			};
+			get_pending_calendar_suggestions: {
+				Args: { p_user_id: string };
+				Returns: {
+					confidence_score: number;
+					created_at: string;
+					event_count: number;
+					suggested_description: string;
+					suggested_name: string;
+					suggestion_id: string;
+				}[];
 			};
 			get_project_history: {
 				Args: { target_project_id: string };

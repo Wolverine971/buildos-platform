@@ -5,7 +5,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { ProjectWithRelations, ProjectQuestion } from '$lib/types/project';
 import { formatProjectData, type FullProjectData } from './data-formatter';
 

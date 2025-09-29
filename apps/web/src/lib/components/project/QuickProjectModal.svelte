@@ -10,7 +10,7 @@
 	import { ProjectService } from '$lib/services/projectService';
 	import { toastService } from '$lib/stores/toast.store';
 	import { supabase } from '$lib/supabase';
-	import type { Database } from '$lib/database.types';
+	import type { Database } from '@buildos/shared-types';
 
 	type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 

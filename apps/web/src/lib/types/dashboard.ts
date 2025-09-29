@@ -1,7 +1,7 @@
 // src/lib/types/dashboard.ts
 // Dashboard component type definitions
 
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { DashboardData } from '$lib/services/dashboardData.service';
 
 // User type from database

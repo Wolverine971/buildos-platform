@@ -1,7 +1,7 @@
 // scripts/migrate-parsed-to-input.js
 // Run this after the database migration to populate input columns from existing parsed data
 
-import { createClient } from '@supabase/supabase-js';
+import { createCustomClient } from '@buildos/supabase-client';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 	process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 
 // Field mappings for each category
 const CATEGORY_FIELD_MAPPING = {

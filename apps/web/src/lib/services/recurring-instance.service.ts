@@ -1,6 +1,6 @@
 // src/lib/services/recurring-instance.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import { addDays, startOfDay, endOfDay, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 

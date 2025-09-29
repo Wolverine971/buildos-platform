@@ -3,8 +3,8 @@
 import { BrainDumpProcessor } from '$lib/utils/braindump-processor';
 import type { BrainDumpParseResult } from '$lib/types/brain-dump';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/database.types';
-import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@buildos/shared-types';
+import { createCustomClient } from '@buildos/supabase-client';
 
 // Simple test configuration
 const TEST_CONFIG = {
@@ -64,7 +64,7 @@ function createTestSupabaseClient(): SupabaseClient<Database> {
 	const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 	const supabaseKey = process.env.PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-	return createClient<Database>(supabaseUrl, supabaseKey);
+	return createCustomClient(supabaseUrl, supabaseKey);
 }
 
 /**

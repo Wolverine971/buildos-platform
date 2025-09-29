@@ -1,6 +1,6 @@
 // src/lib/services/braindump-background.service.ts
 import { browser } from '$app/environment';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { toastService } from '$lib/stores/toast.store';
 import type { BrainDumpParseResult, ParsedOperation } from '$lib/types/brain-dump';

@@ -1,6 +1,6 @@
 // src/lib/services/promptTemplate.service.ts
 // This file is now a backward compatibility wrapper for the refactored prompt services
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 import type { Project, ProjectWithRelations, Task } from '$lib/types/project';
 import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';

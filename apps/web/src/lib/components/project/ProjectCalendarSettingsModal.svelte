@@ -22,7 +22,7 @@
 		Users,
 		Settings
 	} from 'lucide-svelte';
-	import type { Database } from '$lib/database.types';
+	import type { Database } from '@buildos/shared-types';
 	import {
 		GOOGLE_CALENDAR_COLORS,
 		type GoogleColorId,

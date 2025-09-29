@@ -1,5 +1,5 @@
-// src/lib/database.schema.ts
-// Generated on: 2025-09-29T00:59:03.703Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2025-09-29T20:30:08.244Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -154,6 +154,97 @@ export type DatabaseSchema = {
 		title: string | null;
 		updated_at: string;
 		user_id: string;
+	};
+	calendar_analyses: {
+		ai_model: string | null;
+		ai_model_version: string | null;
+		calendars_analyzed: string[] | null;
+		completed_at: string | null;
+		confidence_average: number | null;
+		created_at: string | null;
+		date_range_end: string | null;
+		date_range_start: string | null;
+		error_message: string | null;
+		events_analyzed: number | null;
+		events_excluded: number | null;
+		id: string;
+		processing_time_ms: number | null;
+		projects_created: number | null;
+		projects_suggested: number | null;
+		started_at: string | null;
+		status: string | null;
+		tasks_created: number | null;
+		total_tokens_used: number | null;
+		updated_at: string | null;
+		user_feedback: string | null;
+		user_id: string;
+		user_rating: number | null;
+	};
+	calendar_analysis_events: {
+		analysis_id: string;
+		attendee_count: number | null;
+		attendee_emails: string[] | null;
+		calendar_event_id: string;
+		calendar_id: string;
+		created_at: string | null;
+		event_description: string | null;
+		event_end: string | null;
+		event_location: string | null;
+		event_start: string | null;
+		event_title: string | null;
+		exclusion_reason: string | null;
+		id: string;
+		included_in_analysis: boolean | null;
+		is_organizer: boolean | null;
+		is_recurring: boolean | null;
+		recurrence_pattern: string | null;
+		suggestion_id: string | null;
+	};
+	calendar_analysis_preferences: {
+		analysis_frequency: string | null;
+		auto_accept_confidence: number | null;
+		auto_analyze_on_connect: boolean | null;
+		create_tasks_from_events: boolean | null;
+		created_at: string | null;
+		exclude_all_day_events: boolean | null;
+		exclude_declined_events: boolean | null;
+		exclude_personal_events: boolean | null;
+		exclude_tentative_events: boolean | null;
+		excluded_calendar_ids: string[] | null;
+		id: string;
+		included_calendar_ids: string[] | null;
+		last_auto_analysis_at: string | null;
+		minimum_attendees: number | null;
+		minimum_confidence_to_show: number | null;
+		updated_at: string | null;
+		user_id: string;
+	};
+	calendar_project_suggestions: {
+		ai_reasoning: string | null;
+		analysis_id: string;
+		calendar_event_ids: string[];
+		calendar_ids: string[] | null;
+		confidence_score: number;
+		created_at: string | null;
+		created_project_id: string | null;
+		detected_keywords: string[] | null;
+		event_count: number | null;
+		event_patterns: Json | null;
+		id: string;
+		rejection_reason: string | null;
+		status: string | null;
+		status_changed_at: string | null;
+		suggested_context: string | null;
+		suggested_description: string | null;
+		suggested_name: string;
+		suggested_priority: string | null;
+		suggested_tasks: Json | null;
+		tasks_created_count: number | null;
+		updated_at: string | null;
+		user_id: string;
+		user_modified_context: string | null;
+		user_modified_description: string | null;
+		user_modified_name: string | null;
 	};
 	calendar_themes: {
 		color_mappings: Json;
@@ -623,6 +714,8 @@ export type DatabaseSchema = {
 		id: string;
 		name: string;
 		slug: string;
+		source: string | null;
+		source_metadata: Json | null;
 		start_date: string | null;
 		status: Database['public']['Enums']['project_status'];
 		tags: string[] | null;
@@ -815,6 +908,8 @@ export type DatabaseSchema = {
 		recurrence_end_source: Database['public']['Enums']['recurrence_end_reason'] | null;
 		recurrence_ends: string | null;
 		recurrence_pattern: Database['public']['Enums']['recurrence_pattern'] | null;
+		source: string | null;
+		source_calendar_event_id: string | null;
 		start_date: string | null;
 		status: Database['public']['Enums']['task_status'];
 		task_steps: string | null;
@@ -1006,6 +1101,10 @@ export const tableNames = [
 	'beta_signups',
 	'brain_dump_links',
 	'brain_dumps',
+	'calendar_analyses',
+	'calendar_analysis_events',
+	'calendar_analysis_preferences',
+	'calendar_project_suggestions',
 	'calendar_themes',
 	'calendar_webhook_channels',
 	'cron_logs',

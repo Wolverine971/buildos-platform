@@ -5,7 +5,7 @@
 // ==========================================
 import type { ProjectWithRelations } from '$lib/types/project';
 import type { BrainDump } from '.';
-import type { Database } from '$lib/database.types';
+import type { Database } from '@buildos/shared-types';
 
 type ProjectQuestionRow = Database['public']['Tables']['project_questions']['Row'];
 
