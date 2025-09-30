@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📚 Documentation System
+
+**START HERE**: `/docs/start-here.md` is your comprehensive documentation index with:
+
+- Quick start guides for new developers
+- Common tasks reference table
+- Complete documentation structure and organization
+- Search guide for finding specific information
+
+All technical documentation is organized under `/docs/`:
+
+- `/docs/technical/` - All technical documentation (architecture, API, development, deployment)
+- `/docs/prompts/` - AI prompt templates and architecture
+- `/docs/business/` - Business strategy and planning
+- `/docs/user-guide/` - End user documentation
+- `/docs/archive/` - Archived/outdated documentation
+
 ## 🚀 BuildOS Core Concepts
 
 ### What is BuildOS?
@@ -367,26 +384,36 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
 ### Documentation
 
-- `/docs/start-here.md` - **START HERE** - Complete documentation index
-- `/docs/prompts/` - All AI prompt templates
-- `/docs/design/` - Component and system design specs
-- `/docs/architecture/` - System architecture docs
+- `/docs/start-here.md` - **START HERE** - Complete documentation index and navigation guide
+- `/docs/technical/` - All technical documentation
+    - `architecture/` - System architecture and design decisions (ADRs)
+    - `api/` - API documentation and endpoint reference
+    - `development/` - Development guides, workflows, and performance docs
+    - `deployment/` - Deployment checklists and runbooks
+    - `database/` - Schema, RLS policies, and indexes
+    - `components/` - UI component standards and design system
+    - `services/` - Service layer documentation
+    - `testing/` - Testing strategy and patterns
+- `/docs/prompts/` - AI prompt templates and architecture
+- `/docs/business/` - Business strategy, brand, and communications
+- `/docs/user-guide/` - End user guides and feature documentation
+- `/docs/archive/` - Archived/outdated documentation (historical reference only)
 
 ### Core Code
 
-- `/src/lib/services/` - **Business logic** (brain dumps, projects, etc.)
+- `/src/lib/services/` - **Business logic** (brain dumps, projects, calendar, etc.)
 - `/src/lib/components/` - **UI components** (Svelte 5 with runes)
 - `/src/routes/api/` - **API endpoints** (brain dumps, projects, calendar)
 - `/src/lib/utils/` - **Utilities** (processors, validators, helpers)
 
 ### Brain Dump Specific
 
-- `/src/lib/components/brain-dump/` - Brain dump UI
-- `/src/lib/utils/braindump-*.ts` - Processing logic
-- `/docs/prompts/*/` - Prompt templates
-- `/src/routes/api/braindumps/` - API endpoints
+- `/src/lib/components/brain-dump/` - Brain dump UI components
+- `/src/lib/utils/braindump-*.ts` - Processing logic and validation
+- `/docs/prompts/brain-dump/` - Prompt templates organized by flow type
+- `/src/routes/api/braindumps/` - API endpoints (stream and stream-short)
 
 ### Database
 
-- `/supabase/migrations/` - Database schema changes
-- `/src/lib/database.schema.ts` - TypeScript types
+- `/supabase/migrations/` - Database schema changes and migrations
+- `/src/lib/database.schema.ts` - TypeScript types for all tables

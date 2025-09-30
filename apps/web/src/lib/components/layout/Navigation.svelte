@@ -38,19 +38,11 @@
 	let showUserMenu = false;
 	let showMobileMenu = false;
 	let loggingOut = false;
-	let currentPath = '';
 	let loadingLink = ''; // Track which link is currently loading
-	let unsubscribePage: (() => void) | null = null;
 	let logoutAttempts = 0; // Track logout attempts to prevent spam
 	let showBrainDumpModal = false;
 	let currentProject: any = null;
-
-	let videoLoaded = false;
-
-	// Add this function to handle video load
-	function handleVideoLoad() {
-		videoLoaded = true;
-	}
+	let previousPath = '';
 
 	// Navigation items
 	const NAV_ITEMS = [
@@ -63,6 +55,20 @@
 	$: needsOnboarding = user && (!completedOnboarding || onboardingProgress < 100);
 	$: onboardingUrgent = user && onboardingProgress < 50;
 	$: userName = user?.name || user?.email || '';
+
+	// Reactive tracking of current path - replaces page subscription for better performance
+	$: currentPath = $page.url.pathname;
+	$: {
+		// Handle path changes
+		if (currentPath !== previousPath) {
+			previousPath = currentPath;
+			loadingLink = ''; // Clear loading state when navigation completes
+			closeAllMenus();
+		}
+	}
+	// Extract current project from page data if on project page
+	$: currentProject =
+		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null;
 
 	// Enhanced logout handler with better error handling and prevention of spam clicks
 	async function handleSignOut() {
@@ -174,35 +180,15 @@
 	onMount(() => {
 		if (!browser) return;
 
-		unsubscribePage = page.subscribe(($page) => {
-			const newPath = $page.url.pathname;
-			if (newPath !== currentPath) {
-				currentPath = newPath;
-				loadingLink = ''; // Clear loading state when navigation completes
-				closeAllMenus();
-			}
-
-			// Check if we're on a project page and extract project data from page store
-			if (newPath.startsWith('/projects/') && $page.data?.project) {
-				currentProject = $page.data.project;
-			} else {
-				currentProject = null;
-			}
-		});
-
+		// Add event listeners
 		document.addEventListener('keydown', handleKeydown);
 		document.addEventListener('click', handleClickOutside);
-	});
 
-	onDestroy(() => {
-		if (!browser) return;
-
-		if (unsubscribePage) {
-			unsubscribePage();
-		}
-
-		document.removeEventListener('keydown', handleKeydown);
-		document.removeEventListener('click', handleClickOutside);
+		// Cleanup function
+		return () => {
+			document.removeEventListener('keydown', handleKeydown);
+			document.removeEventListener('click', handleClickOutside);
+		};
 	});
 </script>
 
@@ -222,40 +208,18 @@
 						class="flex items-center space-x-2 sm:space-x-3"
 						on:click={() => handleMenuItemClick('/')}
 					>
-						<!-- Video Icon (only show when not on homepage or when user is logged in) -->
+						<!-- Animated Logo Icon (only show when not on homepage or when user is logged in) -->
 						{#if $page.url.pathname !== '/' || user?.id}
-							<div class="relative">
-								<!-- Glow effect -->
-								<div
-									class="absolute -inset-1 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 rounded-lg blur opacity-40 animate-pulse"
-								></div>
-								<!-- Video/Image container -->
-								<div
-									class="relative bg-gradient-to-r from-blue-500 to-purple-500 p-0.5 rounded-lg shadow-lg"
-								>
-									<!-- Loading image (shown while video loads) -->
-									{#if !videoLoaded}
-										<img
-											src="/brain-bolt.png"
-											alt="BuildOS icon"
-											class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover bg-black"
-											style=""
-										/>
-									{/if}
-
-									<!-- Video (always rendered but hidden until loaded) -->
-									<video
-										autoplay
-										loop
-										muted
-										playsinline
-										on:loadeddata={handleVideoLoad}
-										class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover bg-black {!videoLoaded
-											? 'hidden'
-											: ''}"
-									>
-										<source src="/mountain-moving.mp4" type="video/mp4" />
-									</video>
+							<div class="relative logo-container">
+								<!-- Animated glow effect -->
+								<div class="logo-glow"></div>
+								<!-- Image with gradient border -->
+								<div class="logo-border">
+									<img
+										src="/brain-bolt.png"
+										alt="BuildOS icon"
+										class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover bg-black"
+									/>
 								</div>
 							</div>
 						{/if}
@@ -769,4 +733,47 @@
 />
 
 <style>
+	/* Optimized logo animation - replaces heavy video */
+	.logo-container {
+		position: relative;
+	}
+
+	.logo-glow {
+		position: absolute;
+		inset: -4px;
+		background: linear-gradient(90deg, rgb(96 165 250), rgb(168 85 247), rgb(96 165 250));
+		background-size: 200% 200%;
+		border-radius: 0.5rem;
+		filter: blur(4px);
+		opacity: 0.4;
+		animation: glow-pulse 3s ease-in-out infinite;
+	}
+
+	@keyframes glow-pulse {
+		0%,
+		100% {
+			opacity: 0.4;
+			background-position: 0% 50%;
+		}
+		50% {
+			opacity: 0.6;
+			background-position: 100% 50%;
+		}
+	}
+
+	.logo-border {
+		position: relative;
+		background: linear-gradient(135deg, rgb(59 130 246), rgb(147 51 234));
+		padding: 2px;
+		border-radius: 0.5rem;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	}
+
+	/* Disable animations for users who prefer reduced motion */
+	@media (prefers-reduced-motion: reduce) {
+		.logo-glow {
+			animation: none;
+			opacity: 0.4;
+		}
+	}
 </style>

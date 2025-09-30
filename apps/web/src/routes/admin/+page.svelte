@@ -491,6 +491,23 @@
 		<!-- Navigation Cards -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 			<a
+				href="/admin/llm-usage"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							LLM Usage
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							AI costs & performance
+						</p>
+					</div>
+				</div>
+			</a>
+
+			<a
 				href="/admin/users"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
 			>

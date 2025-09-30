@@ -19,11 +19,10 @@
 	import { X, LoaderCircle } from 'lucide-svelte';
 	import Button from '$components/ui/Button.svelte';
 
-	// Use unified store through transition layer
+	// Direct v2 store import (migration complete)
 	import { get } from 'svelte/store';
 	import {
 		brainDumpV2Store,
-		brainDumpActions,
 		// Import pre-computed derived stores
 		selectedProjectName,
 		hasUnsavedChanges,
@@ -32,7 +31,10 @@
 		enabledOperationsCount,
 		isProcessingActive,
 		hasParseResults
-	} from '$lib/stores/brain-dump-transition.store';
+	} from '$lib/stores/brain-dump-v2.store';
+
+	// Store actions are accessed via brainDumpV2Store methods
+	const brainDumpActions = brainDumpV2Store;
 
 	// FIXED: Use Svelte 5 $derived for massive performance improvement (was 20+ derived stores)
 	// This reduces overhead by ~50% - single reactive source instead of 20+ subscriptions
@@ -68,6 +70,7 @@
 	import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
 	import { page } from '$app/stores';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
+	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
 
 	// Processing notification is now managed through unified store
 
@@ -110,27 +113,10 @@
 	let recentDumps = $state<any[]>([]);
 	let newProjectDraftCount = $state(0);
 
-	// Recording state - use $state for mutable values
-	let mediaRecorder = $state<MediaRecorder | null>(null);
-	let stream = $state<MediaStream | null>(null);
-	let audioBlob = $state<Blob | null>(null);
-	let audioChunks = $state<Blob[]>([]);
-	let isCurrentlyRecording = $state(false);
-	let recordingStartTime = $state(0);
-	let recordingDuration = $state(0);
-	let recordingTimer: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
-
-	// Voice recognition - use $state for reactive values
+	// Voice recording state - now managed by VoiceRecordingService
 	let isVoiceSupported = $state(false);
-	let recognition: any = null; // API object reference should NOT be reactive
-	let recognitionInitialized = $state(false);
-	let reconnectTimeout: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
-	let silenceTimer: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
-	let isLiveTranscribing = $state(false);
-	let recognitionActive = $state(false);
-	let lastTranscriptTime = $state(0);
-	let accumulatedTranscript = $state('');
-	let finalTranscriptSinceLastStop = $state('');
+	let isCurrentlyRecording = $state(false);
+	let recordingDuration = $derived(voiceRecordingService.getRecordingDuration());
 
 	// Auto-save - use regular variable for timers (not reactive)
 	let autoSaveTimeout: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
@@ -287,19 +273,45 @@
 			}
 
 			brainDumpActions.selectProject(project);
-			brainDumpActions.setView('recording');
+			brainDumpActions.setModalView('recording');
 		} else {
 			// Start preloading critical components for other flows
 			preloadCriticalComponents();
-			brainDumpActions.setView('project-selection');
+			brainDumpActions.setModalView('project-selection');
 		}
 
-		// Check voice support
-		isVoiceSupported =
-			browser && 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+		// Initialize voice recording service
+		isVoiceSupported = voiceRecordingService.isVoiceSupported();
 
-		// Initialize speech recognition if available
-		initializeSpeechRecognition();
+		voiceRecordingService.initialize(
+			{
+				onTextUpdate: (text: string) => {
+					console.log('[BrainDumpModal] onTextUpdate callback fired:', {
+						textLength: text.length,
+						preview: text.substring(0, 100)
+					});
+					brainDumpActions.updateInputText(text);
+					debouncedAutoSave();
+				},
+				onError: (error: string) => {
+					brainDumpActions.setVoiceError(error);
+					brainDumpActions.setProcessingPhase('idle');
+					toastService.error(error);
+				},
+				onPhaseChange: (phase: 'idle' | 'transcribing') => {
+					brainDumpActions.setProcessingPhase(phase);
+				},
+				onPermissionGranted: () => {
+					brainDumpActions.setMicrophonePermission(true);
+				}
+			},
+			brainDumpService
+		);
+
+		brainDumpActions.setVoiceCapabilities({
+			canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+			capabilitiesChecked: true
+		});
 
 		// Load initial data in background
 		loadInitialData();
@@ -322,7 +334,9 @@
 
 					// Load draft for the selected project if exists
 					if (response.data.currentDraft?.brainDump) {
-						brainDumpActions.updateText(response.data.currentDraft.brainDump.content);
+						brainDumpActions.updateInputText(
+							response.data.currentDraft.brainDump.content
+						);
 						brainDumpActions.setSavedContent(
 							response.data.currentDraft.brainDump.content,
 							response.data.currentDraft.brainDump.id
@@ -412,81 +426,28 @@
 		// FIXED: Comprehensive memory cleanup to prevent leaks
 		console.log('[BrainDumpModal] Starting comprehensive cleanup');
 
-		// 1. Stop and cleanup speech recognition
-		stopRecognition();
-		if (recognition) {
+		// 0. Abort any active SSE/streaming connections
+		if (abortController) {
 			try {
-				recognition.onresult = null;
-				recognition.onerror = null;
-				recognition.onend = null;
-				recognition.abort();
+				console.log('[Cleanup] Aborting active streaming connection');
+				abortController.abort();
 			} catch (e) {
-				console.warn('[Cleanup] Error cleaning up recognition:', e);
+				console.warn('[Cleanup] Error aborting streaming connection:', e);
 			}
-			recognition = null;
+			abortController = null;
 		}
 
-		// 2. Clear ALL timeouts and intervals
-		if (reconnectTimeout) {
-			clearTimeout(reconnectTimeout);
-			reconnectTimeout = null;
-		}
-		if (silenceTimer) {
-			clearTimeout(silenceTimer);
-			silenceTimer = null;
-		}
+		// 1. Cleanup voice recording service
+		voiceRecordingService.cleanup();
+		isCurrentlyRecording = false;
+
+		// 2. Clear auto-save timeout
 		if (autoSaveTimeout) {
 			clearTimeout(autoSaveTimeout);
 			autoSaveTimeout = null;
 		}
-		if (recordingTimer) {
-			clearInterval(recordingTimer);
-			recordingTimer = null;
-		}
 
-		// 3. Stop and cleanup media recording
-		if (mediaRecorder) {
-			try {
-				if (mediaRecorder.state !== 'inactive') {
-					mediaRecorder.stop();
-				}
-				// Remove all event handlers
-				mediaRecorder.ondataavailable = null;
-				mediaRecorder.onstop = null;
-				mediaRecorder.onerror = null;
-				mediaRecorder.onstart = null;
-			} catch (e) {
-				console.warn('[Cleanup] Error cleaning up mediaRecorder:', e);
-			}
-			mediaRecorder = null;
-		}
-
-		// 4. Release media stream resources
-		if (stream) {
-			try {
-				stream.getTracks().forEach((track) => {
-					track.stop();
-					track.enabled = false;
-				});
-			} catch (e) {
-				console.warn('[Cleanup] Error stopping stream tracks:', e);
-			}
-			stream = null;
-		}
-
-		// 5. Clear audio data
-		audioChunks = [];
-		audioBlob = null;
-
-		// 6. Reset all state variables
-		isCurrentlyRecording = false;
-		recordingDuration = 0;
-		recordingStartTime = 0;
-		recognitionActive = false;
-		isLiveTranscribing = false;
-		accumulatedTranscript = '';
-		finalTranscriptSinceLastStop = '';
-		lastTranscriptTime = 0;
+		// 3. Reset state
 		isAutoSaving = false;
 		isHandingOff = false;
 
@@ -545,7 +506,7 @@
 			const response = await brainDumpService.getDraftForProject(selectedProjectId);
 
 			if (response?.data?.brainDump) {
-				brainDumpActions.updateText(response.data.brainDump.content);
+				brainDumpActions.updateInputText(response.data.brainDump.content);
 				brainDumpActions.setSavedContent(
 					response.data.brainDump.content,
 					response.data.brainDump.id
@@ -554,23 +515,23 @@
 				if (response.data.brainDump.status === 'parsed' && response.data.parseResults) {
 					try {
 						brainDumpActions.setParseResults(response.data.parseResults);
-						brainDumpActions.setView('recording');
+						brainDumpActions.setModalView('recording');
 						// showingParseResults is handled automatically
 						// brainDumpActions.setShowingParseResults(true);
 					} catch (error) {
 						console.error('Invalid parse results:', error);
 						await brainDumpService.revertToPending(response.data.brainDump.id);
-						brainDumpActions.setView('recording');
+						brainDumpActions.setModalView('recording');
 					}
 				} else {
-					brainDumpActions.setView('recording');
+					brainDumpActions.setModalView('recording');
 				}
 			} else {
-				brainDumpActions.setView('recording');
+				brainDumpActions.setModalView('recording');
 			}
 		} catch (error) {
 			console.error('Error loading draft:', error);
-			brainDumpActions.setView('recording');
+			brainDumpActions.setModalView('recording');
 		}
 	}
 
@@ -603,18 +564,19 @@
 		if ($hasUnsavedChanges) {
 			autoSave();
 		}
-		brainDumpActions.setView('project-selection');
+		brainDumpActions.setModalView('project-selection');
 		brainDumpActions.clearParseResults();
 	}
 
 	function handleTextChange(event: CustomEvent) {
-		brainDumpActions.updateText(event.detail);
+		brainDumpActions.updateInputText(event.detail);
 		debouncedAutoSave();
 	}
 
-	// FIXED: Add save operation tracking to prevent race conditions
+	// CRITICAL FIX: Add save operation mutex to prevent race conditions
 	let saveOperationId = 0; // Simple counter, doesn't need to be reactive
 	let activeSavePromise: Promise<any> | null = null; // Promise references should NOT be reactive
+	let saveMutex = false; // Mutex flag to prevent concurrent saves
 
 	// Auto-save functionality
 	function debouncedAutoSave() {
@@ -630,34 +592,36 @@
 	}
 
 	async function autoSave() {
-		// FIXED: Prevent concurrent saves and track active save operations
+		// CRITICAL FIX: Check mutex first to prevent race conditions
 		if (!componentMounted || !$hasUnsavedChanges) return;
 
-		// If there's already a save in progress, wait for it to complete
-		if (activeSavePromise) {
-			console.log('[AutoSave] Waiting for existing save to complete');
-			try {
-				await activeSavePromise;
-			} catch (e) {
-				// Previous save failed, continue with new save
-			}
+		// Check mutex - if already saving, skip this call
+		if (saveMutex) {
+			console.log('[AutoSave] Save already in progress (mutex locked), skipping');
+			return;
 		}
 
-		// Increment operation ID to track this specific save
-		const currentOperationId = ++saveOperationId;
-		isAutoSaving = true;
-
-		// Create and track the save promise
-		activeSavePromise = performSave(currentOperationId);
+		// Acquire mutex immediately
+		saveMutex = true;
 
 		try {
+			// Increment operation ID to track this specific save
+			const currentOperationId = ++saveOperationId;
+			isAutoSaving = true;
+
+			// Create and track the save promise
+			activeSavePromise = performSave(currentOperationId);
+
 			await activeSavePromise;
-		} finally {
+
 			// Only clear if this was the last operation
 			if (saveOperationId === currentOperationId) {
 				activeSavePromise = null;
 			}
+		} finally {
 			isAutoSaving = false;
+			// CRITICAL: Always release mutex
+			saveMutex = false;
 		}
 	}
 
@@ -927,7 +891,7 @@
 						: undefined
 			});
 
-			brainDumpActions.setView('success');
+			brainDumpActions.setModalView('success');
 
 			// Skip global invalidation - project data will be refreshed when navigating
 			// or updated via real-time subscriptions if staying on the same page
@@ -944,7 +908,7 @@
 		}
 	}
 
-	// Voice recording functions (keeping same implementation but optimized)
+	// Voice recording functions - now using VoiceRecordingService
 	async function startRecording() {
 		if (!isVoiceSupported) return;
 
@@ -952,391 +916,32 @@
 			brainDumpActions.setVoiceError('');
 			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
 
-			try {
-				stream = await navigator.mediaDevices.getUserMedia({
-					audio: true
-				});
+			await voiceRecordingService.startRecording(inputText);
 
-				// Only set permission granted after successful stream
-				brainDumpActions.setMicrophonePermission(true);
-			} catch (permissionError) {
-				console.error('Permission error:', permissionError);
-				brainDumpActions.setVoiceError(
-					'Microphone access denied. Please enable in Settings.'
-				);
-				brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
-				return;
-			}
-
-			// Reset transcript accumulator for new recording session
-			finalTranscriptSinceLastStop = '';
-			accumulatedTranscript = '';
-
-			// Add line break if there's existing content
-			if (inputText.trim()) {
-				brainDumpActions.updateText(inputText + '\n\n');
-			}
-
-			mediaRecorder = new MediaRecorder(stream);
-			audioChunks = [];
-
-			mediaRecorder.ondataavailable = (event) => {
-				if (event.data.size > 0) {
-					audioChunks.push(event.data);
-				}
-			};
-
-			mediaRecorder.onstop = async () => {
-				audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-				stream?.getTracks().forEach((track) => track.stop());
-
-				// Store the live transcript before processing
-				const capturedLiveTranscript = finalTranscriptSinceLastStop.trim();
-
-				const shouldTranscribeAudio =
-					audioBlob.size > 1000 && // Minimum size to avoid empty recordings
-					(!canUseLiveTranscript || // iOS doesn't support live transcription
-						!capturedLiveTranscript || // No live transcription captured
-						capturedLiveTranscript.length < 10); // Very short live transcription
-
-				if (shouldTranscribeAudio) {
-					console.log('Transcribing audio file...', {
-						blobSize: audioBlob.size,
-						hasLiveTranscript: !!capturedLiveTranscript,
-						liveTranscriptLength: capturedLiveTranscript.length
-					});
-					// Pass the captured live transcript to avoid duplication
-					await transcribeAudio(audioBlob, capturedLiveTranscript);
-				} else if (capturedLiveTranscript) {
-					const currentText = inputText;
-
-					// Check if the live transcript hasn't already been added
-					if (!currentText.endsWith(capturedLiveTranscript)) {
-						const separator = currentText.trim() ? ' ' : '';
-						brainDumpActions.updateText(
-							currentText + separator + capturedLiveTranscript
-						);
-						// Add a small delay before auto-saving to ensure text is visible first
-						setTimeout(() => {
-							if (componentMounted) {
-								debouncedAutoSave();
-							}
-						}, 100);
-					}
-				}
-
-				// Reset the transcription accumulators for next recording
-				finalTranscriptSinceLastStop = '';
-				accumulatedTranscript = '';
-			};
-
-			mediaRecorder.start();
 			isCurrentlyRecording = true;
-			recordingStartTime = Date.now();
-			startRecordingTimer();
-			brainDumpActions.setMicrophonePermission(true);
-
-			// Start live transcription if available
-			startRecognition();
-
 			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
 		} catch (error) {
 			console.error('Recording error:', error);
-			brainDumpActions.setVoiceError(
-				'Unable to access microphone. Please check your permissions.'
-			);
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: 'Unable to access microphone. Please check your permissions.';
+			brainDumpActions.setVoiceError(errorMessage);
 			isCurrentlyRecording = false;
 			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
 		}
 	}
 
-	function stopRecording() {
-		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-			mediaRecorder.stop();
-			isCurrentlyRecording = false;
-			stopRecordingTimer();
-			stopRecognition();
-		}
-	}
-
-	function startRecordingTimer() {
-		recordingTimer = setInterval(() => {
-			recordingDuration = Math.floor((Date.now() - recordingStartTime) / 1000);
-		}, 100);
-	}
-
-	function stopRecordingTimer() {
-		if (recordingTimer) {
-			clearInterval(recordingTimer);
-			recordingTimer = null;
-			recordingDuration = 0;
-		}
-	}
-
-	async function transcribeAudio(audioBlob: Blob, capturedLiveTranscript: string = '') {
-		brainDumpActions.setProcessingPhase('transcribing');
+	async function stopRecording() {
+		if (!isCurrentlyRecording) return;
 
 		try {
-			const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-			const response = await brainDumpService.transcribeAudio(audioFile);
-
-			if (response?.transcript) {
-				const currentText = inputText;
-				const newTranscript = response.transcript.trim();
-
-				if (capturedLiveTranscript) {
-					const liveText = capturedLiveTranscript.toLowerCase();
-					const audioText = newTranscript.toLowerCase();
-
-					const similarity = calculateSimilarity(liveText, audioText);
-
-					if (similarity > 0.8) {
-						console.log(
-							'Skipping audio transcription - already captured via live transcription'
-						);
-					} else {
-						// Remove the live transcript if it was added and replace with audio
-						let baseText = currentText;
-						if (currentText.endsWith(capturedLiveTranscript)) {
-							baseText = currentText.slice(0, -capturedLiveTranscript.length).trim();
-						}
-
-						const separator = baseText ? ' ' : '';
-						brainDumpActions.updateText(baseText + separator + newTranscript);
-
-						// Add a small delay before auto-saving to ensure text is visible first
-						setTimeout(() => {
-							if (componentMounted) {
-								debouncedAutoSave();
-							}
-						}, 100);
-						console.log(
-							'Replaced live transcription with more accurate audio transcription'
-						);
-					}
-				} else {
-					// No live transcript, check for duplicates against existing text
-					const lastPortion = currentText.slice(-newTranscript.length).trim();
-
-					if (lastPortion === newTranscript) {
-						console.log('Skipping exact duplicate transcription');
-					} else {
-						const separator = currentText.trim() ? ' ' : '';
-						brainDumpActions.updateText(currentText + separator + newTranscript);
-						// Add a small delay before auto-saving to ensure text is visible first
-						setTimeout(() => {
-							if (componentMounted) {
-								debouncedAutoSave();
-							}
-						}, 100);
-					}
-				}
-			} else {
-				console.warn('No transcript received from transcription service');
-			}
-
-			brainDumpActions.setProcessingPhase('idle');
+			await voiceRecordingService.stopRecording(inputText);
+			isCurrentlyRecording = false;
 		} catch (error) {
-			console.error('Transcription error:', error);
-			brainDumpActions.setVoiceError(
-				error instanceof Error ? error.message : 'Failed to transcribe audio'
-			);
-			brainDumpActions.setProcessingPhase('idle');
+			console.error('Stop recording error:', error);
+			isCurrentlyRecording = false;
 		}
-	}
-
-	// Helper function to calculate similarity between two strings
-	function calculateSimilarity(str1: string, str2: string): number {
-		if (str1.length === 0 || str2.length === 0) return 0;
-
-		const longer = str1.length > str2.length ? str1 : str2;
-		const shorter = str1.length > str2.length ? str2 : str1;
-
-		if (longer.includes(shorter)) {
-			return shorter.length / longer.length;
-		}
-
-		let maxOverlap = 0;
-		for (let i = 1; i <= shorter.length; i++) {
-			if (longer.includes(shorter.slice(0, i))) {
-				maxOverlap = i;
-			}
-		}
-
-		return maxOverlap / longer.length;
-	}
-
-	// Speech recognition functions
-	function initializeSpeechRecognition() {
-		if (!browser || recognitionInitialized) return;
-
-		if (isIOS()) {
-			brainDumpActions.setVoiceCapabilities({ canUseLiveTranscript: false });
-			brainDumpActions.setVoiceCapabilities({ capabilitiesChecked: true });
-			recognitionInitialized = true;
-			return;
-		}
-
-		const SpeechRecognition =
-			(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-		if (!SpeechRecognition) {
-			brainDumpActions.setVoiceCapabilities({ canUseLiveTranscript: false });
-			brainDumpActions.setVoiceCapabilities({ capabilitiesChecked: true });
-			recognitionInitialized = true;
-			return;
-		}
-
-		recognition = new SpeechRecognition();
-		recognition.continuous = true;
-		recognition.interimResults = true;
-		recognition.lang = 'en-US';
-
-		recognition.onresult = handleRecognitionResult;
-		recognition.onerror = handleRecognitionError;
-		recognition.onend = handleRecognitionEnd;
-
-		brainDumpActions.setVoiceCapabilities({ canUseLiveTranscript: true });
-		brainDumpActions.setVoiceCapabilities({ capabilitiesChecked: true });
-		recognitionInitialized = true;
-	}
-
-	function handleRecognitionResult(event: any) {
-		let interimTranscript = '';
-		let finalTranscript = '';
-
-		for (let i = event.resultIndex; i < event.results.length; i++) {
-			const transcript = event.results[i][0].transcript;
-			if (event.results[i].isFinal) {
-				finalTranscript += transcript;
-			} else {
-				interimTranscript += transcript;
-			}
-		}
-
-		if (finalTranscript || interimTranscript) {
-			lastTranscriptTime = Date.now();
-			resetSilenceTimer();
-		}
-
-		if (finalTranscript) {
-			finalTranscriptSinceLastStop += finalTranscript;
-			accumulatedTranscript = finalTranscriptSinceLastStop + interimTranscript;
-		} else {
-			accumulatedTranscript = finalTranscriptSinceLastStop + interimTranscript;
-		}
-
-		isLiveTranscribing = true;
-	}
-
-	function handleRecognitionError(event: any) {
-		console.error('Speech recognition error:', event.error);
-		if (event.error === 'not-allowed') {
-			brainDumpActions.setVoiceError(
-				'Microphone access denied. Please check your browser permissions.'
-			);
-		}
-		isLiveTranscribing = false;
-	}
-
-	function handleRecognitionEnd() {
-		recognitionActive = false;
-		isLiveTranscribing = false;
-
-		const hasSubstantialTranscription = finalTranscriptSinceLastStop.trim().length > 5;
-
-		if (hasSubstantialTranscription) {
-			const currentText = inputText;
-			const transcriptToAdd = finalTranscriptSinceLastStop.trim();
-			const textEndsPortion = currentText.slice(-transcriptToAdd.length).trim();
-
-			if (textEndsPortion !== transcriptToAdd) {
-				let newText;
-				if (currentText.trim()) {
-					const lastChar = currentText.slice(-1);
-					const separator = lastChar === '\n' ? '' : ' ';
-					newText = currentText + separator + transcriptToAdd;
-				} else {
-					newText = transcriptToAdd;
-				}
-
-				brainDumpActions.updateText(newText);
-				debouncedAutoSave();
-			}
-		}
-
-		if (isCurrentlyRecording && recognition) {
-			reconnectRecognition();
-		}
-	}
-
-	function startRecognition() {
-		if (!recognitionInitialized) {
-			initializeSpeechRecognition();
-		}
-
-		if (recognition && !recognitionActive) {
-			try {
-				if (!isCurrentlyRecording) {
-					finalTranscriptSinceLastStop = '';
-					accumulatedTranscript = '';
-				}
-
-				recognition.start();
-				recognitionActive = true;
-				isLiveTranscribing = true;
-				resetSilenceTimer();
-			} catch (error) {
-				console.error('Failed to start recognition:', error);
-			}
-		}
-	}
-
-	function stopRecognition() {
-		if (recognition && recognitionActive) {
-			try {
-				recognition.stop();
-				recognitionActive = false;
-				isLiveTranscribing = false;
-			} catch (error) {
-				console.error('Failed to stop recognition:', error);
-			}
-		}
-
-		if (silenceTimer) {
-			clearTimeout(silenceTimer);
-			silenceTimer = null;
-		}
-	}
-
-	function reconnectRecognition() {
-		if (reconnectTimeout) {
-			clearTimeout(reconnectTimeout);
-			reconnectTimeout = null;
-		}
-
-		reconnectTimeout = setTimeout(() => {
-			if (isCurrentlyRecording && !recognitionActive) {
-				startRecognition();
-			}
-			reconnectTimeout = null;
-		}, 100);
-	}
-
-	function resetSilenceTimer() {
-		if (silenceTimer) {
-			clearTimeout(silenceTimer);
-		}
-
-		silenceTimer = setTimeout(() => {
-			if (isCurrentlyRecording && Date.now() - lastTranscriptTime > 1000) {
-				isLiveTranscribing = false;
-			}
-		}, 1500);
-	}
-
-	function isIOS() {
-		if (!browser) return false;
-		return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 	}
 
 	// Success handlers
@@ -1381,7 +986,7 @@
 
 	function handleStartNew() {
 		brainDumpActions.reset();
-		brainDumpActions.setView('project-selection');
+		brainDumpActions.setModalView('project-selection');
 	}
 
 	// Keep edit operation handler for potential future use
@@ -1521,8 +1126,6 @@
 						hasUnsavedChanges={$hasUnsavedChanges}
 						{isVoiceSupported}
 						{isCurrentlyRecording}
-						{isLiveTranscribing}
-						{accumulatedTranscript}
 						{recordingDuration}
 						{displayedQuestions}
 						showOverlay={!!showProcessingOverlay}
@@ -1579,7 +1182,7 @@
 							placeholder="Start typing or use voice recording..."
 							value={inputText}
 							on:input={(e) => {
-								brainDumpActions.updateText(e.currentTarget.value);
+								brainDumpActions.updateInputText(e.currentTarget.value);
 								debouncedAutoSave();
 							}}
 						></textarea>

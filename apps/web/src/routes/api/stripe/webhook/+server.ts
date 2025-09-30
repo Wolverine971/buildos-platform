@@ -13,8 +13,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (!STRIPE_WEBHOOK_SECRET) {
-			console.error('Webhook secret not configured');
-			return json({ error: 'Webhook secret not configured' }, { status: 500 });
+			console.error(
+				'CRITICAL: Stripe webhook secret not configured - rejecting all webhooks'
+			);
+			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		// Get raw body and signature

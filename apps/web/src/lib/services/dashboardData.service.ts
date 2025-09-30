@@ -186,10 +186,7 @@ export class DashboardDataService extends ApiService {
 		updates: Partial<Task>,
 		projectId?: string
 	): Promise<TaskResponse> {
-		// Apply optimistic update immediately
-		const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
-
-		// Try to find the task in current state to get project_id
+		// Try to find the task BEFORE applying optimistic update to capture project_id
 		const currentState = dashboardStore.getState();
 		const task = this.findTaskInAllLists(currentState, taskId);
 
@@ -200,14 +197,15 @@ export class DashboardDataService extends ApiService {
 			console.error(
 				`[DashboardDataService] Cannot update task ${taskId}: project_id not found. Task may have been removed from lists due to date change.`
 			);
-			// Since we can't find the project_id, we can't make the API call
-			// But we'll keep the optimistic update since the UI already reflects the change
-			// The next dashboard refresh will sync everything properly
+			// Don't apply optimistic update if we can't make the API call
 			return {
 				success: false,
 				message: 'Task project information not available. Please refresh the dashboard.'
 			};
 		}
+
+		// NOW apply optimistic update after we have project_id
+		const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
 
 		const result = await this.patch<Task>(
 			`/projects/${taskProjectId}/tasks/${taskId}`,

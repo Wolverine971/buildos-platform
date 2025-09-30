@@ -252,7 +252,12 @@
 			aria-label="{isExpanded ? 'Collapse' : 'Expand'} project details"
 		>
 			<!-- Left side: Project title -->
-			<h1 id="project-title" class="project-title">
+			<h1
+				id="project-title"
+				class="project-title"
+				data-project-name
+				style="--project-name: project-name-{project?.id};"
+			>
 				{project?.name}
 			</h1>
 

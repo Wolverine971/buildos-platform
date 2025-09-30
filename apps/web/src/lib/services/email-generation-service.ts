@@ -638,7 +638,8 @@ Generate the email body now.`;
 				profile: 'balanced',
 				systemPrompt,
 				temperature: EMAIL_CONFIG.llm.temperature,
-				maxTokens: EMAIL_CONFIG.llm.maxTokens
+				maxTokens: EMAIL_CONFIG.llm.maxTokens,
+				operationType: 'email_generation'
 			});
 
 			if (!generatedEmail) {

@@ -191,6 +191,12 @@
 			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
 		},
 		{
+			"file": "src/lib/services/llm-usage.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["LLMUsageService"]
+		},
+		{
 			"file": "src/lib/services/onboardingClient.service.ts",
 			"type": "service",
 			"components": [],
@@ -311,6 +317,12 @@
 			"exports": ["VisitorService", "visitorService"]
 		},
 		{
+			"file": "src/lib/services/voiceRecording.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["VoiceRecordingService", "voiceRecordingService"]
+		},
+		{
 			"file": "src/lib/stores/backgroundJobs.ts",
 			"type": "store",
 			"components": [],
@@ -321,12 +333,6 @@
 				"completedJobs",
 				"failedJobs"
 			]
-		},
-		{
-			"file": "src/lib/stores/brain-dump-transition.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["brainDumpActions", "isUsingNewStore", "setUseNewStore"]
 		},
 		{
 			"file": "src/lib/stores/brain-dump-v2.store.ts",
@@ -353,43 +359,10 @@
 			]
 		},
 		{
-			"file": "src/lib/stores/brain-dump.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"brainDumpStore",
-				"isNewProject",
-				"selectedProjectName",
-				"hasUnsavedChanges",
-				"canParse",
-				"canApply",
-				"enabledOperationsCount",
-				"hasOperationErrors",
-				"criticalErrors",
-				"operationErrorSummary"
-			]
-		},
-		{
 			"file": "src/lib/stores/brainDumpPreferences.ts",
 			"type": "store",
 			"components": [],
 			"exports": ["brainDumpAutoAccept"]
-		},
-		{
-			"file": "src/lib/stores/brainDumpProcessing.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"processingNotificationStore",
-				"processingNotificationActions",
-				"isProcessingVisible",
-				"isProcessingMinimized",
-				"isProcessingActive",
-				"hasParseResults",
-				"processingStatus",
-				"canAutoAccept",
-				"default"
-			]
 		},
 		{
 			"file": "src/lib/stores/briefPreferences.ts",

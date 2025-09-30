@@ -75,7 +75,8 @@ export class MainBriefGenerator {
 						? 'balanced'
 						: 'quality',
 				temperature: 0.7,
-				maxTokens: 4096
+				maxTokens: 4096,
+				operationType: 'daily_brief_main'
 			});
 
 			// Extract insights

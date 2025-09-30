@@ -12,6 +12,10 @@ const STORAGE_VERSION = 1;
 const STORAGE_KEY = 'brain-dump-unified-state';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+// CRITICAL: Module-level mutex to prevent race conditions at event loop level
+// This ensures atomic check-and-set even with concurrent async calls
+let processingMutexLock = false;
+
 // Unified state interface with domain separation
 export interface UnifiedBrainDumpState {
 	// UI Domain - Visual state and component behavior
@@ -676,27 +680,39 @@ function createBrainDumpV2Store() {
 			selectedProject?: any;
 			displayedQuestions?: DisplayedBrainDumpQuestion[];
 		}) => {
-			// FIXED: Atomic mutex acquisition to prevent race conditions
+			// CRITICAL FIX: Check module-level mutex FIRST (event-loop atomic)
+			if (processingMutexLock) {
+				console.warn('[Store] Processing mutex already locked (module-level check)', {
+					timestamp: Date.now()
+				});
+				return false;
+			}
+
+			// Acquire module-level mutex immediately
+			processingMutexLock = true;
+
+			// Double-check store-level mutex for consistency
 			let mutexAcquired = false;
 
-			// Use update to atomically check and set mutex
+			// Use update to check and set store mutex
 			update((state) => {
 				if (state.processing.mutex) {
-					// Mutex already held, don't update state
+					// Mutex already held at store level, release module mutex
 					console.warn(
-						'[Store] Processing mutex already held, rejecting duplicate request',
+						'[Store] Processing mutex already held (store-level check), rejecting duplicate request',
 						{
 							currentPhase: state.processing.phase,
 							startedAt: state.processing.startedAt
 						}
 					);
+					processingMutexLock = false; // Release module mutex
 					return state;
 				}
 
 				// Acquire mutex atomically
 				mutexAcquired = true;
 				console.log(
-					'[Store] Acquired processing mutex, starting processing with config:',
+					'[Store] Acquired processing mutex (both levels), starting processing with config:',
 					config
 				);
 
@@ -711,6 +727,7 @@ function createBrainDumpV2Store() {
 
 			// If we didn't acquire the mutex, return false
 			if (!mutexAcquired) {
+				processingMutexLock = false; // Release module mutex
 				return false;
 			}
 
@@ -765,9 +782,12 @@ function createBrainDumpV2Store() {
 			return true;
 		},
 
-		completeProcessing: () =>
+		completeProcessing: () => {
+			console.log('[Store] Completing processing, releasing both mutexes');
+			// CRITICAL: Release module-level mutex
+			processingMutexLock = false;
+
 			update((state) => {
-				console.log('[Store] Completing processing, releasing mutex');
 				return {
 					...state,
 					processing: {
@@ -777,12 +797,16 @@ function createBrainDumpV2Store() {
 						startedAt: null
 					}
 				};
-			}),
+			});
+		},
 
 		// ADDED: Emergency mutex release in case of errors
-		releaseMutex: () =>
+		releaseMutex: () => {
+			console.warn('[Store] Emergency mutex release (both levels)');
+			// CRITICAL: Release module-level mutex
+			processingMutexLock = false;
+
 			update((state) => {
-				console.warn('[Store] Emergency mutex release');
 				return {
 					...state,
 					processing: {
@@ -790,7 +814,8 @@ function createBrainDumpV2Store() {
 						mutex: false
 					}
 				};
-			}),
+			});
+		},
 
 		setProcessingPhase: (phase: UnifiedBrainDumpState['processing']['phase']) =>
 			update((state) => ({

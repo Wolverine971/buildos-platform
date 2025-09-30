@@ -5,7 +5,6 @@
 	import type { Project } from '$lib/types/project';
 
 	export let projects: Project[] = [];
-	export let loadingProjectId: string = '';
 	export let projectBriefsMap: Map<string, any> = new Map();
 
 	const dispatch = createEventDispatcher<{
@@ -13,7 +12,8 @@
 		viewBrief: any;
 	}>();
 
-	function handleProjectClick(projectId: string, event?: Event) {
+	function handleCardClick(event: MouseEvent, projectId: string) {
+		// Only track the click, don't prevent default navigation
 		dispatch('projectClick', { projectId, event });
 	}
 
@@ -25,15 +25,9 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 	{#each projects as project (project.id)}
 		<div
-			class={`group block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden ${loadingProjectId === project.id ? 'pulse' : ''} ${project.status === 'archived' ? 'archived-card' : ''}`}
-			on:click={(e) => handleProjectClick(project.id, e)}
-			role="button"
-			tabindex="0"
-			on:keydown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					handleProjectClick(project.id, e);
-				}
-			}}
+			class={`group bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden ${project.status === 'archived' ? 'archived-card' : ''}`}
+			on:click={(e) => handleCardClick(e, project.id)}
+			role="presentation"
 		>
 			<ProjectCard
 				{project}

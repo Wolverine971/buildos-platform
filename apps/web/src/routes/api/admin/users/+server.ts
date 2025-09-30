@@ -40,7 +40,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// Apply filters
 		if (search) {
-			query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+			// Sanitize search input to prevent SQL injection
+			// Escape special characters: %, _, \
+			const sanitizedSearch = search.replace(/[\\%_]/g, '\\$&');
+			query = query.or(`email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`);
 		}
 
 		if (adminFilter === 'admin') {
@@ -175,32 +178,46 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 			return ApiResponse.badRequest('User ID is required');
 		}
 
+		// Whitelist allowed fields to prevent privilege escalation
+		const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'completed_onboarding'];
+		const sanitizedUpdates = Object.keys(updates)
+			.filter((key) => ALLOWED_FIELDS.includes(key))
+			.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
+
+		// Ensure we have at least one field to update
+		if (Object.keys(sanitizedUpdates).length === 0) {
+			return ApiResponse.badRequest('No valid fields to update');
+		}
+
 		const { data, error } = await supabase
 			.from('users')
-			.update(updates)
+			.update(sanitizedUpdates)
 			.eq('id', userId)
 			.select()
 			.single();
 
 		if (error) throw error;
 
-		if (updates.is_admin) {
-			const { error: insertAdminUserError } = await supabase.from('admin_users').insert({
-				user_id: userId,
-				granted_by: user.id
-			});
+		// Update admin_users table if is_admin field was modified
+		if ('is_admin' in sanitizedUpdates) {
+			if (sanitizedUpdates.is_admin) {
+				const { error: insertAdminUserError } = await supabase.from('admin_users').insert({
+					user_id: userId,
+					granted_by: user.id
+				});
 
-			if (insertAdminUserError) {
-				if (insertAdminUserError) throw insertAdminUserError;
-			}
-		} else {
-			const { error: deleteAdminUserError } = await supabase
-				.from('admin_users')
-				.delete()
-				.eq('user_id', userId);
+				if (insertAdminUserError) {
+					if (insertAdminUserError) throw insertAdminUserError;
+				}
+			} else {
+				const { error: deleteAdminUserError } = await supabase
+					.from('admin_users')
+					.delete()
+					.eq('user_id', userId);
 
-			if (deleteAdminUserError) {
-				if (deleteAdminUserError) throw deleteAdminUserError;
+				if (deleteAdminUserError) {
+					if (deleteAdminUserError) throw deleteAdminUserError;
+				}
 			}
 		}
 

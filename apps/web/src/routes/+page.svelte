@@ -133,7 +133,6 @@
 	{:else}
 		<!-- Preload critical landing page resources -->
 		<link rel="preload" href="/s-brain-bolt.webp" as="image" type="image/webp" />
-		<link rel="preload" href="/mountain-moving.mp4" as="video" type="video/mp4" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 	{/if}

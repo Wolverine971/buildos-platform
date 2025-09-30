@@ -10,7 +10,6 @@ const supabaseServiceKey = process.env.PRIVATE_SUPABASE_SERVICE_KEY;
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error("Missing Supabase environment variables");
 }
-console.log("supabaseServiceKey", supabaseServiceKey);
 
 export const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 

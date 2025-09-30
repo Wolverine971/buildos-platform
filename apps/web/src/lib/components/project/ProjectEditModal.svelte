@@ -670,21 +670,6 @@
 			0 2px 4px 0 rgba(0, 0, 0, 0.2);
 	}
 
-	/* Smooth pulse animation */
-	@keyframes subtle-pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.5;
-		}
-	}
-
-	:global(.animate-pulse) {
-		animation: subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	}
-
 	/* Premium gradient animations */
 	:global(.modal-content .bg-gradient-to-r) {
 		background-size: 200% 200%;

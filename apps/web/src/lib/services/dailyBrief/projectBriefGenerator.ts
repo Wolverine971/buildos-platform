@@ -258,7 +258,9 @@ export class ProjectBriefGenerator {
 			userId,
 			profile: 'balanced',
 			temperature: 0.7,
-			maxTokens: 2048
+			maxTokens: 2048,
+			operationType: 'daily_brief',
+			projectId: project.id
 		});
 
 		// Generate condensed version if needed
@@ -403,7 +405,9 @@ Keep it under ${this.sizeConfig.condensedMaxChars} characters.`;
 				userId,
 				profile: 'speed',
 				temperature: 0.5,
-				maxTokens: 512
+				maxTokens: 512,
+				operationType: 'daily_brief_condensed',
+				projectId: project.id
 			});
 
 			return this.truncate(condensed, this.sizeConfig.condensedMaxChars);

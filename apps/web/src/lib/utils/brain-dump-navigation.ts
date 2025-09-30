@@ -4,11 +4,9 @@
  * Optimizes user experience based on context
  */
 
-import { get } from 'svelte/store';
-import { page } from '$app/stores';
 import { goto } from '$app/navigation';
 import { toastService } from '$lib/stores/toast.store';
-import { brainDumpActions } from '$lib/stores/brain-dump-transition.store';
+import { brainDumpV2Store as brainDumpActions } from '$lib/stores/brain-dump-v2.store';
 
 export interface RefreshDecision {
 	needsRefresh: boolean;
@@ -92,7 +90,7 @@ export async function isRealTimeSyncActive(projectId: string): Promise<boolean> 
 	try {
 		// Dynamic import to avoid circular dependencies
 		const { RealtimeProjectService } = await import('$lib/services/realtimeProject.service');
-		return RealtimeProjectService.isInitialized() && RealtimeProjectService.isConnected();
+		return RealtimeProjectService.isInitialized();
 	} catch (error) {
 		console.warn('Could not check real-time sync status:', error);
 		return false;
@@ -125,7 +123,7 @@ export async function smartNavigateToProject(
 			});
 
 			// Hide notification without full reset
-			brainDumpActions.hideNotification();
+			brainDumpActions.closeNotification();
 
 			// Trigger soft refresh if real-time sync not active
 			const syncActive = await isRealTimeSyncActive(projectId);
@@ -213,11 +211,7 @@ export async function handleSeamlessProjectUpdate(
 
 		if (options.showToast) {
 			toastService.info('📥 Updates available - refresh to see changes', {
-				duration: 4000,
-				action: {
-					label: 'Refresh',
-					onClick: () => window.location.reload()
-				}
+				duration: 4000
 			});
 		}
 	}

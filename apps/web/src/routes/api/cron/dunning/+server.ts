@@ -4,12 +4,31 @@ import type { RequestHandler } from './$types';
 import { DunningService } from '$lib/services/dunning-service';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { timingSafeEqual } from 'crypto';
+
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function constantTimeCompare(a: string, b: string): boolean {
+	try {
+		// First check lengths - if different, fail fast but still in constant time
+		if (a.length !== b.length) {
+			return false;
+		}
+		// Use crypto.timingSafeEqual for constant-time comparison
+		return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
+	} catch {
+		return false;
+	}
+}
 
 // Vercel cron jobs use GET requests
 export const GET: RequestHandler = async ({ request }) => {
 	// Verify cron secret (Vercel adds this header)
 	const authHeader = request.headers.get('authorization');
-	if (!authHeader || authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
+	const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
+
+	if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 

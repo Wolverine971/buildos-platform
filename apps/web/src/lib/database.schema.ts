@@ -1,5 +1,5 @@
-// Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-09-30T07:53:02.955Z
+// src/lib/database.schema.ts
+// Generated on: 2025-09-30T13:56:44.836Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -536,6 +536,58 @@ export type DatabaseSchema = {
 		prompt_text: string | null;
 		purpose: string | null;
 		title: string | null;
+	};
+	llm_usage_logs: {
+		brain_dump_id: string | null;
+		brief_id: string | null;
+		completion_tokens: number;
+		created_at: string;
+		error_message: string | null;
+		id: string;
+		input_cost_usd: number;
+		max_tokens: number | null;
+		metadata: Json | null;
+		model_requested: string;
+		model_used: string;
+		openrouter_cache_status: string | null;
+		openrouter_request_id: string | null;
+		operation_type: Database['public']['Enums']['llm_operation_type'];
+		output_cost_usd: number;
+		profile: string | null;
+		project_id: string | null;
+		prompt_tokens: number;
+		provider: string | null;
+		rate_limit_remaining: number | null;
+		request_completed_at: string;
+		request_started_at: string;
+		response_time_ms: number;
+		status: Database['public']['Enums']['llm_request_status'];
+		streaming: boolean | null;
+		task_id: string | null;
+		temperature: number | null;
+		total_cost_usd: number;
+		total_tokens: number;
+		user_id: string;
+	};
+	llm_usage_summary: {
+		avg_response_time_ms: number | null;
+		created_at: string;
+		failed_requests: number;
+		id: string;
+		max_response_time_ms: number | null;
+		min_response_time_ms: number | null;
+		models_used: Json | null;
+		operations_breakdown: Json | null;
+		successful_requests: number;
+		summary_date: string;
+		summary_type: string;
+		total_completion_tokens: number;
+		total_cost_usd: number;
+		total_prompt_tokens: number;
+		total_requests: number;
+		total_tokens: number;
+		updated_at: string;
+		user_id: string;
 	};
 	notes: {
 		category: string | null;
@@ -1124,6 +1176,8 @@ export const tableNames = [
 	'generated_phases',
 	'invoices',
 	'llm_prompts',
+	'llm_usage_logs',
+	'llm_usage_summary',
 	'notes',
 	'payment_methods',
 	'phase_task_schedules',

@@ -510,7 +510,9 @@ export class BrainDumpProcessor {
 				systemPrompt: fullSystemPrompt,
 				userPrompt: fullUserPrompt,
 				userId,
-				profile: 'balanced'
+				profile: 'balanced',
+				operationType: 'brain_dump',
+				brainDumpId
 			});
 			const parsed = validateSynthesisResult(response, selectedProjectId);
 
@@ -859,7 +861,9 @@ export class BrainDumpProcessor {
 			systemPrompt,
 			userPrompt,
 			userId,
-			profile: 'balanced'
+			profile: 'balanced',
+			operationType: 'brain_dump_context',
+			projectId: selectedProjectId
 		});
 
 		// Now using the same validation as single processing
@@ -929,7 +933,9 @@ export class BrainDumpProcessor {
 			systemPrompt,
 			userPrompt,
 			userId,
-			profile: 'balanced'
+			profile: 'balanced',
+			operationType: 'brain_dump_tasks',
+			projectId: selectedProjectId
 		});
 
 		// Now using the same validation as single processing
@@ -979,6 +985,38 @@ export class BrainDumpProcessor {
 		brainDumpId?: string,
 		options?: BrainDumpOptions
 	): Promise<BrainDumpParseResult> {
+		// VALIDATION: Check if both promises failed
+		if (contextResult.status === 'rejected' && tasksResult.status === 'rejected') {
+			const error = new Error(
+				`Both context and task extraction failed. Context: ${contextResult.reason}. Tasks: ${tasksResult.reason}`
+			);
+			console.error('[BrainDumpProcessor] Dual processing complete failure:', error);
+
+			// Log to error service if available
+			if (this.errorLogger && brainDumpId) {
+				await this.errorLogger.logBrainDumpError(error, brainDumpId, {
+					attemptNumber,
+					contextError: contextResult.reason,
+					tasksError: tasksResult.reason
+				});
+			}
+
+			// Return minimal result with error
+			return {
+				operations: [],
+				title: 'Brain dump processing failed',
+				summary:
+					'Both context and task extraction failed. Please try again or contact support if the issue persists.',
+				insights: '',
+				tags: [],
+				metadata: {},
+				errors: [
+					`Context extraction failed: ${contextResult.reason}`,
+					`Task extraction failed: ${tasksResult.reason}`
+				]
+			};
+		}
+
 		const operations: ParsedOperation[] = [];
 		const errors: string[] = [];
 		let projectRef = 'new-project-1'; // Default project reference

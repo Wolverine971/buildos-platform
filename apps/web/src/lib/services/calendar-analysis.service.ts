@@ -425,7 +425,8 @@ IMPORTANT:
 					retryOnParseError: true,
 					validateSchema: true,
 					maxRetries: 2
-				}
+				},
+				operationType: 'calendar_analysis'
 			});
 
 			// Filter by minimum confidence score

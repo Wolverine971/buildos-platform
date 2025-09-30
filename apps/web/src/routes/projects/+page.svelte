@@ -83,7 +83,6 @@
 	let selectedBrainDumpProject: any = null;
 
 	// Navigation state
-	let loadingProjectId = '';
 	let currentPath = '';
 	let unsubscribePage: (() => void) | null = null;
 
@@ -177,17 +176,6 @@
 		if (tabId === 'briefs' && !briefsLoaded) {
 			loadBriefs();
 		}
-	}
-
-	function handleProjectClick(event: CustomEvent<{ projectId: string; event?: Event }>) {
-		const { projectId, event: clickEvent } = event.detail;
-		if (clickEvent) {
-			const target = clickEvent.target as Element;
-			if (target.closest('[data-no-pulse]')) {
-				return;
-			}
-		}
-		loadingProjectId = projectId;
 	}
 
 	// API calls
@@ -435,7 +423,6 @@
 			const newPath = $page.url.pathname;
 			if (newPath !== currentPath) {
 				currentPath = newPath;
-				loadingProjectId = '';
 			}
 		});
 	});
@@ -450,7 +437,6 @@
 
 		// Cleanup to prevent memory retention
 		projectBriefs = [];
-		loadingProjectId = '';
 		selectedBrief = null;
 	});
 </script>
@@ -608,9 +594,7 @@
 						<div class="fade-in">
 							<ProjectsGrid
 								projects={filteredProjects}
-								{loadingProjectId}
 								{projectBriefsMap}
-								on:projectClick={handleProjectClick}
 								on:viewBrief={(e) => openBriefModal(e.detail)}
 							/>
 						</div>

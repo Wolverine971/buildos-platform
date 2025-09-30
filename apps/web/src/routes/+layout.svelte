@@ -6,7 +6,7 @@
 	import { setContext, onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { goto, replaceState } from '$app/navigation';
+	import { goto, replaceState, onNavigate } from '$app/navigation';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
@@ -15,14 +15,40 @@
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
 	import type { LayoutData } from './$types';
 
-	// Brain dump processing notification stores - using unified store
+	// Enable View Transitions API ONLY for specific navigations to improve performance
+	onNavigate((navigation) => {
+		const from = navigation.from?.route.id;
+		const to = navigation.to?.route.id;
+
+		// Only use view transitions for projects list <-> detail navigation
+		const shouldTransition =
+			(from === '/projects' && to === '/projects/[id]') ||
+			(from === '/projects/[id]' && to === '/projects') ||
+			(from === '/projects/[id]' && to === '/projects/[id]');
+
+		// Check if browser supports view transitions and if we should use them
+		if (!shouldTransition || !document.startViewTransition) {
+			return; // Skip view transition for better performance
+		}
+
+		return new Promise((fulfillNavigation) => {
+			document.startViewTransition(async () => {
+				fulfillNavigation();
+				await navigation.complete;
+			});
+		});
+	});
+
+	// Brain dump processing notification stores - direct v2 store (migration complete)
 	import { get } from 'svelte/store';
 	import {
 		brainDumpV2Store,
-		brainDumpActions,
 		isNotificationOpen as isProcessingVisible,
 		isNotificationMinimized as isProcessingMinimized
-	} from '$lib/stores/brain-dump-transition.store';
+	} from '$lib/stores/brain-dump-v2.store';
+
+	// Store actions accessed via brainDumpV2Store methods
+	const brainDumpActions = brainDumpV2Store;
 
 	export let data: LayoutData;
 
@@ -394,7 +420,7 @@
 
 	function handleProcessingClose(event?: CustomEvent) {
 		// Hide the notification
-		brainDumpActions.hideNotification();
+		brainDumpActions.closeNotification();
 
 		// If this is a full cleanup (e.g., after auto-accept), the notification
 		// has already reset the store, so we don't need to do it again
@@ -429,7 +455,7 @@
 					parseResults: parseResults
 				});
 
-				brainDumpActions.hideNotification();
+				brainDumpActions.closeNotification();
 				if (toastService) {
 					toastService.info('Applying changes automatically...', { duration: 3000 });
 				}
@@ -445,11 +471,11 @@
 	async function handleProcessingApplyOperations() {
 		// This would need to be handled by the originating page/component
 		// For now, just close the notification
-		brainDumpActions.hideNotification();
+		brainDumpActions.closeNotification();
 	}
 
 	function handleProcessingCancel() {
-		brainDumpActions.hideNotification();
+		brainDumpActions.closeNotification();
 	}
 </script>
 

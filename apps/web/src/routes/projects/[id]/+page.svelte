@@ -123,6 +123,7 @@
 	let storeState = $derived($projectStoreV2);
 
 	// Svelte 5 runes for optimal performance and fine-grained reactivity
+	// Use store if available, otherwise use data from server (ensures immediate render)
 	let project = $derived(storeState?.project);
 	let projectCalendar = $derived(storeState?.projectCalendar);
 	let tasks = $derived(storeState?.tasks || []);
@@ -1052,6 +1053,104 @@
 	// FIXED: Use $effect.root to prevent cleanup/re-initialization loops
 	let effectCleanup: (() => void) | null = null;
 
+	// Helper function to create cleanup closure with captured references
+	function createCleanupFunction(
+		projectId: string,
+		registeredDataService: any,
+		registeredSynthesisService: any,
+		registeredProjectService: any
+	) {
+		return () => {
+			console.log('[Page] Cleaning up project:', projectId);
+
+			// Cleanup services - use registered references to ensure cleanup even if error during init
+			if (registeredDataService) {
+				try {
+					registeredDataService.destroy();
+				} catch (error) {
+					console.error('[Page] DataService cleanup error:', error);
+				}
+			}
+
+			if (registeredSynthesisService) {
+				try {
+					// SynthesisService might not have destroy method - that's okay
+					if (typeof registeredSynthesisService.destroy === 'function') {
+						registeredSynthesisService.destroy();
+					}
+				} catch (error) {
+					console.error('[Page] SynthesisService cleanup error:', error);
+				}
+			}
+
+			// Cleanup realtime (async, don't await)
+			RealtimeProjectService.cleanup().catch((error) => {
+				console.error('[Page] Realtime cleanup error:', error);
+			});
+
+			// FIXED: Complete state reset on cleanup
+			console.log('[Page] Resetting all state during cleanup');
+
+			// Reset store
+			projectStoreV2.reset();
+
+			// Reset loading states
+			loadingStateManager.resetAll();
+
+			// FIXED: Enhanced component cleanup with verification
+			loadingComponents = {};
+
+			// Cleanup components with verification
+			if (TasksList && typeof TasksList.cleanup === 'function') {
+				try {
+					TasksList.cleanup();
+				} catch (error) {
+					console.warn('[Page] TasksList cleanup error:', error);
+				}
+			}
+			TasksList = null;
+
+			if (NotesSection && typeof NotesSection.cleanup === 'function') {
+				try {
+					NotesSection.cleanup();
+				} catch (error) {
+					console.warn('[Page] NotesSection cleanup error:', error);
+				}
+			}
+			NotesSection = null;
+
+			if (ProjectSynthesis && typeof ProjectSynthesis.cleanup === 'function') {
+				try {
+					ProjectSynthesis.cleanup();
+				} catch (error) {
+					console.warn('[Page] ProjectSynthesis cleanup error:', error);
+				}
+			}
+			ProjectSynthesis = null;
+
+			if (PhasesSection && typeof PhasesSection.cleanup === 'function') {
+				try {
+					PhasesSection.cleanup();
+				} catch (error) {
+					console.warn('[Page] PhasesSection cleanup error:', error);
+				}
+			}
+			PhasesSection = null;
+
+			// Reset initialization state
+			storeInitialized = false;
+
+			// Remove brain dump event listeners
+			if (browser) {
+				window.removeEventListener('brain-dump-applied', handleBrainDumpApplied as any);
+				window.removeEventListener(
+					'brain-dump-updates-available',
+					handleBrainDumpUpdatesAvailable as any
+				);
+			}
+		};
+	}
+
 	$effect(() => {
 		// FIXED: Use untrack to prevent reactive dependency cascades
 		const projectId = capturedProjectId;
@@ -1117,13 +1216,30 @@
 					untrack(() => {
 						// Start async initialization
 						(async () => {
+							let registeredDataService = null;
+							let registeredSynthesisService = null;
+							let registeredProjectService = null;
+
 							try {
 								timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 								// Initialize services
 								dataService = new ProjectDataService(projectId);
+								registeredDataService = dataService;
+
 								synthesisService = new ProjectSynthesisService(projectId);
+								registeredSynthesisService = synthesisService;
+
 								projectService = ProjectService.getInstance();
+								registeredProjectService = projectService;
+
+								// Register cleanup IMMEDIATELY after all services created but BEFORE async work
+								effectCleanup = createCleanupFunction(
+									projectId,
+									registeredDataService,
+									registeredSynthesisService,
+									registeredProjectService
+								);
 
 								// Initialize store with captured references
 								if (!storeInitialized) {
@@ -1169,86 +1285,6 @@
 						})();
 					});
 				});
-
-				// Set cleanup function for this project
-				effectCleanup = () => {
-					console.log('[Page] Cleaning up project:', projectId);
-
-					// Cleanup services
-					if (dataService) {
-						try {
-							dataService.destroy();
-						} catch (error) {
-							console.error('[Page] Service cleanup error:', error);
-						}
-					}
-
-					// Cleanup realtime (async, don't await)
-					RealtimeProjectService.cleanup().catch((error) => {
-						console.error('[Page] Realtime cleanup error:', error);
-					});
-
-					// FIXED: Complete state reset on cleanup
-					console.log('[Page] Resetting all state during cleanup');
-
-					// Reset store
-					projectStoreV2.reset();
-
-					// Reset loading states
-					loadingStateManager.resetAll();
-
-					// FIXED: Enhanced component cleanup with verification
-					loadingComponents = {};
-
-					// Cleanup components with verification
-					if (TasksList && typeof TasksList.cleanup === 'function') {
-						try {
-							TasksList.cleanup();
-						} catch (error) {
-							console.warn('[Page] TasksList cleanup error:', error);
-						}
-					}
-					TasksList = null;
-
-					if (NotesSection && typeof NotesSection.cleanup === 'function') {
-						try {
-							NotesSection.cleanup();
-						} catch (error) {
-							console.warn('[Page] NotesSection cleanup error:', error);
-						}
-					}
-					NotesSection = null;
-
-					if (ProjectSynthesis && typeof ProjectSynthesis.cleanup === 'function') {
-						try {
-							ProjectSynthesis.cleanup();
-						} catch (error) {
-							console.warn('[Page] ProjectSynthesis cleanup error:', error);
-						}
-					}
-					ProjectSynthesis = null;
-
-					if (PhasesSection && typeof PhasesSection.cleanup === 'function') {
-						try {
-							PhasesSection.cleanup();
-						} catch (error) {
-							console.warn('[Page] PhasesSection cleanup error:', error);
-						}
-					}
-					PhasesSection = null;
-
-					// Reset initialization state
-					storeInitialized = false;
-
-					// Remove brain dump event listeners
-					if (browser) {
-						window.removeEventListener('brain-dump-applied', handleBrainDumpApplied);
-						window.removeEventListener(
-							'brain-dump-updates-available',
-							handleBrainDumpUpdatesAvailable
-						);
-					}
-				};
 			});
 		});
 	});

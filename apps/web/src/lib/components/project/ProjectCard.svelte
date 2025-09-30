@@ -110,7 +110,11 @@
 	<div class="flex items-start justify-between mb-2">
 		<div class="flex-1 min-w-0 pr-2">
 			<div class="flex items-center gap-2">
-				<h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+				<h3
+					class="text-base font-semibold text-gray-900 dark:text-white truncate"
+					data-project-name
+					style="--project-name: project-name-{project.id};"
+				>
 					{project.name || 'Untitled Project'}
 				</h3>
 				<!-- Edit button inline with title -->

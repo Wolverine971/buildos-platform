@@ -23,7 +23,23 @@
 
 /* Animation utilities */
 .animate-pulse-slow {
+	position: relative; /* z-index only works on positioned elements */
+	z-index: 0;
 	animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.8;
+	}
+}
+
+.animate-pulse {
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .float-animation {

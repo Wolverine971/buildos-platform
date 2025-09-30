@@ -123,7 +123,9 @@ export class ProjectBriefTemplateGeneratorService {
 			validation: {
 				retryOnParseError: true,
 				maxRetries: 2
-			}
+			},
+			operationType: 'brief_template_generation',
+			projectId: project.id
 		});
 
 		const parsed = this.validateTemplateResponse(response);

@@ -40,6 +40,12 @@ export interface JSONRequestOptions<T> {
 		minAccuracy?: number;
 		maxCost?: number;
 	};
+	// Optional context for usage tracking
+	operationType?: string;
+	projectId?: string;
+	brainDumpId?: string;
+	taskId?: string;
+	briefId?: string;
 }
 
 export interface TextGenerationOptions {
@@ -55,6 +61,12 @@ export interface TextGenerationOptions {
 		minQuality?: number;
 		maxCost?: number;
 	};
+	// Optional context for usage tracking
+	operationType?: string;
+	projectId?: string;
+	brainDumpId?: string;
+	taskId?: string;
+	briefId?: string;
 }
 
 interface OpenRouterResponse {
@@ -79,7 +91,53 @@ interface OpenRouterResponse {
 // ============================================
 
 const JSON_MODELS: Record<string, ModelProfile> = {
+	// Ultra-fast tier (1-2s) - Free models
+	'x-ai/grok-4-fast:free': {
+		id: 'x-ai/grok-4-fast:free',
+		name: 'Grok 4 Fast (Free)',
+		speed: 4.5,
+		smartness: 4.3,
+		cost: 0.0,
+		outputCost: 0.0,
+		provider: 'x-ai',
+		bestFor: ['json-mode', 'free-tier', 'fast-prototyping', 'reasoning'],
+		limitations: ['limited-time-free', 'data-may-be-used-for-training']
+	},
+
 	// Fast tier (2-3s)
+	'google/gemini-2.5-flash-lite': {
+		id: 'google/gemini-2.5-flash-lite',
+		name: 'Gemini 2.5 Flash Lite',
+		speed: 4.5,
+		smartness: 4.2,
+		cost: 0.1,
+		outputCost: 0.4,
+		provider: 'google',
+		bestFor: ['ultra-low-latency', 'lightweight-reasoning', 'json-mode', 'structured-output'],
+		limitations: ['reasoning-disabled-by-default']
+	},
+	'google/gemini-2.0-flash-001': {
+		id: 'google/gemini-2.0-flash-001',
+		name: 'Gemini 2.0 Flash',
+		speed: 4,
+		smartness: 4.3,
+		cost: 0.1,
+		outputCost: 0.4,
+		provider: 'google',
+		bestFor: ['fast-ttft', 'complex-instructions', 'function-calling', 'multimodal'],
+		limitations: ['no-explicit-json-mode']
+	},
+	'openai/gpt-4o-mini': {
+		id: 'openai/gpt-4o-mini',
+		name: 'GPT-4o Mini',
+		speed: 4,
+		smartness: 4,
+		cost: 0.15,
+		outputCost: 0.6,
+		provider: 'openai',
+		bestFor: ['json-mode', 'cost-effective', 'structured-output', 'general-purpose'],
+		limitations: []
+	},
 	'deepseek/deepseek-chat': {
 		id: 'deepseek/deepseek-chat',
 		name: 'DeepSeek Chat V3',
@@ -90,6 +148,17 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		provider: 'deepseek',
 		bestFor: ['complex-json', 'instruction-following', 'nested-structures'],
 		limitations: ['knowledge-cutoff-dec-2024']
+	},
+	'x-ai/grok-code-fast-1': {
+		id: 'x-ai/grok-code-fast-1',
+		name: 'Grok Code Fast',
+		speed: 3.5,
+		smartness: 4.4,
+		cost: 0.2,
+		outputCost: 1.5,
+		provider: 'x-ai',
+		bestFor: ['agentic-coding', 'json-mode', 'structured-output', 'reasoning-traces'],
+		limitations: []
 	},
 	'qwen/qwen-2.5-72b-instruct': {
 		id: 'qwen/qwen-2.5-72b-instruct',
@@ -162,6 +231,19 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 };
 
 const TEXT_MODELS: Record<string, ModelProfile> = {
+	// Ultra-speed tier (<1s) - Free models
+	'x-ai/grok-4-fast:free': {
+		id: 'x-ai/grok-4-fast:free',
+		name: 'Grok 4 Fast (Free)',
+		speed: 4.8,
+		smartness: 4.3,
+		creativity: 4.2,
+		cost: 0.0,
+		outputCost: 0.0,
+		provider: 'x-ai',
+		bestFor: ['free-tier', 'fast-generation', 'reasoning', 'multimodal']
+	},
+
 	// Speed tier (<1s)
 	'groq/llama-3.1-8b-instant': {
 		id: 'groq/llama-3.1-8b-instant',
@@ -185,8 +267,41 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		provider: 'google',
 		bestFor: ['fast-generation', 'summaries']
 	},
+	'google/gemini-2.0-flash-001': {
+		id: 'google/gemini-2.0-flash-001',
+		name: 'Gemini 2.0 Flash',
+		speed: 4.2,
+		smartness: 4.3,
+		creativity: 4,
+		cost: 0.1,
+		outputCost: 0.4,
+		provider: 'google',
+		bestFor: ['fast-ttft', 'complex-instructions', 'multimodal', 'function-calling']
+	},
+	'google/gemini-2.5-flash-lite': {
+		id: 'google/gemini-2.5-flash-lite',
+		name: 'Gemini 2.5 Flash Lite',
+		speed: 4.5,
+		smartness: 4.2,
+		creativity: 4,
+		cost: 0.1,
+		outputCost: 0.4,
+		provider: 'google',
+		bestFor: ['ultra-low-latency', 'lightweight-reasoning', 'cost-efficient']
+	},
 
 	// Balanced tier (1-3s)
+	'openai/gpt-4o-mini': {
+		id: 'openai/gpt-4o-mini',
+		name: 'GPT-4o Mini',
+		speed: 4,
+		smartness: 4,
+		creativity: 4,
+		cost: 0.15,
+		outputCost: 0.6,
+		provider: 'openai',
+		bestFor: ['cost-effective', 'general-purpose', 'balanced-quality']
+	},
 	'deepseek/deepseek-chat': {
 		id: 'deepseek/deepseek-chat',
 		name: 'DeepSeek Chat V3',
@@ -242,17 +357,17 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 // ============================================
 
 const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
-	fast: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'google/gemini-flash-1.5'],
-	balanced: ['deepseek/deepseek-chat', 'anthropic/claude-3-haiku', 'qwen/qwen-2.5-72b-instruct'],
-	powerful: ['anthropic/claude-3.5-sonnet', 'deepseek/deepseek-chat', 'openai/gpt-4o'],
+	fast: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini'],
+	balanced: ['openai/gpt-4o-mini', 'deepseek/deepseek-chat', 'x-ai/grok-code-fast-1'],
+	powerful: ['anthropic/claude-3.5-sonnet', 'x-ai/grok-code-fast-1', 'openai/gpt-4o'],
 	maximum: ['anthropic/claude-3-opus', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet'],
 	custom: [] // Will be determined by requirements
 };
 
 const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
-	speed: ['groq/llama-3.1-8b-instant', 'google/gemini-flash-1.5-8b', 'anthropic/claude-3-haiku'],
-	balanced: ['deepseek/deepseek-chat', 'anthropic/claude-3-haiku', 'google/gemini-flash-1.5'],
-	quality: ['anthropic/claude-3.5-sonnet', 'deepseek/deepseek-chat', 'openai/gpt-4o'],
+	speed: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'groq/llama-3.1-8b-instant'],
+	balanced: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001', 'deepseek/deepseek-chat'],
+	quality: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'deepseek/deepseek-chat'],
 	creative: ['anthropic/claude-3-opus', 'anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
 	custom: []
 };
@@ -286,10 +401,90 @@ export class SmartLLMService {
 	}
 
 	// ============================================
+	// DATABASE LOGGING
+	// ============================================
+
+	private async logUsageToDatabase(params: {
+		userId: string;
+		operationType: string;
+		modelRequested: string;
+		modelUsed: string;
+		provider?: string;
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		inputCost: number;
+		outputCost: number;
+		totalCost: number;
+		responseTimeMs: number;
+		requestStartedAt: Date;
+		requestCompletedAt: Date;
+		status: 'success' | 'failure' | 'timeout' | 'rate_limited' | 'invalid_response';
+		errorMessage?: string;
+		temperature?: number;
+		maxTokens?: number;
+		profile?: string;
+		streaming?: boolean;
+		projectId?: string;
+		brainDumpId?: string;
+		taskId?: string;
+		briefId?: string;
+		openrouterRequestId?: string;
+		openrouterCacheStatus?: string;
+		rateLimitRemaining?: number;
+		metadata?: any;
+	}): Promise<void> {
+		if (!this.supabase) {
+			console.warn('Supabase client not configured, skipping usage logging');
+			return;
+		}
+
+		try {
+			const { error } = await this.supabase.from('llm_usage_logs').insert({
+				user_id: params.userId,
+				operation_type: params.operationType,
+				model_requested: params.modelRequested,
+				model_used: params.modelUsed,
+				provider: params.provider,
+				prompt_tokens: params.promptTokens,
+				completion_tokens: params.completionTokens,
+				total_tokens: params.totalTokens,
+				input_cost_usd: params.inputCost,
+				output_cost_usd: params.outputCost,
+				total_cost_usd: params.totalCost,
+				response_time_ms: params.responseTimeMs,
+				request_started_at: params.requestStartedAt.toISOString(),
+				request_completed_at: params.requestCompletedAt.toISOString(),
+				status: params.status,
+				error_message: params.errorMessage,
+				temperature: params.temperature,
+				max_tokens: params.maxTokens,
+				profile: params.profile,
+				streaming: params.streaming,
+				project_id: params.projectId,
+				brain_dump_id: params.brainDumpId,
+				task_id: params.taskId,
+				brief_id: params.briefId,
+				openrouter_request_id: params.openrouterRequestId,
+				openrouter_cache_status: params.openrouterCacheStatus,
+				rate_limit_remaining: params.rateLimitRemaining,
+				metadata: params.metadata
+			});
+
+			if (error) {
+				console.error('Failed to log LLM usage to database:', error);
+			}
+		} catch (error) {
+			console.error('Exception while logging LLM usage:', error);
+		}
+	}
+
+	// ============================================
 	// JSON RESPONSE METHOD
 	// ============================================
 
 	async getJSONResponse<T = any>(options: JSONRequestOptions<T>): Promise<T> {
+		const requestStartedAt = new Date();
 		const startTime = performance.now();
 		const profile = options.profile || 'balanced';
 
@@ -331,36 +526,70 @@ export class SmartLLMService {
 			// Parse the response
 			let result: T;
 			const content = response.choices[0].message.content;
+			let cleaned = ''; // Declare outside try block for error logging
 
 			try {
 				// Clean and parse JSON
-				const cleaned = this.cleanJSONResponse(content);
+				cleaned = this.cleanJSONResponse(content);
 				result = JSON.parse(cleaned) as T;
 			} catch (parseError) {
 				// Log which model actually responded
 				const actualModel = response.model || preferredModels[0];
 				console.error(`JSON parse error with ${actualModel}:`, parseError);
 
+				// Enhanced error logging with context
+				if (parseError instanceof SyntaxError && parseError.message.includes('position')) {
+					// Extract position from error message (e.g., "at position 1618")
+					const posMatch = parseError.message.match(/position (\d+)/);
+					if (posMatch) {
+						const errorPos = parseInt(posMatch[1]);
+						const contextStart = Math.max(0, errorPos - 100);
+						const contextEnd = Math.min(cleaned.length, errorPos + 100);
+						console.error(
+							`Context around error position ${errorPos}:`,
+							'\n' + cleaned.substring(contextStart, contextEnd)
+						);
+						console.error(
+							`Full response length: ${cleaned.length} characters, Error at: ${errorPos}`
+						);
+					}
+				}
+
 				// If validation is enabled and parse failed, we can retry with a more powerful model
 				if (options.validation?.retryOnParseError && retryCount < maxRetries) {
 					retryCount++;
-					// Try again with powerful profile
-					const retryResponse = await this.callOpenRouter({
-						model: 'anthropic/claude-3.5-sonnet',
-						models: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
-						messages: [
-							{ role: 'system', content: enhancedSystemPrompt },
-							{ role: 'user', content: options.userPrompt }
-						],
-						temperature: 0.1, // Lower temperature for retry
-						response_format: { type: 'json_object' },
-						max_tokens: 8192,
-						route: 'fallback'
-					});
+					console.log(
+						`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
+					);
 
-					const retryContent = retryResponse.choices[0].message.content;
-					const cleanedRetry = this.cleanJSONResponse(retryContent);
-					result = JSON.parse(cleanedRetry) as T;
+					try {
+						// Try again with powerful profile
+						const retryResponse = await this.callOpenRouter({
+							model: 'anthropic/claude-3.5-sonnet',
+							models: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
+							messages: [
+								{ role: 'system', content: enhancedSystemPrompt },
+								{ role: 'user', content: options.userPrompt }
+							],
+							temperature: 0.1, // Lower temperature for retry
+							response_format: { type: 'json_object' },
+							max_tokens: 8192,
+							route: 'fallback'
+						});
+
+						const retryContent = retryResponse.choices[0].message.content;
+						const cleanedRetry = this.cleanJSONResponse(retryContent);
+						result = JSON.parse(cleanedRetry) as T;
+					} catch (retryError) {
+						// If retry also fails, throw original error with context
+						console.error(
+							`Retry also failed after ${retryCount} attempts:`,
+							retryError
+						);
+						throw new Error(
+							`Failed to parse JSON after ${retryCount} retries. Original error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+						);
+					}
 				} else {
 					throw parseError;
 				}
@@ -368,9 +597,19 @@ export class SmartLLMService {
 
 			// Track metrics
 			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
 			const actualModel = response.model || preferredModels[0];
 			this.trackPerformance(actualModel, duration);
 			this.trackCost(actualModel, response.usage);
+
+			// Calculate costs
+			const modelConfig = JSON_MODELS[actualModel];
+			const inputCost = modelConfig
+				? ((response.usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+				: 0;
+			const outputCost = modelConfig
+				? ((response.usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
+				: 0;
 
 			console.log(`JSON Response Success:
 				Model: ${actualModel}
@@ -379,10 +618,78 @@ export class SmartLLMService {
 				Cost: ${this.calculateCost(actualModel, response.usage)}
 			`);
 
+			// Log to database (async, non-blocking)
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: options.operationType || 'other',
+				modelRequested: preferredModels[0],
+				modelUsed: actualModel,
+				provider: modelConfig?.provider,
+				promptTokens: response.usage?.prompt_tokens || 0,
+				completionTokens: response.usage?.completion_tokens || 0,
+				totalTokens: response.usage?.total_tokens || 0,
+				inputCost,
+				outputCost,
+				totalCost: inputCost + outputCost,
+				responseTimeMs: Math.round(duration),
+				requestStartedAt,
+				requestCompletedAt,
+				status: 'success',
+				temperature: options.temperature,
+				maxTokens: 8192,
+				profile,
+				streaming: false,
+				projectId: options.projectId,
+				brainDumpId: options.brainDumpId,
+				taskId: options.taskId,
+				briefId: options.briefId,
+				openrouterRequestId: (response as any).id,
+				metadata: {
+					complexity,
+					retryCount,
+					preferredModels
+				}
+			}).catch((err) => console.error('Failed to log usage:', err));
+
 			return result;
 		} catch (error) {
 			lastError = error as Error;
+			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
+
 			console.error(`OpenRouter request failed:`, error);
+
+			// Log failure to database
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: options.operationType || 'other',
+				modelRequested: preferredModels[0],
+				modelUsed: preferredModels[0],
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: 0,
+				responseTimeMs: Math.round(duration),
+				requestStartedAt,
+				requestCompletedAt,
+				status: lastError.message.includes('timeout') ? 'timeout' : 'failure',
+				errorMessage: lastError.message,
+				temperature: options.temperature,
+				maxTokens: 8192,
+				profile,
+				streaming: false,
+				projectId: options.projectId,
+				brainDumpId: options.brainDumpId,
+				taskId: options.taskId,
+				briefId: options.briefId,
+				metadata: {
+					complexity,
+					preferredModels
+				}
+			}).catch((err) => console.error('Failed to log error:', err));
+
 			throw new Error(`Failed to generate valid JSON: ${lastError?.message}`);
 		}
 	}
@@ -392,6 +699,7 @@ export class SmartLLMService {
 	// ============================================
 
 	async generateText(options: TextGenerationOptions): Promise<string> {
+		const requestStartedAt = new Date();
 		const startTime = performance.now();
 		const profile = options.profile || 'balanced';
 
@@ -434,8 +742,18 @@ export class SmartLLMService {
 
 			// Track metrics
 			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
 			this.trackPerformance(actualModel, duration);
 			this.trackCost(actualModel, response.usage);
+
+			// Calculate costs
+			const modelConfig = TEXT_MODELS[actualModel];
+			const inputCost = modelConfig
+				? ((response.usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+				: 0;
+			const outputCost = modelConfig
+				? ((response.usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
+				: 0;
 
 			console.log(`Text Generation Success:
 				Model: ${actualModel}
@@ -444,9 +762,77 @@ export class SmartLLMService {
 				Cost: ${this.calculateCost(actualModel, response.usage)}
 			`);
 
+			// Log to database (async, non-blocking)
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: options.operationType || 'other',
+				modelRequested: preferredModels[0],
+				modelUsed: actualModel,
+				provider: modelConfig?.provider,
+				promptTokens: response.usage?.prompt_tokens || 0,
+				completionTokens: response.usage?.completion_tokens || 0,
+				totalTokens: response.usage?.total_tokens || 0,
+				inputCost,
+				outputCost,
+				totalCost: inputCost + outputCost,
+				responseTimeMs: Math.round(duration),
+				requestStartedAt,
+				requestCompletedAt,
+				status: 'success',
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				profile,
+				streaming: options.streaming,
+				projectId: options.projectId,
+				brainDumpId: options.brainDumpId,
+				taskId: options.taskId,
+				briefId: options.briefId,
+				openrouterRequestId: (response as any).id,
+				metadata: {
+					estimatedLength,
+					preferredModels,
+					contentLength: content.length
+				}
+			}).catch((err) => console.error('Failed to log usage:', err));
+
 			return content;
 		} catch (error) {
+			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
+
 			console.error(`OpenRouter text generation failed:`, error);
+
+			// Log failure to database
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: options.operationType || 'other',
+				modelRequested: preferredModels[0],
+				modelUsed: preferredModels[0],
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: 0,
+				responseTimeMs: Math.round(duration),
+				requestStartedAt,
+				requestCompletedAt,
+				status: (error as Error).message.includes('timeout') ? 'timeout' : 'failure',
+				errorMessage: (error as Error).message,
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				profile,
+				streaming: options.streaming,
+				projectId: options.projectId,
+				brainDumpId: options.brainDumpId,
+				taskId: options.taskId,
+				briefId: options.briefId,
+				metadata: {
+					estimatedLength,
+					preferredModels
+				}
+			}).catch((err) => console.error('Failed to log error:', err));
+
 			throw new Error('Failed to generate text');
 		}
 	}
@@ -549,7 +935,7 @@ export class SmartLLMService {
 			case 'fast':
 			case 'speed':
 				return {
-					order: ['groq', 'google', 'together', 'deepseek'],
+					order: ['x-ai', 'google', 'openai', 'groq', 'deepseek'],
 					allow_fallbacks: true,
 					data_collection: 'allow' // Allow for faster routing
 					// Note: quantization field removed - not supported by OpenRouter API
@@ -557,7 +943,7 @@ export class SmartLLMService {
 
 			case 'balanced':
 				return {
-					order: ['deepseek', 'qwen', 'google', 'anthropic'],
+					order: ['openai', 'google', 'deepseek', 'x-ai', 'anthropic'],
 					allow_fallbacks: true,
 					require_parameters: true, // Require providers to support our parameters
 					data_collection: 'deny' // Privacy focused
@@ -566,7 +952,7 @@ export class SmartLLMService {
 			case 'powerful':
 			case 'quality':
 				return {
-					order: ['anthropic', 'openai', 'google'],
+					order: ['anthropic', 'openai', 'x-ai', 'google', 'deepseek'],
 					allow_fallbacks: true,
 					require_parameters: true,
 					data_collection: 'deny'
@@ -716,7 +1102,10 @@ export class SmartLLMService {
 			'qwen/qwen-2.5-72b-instruct',
 			'google/gemini-flash-1.5',
 			'google/gemini-flash-1.5-8b',
-			'groq/llama-3.1-8b-instant'
+			'google/gemini-2.5-flash-lite',
+			'groq/llama-3.1-8b-instant',
+			'x-ai/grok-4-fast:free',
+			'x-ai/grok-code-fast-1'
 		];
 
 		return jsonModeModels.includes(modelId);
@@ -730,6 +1119,7 @@ You must respond with valid JSON only. Follow these rules:
 3. Use null for missing values, not undefined
 4. Numbers should not be quoted unless they're meant to be strings
 5. Boolean values should be true/false (lowercase, not quoted)
+6. CRITICAL: NO trailing commas after the last item in objects or arrays
 
 `;
 		return jsonInstructions + originalPrompt;
@@ -759,6 +1149,10 @@ You must respond with valid JSON only. Follow these rules:
 		if (jsonEnd > -1 && jsonEnd < cleaned.length - 1) {
 			cleaned = cleaned.slice(0, jsonEnd + 1);
 		}
+
+		// Fix common LLM JSON errors
+		// Remove trailing commas before closing braces/brackets (e.g., {key: "value",} -> {key: "value"})
+		cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
 
 		return cleaned.trim();
 	}

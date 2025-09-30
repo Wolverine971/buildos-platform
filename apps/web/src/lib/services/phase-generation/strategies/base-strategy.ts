@@ -118,7 +118,9 @@ export abstract class BaseSchedulingStrategy {
 			validation: {
 				retryOnParseError: true,
 				maxRetries: 2
-			}
+			},
+			operationType: 'phase_generation',
+			projectId: this.context.project.id
 		});
 
 		if (!response) {

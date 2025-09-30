@@ -44,6 +44,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { content, selectedProjectId, brainDumpId, displayedQuestions, options, autoAccept } =
 			validation.validatedData!;
 
+		// Add input length validation to prevent DoS attacks
+		const MAX_CONTENT_LENGTH = 50000; // 50KB
+		if (content.length > MAX_CONTENT_LENGTH) {
+			return SSEResponse.badRequest(
+				`Content too long. Maximum ${MAX_CONTENT_LENGTH} characters allowed.`
+			);
+		}
+
 		// Create a TransformStream for SSE
 		const { response, writer, encoder } = SSEResponse.createStream();
 

@@ -108,8 +108,8 @@ export interface GetCalendarEventsResponse {
 }
 
 export interface AvailableSlot {
-	start: any;
-	end: any;
+	start: string | Date; // ISO 8601 string or Date object
+	end: string | Date; // ISO 8601 string or Date object
 	duration_minutes: number;
 	timeZone?: string;
 }

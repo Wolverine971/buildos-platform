@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "clean": "turbo clean",
     "pre-push": "turbo pre-push",
-    "gen:all": "pnpm --filter=@buildos/web gen:all && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck"
+    "gen:all": "pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
+    "label-paths": "pnpm --filter=@buildos/web label-paths"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

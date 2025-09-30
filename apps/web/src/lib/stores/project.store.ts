@@ -402,12 +402,16 @@ class ProjectStoreV2 {
 
 		this.updateStats();
 
+		// Track this update BEFORE API call to prevent race condition
+		// Use tempId for tracking since that's what's in the store now
+		RealtimeProjectService.trackLocalUpdate(tempId);
+
 		try {
 			// Execute API call
 			const result = await apiCall();
 
-			// Track this update to avoid processing it from realtime
-			if (result?.id) {
+			// Track the real ID as well after we get it
+			if (result?.id && result.id !== tempId) {
 				RealtimeProjectService.trackLocalUpdate(result.id);
 			}
 
@@ -525,13 +529,16 @@ class ProjectStoreV2 {
 
 		this.updateStats();
 
+		// Track this update BEFORE API call to prevent race condition
+		RealtimeProjectService.trackLocalUpdate(taskId);
+
 		try {
 			const result = await apiCall();
 
-			// Track this update to avoid processing it from realtime
-			if (result?.id) {
-				RealtimeProjectService.trackLocalUpdate(result.id);
-			}
+			// Result tracking already done above - no need to duplicate
+			// if (result?.id) {
+			// 	RealtimeProjectService.trackLocalUpdate(result.id);
+			// }
 
 			// Confirm update with server data - update both tasks array AND tasks within phases
 			this.store.update((state) => {

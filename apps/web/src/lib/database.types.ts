@@ -2010,6 +2010,204 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			llm_usage_logs: {
+				Row: {
+					brain_dump_id: string | null;
+					brief_id: string | null;
+					completion_tokens: number;
+					created_at: string;
+					error_message: string | null;
+					id: string;
+					input_cost_usd: number;
+					max_tokens: number | null;
+					metadata: Json | null;
+					model_requested: string;
+					model_used: string;
+					openrouter_cache_status: string | null;
+					openrouter_request_id: string | null;
+					operation_type: Database['public']['Enums']['llm_operation_type'];
+					output_cost_usd: number;
+					profile: string | null;
+					project_id: string | null;
+					prompt_tokens: number;
+					provider: string | null;
+					rate_limit_remaining: number | null;
+					request_completed_at: string;
+					request_started_at: string;
+					response_time_ms: number;
+					status: Database['public']['Enums']['llm_request_status'];
+					streaming: boolean | null;
+					task_id: string | null;
+					temperature: number | null;
+					total_cost_usd: number;
+					total_tokens: number;
+					user_id: string;
+				};
+				Insert: {
+					brain_dump_id?: string | null;
+					brief_id?: string | null;
+					completion_tokens: number;
+					created_at?: string;
+					error_message?: string | null;
+					id?: string;
+					input_cost_usd: number;
+					max_tokens?: number | null;
+					metadata?: Json | null;
+					model_requested: string;
+					model_used: string;
+					openrouter_cache_status?: string | null;
+					openrouter_request_id?: string | null;
+					operation_type: Database['public']['Enums']['llm_operation_type'];
+					output_cost_usd: number;
+					profile?: string | null;
+					project_id?: string | null;
+					prompt_tokens: number;
+					provider?: string | null;
+					rate_limit_remaining?: number | null;
+					request_completed_at: string;
+					request_started_at: string;
+					response_time_ms: number;
+					status?: Database['public']['Enums']['llm_request_status'];
+					streaming?: boolean | null;
+					task_id?: string | null;
+					temperature?: number | null;
+					total_cost_usd: number;
+					total_tokens: number;
+					user_id: string;
+				};
+				Update: {
+					brain_dump_id?: string | null;
+					brief_id?: string | null;
+					completion_tokens?: number;
+					created_at?: string;
+					error_message?: string | null;
+					id?: string;
+					input_cost_usd?: number;
+					max_tokens?: number | null;
+					metadata?: Json | null;
+					model_requested?: string;
+					model_used?: string;
+					openrouter_cache_status?: string | null;
+					openrouter_request_id?: string | null;
+					operation_type?: Database['public']['Enums']['llm_operation_type'];
+					output_cost_usd?: number;
+					profile?: string | null;
+					project_id?: string | null;
+					prompt_tokens?: number;
+					provider?: string | null;
+					rate_limit_remaining?: number | null;
+					request_completed_at?: string;
+					request_started_at?: string;
+					response_time_ms?: number;
+					status?: Database['public']['Enums']['llm_request_status'];
+					streaming?: boolean | null;
+					task_id?: string | null;
+					temperature?: number | null;
+					total_cost_usd?: number;
+					total_tokens?: number;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'llm_usage_logs_brain_dump_id_fkey';
+						columns: ['brain_dump_id'];
+						isOneToOne: false;
+						referencedRelation: 'brain_dumps';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'llm_usage_logs_brief_id_fkey';
+						columns: ['brief_id'];
+						isOneToOne: false;
+						referencedRelation: 'daily_briefs';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'llm_usage_logs_project_id_fkey';
+						columns: ['project_id'];
+						isOneToOne: false;
+						referencedRelation: 'projects';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'llm_usage_logs_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'recurring_task_summary';
+						referencedColumns: ['task_id'];
+					},
+					{
+						foreignKeyName: 'llm_usage_logs_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'tasks';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			llm_usage_summary: {
+				Row: {
+					avg_response_time_ms: number | null;
+					created_at: string;
+					failed_requests: number;
+					id: string;
+					max_response_time_ms: number | null;
+					min_response_time_ms: number | null;
+					models_used: Json | null;
+					operations_breakdown: Json | null;
+					successful_requests: number;
+					summary_date: string;
+					summary_type: string;
+					total_completion_tokens: number;
+					total_cost_usd: number;
+					total_prompt_tokens: number;
+					total_requests: number;
+					total_tokens: number;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					avg_response_time_ms?: number | null;
+					created_at?: string;
+					failed_requests?: number;
+					id?: string;
+					max_response_time_ms?: number | null;
+					min_response_time_ms?: number | null;
+					models_used?: Json | null;
+					operations_breakdown?: Json | null;
+					successful_requests?: number;
+					summary_date: string;
+					summary_type: string;
+					total_completion_tokens?: number;
+					total_cost_usd?: number;
+					total_prompt_tokens?: number;
+					total_requests?: number;
+					total_tokens?: number;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					avg_response_time_ms?: number | null;
+					created_at?: string;
+					failed_requests?: number;
+					id?: string;
+					max_response_time_ms?: number | null;
+					min_response_time_ms?: number | null;
+					models_used?: Json | null;
+					operations_breakdown?: Json | null;
+					successful_requests?: number;
+					summary_date?: string;
+					summary_type?: string;
+					total_completion_tokens?: number;
+					total_cost_usd?: number;
+					total_prompt_tokens?: number;
+					total_requests?: number;
+					total_tokens?: number;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			notes: {
 				Row: {
 					category: string | null;
@@ -4198,6 +4396,34 @@ export type Database = {
 			};
 		};
 		Views: {
+			admin_llm_cost_analytics: {
+				Row: {
+					avg_response_time: number | null;
+					date: string | null;
+					failed_requests: number | null;
+					model_used: string | null;
+					operation_type: Database['public']['Enums']['llm_operation_type'] | null;
+					successful_requests: number | null;
+					total_cost: number | null;
+					total_requests: number | null;
+					total_tokens: number | null;
+					unique_users: number | null;
+				};
+				Relationships: [];
+			};
+			admin_user_llm_costs: {
+				Row: {
+					avg_response_time: number | null;
+					email: string | null;
+					last_usage: string | null;
+					name: string | null;
+					total_cost: number | null;
+					total_requests: number | null;
+					total_tokens: number | null;
+					user_id: string | null;
+				};
+				Relationships: [];
+			};
 			error_summary: {
 				Row: {
 					affected_projects: number | null;
@@ -4457,6 +4683,41 @@ export type Database = {
 					instance_date: string;
 				}[];
 			};
+			get_admin_model_breakdown: {
+				Args: { p_end_date: string; p_start_date: string };
+				Returns: {
+					avg_response_time: number;
+					model: string;
+					requests: number;
+					success_rate: number;
+					total_cost: number;
+					total_tokens: number;
+				}[];
+			};
+			get_admin_operation_breakdown: {
+				Args: { p_end_date: string; p_start_date: string };
+				Returns: {
+					avg_response_time: number;
+					operation: string;
+					requests: number;
+					success_rate: number;
+					total_cost: number;
+					total_tokens: number;
+				}[];
+			};
+			get_admin_top_users: {
+				Args: { p_end_date: string; p_limit?: number; p_start_date: string };
+				Returns: {
+					avg_response_time: number;
+					email: string;
+					last_usage: string;
+					name: string;
+					requests: number;
+					total_cost: number;
+					total_tokens: number;
+					user_id: string;
+				}[];
+			};
 			get_brief_generation_stats: {
 				Args: { end_date: string; start_date: string };
 				Returns: {
@@ -4616,6 +4877,17 @@ export type Database = {
 			get_user_failed_payments_count: {
 				Args: { p_user_id: string };
 				Returns: number;
+			};
+			get_user_llm_usage: {
+				Args: { p_end_date: string; p_start_date: string; p_user_id: string };
+				Returns: {
+					avg_response_time: number;
+					by_model: Json;
+					by_operation: Json;
+					total_cost: number;
+					total_requests: number;
+					total_tokens: number;
+				}[];
 			};
 			get_user_subscription_status: {
 				Args: { user_uuid: string };
@@ -4897,6 +5169,10 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			update_llm_usage_summary: {
+				Args: { p_date: string; p_user_id: string };
+				Returns: undefined;
+			};
 			user_has_payment_issues: {
 				Args: { p_user_id: string };
 				Returns: boolean;
@@ -4941,6 +5217,27 @@ export type Database = {
 			brain_dump_status: 'pending' | 'parsed' | 'saved' | 'parsed_and_deleted';
 			calendar_sync_status: 'active' | 'paused' | 'error';
 			calendar_visibility: 'public' | 'private' | 'shared';
+			llm_operation_type:
+				| 'brain_dump'
+				| 'brain_dump_short'
+				| 'brain_dump_context'
+				| 'brain_dump_tasks'
+				| 'daily_brief'
+				| 'project_brief'
+				| 'phase_generation'
+				| 'task_scheduling'
+				| 'calendar_analysis'
+				| 'project_synthesis'
+				| 'email_generation'
+				| 'question_generation'
+				| 'embedding'
+				| 'other';
+			llm_request_status:
+				| 'success'
+				| 'failure'
+				| 'timeout'
+				| 'rate_limited'
+				| 'invalid_response';
 			priority_level: 'low' | 'medium' | 'high';
 			project_status: 'active' | 'paused' | 'completed' | 'archived';
 			queue_status:
@@ -5122,6 +5419,29 @@ export const Constants = {
 			brain_dump_status: ['pending', 'parsed', 'saved', 'parsed_and_deleted'],
 			calendar_sync_status: ['active', 'paused', 'error'],
 			calendar_visibility: ['public', 'private', 'shared'],
+			llm_operation_type: [
+				'brain_dump',
+				'brain_dump_short',
+				'brain_dump_context',
+				'brain_dump_tasks',
+				'daily_brief',
+				'project_brief',
+				'phase_generation',
+				'task_scheduling',
+				'calendar_analysis',
+				'project_synthesis',
+				'email_generation',
+				'question_generation',
+				'embedding',
+				'other'
+			],
+			llm_request_status: [
+				'success',
+				'failure',
+				'timeout',
+				'rate_limited',
+				'invalid_response'
+			],
 			priority_level: ['low', 'medium', 'high'],
 			project_status: ['active', 'paused', 'completed', 'archived'],
 			queue_status: ['pending', 'processing', 'completed', 'failed', 'cancelled', 'retrying'],

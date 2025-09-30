@@ -535,3 +535,491 @@ describe('OperationsExecutor - Recurring Tasks', () => {
 		});
 	});
 });
+
+describe('OperationsExecutor - Rollback Functionality', () => {
+	let executor: OperationsExecutor;
+	const mockSupabaseWithRollback = () => {
+		const deleteMock = vi.fn().mockReturnThis();
+		const eqMock = vi.fn().mockReturnThis();
+
+		return {
+			from: vi.fn((table: string) => {
+				const insertMock = vi.fn((data: any) => ({
+					select: vi.fn().mockReturnValue({
+						single: vi.fn().mockResolvedValue({
+							data: { ...data, id: data.id || `${table}-id-${Date.now()}` },
+							error: null
+						})
+					})
+				}));
+
+				const updateMock = vi.fn(() => ({
+					eq: eqMock
+				}));
+
+				eqMock.mockReturnValue({
+					eq: eqMock,
+					select: vi.fn().mockReturnValue({
+						single: vi.fn().mockResolvedValue({
+							data: { id: `${table}-id` },
+							error: null
+						})
+					})
+				});
+
+				return {
+					insert: insertMock,
+					update: updateMock,
+					delete: deleteMock,
+					select: vi.fn(() => ({
+						eq: eqMock,
+						single: vi.fn().mockResolvedValue({
+							data: { id: `${table}-id` },
+							error: null
+						})
+					}))
+				};
+			})
+		};
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		executor = new OperationsExecutor(mockSupabaseWithRollback() as any);
+	});
+
+	describe('Rollback Stack Management', () => {
+		it('should rollback all successful create operations when one fails', async () => {
+			const mockSupabaseRollback = mockSupabaseWithRollback();
+			executor = new OperationsExecutor(mockSupabaseRollback as any);
+
+			let callCount = 0;
+			const fromMock = vi.fn((table: string) => {
+				callCount++;
+
+				if (callCount <= 2) {
+					// First two operations succeed
+					return {
+						insert: vi.fn((data: any) => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: { ...data, id: `created-${callCount}` },
+									error: null
+								})
+							})
+						})),
+						delete: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockResolvedValue({
+									data: null,
+									error: null
+								})
+							})
+						})
+					};
+				} else {
+					// Third operation fails
+					return {
+						insert: vi.fn(() => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: null,
+									error: { message: 'Database constraint violation' }
+								})
+							})
+						})),
+						delete: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockResolvedValue({
+									data: null,
+									error: null
+								})
+							})
+						})
+					};
+				}
+			});
+
+			mockSupabaseRollback.from = fromMock;
+
+			const operations: ParsedOperation[] = [
+				{
+					operation: 'create',
+					table: 'projects',
+					data: { name: 'Project 1', user_id: 'user-123' }
+				},
+				{
+					operation: 'create',
+					table: 'tasks',
+					data: { title: 'Task 1', user_id: 'user-123', project_id: 'proj-1' }
+				},
+				{
+					operation: 'create',
+					table: 'notes',
+					data: { content: 'Note 1', user_id: 'user-123', project_id: 'proj-1' }
+				}
+			];
+
+			try {
+				await executor.executeOperations({
+					operations,
+					userId: 'user-123',
+					brainDumpId: 'dump-123'
+				});
+				expect.fail('Should have thrown error');
+			} catch (error: any) {
+				// Verify rollback was attempted
+				expect(error.message).toContain('rolled back');
+				expect(error.message).toContain('Database constraint violation');
+			}
+		});
+
+		it('should rollback operations in reverse order (LIFO)', async () => {
+			const deleteOrder: string[] = [];
+			const mockSupabaseRollback = mockSupabaseWithRollback();
+
+			let insertCount = 0;
+			const fromMock = vi.fn((table: string) => {
+				insertCount++;
+
+				// Track delete operations
+				const deleteMock = vi.fn(() => {
+					deleteOrder.push(table);
+					return {
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockResolvedValue({
+								data: null,
+								error: null
+							})
+						})
+					};
+				});
+
+				if (insertCount <= 2) {
+					// First two succeed
+					return {
+						insert: vi.fn((data: any) => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: { ...data, id: `id-${insertCount}` },
+									error: null
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				} else {
+					// Third fails
+					return {
+						insert: vi.fn(() => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: null,
+									error: { message: 'Failure' }
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				}
+			});
+
+			mockSupabaseRollback.from = fromMock;
+			executor = new OperationsExecutor(mockSupabaseRollback as any);
+
+			const operations: ParsedOperation[] = [
+				{
+					operation: 'create',
+					table: 'projects',
+					data: { name: 'Project 1', user_id: 'user-123' }
+				},
+				{
+					operation: 'create',
+					table: 'tasks',
+					data: { title: 'Task 1', user_id: 'user-123', project_id: 'proj-1' }
+				},
+				{
+					operation: 'create',
+					table: 'notes',
+					data: { content: 'Note 1', user_id: 'user-123', project_id: 'proj-1' }
+				}
+			];
+
+			try {
+				await executor.executeOperations({
+					operations,
+					userId: 'user-123',
+					brainDumpId: 'dump-123'
+				});
+			} catch (error) {
+				// Verify rollback order is reversed (LIFO)
+				// tasks should be deleted before projects
+				expect(deleteOrder[0]).toBe('tasks');
+				expect(deleteOrder[1]).toBe('projects');
+			}
+		});
+
+		it('should only rollback create operations, not updates', async () => {
+			const deleteCallsByTable: Record<string, number> = {};
+			const mockSupabaseRollback = mockSupabaseWithRollback();
+
+			let operationCount = 0;
+			const fromMock = vi.fn((table: string) => {
+				operationCount++;
+
+				// Track delete calls
+				const deleteMock = vi.fn(() => {
+					deleteCallsByTable[table] = (deleteCallsByTable[table] || 0) + 1;
+					return {
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockResolvedValue({
+								data: null,
+								error: null
+							})
+						})
+					};
+				});
+
+				if (operationCount <= 2) {
+					// First two succeed
+					return {
+						insert: vi.fn((data: any) => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: { ...data, id: `id-${operationCount}` },
+									error: null
+								})
+							})
+						})),
+						update: vi.fn(() => ({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockReturnValue({
+									select: vi.fn().mockReturnValue({
+										single: vi.fn().mockResolvedValue({
+											data: { id: `id-${operationCount}` },
+											error: null
+										})
+									})
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				} else {
+					// Third fails
+					return {
+						insert: vi.fn(() => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: null,
+									error: { message: 'Failure' }
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				}
+			});
+
+			mockSupabaseRollback.from = fromMock;
+			executor = new OperationsExecutor(mockSupabaseRollback as any);
+
+			const operations: ParsedOperation[] = [
+				{
+					operation: 'create',
+					table: 'projects',
+					data: { name: 'Project 1', user_id: 'user-123' }
+				},
+				{
+					operation: 'update',
+					table: 'tasks',
+					data: { id: 'existing-task', title: 'Updated Task', user_id: 'user-123' }
+				},
+				{
+					operation: 'create',
+					table: 'notes',
+					data: { content: 'Note 1', user_id: 'user-123', project_id: 'proj-1' }
+				}
+			];
+
+			try {
+				await executor.executeOperations({
+					operations,
+					userId: 'user-123',
+					brainDumpId: 'dump-123'
+				});
+			} catch (error) {
+				// Only projects (create) should have delete called, not tasks (update)
+				expect(deleteCallsByTable['projects']).toBeGreaterThan(0);
+				expect(deleteCallsByTable['tasks']).toBeUndefined();
+			}
+		});
+	});
+
+	describe('Rollback Security', () => {
+		it('should include user_id check in rollback deletes', async () => {
+			const eqCalls: any[] = [];
+			const mockSupabaseRollback = mockSupabaseWithRollback();
+
+			let callCount = 0;
+			const fromMock = vi.fn((table: string) => {
+				callCount++;
+
+				const eqMock = vi.fn((...args: any[]) => {
+					eqCalls.push(args);
+					return {
+						eq: eqMock,
+						single: vi.fn().mockResolvedValue({
+							data: null,
+							error: null
+						})
+					};
+				});
+
+				if (callCount === 1) {
+					// First succeeds
+					return {
+						insert: vi.fn((data: any) => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: { ...data, id: 'id-1' },
+									error: null
+								})
+							})
+						})),
+						delete: vi.fn().mockReturnValue({ eq: eqMock })
+					};
+				} else {
+					// Second fails
+					return {
+						insert: vi.fn(() => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: null,
+									error: { message: 'Failure' }
+								})
+							})
+						})),
+						delete: vi.fn().mockReturnValue({ eq: eqMock })
+					};
+				}
+			});
+
+			mockSupabaseRollback.from = fromMock;
+			executor = new OperationsExecutor(mockSupabaseRollback as any);
+
+			const operations: ParsedOperation[] = [
+				{
+					operation: 'create',
+					table: 'projects',
+					data: { name: 'Project 1', user_id: 'user-123' }
+				},
+				{
+					operation: 'create',
+					table: 'tasks',
+					data: { title: 'Task 1', user_id: 'user-123', project_id: 'proj-1' }
+				}
+			];
+
+			try {
+				await executor.executeOperations({
+					operations,
+					userId: 'user-123',
+					brainDumpId: 'dump-123'
+				});
+			} catch (error) {
+				// Verify user_id was checked during rollback
+				const userIdEqCall = eqCalls.find((call) => call[0] === 'user_id');
+				expect(userIdEqCall).toBeDefined();
+				expect(userIdEqCall[1]).toBe('user-123');
+			}
+		});
+	});
+
+	describe('Rollback Error Handling', () => {
+		it('should continue rolling back even if one rollback fails', async () => {
+			const deleteAttempts: string[] = [];
+			const mockSupabaseRollback = mockSupabaseWithRollback();
+
+			let insertCount = 0;
+			const fromMock = vi.fn((table: string) => {
+				insertCount++;
+
+				let deleteAttempt = 0;
+				const deleteMock = vi.fn(() => {
+					deleteAttempts.push(table);
+					deleteAttempt++;
+					return {
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockResolvedValue({
+								data: null,
+								// First delete fails, second succeeds
+								error: deleteAttempt === 1 ? { message: 'Delete failed' } : null
+							})
+						})
+					};
+				});
+
+				if (insertCount <= 2) {
+					// Both inserts succeed
+					return {
+						insert: vi.fn((data: any) => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: { ...data, id: `id-${insertCount}` },
+									error: null
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				} else {
+					// Third insert fails
+					return {
+						insert: vi.fn(() => ({
+							select: vi.fn().mockReturnValue({
+								single: vi.fn().mockResolvedValue({
+									data: null,
+									error: { message: 'Insert failure' }
+								})
+							})
+						})),
+						delete: deleteMock
+					};
+				}
+			});
+
+			mockSupabaseRollback.from = fromMock;
+			executor = new OperationsExecutor(mockSupabaseRollback as any);
+
+			const operations: ParsedOperation[] = [
+				{
+					operation: 'create',
+					table: 'projects',
+					data: { name: 'Project 1', user_id: 'user-123' }
+				},
+				{
+					operation: 'create',
+					table: 'tasks',
+					data: { title: 'Task 1', user_id: 'user-123', project_id: 'proj-1' }
+				},
+				{
+					operation: 'create',
+					table: 'notes',
+					data: { content: 'Note 1', user_id: 'user-123', project_id: 'proj-1' }
+				}
+			];
+
+			try {
+				await executor.executeOperations({
+					operations,
+					userId: 'user-123',
+					brainDumpId: 'dump-123'
+				});
+			} catch (error) {
+				// Should attempt to delete both items despite first failure
+				expect(deleteAttempts.length).toBe(2);
+			}
+		});
+	});
+});

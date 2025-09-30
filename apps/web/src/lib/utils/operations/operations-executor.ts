@@ -59,6 +59,7 @@ export class OperationsExecutor {
 		const successful: ParsedOperation[] = [];
 		const failed: Array<ParsedOperation & { error: string }> = [];
 		const results: any[] = [];
+		const rollbackStack: Array<{ operation: ParsedOperation; result: any }> = [];
 
 		try {
 			// Reset state for new execution
@@ -86,7 +87,7 @@ export class OperationsExecutor {
 				);
 			}
 
-			// Execute operations sequentially
+			// Execute operations sequentially with rollback support
 			for (const operation of operationsToExecute) {
 				try {
 					const result = await this.executeOperation(operation, userId, brainDumpId);
@@ -95,6 +96,9 @@ export class OperationsExecutor {
 						result
 					};
 					successful.push(successfulOperation);
+
+					// Add to rollback stack for potential rollback
+					rollbackStack.push({ operation, result });
 
 					// Store result with metadata
 					if (result && result.id) {
@@ -106,10 +110,10 @@ export class OperationsExecutor {
 					}
 				} catch (error) {
 					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-					failed.push({
-						...operation,
-						error: errorMessage
-					});
+
+					console.error(
+						`Operation failed: ${errorMessage}. Rolling back ${rollbackStack.length} successful operations...`
+					);
 
 					// Log the operation failure
 					await this.errorLogger.logDatabaseError(
@@ -120,8 +124,19 @@ export class OperationsExecutor {
 						operation.data
 					);
 
-					// Continue with other operations
-					console.error('Operation failed:', errorMessage);
+					// ROLLBACK: Reverse all successful operations
+					await this.rollbackOperations(rollbackStack, userId);
+
+					// Record the failed operation
+					failed.push({
+						...operation,
+						error: errorMessage
+					});
+
+					// Throw error to stop execution completely
+					throw new Error(
+						`Operation failed and changes were rolled back: ${errorMessage}. Failed operation: ${operation.table} ${operation.operation}`
+					);
 				}
 			}
 
@@ -201,6 +216,54 @@ export class OperationsExecutor {
 			default:
 				throw new Error(`Unsupported operation type: ${operation.operation}`);
 		}
+	}
+
+	/**
+	 * Rollback operations in reverse order
+	 */
+	private async rollbackOperations(
+		rollbackStack: Array<{ operation: ParsedOperation; result: any }>,
+		userId: string
+	): Promise<void> {
+		console.log(`Starting rollback of ${rollbackStack.length} operations...`);
+
+		// Reverse the stack so we undo in reverse order (LIFO)
+		const reversedStack = [...rollbackStack].reverse();
+
+		for (const { operation, result } of reversedStack) {
+			try {
+				// Only rollback create operations (delete what was created)
+				// Update and delete operations are not rolled back as they're harder to reverse
+				if (operation.operation === 'create' && result?.id) {
+					console.log(
+						`Rolling back ${operation.table} create operation (id: ${result.id})`
+					);
+
+					const { error } = await this.supabase
+						.from(operation.table as any)
+						.delete()
+						.eq('id', result.id)
+						.eq('user_id', userId); // Ensure we only delete user's own data
+
+					if (error) {
+						console.error(
+							`Failed to rollback ${operation.table} (id: ${result.id}):`,
+							error
+						);
+						// Continue rolling back other operations even if one fails
+					} else {
+						console.log(
+							`Successfully rolled back ${operation.table} (id: ${result.id})`
+						);
+					}
+				}
+			} catch (error) {
+				console.error(`Error during rollback of ${operation.table}:`, error);
+				// Continue with other rollbacks
+			}
+		}
+
+		console.log('Rollback complete');
 	}
 
 	/**

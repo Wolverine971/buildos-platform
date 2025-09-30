@@ -1,154 +1,190 @@
-# Vercel Deployment Guide
+# Vercel Deployment Instructions - Updating to Monorepo
 
-## Environment Variables
+## Step-by-Step Instructions
 
-Add these environment variables in your Vercel project settings:
+### 1. Go to Your Vercel Dashboard
 
-### Required Variables
+Navigate to: https://vercel.com/dashboard
+
+### 2. Find Your Existing BuildOS Project
+
+Click on your existing BuildOS web app project
+
+### 3. Update Git Repository
+
+1. Go to **Settings** tab
+2. Scroll to **Git** section
+3. Click **Disconnect** next to your current repository
+4. Click **Connect Git Repository**
+5. Select `Wolverine971/buildos-platform` (your new monorepo)
+6. Click **Import**
+
+### 4. Update Build & Output Settings
+
+Go to **Settings** → **General** and update:
 
 ```
-# Supabase
-PUBLIC_SUPABASE_URL=your_supabase_url
-PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-PRIVATE_SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-
-# Google OAuth (if using Google sign-in)
-PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# Stripe (when ready to enable)
-ENABLE_STRIPE=false
-STRIPE_SECRET_KEY=your_stripe_secret_key
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-
-# Cron Jobs
-CRON_SECRET=generate_a_random_secret_here
-
-# Optional
-OPENAI_API_KEY=your_openai_api_key
+Framework Preset: SvelteKit
+Root Directory: ./  (leave empty or set to ./)
 ```
 
-### Generate CRON_SECRET
+### 5. Update Build Commands
+
+Still in **Settings** → **General**, scroll to **Build & Development Settings**:
+
+**IMPORTANT:** Either disable the "Override" toggles OR update these settings:
+
+```
+Build Command: pnpm turbo build --filter=@buildos/web
+Output Directory: apps/web/.vercel/output
+Install Command: pnpm install --frozen-lockfile
+```
+
+⚠️ **CRITICAL:** The Output Directory MUST be `apps/web/.vercel/output` (not `.svelte-kit`)
+This is where the SvelteKit Vercel adapter outputs the final deployment files.
+
+### 6. Environment Variables to ADD/UPDATE
+
+Go to **Settings** → **Environment Variables**
+
+**NEW Variables You Might Need to Add:**
+
+<!-- PUBLIC_RAILWAY_WORKER_URL=http://localhost:3001
+# PUBLIC_RAILWAY_WORKER_URL=https://daily-brief-worker-production.up.railway.app
+PUBLIC_RAILWAY_WORKER_URL_PRODUCTION=https://daily-brief-worker-production.up.railway.app -->
 
 ```bash
-openssl rand -base64 32
+# If not already present: already added
+PUBLIC_RAILWAY_WORKER_URL=https://buildos-worker.up.railway.app
+PUBLIC_BRIEF_POLLING_INTERVAL=5000
+PUBLIC_BRIEF_MAX_POLLING_TIME=300000
+PRIVATE_BUILDOS_WEBHOOK_SECRET=<generate with: openssl rand -hex 32>
+
+# If using OpenRouter as primary:
+PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY_HERE
 ```
 
-## Cron Jobs Setup
-
-The `vercel.json` file configures two cron jobs:
-
-1. **Dunning Process** - Runs daily at 9 AM UTC
-    - Processes failed payments
-    - Sends payment retry notifications
-    - Updates subscription statuses
-
-2. **Trial Reminders** - Runs daily at 10 AM UTC
-    - Sends trial expiration warnings
-    - Creates in-app notifications
-    - Tracks reminder history
-
-### Vercel Cron Limitations
-
-- **Hobby Plan**:
-    - Maximum 2 cron jobs
-    - Runs once per day only
-    - Perfect for this setup
-
-- **Pro Plan**:
-    - Unlimited cron jobs
-    - Minimum 1-hour interval
-    - Can add more frequent checks
-
-## Deployment Steps
-
-1. **Install Vercel CLI**
-
-    ```bash
-    npm i -g vercel
-    ```
-
-2. **Link your project**
-
-    ```bash
-    vercel link
-    ```
-
-3. **Set environment variables**
-
-    ```bash
-    vercel env add PRIVATE_CRON_SECRET
-    vercel env add STRIPE_SECRET_KEY
-    # Add all other variables...
-    ```
-
-4. **Deploy**
-    ```bash
-    vercel --prod
-    ```
-
-## Testing Cron Jobs Locally
-
-You can test cron endpoints locally:
+**Variables That Should Already Exist (No Change Needed):**
 
 ```bash
-# Test dunning cron
-curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
-  http://localhost:5173/api/cron/dunning
-
-# Test trial reminders
-curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
-  http://localhost:5173/api/cron/trial-reminders
+PUBLIC_SUPABASE_URL
+PUBLIC_SUPABASE_ANON_KEY
+PUBLIC_SUPABASE_PROJECT_ID
+PRIVATE_SUPABASE_SERVICE_KEY
+PUBLIC_GOOGLE_CLIENT_ID
+PRIVATE_GOOGLE_CLIENT_ID
+PRIVATE_GOOGLE_CLIENT_SECRET
+GOOGLE_CLIENT_SECRET
+PRIVATE_DJ_GMAIL_APP_PASSWORD
+PRIVATE_ZACH_GMAIL_APP_PASSWORD
+PRIVATE_CRON_SECRET
+PUBLIC_APP_URL
 ```
 
-## Monitoring
+**Optional Stripe Variables (If Using Payments):**
 
-1. **Vercel Dashboard**
-    - View cron execution logs
-    - Check function invocations
-    - Monitor errors
+```bash
+ENABLE_STRIPE
+STRIPE_SECRET_KEY
+PUBLIC_STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_ID
+```
 
-2. **Database Logs**
-    - Check `cron_logs` table for execution history
-    - Monitor `trial_reminders` for sent notifications
-    - Track `failed_payments` for dunning process
+### 7. Ignored Build Step
 
-## Stripe Webhooks on Vercel
+In **Settings** → **Git**, update the **Ignored Build Step**:
 
-When you enable Stripe:
+```bash
+git diff HEAD^ HEAD --quiet -- apps/web packages turbo.json package.json pnpm-lock.yaml
+```
 
-1. Set webhook endpoint in Stripe Dashboard:
+This prevents rebuilds when only the worker changes.
 
-    ```
-    https://your-app.vercel.app/api/stripe/webhook
-    ```
+### 8. Node.js Version
 
-2. Configure webhook to listen for:
-    - `invoice.payment_failed`
-    - `invoice.payment_succeeded`
-    - `customer.subscription.updated`
-    - `customer.subscription.deleted`
+In **Settings** → **General**, ensure Node.js version is set to:
 
-3. Add webhook secret to Vercel env:
-    ```bash
-    vercel env add STRIPE_WEBHOOK_SECRET
-    ```
+```
+20.x
+```
+
+### 9. Redeploy
+
+1. Go back to the **Overview** tab
+2. Click on the latest deployment
+3. Click the **...** menu → **Redeploy**
+4. Or trigger a new deployment by pushing a commit
+
+## Verification Steps
+
+After deployment:
+
+1. Check build logs for any errors
+2. Visit your site URL
+3. Check browser console for any missing environment variables
+4. Test login functionality
+5. Verify worker communication at `/briefs` page
+
+## Troubleshooting
+
+### If Build Succeeds But Deployment Hangs:
+
+**This is likely caused by incorrect Output Directory settings!**
+
+1. **In Vercel Dashboard:**
+    - Go to Settings → General → Build & Development Settings
+    - Check if "Override" is enabled for Output Directory
+    - If yes, either:
+      a. **Disable the Override toggle** to use vercel.json settings
+      b. **Update Output Directory** to `apps/web/.vercel/output`
+
+2. **The hanging happens because:**
+    - Build creates files in `/vercel/output`
+    - But Vercel looks for them in wrong location (e.g., `.svelte-kit`)
+    - No files found = deployment hangs forever
+
+3. **Quick Fix:**
+    - In Vercel UI, change Output Directory to: `apps/web/.vercel/output`
+    - Redeploy
+
+### If Build Fails:
+
+1. **Error: "Cannot find package '@buildos/shared-types'"**
+    - Make sure Install Command is `pnpm install --frozen-lockfile`
+    - Ensure Root Directory is set to `./`
+
+2. **Error: "Module '$env/static/private' has no exported member"**
+    - You're missing an environment variable
+    - Add the missing variable in Settings → Environment Variables
+
+3. **Error: "pnpm: command not found"**
+    - Vercel should auto-detect pnpm from package.json
+    - If not, contact Vercel support
+
+### If Site Loads But Features Don't Work:
+
+1. **Calendar/OAuth not working:**
+    - Verify Google OAuth variables are set
+    - Update authorized redirect URIs in Google Console
+
+2. **Worker communication failing:**
+    - Check PUBLIC_RAILWAY_WORKER_URL is set correctly
+    - Verify worker is deployed and running
+
+3. **Email not sending:**
+    - Check email app passwords are set
+    - Verify Gmail app passwords are valid
 
 ## Important Notes
 
-- Vercel cron jobs have a 10-second timeout by default
-- Functions have a 10-second timeout on Hobby, 60 seconds on Pro
-- Consider using Vercel KV or Upstash for rate limiting if needed
-- Monitor your Supabase connection pool limits
+- The monorepo uses `pnpm` workspaces, so Vercel needs to install from root
+- The `vercel.json` in root has the correct settings
+- Build output is in `apps/web/.vercel/output` (NOT `.svelte-kit`)
+- The SvelteKit Vercel adapter v5+ outputs to `.vercel/output` directory
+- All PUBLIC* variables are available in browser, PRIVATE* are server-only
 
-## Alternative: External Cron Services
+---
 
-If you need more control over cron timing:
-
-1. **Cron-job.org** (free)
-2. **EasyCron** (free tier available)
-3. **Upstash QStash** (serverless cron)
-4. **GitHub Actions** (scheduled workflows)
-
-These can call your Vercel endpoints with the proper authorization header.
+Last Updated: 2025-09-27
+After updating these settings, your Vercel deployment will use the new monorepo structure.

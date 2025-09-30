@@ -19,12 +19,11 @@
 	import { brainDumpService } from '$lib/services/braindump-api.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { goto, invalidate } from '$app/navigation';
-	// Use unified store through transition layer
-	import {
-		brainDumpV2Store,
-		brainDumpActions,
-		enabledOperationsCount
-	} from '$lib/stores/brain-dump-transition.store';
+	// Direct v2 store import (migration complete)
+	import { brainDumpV2Store, enabledOperationsCount } from '$lib/stores/brain-dump-v2.store';
+
+	// Store actions accessed via brainDumpV2Store methods
+	const brainDumpActions = brainDumpV2Store;
 	import type {
 		BrainDumpParseResult,
 		ParsedOperation,
@@ -1019,7 +1018,7 @@
 				// Just hide notification without full reset - let real-time sync update the UI
 				const autoCloseTimeout = setTimeout(() => {
 					// Hide notification without resetting state
-					brainDumpActions.hideNotification();
+					brainDumpActions.closeNotification();
 					// Clear only UI-specific state
 					showSuccessView = false;
 					successData = null;
@@ -1117,7 +1116,7 @@
 
 					// Keep notification open but minimized so component stays mounted for refresh modal
 					// This ensures the refresh modal can be displayed
-					brainDumpActions.showNotification({ minimized: true });
+					brainDumpActions.openNotification(true);
 
 					const refreshTimeout = setTimeout(() => {
 						showRefreshModal = true;

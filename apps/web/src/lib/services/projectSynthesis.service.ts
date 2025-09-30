@@ -92,7 +92,9 @@ export class ProjectSynthesisService {
 				systemPrompt,
 				userPrompt,
 				userId,
-				profile: 'balanced'
+				profile: 'balanced',
+				operationType: 'project_synthesis',
+				projectId
 			});
 
 			if (!response) {
