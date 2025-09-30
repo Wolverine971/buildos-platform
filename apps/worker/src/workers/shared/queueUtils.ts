@@ -50,11 +50,22 @@ export interface OnboardingAnalysisJobData {
   };
 }
 
+export interface EmailBriefJobData {
+  emailId: string; // ID from emails table
+}
+
 // Update job status in database
 export async function updateJobStatus(
   queueJobId: string,
   status: QueueJobStatus,
-  jobType: "brief" | "phases" | "onboarding" | "send_sms",
+  jobType:
+    | "brief"
+    | "phases"
+    | "onboarding"
+    | "send_sms"
+    | "email"
+    | "email_cancelled"
+    | "email_sent",
   errorMessage?: string,
 ) {
   // Status is now consistent - no mapping needed
@@ -87,17 +98,34 @@ export async function updateJobStatus(
 }
 
 // Send notification to user via Supabase Realtime
-export async function notifyUser(userId: string, event: string, payload: any) {
+export async function notifyUser(
+  userId: string,
+  event:
+    | string
+    | {
+        type: string;
+        emailId?: string;
+        briefId?: string;
+        briefDate?: string;
+        error?: string;
+        trackingId?: string;
+      },
+  payload?: any,
+) {
   try {
+    // Handle both old and new notification formats
+    const actualEvent = typeof event === "string" ? event : event.type;
+    const actualPayload = typeof event === "string" ? payload : event;
+
     // Send realtime notification
     const channel = supabase.channel(`user:${userId}`);
     await channel.send({
       type: "broadcast",
-      event: event,
-      payload: payload,
+      event: actualEvent,
+      payload: actualPayload,
     });
 
-    console.log(`📢 Sent notification to user ${userId}: ${event}`);
+    console.log(`📢 Sent notification to user ${userId}: ${actualEvent}`);
   } catch (error) {
     console.error("Failed to send notification:", error);
   }

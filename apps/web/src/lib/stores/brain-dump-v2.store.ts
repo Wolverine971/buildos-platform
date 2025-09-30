@@ -1,5 +1,5 @@
 // apps/web/src/lib/stores/brain-dump-v2.store.ts
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived, get, type Readable, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type {
 	BrainDumpParseResult,
@@ -30,10 +30,6 @@ export interface UnifiedBrainDumpState {
 			isMinimized: boolean;
 			hasUserInteracted: boolean;
 			showSuccessView: boolean;
-		};
-		textarea: {
-			isCollapsed: boolean;
-			showingParseResults: boolean;
 		};
 		components: {
 			loaded: Record<string, boolean>;
@@ -128,7 +124,6 @@ export interface UnifiedBrainDumpState {
 				timestamp: string;
 			}>;
 			processing: string | null;
-			critical: boolean;
 		};
 
 		// Execution summary
@@ -162,10 +157,6 @@ function createInitialState(): UnifiedBrainDumpState {
 				isMinimized: false,
 				hasUserInteracted: false,
 				showSuccessView: false
-			},
-			textarea: {
-				isCollapsed: false,
-				showingParseResults: false
 			},
 			components: {
 				loaded: {},
@@ -207,8 +198,7 @@ function createInitialState(): UnifiedBrainDumpState {
 			success: null,
 			errors: {
 				operations: [],
-				processing: null,
-				critical: false
+				processing: null
 			},
 			lastExecutionSummary: null
 		},
@@ -254,7 +244,7 @@ function persistState(state: UnifiedBrainDumpState) {
 	}
 }
 
-function loadPersistedState(): Partial<UnifiedBrainDumpState> | null {
+function loadPersistedState(): UnifiedBrainDumpState | null {
 	if (!browser) return null;
 
 	try {
@@ -311,8 +301,75 @@ function loadPersistedState(): Partial<UnifiedBrainDumpState> | null {
 	}
 }
 
+// Type definition for the brain dump store with all actions
+// Use object type with subscribe instead of Readable to ensure Svelte's $ syntax works
+export type BrainDumpV2Store = {
+	subscribe: Writable<UnifiedBrainDumpState>['subscribe'];
+	// UI Actions
+	openModal: () => void;
+	closeModal: () => void;
+	setModalView: (view: UnifiedBrainDumpState['ui']['modal']['currentView']) => void;
+	startModalHandoff: () => void;
+	completeModalHandoff: () => void;
+	openNotification: (minimized?: boolean) => void;
+	closeNotification: () => void;
+	toggleNotificationMinimized: () => void;
+	setComponentLoading: (component: string, loading: boolean) => void;
+	setComponentLoaded: (component: string, loaded: boolean) => void;
+
+	// Core Actions
+	selectProject: (project: any) => void;
+	updateInputText: (text: string) => void;
+	setSavedContent: (content: string, brainDumpId?: string) => void;
+	setParseResults: (results: BrainDumpParseResult | null) => void;
+	toggleOperation: (operationId: string) => void;
+	updateOperation: (operation: ParsedOperation) => void;
+	removeOperation: (operationId: string) => void;
+	setVoiceError: (error: string) => void;
+	setMicrophonePermission: (granted: boolean) => void;
+	setVoiceCapabilities: (capabilities: Partial<UnifiedBrainDumpState['core']['voice']>) => void;
+
+	// Processing Actions
+	startProcessing: (config: {
+		type: 'dual' | 'single' | 'short' | 'background';
+		brainDumpId: string;
+		jobId?: string;
+		autoAcceptEnabled?: boolean;
+		inputText?: string;
+		selectedProject?: any;
+		displayedQuestions?: DisplayedBrainDumpQuestion[];
+	}) => Promise<boolean>;
+	completeProcessing: () => void;
+	releaseMutex: () => void;
+	setProcessingPhase: (phase: UnifiedBrainDumpState['processing']['phase']) => void;
+	updateStreamingState: (
+		streaming: Partial<NonNullable<UnifiedBrainDumpState['processing']['streaming']>>
+	) => void;
+	resetStreamingState: () => void;
+	setAutoAccept: (enabled: boolean) => void;
+
+	// Results Actions
+	setSuccessData: (data: UnifiedBrainDumpState['results']['success']) => void;
+	setOperationErrors: (
+		errors: Array<{
+			operationId?: string;
+			table: string;
+			operation: string;
+			error: string;
+		}>
+	) => void;
+	setProcessingError: (error: string | null) => void;
+	setExecutionSummary: (summary: { successful: number; failed: number; details?: any }) => void;
+	clearErrors: () => void;
+
+	// Utility Actions
+	reset: () => void;
+	resetForNewSession: () => void;
+	clearParseResults: () => void;
+};
+
 // Create the unified store
-function createBrainDumpV2Store() {
+function createBrainDumpV2Store(): BrainDumpV2Store {
 	// Load persisted state or use initial state
 	const persistedState = loadPersistedState();
 	const initialState = persistedState || createInitialState();
@@ -560,14 +617,6 @@ function createBrainDumpV2Store() {
 						...state.core,
 						parseResults: results,
 						disabledOperations: new Set() // Clear disabled operations
-					},
-					ui: {
-						...state.ui,
-						textarea: {
-							...state.ui.textarea,
-							showingParseResults: !!results,
-							isCollapsed: !!results
-						}
 					},
 					processing: {
 						...state.processing,
@@ -921,10 +970,7 @@ function createBrainDumpV2Store() {
 						operations: errors.map((e) => ({
 							...e,
 							timestamp: new Date().toISOString()
-						})),
-						critical: errors.some(
-							(e) => e.error.includes('Critical') || e.table === 'projects'
-						)
+						}))
 					}
 				}
 			})),
@@ -965,8 +1011,7 @@ function createBrainDumpV2Store() {
 					...state.results,
 					errors: {
 						operations: [],
-						processing: null,
-						critical: false
+						processing: null
 					}
 				},
 				core: {
@@ -1016,13 +1061,6 @@ function createBrainDumpV2Store() {
 					...state.core,
 					parseResults: null,
 					disabledOperations: new Set()
-				},
-				ui: {
-					...state.ui,
-					textarea: {
-						showingParseResults: false,
-						isCollapsed: false
-					}
 				}
 			}))
 	};
@@ -1033,8 +1071,8 @@ function createBrainDumpV2Store() {
 	};
 }
 
-// Create the store instance
-export const brainDumpV2Store = createBrainDumpV2Store();
+// Create the store instance with explicit type annotation
+export const brainDumpV2Store: BrainDumpV2Store = createBrainDumpV2Store();
 
 // ===== Derived Stores for Computed Values =====
 
@@ -1085,9 +1123,10 @@ export const hasOperationErrors = derived(
 	($state) => $state.results.errors.operations.length > 0
 );
 
-export const hasCriticalErrors = derived(
-	brainDumpV2Store,
-	($state) => $state.results.errors.critical
+export const hasCriticalErrors = derived(brainDumpV2Store, ($state) =>
+	$state.results.errors.operations.some(
+		(e) => e.error.includes('Critical') || e.table === 'projects'
+	)
 );
 
 export const operationErrorSummary = derived(brainDumpV2Store, ($state) => {
@@ -1101,10 +1140,14 @@ export const operationErrorSummary = derived(brainDumpV2Store, ($state) => {
 		{} as Record<string, number>
 	);
 
+	const hasCritical = $state.results.errors.operations.some(
+		(e) => e.error.includes('Critical') || e.table === 'projects'
+	);
+
 	return {
 		total: $state.results.errors.operations.length,
 		byTable,
-		hasCritical: $state.results.errors.critical
+		hasCritical
 	};
 });
 
@@ -1140,6 +1183,17 @@ export const isNotificationOpen = derived(
 export const isNotificationMinimized = derived(
 	brainDumpV2Store,
 	($state) => $state.ui.notification.isMinimized
+);
+
+// Derived UI state for textarea (previously stored redundantly)
+export const showingParseResults = derived(
+	brainDumpV2Store,
+	($state) => $state.core.parseResults !== null
+);
+
+export const isTextareaCollapsed = derived(
+	brainDumpV2Store,
+	($state) => $state.core.parseResults !== null
 );
 
 export const processingStatus = derived(brainDumpV2Store, ($state) => {

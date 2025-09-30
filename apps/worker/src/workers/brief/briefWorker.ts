@@ -91,73 +91,173 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       job.id, // Pass the job ID
     );
 
-    // Send email if user has opted in
-    let emailStatus = { sent: false, error: null as string | null };
+    // Phase 2 REVISED: Create email record and queue email job (non-blocking)
+    let emailRecordId: string | null = null;
     try {
       const emailSender = new DailyBriefEmailSender(supabase);
-      const emailSent = await emailSender.sendDailyBriefEmail(
-        job.data.userId,
-        briefDate,
-        brief,
-      );
+      const shouldSend = await emailSender.shouldSendEmail(job.data.userId);
 
-      if (emailSent) {
-        console.log(`📧 Email notification sent for brief ${brief.id}`);
-        emailStatus.sent = true;
+      if (shouldSend) {
+        // Get user email
+        const { data: user } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", job.data.userId)
+          .single();
+
+        if (!user?.email) {
+          console.warn(`No email found for user ${job.data.userId}, skipping`);
+        } else {
+          // Generate tracking ID
+          const trackingId = crypto.randomUUID();
+
+          // Prepare email content (reuse existing formatBriefForEmail method)
+          const { htmlContent, plainText } = emailSender.formatBriefForEmail(
+            brief,
+            briefDate,
+          );
+
+          // Generate tracking pixel
+          const trackingPixel = `<img src="https://build-os.com/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
+
+          // Use custom subject from metadata (for re-engagement emails) or default
+          const customSubject =
+            brief.metadata && typeof brief.metadata === "object"
+              ? brief.metadata.email_subject
+              : undefined;
+
+          const subject =
+            customSubject ||
+            `Daily Brief - ${new Date(briefDate).toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}`;
+
+          // Generate minimal HTML for storage
+          const emailHtmlForStorage = `
+<!DOCTYPE html>
+<html>
+<head><title>${subject}</title></head>
+<body>
+  ${htmlContent}
+  ${trackingPixel}
+</body>
+</html>`;
+
+          // Create email record in existing emails table (status='pending')
+          const { data: emailRecord, error: emailError } = await supabase
+            .from("emails")
+            .insert({
+              created_by: job.data.userId,
+              from_email: "noreply@build-os.com",
+              from_name: "BuildOS",
+              subject: subject,
+              content: emailHtmlForStorage,
+              category: "daily_brief",
+              status: "pending", // ← Not sent yet!
+              tracking_enabled: true,
+              tracking_id: trackingId,
+              template_data: {
+                brief_id: brief.id,
+                brief_date: briefDate,
+                user_id: job.data.userId,
+              },
+            })
+            .select()
+            .single();
+
+          if (emailError) {
+            console.error("Failed to create email record:", emailError);
+          } else {
+            emailRecordId = emailRecord.id;
+
+            // Create recipient record in existing email_recipients table
+            const { error: recipientError } = await supabase
+              .from("email_recipients")
+              .insert({
+                email_id: emailRecord.id,
+                recipient_email: user.email,
+                recipient_type: "to",
+                status: "pending",
+              });
+
+            if (recipientError) {
+              console.error(
+                "Failed to create recipient record:",
+                recipientError,
+              );
+            }
+
+            // Queue email job with emailId (not briefId!)
+            const { data: emailJob, error: queueError } = await supabase.rpc(
+              "add_queue_job",
+              {
+                p_user_id: job.data.userId,
+                p_job_type: "generate_brief_email",
+                p_metadata: {
+                  emailId: emailRecord.id, // ← Just emailId!
+                },
+                p_priority: 5, // Lower priority than brief generation
+                p_scheduled_for: new Date().toISOString(), // Send immediately
+                p_dedup_key: `email-${emailRecord.id}`, // Prevent duplicate email jobs
+              },
+            );
+
+            if (queueError) {
+              console.error(
+                `Failed to queue email job for email ${emailRecord.id}:`,
+                queueError,
+              );
+            } else {
+              console.log(
+                `📨 Queued email job ${emailJob} for email ${emailRecord.id} (brief ${brief.id})`,
+              );
+            }
+          }
+        }
+      } else {
+        console.log(
+          `📭 Email not enabled for user ${job.data.userId}, skipping email`,
+        );
       }
     } catch (emailError) {
-      // Track email failures but don't fail the job
+      // Log error but don't fail the brief job
       const errorMessage =
         emailError instanceof Error ? emailError.message : "Unknown error";
-      console.error(`Failed to send email notification: ${errorMessage}`);
-      emailStatus.error = errorMessage;
+      console.error(`Failed to create/queue email: ${errorMessage}`);
 
-      // Update brief metadata to track email failure
-      try {
-        await supabase
-          .from("daily_briefs")
-          .update({
-            metadata: {
-              ...(brief.metadata || {}),
-              email_status: {
-                sent: false,
-                error: errorMessage,
-                failed_at: new Date().toISOString(),
-              },
-            },
-          })
-          .eq("id", brief.id);
-
-        // Track email failure in error_logs table
-        await supabase.from("error_logs").insert({
+      // Track email creation failure in error_logs
+      const { error: errorLogError } = await supabase
+        .from("error_logs")
+        .insert({
           user_id: job.data.userId,
-          error_type: "email_send_failure",
+          error_type: "email_creation_failure",
           error_message: errorMessage,
-          endpoint: "/worker/brief/email",
-          operation_type: "send_daily_brief_email",
+          endpoint: "/worker/brief/email-create",
+          operation_type: "create_email_record",
           record_id: brief.id,
           metadata: {
             brief_id: brief.id,
             brief_date: briefDate,
             job_id: job.id,
-            email_type: "daily_brief",
           },
         });
-      } catch (trackingError) {
-        console.error("Failed to track email failure:", trackingError);
+
+      if (errorLogError) {
+        console.error("Failed to log error:", errorLogError);
       }
     }
 
     await updateJobStatus(job.id, "completed", "brief");
 
-    // Include email status in notification
+    // Notify user - brief is ready, email will be sent separately
     await notifyUser(job.data.userId, "brief_completed", {
       briefId: brief.id,
       briefDate: brief.brief_date,
       timezone: timezone,
       message: `Your daily brief for ${briefDate} is ready!`,
-      emailSent: emailStatus.sent,
-      emailError: emailStatus.error,
+      emailRecordCreated: !!emailRecordId,
     });
 
     console.log(

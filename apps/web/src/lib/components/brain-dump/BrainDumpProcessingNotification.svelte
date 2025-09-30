@@ -20,10 +20,14 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { goto, invalidate } from '$app/navigation';
 	// Direct v2 store import (migration complete)
-	import { brainDumpV2Store, enabledOperationsCount } from '$lib/stores/brain-dump-v2.store';
+	import {
+		brainDumpV2Store,
+		type BrainDumpV2Store,
+		enabledOperationsCount
+	} from '$lib/stores/brain-dump-v2.store';
 
 	// Store actions accessed via brainDumpV2Store methods
-	const brainDumpActions = brainDumpV2Store;
+	const brainDumpActions: BrainDumpV2Store = brainDumpV2Store;
 	import type {
 		BrainDumpParseResult,
 		ParsedOperation,
@@ -1305,11 +1309,11 @@
 			}
 
 			// Check for errors
-			if (storeState.error) {
+			if (storeState.results.errors.processing) {
 				return {
 					icon: 'error',
 					title: 'Processing failed',
-					subtitle: storeState.error,
+					subtitle: storeState.results.errors.processing,
 					color: 'red'
 				};
 			}
@@ -1666,13 +1670,13 @@
 				{showSuccessView ? 'ring-2 ring-green-500 ring-opacity-60' : ''}"
 			class:animate-bounce-subtle={hasParseResults && !userHasInteracted}
 			transition:scale={{ duration: 200, start: 0.95 }}
-			on:click={() => {
+			onclick={() => {
 				userHasInteracted = true;
 				toggleMinimized();
 			}}
 			role="button"
 			tabindex="0"
-			on:keydown={(e) => {
+			onkeydown={(e) => {
 				if (e.key === 'Enter' || e.key === ' ') {
 					userHasInteracted = true;
 					toggleMinimized();
@@ -1715,7 +1719,10 @@
 				<div class="flex items-center gap-1">
 					{#if hasParseResults && !showSuccessView && canAutoAcceptCurrent}
 						<button
-							on:click|stopPropagation={handleAutoAcceptToggle}
+							onclick={(e) => {
+								e.stopPropagation();
+								handleAutoAcceptToggle;
+							}}
 							class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 							title="Toggle auto-accept"
 						>
@@ -1724,7 +1731,7 @@
 					{/if}
 
 					<button
-						on:click={(e) => {
+						onclick={(e) => {
 							e.stopPropagation();
 							handleClose();
 						}}

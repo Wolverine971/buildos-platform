@@ -157,94 +157,190 @@ async function checkAndScheduleBriefs() {
 
     console.log(`📋 Found ${preferences.length} active preference(s)`);
 
-    for (const preference of preferences) {
-      try {
-        if (!preference.user_id) {
-          console.warn("Skipping preference with no user_id");
-          continue;
-        }
+    // PHASE 1: Batch fetch engagement data for all users (if enabled)
+    const engagementDataMap = new Map<
+      string,
+      {
+        shouldSend: boolean;
+        isReengagement: boolean;
+        daysSinceLastLogin: number;
+        reason?: string;
+      }
+    >();
 
-        // NEW: Check backoff status if feature flag is enabled
-        let engagementMetadata:
-          | { isReengagement: boolean; daysSinceLastLogin: number }
-          | undefined;
-
-        if (ENGAGEMENT_BACKOFF_ENABLED) {
-          const backoffDecision = await backoffCalculator.shouldSendDailyBrief(
+    if (ENGAGEMENT_BACKOFF_ENABLED) {
+      console.log("🔍 Batch checking engagement status for all users...");
+      const engagementChecks = await Promise.allSettled(
+        preferences.map(async (preference) => {
+          if (!preference.user_id) return null;
+          const decision = await backoffCalculator.shouldSendDailyBrief(
             preference.user_id,
           );
+          return { userId: preference.user_id, decision };
+        }),
+      );
 
-          if (!backoffDecision.shouldSend) {
-            console.log(
-              `⏸️ Skipping brief for user ${preference.user_id}: ${backoffDecision.reason}`,
-            );
-            continue;
-          }
-
-          engagementMetadata = {
-            isReengagement: backoffDecision.isReengagement,
-            daysSinceLastLogin: backoffDecision.daysSinceLastLogin,
-          };
-
-          const briefType = backoffDecision.isReengagement
-            ? "re-engagement"
-            : "standard";
-          console.log(
-            `📧 Queueing ${briefType} brief for user ${preference.user_id} (inactive for ${backoffDecision.daysSinceLastLogin} days)`,
-          );
+      engagementChecks.forEach((result) => {
+        if (result.status === "fulfilled" && result.value) {
+          const { userId, decision } = result.value;
+          engagementDataMap.set(userId, decision);
         }
+      });
+    }
 
-        const nextRunTime = calculateNextRunTime(preference, now);
+    // PHASE 2: Calculate next run times and filter users needing briefs
+    const usersToSchedule: Array<{
+      preference: any;
+      nextRunTime: Date;
+      engagementMetadata?: {
+        isReengagement: boolean;
+        daysSinceLastLogin: number;
+      };
+    }> = [];
 
-        if (!nextRunTime) {
-          console.warn(
-            `Could not calculate next run time for user ${preference.user_id}`,
+    for (const preference of preferences) {
+      if (!preference.user_id) {
+        console.warn("Skipping preference with no user_id");
+        continue;
+      }
+
+      // Check engagement status
+      let engagementMetadata:
+        | { isReengagement: boolean; daysSinceLastLogin: number }
+        | undefined;
+
+      if (ENGAGEMENT_BACKOFF_ENABLED) {
+        const backoffDecision = engagementDataMap.get(preference.user_id);
+
+        if (!backoffDecision?.shouldSend) {
+          console.log(
+            `⏸️ Skipping brief for user ${preference.user_id}: ${backoffDecision?.reason || "unknown"}`,
           );
           continue;
         }
 
-        // Check if the next run time is within the next hour
-        if (
-          isAfter(nextRunTime, now) &&
-          isBefore(nextRunTime, oneHourFromNow)
-        ) {
-          // Check if we already have a job scheduled
-          const timeWindow = 30 * 60 * 1000; // 30 minutes tolerance
-          const windowStart = new Date(nextRunTime.getTime() - timeWindow);
-          const windowEnd = new Date(nextRunTime.getTime() + timeWindow);
+        engagementMetadata = {
+          isReengagement: backoffDecision.isReengagement,
+          daysSinceLastLogin: backoffDecision.daysSinceLastLogin,
+        };
 
-          const { data: existingJobs } = await supabase
-            .from("queue_jobs")
-            .select("*")
-            .eq("user_id", preference.user_id)
-            .eq("job_type", "generate_daily_brief")
-            .in("status", ["pending", "processing"])
-            .gte("scheduled_for", windowStart.toISOString())
-            .lte("scheduled_for", windowEnd.toISOString());
-
-          if (!existingJobs || existingJobs.length === 0) {
-            console.log(
-              `⏰ Scheduling brief for user ${preference.user_id} at ${nextRunTime.toISOString()}`,
-            );
-            await queueBriefGeneration(
-              preference.user_id,
-              nextRunTime,
-              undefined,
-              preference.timezone || "UTC",
-              engagementMetadata, // NEW: Pass engagement metadata
-            );
-          } else {
-            console.log(
-              `⏭️ Brief already scheduled for user ${preference.user_id}`,
-            );
-          }
-        }
-      } catch (error) {
-        console.error(
-          `Error processing preference for user ${preference.user_id}:`,
-          error,
+        const briefType = backoffDecision.isReengagement
+          ? "re-engagement"
+          : "standard";
+        console.log(
+          `📧 Will queue ${briefType} brief for user ${preference.user_id} (inactive for ${backoffDecision.daysSinceLastLogin} days)`,
         );
       }
+
+      const nextRunTime = calculateNextRunTime(preference, now);
+
+      if (!nextRunTime) {
+        console.warn(
+          `Could not calculate next run time for user ${preference.user_id}`,
+        );
+        continue;
+      }
+
+      // Check if the next run time is within the next hour
+      if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
+        usersToSchedule.push({ preference, nextRunTime, engagementMetadata });
+      }
+    }
+
+    if (usersToSchedule.length === 0) {
+      console.log("✅ No briefs need to be scheduled at this time");
+      return;
+    }
+
+    // PHASE 3: Batch check for existing jobs (single query for all users)
+    console.log(
+      `🔍 Checking for existing jobs for ${usersToSchedule.length} user(s)...`,
+    );
+    const userIds = usersToSchedule.map((u) => u.preference.user_id);
+    const timeWindow = 30 * 60 * 1000; // 30 minutes tolerance
+
+    const { data: existingJobs } = await supabase
+      .from("queue_jobs")
+      .select("user_id, scheduled_for")
+      .in("user_id", userIds)
+      .eq("job_type", "generate_daily_brief")
+      .in("status", ["pending", "processing"]);
+
+    // Create map of existing jobs for quick lookup
+    const existingJobsMap = new Map<string, Date[]>();
+    existingJobs?.forEach((job) => {
+      if (!existingJobsMap.has(job.user_id)) {
+        existingJobsMap.set(job.user_id, []);
+      }
+      existingJobsMap.get(job.user_id)!.push(new Date(job.scheduled_for));
+    });
+
+    // Filter out users who already have jobs scheduled
+    const usersToQueue = usersToSchedule.filter(
+      ({ preference, nextRunTime }) => {
+        const userJobs = existingJobsMap.get(preference.user_id) || [];
+        const windowStart = new Date(nextRunTime.getTime() - timeWindow);
+        const windowEnd = new Date(nextRunTime.getTime() + timeWindow);
+
+        const hasConflict = userJobs.some(
+          (jobTime) => jobTime >= windowStart && jobTime <= windowEnd,
+        );
+
+        if (hasConflict) {
+          console.log(
+            `⏭️ Brief already scheduled for user ${preference.user_id}`,
+          );
+          return false;
+        }
+
+        return true;
+      },
+    );
+
+    // PHASE 4: Batch queue all jobs in parallel
+    if (usersToQueue.length === 0) {
+      console.log("✅ All users already have briefs scheduled");
+      return;
+    }
+
+    console.log(`📨 Queueing ${usersToQueue.length} brief(s) in parallel...`);
+    const queueResults = await Promise.allSettled(
+      usersToQueue.map(
+        async ({ preference, nextRunTime, engagementMetadata }) => {
+          console.log(
+            `⏰ Scheduling brief for user ${preference.user_id} at ${nextRunTime.toISOString()}`,
+          );
+          await queueBriefGeneration(
+            preference.user_id,
+            nextRunTime,
+            undefined,
+            preference.timezone || "UTC",
+            engagementMetadata,
+          );
+          return preference.user_id;
+        },
+      ),
+    );
+
+    // Log results
+    const successCount = queueResults.filter(
+      (r) => r.status === "fulfilled",
+    ).length;
+    const failureCount = queueResults.filter(
+      (r) => r.status === "rejected",
+    ).length;
+
+    console.log(`✅ Successfully queued ${successCount} brief(s)`);
+    if (failureCount > 0) {
+      console.warn(`⚠️ Failed to queue ${failureCount} brief(s)`);
+      queueResults.forEach((result, i) => {
+        if (result.status === "rejected") {
+          console.error(
+            `Failed to queue brief for user ${usersToQueue[i].preference.user_id}:`,
+            result.reason,
+          );
+        }
+      });
     }
   } catch (error) {
     console.error("Error in checkAndScheduleBriefs:", error);

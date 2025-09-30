@@ -6,7 +6,10 @@
 
 import { goto } from '$app/navigation';
 import { toastService } from '$lib/stores/toast.store';
-import { brainDumpV2Store as brainDumpActions } from '$lib/stores/brain-dump-v2.store';
+import {
+	brainDumpV2Store as brainDumpActions,
+	type BrainDumpV2Store
+} from '$lib/stores/brain-dump-v2.store';
 
 export interface RefreshDecision {
 	needsRefresh: boolean;

@@ -1,25 +1,24 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-09-30T15:12:17.161Z
+**Generated at:** 2025-09-30T17:14:25.324Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-  "projectId": "08439479-c5e4-40cb-bd04-f94cb97702a6",
-  "brainDumpLength": 895,
-  "existingTasksCount": 20,
-  "hasDisplayedQuestions": false,
-  "timestamp": "2025-09-30T15:12:17.161Z"
+	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+	"projectId": "08439479-c5e4-40cb-bd04-f94cb97702a6",
+	"brainDumpLength": 793,
+	"existingTasksCount": 20,
+	"hasDisplayedQuestions": false,
+	"timestamp": "2025-09-30T17:14:25.324Z"
 }
 ```
 
-
 ## System Prompt
 
-```
+````
 You are a BuildOS task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
 Mode: Extract/Update for EXISTING project 08439479-c5e4-40cb-bd04-f94cb97702a6
@@ -27,7 +26,7 @@ Mode: Extract/Update for EXISTING project 08439479-c5e4-40cb-bd04-f94cb97702a6
 ## Current Project Data:
 
 **EXISTING TASKS (20):**
-[{"id":"e9aa18d4-e536-4c56-9ff0-d02e1080ddb8","title":"Research Literary Agents for Fantasy Genre","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Conduct research on literary agents that specialize in the fantasy genre.","details":"This task is important for future publishing opportunities."},{"id":"eef4e50a-b1cb-4da4-b39d-2f009e20e24f","title":"Submit Chapter 1 to Beta Readers","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Submit chapter 1 to beta readers by January 15th.","details":"This task is crucial for receiving feedback on the first chapter."},{"id":"9d68779a-94bf-46ff-aa70-4c49674afb78","title":"Join Local Writers' Critique Group","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":60,"description":"Join the local writers' critique group that meets on the 1st Tuesday of each month.","details":"This group will provide feedback and support for writing projects."},{"id":"4d5b0bfc-5042-45c3-a459-b02fd47f1bce","title":"Complete Chapters 21-30 and Epilogue","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":5040,"description":"Finish writing chapters 21-30 and the epilogue by the end of March.","details":"This milestone includes writing a total of 35,000 words for chapters 21-30 and the epilogue."},{"id":"e56957ca-b783-4e60-a7e7-929811c642ee","title":"Complete Chapters 11-20","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":4320,"description":"Finish writing chapters 11-20 by the end of February.","details":"This milestone includes writing a total of 30,000 words for chapters 11-20."},{"id":"180b10e1-98d1-4380-bced-487c43715907","title":"Complete Chapters 1-10","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":4320,"description":"Finish writing chapters 1-10 by the end of January.","details":"This milestone includes writing a total of 30,000 words for chapters 1-10."},{"id":"ce1cf35e-8541-46b0-b983-371059642dcf","title":"Weekly Plot Planning","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Plan the plot for the upcoming week on Sunday afternoons.","details":"This task is to outline and plan the plot for the next week to maintain direction in writing."},{"id":"6a1ee0f3-851e-4cf1-81f3-e80c6c383632","title":"Weekly Chapter Revision and Editing","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Revise and edit chapters on Saturday mornings.","details":"This task is to ensure that chapters are polished and ready for feedback. Allocate time every Saturday morning for this."},{"id":"b4fb9c09-6a39-4c7a-8e87-dd83984212c7","title":"Daily Writing Goal","status":"backlog","priority":"high","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Write a minimum of 1,000 words each weekday.","details":"Writing time is set for 5am-7am before work. This goal is to ensure consistent progress towards finishing the first draft by March 31st."},{"id":"37119a1f-2ceb-4311-83db-b524a5d29704","title":"Map regional forging techniques across Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Document different forging techniques used in various regions","details":"Develop regional variations in forging techniques across Aethermoor. Consider cultural influences, available materials, and historical developments."},{"id":"1c89babd-2aa0-4ced-aa69-9725c0f5475f","title":"Design the Quenching Ritual","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Develop the ritual for completing magical weapons","details":"The Quenching Ritual is the final step in creating magical weapons. Describe the process, materials, and significance of this ritual."},{"id":"d412933e-43c1-40e7-91b8-7051cc1e77b4","title":"Outline Smith's Guild hierarchy and traditions","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Develop the structure and customs of the Smith's Guild","details":"Create a detailed hierarchy for the Smith's Guild, including ranks, traditions, and rituals. Consider their role in society and relationship with other factions."},{"id":"e94d53b5-c297-4517-abdb-184832004895","title":"Develop the Forge Temples","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Create ancient sites where dragon fire still burns","details":"The Forge Temples are ancient sites where dragon fire still burns, serving as sacred locations for magical forging. Describe their architecture, significance, and role in the world."},{"id":"47f95ef5-412a-4fac-9152-922a758cc5f8","title":"Fix continuity issue with Elena's age","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Correct the inconsistency in Elena's age between Chapter 1 and Chapter 2.","details":"Elena's age is mentioned as 16 in Chapter 1 and 17 in Chapter 2. Decide on her correct age and update both chapters accordingly."},{"id":"af7c2d69-4f2d-4f03-86af-34cfb3633926","title":"Foreshadow the prophecy in Chapter 3","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Include foreshadowing of the prophecy in Chapter 3.","details":"Subtly hint at the prophecy's significance and how it will impact the characters and plot. Use dialogue, events, or symbols to foreshadow."},{"id":"a119b4bd-70ad-4b56-aa58-2d042954bd74","title":"Introduce the Shadow King's herald","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Introduce the Shadow King's herald in Chapter 3.","details":"The herald should be a menacing presence that foreshadows the Shadow King's threat. Develop their appearance, dialogue, and impact on the story."},{"id":"b4b41c99-5a0f-42d4-bc55-a4d96fe1d719","title":"Write Elena's first attempt at magical forging","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Develop the scene where Elena attempts magical forging for the first time.","details":"This scene should showcase Elena's growing skills and the challenges she faces. Include details about the magical process and her emotional state."},{"id":"832ce316-583a-42ba-b805-c7de90fd2bcc","title":"Add sensory details about the forge","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Enhance the sensory details in the forge scene in Chapter 2.","details":"The forge scene needs more vivid sensory details to immerse the reader. Describe the heat, sounds, smells, and textures of the forge environment."},{"id":"4b050aab-f5a9-4865-861a-39063790d919","title":"Improve pacing in Chapter 2","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Address the slow pacing in the middle of Chapter 2.","details":"The pacing feels slow and needs to be tightened to maintain reader engagement. Consider cutting unnecessary details or adding more tension."},{"id":"9eaaeb19-d157-40b5-86ec-c9a726c7b051","title":"Strengthen dialogue between Elena and Master Thorne","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Improve the dialogue in Chapter 2 between Elena and Master Thorne.","details":"The dialogue needs to be more engaging and reflective of their relationship. Consider their history and how it influences their interactions."}]
+[{"id":"ecd4adde-5c11-423d-9d39-8f7ebb8ad4a1","title":"Develop Supporting Cast Relationships","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":60,"description":"Outline relationships and roles of supporting characters in the narrative.","details":"Kai: Elena's childhood friend, now city guard, potential love interest. Lady Morgana: Court wizard who suspects Elena's powers. The Herald: Shadow King's servant, formerly Elena's thought-dead mother."},{"id":"e9aa18d4-e536-4c56-9ff0-d02e1080ddb8","title":"Research Literary Agents for Fantasy Genre","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Conduct research on literary agents that specialize in the fantasy genre.","details":"Master Thorne's backstory: Former royal blacksmith, exiled for refusing to make weapons for unjust war. He knows Elena's true heritage but keeps it secret and is dying from lung disease from years at the forge."},{"id":"eef4e50a-b1cb-4da4-b39d-2f009e20e24f","title":"Submit Chapter 1 to Beta Readers","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Submit chapter 1 to beta readers by January 15th.","details":"This task is crucial for receiving feedback on the first chapter."},{"id":"9d68779a-94bf-46ff-aa70-4c49674afb78","title":"Join Local Writers' Critique Group","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":60,"description":"Join the local writers' critique group that meets on the 1st Tuesday of each month.","details":"This group will provide feedback and support for writing projects."},{"id":"4d5b0bfc-5042-45c3-a459-b02fd47f1bce","title":"Complete Chapters 21-30 and Epilogue","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":5040,"description":"Finish writing chapters 21-30 and the epilogue by the end of March.","details":"This milestone includes writing a total of 35,000 words for chapters 21-30 and the epilogue."},{"id":"e56957ca-b783-4e60-a7e7-929811c642ee","title":"Complete Chapters 11-20","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":4320,"description":"Finish writing chapters 11-20 by the end of February.","details":"This milestone includes writing a total of 30,000 words for chapters 11-20."},{"id":"180b10e1-98d1-4380-bced-487c43715907","title":"Complete Chapters 1-10","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":4320,"description":"Finish writing chapters 1-10 by the end of January.","details":"This milestone includes writing a total of 30,000 words for chapters 1-10."},{"id":"ce1cf35e-8541-46b0-b983-371059642dcf","title":"Weekly Plot Planning","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Plan the plot for the upcoming week on Sunday afternoons.","details":"This task is to outline and plan the plot for the next week to maintain direction in writing."},{"id":"6a1ee0f3-851e-4cf1-81f3-e80c6c383632","title":"Weekly Chapter Revision and Editing","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Revise and edit chapters on Saturday mornings.","details":"This task is to ensure that chapters are polished and ready for feedback. Allocate time every Saturday morning for this."},{"id":"b4fb9c09-6a39-4c7a-8e87-dd83984212c7","title":"Daily Writing Goal","status":"backlog","priority":"high","task_type":"recurring","start_date":"2025-09-30T00:00:00+00:00","duration_minutes":120,"description":"Write a minimum of 1,000 words each weekday.","details":"Writing time is set for 5am-7am before work. This goal is to ensure consistent progress towards finishing the first draft by March 31st."},{"id":"37119a1f-2ceb-4311-83db-b524a5d29704","title":"Map regional forging techniques across Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Document different forging techniques used in various regions","details":"Develop regional variations in forging techniques across Aethermoor. Consider cultural influences, available materials, and historical developments."},{"id":"1c89babd-2aa0-4ced-aa69-9725c0f5475f","title":"Design the Quenching Ritual","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Develop the ritual for completing magical weapons","details":"The Quenching Ritual is the final step in creating magical weapons. Describe the process, materials, and significance of this ritual."},{"id":"d412933e-43c1-40e7-91b8-7051cc1e77b4","title":"Outline Smith's Guild hierarchy and traditions","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Develop the structure and customs of the Smith's Guild","details":"Create a detailed hierarchy for the Smith's Guild, including ranks, traditions, and rituals. Consider their role in society and relationship with other factions."},{"id":"e94d53b5-c297-4517-abdb-184832004895","title":"Develop the Forge Temples","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Create ancient sites where dragon fire still burns","details":"The Forge Temples are ancient sites where dragon fire still burns, serving as sacred locations for magical forging. Describe their architecture, significance, and role in the world."},{"id":"47f95ef5-412a-4fac-9152-922a758cc5f8","title":"Fix continuity issue with Elena's age","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Correct the inconsistency in Elena's age between Chapter 1 and Chapter 2.","details":"Elena's age is mentioned as 16 in Chapter 1 and 17 in Chapter 2. Decide on her correct age and update both chapters accordingly."},{"id":"af7c2d69-4f2d-4f03-86af-34cfb3633926","title":"Foreshadow the prophecy in Chapter 3","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Include foreshadowing of the prophecy in Chapter 3.","details":"The Shadow King's backstory: Was once a hero who saved the kingdom 500 years ago, corrupted by the very magic he used to save everyone. He seeks Elena because only Dragon Smith weapons can free him from his curse."},{"id":"a119b4bd-70ad-4b56-aa58-2d042954bd74","title":"Introduce the Shadow King's herald","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Introduce the Shadow King's herald in Chapter 3.","details":"The herald should be a menacing presence that foreshadows the Shadow King's threat. Develop their appearance, dialogue, and impact on the story."},{"id":"b4b41c99-5a0f-42d4-bc55-a4d96fe1d719","title":"Write Elena's first attempt at magical forging","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Develop the scene where Elena attempts magical forging for the first time.","details":"Elena's backstory: Lost parents in dragon attack at age 5, raised by Master Thorne who found her in ruins. She has recurring nightmares about fire and a secret: she's actually descended from the original Dragon Smiths."},{"id":"832ce316-583a-42ba-b805-c7de90fd2bcc","title":"Add sensory details about the forge","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Enhance the sensory details in the forge scene in Chapter 2.","details":"The forge scene needs more vivid sensory details to immerse the reader. Describe the heat, sounds, smells, and textures of the forge environment."},{"id":"4b050aab-f5a9-4865-861a-39063790d919","title":"Improve pacing in Chapter 2","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Address the slow pacing in the middle of Chapter 2.","details":"The pacing feels slow and needs to be tightened to maintain reader engagement. Consider cutting unnecessary details or adding more tension."}]
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -185,49 +184,56 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-```
+````
 
 Respond with valid JSON matching the complete structure above.
+
 ```
 
 ## User Prompt
 
 ```
+
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-"Working on character relationships and backstories today.
+"Starting to think about publication options for The Last Ember.
 
-Elena (protagonist):
+Traditional publishing route:
 
-- Lost parents in dragon attack at age 5
-- Raised by Master Thorne who found her in ruins
-- Has recurring nightmares about fire
-- Secret: She's actually descended from the original Dragon Smiths
+- Need to write query letter
+- Create 1-page synopsis
+- Research fantasy literary agents (looking at agents who rep Brandon Sanderson, Robin Hobb)
+- Prepare first 3 chapters as sample
 
-Master Thorne:
+Self-publishing considerations:
 
-- Former royal blacksmith, exiled for refusing to make weapons for unjust war
-- Knows Elena's true heritage but keeps it secret
-- Dying from lung disease from years at the forge
+- Budget $3000 for professional editing
+- Find cover artist specializing in fantasy
+- Plan pre-launch marketing campaign
+- Set up author website and newsletter
 
-The Shadow King:
+Timeline:
 
-- Was once a hero who saved the kingdom 500 years ago
-- Corrupted by the very magic he used to save everyone
-- Seeks Elena because only Dragon Smith weapons can free him from curse
+- Finish first draft: March 31
+- Self-edit: April
+- Beta readers: May
+- Professional edit: June-July
+- Query agents or launch self-pub: August
 
-Supporting cast:
+Also want to:
 
-- Kai: Elena's childhood friend, now city guard, potential love interest
-- Lady Morgana: Court wizard who suspects Elena's powers
-- The Herald: Shadow King's servant, formerly Elena's thought-dead mother"
+- Start building author platform on social media
+- Write short stories in same universe for magazines
+- Create series bible if this becomes Book 1"
+
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~3862 tokens
-- **User Prompt:** ~260 tokens
-- **Total Estimate:** ~4122 tokens
+- **System Prompt:** ~3950 tokens
+- **User Prompt:** ~235 tokens
+- **Total Estimate:** ~4184 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
+```

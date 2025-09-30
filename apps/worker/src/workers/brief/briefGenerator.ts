@@ -168,10 +168,8 @@ export async function generateDailyBrief(
       jobId,
     );
 
-    const projectBriefs: any[] = [];
-
-    for (let i = 0; i < projects.length; i++) {
-      const project = projects[i];
+    // Generate project briefs in parallel for better performance
+    const projectBriefPromises = projects.map(async (project, i) => {
       const progress = 20 + (i / projects.length) * 60; // 20% to 80%
 
       await updateProgress(
@@ -189,16 +187,26 @@ export async function generateDailyBrief(
           briefDateInUserTz,
           userTimezone,
         );
-        projectBriefs.push(projectBrief);
         console.log(`📄 Generated brief for project: ${project.name}`);
+        return projectBrief;
       } catch (error) {
         console.warn(
           `⚠️ Failed to generate brief for project ${project.name}:`,
           error,
         );
-        // Continue with other projects
+        return null; // Return null for failed projects
       }
-    }
+    });
+
+    // Wait for all project briefs to complete
+    const projectBriefResults = await Promise.allSettled(projectBriefPromises);
+
+    // Filter out failed projects (null values)
+    const projectBriefs = projectBriefResults
+      .filter(
+        (result) => result.status === "fulfilled" && result.value !== null,
+      )
+      .map((result) => (result as PromiseFulfilledResult<any>).value);
 
     // 3. Consolidate all project briefs into main daily brief
     await updateProgress(

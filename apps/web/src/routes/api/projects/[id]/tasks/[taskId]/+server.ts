@@ -6,6 +6,7 @@ import { CalendarService } from '$lib/services/calendar-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { formatDateForGoogleCalendar, calculateEndTime } from '$lib/utils/date-utils';
+import { toastService } from '$lib/stores/toast.store';
 
 export const PATCH: RequestHandler = async ({
 	params,
@@ -52,6 +53,7 @@ export const PATCH: RequestHandler = async ({
 		if (newTaskData.start_date) {
 			const validationError = validateTaskDate(newTaskData.start_date, existingTask.project);
 			if (validationError) {
+				toastService.error(validationError);
 				return ApiResponse.badRequest(validationError);
 			}
 		}

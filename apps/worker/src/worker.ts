@@ -1,6 +1,7 @@
 // apps/worker/src/worker.ts
 import { SupabaseQueue, ProcessingJob } from "./lib/supabaseQueue";
 import { processBriefJob } from "./workers/brief/briefWorker";
+import { processEmailBriefJob } from "./workers/brief/emailWorker";
 import { processPhasesJob } from "./workers/phases/phasesWorker";
 import { processOnboardingAnalysisJob } from "./workers/onboarding/onboardingWorker";
 import { processSMSJob } from "./workers/smsWorker";
@@ -116,6 +117,31 @@ async function processSMS(job: ProcessingJob) {
 }
 
 /**
+ * Email brief processor (Phase 2: Email decoupling)
+ */
+async function processEmailBrief(job: ProcessingJob) {
+  const startTime = Date.now();
+
+  await job.log(`📧 Email generation started for brief ${job.data.briefId}`);
+
+  try {
+    // Convert ProcessingJob to type-safe legacy format
+    const legacyJob = createLegacyJob(job);
+
+    // Use email processor
+    await processEmailBriefJob(legacyJob);
+
+    const duration = Date.now() - startTime;
+    await job.log(`✅ Email sent successfully in ${duration}ms`);
+
+    return { success: true, duration };
+  } catch (error: any) {
+    await job.log(`❌ Email generation failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -123,6 +149,8 @@ export async function startWorker() {
 
   // Register processors
   queue.process("generate_daily_brief", processBrief);
+  // @ts-expect-error - generate_brief_email will be added to enum after migration
+  queue.process("generate_brief_email", processEmailBrief); // Phase 2: Email worker
   queue.process("generate_phases", processPhases);
   queue.process("onboarding_analysis", processOnboarding);
 

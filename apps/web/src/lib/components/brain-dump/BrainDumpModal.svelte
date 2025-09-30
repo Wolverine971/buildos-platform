@@ -6,14 +6,14 @@
 	import { fade } from 'svelte/transition';
 	import Modal from '$lib/components/ui/Modal.svelte';
 
-	// Lazy load heavy components
-	let ProjectSelectionView: any;
-	let RecordingView: any;
-	let ParseResultsDiffView: any;
-	let SuccessView: any;
-	let ProcessingModal: any;
-	let DualProcessingResults: any;
-	let OperationEditModal: any;
+	// Lazy load heavy components - use $state for reactive component references
+	let ProjectSelectionView = $state<any>(null);
+	let RecordingView = $state<any>(null);
+	let ParseResultsDiffView = $state<any>(null);
+	let SuccessView = $state<any>(null);
+	let ProcessingModal = $state<any>(null);
+	let DualProcessingResults = $state<any>(null);
+	let OperationEditModal = $state<any>(null);
 
 	// Import lighter components that are always needed
 	import { X, LoaderCircle } from 'lucide-svelte';
@@ -48,7 +48,6 @@
 	let isSaving = $derived(storeState?.processing?.phase === 'saving');
 	let voiceError = $derived(storeState?.core?.voice?.error ?? '');
 	let parseResults = $derived(storeState?.core?.parseResults ?? null);
-	let showingParseResults = $derived(storeState?.ui?.textarea?.showingParseResults ?? false);
 	let disabledOperations = $derived(storeState?.core?.disabledOperations ?? new Set());
 	let successData = $derived(storeState?.results?.success ?? null);
 	let microphonePermissionGranted = $derived(
@@ -864,7 +863,7 @@
 
 			let projectName = response?.data?.projectInfo?.name;
 			if (!projectName && !isNewProject) {
-				projectName = selectedProjectName;
+				projectName = $selectedProjectName;
 			}
 			if (!projectName) {
 				projectName = 'New Project';
@@ -1073,8 +1072,7 @@
 		{#if currentView === 'project-selection'}
 			{#if ProjectSelectionView}
 				<div in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
-					<svelte:component
-						this={ProjectSelectionView}
+					<ProjectSelectionView
 						projects={isLoadingData ? [] : projects}
 						recentDumps={isLoadingData ? [] : recentDumps}
 						newProjectDraftCount={isLoadingData ? 0 : newProjectDraftCount}
@@ -1109,8 +1107,7 @@
 					out:fade={{ duration: 200 }}
 					class="h-full flex flex-col"
 				>
-					<svelte:component
-						this={RecordingView}
+					<RecordingView
 						{innerWidth}
 						projects={isLoadingData ? [] : projects}
 						{selectedProject}
@@ -1143,8 +1140,7 @@
 
 				<!-- Processing Modal - DISABLED: Now handled by ProcessingNotification -->
 				<!-- {#if ProcessingModal && (isDualProcessing || isRegularProcessing)}
-					<svelte:component
-						this={ProcessingModal}
+					<ProcessingModal
 						isOpen={isDualProcessing || isRegularProcessing}
 						processingType={isDualProcessing ? 'dual' : 'single'}
 						bind:dualProcessingComponent
@@ -1157,8 +1153,7 @@
 
 				<!-- Parse Results Modal - DISABLED: Now handled by ProcessingNotification -->
 				<!-- {#if ParseResultsDiffView && parseResults && showingParseResults && !isDualProcessing && !isRegularProcessing}
-					<svelte:component
-						this={ParseResultsDiffView}
+					<ParseResultsDiffView
 						parseResults={parseResults}
 						disabledOperations={disabledOperations}
 						enabledOperationsCount={$enabledOperationsCount}
@@ -1181,7 +1176,7 @@
 							class="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
 							placeholder="Start typing or use voice recording..."
 							value={inputText}
-							on:input={(e) => {
+							oninput={(e) => {
 								brainDumpActions.updateInputText(e.currentTarget.value);
 								debouncedAutoSave();
 							}}
@@ -1195,8 +1190,7 @@
 		{:else if currentView === 'success'}
 			{#if SuccessView}
 				<div in:fade={{ duration: 300, delay: 200 }} out:fade={{ duration: 200 }}>
-					<svelte:component
-						this={SuccessView}
+					<SuccessView
 						{successData}
 						{showNavigationOnSuccess}
 						inModal={true}
@@ -1222,8 +1216,7 @@
 
 <!-- Operation Edit Modal -->
 {#if OperationEditModal && editModal.isOpen}
-	<svelte:component
-		this={OperationEditModal}
+	<OperationEditModal
 		isOpen={editModal.isOpen}
 		operation={editModal.operation}
 		onSave={handleSaveOperation}

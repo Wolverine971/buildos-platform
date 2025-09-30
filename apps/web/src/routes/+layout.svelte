@@ -43,12 +43,13 @@
 	import { get } from 'svelte/store';
 	import {
 		brainDumpV2Store,
+		type BrainDumpV2Store,
 		isNotificationOpen as isProcessingVisible,
 		isNotificationMinimized as isProcessingMinimized
 	} from '$lib/stores/brain-dump-v2.store';
 
 	// Store actions accessed via brainDumpV2Store methods
-	const brainDumpActions = brainDumpV2Store;
+	const brainDumpActions: BrainDumpV2Store = brainDumpV2Store;
 
 	export let data: LayoutData;
 

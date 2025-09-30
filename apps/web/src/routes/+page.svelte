@@ -268,7 +268,7 @@
 							class="inline-block bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-medium transition-all transform hover:scale-105 shadow-lg hover:shadow-xl fade-in touch-target"
 							aria-label="Start building with BuildOS"
 						>
-							Start Your Brain Dump →
+							Start Brain Dumping →
 						</a>
 
 						<!-- Trust Signal -->

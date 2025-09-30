@@ -33,11 +33,11 @@ export interface EmailData {
 }
 
 export class EmailService {
-  private supabase: SupabaseClient;
+  private supabase?: SupabaseClient;
   private transporter: Transporter | null = null;
   private gmailConfig = getGmailConfig();
 
-  constructor(supabase: SupabaseClient) {
+  constructor(supabase?: SupabaseClient) {
     this.supabase = supabase;
 
     // Initialize Gmail transporter if configuration is available
@@ -92,23 +92,25 @@ export class EmailService {
         );
 
         // Log successful email to database
-        await this.supabase.from("email_logs").insert({
-          to_email: data.to,
-          subject: data.subject,
-          body: htmlBody,
-          cc: data.cc,
-          bcc: data.bcc,
-          reply_to: data.replyTo,
-          metadata: {
-            ...data.metadata,
-            message_id: messageId,
-            email_id: emailId,
-            send_time_ms: Date.now() - startTime,
-          },
-          status: "sent",
-          sent_at: sentTimestamp(),
-          user_id: data.userId || null,
-        });
+        if (this.supabase) {
+          await this.supabase.from("email_logs").insert({
+            to_email: data.to,
+            subject: data.subject,
+            body: htmlBody,
+            cc: data.cc,
+            bcc: data.bcc,
+            reply_to: data.replyTo,
+            metadata: {
+              ...data.metadata,
+              message_id: messageId,
+              email_id: emailId,
+              send_time_ms: Date.now() - startTime,
+            },
+            status: "sent",
+            sent_at: sentTimestamp(),
+            user_id: data.userId || null,
+          });
+        }
       } else {
         // Development mode or no email configuration - just log
         console.log("📧 Email (simulated):", {
@@ -121,23 +123,25 @@ export class EmailService {
         simulated = true;
 
         // Still log to database but mark as simulated
-        await this.supabase.from("email_logs").insert({
-          to_email: data.to,
-          subject: data.subject,
-          body: htmlBody,
-          cc: data.cc,
-          bcc: data.bcc,
-          reply_to: data.replyTo,
-          metadata: {
-            ...data.metadata,
-            simulated: true,
-            reason: "Gmail not configured",
-            email_id: emailId,
-          },
-          status: "simulated",
-          sent_at: sentTimestamp(),
-          user_id: data.userId || null,
-        });
+        if (this.supabase) {
+          await this.supabase.from("email_logs").insert({
+            to_email: data.to,
+            subject: data.subject,
+            body: htmlBody,
+            cc: data.cc,
+            bcc: data.bcc,
+            reply_to: data.replyTo,
+            metadata: {
+              ...data.metadata,
+              simulated: true,
+              reason: "Gmail not configured",
+              email_id: emailId,
+            },
+            status: "simulated",
+            sent_at: sentTimestamp(),
+            user_id: data.userId || null,
+          });
+        }
       }
 
       await this.handlePostSendSuccess({
@@ -152,20 +156,23 @@ export class EmailService {
       console.error("❌ Error sending email:", error);
 
       // Log failed email
-      await this.supabase.from("email_logs").insert({
-        to_email: data.to,
-        subject: data.subject,
-        body: htmlBody,
-        status: "failed",
-        error_message: error instanceof Error ? error.message : "Unknown error",
-        metadata: {
-          ...data.metadata,
-          send_time_ms: Date.now() - startTime,
-          email_id: emailId,
-        },
-        sent_at: sentTimestamp(),
-        user_id: data.userId || null,
-      });
+      if (this.supabase) {
+        await this.supabase.from("email_logs").insert({
+          to_email: data.to,
+          subject: data.subject,
+          body: htmlBody,
+          status: "failed",
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+          metadata: {
+            ...data.metadata,
+            send_time_ms: Date.now() - startTime,
+            email_id: emailId,
+          },
+          sent_at: sentTimestamp(),
+          user_id: data.userId || null,
+        });
+      }
 
       await this.handlePostSendFailure({
         emailId,
@@ -192,6 +199,8 @@ export class EmailService {
 
     const sentAt = new Date().toISOString();
     const normalizedStatus = status === "simulated" ? "sent" : status;
+
+    if (!this.supabase) return;
 
     const updates: PromiseLike<unknown>[] = [];
     if (emailId) {
@@ -248,6 +257,8 @@ export class EmailService {
   }): Promise<void> {
     const { emailId, recipientId, error, metadata } = params;
     if (!emailId && !recipientId) return;
+
+    if (!this.supabase) return;
 
     const failedAt = new Date().toISOString();
     const errorMessage =
@@ -306,6 +317,10 @@ export class EmailService {
     templateId: string,
     variables: Record<string, string>,
   ): Promise<void> {
+    if (!this.supabase) {
+      throw new Error("Supabase client not configured");
+    }
+
     // Fetch template from database
     const { data: template } = await this.supabase
       .from("email_templates")
@@ -334,6 +349,10 @@ export class EmailService {
    * Get email logs for a user
    */
   async getUserEmailLogs(userId: string, limit = 50): Promise<any[]> {
+    if (!this.supabase) {
+      return [];
+    }
+
     const { data } = await this.supabase
       .from("email_logs")
       .select("*")

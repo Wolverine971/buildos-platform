@@ -111,6 +111,10 @@ export interface SendSMSJobMetadata {
   scheduled_for?: string;
 }
 
+export interface GenerateBriefEmailJobMetadata {
+  emailId: string; // ID from emails table
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
   generate_daily_brief: DailyBriefJobMetadata;
@@ -122,6 +126,7 @@ export interface JobMetadataMap {
   update_recurring_tasks: RecurringTaskJobMetadata;
   cleanup_old_data: CleanupJobMetadata;
   send_sms: SendSMSJobMetadata;
+  generate_brief_email: GenerateBriefEmailJobMetadata;
   other: Record<string, unknown>;
 }
 
@@ -136,6 +141,7 @@ export interface JobResultMap {
   update_recurring_tasks: RecurringTaskResult;
   cleanup_old_data: CleanupResult;
   send_sms: SendSMSResult;
+  generate_brief_email: GenerateBriefEmailResult;
   other: unknown;
 }
 
@@ -202,6 +208,15 @@ export interface SendSMSResult {
   delivered_at?: string;
   error?: string;
   attempt?: number;
+}
+
+export interface GenerateBriefEmailResult {
+  emailId: string;
+  sent: boolean;
+  sentAt?: string;
+  recipientEmail: string;
+  trackingId?: string;
+  error?: string;
 }
 
 // Generic queue job with type-safe metadata

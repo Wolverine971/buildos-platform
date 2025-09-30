@@ -401,6 +401,9 @@ importers:
       "@buildos/shared-types":
         specifier: workspace:*
         version: link:../shared-types
+      "@supabase/ssr":
+        specifier: ^0.6.1
+        version: 0.6.1(@supabase/supabase-js@2.58.0)
       "@supabase/supabase-js":
         specifier: ^2.53.0
         version: 2.58.0
@@ -12285,7 +12288,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
 
   "@vitest/utils@1.6.1":
     dependencies:
