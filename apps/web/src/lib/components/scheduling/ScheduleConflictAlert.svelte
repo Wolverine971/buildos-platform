@@ -1,4 +1,4 @@
-<!-- src/lib/components/scheduling/ScheduleConflictAlert.svelte -->
+<!-- apps/web/src/lib/components/scheduling/ScheduleConflictAlert.svelte -->
 <script lang="ts">
 	import {
 		AlertTriangle,

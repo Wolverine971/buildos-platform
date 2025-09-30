@@ -1,4 +1,4 @@
-// src/lib/services/onboardingClient.service.ts
+// apps/web/src/lib/services/onboardingClient.service.ts
 import type { UserContext } from '$lib/types/user-context';
 
 /**

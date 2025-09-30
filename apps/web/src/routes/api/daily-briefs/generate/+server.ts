@@ -1,4 +1,4 @@
-// src/routes/api/daily-briefs/generate/+server.ts
+// apps/web/src/routes/api/daily-briefs/generate/+server.ts
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 import { DailyBriefGenerator } from '$lib/services/dailyBrief/generator';

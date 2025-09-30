@@ -1,4 +1,4 @@
-// src/routes/auth/google/login-callback/+page.server.ts
+// apps/web/src/routes/auth/google/login-callback/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { GoogleOAuthHandler } from '$lib/utils/google-oauth';
 

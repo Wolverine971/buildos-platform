@@ -1,4 +1,4 @@
-// src/lib/utils/google-oauth.ts
+// apps/web/src/lib/utils/google-oauth.ts
 import { redirect } from '@sveltejs/kit';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import type { SupabaseClient } from '@supabase/supabase-js';

@@ -1,4 +1,4 @@
-// scripts/audit-enum-values.ts
+// apps/web/scripts/audit-enum-values.ts
 import { createCustomClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import * as fs from 'fs';

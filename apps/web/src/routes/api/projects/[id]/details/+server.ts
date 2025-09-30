@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/details/+server.ts
+// apps/web/src/routes/api/projects/[id]/details/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 

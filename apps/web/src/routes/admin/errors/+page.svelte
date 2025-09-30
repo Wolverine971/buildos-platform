@@ -1,4 +1,4 @@
-<!-- src/routes/admin/errors/+page.svelte -->
+<!-- apps/web/src/routes/admin/errors/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';

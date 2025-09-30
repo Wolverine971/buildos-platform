@@ -1,4 +1,4 @@
-// src/routes/auth/google/calendar-callback/+page.server.ts
+// apps/web/src/routes/auth/google/calendar-callback/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';

@@ -1,4 +1,4 @@
-// src/routes/pricing/+page.server.ts
+// apps/web/src/routes/pricing/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
 import { checkUserSubscription } from '$lib/utils/subscription';

@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/calendar/sync/+server.ts
+// apps/web/src/routes/api/projects/[id]/calendar/sync/+server.ts
 import type { RequestHandler } from './$types';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { ApiResponse } from '$lib/utils/api-response';

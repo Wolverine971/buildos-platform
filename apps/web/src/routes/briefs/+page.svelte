@@ -1,4 +1,4 @@
-<!-- src/routes/briefs/+page.svelte -->
+<!-- apps/web/src/routes/briefs/+page.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy, getContext } from 'svelte';
 	import { page } from '$app/stores';

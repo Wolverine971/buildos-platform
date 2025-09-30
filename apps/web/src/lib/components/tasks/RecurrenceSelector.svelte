@@ -1,4 +1,4 @@
-<!-- src/lib/components/tasks/RecurrenceSelector.svelte -->
+<!-- apps/web/src/lib/components/tasks/RecurrenceSelector.svelte -->
 <script lang="ts">
 	import { RefreshCw, Calendar } from 'lucide-svelte';
 	import Select from '$lib/components/ui/Select.svelte';

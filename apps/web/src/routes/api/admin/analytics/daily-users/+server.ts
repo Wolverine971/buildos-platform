@@ -1,4 +1,4 @@
-// src/routes/api/admin/analytics/daily-users/+server.ts
+// apps/web/src/routes/api/admin/analytics/daily-users/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 

@@ -57,7 +57,6 @@
 		"clean:all": "pnpm run clean && if exist node_modules rmdir /s /q node_modules",
 		"pre-push": "concurrently \"pnpm run check\" \"pnpm run test\" \"pnpm run lint\" && pnpm run build:prod",
 		"prepare": "husky",
-		"label-paths": "tsx scripts/labelFilePaths.ts",
 		"migrate:context": "tsx scripts/migrate-project-context.ts",
 		"migrate:usercontext": "tsx scripts/migrate-parsed-to-input.js",
 		"test:security": "node scripts/test-security.js"

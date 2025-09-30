@@ -1,4 +1,4 @@
-// debug-modal.js
+// apps/web/debug-modal.js
 import { modalStore } from './src/lib/stores/modal.store.ts';
 
 console.log('Testing modal store...');

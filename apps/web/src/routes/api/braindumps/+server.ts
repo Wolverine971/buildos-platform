@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/+server.ts
+// apps/web/src/routes/api/braindumps/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { BrainDumpTableType } from '$lib/types/brain-dump';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectContextModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectContextModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { FileText, Calendar, Tag, Info, Briefcase, Target } from 'lucide-svelte';

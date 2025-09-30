@@ -1,4 +1,4 @@
-// src/routes/history/+page.server.ts
+// apps/web/src/routes/history/+page.server.ts
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

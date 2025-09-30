@@ -1,4 +1,4 @@
-<!-- src/routes/onboarding/+page.svelte -->
+<!-- apps/web/src/routes/onboarding/+page.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';

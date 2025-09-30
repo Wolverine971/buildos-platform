@@ -1,4 +1,4 @@
-// scripts/generate-types.ts
+// apps/web/scripts/generate-types.ts
 import { execSync } from 'child_process';
 import { config } from 'dotenv';
 import { existsSync, mkdirSync } from 'fs';

@@ -1,4 +1,4 @@
-// scripts/generate-component-docs.ts
+// apps/web/scripts/generate-component-docs.ts
 
 /**
  * Generate comprehensive component documentation for Svelte 5 components

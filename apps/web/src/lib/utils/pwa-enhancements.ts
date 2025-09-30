@@ -1,4 +1,4 @@
-// src/lib/utils/pwa-enhancements.ts
+// apps/web/src/lib/utils/pwa-enhancements.ts
 
 /**
  * PWA Enhancement utilities for better mobile experience

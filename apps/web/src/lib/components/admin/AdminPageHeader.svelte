@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/AdminPageHeader.svelte -->
+<!-- apps/web/src/lib/components/admin/AdminPageHeader.svelte -->
 <script lang="ts">
 	import { ArrowLeft } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

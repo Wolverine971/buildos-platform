@@ -1,4 +1,4 @@
-// worker-queue/src/lib/services/email-sender.ts
+// apps/worker/src/lib/services/email-sender.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 import { generateMinimalEmailHTML } from "../utils/emailTemplate";

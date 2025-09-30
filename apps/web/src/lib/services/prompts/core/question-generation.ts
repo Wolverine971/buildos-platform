@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/question-generation.ts
+// apps/web/src/lib/services/prompts/core/question-generation.ts
 /**
  * Question generation prompt functions
  * Handles prompts for analyzing braindumps and generating project questions

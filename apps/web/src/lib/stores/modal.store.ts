@@ -1,4 +1,4 @@
-// src/lib/stores/modal.store.ts
+// apps/web/src/lib/stores/modal.store.ts
 import { writable, derived } from 'svelte/store';
 
 interface ModalState {

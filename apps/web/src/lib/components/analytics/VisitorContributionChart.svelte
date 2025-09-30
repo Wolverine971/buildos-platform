@@ -1,4 +1,4 @@
-<!-- src/lib/components/analytics/VisitorContributionChart.svelte -->
+<!-- apps/web/src/lib/components/analytics/VisitorContributionChart.svelte -->
 <script lang="ts">
 	import { format, parseISO, startOfWeek, addDays, subDays, startOfDay } from 'date-fns';
 	import Button from '$lib/components/ui/Button.svelte';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/NoteModal.svelte -->
+<!-- apps/web/src/lib/components/project/NoteModal.svelte -->
 <script lang="ts">
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';

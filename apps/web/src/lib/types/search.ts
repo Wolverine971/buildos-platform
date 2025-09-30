@@ -1,4 +1,4 @@
-// src/lib/types/search.ts
+// apps/web/src/lib/types/search.ts
 
 // Enum type definitions matching your database
 export type BrainDumpStatus = 'pending' | 'parsed' | 'saved' | 'parsed_and_deleted';

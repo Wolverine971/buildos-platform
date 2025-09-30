@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/BuildOSFlow.svelte -->
+<!-- apps/web/src/lib/components/dashboard/BuildOSFlow.svelte -->
 <script lang="ts">
 	import {
 		Brain,

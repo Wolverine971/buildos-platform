@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/ProjectSelectionView.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/ProjectSelectionView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

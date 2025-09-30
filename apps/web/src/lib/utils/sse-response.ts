@@ -1,4 +1,4 @@
-// src/lib/utils/sse-response.ts
+// apps/web/src/lib/utils/sse-response.ts
 
 import type { RequestEvent } from '@sveltejs/kit';
 

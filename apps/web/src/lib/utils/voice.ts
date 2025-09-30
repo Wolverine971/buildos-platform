@@ -1,4 +1,4 @@
-// src/lib/utils/voice.ts
+// apps/web/src/lib/utils/voice.ts
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 

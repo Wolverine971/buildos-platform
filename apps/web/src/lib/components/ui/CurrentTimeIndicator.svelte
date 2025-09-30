@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/CurrentTimeIndicator.svelte -->
+<!-- apps/web/src/lib/components/ui/CurrentTimeIndicator.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 

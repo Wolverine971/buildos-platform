@@ -1,4 +1,4 @@
-// src/lib/types/brain-dump.ts
+// apps/web/src/lib/types/brain-dump.ts
 
 // ==========================================
 // BRAIN DUMP TYPES

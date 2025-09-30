@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/UserContextPanel.svelte -->
+<!-- apps/web/src/lib/components/admin/UserContextPanel.svelte -->
 <script lang="ts">
 	import {
 		ChevronDown,

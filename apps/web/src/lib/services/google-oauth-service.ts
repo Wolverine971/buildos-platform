@@ -1,4 +1,4 @@
-// src/lib/services/google-oauth-service.ts
+// apps/web/src/lib/services/google-oauth-service.ts
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';

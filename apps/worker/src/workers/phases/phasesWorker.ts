@@ -1,4 +1,4 @@
-// worker-queue/src/workers/phases/phasesWorker.ts
+// apps/worker/src/workers/phases/phasesWorker.ts
 import { supabase } from "../../lib/supabase";
 import {
   notifyUser,

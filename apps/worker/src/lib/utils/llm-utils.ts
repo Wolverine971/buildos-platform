@@ -1,4 +1,4 @@
-// worker-queue/src/lib/utils/llm-utils.ts
+// apps/worker/src/lib/utils/llm-utils.ts
 /**
  * Select optimal models based on total prompt complexity (system + user prompts)
  */

@@ -1,4 +1,4 @@
-// src/routes/api/health/+server.ts
+// apps/web/src/routes/api/health/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

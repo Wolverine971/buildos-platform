@@ -1,4 +1,4 @@
-// src/routes/api/sms/verify/confirm/+server.ts
+// apps/web/src/routes/api/sms/verify/confirm/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createClient } from '@supabase/supabase-js';

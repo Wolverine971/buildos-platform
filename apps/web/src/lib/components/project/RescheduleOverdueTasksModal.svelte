@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/RescheduleOverdueTasksModal.svelte -->
+<!-- apps/web/src/lib/components/project/RescheduleOverdueTasksModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Clock, Info, X, Shuffle } from 'lucide-svelte';

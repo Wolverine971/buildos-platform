@@ -1,4 +1,4 @@
-// src/routes/api/admin/emails/attachments/+server.ts
+// apps/web/src/routes/api/admin/emails/attachments/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import sharp from 'sharp';

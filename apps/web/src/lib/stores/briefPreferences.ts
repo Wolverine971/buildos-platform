@@ -1,4 +1,4 @@
-// src/lib/stores/briefPreferences.ts
+// apps/web/src/lib/stores/briefPreferences.ts
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 

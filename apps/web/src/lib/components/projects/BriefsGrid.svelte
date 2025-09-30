@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/BriefsGrid.svelte -->
+<!-- apps/web/src/lib/components/projects/BriefsGrid.svelte -->
 <script lang="ts">
 	import { Loader2 } from 'lucide-svelte';
 	import ProjectBriefCard from '$lib/components/project/ProjectBriefCard.svelte';

@@ -1,4 +1,4 @@
-// scripts/apply-build-optimizations.js
+// apps/web/scripts/apply-build-optimizations.js
 
 // #!/usr/bin/env node
 

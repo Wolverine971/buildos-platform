@@ -1,4 +1,4 @@
-<!-- src/lib/components/SearchViewAll.svelte -->
+<!-- apps/web/src/lib/components/SearchViewAll.svelte -->
 <!-- This is a separate page component for viewing all results of a specific type -->
 <script lang="ts">
 	import { onMount } from 'svelte';

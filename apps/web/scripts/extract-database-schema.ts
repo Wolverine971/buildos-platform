@@ -1,4 +1,4 @@
-// scripts/extract-database-schema.ts
+// apps/web/scripts/extract-database-schema.ts
 import fs from 'fs';
 import path from 'path';
 

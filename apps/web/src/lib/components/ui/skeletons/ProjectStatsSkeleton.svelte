@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/ProjectStatsSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/ProjectStatsSkeleton.svelte -->
 <div
 	class="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border
 		border-gray-200 dark:border-gray-700 p-6"

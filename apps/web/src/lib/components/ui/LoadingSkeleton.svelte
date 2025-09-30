@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/LoadingSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/LoadingSkeleton.svelte -->
 <script lang="ts">
 	import { LoaderCircle } from 'lucide-svelte';
 

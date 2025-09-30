@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/ProjectCardSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/ProjectCardSkeleton.svelte -->
 <div class="project-card-skeleton">
 	<!-- Header - matches ProjectCard line 101-128 -->
 	<div class="skeleton-header">

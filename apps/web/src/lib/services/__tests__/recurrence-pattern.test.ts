@@ -1,4 +1,4 @@
-// src/lib/services/__tests__/recurrence-pattern.test.ts
+// apps/web/src/lib/services/__tests__/recurrence-pattern.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	recurrencePatternBuilder,

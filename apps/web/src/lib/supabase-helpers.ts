@@ -1,4 +1,4 @@
-// src/lib/supabase-helpers.ts
+// apps/web/src/lib/supabase-helpers.ts
 import { getContext, hasContext } from 'svelte';
 import { browser } from '$app/environment';
 import { supabase as browserClient } from '$lib/supabase';

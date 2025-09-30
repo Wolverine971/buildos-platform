@@ -1,4 +1,4 @@
-// worker-queue/.eslintrc.js
+// apps/worker/.eslintrc.js
 // This addresses Configuration Issue #8 in QUEUE_FIXES_DESIGN.md
 
 module.exports = {

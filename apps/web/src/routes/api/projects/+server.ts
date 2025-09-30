@@ -1,4 +1,4 @@
-// src/routes/api/projects/+server.ts
+// apps/web/src/routes/api/projects/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';

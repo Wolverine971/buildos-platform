@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/synthesis/SynthesisLoadingState.svelte -->
+<!-- apps/web/src/lib/components/project/synthesis/SynthesisLoadingState.svelte -->
 <script lang="ts">
 	import { Sparkles, Loader2 } from 'lucide-svelte';
 </script>

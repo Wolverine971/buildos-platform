@@ -1,4 +1,4 @@
-// src/routes/api/calendar/webhook/+server.ts
+// apps/web/src/routes/api/calendar/webhook/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';

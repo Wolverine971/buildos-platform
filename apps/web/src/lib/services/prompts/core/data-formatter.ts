@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/data-formatter.ts
+// apps/web/src/lib/services/prompts/core/data-formatter.ts
 /**
  * Data formatting utilities for prompt generation
  * Extracted from the original PromptTemplateService for reuse across all prompt services

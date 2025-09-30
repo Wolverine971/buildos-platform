@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/TaskItem.svelte -->
+<!-- apps/web/src/lib/components/phases/TaskItem.svelte -->
 <script lang="ts">
 	import {
 		GripVertical,

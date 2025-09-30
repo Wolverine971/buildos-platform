@@ -1,4 +1,4 @@
-// src/lib/services/phase-generation/strategies/calendar-optimized.strategy.ts
+// apps/web/src/lib/services/phase-generation/strategies/calendar-optimized.strategy.ts
 
 import { ScheduleInPhasesStrategy } from './schedule-in-phases.strategy';
 import type { Task, TaskFilterResult, PhaseTaskAssignment } from '../types';

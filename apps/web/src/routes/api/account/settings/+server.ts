@@ -1,4 +1,4 @@
-// src/routes/api/account/settings/+server.ts
+// apps/web/src/routes/api/account/settings/+server.ts
 import type { RequestHandler } from './$types';
 import { createSupabaseServer } from '$lib/supabase/index';
 import { ApiResponse } from '$lib/utils/api-response';

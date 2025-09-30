@@ -1,4 +1,4 @@
-// worker-queue/src/lib/services/email-service.ts
+// apps/worker/src/lib/services/email-service.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createGmailTransporter,

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/PhaseSchedulingModal.svelte -->
+<!-- apps/web/src/lib/components/project/PhaseSchedulingModal.svelte -->
 <!--
 	Phase Scheduling Modal - Optimized Version
 

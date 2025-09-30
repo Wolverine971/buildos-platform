@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/generate-brief-template/+server.ts
+// apps/web/src/routes/api/projects/[id]/generate-brief-template/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ProjectBriefTemplateGeneratorService } from '$lib/services/projectBriefTemplateGenerator.service';

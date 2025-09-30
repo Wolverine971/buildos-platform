@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/PhasesActionsSection.svelte -->
+<!-- apps/web/src/lib/components/phases/PhasesActionsSection.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

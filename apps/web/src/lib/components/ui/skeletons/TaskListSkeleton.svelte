@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/TaskListSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/TaskListSkeleton.svelte -->
 <script lang="ts">
 	export let count = 5;
 </script>

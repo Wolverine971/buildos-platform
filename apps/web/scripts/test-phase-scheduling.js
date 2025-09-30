@@ -1,4 +1,4 @@
-// scripts/test-phase-scheduling.js
+// apps/web/scripts/test-phase-scheduling.js
 
 /**
  * Test script for the phase intelligent scheduling endpoint

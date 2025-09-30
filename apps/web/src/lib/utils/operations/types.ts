@@ -1,4 +1,4 @@
-// src/lib/utils/operations/types.ts
+// apps/web/src/lib/utils/operations/types.ts
 export interface ValidationResult {
 	isValid: boolean;
 	error?: string;

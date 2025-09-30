@@ -1,4 +1,4 @@
-// src/lib/utils/operations/reference-resolver.ts
+// apps/web/src/lib/utils/operations/reference-resolver.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { ReferenceInfo } from './types';

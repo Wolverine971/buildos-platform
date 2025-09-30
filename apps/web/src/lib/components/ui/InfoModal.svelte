@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/InfoModal.svelte -->
+<!-- apps/web/src/lib/components/ui/InfoModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Info } from 'lucide-svelte';

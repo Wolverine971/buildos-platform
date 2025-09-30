@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/ProjectsFilterBar.svelte -->
+<!-- apps/web/src/lib/components/projects/ProjectsFilterBar.svelte -->
 <script lang="ts">
 	import { Search, Filter, Calendar } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

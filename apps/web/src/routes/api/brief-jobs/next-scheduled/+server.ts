@@ -1,4 +1,4 @@
-// src/routes/api/brief-jobs/next-scheduled/+server.ts
+// apps/web/src/routes/api/brief-jobs/next-scheduled/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

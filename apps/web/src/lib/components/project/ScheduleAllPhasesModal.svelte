@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ScheduleAllPhasesModal.svelte -->
+<!-- apps/web/src/lib/components/project/ScheduleAllPhasesModal.svelte -->
 <script lang="ts">
 	import { Calendar, AlertTriangle, Loader2, CheckCircle2, X, Info } from 'lucide-svelte';
 	import { createEventDispatcher, onMount } from 'svelte';

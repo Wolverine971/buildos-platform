@@ -1,4 +1,4 @@
-// src/lib/utils/operations/validation-utils.ts
+// apps/web/src/lib/utils/operations/validation-utils.ts
 import { UUID_REGEX } from './validation-schemas';
 
 // Generate slug from text

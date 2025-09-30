@@ -1,3 +1,4 @@
+// apps/worker/src/lib/services/webhook-email-service.ts
 import { createHmac } from "crypto";
 
 interface WebhookEmailConfig {

@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/BacklogTaskItem.svelte -->
+<!-- apps/web/src/lib/components/phases/BacklogTaskItem.svelte -->
 <script lang="ts">
 	import {
 		CheckCircle2,

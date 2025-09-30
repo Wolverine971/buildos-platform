@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ContextModal.svelte -->
+<!-- apps/web/src/lib/components/project/ContextModal.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';

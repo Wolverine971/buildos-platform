@@ -1,4 +1,4 @@
-// src/lib/utils/markdown.ts
+// apps/web/src/lib/utils/markdown.ts
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 

@@ -1,4 +1,4 @@
-<!-- src/lib/components/layout/BriefStatusIndicator.svelte -->
+<!-- apps/web/src/lib/components/layout/BriefStatusIndicator.svelte -->
 <script lang="ts">
 	import { Loader2 } from 'lucide-svelte';
 	import { briefNotificationStatus } from '$lib/services/realtimeBrief.service';

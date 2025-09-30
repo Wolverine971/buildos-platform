@@ -1,4 +1,4 @@
-// src/routes/auth/google/gmail-callback/+page.server.ts
+// apps/web/src/routes/auth/google/gmail-callback/+page.server.ts
 import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { PUBLIC_SUPABASE_PROJECT_ID } from '$env/static/public';

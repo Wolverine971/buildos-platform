@@ -1,4 +1,4 @@
-// src/lib/utils/projects-filters.ts
+// apps/web/src/lib/utils/projects-filters.ts
 import type { Project } from '$lib/types/project';
 import type { ProjectFilter, BriefDateRange } from '$lib/types/projects-page';
 

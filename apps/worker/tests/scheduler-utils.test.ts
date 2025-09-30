@@ -1,4 +1,4 @@
-// worker-queue/tests/scheduler-utils.test.ts
+// apps/worker/tests/scheduler-utils.test.ts
 import { describe, it, expect, vi } from "vitest";
 import { addHours, addDays, setHours, setMinutes, setSeconds } from "date-fns";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";

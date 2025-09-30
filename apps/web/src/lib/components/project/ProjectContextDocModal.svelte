@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectContextDocModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectContextDocModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Copy, FileText, Settings, Edit3, Save, X, AlertCircle } from 'lucide-svelte';

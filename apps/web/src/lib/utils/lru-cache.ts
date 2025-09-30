@@ -1,4 +1,4 @@
-// src/lib/utils/lru-cache.ts
+// apps/web/src/lib/utils/lru-cache.ts
 /**
  * Least Recently Used (LRU) Cache implementation
  * Automatically evicts least recently used items when size limit is reached

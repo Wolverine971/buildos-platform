@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/TextVirtualizer.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/TextVirtualizer.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { createVirtualScroller } from '$lib/utils/performance-optimization';

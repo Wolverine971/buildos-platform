@@ -1,4 +1,4 @@
-// src/lib/services/email-service.ts
+// apps/web/src/lib/services/email-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 

@@ -1,4 +1,4 @@
-// src/lib/utils/markdown-nesting.ts
+// apps/web/src/lib/utils/markdown-nesting.ts
 import { format } from 'date-fns/format';
 import type { Task, Note, ProjectWithRelations } from '$lib/types/project';
 import { DataFormatterService } from '$lib/services/prompts/core/data-formatter';

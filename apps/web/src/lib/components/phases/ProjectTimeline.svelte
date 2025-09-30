@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/ProjectTimeline.svelte -->
+<!-- apps/web/src/lib/components/phases/ProjectTimeline.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { formatDateForDisplay } from '$lib/utils/date-utils';

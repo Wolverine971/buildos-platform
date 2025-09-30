@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/ProgressiveImage.svelte -->
+<!-- apps/web/src/lib/components/ui/ProgressiveImage.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { createImageLazyLoader } from '$lib/utils/performance-optimization';

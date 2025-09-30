@@ -1,1 +1,1 @@
-// src/routes/help/+page.ts
+// apps/web/src/routes/help/+page.ts

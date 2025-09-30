@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/TaskMappingVisualization.svelte -->
+<!-- apps/web/src/lib/components/project/TaskMappingVisualization.svelte -->
 <script lang="ts">
 	import type { ParsedOperation } from '$lib/types/brain-dump';
 	import {

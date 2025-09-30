@@ -1,4 +1,4 @@
-// src/app.d.ts
+// apps/web/src/app.d.ts
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 

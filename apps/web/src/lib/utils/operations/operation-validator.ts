@@ -1,4 +1,4 @@
-// src/lib/utils/operations/operation-validator.ts
+// apps/web/src/lib/utils/operations/operation-validator.ts
 import type { ValidationResult, FieldValidation } from './types';
 import { tableSchemas } from './validation-schemas';
 import {

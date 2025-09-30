@@ -1,4 +1,4 @@
-// src/routes/api/calendar/analyze/suggestions/+server.ts
+// apps/web/src/routes/api/calendar/analyze/suggestions/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';

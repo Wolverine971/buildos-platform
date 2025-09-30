@@ -1,4 +1,4 @@
-<!-- src/lib/components/synthesis/TaskMappingView.svelte -->
+<!-- apps/web/src/lib/components/synthesis/TaskMappingView.svelte -->
 <script lang="ts">
 	import type { ParsedOperation } from '$lib/types/brain-dump';
 	import type { FieldDiff } from '$lib/utils/diff';

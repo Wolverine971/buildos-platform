@@ -1,4 +1,4 @@
-// src/routes/profile/calendar/+server.ts
+// apps/web/src/routes/profile/calendar/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';

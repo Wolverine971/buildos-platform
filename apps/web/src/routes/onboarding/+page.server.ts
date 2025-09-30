@@ -1,4 +1,4 @@
-// src/routes/onboarding/+page.server.ts
+// apps/web/src/routes/onboarding/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 

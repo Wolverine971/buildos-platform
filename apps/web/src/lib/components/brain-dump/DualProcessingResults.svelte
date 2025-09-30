@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/DualProcessingResults.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/DualProcessingResults.svelte -->
 <script lang="ts">
 	import {
 		LoaderCircle,

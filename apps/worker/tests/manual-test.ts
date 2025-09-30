@@ -1,4 +1,4 @@
-// worker-queue/tests/manual-test.ts
+// apps/worker/tests/manual-test.ts
 import { addDays, setHours, setMinutes, setSeconds, format } from "date-fns";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 

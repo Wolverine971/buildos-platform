@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/ProjectBriefCard.svelte -->
+<!-- apps/web/src/lib/components/briefs/ProjectBriefCard.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { ExternalLink, FileText, Clock, Hash } from 'lucide-svelte';

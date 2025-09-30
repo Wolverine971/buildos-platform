@@ -1,4 +1,4 @@
-// src/lib/config/stripe-invoice.ts
+// apps/web/src/lib/config/stripe-invoice.ts
 export const INVOICE_CONFIG = {
 	// Business details
 	businessName: 'BuildOS',

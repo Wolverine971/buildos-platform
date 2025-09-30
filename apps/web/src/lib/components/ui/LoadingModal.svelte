@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/LoadingModal.svelte -->
+<!-- apps/web/src/lib/components/ui/LoadingModal.svelte -->
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';

@@ -1,4 +1,4 @@
-// src/lib/config/trial.ts
+// apps/web/src/lib/config/trial.ts
 export const TRIAL_CONFIG = {
 	// Default trial length in days
 	DEFAULT_TRIAL_DAYS: 14,

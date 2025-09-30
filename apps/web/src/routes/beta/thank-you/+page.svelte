@@ -1,4 +1,4 @@
-<!-- src/routes/beta/thank-you/+page.svelte -->
+<!-- apps/web/src/routes/beta/thank-you/+page.svelte -->
 <script lang="ts">
 	import {
 		CheckCircle,

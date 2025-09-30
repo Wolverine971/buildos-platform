@@ -1,4 +1,4 @@
-<!-- src/lib/components/layout/ThemeToggle.svelte -->
+<!-- apps/web/src/lib/components/layout/ThemeToggle.svelte -->
 <script lang="ts">
 	import { toggleMode } from 'mode-watcher';
 	import { Sun, Moon } from 'lucide-svelte';

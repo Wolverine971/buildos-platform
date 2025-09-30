@@ -1,4 +1,4 @@
-// src/lib/utils/rate-limiter.ts
+// apps/web/src/lib/utils/rate-limiter.ts
 import { browser } from '$app/environment';
 
 interface RateLimitRule {

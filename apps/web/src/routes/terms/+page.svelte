@@ -1,4 +1,4 @@
-<!-- src/routes/terms/+page.svelte -->
+<!-- apps/web/src/routes/terms/+page.svelte -->
 <script lang="ts">
 	import { FileText, AlertTriangle, Shield, Users, DollarSign } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';

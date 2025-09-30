@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/KanbanView.svelte -->
+<!-- apps/web/src/lib/components/phases/KanbanView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Textarea.svelte -->
+<!-- apps/web/src/lib/components/ui/Textarea.svelte -->
 <script lang="ts">
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import { createEventDispatcher } from 'svelte';

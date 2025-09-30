@@ -1,4 +1,4 @@
-// src/routes/api/stripe/portal/+server.ts
+// apps/web/src/routes/api/stripe/portal/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';

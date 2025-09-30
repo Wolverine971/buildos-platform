@@ -1,4 +1,4 @@
-// src/routes/briefs/+server.ts
+// apps/web/src/routes/briefs/+server.ts
 import type { RequestHandler } from './$types';
 import type { DailyBrief, ProjectDailyBrief } from '$lib/types/daily-brief';
 import { ApiResponse } from '$lib/utils/api-response';

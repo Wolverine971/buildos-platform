@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/FormModal.svelte -->
+<!-- apps/web/src/lib/components/ui/FormModal.svelte -->
 <script lang="ts">
 	import {
 		AlertCircle,

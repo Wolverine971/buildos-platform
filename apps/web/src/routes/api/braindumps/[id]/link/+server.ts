@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/[id]/link/+server.ts
+// apps/web/src/routes/api/braindumps/[id]/link/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ActivityLogger } from '$lib/utils/activityLogger';

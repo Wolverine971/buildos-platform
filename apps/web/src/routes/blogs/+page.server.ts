@@ -1,4 +1,4 @@
-// src/routes/blogs/+page.server.ts
+// apps/web/src/routes/blogs/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { loadBlogPosts, BLOG_CATEGORIES, type BlogCategory } from '$lib/utils/blog';
 

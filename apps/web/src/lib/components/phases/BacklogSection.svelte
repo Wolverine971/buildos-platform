@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/BacklogSection.svelte -->
+<!-- apps/web/src/lib/components/phases/BacklogSection.svelte -->
 <script lang="ts">
 	import { Inbox, ChevronDown, ChevronRight } from 'lucide-svelte';
 	import type { TaskWithCalendarEvents } from '$lib/types/project-page.types';

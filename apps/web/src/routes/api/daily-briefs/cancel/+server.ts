@@ -1,4 +1,4 @@
-// src/routes/api/daily-briefs/cancel/+server.ts
+// apps/web/src/routes/api/daily-briefs/cancel/+server.ts
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

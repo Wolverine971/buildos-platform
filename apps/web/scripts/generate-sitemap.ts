@@ -1,4 +1,4 @@
-// scripts/generate-sitemap.ts
+// apps/web/scripts/generate-sitemap.ts
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 

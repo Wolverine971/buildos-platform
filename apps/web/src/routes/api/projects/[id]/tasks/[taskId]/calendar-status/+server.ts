@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/tasks/[taskId]/calendar-status/+server.ts
+// apps/web/src/routes/api/projects/[id]/tasks/[taskId]/calendar-status/+server.ts
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$utils/api-response';

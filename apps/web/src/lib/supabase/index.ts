@@ -1,4 +1,4 @@
-// src/lib/supabase/index.ts
+// apps/web/src/lib/supabase/index.ts
 import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import { browser, dev } from '$app/environment';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';

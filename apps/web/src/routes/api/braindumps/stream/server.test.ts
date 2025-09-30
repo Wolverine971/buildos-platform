@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/stream/server.test.ts
+// apps/web/src/routes/api/braindumps/stream/server.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('Brain Dump Stream API - Input Validation', () => {

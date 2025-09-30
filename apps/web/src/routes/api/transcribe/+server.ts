@@ -1,4 +1,4 @@
-// src/routes/api/transcribe/+server.ts
+// apps/web/src/routes/api/transcribe/+server.ts
 import { PRIVATE_OPENAI_API_KEY } from '$env/static/private';
 import OpenAI from 'openai';
 import type { RequestHandler } from './$types';

@@ -1,4 +1,4 @@
-// src/lib/types/project-brief-template.ts
+// apps/web/src/lib/types/project-brief-template.ts
 
 export interface ProjectBriefTemplate {
 	id: string;

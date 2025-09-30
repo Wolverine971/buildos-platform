@@ -1,4 +1,4 @@
-// worker-queue/src/workers/shared/jobAdapter.ts
+// apps/worker/src/workers/shared/jobAdapter.ts
 // Type-safe adapter for converting between Supabase queue jobs and legacy BullMQ interface
 // This addresses Critical Issue #1 in QUEUE_FIXES_DESIGN.md
 

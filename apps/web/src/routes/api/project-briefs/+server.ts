@@ -1,4 +1,4 @@
-// src/routes/api/project-briefs/+server.ts
+// apps/web/src/routes/api/project-briefs/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, handleConditionalRequest } from '$lib/utils/api-response';
 

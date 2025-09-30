@@ -1,4 +1,4 @@
-<!-- src/routes/beta/+page.svelte -->
+<!-- apps/web/src/routes/beta/+page.svelte -->
 <script lang="ts">
 	import {
 		Users,

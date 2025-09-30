@@ -1,4 +1,4 @@
-// scripts/merge-comments.ts
+// apps/web/scripts/merge-comments.ts
 import { Project, Node } from 'ts-morph';
 import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';

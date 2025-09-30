@@ -1,4 +1,4 @@
-<!-- src/lib/components/blogs/BlogLayout.svelte -->
+<!-- apps/web/src/lib/components/blogs/BlogLayout.svelte -->
 <script lang="ts">
 	import { format } from 'date-fns';
 	import { ArrowLeft, Calendar, Clock, Tag } from 'lucide-svelte';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/scheduling/PhaseScheduleCard.svelte -->
+<!-- apps/web/src/lib/components/scheduling/PhaseScheduleCard.svelte -->
 <script lang="ts">
 	import {
 		ChevronDown,

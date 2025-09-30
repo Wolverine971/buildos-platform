@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/project-ref-resolution.test.ts
+// apps/web/src/lib/utils/__tests__/project-ref-resolution.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OperationsExecutor } from '../operations/operations-executor';
 import type { ParsedOperation } from '$lib/types/brain-dump';

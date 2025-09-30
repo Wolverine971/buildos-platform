@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/DailyBriefsTab.svelte -->
+<!-- apps/web/src/lib/components/briefs/DailyBriefsTab.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy, getContext } from 'svelte';
 	import { browser } from '$app/environment';

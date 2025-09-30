@@ -1,4 +1,4 @@
-<!-- src/lib/components/task/TaskStepsSection.svelte -->
+<!-- apps/web/src/lib/components/task/TaskStepsSection.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Brain, Plus, Edit3, Save, X, RefreshCw, CheckCircle, Clock } from 'lucide-svelte';

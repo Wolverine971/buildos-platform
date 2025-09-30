@@ -1,4 +1,4 @@
-<!-- src/routes/+error.svelte -->
+<!-- apps/web/src/routes/+error.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';

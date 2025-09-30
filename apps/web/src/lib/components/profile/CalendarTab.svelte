@@ -1,4 +1,4 @@
-<!-- src/lib/components/profile/CalendarTab.svelte -->
+<!-- apps/web/src/lib/components/profile/CalendarTab.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { enhance } from '$app/forms';

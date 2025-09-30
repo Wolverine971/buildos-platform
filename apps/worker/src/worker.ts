@@ -1,4 +1,4 @@
-// worker-queue/src/worker.ts
+// apps/worker/src/worker.ts
 import { SupabaseQueue, ProcessingJob } from "./lib/supabaseQueue";
 import { processBriefJob } from "./workers/brief/briefWorker";
 import { processPhasesJob } from "./workers/phases/phasesWorker";

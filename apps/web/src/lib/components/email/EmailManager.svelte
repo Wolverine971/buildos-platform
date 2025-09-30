@@ -1,4 +1,4 @@
-<!-- src/lib/components/email/EmailManager.svelte -->
+<!-- apps/web/src/lib/components/email/EmailManager.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

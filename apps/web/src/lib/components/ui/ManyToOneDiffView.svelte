@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/ManyToOneDiffView.svelte -->
+<!-- apps/web/src/lib/components/ui/ManyToOneDiffView.svelte -->
 <script lang="ts">
 	import type { ManyToOneComparison, FieldComparison } from '$lib/utils/many-to-one-diff';
 

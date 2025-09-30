@@ -1,4 +1,4 @@
-// worker-queue/src/workers/brief/prompts.ts
+// apps/worker/src/workers/brief/prompts.ts
 
 export interface DailyBriefAnalysisTask {
   id: string;

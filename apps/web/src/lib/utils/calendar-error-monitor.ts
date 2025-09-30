@@ -1,4 +1,4 @@
-// src/lib/utils/calendar-error-monitor.ts
+// apps/web/src/lib/utils/calendar-error-monitor.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 

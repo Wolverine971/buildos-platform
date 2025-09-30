@@ -1,4 +1,4 @@
-<!-- src/lib/components/test/LogoutTest.svelte -->
+<!-- apps/web/src/lib/components/test/LogoutTest.svelte -->
 <script lang="ts">
 	import { logout, forceLogout, forceAuthRefresh } from '$lib/utils/auth';
 	import { createSupabaseBrowser } from '$lib/supabase';

@@ -1,4 +1,4 @@
-<!-- src/routes/admin/llm-usage/+page.svelte -->
+<!-- apps/web/src/routes/admin/llm-usage/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { format } from 'date-fns';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/PhasesSection.svelte -->
+<!-- apps/web/src/lib/components/project/PhasesSection.svelte -->
 <svelte:options runes={true} />
 
 <script lang="ts">

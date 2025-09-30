@@ -1,4 +1,4 @@
-// src/routes/projects/+page.server.ts
+// apps/web/src/routes/projects/+page.server.ts
 import { redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectCalendarConnectModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectCalendarConnectModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { createEventDispatcher } from 'svelte';

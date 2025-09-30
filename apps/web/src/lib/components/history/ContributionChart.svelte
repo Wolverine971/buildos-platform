@@ -1,4 +1,4 @@
-<!-- src/lib/components/history/ContributionChart.svelte -->
+<!-- apps/web/src/lib/components/history/ContributionChart.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { format, parseISO, startOfWeek, addDays } from 'date-fns';

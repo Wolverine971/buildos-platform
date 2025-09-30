@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/validations.ts
+// apps/web/src/lib/services/prompts/core/validations.ts
 import { BrainDumpParseResult, ParsedOperation } from '$lib/types';
 import { hasInflatedHeadings, normalizeMarkdownHeadings } from '$utils/markdown-nesting';
 import { OperationValidator } from '$utils/operations-executor';

@@ -1,4 +1,4 @@
-// src/lib/utils/stream-format-helpers.ts
+// apps/web/src/lib/utils/stream-format-helpers.ts
 // Helper functions to convert processor results to streaming preview formats
 
 import type {

@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/FormField.svelte -->
+<!-- apps/web/src/lib/components/ui/FormField.svelte -->
 <script lang="ts">
 	import { Info, AlertCircle } from 'lucide-svelte';
 

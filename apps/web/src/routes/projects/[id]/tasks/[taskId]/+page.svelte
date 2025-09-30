@@ -1,4 +1,4 @@
-<!-- src/routes/projects/[id]/tasks/[taskId]/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/tasks/[taskId]/+page.svelte -->
 <!-- https://claude.ai/chat/bb4907d4-80f4-414f-ac8b-0af5ff37ecbe -->
 <script lang="ts">
 	import {

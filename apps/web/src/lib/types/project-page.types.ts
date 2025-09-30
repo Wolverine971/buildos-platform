@@ -1,4 +1,4 @@
-// src/lib/types/project-page.types.ts
+// apps/web/src/lib/types/project-page.types.ts
 import type { Project, Task, Note, Phase } from '$lib/types/project';
 
 // ==========================================

@@ -1,4 +1,4 @@
-// scripts/archive/test-prettier.js
+// apps/web/scripts/archive/test-prettier.js
 
 // #!/usr/bin/env node
 

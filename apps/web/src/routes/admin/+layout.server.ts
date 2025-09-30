@@ -1,4 +1,4 @@
-// src/routes/admin/+layout.server.ts
+// apps/web/src/routes/admin/+layout.server.ts
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 

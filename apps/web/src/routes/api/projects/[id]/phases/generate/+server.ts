@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/phases/generate/+server.ts
+// apps/web/src/routes/api/projects/[id]/phases/generate/+server.ts
 // Simplified API handler using the new phase generation orchestrator
 
 import type { RequestHandler } from './$types';

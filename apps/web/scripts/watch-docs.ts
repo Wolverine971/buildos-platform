@@ -1,4 +1,4 @@
-// scripts/watch-docs.ts
+// apps/web/scripts/watch-docs.ts
 
 /**
  * Watch script for automatic documentation generation during development

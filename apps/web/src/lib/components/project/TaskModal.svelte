@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/TaskModal.svelte -->
+<!-- apps/web/src/lib/components/project/TaskModal.svelte -->
 <!--
 	Task Modal Component
 

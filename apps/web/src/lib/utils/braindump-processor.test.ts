@@ -1,4 +1,4 @@
-// src/lib/utils/braindump-processor.test.ts
+// apps/web/src/lib/utils/braindump-processor.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('BrainDumpProcessor - Promise.allSettled Validation', () => {

@@ -1,4 +1,4 @@
-<!-- src/routes/+layout.svelte -->
+<!-- apps/web/src/routes/+layout.svelte -->
 <script lang="ts">
 	import '../app.css';
 	import '$lib/styles/pwa.css';

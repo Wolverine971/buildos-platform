@@ -1,4 +1,4 @@
-// worker-queue/scripts/test-scheduler.ts
+// apps/worker/scripts/test-scheduler.ts
 // Comprehensive scheduler testing and diagnostics
 // Run with: npx tsx scripts/test-scheduler.ts
 

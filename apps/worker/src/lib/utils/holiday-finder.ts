@@ -1,4 +1,4 @@
-// worker-queue/src/lib/utils/holiday-finder.ts
+// apps/worker/src/lib/utils/holiday-finder.ts
 export type Holiday = {
   name: string;
   date: Date;

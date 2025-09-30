@@ -1,4 +1,4 @@
-// src/lib/utils/braindump-validation.ts
+// apps/web/src/lib/utils/braindump-validation.ts
 /**
  * Unified validation service for brain dump API endpoints
  * Ensures consistent validation rules across all endpoints

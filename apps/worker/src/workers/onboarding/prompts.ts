@@ -1,4 +1,4 @@
-// worker-queue/src/workers/onboarding/prompts.ts
+// apps/worker/src/workers/onboarding/prompts.ts
 export class OnboardingAnalysisPrompt {
   static getSystemPrompt(): string {
     return `You are a BuildOS onboarding analyst that generates personalized questions to help users start thinking through and braindumping ideas for the specific projects they mentioned during onboarding.

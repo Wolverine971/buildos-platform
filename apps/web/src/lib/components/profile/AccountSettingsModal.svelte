@@ -1,4 +1,4 @@
-<!-- src/lib/components/profile/AccountSettingsModal.svelte -->
+<!-- apps/web/src/lib/components/profile/AccountSettingsModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

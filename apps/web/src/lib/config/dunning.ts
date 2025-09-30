@@ -1,4 +1,4 @@
-// src/lib/config/dunning.ts
+// apps/web/src/lib/config/dunning.ts
 export interface DunningStage {
 	name: string;
 	daysAfterFailure: number;

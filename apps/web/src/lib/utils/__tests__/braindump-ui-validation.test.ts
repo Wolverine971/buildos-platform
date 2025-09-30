@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/braindump-ui-validation.test.ts
+// apps/web/src/lib/utils/__tests__/braindump-ui-validation.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ParsedOperation } from '$lib/types/brain-dump';
 

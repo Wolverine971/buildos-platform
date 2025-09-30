@@ -1,4 +1,4 @@
-// scripts/build-metrics.js
+// apps/web/scripts/build-metrics.js
 import { statSync, readdirSync } from 'fs';
 import { join } from 'path';
 

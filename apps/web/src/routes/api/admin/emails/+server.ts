@@ -1,4 +1,4 @@
-// src/routes/api/admin/emails/+server.ts
+// apps/web/src/routes/api/admin/emails/+server.ts
 import type { RequestHandler } from './$types';
 
 import { PUBLIC_GMAIL_USER } from '$env/static/public';

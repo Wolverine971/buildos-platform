@@ -1,4 +1,4 @@
-// src/lib/utils/email-config.ts
+// apps/web/src/lib/utils/email-config.ts
 import { createTransport } from 'nodemailer';
 
 import {

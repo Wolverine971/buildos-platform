@@ -1,4 +1,4 @@
-// src/lib/types/daily-brief.ts
+// apps/web/src/lib/types/daily-brief.ts
 export interface DailyBrief {
 	id: string;
 	user_id: string;

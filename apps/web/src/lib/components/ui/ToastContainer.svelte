@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/ToastContainer.svelte -->
+<!-- apps/web/src/lib/components/ui/ToastContainer.svelte -->
 <script lang="ts">
 	import { toasts, toastService } from '$lib/stores/toast.store';
 	import Toast from './Toast.svelte';

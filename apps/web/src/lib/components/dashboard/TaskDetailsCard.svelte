@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/TaskDetailsCard.svelte -->
+<!-- apps/web/src/lib/components/dashboard/TaskDetailsCard.svelte -->
 <script lang="ts">
 	import {
 		AlertTriangle,

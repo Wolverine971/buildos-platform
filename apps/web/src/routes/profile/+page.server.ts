@@ -1,4 +1,4 @@
-// src/routes/profile/+page.server.ts
+// apps/web/src/routes/profile/+page.server.ts
 import type { PageServerLoad, Actions } from './$types';
 import { redirect, fail } from '@sveltejs/kit';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';

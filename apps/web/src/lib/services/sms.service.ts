@@ -1,4 +1,4 @@
-// src/lib/services/sms.service.ts
+// apps/web/src/lib/services/sms.service.ts
 import { ApiService } from './base/api-service';
 import type { ServiceResponse } from './base/types';
 import { supabase } from '$lib/supabase';

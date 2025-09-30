@@ -14,7 +14,6 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck",
     "clean": "rm -rf dist",
-    "label-paths": "tsx labelFilePaths.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest watch",

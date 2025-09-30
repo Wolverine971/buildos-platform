@@ -1,4 +1,4 @@
-// src/routes/api/onboarding/+server.ts
+// apps/web/src/routes/api/onboarding/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { OnboardingServerService } from '$lib/server/onboarding.service';

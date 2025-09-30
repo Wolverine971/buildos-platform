@@ -1,4 +1,4 @@
-// src/routes/api/calendar/process/+server.ts
+// apps/web/src/routes/api/calendar/process/+server.ts
 // Direct proxy endpoint for CalendarService methods
 
 import { CalendarService } from '$lib/services/calendar-service';

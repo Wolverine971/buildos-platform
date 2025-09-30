@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/RadioGroup.svelte -->
+<!-- apps/web/src/lib/components/ui/RadioGroup.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, setContext } from 'svelte';
 	import { twMerge } from 'tailwind-merge';

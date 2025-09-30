@@ -1,4 +1,4 @@
-// src/routes/api/dashboard/+server.ts
+// apps/web/src/routes/api/dashboard/+server.ts
 import type { RequestHandler } from './$types';
 import {
 	getTodayInUserTimezone,

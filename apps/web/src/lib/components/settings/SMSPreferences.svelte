@@ -1,4 +1,4 @@
-<!-- src/lib/components/settings/SMSPreferences.svelte -->
+<!-- apps/web/src/lib/components/settings/SMSPreferences.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { smsService } from '$lib/services/sms.service';

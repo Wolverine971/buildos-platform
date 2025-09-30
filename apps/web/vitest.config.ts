@@ -1,4 +1,4 @@
-// vitest.config.ts
+// apps/web/vitest.config.ts
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 

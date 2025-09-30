@@ -1,4 +1,4 @@
-// worker-queue/tests/setup.ts
+// apps/worker/tests/setup.ts
 import { beforeEach, vi } from "vitest";
 import { config } from "dotenv";
 

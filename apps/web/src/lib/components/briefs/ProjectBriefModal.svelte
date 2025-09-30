@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/ProjectBriefModal.svelte -->
+<!-- apps/web/src/lib/components/briefs/ProjectBriefModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { ExternalLink, Calendar, Target, CheckCircle, FileText } from 'lucide-svelte';

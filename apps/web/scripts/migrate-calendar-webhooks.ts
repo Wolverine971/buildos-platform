@@ -1,4 +1,4 @@
-// scripts/migrate-calendar-webhooks.ts
+// apps/web/scripts/migrate-calendar-webhooks.ts
 // Migration script to register webhooks for users with existing calendar connections
 // This script is idempotent and can be run multiple times safely
 

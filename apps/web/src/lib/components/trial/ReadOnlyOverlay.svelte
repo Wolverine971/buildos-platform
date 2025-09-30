@@ -1,4 +1,4 @@
-<!-- src/lib/components/trial/ReadOnlyOverlay.svelte -->
+<!-- apps/web/src/lib/components/trial/ReadOnlyOverlay.svelte -->
 <script lang="ts">
 	import { CreditCard, Lock } from 'lucide-svelte';
 	import { goto } from '$app/navigation';

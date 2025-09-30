@@ -1,4 +1,4 @@
-<!-- src/routes/investors/+page.svelte -->
+<!-- apps/web/src/routes/investors/+page.svelte -->
 <script lang="ts">
 	import { Brain, Zap, Target, Mail, ArrowRight, Mic, Database, TrendingUp } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

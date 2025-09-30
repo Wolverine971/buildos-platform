@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/TabNav.svelte -->
+<!-- apps/web/src/lib/components/ui/TabNav.svelte -->
 <script lang="ts" context="module">
 	import type { ComponentType } from 'svelte';
 

@@ -1,4 +1,4 @@
-// src/lib/services/dashboardData.service.ts
+// apps/web/src/lib/services/dashboardData.service.ts
 import { dashboardStore, type TaskWithCalendarEvents } from '$lib/stores/dashboard.store';
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CacheManager } from './base/cache-manager';

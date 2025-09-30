@@ -1,4 +1,4 @@
-// src/routes/api/notes/[id]/+server.ts
+// apps/web/src/routes/api/notes/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { ApiResponse } from '$lib/utils/api-response';

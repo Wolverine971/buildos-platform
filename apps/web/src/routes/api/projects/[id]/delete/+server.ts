@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/delete/+server.ts
+// apps/web/src/routes/api/projects/[id]/delete/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';

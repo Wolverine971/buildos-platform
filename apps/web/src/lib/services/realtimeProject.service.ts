@@ -1,4 +1,4 @@
-// src/lib/services/realtimeProject.service.ts
+// apps/web/src/lib/services/realtimeProject.service.ts
 import { projectStoreV2 } from '$lib/stores/project.store';
 import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { browser } from '$app/environment';

@@ -1,4 +1,4 @@
-// scripts/lib/calendar-webhook-migration-service.ts
+// apps/web/scripts/lib/calendar-webhook-migration-service.ts
 // Standalone version of CalendarWebhookService for migration scripts
 // This avoids SvelteKit-specific imports like $env
 

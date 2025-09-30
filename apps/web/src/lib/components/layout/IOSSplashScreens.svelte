@@ -1,4 +1,4 @@
-<!-- src/lib/components/layout/IOSSplashScreens.svelte -->
+<!-- apps/web/src/lib/components/layout/IOSSplashScreens.svelte -->
 <!-- iOS Splash Screens for various device sizes -->
 <!-- These use the existing images and will show while the PWA loads -->
 

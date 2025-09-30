@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/fixtures/braindump-test-fixtures.ts
+// apps/web/src/lib/utils/__tests__/fixtures/braindump-test-fixtures.ts
 
 export const braindumpFixtures = {
 	// Short braindumps (< 500 chars)

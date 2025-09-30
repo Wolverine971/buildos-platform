@@ -1,4 +1,4 @@
-<!-- src/lib/components/notifications/PaymentWarning.svelte -->
+<!-- apps/web/src/lib/components/notifications/PaymentWarning.svelte -->
 <script lang="ts">
 	import { AlertTriangle, CreditCard, X } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

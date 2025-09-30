@@ -1,4 +1,4 @@
-// src/lib/utils/subscription.ts
+// apps/web/src/lib/utils/subscription.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { StripeService } from '$lib/services/stripe-service';
 

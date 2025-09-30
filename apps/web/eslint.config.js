@@ -1,4 +1,4 @@
-// eslint.config.js
+// apps/web/eslint.config.js
 import globals from 'globals';
 import prettier from 'eslint-config-prettier';
 import svelte from 'eslint-plugin-svelte';

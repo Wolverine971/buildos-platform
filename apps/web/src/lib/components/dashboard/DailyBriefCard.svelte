@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/DailyBriefCard.svelte -->
+<!-- apps/web/src/lib/components/dashboard/DailyBriefCard.svelte -->
 <script lang="ts">
 	import { Calendar, Sparkles, ArrowRight, Clock, CheckCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';

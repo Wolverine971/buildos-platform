@@ -1,4 +1,4 @@
-// src/lib/services/visitor.service.ts
+// apps/web/src/lib/services/visitor.service.ts
 import { browser } from '$app/environment';
 
 export class VisitorService {

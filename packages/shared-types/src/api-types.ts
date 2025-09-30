@@ -1,4 +1,4 @@
-// Standardized API response types
+// packages/shared-types/src/api-types.ts
 
 export interface ApiResponse<T = unknown> {
   success: boolean;

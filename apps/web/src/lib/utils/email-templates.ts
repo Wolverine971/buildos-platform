@@ -1,4 +1,4 @@
-// src/lib/utils/email-templates.ts
+// apps/web/src/lib/utils/email-templates.ts
 
 /**
  * Generate a minimal HTML email template

@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/UserActivityModal.svelte -->
+<!-- apps/web/src/lib/components/admin/UserActivityModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

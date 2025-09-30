@@ -1,4 +1,4 @@
-// src/routes/api/admin/emails/generate/+server.ts
+// apps/web/src/routes/api/admin/emails/generate/+server.ts
 import type { RequestHandler } from './$types';
 import { EmailGenerationService } from '$lib/services/email-generation-service';
 import { ApiResponse } from '$lib/utils/api-response';

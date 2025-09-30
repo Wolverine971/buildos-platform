@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectHeader.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectHeader.svelte -->
 <script lang="ts">
 	import {
 		ArrowLeft,

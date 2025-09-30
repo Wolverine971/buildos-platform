@@ -1,4 +1,4 @@
-<!-- src/routes/blogs/[category]/+page.svelte -->
+<!-- apps/web/src/routes/blogs/[category]/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { format } from 'date-fns';

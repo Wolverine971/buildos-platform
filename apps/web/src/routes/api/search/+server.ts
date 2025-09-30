@@ -1,4 +1,4 @@
-// src/routes/api/search/+server.ts
+// apps/web/src/routes/api/search/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody, requireAuth } from '$lib/utils/api-response';
 import type { SearchResult } from '$lib/types/search';

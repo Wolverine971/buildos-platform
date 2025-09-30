@@ -1,4 +1,4 @@
-// src/lib/services/projectService.ts
+// apps/web/src/lib/services/projectService.ts
 import type { Note, Project } from '$lib/types/project';
 import type { PhaseWithTasks, TaskWithCalendarEvents } from '$lib/types/project-page.types';
 import { projectStoreV2 } from '$lib/stores/project.store';

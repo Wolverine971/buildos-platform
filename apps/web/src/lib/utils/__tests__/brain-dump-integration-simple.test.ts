@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/brain-dump-integration-simple.test.ts
+// apps/web/src/lib/utils/__tests__/brain-dump-integration-simple.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock SvelteKit navigation module

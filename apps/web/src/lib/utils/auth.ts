@@ -1,4 +1,4 @@
-// src/lib/utils/auth.ts
+// apps/web/src/lib/utils/auth.ts
 import { browser } from '$app/environment';
 
 import { goto, invalidate, invalidateAll } from '$app/navigation';

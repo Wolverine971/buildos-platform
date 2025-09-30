@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/ProjectContextPreview.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/ProjectContextPreview.svelte -->
 <script lang="ts">
 	import type { ProjectContextResult } from '$lib/types/brain-dump';
 	import { Folder, FolderPlus, Hash, FileText, Sparkles } from 'lucide-svelte';

@@ -1,4 +1,4 @@
-// src/routes/admin/errors/+page.server.ts
+// apps/web/src/routes/admin/errors/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';

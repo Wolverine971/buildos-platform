@@ -1,4 +1,4 @@
-// scripts/migrate-api-responses.js
+// apps/web/scripts/migrate-api-responses.js
 // scripts/migrate-api-responses.js
 
 const fs = require('fs');

@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/heading-normalization.test.ts
+// apps/web/src/lib/utils/__tests__/heading-normalization.test.ts
 import { describe, it, expect } from 'vitest';
 import { normalizeMarkdownHeadings } from '../markdown-nesting';
 

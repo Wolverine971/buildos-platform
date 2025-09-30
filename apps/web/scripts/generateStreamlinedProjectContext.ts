@@ -1,4 +1,4 @@
-// scripts/generateStreamlinedProjectContext.ts
+// apps/web/scripts/generateStreamlinedProjectContext.ts
 /**
  * Streamlined SvelteKit Context Generator
  * Focuses on component relationships and dependencies

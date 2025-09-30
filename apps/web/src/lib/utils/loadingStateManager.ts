@@ -1,4 +1,4 @@
-// src/lib/utils/loadingStateManager.ts
+// apps/web/src/lib/utils/loadingStateManager.ts
 /**
  * Unified Loading State Manager for Zero Layout Shift
  * Coordinates component loading, data loading, and UI state synchronization

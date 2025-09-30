@@ -1,4 +1,4 @@
-// src/hooks.server.ts
+// apps/web/src/hooks.server.ts
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 // import { sequence } from '@sveltejs/kit/hooks';
 import { createSupabaseServer } from '$lib/supabase';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Button.svelte -->
+<!-- apps/web/src/lib/components/ui/Button.svelte -->
 <script context="module" lang="ts">
 	export type ButtonVariant =
 		| 'primary'

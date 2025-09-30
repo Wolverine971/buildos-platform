@@ -1,4 +1,4 @@
-<!-- src/lib/components/calendar/CalendarAnalysisModal.svelte -->
+<!-- apps/web/src/lib/components/calendar/CalendarAnalysisModal.svelte -->
 <script lang="ts">
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { goto } from '$app/navigation';

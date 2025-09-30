@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/FirstTimeBrainDumpCard.svelte -->
+<!-- apps/web/src/lib/components/dashboard/FirstTimeBrainDumpCard.svelte -->
 <script lang="ts">
 	import { Brain, ArrowRight, Lightbulb, Target, Users } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

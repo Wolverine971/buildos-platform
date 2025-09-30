@@ -1,4 +1,4 @@
-<!-- src/lib/components/email/ImageUploadModal.svelte -->
+<!-- apps/web/src/lib/components/email/ImageUploadModal.svelte -->
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { Upload, Image as ImageIcon, Trash2, Eye, X, Search } from 'lucide-svelte';

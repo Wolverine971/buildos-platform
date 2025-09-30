@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/ProjectActivityChart.svelte -->
+<!-- apps/web/src/lib/components/admin/ProjectActivityChart.svelte -->
 <script lang="ts">
 	export let projects: any[] = [];
 

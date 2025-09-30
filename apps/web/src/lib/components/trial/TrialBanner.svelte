@@ -1,4 +1,4 @@
-<!-- src/lib/components/trial/TrialBanner.svelte -->
+<!-- apps/web/src/lib/components/trial/TrialBanner.svelte -->
 <script lang="ts">
 	import { AlertTriangle, Clock, CreditCard, X } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

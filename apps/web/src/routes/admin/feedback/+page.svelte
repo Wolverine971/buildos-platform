@@ -1,4 +1,4 @@
-<!-- src/routes/admin/feedback/+page.svelte -->
+<!-- apps/web/src/routes/admin/feedback/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

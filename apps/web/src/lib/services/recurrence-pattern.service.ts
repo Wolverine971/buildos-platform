@@ -1,4 +1,4 @@
-// src/lib/services/recurrence-pattern.service.ts
+// apps/web/src/lib/services/recurrence-pattern.service.ts
 import { addDays, addWeeks, addMonths, addYears, setDate } from 'date-fns';
 
 export interface RecurrencePattern {

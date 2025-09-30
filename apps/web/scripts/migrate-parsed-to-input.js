@@ -1,4 +1,4 @@
-// scripts/migrate-parsed-to-input.js
+// apps/web/scripts/migrate-parsed-to-input.js
 // Run this after the database migration to populate input columns from existing parsed data
 
 import { createCustomClient } from '@buildos/supabase-client';

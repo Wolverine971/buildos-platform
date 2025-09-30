@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectManyToOneComparisonModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectManyToOneComparisonModal.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';

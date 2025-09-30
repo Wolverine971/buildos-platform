@@ -1,4 +1,4 @@
-// src/routes/blogs/+page.ts
+// apps/web/src/routes/blogs/+page.ts
 // export const prerender = true;
 // export const ssr = true;
 // export const csr = true;

@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/RecentDumps.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/RecentDumps.svelte -->
 <script lang="ts">
 	import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 	import { FileText } from 'lucide-svelte';

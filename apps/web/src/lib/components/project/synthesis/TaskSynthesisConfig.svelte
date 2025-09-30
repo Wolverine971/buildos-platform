@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/synthesis/TaskSynthesisConfig.svelte -->
+<!-- apps/web/src/lib/components/project/synthesis/TaskSynthesisConfig.svelte -->
 <script lang="ts">
 	import { Settings, Layers, Clock, Link, Search, GitMerge } from 'lucide-svelte';
 	import type { TaskSynthesisConfig } from '$lib/types/synthesis';

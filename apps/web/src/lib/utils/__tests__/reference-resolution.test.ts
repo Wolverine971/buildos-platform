@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/reference-resolution.test.ts
+// apps/web/src/lib/utils/__tests__/reference-resolution.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Import the class directly to avoid SvelteKit issues
 import type { ParsedOperation, TableName, OperationType } from '$lib/types/brain-dump';

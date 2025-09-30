@@ -1,4 +1,4 @@
-// scripts/generate-blog-context.ts
+// apps/web/scripts/generate-blog-context.ts
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { parse as parseYaml } from 'yaml';

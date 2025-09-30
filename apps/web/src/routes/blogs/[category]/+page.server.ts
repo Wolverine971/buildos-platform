@@ -1,4 +1,4 @@
-// src/routes/blogs/[category]/+page.server.ts
+// apps/web/src/routes/blogs/[category]/+page.server.ts
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadBlogPostsByCategory, BLOG_CATEGORIES, type BlogCategory } from '$lib/utils/blog';

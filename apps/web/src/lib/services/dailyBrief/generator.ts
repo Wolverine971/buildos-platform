@@ -1,4 +1,4 @@
-// src/lib/services/dailyBrief/generator.ts
+// apps/web/src/lib/services/dailyBrief/generator.ts
 import type { DailyBriefRepository } from './repository';
 import type { ActivityLogger } from '$lib/utils/activityLogger';
 import { SmartLLMService } from '../smart-llm-service';

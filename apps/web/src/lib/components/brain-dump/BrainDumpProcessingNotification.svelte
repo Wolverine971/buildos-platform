@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount, tick } from 'svelte';
 	import { fly, scale } from 'svelte/transition';

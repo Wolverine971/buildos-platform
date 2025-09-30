@@ -1,4 +1,4 @@
-// src/routes/blogs/[category]/[slug]/+page.server.ts
+// apps/web/src/routes/blogs/[category]/[slug]/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { loadBlogPostMetadata, getRelatedPosts } from '$lib/utils/blog';
 

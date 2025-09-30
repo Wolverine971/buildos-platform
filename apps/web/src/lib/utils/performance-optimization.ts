@@ -1,4 +1,4 @@
-// src/lib/utils/performance-optimization.ts
+// apps/web/src/lib/utils/performance-optimization.ts
 
 /**
  * Debounce function to prevent excessive function calls

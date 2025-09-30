@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/TasksList.svelte -->
+<!-- apps/web/src/lib/components/project/TasksList.svelte -->
 <script lang="ts">
 	import {
 		Circle,

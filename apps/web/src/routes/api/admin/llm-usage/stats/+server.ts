@@ -1,4 +1,4 @@
-// src/routes/api/admin/llm-usage/stats/+server.ts
+// apps/web/src/routes/api/admin/llm-usage/stats/+server.ts
 
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { ApiResponse } from '$utils/api-response';

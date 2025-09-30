@@ -1,4 +1,4 @@
-<!-- src/lib/components/templates/TemplateManager.svelte -->
+<!-- apps/web/src/lib/components/templates/TemplateManager.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

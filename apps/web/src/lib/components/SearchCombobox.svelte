@@ -1,4 +1,4 @@
-<!-- src/lib/components/SearchCombobox.svelte -->
+<!-- apps/web/src/lib/components/SearchCombobox.svelte -->
 
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';

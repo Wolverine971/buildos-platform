@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/CalendarWarning.svelte -->
+<!-- apps/web/src/lib/components/project/CalendarWarning.svelte -->
 <script lang="ts">
 	import { AlertTriangle } from 'lucide-svelte';
 

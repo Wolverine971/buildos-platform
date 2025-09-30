@@ -1,4 +1,4 @@
-// src/lib/utils/blog.ts
+// apps/web/src/lib/utils/blog.ts
 import { error } from '@sveltejs/kit';
 
 export interface BlogPost {

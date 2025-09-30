@@ -1,4 +1,4 @@
-<!-- src/routes/projects/+page.svelte -->
+<!-- apps/web/src/routes/projects/+page.svelte -->
 <script lang="ts">
 	import { FolderOpen, FileText, Plus } from 'lucide-svelte';
 	import { enhance } from '$app/forms';

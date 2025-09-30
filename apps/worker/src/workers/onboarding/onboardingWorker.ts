@@ -1,4 +1,4 @@
-// worker-queue/src/workers/onboarding/onboardingWorker.ts
+// apps/worker/src/workers/onboarding/onboardingWorker.ts
 import { supabase } from "../../lib/supabase";
 import {
   updateJobStatus,

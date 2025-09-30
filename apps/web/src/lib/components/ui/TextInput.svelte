@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/TextInput.svelte -->
+<!-- apps/web/src/lib/components/ui/TextInput.svelte -->
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { createEventDispatcher } from 'svelte';

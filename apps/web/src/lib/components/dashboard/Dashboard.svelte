@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/Dashboard.svelte -->
+<!-- apps/web/src/lib/components/dashboard/Dashboard.svelte -->
 <script lang="ts">
 	import {
 		FolderOpen,

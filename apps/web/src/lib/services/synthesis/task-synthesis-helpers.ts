@@ -1,4 +1,4 @@
-// src/lib/services/synthesis/task-synthesis-helpers.ts
+// apps/web/src/lib/services/synthesis/task-synthesis-helpers.ts
 // Helper functions for task synthesis prompt generation
 // These are extracted for testing purposes
 

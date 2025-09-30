@@ -1,4 +1,4 @@
-// worker-queue/src/lib/supabase.ts
+// apps/worker/src/lib/supabase.ts
 import { createCustomClient } from "@buildos/supabase-client";
 import type { Database } from "@buildos/shared-types";
 import dotenv from "dotenv";

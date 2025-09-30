@@ -1,4 +1,4 @@
-// src/lib/services/braindump-background.service.ts
+// apps/web/src/lib/services/braindump-background.service.ts
 import { browser } from '$app/environment';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';

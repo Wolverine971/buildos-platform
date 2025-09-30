@@ -1,4 +1,4 @@
-// tailwind.config.js
+// apps/web/tailwind.config.js
 // import type { Config } from 'tailwindcss';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/PhaseForm.svelte -->
+<!-- apps/web/src/lib/components/phases/PhaseForm.svelte -->
 <script lang="ts">
 	import { Save, X, AlertTriangle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

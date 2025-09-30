@@ -1,4 +1,4 @@
-<!-- src/lib/components/scheduling/TaskScheduleItem.svelte -->
+<!-- apps/web/src/lib/components/scheduling/TaskScheduleItem.svelte -->
 <script lang="ts">
 	import { Clock, CheckCircle2, X, RotateCcw, AlertTriangle, Calendar } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

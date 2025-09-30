@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/project-data-fetcher.ts
+// apps/web/src/lib/services/prompts/core/project-data-fetcher.ts
 /**
  * Centralized project data fetching for prompt generation
  * Provides consistent project data retrieval across all prompt services

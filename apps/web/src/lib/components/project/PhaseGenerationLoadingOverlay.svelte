@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/PhaseGenerationLoadingOverlay.svelte -->
+<!-- apps/web/src/lib/components/project/PhaseGenerationLoadingOverlay.svelte -->
 <script lang="ts">
 	import { Loader2, Sparkles, CheckCircle } from 'lucide-svelte';
 	import { onMount } from 'svelte';

@@ -1,4 +1,4 @@
-// worker-queue/src/workers/brief/briefWorker.ts
+// apps/worker/src/workers/brief/briefWorker.ts
 import { format } from "date-fns";
 import { utcToZonedTime, getTimezoneOffset } from "date-fns-tz";
 

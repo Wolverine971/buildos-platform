@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/SuccessView.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/SuccessView.svelte -->
 <script lang="ts">
 	import {
 		Check,

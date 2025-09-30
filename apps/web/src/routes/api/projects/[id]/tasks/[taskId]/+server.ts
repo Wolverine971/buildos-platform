@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
+// apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
 // todo double check that the recurring event tables are properly updated
 import type { RequestHandler } from './$types';
 import { sanitizeTaskData } from '$lib/utils/sanitize-data';

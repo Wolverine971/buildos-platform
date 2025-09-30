@@ -1,4 +1,4 @@
-// src/lib/utils/operations/operations-executor.test.ts
+// apps/web/src/lib/utils/operations/operations-executor.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { OperationsExecutor } from './operations-executor';
 import { OperationValidator } from './operation-validator';

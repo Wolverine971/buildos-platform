@@ -1,4 +1,4 @@
-<!-- src/lib/components/analytics/BriefAnalyticsDashboard.svelte -->
+<!-- apps/web/src/lib/components/analytics/BriefAnalyticsDashboard.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

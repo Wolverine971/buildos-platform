@@ -1,4 +1,4 @@
-// src/lib/services/__tests__/google-oauth-service.test.ts
+// apps/web/src/lib/services/__tests__/google-oauth-service.test.ts
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('$env/static/private', () => ({

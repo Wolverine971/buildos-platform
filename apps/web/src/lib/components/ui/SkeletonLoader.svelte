@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/SkeletonLoader.svelte -->
+<!-- apps/web/src/lib/components/ui/SkeletonLoader.svelte -->
 <script lang="ts">
 	export let variant: 'card' | 'text' | 'avatar' | 'button' | 'list' | 'table' = 'card';
 	export let count: number = 1;

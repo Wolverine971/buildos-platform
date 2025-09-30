@@ -1,4 +1,4 @@
-<!-- src/routes/docs/+page.svelte -->
+<!-- apps/web/src/routes/docs/+page.svelte -->
 <script lang="ts">
 	import {
 		Book,

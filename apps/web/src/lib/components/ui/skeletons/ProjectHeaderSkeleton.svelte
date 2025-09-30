@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/ProjectHeaderSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/ProjectHeaderSkeleton.svelte -->
 <div class="project-header-skeleton">
 	<div class="header-top">
 		<div class="header-main">

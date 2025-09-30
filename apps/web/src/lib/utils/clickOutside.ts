@@ -1,4 +1,4 @@
-// src/lib/utils/clickOutside.ts
+// apps/web/src/lib/utils/clickOutside.ts
 export function clickOutside(node: HTMLElement, callback: () => void) {
 	const handleClick = (event: MouseEvent) => {
 		if (node && !node.contains(event.target as Node) && !event.defaultPrevented) {

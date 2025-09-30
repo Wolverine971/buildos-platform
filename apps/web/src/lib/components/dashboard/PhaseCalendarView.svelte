@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/PhaseCalendarView.svelte -->
+<!-- apps/web/src/lib/components/dashboard/PhaseCalendarView.svelte -->
 <script lang="ts">
 	import {
 		Calendar,

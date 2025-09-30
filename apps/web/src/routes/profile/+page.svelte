@@ -1,4 +1,4 @@
-<!-- src/routes/profile/+page.svelte -->
+<!-- apps/web/src/routes/profile/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, slide } from 'svelte/transition';

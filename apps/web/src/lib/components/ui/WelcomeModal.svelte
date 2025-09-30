@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/WelcomeModal.svelte -->
+<!-- apps/web/src/lib/components/ui/WelcomeModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { X } from 'lucide-svelte';

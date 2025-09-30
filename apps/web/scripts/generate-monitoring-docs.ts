@@ -1,4 +1,4 @@
-// scripts/generate-monitoring-docs.ts
+// apps/web/scripts/generate-monitoring-docs.ts
 
 /**
  * Generate monitoring and metrics documentation from Vercel Analytics and system configurations

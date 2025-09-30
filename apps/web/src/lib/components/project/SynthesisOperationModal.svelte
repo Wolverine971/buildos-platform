@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/SynthesisOperationModal.svelte -->
+<!-- apps/web/src/lib/components/project/SynthesisOperationModal.svelte -->
 <script lang="ts">
 	import { X, Save, AlertCircle, Eye, Edit } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

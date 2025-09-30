@@ -1,4 +1,4 @@
-// src/lib/types/projects-page.ts
+// apps/web/src/lib/types/projects-page.ts
 
 export type ProjectFilter = 'all' | 'active' | 'paused' | 'completed' | 'archived';
 export type BriefDateRange = 'today' | 'week' | 'month' | 'all';

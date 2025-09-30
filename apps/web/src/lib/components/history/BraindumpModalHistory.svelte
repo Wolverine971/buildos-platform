@@ -1,4 +1,4 @@
-<!-- src/lib/components/history/BraindumpModalHistory.svelte -->
+<!-- apps/web/src/lib/components/history/BraindumpModalHistory.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

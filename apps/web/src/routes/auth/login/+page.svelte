@@ -1,4 +1,4 @@
-<!-- src/routes/auth/login/+page.svelte -->
+<!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto, invalidateAll, replaceState } from '$app/navigation';

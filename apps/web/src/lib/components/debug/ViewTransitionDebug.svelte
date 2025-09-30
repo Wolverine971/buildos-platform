@@ -1,4 +1,4 @@
-<!-- src/lib/components/debug/ViewTransitionDebug.svelte -->
+<!-- apps/web/src/lib/components/debug/ViewTransitionDebug.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';

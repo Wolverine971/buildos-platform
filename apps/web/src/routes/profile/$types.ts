@@ -1,4 +1,4 @@
-// src/routes/profile/$types.ts
+// apps/web/src/routes/profile/$types.ts
 import type { PageServerLoad, Actions } from './$types';
 
 export interface PageData {

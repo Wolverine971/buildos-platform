@@ -1,4 +1,4 @@
-// src/lib/tests/llm-simple/schemas/loose-validation.ts
+// apps/web/src/lib/tests/llm-simple/schemas/loose-validation.ts
 
 import { expect } from 'vitest';
 import type { BrainDumpParseResult, ParsedOperation } from '$lib/types/brain-dump';

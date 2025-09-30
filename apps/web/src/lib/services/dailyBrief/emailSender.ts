@@ -1,4 +1,4 @@
-// src/lib/services/dailyBrief/emailSender.ts
+// apps/web/src/lib/services/dailyBrief/emailSender.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DailyBriefResult } from '$lib/types/daily-brief';
 import { EmailService } from '../email-service';

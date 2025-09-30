@@ -1,3 +1,4 @@
+// packages/shared-types/src/queue-types.ts
 import type { Database } from "./database.types";
 
 // Re-export database enums as the single source of truth

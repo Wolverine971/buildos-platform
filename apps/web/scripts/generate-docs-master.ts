@@ -1,4 +1,4 @@
-// scripts/generate-docs-master.ts
+// apps/web/scripts/generate-docs-master.ts
 
 /**
  * Master documentation generation script

@@ -1,4 +1,4 @@
-// src/lib/stores/brainDumpPreferences.ts
+// apps/web/src/lib/stores/brainDumpPreferences.ts
 import { writable, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 

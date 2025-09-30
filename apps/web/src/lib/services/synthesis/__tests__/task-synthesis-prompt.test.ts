@@ -1,4 +1,4 @@
-// src/lib/services/synthesis/__tests__/task-synthesis-prompt.test.ts
+// apps/web/src/lib/services/synthesis/__tests__/task-synthesis-prompt.test.ts
 import { describe, it, expect } from 'vitest';
 import {
 	buildPrompt,

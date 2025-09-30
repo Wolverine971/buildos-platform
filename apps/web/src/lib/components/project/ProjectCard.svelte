@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectCard.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectCard.svelte -->
 <script lang="ts">
 	import {
 		CheckCircle2,

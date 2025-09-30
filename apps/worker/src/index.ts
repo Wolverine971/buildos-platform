@@ -1,4 +1,4 @@
-// worker-queue/src/index.ts
+// apps/worker/src/index.ts
 import cors from "cors";
 import { format, utcToZonedTime } from "date-fns-tz";
 import dotenv from "dotenv";

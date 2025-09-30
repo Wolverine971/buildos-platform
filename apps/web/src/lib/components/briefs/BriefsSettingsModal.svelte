@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/BriefsSettingsModal.svelte -->
+<!-- apps/web/src/lib/components/briefs/BriefsSettingsModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

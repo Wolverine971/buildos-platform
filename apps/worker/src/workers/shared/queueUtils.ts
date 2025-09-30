@@ -1,4 +1,4 @@
-// worker-queue/src/workers/shared/queueUtils.ts
+// apps/worker/src/workers/shared/queueUtils.ts
 // Utility functions for queue operations (Redis-free version)
 
 import type {

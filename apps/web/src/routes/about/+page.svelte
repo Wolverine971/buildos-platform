@@ -1,4 +1,4 @@
-<!-- src/routes/about/+page.svelte -->
+<!-- apps/web/src/routes/about/+page.svelte -->
 <script lang="ts">
 	import {
 		Brain,

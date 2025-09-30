@@ -1,4 +1,4 @@
-// src/lib/services/voiceRecording.service.ts
+// apps/web/src/lib/services/voiceRecording.service.ts
 // Voice Recording Service for Brain Dump
 // Wraps voice.ts utility and adds transcription/text integration
 import {

@@ -1,4 +1,4 @@
-// src/lib/utils/project-colors.ts
+// apps/web/src/lib/utils/project-colors.ts
 import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';
 
 /**

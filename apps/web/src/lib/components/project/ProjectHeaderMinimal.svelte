@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectHeaderMinimal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectHeaderMinimal.svelte -->
 <script lang="ts">
 	import {
 		Settings,

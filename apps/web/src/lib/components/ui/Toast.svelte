@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Toast.svelte -->
+<!-- apps/web/src/lib/components/ui/Toast.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { fly } from 'svelte/transition';

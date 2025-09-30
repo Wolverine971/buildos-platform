@@ -1,4 +1,4 @@
-<!-- src/routes/contact/+page.svelte -->
+<!-- apps/web/src/routes/contact/+page.svelte -->
 <script lang="ts">
 	import { Mail, Linkedin, Twitter, MessageCircle, Lightbulb, TrendingUp } from 'lucide-svelte';
 	import { onMount } from 'svelte';

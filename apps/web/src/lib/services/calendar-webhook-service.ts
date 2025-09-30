@@ -1,4 +1,4 @@
-// src/lib/services/calendar-webhook-service.ts
+// apps/web/src/lib/services/calendar-webhook-service.ts
 import { google, calendar_v3 } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleOAuthService } from './google-oauth-service';

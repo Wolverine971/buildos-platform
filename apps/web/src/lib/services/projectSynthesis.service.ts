@@ -1,4 +1,4 @@
-// src/lib/services/projectSynthesis.service.ts
+// apps/web/src/lib/services/projectSynthesis.service.ts
 import { createCustomClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import type { ActivityLogger } from '$lib/utils/activityLogger';

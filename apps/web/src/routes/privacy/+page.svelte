@@ -1,4 +1,4 @@
-<!-- src/routes/privacy/+page.svelte -->
+<!-- apps/web/src/routes/privacy/+page.svelte -->
 <script lang="ts">
 	import { Download, Trash2, Shield, Eye, Lock, ExternalLink } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';

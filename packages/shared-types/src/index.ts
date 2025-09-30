@@ -1,4 +1,4 @@
-// Export all database types
+// packages/shared-types/src/index.ts
 export * from "./database.types";
 export type { Database, Json } from "./database.types";
 

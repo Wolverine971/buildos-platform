@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/synthesis/SynthesisSuccessAnimation.svelte -->
+<!-- apps/web/src/lib/components/project/synthesis/SynthesisSuccessAnimation.svelte -->
 <script lang="ts">
 	import { CheckCircle, Sparkles, TrendingUp } from 'lucide-svelte';
 	import { onMount } from 'svelte';

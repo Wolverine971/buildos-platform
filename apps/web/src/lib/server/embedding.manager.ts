@@ -1,4 +1,4 @@
-// src/lib/server/embedding.manager.ts
+// apps/web/src/lib/server/embedding.manager.ts
 // Server-side embedding operations and CRUD management
 
 import type { SupabaseClient } from '@supabase/supabase-js';

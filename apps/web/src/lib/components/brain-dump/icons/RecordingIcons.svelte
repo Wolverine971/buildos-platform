@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/icons/RecordingIcons.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/icons/RecordingIcons.svelte -->
 <script lang="ts">
 	export {
 		Mic,

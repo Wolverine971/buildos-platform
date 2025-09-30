@@ -1,4 +1,4 @@
-// src/routes/webhooks/calendar-events/+server.ts
+// apps/web/src/routes/webhooks/calendar-events/+server.ts
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createCustomClient } from '@buildos/supabase-client';

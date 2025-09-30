@@ -1,4 +1,4 @@
-// scripts/migrate-project-context.ts
+// apps/web/scripts/migrate-project-context.ts
 
 // deprecated - no longer using project_context table
 

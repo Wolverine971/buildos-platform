@@ -1,4 +1,4 @@
-// src/lib/types/events.ts
+// apps/web/src/lib/types/events.ts
 
 // Standardized event callback types for all modals and components
 

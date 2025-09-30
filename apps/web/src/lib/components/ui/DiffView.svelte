@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/DiffView.svelte -->
+<!-- apps/web/src/lib/components/ui/DiffView.svelte -->
 <script lang="ts">
 	import type { DiffLine, FieldDiff } from '$lib/utils/diff';
 

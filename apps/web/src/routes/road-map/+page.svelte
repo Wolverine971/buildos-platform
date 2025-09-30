@@ -1,4 +1,4 @@
-<!-- src/routes/road-map/+page.svelte -->
+<!-- apps/web/src/routes/road-map/+page.svelte -->
 <script lang="ts">
 	import {
 		CheckCircle,

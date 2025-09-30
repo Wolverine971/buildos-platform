@@ -1,4 +1,4 @@
-<!-- src/lib/components/layout/Navigation.svelte -->
+<!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount, onDestroy, tick } from 'svelte';

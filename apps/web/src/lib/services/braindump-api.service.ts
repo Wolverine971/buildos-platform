@@ -1,4 +1,4 @@
-// src/lib/services/braindump-api.service.ts
+// apps/web/src/lib/services/braindump-api.service.ts
 import type {
 	BrainDumpParseResult,
 	ParsedOperation,

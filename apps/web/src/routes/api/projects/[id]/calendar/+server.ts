@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/calendar/+server.ts
+// apps/web/src/routes/api/projects/[id]/calendar/+server.ts
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';

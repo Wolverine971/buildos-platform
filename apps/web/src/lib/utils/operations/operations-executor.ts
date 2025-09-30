@@ -1,4 +1,4 @@
-// src/lib/utils/operations/operations-executor.ts
+// apps/web/src/lib/utils/operations/operations-executor.ts
 import { ActivityLogger } from '../activityLogger';
 import type { ActivityType } from '../activityLogger';
 import type { SupabaseClient } from '@supabase/supabase-js';

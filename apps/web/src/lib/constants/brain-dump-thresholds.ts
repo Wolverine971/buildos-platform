@@ -1,4 +1,4 @@
-// src/lib/constants/brain-dump-thresholds.ts
+// apps/web/src/lib/constants/brain-dump-thresholds.ts
 
 // Content length thresholds
 export const CONTENT_LENGTH = {

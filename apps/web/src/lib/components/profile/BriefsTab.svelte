@@ -1,4 +1,4 @@
-<!-- src/lib/components/profile/BriefsTab.svelte -->
+<!-- apps/web/src/lib/components/profile/BriefsTab.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { slide } from 'svelte/transition';

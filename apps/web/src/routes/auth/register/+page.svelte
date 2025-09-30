@@ -1,4 +1,4 @@
-<!-- src/routes/auth/register/+page.svelte -->
+<!-- apps/web/src/routes/auth/register/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto, replaceState } from '$app/navigation';

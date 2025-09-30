@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/ParseResultsDiffView.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/ParseResultsDiffView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import {

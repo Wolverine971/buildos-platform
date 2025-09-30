@@ -1,4 +1,4 @@
-// src/routes/+layout.ts
+// apps/web/src/routes/+layout.ts
 import { browser } from '$app/environment';
 import { createSupabaseBrowser } from '$lib/supabase';
 import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';

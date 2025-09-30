@@ -1,4 +1,4 @@
-// worker-queue/tests/test-url-transform.ts
+// apps/worker/tests/test-url-transform.ts
 import { DailyBriefEmailSender } from "../src/lib/services/email-sender";
 import { createClient } from "@supabase/supabase-js";
 

@@ -1,4 +1,4 @@
-// src/lib/utils/field-config-generator.ts
+// apps/web/src/lib/utils/field-config-generator.ts
 import type { Database } from '@buildos/shared-types';
 
 // Extract table names from the database

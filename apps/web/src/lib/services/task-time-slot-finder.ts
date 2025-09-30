@@ -1,4 +1,4 @@
-// src/lib/services/task-time-slot-finder.ts
+// apps/web/src/lib/services/task-time-slot-finder.ts
 import { Database } from '@buildos/shared-types';
 import { Task } from '$lib/types/project';
 import {

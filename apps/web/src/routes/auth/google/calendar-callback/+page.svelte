@@ -1,4 +1,4 @@
-<!-- src/routes/auth/google/calendar-callback/+page.svelte -->
+<!-- apps/web/src/routes/auth/google/calendar-callback/+page.svelte -->
 <script lang="ts">
 	import { Calendar, Loader2 } from 'lucide-svelte';
 </script>

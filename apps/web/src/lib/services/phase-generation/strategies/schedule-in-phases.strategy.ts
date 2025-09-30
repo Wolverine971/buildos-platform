@@ -1,4 +1,4 @@
-// src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts
+// apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts
 
 import { BaseSchedulingStrategy } from './base-strategy';
 import type {

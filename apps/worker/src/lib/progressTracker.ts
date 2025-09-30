@@ -1,4 +1,4 @@
-// worker-queue/src/lib/progressTracker.ts
+// apps/worker/src/lib/progressTracker.ts
 // This addresses Critical Issue #4 in QUEUE_FIXES_DESIGN.md
 
 import { supabase } from "./supabase";

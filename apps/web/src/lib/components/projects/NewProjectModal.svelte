@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/NewProjectModal.svelte -->
+<!-- apps/web/src/lib/components/projects/NewProjectModal.svelte -->
 <script lang="ts">
 	import { Brain, PenTool, Loader2, FileText } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

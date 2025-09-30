@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/QuickProjectModal.svelte -->
+<!-- apps/web/src/lib/components/project/QuickProjectModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';

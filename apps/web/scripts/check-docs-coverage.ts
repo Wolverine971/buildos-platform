@@ -1,4 +1,4 @@
-// scripts/check-docs-coverage.ts
+// apps/web/scripts/check-docs-coverage.ts
 
 /**
  * Check documentation coverage across the codebase

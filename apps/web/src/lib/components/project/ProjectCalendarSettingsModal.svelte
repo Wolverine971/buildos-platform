@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

@@ -1,4 +1,4 @@
-// src/lib/database.types.with-comments.ts
+// apps/web/src/lib/database.types.with-comments.ts
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {

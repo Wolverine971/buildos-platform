@@ -1,4 +1,4 @@
-// src/lib/utils/__tests__/prompt-audit.test.ts
+// apps/web/src/lib/utils/__tests__/prompt-audit.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { savePromptForAudit, determineScenarioType } from '../prompt-audit';
 import * as fs from 'fs/promises';

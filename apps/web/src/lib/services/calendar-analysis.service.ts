@@ -1,4 +1,4 @@
-// src/lib/services/calendar-analysis.service.ts
+// apps/web/src/lib/services/calendar-analysis.service.ts
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';

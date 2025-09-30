@@ -1,4 +1,4 @@
-<!-- src/lib/components/ErrorBoundary.svelte -->
+<!-- apps/web/src/lib/components/ErrorBoundary.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { AlertTriangle, RefreshCw } from 'lucide-svelte';

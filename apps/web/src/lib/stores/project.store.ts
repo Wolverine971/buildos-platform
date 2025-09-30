@@ -1,4 +1,4 @@
-// src/lib/stores/project.store.ts
+// apps/web/src/lib/stores/project.store.ts
 import { writable, derived, get } from 'svelte/store';
 import type { Project, Note } from '$lib/types/project';
 import type { TaskWithCalendarEvents, ProcessedPhase } from '$lib/types/project-page.types';

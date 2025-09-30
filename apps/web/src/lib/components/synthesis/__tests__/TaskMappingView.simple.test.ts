@@ -1,4 +1,4 @@
-// src/lib/components/synthesis/__tests__/TaskMappingView.simple.test.ts
+// apps/web/src/lib/components/synthesis/__tests__/TaskMappingView.simple.test.ts
 /**
  * @vitest-environment jsdom
  */

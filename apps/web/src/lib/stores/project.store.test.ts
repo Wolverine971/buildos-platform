@@ -1,4 +1,4 @@
-// src/lib/stores/project.store.test.ts
+// apps/web/src/lib/stores/project.store.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('ProjectStore - Real-time Sync Race Condition', () => {

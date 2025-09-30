@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/ProjectsGrid.svelte -->
+<!-- apps/web/src/lib/components/projects/ProjectsGrid.svelte -->
 <script lang="ts">
 	import ProjectCard from '$lib/components/project/ProjectCard.svelte';
 	import { createEventDispatcher } from 'svelte';

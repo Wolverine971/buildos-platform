@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectEditModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectEditModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';

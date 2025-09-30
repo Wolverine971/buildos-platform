@@ -1,4 +1,4 @@
-// src/routes/api/cron/trial-reminders/+server.ts
+// apps/web/src/routes/api/cron/trial-reminders/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';

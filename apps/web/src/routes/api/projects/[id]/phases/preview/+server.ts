@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/phases/preview/+server.ts
+// apps/web/src/routes/api/projects/[id]/phases/preview/+server.ts
 
 import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';

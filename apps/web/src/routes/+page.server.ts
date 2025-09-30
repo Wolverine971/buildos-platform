@@ -1,4 +1,4 @@
-// src/routes/+page.server.ts
+// apps/web/src/routes/+page.server.ts
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession }, depends }) => {

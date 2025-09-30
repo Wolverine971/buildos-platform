@@ -1,4 +1,4 @@
-// src/lib/types/sse-messages.ts
+// apps/web/src/lib/types/sse-messages.ts
 // Strongly-typed SSE message interfaces for brain dump streaming
 
 import type {

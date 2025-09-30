@@ -1,4 +1,4 @@
-// src/lib/stores/searchStore.ts
+// apps/web/src/lib/stores/searchStore.ts
 
 import { writable, derived } from 'svelte/store';
 import type { SearchState, SearchResult, GroupedSearchResults } from '$lib/types/search';

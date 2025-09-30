@@ -1,4 +1,4 @@
-// src/lib/config/project.ts
+// apps/web/src/lib/config/project.ts
 import {
 	Target,
 	Eye,

@@ -1,4 +1,4 @@
-// scripts/build-logger.js
+// apps/web/scripts/build-logger.js
 
 import { spawn } from 'child_process';
 import fs from 'fs';

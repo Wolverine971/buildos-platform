@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/PhaseCard.svelte -->
+<!-- apps/web/src/lib/components/phases/PhaseCard.svelte -->
 <script lang="ts">
 	import {
 		Clock,

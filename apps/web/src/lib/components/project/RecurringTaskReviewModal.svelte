@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/RecurringTaskReviewModal.svelte -->
+<!-- apps/web/src/lib/components/project/RecurringTaskReviewModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Info, RefreshCw, Calendar, ChevronRight } from 'lucide-svelte';

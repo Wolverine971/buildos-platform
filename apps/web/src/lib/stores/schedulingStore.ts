@@ -1,4 +1,4 @@
-// src/lib/stores/schedulingStore.ts
+// apps/web/src/lib/stores/schedulingStore.ts
 
 import { writable, derived, get } from 'svelte/store';
 import { calendarAPI } from '$lib/api/calendar-client';

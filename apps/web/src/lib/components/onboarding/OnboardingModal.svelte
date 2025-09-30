@@ -1,4 +1,4 @@
-<!-- src/lib/components/onboarding/OnboardingModal.svelte -->
+<!-- apps/web/src/lib/components/onboarding/OnboardingModal.svelte -->
 <script lang="ts">
 	import { Sparkles, User, ChevronRight } from 'lucide-svelte';
 	import { goto } from '$app/navigation';

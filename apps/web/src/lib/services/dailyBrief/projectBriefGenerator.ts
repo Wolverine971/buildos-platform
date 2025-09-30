@@ -1,4 +1,4 @@
-// src/lib/services/dailyBrief/projectBriefGenerator.ts
+// apps/web/src/lib/services/dailyBrief/projectBriefGenerator.ts
 import type { DailyBriefRepository } from './repository';
 import type { SmartLLMService } from '../smart-llm-service';
 import { PromptTemplateService } from '../promptTemplate.service';

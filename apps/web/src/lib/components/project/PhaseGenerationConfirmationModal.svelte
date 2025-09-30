@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/PhaseGenerationConfirmationModal.svelte -->
+<!-- apps/web/src/lib/components/project/PhaseGenerationConfirmationModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

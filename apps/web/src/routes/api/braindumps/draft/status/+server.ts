@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/draft/status/+server.ts
+// apps/web/src/routes/api/braindumps/draft/status/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import type { Database } from '@buildos/shared-types';

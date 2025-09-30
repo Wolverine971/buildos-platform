@@ -1,4 +1,4 @@
-<!-- src/lib/components/tasks/RecurringDeleteModal.svelte -->
+<!-- apps/web/src/lib/components/tasks/RecurringDeleteModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { X, AlertTriangle, Calendar, RefreshCw } from 'lucide-svelte';

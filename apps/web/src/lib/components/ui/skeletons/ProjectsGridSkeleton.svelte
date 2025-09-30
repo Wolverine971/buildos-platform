@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/ProjectsGridSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/ProjectsGridSkeleton.svelte -->
 <script lang="ts">
 	import ProjectCardSkeleton from './ProjectCardSkeleton.svelte';
 

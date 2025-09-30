@@ -1,4 +1,4 @@
-// worker-queue/src/routes/email-tracking.ts
+// apps/worker/src/routes/email-tracking.ts
 import type { Application, Request, Response } from "express";
 
 import { supabase } from "../lib/supabase";

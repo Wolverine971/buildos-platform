@@ -1,4 +1,4 @@
-// tests/briefBackoffCalculator.test.ts
+// apps/worker/tests/briefBackoffCalculator.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Mock supabase before importing the calculator

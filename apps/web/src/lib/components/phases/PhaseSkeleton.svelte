@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/PhaseSkeleton.svelte -->
+<!-- apps/web/src/lib/components/phases/PhaseSkeleton.svelte -->
 <script lang="ts">
 	export let count: number = 3;
 	export let showBacklog: boolean = true;

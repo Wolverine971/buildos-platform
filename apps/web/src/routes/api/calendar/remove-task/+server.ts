@@ -1,4 +1,4 @@
-// src/routes/api/calendar/remove-task/+server.ts
+// apps/web/src/routes/api/calendar/remove-task/+server.ts
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';

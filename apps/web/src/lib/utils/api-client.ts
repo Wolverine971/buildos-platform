@@ -1,4 +1,4 @@
-// src/lib/utils/api-client.ts
+// apps/web/src/lib/utils/api-client.ts
 import { browser } from '$app/environment';
 
 export interface ApiResponse<T = any> {

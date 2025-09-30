@@ -1,4 +1,4 @@
-// src/lib/tests/llm/schemas/validators.ts
+// apps/web/src/lib/tests/llm/schemas/validators.ts
 // Flexible validation for LLM test outputs
 import type { BrainDumpParseResult, ParsedOperation } from '$lib/types';
 

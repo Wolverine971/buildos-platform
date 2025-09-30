@@ -1,4 +1,4 @@
-// src/lib/utils/braindump-validation.test.ts
+// apps/web/src/lib/utils/braindump-validation.test.ts
 import { describe, it, expect } from 'vitest';
 import { BrainDumpValidator } from './braindump-validation';
 

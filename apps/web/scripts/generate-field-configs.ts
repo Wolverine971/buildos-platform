@@ -1,4 +1,4 @@
-// scripts/generate-field-configs.ts
+// apps/web/scripts/generate-field-configs.ts
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';

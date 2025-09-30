@@ -1,4 +1,4 @@
-// svelte.config.js
+// apps/web/svelte.config.js
 
 import { mdsvex } from 'mdsvex';
 import adapter from '@sveltejs/adapter-vercel';

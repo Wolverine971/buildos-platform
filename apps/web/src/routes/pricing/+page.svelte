@@ -1,4 +1,4 @@
-<!-- src/routes/pricing/+page.svelte -->
+<!-- apps/web/src/routes/pricing/+page.svelte -->
 <script lang="ts">
 	import { Check, Brain, AlertCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';

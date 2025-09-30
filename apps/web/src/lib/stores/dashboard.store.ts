@@ -1,4 +1,4 @@
-// src/lib/stores/dashboard.store.ts
+// apps/web/src/lib/stores/dashboard.store.ts
 import { DailyBrief } from '$lib/types/daily-brief';
 import { CalendarEvent, Project, Task } from '$lib/types/project';
 import { writable, derived, get } from 'svelte/store';

@@ -1,4 +1,4 @@
-// scripts/validate-2way-sync.ts
+// apps/web/scripts/validate-2way-sync.ts
 
 // #!/usr/bin/env node
 

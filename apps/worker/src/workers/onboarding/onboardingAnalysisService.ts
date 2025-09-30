@@ -1,4 +1,4 @@
-// worker-queue/src/workers/onboarding/onboardingAnalysisService.ts
+// apps/worker/src/workers/onboarding/onboardingAnalysisService.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@buildos/shared-types";
 import { SmartLLMService } from "../../lib/services/smart-llm-service";

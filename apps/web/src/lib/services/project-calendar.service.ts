@@ -1,4 +1,4 @@
-// src/lib/services/project-calendar.service.ts
+// apps/web/src/lib/services/project-calendar.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { CalendarService } from './calendar-service';

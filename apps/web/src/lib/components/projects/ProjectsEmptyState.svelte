@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/ProjectsEmptyState.svelte -->
+<!-- apps/web/src/lib/components/projects/ProjectsEmptyState.svelte -->
 <script lang="ts">
 	import { FolderOpen, FileText, Plus } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

@@ -1,4 +1,4 @@
-// src/lib/stores/brain-dump-v2.store.ts
+// apps/web/src/lib/stores/brain-dump-v2.store.ts
 import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import type {

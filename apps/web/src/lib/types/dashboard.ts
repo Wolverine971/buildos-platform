@@ -1,4 +1,4 @@
-// src/lib/types/dashboard.ts
+// apps/web/src/lib/types/dashboard.ts
 // Dashboard component type definitions
 
 import type { Database } from '@buildos/shared-types';

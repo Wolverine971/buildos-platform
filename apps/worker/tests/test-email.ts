@@ -1,4 +1,4 @@
-// worker-queue/tests/test-email.ts
+// apps/worker/tests/test-email.ts
 import { config } from "dotenv";
 import {
   createGmailTransporter,

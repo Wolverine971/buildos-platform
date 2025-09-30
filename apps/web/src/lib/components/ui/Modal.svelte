@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Modal.svelte -->
+<!-- apps/web/src/lib/components/ui/Modal.svelte -->
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import { fade, scale } from 'svelte/transition';

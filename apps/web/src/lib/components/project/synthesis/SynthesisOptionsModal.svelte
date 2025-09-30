@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/synthesis/SynthesisOptionsModal.svelte -->
+<!-- apps/web/src/lib/components/project/synthesis/SynthesisOptionsModal.svelte -->
 <script lang="ts">
 	import {
 		X,

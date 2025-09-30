@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/PhaseInstructionsInput.svelte -->
+<!-- apps/web/src/lib/components/phases/PhaseInstructionsInput.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';

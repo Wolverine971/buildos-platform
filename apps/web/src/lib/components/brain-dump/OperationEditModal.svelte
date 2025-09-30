@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/OperationEditModal.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/OperationEditModal.svelte -->
 <script lang="ts">
 	import { Save, AlertCircle, Plus, Trash2, Code, Database } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

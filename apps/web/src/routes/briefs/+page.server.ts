@@ -1,4 +1,4 @@
-// src/routes/briefs/+page.server.ts
+// apps/web/src/routes/briefs/+page.server.ts
 
 import type { PageServerLoad } from './$types';
 

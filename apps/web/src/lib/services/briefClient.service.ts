@@ -1,4 +1,4 @@
-// src/lib/services/briefClient.service.ts
+// apps/web/src/lib/services/briefClient.service.ts
 import type {
 	ProjectDailyBrief,
 	DailyBrief,

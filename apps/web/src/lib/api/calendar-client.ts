@@ -1,4 +1,4 @@
-// src/lib/api/calendar-client.ts
+// apps/web/src/lib/api/calendar-client.ts
 
 import { toastService } from '$lib/stores/toast.store';
 

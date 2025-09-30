@@ -1,4 +1,4 @@
-// src/lib/tests/llm/__tests__/new-project-creation.test.ts
+// apps/web/src/lib/tests/llm/__tests__/new-project-creation.test.ts
 import { describe, it, expect } from 'vitest';
 import { processNewProject } from '../helpers/simple-runner';
 import {

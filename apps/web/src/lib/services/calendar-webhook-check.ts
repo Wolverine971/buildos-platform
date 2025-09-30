@@ -1,4 +1,4 @@
-// src/lib/services/calendar-webhook-check.ts
+// apps/web/src/lib/services/calendar-webhook-check.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CalendarWebhookService } from './calendar-webhook-service';
 

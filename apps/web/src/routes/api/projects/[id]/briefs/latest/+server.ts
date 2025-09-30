@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/briefs/latest/+server.ts
+// apps/web/src/routes/api/projects/[id]/briefs/latest/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

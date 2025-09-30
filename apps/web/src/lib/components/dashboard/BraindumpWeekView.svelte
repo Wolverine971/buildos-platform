@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/BraindumpWeekView.svelte -->
+<!-- apps/web/src/lib/components/dashboard/BraindumpWeekView.svelte -->
 <script lang="ts">
 	import { Brain, Plus, ChevronRight } from 'lucide-svelte';
 	import { format, addDays, isSameDay, parseISO } from 'date-fns';

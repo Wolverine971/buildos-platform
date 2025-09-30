@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectModals.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectModals.svelte -->
 <script lang="ts">
 	import { tick } from 'svelte';
 	import type { Project, Note } from '$lib/types/project';

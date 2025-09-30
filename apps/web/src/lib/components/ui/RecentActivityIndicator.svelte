@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/RecentActivityIndicator.svelte -->
+<!-- apps/web/src/lib/components/ui/RecentActivityIndicator.svelte -->
 <script lang="ts">
 	import { Sparkles, RefreshCw } from 'lucide-svelte';
 	import { isWithinLast24Hours, getTimeAgoText } from '$lib/utils/date-utils';

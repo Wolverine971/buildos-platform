@@ -1,4 +1,4 @@
-// src/lib/database.schema.ts
+// apps/web/src/lib/database.schema.ts
 // Generated on: 2025-09-30T13:56:44.836Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

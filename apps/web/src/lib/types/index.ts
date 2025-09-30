@@ -1,4 +1,4 @@
-// src/lib/types/index.ts
+// apps/web/src/lib/types/index.ts
 // Comprehensive type definitions for your SvelteKit + Supabase project
 
 import type { Database } from '@buildos/shared-types';

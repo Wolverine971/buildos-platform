@@ -1,4 +1,4 @@
-// src/lib/services/projectBriefTemplateGenerator.service.ts
+// apps/web/src/lib/services/projectBriefTemplateGenerator.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { Project } from '$lib/types/project';

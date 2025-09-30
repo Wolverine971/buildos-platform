@@ -1,4 +1,4 @@
-// src/lib/config/features.ts
+// apps/web/src/lib/config/features.ts
 /**
  * Feature flags for progressive feature rollout
  */

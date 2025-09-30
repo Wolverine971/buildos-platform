@@ -1,4 +1,4 @@
-// src/lib/stores/toast.store.ts
+// apps/web/src/lib/stores/toast.store.ts
 import { writable } from 'svelte/store';
 
 export interface Toast {

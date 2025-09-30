@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectSynthesis.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectSynthesis.svelte -->
 <script lang="ts">
 	import {
 		Brain,

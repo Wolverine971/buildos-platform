@@ -1,4 +1,4 @@
-// src/lib/services/promptEnhancer.service.ts
+// apps/web/src/lib/services/promptEnhancer.service.ts
 
 import type { UserContext } from '$lib/types/user-context';
 

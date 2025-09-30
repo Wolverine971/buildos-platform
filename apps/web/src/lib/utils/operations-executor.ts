@@ -1,4 +1,4 @@
-// src/lib/utils/operations-executor.ts
+// apps/web/src/lib/utils/operations-executor.ts
 // This file now re-exports from the modular operations directory
 // The original 1500+ line file has been split into focused modules:
 // - operations-executor.ts: Main executor class (300 lines)

@@ -1,4 +1,4 @@
-// src/lib/utils/operations/validation-schemas.ts
+// apps/web/src/lib/utils/operations/validation-schemas.ts
 import type { FieldValidation } from './types';
 
 // UUID validation regex

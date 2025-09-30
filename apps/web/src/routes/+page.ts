@@ -1,4 +1,4 @@
-// src/routes/+page.ts
+// apps/web/src/routes/+page.ts
 import type { PageLoad } from './$types';
 import { browser } from '$app/environment';
 

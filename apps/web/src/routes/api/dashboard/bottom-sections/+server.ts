@@ -1,4 +1,4 @@
-// src/routes/api/dashboard/bottom-sections/+server.ts
+// apps/web/src/routes/api/dashboard/bottom-sections/+server.ts
 import type { RequestHandler } from './$types';
 import { addDays, format, startOfWeek, endOfWeek } from 'date-fns';
 import { getTaskDateRanges } from '$lib/utils/date-utils';

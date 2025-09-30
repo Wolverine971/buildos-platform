@@ -1,4 +1,4 @@
-// src/lib/utils/many-to-one-diff.ts
+// apps/web/src/lib/utils/many-to-one-diff.ts
 
 export interface ManyToOneItem {
 	id: string;

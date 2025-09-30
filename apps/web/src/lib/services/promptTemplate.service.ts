@@ -1,4 +1,4 @@
-// src/lib/services/promptTemplate.service.ts
+// apps/web/src/lib/services/promptTemplate.service.ts
 // This file is now a backward compatibility wrapper for the refactored prompt services
 import type { Database } from '@buildos/shared-types';
 

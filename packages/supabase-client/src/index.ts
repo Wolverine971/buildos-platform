@@ -1,3 +1,4 @@
+// packages/supabase-client/src/index.ts
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@buildos/shared-types";
 

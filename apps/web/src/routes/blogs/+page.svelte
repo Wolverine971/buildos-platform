@@ -1,4 +1,4 @@
-<!-- src/routes/blogs/+page.svelte -->
+<!-- apps/web/src/routes/blogs/+page.svelte -->
 <script lang="ts">
 	import { format } from 'date-fns';
 	import {

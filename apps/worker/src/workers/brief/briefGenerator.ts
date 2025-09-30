@@ -1,4 +1,4 @@
-// worker-queue/src/workers/brief/briefGenerator.ts
+// apps/worker/src/workers/brief/briefGenerator.ts
 import { supabase } from "../../lib/supabase";
 import { BriefJobData } from "../shared/queueUtils";
 

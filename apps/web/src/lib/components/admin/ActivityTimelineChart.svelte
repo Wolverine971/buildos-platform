@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/ActivityTimelineChart.svelte -->
+<!-- apps/web/src/lib/components/admin/ActivityTimelineChart.svelte -->
 <script lang="ts">
 	import { FileText, FolderOpen, CheckSquare, StickyNote, Brain, Calendar } from 'lucide-svelte';
 	import { onMount } from 'svelte';

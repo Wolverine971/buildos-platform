@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectBriefsSection.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectBriefsSection.svelte -->
 <script lang="ts">
 	import { CheckCircle2, AlertCircle, FileText, Calendar, Loader2 } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';

@@ -1,4 +1,4 @@
-// src/lib/services/phase-generation/types.ts
+// apps/web/src/lib/services/phase-generation/types.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';

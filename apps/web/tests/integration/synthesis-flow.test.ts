@@ -1,4 +1,4 @@
-// tests/integration/synthesis-flow.test.ts
+// apps/web/tests/integration/synthesis-flow.test.ts
 /**
  * Integration test for the complete project synthesis flow
  */

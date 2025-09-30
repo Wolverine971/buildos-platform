@@ -1,4 +1,4 @@
-<!-- src/lib/components/history/BraindumpHistoryCard.svelte -->
+<!-- apps/web/src/lib/components/history/BraindumpHistoryCard.svelte -->
 <script lang="ts">
 	import {
 		Brain,

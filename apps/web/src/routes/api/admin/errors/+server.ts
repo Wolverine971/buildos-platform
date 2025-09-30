@@ -1,4 +1,4 @@
-// src/routes/api/admin/errors/+server.ts
+// apps/web/src/routes/api/admin/errors/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';

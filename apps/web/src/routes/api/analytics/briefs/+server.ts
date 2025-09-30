@@ -1,4 +1,4 @@
-// src/routes/api/analytics/briefs/+server.ts
+// apps/web/src/routes/api/analytics/briefs/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { BriefAnalytics } from '$lib/types/daily-brief';

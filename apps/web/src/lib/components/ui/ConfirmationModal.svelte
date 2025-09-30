@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/ConfirmationModal.svelte -->
+<!-- apps/web/src/lib/components/ui/ConfirmationModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { TriangleAlert, CircleAlert, Info, CircleCheck } from 'lucide-svelte';

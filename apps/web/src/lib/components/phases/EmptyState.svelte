@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/EmptyState.svelte -->
+<!-- apps/web/src/lib/components/phases/EmptyState.svelte -->
 <script lang="ts">
 	import { Calendar, Plus, Sparkles, Loader2 } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

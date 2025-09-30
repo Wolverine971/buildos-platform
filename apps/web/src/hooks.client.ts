@@ -1,4 +1,4 @@
-// src/hooks.client.ts
+// apps/web/src/hooks.client.ts
 import type { HandleClientError } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 

@@ -1,4 +1,4 @@
-// postcss.config.js
+// apps/web/postcss.config.js
 export default {
 	plugins: {
 		tailwindcss: {},

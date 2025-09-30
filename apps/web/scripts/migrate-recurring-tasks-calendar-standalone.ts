@@ -1,4 +1,4 @@
-// scripts/migrate-recurring-tasks-calendar-standalone.ts
+// apps/web/scripts/migrate-recurring-tasks-calendar-standalone.ts
 /**
  * Standalone migration script to update Google Calendar events for recurring tasks
  * that now inherit their end date from the project

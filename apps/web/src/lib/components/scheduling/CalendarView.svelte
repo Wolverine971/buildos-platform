@@ -1,4 +1,4 @@
-<!-- src/lib/components/scheduling/CalendarView.svelte -->
+<!-- apps/web/src/lib/components/scheduling/CalendarView.svelte -->
 <script lang="ts">
 	import {
 		ChevronLeft,

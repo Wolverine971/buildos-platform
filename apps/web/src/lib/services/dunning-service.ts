@@ -1,4 +1,4 @@
-// src/lib/services/dunning-service.ts
+// apps/web/src/lib/services/dunning-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { DUNNING_CONFIG, EMAIL_TEMPLATES, type DunningStage } from '$lib/config/dunning';
 import { EmailService } from './email-service';

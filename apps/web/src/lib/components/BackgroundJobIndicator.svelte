@@ -1,4 +1,4 @@
-<!-- src/lib/components/BackgroundJobIndicator.svelte -->
+<!-- apps/web/src/lib/components/BackgroundJobIndicator.svelte -->
 <script lang="ts">
 	import { fly, scale } from 'svelte/transition';
 	import {

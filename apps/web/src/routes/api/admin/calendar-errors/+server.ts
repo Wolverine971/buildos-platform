@@ -1,4 +1,4 @@
-// src/routes/api/admin/calendar-errors/+server.ts
+// apps/web/src/routes/api/admin/calendar-errors/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarErrorMonitor } from '$lib/utils/calendar-error-monitor';

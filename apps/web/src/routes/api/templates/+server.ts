@@ -1,4 +1,4 @@
-// src/routes/api/templates/+server.ts
+// apps/web/src/routes/api/templates/+server.ts
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 

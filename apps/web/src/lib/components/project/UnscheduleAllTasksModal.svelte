@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/UnscheduleAllTasksModal.svelte -->
+<!-- apps/web/src/lib/components/project/UnscheduleAllTasksModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { CalendarX, Calendar, AlertTriangle, Info, Loader2, X } from 'lucide-svelte';

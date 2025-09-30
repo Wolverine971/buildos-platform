@@ -1,4 +1,4 @@
-// src/lib/services/email-generation-service.ts
+// apps/web/src/lib/services/email-generation-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SmartLLMService } from './smart-llm-service';
 import type { Database } from '@buildos/shared-types';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/ProjectBriefGrid.svelte -->
+<!-- apps/web/src/lib/components/briefs/ProjectBriefGrid.svelte -->
 <script lang="ts">
 	import { FolderOpen, Clock, Eye } from 'lucide-svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';

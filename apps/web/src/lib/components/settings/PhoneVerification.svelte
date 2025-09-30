@@ -1,4 +1,4 @@
-<!-- src/lib/components/settings/PhoneVerification.svelte -->
+<!-- apps/web/src/lib/components/settings/PhoneVerification.svelte -->
 <script lang="ts">
 	import { smsService } from '$lib/services/sms.service';
 	import { toastService } from '$lib/stores/toast.store';

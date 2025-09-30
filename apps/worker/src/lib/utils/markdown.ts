@@ -1,4 +1,4 @@
-// worker-queue/src/lib/utils/markdown.ts
+// apps/worker/src/lib/utils/markdown.ts
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 

@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/DeleteConfirmationModal.svelte -->
+<!-- apps/web/src/lib/components/project/DeleteConfirmationModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';

@@ -1,4 +1,4 @@
-// worker-queue/src/lib/services/gmail-transporter.ts
+// apps/worker/src/lib/services/gmail-transporter.ts
 import type { Transporter } from "nodemailer";
 import * as nodemailer from "nodemailer";
 

@@ -1,4 +1,4 @@
-<!-- src/lib/components/projects/ProjectStats.svelte -->
+<!-- apps/web/src/lib/components/projects/ProjectStats.svelte -->
 <script lang="ts">
 	import type { FilterCounts } from '$lib/types/projects-page';
 

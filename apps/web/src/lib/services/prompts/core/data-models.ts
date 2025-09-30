@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/data-models.ts
+// apps/web/src/lib/services/prompts/core/data-models.ts
 /**
  * Centralized data model definitions for prompts
  * Single source of truth for all model schemas

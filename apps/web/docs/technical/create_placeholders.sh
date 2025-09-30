@@ -1,4 +1,4 @@
-# docs/technical/create_placeholders.sh
+# apps/web/docs/technical/create_placeholders.sh
 
 # Architecture placeholders
 echo "# Brain Dump Flow Architecture

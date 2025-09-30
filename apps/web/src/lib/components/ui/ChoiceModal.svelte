@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/ChoiceModal.svelte -->
+<!-- apps/web/src/lib/components/ui/ChoiceModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Check } from 'lucide-svelte';

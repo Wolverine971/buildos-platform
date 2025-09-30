@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/RecurringTasksSection.svelte -->
+<!-- apps/web/src/lib/components/phases/RecurringTasksSection.svelte -->
 <script lang="ts">
 	import { RefreshCw, ChevronDown, ChevronRight, Calendar, Clock } from 'lucide-svelte';
 	import type { TaskWithCalendarEvents } from '$lib/types/project-page.types';

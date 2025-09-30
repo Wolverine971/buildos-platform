@@ -1,4 +1,4 @@
-// src/lib/utils/api-response.ts
+// apps/web/src/lib/utils/api-response.ts
 import { json } from '@sveltejs/kit';
 import { createHash } from 'crypto';
 

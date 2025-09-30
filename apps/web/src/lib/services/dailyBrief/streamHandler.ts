@@ -1,4 +1,4 @@
-// src/lib/services/dailyBrief/streamHandler.ts
+// apps/web/src/lib/services/dailyBrief/streamHandler.ts
 import type { DailyBriefGenerator } from './generator';
 import type { DailyBriefRepository } from './repository';
 import type { StreamEvent } from '@buildos/shared-types';

@@ -1,4 +1,4 @@
-// src/lib/utils/sse-processor.ts
+// apps/web/src/lib/utils/sse-processor.ts
 /**
  * Shared Server-Sent Events (SSE) processing utility
  * Centralizes SSE stream parsing logic to eliminate duplication

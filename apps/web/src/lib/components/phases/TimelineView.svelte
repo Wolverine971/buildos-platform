@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/TimelineView.svelte -->
+<!-- apps/web/src/lib/components/phases/TimelineView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { untrack } from 'svelte';

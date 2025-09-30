@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/prompt-components.ts
+// apps/web/src/lib/services/prompts/core/prompt-components.ts
 /**
  * Atomic components for prompt generation
  * These are reusable building blocks that eliminate duplication across prompts

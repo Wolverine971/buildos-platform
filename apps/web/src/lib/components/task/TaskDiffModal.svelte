@@ -1,4 +1,4 @@
-<!-- src/lib/components/task/TaskDiffModal.svelte -->
+<!-- apps/web/src/lib/components/task/TaskDiffModal.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import DiffView from '$lib/components/ui/DiffView.svelte';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/history/LinkNoteToProject.svelte -->
+<!-- apps/web/src/lib/components/history/LinkNoteToProject.svelte -->
 <script lang="ts">
 	import { Link2, Loader2, Check, FolderOpen } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

@@ -1,4 +1,4 @@
-// src/lib/utils/briefFormatting.utils.ts
+// apps/web/src/lib/utils/briefFormatting.utils.ts
 
 import type { Task, ProjectWithRelations } from '$lib/types/project';
 

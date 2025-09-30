@@ -1,4 +1,4 @@
-<!-- src/lib/components/profile/AccountTab.svelte -->
+<!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { User, Lock, Trash2, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-svelte';

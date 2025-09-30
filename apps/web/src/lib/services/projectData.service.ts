@@ -1,4 +1,4 @@
-// src/lib/services/projectData.service.ts
+// apps/web/src/lib/services/projectData.service.ts
 import { projectStoreV2, type LoadingState } from '$lib/stores/project.store';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { TaskWithCalendarEvents, ProcessedPhase } from '$lib/types/project-page.types';

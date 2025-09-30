@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/ParseResultsView.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/ParseResultsView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

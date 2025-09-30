@@ -1,4 +1,4 @@
-// src/lib/utils/prompt-audit.ts
+// apps/web/src/lib/utils/prompt-audit.ts
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';

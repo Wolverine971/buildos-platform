@@ -1,4 +1,4 @@
-// src/lib/utils/braindump-processor.ts
+// apps/web/src/lib/utils/braindump-processor.ts
 import { PromptTemplateService } from '$lib/services/promptTemplate.service';
 import { BrainDumpStatusService } from '$lib/services/braindump-status.service';
 import type { ProjectInfo } from '$lib/services/braindump-status.service';

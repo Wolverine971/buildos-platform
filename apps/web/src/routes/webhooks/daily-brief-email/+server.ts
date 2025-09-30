@@ -1,4 +1,4 @@
-// src/routes/webhooks/daily-brief-email/+server.ts
+// apps/web/src/routes/webhooks/daily-brief-email/+server.ts
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { createHmac } from 'crypto';

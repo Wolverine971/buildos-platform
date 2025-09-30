@@ -1,4 +1,4 @@
-# migrate-docs.sh
+# apps/web/migrate-docs.sh
 
 echo "🚀 Starting comprehensive documentation migration..."
 

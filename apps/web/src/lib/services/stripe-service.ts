@@ -1,4 +1,4 @@
-// src/lib/services/stripe-service.ts
+// apps/web/src/lib/services/stripe-service.ts
 import Stripe from 'stripe';
 import { STRIPE_SECRET_KEY, ENABLE_STRIPE } from '$env/static/private';
 import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';

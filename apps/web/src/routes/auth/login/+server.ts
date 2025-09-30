@@ -1,4 +1,4 @@
-// src/routes/auth/login/+server.ts
+// apps/web/src/routes/auth/login/+server.ts
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

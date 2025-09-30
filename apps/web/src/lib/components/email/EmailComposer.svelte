@@ -1,4 +1,4 @@
-<!-- src/lib/components/email/EmailComposer.svelte -->
+<!-- apps/web/src/lib/components/email/EmailComposer.svelte -->
 <script lang="ts">
 	import { onMount, createEventDispatcher, afterUpdate } from 'svelte';
 	import {

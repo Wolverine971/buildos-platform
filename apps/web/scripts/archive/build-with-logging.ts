@@ -1,4 +1,4 @@
-// scripts/archive/build-with-logging.ts
+// apps/web/scripts/archive/build-with-logging.ts
 /**
  * Build script that captures all errors and warnings
  * and writes them to build-logs.log

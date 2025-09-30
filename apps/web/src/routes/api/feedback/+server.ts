@@ -1,4 +1,4 @@
-// src/routes/api/feedback/+server.ts
+// apps/web/src/routes/api/feedback/+server.ts
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender, EMAIL_SENDERS } from '$lib/utils/email-config';

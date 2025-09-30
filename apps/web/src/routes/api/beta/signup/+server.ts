@@ -1,4 +1,4 @@
-// src/routes/api/beta/signup/+server.ts
+// apps/web/src/routes/api/beta/signup/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';

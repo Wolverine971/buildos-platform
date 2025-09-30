@@ -1,4 +1,4 @@
-// src/lib/tests/llm-simple/__tests__/minimal-test.test.ts
+// apps/web/src/lib/tests/llm-simple/__tests__/minimal-test.test.ts
 
 import { describe, it, expect } from 'vitest';
 import { processNewProject } from '../helpers/simple-llm-runner';

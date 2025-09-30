@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectHistoryModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectHistoryModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/BrainDumpChart.svelte -->
+<!-- apps/web/src/lib/components/admin/BrainDumpChart.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 

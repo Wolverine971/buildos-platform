@@ -1,4 +1,4 @@
-// src/lib/services/project-synthesis.service.ts
+// apps/web/src/lib/services/project-synthesis.service.ts
 import { toastService } from '$lib/stores/toast.store';
 import { parseApiResponse } from '$lib/utils/api-client-helpers';
 

@@ -1,4 +1,4 @@
-// src/routes/__tests__/authenticated-pages.test.ts
+// apps/web/src/routes/__tests__/authenticated-pages.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PageServerLoad } from './$types';
 

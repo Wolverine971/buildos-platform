@@ -1,4 +1,4 @@
-<!-- src/lib/components/layout/Footer.svelte -->
+<!-- apps/web/src/lib/components/layout/Footer.svelte -->
 <script lang="ts">
 	import {
 		Brain,

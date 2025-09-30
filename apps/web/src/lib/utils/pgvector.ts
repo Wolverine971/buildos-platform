@@ -1,4 +1,4 @@
-// src/lib/utils/pgvector.ts
+// apps/web/src/lib/utils/pgvector.ts
 export function toVectorLiteral(vec: number[]): string {
 	// Normalise first if you like
 	const norm = Math.hypot(...vec);

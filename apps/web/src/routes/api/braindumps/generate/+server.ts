@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/generate/+server.ts
+// apps/web/src/routes/api/braindumps/generate/+server.ts
 import type { RequestHandler } from './$types';
 import { BrainDumpProcessor } from '$lib/utils/braindump-processor';
 import { OperationsExecutor } from '$utils/operations-executor';

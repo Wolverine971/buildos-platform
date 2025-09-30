@@ -1,4 +1,4 @@
-// scripts/archive/test-security.js
+// apps/web/scripts/archive/test-security.js
 // Test script for rate limiting and CSRF protection
 import fetch from 'node-fetch';
 

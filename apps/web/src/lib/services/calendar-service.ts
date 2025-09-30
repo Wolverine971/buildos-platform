@@ -1,4 +1,4 @@
-// src/lib/services/calendar-service.ts
+// apps/web/src/lib/services/calendar-service.ts
 import { calendar_v3, google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';

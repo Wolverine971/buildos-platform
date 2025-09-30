@@ -1,4 +1,4 @@
-<!-- src/lib/components/dashboard/MobileTaskTabs.svelte -->
+<!-- apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte -->
 <script lang="ts">
 	import { AlertTriangle, Calendar, Clock, CheckCircle, ExternalLink } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

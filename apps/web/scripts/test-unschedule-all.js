@@ -1,4 +1,4 @@
-// scripts/test-unschedule-all.js
+// apps/web/scripts/test-unschedule-all.js
 
 /**
  * Test script for the unschedule-all endpoint

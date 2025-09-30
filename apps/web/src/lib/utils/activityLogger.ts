@@ -1,4 +1,4 @@
-// src/lib/utils/activityLogger.ts
+// apps/web/src/lib/utils/activityLogger.ts
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';

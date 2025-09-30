@@ -1,4 +1,4 @@
-// src/routes/auth/google/+page.server.ts
+// apps/web/src/routes/auth/google/+page.server.ts
 import { redirect } from '@sveltejs/kit';
 import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
 import type { PageServerLoad } from './$types';

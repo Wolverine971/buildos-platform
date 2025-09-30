@@ -1,4 +1,4 @@
-// src/routes/api/admin/users/+server.ts
+// apps/web/src/routes/api/admin/users/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, validateRequiredFields } from '$lib/utils/api-response';
 

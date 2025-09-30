@@ -1,4 +1,4 @@
-// src/lib/utils/date-utils.ts
+// apps/web/src/lib/utils/date-utils.ts
 /**
  * Centralized date utility functions for consistent UTC date handling
  * All dates from Supabase are in UTC format (timestamptz)

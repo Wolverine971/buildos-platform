@@ -1,4 +1,4 @@
-// src/routes/auth/forgot-password/+page.server.ts
+// apps/web/src/routes/auth/forgot-password/+page.server.ts
 import { redirect, fail } from '@sveltejs/kit';
 import { getRedirectURL } from '$lib/supabase';
 import type { Actions, PageServerLoad } from './$types';

@@ -1,4 +1,4 @@
-// src/lib/types/llm.ts
+// apps/web/src/lib/types/llm.ts
 
 // types.ts
 export interface LLMProvider {

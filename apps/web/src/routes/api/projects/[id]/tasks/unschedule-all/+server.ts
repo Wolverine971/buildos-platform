@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/tasks/unschedule-all/+server.ts
+// apps/web/src/routes/api/projects/[id]/tasks/unschedule-all/+server.ts
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse } from '$utils/api-response';

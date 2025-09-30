@@ -1,4 +1,4 @@
-// src/lib/services/prompts/core/task-extraction.ts
+// apps/web/src/lib/services/prompts/core/task-extraction.ts
 /**
  * Task extraction prompt generation functions
  * Handles prompts for extracting tasks from brain dumps with context decision

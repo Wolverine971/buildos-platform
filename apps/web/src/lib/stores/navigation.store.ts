@@ -1,4 +1,4 @@
-// src/lib/stores/navigation.store.ts
+// apps/web/src/lib/stores/navigation.store.ts
 import { writable } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';

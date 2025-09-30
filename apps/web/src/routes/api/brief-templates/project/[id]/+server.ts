@@ -1,4 +1,4 @@
-// src/routes/api/brief-templates/project/[id]/+server.ts
+// apps/web/src/routes/api/brief-templates/project/[id]/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

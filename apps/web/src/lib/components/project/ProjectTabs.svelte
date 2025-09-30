@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectTabs.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectTabs.svelte -->
 <script lang="ts">
 	import {
 		LayoutGrid,

@@ -1,4 +1,4 @@
-// src/lib/utils/diff.ts
+// apps/web/src/lib/utils/diff.ts
 export interface DiffLine {
 	type: 'added' | 'removed' | 'unchanged';
 	content: string;

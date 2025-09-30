@@ -1,4 +1,4 @@
-// src/lib/config/calendar-colors.ts
+// apps/web/src/lib/config/calendar-colors.ts
 /**
  * Google Calendar color definitions
  * These are all 24 colors available in Google Calendar API for calendars

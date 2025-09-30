@@ -1,4 +1,4 @@
-// worker-queue/src/lib/supabaseQueue.ts
+// apps/worker/src/lib/supabaseQueue.ts
 import type {
   Database,
   JobMetadataMap,

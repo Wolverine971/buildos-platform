@@ -1,4 +1,4 @@
-// worker-queue/src/lib/types/llm.ts
+// apps/worker/src/lib/types/llm.ts
 
 // types.ts
 export interface LLMProvider {

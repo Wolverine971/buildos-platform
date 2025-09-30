@@ -1,4 +1,4 @@
-// src/lib/stores/backgroundJobs.ts
+// apps/web/src/lib/stores/backgroundJobs.ts
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import {

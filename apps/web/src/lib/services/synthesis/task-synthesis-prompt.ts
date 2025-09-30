@@ -1,4 +1,4 @@
-// src/lib/services/synthesis/task-synthesis-prompt.ts
+// apps/web/src/lib/services/synthesis/task-synthesis-prompt.ts
 
 import type { TaskSynthesisConfig } from '$lib/types/synthesis';
 

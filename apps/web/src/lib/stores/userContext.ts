@@ -1,4 +1,4 @@
-// src/lib/stores/userContext.ts
+// apps/web/src/lib/stores/userContext.ts
 import { writable } from 'svelte/store';
 import type { UserContext } from '$lib/types/user-context';
 import { OnboardingClientService } from '$lib/services/onboardingClient.service';

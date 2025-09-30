@@ -1,4 +1,4 @@
-// src/lib/utils/data-cleaner.ts
+// apps/web/src/lib/utils/data-cleaner.ts
 import type { Database } from '@buildos/shared-types';
 
 // --- Validation utilities --------------------------------------------------

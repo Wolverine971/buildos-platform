@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/ProcessingModal.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/ProcessingModal.svelte -->
 <script lang="ts">
 	import { LoaderCircle, Zap, Brain, FileText, CircleCheck, X } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';

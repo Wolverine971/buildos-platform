@@ -15,7 +15,7 @@
     "clean": "turbo clean",
     "pre-push": "turbo pre-push",
     "gen:all": "pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
-    "label-paths": "pnpm --filter=@buildos/web label-paths"
+    "label-paths": "tsx scripts/labelFilePaths.ts"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

@@ -1,4 +1,4 @@
-<!-- src/lib/components/briefs/DailyBriefModal.svelte -->
+<!-- apps/web/src/lib/components/briefs/DailyBriefModal.svelte -->
 <script lang="ts">
 	import {
 		Calendar,

@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/ViewToggle.svelte -->
+<!-- apps/web/src/lib/components/phases/ViewToggle.svelte -->
 <script lang="ts">
 	import { GanttChart, Kanban } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';

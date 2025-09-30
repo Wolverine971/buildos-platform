@@ -1,4 +1,4 @@
-// src/lib/utils/email-styles.ts
+// apps/web/src/lib/utils/email-styles.ts
 
 /**
  * Email-safe color system

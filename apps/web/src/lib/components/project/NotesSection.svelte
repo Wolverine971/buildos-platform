@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/NotesSection.svelte -->
+<!-- apps/web/src/lib/components/project/NotesSection.svelte -->
 <script lang="ts">
 	import { Plus, FileText, Edit3, Trash2, ChevronDown, ChevronUp } from 'lucide-svelte';
 	import { formatters, withLoadingState } from '$lib/utils/componentOptimization';

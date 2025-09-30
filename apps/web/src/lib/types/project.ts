@@ -1,4 +1,4 @@
-// src/lib/types/project.ts
+// apps/web/src/lib/types/project.ts
 
 import type { Database } from '@buildos/shared-types';
 import type { UserContext } from './user-context';

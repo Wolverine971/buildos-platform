@@ -1,4 +1,4 @@
-// src/lib/services/phase-generation/orchestrator.ts
+// apps/web/src/lib/services/phase-generation/orchestrator.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {

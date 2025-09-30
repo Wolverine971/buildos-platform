@@ -1,4 +1,4 @@
-// src/lib/middleware/rate-limiter.ts
+// apps/web/src/lib/middleware/rate-limiter.ts
 import type { RequestEvent } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 import { LRUCache } from '$lib/utils/lru-cache';

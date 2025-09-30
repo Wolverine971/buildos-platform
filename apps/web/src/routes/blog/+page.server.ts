@@ -1,4 +1,4 @@
-// src/routes/blog/+page.server.ts
+// apps/web/src/routes/blog/+page.server.ts
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

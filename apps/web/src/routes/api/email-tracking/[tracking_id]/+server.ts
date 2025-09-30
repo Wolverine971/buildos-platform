@@ -1,4 +1,4 @@
-// src/routes/api/email-tracking/[tracking_id]/+server.ts
+// apps/web/src/routes/api/email-tracking/[tracking_id]/+server.ts
 
 import type { RequestHandler } from './$types';
 

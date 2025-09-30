@@ -1,4 +1,4 @@
-// src/lib/services/realtimeBrief.service.ts
+// apps/web/src/lib/services/realtimeBrief.service.ts
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { toastService } from '$lib/stores/toast.store';

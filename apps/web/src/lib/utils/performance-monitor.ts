@@ -1,4 +1,4 @@
-// src/lib/utils/performance-monitor.ts
+// apps/web/src/lib/utils/performance-monitor.ts
 /**
  * Performance monitoring utility for tracking key metrics
  * Based on the audit recommendations for monitoring:

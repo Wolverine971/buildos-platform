@@ -1,4 +1,4 @@
-// src/routes/api/admin/emails/[id]/send/+server.ts
+// apps/web/src/routes/api/admin/emails/[id]/send/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';

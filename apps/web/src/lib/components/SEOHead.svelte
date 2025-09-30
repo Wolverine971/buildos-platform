@@ -1,4 +1,4 @@
-<!-- src/lib/components/SEOHead.svelte -->
+<!-- apps/web/src/lib/components/SEOHead.svelte -->
 <script lang="ts">
 	export let title = 'BuildOS - AI-First Project Organization for Chaotic Minds';
 	export let description =

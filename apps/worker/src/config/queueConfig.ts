@@ -1,4 +1,4 @@
-// worker-queue/src/config/queueConfig.ts
+// apps/worker/src/config/queueConfig.ts
 // Queue configuration management with environment variable support
 // This addresses Moderate Issue #6 in QUEUE_FIXES_DESIGN.md
 

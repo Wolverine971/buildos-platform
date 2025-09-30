@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/TasksNotesPreview.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/TasksNotesPreview.svelte -->
 <script lang="ts">
 	import type { TaskNoteExtractionResult } from '$lib/types/brain-dump';
 	import {

@@ -1,4 +1,4 @@
-<!-- src/routes/projects/[id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	// Note: Lifecycle converted to $effect for Svelte 5 runes mode

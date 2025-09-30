@@ -1,3 +1,4 @@
+// apps/worker/src/workers/smsWorker.ts
 import type { LegacyJob } from "./shared/jobAdapter";
 import { SMSService, TwilioClient } from "@buildos/twilio-service";
 import { createClient } from "@supabase/supabase-js";

@@ -1,4 +1,4 @@
-<!-- src/routes/admin/revenue/+page.svelte -->
+<!-- apps/web/src/routes/admin/revenue/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

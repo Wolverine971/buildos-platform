@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Select.svelte -->
+<!-- apps/web/src/lib/components/ui/Select.svelte -->
 <script lang="ts">
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import { createEventDispatcher } from 'svelte';

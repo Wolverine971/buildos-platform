@@ -1,4 +1,4 @@
-// src/lib/services/base/api-service.ts
+// apps/web/src/lib/services/base/api-service.ts
 import { parseApiResponse } from '$lib/utils/api-client-helpers';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { supabase } from '$lib/supabase';

@@ -1,4 +1,4 @@
-// src/lib/types/synthesis.ts
+// apps/web/src/lib/types/synthesis.ts
 
 export interface SynthesisOption {
 	id: string;

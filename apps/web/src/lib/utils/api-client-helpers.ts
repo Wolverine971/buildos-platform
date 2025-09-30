@@ -1,4 +1,4 @@
-// src/lib/utils/api-client-helpers.ts
+// apps/web/src/lib/utils/api-client-helpers.ts
 import type { ApiError, ApiSuccess } from './api-response';
 
 export interface ClientResponse<T = any> {

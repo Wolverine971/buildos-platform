@@ -1,4 +1,4 @@
-// src/routes/api/braindumps/stream-short/+server.ts
+// apps/web/src/routes/api/braindumps/stream-short/+server.ts
 import type { RequestHandler } from './$types';
 import { ShortBrainDumpStreamProcessor } from '$utils/braindump-processor-stream-short';
 import { ActivityLogger } from '$lib/utils/activityLogger';

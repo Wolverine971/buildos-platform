@@ -1,4 +1,4 @@
-<!-- src/routes/+page.svelte -->
+<!-- apps/web/src/routes/+page.svelte -->
 <script lang="ts">
 	import { CheckCircle2, Calendar, Zap } from 'lucide-svelte';
 	import './dashboard.css';

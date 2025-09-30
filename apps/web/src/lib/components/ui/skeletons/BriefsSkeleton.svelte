@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/skeletons/BriefsSkeleton.svelte -->
+<!-- apps/web/src/lib/components/ui/skeletons/BriefsSkeleton.svelte -->
 <script lang="ts">
 	export let count = 3;
 </script>

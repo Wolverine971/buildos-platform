@@ -1,4 +1,4 @@
-// src/lib/types/form.ts
+// apps/web/src/lib/types/form.ts
 export interface FieldConfig {
 	type:
 		| 'text'

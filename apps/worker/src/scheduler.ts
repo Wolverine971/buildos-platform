@@ -1,4 +1,4 @@
-// worker-queue/src/scheduler.ts
+// apps/worker/src/scheduler.ts
 import {
   addDays,
   addHours,

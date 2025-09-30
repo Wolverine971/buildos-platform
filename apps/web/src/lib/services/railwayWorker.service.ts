@@ -1,4 +1,4 @@
-// src/lib/services/railwayWorker.service.ts
+// apps/web/src/lib/services/railwayWorker.service.ts
 import { browser } from '$app/environment';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 import type {

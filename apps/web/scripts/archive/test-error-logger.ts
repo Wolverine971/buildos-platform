@@ -1,4 +1,4 @@
-// scripts/archive/test-error-logger.ts
+// apps/web/scripts/archive/test-error-logger.ts
 // #!/usr/bin/env node
 /**
  * Test script for error logging functionality

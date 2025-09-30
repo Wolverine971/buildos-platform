@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/TaskMoveConfirmationModal.svelte -->
+<!-- apps/web/src/lib/components/project/TaskMoveConfirmationModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Calendar, AlertTriangle, Edit3 } from 'lucide-svelte';

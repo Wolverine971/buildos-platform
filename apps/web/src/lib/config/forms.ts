@@ -1,4 +1,4 @@
-// src/lib/config/forms.ts
+// apps/web/src/lib/config/forms.ts
 import type { FormConfig } from '$lib/types/form';
 
 export const noteFormConfig: FormConfig = {

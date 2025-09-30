@@ -1,4 +1,4 @@
-// scripts/validate-docs-links.ts
+// apps/web/scripts/validate-docs-links.ts
 
 /**
  * Validate all documentation links and cross-references

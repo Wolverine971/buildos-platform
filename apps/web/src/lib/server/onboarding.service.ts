@@ -1,4 +1,4 @@
-// src/lib/server/onboarding.service.ts
+// apps/web/src/lib/server/onboarding.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';

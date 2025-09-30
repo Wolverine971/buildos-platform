@@ -1,4 +1,4 @@
-<!-- src/routes/test-synthesis/+page.svelte -->
+<!-- apps/web/src/routes/test-synthesis/+page.svelte -->
 <script lang="ts">
 	import TaskMappingView from '$lib/components/synthesis/TaskMappingView.svelte';
 	import type { ParsedOperation } from '$lib/types/brain-dump';

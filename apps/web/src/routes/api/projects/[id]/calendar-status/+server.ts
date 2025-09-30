@@ -1,4 +1,4 @@
-// src/routes/api/projects/[id]/calendar-status/+server.ts
+// apps/web/src/routes/api/projects/[id]/calendar-status/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';

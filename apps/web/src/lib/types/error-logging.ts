@@ -1,4 +1,4 @@
-// src/lib/types/error-logging.ts
+// apps/web/src/lib/types/error-logging.ts
 export type ErrorSeverity = 'critical' | 'error' | 'warning' | 'info';
 export type ErrorType =
 	| 'brain_dump_processing'

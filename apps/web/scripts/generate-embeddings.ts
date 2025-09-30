@@ -1,4 +1,4 @@
-// scripts/generate-embeddings.ts
+// apps/web/scripts/generate-embeddings.ts
 import 'dotenv/config';
 import { createCustomClient } from '@buildos/supabase-client';
 import { EmbeddingManager } from '../src/lib/server/embedding.manager';

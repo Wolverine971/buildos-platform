@@ -1,4 +1,4 @@
-// src/routes/+layout.server.ts
+// apps/web/src/routes/+layout.server.ts
 import type { LayoutServerLoad } from './$types';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { checkUserSubscription } from '$lib/utils/subscription';

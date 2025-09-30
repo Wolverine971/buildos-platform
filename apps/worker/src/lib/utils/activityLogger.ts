@@ -1,4 +1,4 @@
-// worker-queue/src/lib/utils/activityLogger.ts
+// apps/worker/src/lib/utils/activityLogger.ts
 import type { Database } from "@buildos/shared-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 

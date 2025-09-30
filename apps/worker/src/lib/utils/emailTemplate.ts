@@ -1,4 +1,4 @@
-// src/lib/utils/emailTemplate.ts
+// apps/worker/src/lib/utils/emailTemplate.ts
 
 export interface EmailTemplateData {
   subject: string;

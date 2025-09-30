@@ -1,4 +1,4 @@
-// src/routes/auth/logout/+server.ts
+// apps/web/src/routes/auth/logout/+server.ts
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';

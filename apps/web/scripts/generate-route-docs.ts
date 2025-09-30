@@ -1,4 +1,4 @@
-// scripts/generate-route-docs.ts
+// apps/web/scripts/generate-route-docs.ts
 /**
  * Generate API route documentation from SvelteKit route structure
  * Based on the reorganization plan recommendations

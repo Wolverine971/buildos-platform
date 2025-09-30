@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/BrainDumpModal.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte -->
 <script lang="ts">
 	import { onDestroy, createEventDispatcher, tick } from 'svelte';
 	import { browser } from '$app/environment';

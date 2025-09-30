@@ -1,4 +1,4 @@
-<!-- src/lib/components/email/EmailPreview.svelte -->
+<!-- apps/web/src/lib/components/email/EmailPreview.svelte -->
 <script lang="ts">
 	import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 	import { Eye, Calendar, Users } from 'lucide-svelte';

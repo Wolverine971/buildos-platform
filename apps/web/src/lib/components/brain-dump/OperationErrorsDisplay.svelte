@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/OperationErrorsDisplay.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/OperationErrorsDisplay.svelte -->
 <script lang="ts">
 	import { AlertTriangle, X, ChevronDown, ChevronUp } from 'lucide-svelte';
 	import { fade, slide } from 'svelte/transition';

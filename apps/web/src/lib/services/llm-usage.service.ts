@@ -1,4 +1,4 @@
-// src/lib/services/llm-usage.service.ts
+// apps/web/src/lib/services/llm-usage.service.ts
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';

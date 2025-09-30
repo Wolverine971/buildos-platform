@@ -1,4 +1,4 @@
-#!/bin/bash
+# migrate-imports.sh
 
 # Update imports in worker app
 echo "Updating imports in worker app..."

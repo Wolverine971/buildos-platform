@@ -1,4 +1,4 @@
-// worker-queue/src/lib/services/llm-pool.ts
+// apps/worker/src/lib/services/llm-pool.ts
 import type {
   LLMProvider,
   LLMRequest,

@@ -1,4 +1,4 @@
-<!-- src/routes/history/+page.svelte -->
+<!-- apps/web/src/routes/history/+page.svelte -->
 <script lang="ts">
 	import {
 		Brain,

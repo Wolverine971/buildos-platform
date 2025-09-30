@@ -1,4 +1,4 @@
-// src/lib/utils/componentOptimization.ts
+// apps/web/src/lib/utils/componentOptimization.ts
 
 /**
  * Common optimization patterns for Svelte components

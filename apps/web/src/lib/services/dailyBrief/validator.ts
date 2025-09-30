@@ -1,4 +1,4 @@
-// src/lib/services/dailyBrief/validator.ts
+// apps/web/src/lib/services/dailyBrief/validator.ts
 
 import type { DailyBriefRepository } from './repository';
 

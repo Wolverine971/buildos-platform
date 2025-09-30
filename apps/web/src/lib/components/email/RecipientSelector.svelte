@@ -1,4 +1,4 @@
-<!-- src/lib/components/email/RecipientSelector.svelte -->
+<!-- apps/web/src/lib/components/email/RecipientSelector.svelte -->
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { Users, Search, Plus, X, Mail, Building, Shield, User } from 'lucide-svelte';

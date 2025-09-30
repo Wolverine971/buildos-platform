@@ -1,4 +1,4 @@
-<!-- src/lib/components/ui/Radio.svelte -->
+<!-- apps/web/src/lib/components/ui/Radio.svelte -->
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { createEventDispatcher, getContext } from 'svelte';

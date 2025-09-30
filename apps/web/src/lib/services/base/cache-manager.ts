@@ -1,4 +1,4 @@
-// src/lib/services/base/cache-manager.ts
+// apps/web/src/lib/services/base/cache-manager.ts
 
 interface CacheEntry<T> {
 	data: T;

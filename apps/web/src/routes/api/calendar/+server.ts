@@ -1,4 +1,4 @@
-// src/routes/api/calendar/+server.ts
+// apps/web/src/routes/api/calendar/+server.ts
 // Direct proxy endpoint for CalendarService methods
 
 import { json } from '@sveltejs/kit';

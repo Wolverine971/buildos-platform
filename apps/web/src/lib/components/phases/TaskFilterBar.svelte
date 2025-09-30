@@ -1,4 +1,4 @@
-<!-- src/lib/components/phases/TaskFilterBar.svelte -->
+<!-- apps/web/src/lib/components/phases/TaskFilterBar.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import {

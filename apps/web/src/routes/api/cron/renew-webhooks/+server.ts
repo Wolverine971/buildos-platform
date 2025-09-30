@@ -1,4 +1,4 @@
-// src/routes/api/cron/renew-webhooks/+server.ts
+// apps/web/src/routes/api/cron/renew-webhooks/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createCustomClient } from '@buildos/supabase-client';

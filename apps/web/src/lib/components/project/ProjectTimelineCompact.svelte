@@ -1,4 +1,4 @@
-<!-- src/lib/components/project/ProjectTimelineCompact.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectTimelineCompact.svelte -->
 <script lang="ts">
 	import { format } from 'date-fns/format';
 	import type { Phase, Task } from '$lib/types/project';

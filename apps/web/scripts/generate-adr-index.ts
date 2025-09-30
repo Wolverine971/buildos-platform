@@ -1,4 +1,4 @@
-// scripts/generate-adr-index.ts
+// apps/web/scripts/generate-adr-index.ts
 
 /**
  * Generate Architecture Decision Records (ADRs) index and templates

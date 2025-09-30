@@ -1,4 +1,4 @@
-<!-- src/lib/components/brain-dump/RecordingView.svelte -->
+<!-- apps/web/src/lib/components/brain-dump/RecordingView.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
