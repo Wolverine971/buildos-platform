@@ -715,8 +715,8 @@
 						</div>
 					</div>
 
-					<!-- Severity and Type -->
-					<div class="flex items-center space-x-4">
+					<!-- Severity, Type, and Error Code -->
+					<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
 						<div>
 							<label
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
@@ -741,56 +741,182 @@
 								{selectedError.error_type || selectedError.errorType}
 							</span>
 						</div>
-						{#if selectedError.user || selectedError.user_id || selectedError.userId}
+						{#if selectedError.error_code || selectedError.errorCode}
 							<div>
 								<label
 									class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-									>User:</label
+									>Error Code:</label
 								>
-								{#if selectedError.user}
-									<div
-										class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block"
-									>
-										<span
-											class="text-sm text-gray-900 dark:text-white font-medium"
-										>
-											{selectedError.user.email}
-										</span>
-										{#if selectedError.user.name}
-											<span
-												class="text-xs text-gray-600 dark:text-gray-400 ml-2"
-											>
-												({selectedError.user.name})
-											</span>
-										{/if}
-									</div>
-								{:else}
-									<span
-										class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs font-medium inline-block font-mono"
-									>
-										{truncate(
-											selectedError.user_id || selectedError.userId,
-											12
-										)}
-									</span>
-								{/if}
+								<span
+									class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-mono inline-block"
+								>
+									{selectedError.error_code || selectedError.errorCode}
+								</span>
 							</div>
 						{/if}
 					</div>
+
+					<!-- User Information Section -->
+					{#if selectedError.user || selectedError.user_id || selectedError.userId}
+						<div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>User Information:</label
+							>
+							{#if selectedError.user}
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Email:</span
+										>
+										<p
+											class="text-sm text-gray-900 dark:text-white font-medium"
+										>
+											{selectedError.user.email}
+										</p>
+									</div>
+									{#if selectedError.user.name}
+										<div>
+											<span class="text-xs text-gray-600 dark:text-gray-400"
+												>Name:</span
+											>
+											<p class="text-sm text-gray-900 dark:text-white">
+												{selectedError.user.name}
+											</p>
+										</div>
+									{/if}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>User ID:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.user.id ||
+												selectedError.user_id ||
+												selectedError.userId}
+										</p>
+									</div>
+								</div>
+							{:else}
+								<p class="text-sm text-gray-900 dark:text-white font-mono">
+									User ID: {selectedError.user_id || selectedError.userId}
+								</p>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Request Context Section -->
+					{#if selectedError.endpoint || selectedError.http_method || selectedError.httpMethod || selectedError.request_id || selectedError.requestId || selectedError.ip_address || selectedError.ipAddress}
+						<div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Request Context:</label
+							>
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								{#if selectedError.endpoint}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Endpoint:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.endpoint}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.http_method || selectedError.httpMethod}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Method:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{selectedError.http_method || selectedError.httpMethod}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.request_id || selectedError.requestId}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Request ID:</span
+										>
+										<p
+											class="text-sm text-gray-900 dark:text-white font-mono text-xs"
+										>
+											{selectedError.request_id || selectedError.requestId}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.ip_address || selectedError.ipAddress}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>IP Address:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.ip_address || selectedError.ipAddress}
+										</p>
+									</div>
+								{/if}
+							</div>
+							{#if selectedError.user_agent || selectedError.userAgent}
+								<div class="mt-3">
+									<span class="text-xs text-gray-600 dark:text-gray-400"
+										>User Agent:</span
+									>
+									<p
+										class="text-sm text-gray-900 dark:text-white text-xs font-mono break-all"
+									>
+										{selectedError.user_agent || selectedError.userAgent}
+									</p>
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Project and Brain Dump Context -->
+					{#if selectedError.project_id || selectedError.projectId || selectedError.brain_dump_id || selectedError.brainDumpId}
+						<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Related Resources:</label
+							>
+							<div class="space-y-2">
+								{#if selectedError.project_id || selectedError.projectId}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Project ID:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.project_id || selectedError.projectId}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.brain_dump_id || selectedError.brainDumpId}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Brain Dump ID:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.brain_dump_id ||
+												selectedError.brainDumpId}
+										</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
 
 					<!-- Error Message -->
 					<div>
 						<label
 							class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-							>Message:</label
+							>Error Message:</label
 						>
 						<p
-							class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded"
+							class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded font-mono"
 						>
 							{selectedError.error_message || selectedError.errorMessage}
 						</p>
 					</div>
 
+					<!-- Stack Trace -->
 					{#if selectedError.error_stack || selectedError.errorStack}
 						<div>
 							<label
@@ -798,55 +924,237 @@
 								>Stack Trace:</label
 							>
 							<pre
-								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{selectedError.error_stack ||
+								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{selectedError.error_stack ||
 									selectedError.errorStack}</pre>
 						</div>
 					{/if}
 
-					{#if selectedError.llm_provider || selectedError.llmProvider}
-						<div>
+					<!-- Database Operation Details -->
+					{#if selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName || selectedError.record_id || selectedError.recordId}
+						<div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
 							<label
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Database Operation:</label
+							>
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								{#if selectedError.operation_type || selectedError.operationType}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Operation:</span
+										>
+										<p
+											class="text-sm text-gray-900 dark:text-white uppercase font-medium"
+										>
+											{selectedError.operation_type ||
+												selectedError.operationType}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.table_name || selectedError.tableName}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Table:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.table_name || selectedError.tableName}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.record_id || selectedError.recordId}
+									<div class="sm:col-span-2">
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Record ID:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.record_id || selectedError.recordId}
+										</p>
+									</div>
+								{/if}
+							</div>
+							{#if selectedError.operation_payload || selectedError.operationPayload}
+								<div class="mt-3">
+									<span class="text-xs text-gray-600 dark:text-gray-400"
+										>Payload:</span
+									>
+									<pre
+										class="bg-white dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 mt-1 max-h-32">{JSON.stringify(
+											selectedError.operation_payload ||
+												selectedError.operationPayload,
+											null,
+											2
+										)}</pre>
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- LLM Details -->
+					{#if selectedError.llm_provider || selectedError.llmProvider}
+						<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
 								>LLM Details:</label
 							>
-							<div class="bg-gray-100 dark:bg-gray-900 p-3 rounded space-y-1">
-								<p class="text-sm text-gray-700 dark:text-gray-300">
-									Provider: <span
-										class="text-gray-900 dark:text-white font-medium"
-										>{selectedError.llm_provider ||
-											selectedError.llmProvider}</span
+							<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+								<div>
+									<span class="text-xs text-gray-600 dark:text-gray-400"
+										>Provider:</span
 									>
-								</p>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
-									Model: <span class="text-gray-900 dark:text-white font-medium"
-										>{selectedError.llm_model || selectedError.llmModel}</span
+									<p class="text-sm text-gray-900 dark:text-white font-medium">
+										{selectedError.llm_provider || selectedError.llmProvider}
+									</p>
+								</div>
+								<div>
+									<span class="text-xs text-gray-600 dark:text-gray-400"
+										>Model:</span
 									>
-								</p>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
-									Tokens: <span class="text-gray-900 dark:text-white font-medium"
-										>{selectedError.total_tokens ||
-											selectedError.totalTokens}</span
-									>
-								</p>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
-									Response Time: <span
-										class="text-gray-900 dark:text-white font-medium"
-										>{selectedError.response_time_ms ||
-											selectedError.responseTimeMs}ms</span
-									>
-								</p>
+									<p class="text-sm text-gray-900 dark:text-white font-medium">
+										{selectedError.llm_model || selectedError.llmModel}
+									</p>
+								</div>
+								{#if selectedError.response_time_ms || selectedError.responseTimeMs}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Response Time:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{selectedError.response_time_ms ||
+												selectedError.responseTimeMs}ms
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.prompt_tokens || selectedError.promptTokens}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Prompt Tokens:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{(
+												(selectedError.prompt_tokens ||
+													selectedError.promptTokens) ??
+												0
+											).toLocaleString()}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.completion_tokens || selectedError.completionTokens}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Completion Tokens:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{(
+												(selectedError.completion_tokens ||
+													selectedError.completionTokens) ??
+												0
+											).toLocaleString()}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.total_tokens || selectedError.totalTokens}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Total Tokens:</span
+										>
+										<p
+											class="text-sm text-gray-900 dark:text-white font-medium"
+										>
+											{(
+												(selectedError.total_tokens ||
+													selectedError.totalTokens) ??
+												0
+											).toLocaleString()}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.llm_temperature || selectedError.llmTemperature}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Temperature:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{selectedError.llm_temperature ||
+												selectedError.llmTemperature}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.llm_max_tokens || selectedError.llmMaxTokens}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Max Tokens:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											{(
+												(selectedError.llm_max_tokens ||
+													selectedError.llmMaxTokens) ??
+												0
+											).toLocaleString()}
+										</p>
+									</div>
+								{/if}
 							</div>
 						</div>
 					{/if}
 
-					{#if selectedError.metadata}
+					<!-- Environment and App Info -->
+					{#if selectedError.environment || selectedError.app_version || selectedError.appVersion}
+						<div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Environment Info:</label
+							>
+							<div class="grid grid-cols-2 gap-3">
+								{#if selectedError.environment}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Environment:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white">
+											<span class="capitalize"
+												>{selectedError.environment}</span
+											>
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.app_version || selectedError.appVersion}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>App Version:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.app_version || selectedError.appVersion}
+										</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+
+					<!-- Browser Info -->
+					{#if selectedError.browser_info || selectedError.browserInfo}
+						<div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-4">
+							<label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Browser Info:</label
+							>
+							<pre
+								class="bg-white dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{JSON.stringify(
+									selectedError.browser_info || selectedError.browserInfo,
+									null,
+									2
+								)}</pre>
+						</div>
+					{/if}
+
+					<!-- Additional Metadata -->
+					{#if selectedError.metadata && Object.keys(selectedError.metadata).length > 0}
 						<div>
 							<label
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Metadata:</label
+								>Additional Metadata:</label
 							>
 							<pre
-								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{JSON.stringify(
+								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{JSON.stringify(
 									selectedError.metadata,
 									null,
 									2
@@ -854,25 +1162,70 @@
 						</div>
 					{/if}
 
+					<!-- Resolution Status -->
 					{#if selectedError.resolved}
-						<div>
+						<div
+							class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
+						>
 							<label
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Resolution:</label
+								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+								>Resolution Details:</label
 							>
-							<p class="text-sm text-gray-900 dark:text-white">
-								Resolved at: {formatDate(
-									selectedError.resolved_at || selectedError.resolvedAt
-								)}
-							</p>
-							{#if selectedError.resolution_notes || selectedError.resolutionNotes}
-								<p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
-									Notes: {selectedError.resolution_notes ||
-										selectedError.resolutionNotes}
-								</p>
-							{/if}
+							<div class="space-y-2">
+								<div>
+									<span class="text-xs text-gray-600 dark:text-gray-400"
+										>Resolved At:</span
+									>
+									<p class="text-sm text-gray-900 dark:text-white">
+										{formatDate(
+											selectedError.resolved_at || selectedError.resolvedAt
+										)}
+									</p>
+								</div>
+								{#if selectedError.resolved_by || selectedError.resolvedBy}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Resolved By:</span
+										>
+										<p class="text-sm text-gray-900 dark:text-white font-mono">
+											{selectedError.resolved_by || selectedError.resolvedBy}
+										</p>
+									</div>
+								{/if}
+								{#if selectedError.resolution_notes || selectedError.resolutionNotes}
+									<div>
+										<span class="text-xs text-gray-600 dark:text-gray-400"
+											>Resolution Notes:</span
+										>
+										<p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
+											{selectedError.resolution_notes ||
+												selectedError.resolutionNotes}
+										</p>
+									</div>
+								{/if}
+							</div>
 						</div>
 					{/if}
+
+					<!-- Timestamps -->
+					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+						<div
+							class="grid grid-cols-2 gap-4 text-xs text-gray-500 dark:text-gray-400"
+						>
+							<div>
+								Created: {formatDate(
+									selectedError.created_at || selectedError.createdAt
+								)}
+							</div>
+							{#if selectedError.updated_at || selectedError.updatedAt}
+								<div>
+									Updated: {formatDate(
+										selectedError.updated_at || selectedError.updatedAt
+									)}
+								</div>
+							{/if}
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -881,9 +1234,13 @@
 				class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
 			>
 				<div class="flex justify-end space-x-3">
-					{#if !selectedError.resolved}
+					{#if selectedError && !selectedError.resolved && selectedError.id}
 						<Button
-							on:click={() => openResolveModal(selectedError.id)}
+							on:click={() => {
+								if (selectedError?.id) {
+									openResolveModal(selectedError.id);
+								}
+							}}
 							variant="primary"
 							size="sm"
 							icon={Check}
@@ -929,22 +1286,15 @@
 			size="md"
 		/>
 	</div>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={() => (resolveModalOpen = false)} variant="outline" size="sm">
-			Cancel
-		</Button>
-		<Button onclick={resolveError} variant="primary" size="sm">Resolve</Button>
-	</div>
 </InfoModal>
 
 <!-- Bulk Resolve Modal -->
 <InfoModal
 	isOpen={bulkResolveModalOpen}
 	title="Bulk Resolve Errors"
-	buttonText="Resolve All"
+	buttonText={bulkProcessing
+		? 'Resolving...'
+		: `Resolve ${selectedErrorIds.size} Error${selectedErrorIds.size > 1 ? 's' : ''}`}
 	on:close={bulkResolveErrors}
 	size="md"
 >
@@ -960,20 +1310,5 @@
 			placeholder="Resolution notes for all selected errors (optional)..."
 			size="md"
 		/>
-	</div>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={() => (bulkResolveModalOpen = false)} variant="outline" size="sm">
-			Cancel
-		</Button>
-		<Button onclick={bulkResolveErrors} variant="primary" size="sm" disabled={bulkProcessing}>
-			{#if bulkProcessing}
-				Resolving...
-			{:else}
-				Resolve {selectedErrorIds.size} Error{selectedErrorIds.size > 1 ? 's' : ''}
-			{/if}
-		</Button>
 	</div>
 </InfoModal>

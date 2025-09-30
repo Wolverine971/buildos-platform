@@ -43,7 +43,6 @@
 	let isExpanded = false;
 	let dailyBrief: DailyBrief | null = null;
 	let isLoading = true;
-	let checkingExistingGeneration = false;
 	let currentDate = '';
 	let userTimezone = '';
 	let emailOptInLoading = false;
@@ -116,22 +115,6 @@
 	// Generate daily brief
 	async function generateDailyBrief(forceRegenerate = false) {
 		if (!browser || !user) return;
-
-		checkingExistingGeneration = true;
-
-		// Check for existing generation
-		const existingJobId = await BriefClientService.checkExistingGeneration(
-			user.id,
-			currentDate
-		);
-
-		if (existingJobId) {
-			await BriefClientService.resumePolling(existingJobId, currentDate);
-			checkingExistingGeneration = false;
-			return;
-		}
-
-		checkingExistingGeneration = false;
 
 		try {
 			// Initialize RealtimeBriefService if needed
@@ -490,18 +473,14 @@
 					<Button
 						type="button"
 						on:click={() => generateDailyBrief()}
-						disabled={currentStreamingStatus?.isGenerating ||
-							checkingExistingGeneration ||
-							!user}
-						loading={checkingExistingGeneration || currentStreamingStatus?.isGenerating}
+						disabled={currentStreamingStatus?.isGenerating || !user}
+						loading={currentStreamingStatus?.isGenerating}
 						variant="primary"
 						size="md"
 						class="generate-button"
 						icon={Plus}
 					>
-						{#if checkingExistingGeneration}
-							Checking...
-						{:else if currentStreamingStatus?.isGenerating}
+						{#if currentStreamingStatus?.isGenerating}
 							Generating...
 						{:else}
 							Generate Brief

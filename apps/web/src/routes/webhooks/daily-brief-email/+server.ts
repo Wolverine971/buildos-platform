@@ -324,16 +324,18 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// 11. Log email tracking event
-		if (payload.metadata?.trackingId) {
+		if (payload.metadata?.emailRecordId && payload.metadata?.recipientRecordId) {
 			const { error: trackingError } = await supabase.from('email_tracking_events').insert({
-				tracking_id: payload.metadata.trackingId,
+				email_id: payload.metadata.emailRecordId,
+				recipient_id: payload.metadata.recipientRecordId,
 				event_type: 'sent',
-				recipient_email: payload.recipientEmail,
-				metadata: {
+				timestamp: new Date().toISOString(),
+				event_data: {
 					brief_id: payload.briefId,
 					user_id: payload.userId,
 					sent_via: 'webhook',
-					message_id: emailResult.messageId
+					message_id: emailResult.messageId,
+					tracking_id: payload.metadata.trackingId
 				}
 			});
 
@@ -344,36 +346,23 @@ export const POST: RequestHandler = async ({ request }) => {
 					'email_tracking_events',
 					undefined,
 					{
-						tracking_id: payload.metadata.trackingId,
+						email_id: payload.metadata.emailRecordId,
+						recipient_id: payload.metadata.recipientRecordId,
 						event_type: 'sent',
-						recipient_email: payload.recipientEmail
+						event_data: {
+							brief_id: payload.briefId,
+							user_id: payload.userId,
+							tracking_id: payload.metadata.trackingId
+						}
 					}
 				);
 				console.error('Failed to log email tracking event:', trackingError);
 			}
 		}
 
-		// 12. Update daily_briefs table to mark as emailed
-		const { error: briefUpdateError } = await supabase
-			.from('daily_briefs')
-			.update({
-				email_sent: true,
-				email_sent_at: new Date().toISOString()
-			})
-			.eq('id', payload.briefId);
-
-		if (briefUpdateError) {
-			await errorLogger.logDatabaseError(
-				briefUpdateError,
-				'update',
-				'daily_briefs',
-				payload.briefId,
-				{ email_sent: true, email_sent_at: new Date().toISOString() }
-			);
-			console.error('Failed to update daily_briefs table:', briefUpdateError);
-		}
-
-		// 13. Return success response
+		// 12. Return success response
+		// Note: Email tracking is handled through the emails and email_recipients tables.
+		// The brief_id is stored in the email metadata for reference.
 		return json({
 			success: true,
 			message: 'Email sent successfully',

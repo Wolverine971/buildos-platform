@@ -53,6 +53,7 @@ interface PreviewResponse {
 		tasks: RecurringTaskInfo[];
 		included: boolean;
 	};
+	calendar_event_count?: number;
 }
 
 export const POST: RequestHandler = async ({
@@ -218,6 +219,15 @@ export const POST: RequestHandler = async ({
 		// Add recurring task information
 		const recurringTasks = recurringTasksResult.data || [];
 
+		// Fetch calendar event count for the project's tasks
+		const taskIds = filteredTasks.map((t) => t.id);
+		const { data: calendarEvents } = await supabase
+			.from('task_calendar_events')
+			.select('id')
+			.in('task_id', taskIds)
+			.eq('user_id', user.id)
+			.eq('sync_status', 'synced');
+
 		const response: PreviewResponse = {
 			task_counts: taskCounts,
 			conflicts: analysis.conflicts,
@@ -236,7 +246,8 @@ export const POST: RequestHandler = async ({
 					recurrence_end_source: t.recurrence_end_source
 				})),
 				included: include_recurring_tasks
-			}
+			},
+			calendar_event_count: calendarEvents?.length || 0
 		};
 
 		return ApiResponse.success(response);

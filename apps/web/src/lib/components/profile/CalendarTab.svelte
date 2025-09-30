@@ -30,7 +30,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import CalendarAnalysisModal from '$lib/components/calendar/CalendarAnalysisModal.svelte';
 	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
-	import { modalStore } from '$lib/stores/modal.store'; // this is an error need to remove it
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	// import { getSupabase } from '$lib/supabase';
@@ -293,10 +292,11 @@
 			if (!response.ok) return;
 
 			const result = await response.json();
-			if (result.success && result.analyses) {
-				calendarAnalysisHistory = result.analyses;
-				// Load projects created from calendar
-				await loadCalendarProjects();
+
+			if (result.success && result.data) {
+				// The API returns { history, calendarProjects }
+				calendarAnalysisHistory = result.data.history || [];
+				calendarProjects = result.data.calendarProjects || [];
 			}
 		} catch (error) {
 			console.error('Error loading calendar analysis history:', error);
@@ -947,7 +947,14 @@
 </div>
 
 <!-- Calendar Analysis Modals -->
-<CalendarAnalysisModal bind:isOpen={showAnalysisModal} onFirstConnection={true} />
+<CalendarAnalysisModal
+	bind:isOpen={showAnalysisModal}
+	onFirstConnection={true}
+	onAnalyze={() => {
+		showAnalysisModal = false;
+		startCalendarAnalysis();
+	}}
+/>
 
 <CalendarAnalysisResults
 	bind:isOpen={showAnalysisResults}

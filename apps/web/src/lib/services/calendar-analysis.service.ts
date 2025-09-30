@@ -1,11 +1,20 @@
+// src/lib/services/calendar-analysis.service.ts
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService } from './calendar-service';
-import type { SmartLLMService } from '$lib/services/smart-llm-service';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
-import { supabase } from '$lib/supabase';
+import type { ParsedOperation, ExecutionResult } from '$lib/types/brain-dump';
 import dayjs from 'dayjs';
 import type { Database } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
+import { generateSlug } from '$lib/utils/operations/validation-utils';
+import {
+	getProjectModel,
+	getTaskModel,
+	generateProjectContextFramework,
+	generateDateParsing
+} from './prompts/core/prompt-components';
 
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
 type CalendarProjectSuggestion =
@@ -21,7 +30,7 @@ interface AnalysisResult {
 }
 
 interface CalendarEvent {
-	id: string;
+	id?: string; // Make id optional to match CalendarService type
 	summary?: string;
 	description?: string;
 	start?: {
@@ -48,37 +57,70 @@ interface CalendarEvent {
 }
 
 interface ProjectSuggestion {
-	project_name: string;
-	description: string;
-	context: string;
+	// Project fields matching BuildOS data model
+	name: string; // Required project name
+	slug: string; // Required slug generated from name
+	description: string; // Project description
+	context: string; // Rich markdown context following BuildOS framework
+	executive_summary: string; // Executive summary <500 chars
+	status: 'active' | 'paused' | 'completed' | 'archived';
+	start_date: string; // YYYY-MM-DD format
+	end_date?: string; // YYYY-MM-DD format (optional)
+	tags: string[];
+
+	// Calendar analysis specific fields
 	event_ids: string[];
 	confidence: number;
 	reasoning: string;
 	keywords: string[];
+
+	// Suggested tasks following BuildOS task model
 	suggested_tasks?: Array<{
-		title: string;
+		title: string; // Required, max 255 chars
 		description: string;
-		event_id: string;
-		date?: string;
+		details?: string; // Comprehensive specifics
+		status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+		priority: 'low' | 'medium' | 'high';
+		task_type: 'one_off' | 'recurring';
+		duration_minutes?: number;
+		start_date?: string; // YYYY-MM-DDTHH:MM:SS for scheduling
+		recurrence_pattern?:
+			| 'daily'
+			| 'weekdays'
+			| 'weekly'
+			| 'biweekly'
+			| 'monthly'
+			| 'quarterly'
+			| 'yearly';
+		recurrence_ends?: string; // YYYY-MM-DD
+		event_id?: string; // Link to calendar event
+		tags?: string[];
 	}>;
 }
 
+// Constants
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.4; // Lowered from 0.6 for more suggestions
+const PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DEBUG_LOGGING = true; // Enable debug logging for calendar analysis
+
 export class CalendarAnalysisService extends ApiService {
 	private static instance: CalendarAnalysisService;
+	private supabase: SupabaseClient<Database>;
 	private calendarService: CalendarService;
 	private llmService: SmartLLMService;
-	private errorLogger: ErrorLoggerService;
+	public errorLogger: ErrorLoggerService;
 
-	private constructor() {
+	private constructor(supabase: SupabaseClient<Database>) {
 		super('/api/calendar/analysis');
-		this.calendarService = CalendarService.getInstance();
-		this.llmService = SmartLLMService.getInstance();
-		this.errorLogger = ErrorLoggerService.getInstance();
+		this.supabase = supabase;
+		this.calendarService = new CalendarService(supabase);
+		this.llmService = new SmartLLMService({ supabase });
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
-	public static getInstance(): CalendarAnalysisService {
+	public static getInstance(supabase: SupabaseClient<Database>): CalendarAnalysisService {
 		if (!this.instance) {
-			this.instance = new CalendarAnalysisService();
+			this.instance = new CalendarAnalysisService(supabase);
 		}
 		return this.instance;
 	}
@@ -108,24 +150,47 @@ export class CalendarAnalysisService extends ApiService {
 			const eventsResponse = await this.calendarService.getCalendarEvents(userId, {
 				timeMin: dayjs().subtract(daysBack, 'days').toISOString(),
 				timeMax: dayjs().add(daysForward, 'days').toISOString(),
-				maxResults: 500,
+				maxResults: 300,
 				calendarId: 'primary' // Start with primary calendar
 			});
 
-			if (!eventsResponse.success || !eventsResponse.data?.items) {
-				throw new Error('Failed to fetch calendar events');
+			// Check if we got events - the response directly contains events array
+			if (!eventsResponse.events || eventsResponse.events.length === 0) {
+				throw new Error('No calendar events found');
 			}
 
-			const events = eventsResponse.data.items as CalendarEvent[];
+			const events = eventsResponse.events;
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis] Total events fetched: ${events.length}`);
+				console.log(
+					`[Calendar Analysis] Date range: ${daysBack} days back, ${daysForward} days forward`
+				);
+			}
 
 			// Filter out declined events and all-day personal events
 			const relevantEvents = this.filterRelevantEvents(events);
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis] Events after filtering: ${relevantEvents.length}`);
+				console.log(
+					`[Calendar Analysis] Events excluded: ${events.length - relevantEvents.length}`
+				);
+			}
 
 			// Store event snapshots for future reference
 			await this.storeAnalysisEvents(analysis.id, relevantEvents);
 
 			// Send to LLM for analysis
-			const suggestions = await this.analyzeEventsWithAI(relevantEvents);
+			const suggestions = await this.analyzeEventsWithAI({events:relevantEvents, userId});
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis] AI generated ${suggestions.length} suggestions`);
+				console.log(
+					`[Calendar Analysis] Confidence scores:`,
+					suggestions.map((s) => s.confidence)
+				);
+			}
 
 			// Store suggestions in database
 			await this.storeSuggestions(analysis.id, userId, suggestions);
@@ -159,8 +224,10 @@ export class CalendarAnalysisService extends ApiService {
 
 			this.errorLogger.logError(error, {
 				userId,
-				operation: 'calendar_analysis',
-				context: { analysisId: analysis.id }
+				metadata: {
+					operation: 'calendar_analysis',
+					analysisId: analysis.id
+				}
 			});
 
 			throw error;
@@ -211,49 +278,61 @@ export class CalendarAnalysisService extends ApiService {
 	}
 
 	/**
-	 * Analyze events with AI to detect project patterns
+	 * Analyze events with AI to detect project patterns with confidence threshold
 	 */
-	private async analyzeEventsWithAI(events: CalendarEvent[]): Promise<ProjectSuggestion[]> {
+	private async analyzeEventsWithAI({events, minConfidence = DEFAULT_CONFIDENCE_THRESHOLD, userId}:{
+		events: CalendarEvent[],
+		minConfidence?: number,
+		userId: string
+	}
+	): Promise<ProjectSuggestion[]> {
 		if (events.length === 0) {
 			return [];
 		}
 
-		const prompt = `
-Analyze these calendar events and identify potential projects for a BuildOS user.
+		const today = new Date().toISOString().split('T')[0];
 
-BuildOS is designed for ADHD minds, helping transform scattered thoughts into organized projects.
-Look for patterns that suggest ongoing projects or initiatives.
+		const prompt = `
+A user has asked you to analyze their google calendar and suggest project based off the events.
+
+Your role is to act like a project organizer and look at the google calendar events and suggest projects with associated tasks.
+
+You will be returning a JSON response of detailed "suggestions" array. See **Output Requirements** for correct JSON schema formatting.
+
+## Project Detection Criteria
 
 Identify projects based on:
 - Recurring meetings with similar titles/attendees (likely ongoing projects)
 - Clusters of related events (project milestones, reviews, planning sessions)
-- Events with project-indicating keywords (sprint, launch, milestone, review, kickoff, deadline, sync, standup, retrospective)
+- Events with project-indicating keywords (sprint, launch, milestone, review, kickoff, deadline, sync, standup, retrospective, planning, design, implementation)
 - Series of events building toward a goal
 - Events with multiple attendees working on the same topic
-
-For each potential project, provide:
-1. project_name: Clear, action-oriented name (e.g., "Q1 Product Launch", "Website Redesign")
-2. description: 2-3 sentence description of what this project appears to be about
-3. context: Detailed context for the project in markdown format, including key dates, participants, and objectives
-4. event_ids: Array of event IDs that belong to this project
-5. confidence: 0-1 score (how confident this is a real project, must be >= 0.6 to include)
-6. reasoning: Why these events suggest a project
-7. keywords: Keywords from events that indicated this project
-8. suggested_tasks: Initial tasks based on the events, each with title, description, event_id, and date
+- Any pattern suggesting coordinated work effort
 
 Ignore:
-- One-off personal events (lunch, coffee, dentist, doctor)
-- Company all-hands or general meetings
+- One-off personal events (lunch, coffee, dentist, doctor, vacation)
+- Company all-hands or general meetings without specific project focus
 - Events marked as declined or tentative
-- Focus/work blocks without specific context
+- Generic focus/work blocks without specific context
 - Social events without work context
 
-Calendar Events:
+## Data Models
+
+### Project Model (REQUIRED structure):
+${getProjectModel(true)}
+
+### Task Model (REQUIRED structure):
+${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
+
+${generateProjectContextFramework('condensed')}
+
+
+## Calendar Events to Analyze:
 ${JSON.stringify(
 	events.map((e) => ({
-		id: e.id,
+		id: e.id || 'unknown',
 		title: e.summary,
-		description: e.description?.substring(0, 200), // Limit description length
+		description: e.description?.substring(0, 500), // Increased limit for better context
 		start: e.start?.dateTime || e.start?.date,
 		end: e.end?.dateTime || e.end?.date,
 		attendees: e.attendees?.map((a) => a.email),
@@ -266,31 +345,117 @@ ${JSON.stringify(
 	2
 )}
 
-Return as JSON object with a "suggestions" array containing project suggestions.
-Only suggest projects with confidence >= 0.6.
-Ensure the response is valid JSON that can be parsed.
+## Output Requirements- JSON schema
+
+Return a JSON object with a "suggestions" array. Each suggestion must follow this EXACT structure:
+
+{
+  "suggestions": [
+    {
+      // Project fields (all required)
+      "name": "Clear, action-oriented project name",
+      "slug": "generated-from-name-lowercase-hyphens",
+      "description": "2-3 sentence description of what this project is about",
+      "context": "Comprehensive markdown following the BuildOS context framework. Include all relevant information about the project's purpose, vision, scope, approach, stakeholders, timelines, and any other relevant context extracted from the calendar events. This should be rich and detailed.",
+      "executive_summary": "Brief executive summary under 500 characters",
+      "status": "active", // Default to active for new projects
+      "start_date": "YYYY-MM-DD", // Earliest relevant event date or today
+      "end_date": "YYYY-MM-DD or null", // Latest relevant event date or null if ongoing
+      "tags": ["relevant", "tags", "from", "events"],
+
+      // Calendar analysis metadata (all required)
+      "event_ids": ["array", "of", "event", "ids"],
+      "confidence": 0.7, // 0-1 score, must be >= ${minConfidence}
+      "reasoning": "Clear explanation of why these events suggest a project",
+      "keywords": ["detected", "keywords", "that", "indicated", "project"],
+
+      // Suggested tasks (optional but recommended)
+      "suggested_tasks": [
+        {
+          "title": "Specific task title (max 255 chars)",
+          "description": "Brief task description",
+          "details": "Comprehensive details about the task from event context",
+          "status": "backlog",
+          "priority": "medium", // low|medium|high based on event importance
+          "task_type": "one_off", // or "recurring" for repeating events
+          "duration_minutes": 60, // Estimate based on event duration
+          "start_date": "YYYY-MM-DDTHH:MM:SS", // From event time, null if no specific time
+          "recurrence_pattern": "weekly", // Only if task_type is "recurring"
+          "recurrence_ends": "YYYY-MM-DD", // Only if recurring
+          "event_id": "linked-calendar-event-id",
+          "tags": ["optional", "task", "tags"]
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT:
+- Only suggest projects with confidence >= ${minConfidence}
+- Generate meaningful, actionable project names (not just event titles)
+- Create rich, comprehensive context using the BuildOS framework
+- Extract specific, actionable tasks from event details
+- Use proper date formats (YYYY-MM-DD for dates, YYYY-MM-DDTHH:MM:SS for timestamps)
+- Ensure all required fields are present
+- The response must be valid JSON that can be parsed
 `;
 
 		try {
-			const response = await this.llmService.createChatCompletion(
-				[{ role: 'user', content: prompt }],
-				{
-					response_format: { type: 'json_object' },
-					max_tokens: 4000,
-					temperature: 0.7
-				}
-			);
-
-			if (!response.content) {
-				return [];
+			if (DEBUG_LOGGING) {
+				console.log(
+					`[Calendar Analysis] Sending ${events.length} events to AI for analysis`
+				);
+				console.log(`[Calendar Analysis] Minimum confidence threshold: ${minConfidence}`);
 			}
 
-			const result = JSON.parse(response.content);
-			return result.suggestions || [];
+			// Use SmartLLMService's getJSONResponse method for better type safety and model routing
+			const response = await this.llmService.getJSONResponse<{
+				suggestions: ProjectSuggestion[];
+			}>({
+				systemPrompt:
+					'You are an AI assistant specialized in analyzing calendar events to identify potential projects. Always respond with valid JSON following the specified schema.',
+				userPrompt: prompt,
+				userId, // System-level operation
+				profile: 'balanced', // Use balanced profile for good accuracy/speed tradeoff
+				temperature: 0.3,
+				validation: {
+					retryOnParseError: true,
+					validateSchema: true,
+					maxRetries: 2
+				}
+			});
+
+			// Filter by minimum confidence score
+			const suggestions = response.suggestions || response.projects || [];
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis] Raw suggestions from AI: ${suggestions.length}`);
+				if (suggestions.length > 0) {
+					console.log(
+						`[Calendar Analysis] Raw confidence scores:`,
+						suggestions.map((s: ProjectSuggestion) => s.confidence)
+					);
+				}
+			}
+
+			const filtered = suggestions.filter(
+				(s: ProjectSuggestion) => s.confidence >= minConfidence
+			);
+
+			if (DEBUG_LOGGING) {
+				console.log(
+					`[Calendar Analysis] Suggestions after confidence filter (>= ${minConfidence}): ${filtered.length}`
+				);
+			}
+
+			return filtered;
 		} catch (error) {
 			this.errorLogger.logError(error, {
-				operation: 'calendar_analysis_ai',
-				context: { eventCount: events.length }
+				userId: 'system',
+				metadata: {
+					operation: 'calendar_analysis_ai',
+					eventCount: events.length
+				}
 			});
 			return [];
 		}
@@ -306,6 +471,8 @@ Ensure the response is valid JSON that can be parsed.
 			name?: string;
 			description?: string;
 			includeTasks?: boolean;
+			taskSelections?: Record<string, boolean>; // Which tasks to include
+			taskModifications?: Record<number, any>; // Task edits
 		}
 	): Promise<ServiceResponse<any>> {
 		try {
@@ -314,65 +481,154 @@ Ensure the response is valid JSON that can be parsed.
 				throw new Error('Suggestion not found');
 			}
 
+			// Extract additional metadata from event_patterns if available
+			const eventPatterns = suggestion.event_patterns as any;
+			const executiveSummary = eventPatterns?.executive_summary;
+			const startDate = eventPatterns?.start_date;
+			const endDate = eventPatterns?.end_date;
+			const tags = eventPatterns?.tags || [];
+
 			// Generate operations using existing pattern
-			const operations = [
+			const projectName = modifications?.name || suggestion.suggested_name;
+			const operations: ParsedOperation[] = [
 				{
-					type: 'create' as const,
-					entity: 'projects' as const,
+					id: `calendar-project-${suggestionId}`,
+					operation: 'create' as const,
+					table: 'projects' as const,
+					ref: 'project-0', // Reference for tasks to use
 					data: {
-						name: modifications?.name || suggestion.suggested_name,
+						name: projectName,
+						slug: generateSlug(projectName), // Explicitly generate slug
 						description: modifications?.description || suggestion.suggested_description,
 						context: suggestion.suggested_context,
+						executive_summary: executiveSummary,
+						status: 'active',
+						start_date: startDate || new Date().toISOString().split('T')[0],
+						end_date: endDate,
+						tags: tags,
 						source: 'calendar_analysis',
 						source_metadata: {
 							analysis_id: suggestion.analysis_id,
 							suggestion_id: suggestion.id,
 							event_ids: suggestion.calendar_event_ids,
-							confidence: suggestion.confidence_score
+							confidence: suggestion.confidence_score,
+							detected_keywords: suggestion.detected_keywords
 						}
-					}
+					},
+					enabled: true
 				}
 			];
 
 			// Add task operations if requested and tasks exist
 			if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
-				const tasks = Array.isArray(suggestion.suggested_tasks)
-					? suggestion.suggested_tasks
-					: [];
+				// Safely handle suggested_tasks which might be JSON or null
+				const tasksData = suggestion.suggested_tasks;
+				const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
 
 				operations.push(
-					...tasks.map((task: any) => ({
-						type: 'create' as const,
-						entity: 'tasks' as const,
-						data: {
-							title: task.title,
-							description: task.description,
-							project_ref: 0, // Reference to the project created above
-							source: 'calendar_event',
-							source_calendar_event_id: task.event_id,
-							start_date: task.date
-						}
-					}))
+					...tasks
+						.map((task: any, index: number) => {
+							// Check if task is selected
+							const taskKey = `${suggestionId}-${index}`;
+							if (
+								modifications?.taskSelections &&
+								modifications.taskSelections[taskKey] === false
+							) {
+								return null; // Skip unselected tasks
+							}
+
+							// Apply task modifications if provided
+							const modifiedTask = modifications?.taskModifications?.[index]
+								? { ...task, ...modifications.taskModifications[index] }
+								: task;
+
+							// Filter out past one-time events and handle rescheduling
+							let rescheduledFromPast = false;
+							if (modifiedTask.task_type === 'one_off' && modifiedTask.start_date) {
+								const taskDate = new Date(modifiedTask.start_date);
+								if (taskDate < today) {
+									// Reschedule to today for one-off tasks
+									modifiedTask.start_date =
+										today.toISOString().split('T')[0] +
+										'T' +
+										(modifiedTask.start_date.includes('T')
+											? modifiedTask.start_date.split('T')[1]
+											: '09:00:00');
+									rescheduledFromPast = true;
+								}
+							}
+
+							return {
+								id: `calendar-task-${suggestionId}-${index}`,
+								operation: 'create' as const,
+								table: 'tasks' as const,
+								data: {
+									title: modifiedTask.title || 'Untitled Task',
+									description: modifiedTask.description || '',
+									details: rescheduledFromPast
+										? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
+										: modifiedTask.details || '',
+									status: modifiedTask.status || 'backlog',
+									priority: modifiedTask.priority || 'medium',
+									task_type: modifiedTask.task_type || 'one_off',
+									duration_minutes: modifiedTask.duration_minutes || null,
+									start_date: modifiedTask.start_date || null,
+									recurrence_pattern: modifiedTask.recurrence_pattern || null,
+									recurrence_ends: modifiedTask.recurrence_ends || null,
+									project_ref: 'project-0', // Reference to the project created above
+									source: 'calendar_event',
+									source_calendar_event_id: modifiedTask.event_id || null
+								},
+								enabled: true
+							};
+						})
+						.filter(Boolean) // Remove null entries for unselected tasks
 				);
 			}
 
 			// Execute operations using existing executor
-			const executor = new OperationsExecutor(supabase, userId);
-			const results = await executor.executeOperations(operations);
+			const executor = new OperationsExecutor(this.supabase);
+			const results = await executor.executeOperations({
+				operations,
+				userId
+			});
 
-			// Update suggestion status
-			const projectId = results.projects?.[0]?.id;
-			await this.updateSuggestionStatus(suggestionId, 'accepted', projectId);
+			// Update suggestion status - find the created project from results
+			const createdProject = results.results?.find(
+				(r) => r.table === 'projects' && r.operationType === 'create'
+			);
 
+			// If we found the created project, update the suggestion status
+			if (createdProject?.id) {
+				await this.updateSuggestionStatus(suggestionId, 'accepted', createdProject.id);
+			}
+
+			// Return the complete project data for the API response
 			return {
 				success: true,
-				data: results.projects?.[0]
+				data: createdProject
+					? {
+							...createdProject, // Spread first to allow overrides
+							name:
+								createdProject.name ||
+								modifications?.name ||
+								suggestion.suggested_name,
+							description:
+								createdProject.description ||
+								modifications?.description ||
+								suggestion.suggested_description
+						}
+					: null
 			};
 		} catch (error) {
 			this.errorLogger.logError(error, {
 				userId,
-				operation: 'accept_calendar_suggestion',
-				context: { suggestionId }
+				metadata: {
+					operation: 'accept_calendar_suggestion',
+					suggestionId
+				}
 			});
 
 			return {
@@ -387,7 +643,7 @@ Ensure the response is valid JSON that can be parsed.
 	 */
 	async rejectSuggestion(
 		suggestionId: string,
-		userId: string,
+		_userId: string,
 		reason?: string
 	): Promise<ServiceResponse> {
 		try {
@@ -402,10 +658,10 @@ Ensure the response is valid JSON that can be parsed.
 	}
 
 	/**
-	 * Get user's calendar analysis preferences
+	 * Get user's calendar analysis preferences with caching
 	 */
 	async getPreferences(userId: string): Promise<CalendarAnalysisPreferences | null> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('calendar_analysis_preferences')
 			.select('*')
 			.eq('user_id', userId)
@@ -415,7 +671,7 @@ Ensure the response is valid JSON that can be parsed.
 			// Not found is ok
 			this.errorLogger.logError(error, {
 				userId,
-				operation: 'get_calendar_preferences'
+				metadata: { operation: 'get_calendar_preferences' }
 			});
 		}
 
@@ -430,7 +686,7 @@ Ensure the response is valid JSON that can be parsed.
 		preferences: Partial<CalendarAnalysisPreferences>
 	): Promise<ServiceResponse> {
 		try {
-			const { error } = await supabase.from('calendar_analysis_preferences').upsert({
+			const { error } = await this.supabase.from('calendar_analysis_preferences').upsert({
 				...preferences,
 				user_id: userId,
 				updated_at: new Date().toISOString()
@@ -448,10 +704,10 @@ Ensure the response is valid JSON that can be parsed.
 	}
 
 	/**
-	 * Get calendar analysis history for a user
+	 * Get calendar analysis history for a user with proper response
 	 */
 	async getAnalysisHistory(userId: string): Promise<CalendarAnalysis[]> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('calendar_analyses')
 			.select('*')
 			.eq('user_id', userId)
@@ -461,7 +717,7 @@ Ensure the response is valid JSON that can be parsed.
 		if (error) {
 			this.errorLogger.logError(error, {
 				userId,
-				operation: 'get_analysis_history'
+				metadata: { operation: 'get_analysis_history' }
 			});
 			return [];
 		}
@@ -470,10 +726,10 @@ Ensure the response is valid JSON that can be parsed.
 	}
 
 	/**
-	 * Get projects created from calendar analysis
+	 * Get projects created from calendar analysis with proper typing
 	 */
 	async getCalendarProjects(userId: string): Promise<any[]> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('projects')
 			.select(
 				`
@@ -488,7 +744,7 @@ Ensure the response is valid JSON that can be parsed.
 		if (error) {
 			this.errorLogger.logError(error, {
 				userId,
-				operation: 'get_calendar_projects'
+				metadata: { operation: 'get_calendar_projects' }
 			});
 			return [];
 		}
@@ -502,7 +758,7 @@ Ensure the response is valid JSON that can be parsed.
 		userId: string,
 		metadata: Partial<CalendarAnalysis>
 	): Promise<CalendarAnalysis> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('calendar_analyses')
 			.insert({
 				user_id: userId,
@@ -523,7 +779,7 @@ Ensure the response is valid JSON that can be parsed.
 		analysisId: string,
 		updates: Partial<CalendarAnalysis>
 	): Promise<void> {
-		const { error } = await supabase
+		const { error } = await this.supabase
 			.from('calendar_analyses')
 			.update({
 				...updates,
@@ -540,7 +796,7 @@ Ensure the response is valid JSON that can be parsed.
 		const eventRecords = events.map((event) => ({
 			analysis_id: analysisId,
 			calendar_id: 'primary', // TODO: Get actual calendar ID
-			calendar_event_id: event.id,
+			calendar_event_id: event.id || 'unknown',
 			event_title: event.summary,
 			event_description: event.description,
 			event_start: event.start?.dateTime || event.start?.date,
@@ -553,13 +809,17 @@ Ensure the response is valid JSON that can be parsed.
 			included_in_analysis: true
 		}));
 
-		const { error } = await supabase.from('calendar_analysis_events').insert(eventRecords);
+		const { error } = await this.supabase.from('calendar_analysis_events').insert(eventRecords);
 
 		if (error) {
 			// Log but don't fail the analysis
 			this.errorLogger.logError(error, {
-				operation: 'store_analysis_events',
-				context: { analysisId, eventCount: events.length }
+				userId: 'system',
+				metadata: {
+					operation: 'store_analysis_events',
+					analysisId,
+					eventCount: events.length
+				}
 			});
 		}
 	}
@@ -574,7 +834,7 @@ Ensure the response is valid JSON that can be parsed.
 		const suggestionRecords = suggestions.map((suggestion) => ({
 			analysis_id: analysisId,
 			user_id: userId,
-			suggested_name: suggestion.project_name,
+			suggested_name: suggestion.name,
 			suggested_description: suggestion.description,
 			suggested_context: suggestion.context,
 			confidence_score: suggestion.confidence,
@@ -583,10 +843,18 @@ Ensure the response is valid JSON that can be parsed.
 			ai_reasoning: suggestion.reasoning,
 			detected_keywords: suggestion.keywords,
 			suggested_tasks: suggestion.suggested_tasks || [],
+			// Store additional metadata in event_patterns for now
+			event_patterns: {
+				executive_summary: suggestion.executive_summary,
+				start_date: suggestion.start_date,
+				end_date: suggestion.end_date,
+				tags: suggestion.tags,
+				slug: suggestion.slug
+			},
 			status: 'pending' as const
 		}));
 
-		const { error } = await supabase
+		const { error } = await this.supabase
 			.from('calendar_project_suggestions')
 			.insert(suggestionRecords);
 
@@ -598,7 +866,7 @@ Ensure the response is valid JSON that can be parsed.
 	private async getSuggestionsForAnalysis(
 		analysisId: string
 	): Promise<CalendarProjectSuggestion[]> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('calendar_project_suggestions')
 			.select('*')
 			.eq('analysis_id', analysisId)
@@ -615,7 +883,7 @@ Ensure the response is valid JSON that can be parsed.
 		suggestionId: string,
 		userId: string
 	): Promise<CalendarProjectSuggestion | null> {
-		const { data, error } = await supabase
+		const { data, error } = await this.supabase
 			.from('calendar_project_suggestions')
 			.select('*')
 			.eq('id', suggestionId)
@@ -649,7 +917,7 @@ Ensure the response is valid JSON that can be parsed.
 			updates.rejection_reason = reason;
 		}
 
-		const { error } = await supabase
+		const { error } = await this.supabase
 			.from('calendar_project_suggestions')
 			.update(updates)
 			.eq('id', suggestionId);

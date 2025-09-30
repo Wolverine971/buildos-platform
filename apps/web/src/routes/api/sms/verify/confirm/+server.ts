@@ -1,6 +1,7 @@
 // src/routes/api/sms/verify/confirm/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
+import { createClient } from '@supabase/supabase-js';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -20,18 +21,15 @@ const twilioClient = new TwilioClient({
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const session = await locals.auth();
+	const { session } = await locals.safeGetSession();
 	if (!session?.user) {
-		return json({ success: false, errors: ['Unauthorized'] }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const { phoneNumber, code } = await request.json();
 
 	if (!phoneNumber || !code) {
-		return json(
-			{ success: false, errors: ['Phone number and code are required'] },
-			{ status: 400 }
-		);
+		return ApiResponse.badRequest('Phone number and code are required');
 	}
 
 	try {
@@ -39,13 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const isValid = await twilioClient.checkVerification(phoneNumber, code);
 
 		if (!isValid) {
-			return json(
-				{
-					success: false,
-					errors: ['Invalid verification code']
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest('Invalid verification code');
 		}
 
 		// Update user preferences with verified phone
@@ -85,20 +77,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			console.error('Failed to send welcome SMS:', welcomeError);
 		}
 
-		return json({
-			success: true,
-			verified: true,
-			message: 'Phone number verified successfully'
-		});
+		return ApiResponse.success({ verified: true }, 'Phone number verified successfully');
 	} catch (error: any) {
 		console.error('Verification confirmation error:', error);
 
-		return json(
-			{
-				success: false,
-				errors: [error.message || 'Failed to verify phone number']
-			},
-			{ status: 400 }
-		);
+		return ApiResponse.badRequest(error.message || 'Failed to verify phone number');
 	}
 };

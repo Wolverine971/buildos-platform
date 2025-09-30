@@ -1,27 +1,24 @@
-import { json } from '@sveltejs/kit';
+// src/routes/api/calendar/analyze/+server.ts
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		// Check if user has calendar connected
-		const calendarService = CalendarService.getInstance();
+		const calendarService = new CalendarService(supabase);
 		const hasCalendarConnection = await calendarService.hasValidConnection(session.user.id);
 
 		if (!hasCalendarConnection) {
-			return json(
-				{
-					success: false,
-					error: 'No calendar connected. Please connect your Google Calendar first.'
-				},
-				{ status: 400 }
+			return ApiResponse.badRequest(
+				'No calendar connected. Please connect your Google Calendar first.'
 			);
 		}
 
@@ -30,63 +27,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate input
 		if (daysBack < 0 || daysBack > 365) {
-			return json(
-				{
-					success: false,
-					error: 'daysBack must be between 0 and 365'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.validationError('daysBack', 'must be between 0 and 365');
 		}
 
 		if (daysForward < 0 || daysForward > 365) {
-			return json(
-				{
-					success: false,
-					error: 'daysForward must be between 0 and 365'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.validationError('daysForward', 'must be between 0 and 365');
 		}
 
 		// Start calendar analysis
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 		const result = await analysisService.analyzeUserCalendar(session.user.id, {
 			daysBack,
 			daysForward,
 			calendarsToAnalyze
 		});
 
-		return json({
-			success: true,
-			...result
-		});
+		return ApiResponse.success(result);
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
 			operation: 'calendar_analyze_endpoint',
 			endpoint: 'POST /api/calendar/analyze'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to analyze calendar'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to analyze calendar'
 		);
 	}
 };
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const analysisId = url.searchParams.get('analysisId');
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 
 		if (analysisId) {
 			// Get specific analysis
@@ -94,29 +73,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			const analysis = history.find((a) => a.id === analysisId);
 
 			if (!analysis) {
-				return json(
-					{
-						success: false,
-						error: 'Analysis not found'
-					},
-					{ status: 404 }
-				);
+				return ApiResponse.notFound('Analysis');
 			}
 
-			return json({
-				success: true,
-				analysis
-			});
+			return ApiResponse.success({ analysis });
 		} else {
 			// Get analysis history
 			const history = await analysisService.getAnalysisHistory(session.user.id);
 			const calendarProjects = await analysisService.getCalendarProjects(session.user.id);
 
-			return json({
-				success: true,
-				history,
-				calendarProjects
-			});
+			return ApiResponse.success({ history, calendarProjects });
 		}
 	} catch (error) {
 		const errorLogger = ErrorLoggerService.getInstance();
@@ -125,12 +91,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			endpoint: 'GET /api/calendar/analyze'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to get analysis data'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to get analysis data'
 		);
 	}
 };

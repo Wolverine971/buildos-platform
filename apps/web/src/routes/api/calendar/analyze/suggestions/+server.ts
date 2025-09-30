@@ -1,16 +1,17 @@
-import { json } from '@sveltejs/kit';
+// src/routes/api/calendar/analyze/suggestions/+server.ts
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 /**
  * Accept or reject a calendar analysis suggestion
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const body = await request.json();
@@ -18,26 +19,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate input
 		if (!suggestionId) {
-			return json(
-				{
-					success: false,
-					error: 'suggestionId is required'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest('suggestionId is required');
 		}
 
 		if (!action || !['accept', 'reject', 'defer'].includes(action)) {
-			return json(
-				{
-					success: false,
-					error: 'action must be one of: accept, reject, defer'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.validationError('action', 'must be one of: accept, reject, defer');
 		}
 
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 		let result;
 
 		switch (action) {
@@ -71,20 +60,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!result.success) {
-			return json(
-				{
-					success: false,
-					error: result.errors?.[0] || 'Failed to process suggestion'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest(result.errors?.[0] || 'Failed to process suggestion');
 		}
 
-		return json({
-			success: true,
-			message: `Suggestion ${action}ed successfully`,
-			project: action === 'accept' ? result.data : undefined
-		});
+		return ApiResponse.success(
+			{ project: action === 'accept' ? result.data : undefined },
+			`Suggestion ${action}ed successfully`
+		);
 	} catch (error) {
 		const errorLogger = ErrorLoggerService.getInstance();
 		errorLogger.logError(error, {
@@ -92,12 +74,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			endpoint: 'POST /api/calendar/analyze/suggestions'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to process suggestion'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to process suggestion'
 		);
 	}
 };
@@ -105,27 +84,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 /**
  * Batch accept/reject multiple suggestions
  */
-export const PATCH: RequestHandler = async ({ request, locals }) => {
+export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const body = await request.json();
 		const { suggestions } = body;
 
 		if (!Array.isArray(suggestions) || suggestions.length === 0) {
-			return json(
-				{
-					success: false,
-					error: 'suggestions must be a non-empty array'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.validationError('suggestions', 'must be a non-empty array');
 		}
 
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 		const results = [];
 
 		for (const suggestion of suggestions) {
@@ -175,11 +148,10 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		const successful = results.filter((r) => r.success).length;
 		const failed = results.filter((r) => !r.success).length;
 
-		return json({
-			success: true,
-			message: `Processed ${successful} suggestion(s) successfully, ${failed} failed`,
-			results
-		});
+		return ApiResponse.success(
+			{ results },
+			`Processed ${successful} suggestion(s) successfully, ${failed} failed`
+		);
 	} catch (error) {
 		const errorLogger = ErrorLoggerService.getInstance();
 		errorLogger.logError(error, {
@@ -187,12 +159,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 			endpoint: 'PATCH /api/calendar/analyze/suggestions'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to process suggestions'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to process suggestions'
 		);
 	}
 };

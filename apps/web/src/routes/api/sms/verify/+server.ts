@@ -1,6 +1,7 @@
 // src/routes/api/sms/verify/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
+import { createClient } from '@supabase/supabase-js';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -20,15 +21,15 @@ const twilioClient = new TwilioClient({
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const session = await locals.auth();
+	const { session } = await locals.safeGetSession();
 	if (!session?.user) {
-		return json({ success: false, errors: ['Unauthorized'] }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const { phoneNumber } = await request.json();
 
 	if (!phoneNumber) {
-		return json({ success: false, errors: ['Phone number is required'] }, { status: 400 });
+		return ApiResponse.badRequest('Phone number is required');
 	}
 
 	try {
@@ -49,13 +50,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.single();
 
 		if (existingUser) {
-			return json(
-				{
-					success: false,
-					errors: ['This phone number is already verified by another user']
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.conflict('This phone number is already verified by another user');
 		}
 
 		// Send verification code
@@ -69,8 +64,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			updated_at: new Date().toISOString()
 		});
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			verificationSent: true,
 			verificationSid: result.verificationSid
 		});
@@ -79,29 +73,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Handle specific Twilio errors
 		if (error.code === 20003) {
-			return json(
-				{
-					success: false,
-					errors: ['Invalid phone number format']
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest('Invalid phone number format');
 		} else if (error.code === 20429) {
-			return json(
-				{
-					success: false,
-					errors: ['Too many verification attempts. Please try again later.']
-				},
-				{ status: 429 }
+			return ApiResponse.error(
+				'Too many verification attempts. Please try again later.',
+				429,
+				'RATE_LIMITED'
 			);
 		}
 
-		return json(
-			{
-				success: false,
-				errors: [error.message || 'Failed to send verification']
-			},
-			{ status: 400 }
-		);
+		return ApiResponse.badRequest(error.message || 'Failed to send verification');
 	}
 };

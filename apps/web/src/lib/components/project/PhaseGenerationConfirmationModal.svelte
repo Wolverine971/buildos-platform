@@ -92,6 +92,11 @@
 	// User instructions for phase generation
 	let userInstructions = '';
 
+	// Calendar event handling
+	let calendarHandling: 'update' | 'clear_and_reschedule' | 'preserve' = 'update'; // Default to current behavior
+	let preserveRecurringEvents = false;
+	let calendarEventCount = 0; // Will be populated from preview data
+
 	// Reactive calculations
 	$: totalSelectedTasks = previewData?.task_counts?.total || 0;
 	$: hasConflicts =
@@ -142,6 +147,8 @@
 			// Handle new ApiResponse format
 			if (result.success) {
 				previewData = result.data;
+				// Extract calendar event count from preview data if available
+				calendarEventCount = result.data?.calendar_event_count || 0;
 			} else {
 				throw new Error(result.error || 'Failed to load preview');
 			}
@@ -186,6 +193,8 @@
 			project_dates_changed:
 				localProjectStartDate !== projectStartDate ||
 				localProjectEndDate !== projectEndDate,
+			calendar_handling: calendarHandling,
+			preserve_recurring_events: preserveRecurringEvents,
 			include_recurring_tasks: includeRecurringTasks,
 			allow_recurring_reschedule: allowRecurringReschedule,
 			preserve_existing_dates: preserveExistingDates,
@@ -521,6 +530,125 @@
 							{/if}
 						</div>
 					</div>
+
+					<!-- Calendar Event Handling (only show if calendar is connected and scheduling) -->
+					{#if calendarConnected}
+						<div class="mb-6">
+							<h4
+								class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+							>
+								<CalendarDays class="w-4 h-4" />
+								Calendar Event Handling
+							</h4>
+							<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+								<div class="space-y-3">
+									<label class="flex items-start gap-3">
+										<input
+											type="radio"
+											bind:group={calendarHandling}
+											value="update"
+											class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										/>
+										<div>
+											<span
+												class="text-sm font-medium text-gray-900 dark:text-white"
+											>
+												Update existing events
+											</span>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+											>
+												Keep existing calendar events and update their times
+												to match new phase schedules
+											</p>
+										</div>
+									</label>
+
+									<label class="flex items-start gap-3">
+										<input
+											type="radio"
+											bind:group={calendarHandling}
+											value="clear_and_reschedule"
+											class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										/>
+										<div>
+											<span
+												class="text-sm font-medium text-gray-900 dark:text-white"
+											>
+												Clear and recreate events
+											</span>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+											>
+												Delete existing calendar events and create fresh
+												ones with new schedules
+											</p>
+										</div>
+									</label>
+
+									<label class="flex items-start gap-3">
+										<input
+											type="radio"
+											bind:group={calendarHandling}
+											value="preserve"
+											class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										/>
+										<div>
+											<span
+												class="text-sm font-medium text-gray-900 dark:text-white"
+											>
+												Don't modify calendar events
+											</span>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+											>
+												Leave existing calendar events unchanged during
+												phase regeneration
+											</p>
+										</div>
+									</label>
+								</div>
+
+								{#if calendarHandling === 'clear_and_reschedule'}
+									<div
+										class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded"
+									>
+										<div class="flex items-start gap-2">
+											<AlertTriangle
+												class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+											/>
+											<div class="flex-1">
+												<p
+													class="text-xs text-amber-700 dark:text-amber-300"
+												>
+													This will delete {calendarEventCount || 'all'} existing
+													calendar events and create new ones. This action
+													cannot be undone.
+												</p>
+
+												{#if hasRecurringTasks}
+													<label
+														class="flex items-start gap-2 cursor-pointer mt-3"
+													>
+														<input
+															type="checkbox"
+															bind:checked={preserveRecurringEvents}
+															class="mt-0.5 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+														/>
+														<span
+															class="text-xs text-amber-700 dark:text-amber-300"
+														>
+															Preserve recurring event series
+														</span>
+													</label>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
 				{/if}
 
 				<!-- Task Status Selection -->

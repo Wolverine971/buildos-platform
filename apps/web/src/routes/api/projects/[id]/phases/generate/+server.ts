@@ -45,7 +45,11 @@ export const POST: RequestHandler = async ({
 			preserveExistingDates: body.preserve_existing_dates || false, // Default to false (reschedule all)
 			preserveHistoricalPhases: body.preserve_historical_phases !== false, // Default to true (preserve history)
 			userInstructions: body.user_instructions || '', // Add user instructions
-			userId: user.id
+			userId: user.id,
+			// Calendar handling configuration
+			calendarHandling: body.calendar_handling || 'update', // Default to current behavior
+			preserveRecurringEvents: body.preserve_recurring_events || false,
+			calendarCleanupBatchSize: 5 // Use default batch size
 		};
 
 		// 4. Validate required fields based on scheduling method

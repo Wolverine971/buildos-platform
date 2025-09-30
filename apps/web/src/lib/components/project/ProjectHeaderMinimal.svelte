@@ -15,8 +15,7 @@
 	import { onMount } from 'svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { format } from 'date-fns/format';
-	import type { Phase, Project, Task } from '$lib/types/project';
-	import type { ProcessedPhase } from '$lib/types/project-page.types';
+	import type { Project } from '$lib/types/project';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { slide, fade, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -281,6 +280,7 @@
 							on:click={toggleDesktopMenu}
 							variant="ghost"
 							size="sm"
+							style="postion: relative;"
 							class="min-h-0 p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
 							aria-label="Project settings"
 							aria-expanded={showDesktopMenu}
@@ -292,7 +292,8 @@
 						{#if showDesktopMenu}
 							<div
 								transition:scale={{ duration: 150, start: 0.95 }}
-								class="absolute right-0 top-[calc(100%+0.5rem)] min-w-[12rem] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50"
+								class="absolute right-0 top-[calc(100%+0.5rem)] min-w-[12rem] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1"
+								style="z-index: 9999;"
 								role="menu"
 							>
 								{#if showConnectButton}
@@ -385,7 +386,8 @@
 					{#if showMobileMenu}
 						<div
 							transition:slide={{ duration: 200 }}
-							class="absolute right-2 top-[calc(100%+0.5rem)] min-w-[12rem] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50"
+							class="absolute right-2 top-[calc(100%+0.5rem)] min-w-[12rem] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1"
+							style="z-index: 9999;"
 							role="menu"
 						>
 							{#if showConnectButton || showCalendarSettings}
@@ -445,7 +447,7 @@
 		</button>
 
 		<!-- Subtle dropdown indicator bar -->
-		<div class="dropdown-bar">
+		<div class="dropdown-bar" on:click={toggleExpanded}>
 			<div class="dropdown-indicator">
 				<ChevronDown
 					class="dropdown-arrow {isExpanded ? 'rotate-180' : ''}"
@@ -620,7 +622,7 @@
 		border-radius: 12px;
 
 		transition: all var(--transition-duration) var(--timing-function);
-		overflow: hidden; /* Keep content contained */
+		overflow: visible; /* Allow dropdowns to show outside container */
 
 		margin-bottom: 1.5rem;
 		border-left: none;
@@ -713,7 +715,8 @@
 		justify-content: center;
 		transition: opacity 0.2s ease;
 		opacity: 0.3;
-		pointer-events: none;
+		/* pointer-events: none; */
+		cursor: pointer;
 	}
 
 	/* Show more prominently on header hover */
@@ -778,7 +781,7 @@
 		align-items: center;
 		gap: 4px;
 		position: relative;
-		z-index: 10;
+		z-index: 100;
 	}
 
 	/* Reset cursor for action buttons */
@@ -789,7 +792,7 @@
 	.expandable-content {
 		padding: 0 12px 12px;
 		border-top: 1px solid rgba(0, 0, 0, 0.05);
-		position: relative;
+		/* position: relative; */
 	}
 
 	:global(.dark) .expandable-content {

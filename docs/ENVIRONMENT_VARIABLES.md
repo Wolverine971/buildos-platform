@@ -140,8 +140,8 @@ These pairs must have the **same value** but use different names:
 
 | Web App Variable               | Worker Variable                | Description            |
 | ------------------------------ | ------------------------------ | ---------------------- |
-| `PUBLIC_SUPABASE_URL`          | `PUBLIC_SUPABASE_URL`                 | Supabase project URL   |
-| `PRIVATE_SUPABASE_SERVICE_KEY` | `PRIVATE_SUPABASE_SERVICE_KEY`    | Service role key       |
+| `PUBLIC_SUPABASE_URL`          | `PUBLIC_SUPABASE_URL`          | Supabase project URL   |
+| `PRIVATE_SUPABASE_SERVICE_KEY` | `PRIVATE_SUPABASE_SERVICE_KEY` | Service role key       |
 | `PUBLIC_GOOGLE_CLIENT_ID`      | `PRIVATE_GOOGLE_CLIENT_ID`     | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET`         | `PRIVATE_GOOGLE_CLIENT_SECRET` | Google OAuth secret    |
 

@@ -744,7 +744,7 @@
 	{#if generating}
 		{#if loadingComponents['PhaseGenerationLoadingOverlay']}
 			<!-- Fallback loading state -->
-			<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+			<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
 				<div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
 					<div class="text-sm text-gray-500">Loading...</div>
 				</div>
@@ -758,7 +758,7 @@
 <style>
 	.phases-section {
 		min-height: 40px;
-		position: relative;
+		/* position: relative; */
 	}
 
 	.phases-section.dragging {

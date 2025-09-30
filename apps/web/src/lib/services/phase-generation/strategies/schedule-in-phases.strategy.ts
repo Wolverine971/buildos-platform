@@ -1,7 +1,13 @@
 // src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts
 
 import { BaseSchedulingStrategy } from './base-strategy';
-import type { Task, TaskFilterResult, PhaseTaskAssignment } from '../types';
+import type {
+	Task,
+	TaskFilterResult,
+	PhaseTaskAssignment,
+	GenerationContext,
+	PhaseGenerationResult
+} from '../types';
 import type { Phase } from '$lib/types/project';
 import { PromptTemplateService } from '$lib/services/promptTemplate.service';
 import { CalendarService } from '$lib/services/calendar-service';
@@ -329,8 +335,15 @@ export class ScheduleInPhasesStrategy extends BaseSchedulingStrategy {
 			}
 		}
 
-		// Handle calendar event updates for tasks that have them
-		await this.syncCalendarEventsForUpdatedTasks(assignments);
+		// Handle calendar event updates based on configuration
+		if (this.context.config.calendarHandling === 'clear_and_reschedule') {
+			// Calendar events were already cleared, new ones will be created when tasks are updated
+			console.log('Calendar events cleared; new events will be created with task schedules');
+		} else if (this.context.config.calendarHandling !== 'preserve') {
+			// Default to 'update' behavior - sync existing calendar events
+			await this.syncCalendarEventsForUpdatedTasks(assignments);
+		}
+		// If 'preserve', do nothing with calendar events
 	}
 
 	/**
@@ -497,6 +510,153 @@ export class ScheduleInPhasesStrategy extends BaseSchedulingStrategy {
 		for (const excludedTask of excludedTasks) {
 			const reason = exclusionReasons[excludedTask.id] || 'Unknown reason';
 			excludeDependents(excludedTask.id, reason);
+		}
+	}
+
+	/**
+	 * Override execute to add calendar cleanup functionality
+	 */
+	async execute(context: GenerationContext): Promise<PhaseGenerationResult> {
+		this.context = context;
+
+		// 1. Validate project timeline for this scheduling method
+		this.validateProjectTimeline();
+
+		// 2. Clear existing calendar events if configured
+		if (this.context.config.calendarHandling === 'clear_and_reschedule') {
+			await this.clearExistingCalendarEvents();
+		}
+
+		// 3. Filter and prepare tasks based on scheduling method rules
+		const filterResult = await this.filterAndPrepareTasks();
+
+		// 4. Apply any task rescheduling if needed
+		if (filterResult.rescheduledTasks.length > 0) {
+			await this.applyTaskRescheduling(filterResult.rescheduledTasks);
+		}
+
+		// 5. Generate prompts for LLM
+		const { systemPrompt, userPrompt } = await this.generatePrompts(
+			filterResult.compatibleTasks
+		);
+
+		// 6. Call LLM to generate phases
+		const llmResult = await this.callLLM(
+			systemPrompt,
+			userPrompt,
+			filterResult.compatibleTasks
+		);
+
+		// 7. Validate and process LLM response
+		const processedResult = await this.processLLMResponse(
+			llmResult,
+			filterResult.compatibleTasks
+		);
+
+		// 8. Persist phases and task assignments
+		await this.persistPhases(processedResult, filterResult.compatibleTasks);
+
+		// Note: Calendar event syncing is handled within persistPhases via handleTaskDateUpdates
+		// which is called after task assignments are created. The calendar handling logic
+		// determines whether to update existing events or create new ones based on config.
+
+		// 10. Prepare final result with additional metadata
+		return this.prepareFinalResult(processedResult, filterResult);
+	}
+
+	/**
+	 * Clear existing calendar events before phase regeneration
+	 */
+	private async clearExistingCalendarEvents(): Promise<void> {
+		try {
+			// Get all tasks in the project that might have calendar events
+			const { data: projectTasks, error: tasksError } = await this.supabase
+				.from('tasks')
+				.select('id')
+				.eq('project_id', this.context.project.id)
+				.is('deleted_at', null);
+
+			if (tasksError) {
+				console.error('Failed to fetch project tasks for calendar cleanup:', tasksError);
+				throw new Error(`Failed to fetch tasks: ${tasksError.message}`);
+			}
+
+			if (!projectTasks || projectTasks.length === 0) {
+				console.log('No tasks to clear calendar events for');
+				return;
+			}
+
+			const taskIds = projectTasks.map((t) => t.id);
+
+			// Fetch existing calendar events for these tasks
+			const { data: calendarEvents, error } = await this.supabase
+				.from('task_calendar_events')
+				.select('*')
+				.in('task_id', taskIds)
+				.eq('user_id', this.userId)
+				.eq('sync_status', 'synced'); // Only clear successfully synced events
+
+			if (error) {
+				console.error('Failed to fetch calendar events for cleanup:', error);
+				throw new Error(`Calendar cleanup failed: ${error.message}`);
+			}
+
+			if (!calendarEvents || calendarEvents.length === 0) {
+				console.log('No calendar events to clear');
+				return;
+			}
+
+			console.log(
+				`Clearing ${calendarEvents.length} calendar events before phase regeneration`
+			);
+
+			// Handle recurring events specially if configured
+			let eventsToDelete = calendarEvents;
+			if (this.context.config.preserveRecurringEvents) {
+				eventsToDelete = calendarEvents.filter((e) => !e.is_master_event);
+				const preservedCount = calendarEvents.length - eventsToDelete.length;
+				if (preservedCount > 0) {
+					console.log(`Preserving ${preservedCount} recurring master events`);
+				}
+			}
+
+			if (eventsToDelete.length === 0) {
+				console.log('No events to delete after filtering');
+				return;
+			}
+
+			// Use existing bulk delete function
+			const calendarService = new CalendarService(this.supabase);
+			const result = await calendarService.bulkDeleteCalendarEvents(
+				this.userId,
+				eventsToDelete.map((e) => ({
+					id: e.id,
+					calendar_event_id: e.calendar_event_id,
+					calendar_id: e.calendar_id || 'primary'
+				})),
+				{
+					batchSize: this.context.config.calendarCleanupBatchSize || 5,
+					reason: 'phase_regeneration_cleanup'
+				}
+			);
+
+			if (!result.success) {
+				console.warn('Calendar cleanup had errors:', result.errors);
+				// Don't fail the entire operation, but log warnings
+				if (result.warnings?.length) {
+					console.warn('Calendar cleanup warnings:', result.warnings);
+				}
+			}
+
+			console.log(`Calendar cleanup complete: ${result.deletedCount} events deleted`);
+		} catch (error) {
+			console.error('Error during calendar cleanup:', error);
+			// Decide whether to fail or continue based on config
+			if (this.context.config.calendarHandling === 'clear_and_reschedule') {
+				throw error; // Fail if cleanup was explicitly requested
+			}
+			// Otherwise, log and continue
+			console.warn('Continuing with phase regeneration despite calendar cleanup failure');
 		}
 	}
 }

@@ -52,7 +52,7 @@ export class OperationsExecutor {
 	}: {
 		operations: ParsedOperation[];
 		userId: string;
-		brainDumpId: string;
+		brainDumpId?: string;
 		projectQuestions?: BrainDumpParseResult['projectQuestions'];
 	}): Promise<ExecutionResult> {
 		// Handle both old and new signatures for backward compatibility
@@ -126,28 +126,32 @@ export class OperationsExecutor {
 			}
 
 			// Log activity
-			await this.logExecutionActivity({ successful, failed, results }, brainDumpId, userId);
+			await this.logExecutionActivity({
+				results: { successful, failed, results },
+				brainDumpId,
+				userId
+			});
 
 			// Save project questions silently after all operations
 			if (projectQuestions && projectQuestions.length > 0 && this.newProjectId) {
-				await this.saveProjectQuestions(
+				await this.saveProjectQuestions({
 					projectQuestions,
-					this.newProjectId,
+					projectId: this.newProjectId,
 					brainDumpId,
 					userId
-				);
+				});
 			} else if (projectQuestions && projectQuestions.length > 0) {
 				// Try to find project ID from operations
 				const projectId =
 					operations.find((op) => op.table === 'projects' && op.data?.id)?.data?.id ||
 					operations.find((op) => op.data?.project_id)?.data?.project_id;
 				if (projectId) {
-					await this.saveProjectQuestions(
+					await this.saveProjectQuestions({
 						projectQuestions,
 						projectId,
 						brainDumpId,
 						userId
-					);
+					});
 				}
 			}
 
@@ -169,7 +173,7 @@ export class OperationsExecutor {
 	private async executeOperation(
 		operation: ParsedOperation,
 		userId: string,
-		brainDumpId: string
+		brainDumpId?: string
 	): Promise<any> {
 		// Validate operation
 		const validation = this.validator.validateOperation(operation);
@@ -204,10 +208,22 @@ export class OperationsExecutor {
 	 */
 	private resolveOperationReferences(data: Record<string, any>): void {
 		// Handle project_ref -> project_id resolution for new projects
-		if (data.project_ref && this.newProjectId) {
-			// Replace project_ref with actual project_id
-			data.project_id = this.newProjectId;
-			delete data.project_ref;
+		if (data.project_ref) {
+			const refValue = data.project_ref; // Store for logging
+			if (this.newProjectId) {
+				// Replace project_ref with actual project_id
+				data.project_id = this.newProjectId;
+				delete data.project_ref;
+				console.log(
+					`Resolved project_ref '${refValue}' to project_id '${this.newProjectId}'`
+				);
+			} else {
+				// Log error but still remove project_ref to prevent database errors
+				console.error(
+					`Warning: project_ref '${refValue}' found but no newProjectId available. Removing project_ref to prevent database errors.`
+				);
+				delete data.project_ref;
+			}
 		}
 
 		// Handle metadata-based resolution
@@ -318,7 +334,7 @@ export class OperationsExecutor {
 		operation: ParsedOperation,
 		data: Record<string, any>,
 		userId: string,
-		brainDumpId: string
+		brainDumpId?: string
 	): Promise<any> {
 		// Special handling for projects
 		if (operation.table === 'projects') {
@@ -357,6 +373,14 @@ export class OperationsExecutor {
 				data.task_type = 'one_off';
 			}
 
+			// Ensure we have a project_id for the task
+			if (!data.project_id && this.newProjectId) {
+				console.log(
+					`Setting project_id for task to newly created project: ${this.newProjectId}`
+				);
+				data.project_id = this.newProjectId;
+			}
+
 			// Validate task date against project timeline
 			await this.validateTaskDates(data, userId);
 		}
@@ -378,7 +402,7 @@ export class OperationsExecutor {
 		}
 
 		// Handle post-creation actions
-		if (operation.table === 'projects' && result) {
+		if (operation.table === 'projects' && result && brainDumpId) {
 			// 	await this.handleProjectPostCreation(result, brainDumpId);
 			if (!this.completedBrainDumpIds.has(brainDumpId)) {
 				await this.markBrainDumpAsCompleted(brainDumpId, (result as any).id);
@@ -579,12 +603,17 @@ export class OperationsExecutor {
 	/**
 	 * Save project questions silently after operations
 	 */
-	private async saveProjectQuestions(
-		projectQuestions: BrainDumpParseResult['projectQuestions'],
-		projectId: string,
-		brainDumpId: string,
-		userId: string
-	): Promise<void> {
+	private async saveProjectQuestions({
+		projectQuestions,
+		projectId,
+		brainDumpId,
+		userId
+	}: {
+		projectQuestions: BrainDumpParseResult['projectQuestions'];
+		projectId: string;
+		brainDumpId?: string;
+		userId: string;
+	}): Promise<void> {
 		try {
 			// Format questions for storage (max 5)
 			const questionsToStore = projectQuestions.slice(0, 5).map((q) => ({
@@ -694,11 +723,15 @@ export class OperationsExecutor {
 	/**
 	 * Log execution activity
 	 */
-	private async logExecutionActivity(
-		results: ExecutionResult,
-		brainDumpId: string,
-		userId: string
-	): Promise<void> {
+	private async logExecutionActivity({
+		results,
+		brainDumpId,
+		userId
+	}: {
+		results: ExecutionResult;
+		brainDumpId?: string;
+		userId: string;
+	}): Promise<void> {
 		const summary = {
 			successful: results.successful.length,
 			failed: results.failed.length,

@@ -1,19 +1,20 @@
-import { json } from '@sveltejs/kit';
+// src/routes/api/calendar/analyze/preferences/+server.ts
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 /**
  * Get user's calendar analysis preferences
  */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 		const preferences = await analysisService.getPreferences(session.user.id);
 
 		// Return default preferences if none exist
@@ -31,8 +32,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			create_tasks_from_events: true
 		};
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			preferences: preferences || defaultPreferences
 		});
 	} catch (error) {
@@ -42,12 +42,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 			endpoint: 'GET /api/calendar/analyze/preferences'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to get preferences'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to get preferences'
 		);
 	}
 };
@@ -55,11 +52,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 /**
  * Update user's calendar analysis preferences
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await locals.auth();
+		const { session } = await safeGetSession();
 		if (!session?.user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const body = await request.json();
@@ -68,12 +65,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (body.minimum_confidence_to_show !== undefined) {
 			const confidence = body.minimum_confidence_to_show;
 			if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
-				return json(
-					{
-						success: false,
-						error: 'minimum_confidence_to_show must be a number between 0 and 1'
-					},
-					{ status: 400 }
+				return ApiResponse.validationError(
+					'minimum_confidence_to_show',
+					'must be a number between 0 and 1'
 				);
 			}
 		}
@@ -81,12 +75,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (body.auto_accept_confidence !== undefined) {
 			const confidence = body.auto_accept_confidence;
 			if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
-				return json(
-					{
-						success: false,
-						error: 'auto_accept_confidence must be a number between 0 and 1'
-					},
-					{ status: 400 }
+				return ApiResponse.validationError(
+					'auto_accept_confidence',
+					'must be a number between 0 and 1'
 				);
 			}
 		}
@@ -94,12 +85,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (body.analysis_frequency !== undefined) {
 			const validFrequencies = ['manual', 'weekly', 'monthly'];
 			if (!validFrequencies.includes(body.analysis_frequency)) {
-				return json(
-					{
-						success: false,
-						error: `analysis_frequency must be one of: ${validFrequencies.join(', ')}`
-					},
-					{ status: 400 }
+				return ApiResponse.validationError(
+					'analysis_frequency',
+					`must be one of: ${validFrequencies.join(', ')}`
 				);
 			}
 		}
@@ -107,34 +95,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (body.minimum_attendees !== undefined) {
 			const attendees = body.minimum_attendees;
 			if (typeof attendees !== 'number' || attendees < 0 || attendees > 100) {
-				return json(
-					{
-						success: false,
-						error: 'minimum_attendees must be a number between 0 and 100'
-					},
-					{ status: 400 }
+				return ApiResponse.validationError(
+					'minimum_attendees',
+					'must be a number between 0 and 100'
 				);
 			}
 		}
 
 		// Update preferences
-		const analysisService = CalendarAnalysisService.getInstance();
+		const analysisService = CalendarAnalysisService.getInstance(supabase);
 		const result = await analysisService.updatePreferences(session.user.id, body);
 
 		if (!result.success) {
-			return json(
-				{
-					success: false,
-					error: result.errors?.[0] || 'Failed to update preferences'
-				},
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest(result.errors?.[0] || 'Failed to update preferences');
 		}
 
-		return json({
-			success: true,
-			message: 'Preferences updated successfully'
-		});
+		return ApiResponse.success(undefined, 'Preferences updated successfully');
 	} catch (error) {
 		const errorLogger = ErrorLoggerService.getInstance();
 		errorLogger.logError(error, {
@@ -142,12 +118,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			endpoint: 'POST /api/calendar/analyze/preferences'
 		});
 
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to update preferences'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to update preferences'
 		);
 	}
 };

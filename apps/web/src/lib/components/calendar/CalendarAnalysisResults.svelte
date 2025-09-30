@@ -1,3 +1,4 @@
+<!-- src/lib/components/calendar/CalendarAnalysisResults.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -13,12 +14,24 @@
 		Edit2,
 		ChevronDown,
 		ChevronUp,
-		Loader2
+		Loader2,
+		Clock,
+		Edit3
 	} from 'lucide-svelte';
 	import type { Database } from '@buildos/shared-types';
 
 	type CalendarProjectSuggestion =
 		Database['public']['Tables']['calendar_project_suggestions']['Row'];
+
+	interface EventPatternsData {
+		executive_summary?: string;
+		start_date?: string;
+		end_date?: string;
+		tags?: string[];
+		slug?: string;
+		recurring?: boolean;
+		common_attendees?: string[];
+	}
 
 	interface Props {
 		isOpen: boolean;
@@ -44,26 +57,148 @@
 	let modifiedSuggestions = $state<Map<string, { name?: string; description?: string }>>(
 		new Map()
 	);
+	let analysisTriggered = $state(false); // Track if analysis was already triggered
+	let daysForward = $state(60); // Default 2 months (60 days)
+	let daysBack = $state(7); // Default 7 days back
+	let autoSelectProcessed = $state(false); // Track if auto-selection has been done
+
+	// Task management state
+	let tasksExpanded = $state(new Set<string>());
+	let enabledTasks = $state<Record<string, boolean>>({});
+	let editingTask = $state<string | null>(null);
+	let taskEdits = $state<Record<number, any>>({});
 
 	// Start analysis automatically if requested
 	$effect(() => {
-		if (isOpen && autoStart && !analysisId && !analyzing) {
+		if (isOpen && autoStart && !analysisId && !analyzing && !analysisTriggered) {
+			analysisTriggered = true; // Prevent re-triggering
 			startAnalysis();
 		}
 	});
 
-	// Auto-select high confidence suggestions
+	// Auto-select high confidence suggestions (only once when suggestions are loaded)
 	$effect(() => {
-		if (suggestions && suggestions.length > 0) {
+		if (suggestions && suggestions.length > 0 && !autoSelectProcessed) {
+			const newSelected = new Set<string>();
 			suggestions.forEach((s) => {
 				if (s.confidence_score && s.confidence_score >= 0.7) {
-					selectedSuggestions.add(s.id);
+					newSelected.add(s.id);
 				}
 			});
-			// Force reactivity
-			selectedSuggestions = new Set(selectedSuggestions);
+			selectedSuggestions = newSelected;
+			autoSelectProcessed = true;
 		}
 	});
+
+	// Initialize enabled tasks (exclude past tasks)
+	$effect(() => {
+		if (suggestions) {
+			const newEnabledTasks: Record<string, boolean> = {};
+			suggestions.forEach((suggestion) => {
+				const tasks = suggestion.suggested_tasks;
+				if (tasks && Array.isArray(tasks)) {
+					tasks.forEach((task, index) => {
+						const taskKey = `${suggestion.id}-${index}`;
+						// Auto-disable past tasks
+						newEnabledTasks[taskKey] = !isTaskInPast(task);
+					});
+				}
+			});
+			enabledTasks = newEnabledTasks;
+		}
+	});
+
+	// Helper functions for task management
+	function isTaskInPast(task: any): boolean {
+		if (!task.start_date) return false;
+		const taskDate = new Date(task.start_date);
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		return taskDate < today;
+	}
+
+	function toggleTasksExpanded(suggestionId: string) {
+		if (tasksExpanded.has(suggestionId)) {
+			tasksExpanded.delete(suggestionId);
+		} else {
+			tasksExpanded.add(suggestionId);
+		}
+		tasksExpanded = new Set(tasksExpanded);
+	}
+
+	function startEditingTask(suggestionId: string, taskIndex: number) {
+		editingTask = `${suggestionId}-${taskIndex}`;
+		const suggestion = suggestions.find((s) => s.id === suggestionId);
+		const task = suggestion?.suggested_tasks?.[taskIndex];
+		if (task) {
+			taskEdits[taskIndex] = { ...task };
+		}
+	}
+
+	function saveTaskEdit(suggestionId: string, taskIndex: number) {
+		try {
+			const taskEdit = taskEdits[taskIndex];
+
+			// Validate task edit
+			if (!taskEdit) {
+				toastService.error('No changes to save');
+				return;
+			}
+
+			if (!taskEdit.title || taskEdit.title.trim().length === 0) {
+				toastService.error('Task title is required');
+				return;
+			}
+
+			if (taskEdit.title.length > 255) {
+				toastService.error('Task title must be 255 characters or less');
+				return;
+			}
+
+			// Validate date if provided
+			if (taskEdit.start_date) {
+				const date = new Date(taskEdit.start_date);
+				if (isNaN(date.getTime())) {
+					toastService.error('Please enter a valid date');
+					return;
+				}
+			}
+
+			const suggestion = suggestions.find((s) => s.id === suggestionId);
+			if (
+				suggestion &&
+				suggestion.suggested_tasks &&
+				Array.isArray(suggestion.suggested_tasks)
+			) {
+				suggestion.suggested_tasks[taskIndex] = { ...taskEdit };
+				suggestions = [...suggestions]; // Trigger reactivity
+				toastService.success('Task updated successfully');
+			} else {
+				toastService.error('Unable to find task to update');
+				return;
+			}
+
+			editingTask = null;
+			delete taskEdits[taskIndex];
+		} catch (error) {
+			toastService.error('Failed to save task changes');
+			console.error('Error saving task edit:', error);
+		}
+	}
+
+	function cancelTaskEdit() {
+		editingTask = null;
+		taskEdits = {};
+	}
+
+	function formatDate(dateStr: string | null | undefined): string {
+		if (!dateStr) return '';
+		try {
+			return new Date(dateStr).toLocaleDateString();
+		} catch {
+			return dateStr;
+		}
+	}
 
 	async function startAnalysis() {
 		analyzing = true;
@@ -74,16 +209,18 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					daysBack: 30,
-					daysForward: 60
+					daysBack,
+					daysForward
 				})
 			});
 
-			const data = await response.json();
+			const result = await response.json();
 
-			if (!data.success) {
-				throw new Error(data.error || 'Failed to analyze calendar');
+			if (!result.success) {
+				throw new Error(result.error || 'Failed to analyze calendar');
 			}
+
+			const data = result.data;
 
 			analysisId = data.analysisId;
 			suggestions = data.suggestions || [];
@@ -122,12 +259,18 @@
 	function startEditingSuggestion(id: string) {
 		editingSuggestion = id;
 		const suggestion = suggestions.find((s) => s.id === id);
-		if (suggestion && !modifiedSuggestions.has(id)) {
+		if (suggestion) {
+			// Always set/update the modifications when starting to edit
+			const currentMods = modifiedSuggestions.get(id);
 			modifiedSuggestions.set(id, {
-				name: suggestion.user_modified_name || suggestion.suggested_name,
+				name:
+					currentMods?.name || suggestion.user_modified_name || suggestion.suggested_name,
 				description:
-					suggestion.user_modified_description || suggestion.suggested_description
+					currentMods?.description ||
+					suggestion.user_modified_description ||
+					suggestion.suggested_description
 			});
+			modifiedSuggestions = new Map(modifiedSuggestions); // Trigger reactivity
 		}
 	}
 
@@ -149,16 +292,60 @@
 		try {
 			const suggestionsToProcess = selected.map((s) => {
 				const modifications = modifiedSuggestions.get(s.id);
+
+				// Collect task selections for this suggestion
+				const taskSelections: Record<string, boolean> = {};
+				const taskModifications: Record<number, any> = {};
+				let selectedTaskCount = 0;
+
+				if (s.suggested_tasks && Array.isArray(s.suggested_tasks)) {
+					s.suggested_tasks.forEach((_, index) => {
+						const taskKey = `${s.id}-${index}`;
+						const isSelected = enabledTasks[taskKey] ?? true;
+						taskSelections[taskKey] = isSelected;
+
+						if (isSelected) {
+							selectedTaskCount++;
+						}
+
+						// Include task modifications if they exist
+						if (taskEdits[index]) {
+							// Validate task modifications before sending
+							const taskEdit = taskEdits[index];
+							if (
+								taskEdit.title &&
+								taskEdit.title.trim().length > 0 &&
+								taskEdit.title.length <= 255
+							) {
+								taskModifications[index] = taskEdit;
+							}
+						}
+					});
+				}
+
 				return {
 					suggestionId: s.id,
 					action: 'accept',
+					selectedTaskCount,
 					modifications: modifications
 						? {
 								name: modifications.name,
 								description: modifications.description,
-								includeTasks: true
+								includeTasks: true,
+								taskSelections,
+								taskModifications:
+									Object.keys(taskModifications).length > 0
+										? taskModifications
+										: undefined
 							}
-						: { includeTasks: true }
+						: {
+								includeTasks: true,
+								taskSelections,
+								taskModifications:
+									Object.keys(taskModifications).length > 0
+										? taskModifications
+										: undefined
+							}
 				};
 			});
 
@@ -172,23 +359,45 @@
 				})
 			});
 
-			const data = await response.json();
+			const result = await response.json();
 
-			if (!data.success) {
-				throw new Error(data.error || 'Failed to create projects');
+			if (!result.success) {
+				throw new Error(result.error || 'Failed to create projects');
 			}
+
+			const data = result.data;
 
 			const successful = data.results?.filter((r: any) => r.success).length || 0;
 			const failed = data.results?.filter((r: any) => !r.success).length || 0;
 
+			// Calculate total tasks that will be created
+			const totalSelectedTasks = suggestionsToProcess.reduce(
+				(sum, s) => sum + (s.selectedTaskCount || 0),
+				0
+			);
+
 			if (successful > 0) {
-				toastService.success(
-					`Created ${successful} project${successful > 1 ? 's' : ''} from your calendar!`
-				);
+				const projectText = `${successful} project${successful > 1 ? 's' : ''}`;
+				const taskText =
+					totalSelectedTasks > 0
+						? ` with ${totalSelectedTasks} task${totalSelectedTasks > 1 ? 's' : ''}`
+						: '';
+				toastService.success(`Created ${projectText}${taskText} from your calendar!`);
 			}
 
 			if (failed > 0) {
-				toastService.warning(`${failed} project${failed > 1 ? 's' : ''} failed to create`);
+				const failedSuggestions = data.results?.filter((r: any) => !r.success) || [];
+				const errorMessages = failedSuggestions.map((r: any) => r.error).filter(Boolean);
+
+				if (errorMessages.length > 0) {
+					toastService.error(
+						`Failed to create ${failed} project${failed > 1 ? 's' : ''}: ${errorMessages[0]}`
+					);
+				} else {
+					toastService.warning(
+						`${failed} project${failed > 1 ? 's' : ''} failed to create`
+					);
+				}
 			}
 
 			handleClose();
@@ -212,6 +421,13 @@
 		editingSuggestion = null;
 		modifiedSuggestions = new Map();
 		expandedSuggestions = new Set();
+		analysisTriggered = false; // Reset flag to allow future analyses
+		autoSelectProcessed = false; // Reset auto-select flag
+		// Reset task state
+		tasksExpanded = new Set();
+		enabledTasks = {};
+		editingTask = null;
+		taskEdits = {};
 	}
 
 	function formatConfidence(score: number | null): string {
@@ -220,12 +436,13 @@
 	}
 
 	function getConfidenceColorClass(score: number | null): string {
-		if (!score) return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+		if (!score)
+			return 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 dark:from-gray-800/30 dark:to-slate-800/30 dark:text-gray-400';
 		if (score >= 0.8)
-			return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+			return 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 dark:from-emerald-900/20 dark:to-green-900/20 dark:text-emerald-300';
 		if (score >= 0.6)
-			return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
-		return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+			return 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-300';
+		return 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 dark:from-gray-800/30 dark:to-slate-800/30 dark:text-gray-400';
 	}
 </script>
 
@@ -238,63 +455,170 @@
 	closeOnBackdrop={false}
 	closeOnEscape={false}
 >
-	<div class="space-y-6">
-		{#if analyzing}
+	<div
+		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
+	>
+		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
+			<!-- Date Range Selection (only show if not autoStart) -->
+			<div
+				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
+			>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+					Select Analysis Period
+				</h3>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+					Choose how far back and forward to analyze your calendar
+				</p>
+
+				<div class="grid grid-cols-2 gap-6">
+					<div>
+						<label
+							for="daysBack"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>
+							Look back
+						</label>
+						<select
+							id="daysBack"
+							bind:value={daysBack}
+							class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+						>
+							<option value={30}>1 month</option>
+							<option value={60}>2 months</option>
+							<option value={90}>3 months</option>
+						</select>
+					</div>
+
+					<div>
+						<label
+							for="daysForward"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>
+							Look forward
+						</label>
+						<select
+							id="daysForward"
+							bind:value={daysForward}
+							class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+						>
+							<option value={30}>1 month</option>
+							<option value={60}>2 months (default)</option>
+							<option value={90}>3 months</option>
+							<option value={180}>6 months</option>
+							<option value={365}>1 year</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="mt-6 flex justify-center">
+					<Button
+						variant="primary"
+						on:click={() => {
+							analysisTriggered = true;
+							startAnalysis();
+						}}
+						class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+					>
+						Start Analysis
+					</Button>
+				</div>
+			</div>
+		{:else if analyzing}
 			<!-- Loading State -->
-			<div class="flex flex-col items-center justify-center py-12">
-				<Loader2 class="w-12 h-12 text-purple-500 animate-spin mb-4" />
-				<h3 class="text-lg font-medium text-gray-900 mb-2">Analyzing Your Calendar</h3>
-				<p class="text-sm text-gray-600 text-center max-w-sm">
+			<div class="flex flex-col items-center justify-center py-16">
+				<!-- Loader Container with Gradient Background -->
+				<div class="relative mb-6">
+					<div
+						class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-full blur-xl opacity-20 animate-pulse"
+					></div>
+					<div
+						class="relative bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-5 rounded-full border-2 border-blue-200 dark:border-blue-800/50 shadow-lg"
+					>
+						<Loader2
+							class="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin"
+						/>
+					</div>
+				</div>
+
+				<!-- Loading Text -->
+				<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+					Analyzing Your Calendar
+				</h3>
+				<p
+					class="text-base text-gray-600 dark:text-gray-400 text-center max-w-md leading-relaxed"
+				>
 					Looking for project patterns in your meetings and events. This typically takes
 					10-30 seconds...
 				</p>
+
+				<!-- Progress Indicator -->
+				<div class="mt-6 flex items-center gap-2">
+					<div
+						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+					></div>
+					<div
+						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+						style="animation-delay: 0.2s"
+					></div>
+					<div
+						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+						style="animation-delay: 0.4s"
+					></div>
+				</div>
 			</div>
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
 			<div
-				class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100"
+				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
 			>
 				<div class="flex items-center justify-between">
 					<div>
-						<h3 class="font-medium text-gray-900">
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Found {suggestions.length} potential project{suggestions.length !== 1
 								? 's'
 								: ''}
 						</h3>
-						<p class="text-sm text-gray-600 mt-1">
+						<p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
 							Review and select the projects you'd like to create
 						</p>
 					</div>
-					<Calendar class="w-8 h-8 text-purple-500" />
+					<div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+						<Calendar class="w-8 h-8 text-purple-600 dark:text-purple-400" />
+					</div>
 				</div>
 			</div>
 
 			<!-- Suggestions List -->
-			<div class="space-y-4 max-h-[400px] overflow-y-auto">
+			<div class="space-y-4 max-h-[500px] overflow-y-auto pr-2 -mx-2 px-2">
 				{#each suggestions as suggestion}
 					{@const isSelected = selectedSuggestions.has(suggestion.id)}
 					{@const isExpanded = expandedSuggestions.has(suggestion.id)}
 					{@const isEditing = editingSuggestion === suggestion.id}
 					{@const confidence = suggestion.confidence_score || 0}
 					{@const modifications = modifiedSuggestions.get(suggestion.id)}
+					{@const tasks = suggestion.suggested_tasks}
+					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
-						class="border rounded-lg p-4 transition-all"
-						class:border-purple-500={isSelected}
-						class:bg-purple-50={isSelected}
-						class:border-gray-200={!isSelected}
+						class="border-2 rounded-xl p-6 transition-all duration-300 hover:shadow-md {isSelected
+							? 'border-purple-500 dark:border-purple-400 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20'
+							: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}"
 					>
 						<div class="flex items-start gap-4">
 							<!-- Selection Indicator -->
 							<button
 								on:click={() => toggleSuggestion(suggestion.id)}
-								class="mt-1 flex-shrink-0"
+								class="mt-1 flex-shrink-0 transition-transform duration-200 hover:scale-110"
 								disabled={processing}
 							>
 								{#if isSelected}
-									<CheckCircle class="w-5 h-5 text-purple-600" />
+									<CheckCircle
+										class="w-6 h-6 text-purple-600 dark:text-purple-400"
+									/>
 								{:else}
-									<Circle class="w-5 h-5 text-gray-400" />
+									<Circle
+										class="w-6 h-6 text-gray-400 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-500"
+									/>
 								{/if}
 							</button>
 
@@ -302,24 +626,28 @@
 							<div class="flex-1 min-w-0">
 								<div class="flex items-start justify-between gap-2">
 									<div class="flex-1">
-										{#if isEditing}
+										{#if isEditing && modifications}
 											<input
 												type="text"
 												bind:value={modifications.name}
 												placeholder={suggestion.suggested_name}
-												class="w-full border rounded px-2 py-1 mb-2 text-gray-900"
+												class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 mb-3 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 											/>
 											<textarea
 												bind:value={modifications.description}
 												placeholder={suggestion.suggested_description}
-												class="w-full border rounded px-2 py-1 text-sm text-gray-600"
+												class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 												rows="2"
-											/>
+											></textarea>
 										{:else}
-											<h4 class="font-medium text-gray-900">
+											<h4
+												class="text-lg font-semibold text-gray-900 dark:text-white"
+											>
 												{modifications?.name || suggestion.suggested_name}
 											</h4>
-											<p class="text-sm text-gray-600 mt-1">
+											<p
+												class="text-sm text-gray-600 dark:text-gray-400 mt-2 leading-relaxed"
+											>
 												{modifications?.description ||
 													suggestion.suggested_description}
 											</p>
@@ -328,7 +656,7 @@
 
 									<!-- Confidence Badge -->
 									<span
-										class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md {getConfidenceColorClass(
+										class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-sm border border-gray-200 dark:border-gray-700 {getConfidenceColorClass(
 											confidence
 										)}"
 									>
@@ -337,69 +665,366 @@
 								</div>
 
 								<!-- Metadata -->
-								<div class="flex items-center gap-4 mt-3 text-sm text-gray-500">
-									<span class="flex items-center gap-1">
+								<div
+									class="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400"
+								>
+									<span class="flex items-center gap-1.5">
 										<Calendar class="w-4 h-4" />
 										{suggestion.event_count ||
 											suggestion.calendar_event_ids?.length ||
 											0} events
 									</span>
 
-									{#if suggestion.event_patterns?.recurring}
-										<span class="flex items-center gap-1">
+									{#if tasks && Array.isArray(tasks) && tasks.length > 0}
+										<span class="flex items-center gap-1.5">
+											<TrendingUp class="w-4 h-4" />
+											{tasks.length} suggested task{tasks.length !== 1
+												? 's'
+												: ''}
+										</span>
+									{/if}
+
+									{#if patterns && patterns?.recurring}
+										<span class="flex items-center gap-1.5">
 											<TrendingUp class="w-4 h-4" />
 											Recurring
 										</span>
 									{/if}
 
-									{#if suggestion.event_patterns?.common_attendees?.length}
-										<span class="flex items-center gap-1">
+									{#if patterns && patterns?.common_attendees?.length}
+										<span class="flex items-center gap-1.5">
 											<Users class="w-4 h-4" />
-											{suggestion.event_patterns.common_attendees.length} people
+											{patterns.common_attendees.length} people
 										</span>
 									{/if}
 								</div>
 
+								<!-- Expandable Tasks Section -->
+								{#if tasks && Array.isArray(tasks) && tasks.length > 0}
+									{@const tasksAreExpanded = tasksExpanded.has(suggestion.id)}
+									<button
+										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
+										on:click={() => toggleTasksExpanded(suggestion.id)}
+									>
+										<span
+											>View {tasks.length} suggested task{tasks.length !== 1
+												? 's'
+												: ''}</span
+										>
+										{#if tasksAreExpanded}
+											<ChevronUp
+												class="w-4 h-4 transition-transform duration-200"
+											/>
+										{:else}
+											<ChevronDown
+												class="w-4 h-4 transition-transform duration-200"
+											/>
+										{/if}
+									</button>
+
+									{#if tasksAreExpanded}
+										<div
+											class="mt-4 space-y-2 pl-6 border-l-2 border-purple-200 dark:border-purple-800"
+										>
+											{#each tasks as task, index}
+												{@const taskKey = `${suggestion.id}-${index}`}
+												{@const isPastTask = isTaskInPast(task)}
+												{@const isTaskEnabled =
+													enabledTasks[taskKey] ?? true}
+												{@const isTaskEditing = editingTask === taskKey}
+
+												<div
+													class="p-3 rounded-lg transition-all duration-200 {isPastTask
+														? 'bg-amber-50 dark:bg-amber-900/20 opacity-75'
+														: 'bg-gray-50 dark:bg-gray-800/50'}"
+												>
+													<!-- Task Header -->
+													<div class="flex items-start gap-3">
+														<input
+															type="checkbox"
+															bind:checked={enabledTasks[taskKey]}
+															disabled={isPastTask || processing}
+															class="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+														/>
+														<div class="flex-1 min-w-0">
+															{#if isTaskEditing && taskEdits[index]}
+																<!-- Task Edit Form -->
+																<div class="space-y-3">
+																	<input
+																		type="text"
+																		bind:value={
+																			taskEdits[index].title
+																		}
+																		placeholder="Task title"
+																		class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+																	/>
+																	<textarea
+																		bind:value={
+																			taskEdits[index]
+																				.description
+																		}
+																		placeholder="Task description"
+																		rows="2"
+																		class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+																	></textarea>
+																	<div
+																		class="grid grid-cols-2 gap-3"
+																	>
+																		<select
+																			bind:value={
+																				taskEdits[index]
+																					.priority
+																			}
+																			class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+																		>
+																			<option value="low"
+																				>Low Priority</option
+																			>
+																			<option value="medium"
+																				>Medium Priority</option
+																			>
+																			<option value="high"
+																				>High Priority</option
+																			>
+																		</select>
+																		<input
+																			type="datetime-local"
+																			bind:value={
+																				taskEdits[index]
+																					.start_date
+																			}
+																			class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+																		/>
+																	</div>
+																	<div
+																		class="flex items-center gap-2"
+																	>
+																		<Button
+																			size="sm"
+																			variant="primary"
+																			on:click={() =>
+																				saveTaskEdit(
+																					suggestion.id,
+																					index
+																				)}
+																			class="px-3 py-1.5"
+																		>
+																			Save
+																		</Button>
+																		<Button
+																			size="sm"
+																			variant="secondary"
+																			on:click={cancelTaskEdit}
+																			class="px-3 py-1.5"
+																		>
+																			Cancel
+																		</Button>
+																	</div>
+																</div>
+															{:else}
+																<!-- Task Display -->
+																<div
+																	class="flex items-start justify-between"
+																>
+																	<div class="flex-1">
+																		<div
+																			class="flex items-center gap-2"
+																		>
+																			<h5
+																				class="font-medium text-gray-900 dark:text-white text-sm"
+																			>
+																				{task.title}
+																			</h5>
+																			{#if isPastTask}
+																				<span
+																					class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full"
+																				>
+																					Past Event
+																				</span>
+																			{/if}
+																		</div>
+																		{#if task.description}
+																			<p
+																				class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+																			>
+																				{task.description}
+																			</p>
+																		{/if}
+																		<!-- Task Metadata -->
+																		<div
+																			class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400"
+																		>
+																			{#if task.priority}
+																				<span
+																					class="inline-flex px-2 py-0.5 rounded-full font-medium
+																					{task.priority === 'high'
+																						? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+																						: task.priority ===
+																							  'medium'
+																							? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+																							: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}"
+																				>
+																					{task.priority} priority
+																				</span>
+																			{/if}
+																			{#if task.start_date}
+																				<span
+																					class="flex items-center gap-1"
+																				>
+																					<Calendar
+																						class="w-3 h-3"
+																					/>
+																					{formatDate(
+																						task.start_date
+																					)}
+																				</span>
+																			{/if}
+																			{#if task.duration_minutes}
+																				<span
+																					class="flex items-center gap-1"
+																				>
+																					<Clock
+																						class="w-3 h-3"
+																					/>
+																					{task.duration_minutes}min
+																				</span>
+																			{/if}
+																		</div>
+																	</div>
+																	<Button
+																		size="sm"
+																		variant="ghost"
+																		icon={Edit3}
+																		on:click={() =>
+																			startEditingTask(
+																				suggestion.id,
+																				index
+																			)}
+																		disabled={processing}
+																		class="ml-2 !p-1.5"
+																		title="Edit task"
+																	/>
+																</div>
+															{/if}
+														</div>
+													</div>
+												</div>
+											{/each}
+										</div>
+									{/if}
+								{/if}
+
 								<!-- AI Reasoning (expandable) -->
 								{#if suggestion.ai_reasoning}
 									<button
-										class="flex items-center gap-1 mt-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
 										on:click={() => toggleExpanded(suggestion.id)}
 									>
 										<span>Why this was suggested</span>
 										{#if isExpanded}
-											<ChevronUp class="w-4 h-4" />
+											<ChevronUp
+												class="w-4 h-4 transition-transform duration-200"
+											/>
 										{:else}
-											<ChevronDown class="w-4 h-4" />
+											<ChevronDown
+												class="w-4 h-4 transition-transform duration-200"
+											/>
 										{/if}
 									</button>
 
 									{#if isExpanded}
-										<p
-											class="text-sm text-gray-600 mt-2 pl-4 border-l-2 border-gray-200"
+										<div
+											class="mt-4 pl-6 border-l-2 border-purple-200 dark:border-purple-800/50"
 										>
-											{suggestion.ai_reasoning}
-										</p>
-										{#if suggestion.detected_keywords?.length}
-											<div class="mt-2 pl-4">
-												<span class="text-xs text-gray-500"
-													>Keywords detected:
-												</span>
-												<span class="text-xs text-gray-600">
-													{suggestion.detected_keywords.join(', ')}
-												</span>
-											</div>
-										{/if}
+											<p
+												class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+											>
+												{suggestion.ai_reasoning}
+											</p>
+
+											{#if patterns && patterns?.executive_summary}
+												<div
+													class="mt-3 p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg"
+												>
+													<p
+														class="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1"
+													>
+														Executive Summary:
+													</p>
+													<p
+														class="text-sm text-purple-600 dark:text-purple-400"
+													>
+														{patterns.executive_summary}
+													</p>
+												</div>
+											{/if}
+
+											{#if patterns && (patterns?.start_date || patterns?.end_date)}
+												<div
+													class="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400"
+												>
+													{#if patterns?.start_date}
+														<span
+															>Start: {new Date(
+																patterns.start_date
+															).toLocaleDateString()}</span
+														>
+													{/if}
+													{#if patterns?.end_date}
+														<span
+															>End: {new Date(
+																patterns.end_date
+															).toLocaleDateString()}</span
+														>
+													{/if}
+												</div>
+											{/if}
+
+											{#if suggestion.detected_keywords?.length}
+												<div class="mt-3 flex flex-wrap gap-2">
+													<span
+														class="text-xs text-gray-500 dark:text-gray-500"
+														>Keywords detected:
+													</span>
+													{#each suggestion.detected_keywords as keyword}
+														<span
+															class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+														>
+															{keyword}
+														</span>
+													{/each}
+												</div>
+											{/if}
+
+											{#if patterns && patterns?.tags?.length}
+												<div class="mt-3 flex flex-wrap gap-2">
+													<span
+														class="text-xs text-gray-500 dark:text-gray-500"
+														>Project tags:
+													</span>
+													{#each patterns.tags as tag}
+														<span
+															class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-700 text-blue-700 dark:text-blue-300 rounded-full"
+														>
+															{tag}
+														</span>
+													{/each}
+												</div>
+											{/if}
+										</div>
 									{/if}
 								{/if}
 
 								<!-- Actions -->
-								<div class="flex items-center gap-2 mt-3">
+								<div
+									class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700"
+								>
 									{#if isEditing}
 										<Button
 											size="sm"
 											variant="primary"
 											on:click={saveEditingSuggestion}
+											class="px-4 py-2"
 										>
 											Save
 										</Button>
@@ -407,12 +1032,13 @@
 											size="sm"
 											variant="secondary"
 											on:click={() => cancelEditingSuggestion(suggestion.id)}
+											class="px-4 py-2"
 										>
 											Cancel
 										</Button>
 									{:else}
 										<button
-											class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
 											on:click={() => startEditingSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -420,7 +1046,7 @@
 											Edit
 										</button>
 										<button
-											class="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+											class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
 											on:click={() => toggleSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -435,10 +1061,16 @@
 			</div>
 		{:else}
 			<!-- No suggestions -->
-			<div class="text-center py-8">
-				<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-3" />
-				<p class="text-gray-600">No project patterns found in your calendar</p>
-				<p class="text-sm text-gray-500 mt-1">
+			<div class="text-center py-12">
+				<div
+					class="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-800/30 dark:to-slate-800/30 p-4 rounded-full inline-block mb-4"
+				>
+					<Calendar class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+				</div>
+				<p class="text-lg font-medium text-gray-700 dark:text-gray-300">
+					No project patterns found in your calendar
+				</p>
+				<p class="text-sm text-gray-500 dark:text-gray-500 mt-2 max-w-md mx-auto">
 					This might be because your events are mostly one-off meetings or personal
 					appointments
 				</p>
@@ -446,16 +1078,27 @@
 		{/if}
 	</div>
 
-	<div slot="footer" class="flex items-center justify-between">
+	<div
+		slot="footer"
+		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+	>
 		{#if !analyzing}
-			<div class="text-sm text-gray-600">
+			<div class="text-sm text-gray-600 dark:text-gray-400 font-medium">
 				{#if suggestions.length > 0}
-					{selectedSuggestions.size} of {suggestions.length} selected
+					<span class="text-purple-600 dark:text-purple-400"
+						>{selectedSuggestions.size}</span
+					>
+					of {suggestions.length} selected
 				{/if}
 			</div>
 
 			<div class="flex items-center gap-3">
-				<Button variant="secondary" on:click={handleClose} disabled={processing}>
+				<Button
+					variant="secondary"
+					on:click={handleClose}
+					disabled={processing}
+					class="px-6 py-2.5"
+				>
 					{suggestions.length > 0 ? 'Cancel' : 'Close'}
 				</Button>
 				{#if suggestions.length > 0}
@@ -464,6 +1107,7 @@
 						on:click={handleCreateProjects}
 						disabled={selectedSuggestions.size === 0 || processing}
 						loading={processing}
+						class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
 					>
 						Create {selectedSuggestions.size} Project{selectedSuggestions.size !== 1
 							? 's'
