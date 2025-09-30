@@ -114,17 +114,23 @@ class BrainDumpService extends ApiClient {
 
 	/**
 	 * Save or update draft brain dump
+	 * @param signal - Optional AbortSignal for cancellation (Phase 3 optimization)
 	 */
 	async saveDraft(
 		content: string,
 		brainDumpId?: string,
-		selectedProjectId?: string
+		selectedProjectId?: string,
+		signal?: AbortSignal
 	): Promise<{ data: { brainDumpId: string } }> {
-		return this.post('/api/braindumps/draft', {
-			content,
-			brainDumpId,
-			selectedProjectId
-		});
+		return this.post(
+			'/api/braindumps/draft',
+			{
+				content,
+				brainDumpId,
+				selectedProjectId
+			},
+			signal ? { signal } : undefined
+		);
 	}
 
 	/**

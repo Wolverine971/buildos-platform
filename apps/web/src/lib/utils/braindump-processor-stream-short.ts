@@ -203,7 +203,7 @@ export class ShortBrainDumpStreamProcessor {
 	 * Parse task operations from extracted tasks
 	 */
 	// here
-	parseTaskOperations(tasks: any[]): ParsedOperation[] {
+	parseTaskOperations(tasks: any[], selectedProjectId?: string): ParsedOperation[] {
 		const operations: ParsedOperation[] = [];
 		const timestamp = Date.now();
 
@@ -211,7 +211,7 @@ export class ShortBrainDumpStreamProcessor {
 			const isUpdate = Boolean(task.id);
 			const taskData: Record<string, any> = {
 				title: task.title || 'Untitled Task',
-				project_id: task.project_id,
+				project_id: task.project_id || selectedProjectId,
 				project_ref: task.project_ref,
 				description: task.description || '',
 				details: task.details || '',

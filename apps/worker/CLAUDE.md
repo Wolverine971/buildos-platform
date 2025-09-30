@@ -56,73 +56,154 @@ pnpm clean
 
 ## Architecture Overview
 
+**📄 Comprehensive Documentation**: See [Worker Brief Generation Flow Analysis](../../thoughts/shared/research/2025-09-30_worker-brief-generation-flow.md) for complete technical details, data flows, and architectural decisions.
+
 ### Core Components
 
 1. **API Server** (`src/index.ts`): Express server providing REST endpoints for brief generation and job status
 2. **Worker** (`src/worker.ts`): Supabase queue worker that processes brief generation jobs with progress tracking
-3. **Scheduler** (`src/scheduler.ts`): Cron-based scheduler for automated daily/weekly brief generation
-4. **Queue** (`src/lib/supabaseQueue.ts`): Supabase-based queue management with atomic job claiming
+3. **Scheduler** (`src/scheduler.ts`): Cron-based scheduler for automated daily/weekly brief generation with engagement backoff
+4. **Queue** (`src/lib/supabaseQueue.ts`): Supabase-based queue management with atomic job claiming (no Redis)
+
+### Brief Generation Pipeline
+
+1. **Job Initialization** → Timezone resolution and brief date calculation
+2. **Project Data Fetching** → 5 parallel database queries (projects, tasks, notes, phases, calendar events)
+3. **Project Brief Generation** → Parallel processing with task categorization (today's, overdue, upcoming, completed)
+4. **Main Brief Consolidation** → Markdown generation with holiday detection and executive summary
+5. **LLM Analysis** → DeepSeek Chat V3 via OpenRouter ($0.14/1M tokens) generates AI insights
+6. **Email Preparation** → Non-blocking email record creation and job queuing
 
 ### Data Flow
 
 ```
-User Request → API Server → Supabase Queue → Worker → Supabase → Real-time Notification
-                                  ↑
-                            Scheduler (Cron)
+User Request / Scheduler Cron
+        ↓
+API Server / Scheduler
+        ↓
+Supabase Queue (atomic job claiming)
+        ↓
+Worker (ProcessingJob via JobAdapter)
+        ↓
+briefWorker.ts → briefGenerator.ts
+        ↓
+Parallel project processing
+        ↓
+LLM Analysis (SmartLLMService)
+        ↓
+Email Job Queued (non-blocking)
+        ↓
+Real-time Notification (Supabase Realtime)
 ```
 
 ### Key Design Patterns
 
-- **Queue-based Processing**: All brief generation is async via Supabase queue
+- **Redis-Free Queue**: All queue operations via Supabase RPCs with atomic job claiming
+- **Job Adapter Pattern**: Zero-downtime migration from BullMQ to Supabase queues
 - **Timezone-aware Scheduling**: Uses date-fns-tz to handle user timezones correctly
-- **Real-time Updates**: Leverages Supabase Realtime for instant notifications
-- **Multi-project Consolidation**: Single brief can aggregate multiple user projects
-- **Failure Recovery**: Exponential backoff with configurable retry attempts
+- **Real-time Progress**: Supabase Realtime channels for instant updates with exponential backoff retries
+- **Multi-project Consolidation**: Single brief aggregates multiple user projects with parallel processing
+- **Dual Email Transport**: Webhook (HMAC-secured POST to main app) OR Direct SMTP (Gmail)
+- **Engagement Backoff**: Intelligent throttling (4 emails vs 60 in 2 months for inactive users)
+- **DeepSeek-First LLM**: 95% cost reduction vs Anthropic models, automatic fallback to premium models
+- **Error Isolation**: Multi-layer error handling with `Promise.allSettled` and per-job isolation
 
 ## Database Schema
 
 The service expects these Supabase tables:
 
-- `profiles`: User data with timezone information
-- `projects`: User projects with tasks and notes
-- `queue_jobs`: Job tracking and status
-- `queue_job_projects`: Many-to-many relationship for multi-project briefs
+**Core Tables:**
+
+- `queue_jobs`: Job tracking with status, attempts, metadata, and progress
+- `daily_briefs`: Main brief records with LLM analysis and generation status
+- `project_daily_briefs`: Per-project detailed briefs with task stats
+- `user_brief_preferences`: User timezone, frequency, and email preferences
+
+**Supporting Tables:**
+
+- `users`: User data with email and last_visit timestamp
+- `projects`: Active user projects
+- `tasks`: Project tasks with start dates and status
+- `notes`: Project notes for context
+- `phases`: Project phases with ordering
+- `phase_tasks`: Phase-task relationships
+- `task_calendar_events`: Calendar sync status
+
+**Email Tables:**
+
+- `emails`: Email records with tracking IDs and status
+- `email_recipients`: Per-recipient tracking (opens, clicks, status)
+- `email_logs`: SMTP send logs with message IDs
+- `email_tracking_events`: Granular event tracking (opened, sent, failed)
+
+**Database RPCs** (atomic operations):
+
+- `add_queue_job`: Atomic job insertion with deduplication
+- `claim_pending_jobs`: Atomic batch job claiming
+- `complete_queue_job`: Mark job as completed with result
+- `fail_queue_job`: Mark job as failed with retry logic
+- `reset_stalled_jobs`: Recover stuck jobs
+- `cancel_brief_jobs_for_date`: Atomic brief cancellation
 
 ## Environment Configuration
 
 ### Required Variables:
 
 ```bash
+# Supabase (required)
 PUBLIC_SUPABASE_URL=your_supabase_project_url
 PRIVATE_SUPABASE_SERVICE_KEY=your_service_role_key
-PORT=3001  # Optional, defaults to 3001
+
+# LLM (required)
+PRIVATE_OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Email (choose one method)
+# Method 1: Webhook to main app
+USE_WEBHOOK_EMAIL=true
+BUILDOS_WEBHOOK_URL=https://build-os.com/webhooks/daily-brief-email
+PRIVATE_BUILDOS_WEBHOOK_SECRET=your_webhook_secret
+
+# Method 2: Direct SMTP via Gmail
+GMAIL_USER=your-gmail@gmail.com
+GMAIL_APP_PASSWORD=your_app_password
+GMAIL_ALIAS=noreply@build-os.com  # Optional
+EMAIL_FROM_NAME=BuildOS  # Optional
+
+# Server (optional)
+PORT=3001  # Defaults to 3001
 ```
 
-### Optional Queue Configuration:
+### Optional Configuration:
 
 ```bash
 # Core Queue Settings
-QUEUE_POLL_INTERVAL=5000          # Job polling interval (ms)
-QUEUE_BATCH_SIZE=5                # Max concurrent jobs
-QUEUE_STALLED_TIMEOUT=300000      # Job stall timeout (ms)
+QUEUE_POLL_INTERVAL=5000          # Job polling interval (ms), min 1000ms
+QUEUE_BATCH_SIZE=5                # Max concurrent jobs (1-20)
+QUEUE_STALLED_TIMEOUT=300000      # Job stall timeout (ms), min 30000ms
 
 # Retry & Progress
-QUEUE_MAX_RETRIES=3               # Max retry attempts
+QUEUE_MAX_RETRIES=3               # Max retry attempts (0-10)
+QUEUE_RETRY_BACKOFF_BASE=1000     # Exponential backoff base (ms)
 QUEUE_ENABLE_PROGRESS_TRACKING=true # Enable progress updates
+QUEUE_PROGRESS_UPDATE_RETRIES=3   # Progress update retry attempts
 
 # Health & Monitoring
 QUEUE_ENABLE_HEALTH_CHECKS=true   # Enable health monitoring
 QUEUE_STATS_UPDATE_INTERVAL=60000 # Stats logging interval (ms)
 
 # Performance
-QUEUE_WORKER_TIMEOUT=600000       # Max job execution time (ms)
+QUEUE_WORKER_TIMEOUT=600000       # Max job execution time (ms, 10 min default)
 QUEUE_ENABLE_CONCURRENT_PROCESSING=true # Concurrent processing
+
+# Features
+ENGAGEMENT_BACKOFF_ENABLED=false  # Enable engagement-based throttling
+WEBHOOK_TIMEOUT=30000             # Webhook timeout (ms) for email delivery
 ```
 
-The system automatically uses environment-specific defaults:
+**Environment-Specific Defaults:**
 
-- **Development**: Faster polling, smaller batches, more frequent stats
-- **Production**: Optimized for throughput, less frequent monitoring
+- **Development**: Poll 2s, batch 2, stats 30s (faster feedback, easier debugging)
+- **Production**: Poll 5s, batch 10, stats 5min (optimized throughput, less noise)
 - **Custom**: Override any setting via environment variables
 
 See `.env.example` for complete configuration options.

@@ -489,23 +489,9 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-			<a
-				href="/admin/llm-usage"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							LLM Usage
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							AI costs & performance
-						</p>
-					</div>
-				</div>
-			</a>
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+			
+			
 
 			<a
 				href="/admin/users"
@@ -540,29 +526,7 @@
 				</div>
 			</a>
 
-			<a
-				href="/admin/feedback"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
-			>
-				{#if feedbackOverview.overview.recent_24h > 0}
-					<div class="absolute top-3 right-3">
-						<span
-							class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-						>
-							+{feedbackOverview.overview.recent_24h} new
-						</span>
-					</div>
-				{/if}
-				<div class="flex items-center">
-					<MessageSquare class="h-8 w-8 text-green-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Feedback
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Review user feedback</p>
-					</div>
-				</div>
-			</a>
+		
 
 			<a
 				href="/admin/beta"
@@ -594,6 +558,45 @@
 							{comprehensiveAnalytics.userMetrics.totalBetaUsers}
 						</span>
 					{/if}
+				</div>
+			</a>
+			<a
+				href="/admin/feedback"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
+			>
+				{#if feedbackOverview.overview.recent_24h > 0}
+					<div class="absolute top-3 right-3">
+						<span
+							class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+						>
+							+{feedbackOverview.overview.recent_24h} new
+						</span>
+					</div>
+				{/if}
+				<div class="flex items-center">
+					<MessageSquare class="h-8 w-8 text-green-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Feedback
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">Review user feedback</p>
+					</div>
+				</div>
+			</a>
+			<a
+				href="/admin/llm-usage"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							LLM Usage
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							AI costs & performance
+						</p>
+					</div>
 				</div>
 			</a>
 
@@ -722,46 +725,10 @@
 			{/if}
 
 			<!-- Key Metrics Cards - Mobile Responsive -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-				<!-- Total Visitors -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Total Visitors
-							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1">
-								{formatNumber(visitorOverview.total_visitors)}
-							</p>
-						</div>
-						<Globe class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0 ml-3" />
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						{visitorOverview.unique_visitors_today} today
-					</div>
-				</div>
+			
 
-				<!-- Visitors (7d) -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Visitors (7d)
-							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-teal-600 mt-1">
-								{formatNumber(visitorOverview.visitors_7d)}
-							</p>
-						</div>
-						<TrendingUp
-							class="h-6 w-6 sm:h-8 sm:w-8 text-teal-600 flex-shrink-0 ml-3"
-						/>
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						Unique visitors
-					</div>
-				</div>
-
-				<!-- Active Users (7d) -->
+			<!-- Row 2: System Metrics -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
@@ -785,41 +752,80 @@
 							: '0%'} of total users
 					</div>
 				</div>
-
-				<!-- Unresolved Errors -->
+				<!-- Brain Dumps -->
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Unresolved Errors
+								Brain Dumps ({selectedTimeframe})
 							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold {errorsData.critical_errors >
-								0
-									? 'text-red-600'
-									: errorsData.unresolved_errors > 0
-										? 'text-orange-600'
-										: 'text-green-600'} mt-1"
-							>
-								{formatNumber(errorsData.unresolved_errors)}
+							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600 mt-1">
+								{formatNumber(comprehensiveAnalytics.brainDumpMetrics.total)}
 							</p>
 						</div>
-						<XCircle
-							class="h-6 w-6 sm:h-8 sm:w-8 {errorsData.critical_errors > 0
-								? 'text-red-600'
-								: errorsData.unresolved_errors > 0
-									? 'text-orange-600'
-									: 'text-green-600'} flex-shrink-0 ml-3"
+						<FileText
+							class="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 flex-shrink-0 ml-3"
 						/>
 					</div>
 					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						{#if errorsData.critical_errors > 0}
-							{errorsData.critical_errors} critical
-						{:else if errorsData.recent_errors_24h > 0}
-							{errorsData.recent_errors_24h} new today
-						{:else}
-							All resolved
-						{/if}
+						Avg {formatNumber(comprehensiveAnalytics.brainDumpMetrics.averageLength)} chars
+					</div>
+				</div>
+				<!-- New Projects -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+					<div class="flex items-center justify-between">
+						<div class="flex-1">
+							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+								New Projects ({selectedTimeframe})
+							</p>
+							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1">
+								{formatNumber(comprehensiveAnalytics.projectMetrics.newProjects)}
+							</p>
+						</div>
+						<TrendingUp
+							class="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0 ml-3"
+						/>
+					</div>
+					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+						{formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated
+					</div>
+				</div>
+				<!-- Total Briefs -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+					<div class="flex items-center justify-between">
+						<div class="flex-1">
+							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+								Total Briefs
+							</p>
+							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-cyan-600 mt-1">
+								{formatNumber(systemOverview.total_briefs)}
+							</p>
+						</div>
+						<BarChart3
+							class="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600 flex-shrink-0 ml-3"
+						/>
+					</div>
+					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+						All time
+					</div>
+				</div>
+				<!-- Calendar Connections -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+					<div class="flex items-center justify-between">
+						<div class="flex-1">
+							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+								Calendar Connections
+							</p>
+							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-600 mt-1">
+								{formatNumber(comprehensiveAnalytics.calendarConnections)}
+							</p>
+						</div>
+						<Globe
+							class="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 flex-shrink-0 ml-3"
+						/>
+					</div>
+					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+						Users with calendar
 					</div>
 				</div>
 			</div>

@@ -174,21 +174,54 @@ class MyService extends ApiService {
 
 The brain dump is BuildOS's core innovation - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
 
+**📄 Comprehensive Documentation**: See [`thoughts/shared/research/2025-09-30_17-48-03_brain-dump-complete-flow.md`](thoughts/shared/research/2025-09-30_17-48-03_brain-dump-complete-flow.md) for complete flow analysis with deep technical details.
+
 **Processing Pipeline:**
 
-1. **User Input** → Brain dump modal receives unstructured text
-2. **Dual Processing** → AI processes in two stages for accuracy:
-   - Context extraction (understanding overall intent)
-   - Task extraction (identifying actionable items)
-3. **Clarification** → Optional AI-generated questions to fill gaps
-4. **Creation** → Projects and tasks are created/updated
-5. **Organization** → Tasks grouped into phases and optionally scheduled
+1. **User Input** → Brain dump modal receives unstructured text (text or voice)
+2. **Processing Decision** → System determines processing type:
+   - **Short Processing** (<500 chars, existing project): Single-pass extraction with conditional context update
+   - **Dual Processing** (≥500 chars or new project): Parallel context + tasks extraction for maximum accuracy
+3. **AI Extraction** → Smart model selection (DeepSeek/Claude/GPT-4o) with automatic fallbacks
+4. **Real-time Streaming** → SSE provides progress updates as AI processes
+5. **Operations Review** → User reviews/edits parsed operations (or auto-accept)
+6. **Execution** → Database operations with rollback support
+7. **Phase Generation** → Optional task organization into logical phases with calendar scheduling
 
-**Key Services:**
+**Key Architecture Components:**
 
-- `apps/web/src/lib/utils/braindump-processor.ts` - Main processing logic
-- `apps/web/src/lib/services/promptTemplate.service.ts` - AI prompt management
-- `apps/web/src/lib/services/phase-generation/` - Phase creation strategies
+**UI Layer** (Svelte 5 with runes):
+
+- `BrainDumpModal.svelte` - Initial input interface with lazy component loading
+- `RecordingView.svelte` - Text/voice input with live transcription (Chrome)
+- `BrainDumpProcessingNotification.svelte` - Central orchestrator for processing lifecycle
+- `ParseResultsDiffView.svelte` - Operations review with diff comparison
+
+**State Management**:
+
+- `brain-dump-v2.store.ts` - Unified store with 5 domains (ui, core, processing, results, persistence)
+- Dual-mutex protection prevents race conditions
+- Session persistence for background processing
+
+**Processing Layer**:
+
+- `braindump-processor.ts` - Dual processing with parallel extraction (context + tasks)
+- `braindump-processor-stream-short.ts` - Optimized short processing
+- `smart-llm-service.ts` - Intelligent model routing with cost optimization
+
+**Services**:
+
+- `braindump-api.service.ts` - API client with streaming support
+- `braindump-background.service.ts` - Background job management
+- `voiceRecording.service.ts` - Voice input with Whisper transcription
+- `promptTemplate.service.ts` - AI prompt management (40-50% token reduction)
+
+**Phase Generation**:
+
+- `phase-generation/orchestrator.ts` - Strategy pattern coordinator
+- `strategies/phases-only.strategy.ts` - Logical grouping without dates
+- `strategies/schedule-in-phases.strategy.ts` - Calendar-aware scheduling
+- `task-time-slot-finder.ts` - Find optimal time slots based on user preferences
 
 ### Worker Service Architecture
 

@@ -69,7 +69,8 @@ export function convertToProjectContextResult(
  * This extracts tasks and notes from the operations array
  */
 export function convertToTaskNoteExtractionResult(
-	result: BrainDumpParseResult
+	result: BrainDumpParseResult,
+	selectedProjectId?: string
 ): TaskNoteExtractionResult {
 	if (!result || !result.operations) {
 		return { tasks: [], notes: [] };
@@ -91,7 +92,7 @@ export function convertToTaskNoteExtractionResult(
 			priority: op.data?.priority as 'low' | 'medium' | 'high' | undefined,
 			status: op.data?.status as 'backlog' | 'in_progress' | 'done' | 'blocked' | undefined,
 			task_type: op.data?.task_type as 'one_off' | 'recurring' | undefined,
-			project_id: op.data?.project_id,
+			project_id: op.data?.project_id || selectedProjectId,
 			project_ref: op.data?.project_ref,
 			duration_minutes: op.data?.duration_minutes,
 			start_date: op.data?.start_date,
@@ -117,7 +118,7 @@ export function convertToTaskNoteExtractionResult(
 			content: op.data?.content || '',
 			category: op.data?.category,
 			tags: op.data?.tags,
-			project_id: op.data?.project_id,
+			project_id: op.data?.project_id || selectedProjectId,
 			project_ref: op.data?.project_ref
 		}));
 

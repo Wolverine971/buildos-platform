@@ -10,7 +10,7 @@ import {
 	liveTranscriptSupported,
 	forceCleanup
 } from '$lib/utils/voice';
-import { get } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export interface VoiceRecordingCallbacks {
@@ -29,10 +29,10 @@ export class VoiceRecordingService {
 	private callbacks: VoiceRecordingCallbacks | null = null;
 	private transcriptionService: TranscriptionService | null = null;
 
-	// Recording state
+	// Recording state - use writable store for reactivity
 	private recordingStartTime: number = 0;
 	private recordingTimer: NodeJS.Timeout | null = null;
-	private recordingDuration: number = 0;
+	private recordingDurationStore = writable<number>(0);
 
 	// Live transcript tracking
 	private liveTranscriptUnsubscribe: (() => void) | null = null;
@@ -55,6 +55,12 @@ export class VoiceRecordingService {
 		this.callbacks = callbacks;
 		this.transcriptionService = transcriptionService;
 
+		// Unsubscribe from any existing subscription to prevent leaks
+		if (this.liveTranscriptUnsubscribe) {
+			this.liveTranscriptUnsubscribe();
+			this.liveTranscriptUnsubscribe = null;
+		}
+
 		// Subscribe to live transcript updates
 		if (browser) {
 			this.liveTranscriptUnsubscribe = liveTranscript.subscribe((transcript) => {
@@ -71,12 +77,28 @@ export class VoiceRecordingService {
 		return liveTranscriptSupported();
 	}
 
-	public getRecordingDuration(): number {
-		return this.recordingDuration;
+	public getRecordingDuration() {
+		return this.recordingDurationStore;
 	}
 
 	public isCurrentlyRecording(): boolean {
 		return get(isRecording);
+	}
+
+	/**
+	 * Get the current live transcript text
+	 * @returns Current live transcript string
+	 */
+	public getCurrentLiveTranscript(): string {
+		return this.currentLiveTranscript;
+	}
+
+	/**
+	 * Check if live transcription is currently active
+	 * @returns true if recording and has live transcript content
+	 */
+	public isLiveTranscribing(): boolean {
+		return get(isRecording) && this.currentLiveTranscript.length > 0;
 	}
 
 	public async startRecording(currentInputText: string): Promise<void> {
@@ -96,9 +118,9 @@ export class VoiceRecordingService {
 			// Start the actual recording
 			await voiceStartRecording();
 
-			// Start timer
+			// Start timer - reset to 0 first
 			this.recordingStartTime = Date.now();
-			this.recordingDuration = 0;
+			this.recordingDurationStore.set(0);
 			this.startRecordingTimer();
 
 			// Notify permission granted
@@ -273,7 +295,8 @@ export class VoiceRecordingService {
 
 	private startRecordingTimer(): void {
 		this.recordingTimer = setInterval(() => {
-			this.recordingDuration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+			const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+			this.recordingDurationStore.set(duration);
 		}, 100);
 	}
 
@@ -281,7 +304,7 @@ export class VoiceRecordingService {
 		if (this.recordingTimer) {
 			clearInterval(this.recordingTimer);
 			this.recordingTimer = null;
-			this.recordingDuration = 0;
+			this.recordingDurationStore.set(0);
 		}
 	}
 
@@ -301,7 +324,7 @@ export class VoiceRecordingService {
 		// Reset state
 		this.currentLiveTranscript = '';
 		this.finalTranscriptSinceLastStop = '';
-		this.recordingDuration = 0;
+		this.recordingDurationStore.set(0);
 		this.recordingStartTime = 0;
 	}
 }

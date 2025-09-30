@@ -125,7 +125,10 @@ async function processShortBrainDumpWithStreaming({
 		});
 
 		// Convert tasks to operations
-		const taskOperations = processor.parseTaskOperations(validatedTaskResult.tasks || []);
+		const taskOperations = processor.parseTaskOperations(
+			validatedTaskResult.tasks || [],
+			selectedProjectId
+		);
 
 		// Send task results immediately (now includes projectQuestions)
 		const tasksCompleteMessage: SSETasksProgress = {

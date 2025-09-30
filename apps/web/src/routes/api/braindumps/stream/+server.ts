@@ -182,7 +182,7 @@ async function processBrainDumpWithStreaming({
 				tasksProgress = { status: 'completed', data: result };
 
 				// Convert to TaskNoteExtractionResult format for preview
-				const tasksPreview = convertToTaskNoteExtractionResult(result);
+				const tasksPreview = convertToTaskNoteExtractionResult(result, selectedProjectId);
 
 				// Send the formatted preview
 				const completedMessage: SSETasksProgress = {

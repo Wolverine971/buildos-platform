@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, tick } from 'svelte';
 	import { fly, scale } from 'svelte/transition';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
 	import {
@@ -23,7 +24,8 @@
 	import {
 		brainDumpV2Store,
 		type BrainDumpV2Store,
-		enabledOperationsCount
+		enabledOperationsCount,
+		canAutoAccept
 	} from '$lib/stores/brain-dump-v2.store';
 
 	// Store actions accessed via brainDumpV2Store methods
@@ -58,7 +60,7 @@
 			processingPhase,
 			isOpenFromStore,
 			isMinimizedFromStore,
-			hasParseResults,
+			shouldShowParseResults,
 			parseResultsNotNull: parseResults !== null,
 			operationsCount: parseResults?.operations?.length,
 			brainDumpId,
@@ -147,8 +149,8 @@
 		success: false
 	});
 
-	// FIXED: Component loading promise tracker to prevent race conditions
-	const componentLoadingPromises = new Map<string, Promise<any>>();
+	// FIXED: Atomic mutex to prevent component loading race conditions
+	const componentLoadingMutex = new Set<string>();
 
 	// Lazy load heavy components - use $state for reactivity
 	let ParseResultsDiffView = $state<any>(null);
@@ -180,31 +182,41 @@
 
 	// Computed states using Svelte 5 $derived - Fixed to handle all state transitions
 	let isProcessing = $derived(processingPhase === 'parsing');
-	// Check for parse results - they exist when parseResults is not null and we're not actively processing
-	let hasParseResults = $derived(parseResults !== null && processingPhase !== 'parsing');
+	// Component-specific: Show parse results only when they exist AND we're not actively parsing
+	// (Different from store's shouldShowParseResults which is just a null check)
+	let shouldShowParseResults = $derived(parseResults !== null && processingPhase !== 'parsing');
 	// Primary display state logic - exactly one should be true at any time
 	let showMinimized = $derived(isOpenFromStore && isMinimizedFromStore && !showSuccessView);
 	let showExpanded = $derived(isOpenFromStore && !isMinimizedFromStore);
 	// Determine what content to show when expanded
 	let showSuccessContent = $derived(showExpanded && showSuccessView && successData);
-	let showParseResultsContent = $derived(showExpanded && !showSuccessView && hasParseResults);
+	let showParseResultsContent = $derived(
+		showExpanded && !showSuccessView && shouldShowParseResults
+	);
 	let showProcessingContent = $derived(
-		showExpanded && !showSuccessView && !hasParseResults && isProcessing
+		showExpanded && !showSuccessView && !shouldShowParseResults && isProcessing
 	);
 
 	// Auto-accept state using Svelte 5 $derived
 	let autoAcceptPreference = $derived(brainDumpAutoAccept.shouldAutoAccept());
-	let canAutoAcceptCurrent = $derived(hasParseResults && canAutoAccept(parseResults));
+	// Use store's canAutoAccept derived value (includes all auto-accept logic)
+	let canAutoAcceptCurrent = $derived(shouldShowParseResults && $canAutoAccept);
 
 	// Track if user has manually interacted with expand/collapse
-	let userHasInteracted = false;
-	let hasAutoExpandedForCurrentBrainDump = false;
-	let lastAutoExpandBrainDumpId: string | null = null;
+	let userHasInteracted = $state(false);
+	let hasAutoExpandedForCurrentBrainDump = $state(false);
+	let lastAutoExpandBrainDumpId = $state<string | null>(null);
+
+	// Check if browser supports View Transition API
+	// If supported, we'll skip Svelte transitions to let the View Transition API handle morphing
+	let supportsViewTransitions = $derived(
+		browser && typeof document !== 'undefined' && 'startViewTransition' in document
+	);
 
 	// REMOVED: Auto-expand logic - notification should stay minimized when processing completes
 	// User must manually click to expand and see the results
 	$effect(() => {
-		if (hasParseResults && brainDumpId && brainDumpId !== lastAutoExpandBrainDumpId) {
+		if (shouldShowParseResults && brainDumpId && brainDumpId !== lastAutoExpandBrainDumpId) {
 			// Just track that we have results for this brain dump
 			lastAutoExpandBrainDumpId = brainDumpId;
 			// Don't auto-expand - let user click to see results
@@ -218,13 +230,17 @@
 			if (showSuccessView && !componentsLoaded.success) {
 				console.log('[Effect] Modal expanded with success view - loading SuccessView');
 				loadSuccessViewComponent();
-			} else if (hasParseResults && !showSuccessView && !componentsLoaded.parseResults) {
+			} else if (
+				shouldShowParseResults &&
+				!showSuccessView &&
+				!componentsLoaded.parseResults
+			) {
 				console.log(
 					'[Effect] Modal expanded with parse results - loading ParseResultsDiffView'
 				);
 				loadParseResultsComponent();
 			} else if (
-				!hasParseResults &&
+				!shouldShowParseResults &&
 				isProcessing &&
 				(processingType === 'dual' || processingType === 'short') &&
 				!componentsLoaded.dualProcessing
@@ -239,7 +255,7 @@
 
 	// Load components based on state - with await to ensure it loads
 	$effect(() => {
-		if (hasParseResults && !showSuccessView && !componentsLoaded.parseResults) {
+		if (shouldShowParseResults && !showSuccessView && !componentsLoaded.parseResults) {
 			console.log('[Effect] Loading ParseResultsDiffView because we have parse results');
 			loadParseResultsComponent().then(() => {
 				console.log('ParseResultsDiffView loaded successfully:', !!ParseResultsDiffView);
@@ -277,16 +293,17 @@
 		}
 	});
 
-	// FIXED: Prevent duplicate component loading with promise tracking
+	// FIXED: Prevent duplicate component loading with atomic mutex
 	async function loadParseResultsComponent() {
 		const loadKey = 'parseResults';
 
-		// Check if already loading
-		if (componentLoadingPromises.has(loadKey)) {
-			console.log(
-				'[loadParseResultsComponent] Already loading, waiting for existing promise'
-			);
-			return componentLoadingPromises.get(loadKey);
+		// Atomic check-and-acquire with mutex
+		if (componentLoadingMutex.has(loadKey)) {
+			// Wait for existing load to complete
+			while (componentLoadingMutex.has(loadKey)) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return;
 		}
 
 		if (componentsLoaded.parseResults && ParseResultsDiffView) {
@@ -294,54 +311,57 @@
 			return;
 		}
 
-		// Create and track loading promise
-		const loadPromise = (async () => {
-			try {
-				console.log('[loadParseResultsComponent] Starting to load ParseResultsDiffView');
-				ParseResultsDiffView = (await import('./ParseResultsDiffView.svelte')).default;
-				componentsLoaded.parseResults = true;
-				console.log('[loadParseResultsComponent] ParseResultsDiffView loaded successfully');
-			} finally {
-				componentLoadingPromises.delete(loadKey);
-			}
-		})();
+		// Acquire mutex immediately (atomic)
+		componentLoadingMutex.add(loadKey);
 
-		componentLoadingPromises.set(loadKey, loadPromise);
-		return loadPromise;
+		try {
+			console.log('[loadParseResultsComponent] Starting to load ParseResultsDiffView');
+			ParseResultsDiffView = (await import('./ParseResultsDiffView.svelte')).default;
+			componentsLoaded.parseResults = true;
+			console.log('[loadParseResultsComponent] ParseResultsDiffView loaded successfully');
+		} finally {
+			// Always release mutex
+			componentLoadingMutex.delete(loadKey);
+		}
 	}
 
 	async function loadProcessingComponent() {
 		const loadKey = 'processing';
 
-		if (componentLoadingPromises.has(loadKey)) {
-			return componentLoadingPromises.get(loadKey);
+		// Atomic check-and-acquire with mutex
+		if (componentLoadingMutex.has(loadKey)) {
+			while (componentLoadingMutex.has(loadKey)) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return;
 		}
 
 		if (componentsLoaded.processing && ProcessingModal) {
 			return;
 		}
 
-		const loadPromise = (async () => {
-			try {
-				ProcessingModal = (await import('./ProcessingModal.svelte')).default;
-				componentsLoaded.processing = true;
-			} finally {
-				componentLoadingPromises.delete(loadKey);
-			}
-		})();
+		// Acquire mutex immediately (atomic)
+		componentLoadingMutex.add(loadKey);
 
-		componentLoadingPromises.set(loadKey, loadPromise);
-		return loadPromise;
+		try {
+			ProcessingModal = (await import('./ProcessingModal.svelte')).default;
+			componentsLoaded.processing = true;
+		} finally {
+			// Always release mutex
+			componentLoadingMutex.delete(loadKey);
+		}
 	}
 
 	async function loadDualProcessingComponent() {
 		const loadKey = 'dualProcessing';
 
-		if (componentLoadingPromises.has(loadKey)) {
-			console.log(
-				'[loadDualProcessingComponent] Already loading, waiting for existing promise'
-			);
-			return componentLoadingPromises.get(loadKey);
+		// Atomic check-and-acquire with mutex
+		if (componentLoadingMutex.has(loadKey)) {
+			console.log('[loadDualProcessingComponent] Already loading, waiting...');
+			while (componentLoadingMutex.has(loadKey)) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return;
 		}
 
 		if (componentsLoaded.dualProcessing && DualProcessingResults) {
@@ -349,54 +369,56 @@
 			return;
 		}
 
-		const loadPromise = (async () => {
-			try {
-				console.log(
-					'[loadDualProcessingComponent] Loading DualProcessingResults component'
-				);
-				DualProcessingResults = (await import('./DualProcessingResults.svelte')).default;
-				componentsLoaded.dualProcessing = true;
-				console.log(
-					'[loadDualProcessingComponent] DualProcessingResults loaded successfully'
-				);
-			} finally {
-				componentLoadingPromises.delete(loadKey);
-			}
-		})();
+		// Acquire mutex immediately (atomic)
+		componentLoadingMutex.add(loadKey);
 
-		componentLoadingPromises.set(loadKey, loadPromise);
-		return loadPromise;
+		try {
+			console.log('[loadDualProcessingComponent] Loading DualProcessingResults component');
+			DualProcessingResults = (await import('./DualProcessingResults.svelte')).default;
+			componentsLoaded.dualProcessing = true;
+			console.log('[loadDualProcessingComponent] DualProcessingResults loaded successfully');
+		} finally {
+			// Always release mutex
+			componentLoadingMutex.delete(loadKey);
+		}
 	}
 
 	async function loadOperationEditModal() {
 		const loadKey = 'operationEditModal';
 
-		if (componentLoadingPromises.has(loadKey)) {
-			return componentLoadingPromises.get(loadKey);
+		// Atomic check-and-acquire with mutex
+		if (componentLoadingMutex.has(loadKey)) {
+			while (componentLoadingMutex.has(loadKey)) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return;
 		}
 
 		if (OperationEditModal) {
 			return;
 		}
 
-		const loadPromise = (async () => {
-			try {
-				OperationEditModal = (await import('./OperationEditModal.svelte')).default;
-			} finally {
-				componentLoadingPromises.delete(loadKey);
-			}
-		})();
+		// Acquire mutex immediately (atomic)
+		componentLoadingMutex.add(loadKey);
 
-		componentLoadingPromises.set(loadKey, loadPromise);
-		return loadPromise;
+		try {
+			OperationEditModal = (await import('./OperationEditModal.svelte')).default;
+		} finally {
+			// Always release mutex
+			componentLoadingMutex.delete(loadKey);
+		}
 	}
 
 	async function loadSuccessViewComponent() {
 		const loadKey = 'success';
 
-		if (componentLoadingPromises.has(loadKey)) {
-			console.log('[loadSuccessViewComponent] Already loading, waiting for existing promise');
-			return componentLoadingPromises.get(loadKey);
+		// Atomic check-and-acquire with mutex
+		if (componentLoadingMutex.has(loadKey)) {
+			console.log('[loadSuccessViewComponent] Already loading, waiting...');
+			while (componentLoadingMutex.has(loadKey)) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return;
 		}
 
 		if (componentsLoaded.success && SuccessView) {
@@ -404,19 +426,18 @@
 			return;
 		}
 
-		const loadPromise = (async () => {
-			try {
-				console.log('[loadSuccessViewComponent] Loading SuccessView');
-				SuccessView = (await import('./SuccessView.svelte')).default;
-				componentsLoaded.success = true;
-				console.log('[loadSuccessViewComponent] SuccessView loaded successfully');
-			} finally {
-				componentLoadingPromises.delete(loadKey);
-			}
-		})();
+		// Acquire mutex immediately (atomic)
+		componentLoadingMutex.add(loadKey);
 
-		componentLoadingPromises.set(loadKey, loadPromise);
-		return loadPromise;
+		try {
+			console.log('[loadSuccessViewComponent] Loading SuccessView');
+			SuccessView = (await import('./SuccessView.svelte')).default;
+			componentsLoaded.success = true;
+			console.log('[loadSuccessViewComponent] SuccessView loaded successfully');
+		} finally {
+			// Always release mutex
+			componentLoadingMutex.delete(loadKey);
+		}
 	}
 
 	// Only track UI/component lifecycle state - processing state comes from store
@@ -694,7 +715,7 @@
 						return;
 					}
 
-					// Set parse results - this should trigger hasParseResults to become true
+					// Set parse results - this should trigger shouldShowParseResults to become true
 					commitParseResults(result);
 					// showingParseResults is handled automatically by setParseResults
 					// brainDumpActions.setShowingParseResults(true);
@@ -770,7 +791,7 @@
 						return;
 					}
 
-					// Set parse results - this should trigger hasParseResults to become true
+					// Set parse results - this should trigger shouldShowParseResults to become true
 					commitParseResults(result);
 					// showingParseResults is handled automatically by setParseResults
 					// brainDumpActions.setShowingParseResults(true);
@@ -795,19 +816,10 @@
 		);
 	}
 
-	function canAutoAccept(parseResults: BrainDumpParseResult | null): boolean {
-		if (!parseResults) return false;
-		return (
-			parseResults.operations.length <= 20 &&
-			parseResults.operations.every((op) => !op.error) &&
-			autoAcceptPreference
-		);
-	}
-
 	function toggleMinimized() {
 		console.log('[toggleMinimized] Current state:', {
 			isMinimizedFromStore,
-			hasParseResults,
+			shouldShowParseResults,
 			showSuccessView,
 			processingPhase,
 			parseResults: !!parseResults
@@ -846,8 +858,8 @@
 		processingStarted = false;
 		processingMutex = false;
 
-		// Clear any pending component loading promises
-		componentLoadingPromises.clear();
+		// Clear component loading mutex (in case any are stuck)
+		componentLoadingMutex.clear();
 
 		// Clear any pending timeouts (like auto-close)
 		cleanupTimeouts.forEach((timeout) => clearTimeout(timeout));
@@ -1319,7 +1331,7 @@
 			}
 
 			// Check for parse results (completion state)
-			if (hasParseResults) {
+			if (shouldShowParseResults) {
 				const operationsCount = parseResults?.operations?.length || 0;
 				const enabledCount = enabledOpsCount || operationsCount;
 
@@ -1457,8 +1469,8 @@
 				dualProcessing: false
 			};
 
-			// 8. Clear any pending promises
-			componentLoadingPromises.clear();
+			// 8. Clear component loading mutex (in case any are stuck)
+			componentLoadingMutex.clear();
 
 			console.log('[BrainDumpProcessingNotification] Cleanup complete');
 		};
@@ -1472,7 +1484,7 @@
 		isOpen={true}
 		onClose={toggleMinimized}
 		title=""
-		size={hasParseResults
+		size={shouldShowParseResults
 			? 'lg'
 			: processingType === 'dual' || processingType === 'short'
 				? 'lg'
@@ -1484,19 +1496,26 @@
 	>
 		<div
 			slot="header"
-			class="{hasParseResults && !showSuccessView
+			class="{shouldShowParseResults && !showSuccessView
 				? 'hidden'
 				: ''} text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
+			data-brain-dump-header
+			style="--brain-dump-header-name: brain-dump-header"
 		>
 			<div class="flex justify-between items-start mb-4">
 				<div class="flex items-center gap-3">
-					{#if statusInfo.icon === 'processing'}
-						<Loader2
-							class="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin"
-						/>
-					{:else if statusInfo.icon === 'completed'}
-						<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
-					{/if}
+					<div
+						data-brain-dump-indicator
+						style="--brain-dump-indicator-name: brain-dump-indicator"
+					>
+						{#if statusInfo.icon === 'processing'}
+							<Loader2
+								class="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin"
+							/>
+						{:else if statusInfo.icon === 'completed'}
+							<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
+						{/if}
+					</div>
 					<div class="text-left">
 						<h2 class="text-xl font-bold text-gray-900 dark:text-white">
 							{#if showSuccessView}
@@ -1566,7 +1585,7 @@
 					showParseResultsContent,
 					showExpanded,
 					showSuccessView,
-					hasParseResults,
+					shouldShowParseResults,
 					processingPhase,
 					parseResults: !!parseResults,
 					ParseResultsDiffView: !!ParseResultsDiffView,
@@ -1658,18 +1677,16 @@
 	</Modal>
 {:else if showMinimized}
 	<!-- Collapsed State - Only show when minimized -->
-	<div
-		class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-50 sm:max-w-sm"
-		transition:fly={{ y: 100, duration: 300 }}
-	>
-		<div
-			class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-all duration-200 overflow-hidden
-				{hasParseResults && !isProcessing
-				? 'ring-2 ring-green-400 ring-opacity-50 animate-pulse-subtle'
-				: ''}
-				{showSuccessView ? 'ring-2 ring-green-500 ring-opacity-60' : ''}"
-			class:animate-bounce-subtle={hasParseResults && !userHasInteracted}
-			transition:scale={{ duration: 200, start: 0.95 }}
+	<!-- Skip Svelte transitions if View Transition API is supported to avoid conflicts -->
+	{#if supportsViewTransitions}
+		<div class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-50 sm:max-w-sm">
+			<div
+				class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-all duration-200 overflow-hidden
+					{shouldShowParseResults && !isProcessing
+					? 'ring-2 ring-green-400 ring-opacity-50 animate-pulse-subtle'
+					: ''}
+					{showSuccessView ? 'ring-2 ring-green-500 ring-opacity-60' : ''}"
+				class:animate-bounce-subtle={shouldShowParseResults && !userHasInteracted}
 			onclick={() => {
 				userHasInteracted = true;
 				toggleMinimized();
@@ -1682,6 +1699,8 @@
 					toggleMinimized();
 				}
 			}}
+			data-brain-dump-header
+			style="--brain-dump-header-name: brain-dump-header"
 		>
 			{#if isProcessing}
 				<!-- Progress bar for processing state -->
@@ -1694,15 +1713,20 @@
 			{/if}
 			<div class="p-4 flex items-center justify-between">
 				<div class="flex items-center gap-3">
-					{#if statusInfo.icon === 'processing'}
-						<Loader2
-							class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
-						/>
-					{:else if statusInfo.icon === 'completed'}
-						<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
-					{:else if statusInfo.icon === 'error'}
-						<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
-					{/if}
+					<div
+						data-brain-dump-indicator
+						style="--brain-dump-indicator-name: brain-dump-indicator"
+					>
+						{#if statusInfo.icon === 'processing'}
+							<Loader2
+								class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
+							/>
+						{:else if statusInfo.icon === 'completed'}
+							<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+						{:else if statusInfo.icon === 'error'}
+							<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+						{/if}
+					</div>
 
 					<div>
 						<div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -1717,7 +1741,7 @@
 				</div>
 
 				<div class="flex items-center gap-1">
-					{#if hasParseResults && !showSuccessView && canAutoAcceptCurrent}
+					{#if shouldShowParseResults && !showSuccessView && canAutoAcceptCurrent}
 						<button
 							onclick={(e) => {
 								e.stopPropagation();
@@ -1746,6 +1770,104 @@
 			</div>
 		</div>
 	</div>
+	{:else}
+		<!-- Fallback with Svelte transitions for browsers without View Transition API -->
+		<div
+			class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-50 sm:max-w-sm"
+			transition:fly={{ y: 100, duration: 300 }}
+		>
+			<div
+				class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-all duration-200 overflow-hidden
+					{shouldShowParseResults && !isProcessing
+					? 'ring-2 ring-green-400 ring-opacity-50 animate-pulse-subtle'
+					: ''}
+					{showSuccessView ? 'ring-2 ring-green-500 ring-opacity-60' : ''}"
+				class:animate-bounce-subtle={shouldShowParseResults && !userHasInteracted}
+				transition:scale={{ duration: 200, start: 0.95 }}
+				onclick={() => {
+					userHasInteracted = true;
+					toggleMinimized();
+				}}
+				role="button"
+				tabindex="0"
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						userHasInteracted = true;
+						toggleMinimized();
+					}
+				}}
+				data-brain-dump-header
+				style="--brain-dump-header-name: brain-dump-header"
+			>
+				{#if isProcessing}
+					<!-- Progress bar for processing state -->
+					<div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
+						<div
+							class="h-full bg-primary-600 dark:bg-primary-400 animate-pulse"
+							style="width: 100%"
+						></div>
+					</div>
+				{/if}
+				<div class="p-4 flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							data-brain-dump-indicator
+							style="--brain-dump-indicator-name: brain-dump-indicator"
+						>
+							{#if statusInfo.icon === 'processing'}
+								<Loader2
+									class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
+								/>
+							{:else if statusInfo.icon === 'completed'}
+								<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+							{:else if statusInfo.icon === 'error'}
+								<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+							{/if}
+						</div>
+
+						<div>
+							<div class="text-sm font-medium text-gray-900 dark:text-white">
+								{statusInfo.title}
+							</div>
+							{#if statusInfo.subtitle}
+								<div class="text-xs text-gray-500 dark:text-gray-400">
+									{statusInfo.subtitle}
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<div class="flex items-center gap-1">
+						{#if shouldShowParseResults && !showSuccessView && canAutoAcceptCurrent}
+							<button
+								onclick={(e) => {
+									e.stopPropagation();
+									handleAutoAcceptToggle;
+								}}
+								class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								title="Toggle auto-accept"
+							>
+								<Settings class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+							</button>
+						{/if}
+
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								handleClose();
+							}}
+							class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+							title="Close"
+						>
+							<X class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+						</button>
+
+						<ChevronUp class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
 {/if}
 <!-- Operation Edit Modal -->
 {#if OperationEditModal && editModal.isOpen}
