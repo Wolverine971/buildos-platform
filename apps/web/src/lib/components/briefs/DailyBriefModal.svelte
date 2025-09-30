@@ -28,6 +28,8 @@
 	// Subscribe to brief preferences store
 	$: briefPreferences = $briefPreferencesStore.preferences;
 	$: hasEmailOptIn = briefPreferences?.email_daily_brief || false;
+	
+	console.log('hasEmailOptIn', hasEmailOptIn)
 
 	// Load preferences when modal opens
 	onMount(() => {

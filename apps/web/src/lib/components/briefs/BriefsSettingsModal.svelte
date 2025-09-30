@@ -8,7 +8,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
 	import type { BriefPreferences } from '$lib/stores/briefPreferences';
-	import { Bell, Save, X, RotateCcw, Clock, AlertCircle, RefreshCw } from 'lucide-svelte';
+	import { Bell, Save, X, RotateCcw, Clock, AlertCircle, RefreshCw, Mail } from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
 	// Props
@@ -26,7 +26,8 @@
 		day_of_week: 1,
 		time_of_day: '09:00:00',
 		timezone: 'UTC',
-		is_active: true
+		is_active: true,
+		email_daily_brief: false
 	};
 
 	// For the time input, we need to handle HH:MM format
@@ -139,7 +140,7 @@
 
 			await briefPreferencesStore.save(formToSave);
 			isEditing = false;
-			toastService.success('Brief preferences saved successfully');
+			// toastService.success('Brief preferences saved successfully');
 			dispatch('save');
 		} catch (error) {
 			toastService.error(
@@ -176,7 +177,7 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Brief Settings" size="md">
-	<div class="space-y-6">
+	<div class="space-y-6 p-6">
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
@@ -242,18 +243,28 @@
 					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Status
 					</label>
-					<div class="flex items-center space-x-2">
-						<div
-							class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
-						>
-							{briefPreferences.is_active ? 'Active' : 'Inactive'}
+					<div class="space-y-2">
+						<div class="flex items-center space-x-2">
+							<div
+								class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+							>
+								{briefPreferences.is_active ? 'Active' : 'Inactive'}
+							</div>
+							{#if briefPreferencesState.nextScheduledBrief}
+								<span class="text-sm text-gray-500 dark:text-gray-400">
+									Next: {formatDateTime(
+										briefPreferencesState.nextScheduledBrief.toISOString()
+									)}
+								</span>
+							{/if}
 						</div>
-						{#if briefPreferencesState.nextScheduledBrief}
-							<span class="text-sm text-gray-500 dark:text-gray-400">
-								Next: {formatDateTime(
-									briefPreferencesState.nextScheduledBrief.toISOString()
-								)}
-							</span>
+						{#if briefPreferences.is_active && briefPreferences.email_daily_brief}
+							<div class="flex items-center space-x-2">
+								<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+								<span class="text-sm text-gray-600 dark:text-gray-400">
+									Email notifications enabled
+								</span>
+							</div>
 						{/if}
 					</div>
 				</div>
@@ -311,7 +322,7 @@
 						</Select>
 					</FormField>
 
-					<div class="md:col-span-2">
+					<div class="md:col-span-2 space-y-3">
 						<label class="flex items-center space-x-2">
 							<input
 								type="checkbox"
@@ -322,6 +333,19 @@
 								Enable daily briefs
 							</span>
 						</label>
+
+						{#if briefPreferencesForm.is_active}
+							<label class="flex items-center space-x-2 ml-6">
+								<input
+									type="checkbox"
+									bind:checked={briefPreferencesForm.email_daily_brief}
+									class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-primary-600"
+								/>
+								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+									Email me my daily briefs
+								</span>
+							</label>
+						{/if}
 					</div>
 				</div>
 

@@ -173,6 +173,18 @@
 	function handleTabChange(tabId: string) {
 		activeTab = tabId as TabType;
 		filters.searchQuery = '';
+
+		// Update URL parameter for browser history and bookmarking
+		if (browser) {
+			const url = new URL(window.location.href);
+			if (tabId === 'briefs') {
+				url.searchParams.set('tab', 'briefs');
+			} else {
+				url.searchParams.delete('tab');
+			}
+			window.history.pushState({}, '', url);
+		}
+
 		if (tabId === 'briefs' && !briefsLoaded) {
 			loadBriefs();
 		}

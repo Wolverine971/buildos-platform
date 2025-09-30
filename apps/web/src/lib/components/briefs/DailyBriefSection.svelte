@@ -345,22 +345,23 @@
 						</div>
 					</div>
 					<div class="card-actions">
+						<!-- Email opt-in button - always show if not opted in -->
+						{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+							<Button
+								type="button"
+								on:click={enableEmailNotifications}
+								variant="primary"
+								size="sm"
+								loading={emailOptInLoading}
+								class="email-button"
+								title="Get daily briefs in your inbox"
+							>
+								<Mail class="w-4 h-4 mr-1.5" />
+								Email Me This
+							</Button>
+						{/if}
+
 						{#if isExpanded}
-							<!-- Email opt-in button if not opted in -->
-							{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
-								<Button
-									type="button"
-									on:click={enableEmailNotifications}
-									variant="primary"
-									size="sm"
-									loading={emailOptInLoading}
-									class="email-button"
-									title="Get daily briefs in your inbox"
-								>
-									<Mail class="w-4 h-4 mr-1.5" />
-									Get Emails
-								</Button>
-							{/if}
 
 							<Button
 								type="button"
@@ -421,6 +422,28 @@
 							</span>
 						{/if}
 					</div>
+
+					<!-- Email opt-in banner when collapsed -->
+					{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+						<div class="email-cta-banner">
+							<div class="flex items-center gap-2 flex-1 min-w-0">
+								<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+								<p class="text-sm text-gray-700 dark:text-gray-300 truncate">
+									Want this delivered to your inbox each morning?
+								</p>
+							</div>
+							<Button
+								type="button"
+								on:click={enableEmailNotifications}
+								variant="primary"
+								size="sm"
+								loading={emailOptInLoading}
+								class="flex-shrink-0"
+							>
+								Enable Emails
+							</Button>
+						</div>
+					{/if}
 				{/if}
 
 				{#if isExpanded}
@@ -450,6 +473,36 @@
 										</li>
 									{/each}
 								</ul>
+							</div>
+						{/if}
+
+						<!-- Email opt-in banner in expanded view -->
+						{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+							<div class="email-cta-banner-expanded">
+								<div class="flex items-center gap-3 flex-1 min-w-0">
+									<div class="email-cta-icon">
+										<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+									</div>
+									<div class="flex-1 min-w-0">
+										<p class="text-sm font-medium text-gray-900 dark:text-white">
+											Get your daily brief delivered to your inbox
+										</p>
+										<p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+											Never miss your priorities — receive this automatically each morning
+										</p>
+									</div>
+								</div>
+								<Button
+									type="button"
+									on:click={enableEmailNotifications}
+									variant="primary"
+									size="md"
+									loading={emailOptInLoading}
+									class="flex-shrink-0"
+									icon={Mail}
+								>
+									Enable Email Delivery
+								</Button>
 							</div>
 						{/if}
 					</div>
@@ -656,6 +709,63 @@
 
 	.email-button {
 		padding: 0.35rem 0.75rem;
+	}
+
+	.email-cta-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 0.65rem;
+		background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+		border: 1px solid #bfdbfe;
+		margin-top: 0.5rem;
+	}
+
+	:global(.dark) .email-cta-banner {
+		background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(30, 64, 175, 0.1));
+		border-color: rgba(59, 130, 246, 0.3);
+	}
+
+	.email-cta-banner-expanded {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		padding: 1.25rem;
+		border-radius: 0.75rem;
+		background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+		border: 1px solid #bfdbfe;
+		box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.2);
+	}
+
+	:global(.dark) .email-cta-banner-expanded {
+		background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(30, 64, 175, 0.12));
+		border-color: rgba(59, 130, 246, 0.4);
+		box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.3);
+	}
+
+	.email-cta-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 0.5rem;
+		background: rgba(37, 99, 235, 0.15);
+		flex-shrink: 0;
+	}
+
+	:global(.dark) .email-cta-icon {
+		background: rgba(59, 130, 246, 0.25);
+	}
+
+	@media (min-width: 640px) {
+		.email-cta-banner-expanded {
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+		}
 	}
 
 	.generate-button {
