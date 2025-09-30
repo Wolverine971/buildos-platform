@@ -277,14 +277,19 @@ Manage preferences: https://build-os.com/settings
           ? `<img src="https://build-os.com/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`
           : undefined;
 
-      const subject = `Daily Brief - ${new Date(briefDate).toLocaleDateString(
-        "en-US",
-        {
+      // Use custom subject from metadata (for re-engagement emails) or default
+      const customSubject =
+        brief.metadata && typeof brief.metadata === "object"
+          ? brief.metadata.email_subject
+          : undefined;
+
+      const subject =
+        customSubject ||
+        `Daily Brief - ${new Date(briefDate).toLocaleDateString("en-US", {
           weekday: "short",
           month: "short",
           day: "numeric",
-        },
-      )}`;
+        })}`;
 
       const emailHtmlForStorage = generateMinimalEmailHTML({
         subject,

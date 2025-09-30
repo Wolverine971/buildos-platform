@@ -21,6 +21,9 @@ export interface BriefJobData
     excludeProjects?: string[];
     customTemplate?: string;
     requestedBriefDate?: string;
+    // Engagement metadata for re-engagement emails
+    isReengagement?: boolean;
+    daysSinceLastLogin?: number;
   };
 }
 

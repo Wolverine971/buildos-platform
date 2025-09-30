@@ -1,7 +1,7 @@
 import type { LegacyJob } from "./shared/jobAdapter";
-import { TwilioClient, SMSService } from "@buildos/twilio-service";
+import { SMSService, TwilioClient } from "@buildos/twilio-service";
 import { createClient } from "@supabase/supabase-js";
-import { updateJobStatus, notifyUser } from "./shared/queueUtils";
+import { notifyUser, updateJobStatus } from "./shared/queueUtils";
 
 // Conditional Twilio initialization
 let twilioClient: TwilioClient | null = null;

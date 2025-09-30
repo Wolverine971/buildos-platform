@@ -330,15 +330,10 @@ export const actions: Actions = {
 			const activityLogger = new ActivityLogger(supabase);
 
 			// Log the manual disconnection
-			await activityLogger.logActivity(
-				user.id,
-				'admin_action',
-				{
-					action: 'calendar_manually_disconnected',
-					timestamp: new Date().toISOString()
-				},
-				request
-			);
+			await activityLogger.logActivity(user.id, 'admin_action', {
+				action: 'calendar_manually_disconnected',
+				timestamp: new Date().toISOString()
+			});
 
 			return {
 				success: true,

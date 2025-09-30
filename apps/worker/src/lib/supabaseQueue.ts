@@ -1,10 +1,10 @@
 // worker-queue/src/lib/supabaseQueue.ts
 import type {
   Database,
-  QueueJobType,
-  QueueJobStatus,
-  QueueJob as SharedQueueJob,
   JobMetadataMap,
+  QueueJobStatus,
+  QueueJobType,
+  QueueJob as SharedQueueJob,
 } from "@buildos/shared-types";
 import { updateJobProgress } from "./progressTracker";
 import { supabase } from "./supabase";
@@ -565,7 +565,7 @@ export class SupabaseQueue {
     const { data, error } = await query;
 
     if (error) {
-      console.error(`❌ Error fetching user jobs:`, error);
+      console.error("❌ Error fetching user jobs:", error);
       return [];
     }
 

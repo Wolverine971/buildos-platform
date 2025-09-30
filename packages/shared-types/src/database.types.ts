@@ -4525,6 +4525,20 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_engagement_analytics: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          active_users: number;
+          avg_days_inactive: number;
+          briefs_sent_today: number;
+          briefs_sent_week: number;
+          cooling_off_users: number;
+          inactive_10_31_days: number;
+          inactive_31_plus_days: number;
+          inactive_4_10_days: number;
+          total_users: number;
+        }[];
+      };
       get_pending_calendar_suggestions: {
         Args: { p_user_id: string };
         Returns: {

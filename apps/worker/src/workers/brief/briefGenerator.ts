@@ -7,7 +7,12 @@ import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import type { Database } from "@buildos/shared-types";
 import { getHoliday } from "../../lib/utils/holiday-finder";
 import { SmartLLMService } from "../../lib/services/smart-llm-service";
-import { DailyBriefAnalysisPrompt, DailyBriefAnalysisProject } from "./prompts";
+import {
+  DailyBriefAnalysisPrompt,
+  DailyBriefAnalysisProject,
+  ReengagementBriefPrompt,
+  ReengagementPromptInput,
+} from "./prompts";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
@@ -213,6 +218,10 @@ export async function generateDailyBrief(
     const analysisProjects: DailyBriefAnalysisProject[] =
       buildDailyBriefAnalysisProjects(projectBriefs);
 
+    // Check if this is a re-engagement email
+    const isReengagement = options?.isReengagement === true;
+    const daysSinceLastLogin = options?.daysSinceLastLogin || 0;
+
     if (analysisProjects.length > 0) {
       await updateProgress(
         dailyBrief.id,
@@ -226,22 +235,91 @@ export async function generateDailyBrief(
           appName: "BuildOS Daily Brief Worker",
         });
 
-        const analysisPrompt = DailyBriefAnalysisPrompt.buildUserPrompt({
-          date: briefDateInUserTz,
-          timezone: userTimezone,
-          mainBriefMarkdown: trimMarkdownForPrompt(mainBriefContent),
-          projects: analysisProjects,
-          priorityActions,
-        });
+        // Generate re-engagement content if applicable
+        if (isReengagement && daysSinceLastLogin > 0) {
+          console.log(
+            `📧 Generating re-engagement email for user ${userId} (${daysSinceLastLogin} days inactive)`,
+          );
 
-        llmAnalysis = await llmService.generateText({
-          prompt: analysisPrompt,
-          userId,
-          profile: "quality",
-          temperature: 0.4,
-          maxTokens: 2200,
-          systemPrompt: DailyBriefAnalysisPrompt.getSystemPrompt(),
-        });
+          // Fetch user's last visit for context
+          const { data: userData } = await supabase
+            .from("users")
+            .select("last_visit")
+            .eq("id", userId)
+            .single();
+
+          // Calculate engagement statistics
+          const allTasks = projects.flatMap((p) => p.tasks);
+          const pendingTasks = allTasks.filter(
+            (t) => t.status !== "done" && !t.outdated,
+          );
+          const overdueTasks = projectBriefs.reduce(
+            (sum, brief) => sum + (brief.metadata?.overdue_task_count || 0),
+            0,
+          );
+          const recentCompletions = allTasks
+            .filter((t) => t.status === "done" && t.completed_at)
+            .sort(
+              (a, b) =>
+                new Date(b.completed_at!).getTime() -
+                new Date(a.completed_at!).getTime(),
+            )
+            .slice(0, 3);
+
+          const topPriorityTasks = allTasks
+            .filter((t) => t.priority === "high" && t.status !== "done")
+            .slice(0, 3)
+            .map((t) => ({
+              title: t.title || "Untitled Task",
+              project:
+                projects.find((p) => p.id === t.project_id)?.name ||
+                "Unknown Project",
+            }));
+
+          const reengagementPrompt: ReengagementPromptInput = {
+            date: briefDateInUserTz,
+            timezone: userTimezone,
+            daysSinceLastLogin,
+            lastLoginDate: userData?.last_visit || "Unknown",
+            pendingTasksCount: pendingTasks.length,
+            overdueTasksCount: overdueTasks,
+            activeProjectsCount: projects.length,
+            topPriorityTasks,
+            recentCompletions: recentCompletions.map((t) => ({
+              title: t.title || "Untitled Task",
+              completedAt: t.completed_at!,
+            })),
+            mainBriefMarkdown: trimMarkdownForPrompt(mainBriefContent),
+          };
+
+          llmAnalysis = await llmService.generateText({
+            prompt: ReengagementBriefPrompt.buildUserPrompt(reengagementPrompt),
+            userId,
+            profile: "quality",
+            temperature: 0.7, // Higher temperature for more engaging content
+            maxTokens: 1500,
+            systemPrompt:
+              ReengagementBriefPrompt.getSystemPrompt(daysSinceLastLogin),
+          });
+        } else {
+          // Standard analysis
+          const analysisPrompt = DailyBriefAnalysisPrompt.buildUserPrompt({
+            date: briefDateInUserTz,
+            timezone: userTimezone,
+            mainBriefMarkdown: trimMarkdownForPrompt(mainBriefContent),
+            projects: analysisProjects,
+            priorityActions,
+          });
+
+          llmAnalysis = await llmService.generateText({
+            prompt: analysisPrompt,
+            userId,
+            profile: "quality",
+            temperature: 0.4,
+            maxTokens: 2200,
+            systemPrompt: DailyBriefAnalysisPrompt.getSystemPrompt(),
+          });
+        }
       } catch (analysisError) {
         console.error(
           "Failed to generate LLM analysis for daily brief:",
@@ -257,6 +335,19 @@ export async function generateDailyBrief(
       jobId,
     );
 
+    // Prepare metadata with re-engagement info
+    const updatedMetadata = {
+      ...(typeof dailyBrief.metadata === "object" &&
+      dailyBrief.metadata !== null
+        ? dailyBrief.metadata
+        : {}),
+      is_reengagement: isReengagement,
+      days_since_last_login: daysSinceLastLogin,
+      email_subject: isReengagement
+        ? ReengagementBriefPrompt.getSubjectLine(daysSinceLastLogin)
+        : undefined,
+    };
+
     const { data: finalBrief, error: updateError } = await supabase
       .from("daily_briefs")
       .update({
@@ -267,6 +358,7 @@ export async function generateDailyBrief(
         generation_status: "completed",
         generation_completed_at: new Date().toISOString(),
         generation_progress: { step: "completed", progress: 100 },
+        metadata: updatedMetadata,
       })
       .eq("id", dailyBrief.id)
       .select()

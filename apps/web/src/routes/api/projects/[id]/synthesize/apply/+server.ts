@@ -59,7 +59,7 @@ export const POST: RequestHandler = async ({
 		}
 
 		// Log the completion
-		await activityLogger.logActivity(user, 'project_synthesis_applied', {
+		await activityLogger.logActivity(user.id, 'project_synthesis_applied', {
 			project_id: params.id,
 			successful_operations: results.successful.length,
 			failed_operations: results.failed.length,
@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({
 		// Try to log the failure
 		try {
 			const activityLogger = new ActivityLogger(supabase);
-			await activityLogger.logActivity(user, 'project_synthesis_apply_failed', {
+			await activityLogger.logActivity(user.id, 'project_synthesis_apply_failed', {
 				project_id: params.id,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});

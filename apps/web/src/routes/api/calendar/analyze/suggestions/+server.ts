@@ -68,10 +68,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			`Suggestion ${action}ed successfully`
 		);
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'calendar_suggestion_action',
-			endpoint: 'POST /api/calendar/analyze/suggestions'
+			endpoint: 'POST /api/calendar/analyze/suggestions',
+			metadata: {
+				operation: 'calendar_suggestion_action'
+			}
 		});
 
 		return ApiResponse.internalError(
@@ -153,10 +155,12 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 			`Processed ${successful} suggestion(s) successfully, ${failed} failed`
 		);
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'calendar_batch_suggestion_action',
-			endpoint: 'PATCH /api/calendar/analyze/suggestions'
+			endpoint: 'PATCH /api/calendar/analyze/suggestions',
+			metadata: {
+				operation: 'calendar_batch_suggestion_action'
+			}
 		});
 
 		return ApiResponse.internalError(

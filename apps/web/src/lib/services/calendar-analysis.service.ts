@@ -182,7 +182,7 @@ export class CalendarAnalysisService extends ApiService {
 			await this.storeAnalysisEvents(analysis.id, relevantEvents);
 
 			// Send to LLM for analysis
-			const suggestions = await this.analyzeEventsWithAI({events:relevantEvents, userId});
+			const suggestions = await this.analyzeEventsWithAI({ events: relevantEvents, userId });
 
 			if (DEBUG_LOGGING) {
 				console.log(`[Calendar Analysis] AI generated ${suggestions.length} suggestions`);
@@ -280,12 +280,15 @@ export class CalendarAnalysisService extends ApiService {
 	/**
 	 * Analyze events with AI to detect project patterns with confidence threshold
 	 */
-	private async analyzeEventsWithAI({events, minConfidence = DEFAULT_CONFIDENCE_THRESHOLD, userId}:{
-		events: CalendarEvent[],
-		minConfidence?: number,
-		userId: string
-	}
-	): Promise<ProjectSuggestion[]> {
+	private async analyzeEventsWithAI({
+		events,
+		minConfidence = DEFAULT_CONFIDENCE_THRESHOLD,
+		userId
+	}: {
+		events: CalendarEvent[];
+		minConfidence?: number;
+		userId: string;
+	}): Promise<ProjectSuggestion[]> {
 		if (events.length === 0) {
 			return [];
 		}

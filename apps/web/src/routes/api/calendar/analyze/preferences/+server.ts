@@ -36,10 +36,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			preferences: preferences || defaultPreferences
 		});
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'get_calendar_preferences',
-			endpoint: 'GET /api/calendar/analyze/preferences'
+			endpoint: 'GET /api/calendar/analyze/preferences',
+			metadata: {
+				operation: 'get_calendar_preferences'
+			}
 		});
 
 		return ApiResponse.internalError(
@@ -112,10 +114,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		return ApiResponse.success(undefined, 'Preferences updated successfully');
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'update_calendar_preferences',
-			endpoint: 'POST /api/calendar/analyze/preferences'
+			endpoint: 'POST /api/calendar/analyze/preferences',
+			metadata: {
+				operation: 'update_calendar_preferences'
+			}
 		});
 
 		return ApiResponse.internalError(

@@ -15,9 +15,17 @@ import { format } from "date-fns";
 import { supabase } from "./lib/supabase";
 import { queue } from "./worker";
 import type { Database } from "@buildos/shared-types";
+import { BriefBackoffCalculator } from "./lib/briefBackoffCalculator";
 
 export type UserBriefPreference =
   Database["public"]["Tables"]["user_brief_preferences"]["Row"];
+
+// Feature flag for engagement backoff (defaults to false for safety)
+const ENGAGEMENT_BACKOFF_ENABLED =
+  process.env.ENGAGEMENT_BACKOFF_ENABLED === "true";
+
+// Initialize backoff calculator
+const backoffCalculator = new BriefBackoffCalculator();
 
 /**
  * Queue brief generation using Supabase queue
@@ -27,6 +35,10 @@ async function queueBriefGeneration(
   scheduledFor: Date,
   options?: any,
   timezone: string = "UTC",
+  engagementMetadata?: {
+    isReengagement: boolean;
+    daysSinceLastLogin: number;
+  },
 ): Promise<any> {
   // Fetch the latest timezone from user preferences
   const { data: preferences } = await supabase
@@ -46,13 +58,19 @@ async function queueBriefGeneration(
   console.log(`   - Scheduled for (UTC): ${scheduledFor.toISOString()}`);
   console.log(`   - User timezone: ${userTimezone}`);
   console.log(`   - Brief date: ${briefDate}`);
+  if (engagementMetadata) {
+    console.log(`   - Is re-engagement: ${engagementMetadata.isReengagement}`);
+    console.log(
+      `   - Days since last login: ${engagementMetadata.daysSinceLastLogin}`,
+    );
+  }
 
   const jobData = {
     userId,
     briefDate,
     options: options
-      ? { ...options, requestedBriefDate: undefined }
-      : undefined,
+      ? { ...options, requestedBriefDate: undefined, ...engagementMetadata }
+      : engagementMetadata,
     timezone: userTimezone,
   };
 
@@ -146,6 +164,36 @@ async function checkAndScheduleBriefs() {
           continue;
         }
 
+        // NEW: Check backoff status if feature flag is enabled
+        let engagementMetadata:
+          | { isReengagement: boolean; daysSinceLastLogin: number }
+          | undefined;
+
+        if (ENGAGEMENT_BACKOFF_ENABLED) {
+          const backoffDecision = await backoffCalculator.shouldSendDailyBrief(
+            preference.user_id,
+          );
+
+          if (!backoffDecision.shouldSend) {
+            console.log(
+              `⏸️ Skipping brief for user ${preference.user_id}: ${backoffDecision.reason}`,
+            );
+            continue;
+          }
+
+          engagementMetadata = {
+            isReengagement: backoffDecision.isReengagement,
+            daysSinceLastLogin: backoffDecision.daysSinceLastLogin,
+          };
+
+          const briefType = backoffDecision.isReengagement
+            ? "re-engagement"
+            : "standard";
+          console.log(
+            `📧 Queueing ${briefType} brief for user ${preference.user_id} (inactive for ${backoffDecision.daysSinceLastLogin} days)`,
+          );
+        }
+
         const nextRunTime = calculateNextRunTime(preference, now);
 
         if (!nextRunTime) {
@@ -183,6 +231,7 @@ async function checkAndScheduleBriefs() {
               nextRunTime,
               undefined,
               preference.timezone || "UTC",
+              engagementMetadata, // NEW: Pass engagement metadata
             );
           } else {
             console.log(

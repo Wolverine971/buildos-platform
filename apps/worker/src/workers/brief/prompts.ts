@@ -105,3 +105,121 @@ ${mainBriefMarkdown}
 Write the analysis following the system instructions.`;
   }
 }
+
+/**
+ * Re-engagement Prompt - for users who haven't logged in for a while
+ */
+
+export interface ReengagementPromptInput {
+  date: string;
+  timezone: string;
+  daysSinceLastLogin: number;
+  lastLoginDate: string;
+  pendingTasksCount: number;
+  overdueTasksCount: number;
+  activeProjectsCount: number;
+  topPriorityTasks: Array<{ title: string; project: string }>;
+  recentCompletions: Array<{ title: string; completedAt: string }>;
+  mainBriefMarkdown: string;
+}
+
+export class ReengagementBriefPrompt {
+  static getSystemPrompt(daysSinceLastLogin: number): string {
+    const tone = this.getToneForInactivityLevel(daysSinceLastLogin);
+
+    return `You are a BuildOS productivity coach writing a re-engagement email to a user who hasn't logged in for ${daysSinceLastLogin} days.
+
+Your tone should be ${tone}. Focus on:
+1. Acknowledging their absence without guilt or shame
+2. Highlighting what's waiting for them (tasks, projects) with specific details
+3. Providing motivation to return based on their actual work context
+4. Keeping the message concise, actionable, and encouraging
+
+Structure your response:
+- Start with a brief, warm greeting that acknowledges the absence
+- Present a clear summary of what's waiting (use specific numbers and task names)
+- For tasks starting today or overdue, emphasize their importance without creating pressure
+- End with an encouraging call-to-action to return
+
+Format in Markdown with clear sections and task links when provided.
+Do NOT use placeholders - write actual personalized content based on the user's data.
+Be specific about their pending work but encouraging about getting back on track.
+
+Key guidelines:
+- Never use guilt or negative framing ("You've been gone too long")
+- Focus on the positive ("Your projects are ready for you")
+- Highlight progress they made before leaving if available
+- Make it easy to jump back in (clear next steps)`;
+  }
+
+  static getToneForInactivityLevel(daysSinceLastLogin: number): string {
+    if (daysSinceLastLogin <= 4) {
+      return "gentle and encouraging";
+    } else if (daysSinceLastLogin <= 10) {
+      return "motivating and action-oriented";
+    } else {
+      return "warm but direct with a clear value proposition";
+    }
+  }
+
+  static getSubjectLine(daysSinceLastLogin: number): string {
+    if (daysSinceLastLogin <= 4) {
+      return "Your BuildOS tasks are waiting for you";
+    } else if (daysSinceLastLogin <= 10) {
+      return "You've made progress - don't let it slip away";
+    } else {
+      return "We miss you at BuildOS - here's what's waiting";
+    }
+  }
+
+  static buildUserPrompt(input: ReengagementPromptInput): string {
+    const {
+      date,
+      timezone,
+      daysSinceLastLogin,
+      lastLoginDate,
+      pendingTasksCount,
+      overdueTasksCount,
+      activeProjectsCount,
+      topPriorityTasks,
+      recentCompletions,
+      mainBriefMarkdown,
+    } = input;
+
+    let prompt = `Generate a re-engagement email for a user with the following context:
+
+Date: ${date}
+Timezone: ${timezone}
+Days since last login: ${daysSinceLastLogin}
+Last login: ${lastLoginDate}
+Pending tasks: ${pendingTasksCount}${overdueTasksCount > 0 ? ` (${overdueTasksCount} overdue)` : ""}
+Active projects: ${activeProjectsCount}
+
+`;
+
+    if (topPriorityTasks.length > 0) {
+      prompt += `Top priority tasks:\n`;
+      topPriorityTasks.forEach((task) => {
+        prompt += `  - ${task.title} (${task.project})\n`;
+      });
+      prompt += `\n`;
+    }
+
+    if (recentCompletions.length > 0) {
+      prompt += `Recent completions before leaving:\n`;
+      recentCompletions.forEach((task) => {
+        prompt += `  - ${task.title}\n`;
+      });
+      prompt += `\n`;
+    }
+
+    prompt += `Current brief content for reference:
+\`\`\`markdown
+${mainBriefMarkdown}
+\`\`\`
+
+Create a personalized re-engagement message that encourages them to return and continue their productivity journey.`;
+
+    return prompt;
+  }
+}

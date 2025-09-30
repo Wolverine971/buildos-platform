@@ -85,10 +85,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return ApiResponse.success({ history, calendarProjects });
 		}
 	} catch (error) {
-		const errorLogger = ErrorLoggerService.getInstance();
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'calendar_analyze_get_endpoint',
-			endpoint: 'GET /api/calendar/analyze'
+			endpoint: 'GET /api/calendar/analyze',
+			metadata: {
+				operation: 'calendar_analyze_get_endpoint'
+			}
 		});
 
 		return ApiResponse.internalError(
