@@ -19,6 +19,16 @@ All technical documentation is organized under `/docs/`:
 - `/docs/user-guide/` - End user documentation
 - `/docs/archive/` - Archived/outdated documentation
 
+### Feature-Specific Documentation (Root Level)
+
+- **[Notification System](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Generic stackable notification system
+    - **[Documentation Map](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - START HERE - Complete guide to all docs
+    - [Implementation Summary](../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Phase 1 complete, API reference, bug fixes
+    - [Original Specification](../../generic-stackable-notification-system-spec.md) - Full technical spec and architecture
+    - [Component README](/src/lib/components/notifications/README.md) - Quick reference and code examples
+    - Components: `/src/lib/components/notifications/`
+    - **Important:** See Svelte 5 Map reactivity patterns for store development
+
 ## 🚀 BuildOS Core Concepts
 
 ### What is BuildOS?

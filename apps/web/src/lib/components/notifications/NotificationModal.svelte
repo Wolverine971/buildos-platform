@@ -1,0 +1,308 @@
+<!-- apps/web/src/lib/components/notifications/NotificationModal.svelte -->
+<script lang="ts">
+	/**
+	 * Notification Modal
+	 *
+	 * Expanded modal view for a notification.
+	 * - Shows full details and progress
+	 * - Type-specific content via lazy-loaded components
+	 * - Closeable with minimize button or ESC key
+	 */
+
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import { notificationStore } from '$lib/stores/notification.store';
+	import { Loader2, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
+	import type { Notification } from '$lib/types/notification.types';
+
+	// Props
+	let { notification }: { notification: Notification } = $props();
+
+	// Lazy-loaded type-specific components
+	let BrainDumpModalContent = $state<any>(null);
+
+	// Component loading state
+	let componentLoaded = $state(false);
+
+	// Lazy load type-specific component
+	async function loadTypeSpecificComponent() {
+		if (notification.type === 'brain-dump' && !BrainDumpModalContent) {
+			try {
+				const module = await import('./types/brain-dump/BrainDumpModalContent.svelte');
+				BrainDumpModalContent = module.default;
+				componentLoaded = true;
+			} catch (error) {
+				console.error('[NotificationModal] Failed to load BrainDumpModalContent:', error);
+			}
+		}
+	}
+
+	// Auto-load component when notification type changes
+	$effect(() => {
+		if (notification.type === 'brain-dump' && !componentLoaded) {
+			loadTypeSpecificComponent();
+		}
+	});
+
+	// Check if we should use type-specific view
+	let useTypeSpecificView = $derived(
+		notification.type === 'brain-dump' && BrainDumpModalContent !== null
+	);
+
+	// Get modal title based on notification type (fallback for generic view)
+	let modalTitle = $derived(
+		(() => {
+			switch (notification.type) {
+				case 'brain-dump':
+					return 'Brain Dump Processing';
+				case 'phase-generation':
+					return `Phase Generation - ${notification.data.projectName}`;
+				case 'calendar-analysis':
+					return 'Calendar Analysis';
+				default:
+					if (notification.type === 'generic') {
+						return notification.data.title;
+					}
+					return 'Processing';
+			}
+		})()
+	);
+
+	// Handle minimize (for ongoing processing)
+	function handleMinimize() {
+		console.log('[NotificationModal] handleMinimize called for:', notification.id);
+		notificationStore.minimize(notification.id);
+	}
+
+	// Handle dismiss (remove notification completely)
+	function handleDismiss() {
+		notificationStore.remove(notification.id);
+	}
+
+	// Smart close handler - minimizes if processing, dismisses if done
+	function handleClose() {
+		if (notification.status === 'processing') {
+			handleMinimize();
+		} else {
+			handleDismiss();
+		}
+	}
+
+	// Event handlers for brain dump modal content
+	function handleModalEvent(event: CustomEvent) {
+		const { type, detail } = event;
+		console.log('[NotificationModal] Event from modal content:', type, detail);
+
+		// Forward events to appropriate handlers
+		switch (type) {
+			case 'minimize':
+				handleMinimize();
+				break;
+			case 'close':
+				handleDismiss();
+				break;
+			case 'cancel':
+				handleDismiss();
+				break;
+			default:
+				// Other events handled by parent component or notification system
+				break;
+		}
+	}
+</script>
+
+{#if useTypeSpecificView}
+	<!-- Type-specific modal content (e.g., BrainDumpModalContent) - already has Modal wrapper -->
+	<svelte:component
+		this={BrainDumpModalContent}
+		{notification}
+		on:minimize={handleModalEvent}
+		on:close={handleModalEvent}
+		on:cancel={handleModalEvent}
+	/>
+{:else}
+	<!-- Generic fallback modal -->
+	<Modal
+		isOpen={true}
+		onClose={handleMinimize}
+		title={modalTitle}
+		size="lg"
+		showCloseButton={true}
+	>
+		<div slot="header" class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
+			<!-- Status Icon -->
+			{#if notification.status === 'processing'}
+				<Loader2 class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+			{:else if notification.status === 'success'}
+				<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
+			{:else if notification.status === 'error'}
+				<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
+			{:else if notification.status === 'cancelled'}
+				<XCircle class="w-6 h-6 text-gray-600 dark:text-gray-400" />
+			{/if}
+
+			<!-- Title -->
+			<div class="flex-1">
+				<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+					{modalTitle}
+				</h2>
+				{#if notification.progress?.message}
+					<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+						{notification.progress.message}
+					</p>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Content area -->
+		<div class="px-6 py-5">
+			<!-- Placeholder content - will be replaced with type-specific components -->
+			<div class="space-y-4">
+				{#if notification.status === 'processing'}
+					<div class="text-center py-8">
+						<Loader2
+							class="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4"
+						/>
+						<p class="text-gray-600 dark:text-gray-400">
+							{notification.progress?.message || 'Processing...'}
+						</p>
+
+						<!-- Progress bar for percentage-based progress -->
+						{#if notification.progress.type === 'percentage' && notification.progress.percentage !== undefined}
+							<div class="mt-4 max-w-md mx-auto">
+								<div
+									class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+								>
+									<div
+										class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
+										style="width: {notification.progress.percentage}%"
+									></div>
+								</div>
+								<p class="text-sm text-gray-500 mt-2">
+									{notification.progress.percentage}%
+								</p>
+							</div>
+						{/if}
+
+						<!-- Step-based progress -->
+						{#if notification.progress.type === 'steps'}
+							<div class="mt-6 space-y-2 max-w-md mx-auto">
+								{#each notification.progress.steps as step, index}
+									<div class="flex items-center gap-3">
+										<div
+											class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+                           {step.status === 'completed'
+												? 'bg-green-100 dark:bg-green-900'
+												: step.status === 'processing'
+													? 'bg-blue-100 dark:bg-blue-900'
+													: step.status === 'error'
+														? 'bg-red-100 dark:bg-red-900'
+														: 'bg-gray-100 dark:bg-gray-800'}"
+										>
+											{#if step.status === 'completed'}
+												<CheckCircle
+													class="w-4 h-4 text-green-600 dark:text-green-400"
+												/>
+											{:else if step.status === 'processing'}
+												<Loader2
+													class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin"
+												/>
+											{:else if step.status === 'error'}
+												<AlertCircle
+													class="w-4 h-4 text-red-600 dark:text-red-400"
+												/>
+											{:else}
+												<div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+											{/if}
+										</div>
+										<span
+											class="text-sm
+                         {step.status === 'processing'
+												? 'text-gray-900 dark:text-white font-medium'
+												: 'text-gray-600 dark:text-gray-400'}"
+										>
+											{step.name}
+										</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{:else if notification.status === 'success'}
+					<div class="text-center py-8">
+						<CheckCircle
+							class="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4"
+						/>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+							Success!
+						</h3>
+						<p class="text-gray-600 dark:text-gray-400">
+							{notification.type === 'brain-dump' &&
+								'Brain dump processed successfully'}
+							{notification.type === 'phase-generation' &&
+								'Phases generated successfully'}
+							{notification.type === 'calendar-analysis' &&
+								'Calendar analyzed successfully'}
+							{notification.type === 'generic' && notification.data.message}
+						</p>
+
+						<!-- Action buttons -->
+						<div class="mt-6 flex gap-3 justify-center">
+							{#if notification.actions.view}
+								<button
+									onclick={notification.actions.view}
+									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+								>
+									View Results
+								</button>
+							{/if}
+							<button
+								onclick={handleDismiss}
+								class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+							>
+								Dismiss
+							</button>
+						</div>
+					</div>
+				{:else if notification.status === 'error'}
+					<div class="text-center py-8">
+						<AlertCircle
+							class="w-16 h-16 text-red-600 dark:text-red-400 mx-auto mb-4"
+						/>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+							Error
+						</h3>
+						<p class="text-red-600 dark:text-red-400">
+							{#if notification.type === 'brain-dump'}
+								{notification.data.error || 'Brain dump processing failed'}
+							{:else if notification.type === 'phase-generation'}
+								{notification.data.error || 'Phase generation failed'}
+							{:else if notification.type === 'calendar-analysis'}
+								{notification.data.error || 'Calendar analysis failed'}
+							{:else if notification.type === 'generic'}
+								{notification.data.error || 'An error occurred'}
+							{/if}
+						</p>
+
+						<!-- Action buttons -->
+						<div class="mt-6 flex gap-3 justify-center">
+							{#if notification.actions.retry}
+								<button
+									onclick={notification.actions.retry}
+									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+								>
+									Retry
+								</button>
+							{/if}
+							<button
+								onclick={handleDismiss}
+								class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+							>
+								Dismiss
+							</button>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</Modal>
+{/if}

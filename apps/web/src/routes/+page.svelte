@@ -11,6 +11,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import BuildOSFlow from '$lib/components/dashboard/BuildOSFlow.svelte';
+	import NotificationTestButtons from '$components/notifications/NotificationTestButtons.svelte';
 
 	export let data: PageData;
 
@@ -199,6 +200,8 @@
 </svelte:head>
 
 <svelte:window bind:innerWidth />
+
+<NotificationTestButtons />
 
 {#if isAuthenticated}
 	<!-- PERFORMANCE: Render Dashboard when component is loaded -->

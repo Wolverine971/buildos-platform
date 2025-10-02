@@ -17,8 +17,6 @@
 	import type { ProcessedPhase } from '$lib/types/project-page.types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { onMount } from 'svelte';
-	import { get } from 'svelte/store';
-	import { isFeatureEnabled } from '$lib/config/features';
 
 	// Import the v2 store
 	import { projectStoreV2 } from '$lib/stores/project.store';
@@ -77,12 +75,7 @@
 
 	// Feature flags using Svelte 5 runes
 	let isCalendarConnected = $derived(calendarStatus?.isConnected === true);
-	let showCalendarSettings = $derived(
-		onCalendarSettings &&
-			project &&
-			isCalendarConnected &&
-			isFeatureEnabled('projectCalendars', project?.user_id)
-	);
+	let showCalendarSettings = $derived(onCalendarSettings && project && isCalendarConnected);
 	let hasProjectCalendar = $derived(!!projectCalendar);
 	let showConnectButton = $derived(!isCalendarConnected && !!onConnectCalendar);
 	let showCustomizeButton = $derived(showCalendarSettings && !hasProjectCalendar);

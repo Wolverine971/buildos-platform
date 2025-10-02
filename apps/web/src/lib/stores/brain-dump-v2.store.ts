@@ -1,5 +1,5 @@
 // apps/web/src/lib/stores/brain-dump-v2.store.ts
-import { writable, derived, get, type Readable, type Writable } from 'svelte/store';
+import { writable, derived, get, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type {
 	BrainDumpParseResult,
@@ -8,16 +8,149 @@ import type {
 } from '$lib/types/brain-dump';
 
 // Version for session storage compatibility
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2; // Incremented for multi-brain dump support
 const STORAGE_KEY = 'brain-dump-unified-state';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+// Feature flag for multi-brain dump support
+// Use function to avoid SSR initialization issues
+function isMultiBrainDumpEnabled(): boolean {
+	return true;
+}
+
+// Concurrency limits
+const MAX_CONCURRENT_BRAIN_DUMPS = 3;
+const MAX_QUEUED_BRAIN_DUMPS = 5;
+
 // CRITICAL: Module-level mutex to prevent race conditions at event loop level
 // This ensures atomic check-and-set even with concurrent async calls
-let processingMutexLock = false;
+// NOTE: For multi-brain dump, we use per-ID mutexes instead
+let processingMutexLock = false; // Legacy - used when isMultiBrainDumpEnabled()=false
+
+// Per-brain-dump mutexes for multi-brain dump mode
+const brainDumpMutexes = new Map<string, boolean>();
+
+// Queued brain dump interface
+export interface QueuedBrainDump {
+	id: string;
+	config: StartBrainDumpConfig;
+	queuedAt: number;
+}
+
+// Configuration for starting a brain dump
+export interface StartBrainDumpConfig {
+	inputText: string;
+	selectedProject: any;
+	isNewProject: boolean;
+	processingType: 'dual' | 'single' | 'short' | 'background';
+	jobId?: string;
+	autoAcceptEnabled?: boolean;
+	displayedQuestions?: DisplayedBrainDumpQuestion[];
+}
+
+// Single brain dump state (used in Map)
+export interface SingleBrainDumpState {
+	// Identity
+	id: string;
+	createdAt: number;
+
+	// Input context
+	selectedProject: any;
+	isNewProject: boolean;
+	inputText: string;
+	lastSavedContent: string;
+	displayedQuestions: DisplayedBrainDumpQuestion[];
+
+	// Processing state
+	processing: {
+		phase: 'idle' | 'transcribing' | 'parsing' | 'saving' | 'applying';
+		type: 'dual' | 'single' | 'short' | 'background';
+		mutex: boolean; // Per-brain-dump mutex
+		startedAt: number | null;
+		jobId: string | null;
+		autoAcceptEnabled: boolean;
+		streaming: {
+			contextStatus: 'pending' | 'processing' | 'completed' | 'error';
+			tasksStatus: 'pending' | 'processing' | 'completed' | 'error';
+			contextResult: any;
+			tasksResult: any;
+			contextProgress: string;
+			tasksProgress: string;
+		} | null;
+		progress: {
+			current: number;
+			total: number;
+			message: string;
+		};
+	};
+
+	// Results
+	parseResults: BrainDumpParseResult | null;
+	disabledOperations: Set<string>;
+	results: {
+		success: {
+			brainDumpId?: string;
+			brainDumpType?: string;
+			projectId?: string;
+			projectName?: string;
+			isNewProject?: boolean;
+			operationsCount?: number;
+			failedOperations?: number;
+			operationErrors?: Array<{
+				operationId?: string;
+				table: string;
+				operation: string;
+				error: string;
+			}>;
+		} | null;
+		errors: {
+			operations: Array<{
+				operationId?: string;
+				table: string;
+				operation: string;
+				error: string;
+				timestamp: string;
+			}>;
+			processing: string | null;
+		};
+		lastExecutionSummary: {
+			successful: number;
+			failed: number;
+			timestamp: string;
+			details?: any;
+		} | null;
+	};
+
+	// Voice recording state (if applicable)
+	voice?: {
+		error: string;
+		microphonePermissionGranted: boolean;
+		capabilitiesChecked: boolean;
+		isInitializingRecording: boolean;
+		canUseLiveTranscript: boolean;
+	};
+}
 
 // Unified state interface with domain separation
+// NOTE: This interface supports both legacy (single) and new (multi) brain dump modes
 export interface UnifiedBrainDumpState {
+	// ===== MULTI-BRAIN DUMP SUPPORT (used when MULTI_BRAINDUMP_ENABLED=true) =====
+	// Map of active brain dumps (brainDumpId → state)
+	activeBrainDumps: Map<string, SingleBrainDumpState>;
+
+	// Optional: convenience pointer to "focused" brain dump
+	focusedBrainDumpId: string | null;
+
+	// Queue for when limit reached
+	queuedBrainDumps: QueuedBrainDump[];
+
+	// Multi-brain dump config
+	config: {
+		maxConcurrent: number;
+		queueEnabled: boolean;
+	};
+
+	// ===== LEGACY SINGLE-BRAIN DUMP FIELDS (used when MULTI_BRAINDUMP_ENABLED=false) =====
 	// UI Domain - Visual state and component behavior
 	ui: {
 		modal: {
@@ -75,6 +208,7 @@ export interface UnifiedBrainDumpState {
 
 		// Background job tracking
 		jobId: string | null;
+		activeBrainDumpId: string | null;
 		autoAcceptEnabled: boolean;
 
 		// Dual processing specific
@@ -146,6 +280,15 @@ export interface UnifiedBrainDumpState {
 // Initial state factory
 function createInitialState(): UnifiedBrainDumpState {
 	return {
+		// Multi-brain dump fields
+		activeBrainDumps: new Map(),
+		focusedBrainDumpId: null,
+		queuedBrainDumps: [],
+		config: {
+			maxConcurrent: MAX_CONCURRENT_BRAIN_DUMPS,
+			queueEnabled: true
+		},
+		// Legacy fields
 		ui: {
 			modal: {
 				isOpen: false,
@@ -186,6 +329,7 @@ function createInitialState(): UnifiedBrainDumpState {
 			mutex: false,
 			startedAt: null,
 			jobId: null,
+			activeBrainDumpId: null,
 			autoAcceptEnabled: false,
 			streaming: null,
 			progress: {
@@ -215,30 +359,66 @@ function persistState(state: UnifiedBrainDumpState) {
 	if (!browser || !state.persistence.shouldPersist) return;
 
 	try {
-		const toPersist = {
-			version: STORAGE_VERSION,
-			sessionId: state.persistence.sessionId,
-			timestamp: Date.now(),
-			core: {
-				inputText: state.core.inputText,
-				currentBrainDumpId: state.core.currentBrainDumpId,
-				selectedProject: state.core.selectedProject,
-				parseResults: state.core.parseResults
-			},
-			processing: {
-				jobId: state.processing.jobId,
-				type: state.processing.type,
-				phase: state.processing.phase
-			},
-			ui: {
-				notification: {
-					isOpen: state.ui.notification.isOpen,
-					isMinimized: state.ui.notification.isMinimized
-				}
-			}
-		};
+		if (isMultiBrainDumpEnabled()) {
+			// Multi-brain dump mode: Serialize Map to array
+			const activeBrainDumpsArray = Array.from(state.activeBrainDumps.entries()).map(
+				([id, brainDump]) => ({
+					id,
+					// Only persist essential data
+					selectedProject: brainDump.selectedProject,
+					isNewProject: brainDump.isNewProject,
+					inputText: brainDump.inputText,
+					parseResults: brainDump.parseResults,
+					processing: {
+						phase: brainDump.processing.phase,
+						type: brainDump.processing.type,
+						jobId: brainDump.processing.jobId,
+						startedAt: brainDump.processing.startedAt
+					},
+					createdAt: brainDump.createdAt
+				})
+			);
 
-		sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+			const toPersist = {
+				version: STORAGE_VERSION,
+				sessionId: state.persistence.sessionId,
+				timestamp: Date.now(),
+				multiMode: true,
+				activeBrainDumps: activeBrainDumpsArray,
+				focusedBrainDumpId: state.focusedBrainDumpId,
+				queuedBrainDumps: state.queuedBrainDumps
+			};
+
+			sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+		} else {
+			// Legacy mode
+			const toPersist = {
+				version: STORAGE_VERSION,
+				sessionId: state.persistence.sessionId,
+				timestamp: Date.now(),
+				multiMode: false,
+				core: {
+					inputText: state.core.inputText,
+					currentBrainDumpId: state.core.currentBrainDumpId,
+					selectedProject: state.core.selectedProject,
+					parseResults: state.core.parseResults
+				},
+				processing: {
+					jobId: state.processing.jobId,
+					type: state.processing.type,
+					phase: state.processing.phase,
+					activeBrainDumpId: state.processing.activeBrainDumpId
+				},
+				ui: {
+					notification: {
+						isOpen: state.ui.notification.isOpen,
+						isMinimized: state.ui.notification.isMinimized
+					}
+				}
+			};
+
+			sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+		}
 	} catch (error) {
 		console.error('Failed to persist brain dump state:', error);
 	}
@@ -255,6 +435,7 @@ function loadPersistedState(): UnifiedBrainDumpState | null {
 
 		// Check version compatibility
 		if (parsed.version !== STORAGE_VERSION) {
+			console.log('[Store] Storage version mismatch, clearing old state');
 			sessionStorage.removeItem(STORAGE_KEY);
 			return null;
 		}
@@ -262,38 +443,114 @@ function loadPersistedState(): UnifiedBrainDumpState | null {
 		// Check if session is expired
 		const age = Date.now() - parsed.timestamp;
 		if (age > SESSION_TIMEOUT_MS) {
+			console.log('[Store] Session expired, clearing old state');
 			sessionStorage.removeItem(STORAGE_KEY);
 			return null;
 		}
 
-		// Reconstruct state from persisted data
 		const state = createInitialState();
-		return {
-			...state,
-			core: {
-				...state.core,
-				...parsed.core,
-				disabledOperations: new Set() // Recreate Set from scratch
-			},
-			processing: {
-				...state.processing,
-				...parsed.processing,
-				mutex: false, // Reset mutex on reload
-				startedAt: null // Reset timing
-			},
-			ui: {
-				...state.ui,
-				notification: {
-					...state.ui.notification,
-					...parsed.ui?.notification
+
+		// IMPORTANT: If multi-mode enabled but persisted data is legacy, start fresh
+		if (isMultiBrainDumpEnabled() && !parsed.multiMode) {
+			console.log(
+				'[Store] Multi-mode enabled but legacy data found - clearing and starting fresh'
+			);
+			sessionStorage.removeItem(STORAGE_KEY);
+			return null;
+		}
+
+		if (isMultiBrainDumpEnabled() && parsed.multiMode) {
+			// Multi-brain dump mode: Restore Map from array
+			const activeBrainDumps = new Map<string, SingleBrainDumpState>();
+
+			const now = Date.now();
+			for (const item of parsed.activeBrainDumps || []) {
+				// Skip brain dumps older than SESSION_TIMEOUT_MS
+				const itemAge = now - (item.createdAt || 0);
+				if (itemAge > SESSION_TIMEOUT_MS) {
+					console.log(`[Store] Skipping expired brain dump ${item.id}`);
+					continue;
 				}
-			},
-			persistence: {
-				...state.persistence,
-				sessionId: parsed.sessionId,
-				shouldPersist: true
+
+				// Reconstruct brain dump state
+				const brainDump: SingleBrainDumpState = {
+					id: item.id,
+					createdAt: item.createdAt || Date.now(),
+					selectedProject: item.selectedProject,
+					isNewProject: item.isNewProject,
+					inputText: item.inputText || '',
+					lastSavedContent: '',
+					displayedQuestions: [],
+					processing: {
+						phase: item.processing?.phase || 'idle',
+						type: item.processing?.type || 'single',
+						mutex: false, // Reset mutex on reload
+						startedAt: null, // Reset timing
+						jobId: item.processing?.jobId || null,
+						autoAcceptEnabled: false,
+						streaming: null,
+						progress: {
+							current: 0,
+							total: 0,
+							message: ''
+						}
+					},
+					parseResults: item.parseResults || null,
+					disabledOperations: new Set(),
+					results: {
+						success: null,
+						errors: {
+							operations: [],
+							processing: null
+						},
+						lastExecutionSummary: null
+					}
+				};
+
+				activeBrainDumps.set(item.id, brainDump);
 			}
-		};
+
+			return {
+				...state,
+				activeBrainDumps,
+				focusedBrainDumpId: parsed.focusedBrainDumpId || null,
+				queuedBrainDumps: parsed.queuedBrainDumps || [],
+				persistence: {
+					...state.persistence,
+					sessionId: parsed.sessionId,
+					shouldPersist: true
+				}
+			};
+		} else {
+			// Legacy mode
+			return {
+				...state,
+				core: {
+					...state.core,
+					...parsed.core,
+					disabledOperations: new Set() // Recreate Set from scratch
+				},
+				processing: {
+					...state.processing,
+					...parsed.processing,
+					activeBrainDumpId: parsed.processing?.activeBrainDumpId ?? null,
+					mutex: false, // Reset mutex on reload
+					startedAt: null // Reset timing
+				},
+				ui: {
+					...state.ui,
+					notification: {
+						...state.ui.notification,
+						...parsed.ui?.notification
+					}
+				},
+				persistence: {
+					...state.persistence,
+					sessionId: parsed.sessionId,
+					shouldPersist: true
+				}
+			};
+		}
 	} catch (error) {
 		console.error('Failed to load persisted brain dump state:', error);
 		sessionStorage.removeItem(STORAGE_KEY);
@@ -305,6 +562,35 @@ function loadPersistedState(): UnifiedBrainDumpState | null {
 // Use object type with subscribe instead of Readable to ensure Svelte's $ syntax works
 export type BrainDumpV2Store = {
 	subscribe: Writable<UnifiedBrainDumpState>['subscribe'];
+
+	// ===== MULTI-BRAIN DUMP ACTIONS (new) =====
+	startBrainDump: (id: string, config: StartBrainDumpConfig) => Promise<boolean>;
+	updateBrainDump: (id: string, updates: Partial<SingleBrainDumpState>) => void;
+	getBrainDump: (id: string) => SingleBrainDumpState | null;
+	completeBrainDump: (id: string) => void;
+	cancelBrainDump: (id: string) => void;
+	setFocusedBrainDump: (id: string | null) => void;
+
+	// Concurrency management
+	canStartNewBrainDump: () => boolean;
+	getActiveBrainDumpCount: () => number;
+	queueBrainDump: (config: StartBrainDumpConfig) => string;
+	processQueue: () => void;
+
+	// Per-brain-dump mutex management
+	acquireBrainDumpMutex: (id: string) => boolean;
+	releaseBrainDumpMutex: (id: string) => void;
+
+	// Per-brain-dump updates
+	updateBrainDumpParseResults: (id: string, results: BrainDumpParseResult | null) => void;
+	updateBrainDumpStreamingState: (
+		id: string,
+		streaming: Partial<NonNullable<SingleBrainDumpState['processing']['streaming']>>
+	) => void;
+	setBrainDumpError: (id: string, error: string) => void;
+	setBrainDumpPhase: (id: string, phase: SingleBrainDumpState['processing']['phase']) => void;
+
+	// ===== LEGACY ACTIONS (for backward compatibility when MULTI_BRAINDUMP_ENABLED=false) =====
 	// UI Actions
 	openModal: () => void;
 	closeModal: () => void;
@@ -320,7 +606,7 @@ export type BrainDumpV2Store = {
 	// Core Actions
 	selectProject: (project: any) => void;
 	updateInputText: (text: string) => void;
-	setSavedContent: (content: string, brainDumpId?: string) => void;
+	setSavedContent: (content: string, brainDumpId?: string | null) => void;
 	setParseResults: (results: BrainDumpParseResult | null) => void;
 	toggleOperation: (operationId: string) => void;
 	updateOperation: (operation: ParsedOperation) => void;
@@ -347,6 +633,7 @@ export type BrainDumpV2Store = {
 	) => void;
 	resetStreamingState: () => void;
 	setAutoAccept: (enabled: boolean) => void;
+	detachActiveBrainDump: () => void;
 
 	// Results Actions
 	setSuccessData: (data: UnifiedBrainDumpState['results']['success']) => void;
@@ -366,6 +653,13 @@ export type BrainDumpV2Store = {
 	reset: () => void;
 	resetForNewSession: () => void;
 	clearParseResults: () => void;
+
+	// Helper for backward compatibility
+	getCurrentBrainDump: () => SingleBrainDumpState | null;
+
+	// Helpers for project tracking
+	isProjectBeingProcessed: (projectId: string | null) => boolean;
+	getProcessingProjectIds: () => Set<string>;
 };
 
 // Create the unified store
@@ -403,11 +697,34 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 			cleanupInterval = setInterval(
 				() => {
 					const state = get({ subscribe });
-					if (state.processing.startedAt) {
-						const age = Date.now() - state.processing.startedAt;
-						if (age > SESSION_TIMEOUT_MS) {
-							console.warn('Cleaning up abandoned brain dump session');
-							actions.reset();
+
+					if (isMultiBrainDumpEnabled()) {
+						// Multi-brain dump mode: Clean up abandoned brain dumps
+						const now = Date.now();
+						let hasAbandonedBrainDumps = false;
+
+						for (const [id, brainDump] of state.activeBrainDumps) {
+							if (brainDump.processing.startedAt) {
+								const age = now - brainDump.processing.startedAt;
+								if (age > SESSION_TIMEOUT_MS) {
+									console.warn(`[Store] Cleaning up abandoned brain dump ${id}`);
+									actions.completeBrainDump(id);
+									hasAbandonedBrainDumps = true;
+								}
+							}
+						}
+
+						if (hasAbandonedBrainDumps) {
+							console.log('[Store] Cleaned up abandoned brain dumps');
+						}
+					} else {
+						// Legacy mode
+						if (state.processing.startedAt) {
+							const age = Date.now() - state.processing.startedAt;
+							if (age > SESSION_TIMEOUT_MS) {
+								console.warn('[Store] Cleaning up abandoned brain dump session');
+								actions.reset();
+							}
 						}
 					}
 				},
@@ -435,6 +752,486 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 	// Store actions with domain-specific methods
 	const actions = {
+		// ===== MULTI-BRAIN DUMP ACTIONS =====
+
+		/**
+		 * Start a new brain dump (multi-brain dump mode)
+		 * @param id - Unique brain dump ID
+		 * @param config - Brain dump configuration
+		 * @returns true if started, false if queued or failed
+		 */
+		startBrainDump: async (id: string, config: StartBrainDumpConfig): Promise<boolean> => {
+			if (!isMultiBrainDumpEnabled()) {
+				console.warn('[Store] Multi-brain dump disabled, use startProcessing() instead');
+				return false;
+			}
+
+			const state = get({ subscribe });
+
+			// Check if we can start a new brain dump
+			if (state.activeBrainDumps.size >= state.config.maxConcurrent) {
+				// Queue it
+				console.log(
+					`[Store] Max concurrent reached (${state.config.maxConcurrent}), queuing brain dump ${id}`
+				);
+				actions.queueBrainDump(config);
+				return false;
+			}
+
+			// Acquire per-brain-dump mutex
+			if (!actions.acquireBrainDumpMutex(id)) {
+				console.warn(`[Store] Mutex already held for brain dump ${id}`);
+				return false;
+			}
+
+			// Create new brain dump state
+			const newBrainDump: SingleBrainDumpState = {
+				id,
+				createdAt: Date.now(),
+				selectedProject: config.selectedProject,
+				isNewProject: config.isNewProject,
+				inputText: config.inputText,
+				lastSavedContent: '',
+				displayedQuestions: config.displayedQuestions || [],
+				processing: {
+					phase: 'parsing',
+					type: config.processingType,
+					mutex: true,
+					startedAt: Date.now(),
+					jobId: config.jobId || null,
+					autoAcceptEnabled: config.autoAcceptEnabled || false,
+					streaming:
+						config.processingType === 'dual' || config.processingType === 'short'
+							? {
+									contextStatus: 'pending',
+									tasksStatus: 'pending',
+									contextResult: null,
+									tasksResult: null,
+									contextProgress: '',
+									tasksProgress: ''
+								}
+							: null,
+					progress: {
+						current: 0,
+						total: 0,
+						message: ''
+					}
+				},
+				parseResults: null,
+				disabledOperations: new Set(),
+				results: {
+					success: null,
+					errors: {
+						operations: [],
+						processing: null
+					},
+					lastExecutionSummary: null
+				}
+			};
+
+			// Add to Map (CRITICAL: Create new Map for Svelte 5 reactivity)
+			update((state) => {
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, newBrainDump);
+
+				return {
+					...state,
+					activeBrainDumps: newMap,
+					focusedBrainDumpId: id, // Set as focused
+					persistence: {
+						...state.persistence,
+						shouldPersist: true
+					}
+				};
+			});
+
+			console.log(
+				`[Store] Started brain dump ${id}, active count: ${state.activeBrainDumps.size + 1}`
+			);
+			return true;
+		},
+
+		/**
+		 * Update a brain dump's state
+		 */
+		updateBrainDump: (id: string, updates: Partial<SingleBrainDumpState>) => {
+			update((state) => {
+				const brainDump = state.activeBrainDumps.get(id);
+				if (!brainDump) {
+					console.warn(`[Store] Brain dump ${id} not found for update`);
+					return state;
+				}
+
+				// Merge updates (CRITICAL: Create new Map for Svelte 5 reactivity)
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, { ...brainDump, ...updates });
+
+				return {
+					...state,
+					activeBrainDumps: newMap
+				};
+			});
+		},
+
+		/**
+		 * Get a brain dump by ID
+		 */
+		getBrainDump: (id: string): SingleBrainDumpState | null => {
+			const state = get({ subscribe });
+			return state.activeBrainDumps.get(id) || null;
+		},
+
+		/**
+		 * Complete a brain dump and remove from active Map
+		 */
+		completeBrainDump: (id: string) => {
+			console.log(`[Store] Completing brain dump ${id}`);
+
+			// Release mutex
+			actions.releaseBrainDumpMutex(id);
+
+			// Remove from Map (CRITICAL: Create new Map for Svelte 5 reactivity)
+			update((state) => {
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.delete(id);
+
+				return {
+					...state,
+					activeBrainDumps: newMap,
+					focusedBrainDumpId:
+						state.focusedBrainDumpId === id ? null : state.focusedBrainDumpId
+				};
+			});
+
+			// Try to process next in queue
+			actions.processQueue();
+		},
+
+		/**
+		 * Cancel a brain dump
+		 */
+		cancelBrainDump: (id: string) => {
+			console.log(`[Store] Cancelling brain dump ${id}`);
+
+			// Release mutex
+			actions.releaseBrainDumpMutex(id);
+
+			// Remove from Map (CRITICAL: Create new Map for Svelte 5 reactivity)
+			update((state) => {
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.delete(id);
+
+				return {
+					...state,
+					activeBrainDumps: newMap,
+					focusedBrainDumpId:
+						state.focusedBrainDumpId === id ? null : state.focusedBrainDumpId
+				};
+			});
+		},
+
+		/**
+		 * Set the focused brain dump
+		 */
+		setFocusedBrainDump: (id: string | null) => {
+			update((state) => ({
+				...state,
+				focusedBrainDumpId: id
+			}));
+		},
+
+		/**
+		 * Check if we can start a new brain dump
+		 */
+		canStartNewBrainDump: (): boolean => {
+			const state = get({ subscribe });
+			return state.activeBrainDumps.size < state.config.maxConcurrent;
+		},
+
+		/**
+		 * Get the number of active brain dumps
+		 */
+		getActiveBrainDumpCount: (): number => {
+			const state = get({ subscribe });
+			return state.activeBrainDumps.size;
+		},
+
+		/**
+		 * Queue a brain dump for later processing
+		 */
+		queueBrainDump: (config: StartBrainDumpConfig): string => {
+			const id = crypto.randomUUID();
+
+			update((state) => {
+				if (state.queuedBrainDumps.length >= MAX_QUEUED_BRAIN_DUMPS) {
+					console.warn('[Store] Queue is full, cannot queue more brain dumps');
+					return state;
+				}
+
+				return {
+					...state,
+					queuedBrainDumps: [
+						...state.queuedBrainDumps,
+						{
+							id,
+							config,
+							queuedAt: Date.now()
+						}
+					]
+				};
+			});
+
+			console.log(
+				`[Store] Queued brain dump ${id}, queue size: ${get({ subscribe }).queuedBrainDumps.length}`
+			);
+			return id;
+		},
+
+		/**
+		 * Process the next brain dump in the queue
+		 */
+		processQueue: () => {
+			const state = get({ subscribe });
+
+			if (!actions.canStartNewBrainDump()) {
+				console.log('[Store] Cannot process queue, at max concurrent limit');
+				return;
+			}
+
+			if (state.queuedBrainDumps.length === 0) {
+				return;
+			}
+
+			const nextQueued = state.queuedBrainDumps[0];
+			if (!nextQueued) {
+				console.warn('[Store] Queue has items but first item is undefined');
+				return;
+			}
+
+			console.log(`[Store] Processing queued brain dump ${nextQueued.id}`);
+
+			// Remove from queue
+			update((state) => ({
+				...state,
+				queuedBrainDumps: state.queuedBrainDumps.slice(1)
+			}));
+
+			// Start processing
+			actions.startBrainDump(nextQueued.id, nextQueued.config);
+		},
+
+		/**
+		 * Acquire mutex for a specific brain dump
+		 */
+		acquireBrainDumpMutex: (id: string): boolean => {
+			if (brainDumpMutexes.get(id)) {
+				console.warn(`[Store] Mutex already held for brain dump ${id}`);
+				return false;
+			}
+
+			brainDumpMutexes.set(id, true);
+			console.log(`[Store] Acquired mutex for brain dump ${id}`);
+			return true;
+		},
+
+		/**
+		 * Release mutex for a specific brain dump
+		 */
+		releaseBrainDumpMutex: (id: string) => {
+			brainDumpMutexes.delete(id);
+			console.log(`[Store] Released mutex for brain dump ${id}`);
+		},
+
+		/**
+		 * Update parse results for a specific brain dump
+		 */
+		updateBrainDumpParseResults: (id: string, results: BrainDumpParseResult | null) => {
+			update((state) => {
+				const brainDump = state.activeBrainDumps.get(id);
+				if (!brainDump) {
+					console.warn(`[Store] Brain dump ${id} not found for parse results update`);
+					return state;
+				}
+
+				// Update brain dump (CRITICAL: Create new Map for Svelte 5 reactivity)
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, {
+					...brainDump,
+					parseResults: results,
+					disabledOperations: new Set(),
+					processing: {
+						...brainDump.processing,
+						phase: results ? 'idle' : brainDump.processing.phase,
+						mutex: false
+					}
+				});
+
+				return {
+					...state,
+					activeBrainDumps: newMap
+				};
+			});
+		},
+
+		/**
+		 * Update streaming state for a specific brain dump
+		 */
+		updateBrainDumpStreamingState: (
+			id: string,
+			streaming: Partial<NonNullable<SingleBrainDumpState['processing']['streaming']>>
+		) => {
+			update((state) => {
+				const brainDump = state.activeBrainDumps.get(id);
+				if (!brainDump) {
+					console.warn(`[Store] Brain dump ${id} not found for streaming state update`);
+					return state;
+				}
+
+				// Merge streaming state (CRITICAL: Create new Map for Svelte 5 reactivity)
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, {
+					...brainDump,
+					processing: {
+						...brainDump.processing,
+						streaming: {
+							contextStatus:
+								streaming.contextStatus ??
+								brainDump.processing.streaming?.contextStatus ??
+								'pending',
+							tasksStatus:
+								streaming.tasksStatus ??
+								brainDump.processing.streaming?.tasksStatus ??
+								'pending',
+							contextResult:
+								streaming.contextResult ??
+								brainDump.processing.streaming?.contextResult,
+							tasksResult:
+								streaming.tasksResult ??
+								brainDump.processing.streaming?.tasksResult,
+							contextProgress:
+								streaming.contextProgress ??
+								brainDump.processing.streaming?.contextProgress ??
+								'',
+							tasksProgress:
+								streaming.tasksProgress ??
+								brainDump.processing.streaming?.tasksProgress ??
+								''
+						}
+					}
+				});
+
+				return {
+					...state,
+					activeBrainDumps: newMap
+				};
+			});
+		},
+
+		/**
+		 * Set error for a specific brain dump
+		 */
+		setBrainDumpError: (id: string, error: string) => {
+			update((state) => {
+				const brainDump = state.activeBrainDumps.get(id);
+				if (!brainDump) {
+					console.warn(`[Store] Brain dump ${id} not found for error update`);
+					return state;
+				}
+
+				// Update brain dump with error (CRITICAL: Create new Map for Svelte 5 reactivity)
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, {
+					...brainDump,
+					results: {
+						...brainDump.results,
+						errors: {
+							...brainDump.results.errors,
+							processing: error
+						}
+					},
+					processing: {
+						...brainDump.processing,
+						phase: 'idle',
+						mutex: false
+					}
+				});
+
+				return {
+					...state,
+					activeBrainDumps: newMap
+				};
+			});
+
+			// Release mutex
+			actions.releaseBrainDumpMutex(id);
+		},
+
+		/**
+		 * Set phase for a specific brain dump
+		 */
+		setBrainDumpPhase: (id: string, phase: SingleBrainDumpState['processing']['phase']) => {
+			update((state) => {
+				const brainDump = state.activeBrainDumps.get(id);
+				if (!brainDump) {
+					console.warn(`[Store] Brain dump ${id} not found for phase update`);
+					return state;
+				}
+
+				// Update brain dump phase (CRITICAL: Create new Map for Svelte 5 reactivity)
+				const newMap = new Map(state.activeBrainDumps);
+				newMap.set(id, {
+					...brainDump,
+					processing: {
+						...brainDump.processing,
+						phase
+					}
+				});
+
+				return {
+					...state,
+					activeBrainDumps: newMap
+				};
+			});
+		},
+
+		/**
+		 * Get current brain dump (for backward compatibility)
+		 * Returns the focused brain dump or the first active brain dump
+		 */
+		getCurrentBrainDump: (): SingleBrainDumpState | null => {
+			const state = get({ subscribe });
+
+			if (!isMultiBrainDumpEnabled()) {
+				// Legacy mode: convert from singular state
+				if (!state.core.currentBrainDumpId) return null;
+
+				return {
+					id: state.core.currentBrainDumpId,
+					createdAt: state.processing.startedAt || Date.now(),
+					selectedProject: state.core.selectedProject,
+					isNewProject: state.core.isNewProject,
+					inputText: state.core.inputText,
+					lastSavedContent: state.core.lastSavedContent,
+					displayedQuestions: state.core.displayedQuestions,
+					processing: state.processing,
+					parseResults: state.core.parseResults,
+					disabledOperations: state.core.disabledOperations,
+					results: state.results,
+					voice: state.core.voice
+				};
+			}
+
+			// Multi-brain dump mode
+			if (state.focusedBrainDumpId) {
+				return state.activeBrainDumps.get(state.focusedBrainDumpId) || null;
+			}
+
+			// Return first active brain dump
+			const firstEntry = Array.from(state.activeBrainDumps.values())[0];
+			return firstEntry || null;
+		},
+
+		// ===== LEGACY ACTIONS (for backward compatibility) =====
 		// ===== UI Actions =====
 		openModal: () =>
 			update((state) => ({
@@ -609,13 +1406,14 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 				}
 			})),
 
-		setSavedContent: (content: string, brainDumpId?: string) =>
+		setSavedContent: (content: string, brainDumpId?: string | null) =>
 			update((state) => ({
 				...state,
 				core: {
 					...state.core,
 					lastSavedContent: content,
-					currentBrainDumpId: brainDumpId || state.core.currentBrainDumpId
+					currentBrainDumpId:
+						brainDumpId === undefined ? state.core.currentBrainDumpId : brainDumpId
 				}
 			})),
 
@@ -821,6 +1619,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					type: config.type,
 					startedAt: Date.now(),
 					jobId: config.jobId || null,
+					activeBrainDumpId: config.brainDumpId,
 					autoAcceptEnabled: config.autoAcceptEnabled || false,
 					// Initialize streaming state for dual/short processing
 					streaming:
@@ -947,26 +1746,101 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 				}
 			})),
 
+		detachActiveBrainDump: () =>
+			update((state) => {
+				const preservedId =
+					state.processing.activeBrainDumpId || state.core.currentBrainDumpId;
+
+				// If there's nothing to preserve, still clear modal bookkeeping
+				if (!preservedId) {
+					return {
+						...state,
+						core: {
+							...state.core,
+							currentBrainDumpId: null,
+							lastSavedContent: ''
+						}
+					};
+				}
+
+				return {
+					...state,
+					core: {
+						...state.core,
+						currentBrainDumpId: null,
+						lastSavedContent: ''
+					},
+					processing: {
+						...state.processing,
+						activeBrainDumpId: preservedId
+					}
+				};
+			}),
+
 		// ===== Results Actions =====
 		setSuccessData: (data: UnifiedBrainDumpState['results']['success']) =>
-			update((state) => ({
-				...state,
-				results: {
-					...state.results,
-					success: data
-				},
-				ui: {
-					...state.ui,
-					modal: {
-						...state.ui.modal,
-						currentView: 'success'
-					},
-					notification: {
-						...state.ui.notification,
-						showSuccessView: true
+			update((state) => {
+				const multiEnabled = isMultiBrainDumpEnabled();
+				if (multiEnabled && data?.brainDumpId) {
+					const brainDump = state.activeBrainDumps.get(data.brainDumpId);
+					if (brainDump) {
+						const updatedBrainDump = {
+							...brainDump,
+							results: {
+								...brainDump.results,
+								success: data
+							},
+							processing: {
+								...brainDump.processing,
+								phase: 'idle',
+								mutex: false
+							}
+						};
+
+						const newMap = new Map(state.activeBrainDumps);
+						newMap.set(data.brainDumpId, updatedBrainDump);
+
+						return {
+							...state,
+							activeBrainDumps: newMap,
+							results: {
+								...state.results,
+								success: data
+							},
+							ui: {
+								...state.ui,
+								notification: {
+									...state.ui.notification,
+									showSuccessView: true
+								}
+							}
+						};
 					}
+
+					console.warn(
+						`[Store] Brain dump ${data?.brainDumpId} not found when setting success data`
+					);
 				}
-			})),
+
+				return {
+					...state,
+					results: {
+						...state.results,
+						success: data
+					},
+					ui: {
+						...state.ui,
+						modal: {
+							...state.ui.modal,
+							currentView: 'success'
+						},
+						notification: {
+							...state.ui.notification,
+							showSuccessView: true
+						}
+					}
+				};
+			}),
 
 		setOperationErrors: (
 			errors: Array<{
@@ -1077,7 +1951,84 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					parseResults: null,
 					disabledOperations: new Set()
 				}
-			}))
+			})),
+
+		// ===== Project Tracking Helpers =====
+		/**
+		 * Check if a project is currently being processed OR has pending results
+		 * A project is considered "busy" if:
+		 * 1. It's currently being processed (mutex active)
+		 * 2. OR it has parsed results waiting for user acceptance/cancellation
+		 * @param projectId - Project ID to check, or null for new projects
+		 */
+		isProjectBeingProcessed: (projectId: string | null): boolean => {
+			if (!isMultiBrainDumpEnabled()) {
+				// Legacy mode: Check if processing OR has pending results
+				const state = get({ subscribe });
+				const hasActiveProcessing = state.processing.mutex;
+				const hasPendingResults = state.core.parseResults !== null;
+
+				// If no processing and no pending results, project is available
+				if (!hasActiveProcessing && !hasPendingResults) return false;
+
+				const currentProjectId =
+					state.core.selectedProject?.id === 'new'
+						? null
+						: state.core.selectedProject?.id;
+				return currentProjectId === projectId;
+			}
+
+			// Multi-brain dump mode: Check activeBrainDumps Map
+			// Brain dumps remain in activeBrainDumps until accepted or canceled
+			const state = get({ subscribe });
+			for (const brainDump of state.activeBrainDumps.values()) {
+				const brainDumpProjectId =
+					brainDump.selectedProject?.id === 'new' ? null : brainDump.selectedProject?.id;
+				if (brainDumpProjectId === projectId) {
+					return true;
+				}
+			}
+
+			return false;
+		},
+
+		/**
+		 * Get set of all project IDs currently being processed OR with pending results
+		 */
+		getProcessingProjectIds: (): Set<string> => {
+			const processingIds = new Set<string>();
+
+			if (!isMultiBrainDumpEnabled()) {
+				// Legacy mode: Include projects that are processing OR have pending results
+				const state = get({ subscribe });
+				const hasActiveProcessing = state.processing.mutex;
+				const hasPendingResults = state.core.parseResults !== null;
+
+				if ((hasActiveProcessing || hasPendingResults) && state.core.selectedProject) {
+					const projectId =
+						state.core.selectedProject.id === 'new'
+							? 'new'
+							: state.core.selectedProject.id;
+					processingIds.add(projectId);
+				}
+				return processingIds;
+			}
+
+			// Multi-brain dump mode: Iterate over activeBrainDumps
+			// Brain dumps remain in activeBrainDumps until accepted or canceled
+			const state = get({ subscribe });
+			for (const brainDump of state.activeBrainDumps.values()) {
+				if (brainDump.selectedProject) {
+					const projectId =
+						brainDump.selectedProject.id === 'new'
+							? 'new'
+							: brainDump.selectedProject.id;
+					processingIds.add(projectId);
+				}
+			}
+
+			return processingIds;
+		}
 	};
 
 	return {
@@ -1280,3 +2231,33 @@ export const isTextareaCollapsed = derived(
 	brainDumpComputed,
 	($computed) => $computed.isTextareaCollapsed
 );
+
+// ===== Project Processing Tracking =====
+/**
+ * Derived store that returns a Set of project IDs currently being processed
+ * This is reactive and will update when brain dumps are added/removed
+ */
+export const processingProjectIds = derived(brainDumpV2Store, ($state) => {
+	const ids = new Set<string>();
+
+	if (!isMultiBrainDumpEnabled()) {
+		// Legacy mode
+		if ($state.processing.mutex && $state.core.selectedProject) {
+			const projectId =
+				$state.core.selectedProject.id === 'new' ? 'new' : $state.core.selectedProject.id;
+			ids.add(projectId);
+		}
+		return ids;
+	}
+
+	// Multi-brain dump mode: Iterate over activeBrainDumps
+	for (const brainDump of $state.activeBrainDumps.values()) {
+		if (brainDump.selectedProject) {
+			const projectId =
+				brainDump.selectedProject.id === 'new' ? 'new' : brainDump.selectedProject.id;
+			ids.add(projectId);
+		}
+	}
+
+	return ids;
+});

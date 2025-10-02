@@ -1046,15 +1046,15 @@ await brainDumpService.saveDraft(text, id, projectId, signal);
 
 ### After Phase 3 (Performance Optimizations) ✅
 
-| Metric | After Phase 2.2 | After Phase 3 | Improvement |
-|-----------------------|-----------------|---------------|-------------|
-| Store subscriptions | 18 | 1 | ✅ **-94%** |
-| Recalculations/change | 18 | 1 | ✅ **-94%** |
-| Store performance | 100% | 30% | ✅ **+70%** |
-| Auto-save wasted ops | 90% | 10% | ✅ **-90%** |
-| Network requests | Every keystroke | Final state only | ✅ **-90%** |
-| Modal lines | 1,323 | 1,314 | ✅ **-0.7%** |
-| Code complexity | Medium | Low | ✅ **Reduced** |
+| Metric                | After Phase 2.2 | After Phase 3    | Improvement    |
+| --------------------- | --------------- | ---------------- | -------------- |
+| Store subscriptions   | 18              | 1                | ✅ **-94%**    |
+| Recalculations/change | 18              | 1                | ✅ **-94%**    |
+| Store performance     | 100%            | 30%              | ✅ **+70%**    |
+| Auto-save wasted ops  | 90%             | 10%              | ✅ **-90%**    |
+| Network requests      | Every keystroke | Final state only | ✅ **-90%**    |
+| Modal lines           | 1,323           | 1,314            | ✅ **-0.7%**   |
+| Code complexity       | Medium          | Low              | ✅ **Reduced** |
 
 **Phase 3 Results**:
 
@@ -1069,6 +1069,7 @@ await brainDumpService.saveDraft(text, id, projectId, signal);
 - ✅ **Zero Breaking Changes**: All existing code continues to work
 
 **Files Modified**:
+
 - `apps/web/src/lib/stores/brain-dump-v2.store.ts` (+191 lines optimized)
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte` (+66, -75 lines)
 - `apps/web/src/lib/services/braindump-api.service.ts` (+4 lines)
@@ -1176,6 +1177,7 @@ The brain dump flow was **well-architected but held back by incomplete migration
 The brain dump system has undergone comprehensive optimization across three phases:
 
 #### **Phase 1 (Store Migration)** ✅ COMPLETE
+
 - ✅ Removed 1,128 lines of duplicate store code
 - ✅ Eliminated 4 critical/high-severity bugs
 - ✅ Achieved 3x performance improvement
@@ -1183,6 +1185,7 @@ The brain dump system has undergone comprehensive optimization across three phas
 - ✅ Fixed all race conditions
 
 #### **Phase 2 (Component Refactoring)** ✅ COMPLETE
+
 - ✅ **Phase 2.1**: Extracted VoiceRecordingService (262 lines, reusable)
 - ✅ **Phase 2.2**: Eliminated 3 redundant state fields
 - ✅ **Phase 2.2**: Achieved complete TypeScript type safety
@@ -1190,6 +1193,7 @@ The brain dump system has undergone comprehensive optimization across three phas
 - ✅ Zero breaking changes maintained
 
 #### **Phase 3 (Performance Optimizations)** ✅ COMPLETE
+
 - ✅ **Consolidated Derived Stores**: 94% reduction in subscriptions (18 → 1)
 - ✅ **Auto-Save Optimization**: 90% reduction in wasted operations
 - ✅ 70% performance improvement in store operations
@@ -1198,22 +1202,23 @@ The brain dump system has undergone comprehensive optimization across three phas
 
 ### Cumulative Impact
 
-| Metric | Initial | After Phases 1-3 | Improvement |
-|--------|---------|------------------|-------------|
-| Store files | 3 | 1 | **-67%** |
-| Store lines | 1,589 | 1,331 | **-16%** |
-| State duplication | 45% | 0% | **-100%** |
-| Store subscriptions | N/A | 1 (optimized) | **-94%** |
-| Store performance | 1x | 3.4x | **+240%** |
-| Modal lines | 1,732 | 1,314 | **-24%** |
-| Critical bugs | 3 | 0 | **-100%** |
-| Total bugs | 17 | 0 | **-100%** |
-| Auto-save efficiency | Baseline | +90% | **Massive** |
-| Network requests | Every keystroke | Final state only | **-90%** |
+| Metric               | Initial         | After Phases 1-3 | Improvement |
+| -------------------- | --------------- | ---------------- | ----------- |
+| Store files          | 3               | 1                | **-67%**    |
+| Store lines          | 1,589           | 1,331            | **-16%**    |
+| State duplication    | 45%             | 0%               | **-100%**   |
+| Store subscriptions  | N/A             | 1 (optimized)    | **-94%**    |
+| Store performance    | 1x              | 3.4x             | **+240%**   |
+| Modal lines          | 1,732           | 1,314            | **-24%**    |
+| Critical bugs        | 3               | 0                | **-100%**   |
+| Total bugs           | 17              | 0                | **-100%**   |
+| Auto-save efficiency | Baseline        | +90%             | **Massive** |
+| Network requests     | Every keystroke | Final state only | **-90%**    |
 
 ### What's Next (Optional)
 
 **Phase 4 (Service Extraction)** - Optional long-term improvements:
+
 1. Extract Processing Orchestrator (~8-12 hours) - Better separation of concerns
 2. Extract Auto-Save Service (~4-6 hours) - Reusable across features
 
@@ -1230,6 +1235,7 @@ The brain dump system has undergone comprehensive optimization across three phas
 - All code is backward compatible
 
 **Expected User Impact**:
+
 - 70% faster UI responsiveness
 - 90% fewer network requests
 - Instant response to typing

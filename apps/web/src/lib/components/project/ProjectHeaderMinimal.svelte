@@ -19,7 +19,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { slide, fade, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { isFeatureEnabled } from '$lib/config/features';
 
 	// Import the v2 store
 	import { projectStoreV2 } from '$lib/stores/project.store';
@@ -91,12 +90,7 @@
 
 	let hasPhases = $derived(phases.length > 0);
 	let isCalendarConnected = $derived(calendarStatus?.isConnected === true);
-	let showCalendarSettings = $derived(
-		onCalendarSettings &&
-			project &&
-			isCalendarConnected &&
-			isFeatureEnabled('projectCalendars', project?.user_id)
-	);
+	let showCalendarSettings = $derived(onCalendarSettings && project && isCalendarConnected);
 	let hasProjectCalendar = $derived(!!projectCalendar);
 	let showConnectButton = $derived(!isCalendarConnected && !!onConnectCalendar);
 	let showCustomizeButton = $derived(showCalendarSettings && !hasProjectCalendar);

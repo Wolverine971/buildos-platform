@@ -95,55 +95,56 @@ let activeSavePromise: Promise<any> | null = null;
 let saveMutex = false;
 
 async function autoSave() {
-  if (saveMutex) return; // Can't cancel ongoing save
-  saveMutex = true;
-  try {
-    const currentOperationId = ++saveOperationId;
-    activeSavePromise = performSave(currentOperationId);
-    await activeSavePromise;
-    if (saveOperationId === currentOperationId) { // Check after completion
-      activeSavePromise = null;
-    }
-  } finally {
-    saveMutex = false;
-  }
+	if (saveMutex) return; // Can't cancel ongoing save
+	saveMutex = true;
+	try {
+		const currentOperationId = ++saveOperationId;
+		activeSavePromise = performSave(currentOperationId);
+		await activeSavePromise;
+		if (saveOperationId === currentOperationId) {
+			// Check after completion
+			activeSavePromise = null;
+		}
+	} finally {
+		saveMutex = false;
+	}
 }
 
 // AFTER (Optimized): AbortController pattern
 let saveAbortController: AbortController | null = null;
 
 async function autoSave() {
-  // Cancel any pending save INSTANTLY
-  if (saveAbortController) {
-    saveAbortController.abort(); // Immediate cancellation
-    saveAbortController = null;
-  }
+	// Cancel any pending save INSTANTLY
+	if (saveAbortController) {
+		saveAbortController.abort(); // Immediate cancellation
+		saveAbortController = null;
+	}
 
-  saveAbortController = new AbortController();
-  const signal = saveAbortController.signal;
+	saveAbortController = new AbortController();
+	const signal = saveAbortController.signal;
 
-  try {
-    if (signal.aborted) return; // Check before work
-    await performSave(signal);
-  } catch (error) {
-    if (error.name === 'AbortError') return; // Expected
-    // Handle actual errors
-  }
+	try {
+		if (signal.aborted) return; // Check before work
+		await performSave(signal);
+	} catch (error) {
+		if (error.name === 'AbortError') return; // Expected
+		// Handle actual errors
+	}
 }
 
 async function performSave(signal: AbortSignal) {
-  if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+	if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-  // Pass signal to fetch - browser cancels network request
-  const response = await brainDumpService.saveDraft(
-    inputText,
-    brainDumpId,
-    projectId,
-    signal // Browser-level cancellation
-  );
+	// Pass signal to fetch - browser cancels network request
+	const response = await brainDumpService.saveDraft(
+		inputText,
+		brainDumpId,
+		projectId,
+		signal // Browser-level cancellation
+	);
 
-  if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-  // Process response
+	if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+	// Process response
 }
 ```
 
@@ -168,12 +169,12 @@ async function performSave(signal: AbortSignal) {
 
 **Performance Analysis**:
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Subscriptions per component | 18 | 1 | **94%** |
-| Recalculations per state change | 18 | 1 | **94%** |
-| Overall store overhead | 100% | 30% | **70%** |
-| Memory per subscription | 18x | 1x | **94%** |
+| Metric                          | Before | After | Improvement |
+| ------------------------------- | ------ | ----- | ----------- |
+| Subscriptions per component     | 18     | 1     | **94%**     |
+| Recalculations per state change | 18     | 1     | **94%**     |
+| Overall store overhead          | 100%   | 30%   | **70%**     |
+| Memory per subscription         | 18x    | 1x    | **94%**     |
 
 **How It Works**:
 
@@ -206,12 +207,12 @@ isTextareaCollapsed: hasParseResultsValue
 
 **Performance Analysis**:
 
-| Scenario | Before | After | Improvement |
-|----------|--------|-------|-------------|
-| User types 10 chars rapidly | 10 saves stacked | 1 save (9 cancelled) | **90%** |
-| User types then deletes | 2 saves complete | 1 save (1 cancelled) | **50%** |
-| Network requests sent | Every keystroke | Only final state | **90%** |
-| Wasted Promise creation | 9/10 saves | 0 saves | **100%** |
+| Scenario                    | Before           | After                | Improvement |
+| --------------------------- | ---------------- | -------------------- | ----------- |
+| User types 10 chars rapidly | 10 saves stacked | 1 save (9 cancelled) | **90%**     |
+| User types then deletes     | 2 saves complete | 1 save (1 cancelled) | **50%**     |
+| Network requests sent       | Every keystroke  | Only final state     | **90%**     |
+| Wasted Promise creation     | 9/10 saves       | 0 saves              | **100%**    |
 
 **How It Works**:
 
@@ -277,31 +278,33 @@ Final text: "hel" saved to database
 ### Manual Testing Performed
 
 1. **Store Consolidation**:
-   - ✅ Syntax validation passed
-   - ✅ All 18 derived values accessible
-   - ✅ Backward compatibility verified
-   - ✅ No console errors
+    - ✅ Syntax validation passed
+    - ✅ All 18 derived values accessible
+    - ✅ Backward compatibility verified
+    - ✅ No console errors
 
 2. **Auto-Save Cancellation**:
-   - ✅ Rapid typing correctly cancels previous saves
-   - ✅ Network requests cancelled in browser DevTools
-   - ✅ Final text correctly saved
-   - ✅ No error toasts from cancelled operations
+    - ✅ Rapid typing correctly cancels previous saves
+    - ✅ Network requests cancelled in browser DevTools
+    - ✅ Final text correctly saved
+    - ✅ No error toasts from cancelled operations
 
 ### Expected Test Scenarios
 
 **Store Performance**:
+
 ```javascript
 // Before: 18 separate subscriptions fire
-brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }}));
+brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: 'test' } }));
 // → 18 derived stores recalculate → 18 component updates
 
 // After: 1 consolidated store fires
-brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }}));
+brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: 'test' } }));
 // → 1 brainDumpComputed recalculates → 1 component update
 ```
 
 **Auto-Save Cancellation**:
+
 ```javascript
 // User types "hello world" quickly (11 keystrokes, 200ms each)
 // Before: 11 saves stack up, all complete eventually
@@ -314,12 +317,12 @@ brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }})
 
 ### Performance Gains
 
-| Optimization | Expected | Achieved | Notes |
-|--------------|----------|----------|-------|
-| Store subscriptions | -94% | ✅ -94% | 18 → 1 subscription |
-| Store recalculations | -94% | ✅ -94% | Single pass per change |
-| Auto-save wasted work | -90% | ✅ -90% | Instant cancellation |
-| Network requests | -90% | ✅ -90% | Browser-level abort |
+| Optimization          | Expected | Achieved | Notes                  |
+| --------------------- | -------- | -------- | ---------------------- |
+| Store subscriptions   | -94%     | ✅ -94%  | 18 → 1 subscription    |
+| Store recalculations  | -94%     | ✅ -94%  | Single pass per change |
+| Auto-save wasted work | -90%     | ✅ -90%  | Instant cancellation   |
+| Network requests      | -90%     | ✅ -90%  | Browser-level abort    |
 
 ### Code Quality
 
@@ -340,13 +343,13 @@ brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }})
 
 ## Comparison to Audit Predictions
 
-| Metric | Audit Prediction | Actual Result | Status |
-|--------|------------------|---------------|--------|
-| Implementation time | 6-10 hours | ~2 hours | ✅ **3-5x faster** |
-| Store performance | 70% improvement | 70% improvement | ✅ **As expected** |
-| Auto-save reduction | 90% fewer ops | 90% fewer ops | ✅ **As expected** |
-| Breaking changes | Zero | Zero | ✅ **As expected** |
-| Code complexity | Medium | Low | ✅ **Better than expected** |
+| Metric              | Audit Prediction | Actual Result   | Status                      |
+| ------------------- | ---------------- | --------------- | --------------------------- |
+| Implementation time | 6-10 hours       | ~2 hours        | ✅ **3-5x faster**          |
+| Store performance   | 70% improvement  | 70% improvement | ✅ **As expected**          |
+| Auto-save reduction | 90% fewer ops    | 90% fewer ops   | ✅ **As expected**          |
+| Breaking changes    | Zero             | Zero            | ✅ **As expected**          |
+| Code complexity     | Medium           | Low             | ✅ **Better than expected** |
 
 ---
 
@@ -369,6 +372,7 @@ brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }})
 **Rollback Plan**: Not needed - changes are additive and backward compatible.
 
 **Monitoring**: Watch for:
+
 - Reduced network traffic to `/api/braindumps/draft`
 - Faster UI response times
 - No increase in error rates
@@ -380,12 +384,12 @@ brainDumpV2Store.update((s) => ({ ...s, core: { ...s.core, inputText: "test" }})
 Phase 3 is **complete and production-ready**. Optional Phase 4 (service extraction) remains:
 
 1. **Extract Processing Orchestrator** (~8-12 hours)
-   - Move brain dump processing logic to separate service
-   - Benefit: Better separation of concerns, easier testing
+    - Move brain dump processing logic to separate service
+    - Benefit: Better separation of concerns, easier testing
 
 2. **Extract Auto-Save Service** (~4-6 hours)
-   - Create reusable auto-save service
-   - Benefit: Can be used for tasks, notes, other forms
+    - Create reusable auto-save service
+    - Benefit: Can be used for tasks, notes, other forms
 
 **Recommendation**: Deploy Phase 3 first, monitor performance gains, then decide on Phase 4.
 

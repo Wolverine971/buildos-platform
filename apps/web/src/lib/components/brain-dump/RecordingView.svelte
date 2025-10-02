@@ -43,6 +43,7 @@
 	export let allowProjectChange = true;
 	export let inModal = false;
 	export let displayedQuestions: any[] = [];
+	export let processingProjectIds: Set<string> = new Set();
 
 	// Computed props
 	$: projectOptions = [{ id: 'new', name: 'New Project / Note', isProject: false }, ...projects];
@@ -94,6 +95,11 @@
 		const projectId = event.detail || event.target.value;
 		const project = projectOptions.find((p) => p.id === projectId);
 		dispatch('selectProject', project);
+	}
+
+	function isProjectProcessing(projectId: string): boolean {
+		const id = projectId === 'new' ? 'new' : projectId;
+		return processingProjectIds.has(id);
 	}
 
 	function handleTextInput() {
@@ -268,7 +274,12 @@
 						class="w-full font-semibold text-[0.9375rem]"
 					>
 						{#each projectOptions as project}
-							<option value={project.id}>{project.name}</option>
+							<option value={project.id} disabled={isProjectProcessing(project.id)}>
+								{project.name}
+								{#if isProjectProcessing(project.id)}
+									(processing)
+								{/if}
+							</option>
 						{/each}
 					</Select>
 				{:else}

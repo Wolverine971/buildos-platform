@@ -13,6 +13,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Filter out 'new' as it's a special UI value meaning no project
 		const rawProjectId = url.searchParams.get('projectId');
 		const projectId = rawProjectId === 'new' ? null : rawProjectId;
+		const excludeBrainDumpId = url.searchParams.get('excludeBrainDumpId');
 
 		// Execute queries in parallel for faster loading
 		const [projectsResult, recentBrainDumpsResult, draftCountsResult, currentDraftResult] =
@@ -45,15 +46,23 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 				// Get current draft if projectId is provided
 				projectId
-					? supabase
-							.from('brain_dumps')
-							.select('*')
-							.eq('user_id', user.id)
-							.eq('project_id', projectId)
-							.in('status', ['pending', 'parsed'])
-							.order('updated_at', { ascending: false })
-							.limit(1)
-							.maybeSingle()
+					? (() => {
+							let query = supabase
+								.from('brain_dumps')
+								.select('*')
+								.eq('user_id', user.id)
+								.eq('project_id', projectId)
+								.in('status', ['pending', 'parsed']);
+
+							if (excludeBrainDumpId) {
+								query = query.neq('id', excludeBrainDumpId);
+							}
+
+							return query
+								.order('updated_at', { ascending: false })
+								.limit(1)
+								.maybeSingle();
+						})()
 					: Promise.resolve({ data: null, error: null })
 			]);
 

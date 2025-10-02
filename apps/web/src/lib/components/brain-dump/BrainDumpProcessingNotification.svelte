@@ -3,7 +3,6 @@
 	import { createEventDispatcher, onMount, tick } from 'svelte';
 	import { fly, scale } from 'svelte/transition';
 	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
 	import {
 		Loader2,
@@ -43,7 +42,8 @@
 
 	// Direct store subscription using Svelte 5 $derived for proper reactivity
 	let storeState = $derived($brainDumpV2Store);
-	let brainDumpId = $derived(storeState.core.currentBrainDumpId);
+	let activeProcessingBrainDumpId = $derived(storeState.processing.activeBrainDumpId);
+	let brainDumpId = $derived(storeState.core.currentBrainDumpId || activeProcessingBrainDumpId);
 	let parseResults = $derived(storeState.core.parseResults);
 	let processingType = $derived(storeState.processing.type);
 	let processingPhase = $derived(storeState.processing.phase);
@@ -1687,89 +1687,89 @@
 					: ''}
 					{showSuccessView ? 'ring-2 ring-green-500 ring-opacity-60' : ''}"
 				class:animate-bounce-subtle={shouldShowParseResults && !userHasInteracted}
-			onclick={() => {
-				userHasInteracted = true;
-				toggleMinimized();
-			}}
-			role="button"
-			tabindex="0"
-			onkeydown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
+				onclick={() => {
 					userHasInteracted = true;
 					toggleMinimized();
-				}
-			}}
-			data-brain-dump-header
-			style="--brain-dump-header-name: brain-dump-header"
-		>
-			{#if isProcessing}
-				<!-- Progress bar for processing state -->
-				<div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
-					<div
-						class="h-full bg-primary-600 dark:bg-primary-400 animate-pulse"
-						style="width: 100%"
-					></div>
-				</div>
-			{/if}
-			<div class="p-4 flex items-center justify-between">
-				<div class="flex items-center gap-3">
-					<div
-						data-brain-dump-indicator
-						style="--brain-dump-indicator-name: brain-dump-indicator"
-					>
-						{#if statusInfo.icon === 'processing'}
-							<Loader2
-								class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
-							/>
-						{:else if statusInfo.icon === 'completed'}
-							<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
-						{:else if statusInfo.icon === 'error'}
-							<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
-						{/if}
+				}}
+				role="button"
+				tabindex="0"
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						userHasInteracted = true;
+						toggleMinimized();
+					}
+				}}
+				data-brain-dump-header
+				style="--brain-dump-header-name: brain-dump-header"
+			>
+				{#if isProcessing}
+					<!-- Progress bar for processing state -->
+					<div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
+						<div
+							class="h-full bg-primary-600 dark:bg-primary-400 animate-pulse"
+							style="width: 100%"
+						></div>
 					</div>
-
-					<div>
-						<div class="text-sm font-medium text-gray-900 dark:text-white">
-							{statusInfo.title}
+				{/if}
+				<div class="p-4 flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							data-brain-dump-indicator
+							style="--brain-dump-indicator-name: brain-dump-indicator"
+						>
+							{#if statusInfo.icon === 'processing'}
+								<Loader2
+									class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
+								/>
+							{:else if statusInfo.icon === 'completed'}
+								<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+							{:else if statusInfo.icon === 'error'}
+								<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+							{/if}
 						</div>
-						{#if statusInfo.subtitle}
-							<div class="text-xs text-gray-500 dark:text-gray-400">
-								{statusInfo.subtitle}
-							</div>
-						{/if}
-					</div>
-				</div>
 
-				<div class="flex items-center gap-1">
-					{#if shouldShowParseResults && !showSuccessView && canAutoAcceptCurrent}
+						<div>
+							<div class="text-sm font-medium text-gray-900 dark:text-white">
+								{statusInfo.title}
+							</div>
+							{#if statusInfo.subtitle}
+								<div class="text-xs text-gray-500 dark:text-gray-400">
+									{statusInfo.subtitle}
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<div class="flex items-center gap-1">
+						{#if shouldShowParseResults && !showSuccessView && canAutoAcceptCurrent}
+							<button
+								onclick={(e) => {
+									e.stopPropagation();
+									handleAutoAcceptToggle;
+								}}
+								class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								title="Toggle auto-accept"
+							>
+								<Settings class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+							</button>
+						{/if}
+
 						<button
 							onclick={(e) => {
 								e.stopPropagation();
-								handleAutoAcceptToggle;
+								handleClose();
 							}}
 							class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-							title="Toggle auto-accept"
+							title="Close"
 						>
-							<Settings class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+							<X class="w-4 h-4 text-gray-600 dark:text-gray-400" />
 						</button>
-					{/if}
 
-					<button
-						onclick={(e) => {
-							e.stopPropagation();
-							handleClose();
-						}}
-						class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-						title="Close"
-					>
-						<X class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-					</button>
-
-					<ChevronUp class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+						<ChevronUp class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 	{:else}
 		<!-- Fallback with Svelte transitions for browsers without View Transition API -->
 		<div

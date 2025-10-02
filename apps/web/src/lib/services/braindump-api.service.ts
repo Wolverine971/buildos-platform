@@ -45,7 +45,10 @@ export interface SaveBrainDumpResponse {
 }
 
 class BrainDumpService extends ApiClient {
-	async getInitData(projectId?: string): Promise<{
+	async getInitData(
+		projectId?: string,
+		opts?: { excludeBrainDumpId?: string | null }
+	): Promise<{
 		data: {
 			projects: any[];
 			recentBrainDumps: any[];
@@ -60,6 +63,9 @@ class BrainDumpService extends ApiClient {
 		// Don't pass 'new' as a projectId - it's a special UI value meaning no project
 		if (projectId && projectId !== 'new') {
 			params.append('projectId', projectId);
+		}
+		if (opts?.excludeBrainDumpId) {
+			params.append('excludeBrainDumpId', opts.excludeBrainDumpId);
 		}
 		return this.get(`/api/braindumps/init?${params.toString()}`);
 	}
@@ -119,17 +125,23 @@ class BrainDumpService extends ApiClient {
 	async saveDraft(
 		content: string,
 		brainDumpId?: string,
-		selectedProjectId?: string,
-		signal?: AbortSignal
+		selectedProjectId?: string | null,
+		options?: { signal?: AbortSignal; forceNew?: boolean }
 	): Promise<{ data: { brainDumpId: string } }> {
+		const payload: Record<string, unknown> = {
+			content,
+			brainDumpId,
+			selectedProjectId
+		};
+
+		if (options?.forceNew) {
+			payload.forceNew = true;
+		}
+
 		return this.post(
 			'/api/braindumps/draft',
-			{
-				content,
-				brainDumpId,
-				selectedProjectId
-			},
-			signal ? { signal } : undefined
+			payload,
+			options?.signal ? { signal: options.signal } : undefined
 		);
 	}
 

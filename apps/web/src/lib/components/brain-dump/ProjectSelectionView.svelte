@@ -16,11 +16,23 @@
 	export let recentDumps: any[] = [];
 	export let newProjectDraftCount: number = 0;
 	export let inModal = false;
+	export let processingProjectIds: Set<string> = new Set();
 
 	const dispatch = createEventDispatcher();
 
 	function handleProjectSelection(project: any) {
+		// Prevent selection if project is being processed
+		const projectId = project.id === 'new' ? 'new' : project.id;
+		if (processingProjectIds.has(projectId)) {
+			return;
+		}
 		dispatch('selectProject', project);
+	}
+
+	// Check if a project is being processed
+	function isProjectProcessing(projectId: string): boolean {
+		const id = projectId === 'new' ? 'new' : projectId;
+		return processingProjectIds.has(id);
 	}
 
 	function formatDate(dateString: string): string {
@@ -58,10 +70,18 @@
 		<section class="mb-8">
 			<button
 				on:click={() => handleProjectSelection({ id: 'new', name: 'New Project / Note' })}
-				class="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-purple-50/30 to-pink-50/30 dark:from-purple-900/10 dark:to-pink-900/10 backdrop-blur-sm border-2 border-dashed {newProjectDraftCount >
-				0
-					? 'border-purple-400/50 dark:border-purple-500/50'
-					: 'border-gray-300/50 dark:border-gray-600/50 hover:border-purple-300/50 dark:hover:border-purple-600/50'} rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.99] group"
+				disabled={isProjectProcessing('new')}
+				class="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-purple-50/30 to-pink-50/30 dark:from-purple-900/10 dark:to-pink-900/10 backdrop-blur-sm border-2 border-dashed {isProjectProcessing(
+					'new'
+				)
+					? 'border-orange-400/50 dark:border-orange-500/50 opacity-60 cursor-not-allowed'
+					: newProjectDraftCount > 0
+						? 'border-purple-400/50 dark:border-purple-500/50'
+						: 'border-gray-300/50 dark:border-gray-600/50 hover:border-purple-300/50 dark:hover:border-purple-600/50'} rounded-xl transition-all duration-200 {!isProjectProcessing(
+					'new'
+				)
+					? 'hover:shadow-lg active:scale-[0.99]'
+					: ''} group"
 			>
 				<div class="flex items-center gap-4">
 					<div
@@ -77,7 +97,11 @@
 							Start New Brain Dump
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
-							{#if newProjectDraftCount > 0}
+							{#if isProjectProcessing('new')}
+								<span class="text-orange-600 dark:text-orange-400 font-medium">
+									Processing new project brain dump...
+								</span>
+							{:else if newProjectDraftCount > 0}
 								<span class="text-primary-600 dark:text-primary-400 font-medium">
 									{newProjectDraftCount} unsaved draft{newProjectDraftCount > 1
 										? 's'
@@ -116,12 +140,27 @@
 					{#each activeProjects as project}
 						<button
 							on:click={() => handleProjectSelection(project)}
-							class="relative flex flex-col p-3 sm:p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border {project.draftCount >
-							0
-								? 'border-blue-300/50 dark:border-blue-600/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-blue-900/20 dark:to-indigo-900/20'
-								: 'border-gray-200/50 dark:border-gray-700/50'} rounded-xl text-left hover:border-gray-300/70 dark:hover:border-gray-600/70 hover:shadow-lg transition-all duration-200 min-h-[5rem] sm:min-h-[5.5rem] active:scale-[0.99]"
+							disabled={isProjectProcessing(project.id)}
+							class="relative flex flex-col p-3 sm:p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border {isProjectProcessing(
+								project.id
+							)
+								? 'border-orange-300/50 dark:border-orange-600/50 opacity-60 cursor-not-allowed'
+								: project.draftCount > 0
+									? 'border-blue-300/50 dark:border-blue-600/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-blue-900/20 dark:to-indigo-900/20'
+									: 'border-gray-200/50 dark:border-gray-700/50'} rounded-xl text-left {!isProjectProcessing(
+								project.id
+							)
+								? 'hover:border-gray-300/70 dark:hover:border-gray-600/70 hover:shadow-lg active:scale-[0.99]'
+								: ''} transition-all duration-200 min-h-[5rem] sm:min-h-[5.5rem]"
 						>
-							{#if project.draftCount > 0}
+							{#if isProjectProcessing(project.id)}
+								<div
+									class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-orange-500 dark:bg-orange-600 text-white rounded text-xs font-medium"
+								>
+									<Sparkles class="w-3 h-3 animate-pulse" />
+									<span>Processing</span>
+								</div>
+							{:else if project.draftCount > 0}
 								<div
 									class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-primary-600 dark:bg-primary-500 text-white rounded text-xs font-medium"
 								>
@@ -197,7 +236,16 @@
 					{#each inactiveProjects as project}
 						<button
 							on:click={() => handleProjectSelection(project)}
-							class="flex items-center justify-between w-full p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+							disabled={isProjectProcessing(project.id)}
+							class="flex items-center justify-between w-full p-3 bg-white dark:bg-gray-800 border {isProjectProcessing(
+								project.id
+							)
+								? 'border-orange-300 dark:border-orange-600 opacity-60 cursor-not-allowed'
+								: 'border-gray-200 dark:border-gray-700'} rounded-lg {!isProjectProcessing(
+								project.id
+							)
+								? 'hover:bg-gray-50 dark:hover:bg-gray-750'
+								: ''} transition-all duration-200"
 						>
 							<div class="flex items-center gap-3 min-w-0">
 								<FolderOpen
@@ -209,9 +257,17 @@
 									{project.name}
 								</span>
 							</div>
-							<ChevronRight
-								class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0"
-							/>
+							{#if isProjectProcessing(project.id)}
+								<span
+									class="text-xs text-orange-600 dark:text-orange-400 font-medium flex-shrink-0"
+								>
+									Processing...
+								</span>
+							{:else}
+								<ChevronRight
+									class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0"
+								/>
+							{/if}
 						</button>
 					{/each}
 				</div>

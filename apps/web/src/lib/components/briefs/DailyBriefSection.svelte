@@ -362,7 +362,6 @@
 						{/if}
 
 						{#if isExpanded}
-
 							<Button
 								type="button"
 								on:click={exportBrief}
@@ -427,7 +426,9 @@
 					{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
 						<div class="email-cta-banner">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+								<Mail
+									class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"
+								/>
 								<p class="text-sm text-gray-700 dark:text-gray-300 truncate">
 									Want this delivered to your inbox each morning?
 								</p>
@@ -484,11 +485,14 @@
 										<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 									</div>
 									<div class="flex-1 min-w-0">
-										<p class="text-sm font-medium text-gray-900 dark:text-white">
+										<p
+											class="text-sm font-medium text-gray-900 dark:text-white"
+										>
 											Get your daily brief delivered to your inbox
 										</p>
 										<p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-											Never miss your priorities — receive this automatically each morning
+											Never miss your priorities — receive this automatically
+											each morning
 										</p>
 									</div>
 								</div>

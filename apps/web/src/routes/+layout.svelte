@@ -39,17 +39,12 @@
 		});
 	});
 
-	// Brain dump processing notification stores - direct v2 store (migration complete)
-	import { get } from 'svelte/store';
+	// Notification system integration
+	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
 	import {
-		brainDumpV2Store,
-		type BrainDumpV2Store,
-		isNotificationOpen as isProcessingVisible,
-		isNotificationMinimized as isProcessingMinimized
-	} from '$lib/stores/brain-dump-v2.store';
-
-	// Store actions accessed via brainDumpV2Store methods
-	const brainDumpActions: BrainDumpV2Store = brainDumpV2Store;
+		initBrainDumpNotificationBridge,
+		cleanupBrainDumpNotificationBridge
+	} from '$lib/services/brain-dump-notification.bridge';
 
 	export let data: LayoutData;
 
@@ -60,7 +55,6 @@
 	let PaymentWarning: any = null;
 	let TrialBanner: any = null;
 	let BackgroundJobIndicator: any = null;
-	let BrainDumpProcessingNotification: any = null;
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
 	let currentRouteId = '';
@@ -156,8 +150,7 @@
 				import('$lib/components/ui/ToastContainer.svelte'),
 				import('$lib/components/notifications/PaymentWarning.svelte'),
 				import('$lib/components/trial/TrialBanner.svelte'),
-				import('$lib/components/BackgroundJobIndicator.svelte'),
-				import('$lib/components/brain-dump/BrainDumpProcessingNotification.svelte')
+				import('$lib/components/BackgroundJobIndicator.svelte')
 			]);
 
 			const [
@@ -166,8 +159,7 @@
 				toastContainerModule,
 				paymentWarningModule,
 				trialBannerModule,
-				backgroundJobIndicatorModule,
-				brainDumpProcessingNotificationModule
+				backgroundJobIndicatorModule
 			] = (await Promise.race([loadPromise, timeoutPromise])) as any;
 
 			toastService = toastServiceModule.toastService;
@@ -176,7 +168,6 @@
 			PaymentWarning = paymentWarningModule.default;
 			TrialBanner = trialBannerModule.default;
 			BackgroundJobIndicator = backgroundJobIndicatorModule.default;
-			BrainDumpProcessingNotification = brainDumpProcessingNotificationModule.default;
 
 			resourcesLoaded = true;
 			resourcesLoadPromise = null;
@@ -298,6 +289,9 @@
 		initializePWAEnhancements();
 		setupInstallPrompt();
 
+		// Initialize brain dump notification bridge
+		initBrainDumpNotificationBridge();
+
 		// Pre-load authenticated resources if user is already available
 		if (user) {
 			loadAuthenticatedResources();
@@ -360,6 +354,9 @@
 	onDestroy(() => {
 		// FIXED: Comprehensive cleanup to prevent memory leaks
 		if (browser) {
+			// Cleanup brain dump notification bridge
+			cleanupBrainDumpNotificationBridge();
+
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {
 				clearTimeout(briefCompleteTimeout);
@@ -401,82 +398,6 @@
 		} catch (error) {
 			console.error('Error dismissing payment warning:', error);
 		}
-	}
-
-	// Brain dump processing notification event handlers
-	function handleProcessingToggleMinimized() {
-		console.log('[Layout] Toggle notification minimized');
-		brainDumpActions.toggleNotificationMinimized();
-	}
-
-	// Debug logging for notification visibility
-	$: if ($isProcessingVisible !== undefined) {
-		console.log('[Layout] Processing notification visibility changed', {
-			isProcessingVisible: $isProcessingVisible,
-			isProcessingMinimized: $isProcessingMinimized,
-			hasComponent: !!BrainDumpProcessingNotification,
-			storeState: get(brainDumpV2Store).ui.notification
-		});
-	}
-
-	function handleProcessingClose(event?: CustomEvent) {
-		// Hide the notification
-		brainDumpActions.closeNotification();
-
-		// If this is a full cleanup (e.g., after auto-accept), the notification
-		// has already reset the store, so we don't need to do it again
-		if (event?.detail?.fullCleanup) {
-			console.log('[Layout] Full cleanup already handled by notification');
-			// The store has already been reset by the notification
-			// The modal will handle its own cleanup when it detects the store reset
-		}
-	}
-
-	function handleProcessingAutoAcceptToggle(event: CustomEvent) {
-		brainDumpActions.setAutoAccept(event.detail.enabled);
-	}
-
-	async function handleProcessingApplyAutoAccept(event: CustomEvent) {
-		const parseResults = event.detail.parseResults;
-		if (parseResults && user) {
-			try {
-				const { backgroundBrainDumpService } = await import(
-					'$lib/services/braindump-background.service'
-				);
-				// Get current state from unified store
-				const currentState = get(brainDumpV2Store);
-				await backgroundBrainDumpService.processInBackground({
-					text: currentState.core.inputText || '',
-					projectId:
-						currentState.core.selectedProject?.id === 'new'
-							? undefined
-							: currentState.core.selectedProject?.id,
-					userId: user.id,
-					autoAccept: true,
-					parseResults: parseResults
-				});
-
-				brainDumpActions.closeNotification();
-				if (toastService) {
-					toastService.info('Applying changes automatically...', { duration: 3000 });
-				}
-			} catch (error) {
-				console.error('Auto-accept failed:', error);
-				if (toastService) {
-					toastService.error('Failed to apply auto-accept');
-				}
-			}
-		}
-	}
-
-	async function handleProcessingApplyOperations() {
-		// This would need to be handled by the originating page/component
-		// For now, just close the notification
-		brainDumpActions.closeNotification();
-	}
-
-	function handleProcessingCancel() {
-		brainDumpActions.closeNotification();
 	}
 </script>
 
@@ -553,20 +474,8 @@
 		<svelte:component this={BackgroundJobIndicator} />
 	{/if}
 
-	<!-- Brain Dump Processing Notification - persists across all pages -->
-	{#if BrainDumpProcessingNotification && $isProcessingVisible}
-		<svelte:component
-			this={BrainDumpProcessingNotification}
-			isOpen={$isProcessingVisible}
-			isMinimized={$isProcessingMinimized}
-			on:toggleMinimized={handleProcessingToggleMinimized}
-			on:close={handleProcessingClose}
-			on:autoAcceptToggled={handleProcessingAutoAcceptToggle}
-			on:applyAutoAccept={handleProcessingApplyAutoAccept}
-			on:applyOperations={handleProcessingApplyOperations}
-			on:cancelProcessing={handleProcessingCancel}
-		/>
-	{/if}
+	<!-- Notification System -->
+	<NotificationStackManager />
 </div>
 
 <style>

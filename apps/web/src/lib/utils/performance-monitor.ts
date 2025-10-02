@@ -8,6 +8,7 @@
  * - Store operation timing
  */
 
+import { dev } from '$app/environment';
 interface PerformanceMetric {
 	name: string;
 	startTime: number;
@@ -35,7 +36,7 @@ class PerformanceMonitor {
 	constructor() {
 		// Enable only in development or when explicitly enabled
 		this.isEnabled =
-			import.meta.env.DEV ||
+			dev ||
 			(typeof window !== 'undefined' &&
 				window.localStorage?.getItem('performance-monitor') === 'true');
 

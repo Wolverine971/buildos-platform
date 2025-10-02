@@ -490,9 +490,6 @@
 
 		<!-- Navigation Cards -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-			
-			
-
 			<a
 				href="/admin/users"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
@@ -525,8 +522,6 @@
 					{/if}
 				</div>
 			</a>
-
-		
 
 			<a
 				href="/admin/beta"
@@ -725,7 +720,6 @@
 			{/if}
 
 			<!-- Key Metrics Cards - Mobile Responsive -->
-			
 
 			<!-- Row 2: System Metrics -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -759,7 +753,9 @@
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 								Brain Dumps ({selectedTimeframe})
 							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600 mt-1">
+							<p
+								class="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600 mt-1"
+							>
 								{formatNumber(comprehensiveAnalytics.brainDumpMetrics.total)}
 							</p>
 						</div>
@@ -778,7 +774,9 @@
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 								New Projects ({selectedTimeframe})
 							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1">
+							<p
+								class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1"
+							>
 								{formatNumber(comprehensiveAnalytics.projectMetrics.newProjects)}
 							</p>
 						</div>
@@ -801,9 +799,7 @@
 								{formatNumber(systemOverview.total_briefs)}
 							</p>
 						</div>
-						<BarChart3
-							class="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600 flex-shrink-0 ml-3"
-						/>
+						<BarChart3 class="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600 flex-shrink-0 ml-3" />
 					</div>
 					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 						All time
@@ -816,13 +812,13 @@
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 								Calendar Connections
 							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-600 mt-1">
+							<p
+								class="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-600 mt-1"
+							>
 								{formatNumber(comprehensiveAnalytics.calendarConnections)}
 							</p>
 						</div>
-						<Globe
-							class="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 flex-shrink-0 ml-3"
-						/>
+						<Globe class="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 flex-shrink-0 ml-3" />
 					</div>
 					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 						Users with calendar

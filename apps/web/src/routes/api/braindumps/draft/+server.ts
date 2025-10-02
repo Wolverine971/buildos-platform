@@ -85,7 +85,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.badRequest('Invalid request body');
 		}
 
-		const { content, brainDumpId, selectedProjectId } = body;
+		const { content, brainDumpId, selectedProjectId, forceNew } = body;
 
 		if (!content || typeof content !== 'string' || content.trim().length === 0) {
 			return ApiResponse.validationError('content', 'Content is required');
@@ -96,6 +96,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		let result;
 		let actualBrainDumpId = brainDumpId;
+		const forceNewDraft = forceNew === true;
+
+		// If forceNew requested, skip reuse logic
+		if (forceNewDraft) {
+			actualBrainDumpId = null;
+		}
 
 		// If no brainDumpId provided, check for existing draft for this project
 		if (!actualBrainDumpId) {

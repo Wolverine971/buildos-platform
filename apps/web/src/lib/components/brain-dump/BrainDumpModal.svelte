@@ -33,6 +33,17 @@
 		hasParseResults
 	} from '$lib/stores/brain-dump-v2.store';
 
+	// Service imports
+	import { brainDumpService } from '$lib/services/braindump-api.service';
+	import { shouldUseDualProcessing } from '$lib/constants/brain-dump-thresholds';
+	import { toastService } from '$lib/stores/toast.store';
+	import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
+	import { page } from '$app/stores';
+	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
+	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
+
+	const MULTI_BRAINDUMP_ENABLED = true;
+
 	// Store actions are accessed via brainDumpV2Store methods
 	const brainDumpActions = brainDumpV2Store;
 
@@ -58,18 +69,17 @@
 		storeState?.core?.voice?.isInitializingRecording ?? false
 	);
 	let canUseLiveTranscript = $derived(storeState?.core?.voice?.canUseLiveTranscript ?? false);
-	let currentBrainDumpId = $derived(storeState?.core?.currentBrainDumpId ?? '');
+	// IMPORTANT: In multi-mode, don't use legacy currentBrainDumpId - each brain dump gets a fresh UUID
+	let currentBrainDumpId = $derived(
+		MULTI_BRAINDUMP_ENABLED ? '' : (storeState?.core?.currentBrainDumpId ?? '')
+	);
+	let activeProcessingBrainDumpId = $derived(
+		!MULTI_BRAINDUMP_ENABLED && storeState?.processing?.mutex
+			? (storeState?.processing?.activeBrainDumpId ?? null)
+			: null
+	);
 	let lastSavedContent = $derived(storeState?.core?.lastSavedContent ?? '');
 	let isNewProject = $derived(storeState?.core?.isNewProject ?? false);
-
-	// Service imports
-	import { brainDumpService } from '$lib/services/braindump-api.service';
-	import { shouldUseDualProcessing } from '$lib/constants/brain-dump-thresholds';
-	import { toastService } from '$lib/stores/toast.store';
-	import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
-	import { page } from '$app/stores';
-	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
-	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
 
 	// Processing notification is now managed through unified store
 
@@ -120,7 +130,7 @@
 	const recordingDurationStore = voiceRecordingService.getRecordingDuration();
 	// Use $effect to keep recordingDuration in sync with the store
 	$effect(() => {
-		const unsubscribe = recordingDurationStore.subscribe(value => {
+		const unsubscribe = recordingDurationStore.subscribe((value) => {
 			recordingDuration = value;
 		});
 		return unsubscribe;
@@ -151,6 +161,16 @@
 		{ id: 'new', name: 'New Project / Note', isProject: false },
 		...projects
 	]);
+
+	// Reactively compute processing project IDs
+	// This will update whenever the store state changes
+	// We need to reference the store state to make it reactive
+	let processingProjectIds = $derived.by(() => {
+		// Access store state to trigger reactivity
+		const _ = $brainDumpV2Store;
+		// Type assertion needed due to TypeScript language server cache
+		return (brainDumpActions as any).getProcessingProjectIds() as Set<string>;
+	});
 
 	// Lazy load components based on view
 	async function loadComponentsForView(view: string) {
@@ -270,6 +290,32 @@
 	});
 
 	async function initializeModal() {
+		// Clean up any stale abort controllers from previous sessions
+		if (abortController) {
+			console.log('[BrainDumpModal] Cleaning up stale abort controller on init');
+			abortController.abort();
+			abortController = null;
+		}
+		if (saveAbortController) {
+			console.log('[BrainDumpModal] Cleaning up stale save abort controller on init');
+			saveAbortController.abort();
+			saveAbortController = null;
+		}
+
+		if (!MULTI_BRAINDUMP_ENABLED) {
+			const state = get(brainDumpV2Store);
+			const processingActive = state.processing.mutex || state.processing.phase !== 'idle';
+
+			if (processingActive && state.core.currentBrainDumpId) {
+				console.log(
+					'[BrainDumpModal] Detaching active processing brain dump from modal session'
+				);
+				brainDumpActions.detachActiveBrainDump();
+				brainDumpActions.clearParseResults();
+				brainDumpActions.updateInputText('');
+			}
+		}
+
 		// Don't block on loading - show UI immediately
 		isLoadingData = false;
 		loadError = '';
@@ -330,7 +376,9 @@
 	async function loadInitialData() {
 		try {
 			// Load initial data
-			const response = await brainDumpService.getInitData(project?.id);
+			const response = await brainDumpService.getInitData(project?.id, {
+				excludeBrainDumpId: activeProcessingBrainDumpId || undefined
+			});
 
 			if (response?.data) {
 				projects = response.data.projects || [];
@@ -342,8 +390,13 @@
 					// Fetch questions in background
 					fetchProjectQuestions(project.id);
 
-					// Load draft for the selected project if exists
-					if (response.data.currentDraft?.brainDump) {
+					// Check if this project is already being processed
+					const isAlreadyProcessing = brainDumpV2Store.isProjectBeingProcessed(
+						project.id === 'new' ? null : project.id
+					);
+
+					// Load draft for the selected project if exists AND not already processing
+					if (response.data.currentDraft?.brainDump && !isAlreadyProcessing) {
 						brainDumpActions.updateInputText(
 							response.data.currentDraft.brainDump.content
 						);
@@ -370,6 +423,13 @@
 								);
 							}
 						}
+					} else if (isAlreadyProcessing) {
+						console.log(
+							`[BrainDumpModal] Project ${project.id} is already being processed - starting fresh`
+						);
+						// Start fresh with empty state - don't load the draft that's being processed
+						brainDumpActions.updateInputText('');
+						brainDumpActions.setSavedContent('', undefined);
 					}
 				}
 			}
@@ -383,9 +443,14 @@
 	async function handleModalClose() {
 		console.log('[BrainDumpModal] handleModalClose called');
 
-		// Check if notification is open (which means we handed off to processing)
-		// Use the derived storeState instead of calling get() to avoid reactivity issues
-		const isHandedOff = storeState?.ui?.notification?.isOpen ?? false;
+		// Determine if we've handed processing off to the notification system
+		// Multi-mode uses the activeBrainDumps Map instead of the legacy notification flag
+		const activeBrainDumpCount =
+			MULTI_BRAINDUMP_ENABLED && storeState?.activeBrainDumps instanceof Map
+				? storeState.activeBrainDumps.size
+				: 0;
+		const legacyHandedOff = storeState?.ui?.notification?.isOpen ?? false;
+		const isHandedOff = MULTI_BRAINDUMP_ENABLED ? activeBrainDumpCount > 0 : legacyHandedOff;
 
 		// Check if store has already been reset (e.g., by auto-accept)
 		const isStoreAlreadyReset =
@@ -437,7 +502,8 @@
 		console.log('[BrainDumpModal] Starting comprehensive cleanup');
 
 		// 0. Abort any active SSE/streaming connections
-		if (abortController) {
+		// IMPORTANT: In multi-brain dump mode, the bridge manages API streams, so only abort if legacy mode
+		if (abortController && !MULTI_BRAINDUMP_ENABLED) {
 			try {
 				console.log('[Cleanup] Aborting active streaming connection');
 				abortController.abort();
@@ -472,10 +538,13 @@
 		componentsLoaded = { ...initialComponentLoadState };
 
 		// 8. Release processing mutex if held (emergency release)
-		const currentState = get(brainDumpV2Store);
-		if (currentState.processing.mutex) {
-			console.warn('[Cleanup] Emergency mutex release on component destroy');
-			brainDumpV2Store.releaseMutex();
+		// IMPORTANT: In multi-brain dump mode, don't touch mutexes - bridge manages them
+		if (!MULTI_BRAINDUMP_ENABLED) {
+			const currentState = get(brainDumpV2Store);
+			if (currentState.processing.mutex) {
+				console.warn('[Cleanup] Emergency mutex release on component destroy');
+				brainDumpV2Store.releaseMutex();
+			}
 		}
 
 		// Reset abort controller
@@ -504,12 +573,29 @@
 
 	async function handleProjectSelection(event: CustomEvent) {
 		const selectedProjectData = event.detail;
+		if (!selectedProjectData) {
+			return;
+		}
+
+		const requestedProjectId =
+			selectedProjectData.id === 'new' ? null : (selectedProjectData.id ?? null);
+		const isAlreadyProcessing = brainDumpV2Store.isProjectBeingProcessed(requestedProjectId);
+
+		if (isAlreadyProcessing) {
+			const projectName = selectedProjectData?.name ?? 'this project';
+			toastService.warning(
+				`Finish or cancel the in-progress brain dump for ${
+					selectedProjectData.id === 'new' ? 'your new project' : projectName
+				} before starting another.`
+			);
+			return;
+		}
+
 		brainDumpActions.selectProject(selectedProjectData);
 
 		// Fetch questions for the selected project
 		await fetchProjectQuestions(selectedProjectData.id);
 
-		// Load draft for selected project
 		try {
 			const selectedProjectId =
 				selectedProjectData.id === 'new' ? null : selectedProjectData.id;
@@ -547,6 +633,21 @@
 
 	async function handleProjectChangeInRecording(event: CustomEvent) {
 		const selectedProjectData = event.detail;
+		if (!selectedProjectData) {
+			return;
+		}
+
+		const requestedProjectId =
+			selectedProjectData.id === 'new' ? null : (selectedProjectData.id ?? null);
+		if (brainDumpV2Store.isProjectBeingProcessed(requestedProjectId)) {
+			const projectName = selectedProjectData?.name ?? 'this project';
+			toastService.warning(
+				`Finish or cancel the in-progress brain dump for ${
+					selectedProjectData.id === 'new' ? 'your new project' : projectName
+				} before switching to it.`
+			);
+			return;
+		}
 		const oldProjectId = selectedProject?.id;
 
 		brainDumpActions.selectProject(selectedProjectData);
@@ -589,6 +690,9 @@
 
 	// Auto-save functionality
 	function debouncedAutoSave() {
+		// IMPORTANT: In multi-mode, skip auto-save - brain dumps are submitted immediately
+		if (MULTI_BRAINDUMP_ENABLED) return;
+
 		if (autoSaveTimeout) {
 			clearTimeout(autoSaveTimeout);
 		}
@@ -601,6 +705,9 @@
 	}
 
 	async function autoSave() {
+		// IMPORTANT: In multi-mode, skip auto-save - brain dumps are submitted immediately
+		if (MULTI_BRAINDUMP_ENABLED) return;
+
 		// Quick early exit checks
 		if (!componentMounted || !$hasUnsavedChanges) return;
 
@@ -662,8 +769,8 @@
 			const response = await brainDumpService.saveDraft(
 				inputText,
 				currentBrainDumpId || undefined,
-				selectedProjectId,
-				signal // PHASE 3: Pass signal for request cancellation
+				selectedProjectId ?? null,
+				{ signal }
 			);
 
 			// Check again after async operation
@@ -687,9 +794,15 @@
 	// Parse brain dump
 	async function parseBrainDump(event?: CustomEvent) {
 		const autoAccept = event?.detail?.autoAccept || false;
-		console.log('[BrainDumpModal] Starting parseBrainDump', {
+		console.log('[BrainDumpModal] ========== parseBrainDump CALLED ==========', {
 			autoAccept,
-			hasParseResults: !!parseResults
+			hasParseResults: !!parseResults,
+			canParse: $canParse,
+			inputText: inputText?.substring(0, 50) + '...',
+			currentBrainDumpId,
+			selectedProject: selectedProject?.name,
+			phase: currentPhase,
+			mutex: isProcessing
 		});
 
 		// PHASE 3: If auto-save is in progress, abort it and wait briefly for cleanup
@@ -698,7 +811,7 @@
 			console.log('[Parse] Aborting active auto-save before parsing');
 			saveAbortController.abort();
 			// Brief wait for cleanup
-			await new Promise(resolve => setTimeout(resolve, 50));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 		}
 
 		// Clear any existing parse results before starting new parsing
@@ -708,18 +821,34 @@
 
 		// Validate we can parse
 		if (!$canParse) {
-			console.log('[BrainDumpModal] Cannot parse - validation failed');
+			console.error('[BrainDumpModal] Cannot parse - validation failed', {
+				inputTextLength: inputText.trim().length,
+				phase: currentPhase,
+				mutex: isProcessing,
+				hasParseResults: !!parseResults,
+				storeState: get(brainDumpV2Store).processing
+			});
+			toastService.error('Cannot process: validation failed. Check console for details.');
 			return;
 		}
 
-		// Save the brain dump if not already saved
-		if (!currentBrainDumpId) {
-			console.log('[BrainDumpModal] Saving brain dump first');
-			await handleSave();
-			// Double-check that save completed
-			if (!currentBrainDumpId) {
-				console.error('[Parse] Save did not complete successfully');
-				toastService.error('Failed to save brain dump before parsing');
+		// Save the brain dump if not already saved (LEGACY MODE ONLY)
+		// In multi-mode, brain dumps are submitted immediately without saving drafts
+		if (!MULTI_BRAINDUMP_ENABLED && !currentBrainDumpId) {
+			console.log('[BrainDumpModal] Saving brain dump first before parsing');
+			try {
+				await handleSave();
+				// Double-check that save completed
+				const afterSaveId = get(brainDumpV2Store).core.currentBrainDumpId;
+				console.log('[BrainDumpModal] After save, brainDumpId:', afterSaveId);
+				if (!afterSaveId) {
+					console.error('[Parse] Save did not complete successfully - no brainDumpId');
+					toastService.error('Failed to save brain dump before parsing');
+					return;
+				}
+			} catch (error) {
+				console.error('[Parse] Save failed with error:', error);
+				toastService.error('Failed to save brain dump: ' + (error as Error).message);
 				return;
 			}
 		}
@@ -754,16 +883,82 @@
 		isHandingOff = true;
 
 		// Start processing through unified store
-		const processingStarted = await brainDumpActions.startProcessing({
-			brainDumpId: currentBrainDumpId || 'temp',
-			type: processingType,
-			autoAcceptEnabled: autoAccept,
-			inputText: inputText,
-			selectedProject: selectedProject,
-			displayedQuestions: displayedQuestions
-		});
+		let processingStarted = false;
 
-		console.log('[BrainDumpModal] Processing started', { processingStarted });
+		if (MULTI_BRAINDUMP_ENABLED) {
+			// Multi-brain dump mode: Create dedicated backend draft to ensure persistence
+			let brainDumpId: string | null = null;
+			try {
+				const selectedProjectIdForDraft =
+					selectedProject?.id && selectedProject.id !== 'new' ? selectedProject.id : null;
+
+				const draftResponse = await brainDumpService.saveDraft(
+					inputText,
+					undefined,
+					selectedProjectIdForDraft,
+					{ forceNew: true }
+				);
+
+				brainDumpId = draftResponse?.data?.brainDumpId ?? null;
+			} catch (error) {
+				console.error(
+					'[BrainDumpModal] Failed to create brain dump draft for multi-mode:',
+					error
+				);
+				toastService.error('Unable to start brain dump. Please try again.');
+				isHandingOff = false;
+				return;
+			}
+
+			if (!brainDumpId) {
+				console.error('[BrainDumpModal] Draft creation did not return a brainDumpId');
+				toastService.error('Unable to start brain dump. Please try again.');
+				isHandingOff = false;
+				return;
+			}
+
+			console.log('[BrainDumpModal] Starting brain dump in multi-mode:', {
+				brainDumpId,
+				processingType,
+				currentActive: brainDumpV2Store.getActiveBrainDumpCount()
+			});
+
+			processingStarted = await brainDumpV2Store.startBrainDump(brainDumpId, {
+				inputText: inputText,
+				selectedProject: selectedProject,
+				isNewProject: selectedProject?.id === 'new',
+				processingType: processingType,
+				autoAcceptEnabled: autoAccept,
+				displayedQuestions: displayedQuestions
+			});
+
+			if (processingStarted) {
+				console.log('[BrainDumpModal] Brain dump started successfully:', brainDumpId);
+			} else {
+				// Brain dump was queued due to concurrency limit
+				console.log('[BrainDumpModal] Brain dump queued (max concurrent reached)');
+				toastService.info('Brain dump queued - 3 brain dumps already processing', {
+					duration: 5000
+				});
+			}
+		} else {
+			// Legacy mode: Use original startProcessing method
+			console.log('[BrainDumpModal] Starting brain dump in legacy mode');
+
+			processingStarted = await brainDumpActions.startProcessing({
+				brainDumpId: currentBrainDumpId || 'temp',
+				type: processingType,
+				autoAcceptEnabled: autoAccept,
+				inputText: inputText,
+				selectedProject: selectedProject,
+				displayedQuestions: displayedQuestions
+			});
+		}
+
+		console.log('[BrainDumpModal] Processing started', {
+			processingStarted,
+			multiMode: MULTI_BRAINDUMP_ENABLED
+		});
 
 		// Wait for transition animation to start
 		await tick();
@@ -775,17 +970,25 @@
 			// Add a smooth fade-out transition before closing (300ms matches CSS transition)
 			await new Promise((resolve) => setTimeout(resolve, 300));
 
-			// Complete modal handoff to notification
-			console.log('[BrainDumpModal] Completing modal handoff');
-			brainDumpActions.completeModalHandoff();
+			if (MULTI_BRAINDUMP_ENABLED) {
+				// Multi-brain dump mode: Just close the modal
+				// The bridge will handle creating/managing the notification
+				console.log(
+					'[BrainDumpModal] Closing modal (multi-mode - bridge handles notification)'
+				);
+			} else {
+				// Legacy mode: Complete modal handoff to notification
+				console.log('[BrainDumpModal] Completing modal handoff');
+				brainDumpActions.completeModalHandoff();
 
-			// Check the store state after handoff
-			const storeState = get(brainDumpV2Store);
-			console.log('[BrainDumpModal] Store state after handoff', {
-				notificationOpen: storeState.ui.notification.isOpen,
-				notificationMinimized: storeState.ui.notification.isMinimized,
-				modalOpen: storeState.ui.modal.isOpen
-			});
+				// Check the store state after handoff
+				const storeState = get(brainDumpV2Store);
+				console.log('[BrainDumpModal] Store state after handoff', {
+					notificationOpen: storeState.ui.notification.isOpen,
+					notificationMinimized: storeState.ui.notification.isMinimized,
+					modalOpen: storeState.ui.modal.isOpen
+				});
+			}
 
 			// Clean up modal-specific state but don't reset the entire store
 			cleanup();
@@ -1129,6 +1332,7 @@
 						recentDumps={isLoadingData ? [] : recentDumps}
 						newProjectDraftCount={isLoadingData ? 0 : newProjectDraftCount}
 						isLoading={isLoadingData}
+						{processingProjectIds}
 						on:selectProject={handleProjectSelection}
 						inModal={true}
 					/>
@@ -1162,6 +1366,7 @@
 					<RecordingView
 						{innerWidth}
 						projects={isLoadingData ? [] : projects}
+						{processingProjectIds}
 						{selectedProject}
 						{inputText}
 						{currentPhase}
