@@ -26,17 +26,17 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Documentation Structure
 
-| Folder           | Contents                           | Key Documents                                                     |
-| ---------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding, admin-dashboard  |
-| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards                 |
-| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking                      |
-| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring                               |
-| `/migrations/`   | Migration tracking                 | active migrations (Phase 2.2, Phase 3, type updates)              |
-| `/integrations/` | Third-party services               | Google Calendar integration docs                                  |
-| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                                 |
-| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment                 |
-| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews                              |
+| Folder           | Contents                           | Key Documents                                                    |
+| ---------------- | ---------------------------------- | ---------------------------------------------------------------- |
+| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding, admin-dashboard |
+| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards                |
+| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking                     |
+| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring                              |
+| `/migrations/`   | Migration tracking                 | active migrations (Phase 2.2, Phase 3, type updates)             |
+| `/integrations/` | Third-party services               | Google Calendar integration docs                                 |
+| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                                |
+| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment                |
+| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews                             |
 
 **Note:** Some documentation exists in both top-level folders (like `/features/`) and in `/technical/` for historical reasons. Prefer using `/technical/` for comprehensive technical documentation.
 

@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction: The Trap of Feeling Productive
+
 - Spent 3 hours "organizing" your task list—feel productive?
 - Reorganized your Notion workspace—made progress?
 - The problem: busy work masquerading as productivity
@@ -24,12 +25,14 @@
 ### Section 1: Defining the Distinction
 
 **Real Productivity**:
+
 - Moves you toward meaningful goals
 - Creates value (for you or others)
 - Often uncomfortable or challenging
 - Hard to measure minute-by-minute
 
 **Busy Work**:
+
 - Feels productive but changes nothing important
 - Easy, repetitive, comfortable
 - Often involves reorganizing, perfecting, maintaining
@@ -43,6 +46,7 @@
 **The Maintenance Trap**: Keeping systems running instead of using them
 
 ### Section 3: Why Busy Work Is Seductive
+
 - Provides immediate gratification
 - Feels like progress without risk
 - Can be shown/measured (21 tasks completed!)
@@ -50,24 +54,28 @@
 - Executive function for busy work is easier than for deep work
 
 ### Section 4: How to Recognize Busy Work in Your Life
+
 - The rearranging deck chairs test
 - The "could I stop doing this forever" test
 - The six-month impact test
 - Questions to ask about any activity
 
 ### Section 5: Building Systems That Prevent Busy Work
+
 - Tools that force action over organization
 - AI that handles maintenance so you can't hide there
 - Outcome focus over activity focus
 - How BuildOS tries to prevent busy work
 
 ### Section 6: Making the Shift
+
 - Accepting discomfort as signal of real work
 - Setting outcome-based goals, not activity-based
 - Time-boxing maintenance activities
 - Regular "busy work audits"
 
 ### Conclusion: Choose Progress Over Perfection
+
 - Your perfectly organized system is worth nothing if you don't use it
 - Give yourself permission to do meaningful work messily
 - The goal is impact, not inbox zero
@@ -224,6 +232,7 @@
 ### Practical Frameworks
 
 Should we include:
+
 - A busy work audit template?
 - A decision framework for evaluating activities?
 - A worksheet for tracking real productivity?
@@ -246,6 +255,7 @@ Should we include:
 **Risk to address**: Some readers might think "organizing" is their real work (admins, project managers). Distinguish between necessary organizing and busy work organizing.
 
 **Call out specifically**:
+
 - Over-organizing Notion workspaces
 - Endless template customization
 - Task list shuffling

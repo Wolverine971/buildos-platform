@@ -17,12 +17,14 @@
 ## Draft Outline Snapshot
 
 ### Introduction: The Task List vs. Calendar Gap
+
 - 47 tasks on your list, 8 hours in your day
 - Why task lists lie to you (infinite space)
 - Why calendars force truth (finite time)
 - The integration that bridges reality and ambition
 
 ### Section 1: Why Most Calendar Integration Fails
+
 - Manual scheduling is exhausting
 - Static blocks that never adjust
 - Doesn't account for actual available time
@@ -31,18 +33,21 @@
 ### Section 2: BuildOS Calendar Integration Philosophy
 
 **Automatic Time Analysis**:
+
 - Scans existing calendar for free time
 - Respects existing commitments
 - Identifies realistic work windows
 
 **Intelligent Task Scheduling**:
+
 - AI proposes task timing based on:
-  - Task priority and deadlines
-  - Estimated duration
-  - Your available time blocks
-  - Project phases and dependencies
+    - Task priority and deadlines
+    - Estimated duration
+    - Your available time blocks
+    - Project phases and dependencies
 
 **Conflict Management**:
+
 - Detects scheduling conflicts
 - Suggests rescheduling options
 - Adapts when calendar changes
@@ -50,17 +55,20 @@
 ### Section 3: Setting Up Your Calendar Workflow
 
 **Initial Setup**:
+
 - Connecting Google Calendar
 - Setting work hours and preferences
 - Identifying protected time blocks
 - Configuring notification preferences
 
 **Project Calendar Strategy**:
+
 - When to use project-specific calendars
 - Shared calendars for team visibility
 - Personal vs. work calendar separation
 
 **Phase-Based Scheduling**:
+
 - How phases translate to time blocks
 - Balancing multiple projects
 - Deadline-driven vs. capacity-driven scheduling
@@ -68,16 +76,19 @@
 ### Section 4: Daily Workflow with Calendar Integration
 
 **Morning Review**:
+
 - Check daily brief with calendar context
 - Adjust scheduling based on energy/priorities
 - Block unscheduled high-priority items
 
 **During the Day**:
+
 - Task notifications tied to calendar blocks
 - Quick rescheduling when things change
 - Marking tasks complete updates calendar
 
 **Evening Reflection**:
+
 - What didn't get done and why
 - Reschedule vs. delete decisions
 - Adjusting tomorrow based on today
@@ -85,16 +96,19 @@
 ### Section 5: Advanced Calendar Techniques
 
 **Energy-Aware Scheduling**:
+
 - Deep work in high-energy blocks
 - Admin tasks in low-energy windows
 - Respecting your chronotype
 
 **Buffer Time Strategy**:
+
 - Realistic task duration estimates
 - Built-in breathing room
 - Handling the unexpected
 
 **Multiple Project Juggling**:
+
 - Time allocation across projects
 - Switching cost management
 - Focus time vs. collaboration time
@@ -107,6 +121,7 @@
 **Calendar pollution**: Too many low-value meetings
 
 ### Conclusion: Time Is the Truth Test
+
 - If it's not on the calendar, it's not real
 - BuildOS makes scheduling automatic, not optional
 - Your future self will thank you
@@ -244,6 +259,7 @@
 ### Practical Resources
 
 Should we include:
+
 - Calendar setup checklist (downloadable)
 - Time blocking templates
 - Energy mapping worksheet
@@ -268,6 +284,7 @@ Should we include:
 ### Real-World Scenarios
 
 Should we include specific examples for:
+
 - Remote workers with flexible schedules
 - Parents with childcare constraints
 - Consultants with variable client demands
@@ -289,6 +306,7 @@ Should we include specific examples for:
 **Connection to BuildOS**: Show specific BuildOS features (phase generation, calendar-optimized scheduling, conflict detection), but also teach transferable principles for anyone doing calendar-based productivity.
 
 **Honest about challenges**:
+
 - Calendar integration requires discipline
 - Initial setup takes thought
 - Estimates will be wrong at first

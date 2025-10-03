@@ -215,6 +215,7 @@ export class BriefBackoffCalculator {
       };
     }
 
+    console.log("daysSinceLastLogin", daysSinceLastLogin);
     // Fallback (shouldn't reach here)
     return {
       shouldSend: false,

@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction: The Overwhelming Project Problem
+
 - Started with excitement, now buried in tasks
 - Can't see the forest for the trees
 - The missing middle layer between project and tasks
@@ -27,6 +28,7 @@
 **Definition**: Logical groupings of related work that move a project forward
 
 **Why Phases Work**:
+
 - Provide intermediate goals (motivation)
 - Create natural checkpoints (progress)
 - Reduce cognitive load (focus on one phase at a time)
@@ -34,6 +36,7 @@
 - Match how brains actually think about projects
 
 **Phases vs. Other Structures**:
+
 - Phases vs. milestones
 - Phases vs. sprints
 - Phases vs. folders/categories
@@ -48,6 +51,7 @@
 3. **Calendar-Optimized**: AI-powered scheduling around existing commitments
 
 **How AI Generates Phases**:
+
 - Analyzes project context and goals
 - Identifies logical work groupings
 - Suggests realistic sequencing
@@ -59,17 +63,20 @@
 **Phase Naming**: Clear, action-oriented, sequential
 
 **Phase Scope**:
+
 - Not too big (overwhelming)
 - Not too small (fragmented)
 - Typically 1-4 weeks of work
 - 3-10 tasks per phase (sweet spot)
 
 **Phase Dependencies**:
+
 - Sequential (must finish A before B)
 - Parallel (can work on both simultaneously)
 - Flexible (order doesn't matter)
 
 **Phase Outcomes**:
+
 - Clear definition of "done"
 - Tangible deliverable or checkpoint
 - Measurable progress
@@ -77,17 +84,20 @@
 ### Section 4: Creating Effective Phases
 
 **Manual Phase Creation**:
+
 - When to define phases yourself
 - Template patterns for common project types
 - Brainstorming phases before tasks
 
 **AI-Assisted Phase Generation (BuildOS)**:
+
 - Brain dump your project vision
 - AI proposes phase structure
 - You review and adjust
 - System creates tasks within phases
 
 **Phase Refinement**:
+
 - Starting broad, refining over time
 - Adding/removing phases mid-project
 - Adjusting scope based on reality
@@ -95,17 +105,20 @@
 ### Section 5: Executing Phase by Phase
 
 **Single-Phase Focus**:
+
 - Working on one phase at a time (or few parallel)
 - Resisting the urge to jump ahead
 - Completing phases before moving on
 
 **Phase Transitions**:
+
 - Reviewing completed phase
 - Lessons learned
 - Adjusting next phase based on learnings
 - Celebrating phase completion
 
 **Multi-Project Phase Juggling**:
+
 - Tracking phases across projects
 - Time allocation between project phases
 - Context switching between phases
@@ -114,22 +127,27 @@
 ### Section 6: Common Phase Mistakes and Solutions
 
 **Mistake 1: Phases Too Large**
+
 - Problem: "Research" phase with 50 tasks
 - Solution: Break into "Initial Research," "Deep Dive," "Synthesis"
 
 **Mistake 2: Phases Too Small**
+
 - Problem: "Send email" as a phase
 - Solution: Combine into meaningful work chunks
 
 **Mistake 3: No Clear Phase Outcomes**
+
 - Problem: Can't tell when phase is "done"
 - Solution: Define deliverable or checkpoint for each phase
 
 **Mistake 4: Rigid Phase Planning**
+
 - Problem: Can't adapt when reality changes
 - Solution: Treat phases as flexible guides, not contracts
 
 **Mistake 5: Skipping Phases**
+
 - Problem: Jumping to execution before planning
 - Solution: Resist urge; trust the sequence
 
@@ -148,21 +166,25 @@
 ### Section 8: Advanced Phase Techniques
 
 **Parallel Phase Execution**:
+
 - Running phases simultaneously
 - Managing cognitive load
 - Avoiding context switching costs
 
 **Phase Time Blocking**:
+
 - Dedicating specific time to specific phases
 - Weekly phase priorities
 - Daily phase focus
 
 **Phase Dependencies Management**:
+
 - Critical path identification
 - Bottleneck anticipation
 - Flexible reordering
 
 ### Conclusion: Phases Make Ambitious Projects Achievable
+
 - The middle layer your brain needs
 - BuildOS automates phase generation
 - Start your next project with phases, not just tasks
@@ -312,6 +334,7 @@
 ### Practical Resources
 
 Should we include:
+
 - Phase planning template
 - Common phase patterns library
 - Phase checklist (what makes a good phase)
@@ -336,6 +359,7 @@ Should we include:
 ### Real-World Project Types
 
 Should we include detailed examples for:
+
 - Software development projects
 - Content creation projects
 - Event planning
@@ -355,6 +379,7 @@ Should we include detailed examples for:
 **Key differentiator**: Show how **AI can generate sensible phase structures** rather than requiring users to figure it out themselves. This is a major BuildOS advantage.
 
 **Reader takeaway**:
+
 1. Understand why phases are necessary (cognitive and practical reasons)
 2. Know how to break projects into effective phases
 3. Have patterns/templates for common project types
@@ -363,17 +388,20 @@ Should we include detailed examples for:
 **Connection to BuildOS**: Deep dive into BuildOS's three phase generation strategies and how AI assists phase creation. But also provide transferable principles for anyone doing project management.
 
 **Practical focus**: Heavy emphasis on **concrete examples**:
+
 - Show real phase structures for various project types
 - Include specific phase names and scopes
 - Provide before/after examples of projects with/without phases
 
 **Honest about challenges**:
+
 - Phase planning requires upfront thought
 - Some projects resist neat phase structure
 - Phases need adjustment as project evolves
 - Discipline required to stay focused on current phase
 
 **Visual thinking**: Phases are inherently visual/spatial. Use diagrams heavily to show:
+
 - Hierarchy (goals → projects → phases → tasks)
 - Sequences (phase 1 → phase 2 → phase 3)
 - Timelines (when phases happen)
@@ -382,6 +410,7 @@ Should we include detailed examples for:
 **Success metric**: If readers finish this blog and immediately organize their current messy project into 3-6 clear phases, it's working.
 
 **Integration with other content**: Connect to:
+
 - Brain dump blog (how phases emerge from brain dumps)
 - Calendar integration blog (how phases map to time)
 - Focus time blog (working on one phase at a time)

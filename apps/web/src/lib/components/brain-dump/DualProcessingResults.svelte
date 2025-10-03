@@ -88,17 +88,22 @@
 	export function handleStreamUpdate(status: StreamingMessage) {
 		switch (status.type) {
 			case 'analysis':
-				// Handle analysis phase
+				// Handle analysis phase - ALWAYS show panel when analysis event received
+				showAnalysisPanel = true;
+				console.log('[DualProcessingResults] Analysis panel shown');
+
 				if ('data' in status && status.data) {
 					if (status.data.status) {
 						analysisStatus = status.data.status;
-						// Show analysis panel when analysis starts
-						if (status.data.status === 'processing') {
-							showAnalysisPanel = true;
-						}
+						console.log('[DualProcessingResults] Analysis status:', status.data.status);
 					}
 					if ('result' in status.data && status.data.result) {
 						analysisResult = status.data.result;
+						console.log('[DualProcessingResults] Analysis result received:', {
+							classification: status.data.result.braindump_classification,
+							needsContext: status.data.result.needs_context_update,
+							relevantTaskCount: status.data.result.relevant_task_ids?.length || 0
+						});
 					}
 				}
 				break;
@@ -110,6 +115,18 @@
 				contextResult = null;
 				analysisResult = null;
 				console.log('[DualProcessingResults] Processing started, reset results');
+
+				// Check if analysis is in the processes array - if so, show analysis panel early
+				const processes = status.data?.processes as
+					| ('analysis' | 'context' | 'tasks')[]
+					| undefined;
+				if (processes?.includes('analysis')) {
+					showAnalysisPanel = true;
+					analysisStatus = 'pending';
+					console.log(
+						'[DualProcessingResults] Analysis panel enabled (analysis in processes)'
+					);
+				}
 
 				// Only update panel visibility if explicitly provided in the SSE message
 				// The initial prop values should be used unless the server explicitly changes them

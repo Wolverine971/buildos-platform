@@ -419,8 +419,9 @@ async function processShortBrainDumpWithStreaming({
 					projectInfo
 				});
 
-				// Update brain dump status to 'saved' after successful auto-accept
-				if (brainDumpId && executionResult.successful?.length > 0) {
+				// Update brain dump status to 'saved' after auto-accept
+				// Note: Zero operations is valid when analysis determines no updates needed
+				if (brainDumpId) {
 					try {
 						const { error: updateError } = await supabase
 							.from('brain_dumps')
@@ -428,7 +429,7 @@ async function processShortBrainDumpWithStreaming({
 								status: 'saved' as const,
 								project_id: projectInfo?.id || selectedProjectId,
 								metaData: JSON.stringify({
-									operations: executionResult.successful,
+									operations: executionResult.successful || [],
 									summary:
 										finalResult.summary || 'Brain dump processed successfully',
 									insights: finalResult.insights || 'Operations executed',
@@ -437,14 +438,18 @@ async function processShortBrainDumpWithStreaming({
 									timestamp: new Date().toISOString(),
 									project_info: projectInfo,
 									executionSummary: {
-										successful: executionResult.successful.length,
-										failed: executionResult.failed.length,
+										successful: executionResult.successful?.length || 0,
+										failed: executionResult.failed?.length || 0,
 										results: executionResult.results?.length || 0
 									},
 									autoAccepted: true,
 									requiresContextUpdate:
 										validatedTaskResult.requiresContextUpdate,
-									contextUpdateReason: validatedTaskResult.contextUpdateReason
+									contextUpdateReason: validatedTaskResult.contextUpdateReason,
+									zeroOperationsReason:
+										finalResult.operations.length === 0
+											? 'Analysis determined no updates needed'
+											: null
 								}),
 								updated_at: new Date().toISOString()
 							})
@@ -458,7 +463,11 @@ async function processShortBrainDumpWithStreaming({
 							);
 						} else {
 							console.log(
-								'Short brain dump status updated to saved after auto-accept'
+								'Short brain dump status updated to saved after auto-accept',
+								{
+									operationsCount: finalResult.operations.length,
+									successfulCount: executionResult.successful?.length || 0
+								}
 							);
 						}
 					} catch (error) {

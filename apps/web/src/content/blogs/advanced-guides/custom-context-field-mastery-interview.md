@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction
+
 - Why "priority/due date/assignee" isn't enough
 - Every project has unique context needs
 - Custom fields that actually serve your workflow
@@ -25,17 +26,20 @@
 ### Section 1: Understanding Custom Context Fields
 
 **What Are Context Fields?**
+
 - Project-specific or task-specific metadata
 - Fields that capture what matters for this work
 - AI-readable context that informs decisions
 
 **Why They Matter**:
+
 - Reduce repetitive lookups
 - Maintain consistency across tasks
 - Enable smarter AI recommendations
 - Build institutional knowledge
 
 **BuildOS vs. Traditional Custom Fields**:
+
 - Dynamic, not rigid schema
 - AI can understand and use context
 - Natural language, not constrained fields
@@ -44,6 +48,7 @@
 ### Section 2: When to Use Custom Context Fields
 
 **Good Use Cases**:
+
 - Client projects (client name, contract details, communication preferences)
 - Research (sources, methodologies, key findings)
 - Creative work (style guide, brand guidelines, inspiration)
@@ -51,6 +56,7 @@
 - Recurring project types (SOPs, checklists, templates)
 
 **Bad Use Cases** (when context isn't needed):
+
 - One-off personal tasks
 - Simple reminders
 - Generic todos
@@ -59,12 +65,14 @@
 ### Section 3: Designing Effective Context Fields
 
 **Principles of Good Context**:
+
 - Specific enough to be useful
 - General enough to reuse
 - Easy to update
 - AI-readable and human-readable
 
 **Common Context Field Patterns**:
+
 - Client/Stakeholder info
 - Technical specifications
 - Budget/Resource constraints
@@ -76,33 +84,41 @@
 ### Section 4: Practical Examples by Project Type
 
 **Consulting Projects**:
+
 - Client context, billing details, deliverables, communication log
 
 **Software Development**:
+
 - Tech stack, repo links, deployment process, testing requirements
 
 **Content Creation**:
+
 - Target audience, tone, style guide, SEO keywords, distribution channels
 
 **Event Planning**:
+
 - Venue details, vendor contacts, budget breakdown, timeline, attendee info
 
 **Research Projects**:
+
 - Research questions, methodology, sources, findings, next steps
 
 ### Section 5: How BuildOS Uses Context Fields
 
 **AI Integration**:
+
 - How AI reads context to make better suggestions
 - Context-aware task generation
 - Smart prioritization based on context
 
 **Search and Filtering**:
+
 - Finding projects by context
 - Grouping similar projects
 - Pattern recognition across context
 
 **Context Evolution**:
+
 - Starting minimal, adding as needed
 - Refining context over time
 - Learning from past projects
@@ -112,14 +128,17 @@
 **Context Templates for Recurring Project Types**
 
 **Context Inheritance** (if supported):
+
 - Project-level context flows to tasks
 - Phase-specific context overrides
 
 **Collaborative Context**:
+
 - Shared context in team projects
 - Handoff information in context
 
 **Context-Driven Automation**:
+
 - Rules based on context fields
 - Notifications triggered by context
 - AI behavior adjusted by context
@@ -139,6 +158,7 @@
 **Solution**: Treat as living documentation
 
 ### Conclusion
+
 - Context fields are your project memory
 - Start simple, evolve as needed
 - Let AI leverage your context

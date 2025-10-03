@@ -16,9 +16,12 @@
 		ChevronUp,
 		Loader2,
 		Clock,
-		Edit3
+		Edit3,
+		Repeat
 	} from 'lucide-svelte';
 	import type { Database } from '@buildos/shared-types';
+	import CalendarTaskEditModal from './CalendarTaskEditModal.svelte';
+	import type { SuggestedTask } from '$lib/utils/calendar-task-field-config';
 
 	type CalendarProjectSuggestion =
 		Database['public']['Tables']['calendar_project_suggestions']['Row'];
@@ -72,8 +75,9 @@
 	// Task management state
 	let tasksExpanded = $state(new Set<string>());
 	let enabledTasks = $state<Record<string, boolean>>({});
-	let editingTask = $state<string | null>(null);
-	let taskEdits = $state<Record<number, any>>({});
+	let editingTaskKey = $state<string | null>(null);
+	let editingTaskData = $state<SuggestedTask | null>(null);
+	let isTaskEditModalOpen = $state(false);
 
 	// Start analysis automatically if requested
 	$effect(() => {
@@ -97,7 +101,9 @@
 		}
 	});
 
-	// Initialize enabled tasks (exclude past tasks)
+	// Initialize enabled tasks
+	// Note: LLM should only suggest tasks with future dates, so we enable all by default
+	// If past tasks are found, they will be visually marked but not auto-disabled
 	$effect(() => {
 		if (suggestions) {
 			const newEnabledTasks: Record<string, boolean> = {};
@@ -106,8 +112,8 @@
 				if (tasks && Array.isArray(tasks)) {
 					tasks.forEach((task, index) => {
 						const taskKey = `${suggestion.id}-${index}`;
-						// Auto-disable past tasks
-						newEnabledTasks[taskKey] = !isTaskInPast(task);
+						// Enable all tasks by default - LLM should only generate future tasks
+						newEnabledTasks[taskKey] = true;
 					});
 				}
 			});
@@ -134,68 +140,38 @@
 	}
 
 	function startEditingTask(suggestionId: string, taskIndex: number) {
-		editingTask = `${suggestionId}-${taskIndex}`;
 		const suggestion = suggestions.find((s) => s.id === suggestionId);
 		const task = suggestion?.suggested_tasks?.[taskIndex];
+
 		if (task) {
-			taskEdits[taskIndex] = { ...task };
+			editingTaskKey = `${suggestionId}-${taskIndex}`;
+			editingTaskData = { ...task } as SuggestedTask;
+			isTaskEditModalOpen = true;
 		}
 	}
 
-	function saveTaskEdit(suggestionId: string, taskIndex: number) {
-		try {
-			const taskEdit = taskEdits[taskIndex];
+	function handleTaskSave(updatedTask: SuggestedTask) {
+		if (!editingTaskKey) return;
 
-			// Validate task edit
-			if (!taskEdit) {
-				toastService.error('No changes to save');
-				return;
-			}
+		const [suggestionId, indexStr] = editingTaskKey.split('-');
+		const taskIndex = parseInt(indexStr, 10);
 
-			if (!taskEdit.title || taskEdit.title.trim().length === 0) {
-				toastService.error('Task title is required');
-				return;
-			}
-
-			if (taskEdit.title.length > 255) {
-				toastService.error('Task title must be 255 characters or less');
-				return;
-			}
-
-			// Validate date if provided
-			if (taskEdit.start_date) {
-				const date = new Date(taskEdit.start_date);
-				if (isNaN(date.getTime())) {
-					toastService.error('Please enter a valid date');
-					return;
-				}
-			}
-
-			const suggestion = suggestions.find((s) => s.id === suggestionId);
-			if (
-				suggestion &&
-				suggestion.suggested_tasks &&
-				Array.isArray(suggestion.suggested_tasks)
-			) {
-				suggestion.suggested_tasks[taskIndex] = { ...taskEdit };
-				suggestions = [...suggestions]; // Trigger reactivity
-				toastService.success('Task updated successfully');
-			} else {
-				toastService.error('Unable to find task to update');
-				return;
-			}
-
-			editingTask = null;
-			delete taskEdits[taskIndex];
-		} catch (error) {
-			toastService.error('Failed to save task changes');
-			console.error('Error saving task edit:', error);
+		const suggestion = suggestions.find((s) => s.id === suggestionId);
+		if (suggestion && suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
+			suggestion.suggested_tasks[taskIndex] = updatedTask;
+			suggestions = [...suggestions]; // Trigger reactivity
+			toastService.success('Task updated successfully');
 		}
+
+		isTaskEditModalOpen = false;
+		editingTaskKey = null;
+		editingTaskData = null;
 	}
 
-	function cancelTaskEdit() {
-		editingTask = null;
-		taskEdits = {};
+	function handleTaskEditClose() {
+		isTaskEditModalOpen = false;
+		editingTaskKey = null;
+		editingTaskData = null;
 	}
 
 	function formatDate(dateStr: string | null | undefined): string {
@@ -438,8 +414,9 @@
 		// Reset task state
 		tasksExpanded = new Set();
 		enabledTasks = {};
-		editingTask = null;
-		taskEdits = {};
+		editingTaskKey = null;
+		editingTaskData = null;
+		isTaskEditModalOpen = false;
 	}
 
 	function formatConfidence(score: number | null): string {
@@ -750,11 +727,10 @@
 												{@const isPastTask = isTaskInPast(task)}
 												{@const isTaskEnabled =
 													enabledTasks[taskKey] ?? true}
-												{@const isTaskEditing = editingTask === taskKey}
 
 												<div
 													class="p-3 rounded-lg transition-all duration-200 {isPastTask
-														? 'bg-amber-50 dark:bg-amber-900/20 opacity-75'
+														? 'bg-amber-50 dark:bg-amber-900/20'
 														: 'bg-gray-50 dark:bg-gray-800/50'}"
 												>
 													<!-- Task Header -->
@@ -762,169 +738,206 @@
 														<input
 															type="checkbox"
 															bind:checked={enabledTasks[taskKey]}
-															disabled={isPastTask || processing}
+															disabled={processing}
 															class="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
 														/>
 														<div class="flex-1 min-w-0">
-															{#if isTaskEditing && taskEdits[index]}
-																<!-- Task Edit Form -->
-																<div class="space-y-3">
-																	<input
-																		type="text"
-																		bind:value={
-																			taskEdits[index].title
-																		}
-																		placeholder="Task title"
-																		class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-																	/>
-																	<textarea
-																		bind:value={
-																			taskEdits[index]
-																				.description
-																		}
-																		placeholder="Task description"
-																		rows="2"
-																		class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-																	></textarea>
+															<!-- Enhanced Task Display - All Fields -->
+															<div
+																class="flex items-start justify-between"
+															>
+																<div class="flex-1 min-w-0">
+																	<!-- Title + Status + Past Task Badge -->
 																	<div
-																		class="grid grid-cols-2 gap-3"
+																		class="flex items-center gap-2 mb-2"
 																	>
-																		<select
-																			bind:value={
-																				taskEdits[index]
-																					.priority
-																			}
-																			class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+																		<h5
+																			class="font-medium text-gray-900 dark:text-white text-sm"
 																		>
-																			<option value="low"
-																				>Low Priority</option
+																			{task.title}
+																		</h5>
+																		{#if task.status}
+																			<span
+																				class="px-2 py-0.5 text-xs rounded-full font-medium
+																				{task.status === 'done'
+																					? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+																					: task.status ===
+																						  'in_progress'
+																						? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+																						: task.status ===
+																							  'blocked'
+																							? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+																							: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}"
 																			>
-																			<option value="medium"
-																				>Medium Priority</option
-																			>
-																			<option value="high"
-																				>High Priority</option
-																			>
-																		</select>
-																		<input
-																			type="datetime-local"
-																			bind:value={
-																				taskEdits[index]
-																					.start_date
-																			}
-																			class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-																		/>
-																	</div>
-																	<div
-																		class="flex items-center gap-2"
-																	>
-																		<Button
-																			size="sm"
-																			variant="primary"
-																			on:click={() =>
-																				saveTaskEdit(
-																					suggestion.id,
-																					index
+																				{task.status.replace(
+																					'_',
+																					' '
 																				)}
-																			class="px-3 py-1.5"
-																		>
-																			Save
-																		</Button>
-																		<Button
-																			size="sm"
-																			variant="secondary"
-																			on:click={cancelTaskEdit}
-																			class="px-3 py-1.5"
-																		>
-																			Cancel
-																		</Button>
-																	</div>
-																</div>
-															{:else}
-																<!-- Task Display -->
-																<div
-																	class="flex items-start justify-between"
-																>
-																	<div class="flex-1">
-																		<div
-																			class="flex items-center gap-2"
-																		>
-																			<h5
-																				class="font-medium text-gray-900 dark:text-white text-sm"
-																			>
-																				{task.title}
-																			</h5>
-																			{#if isPastTask}
-																				<span
-																					class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full"
-																				>
-																					Past Event
-																				</span>
-																			{/if}
-																		</div>
-																		{#if task.description}
-																			<p
-																				class="text-sm text-gray-600 dark:text-gray-400 mt-1"
-																			>
-																				{task.description}
-																			</p>
+																			</span>
 																		{/if}
-																		<!-- Task Metadata -->
-																		<div
-																			class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400"
+																		{#if isPastTask}
+																			<span
+																				class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full"
+																			>
+																				Past Event
+																			</span>
+																		{/if}
+																	</div>
+
+																	<!-- Description -->
+																	{#if task.description}
+																		<p
+																			class="text-sm text-gray-600 dark:text-gray-400 mb-2"
 																		>
-																			{#if task.priority}
-																				<span
-																					class="inline-flex px-2 py-0.5 rounded-full font-medium
-																					{task.priority === 'high'
-																						? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-																						: task.priority ===
-																							  'medium'
-																							? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-																							: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}"
-																				>
-																					{task.priority} priority
-																				</span>
-																			{/if}
-																			{#if task.start_date}
-																				<span
-																					class="flex items-center gap-1"
-																				>
+																			{task.description}
+																		</p>
+																	{/if}
+
+																	<!-- Details (if present) -->
+																	{#if task.details}
+																		<div
+																			class="text-xs text-gray-500 dark:text-gray-400 mb-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
+																		>
+																			<strong
+																				class="text-gray-700 dark:text-gray-300"
+																				>Details:</strong
+																			>
+																			<p
+																				class="mt-1 whitespace-pre-wrap"
+																			>
+																				{task.details}
+																			</p>
+																		</div>
+																	{/if}
+
+																	<!-- Metadata Grid -->
+																	<div
+																		class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+																	>
+																		<!-- Priority -->
+																		{#if task.priority}
+																			<span
+																				class="inline-flex px-2 py-0.5 rounded-full font-medium
+																				{task.priority === 'high'
+																					? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+																					: task.priority ===
+																						  'medium'
+																						? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+																						: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}"
+																			>
+																				{task.priority} priority
+																			</span>
+																		{/if}
+
+																		<!-- Task Type -->
+																		{#if task.task_type}
+																			<span
+																				class="flex items-center gap-1"
+																			>
+																				{#if task.task_type === 'recurring'}
+																					<Repeat
+																						class="w-3 h-3"
+																					/>
+																					Recurring
+																				{:else}
 																					<Calendar
 																						class="w-3 h-3"
 																					/>
-																					{formatDate(
-																						task.start_date
-																					)}
-																				</span>
-																			{/if}
-																			{#if task.duration_minutes}
-																				<span
-																					class="flex items-center gap-1"
-																				>
-																					<Clock
-																						class="w-3 h-3"
-																					/>
-																					{task.duration_minutes}min
-																				</span>
-																			{/if}
-																		</div>
+																					One-time
+																				{/if}
+																			</span>
+																		{/if}
+
+																		<!-- Start Date -->
+																		{#if task.start_date}
+																			<span
+																				class="flex items-center gap-1"
+																			>
+																				<Calendar
+																					class="w-3 h-3"
+																				/>
+																				{formatDate(
+																					task.start_date
+																				)}
+																			</span>
+																		{/if}
+
+																		<!-- Duration -->
+																		{#if task.duration_minutes}
+																			<span
+																				class="flex items-center gap-1"
+																			>
+																				<Clock
+																					class="w-3 h-3"
+																				/>
+																				{task.duration_minutes}min
+																			</span>
+																		{/if}
+
+																		<!-- Recurrence Pattern (if recurring) -->
+																		{#if task.task_type === 'recurring' && task.recurrence_pattern}
+																			<span
+																				class="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full"
+																			>
+																				<Repeat
+																					class="w-3 h-3"
+																				/>
+																				{task.recurrence_pattern.replace(
+																					'_',
+																					' '
+																				)}
+																				{#if task.recurrence_ends}
+																					until {new Date(
+																						task.recurrence_ends
+																					).toLocaleDateString()}
+																				{/if}
+																			</span>
+																		{/if}
 																	</div>
-																	<Button
-																		size="sm"
-																		variant="ghost"
-																		icon={Edit3}
-																		on:click={() =>
-																			startEditingTask(
-																				suggestion.id,
-																				index
-																			)}
-																		disabled={processing}
-																		class="ml-2 !p-1.5"
-																		title="Edit task"
-																	/>
+
+																	<!-- Tags (if present) -->
+																	{#if task.tags && task.tags.length > 0}
+																		<div
+																			class="flex flex-wrap gap-1.5 mt-2"
+																		>
+																			{#each task.tags as tag}
+																				<span
+																					class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+																				>
+																					{tag}
+																				</span>
+																			{/each}
+																		</div>
+																	{/if}
+
+																	<!-- Linked Event (if present) -->
+																	{#if task.event_id}
+																		<div
+																			class="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1"
+																		>
+																			<Calendar
+																				class="w-3 h-3"
+																			/>
+																			Linked to calendar event
+																		</div>
+																	{/if}
 																</div>
-															{/if}
+
+																<!-- Edit Button -->
+																<Button
+																	size="sm"
+																	variant="ghost"
+																	icon={Edit3}
+																	on:click={() =>
+																		startEditingTask(
+																			suggestion.id,
+																			index
+																		)}
+																	disabled={processing}
+																	class="ml-2 !p-1.5 flex-shrink-0"
+																	title="Edit task"
+																/>
+															</div>
 														</div>
 													</div>
 												</div>
@@ -1137,3 +1150,13 @@
 		{/if}
 	</div>
 </Modal>
+
+<!-- Task Edit Modal -->
+{#if isTaskEditModalOpen && editingTaskData}
+	<CalendarTaskEditModal
+		isOpen={isTaskEditModalOpen}
+		task={editingTaskData}
+		onSave={handleTaskSave}
+		onClose={handleTaskEditClose}
+	/>
+{/if}

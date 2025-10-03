@@ -1175,7 +1175,29 @@ Include these questions in your response within the main JSON structure:
         "project_ref": "new-project-1",
         "priority": "medium",
         "status": "backlog",
-        "task_type": "one_off"
+        "task_type": "one_off",
+        "duration_minutes": 60,
+        "start_date": "2024-03-15T09:00:00",
+        "tags": ["implementation", "frontend"]
+      }
+    },
+    {
+      "id": "op-1234567890-task-create-2",
+      "table": "tasks",
+      "operation": "create",
+      "data": {
+        "title": "Weekly team sync",
+        "description": "Regular team meeting to discuss progress",
+        "details": "Review sprint progress, discuss blockers, plan upcoming work",
+        "project_ref": "new-project-1",
+        "priority": "high",
+        "status": "backlog",
+        "task_type": "recurring",
+        "duration_minutes": 30,
+        "start_date": "2024-03-18T10:00:00",
+        "recurrence_pattern": "weekly",
+        "recurrence_ends": null,
+        "tags": ["meeting", "team"]
       }
     }
   ],
@@ -1299,7 +1321,11 @@ Include these questions in your response within the main JSON structure:
       "data": {
         "id": "task-123",
         "status": "in_progress",
-        "details": "Added implementation details, research notes, observations from brain dump. Include all context..."
+        "priority": "high",
+        "duration_minutes": 120,
+        "start_date": "2024-03-15T14:00:00",
+        "details": "Added implementation details, research notes, observations from brain dump. Include all context...",
+        "tags": ["urgent", "backend"]
       }
     },
     {
@@ -1313,7 +1339,29 @@ Include these questions in your response within the main JSON structure:
         "project_id": "${projectId}",
         "priority": "medium",
         "status": "backlog",
-        "task_type": "one_off"
+        "task_type": "one_off",
+        "duration_minutes": 60,
+        "start_date": "2024-03-16T10:30:00",
+        "tags": ["feature", "api"]
+      }
+    },
+    {
+      "id": "op-1234567890-task-create-2",
+      "table": "tasks",
+      "operation": "create",
+      "data": {
+        "title": "Daily standup meeting",
+        "description": "Morning team sync",
+        "details": "Quick 15-minute sync to share updates and blockers",
+        "project_id": "${projectId}",
+        "priority": "medium",
+        "status": "backlog",
+        "task_type": "recurring",
+        "duration_minutes": 15,
+        "start_date": "2024-03-15T09:00:00",
+        "recurrence_pattern": "daily",
+        "recurrence_ends": null,
+        "tags": ["meeting", "daily"]
       }
     }
   ],
@@ -1705,44 +1753,132 @@ Identify tasks that are likely referenced by looking for:
 
 ## Output JSON Structure:
 
-You MUST respond with valid JSON matching this exact structure:
+You MUST respond with valid JSON. Here are examples showing the VARIETY of possible outputs based on different braindump types:
 
+**Example 1: Tactical Update (task-focused, skip context)**
 \`\`\`json
 {
-  "analysis_summary": "Brief 1-2 sentence summary of the braindump content",
-  "braindump_classification": "strategic",
-  "needs_context_update": true,
-  "context_indicators": [
-    "Vision change mentioned",
-    "New strategic direction identified"
-  ],
-  "relevant_task_ids": [
-    "task-id-1",
-    "task-id-2"
-  ],
+  "analysis_summary": "User providing status updates on API integration and database migration tasks",
+  "braindump_classification": "tactical",
+  "needs_context_update": false,
+  "context_indicators": [],
+  "relevant_task_ids": ["task-abc-123", "task-def-456"],
   "task_indicators": {
-    "task-id-1": "Mentioned API integration task",
-    "task-id-2": "Referenced database migration"
+    "task-abc-123": "Mentioned completing API integration",
+    "task-def-456": "Referenced database migration in progress"
   },
   "new_tasks_detected": false,
   "confidence_level": "high",
   "processing_recommendation": {
-    "skip_context": false,
+    "skip_context": true,
     "skip_tasks": false,
-    "reason": "Both context and tasks need processing"
+    "reason": "Only task updates, no strategic changes detected"
   }
 }
 \`\`\`
 
+**Example 2: Strategic Update (context-focused, update context)**
+\`\`\`json
+{
+  "analysis_summary": "User pivoting product strategy from B2C to B2B enterprise market",
+  "braindump_classification": "strategic",
+  "needs_context_update": true,
+  "context_indicators": [
+    "Major strategic pivot from B2C to B2B mentioned",
+    "New enterprise requirements: SSO, multi-tenancy, admin controls",
+    "Timeline extension by 2 months",
+    "Scope change to focus on enterprise features"
+  ],
+  "relevant_task_ids": [],
+  "task_indicators": {},
+  "new_tasks_detected": true,
+  "confidence_level": "high",
+  "processing_recommendation": {
+    "skip_context": false,
+    "skip_tasks": false,
+    "reason": "Strategic pivot requires context update and new task creation"
+  }
+}
+\`\`\`
+
+**Example 3: Mixed Update (both strategic and tactical)**
+\`\`\`json
+{
+  "analysis_summary": "User discussing architecture refactor while updating task completion status",
+  "braindump_classification": "mixed",
+  "needs_context_update": true,
+  "context_indicators": [
+    "Architecture decision to break out authentication into microservice",
+    "New microservices approach mentioned"
+  ],
+  "relevant_task_ids": ["task-xyz-789"],
+  "task_indicators": {
+    "task-xyz-789": "Database optimization task marked complete"
+  },
+  "new_tasks_detected": true,
+  "confidence_level": "medium",
+  "processing_recommendation": {
+    "skip_context": false,
+    "skip_tasks": false,
+    "reason": "Contains both strategic architecture change and task updates"
+  }
+}
+\`\`\`
+
+**Example 4: Simple Status Update (skip both)**
+\`\`\`json
+{
+  "analysis_summary": "Generic progress update with no specific details or actionable items",
+  "braindump_classification": "status_update",
+  "needs_context_update": false,
+  "context_indicators": [],
+  "relevant_task_ids": [],
+  "task_indicators": {},
+  "new_tasks_detected": false,
+  "confidence_level": "medium",
+  "processing_recommendation": {
+    "skip_context": true,
+    "skip_tasks": true,
+    "reason": "Vague status update with no actionable information"
+  }
+}
+\`\`\`
+
+**Example 5: Unrelated Content (skip all)**
+\`\`\`json
+{
+  "analysis_summary": "Content does not relate to this project's scope or objectives",
+  "braindump_classification": "unrelated",
+  "needs_context_update": false,
+  "context_indicators": [],
+  "relevant_task_ids": [],
+  "task_indicators": {},
+  "new_tasks_detected": false,
+  "confidence_level": "high",
+  "processing_recommendation": {
+    "skip_context": true,
+    "skip_tasks": true,
+    "reason": "Content is not related to this project"
+  }
+}
+\`\`\`
+
+**CRITICAL INSTRUCTIONS:**
+- Choose the classification that BEST matches the braindump content
+- Set needs_context_update to FALSE for purely tactical updates
+- Set skip_context to TRUE when context doesn't need updating
+- Set skip_tasks to TRUE only for vague status updates with no task information
+- Arrays and objects should be EMPTY [] or {} if nothing found
+- Be CONSERVATIVE: when uncertain, process rather than skip
+- The examples show the VARIETY of outputs - your response should match the actual content
+
 **Important Rules:**
 - braindump_classification: MUST be one of: "strategic", "tactical", "mixed", "status_update", "unrelated"
-- needs_context_update: MUST be true or false (boolean)
+- needs_context_update: MUST be true or false (boolean, not the string "true" or "false")
 - new_tasks_detected: MUST be true or false (boolean)
 - confidence_level: MUST be one of: "high", "medium", "low"
 - skip_context: MUST be true or false (boolean)
 - skip_tasks: MUST be true or false (boolean)
-- Arrays can be empty [] if nothing found
-- Objects can be empty {} if no indicators
 
 Analyze the braindump and respond with ONLY the JSON, no other text.`;
 	}

@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction
+
 - Why dependencies matter (some work must happen in order)
 - The problem with ignoring dependencies
 - The problem with over-managing dependencies
@@ -25,12 +26,14 @@
 ### Section 1: Understanding Task Dependencies
 
 **Types of Dependencies**:
+
 - Finish-to-Start (can't start B until A is done)
 - Start-to-Start (both begin together)
 - Finish-to-Finish (both end together)
 - Soft vs. hard dependencies
 
 **When Dependencies Matter**:
+
 - Complex multi-step projects
 - Team collaboration handoffs
 - Resource constraints
@@ -39,27 +42,32 @@
 ### Section 2: How BuildOS Handles Dependencies
 
 **Implicit Dependencies** (phase-based):
+
 - Tasks within phases naturally ordered
 - Phases provide loose dependency structure
 - Completion of phase signals readiness for next
 
 **Explicit Dependencies** (if BuildOS supports):
+
 - Linking specific tasks
 - Blocking vs. waiting relationships
 - Visualization of dependency chains
 
 **AI-Suggested Dependencies**:
+
 - How AI identifies logical task order
 - Reviewing and adjusting AI suggestions
 
 ### Section 3: Managing Critical Paths
 
 **Identifying Critical Paths**:
+
 - Which tasks block everything else
 - Bottleneck identification
 - Priority sequencing
 
 **Optimizing Critical Paths**:
+
 - Parallelizing non-dependent work
 - Front-loading blockers
 - Resource allocation to critical tasks
@@ -87,6 +95,7 @@
 - Managing dependencies across projects
 
 ### Conclusion
+
 - Start simple, add complexity only when needed
 - Use phases for most dependency management
 - Explicit dependencies for truly blocked work

@@ -53,7 +53,7 @@ export interface SSEStatus extends BaseSSEMessage {
 	type: 'status';
 	message: string;
 	data: {
-		processes: ('context' | 'tasks')[];
+		processes: ('analysis' | 'context' | 'tasks')[];
 		contentLength: number;
 		isDualProcessing?: boolean;
 		isShortBraindump?: boolean;

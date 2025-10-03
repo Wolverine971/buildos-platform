@@ -294,11 +294,31 @@ export class CalendarAnalysisService extends ApiService {
 		}
 
 		const today = new Date().toISOString().split('T')[0];
+		const now = new Date();
+
+		// Separate events into past and upcoming
+		const pastEvents = events.filter((e) => {
+			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+			return eventDate < now;
+		});
+
+		const upcomingEvents = events.filter((e) => {
+			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+			return eventDate >= now;
+		});
+
+		if (DEBUG_LOGGING) {
+			console.log(
+				`[Calendar Analysis] Event split: ${pastEvents.length} past, ${upcomingEvents.length} upcoming`
+			);
+		}
 
 		const prompt = `
-A user has asked you to analyze their google calendar and suggest project based off the events.
+A user has asked you to analyze their google calendar and suggest projects based off the events.
 
 Your role is to act like a project organizer and look at the google calendar events and suggest projects with associated tasks.
+
+**IMPORTANT CONTEXT**: Today's date is ${today}. You have access to both past and upcoming calendar events.
 
 You will be returning a JSON response of detailed "suggestions" array. See **Output Requirements** for correct JSON schema formatting.
 
@@ -329,13 +349,15 @@ ${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
 
 ${generateProjectContextFramework('condensed')}
 
+## Calendar Events to Analyze
 
-## Calendar Events to Analyze:
+### Past Events (${pastEvents.length} events)
+**Use these events ONLY for project context and understanding. DO NOT create tasks from past events.**
 ${JSON.stringify(
-	events.map((e) => ({
+	pastEvents.map((e) => ({
 		id: e.id || 'unknown',
 		title: e.summary,
-		description: e.description?.substring(0, 500), // Increased limit for better context
+		description: e.description?.substring(0, 500),
 		start: e.start?.dateTime || e.start?.date,
 		end: e.end?.dateTime || e.end?.date,
 		attendees: e.attendees?.map((a) => a.email),
@@ -348,7 +370,67 @@ ${JSON.stringify(
 	2
 )}
 
-## Output Requirements- JSON schema
+### Upcoming Events (${upcomingEvents.length} events)
+**Use these events for BOTH project context AND task generation.**
+${JSON.stringify(
+	upcomingEvents.map((e) => ({
+		id: e.id || 'unknown',
+		title: e.summary,
+		description: e.description?.substring(0, 500),
+		start: e.start?.dateTime || e.start?.date,
+		end: e.end?.dateTime || e.end?.date,
+		attendees: e.attendees?.map((a) => a.email),
+		organizer: e.organizer?.email,
+		recurring: !!e.recurringEventId,
+		status: e.status,
+		location: e.location
+	})),
+	null,
+	2
+)}
+
+## CRITICAL TASK GENERATION RULES
+
+**You MUST generate at least 2-5 tasks per project suggestion.**
+
+For each project, create tasks using ONE or BOTH of these approaches:
+
+### Approach 1: Tasks from Upcoming Calendar Events
+- Convert upcoming calendar events into actionable tasks
+- Use the event's date/time as the task's start_date
+- If event is recurring, set task_type to "recurring" with appropriate recurrence_pattern
+
+### Approach 2: Inferred Next Steps
+- Based on the project context and goals, infer logical next steps
+- Schedule these tasks starting from ${today} or later
+- Space tasks intelligently (e.g., planning tasks this week, execution tasks next week)
+
+**TASK DATE REQUIREMENTS**:
+- ALL tasks MUST have start_date >= ${today} (today or future)
+- NEVER create tasks with dates in the past
+- Use past events to understand the project, but create tasks for future work
+- If an upcoming event exists, you can create a task for it
+- If no upcoming events exist, infer 2-3 logical next steps and schedule them starting ${today}
+
+**Examples**:
+
+Example 1 - Project with upcoming events:
+- Past events: "Sprint Planning" (weekly, last 8 weeks)
+- Upcoming events: "Sprint Planning" on ${new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+- Tasks to create:
+  1. "Attend Sprint Planning" - from upcoming event
+  2. "Review sprint backlog" - inferred preparation task (2 days before)
+  3. "Update team on progress" - recurring task (weekly)
+
+Example 2 - Project with only past events:
+- Past events: "Product Review" (monthly, last 3 months)
+- No upcoming events
+- Tasks to create:
+  1. "Schedule next product review" - starting ${today}
+  2. "Gather product metrics" - starting ${new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+  3. "Prepare review presentation" - starting ${new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+
+## Output Requirements - JSON schema
 
 Return a JSON object with a "suggestions" array. Each suggestion must follow this EXACT structure:
 
@@ -359,7 +441,7 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
       "name": "Clear, action-oriented project name",
       "slug": "generated-from-name-lowercase-hyphens",
       "description": "2-3 sentence description of what this project is about",
-      "context": "Comprehensive markdown following the BuildOS context framework. Include all relevant information about the project's purpose, vision, scope, approach, stakeholders, timelines, and any other relevant context extracted from the calendar events. This should be rich and detailed.",
+      "context": "Comprehensive markdown following the BuildOS context framework. Include all relevant information about the project's purpose, vision, scope, approach, stakeholders, timelines, and any other relevant context extracted from the calendar events. Use BOTH past and upcoming events to build complete context.",
       "executive_summary": "Brief executive summary under 500 characters",
       "status": "active", // Default to active for new projects
       "start_date": "YYYY-MM-DD", // Earliest relevant event date or today
@@ -367,25 +449,25 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
       "tags": ["relevant", "tags", "from", "events"],
 
       // Calendar analysis metadata (all required)
-      "event_ids": ["array", "of", "event", "ids"],
+      "event_ids": ["array", "of", "ALL", "event", "ids", "both", "past", "and", "upcoming"],
       "confidence": 0.7, // 0-1 score, must be >= ${minConfidence}
       "reasoning": "Clear explanation of why these events suggest a project",
       "keywords": ["detected", "keywords", "that", "indicated", "project"],
 
-      // Suggested tasks (optional but recommended)
+      // Suggested tasks (REQUIRED - minimum 2 tasks per project)
       "suggested_tasks": [
         {
           "title": "Specific task title (max 255 chars)",
           "description": "Brief task description",
-          "details": "Comprehensive details about the task from event context",
+          "details": "Comprehensive details about the task from event context or inferred next steps",
           "status": "backlog",
-          "priority": "medium", // low|medium|high based on event importance
+          "priority": "medium", // low|medium|high based on urgency/importance
           "task_type": "one_off", // or "recurring" for repeating events
-          "duration_minutes": 60, // Estimate based on event duration
-          "start_date": "YYYY-MM-DDTHH:MM:SS", // From event time, null if no specific time
+          "duration_minutes": 60, // Estimate based on event duration or task complexity
+          "start_date": "YYYY-MM-DDTHH:MM:SS", // MUST be >= ${today}T00:00:00, schedule intelligently
           "recurrence_pattern": "weekly", // Only if task_type is "recurring"
           "recurrence_ends": "YYYY-MM-DD", // Only if recurring
-          "event_id": "linked-calendar-event-id",
+          "event_id": "linked-calendar-event-id", // Only if task is from an upcoming event
           "tags": ["optional", "task", "tags"]
         }
       ]
@@ -393,11 +475,21 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
   ]
 }
 
+**VALIDATION CHECKLIST** (verify before returning):
+- [ ] Each project has at least 2 tasks in suggested_tasks array
+- [ ] ALL task start_date values are >= ${today}
+- [ ] NO tasks have dates in the past
+- [ ] Tasks either correspond to upcoming events OR are inferred next steps
+- [ ] Project context incorporates insights from BOTH past and upcoming events
+- [ ] All required fields are present
+- [ ] Valid JSON that can be parsed
+
 IMPORTANT:
 - Only suggest projects with confidence >= ${minConfidence}
 - Generate meaningful, actionable project names (not just event titles)
 - Create rich, comprehensive context using the BuildOS framework
-- Extract specific, actionable tasks from event details
+- **MUST generate 2-5 tasks per project** - use upcoming events and/or infer next steps
+- **ALL tasks must have future dates (>= ${today})**
 - Use proper date formats (YYYY-MM-DD for dates, YYYY-MM-DDTHH:MM:SS for timestamps)
 - Ensure all required fields are present
 - The response must be valid JSON that can be parsed
@@ -451,6 +543,39 @@ IMPORTANT:
 					`[Calendar Analysis] Suggestions after confidence filter (>= ${minConfidence}): ${filtered.length}`
 				);
 			}
+
+			// Validate that all tasks have future dates
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			filtered.forEach((suggestion) => {
+				if (suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
+					const pastTasks = suggestion.suggested_tasks.filter((task) => {
+						if (!task.start_date) return false;
+						const taskDate = new Date(task.start_date);
+						return taskDate < today;
+					});
+
+					if (pastTasks.length > 0) {
+						console.warn(
+							`[Calendar Analysis] WARNING: Project "${suggestion.name}" has ${pastTasks.length} task(s) with past dates. These should not have been generated by the LLM.`,
+							pastTasks.map((t) => ({ title: t.title, start_date: t.start_date }))
+						);
+					}
+				}
+
+				// Validate that each project has at least one task
+				const taskCount = suggestion.suggested_tasks?.length || 0;
+				if (taskCount === 0) {
+					console.warn(
+						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has no tasks. At least 2 tasks should be generated.`
+					);
+				} else if (taskCount === 1) {
+					console.warn(
+						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has only 1 task. At least 2 tasks should be generated.`
+					);
+				}
+			});
 
 			return filtered;
 		} catch (error) {
@@ -548,19 +673,45 @@ IMPORTANT:
 								? { ...task, ...modifications.taskModifications[index] }
 								: task;
 
-							// Filter out past one-time events and handle rescheduling
+							// Validate and reschedule tasks with past dates
+							// Note: LLM should NOT generate past tasks, but this is a safety net
 							let rescheduledFromPast = false;
-							if (modifiedTask.task_type === 'one_off' && modifiedTask.start_date) {
+							if (modifiedTask.start_date) {
 								const taskDate = new Date(modifiedTask.start_date);
 								if (taskDate < today) {
-									// Reschedule to today for one-off tasks
-									modifiedTask.start_date =
-										today.toISOString().split('T')[0] +
-										'T' +
-										(modifiedTask.start_date.includes('T')
-											? modifiedTask.start_date.split('T')[1]
-											: '09:00:00');
-									rescheduledFromPast = true;
+									const originalDate = modifiedTask.start_date;
+
+									if (modifiedTask.task_type === 'one_off') {
+										// Reschedule one-off tasks to today
+										modifiedTask.start_date =
+											today.toISOString().split('T')[0] +
+											'T' +
+											(modifiedTask.start_date.includes('T')
+												? modifiedTask.start_date.split('T')[1]
+												: '09:00:00');
+										rescheduledFromPast = true;
+
+										if (DEBUG_LOGGING) {
+											console.log(
+												`[Calendar Analysis] Rescheduled one-off task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
+											);
+										}
+									} else if (modifiedTask.task_type === 'recurring') {
+										// For recurring tasks, move to today and keep the recurrence pattern
+										modifiedTask.start_date =
+											today.toISOString().split('T')[0] +
+											'T' +
+											(modifiedTask.start_date.includes('T')
+												? modifiedTask.start_date.split('T')[1]
+												: '09:00:00');
+										rescheduledFromPast = true;
+
+										if (DEBUG_LOGGING) {
+											console.log(
+												`[Calendar Analysis] Rescheduled recurring task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
+											);
+										}
+									}
 								}
 							}
 

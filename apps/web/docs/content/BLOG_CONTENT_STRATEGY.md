@@ -12,12 +12,14 @@ priority: high
 ### Completed Blogs (Enhanced with Development Notes)
 
 **Getting Started Category (4/4 ✅)**
+
 - ✅ `daily-brief-guide.md` - Enhanced with technical architecture notes
 - ✅ `effective-brain-dumping.md` - Complete and ready
 - ✅ `first-project-setup.md` - Enhanced with implementation details
 - ✅ `understanding-life-goals.md` - Enhanced with strategic alignment notes
 
 **Philosophy Category (2/6)**
+
 - ✅ `agentic-vrs-context-engineering.md` - Complete
 - ✅ `anti-ai-assistant-execution-engine.md` - Enhanced with anti-agent architecture notes
 - ❌ `future-of-personal-knowledge-management.md` - Missing frontmatter
@@ -26,6 +28,7 @@ priority: high
 - ❌ `productivity-vs-busy-work.md` - Missing frontmatter
 
 **Productivity Tips (3/6)**
+
 - ✅ `context-engineering-101.md` - Complete
 - ✅ `evolution-of-note-taking.md` - Complete
 - ✅ `task-management-best-practices.md` - Complete
@@ -34,6 +37,7 @@ priority: high
 - ❌ `phase-based-project-execution.md` - Missing frontmatter
 
 **Advanced Guides (1/5)**
+
 - ✅ `troubleshooting-common-issues.md` - Complete
 - ❌ `advanced-task-dependency-management.md` - Missing frontmatter
 - ❌ `api-integration-workflows.md` - Missing frontmatter
@@ -41,12 +45,14 @@ priority: high
 - ❌ `power-user-automation-techniques.md` - Missing frontmatter
 
 **Case Studies (0/4 - All Need Creation)**
+
 - ❌ `academic-researcher-time-management.md` - Missing frontmatter
 - ❌ `creative-professional-project-organization.md` - Missing frontmatter
 - ❌ `remote-team-coordination-success.md` - Missing frontmatter
 - ❌ `startup-founder-productivity-transformation.md` - Missing frontmatter
 
 **Product Updates (0/4 - All Need Creation)**
+
 - ❌ `build-os-beta-launch.md` - Missing frontmatter
 - ❌ `calendar-integration-announcement.md` - Missing frontmatter
 - ❌ `dynamic-context-feature.md` - Missing frontmatter
@@ -61,84 +67,84 @@ priority: high
 **Priority: CRITICAL - Create these first**
 
 1. **"BuildOS vs Notion for ADHD Minds"** (`buildos-vs-notion-adhd-minds.md`)
-   - **Why**: Notion is the #1 competitor, ADHD is our target market
-   - **Keywords**: ADHD productivity tools, Notion alternatives for ADHD, AI-powered organization
-   - **Angle**: Notion requires manual setup (executive function barrier), BuildOS auto-structures
-   - **Length**: 2500-3000 words
-   - **Include**: Side-by-side feature comparison, migration guide, real user testimonial
+    - **Why**: Notion is the #1 competitor, ADHD is our target market
+    - **Keywords**: ADHD productivity tools, Notion alternatives for ADHD, AI-powered organization
+    - **Angle**: Notion requires manual setup (executive function barrier), BuildOS auto-structures
+    - **Length**: 2500-3000 words
+    - **Include**: Side-by-side feature comparison, migration guide, real user testimonial
 
 2. **"BuildOS vs Monday.com: Thought Organization Showdown"** (`buildos-vs-monday-thought-organization.md`)
-   - **Why**: Monday.com dominates project management, we need to differentiate
-   - **Keywords**: project management software, thought organization, brain dump tools
-   - **Angle**: Monday.com = rigid workflows, BuildOS = adaptive to your thinking
-   - **Length**: 2000-2500 words
-   - **Include**: Workflow comparison, pricing analysis, ideal use cases for each
+    - **Why**: Monday.com dominates project management, we need to differentiate
+    - **Keywords**: project management software, thought organization, brain dump tools
+    - **Angle**: Monday.com = rigid workflows, BuildOS = adaptive to your thinking
+    - **Length**: 2000-2500 words
+    - **Include**: Workflow comparison, pricing analysis, ideal use cases for each
 
 3. **"BuildOS vs Obsidian: Knowledge Management Face-Off"** (`buildos-vs-obsidian-knowledge-management.md`)
-   - **Why**: Obsidian users value context and knowledge graphs, we have better AI
-   - **Keywords**: knowledge management, second brain, AI note-taking
-   - **Angle**: Obsidian = manual linking, BuildOS = AI-powered context extraction
-   - **Length**: 2500-3000 words
-   - **Include**: Context engineering comparison, plugin ecosystem vs native features
+    - **Why**: Obsidian users value context and knowledge graphs, we have better AI
+    - **Keywords**: knowledge management, second brain, AI note-taking
+    - **Angle**: Obsidian = manual linking, BuildOS = AI-powered context extraction
+    - **Length**: 2500-3000 words
+    - **Include**: Context engineering comparison, plugin ecosystem vs native features
 
 ### Phase 2: Technical Deep Dives (Thought Leadership)
 
 **Priority: HIGH - Demonstrate technical sophistication**
 
 4. **"How BuildOS Daily Briefs Analyze 1000+ Data Points Overnight"**
-   - **Technical Details**:
-     - Worker service architecture (Railway deployment)
-     - 5 parallel database queries (projects, tasks, notes, phases, calendar events)
-     - LLM analysis pipeline: markdown generation → DeepSeek Chat V3 → email formatting
-     - Timezone-aware scheduling (date-fns-tz)
-     - Engagement backoff algorithm (4 vs 60 emails)
-   - **Target Audience**: Technical users, founders, engineers
-   - **Length**: 3000-3500 words
+    - **Technical Details**:
+        - Worker service architecture (Railway deployment)
+        - 5 parallel database queries (projects, tasks, notes, phases, calendar events)
+        - LLM analysis pipeline: markdown generation → DeepSeek Chat V3 → email formatting
+        - Timezone-aware scheduling (date-fns-tz)
+        - Engagement backoff algorithm (4 vs 60 emails)
+    - **Target Audience**: Technical users, founders, engineers
+    - **Length**: 3000-3500 words
 
 5. **"The Multi-Brain Dump Architecture: 3 Concurrent Thought Streams"**
-   - **Technical Details**:
-     - Map-based store architecture (Map<brainDumpId, SingleBrainDumpState>)
-     - Per-brain-dump mutexes (no global blocking)
-     - Queue management (max 3 concurrent, max 5 queued)
-     - Force-new draft creation for concurrent operations
-     - SSR-safe environment variable patterns
-   - **Target Audience**: Developers, power users
-   - **Length**: 2500-3000 words
+    - **Technical Details**:
+        - Map-based store architecture (Map<brainDumpId, SingleBrainDumpState>)
+        - Per-brain-dump mutexes (no global blocking)
+        - Queue management (max 3 concurrent, max 5 queued)
+        - Force-new draft creation for concurrent operations
+        - SSR-safe environment variable patterns
+    - **Target Audience**: Developers, power users
+    - **Length**: 2500-3000 words
 
 6. **"Calendar-Optimized Phase Generation: The Algorithm Explained"**
-   - **Technical Details**:
-     - 5-step generation process (queue → analyze → generate → schedule → finalize)
-     - 3 generation strategies (phases-only, schedule-in-phases, calendar-optimized)
-     - Conflict detection algorithm
-     - Fallback timer-based progress vs SSE streaming
-     - Project date change propagation
-   - **Target Audience**: Technical users, AI enthusiasts
-   - **Length**: 2500-3000 words
+    - **Technical Details**:
+        - 5-step generation process (queue → analyze → generate → schedule → finalize)
+        - 3 generation strategies (phases-only, schedule-in-phases, calendar-optimized)
+        - Conflict detection algorithm
+        - Fallback timer-based progress vs SSE streaming
+        - Project date change propagation
+    - **Target Audience**: Technical users, AI enthusiasts
+    - **Length**: 2500-3000 words
 
 ### Phase 3: Case Studies & Social Proof (Trust Building)
 
 **Priority: MEDIUM - Build credibility and show real-world impact**
 
 7. **"Startup Founder: Managing 5 Projects with BuildOS Daily Briefs"**
-   - **Persona**: Sarah, solo founder of SaaS startup
-   - **Challenge**: Juggling product development, fundraising, marketing, hiring, operations
-   - **Solution**: Daily briefs consolidate 5 projects into actionable intelligence
-   - **Results**: 45 minutes saved every morning, 3 successful project launches in 6 months
-   - **Length**: 1500-2000 words
+    - **Persona**: Sarah, solo founder of SaaS startup
+    - **Challenge**: Juggling product development, fundraising, marketing, hiring, operations
+    - **Solution**: Daily briefs consolidate 5 projects into actionable intelligence
+    - **Results**: 45 minutes saved every morning, 3 successful project launches in 6 months
+    - **Length**: 1500-2000 words
 
 8. **"Creative Professional: From Chaos to Shipped Products"**
-   - **Persona**: Marcus, freelance designer/developer
-   - **Challenge**: Multiple client projects, personal projects, scattered ideas
-   - **Solution**: Brain dump to project flow, phase management for client work
-   - **Results**: 2x client capacity, launched personal project (side income)
-   - **Length**: 1500-2000 words
+    - **Persona**: Marcus, freelance designer/developer
+    - **Challenge**: Multiple client projects, personal projects, scattered ideas
+    - **Solution**: Brain dump to project flow, phase management for client work
+    - **Results**: 2x client capacity, launched personal project (side income)
+    - **Length**: 1500-2000 words
 
 9. **"Academic Researcher: Time Management Transformation"**
-   - **Persona**: Dr. Chen, university researcher
-   - **Challenge**: Teaching, research, grants, publications, administrative duties
-   - **Solution**: Life goals → projects alignment, calendar integration for time blocking
-   - **Results**: Published 3 papers (vs 1 previous year), better work-life balance
-   - **Length**: 1500-2000 words
+    - **Persona**: Dr. Chen, university researcher
+    - **Challenge**: Teaching, research, grants, publications, administrative duties
+    - **Solution**: Life goals → projects alignment, calendar integration for time blocking
+    - **Results**: Published 3 papers (vs 1 previous year), better work-life balance
+    - **Length**: 1500-2000 words
 
 ### Phase 4: Feature Deep Dives (Product Marketing)
 
@@ -163,12 +169,14 @@ priority: high
 ### For Each Blog Post
 
 **Pre-Writing:**
+
 - [ ] Research keyword opportunities (Ahrefs, SEMrush)
 - [ ] Identify competitor content to outrank
 - [ ] Define primary CTA (signup, feature trial, demo request)
 - [ ] Outline visual content needs (diagrams, screenshots, videos)
 
 **Writing:**
+
 - [ ] Hook reader in first 2 paragraphs
 - [ ] Use real examples and concrete scenarios
 - [ ] Include technical details when appropriate
@@ -177,6 +185,7 @@ priority: high
 - [ ] External link to 1-2 authoritative sources
 
 **Post-Writing:**
+
 - [ ] SEO optimization (meta description, title tag, headings)
 - [ ] Add development notes section at end
 - [ ] Create visual assets (featured image, diagrams)
@@ -184,6 +193,7 @@ priority: high
 - [ ] Set `published: false` until final review
 
 **Post-Publishing:**
+
 - [ ] Share on Twitter, LinkedIn
 - [ ] Submit to relevant communities (Reddit, HN, Indie Hackers)
 - [ ] Email to user base (if newsletter exists)
@@ -197,19 +207,19 @@ priority: high
 ### Diagrams Needed (Mermaid or Figma)
 
 1. **Brain Dump Processing Flow**
-   - User input → Dual processing → Context + Tasks extraction → Review → Confirmation → Execution
+    - User input → Dual processing → Context + Tasks extraction → Review → Confirmation → Execution
 
 2. **Phase Generation Process**
-   - 5-step flowchart: Queue → Analyze → Generate → Schedule → Finalize
+    - 5-step flowchart: Queue → Analyze → Generate → Schedule → Finalize
 
 3. **Daily Brief Generation Pipeline**
-   - Cron trigger → Timezone resolution → 5 parallel queries → LLM analysis → Email queue
+    - Cron trigger → Timezone resolution → 5 parallel queries → LLM analysis → Email queue
 
 4. **Goal → Project → Phase → Task Hierarchy**
-   - Tree diagram showing strategic to tactical breakdown
+    - Tree diagram showing strategic to tactical breakdown
 
 5. **BuildOS vs Autonomous Agents Architecture**
-   - Side-by-side comparison: Human-in-the-loop vs Fully autonomous
+    - Side-by-side comparison: Human-in-the-loop vs Fully autonomous
 
 ### Screenshots Needed
 
@@ -271,6 +281,7 @@ priority: high
 ### Track for Each Blog Post
 
 **Traffic Metrics:**
+
 - Organic search impressions
 - Click-through rate (CTR)
 - Unique page views
@@ -278,6 +289,7 @@ priority: high
 - Bounce rate
 
 **Engagement Metrics:**
+
 - Scroll depth
 - Internal link clicks
 - CTA clicks (signup, demo)
@@ -285,12 +297,14 @@ priority: high
 - Comments/feedback
 
 **Conversion Metrics:**
+
 - Signups from blog post
 - Trial starts from post
 - Conversions to paid (if applicable)
 - Newsletter signups
 
 **SEO Metrics:**
+
 - Keyword rankings (target keywords)
 - Backlinks acquired
 - Domain authority impact
@@ -301,19 +315,23 @@ priority: high
 ## 🚀 Publishing Schedule Recommendation
 
 ### Week 1-2: Comparison Content (High Priority)
+
 - **Day 1**: Publish "BuildOS vs Notion for ADHD Minds"
 - **Day 7**: Publish "BuildOS vs Monday.com: Thought Organization Showdown"
 - **Day 14**: Publish "BuildOS vs Obsidian: Knowledge Management Face-Off"
 
 ### Week 3-4: Technical Deep Dives
+
 - **Day 21**: Publish "How BuildOS Daily Briefs Analyze 1000+ Data Points Overnight"
 - **Day 28**: Publish "The Multi-Brain Dump Architecture: 3 Concurrent Thought Streams"
 
 ### Week 5-6: Case Studies
+
 - **Day 35**: Publish "Startup Founder: Managing 5 Projects with BuildOS Daily Briefs"
 - **Day 42**: Publish "Creative Professional: From Chaos to Shipped Products"
 
 ### Ongoing: 1 Blog Post Per Week
+
 - Alternate between technical deep dives, case studies, and feature guides
 - Plan 3 months ahead to maintain consistent publishing
 
@@ -322,21 +340,25 @@ priority: high
 ## 🎯 Competitor Content Analysis
 
 ### Notion
+
 - **Strengths**: Massive SEO presence, template library, community
 - **Weaknesses**: Generic content, doesn't address ADHD/neurodivergent needs
 - **Our Angle**: ADHD-specific, AI-powered automation, thought organization
 
 ### Monday.com
+
 - **Strengths**: Enterprise focus, feature-rich, good video content
 - **Weaknesses**: Complex for individuals, no brain dump/capture flow
 - **Our Angle**: Personal productivity, brain dump intelligence, simpler UX
 
 ### Obsidian
+
 - **Strengths**: Knowledge graph, privacy, plugin ecosystem
 - **Weaknesses**: Manual linking, no AI intelligence, steep learning curve
 - **Our Angle**: AI-powered context extraction, automatic structure, action-oriented
 
 ### ClickUp
+
 - **Strengths**: All-in-one features, power users love it
 - **Weaknesses**: Overwhelming for newcomers, no thought capture
 - **Our Angle**: Simplicity, AI assistance, designed for how minds actually work
@@ -363,6 +385,7 @@ priority: high
 ## 🔄 Content Maintenance Schedule
 
 ### Monthly Tasks
+
 - Review top 10 blog posts for outdated info
 - Update technical details if features changed
 - Add new screenshots if UI updated
@@ -370,6 +393,7 @@ priority: high
 - Monitor keyword rankings and update SEO
 
 ### Quarterly Tasks
+
 - Comprehensive SEO audit of all posts
 - Refresh case studies with new user stories
 - Update competitor comparisons with new features
@@ -377,6 +401,7 @@ priority: high
 - Analyze top-performing posts and create sequels
 
 ### Annual Tasks
+
 - Complete content strategy review
 - Archive/unpublish outdated content
 - Major refresh of flagship posts
@@ -388,24 +413,28 @@ priority: high
 ## 💡 Future Content Ideas (Backlog)
 
 ### Advanced Guides
+
 - "Custom Context Field Templates: A Library"
 - "API Integration Workflows: Connecting BuildOS to Your Stack"
 - "Advanced Task Dependencies: Complex Project Management"
 - "Power User Shortcuts and Automation Techniques"
 
 ### Philosophy Deep Dives
+
 - "The Information Architecture of Personal Knowledge"
 - "Building Your Personal Operating System"
 - "Productivity vs Busy Work: The Essential Distinction"
 - "The Future of Personal Knowledge Management"
 
 ### Productivity Techniques
+
 - "Focus Time Optimization: Deep Work with BuildOS"
 - "Phase-Based Project Execution: The Complete Guide"
 - "Calendar Integration Workflows: Time Blocking Mastery"
 - "The Weekly Review Process for BuildOS Users"
 
 ### Community & Inspiration
+
 - "10 BuildOS Power Users Share Their Setups"
 - "How Different Professions Use BuildOS"
 - "The BuildOS Community Showcase"

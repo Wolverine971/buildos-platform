@@ -71,19 +71,31 @@ export interface TextGenerationOptions {
 
 interface OpenRouterResponse {
 	id: string;
+	provider?: string;
+	model: string;
+	object: string;
+	created: number;
 	choices: Array<{
 		message: {
 			content: string;
 			role: string;
 		};
 		finish_reason: string;
+		native_finish_reason?: string;
 	}>;
 	usage?: {
 		prompt_tokens: number;
 		completion_tokens: number;
 		total_tokens: number;
+		prompt_tokens_details?: {
+			cached_tokens?: number;
+			audio_tokens?: number;
+		};
+		completion_tokens_details?: {
+			reasoning_tokens?: number;
+		};
 	};
-	model: string;
+	system_fingerprint?: string;
 }
 
 // ============================================
@@ -619,12 +631,13 @@ export class SmartLLMService {
 			`);
 
 			// Log to database (async, non-blocking)
+			const cachedTokens = response.usage?.prompt_tokens_details?.cached_tokens || 0;
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
 				modelRequested: preferredModels[0],
 				modelUsed: actualModel,
-				provider: modelConfig?.provider,
+				provider: response.provider || modelConfig?.provider,
 				promptTokens: response.usage?.prompt_tokens || 0,
 				completionTokens: response.usage?.completion_tokens || 0,
 				totalTokens: response.usage?.total_tokens || 0,
@@ -643,11 +656,16 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
-				openrouterRequestId: (response as any).id,
+				openrouterRequestId: response.id,
+				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 				metadata: {
 					complexity,
 					retryCount,
-					preferredModels
+					preferredModels,
+					cachedTokens,
+					reasoningTokens:
+						response.usage?.completion_tokens_details?.reasoning_tokens || 0,
+					systemFingerprint: response.system_fingerprint
 				}
 			}).catch((err) => console.error('Failed to log usage:', err));
 
@@ -763,12 +781,13 @@ export class SmartLLMService {
 			`);
 
 			// Log to database (async, non-blocking)
+			const cachedTokens = response.usage?.prompt_tokens_details?.cached_tokens || 0;
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
 				modelRequested: preferredModels[0],
 				modelUsed: actualModel,
-				provider: modelConfig?.provider,
+				provider: response.provider || modelConfig?.provider,
 				promptTokens: response.usage?.prompt_tokens || 0,
 				completionTokens: response.usage?.completion_tokens || 0,
 				totalTokens: response.usage?.total_tokens || 0,
@@ -787,11 +806,16 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
-				openrouterRequestId: (response as any).id,
+				openrouterRequestId: response.id,
+				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 				metadata: {
 					estimatedLength,
 					preferredModels,
-					contentLength: content.length
+					contentLength: content.length,
+					cachedTokens,
+					reasoningTokens:
+						response.usage?.completion_tokens_details?.reasoning_tokens || 0,
+					systemFingerprint: response.system_fingerprint
 				}
 			}).catch((err) => console.error('Failed to log usage:', err));
 
@@ -901,20 +925,23 @@ export class SmartLLMService {
 
 			const data = (await response.json()) as OpenRouterResponse;
 
-			// Log OpenRouter metadata from headers
-			const metadata = {
-				model: response.headers.get('x-model'), // Actual model used
-				provider: response.headers.get('x-provider'), // Actual provider used
-				cacheStatus: response.headers.get('x-cache-status'),
-				requestId: response.headers.get('x-request-id'),
-				rateLimitRequests: response.headers.get('x-ratelimit-requests-remaining'),
-				rateLimitTokens: response.headers.get('x-ratelimit-tokens-remaining')
-			};
+			// Log OpenRouter routing result with all available metadata
+			const cachedTokens = data.usage?.prompt_tokens_details?.cached_tokens || 0;
+			const cacheHitRate = data.usage?.prompt_tokens
+				? ((cachedTokens / data.usage.prompt_tokens) * 100).toFixed(1)
+				: '0.0';
 
-			console.debug('OpenRouter routing result:', metadata);
-
-			// Add actual model to response for tracking
-			(data as any).model = metadata.model || params.model;
+			console.debug('OpenRouter routing result:', {
+				model: data.model || params.model,
+				provider: data.provider || 'Unknown',
+				cacheStatus:
+					cachedTokens > 0
+						? `${cacheHitRate}% cached (${cachedTokens} tokens)`
+						: 'no cache',
+				requestId: data.id,
+				systemFingerprint: data.system_fingerprint,
+				reasoningTokens: data.usage?.completion_tokens_details?.reasoning_tokens || 0
+			});
 
 			return data;
 		} catch (error) {

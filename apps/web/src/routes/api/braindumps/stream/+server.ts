@@ -113,7 +113,7 @@ async function processBrainDumpWithStreaming({
 			type: 'status',
 			message: selectedProjectId ? 'Analyzing braindump...' : 'Starting dual processing...',
 			data: {
-				processes: initialProcesses as ('context' | 'tasks')[],
+				processes: initialProcesses as ('analysis' | 'context' | 'tasks')[],
 				contentLength: content.length,
 				isDualProcessing: true,
 				source: selectedProjectId ? 'analysis-then-dual' : 'dual-processing'
@@ -485,8 +485,9 @@ async function processBrainDumpWithStreaming({
 					failed: executionResult.failed?.length || 0
 				});
 
-				// Update brain dump status to 'saved' after successful auto-accept
-				if (brainDumpId && executionResult.successful?.length > 0) {
+				// Update brain dump status to 'saved' after auto-accept
+				// Note: Zero operations is valid when analysis determines no updates needed
+				if (brainDumpId) {
 					try {
 						const { error: updateError } = await supabase
 							.from('brain_dumps')
@@ -494,7 +495,7 @@ async function processBrainDumpWithStreaming({
 								status: 'saved' as const,
 								project_id: projectInfo?.id || selectedProjectId,
 								metaData: JSON.stringify({
-									operations: executionResult.successful,
+									operations: executionResult.successful || [],
 									summary: result.summary || 'Brain dump processed successfully',
 									insights: result.insights || 'Operations executed',
 									totalOperations: result.operations.length,
@@ -502,11 +503,15 @@ async function processBrainDumpWithStreaming({
 									timestamp: new Date().toISOString(),
 									project_info: projectInfo,
 									executionSummary: {
-										successful: executionResult.successful.length,
-										failed: executionResult.failed.length,
+										successful: executionResult.successful?.length || 0,
+										failed: executionResult.failed?.length || 0,
 										results: executionResult.results?.length || 0
 									},
-									autoAccepted: true
+									autoAccepted: true,
+									zeroOperationsReason:
+										result.operations.length === 0
+											? 'Analysis determined no updates needed'
+											: null
 								}),
 								updated_at: new Date().toISOString()
 							})
@@ -519,7 +524,10 @@ async function processBrainDumpWithStreaming({
 								updateError
 							);
 						} else {
-							console.log('Brain dump status updated to saved after auto-accept');
+							console.log('Brain dump status updated to saved after auto-accept', {
+								operationsCount: result.operations.length,
+								successfulCount: executionResult.successful?.length || 0
+							});
 						}
 					} catch (error) {
 						console.error('Error updating brain dump status after auto-accept:', error);

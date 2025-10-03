@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction: The Crisis Point
+
 - Meet the researcher (persona/real person)
 - The overwhelming reality of academic life
 - Specific pain points before BuildOS
@@ -25,6 +26,7 @@
 ### Section 1: The Challenges
 
 **Competing Priorities**:
+
 - Active research projects (3-5 simultaneously)
 - Teaching responsibilities
 - Grant writing and admin
@@ -33,6 +35,7 @@
 - Academic service (committees, reviews)
 
 **Traditional System Failures**:
+
 - Scattered notes across tools
 - Lost ideas and insights
 - Missed deadlines
@@ -42,11 +45,13 @@
 ### Section 2: The Transformation
 
 **Initial Setup**:
+
 - First brain dump experience
 - Organizing existing chaos
 - Setting up research projects in BuildOS
 
 **Key BuildOS Features That Helped**:
+
 - Brain dumps for research ideation
 - Phase-based project management for long-term studies
 - Context fields for methodology, literature, findings
@@ -54,6 +59,7 @@
 - Daily briefs for multi-project coordination
 
 **Workflow Evolution**:
+
 - Morning routine with daily brief
 - Brain dumps after meetings/reading
 - Weekly review process
@@ -62,6 +68,7 @@
 ### Section 3: The Results
 
 **Quantitative Improvements**:
+
 - Number of publications
 - Grant success rate
 - Time saved on admin
@@ -69,6 +76,7 @@
 - Teaching prep efficiency
 
 **Qualitative Improvements**:
+
 - Reduced stress and overwhelm
 - Better work-life balance
 - More creative thinking time
@@ -76,6 +84,7 @@
 - Less dropped balls
 
 **Specific Wins**:
+
 - Successfully wrote grant while teaching full load
 - Published 3 papers vs. 1 in previous year
 - Maintained research momentum during busy semester
@@ -84,16 +93,19 @@
 ### Section 4: Lessons Learned
 
 **What Worked**:
+
 - Specific strategies and techniques
 - How they customized BuildOS for academic work
 - Workflow tips for other researchers
 
 **What Didn't Work Initially**:
+
 - Mistakes and course corrections
 - What they'd do differently
 - Advice for other academics starting out
 
 ### Section 5: Advice for Other Researchers
+
 - Start with one project, not all at once
 - Use brain dumps for literature review insights
 - Phase long-term research realistically
@@ -101,6 +113,7 @@
 - Regular reviews prevent overwhelm
 
 ### Conclusion: Sustainable Academic Productivity
+
 - Still using BuildOS 12 months later
 - Continuing to refine workflow
 - Recommending to colleagues
@@ -245,6 +258,7 @@
 ### Narrative Structure
 
 Should this be:
+
 - First-person narrative (researcher telling their story)?
 - Third-person profile (we're telling their story)?
 - Interview format (Q&A)?
@@ -270,6 +284,7 @@ Should this be:
 ### Research Field Specificity
 
 Should this be:
+
 - General (applicable to all research fields)
 - Specific to one field (e.g., biology lab)
 - Multiple versions for different fields?

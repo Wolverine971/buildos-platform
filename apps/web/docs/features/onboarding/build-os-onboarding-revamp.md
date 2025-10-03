@@ -13,6 +13,10 @@
 
 ## 2. Capture Current Projects (Guided Brain Dump)
 
+<!--
+capture goals
+what are you trying to get done, what goals you have, deadlines you have, what are you trying to get done -->
+
 Instead of just asking “What projects are you working on,” BuildOS will **guide them through examples** to encourage freeform capture.
 
 - **Prompt**: _“Let’s start by getting everything out of your head. What projects are you working on right now? Don’t worry about structure — just brain dump.”_
@@ -40,6 +44,8 @@ Here, you frame BuildOS as a **personal AI assistant that adapts to their prefer
     2. ⏰ _Next Up Notifications_: Text me what’s next on my schedule.
     3. 🌅 _Morning Kickoff_: Text me in the morning to set the tone for the day.
     4. 🌙 _Evening Recap_: Text me at night to reflect on what I got done.
+
+      <!-- ask user what they accomplished based off of what i told you earlier today, also here are the next things you have coming up -->
 
 - **Other Channel**:
     - ✉️ _Daily Briefs (Email)_: A morning digest with your upcoming projects & tasks. (Toggle opt-in)
@@ -74,6 +80,8 @@ This creates empathy and personalization.
     - 📝 Information overload — I have notes everywhere and no system.
     - 😰 Overwhelm — I don’t even know where to start.
 
+<!-- add snippets and helpful hints -->
+
 👉 **Value**: BuildOS can later adapt suggestions and tone based on these answers.
 
 ---
@@ -100,3 +108,9 @@ CTA: **“Enter BuildOS”** → takes them into their workspace with projects a
 - **Texts + briefs** → makes BuildOS feel alive, like a coach or assistant.
 
 ---
+
+<!--
+zach A/B test
+what is my productivity archetype?
+quiz vrs signup to buildos
+-->

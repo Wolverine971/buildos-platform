@@ -17,11 +17,13 @@
 ## Draft Outline Snapshot
 
 ### Introduction: Why We Need a Personal Operating System
+
 - Computers have operating systems; why don't humans?
 - The problem: fragmented tools that don't talk to each other
 - The vision: unified infrastructure for thinking, planning, and doing
 
 ### Section 1: What Is a Personal Operating System?
+
 - Not just another productivity app
 - Infrastructure layer for life management
 - Unifies: thinking, planning, scheduling, executing, learning
@@ -30,43 +32,51 @@
 ### Section 2: The Principles of a Personal OS
 
 **Principle 1: Input Without Friction**
+
 - Capture at the speed of thought
 - Accept any format (voice, text, chaos)
 - Never ask "how should I organize this?"
 
 **Principle 2: AI as Core Service, Not Feature**
+
 - AI isn't a plugin—it's the kernel
 - Handles organization, connection discovery, prioritization
 - Human provides direction; AI provides structure
 
 **Principle 3: Context That Evolves**
+
 - Static notes die; dynamic context lives
 - Information surfaces when needed
 - Understanding grows with your thinking
 
 **Principle 4: Action as the Outcome**
+
 - Thinking → Planning → Scheduling → Doing
 - No orphaned notes
 - Everything flows toward execution
 
 **Principle 5: Interoperability by Default**
+
 - Calendar integration
 - Email briefings
 - API access
 - Works with existing tools
 
 ### Section 3: What This Means for You
+
 - Stop piecing together 10 tools
 - One source of truth for your life
 - Reduced cognitive load
 - Focus on living, not maintaining systems
 
 ### Section 4: The Future of Personal Operating Systems
+
 - What BuildOS is building toward
 - Open questions and challenges
 - Community-driven evolution
 
 ### Conclusion: Join the Movement
+
 - This is infrastructure for human potential
 - BuildOS is one implementation; the concept is bigger
 - What could you accomplish with this foundation?

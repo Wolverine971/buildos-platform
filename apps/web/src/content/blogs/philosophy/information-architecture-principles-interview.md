@@ -17,11 +17,13 @@
 ## Draft Outline Snapshot
 
 ### Introduction
+
 - Why most productivity tools have bad information architecture
 - The cost of poor IA: decision fatigue, abandonment, cognitive overload
 - What IA principles actually mean for personal productivity
 
 ### Section 1: Core IA Principles
+
 - Clarity over cleverness
 - Progressive disclosure
 - Contextual relevance
@@ -29,6 +31,7 @@
 - Error tolerance and recovery
 
 ### Section 2: IA Anti-Patterns in Productivity Tools
+
 - Infinite flexibility = infinite paralysis (Notion problem)
 - Invisible structure (where did I put that?)
 - Navigation rabbit holes
@@ -36,23 +39,27 @@
 - Maintenance burden
 
 ### Section 3: How BuildOS Applies IA Principles
+
 - Single input mode (brain dump) = zero navigation friction
 - AI-powered categorization = no premature structure decisions
 - Context surfaces automatically = no searching
 - Action-oriented hierarchy (goals → projects → phases → tasks)
 
 ### Section 4: Designing for Cognitive Flow
+
 - Entry points that match mental state
 - Information scent (knowing where to look)
 - Graceful degradation when organization fails
 - Forgiving search and retrieval
 
 ### Section 5: The Future of Productivity IA
+
 - AI as information architect
 - Personalized IA that adapts to individual thinking patterns
 - From manual taxonomies to semantic organization
 
 ### Conclusion
+
 - Good IA is invisible
 - Apply these principles to any productivity system
 - How to evaluate tools through an IA lens
@@ -123,7 +130,7 @@
 
 23. **Can you share before/after examples** of IA improvements in BuildOS? (Screenshots?)
 
-24. **What productivity tools have *excellent* IA?** What can we learn from them?
+24. **What productivity tools have _excellent_ IA?** What can we learn from them?
 
 ### Research & Data
 
@@ -162,21 +169,25 @@
 ## Additional Considerations
 
 ### Visual Content Needs
+
 - **IA comparison diagrams**: Good vs bad IA patterns side by side
 - **BuildOS IA flow**: Visual of how information flows through the system
 - **Navigation paths**: How users move from capture to action
 - **Before/after examples**: Tool improvements based on IA principles
 
 ### Technical Depth
+
 - **Should we reference specific IA frameworks?** (Card sorting, tree testing, etc.)
 - **How much UX jargon is appropriate?** (Information scent, findability, wayfinding)
 - **Should we include technical implementation details?** (Database schema decisions, UI patterns)
 
 ### Audience Considerations
+
 - **Is this blog for builders or users?** Both? How do we serve both audiences?
 - **Should we include a "for designers" vs "for users" section split?**
 
 ### SEO Keywords
+
 - information architecture productivity
 - productivity tool design
 - cognitive load reduction

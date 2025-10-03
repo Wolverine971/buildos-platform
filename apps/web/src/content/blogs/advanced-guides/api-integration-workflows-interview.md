@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction
+
 - Why API access matters for productivity tools
 - BuildOS API philosophy (what you can access/control)
 - Who should use the API (and who shouldn't)
@@ -25,6 +26,7 @@
 ### Section 1: BuildOS API Overview
 
 **API Capabilities**:
+
 - What data can be accessed (projects, tasks, brain dumps, briefs)
 - What actions can be triggered (create, update, delete, query)
 - Authentication and security
@@ -35,18 +37,21 @@
 ### Section 2: Common Integration Patterns
 
 **Pattern 1: External Tool → BuildOS** (Zapier, Make, custom scripts)
+
 - Email → Brain dump
 - Slack message → Task
 - Calendar event → Project update
 - Form submission → New project
 
 **Pattern 2: BuildOS → External Tool**
+
 - Task completion → Notification
 - Daily brief → Email/Slack
 - Project milestone → Team update
 - Brain dump → Archive/backup
 
 **Pattern 3: Bidirectional Sync**
+
 - BuildOS ↔ Linear/Jira
 - BuildOS ↔ Notion
 - BuildOS ↔ Google Sheets
@@ -55,6 +60,7 @@
 ### Section 3: Step-by-Step Integration Guides
 
 **Integration 1**: Slack to BuildOS
+
 - Use case
 - Setup walkthrough
 - Code examples
@@ -88,6 +94,7 @@
 - Webhooks (if supported)
 
 ### Conclusion
+
 - API opens infinite possibilities
 - Start simple, add complexity
 - Community integrations and examples
@@ -226,22 +233,26 @@
 ## Additional Considerations
 
 ### Code Examples
+
 - Need working code in multiple languages (JavaScript, Python, cURL)
 - Should examples be copy-paste ready?
 - Include error handling in examples?
 
 ### Visual Content
+
 - Architecture diagrams (integration flows)
 - Authentication flow diagram
 - Data model diagram
 - Example dashboard screenshots
 
 ### Technical Depth
+
 - How technical should this be? (Assume programming knowledge?)
 - Include actual API endpoint URLs?
 - Show complete request/response payloads?
 
 ### SEO Keywords
+
 - BuildOS API documentation
 - productivity tool API integration
 - automate task management
@@ -249,6 +260,7 @@
 - custom productivity integrations
 
 ### Maintenance
+
 - How to keep this updated as API evolves?
 - Versioning strategy for blog content?
 

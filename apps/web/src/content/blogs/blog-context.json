@@ -87,7 +87,7 @@
 					"lastmod": "2025-6-26",
 					"changefreq": "monthly",
 					"priority": "0.8",
-					"published": true,
+					"published": false,
 					"tags": ["first-project", "getting-started", "project-management", "setup"],
 					"readingTime": 8,
 					"excerpt": "Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.",
@@ -269,7 +269,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-10-03T17:18:20.962Z",
+	"generatedAt": "2025-10-03T22:56:17.028Z",
 	"totalPosts": 10,
 	"totalCategories": 4
 }

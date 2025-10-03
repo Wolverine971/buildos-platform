@@ -21,52 +21,62 @@ The blog draft already exists with embedded research questions (marked with `<!-
 ### Research Questions from Draft
 
 **Q1: What percentage of Obsidian users actually use the graph view regularly?**
+
 - Usage statistics
 - Is the graph view aspirational or practical?
 - Most used features vs. marketed features
 
 **Q2: How does BuildOS's AI accuracy compare to manual organization in productivity outcomes?**
+
 - Quality of AI organization
 - Accuracy metrics
 - User satisfaction comparison
 
 **Q3: What are the specific learning curve differences and time investment requirements?**
+
 - Hours to productivity (Obsidian vs. BuildOS)
 - Skill prerequisites
 - Ongoing maintenance time
 
 **Q4: Should the blog include pricing comparisons or focus purely on feature/philosophy differences?**
+
 - Obsidian is one-time purchase, BuildOS is SaaS
 - Value proposition framing
 - Cost structure philosophy
 
 **Q5: How can we address the "tool switching fatigue" concern when encouraging migration from competitors?**
+
 - Migration from Obsidian to BuildOS
 - Can they coexist?
 - Export/import capabilities
 
 **Q6: What customer success stories best illustrate knowledge workers transitioning between tools?**
+
 - Real user examples
 - Why people switched (or use both)
 - Specific pain points addressed
 
 **Q7: What are the latest updates/features from Obsidian that might affect positioning?**
+
 - Obsidian 1.0+, mobile, sync, publish
 - Canvas feature
 - Plugin ecosystem growth
 
 **Q8: How do data ownership and privacy concerns factor into tool selection?**
+
 - Local vs. cloud storage
 - Privacy-conscious users
 - Data portability
 - Trust factors
 
 **Q9: What integration ecosystems do competitors have that BuildOS currently lacks?**
+
 - Obsidian's plugin ecosystem (700+ plugins)
 - BuildOS integration story
 - Extensibility comparison
 
 **Q10: How do the tools handle long-term knowledge preservation and future-proofing?**
+
 - Markdown longevity (Obsidian advantage)
 - BuildOS data portability
 - 10-year horizon thinking
@@ -262,6 +272,7 @@ The blog draft already exists with embedded research questions (marked with `<!-
 **Use case specificity**: Be very clear about when each tool excels. Academic research? Obsidian probably wins. Execution-focused project management? BuildOS wins.
 
 **Visual needs**:
+
 - Spectrum diagram (curator ↔ achiever)
 - Feature comparison table
 - Workflow comparison

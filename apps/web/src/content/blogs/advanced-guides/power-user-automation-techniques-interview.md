@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction
+
 - The power user mindset
 - What separates good users from great users
 - Why automation matters for productivity
@@ -25,12 +26,14 @@
 ### Section 1: Power User Habits
 
 **Daily Routines**:
+
 - Morning brain dump ritual
 - Daily brief review strategy
 - Evening reflection and planning
 - Weekly review process
 
 **Workflow Patterns**:
+
 - Batch processing similar tasks
 - Context switching minimization
 - Calendar time blocking discipline
@@ -39,18 +42,21 @@
 ### Section 2: Advanced Brain Dump Techniques
 
 **Strategic Brain Dumping**:
+
 - Project kickoff brain dumps
 - Problem-solving brain dumps
 - Weekly planning brain dumps
 - Quarterly goal brain dumps
 
 **Brain Dump Quality**:
+
 - Providing rich context for better AI output
 - Structuring thoughts for optimal parsing
 - Using natural language effectively
 - Iterative refinement
 
 **Multi-Brain Dump Workflows**:
+
 - Parallel brain dumps for different projects
 - Brain dump versioning and iteration
 - Combining multiple dumps into cohesive projects
@@ -58,12 +64,14 @@
 ### Section 3: Calendar Integration Mastery
 
 **Advanced Scheduling**:
+
 - Energy-aware time blocking
 - Focus time protection strategies
 - Meeting buffer automation
 - Calendar-based project phases
 
 **Multi-Project Calendar Management**:
+
 - Color-coding strategies
 - Multiple calendar coordination
 - Shared vs. private calendar optimization
@@ -72,12 +80,14 @@
 ### Section 4: Custom Workflow Automation
 
 **API-Based Automations** (if applicable):
+
 - Zapier/Make integrations
 - Custom scripts for recurring tasks
 - Webhook-based notifications
 - Data export and analysis
 
 **Notification Strategies**:
+
 - Smart notification configuration
 - Digest vs. real-time balance
 - Focus mode customization
@@ -86,12 +96,14 @@
 ### Section 5: Project Organization Patterns
 
 **Project Taxonomies**:
+
 - How to organize multiple active projects
 - Archiving and retrieval strategies
 - Project tagging and filtering
 - Context field standardization
 
 **Phase Management Excellence**:
+
 - Phase templates for recurring project types
 - Parallel phase execution
 - Phase transition rituals
@@ -100,12 +112,14 @@
 ### Section 6: AI Collaboration Techniques
 
 **Prompt Engineering for Brain Dumps**:
+
 - Giving AI the right context
 - Asking for specific output formats
 - Iterating on AI suggestions
 - Correcting and refining AI output
 
 **Leveraging AI Recommendations**:
+
 - When to trust AI task suggestions
 - How to adjust AI-generated phases
 - Using AI for prioritization
@@ -114,12 +128,14 @@
 ### Section 7: Productivity Metrics and Optimization
 
 **What to Measure**:
+
 - Task completion velocity
 - Brain dump to completion time
 - Focus time vs. fragmented time
 - Project success rate
 
 **Continuous Improvement**:
+
 - Weekly/monthly reviews
 - Identifying bottlenecks
 - Experimenting with new patterns
@@ -128,6 +144,7 @@
 ### Section 8: Team and Collaboration Power Moves
 
 **Team Coordination** (if applicable):
+
 - Shared project best practices
 - Handoff procedures
 - Context sharing for team alignment
@@ -144,6 +161,7 @@
 **Template Library**: Reusable project and phase templates
 
 ### Conclusion
+
 - Power user mindset is continuous learning
 - Share your own techniques with community
 - Keep experimenting and optimizing

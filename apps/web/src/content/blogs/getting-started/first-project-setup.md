@@ -6,7 +6,7 @@ date: '2025-6-26'
 lastmod: '2025-6-26'
 changefreq: 'monthly'
 priority: '0.8'
-published: true
+published: false
 tags: ['first-project', 'getting-started', 'project-management', 'setup']
 readingTime: 8
 excerpt: 'Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.'
@@ -347,7 +347,7 @@ _Ready to create your first project? [Open Build OS](/) and transform your bigge
 
 - **Brain Dump to Project Flow** (`/apps/web/docs/features/brain-dump/`)
     - Dual processing mode: Context extraction + Task extraction (parallel LLM calls)
-    - Short processing (<500 chars) vs long processing (≥500 chars)
+    - Short processing (\<500 chars) vs long processing (≥500 chars)
     - Smart question generation to fill information gaps
     - Real-time streaming updates via SSE
     - Multi-brain dump support (up to 3 concurrent, with auto-queuing)

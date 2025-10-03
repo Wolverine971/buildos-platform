@@ -34,11 +34,12 @@
 	// V2 Onboarding Components
 	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
+	import NotificationsStep from '$lib/components/onboarding-v2/NotificationsStep.svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	// Feature flag: Check if v2 onboarding is enabled
-	const useV2 = $page.url.searchParams.get('v2') === 'true';
+	const useV2 = $derived($page.url.searchParams.get('v2') === 'true');
 
 	// V2 State
 	let v2CurrentStep = $state(0);
@@ -59,13 +60,21 @@
 		v2OnboardingData.projectsCreated = projectIds.length;
 	}
 
-	let currentStep = data.recommendedStep || 0;
-	let isTranscribing = false;
-	let microphonePermissionGranted = false;
-	let canUseLiveTranscript = false;
-	let showCompletionScreen = false;
-	let isSaving = false;
-	let saveFailed = false;
+	function handleV2SMSEnabled(enabled: boolean) {
+		v2OnboardingData.smsEnabled = enabled;
+	}
+
+	function handleV2EmailEnabled(enabled: boolean) {
+		v2OnboardingData.emailEnabled = enabled;
+	}
+
+	let currentStep = $state(data.recommendedStep || 0);
+	let isTranscribing = $state(false);
+	let microphonePermissionGranted = $state(false);
+	let canUseLiveTranscript = $state(false);
+	let showCompletionScreen = $state(false);
+	let isSaving = $state(false);
+	let saveFailed = $state(false);
 
 	const steps = [
 		{
@@ -133,40 +142,37 @@
 	const totalSteps = steps.length;
 
 	// Store the input for each step
-	let stepInputs: string[] = Array.from({ length: totalSteps }, () => '');
+	let stepInputs = $state<string[]>(Array.from({ length: totalSteps }, () => ''));
 
 	// Keep a copy of last persisted values
-	let lastSavedInputs: string[] = [...stepInputs];
+	let lastSavedInputs = $state<string[]>(Array.from({ length: totalSteps }, () => ''));
 
 	// Auto-save state
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
-	$: currentStepData = steps[currentStep];
-	$: hasCurrentInput = stepInputs[currentStep]?.trim().length > 0;
-	$: isOnLastStep = currentStep === steps.length - 1;
-	$: canComplete = isOnLastStep && hasCurrentInput;
-	$: hasUnsavedChanges = stepInputs.some((input, index) => input !== lastSavedInputs[index]);
+	const currentStepData = $derived(steps[currentStep] ?? steps[0]);
+	const hasCurrentInput = $derived((stepInputs[currentStep] ?? '').trim().length > 0);
+	const isOnLastStep = $derived(currentStep === steps.length - 1);
+	const canComplete = $derived(isOnLastStep && hasCurrentInput);
+	const hasUnsavedChanges = $derived(
+		stepInputs.some((input, index) => input !== lastSavedInputs[index])
+	);
 
 	// Make step statuses reactive - explicitly depend on currentStep and stepInputs
-	$: stepStatuses = steps.map((_, index) => {
-		if (index === currentStep) return 'current' as const;
-		return stepInputs[index]?.trim().length > 0
-			? ('completed' as const)
-			: ('incomplete' as const);
-	});
-
-	// Force reactivity when currentStep changes
-	$: (currentStep,
-		(() => {
-			// This will trigger whenever currentStep changes
-			// Force Svelte to re-evaluate dependent reactive statements
-		})());
+	const stepStatuses = $derived(
+		steps.map((_, index) => {
+			if (index === currentStep) return 'current' as const;
+			return (stepInputs[index] ?? '').trim().length > 0
+				? ('completed' as const)
+				: ('incomplete' as const);
+		})
+	);
 
 	// Load existing content from server
 	function loadExistingContent() {
 		if (!data.userContext) return;
 
-		const inputMapping = {
+		const inputMapping: Record<number, string> = {
 			0: 'input_projects',
 			1: 'input_work_style',
 			2: 'input_challenges',
@@ -178,7 +184,9 @@
 
 		steps.forEach((_, index) => {
 			const inputField = inputMapping[index];
-			const existingInput = data.userContext[inputField];
+			if (!inputField || !data.userContext) return;
+
+			const existingInput = data.userContext[inputField as keyof typeof data.userContext];
 
 			if (existingInput && typeof existingInput === 'string' && existingInput.trim()) {
 				nextStepInputs[index] = existingInput;
@@ -280,9 +288,10 @@
 		}, 1500);
 	}
 
-	function handleStepInputChange(event: CustomEvent<string>) {
+	function handleStepInputChange(event: Event) {
+		const target = event.target as HTMLTextAreaElement;
 		const nextInputs = [...stepInputs];
-		nextInputs[currentStep] = event.detail ?? '';
+		nextInputs[currentStep] = target.value ?? '';
 		stepInputs = nextInputs;
 		triggerAutoSave();
 	}
@@ -421,8 +430,8 @@
 	}
 
 	// Computed values for UI
-	$: completedSteps = stepStatuses.filter((status) => status === 'completed').length;
-	$: progressPercentage = Math.round((completedSteps / steps.length) * 100);
+	const completedSteps = $derived(stepStatuses.filter((status) => status === 'completed').length);
+	const progressPercentage = $derived(Math.round((completedSteps / steps.length) * 100));
 </script>
 
 <svelte:head>
@@ -468,6 +477,13 @@
 					onNext={handleV2Next}
 					onProjectsCreated={handleV2ProjectsCreated}
 				/>
+			{:else if v2CurrentStep === 2}
+				<NotificationsStep
+					userId={data.user.id}
+					onNext={handleV2Next}
+					onSMSEnabled={handleV2SMSEnabled}
+					onEmailEnabled={handleV2EmailEnabled}
+				/>
 			{/if}
 		</div>
 	</div>
@@ -502,7 +518,7 @@
 										: stepStatuses[index] === 'current'
 											? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/30 animate-pulse scale-125'
 											: 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'}"
-									on:click={() => handleProgressClick(index)}
+									onclick={() => handleProgressClick(index)}
 									title={step.title}
 								>
 									{#if stepStatuses[index] === 'completed'}
@@ -536,10 +552,10 @@
 							class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center shadow-lg"
 							in:scale={{ duration: 300, start: 0.8 }}
 						>
-							<svelte:component
-								this={currentStepData?.icon}
-								class="w-8 h-8 text-blue-600 dark:text-blue-400"
-							/>
+							{#if currentStepData?.icon}
+								{@const IconComponent = currentStepData.icon}
+								<IconComponent class="w-8 h-8 text-blue-600 dark:text-blue-400" />
+							{/if}
 						</div>
 					</div>
 
@@ -571,7 +587,7 @@
 				{#if voiceSupported()}
 					<div class="text-center mb-6">
 						<Button
-							on:click={handleVoiceToggle}
+							onclick={handleVoiceToggle}
 							disabled={isTranscribing}
 							variant={$isRecording
 								? 'danger'
@@ -601,7 +617,7 @@
 				<div class="mb-8">
 					<Textarea
 						value={stepInputs[currentStep]}
-						on:input={handleStepInputChange}
+						oninput={handleStepInputChange}
 						placeholder={currentStepData?.placeholder}
 						rows={8}
 						disabled={$isRecording || isTranscribing}
@@ -649,7 +665,7 @@
 				<!-- Navigation buttons -->
 				<div class="flex items-center justify-between gap-4">
 					<Button
-						on:click={handlePrev}
+						onclick={handlePrev}
 						disabled={currentStep === 0}
 						variant="outline"
 						size="lg"
@@ -660,7 +676,7 @@
 					</Button>
 
 					<Button
-						on:click={handleNext}
+						onclick={handleNext}
 						disabled={isSaving || (isOnLastStep && !canComplete)}
 						loading={isSaving}
 						variant={isOnLastStep && canComplete ? 'primary' : 'outline'}
@@ -685,7 +701,7 @@
 						Examples to inspire you:
 					</p>
 					<div class="space-y-3">
-						{#each currentStepData?.examples as example, i}
+						{#each currentStepData?.examples ?? [] as example, i}
 							<div
 								class="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-700"
 								in:fade={{ duration: 300, delay: 350 + i * 50 }}

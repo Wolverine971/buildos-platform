@@ -17,6 +17,7 @@
 ## Draft Outline Snapshot
 
 ### Introduction: The Focus Crisis
+
 - Why "just focus" doesn't work anymore
 - The cost of fragmented attention
 - Deep work as competitive advantage
@@ -25,12 +26,14 @@
 ### Section 1: Understanding Your Focus Landscape
 
 **Identifying Your Focus Time**:
+
 - Peak energy hours (chronotype awareness)
 - Meeting-free blocks
 - Context-switch costs
 - Your personal focus capacity
 
 **The Focus Audit**:
+
 - Track your actual deep work hours this week
 - Count interruptions and sources
 - Measure context switches
@@ -39,18 +42,21 @@
 ### Section 2: Designing Focus Time in BuildOS
 
 **Calendar-Based Protection**:
+
 - Blocking focus time in advance
 - Scheduling deep work during peak energy
 - Building focus sessions into project phases
 - Using calendar integration to protect boundaries
 
 **Task Selection for Focus Sessions**:
+
 - Which tasks deserve focus time
 - Breaking large tasks into focus-sized chunks
 - Batching similar work
 - Avoiding fake deep work
 
 **AI-Assisted Focus Planning**:
+
 - How BuildOS identifies deep work tasks
 - Scheduling focus blocks automatically
 - Prioritizing high-impact focused work
@@ -59,18 +65,21 @@
 ### Section 3: Environmental Design for Focus
 
 **Digital Environment**:
+
 - Notification management
 - Browser tab strategy
 - App/tool minimization during focus
 - Using focus modes (Mac, iOS)
 
 **Physical Environment**:
+
 - Location selection (office, home, coffee shop)
 - Noise management (silence vs. background noise)
 - Visual environment (desk setup, lighting)
 - Physical comfort (ergonomics matter for focus)
 
 **Social Boundaries**:
+
 - Communicating focus time to others
 - Handling interruptions gracefully
 - Training your team/family to respect focus blocks
@@ -79,18 +88,21 @@
 ### Section 4: Focus Session Strategies
 
 **Pre-Focus Preparation**:
+
 - Clear task definition
 - Gathering needed resources
 - Removing decision points
 - Setting success criteria
 
 **During Focus Time**:
+
 - Time blocking techniques (Pomodoro variations)
 - Handling intrusive thoughts (brain dump side-notes)
 - Managing energy dips
 - Knowing when to break
 
 **Post-Focus Recovery**:
+
 - Buffer time between sessions
 - Capturing insights while fresh
 - Scheduling breaks appropriately
@@ -99,12 +111,14 @@
 ### Section 5: ADHD-Specific Focus Strategies
 
 **Working With ADHD, Not Against It**:
+
 - Shorter focus blocks
 - Body doubling (virtual coworking)
 - Urgency as focus trigger
 - External accountability
 
 **ADHD-Friendly Tools**:
+
 - Visual timers
 - Progress tracking
 - Immediate rewards
@@ -113,18 +127,21 @@
 ### Section 6: Measuring and Improving Focus
 
 **Focus Metrics to Track**:
+
 - Deep work hours per week
 - Interruption frequency
 - Task completion during focus time
 - Quality of output during focus vs. fragmented time
 
 **Continuous Improvement**:
+
 - Weekly focus time review
 - Adjusting based on energy patterns
 - Experimenting with different strategies
 - Building focus muscle over time
 
 ### Conclusion: Focus Is a Practice, Not a Personality Trait
+
 - Everyone can improve focus with the right systems
 - Start with one protected focus block
 - BuildOS as your focus time ally
@@ -275,6 +292,7 @@
 ### Practical Resources
 
 Should we include:
+
 - Focus time audit worksheet
 - Energy mapping template
 - Notification management checklist
@@ -300,6 +318,7 @@ Should we include:
 ### Real-World Scenarios
 
 Examples for different situations:
+
 - Open office environment
 - Remote with kids at home
 - Variable energy (chronic illness)
@@ -317,6 +336,7 @@ Examples for different situations:
 **Key differentiator**: Integration of focus time into a systematic productivity approach (BuildOS), not just willpower or "here are tips." Show how **tools can actively support focus**, not just rely on discipline.
 
 **Reader takeaway**:
+
 1. Understand their personal focus landscape (when, where, how long)
 2. Have concrete strategies to protect and maximize focus time
 3. Know how to use BuildOS features to support focus
@@ -325,6 +345,7 @@ Examples for different situations:
 **ADHD-specific value**: Many focus articles ignore ADHD or treat it as "just try harder." This blog should **explicitly address ADHD strategies** and acknowledge different focus challenges.
 
 **Honest about challenges**:
+
 - Focus is genuinely hard in modern work environment
 - Some roles have severe focus limitations (customer support, etc.)
 - Energy limitations are real (chronic illness, parenting, etc.)
@@ -333,6 +354,7 @@ Examples for different situations:
 **Practical focus**: Every section should have **actionable takeaways**. This is a "do this" blog, not a "think about this" blog.
 
 **Connection to BuildOS**: Show how BuildOS **actively supports focus**:
+
 - Calendar integration protects focus blocks
 - AI identifies deep work tasks
 - Daily briefs suggest focus time priorities
