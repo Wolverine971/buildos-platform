@@ -14,20 +14,20 @@ Your build completes but Vercel shows "Build Completed in /vercel/output" and th
 
 2. **Build Command** (if override enabled):
 
-   ```
-   cd apps/web && pnpm build
-   ```
+    ```
+    cd apps/web && pnpm build
+    ```
 
 3. **Output Directory** (CRITICAL - if override enabled):
 
-   ```
-   apps/web/.vercel/output
-   ```
+    ```
+    apps/web/.vercel/output
+    ```
 
 4. **Install Command** (if override enabled):
-   ```
-   pnpm install --frozen-lockfile
-   ```
+    ```
+    pnpm install --frozen-lockfile
+    ```
 
 ## Alternative Fix - Try This If Above Doesn't Work:
 
@@ -63,9 +63,9 @@ If nothing works, create a new Vercel project:
 1. Delete current project
 2. Import repository again
 3. When importing:
-   - Set Root Directory to `apps/web`
-   - Let Vercel auto-detect framework (SvelteKit)
-   - Don't override any settings initially
+    - Set Root Directory to `apps/web`
+    - Let Vercel auto-detect framework (SvelteKit)
+    - Don't override any settings initially
 
 ## Expected Success Log:
 

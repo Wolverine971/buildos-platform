@@ -11,6 +11,7 @@
 Successfully reorganized 37 root-level documentation files into a deployment topology-based structure, created 10 new navigation files, and transformed the root CLAUDE.md into a concise navigation hub. The documentation now follows the monorepo's deployment architecture (Web → Vercel, Worker → Railway), making it dramatically easier for both LLM agents and developers to find relevant information.
 
 **Key Metrics:**
+
 - **Files Reorganized:** 37 files moved from root to appropriate locations
 - **New Navigation Files:** 10 comprehensive navigation and README files
 - **Root Directory:** Cleaned (0 orphaned docs remaining)
@@ -24,6 +25,7 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 ### 1. Created Monorepo Documentation Structure (`/docs/`)
 
 **New Directory Structure:**
+
 ```
 /docs/
 ├── README.md                           # Monorepo navigation hub
@@ -50,6 +52,7 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 ### 2. Organized Web App Documentation (`/apps/web/docs/`)
 
 **New Subdirectories Created:**
+
 ```
 /apps/web/docs/
 ├── README.md (new)                    # Web app docs hub
@@ -107,6 +110,7 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 ### 3. Organized Worker Documentation (`/apps/worker/docs/`)
 
 **New Structure:**
+
 ```
 /apps/worker/docs/
 ├── README.md (new)                    # Worker docs hub
@@ -131,6 +135,7 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 ### 4. Organized Package Documentation (`/packages/`)
 
 **Structure Created:**
+
 ```
 /packages/
 ├── /shared-types/
@@ -149,11 +154,13 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 ### 5. Updated Root CLAUDE.md
 
 **Transformation:**
+
 - **Before:** 630 lines of detailed implementation
 - **After:** 284 lines (55% reduction)
 - **Purpose:** Navigation hub pointing to relevant docs
 
 **Key Changes:**
+
 - Added "Quick Start" section directing to app-specific CLAUDE.md files
 - Created navigation tables by scope and task
 - Added feature documentation map
@@ -167,27 +174,27 @@ Successfully reorganized 37 root-level documentation files into a deployment top
 
 ### By Category
 
-| Category                  | Files Moved | Destination                              |
-| ------------------------- | ----------- | ---------------------------------------- |
-| **Web Features**          | 19          | `/apps/web/docs/features/*/`             |
-| **Web Operations**        | 3           | `/apps/web/docs/operations/deployment/`  |
-| **Web Migrations**        | 10          | `/apps/web/docs/migrations/*/`           |
-| **Web Development**       | 1           | `/apps/web/docs/development/conventions/`|
-| **Worker Features**       | 1           | `/apps/worker/docs/features/daily-briefs/` |
-| **Package Docs**          | 2           | `/packages/twilio-service/docs/implementation/` |
-| **Monorepo Shared**       | 1           | `/docs/operations/environment/`          |
-| **TOTAL**                 | **37**      | -                                        |
+| Category            | Files Moved | Destination                                     |
+| ------------------- | ----------- | ----------------------------------------------- |
+| **Web Features**    | 19          | `/apps/web/docs/features/*/`                    |
+| **Web Operations**  | 3           | `/apps/web/docs/operations/deployment/`         |
+| **Web Migrations**  | 10          | `/apps/web/docs/migrations/*/`                  |
+| **Web Development** | 1           | `/apps/web/docs/development/conventions/`       |
+| **Worker Features** | 1           | `/apps/worker/docs/features/daily-briefs/`      |
+| **Package Docs**    | 2           | `/packages/twilio-service/docs/implementation/` |
+| **Monorepo Shared** | 1           | `/docs/operations/environment/`                 |
+| **TOTAL**           | **37**      | -                                               |
 
 ### By Feature (Web App)
 
-| Feature               | Files | Location                                        |
-| --------------------- | ----- | ----------------------------------------------- |
-| Brain Dump            | 4     | `/apps/web/docs/features/brain-dump/`           |
-| Calendar Integration  | 6     | `/apps/web/docs/features/calendar-integration/` |
-| Notifications         | 5     | `/apps/web/docs/features/notifications/`        |
-| Onboarding            | 1     | `/apps/web/docs/features/onboarding/`           |
-| Active Migrations     | 7     | `/apps/web/docs/migrations/active/`             |
-| Completed Migrations  | 3     | `/apps/web/docs/migrations/completed/`          |
+| Feature              | Files | Location                                        |
+| -------------------- | ----- | ----------------------------------------------- |
+| Brain Dump           | 4     | `/apps/web/docs/features/brain-dump/`           |
+| Calendar Integration | 6     | `/apps/web/docs/features/calendar-integration/` |
+| Notifications        | 5     | `/apps/web/docs/features/notifications/`        |
+| Onboarding           | 1     | `/apps/web/docs/features/onboarding/`           |
+| Active Migrations    | 7     | `/apps/web/docs/migrations/active/`             |
+| Completed Migrations | 3     | `/apps/web/docs/migrations/completed/`          |
 
 ---
 
@@ -250,17 +257,20 @@ Documentation follows the system's deployment architecture:
 ### Three-Tier Navigation
 
 #### Tier 1: Root CLAUDE.md
+
 - **Purpose:** High-level navigation hub
 - **Audience:** LLM agents and developers starting out
 - **Content:** Tables pointing to relevant docs by task/scope
 - **Length:** Concise (284 lines)
 
 #### Tier 2: Documentation Hub Files
+
 - **`/docs/README.md`** - Monorepo navigation
 - **`/apps/web/docs/README.md`** - Web app navigation
 - **`/apps/worker/docs/README.md`** - Worker navigation
 
 #### Tier 3: Feature/Domain READMEs
+
 - Each feature folder has a README.md explaining what's inside
 - Example: `/apps/web/docs/features/brain-dump/README.md`
 
@@ -269,6 +279,7 @@ Documentation follows the system's deployment architecture:
 #### 1. Task-Based Index (`/docs/TASK_INDEX.md`)
 
 Organized by "what you want to do":
+
 - Understanding the System
 - Development Tasks
 - Deployment Tasks
@@ -278,6 +289,7 @@ Organized by "what you want to do":
 #### 2. Deployment Topology (`/docs/DEPLOYMENT_TOPOLOGY.md`)
 
 Shows:
+
 - System architecture diagram
 - Deployment targets (Vercel, Railway)
 - Data flow examples
@@ -286,6 +298,7 @@ Shows:
 #### 3. Monorepo Guide (`/docs/MONOREPO_GUIDE.md`)
 
 Covers:
+
 - Turborepo concepts
 - Common workflows
 - Package dependencies
@@ -298,16 +311,19 @@ Covers:
 ### For LLM Agents
 
 ✅ **Clear Scope Identification**
+
 - Immediately know if doc is web, worker, or shared
 - Deployment-aware navigation
 - Reduced ambiguity about which docs apply where
 
 ✅ **Task-Based Access**
+
 - Find docs by "what to do" not just "what exists"
 - Quick reference tables in CLAUDE.md
 - Task index for common operations
 
 ✅ **Context Hierarchy**
+
 - README files at every level provide context
 - Feature-based organization
 - Logical parent/child relationships
@@ -315,21 +331,25 @@ Covers:
 ### For Developers
 
 ✅ **Logical Organization**
+
 - Documentation follows code structure
 - Deployment topology alignment
 - Feature-based grouping
 
 ✅ **Easier Onboarding**
+
 - Clear entry points (README files)
 - Navigation hubs at each level
 - App-specific CLAUDE.md files
 
 ✅ **Faster Debugging**
+
 - Runbooks organized by deployment target
 - Feature-specific documentation
 - Migration tracking separated (active vs completed)
 
 ✅ **Reduced Cognitive Load**
+
 - No more 37 files at root to scan through
 - Clear categorization by purpose
 - Scoped documentation (no confusion about web vs worker)
@@ -337,16 +357,19 @@ Covers:
 ### For Documentation Maintenance
 
 ✅ **Scoped Updates**
+
 - Changes to web docs don't affect worker docs
 - Clear ownership (follows code ownership)
 - Easier to track versions per app
 
 ✅ **Reduced Duplication**
+
 - Cross-cutting concerns in one place (`/docs/`)
 - App-specific details in app folders
 - Feature docs grouped together
 
 ✅ **Git History Preserved**
+
 - All moves done with `git mv`
 - Full traceability of documentation evolution
 - No loss of historical context
@@ -358,28 +381,33 @@ Covers:
 ### Starting Points by Role
 
 #### New Developer
+
 1. Start: `/docs/README.md`
 2. Read: `/docs/DEPLOYMENT_TOPOLOGY.md`
 3. Choose app: `/apps/web/docs/README.md` or `/apps/worker/docs/README.md`
 4. Read app-specific: `/apps/*/CLAUDE.md`
 
 #### Working on Web Feature
+
 1. Start: `/apps/web/docs/README.md`
 2. Find feature: `/apps/web/docs/features/[feature]/README.md`
 3. Read specs: Documentation files in feature folder
 4. Check code: `/apps/web/src/lib/components/[feature]/`
 
 #### Working on Worker
+
 1. Start: `/apps/worker/docs/README.md`
 2. Read: `/apps/worker/CLAUDE.md`
 3. Feature docs: `/apps/worker/docs/features/[feature]/`
 
 #### Deploying
+
 1. Web: `/apps/web/docs/operations/deployment/`
 2. Worker: `/apps/worker/docs/README.md` (deployment section)
 3. Environment: `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 
 #### Debugging
+
 1. Check: `/docs/TASK_INDEX.md` (Debugging Tasks section)
 2. Web runbooks: `/apps/web/docs/technical/deployment/runbooks/`
 3. Worker runbooks: `/apps/worker/docs/operations/runbooks/`
@@ -387,6 +415,7 @@ Covers:
 ### Quick Reference Tables
 
 All documentation hubs include quick reference tables:
+
 - **Documentation by Scope** - Where to find what
 - **Feature Documentation** - Direct links to features
 - **Deployment & Operations** - Deployment task navigation
@@ -397,16 +426,16 @@ All documentation hubs include quick reference tables:
 
 ### Before & After
 
-| File | Old Location | New Location |
-|------|--------------|--------------|
-| Brain dump specs | `/` (root) | `/apps/web/docs/features/brain-dump/` |
-| Calendar docs | `/` (root) | `/apps/web/docs/features/calendar-integration/` |
-| Notification docs | `/` (root) | `/apps/web/docs/features/notifications/` |
-| Vercel guides | `/` (root) | `/apps/web/docs/operations/deployment/` |
-| Active migrations | `/` (root) | `/apps/web/docs/migrations/active/` |
-| Twilio plans | `/` (root) | `/packages/twilio-service/docs/implementation/` |
-| Daily brief spec | `/` (root) | `/apps/worker/docs/features/daily-briefs/` |
-| Environment checklist | `/` (root) | `/docs/operations/environment/` |
+| File                  | Old Location | New Location                                    |
+| --------------------- | ------------ | ----------------------------------------------- |
+| Brain dump specs      | `/` (root)   | `/apps/web/docs/features/brain-dump/`           |
+| Calendar docs         | `/` (root)   | `/apps/web/docs/features/calendar-integration/` |
+| Notification docs     | `/` (root)   | `/apps/web/docs/features/notifications/`        |
+| Vercel guides         | `/` (root)   | `/apps/web/docs/operations/deployment/`         |
+| Active migrations     | `/` (root)   | `/apps/web/docs/migrations/active/`             |
+| Twilio plans          | `/` (root)   | `/packages/twilio-service/docs/implementation/` |
+| Daily brief spec      | `/` (root)   | `/apps/worker/docs/features/daily-briefs/`      |
+| Environment checklist | `/` (root)   | `/docs/operations/environment/`                 |
 
 ---
 
@@ -451,6 +480,7 @@ TOTAL: 39 files moved/created
 ## Next Steps
 
 ### Immediate
+
 - [x] Review all changes
 - [ ] Commit with descriptive message
 - [ ] Update team about new structure

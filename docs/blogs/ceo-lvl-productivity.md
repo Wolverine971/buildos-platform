@@ -21,21 +21,21 @@ CEOs don't just manage tasks - they make high-stakes decisions. Add:
 ### 3. **Executive Time Architecture**
 
 - **Time Blocking on Steroids**:
-    - CEO blocks: 2-4 hour chunks for deep strategic work
-    - Buffer zones: 30-min cushions between meetings
-    - "Office hours" for interruptions
+  - CEO blocks: 2-4 hour chunks for deep strategic work
+  - Buffer zones: 30-min cushions between meetings
+  - "Office hours" for interruptions
 - **Meeting Intelligence**:
-    - Pre-meeting briefs with key decisions needed
-    - Suggested talking points based on project context
-    - Post-meeting action extraction
+  - Pre-meeting briefs with key decisions needed
+  - Suggested talking points based on project context
+  - Post-meeting action extraction
 - **Calendar Defense**: AI actively protects focus time and suggests meeting consolidation
 
 ### 4. **Leverage Multiplication System**
 
 - **Virtual Chief of Staff**:
-    - Daily brief includes "decisions ready for your input"
-    - Pre-digested information with executive summary
-    - Proactive flag raising on risks/opportunities
+  - Daily brief includes "decisions ready for your input"
+  - Pre-digested information with executive summary
+  - Proactive flag raising on risks/opportunities
 - **Output Templates**: Convert brain dumps into delegation-ready briefs for teams
 - **Stakeholder Communication Engine**: Auto-generate updates for investors, team, customers
 

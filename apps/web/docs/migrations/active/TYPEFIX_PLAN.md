@@ -28,9 +28,9 @@ The database already has proper enums defined:
 #### C. Weak Typing with 'any'
 
 - **Locations**:
-  - `metadata?: Record<string, any>` throughout
-  - `generation_progress?: any` in daily briefs
-  - `result?: any` in queue jobs
+    - `metadata?: Record<string, any>` throughout
+    - `generation_progress?: any` in daily briefs
+    - `result?: any` in queue jobs
 
 #### D. Multiple QueueJob Definitions
 
@@ -47,205 +47,203 @@ The database already has proper enums defined:
 **File**: `packages/shared-types/src/queue-types.ts`
 
 ```typescript
-import type { Database } from "./database.types";
+import type { Database } from './database.types';
 
 // Re-export database enums as the single source of truth
-export type QueueJobType = Database["public"]["Enums"]["queue_type"];
-export type QueueJobStatus = Database["public"]["Enums"]["queue_status"];
+export type QueueJobType = Database['public']['Enums']['queue_type'];
+export type QueueJobStatus = Database['public']['Enums']['queue_status'];
 
 // Metadata interfaces for each job type
 export interface DailyBriefJobMetadata {
-  briefDate: string; // YYYY-MM-DD format
-  timezone: string; // IANA timezone
-  forceRegenerate?: boolean;
-  includeProjects?: string[];
-  excludeProjects?: string[];
-  customTemplate?: string;
-  requestedBriefDate?: string;
-  generation_progress?: BriefGenerationProgress;
+	briefDate: string; // YYYY-MM-DD format
+	timezone: string; // IANA timezone
+	forceRegenerate?: boolean;
+	includeProjects?: string[];
+	excludeProjects?: string[];
+	customTemplate?: string;
+	requestedBriefDate?: string;
+	generation_progress?: BriefGenerationProgress;
 }
 
 export interface BriefGenerationProgress {
-  step: BriefGenerationStep;
-  progress: number; // 0-100
-  message?: string;
-  projects?: {
-    completed: number;
-    total: number;
-    failed: number;
-  };
-  timestamp: string; // ISO timestamp
+	step: BriefGenerationStep;
+	progress: number; // 0-100
+	message?: string;
+	projects?: {
+		completed: number;
+		total: number;
+		failed: number;
+	};
+	timestamp: string; // ISO timestamp
 }
 
 export type BriefGenerationStep =
-  | "idle"
-  | "initializing"
-  | "starting"
-  | "queued"
-  | "gathering_data"
-  | "data_gathered"
-  | "fetching_projects"
-  | "generating_project_briefs"
-  | "consolidating_briefs"
-  | "generating_main_brief"
-  | "finalizing"
-  | "completed"
-  | "error";
+	| 'idle'
+	| 'initializing'
+	| 'starting'
+	| 'queued'
+	| 'gathering_data'
+	| 'data_gathered'
+	| 'fetching_projects'
+	| 'generating_project_briefs'
+	| 'consolidating_briefs'
+	| 'generating_main_brief'
+	| 'finalizing'
+	| 'completed'
+	| 'error';
 
 export interface PhaseGenerationJobMetadata {
-  projectId: string;
-  regenerate?: boolean;
-  template?: string;
-  includeExistingTasks?: boolean;
+	projectId: string;
+	regenerate?: boolean;
+	template?: string;
+	includeExistingTasks?: boolean;
 }
 
 export interface OnboardingAnalysisJobMetadata {
-  userId: string;
-  step: "initial" | "preferences" | "complete";
-  responses?: Record<string, unknown>;
+	userId: string;
+	step: 'initial' | 'preferences' | 'complete';
+	responses?: Record<string, unknown>;
 }
 
 export interface CalendarSyncJobMetadata {
-  calendarId: string;
-  syncDirection: "to_google" | "from_google" | "bidirectional";
-  dateRange?: {
-    start: string;
-    end: string;
-  };
+	calendarId: string;
+	syncDirection: 'to_google' | 'from_google' | 'bidirectional';
+	dateRange?: {
+		start: string;
+		end: string;
+	};
 }
 
 export interface BrainDumpProcessJobMetadata {
-  brainDumpId: string;
-  processMode: "full" | "quick";
-  projectId?: string;
+	brainDumpId: string;
+	processMode: 'full' | 'quick';
+	projectId?: string;
 }
 
 export interface EmailJobMetadata {
-  recipientUserId: string;
-  emailType: "daily_brief" | "welcome" | "trial_ending" | "payment_failed";
-  templateId?: string;
-  variables?: Record<string, string | number | boolean>;
+	recipientUserId: string;
+	emailType: 'daily_brief' | 'welcome' | 'trial_ending' | 'payment_failed';
+	templateId?: string;
+	variables?: Record<string, string | number | boolean>;
 }
 
 // Map job types to their metadata
 export interface JobMetadataMap {
-  generate_daily_brief: DailyBriefJobMetadata;
-  generate_phases: PhaseGenerationJobMetadata;
-  onboarding_analysis: OnboardingAnalysisJobMetadata;
-  sync_calendar: CalendarSyncJobMetadata;
-  process_brain_dump: BrainDumpProcessJobMetadata;
-  send_email: EmailJobMetadata;
-  update_recurring_tasks: Record<string, unknown>;
-  cleanup_old_data: Record<string, unknown>;
-  other: Record<string, unknown>;
+	generate_daily_brief: DailyBriefJobMetadata;
+	generate_phases: PhaseGenerationJobMetadata;
+	onboarding_analysis: OnboardingAnalysisJobMetadata;
+	sync_calendar: CalendarSyncJobMetadata;
+	process_brain_dump: BrainDumpProcessJobMetadata;
+	send_email: EmailJobMetadata;
+	update_recurring_tasks: Record<string, unknown>;
+	cleanup_old_data: Record<string, unknown>;
+	other: Record<string, unknown>;
 }
 
 // Generic queue job with type-safe metadata
 export interface QueueJob<T extends QueueJobType = QueueJobType> {
-  id: string;
-  queue_job_id: string;
-  user_id: string;
-  job_type: T;
-  status: QueueJobStatus;
-  scheduled_for: string;
-  metadata: JobMetadataMap[T] | null;
-  attempts: number;
-  max_attempts: number;
-  priority: number | null;
-  created_at: string;
-  updated_at: string | null;
-  started_at: string | null;
-  processed_at: string | null;
-  completed_at: string | null;
-  error_message: string | null;
-  result: JobResultMap[T] | null;
+	id: string;
+	queue_job_id: string;
+	user_id: string;
+	job_type: T;
+	status: QueueJobStatus;
+	scheduled_for: string;
+	metadata: JobMetadataMap[T] | null;
+	attempts: number;
+	max_attempts: number;
+	priority: number | null;
+	created_at: string;
+	updated_at: string | null;
+	started_at: string | null;
+	processed_at: string | null;
+	completed_at: string | null;
+	error_message: string | null;
+	result: JobResultMap[T] | null;
 }
 
 // Job result types
 export interface JobResultMap {
-  generate_daily_brief: DailyBriefResult;
-  generate_phases: PhaseGenerationResult;
-  onboarding_analysis: OnboardingAnalysisResult;
-  sync_calendar: CalendarSyncResult;
-  process_brain_dump: BrainDumpProcessResult;
-  send_email: EmailSendResult;
-  update_recurring_tasks: { updated: number };
-  cleanup_old_data: { deleted: number };
-  other: unknown;
+	generate_daily_brief: DailyBriefResult;
+	generate_phases: PhaseGenerationResult;
+	onboarding_analysis: OnboardingAnalysisResult;
+	sync_calendar: CalendarSyncResult;
+	process_brain_dump: BrainDumpProcessResult;
+	send_email: EmailSendResult;
+	update_recurring_tasks: { updated: number };
+	cleanup_old_data: { deleted: number };
+	other: unknown;
 }
 
 export interface DailyBriefResult {
-  briefId: string;
-  briefDate: string;
-  projectBriefsGenerated: number;
-  emailSent: boolean;
-  generationTimeMs: number;
+	briefId: string;
+	briefDate: string;
+	projectBriefsGenerated: number;
+	emailSent: boolean;
+	generationTimeMs: number;
 }
 
 export interface PhaseGenerationResult {
-  projectId: string;
-  phasesCreated: string[];
-  tasksAssigned: number;
+	projectId: string;
+	phasesCreated: string[];
+	tasksAssigned: number;
 }
 
 export interface OnboardingAnalysisResult {
-  analysisComplete: boolean;
-  suggestedProjects?: string[];
-  userProfile?: Record<string, unknown>;
+	analysisComplete: boolean;
+	suggestedProjects?: string[];
+	userProfile?: Record<string, unknown>;
 }
 
 export interface CalendarSyncResult {
-  eventsCreated: number;
-  eventsUpdated: number;
-  eventsDeleted: number;
-  conflicts: string[];
+	eventsCreated: number;
+	eventsUpdated: number;
+	eventsDeleted: number;
+	conflicts: string[];
 }
 
 export interface BrainDumpProcessResult {
-  projectsCreated: string[];
-  tasksCreated: string[];
-  processingTimeMs: number;
+	projectsCreated: string[];
+	tasksCreated: string[];
+	processingTimeMs: number;
 }
 
 export interface EmailSendResult {
-  sent: boolean;
-  messageId?: string;
-  error?: string;
+	sent: boolean;
+	messageId?: string;
+	error?: string;
 }
 
 // Type guards
 export function isValidJobMetadata<T extends QueueJobType>(
-  jobType: T,
-  metadata: unknown,
+	jobType: T,
+	metadata: unknown
 ): metadata is JobMetadataMap[T] {
-  // Implementation for each job type
-  switch (jobType) {
-    case "generate_daily_brief":
-      return isDailyBriefMetadata(metadata);
-    case "generate_phases":
-      return isPhaseGenerationMetadata(metadata);
-    // ... other cases
-    default:
-      return true;
-  }
+	// Implementation for each job type
+	switch (jobType) {
+		case 'generate_daily_brief':
+			return isDailyBriefMetadata(metadata);
+		case 'generate_phases':
+			return isPhaseGenerationMetadata(metadata);
+		// ... other cases
+		default:
+			return true;
+	}
 }
 
 function isDailyBriefMetadata(obj: unknown): obj is DailyBriefJobMetadata {
-  if (!obj || typeof obj !== "object") return false;
-  const meta = obj as Record<string, unknown>;
-  return (
-    typeof meta.briefDate === "string" &&
-    typeof meta.timezone === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(meta.briefDate as string)
-  );
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.briefDate === 'string' &&
+		typeof meta.timezone === 'string' &&
+		/^\d{4}-\d{2}-\d{2}$/.test(meta.briefDate as string)
+	);
 }
 
-function isPhaseGenerationMetadata(
-  obj: unknown,
-): obj is PhaseGenerationJobMetadata {
-  if (!obj || typeof obj !== "object") return false;
-  const meta = obj as Record<string, unknown>;
-  return typeof meta.projectId === "string";
+function isPhaseGenerationMetadata(obj: unknown): obj is PhaseGenerationJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.projectId === 'string';
 }
 ```
 
@@ -311,39 +309,39 @@ ADD CONSTRAINT valid_job_metadata CHECK (
 **File**: `packages/shared-types/src/validation.ts`
 
 ```typescript
-import { z } from "zod";
-import type { QueueJobType, JobMetadataMap } from "./queue-types";
+import { z } from 'zod';
+import type { QueueJobType, JobMetadataMap } from './queue-types';
 
 // Zod schemas for runtime validation
 export const DailyBriefMetadataSchema = z.object({
-  briefDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  timezone: z.string(),
-  forceRegenerate: z.boolean().optional(),
-  includeProjects: z.array(z.string()).optional(),
-  excludeProjects: z.array(z.string()).optional(),
-  customTemplate: z.string().optional(),
+	briefDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	timezone: z.string(),
+	forceRegenerate: z.boolean().optional(),
+	includeProjects: z.array(z.string()).optional(),
+	excludeProjects: z.array(z.string()).optional(),
+	customTemplate: z.string().optional()
 });
 
 export const PhaseGenerationMetadataSchema = z.object({
-  projectId: z.string().uuid(),
-  regenerate: z.boolean().optional(),
-  template: z.string().optional(),
-  includeExistingTasks: z.boolean().optional(),
+	projectId: z.string().uuid(),
+	regenerate: z.boolean().optional(),
+	template: z.string().optional(),
+	includeExistingTasks: z.boolean().optional()
 });
 
 // Validation function
 export function validateJobMetadata<T extends QueueJobType>(
-  jobType: T,
-  metadata: unknown,
+	jobType: T,
+	metadata: unknown
 ): JobMetadataMap[T] {
-  switch (jobType) {
-    case "generate_daily_brief":
-      return DailyBriefMetadataSchema.parse(metadata) as JobMetadataMap[T];
-    case "generate_phases":
-      return PhaseGenerationMetadataSchema.parse(metadata) as JobMetadataMap[T];
-    default:
-      return metadata as JobMetadataMap[T];
-  }
+	switch (jobType) {
+		case 'generate_daily_brief':
+			return DailyBriefMetadataSchema.parse(metadata) as JobMetadataMap[T];
+		case 'generate_phases':
+			return PhaseGenerationMetadataSchema.parse(metadata) as JobMetadataMap[T];
+		default:
+			return metadata as JobMetadataMap[T];
+	}
 }
 ```
 
@@ -355,36 +353,36 @@ export function validateJobMetadata<T extends QueueJobType>(
 
 ```typescript
 export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-  timestamp: string;
+	success: boolean;
+	data?: T;
+	error?: ApiError;
+	timestamp: string;
 }
 
 export interface ApiError {
-  code: ErrorCode;
-  message: string;
-  details?: unknown;
-  status: number;
+	code: ErrorCode;
+	message: string;
+	details?: unknown;
+	status: number;
 }
 
 export enum ErrorCode {
-  // Authentication
-  UNAUTHORIZED = "UNAUTHORIZED",
-  FORBIDDEN = "FORBIDDEN",
+	// Authentication
+	UNAUTHORIZED = 'UNAUTHORIZED',
+	FORBIDDEN = 'FORBIDDEN',
 
-  // Validation
-  INVALID_REQUEST = "INVALID_REQUEST",
-  INVALID_JOB_TYPE = "INVALID_JOB_TYPE",
-  INVALID_METADATA = "INVALID_METADATA",
+	// Validation
+	INVALID_REQUEST = 'INVALID_REQUEST',
+	INVALID_JOB_TYPE = 'INVALID_JOB_TYPE',
+	INVALID_METADATA = 'INVALID_METADATA',
 
-  // Queue specific
-  JOB_NOT_FOUND = "JOB_NOT_FOUND",
-  JOB_ALREADY_PROCESSING = "JOB_ALREADY_PROCESSING",
+	// Queue specific
+	JOB_NOT_FOUND = 'JOB_NOT_FOUND',
+	JOB_ALREADY_PROCESSING = 'JOB_ALREADY_PROCESSING',
 
-  // Brief specific
-  BRIEF_ALREADY_EXISTS = "BRIEF_ALREADY_EXISTS",
-  BRIEF_GENERATION_FAILED = "BRIEF_GENERATION_FAILED",
+	// Brief specific
+	BRIEF_ALREADY_EXISTS = 'BRIEF_ALREADY_EXISTS',
+	BRIEF_GENERATION_FAILED = 'BRIEF_GENERATION_FAILED'
 }
 ```
 

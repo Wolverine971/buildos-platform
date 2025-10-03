@@ -80,7 +80,6 @@
 
 	// Handle minimize (for ongoing processing)
 	function handleMinimize() {
-		console.log('[NotificationModal] handleMinimize called for:', notification.id);
 		notificationStore.minimize(notification.id);
 	}
 

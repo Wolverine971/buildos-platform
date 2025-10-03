@@ -115,10 +115,10 @@ Comprehensive technical documentation for developers and engineers.
 - **templates.md** - Request/response templates
 - **summary.md** - API overview and statistics
 - **endpoints/** - Detailed endpoint documentation
-    - braindumps.md
-    - calendar.md
-    - daily-briefs.md
-    - projects.md
+  - braindumps.md
+  - calendar.md
+  - daily-briefs.md
+  - projects.md
 
 #### Architecture (`technical/architecture/`)
 
@@ -131,9 +131,9 @@ Comprehensive technical documentation for developers and engineers.
 - **ai-pipeline.md** - AI integration patterns
 - **supabase-design.md** - Database architecture
 - **decisions/** - Architecture Decision Records (ADRs)
-    - ADR-001-supabase.md - Supabase selection
-    - ADR-002-dual-processing.md - Dual processing pattern
-    - ADR-003-project-calendars.md - Calendar strategy
+  - ADR-001-supabase.md - Supabase selection
+  - ADR-002-dual-processing.md - Dual processing pattern
+  - ADR-003-project-calendars.md - Calendar strategy
 
 #### Services (`technical/services/`)
 
@@ -176,11 +176,11 @@ Comprehensive technical documentation for developers and engineers.
 - **DEPLOYMENT_CHECKLIST.md** - Pre-deployment checks
 - **VERCEL_DEPLOYMENT.md** - Vercel configuration
 - **runbooks/** - Operational procedures
-    - incident-response.md
-    - calendar-webhook-failures.md
-    - openai-rate-limiting.md
-    - stripe-webhook-validation.md
-    - supabase-recovery.md
+  - incident-response.md
+  - calendar-webhook-failures.md
+  - openai-rate-limiting.md
+  - stripe-webhook-validation.md
+  - supabase-recovery.md
 
 ### 💼 /docs/business/ - Business & Strategy Documentation
 
@@ -209,8 +209,8 @@ Reorganized prompt architecture.
 
 - **architecture.md** - Prompt system design
 - **brain-dump/** - All brain dump prompts
-    - **new-project/** - New project flows
-    - **existing-project/** - Existing project updates
+  - **new-project/** - New project flows
+  - **existing-project/** - Existing project updates
 
 ### 🗄️ /archive/ - Archived Documentation
 
@@ -270,10 +270,10 @@ Everything related to LLM prompts and AI processing.
 - `prompts/new-project/new-project-short-braindump.md` - Quick capture template
 - `prompts/new-project/new-project-short-braindump-prompt.md` - Short prompt spec
 - **Dual Processing:**
-    - `prompts/new-project/dual-processing/context/new-project-context-prompt.md` - Context extraction
-    - `prompts/new-project/dual-processing/tasks/new-project-task-extraction-prompt.md` - Task extraction
+  - `prompts/new-project/dual-processing/context/new-project-context-prompt.md` - Context extraction
+  - `prompts/new-project/dual-processing/tasks/new-project-task-extraction-prompt.md` - Task extraction
 - **Singular Processing:**
-    - `prompts/new-project/singular/new-project-singular-prompt.md` - Combined processing
+  - `prompts/new-project/singular/new-project-singular-prompt.md` - Combined processing
 
 #### Existing Project Prompts
 
@@ -283,13 +283,13 @@ Everything related to LLM prompts and AI processing.
 - `prompts/existing-project/existing-project-context-update-prompt.md` - Context updates
 - `prompts/existing-project/existing-project-short-context-update.md` - Quick context updates
 - **Dual Processing:**
-    - `prompts/existing-project/dual-processing/context/existing-project-context-prompt.md`
-    - `prompts/existing-project/dual-processing/tasks/existing-project-task-extraction-prompt.md`
-    - `prompts/existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md`
+  - `prompts/existing-project/dual-processing/context/existing-project-context-prompt.md`
+  - `prompts/existing-project/dual-processing/tasks/existing-project-task-extraction-prompt.md`
+  - `prompts/existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md`
 - **Short Brain Dump:**
-    - `prompts/existing-project/short-braindump/context/short-braindump-context-update-prompt.md`
-    - `prompts/existing-project/short-braindump/tasks/short-braindump-task-extraction-prompt.md`
-    - `prompts/existing-project/short-braindump/tasks/short-braindump-task-extraction-with-questions-prompt.md`
+  - `prompts/existing-project/short-braindump/context/short-braindump-context-update-prompt.md`
+  - `prompts/existing-project/short-braindump/tasks/short-braindump-task-extraction-prompt.md`
+  - `prompts/existing-project/short-braindump/tasks/short-braindump-task-extraction-with-questions-prompt.md`
 
 #### Prompt Components
 
@@ -439,18 +439,18 @@ Marketing strategies, brand guidelines, and growth initiatives.
 - `marketing/social-media/linkedin-strategy-notes.md` - LinkedIn strategy
 - `marketing/social-media/instagram-strategy.md` - Instagram strategy
 - **Content Templates:**
-    - `marketing/social-media/content-template-educational-content.md`
-    - `marketing/social-media/content-template-hot-take.md`
-    - `marketing/social-media/types-of-content.md`
+  - `marketing/social-media/content-template-educational-content.md`
+  - `marketing/social-media/content-template-hot-take.md`
+  - `marketing/social-media/types-of-content.md`
 
 #### Growth & Viral Marketing
 
 - `marketing/growth/viral-plan-notes.md` - Viral growth strategy
 - `marketing/growth/3-phase-warm-outreach-template.md` - Outreach template
 - **Target Influencers:**
-    - `marketing/growth/target-influencers/tim-ferris.md`
-    - `marketing/growth/target-influencers/patrick-bet-david.md`
-    - `marketing/growth/target-influencers/viral-plan.md`
+  - `marketing/growth/target-influencers/tim-ferris.md`
+  - `marketing/growth/target-influencers/patrick-bet-david.md`
+  - `marketing/growth/target-influencers/viral-plan.md`
 
 #### User Segments
 
@@ -505,36 +505,36 @@ Investor relations, fundraising strategy, and VC profiles.
 Complete profiles in `marketing/investors/vc-firms/`:
 
 - **Tier 1 Firms:**
-    - `andreessen-horowitz-a16z.md` - Andreessen Horowitz
-    - `sequoia-capital.md` - Sequoia Capital
-    - `greylock-partners.md` - Greylock Partners
-    - `khosla-ventures.md` - Khosla Ventures
-    - `thiel-capital-founders-fund.md` - Founders Fund
+  - `andreessen-horowitz-a16z.md` - Andreessen Horowitz
+  - `sequoia-capital.md` - Sequoia Capital
+  - `greylock-partners.md` - Greylock Partners
+  - `khosla-ventures.md` - Khosla Ventures
+  - `thiel-capital-founders-fund.md` - Founders Fund
 
 - **Growth Firms:**
-    - `bessemer-venture-partners.md` - Bessemer
-    - `general-catalyst.md` - General Catalyst
-    - `insight-partners.md` - Insight Partners
-    - `lightspeed-venture-partners.md` - Lightspeed
-    - `coatue-management.md` - Coatue
+  - `bessemer-venture-partners.md` - Bessemer
+  - `general-catalyst.md` - General Catalyst
+  - `insight-partners.md` - Insight Partners
+  - `lightspeed-venture-partners.md` - Lightspeed
+  - `coatue-management.md` - Coatue
 
 - **Early Stage:**
-    - `first-round-capital.md` - First Round
-    - `craft-ventures.md` - Craft Ventures
-    - `point-nine-capital.md` - Point Nine
-    - `index-ventures.md` - Index Ventures
-    - `matrix-partners.md` - Matrix Partners
+  - `first-round-capital.md` - First Round
+  - `craft-ventures.md` - Craft Ventures
+  - `point-nine-capital.md` - Point Nine
+  - `index-ventures.md` - Index Ventures
+  - `matrix-partners.md` - Matrix Partners
 
 - **Specialized/Emerging:**
-    - `aix-ventures.md` - AIX Ventures
-    - `character-vc.md` - Character VC
-    - `context-ventures.md` - Context Ventures
-    - `obvious-ventures.md` - Obvious Ventures
-    - `pioneer-fund.md` - Pioneer Fund
-    - `soma-capital.md` - Soma Capital
-    - `south-park-commons.md` - South Park Commons
-    - `standard-capital.md` - Standard Capital
-    - `vermilion-fund.md` - Vermilion Fund
+  - `aix-ventures.md` - AIX Ventures
+  - `character-vc.md` - Character VC
+  - `context-ventures.md` - Context Ventures
+  - `obvious-ventures.md` - Obvious Ventures
+  - `pioneer-fund.md` - Pioneer Fund
+  - `soma-capital.md` - Soma Capital
+  - `south-park-commons.md` - South Park Commons
+  - `standard-capital.md` - Standard Capital
+  - `vermilion-fund.md` - Vermilion Fund
 
 See `marketing/INDEX.md` for complete marketing directory listing.
 

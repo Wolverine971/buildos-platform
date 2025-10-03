@@ -21,8 +21,8 @@ Element with a slot='...' attribute must be a child of a component
 
 ```svelte
 <Modal isOpen={true} onClose={handleClose} ...>
-  <div slot="header">...</div>
-  <div><!-- content --></div>
+	<div slot="header">...</div>
+	<div><!-- content --></div>
 </Modal>
 ```
 
@@ -49,19 +49,17 @@ Element with a slot='...' attribute must be a child of a component
 
 ```typescript
 const currentState = get(notificationStore);
-const existingBrainDumpNotification = Array.from(
-  currentState.notifications.values(),
-).find(
-  (n): n is BrainDumpNotification =>
-    n.type === "brain-dump" &&
-    n.status === "processing" &&
-    !n.data.brainDumpId?.startsWith("test_"), // Ignore test notifications
+const existingBrainDumpNotification = Array.from(currentState.notifications.values()).find(
+	(n): n is BrainDumpNotification =>
+		n.type === 'brain-dump' &&
+		n.status === 'processing' &&
+		!n.data.brainDumpId?.startsWith('test_') // Ignore test notifications
 );
 
 if (existingBrainDumpNotification) {
-  // Rehydrate bridge state
-  activeBrainDumpNotificationId = existingBrainDumpNotification.id;
-  lastProcessedBrainDumpId = existingBrainDumpNotification.data.brainDumpId;
+	// Rehydrate bridge state
+	activeBrainDumpNotificationId = existingBrainDumpNotification.id;
+	lastProcessedBrainDumpId = existingBrainDumpNotification.data.brainDumpId;
 }
 ```
 
@@ -95,7 +93,7 @@ if (existingBrainDumpNotification) {
 isPersistent: false;
 
 // Bridge ignores test notifications
-!n.data.brainDumpId?.startsWith("test_");
+!n.data.brainDumpId?.startsWith('test_');
 ```
 
 **Files Changed:**
@@ -206,12 +204,12 @@ let activeBrainDumpNotificationId: string | null = null;
 
 // Rehydrate from store on init
 export function initBridge() {
-  const currentState = get(notificationStore);
-  const existing = findExistingNotification(currentState);
+	const currentState = get(notificationStore);
+	const existing = findExistingNotification(currentState);
 
-  if (existing) {
-    activeBrainDumpNotificationId = existing.id; // Rehydrate!
-  }
+	if (existing) {
+		activeBrainDumpNotificationId = existing.id; // Rehydrate!
+	}
 }
 ```
 
@@ -237,16 +235,16 @@ Test notifications are identified by their `brainDumpId`:
 ```typescript
 // Test notification
 data: {
-  brainDumpId: `test_${Date.now()}`; // Starts with "test_"
+	brainDumpId: `test_${Date.now()}`; // Starts with "test_"
 }
 
 // Real notification
 data: {
-  brainDumpId: uuid(); // Real UUID from database
+	brainDumpId: uuid(); // Real UUID from database
 }
 
 // Bridge ignores test notifications
-!n.data.brainDumpId?.startsWith("test_");
+!n.data.brainDumpId?.startsWith('test_');
 ```
 
 ---
@@ -254,18 +252,18 @@ data: {
 ## Files Modified
 
 1. `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte`
-   - Added Modal wrapper with close handler
-   - Made X button always visible
-   - Reordered buttons (Minimize, Close)
-   - Disabled backdrop click
+    - Added Modal wrapper with close handler
+    - Made X button always visible
+    - Reordered buttons (Minimize, Close)
+    - Disabled backdrop click
 
 2. `apps/web/src/lib/services/brain-dump-notification.bridge.ts`
-   - Added store state rehydration on init
-   - Added test notification filtering
-   - Fixed duplicate notification creation
+    - Added store state rehydration on init
+    - Added test notification filtering
+    - Fixed duplicate notification creation
 
 3. `apps/web/src/lib/components/notifications/NotificationTestButtons.svelte`
-   - Set `isPersistent: false` for test notifications
+    - Set `isPersistent: false` for test notifications
 
 ---
 

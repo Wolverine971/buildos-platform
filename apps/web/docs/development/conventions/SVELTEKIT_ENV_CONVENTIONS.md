@@ -11,14 +11,14 @@
 
 ```typescript
 // Import from SvelteKit's static environment module
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
 // Use the imported constant
-const isEnabled = PUBLIC_USE_NEW_NOTIFICATIONS === "true";
+const isEnabled = PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
 
 // Can be used anywhere in the file
 if (isEnabled) {
-  // ... feature code
+	// ... feature code
 }
 ```
 
@@ -42,9 +42,9 @@ SvelteKit statically analyzes imports from `$env/static/public` during build:
 
 ```typescript
 // SvelteKit replaces this at build time:
-import { PUBLIC_API_URL } from "$env/static/public";
+import { PUBLIC_API_URL } from '$env/static/public';
 // Becomes:
-const PUBLIC_API_URL = "https://api.example.com";
+const PUBLIC_API_URL = 'https://api.example.com';
 ```
 
 This means:
@@ -59,10 +59,10 @@ This means:
 ```typescript
 // TypeScript knows these exist at compile time
 import {
-  PUBLIC_USE_NEW_NOTIFICATIONS,
-  PUBLIC_SUPABASE_URL,
-  PUBLIC_STRIPE_KEY,
-} from "$env/static/public";
+	PUBLIC_USE_NEW_NOTIFICATIONS,
+	PUBLIC_SUPABASE_URL,
+	PUBLIC_STRIPE_KEY
+} from '$env/static/public';
 
 // TypeScript will error if you typo the name:
 // import { PUBLIC_USE_NEW_NOTIFICATINOS } from '$env/static/public';
@@ -75,13 +75,13 @@ All BuildOS code should follow this pattern:
 
 ```typescript
 // ✅ Layout component
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
 // ✅ Bridge service
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
 // ✅ Any other file
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 ```
 
 ---
@@ -92,10 +92,7 @@ import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
 
 ```typescript
 // $env/static/public - Public variables (exposed to client)
-import {
-  PUBLIC_SUPABASE_URL,
-  PUBLIC_GOOGLE_CLIENT_ID,
-} from "$env/static/public";
+import { PUBLIC_SUPABASE_URL, PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 
 // Must start with PUBLIC_ prefix
 // Available in browser
@@ -106,7 +103,7 @@ import {
 
 ```typescript
 // $env/static/private - Private variables (server-only)
-import { OPENAI_API_KEY, STRIPE_SECRET_KEY } from "$env/static/private";
+import { OPENAI_API_KEY, STRIPE_SECRET_KEY } from '$env/static/private';
 
 // No PUBLIC_ prefix
 // Only available in server code (+page.server.ts, +server.ts, hooks.server.ts)
@@ -117,11 +114,11 @@ import { OPENAI_API_KEY, STRIPE_SECRET_KEY } from "$env/static/private";
 
 ```typescript
 // $env/dynamic/public - Dynamic public variables
-import { env } from "$env/dynamic/public";
+import { env } from '$env/dynamic/public';
 const url = env.PUBLIC_API_URL;
 
 // $env/dynamic/private - Dynamic private variables
-import { env } from "$env/dynamic/private";
+import { env } from '$env/dynamic/private';
 const key = env.OPENAI_API_KEY;
 
 // Use dynamic imports only when:
@@ -162,14 +159,14 @@ PRIVATE_SUPABASE_SERVICE_KEY=eyJ...
 
 ```typescript
 // Always use static imports for feature flags
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
-const USE_NEW_NOTIFICATION_SYSTEM = PUBLIC_USE_NEW_NOTIFICATIONS === "true";
+const USE_NEW_NOTIFICATION_SYSTEM = PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
 
 if (USE_NEW_NOTIFICATION_SYSTEM) {
-  // New system
+	// New system
 } else {
-  // Legacy system
+	// Legacy system
 }
 ```
 
@@ -177,21 +174,21 @@ if (USE_NEW_NOTIFICATION_SYSTEM) {
 
 ```typescript
 // Public API URLs
-import { PUBLIC_SUPABASE_URL, PUBLIC_STRIPE_KEY } from "$env/static/public";
+import { PUBLIC_SUPABASE_URL, PUBLIC_STRIPE_KEY } from '$env/static/public';
 
 // Server-side API keys
-import { OPENAI_API_KEY } from "$env/static/private";
+import { OPENAI_API_KEY } from '$env/static/private';
 ```
 
 ### Conditional Initialization
 
 ```typescript
-import { PUBLIC_ENABLE_ANALYTICS } from "$env/static/public";
+import { PUBLIC_ENABLE_ANALYTICS } from '$env/static/public';
 
 onMount(() => {
-  if (PUBLIC_ENABLE_ANALYTICS === "true") {
-    initializeAnalytics();
-  }
+	if (PUBLIC_ENABLE_ANALYTICS === 'true') {
+		initializeAnalytics();
+	}
 });
 ```
 
@@ -207,11 +204,11 @@ onMount(() => {
 
 ```typescript
 // ✅ Correct
-import { PUBLIC_VAR } from "$env/static/public";
+import { PUBLIC_VAR } from '$env/static/public';
 
 // ❌ Wrong
-import { PUBLIC_VAR } from "@env/static/public";
-import { PUBLIC_VAR } from "$env/public";
+import { PUBLIC_VAR } from '@env/static/public';
+import { PUBLIC_VAR } from '$env/public';
 ```
 
 ### Problem: "Variable is undefined at runtime"
@@ -266,7 +263,7 @@ PUBLIC_MY_VARIABLE=value
 const apiUrl = import.meta.env.VITE_API_URL;
 
 // After (SvelteKit)
-import { PUBLIC_API_URL } from "$env/static/public";
+import { PUBLIC_API_URL } from '$env/static/public';
 const apiUrl = PUBLIC_API_URL;
 ```
 
@@ -277,7 +274,7 @@ const apiUrl = PUBLIC_API_URL;
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 // After (SvelteKit)
-import { PUBLIC_API_URL } from "$env/static/public";
+import { PUBLIC_API_URL } from '$env/static/public';
 const apiUrl = PUBLIC_API_URL;
 ```
 
@@ -288,7 +285,7 @@ const apiUrl = PUBLIC_API_URL;
 const apiUrl = process.env.REACT_APP_API_URL;
 
 // After (SvelteKit)
-import { PUBLIC_API_URL } from "$env/static/public";
+import { PUBLIC_API_URL } from '$env/static/public';
 const apiUrl = PUBLIC_API_URL;
 ```
 
@@ -310,13 +307,13 @@ const apiUrl = PUBLIC_API_URL;
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 // ✅ Client-side (public) - Use this 99% of the time
-import { PUBLIC_VAR_NAME } from "$env/static/public";
+import { PUBLIC_VAR_NAME } from '$env/static/public';
 
 // ✅ Server-side (private) - Use for secrets
-import { SECRET_KEY } from "$env/static/private";
+import { SECRET_KEY } from '$env/static/private';
 
 // ⚠️ Dynamic (rarely needed) - Runtime lookups
-import { env } from "$env/dynamic/public";
+import { env } from '$env/dynamic/public';
 const val = env.PUBLIC_VAR_NAME;
 
 // ❌ Never use these in SvelteKit

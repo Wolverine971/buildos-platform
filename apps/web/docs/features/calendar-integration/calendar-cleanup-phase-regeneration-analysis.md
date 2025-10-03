@@ -50,9 +50,9 @@ syncCalendarEventsForUpdatedTasks() [CURRENT UPDATE LOGIC]
 
 - **`tasks`** - Core task data with scheduling info
 - **`task_calendar_events`** - Links tasks to Google Calendar events
-  - `calendar_event_id`: Google Calendar event ID
-  - `sync_status`: Current sync state
-  - `is_master_event`: For recurring events
+    - `calendar_event_id`: Google Calendar event ID
+    - `sync_status`: Current sync state
+    - `is_master_event`: For recurring events
 - **`phase_tasks`** - Junction table linking tasks to phases
 - **`phases`** - Phase definitions with project relationship
 
@@ -76,20 +76,20 @@ Add cleanup directly in the scheduling strategy before regeneration:
 
 ```typescript
 class ScheduleInPhasesStrategy extends BaseStrategy {
-  async execute(): Promise<PhaseGenerationResult> {
-    // NEW: Clear calendar events if configured
-    if (this.config.calendarHandling === "clear_and_reschedule") {
-      await this.clearExistingCalendarEvents();
-    }
+	async execute(): Promise<PhaseGenerationResult> {
+		// NEW: Clear calendar events if configured
+		if (this.config.calendarHandling === 'clear_and_reschedule') {
+			await this.clearExistingCalendarEvents();
+		}
 
-    // Continue with existing logic
-    const assignments = await this.assignTasksToPhases();
-    // ...
-  }
+		// Continue with existing logic
+		const assignments = await this.assignTasksToPhases();
+		// ...
+	}
 
-  private async clearExistingCalendarEvents(): Promise<void> {
-    // Implementation details below
-  }
+	private async clearExistingCalendarEvents(): Promise<void> {
+		// Implementation details below
+	}
 }
 ```
 
@@ -101,13 +101,13 @@ Add as preprocessing step in the orchestrator:
 
 ```typescript
 class PhaseGenerationOrchestrator {
-  async generatePhases(): Promise<PhaseGenerationResult> {
-    // NEW: Optional calendar cleanup
-    if (this.config.clearCalendarBeforeRegeneration) {
-      await this.preprocessCalendarCleanup();
-    }
-    // ...
-  }
+	async generatePhases(): Promise<PhaseGenerationResult> {
+		// NEW: Optional calendar cleanup
+		if (this.config.clearCalendarBeforeRegeneration) {
+			await this.preprocessCalendarCleanup();
+		}
+		// ...
+	}
 }
 ```
 
@@ -121,16 +121,16 @@ class PhaseGenerationOrchestrator {
 
 ```typescript
 export interface PhaseGenerationConfig {
-  // Existing fields...
-  projectId: string;
-  userId: string;
-  schedulingMethod: SchedulingMethod;
-  selectedStatuses: TaskStatus[];
+	// Existing fields...
+	projectId: string;
+	userId: string;
+	schedulingMethod: SchedulingMethod;
+	selectedStatuses: TaskStatus[];
 
-  // NEW: Calendar handling configuration
-  calendarHandling: "update" | "clear_and_reschedule" | "preserve";
-  preserveRecurringEvents?: boolean;
-  calendarCleanupBatchSize?: number;
+	// NEW: Calendar handling configuration
+	calendarHandling: 'update' | 'clear_and_reschedule' | 'preserve';
+	preserveRecurringEvents?: boolean;
+	calendarCleanupBatchSize?: number;
 }
 ```
 
@@ -267,49 +267,49 @@ Add calendar handling options:
 
 ```svelte
 <script lang="ts">
-    let calendarHandling = 'update'; // Default to current behavior
-    let showCalendarWarning = false;
+	let calendarHandling = 'update'; // Default to current behavior
+	let showCalendarWarning = false;
 
-    $: if (calendarHandling === 'clear_and_reschedule') {
-        showCalendarWarning = true;
-    }
+	$: if (calendarHandling === 'clear_and_reschedule') {
+		showCalendarWarning = true;
+	}
 </script>
 
 <!-- Add to the modal form -->
 <div class="space-y-4">
-    <div>
-        <label class="text-sm font-medium text-gray-700">Calendar Event Handling</label>
-        <select bind:value={calendarHandling} class="mt-1 block w-full rounded-md border-gray-300">
-            <option value="update">Update existing events (current behavior)</option>
-            <option value="clear_and_reschedule">Clear and recreate all events</option>
-            <option value="preserve">Don't modify calendar events</option>
-        </select>
-    </div>
+	<div>
+		<label class="text-sm font-medium text-gray-700">Calendar Event Handling</label>
+		<select bind:value={calendarHandling} class="mt-1 block w-full rounded-md border-gray-300">
+			<option value="update">Update existing events (current behavior)</option>
+			<option value="clear_and_reschedule">Clear and recreate all events</option>
+			<option value="preserve">Don't modify calendar events</option>
+		</select>
+	</div>
 
-    {#if showCalendarWarning}
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <ExclamationTriangleIcon class="h-5 w-5 text-yellow-400" />
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700">
-                        This will delete {calendarEventCount} existing calendar events and create new ones.
-                        This action cannot be undone.
-                    </p>
-                </div>
-            </div>
-        </div>
-    {/if}
+	{#if showCalendarWarning}
+		<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<ExclamationTriangleIcon class="h-5 w-5 text-yellow-400" />
+				</div>
+				<div class="ml-3">
+					<p class="text-sm text-yellow-700">
+						This will delete {calendarEventCount} existing calendar events and create new
+						ones. This action cannot be undone.
+					</p>
+				</div>
+			</div>
+		</div>
+	{/if}
 
-    {#if calendarHandling === 'clear_and_reschedule'}
-        <div class="pl-4">
-            <label class="flex items-center">
-                <input type="checkbox" bind:checked={preserveRecurringEvents} class="mr-2" />
-                <span class="text-sm text-gray-600">Preserve recurring event series</span>
-            </label>
-        </div>
-    {/if}
+	{#if calendarHandling === 'clear_and_reschedule'}
+		<div class="pl-4">
+			<label class="flex items-center">
+				<input type="checkbox" bind:checked={preserveRecurringEvents} class="mr-2" />
+				<span class="text-sm text-gray-600">Preserve recurring event series</span>
+			</label>
+		</div>
+	{/if}
 </div>
 ```
 
@@ -321,16 +321,16 @@ Pass calendar handling config to orchestrator:
 
 ```typescript
 const config: PhaseGenerationConfig = {
-  // Existing config...
-  projectId: project.id,
-  userId: user.id,
-  schedulingMethod: body.scheduling_method,
-  selectedStatuses: body.selected_statuses,
+	// Existing config...
+	projectId: project.id,
+	userId: user.id,
+	schedulingMethod: body.scheduling_method,
+	selectedStatuses: body.selected_statuses,
 
-  // NEW: Calendar handling
-  calendarHandling: body.calendar_handling || "update",
-  preserveRecurringEvents: body.preserve_recurring_events,
-  calendarCleanupBatchSize: 5,
+	// NEW: Calendar handling
+	calendarHandling: body.calendar_handling || 'update',
+	preserveRecurringEvents: body.preserve_recurring_events,
+	calendarCleanupBatchSize: 5
 };
 ```
 
@@ -341,38 +341,38 @@ const config: PhaseGenerationConfig = {
 **File:** `/apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.test.ts`
 
 ```typescript
-describe("ScheduleInPhasesStrategy - Calendar Cleanup", () => {
-  it("should clear calendar events when configured", async () => {
-    // Mock setup
-    const mockCalendarEvents = [
-      { id: "1", calendar_event_id: "gcal_1", task_id: "task_1" },
-      { id: "2", calendar_event_id: "gcal_2", task_id: "task_2" },
-    ];
+describe('ScheduleInPhasesStrategy - Calendar Cleanup', () => {
+	it('should clear calendar events when configured', async () => {
+		// Mock setup
+		const mockCalendarEvents = [
+			{ id: '1', calendar_event_id: 'gcal_1', task_id: 'task_1' },
+			{ id: '2', calendar_event_id: 'gcal_2', task_id: 'task_2' }
+		];
 
-    // Configure for cleanup
-    const config = {
-      calendarHandling: "clear_and_reschedule",
-      // ... other config
-    };
+		// Configure for cleanup
+		const config = {
+			calendarHandling: 'clear_and_reschedule'
+			// ... other config
+		};
 
-    // Execute strategy
-    const result = await strategy.execute();
+		// Execute strategy
+		const result = await strategy.execute();
 
-    // Verify cleanup was called
-    expect(mockCalendarService.bulkDeleteCalendarEvents).toHaveBeenCalledWith(
-      userId,
-      expect.arrayContaining(mockCalendarEvents),
-      expect.objectContaining({ reason: "phase_regeneration_cleanup" }),
-    );
-  });
+		// Verify cleanup was called
+		expect(mockCalendarService.bulkDeleteCalendarEvents).toHaveBeenCalledWith(
+			userId,
+			expect.arrayContaining(mockCalendarEvents),
+			expect.objectContaining({ reason: 'phase_regeneration_cleanup' })
+		);
+	});
 
-  it("should preserve recurring events when configured", async () => {
-    // Test recurring event preservation logic
-  });
+	it('should preserve recurring events when configured', async () => {
+		// Test recurring event preservation logic
+	});
 
-  it("should handle cleanup failures gracefully", async () => {
-    // Test error handling
-  });
+	it('should handle cleanup failures gracefully', async () => {
+		// Test error handling
+	});
 });
 ```
 
@@ -391,26 +391,26 @@ Test with real calendar integration:
 ### High Risk Areas
 
 1. **Data Loss:** Calendar events permanently deleted
-   - **Mitigation:** Add confirmation dialog, log deleted event IDs
+    - **Mitigation:** Add confirmation dialog, log deleted event IDs
 
 2. **Recurring Events:** Complex deletion scenarios
-   - **Mitigation:** Special handling for recurring series
+    - **Mitigation:** Special handling for recurring series
 
 3. **Performance:** Large number of events
-   - **Mitigation:** Batch processing, progress indicators
+    - **Mitigation:** Batch processing, progress indicators
 
 ### Medium Risk Areas
 
 1. **Partial Failures:** Some events delete, others fail
-   - **Mitigation:** Comprehensive error handling, continue on failure
+    - **Mitigation:** Comprehensive error handling, continue on failure
 
 2. **User Confusion:** Unexpected calendar changes
-   - **Mitigation:** Clear UI warnings, preview of changes
+    - **Mitigation:** Clear UI warnings, preview of changes
 
 ### Low Risk Areas
 
 1. **API Rate Limits:** Too many calendar API calls
-   - **Mitigation:** Already handled by batch processing
+    - **Mitigation:** Already handled by batch processing
 
 ## Rollback Plan
 
@@ -423,18 +423,18 @@ If issues occur after deployment:
 ## Success Metrics
 
 1. **Functional:**
-   - ✅ Calendar events properly cleaned before regeneration
-   - ✅ New events created with correct dates
-   - ✅ No duplicate events in calendar
+    - ✅ Calendar events properly cleaned before regeneration
+    - ✅ New events created with correct dates
+    - ✅ No duplicate events in calendar
 
 2. **Performance:**
-   - Cleanup completes in < 5 seconds for 100 events
-   - Batch processing prevents API timeouts
+    - Cleanup completes in < 5 seconds for 100 events
+    - Batch processing prevents API timeouts
 
 3. **User Experience:**
-   - Clear indication of calendar impact
-   - Option to preserve or clear events
-   - No unexpected calendar changes
+    - Clear indication of calendar impact
+    - Option to preserve or clear events
+    - No unexpected calendar changes
 
 ## Implementation Timeline
 

@@ -26,17 +26,17 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Documentation Structure
 
-| Folder           | Contents                           | Key Documents                                      |
-| ---------------- | ---------------------------------- | -------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding    |
-| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards  |
-| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking       |
-| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring                |
-| `/migrations/`   | Migration tracking                 | active migrations only                             |
-| `/integrations/` | Third-party services               | Google Calendar integration docs                   |
-| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                  |
-| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment  |
-| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews               |
+| Folder           | Contents                           | Key Documents                                     |
+| ---------------- | ---------------------------------- | ------------------------------------------------- |
+| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding   |
+| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards |
+| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking      |
+| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring               |
+| `/migrations/`   | Migration tracking                 | active migrations only                            |
+| `/integrations/` | Third-party services               | Google Calendar integration docs                  |
+| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                 |
+| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment |
+| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews              |
 
 **Note:** Some documentation exists in both top-level folders (like `/features/`) and in `/technical/` for historical reasons. Prefer using `/technical/` for comprehensive technical documentation.
 
@@ -68,10 +68,12 @@ This is **web app-specific** documentation (`/apps/web`).
 ## Key Features
 
 ### Brain Dump System
+
 **Location:** `/features/brain-dump/`  
 **Architecture:** `/technical/architecture/brain-dump-flow.md`
 
 Stream-of-consciousness input that AI processes into projects and tasks. Supports:
+
 - Text and voice input
 - Dual processing for complex brain dumps
 - Short processing for quick updates
@@ -79,10 +81,12 @@ Stream-of-consciousness input that AI processes into projects and tasks. Support
 - Phase generation with intelligent scheduling
 
 ### Calendar Integration
+
 **Location:** `/features/calendar-integration/`  
 **Architecture:** `/technical/architecture/calendar-sync.md`
 
 Google Calendar sync with bidirectional updates:
+
 - OAuth integration
 - Event sync
 - Webhook notifications
@@ -90,20 +94,24 @@ Google Calendar sync with bidirectional updates:
 - Task scheduling based on calendar availability
 
 ### Notification System
+
 **Location:** `/features/notifications/`  
 **Implementation:** `NOTIFICATION_SYSTEM_IMPLEMENTATION.md`
 
 Stackable notification system for long-running processes:
+
 - Minimized view
 - Modal view
 - Background processing
 - Multiple concurrent notifications
 
 ### Project Management
+
 **Location:** `/features/` (various project-related docs)  
 **API:** `/technical/api/endpoints/projects.md`
 
 Project and task organization:
+
 - Project creation and management
 - Task lists with priorities
 - Phase-based organization
@@ -137,6 +145,7 @@ cd .. && pnpm build --filter=web  # Build from monorepo root
 See [Deployment Environment Checklist](/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) for complete list.
 
 **Essential variables:**
+
 ```bash
 PUBLIC_SUPABASE_URL=
 PUBLIC_SUPABASE_ANON_KEY=
@@ -157,6 +166,7 @@ See `/operations/deployment/` for complete deployment guides:
 ## Migrations
 
 ### Active Migrations
+
 See `/migrations/active/` for ongoing migration work:
 
 - Phase 2 brain dump migration

@@ -12,19 +12,19 @@ When a user first connects their Google Calendar (via `/profile?tab=calendar`):
 
 1. **OAuth Connection** completes successfully
 2. **Calendar Analysis Modal** appears automatically:
-   ```
-   Title: "Analyze Your Calendar?"
-   Message: "Would you like BuildOS to analyze your calendar and suggest projects based on your events?"
-   Subtext: "We'll look for patterns in your meetings and events to identify potential projects."
-   Actions: [Skip for Now] [Analyze Calendar]
-   ```
+    ```
+    Title: "Analyze Your Calendar?"
+    Message: "Would you like BuildOS to analyze your calendar and suggest projects based on your events?"
+    Subtext: "We'll look for patterns in your meetings and events to identify potential projects."
+    Actions: [Skip for Now] [Analyze Calendar]
+    ```
 3. If **"Analyze Calendar"** is selected:
-   - Show loading state: "Analyzing your calendar events..."
-   - Process events in background
-   - Present approval UI when complete
+    - Show loading state: "Analyzing your calendar events..."
+    - Process events in background
+    - Present approval UI when complete
 4. If **"Skip for Now"** is selected:
-   - Close modal
-   - Show "Analyze Calendar" button in CalendarTab
+    - Close modal
+    - Show "Analyze Calendar" button in CalendarTab
 
 ### 2. Manual Trigger from Profile
 
@@ -168,79 +168,77 @@ CREATE POLICY suggestions_user_policy ON calendar_project_suggestions
 Create `/apps/web/src/lib/services/calendar-analysis.service.ts`:
 
 ```typescript
-import { CalendarService } from "./calendar-service";
+import { CalendarService } from './calendar-service';
 
-import { OperationsParser } from "$lib/utils/operations/operations-parser";
+import { OperationsParser } from '$lib/utils/operations/operations-parser';
 
 export class CalendarAnalysisService extends ApiService {
-  private static instance: CalendarAnalysisService;
+	private static instance: CalendarAnalysisService;
 
-  public static getInstance(): CalendarAnalysisService {
-    if (!this.instance) {
-      this.instance = new CalendarAnalysisService();
-    }
-    return this.instance;
-  }
+	public static getInstance(): CalendarAnalysisService {
+		if (!this.instance) {
+			this.instance = new CalendarAnalysisService();
+		}
+		return this.instance;
+	}
 
-  async analyzeUserCalendar(
-    userId: string,
-    options: {
-      daysBack?: number;
-      daysForward?: number;
-      calendarsToAnalyze?: string[];
-    } = {},
-  ): Promise<AnalysisResult> {
-    const { daysBack = 30, daysForward = 60 } = options;
+	async analyzeUserCalendar(
+		userId: string,
+		options: {
+			daysBack?: number;
+			daysForward?: number;
+			calendarsToAnalyze?: string[];
+		} = {}
+	): Promise<AnalysisResult> {
+		const { daysBack = 30, daysForward = 60 } = options;
 
-    // Create analysis record
-    const analysis = await this.createAnalysisRecord(userId, {
-      date_range_start: dayjs().subtract(daysBack, "days").toDate(),
-      date_range_end: dayjs().add(daysForward, "days").toDate(),
-    });
+		// Create analysis record
+		const analysis = await this.createAnalysisRecord(userId, {
+			date_range_start: dayjs().subtract(daysBack, 'days').toDate(),
+			date_range_end: dayjs().add(daysForward, 'days').toDate()
+		});
 
-    try {
-      // Fetch calendar events
-      const calendarService = CalendarService.getInstance();
-      const events = await calendarService.getCalendarEvents(userId, {
-        timeMin: dayjs().subtract(daysBack, "days").toISOString(),
-        timeMax: dayjs().add(daysForward, "days").toISOString(),
-        maxResults: 500,
-      });
+		try {
+			// Fetch calendar events
+			const calendarService = CalendarService.getInstance();
+			const events = await calendarService.getCalendarEvents(userId, {
+				timeMin: dayjs().subtract(daysBack, 'days').toISOString(),
+				timeMax: dayjs().add(daysForward, 'days').toISOString(),
+				maxResults: 500
+			});
 
-      // Filter out declined events and all-day personal events
-      const relevantEvents = this.filterRelevantEvents(events);
+			// Filter out declined events and all-day personal events
+			const relevantEvents = this.filterRelevantEvents(events);
 
-      // Send to LLM for analysis
-      const suggestions = await this.analyzeEventsWithAI(relevantEvents);
+			// Send to LLM for analysis
+			const suggestions = await this.analyzeEventsWithAI(relevantEvents);
 
-      // Store suggestions in database
-      await this.storeSuggestions(analysis.id, suggestions);
+			// Store suggestions in database
+			await this.storeSuggestions(analysis.id, suggestions);
 
-      // Update analysis record
-      await this.updateAnalysisRecord(analysis.id, {
-        status: "completed",
-        events_analyzed: relevantEvents.length,
-        projects_suggested: suggestions.length,
-        completed_at: new Date(),
-      });
+			// Update analysis record
+			await this.updateAnalysisRecord(analysis.id, {
+				status: 'completed',
+				events_analyzed: relevantEvents.length,
+				projects_suggested: suggestions.length,
+				completed_at: new Date()
+			});
 
-      return {
-        analysisId: analysis.id,
-        suggestions,
-        eventsAnalyzed: relevantEvents.length,
-      };
-    } catch (error) {
-      await this.updateAnalysisRecord(analysis.id, { status: "failed" });
-      throw error;
-    }
-  }
+			return {
+				analysisId: analysis.id,
+				suggestions,
+				eventsAnalyzed: relevantEvents.length
+			};
+		} catch (error) {
+			await this.updateAnalysisRecord(analysis.id, { status: 'failed' });
+			throw error;
+		}
+	}
 
-  private async analyzeEventsWithAI(
-    events: CalendarEvent[],
-  ): Promise<ProjectSuggestion[]> {
-    const llmService = SmartLLMService.getInstance();
+	private async analyzeEventsWithAI(events: CalendarEvent[]): Promise<ProjectSuggestion[]> {
+		const llmService = SmartLLMService.getInstance();
 
-    const prompt = `
+		const prompt = `
     Analyze these calendar events and identify potential projects for a BuildOS user.
 
     BuildOS is designed for ADHD minds, helping transform scattered thoughts into organized projects.
@@ -270,98 +268,93 @@ export class CalendarAnalysisService extends ApiService {
 
     Calendar Events:
     ${JSON.stringify(
-      events.map((e) => ({
-        id: e.id,
-        title: e.summary,
-        description: e.description,
-        start: e.start,
-        end: e.end,
-        attendees: e.attendees?.map((a) => a.email),
-        organizer: e.organizer?.email,
-        recurring: !!e.recurringEventId,
-        status: e.status,
-      })),
-      null,
-      2,
-    )}
+		events.map((e) => ({
+			id: e.id,
+			title: e.summary,
+			description: e.description,
+			start: e.start,
+			end: e.end,
+			attendees: e.attendees?.map((a) => a.email),
+			organizer: e.organizer?.email,
+			recurring: !!e.recurringEventId,
+			status: e.status
+		})),
+		null,
+		2
+	)}
 
     Return as JSON array of project suggestions. Only suggest projects with confidence >= 0.6.
     `;
 
-    const response = await llmService.createChatCompletion(
-      [{ role: "user", content: prompt }],
-      {
-        response_format: { type: "json_object" },
-        max_tokens: 4000,
-      },
-    );
+		const response = await llmService.createChatCompletion(
+			[{ role: 'user', content: prompt }],
+			{
+				response_format: { type: 'json_object' },
+				max_tokens: 4000
+			}
+		);
 
-    const result = JSON.parse(response.content);
-    return result.suggestions || [];
-  }
+		const result = JSON.parse(response.content);
+		return result.suggestions || [];
+	}
 
-  async acceptSuggestion(
-    suggestionId: string,
-    userId: string,
-    modifications?: {
-      name?: string;
-      description?: string;
-      includeTasks?: boolean;
-    },
-  ): Promise<Project> {
-    const suggestion = await this.getSuggestion(suggestionId, userId);
+	async acceptSuggestion(
+		suggestionId: string,
+		userId: string,
+		modifications?: {
+			name?: string;
+			description?: string;
+			includeTasks?: boolean;
+		}
+	): Promise<Project> {
+		const suggestion = await this.getSuggestion(suggestionId, userId);
 
-    // Generate operations using existing pattern
-    const operations = [
-      {
-        type: "create" as const,
-        entity: "projects" as const,
-        data: {
-          name: modifications?.name || suggestion.suggested_name,
-          description:
-            modifications?.description || suggestion.suggested_description,
-          context: suggestion.suggested_context,
-          source: "calendar_analysis",
-          source_metadata: {
-            analysis_id: suggestion.analysis_id,
-            suggestion_id: suggestion.id,
-            event_ids: suggestion.calendar_event_ids,
-            confidence: suggestion.confidence_score,
-          },
-        },
-      },
-    ];
+		// Generate operations using existing pattern
+		const operations = [
+			{
+				type: 'create' as const,
+				entity: 'projects' as const,
+				data: {
+					name: modifications?.name || suggestion.suggested_name,
+					description: modifications?.description || suggestion.suggested_description,
+					context: suggestion.suggested_context,
+					source: 'calendar_analysis',
+					source_metadata: {
+						analysis_id: suggestion.analysis_id,
+						suggestion_id: suggestion.id,
+						event_ids: suggestion.calendar_event_ids,
+						confidence: suggestion.confidence_score
+					}
+				}
+			}
+		];
 
-    // Add task operations if requested
-    if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
-      operations.push(
-        ...suggestion.suggested_tasks.map((task: any) => ({
-          type: "create" as const,
-          entity: "tasks" as const,
-          data: {
-            title: task.title,
-            description: task.description,
-            project_ref: 0, // Reference to the project created above
-            source: "calendar_event",
-            source_calendar_event_id: task.event_id,
-          },
-        })),
-      );
-    }
+		// Add task operations if requested
+		if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
+			operations.push(
+				...suggestion.suggested_tasks.map((task: any) => ({
+					type: 'create' as const,
+					entity: 'tasks' as const,
+					data: {
+						title: task.title,
+						description: task.description,
+						project_ref: 0, // Reference to the project created above
+						source: 'calendar_event',
+						source_calendar_event_id: task.event_id
+					}
+				}))
+			);
+		}
 
-    // Execute operations using existing executor
-    const executor = new OperationsExecutor(supabase, userId);
-    const results = await executor.executeOperations(operations);
+		// Execute operations using existing executor
+		const executor = new OperationsExecutor(supabase, userId);
+		const results = await executor.executeOperations(operations);
 
-    // Update suggestion status
-    await this.updateSuggestionStatus(
-      suggestionId,
-      "accepted",
-      results.projects[0]?.id,
-    );
+		// Update suggestion status
+		await this.updateSuggestionStatus(suggestionId, 'accepted', results.projects[0]?.id);
 
-    return results.projects[0];
-  }
+		return results.projects[0];
+	}
 }
 ```
 
@@ -370,34 +363,34 @@ export class CalendarAnalysisService extends ApiService {
 Create `/apps/web/src/routes/api/calendar/analyze/+server.ts`:
 
 ```typescript
-import { json } from "@sveltejs/kit";
-import { CalendarAnalysisService } from "$lib/services/calendar-analysis.service";
+import { json } from '@sveltejs/kit';
+import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 
 export async function POST({ request, locals }) {
-  const session = await locals.auth();
-  if (!session?.user) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+	const session = await locals.auth();
+	if (!session?.user) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
-  const { daysBack, daysForward } = await request.json();
+	const { daysBack, daysForward } = await request.json();
 
-  try {
-    const service = CalendarAnalysisService.getInstance();
-    const result = await service.analyzeUserCalendar(session.user.id, {
-      daysBack,
-      daysForward,
-    });
+	try {
+		const service = CalendarAnalysisService.getInstance();
+		const result = await service.analyzeUserCalendar(session.user.id, {
+			daysBack,
+			daysForward
+		});
 
-    return json({ success: true, ...result });
-  } catch (error) {
-    return json(
-      {
-        success: false,
-        error: error.message,
-      },
-      { status: 500 },
-    );
-  }
+		return json({ success: true, ...result });
+	} catch (error) {
+		return json(
+			{
+				success: false,
+				error: error.message
+			},
+			{ status: 500 }
+		);
+	}
 }
 ```
 
@@ -409,68 +402,68 @@ Create `/apps/web/src/lib/components/calendar/CalendarAnalysisModal.svelte`:
 
 ```svelte
 <script lang="ts">
-  import { ConfirmationModal } from '$lib/components/ui/ConfirmationModal.svelte';
-  import { modalStore } from '$lib/stores/modal.store';
-  import { goto } from '$app/navigation';
+	import { ConfirmationModal } from '$lib/components/ui/ConfirmationModal.svelte';
+	import { modalStore } from '$lib/stores/modal.store';
+	import { goto } from '$app/navigation';
 
-  let { isOpen = $bindable(false), onFirstConnection = false } = $props();
+	let { isOpen = $bindable(false), onFirstConnection = false } = $props();
 
-  async function handleAnalyze() {
-    // Store flag that analysis was requested
-    localStorage.setItem('calendar_analysis_requested', 'true');
+	async function handleAnalyze() {
+		// Store flag that analysis was requested
+		localStorage.setItem('calendar_analysis_requested', 'true');
 
-    // Navigate to analysis view
-    if (onFirstConnection) {
-      goto('/profile?tab=calendar&analyze=true');
-    } else {
-      modalStore.open('calendarAnalysis');
-    }
+		// Navigate to analysis view
+		if (onFirstConnection) {
+			goto('/profile?tab=calendar&analyze=true');
+		} else {
+			modalStore.open('calendarAnalysis');
+		}
 
-    isOpen = false;
-  }
+		isOpen = false;
+	}
 
-  function handleSkip() {
-    localStorage.setItem('calendar_analysis_skipped', 'true');
-    isOpen = false;
-  }
+	function handleSkip() {
+		localStorage.setItem('calendar_analysis_skipped', 'true');
+		isOpen = false;
+	}
 </script>
 
 <ConfirmationModal
-  {isOpen}
-  title={onFirstConnection ? "Welcome to Calendar Intelligence!" : "Analyze Your Calendar?"}
-  confirmText="Analyze Calendar"
-  cancelText="Skip for Now"
-  icon="info"
-  on:confirm={handleAnalyze}
-  on:cancel={handleSkip}
+	{isOpen}
+	title={onFirstConnection ? 'Welcome to Calendar Intelligence!' : 'Analyze Your Calendar?'}
+	confirmText="Analyze Calendar"
+	cancelText="Skip for Now"
+	icon="info"
+	on:confirm={handleAnalyze}
+	on:cancel={handleSkip}
 >
-  <div slot="content" class="space-y-4">
-    <p class="text-gray-600">
-      BuildOS can analyze your calendar to identify projects from your meetings and events.
-    </p>
+	<div slot="content" class="space-y-4">
+		<p class="text-gray-600">
+			BuildOS can analyze your calendar to identify projects from your meetings and events.
+		</p>
 
-    <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4">
-      <h4 class="font-medium text-gray-900 mb-2">What we'll look for:</h4>
-      <ul class="space-y-1 text-sm text-gray-600">
-        <li class="flex items-start gap-2">
-          <span class="text-purple-500 mt-1">•</span>
-          <span>Recurring meetings that might be ongoing projects</span>
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-purple-500 mt-1">•</span>
-          <span>Related events like sprints, reviews, and milestones</span>
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-purple-500 mt-1">•</span>
-          <span>Meeting patterns that suggest project work</span>
-        </li>
-      </ul>
-    </div>
+		<div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4">
+			<h4 class="font-medium text-gray-900 mb-2">What we'll look for:</h4>
+			<ul class="space-y-1 text-sm text-gray-600">
+				<li class="flex items-start gap-2">
+					<span class="text-purple-500 mt-1">•</span>
+					<span>Recurring meetings that might be ongoing projects</span>
+				</li>
+				<li class="flex items-start gap-2">
+					<span class="text-purple-500 mt-1">•</span>
+					<span>Related events like sprints, reviews, and milestones</span>
+				</li>
+				<li class="flex items-start gap-2">
+					<span class="text-purple-500 mt-1">•</span>
+					<span>Meeting patterns that suggest project work</span>
+				</li>
+			</ul>
+		</div>
 
-    <p class="text-sm text-gray-500">
-      You'll be able to review and approve any suggestions before creating projects.
-    </p>
-  </div>
+		<p class="text-sm text-gray-500">
+			You'll be able to review and approve any suggestions before creating projects.
+		</p>
+	</div>
 </ConfirmationModal>
 ```
 
@@ -762,69 +755,69 @@ Modify `/apps/web/src/lib/components/profile/CalendarTab.svelte`:
 ```svelte
 <!-- Add after connection status section -->
 {#if calendarConnected}
-  <div class="mt-6 border-t pt-6">
-    <h3 class="text-lg font-semibold mb-3">Calendar Intelligence</h3>
+	<div class="mt-6 border-t pt-6">
+		<h3 class="text-lg font-semibold mb-3">Calendar Intelligence</h3>
 
-    <!-- Analysis Button -->
-    <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4">
-      <div class="flex items-start justify-between">
-        <div>
-          <h4 class="font-medium text-gray-900">Analyze Your Calendar</h4>
-          <p class="text-sm text-gray-600 mt-1">
-            Let BuildOS find projects in your calendar events
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          on:click={startCalendarAnalysis}
-          disabled={analysisInProgress}
-          loading={analysisInProgress}
-        >
-          {analysisInProgress ? 'Analyzing...' : 'Analyze Calendar'}
-        </Button>
-      </div>
+		<!-- Analysis Button -->
+		<div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4">
+			<div class="flex items-start justify-between">
+				<div>
+					<h4 class="font-medium text-gray-900">Analyze Your Calendar</h4>
+					<p class="text-sm text-gray-600 mt-1">
+						Let BuildOS find projects in your calendar events
+					</p>
+				</div>
+				<Button
+					variant="primary"
+					size="sm"
+					on:click={startCalendarAnalysis}
+					disabled={analysisInProgress}
+					loading={analysisInProgress}
+				>
+					{analysisInProgress ? 'Analyzing...' : 'Analyze Calendar'}
+				</Button>
+			</div>
 
-      <!-- Last Analysis Info -->
-      {#if lastAnalysis}
-        <div class="mt-3 text-sm text-gray-500">
-          Last analyzed: {formatRelativeTime(lastAnalysis.completed_at)}
-          • {lastAnalysis.projects_created} projects created
-        </div>
-      {/if}
-    </div>
+			<!-- Last Analysis Info -->
+			{#if lastAnalysis}
+				<div class="mt-3 text-sm text-gray-500">
+					Last analyzed: {formatRelativeTime(lastAnalysis.completed_at)}
+					• {lastAnalysis.projects_created} projects created
+				</div>
+			{/if}
+		</div>
 
-    <!-- Analysis History -->
-    {#if calendarProjects.length > 0}
-      <div class="mt-6">
-        <h4 class="font-medium text-gray-900 mb-3">
-          Projects from Calendar ({calendarProjects.length})
-        </h4>
-        <div class="space-y-2">
-          {#each calendarProjects as project}
-            <a
-              href="/projects/{project.id}"
-              class="block p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow"
-            >
-              <div class="flex items-center justify-between">
-                <div>
-                  <h5 class="font-medium text-gray-900">{project.name}</h5>
-                  <p class="text-sm text-gray-500">
-                    Created {formatRelativeTime(project.created_at)}
-                    • {project.task_count} tasks
-                  </p>
-                </div>
-                <Badge variant="secondary">
-                  <Calendar class="w-3 h-3 mr-1" />
-                  From Calendar
-                </Badge>
-              </div>
-            </a>
-          {/each}
-        </div>
-      </div>
-    {/if}
-  </div>
+		<!-- Analysis History -->
+		{#if calendarProjects.length > 0}
+			<div class="mt-6">
+				<h4 class="font-medium text-gray-900 mb-3">
+					Projects from Calendar ({calendarProjects.length})
+				</h4>
+				<div class="space-y-2">
+					{#each calendarProjects as project}
+						<a
+							href="/projects/{project.id}"
+							class="block p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow"
+						>
+							<div class="flex items-center justify-between">
+								<div>
+									<h5 class="font-medium text-gray-900">{project.name}</h5>
+									<p class="text-sm text-gray-500">
+										Created {formatRelativeTime(project.created_at)}
+										• {project.task_count} tasks
+									</p>
+								</div>
+								<Badge variant="secondary">
+									<Calendar class="w-3 h-3 mr-1" />
+									From Calendar
+								</Badge>
+							</div>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
 {/if}
 ```
 
@@ -837,11 +830,11 @@ Update `/apps/web/src/routes/auth/google/calendar-callback/+page.server.ts`:
 ```typescript
 // After successful OAuth connection
 if (success && isFirstConnection) {
-  // Set flag to show analysis modal
-  await supabase.from("user_preferences").upsert({
-    user_id: user.id,
-    show_calendar_analysis_modal: true,
-  });
+	// Set flag to show analysis modal
+	await supabase.from('user_preferences').upsert({
+		user_id: user.id,
+		show_calendar_analysis_modal: true
+	});
 }
 ```
 
@@ -852,11 +845,11 @@ Update `/apps/web/src/routes/profile/+page.svelte`:
 ```svelte
 <!-- Add modal for first-time connection -->
 {#if showCalendarAnalysisModal}
-  <CalendarAnalysisModal
-    isOpen={true}
-    onFirstConnection={true}
-    on:close={() => showCalendarAnalysisModal = false}
-  />
+	<CalendarAnalysisModal
+		isOpen={true}
+		onFirstConnection={true}
+		on:close={() => (showCalendarAnalysisModal = false)}
+	/>
 {/if}
 ```
 
@@ -915,18 +908,18 @@ Update `/apps/web/src/routes/profile/+page.svelte`:
 ### Week 1: Database & Backend (COMPLETED ✅)
 
 - ✅ **Database migration created**: `20250129_calendar_intelligence_integration.sql`
-  - Calendar analysis tables with RLS
-  - Project suggestions storage
-  - User preferences
+    - Calendar analysis tables with RLS
+    - Project suggestions storage
+    - User preferences
 - ✅ **Database types generated**: Updated via `pnpm gen:all`
 - ✅ **CalendarAnalysisService created**: Full service implementation
-  - AI-powered event analysis
-  - Project suggestion generation
-  - Preference management
+    - AI-powered event analysis
+    - Project suggestion generation
+    - Preference management
 - ✅ **API endpoints created**:
-  - `/api/calendar/analyze` - Main analysis endpoint
-  - `/api/calendar/analyze/suggestions` - Accept/reject suggestions
-  - `/api/calendar/analyze/preferences` - User preferences
+    - `/api/calendar/analyze` - Main analysis endpoint
+    - `/api/calendar/analyze/suggestions` - Accept/reject suggestions
+    - `/api/calendar/analyze/preferences` - User preferences
 
 ### Week 2: UI Components (In Progress)
 

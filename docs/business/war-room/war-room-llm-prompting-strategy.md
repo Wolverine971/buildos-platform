@@ -72,7 +72,7 @@ Project Status:
 - Completion: ${completionPercentage}%
 - Timeline: ${daysRemaining} days remaining
 - Team Size: ${teamSize}
-- Key Risks: ${topRisks.join(', ')}
+- Key Risks: ${topRisks.join(", ")}
 
 Scenario Parameters:
 - Intensity: ${intensity} // mild, moderate, severe
@@ -252,7 +252,7 @@ Original Project State:
 - Team capability: ${teamScore}/10
 
 Scenario Path Taken:
-${decisions.map((d) => `Stage ${d.stage}: ${d.choice}`).join('\n')}
+${decisions.map((d) => `Stage ${d.stage}: ${d.choice}`).join("\n")}
 
 Vulnerabilities Discovered: ${vulnerabilityCount}
 Mitigations Applied: ${mitigationCount}
@@ -283,13 +283,13 @@ Output:
 
 ```typescript
 const TOKEN_BUDGET = {
-	project_context: 10000, // Core project information
-	scenario_history: 30000, // All previous stages (compressed)
-	current_stage: 5000, // Current stage detail
-	ai_analysis: 10000, // Suggestions and insights
-	generation_prompt: 5000, // The actual prompt
-	response_buffer: 10000, // Expected response size
-	safety_margin: 30000 // Buffer for unexpected length
+  project_context: 10000, // Core project information
+  scenario_history: 30000, // All previous stages (compressed)
+  current_stage: 5000, // Current stage detail
+  ai_analysis: 10000, // Suggestions and insights
+  generation_prompt: 5000, // The actual prompt
+  response_buffer: 10000, // Expected response size
+  safety_margin: 30000, // Buffer for unexpected length
 };
 ```
 
@@ -297,16 +297,16 @@ const TOKEN_BUDGET = {
 
 ```typescript
 function compressStageContext(stage: Stage, ageInStages: number): string {
-	if (ageInStages <= 2) {
-		// Recent stages: full detail
-		return stage.fullContent;
-	} else if (ageInStages <= 5) {
-		// Mid-age stages: summary + decisions
-		return `Stage ${stage.number}: ${stage.decision} → ${stage.outcome}`;
-	} else {
-		// Old stages: just the decision
-		return `S${stage.number}: ${stage.decision}`;
-	}
+  if (ageInStages <= 2) {
+    // Recent stages: full detail
+    return stage.fullContent;
+  } else if (ageInStages <= 5) {
+    // Mid-age stages: summary + decisions
+    return `Stage ${stage.number}: ${stage.decision} → ${stage.outcome}`;
+  } else {
+    // Old stages: just the decision
+    return `S${stage.number}: ${stage.decision}`;
+  }
 }
 ```
 
@@ -314,27 +314,27 @@ function compressStageContext(stage: Stage, ageInStages: number): string {
 
 ```typescript
 class ScenarioContextManager {
-	maxTokens = 100000;
+  maxTokens = 100000;
 
-	buildContext(currentStage: number): string {
-		const context = [];
+  buildContext(currentStage: number): string {
+    const context = [];
 
-		// Always include
-		context.push(this.projectSummary()); // 2k tokens
-		context.push(this.scenarioSetup()); // 1k tokens
+    // Always include
+    context.push(this.projectSummary()); // 2k tokens
+    context.push(this.scenarioSetup()); // 1k tokens
 
-		// Include last 5 stages in detail
-		for (let i = Math.max(0, currentStage - 5); i < currentStage; i++) {
-			context.push(this.getStageDetail(i));
-		}
+    // Include last 5 stages in detail
+    for (let i = Math.max(0, currentStage - 5); i < currentStage; i++) {
+      context.push(this.getStageDetail(i));
+    }
 
-		// Include decision summary for all earlier stages
-		if (currentStage > 5) {
-			context.push(this.getDecisionChain(0, currentStage - 5));
-		}
+    // Include decision summary for all earlier stages
+    if (currentStage > 5) {
+      context.push(this.getDecisionChain(0, currentStage - 5));
+    }
 
-		return context.join('\n\n');
-	}
+    return context.join("\n\n");
+  }
 }
 ```
 
@@ -346,12 +346,17 @@ class ScenarioContextManager {
 
 ```typescript
 // Instead of sending full project context, extract relevant sections
-function extractRelevantContext(fullContext: string, keywords: string[]): string {
-	const sections = parseMarkdownSections(fullContext);
-	const relevantSections = sections.filter((section) =>
-		keywords.some((keyword) => section.toLowerCase().includes(keyword.toLowerCase()))
-	);
-	return relevantSections.join('\n\n');
+function extractRelevantContext(
+  fullContext: string,
+  keywords: string[],
+): string {
+  const sections = parseMarkdownSections(fullContext);
+  const relevantSections = sections.filter((section) =>
+    keywords.some((keyword) =>
+      section.toLowerCase().includes(keyword.toLowerCase()),
+    ),
+  );
+  return relevantSections.join("\n\n");
 }
 ```
 
@@ -392,22 +397,24 @@ Example of good scenario:
 
 ```typescript
 const FALLBACK_SCENARIOS = [
-	{
-		title: 'Competitive Pressure',
-		template: 'A competitor announces a similar product',
-		variables: ['timeline', 'features', 'pricing']
-	},
-	{
-		title: 'Resource Constraint',
-		template: 'Your budget gets cut by X%',
-		variables: ['percentage', 'timeline', 'scope']
-	}
+  {
+    title: "Competitive Pressure",
+    template: "A competitor announces a similar product",
+    variables: ["timeline", "features", "pricing"],
+  },
+  {
+    title: "Resource Constraint",
+    template: "Your budget gets cut by X%",
+    variables: ["percentage", "timeline", "scope"],
+  },
 ];
 
 // Use if generation fails
 function getFallbackScenario(projectType: string): Scenario {
-	const fallback = FALLBACK_SCENARIOS.find((s) => s.appliesTo.includes(projectType));
-	return customizeFallback(fallback, project);
+  const fallback = FALLBACK_SCENARIOS.find((s) =>
+    s.appliesTo.includes(projectType),
+  );
+  return customizeFallback(fallback, project);
 }
 ```
 
@@ -415,19 +422,19 @@ function getFallbackScenario(projectType: string): Scenario {
 
 ```typescript
 async function generateWithinLimit(prompt: string): Promise<any> {
-	const tokens = await countTokens(prompt);
+  const tokens = await countTokens(prompt);
 
-	if (tokens > 80000) {
-		// Compress aggressively
-		prompt = await compressPrompt(prompt, 60000);
-	}
+  if (tokens > 80000) {
+    // Compress aggressively
+    prompt = await compressPrompt(prompt, 60000);
+  }
 
-	if (tokens > 95000) {
-		// Emergency compression - summaries only
-		prompt = await emergencyCompress(prompt, 40000);
-	}
+  if (tokens > 95000) {
+    // Emergency compression - summaries only
+    prompt = await emergencyCompress(prompt, 40000);
+  }
 
-	return await callLLM(prompt);
+  return await callLLM(prompt);
 }
 ```
 
@@ -439,9 +446,9 @@ async function generateWithinLimit(prompt: string): Promise<any> {
 
 ```typescript
 const CACHE_KEYS = {
-	readiness: (projectId) => `readiness_${projectId}_${projectHash}`,
-	scenarios: (projectId, params) => `scenarios_${projectId}_${paramHash}`,
-	vulnerability: (stageId) => `vuln_${stageId}`
+  readiness: (projectId) => `readiness_${projectId}_${projectHash}`,
+  scenarios: (projectId, params) => `scenarios_${projectId}_${paramHash}`,
+  vulnerability: (stageId) => `vuln_${stageId}`,
 };
 
 // Cache readiness for 24 hours (project unlikely to change much)
@@ -453,15 +460,15 @@ const CACHE_KEYS = {
 
 ```typescript
 async function generateScenarioOptions(project: Project): Promise<Scenario[]> {
-	// Generate different scenario types in parallel
-	const promises = [
-		generateCompetitiveScenario(project),
-		generateResourceScenario(project),
-		generateTechnicalScenario(project),
-		generateMarketScenario(project)
-	];
+  // Generate different scenario types in parallel
+  const promises = [
+    generateCompetitiveScenario(project),
+    generateResourceScenario(project),
+    generateTechnicalScenario(project),
+    generateMarketScenario(project),
+  ];
 
-	const results = await Promise.allSettled(promises);
-	return results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  const results = await Promise.allSettled(promises);
+  return results.filter((r) => r.status === "fulfilled").map((r) => r.value);
 }
 ```

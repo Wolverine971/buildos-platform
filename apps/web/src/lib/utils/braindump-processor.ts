@@ -239,7 +239,10 @@ export class BrainDumpProcessor {
 
 			if (!analysisResult.braindump_classification) {
 				console.warn('[PrepAnalysis] Missing braindump_classification field');
-				console.warn('[PrepAnalysis] Received result:', JSON.stringify(analysisResult, null, 2));
+				console.warn(
+					'[PrepAnalysis] Received result:',
+					JSON.stringify(analysisResult, null, 2)
+				);
 				return null;
 			}
 

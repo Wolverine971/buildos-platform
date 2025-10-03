@@ -14,9 +14,9 @@ Investigation of the calendar analysis flow revealed two critical issues that ha
 1. **Analysis Loop Bug**: ✅ **FIXED** - Added `analysisTriggered` flag to prevent the `$effect` from retriggering when component state changes.
 
 2. **Suggestions Not Displaying**: ✅ **FIXED** - Implemented multiple improvements:
-   - Lowered confidence threshold from 0.6 to 0.4 for more suggestions
-   - Added debug logging to track suggestion generation
-   - Added date range picker allowing users to analyze up to 1 year ahead
+    - Lowered confidence threshold from 0.6 to 0.4 for more suggestions
+    - Added debug logging to track suggestion generation
+    - Added date range picker allowing users to analyze up to 1 year ahead
 
 ## Issue #1: Analysis Loop
 
@@ -26,9 +26,9 @@ Investigation of the calendar analysis flow revealed two critical issues that ha
 
 ```javascript
 $effect(() => {
-  if (isOpen && autoStart && !analysisId && !analyzing) {
-    startAnalysis();
-  }
+	if (isOpen && autoStart && !analysisId && !analyzing) {
+		startAnalysis();
+	}
 });
 ```
 
@@ -50,15 +50,15 @@ The second effect forces reactivity:
 
 ```javascript
 $effect(() => {
-  if (suggestions && suggestions.length > 0) {
-    suggestions.forEach((s) => {
-      if (s.confidence_score && s.confidence_score >= 0.7) {
-        selectedSuggestions.add(s.id);
-      }
-    });
-    // Force reactivity - THIS CAUSES RE-RENDER
-    selectedSuggestions = new Set(selectedSuggestions);
-  }
+	if (suggestions && suggestions.length > 0) {
+		suggestions.forEach((s) => {
+			if (s.confidence_score && s.confidence_score >= 0.7) {
+				selectedSuggestions.add(s.id);
+			}
+		});
+		// Force reactivity - THIS CAUSES RE-RENDER
+		selectedSuggestions = new Set(selectedSuggestions);
+	}
 });
 ```
 
@@ -69,21 +69,21 @@ $effect(() => {
 The backend correctly processes and returns suggestions:
 
 1. **Service**: `CalendarAnalysisService.analyzeUserCalendar()` (line 97)
-   - Creates analysis record
-   - Fetches calendar events
-   - Filters events
-   - Sends to AI
-   - Stores suggestions
-   - Returns: `{ analysisId, suggestions, eventsAnalyzed }`
+    - Creates analysis record
+    - Fetches calendar events
+    - Filters events
+    - Sends to AI
+    - Stores suggestions
+    - Returns: `{ analysisId, suggestions, eventsAnalyzed }`
 
 2. **API**: `POST /api/calendar/analyze` (line 38)
-   - Calls service
-   - Wraps response: `ApiResponse.success(result)`
-   - Returns: `{ success: true, data: { analysisId, suggestions, eventsAnalyzed } }`
+    - Calls service
+    - Wraps response: `ApiResponse.success(result)`
+    - Returns: `{ success: true, data: { analysisId, suggestions, eventsAnalyzed } }`
 
 3. **Frontend**: `CalendarAnalysisResults.startAnalysis()` (line 69)
-   - Makes POST request
-   - Correctly accesses: `data.analysisId` and `data.suggestions`
+    - Makes POST request
+    - Correctly accesses: `data.analysisId` and `data.suggestions`
 
 ### Why Suggestions May Not Appear
 
@@ -122,16 +122,16 @@ User requested ability to look up to 1 year ahead.
 let analysisTriggered = $state(false);
 
 $effect(() => {
-  if (isOpen && autoStart && !analysisId && !analyzing && !analysisTriggered) {
-    analysisTriggered = true;
-    startAnalysis();
-  }
+	if (isOpen && autoStart && !analysisId && !analyzing && !analysisTriggered) {
+		analysisTriggered = true;
+		startAnalysis();
+	}
 });
 
 // Reset flag when modal closes
 function handleClose() {
-  analysisTriggered = false;
-  // ... rest of close logic
+	analysisTriggered = false;
+	// ... rest of close logic
 }
 ```
 
@@ -141,24 +141,24 @@ In CalendarAnalysisModal.svelte, add controls:
 
 ```svelte
 <script lang="ts">
-    let monthsAhead = $state(2); // Default 2 months
+	let monthsAhead = $state(2); // Default 2 months
 
-    function getDaysForward() {
-        return monthsAhead * 30; // Approximate
-    }
+	function getDaysForward() {
+		return monthsAhead * 30; // Approximate
+	}
 </script>
 
 <div class="space-y-4">
-    <label>
-        How far ahead to analyze:
-        <select bind:value={monthsAhead}>
-            <option value={1}>1 month</option>
-            <option value={2}>2 months (default)</option>
-            <option value={3}>3 months</option>
-            <option value={6}>6 months</option>
-            <option value={12}>1 year</option>
-        </select>
-    </label>
+	<label>
+		How far ahead to analyze:
+		<select bind:value={monthsAhead}>
+			<option value={1}>1 month</option>
+			<option value={2}>2 months (default)</option>
+			<option value={3}>3 months</option>
+			<option value={6}>6 months</option>
+			<option value={12}>1 year</option>
+		</select>
+	</label>
 </div>
 ```
 
@@ -166,8 +166,8 @@ Pass to API:
 
 ```javascript
 body: JSON.stringify({
-  daysBack: 30,
-  daysForward: getDaysForward(),
+	daysBack: 30,
+	daysForward: getDaysForward()
 });
 ```
 
@@ -186,52 +186,49 @@ To diagnose why suggestions aren't appearing:
 
 ```javascript
 // In analyzeEventsWithAI()
-console.log("[Calendar Analysis] Events to analyze:", events.length);
-console.log(
-  "[Calendar Analysis] Raw suggestions from AI:",
-  response.suggestions?.length,
-);
-console.log("[Calendar Analysis] Filtered suggestions:", filtered.length);
+console.log('[Calendar Analysis] Events to analyze:', events.length);
+console.log('[Calendar Analysis] Raw suggestions from AI:', response.suggestions?.length);
+console.log('[Calendar Analysis] Filtered suggestions:', filtered.length);
 
 // In filterRelevantEvents()
-console.log("[Calendar Analysis] Total events:", events.length);
-console.log("[Calendar Analysis] After filtering:", relevant.length);
+console.log('[Calendar Analysis] Total events:', events.length);
+console.log('[Calendar Analysis] After filtering:', relevant.length);
 ```
 
 ## Implementation Priority
 
 1. **High Priority**: Fix the analysis loop (Fix #1)
-   - Prevents repeated API calls and poor UX
-   - Simple fix with immediate impact
+    - Prevents repeated API calls and poor UX
+    - Simple fix with immediate impact
 
 2. **High Priority**: Add date range picker (Fix #2)
-   - User specifically requested this feature
-   - Default 2 months, up to 1 year
+    - User specifically requested this feature
+    - Default 2 months, up to 1 year
 
 3. **Medium Priority**: Debug logging (Fix #4)
-   - Helps identify why suggestions aren't generated
-   - Essential for troubleshooting
+    - Helps identify why suggestions aren't generated
+    - Essential for troubleshooting
 
 4. **Low Priority**: Adjust confidence threshold (Fix #3)
-   - Only after understanding why suggestions aren't appearing
-   - May need to balance quality vs quantity
+    - Only after understanding why suggestions aren't appearing
+    - May need to balance quality vs quantity
 
 ## Testing Plan
 
 1. **Loop Prevention Test**:
-   - Open analysis modal multiple times
-   - Verify only one analysis request is made
-   - Check console for duplicate API calls
+    - Open analysis modal multiple times
+    - Verify only one analysis request is made
+    - Check console for duplicate API calls
 
 2. **Date Range Test**:
-   - Test with different date ranges (1 month to 1 year)
-   - Verify more events are analyzed with longer ranges
-   - Check suggestion quality across ranges
+    - Test with different date ranges (1 month to 1 year)
+    - Verify more events are analyzed with longer ranges
+    - Check suggestion quality across ranges
 
 3. **Suggestion Generation Test**:
-   - Add debug logging
-   - Run analysis on calendar with known patterns
-   - Verify suggestions are generated and displayed
+    - Add debug logging
+    - Run analysis on calendar with known patterns
+    - Verify suggestions are generated and displayed
 
 ## Files to Modify
 
@@ -256,8 +253,8 @@ console.log("[Calendar Analysis] After filtering:", relevant.length);
 - **Lines 49-50**: Added `daysForward` and `daysBack` state variables
 - **Lines 78-79**: Pass date range to API in POST request
 - **Lines 244-297**: Added UI for date range selection
-  - Users can select 1-3 months back
-  - Users can select 1 month to 1 year forward
+    - Users can select 1-3 months back
+    - Users can select 1 month to 1 year forward
 - **Status**: Fully functional
 
 #### 3. Debug Logging (calendar-analysis.service.ts)
@@ -289,20 +286,20 @@ The calendar analysis feature is now working as intended with improved user expe
 ### What to Watch For
 
 1. **Monitor Debug Logs**: Check the browser console for `[Calendar Analysis]` logs to ensure:
-   - Sufficient events are being fetched
-   - Events aren't being over-filtered
-   - AI is generating suggestions
-   - Suggestions meet the 0.4 confidence threshold
+    - Sufficient events are being fetched
+    - Events aren't being over-filtered
+    - AI is generating suggestions
+    - Suggestions meet the 0.4 confidence threshold
 
 2. **User Testing**: Test with different calendar types:
-   - Calendars with many recurring meetings
-   - Calendars with few events
-   - Mix of work and personal calendars
+    - Calendars with many recurring meetings
+    - Calendars with few events
+    - Mix of work and personal calendars
 
 3. **Fine-tuning**: Based on debug logs, consider:
-   - Further adjusting confidence threshold if needed
-   - Tweaking event filtering rules if too restrictive
-   - Adjusting AI prompt for better pattern detection
+    - Further adjusting confidence threshold if needed
+    - Tweaking event filtering rules if too restrictive
+    - Adjusting AI prompt for better pattern detection
 
 ### Debug Output Example
 

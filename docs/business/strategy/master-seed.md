@@ -455,7 +455,12 @@ await PhaseService.generatePhases(projectId);
 
 ```typescript
 // Generate rich markdown context for new project
-await BrainDumpProcessor.generateProjectContext(projectId, projectName, brainDump, userId);
+await BrainDumpProcessor.generateProjectContext(
+  projectId,
+  projectName,
+  brainDump,
+  userId,
+);
 ```
 
 ### 📅 Calendar Integration Tools
@@ -463,21 +468,21 @@ await BrainDumpProcessor.generateProjectContext(projectId, projectName, brainDum
 ```typescript
 // Calendar service tools available to LLMs
 const calendarTools = {
-	get_calendar_events: 'Retrieve events from Google Calendar',
-	find_available_slots: 'Find open time slots for scheduling',
-	schedule_task: 'Create calendar event for a task',
-	get_upcoming_tasks: 'Get tasks that need scheduling'
+  get_calendar_events: "Retrieve events from Google Calendar",
+  find_available_slots: "Find open time slots for scheduling",
+  schedule_task: "Create calendar event for a task",
+  get_upcoming_tasks: "Get tasks that need scheduling",
 };
 
 // Example usage in task scheduling
 await CalendarService.executeToolCall(userId, {
-	tool: 'find_available_slots',
-	arguments: {
-		timeMin: '2024-01-15T00:00:00Z',
-		timeMax: '2024-01-22T00:00:00Z',
-		duration_minutes: 90,
-		preferred_hours: [9, 10, 11] // Morning preference
-	}
+  tool: "find_available_slots",
+  arguments: {
+    timeMin: "2024-01-15T00:00:00Z",
+    timeMax: "2024-01-22T00:00:00Z",
+    duration_minutes: 90,
+    preferred_hours: [9, 10, 11], // Morning preference
+  },
 });
 ```
 

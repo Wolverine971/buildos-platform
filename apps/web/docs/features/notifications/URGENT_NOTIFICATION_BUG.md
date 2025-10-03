@@ -83,13 +83,13 @@ The `BrainDumpModal.cleanup()` function runs when modal closes, might be clearin
 // Before update, check if notification exists
 const currentStore = get(notificationStore);
 if (!currentStore.notifications.has(notificationId)) {
-  console.error(
-    "Notification deleted!",
-    "Available:",
-    Array.from(currentStore.notifications.keys()),
-  );
-  activeBrainDumpNotificationId = null;
-  return;
+	console.error(
+		'Notification deleted!',
+		'Available:',
+		Array.from(currentStore.notifications.keys())
+	);
+	activeBrainDumpNotificationId = null;
+	return;
 }
 ```
 
@@ -98,11 +98,11 @@ if (!currentStore.notifications.has(notificationId)) {
 ```typescript
 // After creating notification, verify it persists
 setTimeout(() => {
-  const exists = currentStore.notifications.has(notificationId);
-  console.log("Notification exists after 100ms:", exists);
-  if (!exists) {
-    console.error("CRITICAL: Notification was removed!");
-  }
+	const exists = currentStore.notifications.has(notificationId);
+	console.log('Notification exists after 100ms:', exists);
+	if (!exists) {
+		console.error('CRITICAL: Notification was removed!');
+	}
 }, 100);
 ```
 
@@ -151,7 +151,7 @@ If modal close triggers notification clear:
 ```typescript
 // In handleModalHandoff - don't clear if new notification system
 if (!USE_NEW_NOTIFICATION_SYSTEM) {
-  // clear old notification
+	// clear old notification
 }
 ```
 
@@ -181,7 +181,7 @@ notificationStore.persist(); // Force write to sessionStorage
 ```typescript
 // Add to NotificationStackManager.svelte
 onMount(() => {
-  console.log("[NotificationStackManager] MOUNTED ✅");
+	console.log('[NotificationStackManager] MOUNTED ✅');
 });
 ```
 
@@ -190,12 +190,12 @@ onMount(() => {
 ```typescript
 // In browser console after page load
 notificationStore.add({
-  type: "generic",
-  status: "processing",
-  isMinimized: true,
-  isPersistent: true,
-  data: { title: "Test" },
-  progress: { type: "binary" },
+	type: 'generic',
+	status: 'processing',
+	isMinimized: true,
+	isPersistent: true,
+	data: { title: 'Test' },
+	progress: { type: 'binary' }
 });
 // Does it appear? Does it persist?
 ```
@@ -258,8 +258,8 @@ SSE event → handleBrainDumpStreamUpdate()
 
 ```typescript
 brainDumpV2Store.updateStreamingState({
-  contextStatus: "processing",
-  contextProgress: status.message,
+	contextStatus: 'processing',
+	contextProgress: status.message
 });
 // Store update → Bridge subscription → Copies to notification.data.streamingState
 ```

@@ -176,7 +176,7 @@ interface CalendarIngestionService {
 
 ```typescript
 const analyzeEventsForProjects = async (events: CalendarEvent[]) => {
-  const prompt = `
+	const prompt = `
     Analyze these calendar events and identify potential projects.
     
     Look for:
@@ -203,7 +203,7 @@ const analyzeEventsForProjects = async (events: CalendarEvent[]) => {
     Return as JSON array of project suggestions.
   `;
 
-  return await llm.createCompletion(prompt);
+	return await llm.createCompletion(prompt);
 };
 ```
 
@@ -243,59 +243,59 @@ Body: {
 
 ```typescript
 async function createProjectFromSuggestion(
-  suggestionId: string,
-  userId: string,
-  modifications?: any,
+	suggestionId: string,
+	userId: string,
+	modifications?: any
 ) {
-  const suggestion = await getSuggestion(suggestionId);
+	const suggestion = await getSuggestion(suggestionId);
 
-  // 1. Create project with source tracking
-  const project = await db.projects.create({
-    name: modifications?.projectName || suggestion.projectName,
-    description: suggestion.description,
-    user_id: userId,
-    source: "calendar_sync",
-    source_metadata: {
-      suggestion_id: suggestionId,
-      calendar_ids: [...new Set(suggestion.events.map((e) => e.calendarId))],
-      event_count: suggestion.events.length,
-    },
-  });
+	// 1. Create project with source tracking
+	const project = await db.projects.create({
+		name: modifications?.projectName || suggestion.projectName,
+		description: suggestion.description,
+		user_id: userId,
+		source: 'calendar_sync',
+		source_metadata: {
+			suggestion_id: suggestionId,
+			calendar_ids: [...new Set(suggestion.events.map((e) => e.calendarId))],
+			event_count: suggestion.events.length
+		}
+	});
 
-  // 2. Create tasks from events
-  for (const event of suggestion.events) {
-    const task = await db.tasks.create({
-      title: event.title,
-      description: event.description,
-      project_id: project.id,
-      user_id: userId,
-      start_date: event.start,
-      source: "calendar_event",
-      source_calendar_event_id: event.id,
-      source_calendar_id: event.calendarId,
-      sync_enabled: event.canModify, // Only sync if we can modify
-      sync_permissions: {
-        can_modify: event.canModify,
-        is_organizer: event.isOrganizer,
-        attendee_status: event.attendeeStatus,
-      },
-    });
+	// 2. Create tasks from events
+	for (const event of suggestion.events) {
+		const task = await db.tasks.create({
+			title: event.title,
+			description: event.description,
+			project_id: project.id,
+			user_id: userId,
+			start_date: event.start,
+			source: 'calendar_event',
+			source_calendar_event_id: event.id,
+			source_calendar_id: event.calendarId,
+			sync_enabled: event.canModify, // Only sync if we can modify
+			sync_permissions: {
+				can_modify: event.canModify,
+				is_organizer: event.isOrganizer,
+				attendee_status: event.attendeeStatus
+			}
+		});
 
-    // 3. Update mapping table
-    await db.calendar_event_mapping.update({
-      where: { calendar_event_id: event.id },
-      data: {
-        task_id: task.id,
-        project_id: project.id,
-        sync_status: "active",
-      },
-    });
-  }
+		// 3. Update mapping table
+		await db.calendar_event_mapping.update({
+			where: { calendar_event_id: event.id },
+			data: {
+				task_id: task.id,
+				project_id: project.id,
+				sync_status: 'active'
+			}
+		});
+	}
 
-  // 4. Set up webhook for ongoing sync
-  await setupCalendarWebhook(userId, project.id);
+	// 4. Set up webhook for ongoing sync
+	await setupCalendarWebhook(userId, project.id);
 
-  return project;
+	return project;
 }
 ```
 
@@ -305,58 +305,58 @@ async function createProjectFromSuggestion(
 
 ```typescript
 async function handleCalendarWebhook(notification: CalendarNotification) {
-  const { userId, calendarId, eventId, changeType } = notification;
+	const { userId, calendarId, eventId, changeType } = notification;
 
-  // Find existing mapping
-  const mapping = await db.calendar_event_mapping.findFirst({
-    where: {
-      calendar_event_id: eventId,
-      user_id: userId,
-    },
-  });
+	// Find existing mapping
+	const mapping = await db.calendar_event_mapping.findFirst({
+		where: {
+			calendar_event_id: eventId,
+			user_id: userId
+		}
+	});
 
-  if (!mapping) {
-    // New event - check if it belongs to a synced project
-    await checkNewEventForExistingProject(notification);
-    return;
-  }
+	if (!mapping) {
+		// New event - check if it belongs to a synced project
+		await checkNewEventForExistingProject(notification);
+		return;
+	}
 
-  switch (changeType) {
-    case "updated":
-      await syncEventToTask(mapping);
-      break;
-    case "deleted":
-      await handleEventDeletion(mapping);
-      break;
-    case "created":
-      await handleNewEvent(notification);
-      break;
-  }
+	switch (changeType) {
+		case 'updated':
+			await syncEventToTask(mapping);
+			break;
+		case 'deleted':
+			await handleEventDeletion(mapping);
+			break;
+		case 'created':
+			await handleNewEvent(notification);
+			break;
+	}
 }
 
 async function syncEventToTask(mapping: EventMapping) {
-  const event = await getGoogleCalendarEvent(mapping.calendar_event_id);
+	const event = await getGoogleCalendarEvent(mapping.calendar_event_id);
 
-  // Only sync if permissions allow
-  if (!mapping.sync_permissions?.can_modify) {
-    console.log("Read-only event, skipping sync");
-    return;
-  }
+	// Only sync if permissions allow
+	if (!mapping.sync_permissions?.can_modify) {
+		console.log('Read-only event, skipping sync');
+		return;
+	}
 
-  await db.tasks.update({
-    where: { id: mapping.task_id },
-    data: {
-      title: event.summary,
-      description: event.description,
-      start_date: event.start.dateTime,
-      updated_at: new Date(),
-    },
-  });
+	await db.tasks.update({
+		where: { id: mapping.task_id },
+		data: {
+			title: event.summary,
+			description: event.description,
+			start_date: event.start.dateTime,
+			updated_at: new Date()
+		}
+	});
 
-  await db.calendar_event_mapping.update({
-    where: { id: mapping.id },
-    data: { last_synced_at: new Date() },
-  });
+	await db.calendar_event_mapping.update({
+		where: { id: mapping.id },
+		data: { last_synced_at: new Date() }
+	});
 }
 ```
 
@@ -364,35 +364,35 @@ async function syncEventToTask(mapping: EventMapping) {
 
 ```typescript
 async function syncTaskToCalendar(taskId: string) {
-  const task = await db.tasks.findUnique({
-    where: { id: taskId },
-    include: { calendar_mapping: true },
-  });
+	const task = await db.tasks.findUnique({
+		where: { id: taskId },
+		include: { calendar_mapping: true }
+	});
 
-  // Only sync if:
-  // 1. Task is linked to a calendar event
-  // 2. User has modification permissions
-  // 3. Sync is enabled
+	// Only sync if:
+	// 1. Task is linked to a calendar event
+	// 2. User has modification permissions
+	// 3. Sync is enabled
 
-  if (task.source !== "calendar_event" || !task.sync_enabled) {
-    return; // This is a BuildOS-native task, don't sync
-  }
+	if (task.source !== 'calendar_event' || !task.sync_enabled) {
+		return; // This is a BuildOS-native task, don't sync
+	}
 
-  if (!task.sync_permissions?.can_modify) {
-    throw new Error("Cannot modify read-only calendar event");
-  }
+	if (!task.sync_permissions?.can_modify) {
+		throw new Error('Cannot modify read-only calendar event');
+	}
 
-  const calendar = await getGoogleCalendarAPI(task.user_id);
-  await calendar.events.patch({
-    calendarId: task.source_calendar_id,
-    eventId: task.source_calendar_event_id,
-    resource: {
-      summary: task.title,
-      description: task.description,
-      start: { dateTime: task.start_date },
-      // ... other fields
-    },
-  });
+	const calendar = await getGoogleCalendarAPI(task.user_id);
+	await calendar.events.patch({
+		calendarId: task.source_calendar_id,
+		eventId: task.source_calendar_event_id,
+		resource: {
+			summary: task.title,
+			description: task.description,
+			start: { dateTime: task.start_date }
+			// ... other fields
+		}
+	});
 }
 ```
 
@@ -405,50 +405,48 @@ async function syncTaskToCalendar(taskId: string) {
 ```tsx
 // Task component showing source
 function TaskCard({ task }) {
-  return (
-    <div className="task-card">
-      <div className="task-header">
-        <h3>{task.title}</h3>
-        {task.source === "calendar_event" && (
-          <Badge icon={<CalendarIcon />} variant="sync">
-            Calendar Synced
-            {!task.sync_permissions?.can_modify && (
-              <LockIcon className="ml-1" size={12} />
-            )}
-          </Badge>
-        )}
-        {task.source === "buildos" && <Badge variant="native">BuildOS</Badge>}
-      </div>
+	return (
+		<div className="task-card">
+			<div className="task-header">
+				<h3>{task.title}</h3>
+				{task.source === 'calendar_event' && (
+					<Badge icon={<CalendarIcon />} variant="sync">
+						Calendar Synced
+						{!task.sync_permissions?.can_modify && (
+							<LockIcon className="ml-1" size={12} />
+						)}
+					</Badge>
+				)}
+				{task.source === 'buildos' && <Badge variant="native">BuildOS</Badge>}
+			</div>
 
-      {task.source === "calendar_event" &&
-        !task.sync_permissions?.can_modify && (
-          <Alert variant="info" size="sm">
-            This task is read-only as you're not the calendar event organizer
-          </Alert>
-        )}
-    </div>
-  );
+			{task.source === 'calendar_event' && !task.sync_permissions?.can_modify && (
+				<Alert variant="info" size="sm">
+					This task is read-only as you're not the calendar event organizer
+				</Alert>
+			)}
+		</div>
+	);
 }
 
 // Project header showing source
 function ProjectHeader({ project }) {
-  return (
-    <div className="project-header">
-      <h1>{project.name}</h1>
-      {project.source === "calendar_sync" && (
-        <div className="sync-info">
-          <CalendarSyncIcon />
-          <span>
-            Synced from {project.source_metadata?.calendar_ids?.length}{" "}
-            calendar(s)
-          </span>
-          <span className="text-muted">
-            {project.source_metadata?.event_count} events linked
-          </span>
-        </div>
-      )}
-    </div>
-  );
+	return (
+		<div className="project-header">
+			<h1>{project.name}</h1>
+			{project.source === 'calendar_sync' && (
+				<div className="sync-info">
+					<CalendarSyncIcon />
+					<span>
+						Synced from {project.source_metadata?.calendar_ids?.length} calendar(s)
+					</span>
+					<span className="text-muted">
+						{project.source_metadata?.event_count} events linked
+					</span>
+				</div>
+			)}
+		</div>
+	);
 }
 ```
 

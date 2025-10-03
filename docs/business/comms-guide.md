@@ -67,8 +67,8 @@
 - You don't get to choose whether there's an arc
 - You DO get to choose where people think you are on the arc
 - Help people understand:
-    - Where you are on the curve
-    - Where the arc is headed
+  - Where you are on the curve
+  - Where the arc is headed
 
 ### The Two Positions:
 

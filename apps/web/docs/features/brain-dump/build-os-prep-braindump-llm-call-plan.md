@@ -74,16 +74,16 @@ Here is notes on the preparatory analysis prompt and flow:
 
 ```typescript
 export function getPreparatoryAnalysisPrompt(
-  project: Partial<Database["public"]["Tables"]["projects"]["Row"]>,
-  tasks: Array<{
-    id: string;
-    title: string;
-    status: string;
-    start_date: string | null;
-    description_preview: string;
-  }>,
+	project: Partial<Database['public']['Tables']['projects']['Row']>,
+	tasks: Array<{
+		id: string;
+		title: string;
+		status: string;
+		start_date: string | null;
+		description_preview: string;
+	}>
 ): string {
-  return `You are a BuildOS braindump analyzer. Your job is to analyze a braindump and determine what existing data needs to be updated.
+	return `You are a BuildOS braindump analyzer. Your job is to analyze a braindump and determine what existing data needs to be updated.
 
 ## Your Task:
 Analyze the braindump to identify:
@@ -93,23 +93,21 @@ Analyze the braindump to identify:
 
 ## Current Project Overview:
 Project: "${project.name}"
-Description: ${project.description || "No description"}
+Description: ${project.description || 'No description'}
 Status: ${project.status}
-Tags: ${project.tags?.join(", ") || "None"}
-Start Date: ${project.start_date || "Not set"}
-End Date: ${project.end_date || "Not set"}
-Has Context: ${project.context ? "Yes (existing strategic document)" : "No"}
-Executive Summary: ${project.executive_summary || "None"}
+Tags: ${project.tags?.join(', ') || 'None'}
+Start Date: ${project.start_date || 'Not set'}
+End Date: ${project.end_date || 'Not set'}
+Has Context: ${project.context ? 'Yes (existing strategic document)' : 'No'}
+Executive Summary: ${project.executive_summary || 'None'}
 
 ## Existing Tasks (${tasks.length} total):
 ${tasks
-  .map(
-    (
-      t,
-    ) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ""}
-  Preview: ${t.description_preview}`,
-  )
-  .join("\n")}
+	.map(
+		(t) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ''}
+  Preview: ${t.description_preview}`
+	)
+	.join('\n')}
 
 ## Analysis Criteria:
 
@@ -186,24 +184,19 @@ Analyze the braindump and determine what needs to be processed.`;
 
 ```typescript
 export interface PreparatoryAnalysisResult {
-  analysis_summary: string;
-  braindump_classification:
-    | "strategic"
-    | "tactical"
-    | "mixed"
-    | "status_update"
-    | "unrelated";
-  needs_context_update: boolean;
-  context_indicators: string[];
-  relevant_task_ids: string[];
-  task_indicators: Record<string, string>;
-  new_tasks_detected: boolean;
-  confidence_level: "high" | "medium" | "low";
-  processing_recommendation: {
-    skip_context: boolean;
-    skip_tasks: boolean;
-    reason: string;
-  };
+	analysis_summary: string;
+	braindump_classification: 'strategic' | 'tactical' | 'mixed' | 'status_update' | 'unrelated';
+	needs_context_update: boolean;
+	context_indicators: string[];
+	relevant_task_ids: string[];
+	task_indicators: Record<string, string>;
+	new_tasks_detected: boolean;
+	confidence_level: 'high' | 'medium' | 'low';
+	processing_recommendation: {
+		skip_context: boolean;
+		skip_tasks: boolean;
+		reason: string;
+	};
 }
 ```
 
@@ -214,29 +207,29 @@ Add these to your sse-messages.ts:
 ```typescript
 // Preparatory analysis message
 export interface SSEAnalysis extends BaseSSEMessage {
-  type: "analysis";
-  message: string;
-  data: {
-    status: "pending" | "processing" | "completed" | "failed";
-    result?: PreparatoryAnalysisResult;
-    error?: string;
-  };
+	type: 'analysis';
+	message: string;
+	data: {
+		status: 'pending' | 'processing' | 'completed' | 'failed';
+		result?: PreparatoryAnalysisResult;
+		error?: string;
+	};
 }
 
 // Update the StreamingMessage union
 export type StreamingMessage =
-  | SSEAnalysis // Add this
-  | SSEContextProgress
-  | SSETasksProgress
-  | SSEStatus
-  | SSEContextUpdateRequired
-  | SSERetry
-  | SSEComplete
-  | SSEError;
+	| SSEAnalysis // Add this
+	| SSEContextProgress
+	| SSETasksProgress
+	| SSEStatus
+	| SSEContextUpdateRequired
+	| SSERetry
+	| SSEComplete
+	| SSEError;
 
 // Add type guard
 export function isAnalysis(msg: StreamingMessage): msg is SSEAnalysis {
-  return msg.type === "analysis";
+	return msg.type === 'analysis';
 }
 ```
 
@@ -246,114 +239,113 @@ export function isAnalysis(msg: StreamingMessage): msg is SSEAnalysis {
 // Streaming flow for existing project updates with preparatory analysis
 
 async function processExistingProjectWithAnalysis() {
-  // 1. Initial status - Analysis phase
-  await sendSSEMessage({
-    type: "status",
-    message: "Starting braindump analysis...",
-    data: {
-      processes: ["analysis"],
-      contentLength: brainDump.length,
-      isDualProcessing: false,
-      source: "preparatory-analysis",
-    },
-  });
+	// 1. Initial status - Analysis phase
+	await sendSSEMessage({
+		type: 'status',
+		message: 'Starting braindump analysis...',
+		data: {
+			processes: ['analysis'],
+			contentLength: brainDump.length,
+			isDualProcessing: false,
+			source: 'preparatory-analysis'
+		}
+	});
 
-  // 2. Analysis in progress
-  await sendSSEMessage({
-    type: "analysis",
-    message: "Analyzing braindump content and identifying relevant data...",
-    data: {
-      status: "processing",
-    },
-  });
+	// 2. Analysis in progress
+	await sendSSEMessage({
+		type: 'analysis',
+		message: 'Analyzing braindump content and identifying relevant data...',
+		data: {
+			status: 'processing'
+		}
+	});
 
-  // 3. Analysis complete
-  const analysisResult = await runPreparatoryAnalysis();
-  await sendSSEMessage({
-    type: "analysis",
-    message: `Analysis complete: ${analysisResult.braindump_classification} content detected`,
-    data: {
-      status: "completed",
-      result: analysisResult,
-    },
-  });
+	// 3. Analysis complete
+	const analysisResult = await runPreparatoryAnalysis();
+	await sendSSEMessage({
+		type: 'analysis',
+		message: `Analysis complete: ${analysisResult.braindump_classification} content detected`,
+		data: {
+			status: 'completed',
+			result: analysisResult
+		}
+	});
 
-  // 4. Determine what to process based on analysis
-  const processes = [];
-  if (
-    analysisResult.needs_context_update &&
-    !analysisResult.processing_recommendation.skip_context
-  ) {
-    processes.push("context");
-  }
-  if (
-    (analysisResult.relevant_task_ids.length > 0 ||
-      analysisResult.new_tasks_detected) &&
-    !analysisResult.processing_recommendation.skip_tasks
-  ) {
-    processes.push("tasks");
-  }
+	// 4. Determine what to process based on analysis
+	const processes = [];
+	if (
+		analysisResult.needs_context_update &&
+		!analysisResult.processing_recommendation.skip_context
+	) {
+		processes.push('context');
+	}
+	if (
+		(analysisResult.relevant_task_ids.length > 0 || analysisResult.new_tasks_detected) &&
+		!analysisResult.processing_recommendation.skip_tasks
+	) {
+		processes.push('tasks');
+	}
 
-  // 5. Update status for main processing
-  await sendSSEMessage({
-    type: "status",
-    message: `Processing ${processes.join(" and ")}...`,
-    data: {
-      processes,
-      contentLength: brainDump.length,
-      isDualProcessing: processes.length === 2,
-      source: "main-processing",
-    },
-  });
+	// 5. Update status for main processing
+	await sendSSEMessage({
+		type: 'status',
+		message: `Processing ${processes.join(' and ')}...`,
+		data: {
+			processes,
+			contentLength: brainDump.length,
+			isDualProcessing: processes.length === 2,
+			source: 'main-processing'
+		}
+	});
 
-  // 6. Context processing (if needed)
-  if (processes.includes("context")) {
-    await sendSSEMessage({
-      type: "contextProgress",
-      message: "Updating project context...",
-      data: { status: "processing" },
-    });
+	// 6. Context processing (if needed)
+	if (processes.includes('context')) {
+		await sendSSEMessage({
+			type: 'contextProgress',
+			message: 'Updating project context...',
+			data: { status: 'processing' }
+		});
 
-    // Process context with full project data
-    const contextResult = await processContext();
+		// Process context with full project data
+		const contextResult = await processContext();
 
-    await sendSSEMessage({
-      type: "contextProgress",
-      message: "Project context updated",
-      data: {
-        status: "completed",
-        preview: contextResult,
-      },
-    });
-  }
+		await sendSSEMessage({
+			type: 'contextProgress',
+			message: 'Project context updated',
+			data: {
+				status: 'completed',
+				preview: contextResult
+			}
+		});
+	}
 
-  // 7. Task processing (if needed)
-  if (processes.includes("tasks")) {
-    await sendSSEMessage({
-      type: "tasksProgress",
-      message: `Processing ${analysisResult.relevant_task_ids.length} relevant tasks...`,
-      data: { status: "processing" },
-    });
+	// 7. Task processing (if needed)
+	if (processes.includes('tasks')) {
+		await sendSSEMessage({
+			type: 'tasksProgress',
+			message: `Processing ${analysisResult.relevant_task_ids.length} relevant tasks...`,
+			data: { status: 'processing' }
+		});
 
-    // Process tasks with only relevant tasks
-    const tasksResult = await processTasks(analysisResult.relevant_task_ids);
+		// Process tasks with only relevant tasks
+		const tasksResult = await processTasks(analysisResult.relevant_task_ids);
 
-    await sendSSEMessage({
-      type: "tasksProgress",
-      message: "Tasks processed",
-      data: {
-        status: "completed",
-        preview: tasksResult,
-      },
-    });
-  }
+		await sendSSEMessage({
+			type: 'tasksProgress',
+			message: 'Tasks processed',
+			data: {
+				status: 'completed',
+				preview: tasksResult
+			}
+		});
+	}
 
-  // 8. Final completion
-  await sendSSEMessage({
-    type: "complete",
-    message: "Braindump processing complete",
-    result: finalResult,
-  });
+	// 8. Final completion
+	await sendSSEMessage({
+		type: 'complete',
+		message: 'Braindump processing complete',
+		result: finalResult
+	});
 }
 ```
 

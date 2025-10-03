@@ -24,7 +24,7 @@ The `@ts-expect-error` directive in `src/worker.ts:152` is **intentional** and *
 
 ```typescript
 // @ts-expect-error - generate_brief_email will be added to enum after migration
-queue.process("generate_brief_email", processEmailBrief);
+queue.process('generate_brief_email', processEmailBrief);
 ```
 
 **Why this is safe**:

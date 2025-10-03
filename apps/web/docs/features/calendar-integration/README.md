@@ -23,13 +23,16 @@ Google Calendar sync with bidirectional updates for task scheduling and availabi
 ## Key Files
 
 **Services:**
+
 - `/src/lib/services/calendar-service.ts` - Main calendar operations
 - `/src/lib/services/calendar-webhook-service.ts` - Webhook handling
 
 **Components:**
+
 - `/src/lib/components/calendar/` - Calendar UI components
 
 **API:**
+
 - `/src/routes/api/calendar/` - Calendar API endpoints
 - `/src/routes/api/webhooks/calendar/` - Webhook endpoints
 

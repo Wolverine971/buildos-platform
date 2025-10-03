@@ -329,32 +329,32 @@ console.log(import.meta.env.PUBLIC_ENABLE_MULTI_BRAINDUMP);
 
 ```javascript
 // Import store in console
-import { brainDumpV2Store } from "$lib/stores/brain-dump-v2.store";
+import { brainDumpV2Store } from '$lib/stores/brain-dump-v2.store';
 
 // Check active count
-console.log("Active:", brainDumpV2Store.getActiveBrainDumpCount());
+console.log('Active:', brainDumpV2Store.getActiveBrainDumpCount());
 
 // Get all active brain dumps
-import { get } from "svelte/store";
+import { get } from 'svelte/store';
 const state = get(brainDumpV2Store);
-console.log("Brain Dumps:", Array.from(state.activeBrainDumps.entries()));
+console.log('Brain Dumps:', Array.from(state.activeBrainDumps.entries()));
 ```
 
 ### Check Queue
 
 ```javascript
 const state = get(brainDumpV2Store);
-console.log("Queue:", state.queuedBrainDumps);
-console.log("Queue Size:", state.queuedBrainDumps.length);
+console.log('Queue:', state.queuedBrainDumps);
+console.log('Queue Size:', state.queuedBrainDumps.length);
 ```
 
 ### Check Notification Stack
 
 ```javascript
-import { notificationStore } from "$lib/stores/notification.store";
+import { notificationStore } from '$lib/stores/notification.store';
 const notifState = get(notificationStore);
-console.log("Notifications:", Array.from(notifState.notifications.entries()));
-console.log("Stack:", notifState.stack);
+console.log('Notifications:', Array.from(notifState.notifications.entries()));
+console.log('Stack:', notifState.stack);
 ```
 
 ---

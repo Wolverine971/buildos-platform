@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: be0cb6e0593341eeae5167dc7688089e70871827
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Flow - Task Display and Editing Enhancement"
+topic: 'Calendar Analysis Flow - Task Display and Editing Enhancement'
 tags: [research, codebase, calendar-analysis, task-management, ui-components]
 status: complete
 last_updated: 2025-01-29
@@ -59,14 +59,14 @@ The current calendar analysis flow successfully suggests projects from calendar 
 
 ```typescript
 if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
-  const tasksData = suggestion.suggested_tasks;
-  const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
+	const tasksData = suggestion.suggested_tasks;
+	const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
 
-  operations.push(
-    ...tasks.map((task: any, index: number) => ({
-      // Creates tasks without date filtering
-    })),
-  );
+	operations.push(
+		...tasks.map((task: any, index: number) => ({
+			// Creates tasks without date filtering
+		}))
+	);
 }
 ```
 
@@ -83,12 +83,12 @@ let expandedOperations = new Set<string>();
 let editingSuggestion = $state<string | null>(null);
 
 function toggleOperationExpansion(operationId: string) {
-  if (expandedOperations.has(operationId)) {
-    expandedOperations.delete(operationId);
-  } else {
-    expandedOperations.add(operationId);
-  }
-  expandedOperations = expandedOperations;
+	if (expandedOperations.has(operationId)) {
+		expandedOperations.delete(operationId);
+	} else {
+		expandedOperations.add(operationId);
+	}
+	expandedOperations = expandedOperations;
 }
 ```
 
@@ -131,11 +131,9 @@ function toggleOperationExpansion(operationId: string) {
 
 ```typescript
 if (taskDate < today) {
-  needsRescheduling = true;
-  newStartDate = projectStart > today ? projectStart : today;
-  warnings.push(
-    `Task "${task.title}" was scheduled in the past and will be rescheduled`,
-  );
+	needsRescheduling = true;
+	newStartDate = projectStart > today ? projectStart : today;
+	warnings.push(`Task "${task.title}" was scheduled in the past and will be rescheduled`);
 }
 ```
 
@@ -148,84 +146,84 @@ if (taskDate < today) {
 ```svelte
 <!-- CalendarAnalysisResults.svelte enhanced structure -->
 <div class="suggestion-card">
-    <!-- Project Summary (existing) -->
-    <div class="project-header">
-        <h4>{suggestion.name}</h4>
-        <p>{suggestion.description}</p>
-        <div class="metadata">
-            {eventCount} events | {taskCount} tasks | {confidence}%
-        </div>
-    </div>
+	<!-- Project Summary (existing) -->
+	<div class="project-header">
+		<h4>{suggestion.name}</h4>
+		<p>{suggestion.description}</p>
+		<div class="metadata">
+			{eventCount} events | {taskCount} tasks | {confidence}%
+		</div>
+	</div>
 
-    <!-- NEW: Expandable Tasks Section -->
-    {#if tasks && tasks.length > 0}
-        <button on:click={() => toggleTasksExpanded(suggestion.id)}>
-            <span>View {tasks.length} suggested tasks</span>
-            {#if tasksExpanded.has(suggestion.id)}
-                <ChevronUp />
-            {:else}
-                <ChevronDown />
-            {/if}
-        </button>
+	<!-- NEW: Expandable Tasks Section -->
+	{#if tasks && tasks.length > 0}
+		<button on:click={() => toggleTasksExpanded(suggestion.id)}>
+			<span>View {tasks.length} suggested tasks</span>
+			{#if tasksExpanded.has(suggestion.id)}
+				<ChevronUp />
+			{:else}
+				<ChevronDown />
+			{/if}
+		</button>
 
-        {#if tasksExpanded.has(suggestion.id)}
-            <div class="tasks-list">
-                {#each tasks as task, index}
-                    {@const isPastTask = isTaskInPast(task)}
-                    <div class="task-item {isPastTask ? 'past-task' : ''}">
-                        <!-- Task Header -->
-                        <div class="task-header">
-                            <input
-                                type="checkbox"
-                                bind:checked={enabledTasks[`${suggestion.id}-${index}`]}
-                                disabled={isPastTask}
-                            />
-                            <span class="task-title">{task.title}</span>
-                            {#if isPastTask}
-                                <span class="past-indicator">Past Event</span>
-                            {/if}
-                        </div>
+		{#if tasksExpanded.has(suggestion.id)}
+			<div class="tasks-list">
+				{#each tasks as task, index}
+					{@const isPastTask = isTaskInPast(task)}
+					<div class="task-item {isPastTask ? 'past-task' : ''}">
+						<!-- Task Header -->
+						<div class="task-header">
+							<input
+								type="checkbox"
+								bind:checked={enabledTasks[`${suggestion.id}-${index}`]}
+								disabled={isPastTask}
+							/>
+							<span class="task-title">{task.title}</span>
+							{#if isPastTask}
+								<span class="past-indicator">Past Event</span>
+							{/if}
+						</div>
 
-                        <!-- Inline Editing (if editing) -->
-                        {#if editingTask === `${suggestion.id}-${index}`}
-                            <div class="task-edit-form">
-                                <input bind:value={taskEdits[index].title} />
-                                <textarea bind:value={taskEdits[index].description} />
-                                <select bind:value={taskEdits[index].priority}>
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                </select>
-                                <Button on:click={() => saveTaskEdit(index)}>Save</Button>
-                                <Button on:click={() => cancelTaskEdit()}>Cancel</Button>
-                            </div>
-                        {:else}
-                            <!-- Task Details (expanded view) -->
-                            <div class="task-details">
-                                <p>{task.description}</p>
-                                <div class="task-metadata">
-                                    <span class="priority-{task.priority}">{task.priority}</span>
-                                    {#if task.start_date}
-                                        <span><Calendar /> {formatDate(task.start_date)}</span>
-                                    {/if}
-                                    {#if task.duration_minutes}
-                                        <span><Clock /> {task.duration_minutes}min</span>
-                                    {/if}
-                                </div>
-                                <Button
-                                    size="sm"
-                                    icon={Edit3}
-                                    on:click={() => startEditingTask(suggestion.id, index)}
-                                >
-                                    Edit
-                                </Button>
-                            </div>
-                        {/if}
-                    </div>
-                {/each}
-            </div>
-        {/if}
-    {/if}
+						<!-- Inline Editing (if editing) -->
+						{#if editingTask === `${suggestion.id}-${index}`}
+							<div class="task-edit-form">
+								<input bind:value={taskEdits[index].title} />
+								<textarea bind:value={taskEdits[index].description} />
+								<select bind:value={taskEdits[index].priority}>
+									<option value="low">Low</option>
+									<option value="medium">Medium</option>
+									<option value="high">High</option>
+								</select>
+								<Button on:click={() => saveTaskEdit(index)}>Save</Button>
+								<Button on:click={() => cancelTaskEdit()}>Cancel</Button>
+							</div>
+						{:else}
+							<!-- Task Details (expanded view) -->
+							<div class="task-details">
+								<p>{task.description}</p>
+								<div class="task-metadata">
+									<span class="priority-{task.priority}">{task.priority}</span>
+									{#if task.start_date}
+										<span><Calendar /> {formatDate(task.start_date)}</span>
+									{/if}
+									{#if task.duration_minutes}
+										<span><Clock /> {task.duration_minutes}min</span>
+									{/if}
+								</div>
+								<Button
+									size="sm"
+									icon={Edit3}
+									on:click={() => startEditingTask(suggestion.id, index)}
+								>
+									Edit
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+	{/if}
 </div>
 ```
 
@@ -240,51 +238,50 @@ let taskEdits = $state<Record<number, TaskEdit>>({});
 
 // Initialize enabled tasks (exclude past tasks)
 $effect(() => {
-  if (suggestions) {
-    const newEnabledTasks: Record<string, boolean> = {};
-    suggestions.forEach((suggestion) => {
-      const tasks = suggestion.suggested_tasks;
-      if (tasks && Array.isArray(tasks)) {
-        tasks.forEach((task, index) => {
-          const taskKey = `${suggestion.id}-${index}`;
-          // Auto-disable past tasks
-          newEnabledTasks[taskKey] = !isTaskInPast(task);
-        });
-      }
-    });
-    enabledTasks = newEnabledTasks;
-  }
+	if (suggestions) {
+		const newEnabledTasks: Record<string, boolean> = {};
+		suggestions.forEach((suggestion) => {
+			const tasks = suggestion.suggested_tasks;
+			if (tasks && Array.isArray(tasks)) {
+				tasks.forEach((task, index) => {
+					const taskKey = `${suggestion.id}-${index}`;
+					// Auto-disable past tasks
+					newEnabledTasks[taskKey] = !isTaskInPast(task);
+				});
+			}
+		});
+		enabledTasks = newEnabledTasks;
+	}
 });
 
 // Date filtering helper
 function isTaskInPast(task: any): boolean {
-  if (!task.start_date) return false;
-  const taskDate = new Date(task.start_date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return taskDate < today;
+	if (!task.start_date) return false;
+	const taskDate = new Date(task.start_date);
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	return taskDate < today;
 }
 
 // Task editing functions
 function startEditingTask(suggestionId: string, taskIndex: number) {
-  editingTask = `${suggestionId}-${taskIndex}`;
-  const task = suggestions.find((s) => s.id === suggestionId)
-    ?.suggested_tasks?.[taskIndex];
-  if (task) {
-    taskEdits[taskIndex] = { ...task };
-  }
+	editingTask = `${suggestionId}-${taskIndex}`;
+	const task = suggestions.find((s) => s.id === suggestionId)?.suggested_tasks?.[taskIndex];
+	if (task) {
+		taskEdits[taskIndex] = { ...task };
+	}
 }
 
 function saveTaskEdit(taskIndex: number) {
-  // Update the task in the suggestion
-  const [suggestionId] = editingTask.split("-");
-  const suggestion = suggestions.find((s) => s.id === suggestionId);
-  if (suggestion && suggestion.suggested_tasks) {
-    suggestion.suggested_tasks[taskIndex] = { ...taskEdits[taskIndex] };
-    suggestions = [...suggestions]; // Trigger reactivity
-  }
-  editingTask = null;
-  delete taskEdits[taskIndex];
+	// Update the task in the suggestion
+	const [suggestionId] = editingTask.split('-');
+	const suggestion = suggestions.find((s) => s.id === suggestionId);
+	if (suggestion && suggestion.suggested_tasks) {
+		suggestion.suggested_tasks[taskIndex] = { ...taskEdits[taskIndex] };
+		suggestions = [...suggestions]; // Trigger reactivity
+	}
+	editingTask = null;
+	delete taskEdits[taskIndex];
 }
 ```
 
@@ -374,23 +371,19 @@ async acceptSuggestion(
 ```typescript
 // /api/calendar/analyze/suggestions/+server.ts
 export const PATCH: RequestHandler = async ({ request, locals }) => {
-  const { suggestions } = await request.json();
+	const { suggestions } = await request.json();
 
-  for (const suggestion of suggestions) {
-    if (suggestion.action === "accept") {
-      result = await analysisService.acceptSuggestion(
-        suggestion.suggestionId,
-        userId,
-        {
-          name: suggestion.modifications?.name,
-          description: suggestion.modifications?.description,
-          includeTasks: suggestion.modifications?.includeTasks ?? true,
-          taskSelections: suggestion.modifications?.taskSelections, // NEW
-          taskModifications: suggestion.modifications?.taskModifications, // NEW
-        },
-      );
-    }
-  }
+	for (const suggestion of suggestions) {
+		if (suggestion.action === 'accept') {
+			result = await analysisService.acceptSuggestion(suggestion.suggestionId, userId, {
+				name: suggestion.modifications?.name,
+				description: suggestion.modifications?.description,
+				includeTasks: suggestion.modifications?.includeTasks ?? true,
+				taskSelections: suggestion.modifications?.taskSelections, // NEW
+				taskModifications: suggestion.modifications?.taskModifications // NEW
+			});
+		}
+	}
 };
 ```
 
@@ -399,35 +392,35 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 ```css
 /* Enhanced styles for task display */
 .tasks-list {
-  @apply mt-4 space-y-2 pl-6 border-l-2 border-purple-200 dark:border-purple-800;
+	@apply mt-4 space-y-2 pl-6 border-l-2 border-purple-200 dark:border-purple-800;
 }
 
 .task-item {
-  @apply p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 transition-all;
+	@apply p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 transition-all;
 }
 
 .task-item.past-task {
-  @apply opacity-50 bg-amber-50 dark:bg-amber-900/20;
+	@apply opacity-50 bg-amber-50 dark:bg-amber-900/20;
 }
 
 .past-indicator {
-  @apply px-2 py-1 text-xs bg-amber-100 dark:bg-amber-900/30
+	@apply px-2 py-1 text-xs bg-amber-100 dark:bg-amber-900/30
            text-amber-700 dark:text-amber-300 rounded-full;
 }
 
 .task-edit-form {
-  @apply mt-3 p-3 bg-white dark:bg-gray-900 rounded-lg
+	@apply mt-3 p-3 bg-white dark:bg-gray-900 rounded-lg
            border border-purple-300 dark:border-purple-700;
 }
 
 .priority-high {
-  @apply text-red-600 dark:text-red-400;
+	@apply text-red-600 dark:text-red-400;
 }
 .priority-medium {
-  @apply text-amber-600 dark:text-amber-400;
+	@apply text-amber-600 dark:text-amber-400;
 }
 .priority-low {
-  @apply text-blue-600 dark:text-blue-400;
+	@apply text-blue-600 dark:text-blue-400;
 }
 ```
 

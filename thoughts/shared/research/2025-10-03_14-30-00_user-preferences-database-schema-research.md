@@ -20,10 +20,12 @@ This research document provides a comprehensive analysis of the BuildOS database
 ## Schema File Location
 
 **Primary Schema Definition:**
+
 - `/Users/annawayne/buildos-platform/apps/web/src/lib/database.schema.ts`
 - Auto-generated TypeScript types (Generated: 2025-09-30T13:56:44.836Z)
 
 **Key Migration Files:**
+
 - `/Users/annawayne/buildos-platform/apps/web/supabase/migrations/20250102_add_email_daily_brief_preference.sql`
 - `/Users/annawayne/buildos-platform/apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql`
 - `/Users/annawayne/buildos-platform/apps/web/supabase/migrations/20241220_trial_system.sql`
@@ -35,6 +37,7 @@ This research document provides a comprehensive analysis of the BuildOS database
 **Purpose:** Primary user account table with authentication and subscription data.
 
 **Schema:**
+
 ```typescript
 users: {
   // Identity
@@ -55,8 +58,8 @@ users: {
   // Subscription (Stripe integration)
   stripe_customer_id: string | null;
   subscription_plan_id: string | null;
-  subscription_status: string | null;  // 'trialing', 'active', 'free', etc.
-  trial_ends_at: string | null;        // 14-day trial by default
+  subscription_status: string | null; // 'trialing', 'active', 'free', etc.
+  trial_ends_at: string | null; // 14-day trial by default
 
   // Timestamps
   created_at: string;
@@ -66,12 +69,14 @@ users: {
 ```
 
 **Key Fields:**
+
 - `completed_onboarding`: Boolean flag - set to `true` when user completes 4-question onboarding
 - `subscription_status`: Trial system with states: 'trialing', 'active', 'free', etc.
 - `trial_ends_at`: Auto-set to 14 days from signup (configurable via `app.trial_days`)
 - `is_beta_user`: Special beta user status (30-day grace period for existing users)
 
 **Onboarding Logic:**
+
 - User is considered "onboarded" if `completed_onboarding = true` OR if at least 3 of 4 `user_context` input fields are filled
 - Current implementation in `/apps/web/src/routes/profile/+page.server.ts` (lines 154-172)
 
@@ -80,16 +85,17 @@ users: {
 **Purpose:** Rich user profile data collected during onboarding for AI personalization.
 
 **Schema:**
+
 ```typescript
 user_context: {
   id: string;
   user_id: string;
 
   // NEW: 4-Question Onboarding Input (Current System)
-  input_projects: string | null;        // "What are you building?"
-  input_work_style: string | null;      // "How do you work?"
-  input_challenges: string | null;      // "What's blocking you?"
-  input_help_focus: string | null;      // "What do you need help with?"
+  input_projects: string | null; // "What are you building?"
+  input_work_style: string | null; // "How do you work?"
+  input_challenges: string | null; // "What's blocking you?"
+  input_help_focus: string | null; // "What do you need help with?"
 
   // Tracking last parsed values for change detection
   last_parsed_input_projects: string | null;
@@ -153,6 +159,7 @@ From `/apps/web/src/routes/onboarding/+page.svelte`:
    - Examples: Focus on project organization, help with scheduling
 
 **Features:**
+
 - Auto-save every 1.5 seconds to prevent data loss
 - Voice recording support with live transcription
 - Progress tracking (considered complete when 3/4 fields filled)
@@ -160,6 +167,7 @@ From `/apps/web/src/routes/onboarding/+page.svelte`:
 - Data stored in raw form for AI processing
 
 **API Endpoint:**
+
 - POST `/api/onboarding` with actions: 'save_inputs' or 'complete'
 
 ### 3. `user_brief_preferences` Table
@@ -167,19 +175,20 @@ From `/apps/web/src/routes/onboarding/+page.svelte`:
 **Purpose:** Daily brief notification preferences and scheduling.
 
 **Schema:**
+
 ```typescript
 user_brief_preferences: {
   id: string;
   user_id: string;
 
   // Scheduling
-  frequency: string | null;          // 'daily' or 'weekly'
-  day_of_week: number | null;        // 0-6 (Monday=1) for weekly
-  time_of_day: string | null;        // HH:MM:SS format (e.g., '09:00:00')
-  timezone: string | null;           // IANA timezone (default: 'UTC')
+  frequency: string | null; // 'daily' or 'weekly'
+  day_of_week: number | null; // 0-6 (Monday=1) for weekly
+  time_of_day: string | null; // HH:MM:SS format (e.g., '09:00:00')
+  timezone: string | null; // IANA timezone (default: 'UTC')
 
   // Status
-  is_active: boolean | null;         // Enable/disable brief generation
+  is_active: boolean | null; // Enable/disable brief generation
 
   // NEW: Email delivery preference
   email_daily_brief: boolean | null; // Opt-in for email delivery (default: false)
@@ -191,12 +200,14 @@ user_brief_preferences: {
 ```
 
 **Key Features:**
+
 - Added in migration `20250102_add_email_daily_brief_preference.sql`
 - `email_daily_brief` defaults to `false` (opt-in required)
 - Used by worker service to schedule daily brief generation
 - API endpoint: `/api/brief-preferences` (GET/POST/PUT)
 
 **Default Values:**
+
 ```typescript
 {
   frequency: 'daily',
@@ -213,6 +224,7 @@ user_brief_preferences: {
 **Purpose:** SMS notification preferences and phone verification.
 
 **Schema:**
+
 ```typescript
 user_sms_preferences: {
   id: string;
@@ -220,26 +232,26 @@ user_sms_preferences: {
 
   // Phone Contact
   phone_number: string | null;
-  phone_verified: boolean | null;      // Twilio verification status
+  phone_verified: boolean | null; // Twilio verification status
   phone_verified_at: string | null;
 
   // Notification Preferences
-  task_reminders: boolean | null;      // Task reminder SMS (default: false)
-  daily_brief_sms: boolean | null;     // Daily brief via SMS (default: false)
-  urgent_alerts: boolean | null;       // Urgent task alerts (default: true)
+  task_reminders: boolean | null; // Task reminder SMS (default: false)
+  daily_brief_sms: boolean | null; // Daily brief via SMS (default: false)
+  urgent_alerts: boolean | null; // Urgent task alerts (default: true)
 
   // Timing Preferences
-  quiet_hours_start: string | null;    // TIME format (default: '21:00')
-  quiet_hours_end: string | null;      // TIME format (default: '08:00')
-  timezone: string | null;             // Default: 'America/Los_Angeles'
+  quiet_hours_start: string | null; // TIME format (default: '21:00')
+  quiet_hours_end: string | null; // TIME format (default: '08:00')
+  timezone: string | null; // Default: 'America/Los_Angeles'
 
   // Rate Limiting
-  daily_sms_limit: number | null;      // Max SMS per day (default: 10)
-  daily_sms_count: number | null;      // Current count (default: 0)
+  daily_sms_limit: number | null; // Max SMS per day (default: 10)
+  daily_sms_count: number | null; // Current count (default: 0)
   daily_count_reset_at: string | null; // Reset timestamp
 
   // Opt-out
-  opted_out: boolean | null;           // Master opt-out (default: false)
+  opted_out: boolean | null; // Master opt-out (default: false)
   opted_out_at: string | null;
   opt_out_reason: string | null;
 
@@ -250,6 +262,7 @@ user_sms_preferences: {
 ```
 
 **Key Features:**
+
 - Added in migration `20250928_add_sms_messaging_tables.sql`
 - Twilio integration for phone verification
 - Quiet hours support (no SMS during quiet hours)
@@ -258,6 +271,7 @@ user_sms_preferences: {
 - API endpoints: `/api/sms/verify`, `/api/sms/verify/confirm`
 
 **Related Tables:**
+
 - `sms_messages`: Message delivery tracking (linked to `queue_jobs`)
 - `sms_templates`: Reusable message templates
 
@@ -266,6 +280,7 @@ user_sms_preferences: {
 **Purpose:** Calendar integration and scheduling preferences.
 
 **Schema:**
+
 ```typescript
 user_calendar_preferences: {
   id: string;
@@ -294,6 +309,7 @@ user_calendar_preferences: {
 ```
 
 **Usage:**
+
 - Used by phase generation strategies for intelligent task scheduling
 - Google Calendar integration settings
 - Work hours define "available" time slots for task scheduling
@@ -303,6 +319,7 @@ user_calendar_preferences: {
 **Purpose:** In-app notification system (generic stackable notifications).
 
 **Schema:**
+
 ```typescript
 user_notifications: {
   id: string;
@@ -311,18 +328,18 @@ user_notifications: {
   // Content
   title: string;
   message: string;
-  type: string;                 // Notification category
+  type: string; // Notification category
 
   // Actions
-  action_url: string | null;    // Optional action link
+  action_url: string | null; // Optional action link
 
   // Priority & Expiry
-  priority: string | null;      // Display priority
-  expires_at: string | null;    // Auto-expire timestamp
+  priority: string | null; // Display priority
+  expires_at: string | null; // Auto-expire timestamp
 
   // Status
-  read_at: string | null;       // Marked as read
-  dismissed_at: string | null;  // Dismissed by user
+  read_at: string | null; // Marked as read
+  dismissed_at: string | null; // Dismissed by user
 
   // Timestamps
   created_at: string | null;
@@ -330,6 +347,7 @@ user_notifications: {
 ```
 
 **Related Documentation:**
+
 - See `/NOTIFICATION_SYSTEM_DOCS_MAP.md` for complete notification system docs
 - Components in `/src/lib/components/notifications/`
 
@@ -343,7 +361,7 @@ Tracks which trial reminder emails have been sent:
 trial_reminders: {
   id: string;
   user_id: string;
-  reminder_type: string;  // '7_days', '3_days', '1_day', 'expired', 'grace_period'
+  reminder_type: string; // '7_days', '3_days', '1_day', 'expired', 'grace_period'
   sent_at: string | null;
   created_at: string | null;
 }
@@ -371,13 +389,13 @@ user_calendar_tokens: {
 
 ## Notification Preferences Summary
 
-| Preference Type | Table | Field | Default | Description |
-|----------------|-------|-------|---------|-------------|
-| **Email Daily Brief** | `user_brief_preferences` | `email_daily_brief` | `false` | Receive daily brief via email |
-| **SMS Daily Brief** | `user_sms_preferences` | `daily_brief_sms` | `false` | Receive daily brief via SMS |
-| **SMS Task Reminders** | `user_sms_preferences` | `task_reminders` | `false` | Task reminder notifications |
-| **SMS Urgent Alerts** | `user_sms_preferences` | `urgent_alerts` | `true` | Urgent task alerts |
-| **In-App Notifications** | `user_notifications` | N/A | Always on | Generic notification system |
+| Preference Type          | Table                    | Field               | Default   | Description                   |
+| ------------------------ | ------------------------ | ------------------- | --------- | ----------------------------- |
+| **Email Daily Brief**    | `user_brief_preferences` | `email_daily_brief` | `false`   | Receive daily brief via email |
+| **SMS Daily Brief**      | `user_sms_preferences`   | `daily_brief_sms`   | `false`   | Receive daily brief via SMS   |
+| **SMS Task Reminders**   | `user_sms_preferences`   | `task_reminders`    | `false`   | Task reminder notifications   |
+| **SMS Urgent Alerts**    | `user_sms_preferences`   | `urgent_alerts`     | `true`    | Urgent task alerts            |
+| **In-App Notifications** | `user_notifications`     | N/A                 | Always on | Generic notification system   |
 
 ## Database Changes Needed for New Onboarding Flow
 
@@ -398,6 +416,7 @@ COMMENT ON COLUMN user_context.preferred_contact_method IS 'Preferred contact me
 ```
 
 Benefits:
+
 - Single source of truth for onboarding data
 - Backward compatible with existing `input_*` fields
 - Easy to version onboarding iterations
@@ -439,6 +458,7 @@ CREATE TABLE user_onboarding_v2 (
 ```
 
 Benefits:
+
 - Clean separation from legacy onboarding
 - Can coexist with old system during migration
 - Easier to drop if pivot needed
@@ -460,6 +480,7 @@ Leverage existing tables with a migration plan:
    ```
 
 Benefits:
+
 - No new tables needed
 - Reuses existing infrastructure
 - Minimal schema changes
@@ -496,13 +517,13 @@ Based on schema analysis, here's what's **missing** for the new onboarding:
 
 ## API Endpoints Currently Available
 
-| Endpoint | Method | Purpose | Table(s) |
-|----------|--------|---------|----------|
-| `/api/onboarding` | POST | Save onboarding inputs | `user_context`, `users` |
-| `/api/brief-preferences` | GET/POST/PUT | Daily brief settings | `user_brief_preferences` |
-| `/api/sms/verify` | POST | Initiate phone verification | `user_sms_preferences` |
-| `/api/sms/verify/confirm` | POST | Confirm verification code | `user_sms_preferences` |
-| `/api/users/calendar-preferences` | POST | Update calendar prefs | `user_calendar_preferences` |
+| Endpoint                          | Method       | Purpose                     | Table(s)                    |
+| --------------------------------- | ------------ | --------------------------- | --------------------------- |
+| `/api/onboarding`                 | POST         | Save onboarding inputs      | `user_context`, `users`     |
+| `/api/brief-preferences`          | GET/POST/PUT | Daily brief settings        | `user_brief_preferences`    |
+| `/api/sms/verify`                 | POST         | Initiate phone verification | `user_sms_preferences`      |
+| `/api/sms/verify/confirm`         | POST         | Confirm verification code   | `user_sms_preferences`      |
+| `/api/users/calendar-preferences` | POST         | Update calendar prefs       | `user_calendar_preferences` |
 
 ## Next Steps for New Onboarding Implementation
 
@@ -535,6 +556,7 @@ Based on schema analysis, here's what's **missing** for the new onboarding:
 ## References
 
 **Code Files Analyzed:**
+
 - `/apps/web/src/lib/database.schema.ts` (lines 1-1219)
 - `/apps/web/src/routes/onboarding/+page.svelte` (lines 1-802)
 - `/apps/web/src/routes/profile/+page.server.ts` (lines 154-172)
@@ -542,11 +564,13 @@ Based on schema analysis, here's what's **missing** for the new onboarding:
 - `/apps/web/src/routes/api/sms/verify/+server.ts`
 
 **Migration Files:**
+
 - `20250102_add_email_daily_brief_preference.sql`
 - `20250928_add_sms_messaging_tables.sql`
 - `20241220_trial_system.sql`
 
 **Documentation:**
+
 - `/apps/web/docs/features/onboarding/README.md`
 - `/NOTIFICATION_SYSTEM_DOCS_MAP.md`
 

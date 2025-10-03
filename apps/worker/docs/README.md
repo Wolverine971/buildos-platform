@@ -27,13 +27,13 @@ This is **worker service-specific** documentation (`/apps/worker`).
 
 ## Documentation Structure
 
-| Folder           | Contents                    | Key Documents                                      |
-| ---------------- | --------------------------- | -------------------------------------------------- |
-| `/features/`     | Worker features             | daily-briefs, queue-system, scheduler, email       |
-| `/api/`          | Worker API endpoints        | job status, queue management (future)              |
-| `/development/`  | Dev guides                  | conventions, testing                               |
-| `/operations/`   | Deployment and ops          | Railway config, runbooks, monitoring               |
-| `/integrations/` | External services           | email (Nodemailer), Twilio                         |
+| Folder           | Contents             | Key Documents                                |
+| ---------------- | -------------------- | -------------------------------------------- |
+| `/features/`     | Worker features      | daily-briefs, queue-system, scheduler, email |
+| `/api/`          | Worker API endpoints | job status, queue management (future)        |
+| `/development/`  | Dev guides           | conventions, testing                         |
+| `/operations/`   | Deployment and ops   | Railway config, runbooks, monitoring         |
+| `/integrations/` | External services    | email (Nodemailer), Twilio                   |
 
 ## Quick Start for LLM Agents
 
@@ -62,9 +62,11 @@ This is **worker service-specific** documentation (`/apps/worker`).
 ## Key Features
 
 ### Daily Brief Generation
+
 **Location:** `/features/daily-briefs/`
 
 Scheduled generation and delivery of daily email briefs:
+
 - Cron-based scheduling (configurable per user timezone)
 - AI-powered brief generation via OpenAI
 - Email delivery via Nodemailer
@@ -72,9 +74,11 @@ Scheduled generation and delivery of daily email briefs:
 - Job status tracking
 
 ### Queue System
+
 **Location:** `/features/queue-system/`
 
 Supabase-based job queue (no Redis required):
+
 - Atomic job claiming
 - Concurrent job processing
 - Job status tracking
@@ -82,18 +86,22 @@ Supabase-based job queue (no Redis required):
 - Stalled job recovery
 
 ### Scheduler
+
 **Location:** `/features/scheduler/`
 
 Cron-based task scheduling:
+
 - Daily brief scheduling
 - Weekly summary generation
 - Cleanup tasks
 - Job health monitoring
 
 ### Email Delivery
+
 **Location:** `/integrations/email/`
 
 Email sending infrastructure:
+
 - SMTP configuration
 - Template rendering
 - Delivery tracking
@@ -125,6 +133,7 @@ cd ../.. && pnpm build --filter=worker  # Build from monorepo root
 See [Deployment Environment Checklist](/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) for complete list.
 
 **Essential variables:**
+
 ```bash
 # Database
 PUBLIC_SUPABASE_URL=
@@ -152,9 +161,11 @@ TWILIO_PHONE_NUMBER=
 See `/operations/deployment/` for deployment documentation (future).
 
 Currently documented at root level:
+
 - Railway deployment configuration (future: move to `/operations/deployment/`)
 
 For now, deployment happens automatically via Railway's GitHub integration:
+
 1. Push to main branch
 2. Railway automatically deploys
 
@@ -178,6 +189,7 @@ Defined in `/apps/worker/src/scheduler/`:
 ### Queue Health
 
 Check queue status:
+
 ```sql
 -- Active jobs
 SELECT * FROM queue_jobs WHERE status = 'processing';
@@ -192,6 +204,7 @@ SELECT status, COUNT(*) FROM queue_jobs GROUP BY status;
 ### Railway Logs
 
 Access logs via Railway dashboard:
+
 - Application logs
 - Error logs
 - Performance metrics

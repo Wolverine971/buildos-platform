@@ -22,14 +22,17 @@ Generic stackable notification system for long-running processes with minimized 
 ## Key Files
 
 **Components:**
+
 - `/src/lib/components/notifications/NotificationModal.svelte` - Modal container
 - `/src/lib/components/notifications/MinimizedNotification.svelte` - Minimized bar
 - `/src/lib/components/notifications/types/` - Notification type implementations
 
 **Services:**
+
 - `/src/lib/services/notification-bridge.service.ts` - Bridge pattern for notifications
 
 **Types:**
+
 - `/src/lib/types/notification.types.ts` - Type definitions
 
 ## Notification Types

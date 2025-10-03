@@ -5,64 +5,64 @@
 ### 1. Created New Type System Files
 
 - **`packages/shared-types/src/queue-types.ts`**: Strongly typed interfaces for queue jobs
-  - Defined `QueueJobType` and `QueueJobStatus` from database enums (single source of truth)
-  - Created metadata interfaces for each job type (DailyBriefJobMetadata, PhaseGenerationJobMetadata, etc.)
-  - Added result types for each job type
-  - Implemented type guards and helper functions
-  - Generic `QueueJob<T>` interface with type-safe metadata
+    - Defined `QueueJobType` and `QueueJobStatus` from database enums (single source of truth)
+    - Created metadata interfaces for each job type (DailyBriefJobMetadata, PhaseGenerationJobMetadata, etc.)
+    - Added result types for each job type
+    - Implemented type guards and helper functions
+    - Generic `QueueJob<T>` interface with type-safe metadata
 
 - **`packages/shared-types/src/validation.ts`**: Runtime validation without external dependencies
-  - Validation functions for each job metadata type
-  - Date format validators
-  - Timezone validators
-  - UUID validators
-  - Custom ValidationError class
+    - Validation functions for each job metadata type
+    - Date format validators
+    - Timezone validators
+    - UUID validators
+    - Custom ValidationError class
 
 - **`packages/shared-types/src/api-types.ts`**: Standardized API response types
-  - `ApiResponse<T>` with success/error handling
-  - Comprehensive `ErrorCode` enum
-  - Stream event types for SSE
-  - Pagination support
-  - HTTP status code mapping
+    - `ApiResponse<T>` with success/error handling
+    - Comprehensive `ErrorCode` enum
+    - Stream event types for SSE
+    - Pagination support
+    - HTTP status code mapping
 
 ### 2. Updated Core Type Exports
 
 - **`packages/shared-types/src/index.ts`**:
-  - Removed incorrect QueueJob interface with wrong enum values
-  - Now re-exports new type files
-  - Kept legacy types for backward compatibility (marked for deprecation)
+    - Removed incorrect QueueJob interface with wrong enum values
+    - Now re-exports new type files
+    - Kept legacy types for backward compatibility (marked for deprecation)
 
 ### 3. Fixed Type Import Errors
 
 - **`apps/web/src/lib/services/dailyBrief/streamHandler.ts`**:
-  - Fixed import from wrong location
-  - Updated to use `@buildos/shared-types`
-  - Updated StreamEvent usage to match new API types
+    - Fixed import from wrong location
+    - Updated to use `@buildos/shared-types`
+    - Updated StreamEvent usage to match new API types
 
 ### 4. Removed Duplicate Types
 
 - **Deleted `apps/worker/src/lib/database.types.ts`**:
-  - Removed 141KB duplicate file (37,651 tokens)
-  - All references already using `@buildos/shared-types`
+    - Removed 141KB duplicate file (37,651 tokens)
+    - All references already using `@buildos/shared-types`
 
 ### 5. Updated Service Files
 
 - **`apps/web/src/lib/services/railwayWorker.service.ts`**:
-  - Updated to import from `@buildos/shared-types`
-  - Uses new type-safe interfaces
-  - Added type aliases for backward compatibility
+    - Updated to import from `@buildos/shared-types`
+    - Uses new type-safe interfaces
+    - Added type aliases for backward compatibility
 
 ### 6. Created Database Migration
 
 - **`apps/web/supabase/migrations/20250927_queue_type_constraints.sql`**:
-  - Adds metadata validation constraints
-  - Includes status transition validation
-  - Has helper functions to fix existing data
-  - ✅ **FIXED**: Migration now handles existing data gracefully:
-    - First attempts to fix metadata by adding missing fields
-    - Accepts both camelCase and snake_case field names
-    - Marks unfixable rows as failed instead of blocking migration
-    - Provides detailed debugging info for violations
+    - Adds metadata validation constraints
+    - Includes status transition validation
+    - Has helper functions to fix existing data
+    - ✅ **FIXED**: Migration now handles existing data gracefully:
+        - First attempts to fix metadata by adding missing fields
+        - Accepts both camelCase and snake_case field names
+        - Marks unfixable rows as failed instead of blocking migration
+        - Provides detailed debugging info for violations
 
 ## Issues Found and Fixed
 
@@ -92,10 +92,10 @@ The migration now includes:
 
 1. **Data Cleanup Phase**: Attempts to fix existing metadata before applying constraints
 2. **Flexible Validation**: Accepts multiple field name formats:
-   - `briefDate` OR `brief_date`
-   - `projectId` OR `project_id` OR `projectID`
-   - `userId` OR `user_id`
-   - etc.
+    - `briefDate` OR `brief_date`
+    - `projectId` OR `project_id` OR `projectID`
+    - `userId` OR `user_id`
+    - etc.
 3. **Graceful Failure Handling**: Marks unfixable rows as 'failed' instead of blocking
 4. **Detailed Diagnostics**: Provides sample violations for debugging
 

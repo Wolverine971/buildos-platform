@@ -80,43 +80,43 @@ Phase 2 has made significant progress migrating the Brain Dump notification syst
 ## Files Created
 
 1. **BrainDumpMinimizedView.svelte**
-   - Displays brain dump notification in the minimized stack
-   - Shows status-based icons and progress
-   - Location: `apps/web/src/lib/components/notifications/types/brain-dump/`
+    - Displays brain dump notification in the minimized stack
+    - Shows status-based icons and progress
+    - Location: `apps/web/src/lib/components/notifications/types/brain-dump/`
 
 2. **BrainDumpModalContent.svelte**
-   - Full brain dump content in expanded modal
-   - Lazy loads child components (ParseResultsDiffView, DualProcessingResults, SuccessView)
-   - Handles all brain dump-specific interactions
-   - Location: `apps/web/src/lib/components/notifications/types/brain-dump/`
+    - Full brain dump content in expanded modal
+    - Lazy loads child components (ParseResultsDiffView, DualProcessingResults, SuccessView)
+    - Handles all brain dump-specific interactions
+    - Location: `apps/web/src/lib/components/notifications/types/brain-dump/`
 
 3. **brain-dump-notification.bridge.ts**
-   - Bridges brain-dump-v2.store with notification.store
-   - Handles API call triggering
-   - Manages streaming state updates
-   - Prevents duplicate notifications
-   - Location: `apps/web/src/lib/services/`
+    - Bridges brain-dump-v2.store with notification.store
+    - Handles API call triggering
+    - Manages streaming state updates
+    - Prevents duplicate notifications
+    - Location: `apps/web/src/lib/services/`
 
 ---
 
 ## Files Modified
 
 1. **notification.store.ts**
-   - Fixed hydration race condition
-   - Changed `set()` to `update()` with state merging
-   - Added `isHydrating` flag
+    - Fixed hydration race condition
+    - Changed `set()` to `update()` with state merging
+    - Added `isHydrating` flag
 
 2. **NotificationModal.svelte**
-   - Added lazy loading for brain-dump-specific modal content
-   - Routes to BrainDumpModalContent when `type === 'brain-dump'`
+    - Added lazy loading for brain-dump-specific modal content
+    - Routes to BrainDumpModalContent when `type === 'brain-dump'`
 
 3. **MinimizedNotification.svelte**
-   - Added lazy loading for brain-dump-specific minimized view
-   - Routes to BrainDumpMinimizedView when `type === 'brain-dump'`
+    - Added lazy loading for brain-dump-specific minimized view
+    - Routes to BrainDumpMinimizedView when `type === 'brain-dump'`
 
 4. **+layout.svelte**
-   - Already had feature flag logic (discovered during investigation)
-   - Initializes/cleans up bridge on mount/destroy
+    - Already had feature flag logic (discovered during investigation)
+    - Initializes/cleans up bridge on mount/destroy
 
 ---
 
@@ -127,8 +127,8 @@ Phase 2 has made significant progress migrating the Brain Dump notification syst
 - [x] Notification appears when clicking "Process"
 - [x] API call to `/stream` or `/stream-short` is made
 - [x] Streaming progress updates in real-time:
-  - Context: "Analyzing..." → "Extracting details..." → "Complete ✓"
-  - Tasks: "Waiting..." → "Extracting tasks..." → "Complete ✓"
+    - Context: "Analyzing..." → "Extracting details..." → "Complete ✓"
+    - Tasks: "Waiting..." → "Extracting tasks..." → "Complete ✓"
 - [x] Parse results display when processing completes
 - [x] No hydration race condition
 - [x] No duplicate notifications on page refresh

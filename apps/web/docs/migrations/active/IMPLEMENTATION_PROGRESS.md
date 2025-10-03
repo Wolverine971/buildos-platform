@@ -127,44 +127,44 @@
 
 - ⚠️ 6 errors + 29 warnings (pre-existing, unrelated to this implementation)
 - Files with pre-existing issues:
-  - `progressTracker.ts`
-  - `supabaseQueue.ts`
-  - `smsWorker.ts`
+    - `progressTracker.ts`
+    - `supabaseQueue.ts`
+    - `smsWorker.ts`
 
 ---
 
 ## Documentation Created
 
 1. **IMPLEMENTATION_COMPLETE.md** (apps/worker)
-   - Complete Phase 1 & 2 summary
-   - Deployment checklist
-   - Performance metrics
-   - Rollback plan
+    - Complete Phase 1 & 2 summary
+    - Deployment checklist
+    - Performance metrics
+    - Rollback plan
 
 2. **PHASE1_IMPLEMENTATION.md** (apps/worker)
-   - Detailed Phase 1 technical implementation
-   - Performance benchmarks
-   - Test results
+    - Detailed Phase 1 technical implementation
+    - Performance benchmarks
+    - Test results
 
 3. **PHASE2_REVISED_IMPLEMENTATION.md** (apps/worker)
-   - Revised Phase 2 approach (using existing email tables)
-   - Architecture decisions
-   - Data flow diagrams
+    - Revised Phase 2 approach (using existing email tables)
+    - Architecture decisions
+    - Data flow diagrams
 
 4. **MIGRATION_QUICK_START.md** (root)
-   - Quick reference for migration error
-   - Step-by-step resolution
-   - Verification commands
+    - Quick reference for migration error
+    - Step-by-step resolution
+    - Verification commands
 
 5. **POST_MIGRATION_STEPS.md** (root)
-   - Complete post-migration guide
-   - Type regeneration steps
-   - Verification checklist
+    - Complete post-migration guide
+    - Type regeneration steps
+    - Verification checklist
 
 6. **READY_TO_DEPLOY.md** (root)
-   - Current state summary
-   - Deployment steps
-   - Success checklist
+    - Current state summary
+    - Deployment steps
+    - Success checklist
 
 ---
 
@@ -183,11 +183,11 @@
 
 - Updates queue job metadata constraint
 - Creates indexes on `emails` table:
-  - `idx_emails_category_template_data` (for brief lookups)
-  - `idx_emails_status_category` (for pending email queries)
+    - `idx_emails_category_template_data` (for brief lookups)
+    - `idx_emails_status_category` (for pending email queries)
 - Creates RPC functions:
-  - `get_pending_brief_emails()` (finds emails needing to be sent)
-  - `get_brief_email_status()` (gets email status for a brief)
+    - `get_pending_brief_emails()` (finds emails needing to be sent)
+    - `get_brief_email_status()` (gets email status for a brief)
 - Creates monitoring view: `brief_email_stats` (daily email metrics)
 
 ---
@@ -256,30 +256,30 @@ The implementation is **production-ready** and can be deployed immediately after
 
 1. **Run migrations** (automatically handles transaction separation):
 
-   ```bash
-   cd apps/web
-   supabase db push
-   ```
+    ```bash
+    cd apps/web
+    supabase db push
+    ```
 
 2. **Regenerate TypeScript types**:
 
-   ```bash
-   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/database.types.ts
-   ```
+    ```bash
+    npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/database.types.ts
+    ```
 
 3. **Optional: Remove type directive** (can be done later):
 
-   ```typescript
-   // Remove this line after type regeneration:
-   // @ts-expect-error - generate_brief_email will be added to enum after migration
-   ```
+    ```typescript
+    // Remove this line after type regeneration:
+    // @ts-expect-error - generate_brief_email will be added to enum after migration
+    ```
 
 4. **Deploy worker**:
-   ```bash
-   cd apps/worker
-   pnpm build
-   pnpm start
-   ```
+    ```bash
+    cd apps/worker
+    pnpm build
+    pnpm start
+    ```
 
 ---
 

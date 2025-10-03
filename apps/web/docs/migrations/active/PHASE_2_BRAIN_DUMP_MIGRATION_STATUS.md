@@ -27,20 +27,20 @@ Phase 2 successfully integrates the Brain Dump notification system with the gene
 - **Location:** `apps/web/src/lib/components/notifications/types/brain-dump/`
 - **Purpose:** Displays brain dump notifications in the minimized stack
 - **Features:**
-  - Status-based icons (processing/success/error/warning)
-  - Smart title and subtitle generation
-  - Progress bar for processing state
-  - Auto-extracts info from notification.data
+    - Status-based icons (processing/success/error/warning)
+    - Smart title and subtitle generation
+    - Progress bar for processing state
+    - Auto-extracts info from notification.data
 
 #### BrainDumpModalContent.svelte
 
 - **Location:** `apps/web/src/lib/components/notifications/types/brain-dump/`
 - **Purpose:** Full brain dump content in expanded modal
 - **Features:**
-  - Lazy-loads heavy components (ParseResultsDiffView, DualProcessingResults, SuccessView)
-  - Handles all brain dump events (apply operations, toggle, edit, etc.)
-  - Manages edit modal and refresh modal states
-  - Smart view switching (processing/parseResults/success)
+    - Lazy-loads heavy components (ParseResultsDiffView, DualProcessingResults, SuccessView)
+    - Handles all brain dump events (apply operations, toggle, edit, etc.)
+    - Manages edit modal and refresh modal states
+    - Smart view switching (processing/parseResults/success)
 
 ### 2. **Integration Bridge**
 
@@ -49,11 +49,11 @@ Phase 2 successfully integrates the Brain Dump notification system with the gene
 - **Location:** `apps/web/src/lib/services/`
 - **Purpose:** Connects brain-dump-v2.store with notification.store
 - **Features:**
-  - Auto-creates notifications when brain dump processing starts
-  - Syncs streaming progress updates to notification store
-  - Updates notification status (processing → success/error)
-  - Handles cleanup and state management
-  - Exports helper functions for manual control
+    - Auto-creates notifications when brain dump processing starts
+    - Syncs streaming progress updates to notification store
+    - Updates notification status (processing → success/error)
+    - Handles cleanup and state management
+    - Exports helper functions for manual control
 
 ### 3. **Component Registration**
 
@@ -144,8 +144,8 @@ notificationStore.add({
 // SSE message received
 // → Bridge forwards to notification:
 notificationStore.setProgress(notificationId, {
-  type: "streaming",
-  message: "Extracting tasks...",
+	type: 'streaming',
+	message: 'Extracting tasks...'
 });
 ```
 
@@ -172,7 +172,7 @@ SvelteKit requires specific import patterns for environment variables:
 
 ```typescript
 // ✅ CORRECT - Use SvelteKit's static public imports
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
 // ❌ WRONG - Don't use import.meta.env directly
 const flag = import.meta.env.PUBLIC_USE_NEW_NOTIFICATIONS;
@@ -235,30 +235,30 @@ pnpm dev
 ### Step 3: Test Brain Dump Flow
 
 1. **Start a brain dump:**
-   - Navigate to dashboard
-   - Click "Brain Dump" button
-   - Enter text and start processing
+    - Navigate to dashboard
+    - Click "Brain Dump" button
+    - Enter text and start processing
 
 2. **Verify minimized notification appears:**
-   - Should see notification in bottom-right corner
-   - Should show "Processing brain dump" title
-   - Should show streaming progress updates
+    - Should see notification in bottom-right corner
+    - Should show "Processing brain dump" title
+    - Should show streaming progress updates
 
 3. **Click notification to expand:**
-   - Should open modal with full processing view
-   - If processing: shows DualProcessingResults with streaming updates
-   - If complete: shows ParseResultsDiffView for review
+    - Should open modal with full processing view
+    - If processing: shows DualProcessingResults with streaming updates
+    - If complete: shows ParseResultsDiffView for review
 
 4. **Test parse results review:**
-   - Review operations
-   - Toggle operations on/off
-   - Apply operations
-   - Verify success view shows
+    - Review operations
+    - Toggle operations on/off
+    - Apply operations
+    - Verify success view shows
 
 5. **Test multiple brain dumps:**
-   - Start first brain dump → minimizes
-   - Start second brain dump → both in stack
-   - Both process independently
+    - Start first brain dump → minimizes
+    - Start second brain dump → both in stack
+    - Both process independently
 
 ### Step 4: Verify Cleanup
 
@@ -342,35 +342,35 @@ function syncBrainDumpToNotification(state: UnifiedBrainDumpState): void;
 ### Immediate (Before Production)
 
 1. **End-to-End Testing**
-   - Test all brain dump flows with feature flag enabled
-   - Verify backward compatibility with flag disabled
-   - Test on mobile devices
+    - Test all brain dump flows with feature flag enabled
+    - Verify backward compatibility with flag disabled
+    - Test on mobile devices
 
 2. **Type Checking**
-   - Ensure no TypeScript errors
-   - Verify all props and events are correctly typed
+    - Ensure no TypeScript errors
+    - Verify all props and events are correctly typed
 
 3. **Error Handling**
-   - Add comprehensive error boundaries
-   - Test failure scenarios (network, API errors)
+    - Add comprehensive error boundaries
+    - Test failure scenarios (network, API errors)
 
 ### Short-Term (Phase 3-5)
 
 4. **Phase Generation Integration**
-   - Create PhaseGenerationMinimizedView
-   - Create PhaseGenerationModalContent
-   - Update phase generation flow to use notification store
+    - Create PhaseGenerationMinimizedView
+    - Create PhaseGenerationModalContent
+    - Update phase generation flow to use notification store
 
 5. **Calendar Analysis Integration**
-   - Create CalendarAnalysisMinimizedView
-   - Create CalendarAnalysisModalContent
-   - Update calendar analysis flow
+    - Create CalendarAnalysisMinimizedView
+    - Create CalendarAnalysisModalContent
+    - Update calendar analysis flow
 
 6. **Polish & Optimization**
-   - Add animations and transitions
-   - Mobile responsive improvements
-   - Notification history UI
-   - User preferences (sounds, position, etc.)
+    - Add animations and transitions
+    - Mobile responsive improvements
+    - Notification history UI
+    - User preferences (sounds, position, etc.)
 
 ---
 
@@ -405,24 +405,24 @@ function syncBrainDumpToNotification(state: UnifiedBrainDumpState): void;
 
 1. **Check feature flag:**
 
-   ```bash
-   # Verify .env.local has the flag
-   cat apps/web/.env.local | grep PUBLIC_USE_NEW_NOTIFICATIONS
+    ```bash
+    # Verify .env.local has the flag
+    cat apps/web/.env.local | grep PUBLIC_USE_NEW_NOTIFICATIONS
 
-   # Should output: PUBLIC_USE_NEW_NOTIFICATIONS=true
-   ```
+    # Should output: PUBLIC_USE_NEW_NOTIFICATIONS=true
+    ```
 
 2. **Verify SvelteKit import:**
-   - Bridge file should import from `$env/static/public`
-   - NOT from `import.meta.env`
+    - Bridge file should import from `$env/static/public`
+    - NOT from `import.meta.env`
 
 3. **Check console logs:**
-   - Look for `[BrainDumpNotificationBridge] Initializing bridge`
-   - Look for `[Layout] USE_NEW_NOTIFICATION_SYSTEM: true`
+    - Look for `[BrainDumpNotificationBridge] Initializing bridge`
+    - Look for `[Layout] USE_NEW_NOTIFICATION_SYSTEM: true`
 
 4. **Verify brain dump processing:**
-   - Check brain-dump-v2.store state in console
-   - Processing phase should be 'parsing'
+    - Check brain-dump-v2.store state in console
+    - Processing phase should be 'parsing'
 
 ### Component not loading?
 
@@ -449,8 +449,8 @@ function syncBrainDumpToNotification(state: UnifiedBrainDumpState): void;
 const flag = import.meta.env.PUBLIC_USE_NEW_NOTIFICATIONS;
 
 // ✅ CORRECT - Use SvelteKit static imports
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
-const flag = PUBLIC_USE_NEW_NOTIFICATIONS === "true";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
+const flag = PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
 ```
 
 **Why it matters:** SvelteKit statically analyzes `$env/static/public` imports at build time. Using `import.meta.env` bypasses this system and can cause issues.
@@ -484,8 +484,8 @@ components/notifications/types/export/
 3. **Register in MinimizedNotification and NotificationModal:**
 
 ```typescript
-if (notification.type === "export" && !ExportMinimizedView) {
-  // Load component
+if (notification.type === 'export' && !ExportMinimizedView) {
+	// Load component
 }
 ```
 
@@ -493,14 +493,14 @@ if (notification.type === "export" && !ExportMinimizedView) {
 
 ```typescript
 // services/export-notification.bridge.ts
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from "$env/static/public";
+import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
 
 export function initExportNotificationBridge() {
-  // Always check feature flag using SvelteKit imports
-  const useNotifications = PUBLIC_USE_NEW_NOTIFICATIONS === "true";
-  if (!useNotifications) return;
+	// Always check feature flag using SvelteKit imports
+	const useNotifications = PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
+	if (!useNotifications) return;
 
-  // ... bridge logic
+	// ... bridge logic
 }
 ```
 
@@ -513,11 +513,11 @@ The bridge pattern used here can be applied to any store integration:
 ```typescript
 // 1. Subscribe to source store
 sourceStore.subscribe((state) => {
-  // 2. Map state to notification
-  const notificationData = mapStateToNotification(state);
+	// 2. Map state to notification
+	const notificationData = mapStateToNotification(state);
 
-  // 3. Update notification store
-  notificationStore.update(id, notificationData);
+	// 3. Update notification store
+	notificationStore.update(id, notificationData);
 });
 ```
 

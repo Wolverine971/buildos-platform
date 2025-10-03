@@ -217,25 +217,25 @@ Be specific about how you'll spend the money:
 ### The Questions You'll Definitely Get:
 
 1. **"Why are you the right person to build this?"**
-    - Your technical skills + personal pain point + military discipline is your answer
+   - Your technical skills + personal pain point + military discipline is your answer
 
 2. **"What if Notion/Microsoft/Google builds this?"**
-    - You're AI-native from day one, they're retrofitting
-    - You're focused on LLM context building, they're general productivity
+   - You're AI-native from day one, they're retrofitting
+   - You're focused on LLM context building, they're general productivity
 
 3. **"How do you acquire customers?"**
-    - Start with your answer about LLM power users and content marketing
+   - Start with your answer about LLM power users and content marketing
 
 4. **"What's your moat?"**
-    - Context accumulation creates switching costs
-    - AI-first architecture is hard to replicate
+   - Context accumulation creates switching costs
+   - AI-first architecture is hard to replicate
 
 5. **"Why are you a solo founder?"**
-    - Be honest but positive: "I'm actively looking for the right technical co-founder"
+   - Be honest but positive: "I'm actively looking for the right technical co-founder"
 
 6. **"How big can this get?"**
-    - $50B productivity market, $12B project management market
-    - Every knowledge worker is a potential customer
+   - $50B productivity market, $12B project management market
+   - Every knowledge worker is a potential customer
 
 ---
 
@@ -267,24 +267,24 @@ I need to understand your situation better to give you more specific guidance. C
 1. **Legal Status**: Are you incorporated? If yes, where and what structure?
 
 2. **Current Traction**:
-    - How many users do you have right now?
-    - What's your current MRR (even if $0)?
-    - What's your strongest traction point to date?
+   - How many users do you have right now?
+   - What's your current MRR (even if $0)?
+   - What's your strongest traction point to date?
 
 3. **Financial Situation**:
-    - What's your current burn rate?
-    - How many months of personal runway do you have?
-    - Are you working on this full-time?
+   - What's your current burn rate?
+   - How many months of personal runway do you have?
+   - Are you working on this full-time?
 
 4. **The Raise**:
-    - Do you have any soft commits or interested investors?
-    - Do you have any warm connections to investors?
-    - What's your timeline? (When do you need the money?)
+   - Do you have any soft commits or interested investors?
+   - Do you have any warm connections to investors?
+   - What's your timeline? (When do you need the money?)
 
 5. **Founding Team**:
-    - Are you actively looking for a co-founder?
-    - Would you prefer to stay solo with early employees?
-    - Do you have any advisors or mentors?
+   - Are you actively looking for a co-founder?
+   - Would you prefer to stay solo with early employees?
+   - Do you have any advisors or mentors?
 
 ### The Investor Approach:
 

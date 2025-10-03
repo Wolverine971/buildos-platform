@@ -206,10 +206,10 @@ This isn't a pivot risk. This is my life's work."
 - **Raising:** $2M seed
 - **Valuation:** $10M cap
 - **Use of funds:**
-    - 40% Engineering (AI + mobile)
-    - 30% Growth (community + content)
-    - 20% Operations
-    - 10% Buffer
+  - 40% Engineering (AI + mobile)
+  - 30% Growth (community + content)
+  - 20% Operations
+  - 10% Buffer
 
 ### What We Need Beyond Capital
 

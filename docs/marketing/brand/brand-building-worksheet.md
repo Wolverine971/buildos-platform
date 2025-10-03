@@ -91,13 +91,13 @@ Choose primary and secondary archetypes:
 ### Visual Language
 
 - **Color Palette**:
-    - Primary colors (1-2): Main brand recognition
-    - Secondary colors (2-3): Supporting palette
-    - Functional colors: Success, warning, error states
+  - Primary colors (1-2): Main brand recognition
+  - Secondary colors (2-3): Supporting palette
+  - Functional colors: Success, warning, error states
 - **Typography**:
-    - Headline font: Impact and personality
-    - Body font: Readability and versatility
-    - System fonts: Digital fallbacks
+  - Headline font: Impact and personality
+  - Body font: Readability and versatility
+  - System fonts: Digital fallbacks
 - **Photography Style**: Mood, composition, filters, subjects
 - **Iconography**: Style, weight, corner radius, detail level
 - **Graphic Elements**: Patterns, shapes, textures unique to brand

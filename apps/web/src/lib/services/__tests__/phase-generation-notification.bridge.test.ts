@@ -89,7 +89,7 @@ describe('phase-generation-notification.bridge', () => {
 		);
 	});
 
-	it('marks notification as success and stores results when generation completes', async () => {
+	it('marks notification as success, stores results, and completes steps when generation finishes', async () => {
 		const phases = [{ id: 'phase-1', name: 'Planning' }];
 		const backlogTasks = [{ id: 'task-1', title: 'Draft brief' }];
 		const setPhasesSpy = vi.spyOn(projectStoreV2, 'setPhases');
@@ -123,6 +123,13 @@ describe('phase-generation-notification.bridge', () => {
 		expect(finalNotification.data.result?.backlogTasks).toEqual(backlogTasks);
 		expect(finalNotification.data.result?.calendarEventCount).toBe(2);
 		expect(finalNotification.status).toBe('success');
+
+		const progress = finalNotification.progress;
+		expect(progress?.type).toBe('steps');
+		if (progress?.type === 'steps') {
+			expect(progress.steps.every((step) => step.status === 'completed')).toBe(true);
+			expect(progress.currentStep).toBe(progress.steps.length - 1);
+		}
 		expect(successSpy).toHaveBeenCalled();
 	});
 
@@ -147,7 +154,43 @@ describe('phase-generation-notification.bridge', () => {
 		expect(errorSpy).toHaveBeenCalledWith('Generation failed');
 	});
 
-	it('replays pending notifications when bridge initializes', async () => {
+	it('retries generation when retry action is triggered after failure', async () => {
+		const phases = [{ id: 'phase-2', name: 'Execution' }];
+		const backlogTasks = [{ id: 'task-2', title: 'Implement feature' }];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: false,
+				json: async () => ({ error: 'Initial failure' })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ data: { phases, backlogTasks } })
+			});
+
+		global.fetch = fetchMock as typeof fetch;
+
+		const { notificationId } = await startPhaseGeneration(baseOptions);
+		await flushAsync();
+
+		let notification = get(notificationStore).notifications.get(
+			notificationId
+		) as PhaseGenerationNotification | undefined;
+		expect(notification?.status).toBe('error');
+		expect(errorSpy).toHaveBeenCalledWith('Initial failure');
+
+		notification?.actions.retry?.();
+		await flushAsync();
+
+		notification = get(notificationStore).notifications.get(
+			notificationId
+		) as PhaseGenerationNotification | undefined;
+		expect(notification?.status).toBe('success');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(successSpy).toHaveBeenCalled();
+	});
+
+	it('replays pending notifications when bridge initializes and rebinds actions', async () => {
 		const steps = [
 			{ key: 'queue', name: 'Queue', status: 'processing' as const },
 			{ key: 'finalize', name: 'Finalize', status: 'pending' as const }
@@ -189,5 +232,10 @@ describe('phase-generation-notification.bridge', () => {
 		await flushAsync();
 
 		expect(global.fetch).toHaveBeenCalled();
+
+		const state = get(notificationStore);
+		const resumed = state.notifications.get(Array.from(state.notifications.keys())[0]!);
+		expect(resumed?.actions.retry).toBeDefined();
+		expect(typeof resumed?.actions.retry).toBe('function');
 	});
 });

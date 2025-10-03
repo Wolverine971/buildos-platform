@@ -10,14 +10,14 @@ This folder contains documentation that appears to be outdated or superseded. **
 
 The following folders were moved from `/apps/web/docs/` to `/delete/apps/web/` during the October 2025 documentation reorganization:
 
-| Folder | Original Location | Reason for Deletion | Review Notes |
-| ------ | ----------------- | ------------------- | ------------ |
-| `archive/` | `/apps/web/docs/archive/` | Already archived in Sept 2025 | Contains outdated development summaries, CI/CD implementation docs from Sept 27 |
-| `audits-archive/` | `/apps/web/docs/audits/archive/` | Archived audit reports | Code cleanup and duplication reports from Sept 2025 |
-| `agents/` | `/apps/web/docs/agents/` | Claude Code command templates | Appears to be development tooling docs that may be outdated |
-| `research/` | `/apps/web/docs/research/` | Empty research folder | `investigations/` subfolder was empty |
-| `migrations-completed/` | `/apps/web/docs/migrations/completed/` | Completed migration docs from Sept 2025 | Migration fix summaries and post-migration steps |
-| `start-here.md` | `/apps/web/docs/start-here.md` | Outdated documentation index | Superseded by `/docs/README.md` and app-specific README files |
+| Folder                  | Original Location                      | Reason for Deletion                     | Review Notes                                                                    |
+| ----------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| `archive/`              | `/apps/web/docs/archive/`              | Already archived in Sept 2025           | Contains outdated development summaries, CI/CD implementation docs from Sept 27 |
+| `audits-archive/`       | `/apps/web/docs/audits/archive/`       | Archived audit reports                  | Code cleanup and duplication reports from Sept 2025                             |
+| `agents/`               | `/apps/web/docs/agents/`               | Claude Code command templates           | Appears to be development tooling docs that may be outdated                     |
+| `research/`             | `/apps/web/docs/research/`             | Empty research folder                   | `investigations/` subfolder was empty                                           |
+| `migrations-completed/` | `/apps/web/docs/migrations/completed/` | Completed migration docs from Sept 2025 | Migration fix summaries and post-migration steps                                |
+| `start-here.md`         | `/apps/web/docs/start-here.md`         | Outdated documentation index            | Superseded by `/docs/README.md` and app-specific README files                   |
 
 ## What Was Moved to `/docs/`
 

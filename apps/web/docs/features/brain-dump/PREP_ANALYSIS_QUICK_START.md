@@ -7,18 +7,21 @@
 ## 🚀 **How to Test It**
 
 ### **Prerequisites**
+
 - Existing project with some tasks
 - Brain dump interface
 
 ### **Test Scenario 1: Tactical Update (Should Skip Context)**
 
 **Brain Dump Input:**
+
 ```
 Just finished the API integration task. The authentication endpoint is working great.
 Database migration is still in progress, should be done by tomorrow.
 ```
 
 **Expected Behavior:**
+
 1. Analysis runs (check console logs)
 2. Classification: `tactical`
 3. Context processing: **Skipped** ✅
@@ -26,6 +29,7 @@ Database migration is still in progress, should be done by tomorrow.
 5. Console shows: `[extractTasks] Filtering tasks based on analysis: 2/47 tasks`
 
 **Console Output to Look For:**
+
 ```
 [PrepAnalysis] Starting analysis for project: xxx
 [PrepAnalysis] Complete: {
@@ -44,6 +48,7 @@ Database migration is still in progress, should be done by tomorrow.
 ### **Test Scenario 2: Strategic Update (Should Update Context)**
 
 **Brain Dump Input:**
+
 ```
 After reviewing with the team, we're pivoting the product strategy. Instead of focusing
 on B2C, we're going B2B enterprise. This means we need to add SSO, multi-tenancy, and
@@ -51,12 +56,14 @@ admin controls. Timeline extended by 2 months.
 ```
 
 **Expected Behavior:**
+
 1. Analysis runs
 2. Classification: `strategic`
 3. Context processing: **Runs** ✅
 4. Task processing: **May run for new tasks** ✅
 
 **Console Output:**
+
 ```
 [PrepAnalysis] Complete: {
   classification: 'strategic',
@@ -72,6 +79,7 @@ admin controls. Timeline extended by 2 months.
 ### **Test Scenario 3: Mixed Update**
 
 **Brain Dump Input:**
+
 ```
 The API architecture needs a major refactor to support the new scaling requirements
 we discussed. Specifically, the authentication service needs to be broken out into
@@ -80,6 +88,7 @@ caching bug in the user service.
 ```
 
 **Expected Behavior:**
+
 1. Classification: `mixed`
 2. Context processing: **Runs** ✅
 3. Task processing: **Relevant tasks only** ✅
@@ -89,11 +98,13 @@ caching bug in the user service.
 ### **Test Scenario 4: Simple Status Update**
 
 **Brain Dump Input:**
+
 ```
 Made good progress today. Everything on track.
 ```
 
 **Expected Behavior:**
+
 1. Classification: `status_update`
 2. May skip both context and tasks (depending on recommendations)
 
@@ -104,6 +115,7 @@ Made good progress today. Everything on track.
 ### **Console Logs**
 
 Look for these log prefixes:
+
 - `[PrepAnalysis]` - Analysis phase
 - `[extractProjectContext]` - Context processing decisions
 - `[extractTasks]` - Task filtering
@@ -111,6 +123,7 @@ Look for these log prefixes:
 ### **Activity Logs**
 
 Check the `activities` table for:
+
 ```sql
 SELECT * FROM activities
 WHERE event_type = 'brain_dump_analysis_completed'
@@ -121,6 +134,7 @@ LIMIT 10;
 ### **Processing Time**
 
 Compare processing times:
+
 - **Without analysis**: Baseline time
 - **With analysis (tactical)**: Should be faster (skips context + filters tasks)
 - **With analysis (strategic)**: Slightly slower (+0.5-1s for analysis)
@@ -132,6 +146,7 @@ Compare processing times:
 ### **Before Implementation**
 
 Tactical update with 47 tasks:
+
 ```
 - Analysis: N/A
 - Context: ~3,000 tokens
@@ -142,6 +157,7 @@ Tactical update with 47 tasks:
 ### **After Implementation**
 
 Same tactical update:
+
 ```
 - Analysis: ~1,000 tokens (light data)
 - Context: SKIPPED ✅
@@ -157,6 +173,7 @@ Same tactical update:
 ### **Analysis Not Running**
 
 **Check:**
+
 1. Is this an **existing project**? (Analysis only runs for existing projects)
 2. Check console for `[PrepAnalysis]` logs
 3. Check for errors in error logging table
@@ -164,6 +181,7 @@ Same tactical update:
 ### **Analysis Fails**
 
 **Expected Behavior:**
+
 - Should fall back to full processing
 - Console shows: `[BrainDumpProcessor] Analysis failed or returned null - will use full processing`
 - Processing continues normally
@@ -171,11 +189,13 @@ Same tactical update:
 ### **Wrong Classification**
 
 **What to Check:**
+
 1. Review the braindump content
 2. Check confidence level in logs
 3. Examine `context_indicators` and `task_indicators` in analysis result
 
 **To Fix:**
+
 - Update classification criteria in prompt
 - Add more examples to prompt
 - Adjust confidence thresholds
@@ -185,6 +205,7 @@ Same tactical update:
 ## 🎯 **Success Criteria**
 
 ✅ **Feature is Working If:**
+
 1. Analysis runs for existing projects
 2. Tactical braindumps skip context processing
 3. Task filtering reduces token count
@@ -196,12 +217,12 @@ Same tactical update:
 
 ## 📈 **Metrics to Track**
 
-| Metric | How to Measure | Target |
-|--------|----------------|--------|
-| Analysis success rate | Count successes vs failures | >95% |
-| Token savings (tactical) | Compare before/after | 40-60% |
-| Processing speed | Measure total time | <5s for tactical |
-| Accuracy | Manual review of classifications | >90% |
+| Metric                   | How to Measure                   | Target           |
+| ------------------------ | -------------------------------- | ---------------- |
+| Analysis success rate    | Count successes vs failures      | >95%             |
+| Token savings (tactical) | Compare before/after             | 40-60%           |
+| Processing speed         | Measure total time               | <5s for tactical |
+| Accuracy                 | Manual review of classifications | >90%             |
 
 ---
 
@@ -233,6 +254,7 @@ profile: 'fast', // Change to 'balanced' or 'accurate' for better quality
 ## 🎓 **Understanding the Classification**
 
 ### **Strategic Indicators**
+
 - Vision/mission changes
 - Scope changes
 - Architectural decisions
@@ -240,6 +262,7 @@ profile: 'fast', // Change to 'balanced' or 'accurate' for better quality
 - Risk identification
 
 ### **Tactical Indicators**
+
 - Specific task mentions
 - Status updates
 - Bug reports
@@ -248,14 +271,14 @@ profile: 'fast', // Change to 'balanced' or 'accurate' for better quality
 
 ### **Classification Examples**
 
-| Braindump | Classification | Reason |
-|-----------|---------------|---------|
-| "Fixed the auth bug" | `tactical` | Bug fix mention |
-| "Pivoting to B2B model" | `strategic` | Vision change |
-| "Completed setup, now working on API" | `tactical` | Status update |
-| "Refactoring architecture + fixed cache bug" | `mixed` | Both strategic and tactical |
-| "Made progress today" | `status_update` | Simple status |
-| "My cat is cute" | `unrelated` | Not about project |
+| Braindump                                    | Classification  | Reason                      |
+| -------------------------------------------- | --------------- | --------------------------- |
+| "Fixed the auth bug"                         | `tactical`      | Bug fix mention             |
+| "Pivoting to B2B model"                      | `strategic`     | Vision change               |
+| "Completed setup, now working on API"        | `tactical`      | Status update               |
+| "Refactoring architecture + fixed cache bug" | `mixed`         | Both strategic and tactical |
+| "Made progress today"                        | `status_update` | Simple status               |
+| "My cat is cute"                             | `unrelated`     | Not about project           |
 
 ---
 

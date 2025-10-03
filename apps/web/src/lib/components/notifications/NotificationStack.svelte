@@ -29,35 +29,6 @@
 	let visibleStack = $derived(stack.slice(-MAX_VISIBLE));
 	let hiddenCount = $derived(Math.max(0, stack.length - MAX_VISIBLE));
 
-	// Debug logging
-	$effect(() => {
-		console.log('[NotificationStack] Render state:', {
-			stackLength: stack.length,
-			visibleStackLength: visibleStack.length,
-			hiddenCount,
-			expandedId,
-			notificationsMapSize: notifications.size,
-			visibleStack: [...visibleStack],
-			notifications: Array.from(notifications.entries()).map(([id, n]) => ({
-				id,
-				type: n.type,
-				status: n.status,
-				isMinimized: n.isMinimized
-			}))
-		});
-	});
-
-	// Check each notification in visible stack
-	$effect(() => {
-		visibleStack.forEach((id) => {
-			const notif = notifications.get(id);
-			console.log(`[NotificationStack] ID ${id}:`, {
-				exists: !!notif,
-				isExpanded: id === expandedId,
-				willRender: !!notif && id !== expandedId
-			});
-		});
-	});
 </script>
 
 {#if visibleStack.length > 0 || hiddenCount > 0}

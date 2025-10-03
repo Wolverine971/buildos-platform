@@ -106,7 +106,9 @@ async function processBrainDumpWithStreaming({
 
 	try {
 		// Send initial status - will include analysis for existing projects
-		const initialProcesses = selectedProjectId ? ['analysis', 'context', 'tasks'] : ['context', 'tasks'];
+		const initialProcesses = selectedProjectId
+			? ['analysis', 'context', 'tasks']
+			: ['context', 'tasks'];
 		const statusMessage: SSEStatus = {
 			type: 'status',
 			message: selectedProjectId ? 'Analyzing braindump...' : 'Starting dual processing...',
@@ -162,7 +164,10 @@ async function processBrainDumpWithStreaming({
 						if (needsContext && !result.processing_recommendation?.skip_context) {
 							nextPhases.push('context');
 						}
-						if ((relevantTaskCount > 0 || result.new_tasks_detected) && !result.processing_recommendation?.skip_tasks) {
+						if (
+							(relevantTaskCount > 0 || result.new_tasks_detected) &&
+							!result.processing_recommendation?.skip_tasks
+						) {
 							nextPhases.push('tasks');
 						}
 

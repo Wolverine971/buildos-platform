@@ -96,13 +96,13 @@ UI updates ✅
 **Layout Integration** (`src/routes/+layout.svelte`)
 
 ```svelte
-import { PUBLIC_USE_NEW_NOTIFICATIONS } from '$env/static/public';
-const USE_NEW_NOTIFICATION_SYSTEM = PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
+import {PUBLIC_USE_NEW_NOTIFICATIONS} from '$env/static/public'; const USE_NEW_NOTIFICATION_SYSTEM =
+PUBLIC_USE_NEW_NOTIFICATIONS === 'true';
 
 {#if USE_NEW_NOTIFICATION_SYSTEM}
-  <NotificationStackManager />
+	<NotificationStackManager />
 {:else}
-  <!-- OLD: Brain Dump Processing Notification -->
+	<!-- OLD: Brain Dump Processing Notification -->
 {/if}
 ```
 
@@ -129,7 +129,7 @@ PUBLIC_USE_NEW_NOTIFICATIONS=true
 **Solution:** Added browser checks throughout:
 
 ```typescript
-if (!browser || typeof window === "undefined") return;
+if (!browser || typeof window === 'undefined') return;
 ```
 
 ### 3. Timer Cleanup Bug (Fixed)
@@ -138,15 +138,14 @@ if (!browser || typeof window === "undefined") return;
 **Solution:** Implemented timer tracking with cleanup:
 
 ```typescript
-let activeTimers: Set<ReturnType<typeof setTimeout | typeof setInterval>> =
-  new Set();
+let activeTimers: Set<ReturnType<typeof setTimeout | typeof setInterval>> = new Set();
 
 onDestroy(() => {
-  activeTimers.forEach((timer) => {
-    clearTimeout(timer);
-    clearInterval(timer);
-  });
-  activeTimers.clear();
+	activeTimers.forEach((timer) => {
+		clearTimeout(timer);
+		clearInterval(timer);
+	});
+	activeTimers.clear();
 });
 ```
 
@@ -161,8 +160,8 @@ onDestroy(() => {
 ```typescript
 // ❌ BROKEN - Same Map reference, no reactivity trigger
 update((state) => {
-  state.notifications.set(id, updatedNotification);
-  return state; // Same object!
+	state.notifications.set(id, updatedNotification);
+	return state; // Same object!
 });
 ```
 
@@ -171,14 +170,14 @@ update((state) => {
 ```typescript
 // ✅ WORKS - New references trigger reactivity
 update((state) => {
-  const newNotifications = new Map(state.notifications);
-  newNotifications.set(id, updatedNotification);
+	const newNotifications = new Map(state.notifications);
+	newNotifications.set(id, updatedNotification);
 
-  return {
-    ...state, // New state object
-    notifications: newNotifications, // New Map
-    expandedId: id,
-  };
+	return {
+		...state, // New state object
+		notifications: newNotifications, // New Map
+		expandedId: id
+	};
 });
 ```
 
@@ -219,11 +218,11 @@ Svelte 5's fine-grained reactivity with `$derived()` tracks object/Map reference
 - Previous expanded notification auto-minimizes
 - Shows full progress details (steps, percentage, streaming)
 - Can be minimized via:
-  - Clicking backdrop
-  - Pressing ESC key
-  - Clicking X button
+    - Clicking backdrop
+    - Pressing ESC key
+    - Clicking X button
 - Can be dismissed (removed) via:
-  - "Dismiss" button on success/error states
+    - "Dismiss" button on success/error states
 
 ### Processing vs Completed
 
@@ -326,7 +325,7 @@ const newArray = [...oldArray, item];
 Use `$env/static/public` for public environment variables:
 
 ```typescript
-import { PUBLIC_VARIABLE_NAME } from "$env/static/public";
+import { PUBLIC_VARIABLE_NAME } from '$env/static/public';
 ```
 
 ### 3. SSR Safety
@@ -334,8 +333,8 @@ import { PUBLIC_VARIABLE_NAME } from "$env/static/public";
 Always guard browser APIs:
 
 ```typescript
-if (browser && typeof window !== "undefined") {
-  // Safe to use window, sessionStorage, etc.
+if (browser && typeof window !== 'undefined') {
+	// Safe to use window, sessionStorage, etc.
 }
 ```
 
@@ -394,35 +393,35 @@ apps/web/src/lib/
 ```typescript
 // Create notification
 const id = notificationStore.add({
-  type: "brain-dump",
-  status: "processing",
-  isMinimized: true,
-  isPersistent: true,
-  autoCloseMs: null,
-  data: {
-    /* type-specific data */
-  },
-  progress: { type: "streaming", message: "Processing..." },
-  actions: {
-    /* callbacks */
-  },
+	type: 'brain-dump',
+	status: 'processing',
+	isMinimized: true,
+	isPersistent: true,
+	autoCloseMs: null,
+	data: {
+		/* type-specific data */
+	},
+	progress: { type: 'streaming', message: 'Processing...' },
+	actions: {
+		/* callbacks */
+	}
 });
 
 // Update notification
-notificationStore.update(id, { status: "success" });
+notificationStore.update(id, { status: 'success' });
 
 // Update progress
 notificationStore.setProgress(id, {
-  type: "percentage",
-  percentage: 75,
-  message: "Almost done...",
+	type: 'percentage',
+	percentage: 75,
+	message: 'Almost done...'
 });
 
 // Update status
-notificationStore.setStatus(id, "success");
+notificationStore.setStatus(id, 'success');
 
 // Set error
-notificationStore.setError(id, "Something went wrong");
+notificationStore.setError(id, 'Something went wrong');
 
 // Expand/minimize
 notificationStore.expand(id);
@@ -439,11 +438,11 @@ notificationStore.clearCompleted();
 
 ```typescript
 type NotificationProgress =
-  | { type: "binary" }
-  | { type: "percentage"; percentage: number; message?: string }
-  | { type: "steps"; currentStep: number; totalSteps: number; steps: Step[] }
-  | { type: "streaming"; message: string; percentage?: number }
-  | { type: "indeterminate"; message?: string };
+	| { type: 'binary' }
+	| { type: 'percentage'; percentage: number; message?: string }
+	| { type: 'steps'; currentStep: number; totalSteps: number; steps: Step[] }
+	| { type: 'streaming'; message: string; percentage?: number }
+	| { type: 'indeterminate'; message?: string };
 ```
 
 ---

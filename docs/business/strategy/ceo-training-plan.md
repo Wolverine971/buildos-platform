@@ -176,18 +176,18 @@ Achieve complete fluency in investor communications, metrics mastery, and strate
 2. **Connect to previous learning**: Reference what was learned yesterday and how today builds on it
 
 3. **Provide specific numbers**: Use BuildOS's actual metrics or realistic projections:
-    - Current: Beta phase, <100 users
-    - 6-month goal: 200 users, $1K MRR
-    - 12-month goal: 1,000 users, $15K MRR
-    - 3-year goal: 5,000 users, $75K MRR
+   - Current: Beta phase, <100 users
+   - 6-month goal: 200 users, $1K MRR
+   - 12-month goal: 1,000 users, $15K MRR
+   - 3-year goal: 5,000 users, $75K MRR
 
 4. **Include investor perspectives**: "VCs will ask...", "Investors pattern match on..."
 
 5. **Create templates**: Provide fill-in-the-blank frameworks DJ can complete
 
 6. **Give specific examples**:
-    - Good: "Your CAC is $50 through content marketing"
-    - Bad: "Calculate your customer acquisition cost"
+   - Good: "Your CAC is $50 through content marketing"
+   - Bad: "Calculate your customer acquisition cost"
 
 7. **End with action items**: Clear next steps and preparation for tomorrow
 

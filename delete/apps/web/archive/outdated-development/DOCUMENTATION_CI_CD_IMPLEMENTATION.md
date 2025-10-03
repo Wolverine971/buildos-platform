@@ -54,19 +54,19 @@ Successfully implemented a complete automated documentation generation and CI/CD
 
 ```json
 {
-	"gen:api-docs": "Generate API documentation",
-	"gen:component-docs": "Generate component documentation",
-	"gen:adr-index": "Generate Architecture Decision Records",
-	"gen:monitoring-docs": "Generate monitoring documentation",
-	"docs:generate": "Master documentation generator",
-	"docs:watch": "Watch for changes during development",
-	"docs:validate": "Comprehensive validation suite",
-	"docs:full": "Generate and validate everything",
-	"validate:docs-links": "Link validation only",
-	"check:docs-coverage": "Coverage analysis only",
-	"watch:schema": "Watch database schema changes",
-	"watch:api": "Watch API route changes",
-	"watch:components": "Watch component changes"
+  "gen:api-docs": "Generate API documentation",
+  "gen:component-docs": "Generate component documentation",
+  "gen:adr-index": "Generate Architecture Decision Records",
+  "gen:monitoring-docs": "Generate monitoring documentation",
+  "docs:generate": "Master documentation generator",
+  "docs:watch": "Watch for changes during development",
+  "docs:validate": "Comprehensive validation suite",
+  "docs:full": "Generate and validate everything",
+  "validate:docs-links": "Link validation only",
+  "check:docs-coverage": "Coverage analysis only",
+  "watch:schema": "Watch database schema changes",
+  "watch:api": "Watch API route changes",
+  "watch:components": "Watch component changes"
 }
 ```
 

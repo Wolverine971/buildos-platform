@@ -9,6 +9,7 @@ User onboarding flow to introduce BuildOS and help users get started.
 ## Overview
 
 The onboarding system helps new users:
+
 1. Understand BuildOS core concepts
 2. Try their first brain dump
 3. Explore key features
@@ -17,9 +18,11 @@ The onboarding system helps new users:
 ## Key Files
 
 **Components:**
+
 - `/src/lib/components/onboarding/` - Onboarding UI components
 
 **Routes:**
+
 - `/src/routes/(app)/onboarding/` - Onboarding pages
 
 ## Related Documentation

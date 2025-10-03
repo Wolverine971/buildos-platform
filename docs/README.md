@@ -31,9 +31,11 @@ For **package documentation**:
 ## 📝 Documentation Standards
 
 **IMPORTANT:** Before creating any documentation, read:
+
 - **[Documentation Guidelines](DOCUMENTATION_GUIDELINES.md)** ⭐ - Where to put docs, naming conventions, required formats
 
 **Key Rules:**
+
 - ✅ Research documents → `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
 - ✅ System architecture → `/docs/architecture/`
 - ✅ Web app docs → `/apps/web/docs/`
@@ -60,6 +62,7 @@ See [Task Index](TASK_INDEX.md) for navigation by "what you want to do"
 ## Environment Variables
 
 For environment configuration, see:
+
 - [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) - Complete environment setup guide
 
 ## Documentation Philosophy

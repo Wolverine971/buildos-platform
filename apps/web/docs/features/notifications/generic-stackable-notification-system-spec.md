@@ -245,121 +245,121 @@ notificationStore (Svelte store)
 ```typescript
 // Base notification interface
 interface BaseNotification {
-  id: string; // Unique identifier (UUID)
-  type: NotificationType; // Discriminated union key
-  status: NotificationStatus; // 'idle' | 'processing' | 'success' | 'error' | 'cancelled'
-  createdAt: number; // Timestamp
-  updatedAt: number; // Timestamp
-  isMinimized: boolean; // UI state
-  isPersistent: boolean; // Should persist across navigation?
-  autoCloseMs?: number; // Auto-close after N ms (null = manual close)
+	id: string; // Unique identifier (UUID)
+	type: NotificationType; // Discriminated union key
+	status: NotificationStatus; // 'idle' | 'processing' | 'success' | 'error' | 'cancelled'
+	createdAt: number; // Timestamp
+	updatedAt: number; // Timestamp
+	isMinimized: boolean; // UI state
+	isPersistent: boolean; // Should persist across navigation?
+	autoCloseMs?: number; // Auto-close after N ms (null = manual close)
 }
 
 // Notification types (discriminated union)
 type Notification =
-  | BrainDumpNotification
-  | PhaseGenerationNotification
-  | CalendarAnalysisNotification
-  | GenericNotification;
+	| BrainDumpNotification
+	| PhaseGenerationNotification
+	| CalendarAnalysisNotification
+	| GenericNotification;
 
 // Brain dump notification
 interface BrainDumpNotification extends BaseNotification {
-  type: "brain-dump";
-  data: {
-    brainDumpId: string;
-    inputText: string;
-    selectedProject?: { id: string; name: string };
-    processingType: "short" | "dual" | "background";
-    streamingState?: {
-      contextStatus: "processing" | "completed" | "error";
-      tasksStatus: "processing" | "completed" | "error";
-      contextProgress?: string;
-      tasksProgress?: string;
-      contextResult?: any;
-      tasksResult?: any;
-    };
-    parseResults?: BrainDumpParseResult;
-    executionResult?: ExecutionResult;
-  };
-  progress: {
-    type: "streaming";
-    percentage?: number;
-    message?: string;
-  };
-  actions: {
-    view?: () => void;
-    retry?: () => void;
-    dismiss?: () => void;
-  };
+	type: 'brain-dump';
+	data: {
+		brainDumpId: string;
+		inputText: string;
+		selectedProject?: { id: string; name: string };
+		processingType: 'short' | 'dual' | 'background';
+		streamingState?: {
+			contextStatus: 'processing' | 'completed' | 'error';
+			tasksStatus: 'processing' | 'completed' | 'error';
+			contextProgress?: string;
+			tasksProgress?: string;
+			contextResult?: any;
+			tasksResult?: any;
+		};
+		parseResults?: BrainDumpParseResult;
+		executionResult?: ExecutionResult;
+	};
+	progress: {
+		type: 'streaming';
+		percentage?: number;
+		message?: string;
+	};
+	actions: {
+		view?: () => void;
+		retry?: () => void;
+		dismiss?: () => void;
+	};
 }
 
 // Phase generation notification
 interface PhaseGenerationNotification extends BaseNotification {
-  type: "phase-generation";
-  data: {
-    projectId: string;
-    projectName: string;
-    isRegeneration: boolean;
-    strategy: "phases-only" | "schedule-in-phases" | "calendar-optimized";
-    taskCount: number;
-    result?: {
-      phases: Phase[];
-      backlogTasks: Task[];
-    };
-  };
-  progress: {
-    type: "steps";
-    currentStep: number;
-    totalSteps: number;
-    steps: Array<{
-      name: string;
-      status: "pending" | "processing" | "completed" | "error";
-    }>;
-  };
-  actions: {
-    viewProject?: () => void;
-    retry?: () => void;
-    dismiss?: () => void;
-  };
+	type: 'phase-generation';
+	data: {
+		projectId: string;
+		projectName: string;
+		isRegeneration: boolean;
+		strategy: 'phases-only' | 'schedule-in-phases' | 'calendar-optimized';
+		taskCount: number;
+		result?: {
+			phases: Phase[];
+			backlogTasks: Task[];
+		};
+	};
+	progress: {
+		type: 'steps';
+		currentStep: number;
+		totalSteps: number;
+		steps: Array<{
+			name: string;
+			status: 'pending' | 'processing' | 'completed' | 'error';
+		}>;
+	};
+	actions: {
+		viewProject?: () => void;
+		retry?: () => void;
+		dismiss?: () => void;
+	};
 }
 
 // Calendar analysis notification
 interface CalendarAnalysisNotification extends BaseNotification {
-  type: "calendar-analysis";
-  data: {
-    analysisId: string;
-    daysBack: number;
-    daysForward: number;
-    eventCount?: number;
-    suggestions?: ProjectSuggestion[];
-  };
-  progress: {
-    type: "indeterminate" | "percentage";
-    percentage?: number;
-    message?: string;
-  };
-  actions: {
-    viewResults?: () => void;
-    retry?: () => void;
-    dismiss?: () => void;
-  };
+	type: 'calendar-analysis';
+	data: {
+		analysisId: string;
+		daysBack: number;
+		daysForward: number;
+		eventCount?: number;
+		suggestions?: ProjectSuggestion[];
+	};
+	progress: {
+		type: 'indeterminate' | 'percentage';
+		percentage?: number;
+		message?: string;
+	};
+	actions: {
+		viewResults?: () => void;
+		retry?: () => void;
+		dismiss?: () => void;
+	};
 }
 
 // Generic notification (for future types)
 interface GenericNotification extends BaseNotification {
-  type: "generic";
-  data: {
-    title: string;
-    subtitle?: string;
-    message?: string;
-    metadata?: Record<string, any>;
-  };
-  progress: {
-    type: "binary" | "percentage" | "indeterminate";
-    percentage?: number;
-    message?: string;
-  };
-  actions: Record<string, () => void>;
+	type: 'generic';
+	data: {
+		title: string;
+		subtitle?: string;
+		message?: string;
+		metadata?: Record<string, any>;
+	};
+	progress: {
+		type: 'binary' | 'percentage' | 'indeterminate';
+		percentage?: number;
+		message?: string;
+	};
+	actions: Record<string, () => void>;
 }
 ```
 
@@ -367,25 +367,25 @@ interface GenericNotification extends BaseNotification {
 
 ```typescript
 interface NotificationStoreState {
-  // Active notifications (Map for O(1) access)
-  notifications: Map<string, Notification>;
+	// Active notifications (Map for O(1) access)
+	notifications: Map<string, Notification>;
 
-  // Stack order (bottom to top)
-  stack: string[];
+	// Stack order (bottom to top)
+	stack: string[];
 
-  // Currently expanded notification (null = all minimized)
-  expandedId: string | null;
+	// Currently expanded notification (null = all minimized)
+	expandedId: string | null;
 
-  // History (completed/dismissed notifications)
-  history: Notification[];
+	// History (completed/dismissed notifications)
+	history: Notification[];
 
-  // Configuration
-  config: {
-    maxStackSize: number; // Max visible notifications (default: 5)
-    defaultAutoCloseMs: number; // Default auto-close time (default: 5000)
-    stackPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left";
-    stackSpacing: number; // Vertical spacing between notifications (px)
-  };
+	// Configuration
+	config: {
+		maxStackSize: number; // Max visible notifications (default: 5)
+		defaultAutoCloseMs: number; // Default auto-close time (default: 5000)
+		stackPosition: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+		stackSpacing: number; // Vertical spacing between notifications (px)
+	};
 }
 ```
 
@@ -393,34 +393,32 @@ interface NotificationStoreState {
 
 ```typescript
 class NotificationStore {
-  // Core CRUD operations
-  add(
-    notification: Omit<Notification, "id" | "createdAt" | "updatedAt">,
-  ): string;
-  update(id: string, updates: Partial<Notification>): void;
-  remove(id: string): void;
+	// Core CRUD operations
+	add(notification: Omit<Notification, 'id' | 'createdAt' | 'updatedAt'>): string;
+	update(id: string, updates: Partial<Notification>): void;
+	remove(id: string): void;
 
-  // Stack management
-  expand(id: string): void; // Expands notification, minimizes others
-  minimize(id: string): void; // Minimizes notification
-  minimizeAll(): void; // Minimizes all notifications
+	// Stack management
+	expand(id: string): void; // Expands notification, minimizes others
+	minimize(id: string): void; // Minimizes notification
+	minimizeAll(): void; // Minimizes all notifications
 
-  // Status updates
-  setStatus(id: string, status: NotificationStatus): void;
-  setProgress(id: string, progress: Notification["progress"]): void;
-  setError(id: string, error: string): void;
+	// Status updates
+	setStatus(id: string, status: NotificationStatus): void;
+	setProgress(id: string, progress: Notification['progress']): void;
+	setError(id: string, error: string): void;
 
-  // Batch operations
-  clear(): void; // Removes all notifications
-  clearCompleted(): void; // Removes all completed notifications
+	// Batch operations
+	clear(): void; // Removes all notifications
+	clearCompleted(): void; // Removes all completed notifications
 
-  // History
-  moveToHistory(id: string): void;
-  clearHistory(): void;
+	// History
+	moveToHistory(id: string): void;
+	clearHistory(): void;
 
-  // Persistence
-  persist(): void; // Save to session storage
-  hydrate(): void; // Load from session storage
+	// Persistence
+	persist(): void; // Save to session storage
+	hydrate(): void; // Load from session storage
 }
 ```
 
@@ -434,47 +432,45 @@ class NotificationStore {
 
 ```svelte
 <script lang="ts">
-  import { notificationStore } from '$lib/stores/notification.store';
-  import NotificationStack from './NotificationStack.svelte';
-  import NotificationModal from './NotificationModal.svelte';
+	import { notificationStore } from '$lib/stores/notification.store';
+	import NotificationStack from './NotificationStack.svelte';
+	import NotificationModal from './NotificationModal.svelte';
 
-  // Subscribe to store
-  let notifications = $derived($notificationStore.notifications);
-  let stack = $derived($notificationStore.stack);
-  let expandedId = $derived($notificationStore.expandedId);
+	// Subscribe to store
+	let notifications = $derived($notificationStore.notifications);
+	let stack = $derived($notificationStore.stack);
+	let expandedId = $derived($notificationStore.expandedId);
 
-  // Get expanded notification
-  let expandedNotification = $derived(
-    expandedId ? notifications.get(expandedId) : null
-  );
+	// Get expanded notification
+	let expandedNotification = $derived(expandedId ? notifications.get(expandedId) : null);
 
-  // Handle expand/minimize
-  function handleExpand(id: string) {
-    notificationStore.expand(id);
-  }
+	// Handle expand/minimize
+	function handleExpand(id: string) {
+		notificationStore.expand(id);
+	}
 
-  function handleMinimize() {
-    if (expandedId) {
-      notificationStore.minimize(expandedId);
-    }
-  }
+	function handleMinimize() {
+		if (expandedId) {
+			notificationStore.minimize(expandedId);
+		}
+	}
 </script>
 
 <!-- Minimized stack (bottom-right) -->
 <NotificationStack
-  {stack}
-  {notifications}
-  {expandedId}
-  on:expand={(e) => handleExpand(e.detail.id)}
+	{stack}
+	{notifications}
+	{expandedId}
+	on:expand={(e) => handleExpand(e.detail.id)}
 />
 
 <!-- Expanded modal (only one at a time) -->
 {#if expandedNotification}
-  <NotificationModal
-    notification={expandedNotification}
-    on:minimize={handleMinimize}
-    on:close={() => notificationStore.remove(expandedNotification.id)}
-  />
+	<NotificationModal
+		notification={expandedNotification}
+		on:minimize={handleMinimize}
+		on:close={() => notificationStore.remove(expandedNotification.id)}
+	/>
 {/if}
 ```
 
@@ -484,34 +480,34 @@ class NotificationStore {
 
 ```svelte
 <script lang="ts">
-  import MinimizedNotification from './MinimizedNotification.svelte';
+	import MinimizedNotification from './MinimizedNotification.svelte';
 
-  export let stack: string[];
-  export let notifications: Map<string, Notification>;
-  export let expandedId: string | null;
+	export let stack: string[];
+	export let notifications: Map<string, Notification>;
+	export let expandedId: string | null;
 
-  // Show max 5 notifications, others collapse into count
-  const MAX_VISIBLE = 5;
-  $: visibleStack = stack.slice(-MAX_VISIBLE);
-  $: hiddenCount = Math.max(0, stack.length - MAX_VISIBLE);
+	// Show max 5 notifications, others collapse into count
+	const MAX_VISIBLE = 5;
+	$: visibleStack = stack.slice(-MAX_VISIBLE);
+	$: hiddenCount = Math.max(0, stack.length - MAX_VISIBLE);
 </script>
 
 <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-  {#if hiddenCount > 0}
-    <div class="bg-gray-800 text-white px-3 py-1 rounded text-sm">
-      +{hiddenCount} more
-    </div>
-  {/if}
+	{#if hiddenCount > 0}
+		<div class="bg-gray-800 text-white px-3 py-1 rounded text-sm">
+			+{hiddenCount} more
+		</div>
+	{/if}
 
-  {#each visibleStack as notificationId (notificationId)}
-    {@const notification = notifications.get(notificationId)}
-    {#if notification && notificationId !== expandedId}
-      <MinimizedNotification
-        {notification}
-        on:expand={() => dispatch('expand', { id: notificationId })}
-      />
-    {/if}
-  {/each}
+	{#each visibleStack as notificationId (notificationId)}
+		{@const notification = notifications.get(notificationId)}
+		{#if notification && notificationId !== expandedId}
+			<MinimizedNotification
+				{notification}
+				on:expand={() => dispatch('expand', { id: notificationId })}
+			/>
+		{/if}
+	{/each}
 </div>
 ```
 
@@ -521,49 +517,49 @@ class NotificationStore {
 
 ```svelte
 <script lang="ts">
-  export let notification: Notification;
+	export let notification: Notification;
 
-  // Import type-specific views
-  import BrainDumpMinimizedView from './types/BrainDumpMinimizedView.svelte';
-  import PhaseGenerationMinimizedView from './types/PhaseGenerationMinimizedView.svelte';
-  import CalendarAnalysisMinimizedView from './types/CalendarAnalysisMinimizedView.svelte';
+	// Import type-specific views
+	import BrainDumpMinimizedView from './types/BrainDumpMinimizedView.svelte';
+	import PhaseGenerationMinimizedView from './types/PhaseGenerationMinimizedView.svelte';
+	import CalendarAnalysisMinimizedView from './types/CalendarAnalysisMinimizedView.svelte';
 
-  // Get component for notification type
-  const componentMap = {
-    'brain-dump': BrainDumpMinimizedView,
-    'phase-generation': PhaseGenerationMinimizedView,
-    'calendar-analysis': CalendarAnalysisMinimizedView,
-    'generic': null, // Use default view
-  };
+	// Get component for notification type
+	const componentMap = {
+		'brain-dump': BrainDumpMinimizedView,
+		'phase-generation': PhaseGenerationMinimizedView,
+		'calendar-analysis': CalendarAnalysisMinimizedView,
+		generic: null // Use default view
+	};
 
-  $: component = componentMap[notification.type];
+	$: component = componentMap[notification.type];
 </script>
 
 <div
-  class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-4
+	class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-4
          cursor-pointer hover:shadow-xl transition-all min-w-[320px] max-w-[400px]"
-  on:click={() => dispatch('expand')}
-  role="button"
-  tabindex="0"
-  on:keydown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') dispatch('expand');
-  }}
+	on:click={() => dispatch('expand')}
+	role="button"
+	tabindex="0"
+	on:keydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') dispatch('expand');
+	}}
 >
-  {#if component}
-    <svelte:component this={component} {notification} />
-  {:else}
-    <!-- Default minimized view -->
-    <div class="flex items-center gap-3">
-      <StatusIcon status={notification.status} />
-      <div class="flex-1">
-        <div class="font-medium">{notification.data.title}</div>
-        {#if notification.progress.message}
-          <div class="text-sm text-gray-500">{notification.progress.message}</div>
-        {/if}
-      </div>
-      <ChevronUpIcon class="w-4 h-4" />
-    </div>
-  {/if}
+	{#if component}
+		<svelte:component this={component} {notification} />
+	{:else}
+		<!-- Default minimized view -->
+		<div class="flex items-center gap-3">
+			<StatusIcon status={notification.status} />
+			<div class="flex-1">
+				<div class="font-medium">{notification.data.title}</div>
+				{#if notification.progress.message}
+					<div class="text-sm text-gray-500">{notification.progress.message}</div>
+				{/if}
+			</div>
+			<ChevronUpIcon class="w-4 h-4" />
+		</div>
+	{/if}
 </div>
 ```
 
@@ -573,37 +569,27 @@ class NotificationStore {
 
 ```svelte
 <script lang="ts">
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import BrainDumpModalContent from './types/BrainDumpModalContent.svelte';
-  import PhaseGenerationModalContent from './types/PhaseGenerationModalContent.svelte';
-  import CalendarAnalysisModalContent from './types/CalendarAnalysisModalContent.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import BrainDumpModalContent from './types/BrainDumpModalContent.svelte';
+	import PhaseGenerationModalContent from './types/PhaseGenerationModalContent.svelte';
+	import CalendarAnalysisModalContent from './types/CalendarAnalysisModalContent.svelte';
 
-  export let notification: Notification;
+	export let notification: Notification;
 
-  const componentMap = {
-    'brain-dump': BrainDumpModalContent,
-    'phase-generation': PhaseGenerationModalContent,
-    'calendar-analysis': CalendarAnalysisModalContent,
-    'generic': null,
-  };
+	const componentMap = {
+		'brain-dump': BrainDumpModalContent,
+		'phase-generation': PhaseGenerationModalContent,
+		'calendar-analysis': CalendarAnalysisModalContent,
+		generic: null
+	};
 
-  $: component = componentMap[notification.type];
+	$: component = componentMap[notification.type];
 </script>
 
-<Modal
-  isOpen={true}
-  onClose={() => dispatch('minimize')}
-  size="lg"
-  title=""
->
-  {#if component}
-    <svelte:component
-      this={component}
-      {notification}
-      on:close
-      on:action
-    />
-  {/if}
+<Modal isOpen={true} onClose={() => dispatch('minimize')} size="lg" title="">
+	{#if component}
+		<svelte:component this={component} {notification} on:close on:action />
+	{/if}
 </Modal>
 ```
 
@@ -617,32 +603,30 @@ class NotificationStore {
 
 ```typescript
 // Add to bottom of stack (most recent at top visually)
-function add(
-  notification: Omit<Notification, "id" | "createdAt" | "updatedAt">,
-): string {
-  const id = generateId();
-  const fullNotification = {
-    ...notification,
-    id,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    isMinimized: true, // Start minimized
-  };
+function add(notification: Omit<Notification, 'id' | 'createdAt' | 'updatedAt'>): string {
+	const id = generateId();
+	const fullNotification = {
+		...notification,
+		id,
+		createdAt: Date.now(),
+		updatedAt: Date.now(),
+		isMinimized: true // Start minimized
+	};
 
-  // Add to map (clone to trigger Svelte 5 rune reactivity on Map)
-  notifications = new Map(notifications);
-  notifications.set(id, fullNotification);
+	// Add to map (clone to trigger Svelte 5 rune reactivity on Map)
+	notifications = new Map(notifications);
+	notifications.set(id, fullNotification);
 
-  // Add to stack (create new array instance for rune reactivity)
-  stack = [...stack, id];
+	// Add to stack (create new array instance for rune reactivity)
+	stack = [...stack, id];
 
-  // Auto-clean if stack exceeds max
-  if (stack.length > config.maxStackSize + 10) {
-    // Keep buffer
-    cleanOldNotifications();
-  }
+	// Auto-clean if stack exceeds max
+	if (stack.length > config.maxStackSize + 10) {
+		// Keep buffer
+		cleanOldNotifications();
+	}
 
-  return id;
+	return id;
 }
 ```
 
@@ -654,20 +638,20 @@ function add(
 
 ```typescript
 function remove(id: string): void {
-  // Remove from map (new Map instance keeps subscribers in sync)
-  if (notifications.has(id)) {
-    const nextNotifications = new Map(notifications);
-    nextNotifications.delete(id);
-    notifications = nextNotifications;
-  }
+	// Remove from map (new Map instance keeps subscribers in sync)
+	if (notifications.has(id)) {
+		const nextNotifications = new Map(notifications);
+		nextNotifications.delete(id);
+		notifications = nextNotifications;
+	}
 
-  // Remove from stack (filter to avoid in-place mutation)
-  stack = stack.filter((stackId) => stackId !== id);
+	// Remove from stack (filter to avoid in-place mutation)
+	stack = stack.filter((stackId) => stackId !== id);
 
-  // If was expanded, minimize all
-  if (expandedId === id) {
-    expandedId = null;
-  }
+	// If was expanded, minimize all
+	if (expandedId === id) {
+		expandedId = null;
+	}
 }
 ```
 
@@ -700,19 +684,18 @@ Visual Stack (bottom-right corner):
 
 ```typescript
 function cleanOldNotifications(): void {
-  const now = Date.now();
-  const COMPLETED_TIMEOUT = 30_000; // 30 seconds
+	const now = Date.now();
+	const COMPLETED_TIMEOUT = 30_000; // 30 seconds
 
-  for (const [id, notification] of notifications) {
-    const isCompleted =
-      notification.status === "success" || notification.status === "error";
-    const age = now - notification.updatedAt;
+	for (const [id, notification] of notifications) {
+		const isCompleted = notification.status === 'success' || notification.status === 'error';
+		const age = now - notification.updatedAt;
 
-    if (isCompleted && age > COMPLETED_TIMEOUT) {
-      moveToHistory(id);
-      remove(id);
-    }
-  }
+		if (isCompleted && age > COMPLETED_TIMEOUT) {
+			moveToHistory(id);
+			remove(id);
+		}
+	}
 }
 ```
 
@@ -728,25 +711,25 @@ function cleanOldNotifications(): void {
 
 ```typescript
 function expand(id: string): void {
-  const next = new Map(notifications);
+	const next = new Map(notifications);
 
-  // Minimize currently expanded notification (if any)
-  if (expandedId && expandedId !== id) {
-    const current = next.get(expandedId);
-    if (current) {
-      next.set(expandedId, { ...current, isMinimized: true });
-    }
-  }
+	// Minimize currently expanded notification (if any)
+	if (expandedId && expandedId !== id) {
+		const current = next.get(expandedId);
+		if (current) {
+			next.set(expandedId, { ...current, isMinimized: true });
+		}
+	}
 
-  // Expand requested notification
-  const notification = next.get(id);
-  if (!notification) {
-    return;
-  }
+	// Expand requested notification
+	const notification = next.get(id);
+	if (!notification) {
+		return;
+	}
 
-  next.set(id, { ...notification, isMinimized: false });
-  notifications = next;
-  expandedId = id;
+	next.set(id, { ...notification, isMinimized: false });
+	notifications = next;
+	expandedId = id;
 }
 ```
 
@@ -786,10 +769,10 @@ function expand(id: string): void {
 ```typescript
 // Global escape key handler in NotificationStackManager
 function handleEscapeKey(event: KeyboardEvent) {
-  if (event.key === "Escape" && expandedId) {
-    event.preventDefault();
-    notificationStore.minimize(expandedId);
-  }
+	if (event.key === 'Escape' && expandedId) {
+		event.preventDefault();
+		notificationStore.minimize(expandedId);
+	}
 }
 ```
 
@@ -866,15 +849,13 @@ transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 **Screen Reader:**
 
 ```html
-<div role="status" aria-live="polite" aria-atomic="true">
-  {notification.progress.message}
-</div>
+<div role="status" aria-live="polite" aria-atomic="true">{notification.progress.message}</div>
 
 <button
-  aria-label="Expand {notification.type} notification"
-  aria-expanded="{!notification.isMinimized}"
+	aria-label="Expand {notification.type} notification"
+	aria-expanded="{!notification.isMinimized}"
 >
-  <!-- Notification content -->
+	<!-- Notification content -->
 </button>
 ```
 
@@ -904,15 +885,15 @@ transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 - [x] Test brain dump flow end-to-end (streaming, parse results, apply)
 - [x] Feature flag for gradual rollout (`PUBLIC_USE_NEW_NOTIFICATIONS`)
 - [x] **Multi-Brain Dump Support** (up to 3 concurrent, auto-queuing)
-  - [x] Refactor `brain-dump-v2.store.ts` to Map-based architecture
-  - [x] Add per-brain-dump mutexes (no global mutex blocking)
-  - [x] Implement queue management (max 3 concurrent, max 5 queued)
-  - [x] Update bridge to track multiple notifications (Map<brainDumpId, notificationId>)
-  - [x] Force-create unique draft for each brain dump in multi-mode
-  - [x] Disable auto-save in multi-mode (brain dumps submit immediately)
-  - [x] SSR-safe environment variable access pattern
-  - [x] Clear legacy state when switching modes
-  - [x] Modal integration with multi-mode detection
+    - [x] Refactor `brain-dump-v2.store.ts` to Map-based architecture
+    - [x] Add per-brain-dump mutexes (no global mutex blocking)
+    - [x] Implement queue management (max 3 concurrent, max 5 queued)
+    - [x] Update bridge to track multiple notifications (Map<brainDumpId, notificationId>)
+    - [x] Force-create unique draft for each brain dump in multi-mode
+    - [x] Disable auto-save in multi-mode (brain dumps submit immediately)
+    - [x] SSR-safe environment variable access pattern
+    - [x] Clear legacy state when switching modes
+    - [x] Modal integration with multi-mode detection
 
 ### Phase 3: Phase Generation Integration ✅ ~90% COMPLETE
 
@@ -960,13 +941,13 @@ Notification remains available for review/retry
 2. ✅ `ProjectModals.svelte` routes confirm event to parent's `onPhaseGenerationConfirm` callback
 3. ✅ `+page.svelte` calls `startPhaseGeneration()` from bridge with all required parameters
 4. ✅ `phase-generation-notification.bridge.ts` module:
-   - Creates notification with initial step state
-   - Executes POST to `/api/projects/:id/phases/generate`
-   - Implements fallback timer-based progress (1.6s per step)
-   - Updates `projectStoreV2` with phases and backlog tasks on success
-   - Handles project date changes if `project_dates_changed` flag set
-   - Provides retry action that re-executes generation
-   - Cleanup handlers for timer-based progress
+    - Creates notification with initial step state
+    - Executes POST to `/api/projects/:id/phases/generate`
+    - Implements fallback timer-based progress (1.6s per step)
+    - Updates `projectStoreV2` with phases and backlog tasks on success
+    - Handles project date changes if `project_dates_changed` flag set
+    - Provides retry action that re-executes generation
+    - Cleanup handlers for timer-based progress
 5. ✅ The minimized card shows project name, strategy, current step, and progress bar
 6. ✅ Modal view displays full step timeline, telemetry, and result summary
 
@@ -988,43 +969,43 @@ Notification remains available for review/retry
 
 ```typescript
 interface PhaseGenerationNotification extends BaseNotification {
-  type: "phase-generation";
-  data: {
-    projectId: string;
-    projectName: string;
-    isRegeneration: boolean;
-    strategy: "phases-only" | "schedule-in-phases" | "calendar-optimized";
-    taskCount: number;
-    selectedStatuses: string[];
-    result?: {
-      phases: Phase[];
-      backlogTasks: Task[];
-      calendarEventCount?: number;
-      summaryMarkdown?: string; // human readable recap shown in modal
-    };
-    telemetry?: {
-      startedAt: number;
-      finishedAt?: number;
-      durationMs?: number;
-      fallbackMode: "sse" | "timer";
-    };
-  };
-  progress: {
-    type: "steps";
-    currentStep: number;
-    totalSteps: number;
-    steps: Array<{
-      key: string;
-      name: string;
-      status: "pending" | "processing" | "completed" | "error";
-      etaSeconds?: number;
-    }>;
-  };
-  actions: {
-    viewProject: () => void;
-    retry: () => void;
-    dismiss?: () => void;
-  };
+	type: 'phase-generation';
+	data: {
+		projectId: string;
+		projectName: string;
+		isRegeneration: boolean;
+		strategy: 'phases-only' | 'schedule-in-phases' | 'calendar-optimized';
+		taskCount: number;
+		selectedStatuses: string[];
+		result?: {
+			phases: Phase[];
+			backlogTasks: Task[];
+			calendarEventCount?: number;
+			summaryMarkdown?: string; // human readable recap shown in modal
+		};
+		telemetry?: {
+			startedAt: number;
+			finishedAt?: number;
+			durationMs?: number;
+			fallbackMode: 'sse' | 'timer';
+		};
+	};
+	progress: {
+		type: 'steps';
+		currentStep: number;
+		totalSteps: number;
+		steps: Array<{
+			key: string;
+			name: string;
+			status: 'pending' | 'processing' | 'completed' | 'error';
+			etaSeconds?: number;
+		}>;
+	};
+	actions: {
+		viewProject: () => void;
+		retry: () => void;
+		dismiss?: () => void;
+	};
 }
 ```
 
@@ -1033,59 +1014,59 @@ The bridge resolves `taskCount` and `selectedStatuses` from the preview response
 #### UI Requirements
 
 - **Minimized Card (`PhaseGenerationMinimizedView.svelte`):**
-  - Show project name, regeneration badge, and current step label.
-  - Display a compact step progress indicator (pill with `currentStep/totalSteps`).
-  - Provide secondary text for the chosen strategy (e.g. "Schedule tasks in phases").
-  - Clicking expands the modal; secondary caret button allows quick dismiss if completed.
+    - Show project name, regeneration badge, and current step label.
+    - Display a compact step progress indicator (pill with `currentStep/totalSteps`).
+    - Provide secondary text for the chosen strategy (e.g. "Schedule tasks in phases").
+    - Clicking expands the modal; secondary caret button allows quick dismiss if completed.
 - **Modal (`PhaseGenerationModalContent.svelte`):**
-  - Reuse content architecture from the current overlay: step timeline + progress bar + summary footer.
-  - On success, show a "Changes Applied" summary including counts for phases created, tasks scheduled, conflicts resolved.
-  - On error, surface the backend message plus troubleshooting tips (e.g. "Check project dates").
-  - Provide actions: `View Project`, `Regenerate`, `Close`. `Regenerate` replays the last payload via the bridge.
-  - Support keyboard navigation and ESC to minimize (defers to stack manager).
+    - Reuse content architecture from the current overlay: step timeline + progress bar + summary footer.
+    - On success, show a "Changes Applied" summary including counts for phases created, tasks scheduled, conflicts resolved.
+    - On error, surface the backend message plus troubleshooting tips (e.g. "Check project dates").
+    - Provide actions: `View Project`, `Regenerate`, `Close`. `Regenerate` replays the last payload via the bridge.
+    - Support keyboard navigation and ESC to minimize (defers to stack manager).
 
 #### Store & Bridge Responsibilities
 
 - **`phase-generation-notification.bridge.ts` (new):**
-  - Exposes `startPhaseGeneration(params, options)` returning `{ notificationId }`.
-  - Handles SSE subscription lifecycle, including cleanup on notification removal.
-  - Registers retry + view callbacks with the notification action registry.
-  - Emits error events to `toastService` for legacy callers that still expect toasts.
+    - Exposes `startPhaseGeneration(params, options)` returning `{ notificationId }`.
+    - Handles SSE subscription lifecycle, including cleanup on notification removal.
+    - Registers retry + view callbacks with the notification action registry.
+    - Emits error events to `toastService` for legacy callers that still expect toasts.
 - **`notification.store.ts`:**
-  - Gains helper `updateStep(id, key, status)` used by the bridge (thin wrapper around `update`).
-  - Adds derived helper `getNotificationByData` to locate existing notifications by `projectId` when deduping retries.
+    - Gains helper `updateStep(id, key, status)` used by the bridge (thin wrapper around `update`).
+    - Adds derived helper `getNotificationByData` to locate existing notifications by `projectId` when deduping retries.
 - **`projectStoreV2`:**
-  - Bridge invokes `projectStoreV2.setPhases` and `setBacklogTasks` upon success.
-  - When regeneration adjusts project dates, the bridge calls the existing `handleProjectUpdated` callback to keep the UI in sync.
+    - Bridge invokes `projectStoreV2.setPhases` and `setBacklogTasks` upon success.
+    - When regeneration adjusts project dates, the bridge calls the existing `handleProjectUpdated` callback to keep the UI in sync.
 
 #### Implementation Tasks ✅ 8/10 COMPLETE
 
 - [x] ✅ Scaffold `phase-generation-notification.bridge.ts` with action registration + fallback timer progress
-  - Location: `apps/web/src/lib/services/phase-generation-notification.bridge.ts` (544 lines)
-  - Features: Controller pattern, step-based progress, retry logic, cleanup handlers
+    - Location: `apps/web/src/lib/services/phase-generation-notification.bridge.ts` (544 lines)
+    - Features: Controller pattern, step-based progress, retry logic, cleanup handlers
 - [x] ✅ Create `PhaseGenerationMinimizedView.svelte` (mirrors brain dump minimized patterns)
-  - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
-  - Features: Strategy labels, step progress bar, regeneration badge, error display
+    - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
+    - Features: Strategy labels, step progress bar, regeneration badge, error display
 - [x] ✅ Create `PhaseGenerationModalContent.svelte` with step timeline + result summary
-  - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
-  - Features: Full step timeline, telemetry (duration), result summary, retry/view project actions
+    - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
+    - Features: Full step timeline, telemetry (duration), result summary, retry/view project actions
 - [x] ✅ Add step helpers + serialization updates to `notification.types.ts`
-  - Added: `StepProgressItem`, `StepsProgress`, `PhaseGenerationNotification` types
+    - Added: `StepProgressItem`, `StepsProgress`, `PhaseGenerationNotification` types
 - [x] ✅ Update `PhasesSection.svelte` to derive `generating` state from notifications
-  - Lines 78-92: Checks notification store for processing phase-generation notifications
+    - Lines 78-92: Checks notification store for processing phase-generation notifications
 - [x] ✅ Update project page to use bridge via `handlePhaseGenerationConfirm`
-  - Location: `apps/web/src/routes/projects/[id]/+page.svelte` lines 754-777
-  - Calls `startPhaseGeneration()` with all required parameters
+    - Location: `apps/web/src/routes/projects/[id]/+page.svelte` lines 754-777
+    - Calls `startPhaseGeneration()` with all required parameters
 - [x] ✅ Delete `PhaseGenerationLoadingOverlay.svelte`
-  - Confirmed deleted in git status
+    - Confirmed deleted in git status
 - [x] ✅ Initialize bridge in `+layout.svelte`
-  - Lines 49-51: Imports and initializes phase generation notification bridge
+    - Lines 49-51: Imports and initializes phase generation notification bridge
 - [~] ⚠️ Extend unit tests: store step updates, bridge retry path, hydration
-  - Test file exists: `apps/web/src/lib/services/__tests__/phase-generation-notification.bridge.test.ts`
-  - Has basic setup but needs review for comprehensive coverage
+    - Test file exists: `apps/web/src/lib/services/__tests__/phase-generation-notification.bridge.test.ts`
+    - Has basic setup but needs review for comprehensive coverage
 - [ ] ❌ End-to-end manual test matrix
-  - Needs testing: initial generation, regeneration, calendar-optimized path, failure path
-  - Requires QA validation in development/staging environment
+    - Needs testing: initial generation, regeneration, calendar-optimized path, failure path
+    - Requires QA validation in development/staging environment
 
 #### Telemetry & Observability
 
@@ -1159,31 +1140,29 @@ const USE_NEW_NOTIFICATION_SYSTEM = import.meta.env.PUBLIC_USE_NEW_NOTIFICATIONS
 
 ```typescript
 // Migration helper
-function migrateBrainDumpToNotification(
-  brainDumpState: BrainDumpV2Store,
-): BrainDumpNotification {
-  return {
-    type: "brain-dump",
-    status: deriveStatus(brainDumpState.processing.phase),
-    data: {
-      brainDumpId: brainDumpState.core.currentBrainDumpId,
-      inputText: brainDumpState.core.inputText,
-      selectedProject: brainDumpState.core.selectedProject,
-      processingType: brainDumpState.processing.type,
-      streamingState: brainDumpState.processing.streaming,
-      parseResults: brainDumpState.core.parseResults,
-    },
-    progress: {
-      type: "streaming",
-      message: deriveProgressMessage(brainDumpState),
-    },
-    actions: {
-      view: () => expandNotification(),
-      dismiss: () => removeNotification(),
-    },
-    isMinimized: brainDumpState.ui.notification.isMinimized,
-    isPersistent: true,
-  };
+function migrateBrainDumpToNotification(brainDumpState: BrainDumpV2Store): BrainDumpNotification {
+	return {
+		type: 'brain-dump',
+		status: deriveStatus(brainDumpState.processing.phase),
+		data: {
+			brainDumpId: brainDumpState.core.currentBrainDumpId,
+			inputText: brainDumpState.core.inputText,
+			selectedProject: brainDumpState.core.selectedProject,
+			processingType: brainDumpState.processing.type,
+			streamingState: brainDumpState.processing.streaming,
+			parseResults: brainDumpState.core.parseResults
+		},
+		progress: {
+			type: 'streaming',
+			message: deriveProgressMessage(brainDumpState)
+		},
+		actions: {
+			view: () => expandNotification(),
+			dismiss: () => removeNotification()
+		},
+		isMinimized: brainDumpState.ui.notification.isMinimized,
+		isPersistent: true
+	};
 }
 ```
 
@@ -1204,17 +1183,17 @@ function migrateBrainDumpToNotification(
 
 ```typescript
 // ❌ WRONG - Direct module-level access
-import { PUBLIC_ENABLE_MULTI_BRAINDUMP } from "$env/static/public";
-const MULTI_BRAINDUMP_ENABLED = PUBLIC_ENABLE_MULTI_BRAINDUMP === "true";
+import { PUBLIC_ENABLE_MULTI_BRAINDUMP } from '$env/static/public';
+const MULTI_BRAINDUMP_ENABLED = PUBLIC_ENABLE_MULTI_BRAINDUMP === 'true';
 
 // ✅ CORRECT - SSR-safe lazy evaluation
-import { PUBLIC_ENABLE_MULTI_BRAINDUMP } from "$env/static/public";
+import { PUBLIC_ENABLE_MULTI_BRAINDUMP } from '$env/static/public';
 function isMultiBrainDumpEnabled(): boolean {
-  try {
-    return PUBLIC_ENABLE_MULTI_BRAINDUMP === "true";
-  } catch {
-    return false; // Default to false if env var not available (SSR safety)
-  }
+	try {
+		return PUBLIC_ENABLE_MULTI_BRAINDUMP === 'true';
+	} catch {
+		return false; // Default to false if env var not available (SSR safety)
+	}
 }
 const MULTI_BRAINDUMP_ENABLED = isMultiBrainDumpEnabled();
 ```
@@ -1308,10 +1287,10 @@ This prevents temporal dead zone errors and ensures graceful fallback during SSR
 
 ```typescript
 try {
-  notificationStore.add(notification);
+	notificationStore.add(notification);
 } catch (error) {
-  console.error("Failed to add notification:", error);
-  toastService.error("Failed to create notification");
+	console.error('Failed to add notification:', error);
+	toastService.error('Failed to create notification');
 }
 ```
 
@@ -1319,11 +1298,11 @@ try {
 
 ```svelte
 {#if error}
-  <div class="bg-red-50 border border-red-200 rounded p-4">
-    <div class="text-red-800 font-medium">Error</div>
-    <div class="text-red-600 text-sm">{error.message}</div>
-    <button on:click={retry} class="mt-2 btn btn-sm">Retry</button>
-  </div>
+	<div class="bg-red-50 border border-red-200 rounded p-4">
+		<div class="text-red-800 font-medium">Error</div>
+		<div class="text-red-600 text-sm">{error.message}</div>
+		<button on:click={retry} class="mt-2 btn btn-sm">Retry</button>
+	</div>
 {/if}
 ```
 
@@ -1333,102 +1312,96 @@ Maps and function references cannot be safely stringified, so persistence goes
 through an explicit serializer/hydrator pair:
 
 ```typescript
-const PERSIST_KEY = "notifications:v1";
+const PERSIST_KEY = 'notifications:v1';
 
-type PersistedNotification = Omit<Notification, "actions"> & {
-  actionKeys: string[];
+type PersistedNotification = Omit<Notification, 'actions'> & {
+	actionKeys: string[];
 };
 
 interface PersistedState {
-  notifications: Array<[string, PersistedNotification]>;
-  stack: string[];
-  expandedId: string | null;
-  history: PersistedNotification[];
-  config: NotificationStoreState["config"];
+	notifications: Array<[string, PersistedNotification]>;
+	stack: string[];
+	expandedId: string | null;
+	history: PersistedNotification[];
+	config: NotificationStoreState['config'];
 }
 
 // Registry lives in memory; feature modules register handlers on init
 const actionRegistry = new Map<string, () => void>();
 
-export function registerNotificationAction(
-  key: string,
-  handler: () => void,
-): void {
-  actionRegistry.set(key, handler);
+export function registerNotificationAction(key: string, handler: () => void): void {
+	actionRegistry.set(key, handler);
 }
 
-function serializeNotification(
-  notification: Notification,
-): PersistedNotification {
-  const { actions = {}, ...rest } = notification;
-  return {
-    ...rest,
-    actionKeys: Object.keys(actions),
-  };
+function serializeNotification(notification: Notification): PersistedNotification {
+	const { actions = {}, ...rest } = notification;
+	return {
+		...rest,
+		actionKeys: Object.keys(actions)
+	};
 }
 
 function rebuildActions(keys: string[]): Record<string, () => void> {
-  return keys.reduce<Record<string, () => void>>((acc, key) => {
-    const handler = actionRegistry.get(key);
-    if (handler) {
-      acc[key] = handler;
-    }
-    return acc;
-  }, {});
+	return keys.reduce<Record<string, () => void>>((acc, key) => {
+		const handler = actionRegistry.get(key);
+		if (handler) {
+			acc[key] = handler;
+		}
+		return acc;
+	}, {});
 }
 
-function deserializeNotification(
-  persisted: PersistedNotification,
-): Notification {
-  return {
-    ...persisted,
-    actions: rebuildActions(persisted.actionKeys),
-  };
+function deserializeNotification(persisted: PersistedNotification): Notification {
+	return {
+		...persisted,
+		actions: rebuildActions(persisted.actionKeys)
+	};
 }
 
 function serializeState(state: NotificationStoreState): PersistedState {
-  return {
-    notifications: Array.from(state.notifications.entries()).map(
-      ([id, notification]) => [id, serializeNotification(notification)],
-    ),
-    stack: [...state.stack],
-    expandedId: state.expandedId,
-    history: state.history.map(serializeNotification),
-    config: { ...state.config },
-  };
+	return {
+		notifications: Array.from(state.notifications.entries()).map(([id, notification]) => [
+			id,
+			serializeNotification(notification)
+		]),
+		stack: [...state.stack],
+		expandedId: state.expandedId,
+		history: state.history.map(serializeNotification),
+		config: { ...state.config }
+	};
 }
 
 function persist(state: NotificationStoreState): void {
-  try {
-    sessionStorage.setItem(PERSIST_KEY, JSON.stringify(serializeState(state)));
-  } catch (error) {
-    // Quota exceeded or disabled
-    console.warn("Failed to persist notifications:", error);
-    // Fallback: memory-only mode
-  }
+	try {
+		sessionStorage.setItem(PERSIST_KEY, JSON.stringify(serializeState(state)));
+	} catch (error) {
+		// Quota exceeded or disabled
+		console.warn('Failed to persist notifications:', error);
+		// Fallback: memory-only mode
+	}
 }
 
 function hydrate(): void {
-  try {
-    const raw = sessionStorage.getItem(PERSIST_KEY);
-    if (!raw) return;
+	try {
+		const raw = sessionStorage.getItem(PERSIST_KEY);
+		if (!raw) return;
 
-    const persisted = JSON.parse(raw) as PersistedState;
+		const persisted = JSON.parse(raw) as PersistedState;
 
-    notifications = new Map(
-      persisted.notifications.map(([id, notification]) => [
-        id,
-        deserializeNotification(notification),
-      ]),
-    );
-    stack = [...persisted.stack];
-    expandedId = persisted.expandedId;
-    history = persisted.history.map(deserializeNotification);
-    config = { ...persisted.config };
-  } catch (error) {
-    console.warn("Failed to hydrate notifications:", error);
-    sessionStorage.removeItem(PERSIST_KEY);
-  }
+		notifications = new Map(
+			persisted.notifications.map(([id, notification]) => [
+				id,
+				deserializeNotification(notification)
+			])
+		);
+		stack = [...persisted.stack];
+		expandedId = persisted.expandedId;
+		history = persisted.history.map(deserializeNotification);
+		config = { ...persisted.config };
+	} catch (error) {
+		console.warn('Failed to hydrate notifications:', error);
+		sessionStorage.removeItem(PERSIST_KEY);
+	}
 }
 ```
 
@@ -1452,12 +1425,12 @@ unit-test the persistence layer without touching the Svelte store runtime.
 ```typescript
 // Instead of 10 separate derived stores (10 subscriptions)
 export const notificationComputed = derived(notificationStore, ($state) => ({
-  stackSize: $state.stack.length,
-  hasExpanded: $state.expandedId !== null,
-  processingCount: Array.from($state.notifications.values()).filter(
-    (n) => n.status === "processing",
-  ).length,
-  // ... all computed values in one pass
+	stackSize: $state.stack.length,
+	hasExpanded: $state.expandedId !== null,
+	processingCount: Array.from($state.notifications.values()).filter(
+		(n) => n.status === 'processing'
+	).length
+	// ... all computed values in one pass
 }));
 
 // 90% reduction in subscriptions
@@ -1470,11 +1443,9 @@ export const notificationComputed = derived(notificationStore, ($state) => ({
 let BrainDumpModalContent = $state<any>(null);
 
 async function loadBrainDumpModal() {
-  if (!BrainDumpModalContent) {
-    BrainDumpModalContent = (
-      await import("./types/BrainDumpModalContent.svelte")
-    ).default;
-  }
+	if (!BrainDumpModalContent) {
+		BrainDumpModalContent = (await import('./types/BrainDumpModalContent.svelte')).default;
+	}
 }
 ```
 
@@ -1483,7 +1454,7 @@ async function loadBrainDumpModal() {
 ```svelte
 <!-- Use keyed each for stable DOM -->
 {#each stack as notificationId (notificationId)}
-  <MinimizedNotification notification={notifications.get(notificationId)} />
+	<MinimizedNotification notification={notifications.get(notificationId)} />
 {/each}
 
 <!-- Avoid unnecessary re-renders with $derived -->
@@ -1499,13 +1470,11 @@ let notification = $derived(notifications.get(notificationId));
 const MAX_HISTORY_SIZE = 50;
 
 function addToHistory(notification: Notification) {
-  const nextHistory = [...history, notification];
+	const nextHistory = [...history, notification];
 
-  // Keep only recent history
-  history =
-    nextHistory.length > MAX_HISTORY_SIZE
-      ? nextHistory.slice(-MAX_HISTORY_SIZE)
-      : nextHistory;
+	// Keep only recent history
+	history =
+		nextHistory.length > MAX_HISTORY_SIZE ? nextHistory.slice(-MAX_HISTORY_SIZE) : nextHistory;
 }
 ```
 
@@ -1514,17 +1483,17 @@ function addToHistory(notification: Notification) {
 ```typescript
 // Unsubscribe from streaming sources when notification is removed
 function remove(id: string): void {
-  const notification = notifications.get(id);
+	const notification = notifications.get(id);
 
-  // Clean up any active subscriptions
-  if (notification?.type === "brain-dump" && notification.data.sseConnection) {
-    notification.data.sseConnection.close();
-  }
+	// Clean up any active subscriptions
+	if (notification?.type === 'brain-dump' && notification.data.sseConnection) {
+		notification.data.sseConnection.close();
+	}
 
-  const nextNotifications = new Map(notifications);
-  nextNotifications.delete(id);
-  notifications = nextNotifications;
-  // ... rest of cleanup
+	const nextNotifications = new Map(notifications);
+	nextNotifications.delete(id);
+	notifications = nextNotifications;
+	// ... rest of cleanup
 }
 ```
 
@@ -1537,67 +1506,67 @@ function remove(id: string): void {
 
 // Notification status
 export type NotificationStatus =
-  | "idle" // Not started
-  | "processing" // In progress
-  | "success" // Completed successfully
-  | "error" // Failed
-  | "cancelled" // User cancelled
-  | "warning"; // Completed with warnings
+	| 'idle' // Not started
+	| 'processing' // In progress
+	| 'success' // Completed successfully
+	| 'error' // Failed
+	| 'cancelled' // User cancelled
+	| 'warning'; // Completed with warnings
 
 // Notification type discriminator
 export type NotificationType =
-  | "brain-dump"
-  | "phase-generation"
-  | "calendar-analysis"
-  | "daily-brief"
-  | "export"
-  | "import"
-  | "generic";
+	| 'brain-dump'
+	| 'phase-generation'
+	| 'calendar-analysis'
+	| 'daily-brief'
+	| 'export'
+	| 'import'
+	| 'generic';
 
 // Progress types
 export type ProgressType =
-  | "binary" // Just loading/done
-  | "percentage" // 0-100%
-  | "steps" // Step 1 of 5
-  | "streaming" // SSE with messages
-  | "indeterminate"; // Unknown duration
+	| 'binary' // Just loading/done
+	| 'percentage' // 0-100%
+	| 'steps' // Step 1 of 5
+	| 'streaming' // SSE with messages
+	| 'indeterminate'; // Unknown duration
 
 // Base notification (all notifications extend this)
 export interface BaseNotification {
-  id: string;
-  type: NotificationType;
-  status: NotificationStatus;
-  createdAt: number;
-  updatedAt: number;
-  isMinimized: boolean;
-  isPersistent: boolean;
-  autoCloseMs?: number | null;
+	id: string;
+	type: NotificationType;
+	status: NotificationStatus;
+	createdAt: number;
+	updatedAt: number;
+	isMinimized: boolean;
+	isPersistent: boolean;
+	autoCloseMs?: number | null;
 }
 
 // Complete notification types
 export type Notification =
-  | BrainDumpNotification
-  | PhaseGenerationNotification
-  | CalendarAnalysisNotification
-  | DailyBriefNotification
-  | GenericNotification;
+	| BrainDumpNotification
+	| PhaseGenerationNotification
+	| CalendarAnalysisNotification
+	| DailyBriefNotification
+	| GenericNotification;
 
 // Store state
 export interface NotificationStoreState {
-  notifications: Map<string, Notification>;
-  stack: string[];
-  expandedId: string | null;
-  history: Notification[];
-  config: NotificationConfig;
+	notifications: Map<string, Notification>;
+	stack: string[];
+	expandedId: string | null;
+	history: Notification[];
+	config: NotificationConfig;
 }
 
 export interface NotificationConfig {
-  maxStackSize: number;
-  defaultAutoCloseMs: number;
-  stackPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left";
-  stackSpacing: number;
-  enableSounds: boolean;
-  enableHistory: boolean;
+	maxStackSize: number;
+	defaultAutoCloseMs: number;
+	stackPosition: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+	stackSpacing: number;
+	enableSounds: boolean;
+	enableHistory: boolean;
 }
 ```
 
@@ -1713,8 +1682,8 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 ### 📋 Remaining Work
 
 1. **Phase 3 (10%)**: Finalize testing
-   - Comprehensive unit test coverage
-   - End-to-end manual QA testing
+    - Comprehensive unit test coverage
+    - End-to-end manual QA testing
 2. **Phase 4 (0%)**: Migrate calendar analysis to notification system
 3. **Phase 5 (0%)**: Polish, animations, accessibility audit
 4. **Phase 6 (0%)**: Future enhancements (desktop notifications, batch operations, etc.)
@@ -1726,31 +1695,34 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 3. ✅ ~~Fix SSR initialization errors~~
 4. ✅ ~~Complete Phase 3 core implementation (bridge, components, integration)~~
 5. **Finalize Phase 3:** Complete unit tests and end-to-end testing
-   - Review/expand unit test coverage in `phase-generation-notification.bridge.test.ts`
-   - Manual QA testing matrix: initial generation, regeneration, all strategies, error handling
-   - Verify notification persistence across page refreshes
-   - Test retry functionality
+    - Review/expand unit test coverage in `phase-generation-notification.bridge.test.ts`
+    - Manual QA testing matrix: initial generation, regeneration, all strategies, error handling
+    - Verify notification persistence across page refreshes
+    - Test retry functionality
 6. Begin Phase 4: Calendar analysis integration
 7. Monitor performance and error rates in production
 
 ### 📊 Metrics
 
 **Phase 1 & 2 (Brain Dump):**
+
 - **Code Reduction**: ~1947 lines (BrainDumpProcessingNotification) → ~800 lines (3 reusable components)
 - **Reusability**: 1 notification type → N notification types (extensible architecture)
 - **Concurrent Operations**: 1 → 3 brain dumps + queueing system
 - **SSR Safety**: 0 crashes → 100% graceful fallback with try-catch wrappers
 
 **Phase 3 (Phase Generation):**
+
 - **Code Reduction**: ~172 lines (PhaseGenerationLoadingOverlay) → Deleted, replaced with ~400 lines of reusable notification components
 - **UX Improvement**: Fullscreen blocking overlay → Minimizable notification (non-blocking)
 - **Features Added**:
-  - Step-based progress tracking (5 steps)
-  - Retry functionality
-  - Result persistence and review
-  - Telemetry (duration tracking)
+    - Step-based progress tracking (5 steps)
+    - Retry functionality
+    - Result persistence and review
+    - Telemetry (duration tracking)
 - **Integration Points**: 3 files modified (PhasesSection, ProjectModals, +page.svelte)
 
 **Overall:**
+
 - **Test Coverage**: Core store + brain dump integration tests passing, phase generation tests in progress
 - **Notification Types Implemented**: 2/4 planned (brain-dump ✅, phase-generation ✅, calendar-analysis ⏳, daily-brief ⏳)

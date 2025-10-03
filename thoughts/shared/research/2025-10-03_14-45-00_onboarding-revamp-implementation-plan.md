@@ -5,7 +5,15 @@ git_commit: 3213418ad00dfc0a3ad91e3f62273a149b288198
 branch: main
 repository: buildos-platform
 topic: "BuildOS Onboarding Revamp - Phased Implementation Plan"
-tags: [research, onboarding, implementation-plan, calendar-analysis, sms, brain-dump]
+tags:
+  [
+    research,
+    onboarding,
+    implementation-plan,
+    calendar-analysis,
+    sms,
+    brain-dump,
+  ]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude Code
@@ -30,6 +38,7 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 ### Key Findings
 
 **✅ Ready to Use:**
+
 - Calendar analysis with project suggestions (CalendarAnalysisModal + CalendarAnalysisResults)
 - Brain dump system with auto-accept mode
 - Email daily brief opt-in (fully implemented)
@@ -37,12 +46,14 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 - Database schema for all preferences
 
 **⏳ Needs Integration:**
+
 - SMS notification preferences (backend ready, needs UI)
 - User archetype selection (needs full implementation)
 - Productivity challenges tracking (needs storage + logic)
 - Guided brain dump flow (needs context integration)
 
 **🎬 Needs Placeholders:**
+
 - Screenshots showing brain dump examples
 - Short explainer videos for calendar analysis
 - Demo clips of SMS notifications in action
@@ -56,12 +67,14 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 **File**: `/apps/web/src/routes/onboarding/+page.svelte`
 
 **Current Steps (4 total):**
+
 1. **Projects & Initiatives** - What are you working on?
 2. **Work Style & Preferences** - How do you work?
 3. **Challenges & Blockers** - What's slowing you down?
 4. **BuildOS Focus Areas** - How should BuildOS help?
 
 **Features:**
+
 - ✅ Auto-save every 1.5 seconds
 - ✅ Voice input with live transcription
 - ✅ Progress tracking with visual dots
@@ -69,6 +82,7 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 - ✅ Completion screen with redirect
 
 **What's Missing:**
+
 - ❌ Calendar analysis integration
 - ❌ SMS notification opt-in
 - ❌ Guided brain dump experience
@@ -92,12 +106,14 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 ### Integration Requirements
 
 **Calendar Analysis:**
+
 - Show as optional CTA during project capture
 - Launch `CalendarAnalysisModal` with `autoStart=true`
 - Create projects from calendar suggestions
 - Seamless return to onboarding after creation
 
 **SMS Notifications:**
+
 - Phone verification flow (Twilio Verify)
 - Opt-in checkboxes:
   - Event Reminders
@@ -107,17 +123,20 @@ This plan breaks down the ambitious onboarding revamp into **5 distinct phases**
 - Skip option for "set up later"
 
 **Guided Brain Dump:**
+
 - Embed within onboarding (not separate modal)
 - Use onboarding context to enhance AI processing
 - Auto-accept mode for seamless creation
 - Option to skip and create projects later
 
 **User Archetypes:**
+
 - Store selection in database
 - Use to customize daily brief prompts
 - Tailor first-time UI experience
 
 **Productivity Challenges:**
+
 - Multi-select from predefined list
 - Store for future personalization
 - Inform AI tone and suggestions
@@ -271,8 +290,8 @@ touch /apps/web/static/onboarding-assets/videos/PLACEHOLDER_sms_notification_dem
 **New File**: `/apps/web/src/lib/services/onboarding-v2.service.ts`
 
 ```typescript
-import type { Database } from '$lib/database.types';
-import { supabase } from '$lib/supabase';
+import type { Database } from "$lib/database.types";
+import { supabase } from "$lib/supabase";
 
 type OnboardingProgress = {
   currentStep: number;
@@ -287,21 +306,23 @@ type OnboardingProgress = {
 export class OnboardingV2Service {
   async getProgress(userId: string): Promise<OnboardingProgress> {
     const { data: user } = await supabase
-      .from('users')
-      .select('usage_archetype, productivity_challenges, onboarding_v2_completed_at, onboarding_v2_skipped_calendar, onboarding_v2_skipped_sms')
-      .eq('id', userId)
+      .from("users")
+      .select(
+        "usage_archetype, productivity_challenges, onboarding_v2_completed_at, onboarding_v2_skipped_calendar, onboarding_v2_skipped_sms",
+      )
+      .eq("id", userId)
       .single();
 
     const { data: smsPrefs } = await supabase
-      .from('user_sms_preferences')
-      .select('phone_verified')
-      .eq('user_id', userId)
+      .from("user_sms_preferences")
+      .select("phone_verified")
+      .eq("user_id", userId)
       .single();
 
     const { data: projects } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('user_id', userId);
+      .from("projects")
+      .select("id")
+      .eq("user_id", userId);
 
     return {
       currentStep: this.calculateCurrentStep(user),
@@ -310,46 +331,46 @@ export class OnboardingV2Service {
       archetype: user?.usage_archetype || undefined,
       challenges: (user?.productivity_challenges as string[]) || [],
       hasPhoneVerified: smsPrefs?.phone_verified || false,
-      hasCreatedProjects: (projects?.length || 0) > 0
+      hasCreatedProjects: (projects?.length || 0) > 0,
     };
   }
 
   async saveArchetype(userId: string, archetype: string) {
     return await supabase
-      .from('users')
+      .from("users")
       .update({ usage_archetype: archetype })
-      .eq('id', userId);
+      .eq("id", userId);
   }
 
   async saveChallenges(userId: string, challenges: string[]) {
     return await supabase
-      .from('users')
+      .from("users")
       .update({ productivity_challenges: challenges })
-      .eq('id', userId);
+      .eq("id", userId);
   }
 
   async markCalendarSkipped(userId: string, skipped: boolean) {
     return await supabase
-      .from('users')
+      .from("users")
       .update({ onboarding_v2_skipped_calendar: skipped })
-      .eq('id', userId);
+      .eq("id", userId);
   }
 
   async markSMSSkipped(userId: string, skipped: boolean) {
     return await supabase
-      .from('users')
+      .from("users")
       .update({ onboarding_v2_skipped_sms: skipped })
-      .eq('id', userId);
+      .eq("id", userId);
   }
 
   async completeOnboarding(userId: string) {
     return await supabase
-      .from('users')
+      .from("users")
       .update({
         onboarding_v2_completed_at: new Date().toISOString(),
-        completed_onboarding: true
+        completed_onboarding: true,
       })
-      .eq('id', userId);
+      .eq("id", userId);
   }
 
   private calculateCurrentStep(user: any): number {
@@ -360,16 +381,16 @@ export class OnboardingV2Service {
   }
 
   private getCompletedSteps(user: any): string[] {
-    const completed: string[] = ['welcome']; // Always completed once started
-    if (user?.usage_archetype) completed.push('archetype');
-    if (user?.productivity_challenges?.length) completed.push('challenges');
+    const completed: string[] = ["welcome"]; // Always completed once started
+    if (user?.usage_archetype) completed.push("archetype");
+    if (user?.productivity_challenges?.length) completed.push("challenges");
     return completed;
   }
 
   private getSkippedSteps(user: any): string[] {
     const skipped: string[] = [];
-    if (user?.onboarding_v2_skipped_calendar) skipped.push('calendar');
-    if (user?.onboarding_v2_skipped_sms) skipped.push('notifications');
+    if (user?.onboarding_v2_skipped_calendar) skipped.push("calendar");
+    if (user?.onboarding_v2_skipped_sms) skipped.push("notifications");
     return skipped;
   }
 }
@@ -1127,18 +1148,21 @@ Add feature flag to toggle between v1 and v2:
 **New File**: `/apps/web/src/routes/api/sms/preferences/+server.ts`
 
 ```typescript
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
-import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { createClient } from "@supabase/supabase-js";
+import { PRIVATE_SUPABASE_SERVICE_KEY } from "$env/static/private";
+import { PUBLIC_SUPABASE_URL } from "$env/static/public";
 
-const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY);
+const supabase = createClient(
+  PUBLIC_SUPABASE_URL,
+  PRIVATE_SUPABASE_SERVICE_KEY,
+);
 
 export const PUT: RequestHandler = async ({ request, locals }) => {
   const session = await locals.getSession();
   if (!session) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
+    return json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -1147,26 +1171,26 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
       event_reminders_enabled,
       next_up_enabled,
       morning_kickoff_enabled,
-      evening_recap_enabled
+      evening_recap_enabled,
     } = body;
 
     const { error } = await supabase
-      .from('user_sms_preferences')
+      .from("user_sms_preferences")
       .update({
         event_reminders_enabled,
         next_up_enabled,
         morning_kickoff_enabled,
         evening_recap_enabled,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('user_id', session.user.id);
+      .eq("user_id", session.user.id);
 
     if (error) throw error;
 
     return json({ success: true });
   } catch (error) {
-    console.error('Failed to update SMS preferences:', error);
-    return json({ error: 'Failed to update preferences' }, { status: 500 });
+    console.error("Failed to update SMS preferences:", error);
+    return json({ error: "Failed to update preferences" }, { status: 500 });
   }
 };
 ```
@@ -1730,6 +1754,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 #### 5.2: Testing
 
 **Unit Tests**: Test individual components
+
 - [ ] `WelcomeStep.test.ts`
 - [ ] `ProjectsCaptureStep.test.ts`
 - [ ] `NotificationsStep.test.ts`
@@ -1738,6 +1763,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 - [ ] `SummaryStep.test.ts`
 
 **Integration Tests**: Test full flow
+
 - [ ] Complete onboarding flow (all steps)
 - [ ] Skip optional steps (calendar, SMS)
 - [ ] Back/forward navigation
@@ -1745,40 +1771,42 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 - [ ] Error handling
 
 **E2E Tests** (Playwright):
+
 ```typescript
-test('complete onboarding flow v2', async ({ page }) => {
-  await page.goto('/onboarding?v2=true');
+test("complete onboarding flow v2", async ({ page }) => {
+  await page.goto("/onboarding?v2=true");
 
   // Step 0: Welcome
-  await page.click('text=Start Setting Up');
+  await page.click("text=Start Setting Up");
 
   // Step 1: Projects
-  await page.fill('textarea', 'Build a SaaS platform for small businesses');
-  await page.click('text=Continue');
+  await page.fill("textarea", "Build a SaaS platform for small businesses");
+  await page.click("text=Continue");
 
   // Step 2: Notifications (skip)
-  await page.click('text=I\'ll set this up later');
+  await page.click("text=I'll set this up later");
 
   // Step 3: Archetype
-  await page.click('text=AI Task Manager');
-  await page.click('text=Continue');
+  await page.click("text=AI Task Manager");
+  await page.click("text=Continue");
 
   // Step 4: Challenges
-  await page.click('text=Time management');
-  await page.click('text=Context switching');
-  await page.click('text=Continue');
+  await page.click("text=Time management");
+  await page.click("text=Context switching");
+  await page.click("text=Continue");
 
   // Step 5: Summary
-  await page.click('text=Enter BuildOS');
+  await page.click("text=Enter BuildOS");
 
-  await page.waitForURL('/');
-  expect(page.url()).toContain('/');
+  await page.waitForURL("/");
+  expect(page.url()).toContain("/");
 });
 ```
 
 #### 5.3: Analytics Integration
 
 Add tracking for:
+
 - [ ] Step completion rates
 - [ ] Drop-off points
 - [ ] Average time per step
@@ -1789,29 +1817,32 @@ Add tracking for:
 - [ ] Challenge selections
 
 **Analytics Events**:
+
 ```typescript
 // Track step progression
-analytics.track('onboarding_step_completed', {
-  step: 'projects_capture',
+analytics.track("onboarding_step_completed", {
+  step: "projects_capture",
   projectsCreated: 2,
-  usedCalendarAnalysis: true
+  usedCalendarAnalysis: true,
 });
 
 // Track opt-in rates
-analytics.track('onboarding_sms_optin', {
+analytics.track("onboarding_sms_optin", {
   optedIn: true,
-  preferences: ['morning_kickoff', 'event_reminders']
+  preferences: ["morning_kickoff", "event_reminders"],
 });
 ```
 
 #### 5.4: Documentation
 
 Create user-facing docs:
+
 - [ ] `/docs/user-guide/onboarding-guide.md`
 - [ ] Video walkthrough (optional)
 - [ ] FAQ for common questions
 
 Create developer docs:
+
 - [ ] `/apps/web/docs/features/onboarding-v2/README.md`
 - [ ] Component documentation
 - [ ] API documentation
@@ -1842,6 +1873,7 @@ Create developer docs:
    - 100% → v2 if metrics look good
 
 **Rollback Plan**:
+
 - Keep v1 flow intact
 - Feature flag to revert to v1
 - Database migration is additive (safe)
@@ -1869,10 +1901,12 @@ Create developer docs:
 **Status**: ✅ Ready to use (no changes needed)
 
 **Components**:
+
 - `CalendarAnalysisModal.svelte` - Full modal with analysis UI
 - `CalendarAnalysisResults.svelte` - Project suggestions display
 
 **Integration Steps**:
+
 1. Import modal into `ProjectsCaptureStep`
 2. Show CTA button with explainer video placeholder
 3. Bind `isOpen` state to button click
@@ -1890,15 +1924,18 @@ Create developer docs:
 **Database**: ✅ Complete (`user_sms_preferences` table exists)
 
 **API Endpoints**:
+
 - ✅ `/api/sms/verify` - Send verification code
 - ✅ `/api/sms/verify/confirm` - Confirm code
 
 **New Components Needed**:
+
 1. `PhoneVerificationCard.svelte` - Phone input + verification flow
 2. `SMSPreferencesForm.svelte` - Checkbox preferences
 3. `/api/sms/preferences/+server.ts` - Save preferences
 
 **Workflow**:
+
 1. User enters phone number
 2. Click "Send Code" → calls `/api/sms/verify`
 3. Enter 6-digit code
@@ -1917,6 +1954,7 @@ Create developer docs:
 **Service**: `brainDumpService.parseBrainDumpWithStream()`
 
 **Key Parameters**:
+
 ```typescript
 await brainDumpService.parseBrainDumpWithStream(
   text: string,                    // User's brain dump
@@ -1936,6 +1974,7 @@ await brainDumpService.parseBrainDumpWithStream(
 ```
 
 **Integration into Onboarding**:
+
 1. Collect brain dump text in `ProjectsCaptureStep`
 2. Build context array from previous steps
 3. Call service with `autoAccept: true`
@@ -1949,6 +1988,7 @@ await brainDumpService.parseBrainDumpWithStream(
 #### Sub-Plan D: User Archetype Storage & Usage
 
 **Database Changes**:
+
 ```sql
 ALTER TABLE users
 ADD COLUMN usage_archetype TEXT CHECK (
@@ -1957,18 +1997,21 @@ ADD COLUMN usage_archetype TEXT CHECK (
 ```
 
 **Future Usage**:
+
 - Customize daily brief prompts based on archetype
 - Filter/sort projects by archetype preference
 - Tailor onboarding tips in first-time user experience
 
 **Example Daily Brief Customization**:
+
 ```typescript
 // In worker/src/workers/dailyBriefWorker.ts
-const briefPrompt = user.usage_archetype === 'second_brain'
-  ? 'Focus on knowledge connections and insights...'
-  : user.usage_archetype === 'ai_task_manager'
-  ? 'Prioritize upcoming meetings and deadlines...'
-  : 'List actionable tasks to move projects forward...';
+const briefPrompt =
+  user.usage_archetype === "second_brain"
+    ? "Focus on knowledge connections and insights..."
+    : user.usage_archetype === "ai_task_manager"
+      ? "Prioritize upcoming meetings and deadlines..."
+      : "List actionable tasks to move projects forward...";
 ```
 
 **Estimated Time**: 3-4 hours (implementation + customization)
@@ -1978,6 +2021,7 @@ const briefPrompt = user.usage_archetype === 'second_brain'
 #### Sub-Plan E: Productivity Challenges Tracking
 
 **Database Changes**:
+
 ```sql
 ALTER TABLE users
 ADD COLUMN productivity_challenges JSONB DEFAULT '[]'::jsonb;
@@ -1987,17 +2031,19 @@ ADD COLUMN productivity_challenges JSONB DEFAULT '[]'::jsonb;
 ```
 
 **Future Usage**:
+
 - Inform AI tone (more empathetic for ADHD)
 - Suggest specific features (Pomodoro for focus issues)
 - Customize notification timing/frequency
 - Generate personalized tips in daily briefs
 
 **Example AI Customization**:
+
 ```typescript
 // In promptTemplate.service.ts
-const systemContext = user.productivity_challenges.includes('focus_adhd')
-  ? 'User has ADHD - keep tasks small, use encouraging language, suggest breaks'
-  : 'Standard task breakdown approach';
+const systemContext = user.productivity_challenges.includes("focus_adhd")
+  ? "User has ADHD - keep tasks small, use encouraging language, suggest breaks"
+  : "Standard task breakdown approach";
 ```
 
 **Estimated Time**: 2-3 hours
@@ -2006,14 +2052,14 @@ const systemContext = user.productivity_challenges.includes('focus_adhd')
 
 ## Timeline Summary
 
-| Phase | Description | Duration | Start | End |
-|-------|-------------|----------|-------|-----|
-| **Phase 0** | Foundation & Prerequisites | 1-2 days | Week 1 Mon | Week 1 Tue |
-| **Phase 1** | Welcome & Projects Capture | 3-4 days | Week 2 Mon | Week 2 Thu |
+| Phase       | Description                    | Duration | Start      | End        |
+| ----------- | ------------------------------ | -------- | ---------- | ---------- |
+| **Phase 0** | Foundation & Prerequisites     | 1-2 days | Week 1 Mon | Week 1 Tue |
+| **Phase 1** | Welcome & Projects Capture     | 3-4 days | Week 2 Mon | Week 2 Thu |
 | **Phase 2** | Accountability & Notifications | 3-4 days | Week 3 Mon | Week 3 Thu |
-| **Phase 3** | Archetypes & Challenges | 2-3 days | Week 4 Mon | Week 4 Wed |
-| **Phase 4** | Summary & Completion | 2-3 days | Week 4 Thu | Week 5 Mon |
-| **Phase 5** | Polish, Testing & Deployment | 5-7 days | Week 5 Tue | Week 6 Mon |
+| **Phase 3** | Archetypes & Challenges        | 2-3 days | Week 4 Mon | Week 4 Wed |
+| **Phase 4** | Summary & Completion           | 2-3 days | Week 4 Thu | Week 5 Mon |
+| **Phase 5** | Polish, Testing & Deployment   | 5-7 days | Week 5 Tue | Week 6 Mon |
 
 **Total Estimated Time**: 5-6 weeks (with testing and iteration)
 
@@ -2026,19 +2072,19 @@ const systemContext = user.productivity_challenges.includes('focus_adhd')
 ### Potential Risks
 
 1. **SMS Provider Limits**: Twilio Verify has rate limits
-   - *Mitigation*: Implement client-side throttling, show clear error messages
+   - _Mitigation_: Implement client-side throttling, show clear error messages
 
 2. **Calendar API Failures**: Google Calendar quota exceeded
-   - *Mitigation*: Graceful degradation, allow manual project creation
+   - _Mitigation_: Graceful degradation, allow manual project creation
 
 3. **Auto-Accept Brain Dumps Creating Bad Projects**: AI misinterprets input
-   - *Mitigation*: Add "Review & Edit" option after creation, show preview before final commit
+   - _Mitigation_: Add "Review & Edit" option after creation, show preview before final commit
 
 4. **User Overwhelm**: Too many steps in onboarding
-   - *Mitigation*: Make more steps optional, add "Quick Setup" vs. "Full Setup" option
+   - _Mitigation_: Make more steps optional, add "Quick Setup" vs. "Full Setup" option
 
 5. **Mobile UX Issues**: Complex UI on small screens
-   - *Mitigation*: Mobile-first design, test on actual devices, simplify layouts
+   - _Mitigation_: Mobile-first design, test on actual devices, simplify layouts
 
 ### Rollback Strategy
 
@@ -2052,20 +2098,24 @@ const systemContext = user.productivity_challenges.includes('focus_adhd')
 ## Success Metrics
 
 ### Completion Rates
+
 - **Target**: 80%+ complete all required steps
 - **Current v1**: ~65% complete onboarding
 
 ### Time to Complete
+
 - **Target**: 3-5 minutes average
 - **Current v1**: 4-6 minutes
 
 ### Feature Adoption
+
 - **SMS Opt-in**: 30%+ of users
 - **Email Opt-in**: 50%+ of users
 - **Calendar Analysis**: 40%+ of users with Google Calendar
 - **Projects Created**: 1.5 projects average per user
 
 ### User Satisfaction
+
 - **Post-onboarding Survey**: 4.5+ stars
 - **Support Tickets**: Reduce onboarding-related tickets by 30%
 

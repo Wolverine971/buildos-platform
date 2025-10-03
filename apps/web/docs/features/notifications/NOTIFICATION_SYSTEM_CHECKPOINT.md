@@ -15,10 +15,10 @@
 
 - Complete TypeScript type definitions
 - Discriminated union for notification types:
-  - `BrainDumpNotification`
-  - `PhaseGenerationNotification`
-  - `CalendarAnalysisNotification`
-  - `GenericNotification`
+    - `BrainDumpNotification`
+    - `PhaseGenerationNotification`
+    - `CalendarAnalysisNotification`
+    - `GenericNotification`
 - Progress types: binary, percentage, steps, streaming, indeterminate
 - Type guards for type-safe handling
 - 350+ lines of comprehensive type definitions
@@ -27,22 +27,22 @@
 
 - Full-featured Svelte writable store with Map-based storage
 - **Core Methods:**
-  - `add()` - Create new notification
-  - `update()` - Update notification properties
-  - `remove()` - Remove notification from stack
-  - `expand()` - Expand notification (auto-minimizes others)
-  - `minimize()` - Minimize notification
-  - `setStatus()` - Update status (idle, processing, success, error)
-  - `setProgress()` - Update progress state
-  - `setError()` - Set error message
-  - `clear()` - Remove all notifications
-  - `clearCompleted()` - Remove only completed notifications
+    - `add()` - Create new notification
+    - `update()` - Update notification properties
+    - `remove()` - Remove notification from stack
+    - `expand()` - Expand notification (auto-minimizes others)
+    - `minimize()` - Minimize notification
+    - `setStatus()` - Update status (idle, processing, success, error)
+    - `setProgress()` - Update progress state
+    - `setError()` - Set error message
+    - `clear()` - Remove all notifications
+    - `clearCompleted()` - Remove only completed notifications
 - **Features:**
-  - Auto-close timers for completed notifications
-  - Session storage persistence (30-minute timeout)
-  - Auto-hydration on page load
-  - Single expanded notification constraint
-  - 400+ lines of production-ready code
+    - Auto-close timers for completed notifications
+    - Session storage persistence (30-minute timeout)
+    - Auto-hydration on page load
+    - Single expanded notification constraint
+    - 400+ lines of production-ready code
 
 #### 3. **UI Components** (`apps/web/src/lib/components/notifications/`)
 
@@ -73,9 +73,9 @@
 
 - Expanded modal view using existing Modal component
 - Full progress display:
-  - Percentage progress with bar
-  - Step-based progress with status icons
-  - Streaming progress messages
+    - Percentage progress with bar
+    - Step-based progress with status icons
+    - Streaming progress messages
 - Success/error states with action buttons
 - Placeholder content (ready for type-specific views)
 
@@ -90,10 +90,10 @@
 
 - Manual testing interface
 - Creates test notifications for all types:
-  - Brain dump with streaming progress
-  - Phase generation with step-based progress
-  - Calendar analysis with indeterminate progress
-  - Generic error notifications
+    - Brain dump with streaming progress
+    - Phase generation with step-based progress
+    - Calendar analysis with indeterminate progress
+    - Generic error notifications
 - Simulates realistic progress updates
 - "Clear All" button for quick reset
 
@@ -140,7 +140,7 @@ Add to any page (e.g., `/routes/+page.svelte`):
 
 ```svelte
 <script>
-  import NotificationTestButtons from '$lib/components/notifications/NotificationTestButtons.svelte';
+	import NotificationTestButtons from '$lib/components/notifications/NotificationTestButtons.svelte';
 </script>
 
 <NotificationTestButtons />
@@ -151,49 +151,49 @@ Add to any page (e.g., `/routes/+page.svelte`):
 **Test Scenarios:**
 
 1. **Single Notification:**
-   - Click "+ Brain Dump"
-   - Should appear in bottom-right corner
-   - Should show spinner and "Processing brain dump"
-   - After 2s, message changes to "Extracting tasks..."
-   - After 4s, status changes to success (green checkmark)
+    - Click "+ Brain Dump"
+    - Should appear in bottom-right corner
+    - Should show spinner and "Processing brain dump"
+    - After 2s, message changes to "Extracting tasks..."
+    - After 4s, status changes to success (green checkmark)
 
 2. **Multiple Notifications:**
-   - Click "+ Brain Dump", "+ Phase Gen", "+ Calendar"
-   - Should stack vertically (3 notifications)
-   - Each should animate in smoothly
+    - Click "+ Brain Dump", "+ Phase Gen", "+ Calendar"
+    - Should stack vertically (3 notifications)
+    - Each should animate in smoothly
 
 3. **Expand/Minimize:**
-   - Click any minimized notification
-   - Should expand into modal
-   - Other notifications should remain minimized
-   - Click another notification → first minimizes, second expands
-   - Press ESC → modal minimizes back to stack
+    - Click any minimized notification
+    - Should expand into modal
+    - Other notifications should remain minimized
+    - Click another notification → first minimizes, second expands
+    - Press ESC → modal minimizes back to stack
 
 4. **Stack Overflow:**
-   - Create 6+ notifications
-   - Should show "+N more" badge
-   - Only 5 visible notifications
+    - Create 6+ notifications
+    - Should show "+N more" badge
+    - Only 5 visible notifications
 
 5. **Progress Updates:**
-   - Click "+ Phase Gen"
-   - Expand the notification
-   - Should show 5 steps with progress animation
-   - Each step should complete sequentially
+    - Click "+ Phase Gen"
+    - Expand the notification
+    - Should show 5 steps with progress animation
+    - Each step should complete sequentially
 
 6. **Error Handling:**
-   - Click "+ Error"
-   - Should show red error icon
-   - Expand → shows error details
-   - Should have "Retry" and "Close" buttons
+    - Click "+ Error"
+    - Should show red error icon
+    - Expand → shows error details
+    - Should have "Retry" and "Close" buttons
 
 7. **Persistence:**
-   - Create a notification
-   - Refresh the page
-   - Notification should persist (session storage)
+    - Create a notification
+    - Refresh the page
+    - Notification should persist (session storage)
 
 8. **Auto-Close:**
-   - Phase generation notifications auto-close after 5s on success
-   - Brain dump notifications require manual close
+    - Phase generation notifications auto-close after 5s on success
+    - Brain dump notifications require manual close
 
 ---
 
@@ -276,22 +276,22 @@ Add to any page (e.g., `/routes/+page.svelte`):
 ## Known Limitations
 
 1. **Modal Content is Placeholder:**
-   - Currently shows generic processing/success/error views
-   - Type-specific components (BrainDumpModalContent, etc.) not yet created
-   - Works fine for testing, but needs full content for production
+    - Currently shows generic processing/success/error views
+    - Type-specific components (BrainDumpModalContent, etc.) not yet created
+    - Works fine for testing, but needs full content for production
 
 2. **No Real Integration Yet:**
-   - Test component creates fake notifications
-   - Real brain dump, phase generation, calendar analysis not yet wired up
-   - Need to update those systems to use notification store
+    - Test component creates fake notifications
+    - Real brain dump, phase generation, calendar analysis not yet wired up
+    - Need to update those systems to use notification store
 
 3. **Minimal Mobile Optimization:**
-   - Works on mobile but not optimized
-   - Stack position could be improved for small screens
+    - Works on mobile but not optimized
+    - Stack position could be improved for small screens
 
 4. **No History UI:**
-   - History is tracked in store
-   - No UI to view past notifications yet
+    - History is tracked in store
+    - No UI to view past notifications yet
 
 ---
 
@@ -333,58 +333,58 @@ Before moving to Phase 2, verify:
 **Completed Tasks:**
 
 1. ✅ Created `notification.types.ts` with complete type system (350 lines)
-   - Discriminated unions for all notification types
-   - Progress type variants (binary, percentage, steps, streaming, indeterminate)
-   - Type guards and helper types
+    - Discriminated unions for all notification types
+    - Progress type variants (binary, percentage, steps, streaming, indeterminate)
+    - Type guards and helper types
 
 2. ✅ Created `notification.store.ts` with full-featured store (400 lines)
-   - Map-based storage for O(1) operations
-   - Complete CRUD API (add, update, remove, expand, minimize)
-   - Auto-close timers with cleanup
-   - Session persistence with hydration
-   - Single expanded notification constraint
-   - Derived stores for convenience
+    - Map-based storage for O(1) operations
+    - Complete CRUD API (add, update, remove, expand, minimize)
+    - Auto-close timers with cleanup
+    - Session persistence with hydration
+    - Single expanded notification constraint
+    - Derived stores for convenience
 
 3. ✅ Created `NotificationStackManager.svelte`
-   - Top-level orchestrator component
-   - Keyboard shortcut handling (ESC to minimize)
-   - Coordinates stack and modal rendering
+    - Top-level orchestrator component
+    - Keyboard shortcut handling (ESC to minimize)
+    - Coordinates stack and modal rendering
 
 4. ✅ Created `NotificationStack.svelte`
-   - Bottom-right stack positioning
-   - Max 5 visible notifications
-   - "+N more" overflow badge
-   - Smooth enter/exit animations (fly transitions)
+    - Bottom-right stack positioning
+    - Max 5 visible notifications
+    - "+N more" overflow badge
+    - Smooth enter/exit animations (fly transitions)
 
 5. ✅ Created `MinimizedNotification.svelte`
-   - Generic minimized card component
-   - Status icons (Loader2, CheckCircle, AlertCircle, XCircle)
-   - Smart titles based on notification type and status
-   - Progress bar for percentage-based progress
-   - Click and keyboard interaction handling
+    - Generic minimized card component
+    - Status icons (Loader2, CheckCircle, AlertCircle, XCircle)
+    - Smart titles based on notification type and status
+    - Progress bar for percentage-based progress
+    - Click and keyboard interaction handling
 
 6. ✅ Created `NotificationModal.svelte`
-   - Expanded modal using existing Modal component
-   - Full progress displays:
-     - Percentage progress with animated bar
-     - Step-based progress with status indicators
-     - Streaming progress messages
-   - Success/error/processing states
-   - Action buttons (view, retry, close)
+    - Expanded modal using existing Modal component
+    - Full progress displays:
+        - Percentage progress with animated bar
+        - Step-based progress with status indicators
+        - Streaming progress messages
+    - Success/error/processing states
+    - Action buttons (view, retry, close)
 
 7. ✅ Integrated into `+layout.svelte`
-   - Feature flag: `PUBLIC_USE_NEW_NOTIFICATIONS`
-   - Side-by-side with existing brain dump notification
-   - Zero breaking changes
+    - Feature flag: `PUBLIC_USE_NEW_NOTIFICATIONS`
+    - Side-by-side with existing brain dump notification
+    - Zero breaking changes
 
 8. ✅ Created `NotificationTestButtons.svelte`
-   - Manual testing interface with 5 test scenarios
-   - Simulates realistic progress updates
-   - All notification types represented
+    - Manual testing interface with 5 test scenarios
+    - Simulates realistic progress updates
+    - All notification types represented
 
 9. ✅ Updated `.env.example`
-   - Documented feature flag
-   - Instructions for enabling/disabling
+    - Documented feature flag
+    - Instructions for enabling/disabling
 
 10. ✅ Created comprehensive documentation
     - 67-page specification document
@@ -414,7 +414,7 @@ PUBLIC_USE_NEW_NOTIFICATIONS=true
 ```svelte
 <!-- In apps/web/src/routes/+page.svelte -->
 <script>
-  import NotificationTestButtons from '$lib/components/notifications/NotificationTestButtons.svelte';
+	import NotificationTestButtons from '$lib/components/notifications/NotificationTestButtons.svelte';
 </script>
 
 <NotificationTestButtons />

@@ -5,6 +5,7 @@
 ## 🎯 Quick Start
 
 **This is a monorepo-level guide.** For detailed app-specific documentation:
+
 - **Web App (SvelteKit)**: See `/apps/web/CLAUDE.md`
 - **Worker Service (Node.js)**: See `/apps/worker/CLAUDE.md`
 
@@ -29,42 +30,42 @@ buildos-platform/
 
 ### Essential Entry Points
 
-| When You Want To...               | Start Here                                   |
-| --------------------------------- | -------------------------------------------- |
-| **Understand the system**         | `/docs/README.md` (navigation hub)           |
-| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`               |
-| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)     |
-| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md` |
+| When You Want To...               | Start Here                                               |
+| --------------------------------- | -------------------------------------------------------- |
+| **Understand the system**         | `/docs/README.md` (navigation hub)                       |
+| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`                           |
+| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)                 |
+| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md`       |
 | **Work on background jobs**       | `/apps/worker/docs/README.md` + `/apps/worker/CLAUDE.md` |
-| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                    |
+| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                                |
 
 ### Documentation by Scope
 
-| Scope              | Location             | Contains                                   |
-| ------------------ | -------------------- | ------------------------------------------ |
-| **Monorepo-wide**  | `/docs/`             | Architecture, deployment, business docs    |
-| **Web App**        | `/apps/web/docs/`    | Features, components, API, operations      |
-| **Worker Service** | `/apps/worker/docs/` | Daily briefs, queue system, scheduler      |
-| **Packages**       | `/packages/*/docs/`  | Package usage and implementation           |
+| Scope              | Location             | Contains                                |
+| ------------------ | -------------------- | --------------------------------------- |
+| **Monorepo-wide**  | `/docs/`             | Architecture, deployment, business docs |
+| **Web App**        | `/apps/web/docs/`    | Features, components, API, operations   |
+| **Worker Service** | `/apps/worker/docs/` | Daily briefs, queue system, scheduler   |
+| **Packages**       | `/packages/*/docs/`  | Package usage and implementation        |
 
 ### Feature Documentation
 
-| Feature                | Documentation Path                              |
-| ---------------------- | ----------------------------------------------- |
-| Brain Dump System      | `/apps/web/docs/features/brain-dump/`           |
-| Calendar Integration   | `/apps/web/docs/features/calendar-integration/` |
-| Notification System    | `/apps/web/docs/features/notifications/`        |
-| Onboarding Flow        | `/apps/web/docs/features/onboarding/`           |
-| Daily Briefs (Worker)  | `/apps/worker/docs/features/daily-briefs/`      |
+| Feature               | Documentation Path                              |
+| --------------------- | ----------------------------------------------- |
+| Brain Dump System     | `/apps/web/docs/features/brain-dump/`           |
+| Calendar Integration  | `/apps/web/docs/features/calendar-integration/` |
+| Notification System   | `/apps/web/docs/features/notifications/`        |
+| Onboarding Flow       | `/apps/web/docs/features/onboarding/`           |
+| Daily Briefs (Worker) | `/apps/worker/docs/features/daily-briefs/`      |
 
 ### Deployment & Operations
 
-| Task                   | Documentation Path                              |
-| ---------------------- | ----------------------------------------------- |
-| Web → Vercel           | `/apps/web/docs/operations/deployment/`         |
-| Worker → Railway       | `/apps/worker/docs/README.md`                   |
-| Environment Variables  | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md` |
-| Active Migrations      | `/apps/web/docs/migrations/active/`             |
+| Task                  | Documentation Path                                         |
+| --------------------- | ---------------------------------------------------------- |
+| Web → Vercel          | `/apps/web/docs/operations/deployment/`                    |
+| Worker → Railway      | `/apps/worker/docs/README.md`                              |
+| Environment Variables | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md` |
+| Active Migrations     | `/apps/web/docs/migrations/active/`                        |
 
 ## Essential Commands
 
@@ -142,15 +143,15 @@ BuildOS is an AI-powered productivity platform for ADHD minds that transforms un
 
 ### Tech Stack
 
-| Layer              | Technology                                      |
-| ------------------ | ----------------------------------------------- |
-| **Monorepo**       | Turborepo + pnpm workspaces                     |
-| **Web App**        | SvelteKit 2 + Svelte 5 (runes syntax)           |
-| **Worker**         | Node.js + Express + BullMQ (Supabase queue)     |
-| **Database**       | Supabase (PostgreSQL + RLS)                     |
-| **AI/LLM**         | OpenAI API with streaming (DeepSeek primary)    |
-| **Auth**           | Supabase Auth + Google OAuth                    |
-| **Deployment**     | Vercel (web) + Railway (worker)                 |
+| Layer          | Technology                                   |
+| -------------- | -------------------------------------------- |
+| **Monorepo**   | Turborepo + pnpm workspaces                  |
+| **Web App**    | SvelteKit 2 + Svelte 5 (runes syntax)        |
+| **Worker**     | Node.js + Express + BullMQ (Supabase queue)  |
+| **Database**   | Supabase (PostgreSQL + RLS)                  |
+| **AI/LLM**     | OpenAI API with streaming (DeepSeek primary) |
+| **Auth**       | Supabase Auth + Google OAuth                 |
+| **Deployment** | Vercel (web) + Railway (worker)              |
 
 **Detailed Architecture:** See `/docs/DEPLOYMENT_TOPOLOGY.md`
 
@@ -162,7 +163,9 @@ BuildOS is an AI-powered productivity platform for ADHD minds that transforms un
 // ✅ Use NEW runes syntax:
 let count = $state(0);
 let doubled = $derived(count * 2);
-$effect(() => { /* side effects */ });
+$effect(() => {
+  /* side effects */
+});
 
 // ❌ AVOID old reactive syntax:
 // let count = 0;
@@ -176,6 +179,7 @@ $effect(() => { /* side effects */ });
 ### Code Patterns & Architecture
 
 For detailed patterns, see:
+
 - **Web App Patterns:** `/apps/web/CLAUDE.md` (routes, components, stores, services)
 - **Worker Patterns:** `/apps/worker/CLAUDE.md` (jobs, queue, scheduler)
 - **Web Architecture:** `/apps/web/docs/technical/architecture/`
@@ -194,14 +198,14 @@ For detailed patterns, see:
 
 ### Feature-Specific Guidance
 
-| Feature/System          | Where to Learn More                             |
-| ----------------------- | ----------------------------------------------- |
-| **Brain Dump Flow**     | `/apps/web/docs/features/brain-dump/README.md`  |
-| **Calendar Integration**| `/apps/web/docs/features/calendar-integration/README.md` |
-| **Notification System** | `/apps/web/docs/features/notifications/README.md` |
-| **Daily Briefs**        | `/apps/worker/docs/features/daily-briefs/README.md` |
-| **Queue System**        | `/apps/worker/CLAUDE.md` (Worker Service Architecture section) |
-| **Database Schema**     | `/apps/web/docs/technical/database/schema.md`   |
+| Feature/System           | Where to Learn More                                            |
+| ------------------------ | -------------------------------------------------------------- |
+| **Brain Dump Flow**      | `/apps/web/docs/features/brain-dump/README.md`                 |
+| **Calendar Integration** | `/apps/web/docs/features/calendar-integration/README.md`       |
+| **Notification System**  | `/apps/web/docs/features/notifications/README.md`              |
+| **Daily Briefs**         | `/apps/worker/docs/features/daily-briefs/README.md`            |
+| **Queue System**         | `/apps/worker/CLAUDE.md` (Worker Service Architecture section) |
+| **Database Schema**      | `/apps/web/docs/technical/database/schema.md`                  |
 
 ## 🧪 Testing & Quality
 
@@ -217,6 +221,7 @@ pnpm pre-push
 ```
 
 **Testing Documentation:**
+
 - **Web Testing:** `/apps/web/docs/technical/testing/`
 - **Worker Testing:** `/apps/worker/docs/development/testing/`
 - **Testing Checklist:** `/apps/web/docs/development/TESTING_CHECKLIST.md`
@@ -224,9 +229,11 @@ pnpm pre-push
 ## ⚙️ Environment Configuration
 
 See **complete environment setup:**
+
 - `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 
 **Essential variables** (from `.env.example`):
+
 ```bash
 # Supabase (required)
 PUBLIC_SUPABASE_URL=
@@ -244,6 +251,7 @@ GOOGLE_CLIENT_SECRET=
 ## 📝 Development Workflow
 
 ### Before Committing
+
 ```bash
 pnpm lint:fix       # Auto-fix formatting
 pnpm typecheck      # Check types
@@ -251,11 +259,13 @@ pnpm test:run       # Run tests
 ```
 
 ### Before Pushing
+
 ```bash
 pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ```
 
 ### Working with Turborepo
+
 - Use `--filter` flag for specific apps: `pnpm build --filter=web`
 - Force bypass cache: `pnpm build --force`
 - See `/docs/MONOREPO_GUIDE.md` for complete workflows
@@ -286,6 +296,7 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 **Complete Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md`
 
 ### ❌ Do NOT Create
+
 - Random files at root level (`architecture.md`, `notes.md`, `summary.md`)
 - Docs outside the proper structure
 - Research docs without timestamps or frontmatter
@@ -293,10 +304,12 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ## 🔗 Additional Resources
 
 ### App-Specific Documentation
+
 - **Web App (SvelteKit):** `/apps/web/CLAUDE.md` - Complete web development guide
 - **Worker Service (Node.js):** `/apps/worker/CLAUDE.md` - Complete worker development guide
 
 ### Cross-Cutting Documentation
+
 - **Documentation Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md` ⭐
 - **Monorepo Workflows:** `/docs/MONOREPO_GUIDE.md`
 - **System Architecture:** `/docs/DEPLOYMENT_TOPOLOGY.md`
@@ -304,6 +317,7 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 - **Documentation Hub:** `/docs/README.md`
 
 ### Technical Deep Dives
+
 - **Web Technical Docs:** `/apps/web/docs/technical/`
 - **Database Schema:** `/apps/web/docs/technical/database/`
 - **API Reference:** `/apps/web/docs/technical/api/`

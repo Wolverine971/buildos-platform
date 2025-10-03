@@ -50,10 +50,10 @@ You have two options:
 **OPTION A: Disable All Overrides (RECOMMENDED)**
 
 - Turn OFF the "Override" toggle for:
-  - Build Command
-  - Output Directory
-  - Install Command
-  - Development Command
+    - Build Command
+    - Output Directory
+    - Install Command
+    - Development Command
 - This will use your `vercel.json` settings automatically
 
 **OPTION B: If Overrides Are Enabled, Set:**
@@ -105,8 +105,8 @@ After build completes, files should be in:
 3. **Push** to your repository
 4. Go to Vercel dashboard
 5. Either:
-   - Wait for automatic deployment from git push
-   - Or manually redeploy from Deployments tab
+    - Wait for automatic deployment from git push
+    - Or manually redeploy from Deployments tab
 
 ## 🎯 WHY YOUR DEPLOYMENT IS HANGING
 

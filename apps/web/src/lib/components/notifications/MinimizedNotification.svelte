@@ -35,12 +35,11 @@
 						BrainDumpMinimizedView = module.default;
 					}
 					break;
-				case 'phase-generation':
-					if (!PhaseGenerationMinimizedView) {
-						console.log('load PhaseGenerationMinimizedView');
-						const module = await import(
-							'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
-						);
+			case 'phase-generation':
+				if (!PhaseGenerationMinimizedView) {
+					const module = await import(
+						'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
+					);
 						PhaseGenerationMinimizedView = module.default;
 					}
 					break;
@@ -130,7 +129,6 @@
 
 	// Handle click to expand
 	function handleClick() {
-		console.log('[MinimizedNotification] Click - expanding:', notification.id);
 		notificationStore.expand(notification.id);
 	}
 

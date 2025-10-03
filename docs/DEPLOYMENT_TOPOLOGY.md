@@ -38,6 +38,7 @@ External Services:
 **Deployment Guide:** `/apps/web/docs/operations/deployment/`
 
 **Purpose:**
+
 - User-facing interface (brain dumps, projects, calendar, dashboard)
 - SvelteKit API routes (SSE streaming, CRUD operations)
 - Real-time updates via Supabase subscriptions
@@ -48,10 +49,12 @@ External Services:
 **URL:** buildos.app  
 **Build Command:** `pnpm build --filter=web`  
 **Dependencies:**
+
 - `@buildos/shared-types`
 - `@buildos/supabase-client`
 
 **Key Features:**
+
 - Brain dump processing with SSE streaming
 - Project and task management
 - Calendar sync and analysis
@@ -65,6 +68,7 @@ External Services:
 **Deployment Guide:** `/apps/worker/docs/RAILWAY_DEPLOYMENT.md`
 
 **Purpose:**
+
 - Background job processing (BullMQ with Supabase queue)
 - Daily brief generation and email delivery
 - Scheduled tasks via cron jobs
@@ -74,11 +78,13 @@ External Services:
 **URL:** Railway private URL  
 **Build Command:** `pnpm build --filter=worker`  
 **Dependencies:**
+
 - `@buildos/shared-types`
 - `@buildos/supabase-client`
 - `@buildos/twilio-service`
 
 **Key Features:**
+
 - Daily brief email generation
 - Queue job processing
 - Scheduled tasks (cron)
@@ -94,6 +100,7 @@ External Services:
 **Used By:** Web, Worker
 
 Key types:
+
 - Database types (auto-generated from Supabase)
 - Queue job types
 - API request/response types
@@ -106,6 +113,7 @@ Key types:
 **Used By:** Web, Worker
 
 Features:
+
 - Pre-configured client with types
 - Connection pooling
 - Row Level Security (RLS) enforcement
@@ -117,6 +125,7 @@ Features:
 **Used By:** Worker (primarily)
 
 Features:
+
 - SMS sending
 - Phone number validation
 - Twilio webhook handling

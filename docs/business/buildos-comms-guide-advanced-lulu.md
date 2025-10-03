@@ -29,19 +29,19 @@ Most founders think they're competing on features. Lulu knows you're competing o
 **Stop pushing your product. Create gravity that pulls people in.**
 
 1. **The Void You're Filling:**
-    - Not "lack of productivity tools" → "Cognitive loneliness"
-    - Not "disorganization" → "Thought bleeding"
-    - Not "poor task management" → "Mental sovereignty loss"
+   - Not "lack of productivity tools" → "Cognitive loneliness"
+   - Not "disorganization" → "Thought bleeding"
+   - Not "poor task management" → "Mental sovereignty loss"
 
 2. **The Inevitability Frame:**
-    - Don't say: "We hope BuildOS becomes..."
-    - Say: "When BuildOS becomes the default..." (presumptive close)
-    - The question isn't IF but WHEN
+   - Don't say: "We hope BuildOS becomes..."
+   - Say: "When BuildOS becomes the default..." (presumptive close)
+   - The question isn't IF but WHEN
 
 3. **The Discovery Narrative:**
-    - Never: "Try our new tool"
-    - Always: "Join the 200 who already know"
-    - Create archaeological energy - they're uncovering something that already exists
+   - Never: "Try our new tool"
+   - Always: "Join the 200 who already know"
+   - Create archaeological energy - they're uncovering something that already exists
 
 ### The Underrated/Overrated Algorithm
 
@@ -202,16 +202,16 @@ Most founders think they're competing on features. Lulu knows you're competing o
 ### Strategic Battles to Pick (For Narrative Energy)
 
 1. **BuildOS vs. The Productivity Industrial Complex**
-    - "Tools designed to make you feel productive, not be productive"
-    - Creates clear villain, rallies community
+   - "Tools designed to make you feel productive, not be productive"
+   - Creates clear villain, rallies community
 
 2. **BuildOS vs. Feature Creep**
-    - "Every feature you add is a user you lose"
-    - Positions simplicity as strength
+   - "Every feature you add is a user you lose"
+   - Positions simplicity as strength
 
 3. **BuildOS vs. AI Hype**
-    - "AI should be boring infrastructure, not magic"
-    - Contrarian take that builds trust
+   - "AI should be boring infrastructure, not magic"
+   - Contrarian take that builds trust
 
 ### The Hot Takes Calendar
 

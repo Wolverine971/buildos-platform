@@ -4,8 +4,8 @@
 
 - Lead with a **strong claim or contrarian statement**.
   _Examples:_
-    - “Remote work isn’t the future—it’s already outdated.”
-    - “90% of ‘AI productivity hacks’ are a waste of time.”
+  - “Remote work isn’t the future—it’s already outdated.”
+  - “90% of ‘AI productivity hacks’ are a waste of time.”
 
 ### 2️⃣ Stakes / Why It Matters
 
@@ -15,9 +15,9 @@
 ### 3️⃣ Evidence & Reasoning
 
 - 3–5 tweets breaking down _why you think the consensus is wrong_:
-    - Data points or quick stats
-    - Anecdotes or personal experience
-    - A clear logical chain (“If X is true, then Y must follow.”)
+  - Data points or quick stats
+  - Anecdotes or personal experience
+  - A clear logical chain (“If X is true, then Y must follow.”)
 
 ### 4️⃣ Counter-examples or Rebuttals
 
@@ -26,8 +26,8 @@
 ### 5️⃣ Call to Reflection / Engagement
 
 - End with an open question or challenge:
-    - “What’s one example that proves me wrong?”
-    - “Are you still betting on remote-first?”
+  - “What’s one example that proves me wrong?”
+  - “Are you still betting on remote-first?”
 
 ---
 

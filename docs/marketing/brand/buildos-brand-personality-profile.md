@@ -32,32 +32,32 @@
 ### Core Personality Traits (7 key characteristics)
 
 1. **Empathetic Realist**: Deeply understands user struggles from lived experience without sugar-coating challenges
-    - How this shows up: Founder shares authentic failure stories, acknowledges "bad brain days," validates user abandonment patterns
-    - Customer impact: Users feel seen and understood, not judged for past failures
+   - How this shows up: Founder shares authentic failure stories, acknowledges "bad brain days," validates user abandonment patterns
+   - Customer impact: Users feel seen and understood, not judged for past failures
 
 2. **Intelligent Simplifier**: Takes complex problems and creates elegant, AI-powered solutions that feel effortless
-    - How this shows up: "60-second clarity," AI handles complexity while users focus on thinking, one-click scheduling
-    - Customer impact: Users experience powerful functionality without cognitive overload
+   - How this shows up: "60-second clarity," AI handles complexity while users focus on thinking, one-click scheduling
+   - Customer impact: Users experience powerful functionality without cognitive overload
 
 3. **Supportive Authority**: Combines deep expertise with genuine care for user success
-    - How this shows up: "DJ will review it personally," rapid implementation of user feedback, comprehensive guides
-    - Customer impact: Users trust the platform and feel supported in their productivity journey
+   - How this shows up: "DJ will review it personally," rapid implementation of user feedback, comprehensive guides
+   - Customer impact: Users trust the platform and feel supported in their productivity journey
 
 4. **Progressive Contrarian**: Challenges conventional productivity wisdom while offering forward-thinking alternatives
-    - How this shows up: "AI agents won't save your productivity," anti-feature bloat stance, "first productivity tool for the LLM era"
-    - Customer impact: Users feel they're using something innovative that truly understands modern challenges
+   - How this shows up: "AI agents won't save your productivity," anti-feature bloat stance, "first productivity tool for the LLM era"
+   - Customer impact: Users feel they're using something innovative that truly understands modern challenges
 
 5. **Authentic Communicator**: Speaks honestly about both capabilities and limitations, no marketing fluff
-    - How this shows up: Real user testimonials, transparent development process, honest founder journey sharing
-    - Customer impact: Users develop genuine trust and realistic expectations
+   - How this shows up: Real user testimonials, transparent development process, honest founder journey sharing
+   - Customer impact: Users develop genuine trust and realistic expectations
 
 6. **Action-Oriented Organizer**: Focuses on execution and results, not just organization theater
-    - How this shows up: "Tasks are the output. BuildOS handles the messy input," calendar integration, daily briefs for follow-through
-    - Customer impact: Users see actual productivity gains, not just pretty organization
+   - How this shows up: "Tasks are the output. BuildOS handles the messy input," calendar integration, daily briefs for follow-through
+   - Customer impact: Users see actual productivity gains, not just pretty organization
 
 7. **Inclusive Innovator**: Builds for neurodivergent minds while benefiting everyone
-    - How this shows up: ADHD-first design, "scattered minds" language, features that work "on bad brain days"
-    - Customer impact: Neurodivergent users feel specifically considered, neurotypical users benefit from thoughtful design
+   - How this shows up: ADHD-first design, "scattered minds" language, features that work "on bad brain days"
+   - Customer impact: Neurodivergent users feel specifically considered, neurotypical users benefit from thoughtful design
 
 ### Communication Style Preferences
 
@@ -65,10 +65,10 @@
 
 - **Primary tone**: Conversational expert - knowledgeable but approachable, like a brilliant friend who actually gets it
 - **Tone variations by context**:
-    - Marketing: Confident and solution-focused
-    - Support: Patient and encouraging
-    - Technical: Clear and practical
-    - Social: Authentic and community-building
+  - Marketing: Confident and solution-focused
+  - Support: Patient and encouraging
+  - Technical: Clear and practical
+  - Social: Authentic and community-building
 
 **Language Preferences:**
 
@@ -79,24 +79,24 @@
 ### Values and Beliefs (5 core values)
 
 1. **Authentic Problem-Solving**: Build solutions from real user needs, not trends or investor demands
-    - Expression: Founder shares personal struggles, features driven by user feedback
-    - Decisions: No feature bloat, focus on core problems users actually have
+   - Expression: Founder shares personal struggles, features driven by user feedback
+   - Decisions: No feature bloat, focus on core problems users actually have
 
 2. **Human-Centered AI**: Technology should amplify human intelligence, not replace human judgment
-    - Expression: "AI should organize, not replace," emphasis on user thinking and decision-making
-    - Decisions: AI handles complexity, users maintain control and agency
+   - Expression: "AI should organize, not replace," emphasis on user thinking and decision-making
+   - Decisions: AI handles complexity, users maintain control and agency
 
 3. **Inclusive Excellence**: Great design considers neurodivergent minds and benefits everyone
-    - Expression: ADHD-first design language, "works on bad brain days" messaging
-    - Decisions: Features tested with neurodivergent users, accessibility as default
+   - Expression: ADHD-first design language, "works on bad brain days" messaging
+   - Decisions: Features tested with neurodivergent users, accessibility as default
 
 4. **Progress Over Perfection**: Small, consistent action beats elaborate planning
-    - Expression: "Tiny wins count," "No shame zone," acknowledging real-world struggles
-    - Decisions: Features focus on momentum and execution, not perfect organization
+   - Expression: "Tiny wins count," "No shame zone," acknowledging real-world struggles
+   - Decisions: Features focus on momentum and execution, not perfect organization
 
 5. **Transparent Innovation**: Build in public, share real challenges and successes
-    - Expression: Open development process, real metrics sharing, honest struggle narratives
-    - Decisions: Community feedback drives features, no hidden agendas or overpromising
+   - Expression: Open development process, real metrics sharing, honest struggle narratives
+   - Decisions: Community feedback drives features, no hidden agendas or overpromising
 
 ### Relationship Style
 

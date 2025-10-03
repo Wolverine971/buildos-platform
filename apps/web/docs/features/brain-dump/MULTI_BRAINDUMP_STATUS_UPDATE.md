@@ -40,14 +40,14 @@ The multi-brain dump concurrent processing implementation is **95% complete**. T
 - Per-brain-dump mutexes (lines 28-29)
 - Queue management (lines 936-993)
 - All new store methods implemented:
-  - `startBrainDump(id, config)` - Start a new brain dump
-  - `updateBrainDump(id, updates)` - Update brain dump state
-  - `getBrainDump(id)` - Get brain dump by ID
-  - `completeBrainDump(id)` - Complete and remove brain dump
-  - `cancelBrainDump(id)` - Cancel brain dump
-  - `canStartNewBrainDump()` - Check concurrency limit
-  - `queueBrainDump(config)` - Queue when limit reached
-  - `processQueue()` - Auto-start queued brain dumps
+    - `startBrainDump(id, config)` - Start a new brain dump
+    - `updateBrainDump(id, updates)` - Update brain dump state
+    - `getBrainDump(id)` - Get brain dump by ID
+    - `completeBrainDump(id)` - Complete and remove brain dump
+    - `cancelBrainDump(id)` - Cancel brain dump
+    - `canStartNewBrainDump()` - Check concurrency limit
+    - `queueBrainDump(config)` - Queue when limit reached
+    - `processQueue()` - Auto-start queued brain dumps
 - Session persistence for multi-brain dumps (lines 358-543)
 - Automatic cleanup for abandoned sessions (lines 673-731)
 - Backward compatibility with legacy mode maintained
@@ -68,12 +68,12 @@ The multi-brain dump concurrent processing implementation is **95% complete**. T
 **Completed:**
 
 - Multi-brain dump notification tracking:
-  - `activeBrainDumpNotifications: Map<string, string>` (line 25)
-  - `lastProcessedTimestamps: Map<string, number>` (line 31)
-  - `activeAPIStreams: Map<string, AbortController>` (line 37)
+    - `activeBrainDumpNotifications: Map<string, string>` (line 25)
+    - `lastProcessedTimestamps: Map<string, number>` (line 31)
+    - `activeAPIStreams: Map<string, AbortController>` (line 37)
 - Dual-mode sync functions (lines 148-255):
-  - `syncMultiBrainDumpNotification()` - Multi-brain dump mode
-  - `syncLegacyBrainDumpNotification()` - Legacy mode
+    - `syncMultiBrainDumpNotification()` - Multi-brain dump mode
+    - `syncLegacyBrainDumpNotification()` - Legacy mode
 - Cleanup for completed brain dumps (lines 126-139)
 - Updated notification creation/update to handle both modes (lines 260-427)
 - Progress message extraction for both modes (lines 432-484)
@@ -102,16 +102,16 @@ The multi-brain dump concurrent processing implementation is **95% complete**. T
 **Changes Made:**
 
 - `startProcessingAPICall()` now handles both state formats:
-  - Multi-mode: Extracts from `SingleBrainDumpState`
-  - Legacy mode: Extracts from `UnifiedBrainDumpState.core/processing`
+    - Multi-mode: Extracts from `SingleBrainDumpState`
+    - Legacy mode: Extracts from `UnifiedBrainDumpState.core/processing`
 - SSE callbacks route to correct brain dump:
-  - `onProgress`: Calls `handleBrainDumpStreamUpdateForId(brainDumpId, status)` in multi-mode
-  - `onComplete`: Calls `updateBrainDumpParseResults(brainDumpId, result)` in multi-mode
-  - `onError`: Calls `setBrainDumpError(brainDumpId, error)` in multi-mode
+    - `onProgress`: Calls `handleBrainDumpStreamUpdateForId(brainDumpId, status)` in multi-mode
+    - `onComplete`: Calls `updateBrainDumpParseResults(brainDumpId, result)` in multi-mode
+    - `onError`: Calls `setBrainDumpError(brainDumpId, error)` in multi-mode
 - Abort controller lifecycle:
-  - Created before API call
-  - Stored in `activeAPIStreams` Map
-  - Cleaned up in `finally` block
+    - Created before API call
+    - Stored in `activeAPIStreams` Map
+    - Cleaned up in `finally` block
 
 **Testing Required:**
 
@@ -304,44 +304,44 @@ PUBLIC_ENABLE_MULTI_BRAINDUMP=false
 
 1. **Enable feature flag:**
 
-   ```bash
-   echo "PUBLIC_ENABLE_MULTI_BRAINDUMP=true" >> apps/web/.env.local
-   pnpm dev
-   ```
+    ```bash
+    echo "PUBLIC_ENABLE_MULTI_BRAINDUMP=true" >> apps/web/.env.local
+    pnpm dev
+    ```
 
 2. **Test store methods directly in browser console:**
 
-   ```javascript
-   // Import store
-   import { brainDumpV2Store } from '$lib/stores/brain-dump-v2.store';
+    ```javascript
+    // Import store
+    import { brainDumpV2Store } from '$lib/stores/brain-dump-v2.store';
 
-   // Start 3 brain dumps
-   await brainDumpV2Store.startBrainDump('test-1', {...});
-   await brainDumpV2Store.startBrainDump('test-2', {...});
-   await brainDumpV2Store.startBrainDump('test-3', {...});
+    // Start 3 brain dumps
+    await brainDumpV2Store.startBrainDump('test-1', {...});
+    await brainDumpV2Store.startBrainDump('test-2', {...});
+    await brainDumpV2Store.startBrainDump('test-3', {...});
 
-   // Check active count
-   console.log('Active:', brainDumpV2Store.getActiveBrainDumpCount()); // Should be 3
+    // Check active count
+    console.log('Active:', brainDumpV2Store.getActiveBrainDumpCount()); // Should be 3
 
-   // Try to start 4th (should queue)
-   const queued = brainDumpV2Store.queueBrainDump({...});
-   console.log('Queued:', queued);
+    // Try to start 4th (should queue)
+    const queued = brainDumpV2Store.queueBrainDump({...});
+    console.log('Queued:', queued);
 
-   // Complete one
-   brainDumpV2Store.completeBrainDump('test-1');
+    // Complete one
+    brainDumpV2Store.completeBrainDump('test-1');
 
-   // Queue should auto-process
-   console.log('Active after complete:', brainDumpV2Store.getActiveBrainDumpCount()); // Should still be 3
-   ```
+    // Queue should auto-process
+    console.log('Active after complete:', brainDumpV2Store.getActiveBrainDumpCount()); // Should still be 3
+    ```
 
 3. **Update modal (Phase 4)** - See Phase 4 section above
 
 4. **Test full flow:**
-   - Start first brain dump → minimizes to notification
-   - Start second brain dump → both in notification stack
-   - Start third brain dump → all 3 processing
-   - Try to start 4th → should show "queued" toast
-   - Complete one → 4th should auto-start
+    - Start first brain dump → minimizes to notification
+    - Start second brain dump → both in notification stack
+    - Start third brain dump → all 3 processing
+    - Try to start 4th → should show "queued" toast
+    - Complete one → 4th should auto-start
 
 ### Phase 2: Unit Testing
 
@@ -384,57 +384,57 @@ Test full user flows with Playwright:
 ### Immediate (Required for Testing)
 
 1. ~~**Update BrainDumpModal.svelte**~~ ✅ **DONE** (30 min)
-   - ✅ Add feature flag check
-   - ✅ Call `startBrainDump()` in multi-mode
-   - ✅ Handle queued brain dumps with toast
-   - ✅ Reset modal state after submission
+    - ✅ Add feature flag check
+    - ✅ Call `startBrainDump()` in multi-mode
+    - ✅ Handle queued brain dumps with toast
+    - ✅ Reset modal state after submission
 
 2. **Manual Testing** (1 hour) - **READY NOW**
-   - Enable feature flag
-   - Test concurrent brain dumps
-   - Verify notification stack
-   - Test queue behavior
-   - Check session persistence
+    - Enable feature flag
+    - Test concurrent brain dumps
+    - Verify notification stack
+    - Test queue behavior
+    - Check session persistence
 
 3. **Fix Issues** (1-2 hours)
-   - Address any bugs found in testing
-   - Improve error handling
-   - Add missing edge case handling
+    - Address any bugs found in testing
+    - Improve error handling
+    - Add missing edge case handling
 
 ### Short-Term (Next Sprint)
 
 4. **Write Unit Tests** (2-3 hours)
-   - Store methods
-   - Bridge functions
-   - Queue management
-   - Session persistence
+    - Store methods
+    - Bridge functions
+    - Queue management
+    - Session persistence
 
 5. **Integration Tests** (2-3 hours)
-   - Concurrent API streams
-   - Notification updates
-   - Error handling
+    - Concurrent API streams
+    - Notification updates
+    - Error handling
 
 6. **E2E Tests** (2-3 hours)
-   - Full user flows
-   - Multiple brain dumps
-   - Queue behavior
+    - Full user flows
+    - Multiple brain dumps
+    - Queue behavior
 
 ### Long-Term (Future Enhancements)
 
 7. **Reconnection Support** (4-6 hours)
-   - Resume SSE streams after refresh
-   - Restore in-progress brain dumps
-   - Handle stale connections
+    - Resume SSE streams after refresh
+    - Restore in-progress brain dumps
+    - Handle stale connections
 
 8. **User Preferences** (2-3 hours)
-   - Configurable concurrent limit
-   - Enable/disable queue
-   - Auto-dismiss completed notifications
+    - Configurable concurrent limit
+    - Enable/disable queue
+    - Auto-dismiss completed notifications
 
 9. **Advanced Queue** (3-4 hours)
-   - Priority queue
-   - Reorder queued brain dumps
-   - Cancel queued items
+    - Priority queue
+    - Reorder queued brain dumps
+    - Cancel queued items
 
 ---
 
@@ -474,33 +474,33 @@ Test full user flows with Playwright:
 ### Modified Files
 
 1. **`apps/web/src/lib/stores/brain-dump-v2.store.ts`**
-   - Added multi-brain dump Map architecture
-   - Added all new store methods
-   - Added session persistence for Maps
-   - Added automatic cleanup
+    - Added multi-brain dump Map architecture
+    - Added all new store methods
+    - Added session persistence for Maps
+    - Added automatic cleanup
 
 2. **`apps/web/src/lib/services/brain-dump-notification.bridge.ts`**
-   - Added multi-brain dump notification tracking
-   - Added dual-mode sync functions
-   - Added stream routing for brain dump IDs
-   - Added API call routing for both modes
-   - Added abort controller management
+    - Added multi-brain dump notification tracking
+    - Added dual-mode sync functions
+    - Added stream routing for brain dump IDs
+    - Added API call routing for both modes
+    - Added abort controller management
 
 3. **`apps/web/.env.example`**
-   - Added `PUBLIC_ENABLE_MULTI_BRAINDUMP` flag (line 30)
+    - Added `PUBLIC_ENABLE_MULTI_BRAINDUMP` flag (line 30)
 
 4. **`apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte`** ✅ **DONE**
-   - ✅ Updated to call `startBrainDump()` in multi-mode
-   - ✅ Added feature flag check
-   - ✅ Handle queued brain dumps with toast
+    - ✅ Updated to call `startBrainDump()` in multi-mode
+    - ✅ Added feature flag check
+    - ✅ Handle queued brain dumps with toast
 
 ### Files to Create (Testing)
 
 5. **`apps/web/src/lib/stores/brain-dump-v2.store.test.ts`**
-   - Unit tests for multi-brain dump store
+    - Unit tests for multi-brain dump store
 
 6. **`apps/web/src/lib/services/brain-dump-notification.bridge.test.ts`**
-   - Unit tests for bridge functions
+    - Unit tests for bridge functions
 
 ---
 

@@ -29,16 +29,6 @@
 	// Get expanded notification
 	let expandedNotification = $derived(expandedId ? notifications.get(expandedId) : null);
 
-	// Debug logging
-	$effect(() => {
-		console.log('[NotificationStackManager] State:', {
-			stackLength: stack.length,
-			notificationsSize: notifications.size,
-			expandedId,
-			stack: [...stack]
-		});
-	});
-
 	// Keyboard shortcuts
 	function handleKeyDown(event: KeyboardEvent) {
 		// ESC key minimizes expanded notification
@@ -52,7 +42,6 @@
 		if (browser && typeof window !== 'undefined') {
 			// Add global keyboard listener
 			window.addEventListener('keydown', handleKeyDown);
-			console.log('[NotificationStackManager] Mounted');
 		}
 	});
 
@@ -60,7 +49,6 @@
 		if (browser && typeof window !== 'undefined') {
 			// Clean up keyboard listener
 			window.removeEventListener('keydown', handleKeyDown);
-			console.log('[NotificationStackManager] Destroyed');
 		}
 	});
 </script>

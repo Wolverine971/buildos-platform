@@ -38,23 +38,23 @@ _"BuildOS is AI-first project management for people with ADHD and scattered thin
 1. **Incorporate via Stripe Atlas** (start this morning)
 2. **Open Mercury bank account** (as soon as you have EIN)
 3. **Extend your runway** - pick one:
-    - Reach out to 10 angels for bridge funding
-    - Offer 10 beta users lifetime deals for $500 each
-    - Line up 1-2 months of contract work
+   - Reach out to 10 angels for bridge funding
+   - Offer 10 beta users lifetime deals for $500 each
+   - Line up 1-2 months of contract work
 
 ### Day 3-4 (Materials):
 
 1. **Create dead-simple 10-slide deck** using this template:
-    - Slide 1: BuildOS - AI That Organizes Your Chaos
-    - Slide 2: Problem: Knowledge workers waste 11 hours/week organizing
-    - Slide 3: Solution: Dump thoughts → AI organizes → Projects appear
-    - Slide 4: Demo screenshot showing transformation
-    - Slide 5: Early traction: 81 signups, 2 power users giving daily feedback
-    - Slide 6: Business model: $20/month SaaS, path to $50-200/seat enterprise
-    - Slide 7: Market: 40M ADHD adults, 260M knowledge workers
-    - Slide 8: Why me: Technical solo founder, personal pain point, shipping fast
-    - Slide 9: Competition: We're AI-native vs retrofitted productivity tools
-    - Slide 10: Raising $350K for 18 months runway + founding engineer
+   - Slide 1: BuildOS - AI That Organizes Your Chaos
+   - Slide 2: Problem: Knowledge workers waste 11 hours/week organizing
+   - Slide 3: Solution: Dump thoughts → AI organizes → Projects appear
+   - Slide 4: Demo screenshot showing transformation
+   - Slide 5: Early traction: 81 signups, 2 power users giving daily feedback
+   - Slide 6: Business model: $20/month SaaS, path to $50-200/seat enterprise
+   - Slide 7: Market: 40M ADHD adults, 260M knowledge workers
+   - Slide 8: Why me: Technical solo founder, personal pain point, shipping fast
+   - Slide 9: Competition: We're AI-native vs retrofitted productivity tools
+   - Slide 10: Raising $350K for 18 months runway + founding engineer
 
 ### Day 5-6 (Outreach Prep):
 

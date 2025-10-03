@@ -243,12 +243,17 @@
 						{:else if analysisStatus === 'completed' && analysisResult}
 							<div class="analysis-result">
 								<div class="flex flex-wrap items-center gap-2">
-									<span class="classification-badge classification-{analysisResult.braindump_classification}">
+									<span
+										class="classification-badge classification-{analysisResult.braindump_classification}"
+									>
 										{analysisResult.braindump_classification}
 									</span>
 									{#if analysisResult.relevant_task_ids.length > 0}
 										<span class="analysis-stat">
-											{analysisResult.relevant_task_ids.length} relevant task{analysisResult.relevant_task_ids.length === 1 ? '' : 's'}
+											{analysisResult.relevant_task_ids.length} relevant task{analysisResult
+												.relevant_task_ids.length === 1
+												? ''
+												: 's'}
 										</span>
 									{/if}
 									{#if analysisResult.new_tasks_detected}
@@ -267,8 +272,10 @@
 			</div>
 			<!-- Progress Bar for analysis -->
 			<div class="progress-bar mt-2">
-				<div class="progress-fill progress-fill-analysis" style="width: {$analysisProgress}%">
-				</div>
+				<div
+					class="progress-fill progress-fill-analysis"
+					style="width: {$analysisProgress}%"
+				></div>
 			</div>
 		</div>
 	{/if}
