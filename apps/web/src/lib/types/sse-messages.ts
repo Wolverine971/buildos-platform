@@ -4,7 +4,8 @@
 import type {
 	ProjectContextResult,
 	TaskNoteExtractionResult,
-	BrainDumpParseResult
+	BrainDumpParseResult,
+	PreparatoryAnalysisResult
 } from './brain-dump';
 
 // Base message structure
@@ -32,6 +33,17 @@ export interface SSETasksProgress extends BaseSSEMessage {
 	data: {
 		status: 'pending' | 'processing' | 'completed' | 'failed';
 		preview?: TaskNoteExtractionResult;
+		error?: string;
+	};
+}
+
+// Preparatory analysis message (for existing project optimization)
+export interface SSEAnalysis extends BaseSSEMessage {
+	type: 'analysis';
+	message: string;
+	data: {
+		status: 'pending' | 'processing' | 'completed' | 'failed';
+		result?: PreparatoryAnalysisResult;
 		error?: string;
 	};
 }
@@ -87,6 +99,7 @@ export interface SSEError extends BaseSSEMessage {
 
 // Union type for all streaming messages
 export type StreamingMessage =
+	| SSEAnalysis
 	| SSEContextProgress
 	| SSETasksProgress
 	| SSEStatus
@@ -124,17 +137,24 @@ export function isRetry(msg: StreamingMessage): msg is SSERetry {
 	return msg.type === 'retry';
 }
 
+export function isAnalysis(msg: StreamingMessage): msg is SSEAnalysis {
+	return msg.type === 'analysis';
+}
+
 // Helper type for streaming state in frontend
 export interface StreamingState {
 	// Progress tracking
+	analysisStatus?: 'pending' | 'processing' | 'completed' | 'failed' | 'not_needed';
 	contextStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'not_needed';
 	tasksStatus: 'pending' | 'processing' | 'completed' | 'failed';
 
 	// Results
+	analysisResult?: PreparatoryAnalysisResult;
 	contextResult?: ProjectContextResult;
 	tasksResult?: TaskNoteExtractionResult;
 
 	// Messages
+	analysisProgress?: string;
 	contextProgress?: string;
 	tasksProgress?: string;
 

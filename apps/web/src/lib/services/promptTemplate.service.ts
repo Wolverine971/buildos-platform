@@ -1618,4 +1618,132 @@ ${generateProjectContextFramework('condensed')}
 
 Respond with valid JSON.`;
 	}
+
+	/**
+	 * Get preparatory analysis prompt for existing project brain dumps
+	 * This lightweight analysis determines what data needs updating before main processing
+	 *
+	 * @param project - Light project data (without full context to save tokens)
+	 * @param tasks - Light task data (id, title, status, start_date, description preview)
+	 * @returns Prompt string for preparatory analysis
+	 */
+	getPreparatoryAnalysisPrompt(
+		project: Partial<Database['public']['Tables']['projects']['Row']>,
+		tasks: Array<{
+			id: string;
+			title: string;
+			status: string;
+			start_date: string | null;
+			description_preview: string;
+		}>
+	): string {
+		return `You are a BuildOS braindump analyzer. Your job is to analyze a braindump and determine what existing data needs to be updated.
+
+## Your Task:
+Analyze the braindump to identify:
+1. Whether the project context needs strategic updates
+2. Which existing tasks are referenced or need updating
+3. The nature of the braindump content
+
+## Current Project Overview:
+Project: "${project.name}"
+Description: ${project.description || 'No description'}
+Status: ${project.status}
+Tags: ${project.tags?.join(', ') || 'None'}
+Start Date: ${project.start_date || 'Not set'}
+End Date: ${project.end_date || 'Not set'}
+Has Context: ${project.context ? 'Yes (existing strategic document)' : 'No'}
+Executive Summary: ${project.executive_summary || 'None'}
+
+## Existing Tasks (${tasks.length} total):
+${tasks
+	.map(
+		(t) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ''}
+  Preview: ${t.description_preview}`
+	)
+	.join('\n')}
+
+## Analysis Criteria:
+
+### Context Update Indicators (Strategic):
+- Vision, mission, or goal changes
+- Strategic pivots or new directions
+- Scope expansions or reductions
+- New insights about approach or methodology
+- Market/competitive intelligence
+- Stakeholder changes
+- Risk identification
+- Long-term planning updates
+- Resource or budget discussions
+- Architectural decisions
+
+### Task-Related Indicators (Tactical):
+- Specific task mentions by name or description
+- Status updates on existing work
+- Bug reports or fixes
+- Implementation details
+- Short-term action items
+- Progress reports
+- Technical specifications
+- Daily/weekly activities
+- Task dependencies or blockers
+
+## Classification Rules:
+- **strategic**: Primarily about project vision, direction, approach, or long-term planning
+- **tactical**: Primarily about specific tasks, implementation, or short-term execution
+- **mixed**: Contains both strategic and tactical elements
+- **status_update**: Simple progress reports or status updates
+- **unrelated**: Content doesn't relate to this project
+
+## Task Matching:
+Identify tasks that are likely referenced by looking for:
+- Direct title matches or very similar titles
+- Date references matching task dates
+- Description keywords that align with task content
+- Status changes mentioned for specific work
+- Dependencies or relationships between tasks
+
+## Output JSON Structure:
+
+You MUST respond with valid JSON matching this exact structure:
+
+\`\`\`json
+{
+  "analysis_summary": "Brief 1-2 sentence summary of the braindump content",
+  "braindump_classification": "strategic",
+  "needs_context_update": true,
+  "context_indicators": [
+    "Vision change mentioned",
+    "New strategic direction identified"
+  ],
+  "relevant_task_ids": [
+    "task-id-1",
+    "task-id-2"
+  ],
+  "task_indicators": {
+    "task-id-1": "Mentioned API integration task",
+    "task-id-2": "Referenced database migration"
+  },
+  "new_tasks_detected": false,
+  "confidence_level": "high",
+  "processing_recommendation": {
+    "skip_context": false,
+    "skip_tasks": false,
+    "reason": "Both context and tasks need processing"
+  }
+}
+\`\`\`
+
+**Important Rules:**
+- braindump_classification: MUST be one of: "strategic", "tactical", "mixed", "status_update", "unrelated"
+- needs_context_update: MUST be true or false (boolean)
+- new_tasks_detected: MUST be true or false (boolean)
+- confidence_level: MUST be one of: "high", "medium", "low"
+- skip_context: MUST be true or false (boolean)
+- skip_tasks: MUST be true or false (boolean)
+- Arrays can be empty [] if nothing found
+- Objects can be empty {} if no indicators
+
+Analyze the braindump and respond with ONLY the JSON, no other text.`;
+	}
 }

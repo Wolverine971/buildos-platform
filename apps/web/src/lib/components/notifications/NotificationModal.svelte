@@ -109,9 +109,9 @@
 	<svelte:component
 		this={typeSpecificComponent}
 		{notification}
-		onminimize={handleMinimize}
-		onclose={handleDismiss}
-		oncancel={handleDismiss}
+		on:minimize={handleMinimize}
+		on:close={handleDismiss}
+		on:cancel={handleDismiss}
 	/>
 {:else}
 	<!-- Generic fallback modal -->

@@ -1828,6 +1828,11 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 						...state.results,
 						success: data
 					},
+					processing: {
+						...state.processing,
+						mutex: false,
+						phase: 'idle'
+					},
 					ui: {
 						...state.ui,
 						modal: {

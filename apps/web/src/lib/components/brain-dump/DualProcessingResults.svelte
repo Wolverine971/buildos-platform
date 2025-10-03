@@ -6,9 +6,14 @@
 		CircleCheck,
 		XCircle,
 		Brain,
-		FileText
+		FileText,
+		Sparkles
 	} from 'lucide-svelte';
-	import type { ProjectContextResult, TaskNoteExtractionResult } from '$lib/types/brain-dump';
+	import type {
+		ProjectContextResult,
+		TaskNoteExtractionResult,
+		PreparatoryAnalysisResult
+	} from '$lib/types/brain-dump';
 	import type { StreamingMessage } from '$lib/types/sse-messages';
 	import ProjectContextPreview from './ProjectContextPreview.svelte';
 	import TasksNotesPreview from './TasksNotesPreview.svelte';
@@ -16,9 +21,12 @@
 	import { quintOut, backOut } from 'svelte/easing';
 	import { tweened } from 'svelte/motion';
 
+	export let analysisStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'not_needed' =
+		'not_needed';
 	export let contextStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'not_needed' =
 		'pending';
 	export let tasksStatus: 'pending' | 'processing' | 'completed' | 'failed' = 'pending';
+	export let analysisResult: PreparatoryAnalysisResult | null = null;
 	export let contextResult: ProjectContextResult | null = null;
 	export let tasksResult: TaskNoteExtractionResult | null = null;
 	export let retryStatus: { attempt: number; maxAttempts: number; processName: string } | null =
@@ -27,12 +35,22 @@
 	export let inModal = false; // New prop to adjust layout when in modal
 	export let isShortBraindump = false; // New prop for short braindump flow
 	export let showContextPanel = false; // Controls whether to show context panel
+	export let showAnalysisPanel = false; // Controls whether to show analysis panel
 
 	// Progress indicators
+	const analysisProgress = tweened(0, { duration: 300, easing: quintOut });
 	const contextProgress = tweened(0, { duration: 300, easing: quintOut });
 	const tasksProgress = tweened(0, { duration: 300, easing: quintOut });
 
 	// Update progress based on status
+	$: {
+		if (analysisStatus === 'processing') analysisProgress.set(50);
+		else if (analysisStatus === 'completed') analysisProgress.set(100);
+		else if (analysisStatus === 'not_needed') analysisProgress.set(100);
+		else if (analysisStatus === 'failed') analysisProgress.set(0);
+		else analysisProgress.set(0);
+	}
+
 	$: {
 		if (contextStatus === 'processing') contextProgress.set(50);
 		else if (contextStatus === 'completed') contextProgress.set(100);
@@ -69,11 +87,28 @@
 	// Update status based on incoming SSE messages
 	export function handleStreamUpdate(status: StreamingMessage) {
 		switch (status.type) {
+			case 'analysis':
+				// Handle analysis phase
+				if ('data' in status && status.data) {
+					if (status.data.status) {
+						analysisStatus = status.data.status;
+						// Show analysis panel when analysis starts
+						if (status.data.status === 'processing') {
+							showAnalysisPanel = true;
+						}
+					}
+					if ('result' in status.data && status.data.result) {
+						analysisResult = status.data.result;
+					}
+				}
+				break;
+
 			case 'status':
 				isProcessing = true;
 				// Reset results when starting new processing
 				tasksResult = null;
 				contextResult = null;
+				analysisResult = null;
 				console.log('[DualProcessingResults] Processing started, reset results');
 
 				// Only update panel visibility if explicitly provided in the SSE message
@@ -179,6 +214,65 @@
 </script>
 
 <div class="w-full {inModal ? '' : 'max-w-7xl mx-auto'}">
+	<!-- Analysis Panel (shown for existing projects) -->
+	{#if showAnalysisPanel && analysisStatus !== 'not_needed'}
+		<div
+			class="analysis-banner mb-4"
+			transition:fly={{ y: -20, duration: 400, easing: quintOut }}
+		>
+			<div class="flex items-center gap-3">
+				<div class="icon-wrapper icon-wrapper-analysis">
+					<Sparkles class="w-4 h-4" />
+				</div>
+				<div class="flex-1">
+					<div class="flex items-center justify-between">
+						<h4 class="analysis-title">Preparatory Analysis</h4>
+						<div class="status-icon-sm">
+							{#if analysisStatus === 'processing'}
+								<LoaderCircle class="w-4 h-4 animate-spin text-amber-500" />
+							{:else if analysisStatus === 'completed'}
+								<CircleCheck class="w-4 h-4 text-green-500" />
+							{:else if analysisStatus === 'failed'}
+								<XCircle class="w-4 h-4 text-red-500" />
+							{/if}
+						</div>
+					</div>
+					<div class="analysis-content">
+						{#if analysisStatus === 'processing'}
+							<p class="analysis-text">Analyzing content to optimize processing...</p>
+						{:else if analysisStatus === 'completed' && analysisResult}
+							<div class="analysis-result">
+								<div class="flex flex-wrap items-center gap-2">
+									<span class="classification-badge classification-{analysisResult.braindump_classification}">
+										{analysisResult.braindump_classification}
+									</span>
+									{#if analysisResult.relevant_task_ids.length > 0}
+										<span class="analysis-stat">
+											{analysisResult.relevant_task_ids.length} relevant task{analysisResult.relevant_task_ids.length === 1 ? '' : 's'}
+										</span>
+									{/if}
+									{#if analysisResult.new_tasks_detected}
+										<span class="analysis-stat">New tasks detected</span>
+									{/if}
+								</div>
+								<p class="analysis-summary">{analysisResult.analysis_summary}</p>
+							</div>
+						{:else if analysisStatus === 'failed'}
+							<p class="analysis-text text-amber-600 dark:text-amber-400">
+								Analysis failed - proceeding with full processing
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
+			<!-- Progress Bar for analysis -->
+			<div class="progress-bar mt-2">
+				<div class="progress-fill progress-fill-analysis" style="width: {$analysisProgress}%">
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Main grid with mobile-first responsive design -->
 	<div
 		class="flex flex-col gap-4 {showContextPanel
@@ -857,5 +951,153 @@
 		50% {
 			transform: rotate(5deg);
 		}
+	}
+
+	/* Analysis Banner Styles */
+	.analysis-banner {
+		background: linear-gradient(135deg, rgb(254 252 232), rgb(254 249 195));
+		border: 1px solid rgb(250 204 21);
+		border-radius: 1rem;
+		padding: 1rem 1.25rem;
+		box-shadow: 0 2px 4px rgba(250, 204, 21, 0.1);
+	}
+
+	:global(.dark) .analysis-banner {
+		background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(245, 158, 11, 0.1));
+		border-color: rgba(250, 204, 21, 0.3);
+	}
+
+	.icon-wrapper-analysis {
+		--gradient-from: rgb(245 158 11);
+		--gradient-to: rgb(251 146 60);
+	}
+
+	.analysis-title {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: rgb(120 53 15);
+		margin: 0;
+	}
+
+	:global(.dark) .analysis-title {
+		color: rgb(254 215 170);
+	}
+
+	.analysis-content {
+		margin-top: 0.5rem;
+	}
+
+	.analysis-text {
+		font-size: 0.8125rem;
+		color: rgb(146 64 14);
+		margin: 0;
+	}
+
+	:global(.dark) .analysis-text {
+		color: rgb(254 215 170);
+	}
+
+	.analysis-result {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.classification-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.25rem 0.75rem;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+	}
+
+	.classification-strategic {
+		background: rgb(219 234 254);
+		color: rgb(30 58 138);
+	}
+
+	:global(.dark) .classification-strategic {
+		background: rgba(59, 130, 246, 0.2);
+		color: rgb(147 197 253);
+	}
+
+	.classification-tactical {
+		background: rgb(233 213 255);
+		color: rgb(88 28 135);
+	}
+
+	:global(.dark) .classification-tactical {
+		background: rgba(168, 85, 247, 0.2);
+		color: rgb(216 180 254);
+	}
+
+	.classification-mixed {
+		background: rgb(254 240 138);
+		color: rgb(120 53 15);
+	}
+
+	:global(.dark) .classification-mixed {
+		background: rgba(250, 204, 21, 0.2);
+		color: rgb(254 215 170);
+	}
+
+	.classification-status_update {
+		background: rgb(209 250 229);
+		color: rgb(6 78 59);
+	}
+
+	:global(.dark) .classification-status_update {
+		background: rgba(52, 211, 153, 0.2);
+		color: rgb(167 243 208);
+	}
+
+	.classification-unrelated {
+		background: rgb(243 244 246);
+		color: rgb(75 85 99);
+	}
+
+	:global(.dark) .classification-unrelated {
+		background: rgba(107, 114, 128, 0.2);
+		color: rgb(209 213 219);
+	}
+
+	.analysis-stat {
+		font-size: 0.75rem;
+		color: rgb(120 53 15);
+		background: white;
+		padding: 0.25rem 0.625rem;
+		border-radius: 0.375rem;
+		border: 1px solid rgb(253 224 71);
+	}
+
+	:global(.dark) .analysis-stat {
+		color: rgb(254 215 170);
+		background: rgba(0, 0, 0, 0.2);
+		border-color: rgba(250, 204, 21, 0.3);
+	}
+
+	.analysis-summary {
+		font-size: 0.8125rem;
+		color: rgb(120 53 15);
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	:global(.dark) .analysis-summary {
+		color: rgb(253 224 71);
+	}
+
+	.status-icon-sm {
+		display: flex;
+		align-items: center;
+	}
+
+	.progress-fill-analysis {
+		--fill-from: rgb(245 158 11);
+		--fill-to: rgb(251 146 60);
+		--fill-glow: rgba(245, 158, 11, 0.4);
 	}
 </style>

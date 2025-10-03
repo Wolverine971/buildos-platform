@@ -11,7 +11,8 @@ import type {
 	SSETasksProgress,
 	SSEComplete,
 	SSEError,
-	SSERetry
+	SSERetry,
+	SSEAnalysis
 } from '$lib/types/sse-messages';
 import type { BrainDumpOptions, DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -104,15 +105,16 @@ async function processBrainDumpWithStreaming({
 	const statusService = new BrainDumpStatusService(supabase);
 
 	try {
-		// Send initial status for dual processing - both panels should show
+		// Send initial status - will include analysis for existing projects
+		const initialProcesses = selectedProjectId ? ['analysis', 'context', 'tasks'] : ['context', 'tasks'];
 		const statusMessage: SSEStatus = {
 			type: 'status',
-			message: 'Starting dual processing...',
+			message: selectedProjectId ? 'Analyzing braindump...' : 'Starting dual processing...',
 			data: {
-				processes: ['context', 'tasks'],
+				processes: initialProcesses as ('context' | 'tasks')[],
 				contentLength: content.length,
-				isDualProcessing: true, // This tells the frontend to show both panels immediately
-				source: 'dual-processing'
+				isDualProcessing: true,
+				source: selectedProjectId ? 'analysis-then-dual' : 'dual-processing'
 			}
 		};
 		await sendSSEMessage(writer, encoder, statusMessage);
@@ -120,6 +122,95 @@ async function processBrainDumpWithStreaming({
 		// Set up progress tracking
 		let contextProgress = { status: 'pending', data: null };
 		let tasksProgress = { status: 'pending', data: null };
+		let analysisProgress = { status: 'pending', data: null };
+
+		// Override runPreparatoryAnalysis to emit SSE events for analysis phase
+		const originalRunPreparatoryAnalysis = processor['runPreparatoryAnalysis']?.bind(processor);
+
+		if (originalRunPreparatoryAnalysis && selectedProjectId) {
+			processor['runPreparatoryAnalysis'] = async function (...args: any[]) {
+				// Send analysis starting event
+				const analysisStartMessage: SSEAnalysis = {
+					type: 'analysis',
+					message: 'Analyzing braindump content and identifying relevant data...',
+					data: { status: 'processing' }
+				};
+				await sendSSEMessage(writer, encoder, analysisStartMessage);
+
+				try {
+					const result = await originalRunPreparatoryAnalysis(...args);
+					analysisProgress = { status: 'completed', data: result };
+
+					if (result) {
+						// Send analysis complete with results
+						const classification = result.braindump_classification;
+						const relevantTaskCount = result.relevant_task_ids?.length || 0;
+						const needsContext = result.needs_context_update;
+
+						const completedMessage: SSEAnalysis = {
+							type: 'analysis',
+							message: `Analysis complete: ${classification} content detected (${relevantTaskCount} relevant tasks, ${needsContext ? 'context update needed' : 'no context update'})`,
+							data: {
+								status: 'completed',
+								result: result
+							}
+						};
+						await sendSSEMessage(writer, encoder, completedMessage);
+
+						// Update status for next phase
+						const nextPhases: ('context' | 'tasks')[] = [];
+						if (needsContext && !result.processing_recommendation?.skip_context) {
+							nextPhases.push('context');
+						}
+						if ((relevantTaskCount > 0 || result.new_tasks_detected) && !result.processing_recommendation?.skip_tasks) {
+							nextPhases.push('tasks');
+						}
+
+						if (nextPhases.length > 0) {
+							const processingMessage: SSEStatus = {
+								type: 'status',
+								message: `Processing ${nextPhases.join(' and ')}...`,
+								data: {
+									processes: nextPhases,
+									contentLength: content.length,
+									isDualProcessing: nextPhases.length === 2,
+									source: 'post-analysis-processing'
+								}
+							};
+							await sendSSEMessage(writer, encoder, processingMessage);
+						}
+					} else {
+						// Analysis failed, will use full processing
+						const fallbackMessage: SSEAnalysis = {
+							type: 'analysis',
+							message: 'Analysis unavailable, proceeding with full processing',
+							data: {
+								status: 'completed',
+								error: 'Analysis returned null, using fallback'
+							}
+						};
+						await sendSSEMessage(writer, encoder, fallbackMessage);
+					}
+
+					return result;
+				} catch (error: any) {
+					analysisProgress = { status: 'failed', data: error };
+
+					const errorMessage: SSEAnalysis = {
+						type: 'analysis',
+						message: 'Analysis failed, proceeding with full processing',
+						data: {
+							status: 'failed',
+							error: error.message
+						}
+					};
+					await sendSSEMessage(writer, encoder, errorMessage);
+
+					// Don't throw - let it fall back to full processing
+					return null;
+				}
+			};
+		}
 
 		// Override the processor to emit progress events
 		const originalExtractProjectContext = processor['extractProjectContext'].bind(processor);

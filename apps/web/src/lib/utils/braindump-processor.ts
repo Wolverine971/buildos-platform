@@ -164,6 +164,154 @@ export class BrainDumpProcessor {
 	}
 
 	// ==========================================
+	// PREPARATORY ANALYSIS (for existing projects)
+	// ==========================================
+	/**
+	 * Run preparatory analysis to determine what data needs updating
+	 * This lightweight LLM call classifies the braindump and identifies relevant tasks
+	 * Uses a fast model to optimize cost and speed
+	 *
+	 * @param brainDump - The user's brain dump text
+	 * @param project - The existing project with relations
+	 * @param userId - The user ID
+	 * @returns PreparatoryAnalysisResult or null if analysis fails
+	 */
+	private async runPreparatoryAnalysis(
+		brainDump: string,
+		project: ProjectWithRelations,
+		userId: string
+	): Promise<import('$lib/types/brain-dump').PreparatoryAnalysisResult | null> {
+		try {
+			// Prepare light task data (only essential fields to save tokens)
+			const lightTasks = (project.tasks || []).map((task) => ({
+				id: task.id,
+				title: task.title,
+				status: task.status,
+				start_date: task.start_date,
+				description_preview: task.description?.substring(0, 100) || ''
+			}));
+
+			// Prepare light project data (exclude full context to save tokens)
+			const lightProject = {
+				id: project.id,
+				name: project.name,
+				description: project.description,
+				status: project.status,
+				tags: project.tags,
+				start_date: project.start_date,
+				end_date: project.end_date,
+				executive_summary: project.executive_summary,
+				// Indicate presence of context without including full text
+				context: project.context ? '(existing strategic document present)' : null
+			};
+
+			// Get the analysis prompt
+			const systemPrompt = this.promptTemplateService.getPreparatoryAnalysisPrompt(
+				lightProject,
+				lightTasks
+			);
+			const userPrompt = `Analyze this braindump:\n\n${brainDump}`;
+
+			console.log('[PrepAnalysis] Starting analysis for project:', project.id);
+			console.log('[PrepAnalysis] Task count:', lightTasks.length);
+			console.log('[PrepAnalysis] Braindump length:', brainDump.length);
+
+			// Call LLM with fast profile for speed and cost optimization
+			const response = await this.llmService.getJSONResponse({
+				systemPrompt,
+				userPrompt,
+				userId,
+				profile: 'fast', // Use fast model for lightweight analysis
+				operationType: 'brain_dump_context', // Using existing enum value for analysis
+				projectId: project.id
+			});
+
+			// Extract and validate the result
+			const analysisResult =
+				response.result as import('$lib/types/brain-dump').PreparatoryAnalysisResult;
+
+			// Enhanced validation with detailed logging
+			if (!analysisResult) {
+				console.warn('[PrepAnalysis] Analysis result is null or undefined');
+				console.warn('[PrepAnalysis] Raw response:', JSON.stringify(response, null, 2));
+				return null;
+			}
+
+			if (!analysisResult.braindump_classification) {
+				console.warn('[PrepAnalysis] Missing braindump_classification field');
+				console.warn('[PrepAnalysis] Received result:', JSON.stringify(analysisResult, null, 2));
+				return null;
+			}
+
+			// Validate required fields with defaults
+			const validatedResult: import('$lib/types/brain-dump').PreparatoryAnalysisResult = {
+				analysis_summary: analysisResult.analysis_summary || 'Analysis completed',
+				braindump_classification: analysisResult.braindump_classification,
+				needs_context_update:
+					analysisResult.needs_context_update !== undefined
+						? analysisResult.needs_context_update
+						: true,
+				context_indicators: analysisResult.context_indicators || [],
+				relevant_task_ids: analysisResult.relevant_task_ids || [],
+				task_indicators: analysisResult.task_indicators || {},
+				new_tasks_detected:
+					analysisResult.new_tasks_detected !== undefined
+						? analysisResult.new_tasks_detected
+						: false,
+				confidence_level: analysisResult.confidence_level || 'medium',
+				processing_recommendation: analysisResult.processing_recommendation || {
+					skip_context: false,
+					skip_tasks: false,
+					reason: 'Default processing'
+				}
+			};
+
+			console.log('[PrepAnalysis] Complete:', {
+				classification: validatedResult.braindump_classification,
+				needsContext: validatedResult.needs_context_update,
+				relevantTasks: validatedResult.relevant_task_ids.length,
+				newTasks: validatedResult.new_tasks_detected,
+				confidence: validatedResult.confidence_level
+			});
+
+			// Log activity for monitoring
+			await this.activityLogger.logActivity(userId, 'brain_dump_analysis_completed', {
+				project_id: project.id,
+				classification: validatedResult.braindump_classification,
+				needs_context_update: validatedResult.needs_context_update,
+				relevant_task_count: validatedResult.relevant_task_ids.length,
+				new_tasks_detected: validatedResult.new_tasks_detected,
+				confidence_level: validatedResult.confidence_level,
+				skip_context: validatedResult.processing_recommendation.skip_context,
+				skip_tasks: validatedResult.processing_recommendation.skip_tasks
+			});
+
+			return validatedResult;
+		} catch (error) {
+			console.error('[PrepAnalysis] Analysis failed:', error);
+
+			// Log the error but don't throw - we'll fall back to full processing
+			await this.errorLogger.logBrainDumpError(
+				error instanceof Error ? error : new Error('Unknown analysis error'),
+				'prep-analysis',
+				{},
+				{
+					userId,
+					projectId: project.id,
+					metadata: {
+						errorContext: 'preparatory_analysis',
+						brainDumpLength: brainDump.length,
+						taskCount: project.tasks?.length || 0
+					}
+				}
+			);
+
+			// Return null to indicate analysis failure - caller will use full processing
+			return null;
+		}
+	}
+
+	// ==========================================
 	// MAIN ORCHESTRATION FUNCTION
 	// ==========================================
 	async processBrainDump({
@@ -192,6 +340,31 @@ export class BrainDumpProcessor {
 				options: { includeTasks: true, includePhases: true }
 			});
 			existingProject = fullProjectData.fullProjectWithRelations;
+		}
+
+		// Run preparatory analysis for existing projects (optimization step)
+		let prepAnalysisResult: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null =
+			null;
+		if (existingProject && selectedProjectId) {
+			console.log('[BrainDumpProcessor] Running preparatory analysis for existing project');
+			prepAnalysisResult = await this.runPreparatoryAnalysis(
+				brainDump,
+				existingProject,
+				userId
+			);
+
+			if (prepAnalysisResult) {
+				console.log('[BrainDumpProcessor] Analysis complete:', {
+					classification: prepAnalysisResult.braindump_classification,
+					needsContext: prepAnalysisResult.needs_context_update,
+					relevantTasks: prepAnalysisResult.relevant_task_ids.length,
+					recommendations: prepAnalysisResult.processing_recommendation
+				});
+			} else {
+				console.log(
+					'[BrainDumpProcessor] Analysis failed or returned null - will use full processing'
+				);
+			}
 		}
 
 		const brainDumpLength = brainDump.length;
@@ -242,7 +415,8 @@ export class BrainDumpProcessor {
 					selectedProjectId,
 					existingProject,
 					displayedQuestions,
-					options: { ...options, streamResults: true }
+					options: { ...options, streamResults: true },
+					prepAnalysisResult // Pass analysis result for optimization
 				});
 			} else {
 				// Route to appropriate single processing function
@@ -431,7 +605,8 @@ export class BrainDumpProcessor {
 		displayedQuestions,
 		options,
 		brainDumpId,
-		isNewProject
+		isNewProject,
+		analysisResult
 	}: {
 		brainDump: string;
 		userId: string;
@@ -440,6 +615,7 @@ export class BrainDumpProcessor {
 		options: BrainDumpOptions;
 		brainDumpId: string;
 		isNewProject: boolean;
+		analysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
 	}): Promise<BrainDumpParseResult> {
 		const startTime = Date.now();
 
@@ -713,7 +889,8 @@ export class BrainDumpProcessor {
 		selectedProjectId,
 		existingProject,
 		displayedQuestions,
-		options
+		options,
+		prepAnalysisResult
 	}: {
 		brainDump: string;
 		brainDumpId: string;
@@ -722,6 +899,7 @@ export class BrainDumpProcessor {
 		existingProject: ProjectWithRelations | null;
 		displayedQuestions?: DisplayedBrainDumpQuestion[];
 		options: BrainDumpOptions;
+		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
 	}): Promise<BrainDumpParseResult> {
 		const maxRetries = options.retryAttempts || 3;
 		const startTime = Date.now();
@@ -740,14 +918,16 @@ export class BrainDumpProcessor {
 						brainDump,
 						existingProject,
 						userId,
-						selectedProjectId
+						selectedProjectId,
+						prepAnalysisResult
 					}),
 					this.extractTasks({
 						brainDump,
 						selectedProjectId,
 						userId,
 						existingTasks,
-						displayedQuestions
+						displayedQuestions,
+						prepAnalysisResult
 					})
 				]);
 
@@ -816,15 +996,41 @@ export class BrainDumpProcessor {
 		brainDump,
 		existingProject,
 		userId,
-		selectedProjectId
+		selectedProjectId,
+		prepAnalysisResult
 	}: {
 		brainDump: string;
 		existingProject: ProjectWithRelations | null;
 		userId: string;
 		selectedProjectId?: string;
+		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
 	}): Promise<BrainDumpParseResult> {
 		// Determine if this is a new or existing project
 		const isNewProject = !existingProject && !selectedProjectId;
+
+		// Check if analysis recommends skipping context processing (optimization)
+		if (prepAnalysisResult?.processing_recommendation?.skip_context) {
+			console.log(
+				'[extractProjectContext] Skipping context processing based on analysis recommendation:',
+				prepAnalysisResult.processing_recommendation.reason
+			);
+
+			// Return minimal result indicating no context update needed
+			return {
+				title: 'Context Processing Skipped',
+				summary: `Analysis determined context update not needed: ${prepAnalysisResult.processing_recommendation.reason}`,
+				insights: prepAnalysisResult.analysis_summary,
+				tags: [],
+				operations: [], // No operations = no context update
+				metadata: {
+					totalOperations: 0,
+					tableBreakdown: {},
+					processingTime: 0,
+					timestamp: new Date().toISOString(),
+					processingNote: `Skipped based on analysis: ${prepAnalysisResult.braindump_classification}`
+				}
+			};
+		}
 
 		// NEVER add question generation to context processing
 		// Questions are ONLY generated in task extraction to avoid duplication
@@ -881,18 +1087,35 @@ export class BrainDumpProcessor {
 		selectedProjectId,
 		userId,
 		existingTasks,
-		displayedQuestions
+		displayedQuestions,
+		prepAnalysisResult
 	}: {
 		brainDump: string;
 		selectedProjectId?: string;
 		userId: string;
 		existingTasks?: Task[];
 		displayedQuestions?: DisplayedBrainDumpQuestion[];
+		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
 	}): Promise<BrainDumpParseResult> {
 		const isNewProject = !selectedProjectId;
+
+		// Filter tasks based on analysis result (token optimization for existing projects)
+		let tasksToPass = existingTasks;
+		if (
+			prepAnalysisResult &&
+			prepAnalysisResult.relevant_task_ids.length > 0 &&
+			existingTasks
+		) {
+			const relevantIds = new Set(prepAnalysisResult.relevant_task_ids);
+			tasksToPass = existingTasks.filter((task) => relevantIds.has(task.id));
+			console.log(
+				`[extractTasks] Filtering tasks based on analysis: ${tasksToPass.length}/${existingTasks.length} tasks`
+			);
+		}
+
 		const systemPrompt = this.promptTemplateService.getTaskExtractionPrompt(
 			selectedProjectId,
-			existingTasks,
+			tasksToPass, // Pass filtered tasks instead of all tasks
 			displayedQuestions,
 			isNewProject
 		);

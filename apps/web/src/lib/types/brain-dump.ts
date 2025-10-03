@@ -202,6 +202,46 @@ export interface BrainDumpOptions {
 	retryAttempts?: number;
 }
 
+/**
+ * Result from preparatory analysis of a brain dump for existing projects
+ * This lightweight analysis determines what data needs updating before main processing
+ */
+export interface PreparatoryAnalysisResult {
+	/** Brief 1-2 sentence summary of the braindump content */
+	analysis_summary: string;
+
+	/** Classification of the braindump type */
+	braindump_classification: 'strategic' | 'tactical' | 'mixed' | 'status_update' | 'unrelated';
+
+	/** Whether the project context needs strategic updates */
+	needs_context_update: boolean;
+
+	/** List of strategic elements found that suggest context update needed */
+	context_indicators: string[];
+
+	/** Array of task IDs that are referenced or need updating */
+	relevant_task_ids: string[];
+
+	/** Map of task ID to reason why it's relevant */
+	task_indicators: Record<string, string>;
+
+	/** Whether new tasks were detected in the braindump */
+	new_tasks_detected: boolean;
+
+	/** Confidence level of the analysis */
+	confidence_level: 'high' | 'medium' | 'low';
+
+	/** Processing recommendations based on analysis */
+	processing_recommendation: {
+		/** Whether to skip context processing */
+		skip_context: boolean;
+		/** Whether to skip task processing */
+		skip_tasks: boolean;
+		/** Explanation for any skip recommendations */
+		reason: string;
+	};
+}
+
 export interface ExecutionResult {
 	successful: ParsedOperation[];
 	failed: Array<ParsedOperation & { error: string }>;

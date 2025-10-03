@@ -18,12 +18,13 @@
 		RefreshCw
 	} from 'lucide-svelte';
 	import type { PhaseGenerationNotification, StepsProgress } from '$lib/types/notification.types';
+	import { createEventDispatcher } from 'svelte';
 
-	let { notification, onminimize, onclose } = $props<{
+	let { notification } = $props<{
 		notification: PhaseGenerationNotification;
-		onminimize?: () => void;
-		onclose?: () => void;
 	}>();
+
+	const dispatch = createEventDispatcher();
 
 	const STRATEGY_LABELS: Record<
 		PhaseGenerationNotification['data']['strategy'],
@@ -72,14 +73,14 @@
 	}
 
 	function handleMinimize() {
-		onminimize?.();
+		dispatch('minimize');
 	}
 
 	function handleClose() {
 		// Call the dismiss action to remove the notification
 		notification.actions.dismiss?.();
-		// Also call the onclose callback if provided
-		onclose?.();
+		// Notify parent so it can clean up the notification modal
+		dispatch('close');
 	}
 
 	function handleRetry() {
