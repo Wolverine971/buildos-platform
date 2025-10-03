@@ -1,11 +1,13 @@
+<!-- TODO: priority 2 -->
+
 ---
 
 # 🚀 BuildOS Onboarding Flow (Refined)
 
 ## 1. Welcome & Orientation
 
-* **Message**: “Welcome to BuildOS — your AI-first project organization tool. Let’s set you up so BuildOS works the way *you* want.”
-* **CTA**: “Start Setting Up”
+- **Message**: “Welcome to BuildOS — your AI-first project organization tool. Let’s set you up so BuildOS works the way _you_ want.”
+- **CTA**: “Start Setting Up”
 
 ---
 

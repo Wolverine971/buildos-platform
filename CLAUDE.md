@@ -1,8 +1,70 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# CLAUDE.md - BuildOS Platform (Turborepo Monorepo)
 
 ⚠️ **IMPORTANT**: This is a BuildOS platform codebase. ALWAYS use `pnpm` (never `npm`). The project uses Svelte 5 with new runes syntax (`$state`, `$derived`, `$effect`) - not the old reactive syntax.
+
+## 🎯 Quick Start
+
+**This is a monorepo-level guide.** For detailed app-specific documentation:
+- **Web App (SvelteKit)**: See `/apps/web/CLAUDE.md`
+- **Worker Service (Node.js)**: See `/apps/worker/CLAUDE.md`
+
+## 🏗️ Monorepo Structure
+
+BuildOS is a **Turborepo monorepo** with two independently deployed applications and shared packages.
+
+```
+buildos-platform/
+├── /apps/
+│   ├── /web/              → Vercel (SvelteKit + Svelte 5)
+│   └── /worker/           → Railway (Node.js + Express)
+├── /packages/
+│   ├── /shared-types/     → Shared TypeScript types
+│   ├── /supabase-client/  → Database client
+│   ├── /twilio-service/   → SMS service
+│   └── /config/           → Shared configuration
+└── /docs/                 → Cross-cutting documentation
+```
+
+## 📚 Documentation Navigation
+
+### Essential Entry Points
+
+| When You Want To...               | Start Here                                   |
+| --------------------------------- | -------------------------------------------- |
+| **Understand the system**         | `/docs/README.md` (navigation hub)           |
+| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`               |
+| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)     |
+| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md` |
+| **Work on background jobs**       | `/apps/worker/docs/README.md` + `/apps/worker/CLAUDE.md` |
+| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                    |
+
+### Documentation by Scope
+
+| Scope              | Location             | Contains                                   |
+| ------------------ | -------------------- | ------------------------------------------ |
+| **Monorepo-wide**  | `/docs/`             | Architecture, deployment, business docs    |
+| **Web App**        | `/apps/web/docs/`    | Features, components, API, operations      |
+| **Worker Service** | `/apps/worker/docs/` | Daily briefs, queue system, scheduler      |
+| **Packages**       | `/packages/*/docs/`  | Package usage and implementation           |
+
+### Feature Documentation
+
+| Feature                | Documentation Path                              |
+| ---------------------- | ----------------------------------------------- |
+| Brain Dump System      | `/apps/web/docs/features/brain-dump/`           |
+| Calendar Integration   | `/apps/web/docs/features/calendar-integration/` |
+| Notification System    | `/apps/web/docs/features/notifications/`        |
+| Onboarding Flow        | `/apps/web/docs/features/onboarding/`           |
+| Daily Briefs (Worker)  | `/apps/worker/docs/features/daily-briefs/`      |
+
+### Deployment & Operations
+
+| Task                   | Documentation Path                              |
+| ---------------------- | ----------------------------------------------- |
+| Web → Vercel           | `/apps/web/docs/operations/deployment/`         |
+| Worker → Railway       | `/apps/worker/docs/README.md`                   |
+| Environment Variables  | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md` |
+| Active Migrations      | `/apps/web/docs/migrations/active/`             |
 
 ## Essential Commands
 
@@ -72,497 +134,181 @@ pnpm build --filter=worker
 pnpm clean
 ```
 
-## Architecture Overview
+## 🎨 What is BuildOS?
 
-This is a **Turborepo monorepo** for the BuildOS platform, an AI-powered productivity system designed for ADHD minds that transforms unstructured thoughts into actionable plans.
+BuildOS is an AI-powered productivity platform for ADHD minds that transforms unstructured thoughts into actionable plans.
 
-### Repository Structure
-
-```
-buildos-platform/
-├── apps/
-│   ├── web/              # Main SvelteKit application
-│   └── worker/           # Background worker service for daily briefs
-├── packages/
-│   ├── shared-types/     # Shared TypeScript types across apps
-│   └── supabase-client/  # Shared Supabase configuration
-```
+**Core Innovation:** Brain Dump System - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
 
 ### Tech Stack
 
-- **Monorepo**: Turborepo + pnpm workspaces
-- **Web App**: SvelteKit 2 + Svelte 5 (uses new runes syntax)
-- **Worker**: Node.js + Express + BullMQ (Supabase-based queue)
-- **Database**: Supabase (PostgreSQL with Row Level Security)
-- **AI**: OpenAI API with streaming support
-- **Auth**: Supabase Auth with Google OAuth
-- **Deployment**: Vercel (web) + Railway (worker)
-- **Payments**: Stripe (optional, controlled by ENABLE_STRIPE flag)
+| Layer              | Technology                                      |
+| ------------------ | ----------------------------------------------- |
+| **Monorepo**       | Turborepo + pnpm workspaces                     |
+| **Web App**        | SvelteKit 2 + Svelte 5 (runes syntax)           |
+| **Worker**         | Node.js + Express + BullMQ (Supabase queue)     |
+| **Database**       | Supabase (PostgreSQL + RLS)                     |
+| **AI/LLM**         | OpenAI API with streaming (DeepSeek primary)    |
+| **Auth**           | Supabase Auth + Google OAuth                    |
+| **Deployment**     | Vercel (web) + Railway (worker)                 |
 
-## Code Patterns and Conventions
+**Detailed Architecture:** See `/docs/DEPLOYMENT_TOPOLOGY.md`
 
-### Route Structure
+## 💡 Key Conventions
 
-```
-/                        # Dashboard (auth-aware)
-/projects               # Project list
-/projects/[id]          # Project detail with tasks
-/projects/[id]/notes    # Project notes
-/briefs                 # AI-generated daily briefs
-/profile                # User settings
-/auth/*                 # Authentication flows
-/api/*                  # REST endpoints
-/admin/*                # Admin dashboard (protected)
-```
-
-### Component Naming Conventions
-
-- **Domain Components**: `[Domain][Action/Type].svelte`
-  - `BrainDumpModal.svelte`, `ProjectHeader.svelte`, `TasksList.svelte`
-- **UI Components**: Generic, reusable (`/lib/components/ui/`)
-  - `Modal.svelte`, `Button.svelte`, `Toast.svelte`
-- **Skeleton Components**: Loading states
-  - `ProjectCardSkeleton.svelte`, `TaskListSkeleton.svelte`
-
-### State Management
-
-#### Store Architecture
-
-- **Unified stores** for complex flows: `brain-dump-v2.store.ts`
-- **Domain stores**: `project.store.ts`, `dashboard.store.ts`
-- **UI stores**: `toast.store.ts`, `modal.store.ts`
-- **Optimistic updates** in project/dashboard stores
-- **Session persistence** for processing state
-
-#### Svelte 5 Patterns
+### Svelte 5 Runes (Critical!)
 
 ```javascript
-// ✅ Use these patterns:
+// ✅ Use NEW runes syntax:
 let count = $state(0);
 let doubled = $derived(count * 2);
-$effect(() => {
-  /* side effects */
-});
+$effect(() => { /* side effects */ });
 
-// ❌ Avoid old syntax:
+// ❌ AVOID old reactive syntax:
 // let count = 0;
 // $: doubled = count * 2;
 ```
 
-### API Service Pattern
+### Package Manager
 
-All services extend `base/api-service.ts`:
+**ALWAYS use `pnpm`, NEVER use `npm`.** This is critical for monorepo workspace integrity.
 
-```typescript
-class MyService extends ApiService {
-  private static instance: MyService;
-  private cache: CacheManager;
+### Code Patterns & Architecture
 
-  // Singleton pattern
-  public static getInstance(): MyService {
-    if (!this.instance) {
-      this.instance = new MyService();
-    }
-    return this.instance;
-  }
-}
-```
+For detailed patterns, see:
+- **Web App Patterns:** `/apps/web/CLAUDE.md` (routes, components, stores, services)
+- **Worker Patterns:** `/apps/worker/CLAUDE.md` (jobs, queue, scheduler)
+- **Web Architecture:** `/apps/web/docs/technical/architecture/`
+- **API Documentation:** `/apps/web/docs/technical/api/`
 
-## High-Level Architecture
+## 🎯 Context for LLM Agents
 
-### Core System: Brain Dump Flow
+### Determining Scope
 
-The brain dump is BuildOS's core innovation - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
+**Ask yourself:** "Which app does this affect?"
 
-**📄 Comprehensive Documentation**: See [`thoughts/shared/research/2025-09-30_17-48-03_brain-dump-complete-flow.md`](thoughts/shared/research/2025-09-30_17-48-03_brain-dump-complete-flow.md) for complete flow analysis with deep technical details.
+- **Web-only** (UI, API routes, frontend features) → `/apps/web/` → See `/apps/web/CLAUDE.md`
+- **Worker-only** (background jobs, email, cron) → `/apps/worker/` → See `/apps/worker/CLAUDE.md`
+- **Both apps** (architecture, database, shared types) → `/docs/` or `/packages/`
+- **Package** (shared code) → `/packages/[package-name]/`
 
-**Processing Pipeline:**
+### Feature-Specific Guidance
 
-1. **User Input** → Brain dump modal receives unstructured text (text or voice)
-2. **Processing Decision** → System determines processing type:
-   - **Short Processing** (<500 chars, existing project): Single-pass extraction with conditional context update
-   - **Dual Processing** (≥500 chars or new project): Parallel context + tasks extraction for maximum accuracy
-3. **AI Extraction** → Smart model selection (DeepSeek/Claude/GPT-4o) with automatic fallbacks
-4. **Real-time Streaming** → SSE provides progress updates as AI processes
-5. **Operations Review** → User reviews/edits parsed operations (or auto-accept)
-6. **Execution** → Database operations with rollback support
-7. **Phase Generation** → Optional task organization into logical phases with calendar scheduling
+| Feature/System          | Where to Learn More                             |
+| ----------------------- | ----------------------------------------------- |
+| **Brain Dump Flow**     | `/apps/web/docs/features/brain-dump/README.md`  |
+| **Calendar Integration**| `/apps/web/docs/features/calendar-integration/README.md` |
+| **Notification System** | `/apps/web/docs/features/notifications/README.md` |
+| **Daily Briefs**        | `/apps/worker/docs/features/daily-briefs/README.md` |
+| **Queue System**        | `/apps/worker/CLAUDE.md` (Worker Service Architecture section) |
+| **Database Schema**     | `/apps/web/docs/technical/database/schema.md`   |
 
-**Key Architecture Components:**
-
-**UI Layer** (Svelte 5 with runes):
-
-- `BrainDumpModal.svelte` - Initial input interface with lazy component loading
-- `RecordingView.svelte` - Text/voice input with live transcription (Chrome)
-- `BrainDumpProcessingNotification.svelte` - Central orchestrator for processing lifecycle
-- `ParseResultsDiffView.svelte` - Operations review with diff comparison
-
-**State Management**:
-
-- `brain-dump-v2.store.ts` - Unified store with 5 domains (ui, core, processing, results, persistence)
-- Dual-mutex protection prevents race conditions
-- Session persistence for background processing
-
-**Processing Layer**:
-
-- `braindump-processor.ts` - Dual processing with parallel extraction (context + tasks)
-- `braindump-processor-stream-short.ts` - Optimized short processing
-- `smart-llm-service.ts` - Intelligent model routing with cost optimization
-
-**Services**:
-
-- `braindump-api.service.ts` - API client with streaming support
-- `braindump-background.service.ts` - Background job management
-- `voiceRecording.service.ts` - Voice input with Whisper transcription
-- `promptTemplate.service.ts` - AI prompt management (40-50% token reduction)
-
-**Phase Generation**:
-
-- `phase-generation/orchestrator.ts` - Strategy pattern coordinator
-- `strategies/phases-only.strategy.ts` - Logical grouping without dates
-- `strategies/schedule-in-phases.strategy.ts` - Calendar-aware scheduling
-- `task-time-slot-finder.ts` - Find optimal time slots based on user preferences
-
-### Worker Service Architecture
-
-The worker handles asynchronous background tasks using a Supabase-based queue system:
-
-**Components:**
-
-- **API Server**: REST endpoints for job creation and status
-- **Queue Worker**: Processes jobs with progress tracking
-- **Scheduler**: Cron-based automation for daily/weekly briefs
-- **Supabase Queue**: Atomic job claiming without Redis
-
-**Data Flow:**
-
-```
-User Request → API → Supabase Queue → Worker → Real-time Updates
-                           ↑
-                     Scheduler (Cron)
-```
-
-### Database Design
-
-Core tables managed through Supabase:
-
-- `profiles` - User data with timezone and preferences
-- `projects` - User projects with rich context
-- `tasks` - Actionable items with priorities
-- `brain_dumps` - Raw input and processing history
-- `daily_briefs` - Generated AI summaries
-- `queue_jobs` - Background job tracking
-
-## Key Development Patterns
-
-### AI/LLM Integration
-
-**Model Routing Strategy:**
-
-- Primary: DeepSeek (cost-effective, $0.14/1M tokens)
-- Fallback: Qwen → Claude Haiku → GPT-4o
-- Premium: Claude Sonnet/Opus for complex tasks
-
-**Dual Processing Pattern:**
-
-```typescript
-// For brain dumps > 800 chars or complex projects
-const [contextResult, tasksResult] = await Promise.allSettled([
-  extractProjectContext(brainDump),
-  extractTasks(brainDump),
-]);
-```
-
-**Smart LLM Service (`/lib/services/llm/`):**
-
-- Automatic model selection based on complexity
-- Native JSON mode support for compatible models
-- SSE streaming for real-time progress updates
-- Cost tracking and optimization
-
-### Database Patterns
-
-**67 tables** with comprehensive Row Level Security (RLS):
-
-- User isolation: `auth.uid() = user_id`
-- Optimized RPC functions to eliminate N+1 queries
-- Safe enum migrations for type safety
-- Automatic `updated_at` triggers
-
-**Key RPC Functions:**
-
-```sql
--- Optimized project statistics
-get_project_statistics(p_project_id, p_user_id)
--- Projects with task counts
-get_projects_with_stats(p_user_id, p_status, p_search, p_limit, p_offset)
-```
-
-### Error Handling
-
-**Centralized Error Logger:**
-
-```typescript
-ErrorLoggerService.getInstance().logError(error, {
-  userId: user.id,
-  projectId: project?.id,
-  operation: "brain_dump_processing",
-});
-```
-
-**Error Types:**
-
-- `brain_dump_processing`, `api_error`, `database_error`
-- `validation_error`, `llm_error`, `calendar_sync_error`
-
-**User Feedback:**
-
-- Toast notifications for all user-facing errors
-- Context-aware messages with actionable guidance
-- Error boundaries to prevent UI crashes
-
-### Testing Strategy
-
-**Test Categories:**
+## 🧪 Testing & Quality
 
 ```bash
-# Regular unit/integration tests
-pnpm test            # All tests (excludes LLM)
-pnpm test:watch      # Watch mode
+# Run all tests
+pnpm test
 
-# LLM tests (costs money, separate config)
-pnpm test:llm        # Real OpenAI API calls
-pnpm test:llm:verbose
+# LLM tests (costs money - uses real OpenAI API)
+cd apps/web && pnpm test:llm
 
-# Worker-specific
-cd apps/worker && pnpm test:scheduler
-
-# Full validation before push
-pnpm pre-push        # typecheck + test + lint + build
+# Pre-push validation (typecheck + test + lint + build)
+pnpm pre-push
 ```
 
-**Mock Patterns:**
+**Testing Documentation:**
+- **Web Testing:** `/apps/web/docs/technical/testing/`
+- **Worker Testing:** `/apps/worker/docs/development/testing/`
+- **Testing Checklist:** `/apps/web/docs/development/TESTING_CHECKLIST.md`
 
-- Supabase: Chain-able mock objects
-- LLM: Structured response fixtures
-- Test data: `/lib/utils/__tests__/fixtures/`
+## ⚙️ Environment Configuration
 
-### Performance Optimizations
+See **complete environment setup:**
+- `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 
-**Progressive Loading:**
-
-- Lazy component loading with dynamic imports
-- Skeleton states for perceived performance
-- Background data fetching
-
-**Caching Strategy:**
-
-- Service-level: LRU cache with TTL
-- HTTP: ETag support, conditional requests
-- Database: RPC functions for bulk operations
-
-**Bundle Optimization:**
-
-```javascript
-// vite.config.ts manual chunks
-'ui-vendor': ['lucide-svelte', '@tiptap/*'],
-'utils': ['date-fns', 'tailwind-merge'],
-'ai-vendor': ['openai', '@anthropic-ai/*']
-```
-
-## Environment Variables
-
-Critical configuration (see `.env.example`):
-
+**Essential variables** (from `.env.example`):
 ```bash
 # Supabase (required)
 PUBLIC_SUPABASE_URL=
 PUBLIC_SUPABASE_ANON_KEY=
 PRIVATE_SUPABASE_SERVICE_KEY=
 
-# OpenAI (required for AI features)
+# OpenAI (required)
 OPENAI_API_KEY=
 
-# Google OAuth (required for auth)
+# Google OAuth (required)
 PUBLIC_GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-
-# Optional features
-ENABLE_STRIPE=false     # Set to true for payments
-PUBLIC_RAILWAY_WORKER_URL=  # Worker service URL
 ```
 
-## Important Notes
-
-### Package Management
-
-**Always use pnpm, never npm**. This is enforced by package manager settings and is critical for workspace integrity.
-
-### Testing Strategy
-
-- **Unit tests**: Fast, mocked external services
-- **LLM tests**: Test actual AI prompts (costs money)
-- Run `pnpm test:llm` only when modifying prompts
+## 📝 Development Workflow
 
 ### Before Committing
-
-1. Run `pnpm lint:fix` to fix formatting
-2. Ensure types pass with `pnpm typecheck`
-3. Run tests with `pnpm test:run`
+```bash
+pnpm lint:fix       # Auto-fix formatting
+pnpm typecheck      # Check types
+pnpm test:run       # Run tests
+```
 
 ### Before Pushing
-
-Run `pnpm pre-push` to validate everything (typecheck, tests, lint, and production build).
-
-### Working with Turbo
-
-- Use `--filter` flag to run commands for specific apps/packages
-- Turbo caches results - use `--force` to bypass cache if needed
-- Check `turbo.json` for task pipeline configuration
-
-## Common Gotchas and Solutions
-
-### Svelte 5 Migration Issues
-
-```javascript
-// ❌ Old reactive syntax (will break)
-export let value;
-$: doubled = value * 2;
-
-// ✅ New runes syntax
-let { value } = $props();
-let doubled = $derived(value * 2);
-```
-
-### State Store Access
-
-```javascript
-// ❌ Direct store access (deprecated)
-$brainDumpStore.someValue;
-
-// ✅ Use derived with store
-let storeState = $derived($brainDumpV2Store);
-let value = $derived(storeState?.someValue);
-```
-
-### API Response Handling
-
-```typescript
-// Always check success flag
-const response = await fetch("/api/endpoint");
-const data = await response.json();
-
-if (!data.success) {
-  toastService.error(data.error || "Operation failed");
-  return;
-}
-```
-
-### Supabase RLS
-
-```typescript
-// Always include user_id in queries
-const { data, error } = await supabase
-  .from("projects")
-  .select("*")
-  .eq("user_id", user.id); // Required by RLS
-```
-
-### Form Validation
-
-```typescript
-// Use validation schemas from:
-// /lib/utils/operations/validation-schemas.ts
-const isValid = validateField("projects", "name", value);
-```
-
-## File Organization
-
-```
-apps/web/src/
-├── routes/                # SvelteKit routes
-│   ├── (app)/            # Authenticated routes
-│   ├── auth/             # Auth flows
-│   ├── api/              # REST endpoints
-│   └── admin/            # Admin routes
-├── lib/
-│   ├── components/       # Svelte components
-│   │   ├── ui/          # Generic UI
-│   │   ├── brain-dump/  # Brain dump feature
-│   │   ├── project/     # Project management
-│   │   └── [domain]/    # Domain-specific
-│   ├── services/         # Business logic
-│   │   ├── base/        # Base classes
-│   │   ├── llm/         # AI services
-│   │   └── [domain].service.ts
-│   ├── stores/           # Svelte stores
-│   ├── utils/            # Utilities
-│   │   ├── operations/  # DB operations
-│   │   └── prompts/     # AI prompts
-│   └── types/            # TypeScript types
-```
-
-## API Endpoint Patterns
-
-### RESTful Conventions
-
-```
-GET    /api/projects          # List
-POST   /api/projects          # Create
-GET    /api/projects/[id]     # Read
-PATCH  /api/projects/[id]     # Update
-DELETE /api/projects/[id]     # Delete
-```
-
-### Streaming Endpoints
-
-```
-POST /api/braindumps/stream       # SSE for long content
-POST /api/braindumps/stream-short # SSE for short content
-GET  /api/daily-briefs/progress   # SSE for generation progress
-```
-
-### Background Jobs
-
-```
-POST /api/brief-jobs          # Queue job
-GET  /api/brief-jobs/[id]     # Check status
-POST /api/queue/cleanup       # Maintenance
-```
-
-## Quick Reference
-
-### Key Services
-
-- `BrainDumpProcessor` - Core AI processing
-- `ProjectService` - Project CRUD operations
-- `SmartLLMService` - Intelligent model routing
-- `ErrorLoggerService` - Centralized error tracking
-- `DashboardDataService` - Optimistic updates
-
-### Key Stores
-
-- `brain-dump-v2.store.ts` - Unified brain dump state
-- `project.store.ts` - Project management with caching
-- `dashboard.store.ts` - Dashboard data with optimistic updates
-- `toast.store.ts` - User notifications
-
-### Key Database Functions
-
-- `get_project_statistics()` - Project metrics
-- `get_projects_with_stats()` - Optimized project list
-- `complete_queue_job()` - Job completion
-- `reset_stalled_jobs()` - Job recovery
-
-### Performance Commands
-
 ```bash
-# Bundle analysis
-pnpm build:analyze
-
-# Development with profiling
-cd apps/web && pnpm dev:profile
-
-# Fast dev without type checking
-pnpm dev:fast
+pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ```
+
+### Working with Turborepo
+- Use `--filter` flag for specific apps: `pnpm build --filter=web`
+- Force bypass cache: `pnpm build --force`
+- See `/docs/MONOREPO_GUIDE.md` for complete workflows
+
+## 📝 Documentation Standards
+
+**IMPORTANT:** When creating documentation, follow these rules:
+
+### Where to Put Documentation
+
+- **Research/Investigation:** `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+  - Format: Timestamped research docs with YAML frontmatter
+  - See: `.claude/commands/research_codebase_generic.md`
+
+- **Architecture (System-wide):** `/docs/architecture/`
+  - ADRs: `/docs/architecture/decisions/ADR-NNN-topic.md`
+  - Diagrams: `/docs/architecture/diagrams/`
+
+- **Web App Docs:** `/apps/web/docs/features/[feature]/`
+  - Feature specs, component docs, API docs, operations
+
+- **Worker Docs:** `/apps/worker/docs/features/[feature]/`
+  - Job specs, queue system, scheduler, operations
+
+- **Package Docs:** `/packages/[package]/docs/`
+  - Usage guides, implementation details
+
+**Complete Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md`
+
+### ❌ Do NOT Create
+- Random files at root level (`architecture.md`, `notes.md`, `summary.md`)
+- Docs outside the proper structure
+- Research docs without timestamps or frontmatter
+
+## 🔗 Additional Resources
+
+### App-Specific Documentation
+- **Web App (SvelteKit):** `/apps/web/CLAUDE.md` - Complete web development guide
+- **Worker Service (Node.js):** `/apps/worker/CLAUDE.md` - Complete worker development guide
+
+### Cross-Cutting Documentation
+- **Documentation Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md` ⭐
+- **Monorepo Workflows:** `/docs/MONOREPO_GUIDE.md`
+- **System Architecture:** `/docs/DEPLOYMENT_TOPOLOGY.md`
+- **Task-Based Navigation:** `/docs/TASK_INDEX.md`
+- **Documentation Hub:** `/docs/README.md`
+
+### Technical Deep Dives
+- **Web Technical Docs:** `/apps/web/docs/technical/`
+- **Database Schema:** `/apps/web/docs/technical/database/`
+- **API Reference:** `/apps/web/docs/technical/api/`
+- **Deployment Runbooks:** `/apps/web/docs/technical/deployment/runbooks/`
+
+---
+
+**📘 This is a high-level navigation guide. For detailed implementation patterns, code conventions, and architectural decisions, see the app-specific CLAUDE.md files and documentation folders listed above.**

@@ -1,3 +1,4 @@
+<!-- TODO priority 3 -->
 # BuildOS Documentation Reorganization Plan v2.0
 
 **Date:** October 1, 2025

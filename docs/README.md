@@ -1,242 +1,73 @@
-# BuildOS Documentation
+# BuildOS Platform Documentation
 
-Welcome to the BuildOS platform documentation. This guide will help you understand, deploy, and extend the BuildOS productivity platform.
+## 🏗️ You Are Here: Monorepo Root
 
-## 📚 Documentation Structure
+This folder contains **cross-cutting concerns** that affect multiple apps/packages.
 
-### Getting Started
+For **app-specific documentation**:
 
-- [Deployment Guide](./DEPLOYMENT.md) - Deploy BuildOS to production
-- [Environment Variables](./ENVIRONMENT_VARIABLES.md) - Configuration reference
-- [Migration Plan](./MIGRATION_PLAN.md) - Database migration strategies
+- Web App (Vercel): `/apps/web/docs/`
+- Worker Service (Railway): `/apps/worker/docs/`
 
-### Features & Integrations
+For **package documentation**:
 
-- [SMS Integration](./sms-integration.md) - Complete SMS/Twilio integration documentation
-- [SMS Setup Guide](./guides/sms-setup-guide.md) - Step-by-step Twilio setup
-- [SMS Testing Guide](./guides/sms-testing-guide.md) - Testing SMS functionality
+- Shared Types: `/packages/shared-types/docs/`
+- Supabase Client: `/packages/supabase-client/docs/`
+- Twilio Service: `/packages/twilio-service/docs/`
 
-### API Reference
+## What's in This Folder
 
-- [SMS API Reference](./api/sms-api-reference.md) - Complete SMS API documentation
+- `/architecture/` - System-wide architecture, data flows, ADRs
+- `/business/` - Business strategy, war room, communications guides
+- `/marketing/` - Brand, growth, social media, customer segments, investors
+- `/blogs/` - Content marketing, founder stories, user guides
+- `/philosophy/` - Product philosophy and psychological foundations
+- `/user-guide/` - End-user documentation and feature guides
+- `/writing/` - Writing resources and techniques
+- `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
+- `/integrations/` - Shared integrations (Supabase, Stripe)
+- `/research/` - Cross-cutting research
 
-### Development
+## 📝 Documentation Standards
 
-- [TODO](./TODO.md) - Development roadmap and tasks
+**IMPORTANT:** Before creating any documentation, read:
+- **[Documentation Guidelines](DOCUMENTATION_GUIDELINES.md)** ⭐ - Where to put docs, naming conventions, required formats
 
-## 🚀 Quick Start
+**Key Rules:**
+- ✅ Research documents → `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+- ✅ System architecture → `/docs/architecture/`
+- ✅ Web app docs → `/apps/web/docs/`
+- ✅ Worker docs → `/apps/worker/docs/`
+- ❌ Don't create random docs at root level
 
-### Prerequisites
+## Quick Navigation
 
-- Node.js 20+
-- pnpm 9+
-- Supabase account
-- Twilio account (for SMS features)
+### Understanding the System
 
-### Basic Setup
+1. [Monorepo Guide](MONOREPO_GUIDE.md) - Turborepo structure and workflows
+2. [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) - How apps deploy and communicate
+3. System Architecture - How pieces fit together (coming soon)
 
-1. **Clone the repository**
+### By Task
 
-   ```bash
-   git clone https://github.com/your-org/buildos-platform.git
-   cd buildos-platform
-   ```
+See [Task Index](TASK_INDEX.md) for navigation by "what you want to do"
 
-2. **Install dependencies**
+### By Deployment Target
 
-   ```bash
-   pnpm install
-   ```
+- **Web (Vercel)**: `/apps/web/docs/` - User interface, API routes, real-time UI
+- **Worker (Railway)**: `/apps/worker/docs/` - Background jobs, email, scheduled tasks
 
-3. **Configure environment**
+## Environment Variables
 
-   ```bash
-   cp apps/web/.env.example apps/web/.env
-   cp apps/worker/.env.example apps/worker/.env
-   # Edit .env files with your credentials
-   ```
+For environment configuration, see:
+- [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) - Complete environment setup guide
 
-4. **Run migrations**
+## Documentation Philosophy
 
-   ```bash
-   cd apps/web
-   pnpm supabase migration up
-   ```
+This documentation follows a **deployment topology** structure:
 
-5. **Start development**
-   ```bash
-   pnpm dev
-   ```
+- **App-specific docs** live with their apps (`/apps/web/docs/`, `/apps/worker/docs/`)
+- **Shared concerns** live here at the monorepo root (`/docs/`)
+- **Package docs** live with their packages (`/packages/*/docs/`)
 
-## 🏗️ Architecture Overview
-
-BuildOS is a monorepo consisting of:
-
-- **apps/web** - SvelteKit frontend application
-- **apps/worker** - Background job processing service
-- **packages/shared-types** - Shared TypeScript types
-- **packages/supabase-client** - Shared Supabase configuration
-- **packages/twilio-service** - SMS/Twilio integration service
-
-## 🔧 Core Features
-
-### Brain Dump System
-
-AI-powered system that transforms unstructured thoughts into actionable tasks and projects.
-
-### Project Management
-
-Comprehensive project tracking with phases, tasks, and calendar integration.
-
-### Daily Briefs
-
-AI-generated daily summaries delivered via email and SMS.
-
-### SMS Notifications
-
-Real-time SMS notifications for:
-
-- Task reminders
-- Daily brief alerts
-- Urgent notifications
-- Custom messages
-
-### Integrations
-
-- **Google Calendar** - Bi-directional calendar sync
-- **Stripe** - Payment processing (optional)
-- **Twilio** - SMS notifications
-- **OpenAI** - AI processing
-
-## 📱 SMS Integration
-
-The SMS integration provides:
-
-### Features
-
-- Phone number verification
-- Task reminders via SMS
-- Daily brief notifications
-- Quiet hours support
-- Opt-out management
-- Template-based messaging
-
-### Setup Steps
-
-1. [Create Twilio account](./guides/sms-setup-guide.md#step-1-create-twilio-account)
-2. [Configure Messaging Service](./guides/sms-setup-guide.md#step-2-configure-messaging-service)
-3. [Set environment variables](./guides/sms-setup-guide.md#step-4-configure-buildos-environment)
-4. [Run migrations](./guides/sms-setup-guide.md#step-5-run-database-migration)
-5. [Test integration](./guides/sms-setup-guide.md#step-8-test-the-integration)
-
-For detailed setup, see the [SMS Setup Guide](./guides/sms-setup-guide.md).
-
-## 🧪 Testing
-
-### Unit Tests
-
-```bash
-pnpm test
-```
-
-### SMS Integration Tests
-
-```bash
-pnpm test --filter=@buildos/twilio-service
-```
-
-### E2E Tests
-
-```bash
-pnpm test:e2e
-```
-
-## 🚢 Deployment
-
-BuildOS can be deployed to:
-
-- **Vercel** (Web app)
-- **Railway** (Worker service)
-- **Supabase** (Database & Auth)
-
-See [Deployment Guide](./DEPLOYMENT.md) for detailed instructions.
-
-## 🔐 Security
-
-### Best Practices
-
-- All credentials in environment variables
-- Row-level security on all database tables
-- Webhook signature validation
-- Rate limiting on all APIs
-- Phone verification required for SMS
-
-### Compliance
-
-- GDPR compliant data handling
-- TCPA compliant SMS messaging
-- Automatic opt-out handling
-- Audit logging for all operations
-
-## 📊 Monitoring
-
-### Key Metrics
-
-- SMS delivery rates
-- Queue processing times
-- API response times
-- Error rates by service
-
-### Health Checks
-
-- `/health` - API health check
-- `/api/queue/stats` - Queue statistics
-- Database connection monitoring
-- Twilio service status
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Run `pnpm pre-push`
-6. Submit a pull request
-
-## 📝 License
-
-[Your License Here]
-
-## 🆘 Support
-
-- Documentation: This directory
-- Issues: GitHub Issues
-- Discussions: GitHub Discussions
-
-## 🔗 Quick Links
-
-- [Twilio Console](https://console.twilio.com)
-- [Supabase Dashboard](https://app.supabase.com)
-- [Vercel Dashboard](https://vercel.com/dashboard)
-- [Railway Dashboard](https://railway.app/dashboard)
-
-## 📖 Additional Resources
-
-### SMS Integration
-
-- [SMS Integration Overview](./sms-integration.md)
-- [API Reference](./api/sms-api-reference.md)
-- [Setup Guide](./guides/sms-setup-guide.md)
-- [Testing Guide](./guides/sms-testing-guide.md)
-
-### Development
-
-- [Environment Variables](./ENVIRONMENT_VARIABLES.md)
-- [Database Migrations](./MIGRATION_PLAN.md)
-- [Development TODO](./TODO.md)
-
-### Deployment
-
-- [Production Deployment](./DEPLOYMENT.md)
-- [Railway Setup](./DEPLOYMENT.md#railway-deployment)
-- [Vercel Setup](./DEPLOYMENT.md#vercel-deployment)
+This structure helps LLM agents and developers quickly determine scope and find relevant documentation.

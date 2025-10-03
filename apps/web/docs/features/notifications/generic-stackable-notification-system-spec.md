@@ -1,3 +1,5 @@
+<!-- TODO: priority 3 -->
+
 # Generic Stackable Notification System - Comprehensive Specification
 
 **Date:** 2025-09-30 (Updated: 2025-10-01)
@@ -26,6 +28,7 @@ This specification outlines a **generic, stackable notification system** for Bui
 - **Phase 2 (Brain Dump Migration)**: ✅ Complete with streaming support
 - **Multi-Brain Dump Concurrent Processing**: ✅ Implemented (up to 3 concurrent, auto-queuing)
 - **SSR-Safe Environment Variables**: ✅ Implemented
+- **Phase 3 (Phase Generation Integration)**: ✅ ~90% Complete (implementation done, testing in progress)
 
 See detailed documentation:
 
@@ -911,53 +914,71 @@ transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   - [x] Clear legacy state when switching modes
   - [x] Modal integration with multi-mode detection
 
-### Phase 3: Phase Generation Integration (Week 2)
+### Phase 3: Phase Generation Integration ✅ ~90% COMPLETE
 
-#### Objectives
+**Status:** Implementation complete, pending comprehensive testing
 
-- Replace the blocking fullscreen overlay with a reusable notification + modal pair
-- Keep step-based progress feedback while allowing the user to continue working
-- Capture generation metadata (strategy, task counts, regeneration flag) for history
-- Ensure the notification drives downstream state updates (`projectStoreV2`, toasts)
+#### Objectives ✅ ACHIEVED
 
-#### Lifecycle & Data Flow
+- ✅ Replace the blocking fullscreen overlay with a reusable notification + modal pair
+- ✅ Keep step-based progress feedback while allowing the user to continue working
+- ✅ Capture generation metadata (strategy, task counts, regeneration flag) for history
+- ✅ Ensure the notification drives downstream state updates (`projectStoreV2`, toasts)
+
+#### Lifecycle & Data Flow ✅ IMPLEMENTED
 
 ```
-PhaseGenerationConfirmationModal
-        │ confirm(params)
+PhaseGenerationConfirmationModal (dispatches 'confirm')
+        │
         ▼
-phaseGenerationNotificationBridge.ts
-        │ create notification (status: processing, progress: steps)
-        │ kick off API request / streaming source
+ProjectModals.svelte (handleGenerationConfirm)
+        │
+        ▼
++page.svelte (handlePhaseGenerationConfirm)
+        │
+        ▼
+phase-generation-notification.bridge.ts
+        │ • Creates notification with step-based progress
+        │ • Executes POST to /api/projects/:id/phases/generate
+        │ • Updates progress through steps (queue → analyze → generate → schedule → finalize)
         ▼
 notification.store.ts ──► NotificationStackManager.svelte
-        │ updates progress + status via bridge callbacks
+        │ • Renders PhaseGenerationMinimizedView in stack
+        │ • Expands to PhaseGenerationModalContent on click
         ▼
-Project page handlers
-        │ apply phases + UI mutations when job resolves
+Project page updates
+        │ • projectStoreV2.setPhases() called with results
+        │ • Project dates updated if changed
+        │ • Toast notifications for success/error
         ▼
-Notification auto-minimizes or moves to history based on outcome
+Notification remains available for review/retry
 ```
 
-1. `PhaseGenerationConfirmationModal` dispatches `confirm` with the existing payload.
-2. A new `phase-generation-notification.bridge.ts` module receives the payload, creates the notification, and executes the POST to `/api/projects/:id/phases/generate`.
-3. While the request is in flight the bridge emits step transitions into the notification store (see *Progress Model* below).
-4. When the API responds the bridge:
-   - updates `projectStoreV2` with the returned phases (existing behavior)
-   - toggles notification status to `success` or `error`
-   - stores the response payload in `notification.data.result`
-   - triggers optional follow-up actions (e.g. refresh synthesis queue)
-5. The minimized card remains available so the user can re-open the modal to review results or retry.
+**Implementation Details:**
+
+1. ✅ `PhaseGenerationConfirmationModal` dispatches `confirm` with the existing payload (unchanged)
+2. ✅ `ProjectModals.svelte` routes confirm event to parent's `onPhaseGenerationConfirm` callback
+3. ✅ `+page.svelte` calls `startPhaseGeneration()` from bridge with all required parameters
+4. ✅ `phase-generation-notification.bridge.ts` module:
+   - Creates notification with initial step state
+   - Executes POST to `/api/projects/:id/phases/generate`
+   - Implements fallback timer-based progress (1.6s per step)
+   - Updates `projectStoreV2` with phases and backlog tasks on success
+   - Handles project date changes if `project_dates_changed` flag set
+   - Provides retry action that re-executes generation
+   - Cleanup handlers for timer-based progress
+5. ✅ The minimized card shows project name, strategy, current step, and progress bar
+6. ✅ Modal view displays full step timeline, telemetry, and result summary
 
 #### Progress Model
 
-| Step Index | Key                     | Description                                   | Trigger Source                                  |
-| ---------- | ---------------------- | --------------------------------------------- | ------------------------------------------------ |
-| 0          | `queue`                | Request accepted / pending                    | Immediately after `fetch` resolves headers       |
-| 1          | `analyze`              | Backend analyzing tasks + conflicts           | SSE `analysis_progress` or fallback timer tick   |
-| 2          | `generate_phases`      | Phase planning + creation                     | SSE `generation_progress` or 1.5s timer fallback |
-| 3          | `schedule`             | Optional scheduling / calendar coordination   | Emitted only if `strategy !== 'phases-only'`     |
-| 4          | `finalize`             | Persist + return payload                      | Completion of request                            |
+| Step Index | Key               | Description                                 | Trigger Source                                   |
+| ---------- | ----------------- | ------------------------------------------- | ------------------------------------------------ |
+| 0          | `queue`           | Request accepted / pending                  | Immediately after `fetch` resolves headers       |
+| 1          | `analyze`         | Backend analyzing tasks + conflicts         | SSE `analysis_progress` or fallback timer tick   |
+| 2          | `generate_phases` | Phase planning + creation                   | SSE `generation_progress` or 1.5s timer fallback |
+| 3          | `schedule`        | Optional scheduling / calendar coordination | Emitted only if `strategy !== 'phases-only'`     |
+| 4          | `finalize`        | Persist + return payload                    | Completion of request                            |
 
 - **Primary path:** use the new `/api/projects/:id/phases/generate/stream` endpoint (SSE) that backend work queue will ship concurrently with this effort. Events map directly to the `key` column, allowing smooth progress updates.
 - **Fallback path:** if streaming is unavailable, a deterministic timer advances through the steps every 1.5s, but the final step waits for the response to resolve before marking success.
@@ -1037,16 +1058,34 @@ The bridge resolves `taskCount` and `selectedStatuses` from the preview response
   - Bridge invokes `projectStoreV2.setPhases` and `setBacklogTasks` upon success.
   - When regeneration adjusts project dates, the bridge calls the existing `handleProjectUpdated` callback to keep the UI in sync.
 
-#### Implementation Tasks
+#### Implementation Tasks ✅ 8/10 COMPLETE
 
-- [x] Scaffold `phase-generation-notification.bridge.ts` with action registration + SSE wiring.
-- [x] Create `PhaseGenerationMinimizedView.svelte` (mirrors brain dump minimized patterns).
-- [x] Create `PhaseGenerationModalContent.svelte` with step timeline + result summary.
-- [x] Add step helpers + serialization updates to `notification.types.ts`.
-- [x] Update `PhasesSection.svelte` and `ProjectModals.svelte` to use the bridge instead of `setGenerating`.
-- [x] Delete `PhaseGenerationLoadingOverlay.svelte`; replace imports with notification entry point.
-- [ ] Extend unit tests: store step updates, bridge retry path, hydration of phase generation notifications.
-- [ ] End-to-end manual test matrix (initial generation, regeneration, calendar-optimized path, failure path).
+- [x] ✅ Scaffold `phase-generation-notification.bridge.ts` with action registration + fallback timer progress
+  - Location: `apps/web/src/lib/services/phase-generation-notification.bridge.ts` (544 lines)
+  - Features: Controller pattern, step-based progress, retry logic, cleanup handlers
+- [x] ✅ Create `PhaseGenerationMinimizedView.svelte` (mirrors brain dump minimized patterns)
+  - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
+  - Features: Strategy labels, step progress bar, regeneration badge, error display
+- [x] ✅ Create `PhaseGenerationModalContent.svelte` with step timeline + result summary
+  - Location: `apps/web/src/lib/components/notifications/types/phase-generation/`
+  - Features: Full step timeline, telemetry (duration), result summary, retry/view project actions
+- [x] ✅ Add step helpers + serialization updates to `notification.types.ts`
+  - Added: `StepProgressItem`, `StepsProgress`, `PhaseGenerationNotification` types
+- [x] ✅ Update `PhasesSection.svelte` to derive `generating` state from notifications
+  - Lines 78-92: Checks notification store for processing phase-generation notifications
+- [x] ✅ Update project page to use bridge via `handlePhaseGenerationConfirm`
+  - Location: `apps/web/src/routes/projects/[id]/+page.svelte` lines 754-777
+  - Calls `startPhaseGeneration()` with all required parameters
+- [x] ✅ Delete `PhaseGenerationLoadingOverlay.svelte`
+  - Confirmed deleted in git status
+- [x] ✅ Initialize bridge in `+layout.svelte`
+  - Lines 49-51: Imports and initializes phase generation notification bridge
+- [~] ⚠️ Extend unit tests: store step updates, bridge retry path, hydration
+  - Test file exists: `apps/web/src/lib/services/__tests__/phase-generation-notification.bridge.test.ts`
+  - Has basic setup but needs review for comprehensive coverage
+- [ ] ❌ End-to-end manual test matrix
+  - Needs testing: initial generation, regeneration, calendar-optimized path, failure path
+  - Requires QA validation in development/staging environment
 
 #### Telemetry & Observability
 
@@ -1612,7 +1651,7 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 
 ---
 
-## Current Status (Updated 2025-10-01)
+## Current Status (Updated 2025-10-03)
 
 ### ✅ Completed Work
 
@@ -1643,11 +1682,29 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 - Legacy state cleanup when switching modes
 - SSR-safe environment variable access pattern
 
+**Phase 3: Phase Generation Integration (90%)**
+
+- ✅ Core bridge implementation (544 lines, comprehensive controller pattern)
+- ✅ Step-based progress tracking with 5 steps (queue, analyze, generate, schedule, finalize)
+- ✅ PhaseGenerationMinimizedView component with strategy labels and progress bar
+- ✅ PhaseGenerationModalContent component with full step timeline and result summary
+- ✅ Integration with project page flow (confirmation modal → bridge → notification)
+- ✅ Project store updates on success (phases, backlog tasks, dates)
+- ✅ Retry functionality with full re-execution
+- ✅ PhaseGenerationLoadingOverlay deleted (blocking UI removed)
+- ✅ Bridge initialization in +layout.svelte
+- ⚠️ Unit tests exist but need comprehensive review
+- ⏳ End-to-end manual testing pending
+
 ### 🔨 In Progress
 
-**Phase 3: Phase Generation Integration (0%)**
+**Phase 3: Phase Generation Integration (90%)**
 
-- Not yet started
+- ✅ Core implementation complete (bridge, components, integration)
+- ✅ Bridge initialized and wired into project page flow
+- ✅ UI components (minimized view + modal content) implemented
+- ⚠️ Unit test coverage needs review/expansion
+- ⏳ Awaiting end-to-end manual testing
 
 **Phase 4: Calendar Analysis Integration (0%)**
 
@@ -1655,24 +1712,45 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 
 ### 📋 Remaining Work
 
-1. **Phase 3**: Migrate phase generation to notification system
-2. **Phase 4**: Migrate calendar analysis to notification system
-3. **Phase 5**: Polish, animations, accessibility audit
-4. **Phase 6**: Future enhancements (desktop notifications, batch operations, etc.)
+1. **Phase 3 (10%)**: Finalize testing
+   - Comprehensive unit test coverage
+   - End-to-end manual QA testing
+2. **Phase 4 (0%)**: Migrate calendar analysis to notification system
+3. **Phase 5 (0%)**: Polish, animations, accessibility audit
+4. **Phase 6 (0%)**: Future enhancements (desktop notifications, batch operations, etc.)
 
 ### 🎯 Next Steps
 
 1. ✅ ~~Complete Phase 1 & 2 implementation~~
 2. ✅ ~~Add multi-brain dump concurrent processing~~
 3. ✅ ~~Fix SSR initialization errors~~
-4. Test multi-brain dump flow end-to-end with real users
-5. Begin Phase 3: Phase generation integration
-6. Monitor performance and error rates in production
+4. ✅ ~~Complete Phase 3 core implementation (bridge, components, integration)~~
+5. **Finalize Phase 3:** Complete unit tests and end-to-end testing
+   - Review/expand unit test coverage in `phase-generation-notification.bridge.test.ts`
+   - Manual QA testing matrix: initial generation, regeneration, all strategies, error handling
+   - Verify notification persistence across page refreshes
+   - Test retry functionality
+6. Begin Phase 4: Calendar analysis integration
+7. Monitor performance and error rates in production
 
 ### 📊 Metrics
 
+**Phase 1 & 2 (Brain Dump):**
 - **Code Reduction**: ~1947 lines (BrainDumpProcessingNotification) → ~800 lines (3 reusable components)
-- **Reusability**: 1 notification type → N notification types (extensible)
-- **Concurrent Operations**: 1 → 3 brain dumps + queueing
-- **SSR Safety**: 0 crashes → 100% graceful fallback
-- **Test Coverage**: Core store + integration tests passing
+- **Reusability**: 1 notification type → N notification types (extensible architecture)
+- **Concurrent Operations**: 1 → 3 brain dumps + queueing system
+- **SSR Safety**: 0 crashes → 100% graceful fallback with try-catch wrappers
+
+**Phase 3 (Phase Generation):**
+- **Code Reduction**: ~172 lines (PhaseGenerationLoadingOverlay) → Deleted, replaced with ~400 lines of reusable notification components
+- **UX Improvement**: Fullscreen blocking overlay → Minimizable notification (non-blocking)
+- **Features Added**:
+  - Step-based progress tracking (5 steps)
+  - Retry functionality
+  - Result persistence and review
+  - Telemetry (duration tracking)
+- **Integration Points**: 3 files modified (PhasesSection, ProjectModals, +page.svelte)
+
+**Overall:**
+- **Test Coverage**: Core store + brain dump integration tests passing, phase generation tests in progress
+- **Notification Types Implemented**: 2/4 planned (brain-dump ✅, phase-generation ✅, calendar-analysis ⏳, daily-brief ⏳)

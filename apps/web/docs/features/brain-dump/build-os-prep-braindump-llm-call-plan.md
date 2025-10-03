@@ -1,3 +1,5 @@
+<!-- TODO: priority 1 -->
+
 ## BuildOS Braindump Processing Enhancement: Preparatory Analysis
 
 ### Overview

@@ -34,7 +34,7 @@ Then wait for the user's input.
 ### Step 1: Context Gathering & Initial Analysis
 
 1. **Read all mentioned files immediately and FULLY**:
-    - Ticket files (e.g., `thoughts/allison/tickets/eng_1234.md`)
+    - Ticket files (e.g., `thoughts/shared/tickets/eng_1234.md`)
     - Research documents
     - Related implementation plans
     - Any JSON/data files mentioned
