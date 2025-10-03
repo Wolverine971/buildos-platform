@@ -61,29 +61,30 @@
 	let isApplyingOperations = $state(false);
 
 	// Auto-accept preference from store (defaults to false when unavailable)
-	let autoAcceptEnabled = $derived($brainDumpV2Store.processing?.autoAcceptEnabled ?? false);
+	let storeState = $derived($brainDumpV2Store);
+	let autoAcceptEnabled = $derived(storeState.processing?.autoAcceptEnabled ?? false);
 
 	// Determine current view
-	let currentView = $derived(
-		(() => {
-			const status = notification.status;
-			const data = notification.data;
+	function resolveCurrentView() {
+		const status = notification.status;
+		const data = notification.data;
 
-			if (status === 'success' && data.executionResult) {
-				return 'success';
-			}
+		if (status === 'success' && data.executionResult) {
+			return 'success';
+		}
 
-			if (status === 'success' && data.parseResults) {
-				return 'parseResults';
-			}
+		if (status === 'success' && data.parseResults) {
+			return 'parseResults';
+		}
 
-			if (status === 'processing') {
-				return 'processing';
-			}
+		if (status === 'processing') {
+			return 'processing';
+		}
 
-			return 'idle';
-		})()
-	);
+		return 'idle';
+	}
+
+	let currentView = $derived(resolveCurrentView());
 
 	// Component loading mutex to prevent duplicate loads
 	const componentLoadingMutex = new Set<string>();

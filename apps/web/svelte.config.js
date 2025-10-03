@@ -57,10 +57,6 @@ export default {
 
 		env: {
 			publicPrefix: 'PUBLIC_'
-		},
-
-		csrf: {
-			checkOrigin: true
 		}
 	}
 };

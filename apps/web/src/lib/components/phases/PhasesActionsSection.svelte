@@ -144,7 +144,7 @@
 	}
 
 	// Calculate backlog tasks (tasks not in any phase) using Svelte 5 runes
-	let backlogTasks = $derived(() => {
+	function computeBacklogTasks() {
 		const phasedTaskIds = new Set(
 			phases.flatMap((p: any) => p.tasks?.map((t: any) => t.id) || [])
 		);
@@ -155,15 +155,17 @@
 				t.status !== 'completed' &&
 				!t.deleted_at
 		);
-	});
+	}
+
+	let backlogTasks = $derived(computeBacklogTasks());
 
 	// Calculate overdue tasks using memoized task type using Svelte 5 runes
-	let overdueTasks = $derived(() => {
+	function computeOverdueTasks() {
 		const allTasks = [...phases.flatMap((p: any) => p.tasks || []), ...backlogTasks];
-		return allTasks.filter((task: any) => {
-			return getTaskTypeMemoized(task) === 'overdue';
-		});
-	});
+		return allTasks.filter((task: any) => getTaskTypeMemoized(task) === 'overdue');
+	}
+
+	let overdueTasks = $derived(computeOverdueTasks());
 
 	// Computed properties using Svelte 5 runes
 	let canSchedule = $derived(

@@ -45,6 +45,10 @@
 		initBrainDumpNotificationBridge,
 		cleanupBrainDumpNotificationBridge
 	} from '$lib/services/brain-dump-notification.bridge';
+	import {
+		initPhaseGenerationNotificationBridge,
+		cleanupPhaseGenerationNotificationBridge
+	} from '$lib/services/phase-generation-notification.bridge';
 
 	export let data: LayoutData;
 
@@ -289,8 +293,9 @@
 		initializePWAEnhancements();
 		setupInstallPrompt();
 
-		// Initialize brain dump notification bridge
+		// Initialize notification bridges
 		initBrainDumpNotificationBridge();
+		initPhaseGenerationNotificationBridge();
 
 		// Pre-load authenticated resources if user is already available
 		if (user) {
@@ -354,8 +359,9 @@
 	onDestroy(() => {
 		// FIXED: Comprehensive cleanup to prevent memory leaks
 		if (browser) {
-			// Cleanup brain dump notification bridge
+			// Cleanup notification bridges
 			cleanupBrainDumpNotificationBridge();
+			cleanupPhaseGenerationNotificationBridge();
 
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {

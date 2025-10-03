@@ -21,6 +21,10 @@
 	import ProjectStatsSkeleton from '$lib/components/ui/skeletons/ProjectStatsSkeleton.svelte';
 	import DailyBriefSection from '$lib/components/briefs/DailyBriefSection.svelte';
 	import DailyBriefsTab from '$lib/components/briefs/DailyBriefsTab.svelte';
+	import {
+		brainDumpV2Store,
+		isModalOpen as brainDumpModalIsOpen
+	} from '$lib/stores/brain-dump-v2.store';
 
 	// Modal components - loaded dynamically
 	let NewProjectModal: any = null;
@@ -37,54 +41,58 @@
 	} from '$lib/utils/projects-filters';
 	import type { TabType, ProjectsFilterState } from '$lib/types/projects-page';
 	import { ProjectService } from '$lib/services/projectService';
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
+	// export let data: PageData;
 
 	// Project data state
-	let projects: any[] = [];
-	let projectsLoaded = false;
-	let loadingProjects = false;
-	let projectsError: string | null = null;
-	let projectBriefsMap: Map<string, any> = new Map();
+	let projects = $state<any[]>([]);
+	let projectsLoaded = $state(false);
+	let loadingProjects = $state(false);
+	let projectsError = $state<string | null>(null);
+	let projectBriefsMap = $state<Map<string, any>>(new Map());
 
 	// State management - organized into logical groups
-	let activeTab: TabType = 'projects';
+	let activeTab = $state<TabType>('projects');
 
 	// Check URL params for initial tab
-	$: if (browser) {
+	$effect(() => {
+		if (!browser) return;
+
 		const urlParams = new URLSearchParams($page.url.search);
 		const tabParam = urlParams.get('tab');
 		if (tabParam === 'briefs') {
-			activeTab = 'briefs';
+			if (activeTab !== 'briefs') {
+				activeTab = 'briefs';
+			}
 			if (!briefsLoaded) {
 				loadBriefs();
 			}
 		}
-	}
-	let filters: ProjectsFilterState = {
+	});
+	const filters = $state<ProjectsFilterState>({
 		projectFilter: 'all',
 		briefDateRange: 'week',
 		selectedProjectFilter: 'all',
 		searchQuery: ''
-	};
+	});
 
 	// Brief management
-	let projectBriefs: any[] = [];
-	let briefsLoaded = false;
-	let loadingBriefs = false;
-	let todayProjectBriefs: any[] = [];
+	let projectBriefs = $state<any[]>([]);
+	let briefsLoaded = $state(false);
+	let loadingBriefs = $state(false);
+	let todayProjectBriefs = $state<any[]>([]);
 
 	// Modal state
-	let selectedBrief: any = null;
-	let showBriefModal = false;
-	let showNewProjectModal = false;
-	let showBrainDumpModal = false;
-	let showQuickProjectModal = false;
-	let creatingProject = false;
-	let selectedBrainDumpProject: any = null;
+	let selectedBrief = $state<any>(null);
+	let showBriefModal = $state(false);
+	let showNewProjectModal = $state(false);
+	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
+	let showQuickProjectModal = $state(false);
+	let creatingProject = $state(false);
+	let selectedBrainDumpProject = $state<any>(null);
 
 	// Navigation state
 	let currentPath = '';
-	let unsubscribePage: (() => void) | null = null;
 
 	// Form reference
 	let createProjectForm: HTMLFormElement;
@@ -123,33 +131,40 @@
 	}
 
 	// Computed values with memoization
-	$: filteredProjects = filterProjects(projects, filters.projectFilter, filters.searchQuery);
-
-	$: filteredBriefs = filterBriefs(
-		projectBriefs,
-		filters.briefDateRange,
-		filters.selectedProjectFilter,
-		filters.searchQuery
+	const filteredProjects = $derived(
+		filterProjects(projects, filters.projectFilter, filters.searchQuery)
 	);
 
-	$: filterCounts = calculateFilterCounts(projects);
+	const filteredBriefs = $derived(
+		filterBriefs(
+			projectBriefs,
+			filters.briefDateRange,
+			filters.selectedProjectFilter,
+			filters.searchQuery
+		)
+	);
+
+	const filterCounts = $derived(calculateFilterCounts(projects));
 
 	// Always show filter bar to prevent layout shift, but adjust visibility of search
-	$: showSearch =
+	const showSearch = $derived(
 		(activeTab === 'projects' && projects.length > 5) ||
-		(activeTab === 'briefs' && projectBriefs.length > 5);
+			(activeTab === 'briefs' && projectBriefs.length > 5)
+	);
 
 	// Always show filter bar container, but conditionally show controls
-	$: showFilterControls =
-		(activeTab === 'projects' && projectsLoaded) || (activeTab === 'briefs' && briefsLoaded);
+	const showFilterControls = $derived(
+		(activeTab === 'projects' && projectsLoaded) || (activeTab === 'briefs' && briefsLoaded)
+	);
 
-	$: hasActiveFilters =
-		filters.searchQuery ||
-		(activeTab === 'projects' && filters.projectFilter !== 'all') ||
-		(activeTab === 'briefs' &&
-			(filters.briefDateRange !== 'all' || filters.selectedProjectFilter !== 'all'));
+	const hasActiveFilters = $derived(
+		Boolean(filters.searchQuery) ||
+			(activeTab === 'projects' && filters.projectFilter !== 'all') ||
+			(activeTab === 'briefs' &&
+				(filters.briefDateRange !== 'all' || filters.selectedProjectFilter !== 'all'))
+	);
 
-	$: tabs = [
+	const tabs = $derived([
 		{
 			id: 'projects',
 			label: 'Projects',
@@ -162,7 +177,7 @@
 			icon: FileText,
 			count: briefsLoaded ? projectBriefs.length : undefined
 		}
-	];
+	]);
 
 	// Optimized search handler with debouncing
 	const handleSearchChange = debounce((value: string) => {
@@ -334,7 +349,7 @@
 	async function handleBrainDump() {
 		await loadBrainDumpModal();
 		showNewProjectModal = false;
-		showBrainDumpModal = true;
+		brainDumpV2Store.openModal();
 		// Pass new project selection to BrainDumpModal
 		selectedBrainDumpProject = { id: 'new', name: 'New Project / Note', isProject: false };
 	}
@@ -380,7 +395,7 @@
 	}
 
 	function handleBrainDumpClose() {
-		showBrainDumpModal = false;
+		brainDumpV2Store.closeModal();
 		selectedBrainDumpProject = null;
 
 		// Clear ALL cache layers
@@ -412,6 +427,16 @@
 		};
 	};
 
+	// Track path changes with $effect (Svelte 5 pattern)
+	$effect(() => {
+		if (!browser) return;
+
+		const newPath = $page?.url?.pathname;
+		if (newPath !== currentPath) {
+			currentPath = newPath;
+		}
+	});
+
 	// Lifecycle
 	onMount(() => {
 		if (!browser) return;
@@ -430,22 +455,10 @@
 			// Load projects normally
 			loadProjects();
 		}
-
-		unsubscribePage = page.subscribe(($page) => {
-			const newPath = $page.url.pathname;
-			if (newPath !== currentPath) {
-				currentPath = newPath;
-			}
-		});
 	});
 
 	onDestroy(() => {
 		if (!browser) return;
-
-		if (unsubscribePage) {
-			unsubscribePage();
-			unsubscribePage = null;
-		}
 
 		// Cleanup to prevent memory retention
 		projectBriefs = [];

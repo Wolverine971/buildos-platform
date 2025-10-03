@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import {
 		Brain,
 		FolderOpen,
@@ -22,60 +22,67 @@
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
+	import {
+		brainDumpV2Store,
+		isModalOpen as brainDumpModalIsOpen
+	} from '$lib/stores/brain-dump-v2.store';
 	import { logout } from '$lib/utils/auth';
 	import { toastService } from '$lib/stores/toast.store';
 	import { browser } from '$app/environment';
-	import { goto, invalidateAll, pushState } from '$app/navigation';
 
-	export let user: any | null = null;
-	export let completedOnboarding: boolean = false;
-	export let onboardingProgress: number = 0;
-	export let element: HTMLElement | null = null;
-	export let stripeEnabled: boolean = false;
-	export let subscription: any = null;
+	type Props = {
+		user: any | null;
+		completedOnboarding?: boolean;
+		onboardingProgress?: number;
+		element?: HTMLElement | null;
+		stripeEnabled?: boolean;
+		subscription?: any;
+	};
 
-	// State management
-	let showUserMenu = false;
-	let showMobileMenu = false;
-	let loggingOut = false;
-	let loadingLink = ''; // Track which link is currently loading
-	let logoutAttempts = 0; // Track logout attempts to prevent spam
-	let showBrainDumpModal = false;
-	let currentProject: any = null;
-	let previousPath = '';
+	let {
+		user = null,
+		completedOnboarding = false,
+		onboardingProgress = 0,
+		element = $bindable<HTMLElement | null>(null),
+		stripeEnabled = false,
+		subscription = null
+	}: Props = $props();
 
-	// Navigation items
+	let showUserMenu = $state(false);
+	let showMobileMenu = $state(false);
+	let loggingOut = $state(false);
+	let loadingLink = $state('');
+	let logoutAttempts = $state(0);
+	let previousPath = $state('');
+
+	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
+	const currentPath = $derived($page.url.pathname);
+	const currentProject = $derived(
+		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null
+	);
+
 	const NAV_ITEMS = [
 		{ href: '/', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 
-	// Computed values
-	$: needsOnboarding = user && (!completedOnboarding || onboardingProgress < 100);
-	$: onboardingUrgent = user && onboardingProgress < 50;
-	$: userName = user?.name || user?.email || '';
+	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
+	const onboardingUrgent = $derived(user && onboardingProgress < 50);
+	const userName = $derived(user?.name || user?.email || '');
 
-	// Reactive tracking of current path - replaces page subscription for better performance
-	$: currentPath = $page.url.pathname;
-	$: {
-		// Handle path changes
-		if (currentPath !== previousPath) {
-			previousPath = currentPath;
-			loadingLink = ''; // Clear loading state when navigation completes
+	$effect(() => {
+		const path = currentPath;
+		if (path !== previousPath) {
+			previousPath = path;
+			loadingLink = '';
 			closeAllMenus();
 		}
-	}
-	// Extract current project from page data if on project page
-	$: currentProject =
-		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null;
+	});
 
-	// Enhanced logout handler with better error handling and prevention of spam clicks
 	async function handleSignOut() {
-		// Prevent multiple simultaneous logout attempts
 		if (loggingOut || !browser) return;
 
-		// Rate limiting to prevent spam clicks
 		const now = Date.now();
 		if (logoutAttempts > 0 && now - logoutAttempts < 2000) {
 			return;
@@ -86,17 +93,12 @@
 		closeAllMenus();
 
 		try {
-			// Show immediate feedback
 			toastService.info('Signing out...', { duration: 1000 });
 
-			// Call the enhanced logout function
 			await logout(
 				'/auth/login?message=' + encodeURIComponent('You have been signed out successfully')
 			);
-
-			// Success feedback will be shown on the login page due to the message parameter
 		} catch (error) {
-			// Provide specific error messaging
 			if (error instanceof Error) {
 				if (error.message.includes('network') || error.message.includes('fetch')) {
 					toastService.error(
@@ -113,52 +115,44 @@
 				);
 			}
 
-			// Reset logout state on error so user can try again
 			loggingOut = false;
 		} finally {
-			// Reset rate limiting after a delay
 			setTimeout(() => {
 				logoutAttempts = 0;
 			}, 1000);
 		}
 	}
 
-	// Removed automatic initialization of RealtimeBriefService
-	// Service will be initialized only when user explicitly generates a brief
-
-	// Menu management
 	function closeAllMenus() {
 		showMobileMenu = false;
 		showUserMenu = false;
 	}
 
 	function toggleMobileMenu(e: Event) {
-		if (loggingOut) return; // Prevent menu interactions during logout
+		if (loggingOut) return;
 		e.stopPropagation();
 		showMobileMenu = !showMobileMenu;
 		if (showMobileMenu) showUserMenu = false;
 	}
 
 	function toggleUserMenu(e: Event) {
-		if (loggingOut) return; // Prevent menu interactions during logout
+		if (loggingOut) return;
 		e.stopPropagation();
 		showUserMenu = !showUserMenu;
 		if (showUserMenu) showMobileMenu = false;
 	}
 
-	// Enhanced click handler for menu items to close menus and handle loading states
 	function handleMenuItemClick(href?: string) {
-		if (loggingOut) return false; // Prevent navigation during logout
+		if (loggingOut) return false;
 
 		if (href && href !== currentPath) {
-			loadingLink = href; // Set loading state for this specific link
+			loadingLink = href;
 		}
 
 		closeAllMenus();
 		return true;
 	}
 
-	// Event handlers
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			closeAllMenus();
@@ -177,14 +171,21 @@
 		}
 	}
 
+	function handleOpenBrainDump() {
+		closeAllMenus();
+		brainDumpV2Store.openModal();
+	}
+
+	function handleBrainDumpClose() {
+		brainDumpV2Store.closeModal();
+	}
+
 	onMount(() => {
 		if (!browser) return;
 
-		// Add event listeners
 		document.addEventListener('keydown', handleKeydown);
 		document.addEventListener('click', handleClickOutside);
 
-		// Cleanup function
 		return () => {
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
@@ -209,7 +210,7 @@
 						on:click={() => handleMenuItemClick('/')}
 					>
 						<!-- Animated Logo Icon (only show when not on homepage or when user is logged in) -->
-						{#if $page.url.pathname !== '/' || user?.id}
+						{#if currentPath !== '/' || user?.id}
 							<div class="relative logo-container">
 								<!-- Animated glow effect -->
 								<div class="logo-glow"></div>
@@ -273,7 +274,7 @@
 					<Button
 						variant="outline"
 						size="sm"
-						on:click={() => (showBrainDumpModal = true)}
+						on:click={handleOpenBrainDump}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border border-purple-300/50 dark:border-purple-500/60 bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] ${showBrainDumpModal ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-200'}`}
 						aria-label="Open Brain Dump"
 						title="Brain Dump"
@@ -424,7 +425,7 @@
 											href="/onboarding"
 											on:click={() => handleMenuItemClick('/onboarding')}
 											class="flex items-center w-full px-4 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors
-											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<Sparkles class="w-4 h-4 mr-3" />
 											Complete Setup
@@ -727,9 +728,7 @@
 	isOpen={showBrainDumpModal}
 	project={currentProject}
 	showNavigationOnSuccess={true}
-	on:close={() => {
-		showBrainDumpModal = false;
-	}}
+	on:close={handleBrainDumpClose}
 />
 
 <style>

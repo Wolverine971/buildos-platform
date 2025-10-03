@@ -190,6 +190,7 @@
 			scheduling_method: selectedSchedulingMethod,
 			project_start_date: localProjectStartDate,
 			project_end_date: localProjectEndDate,
+			task_count: totalSelectedTasks,
 			project_dates_changed:
 				localProjectStartDate !== projectStartDate ||
 				localProjectEndDate !== projectEndDate,

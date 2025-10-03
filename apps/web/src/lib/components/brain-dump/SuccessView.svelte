@@ -36,17 +36,14 @@
 
 	const dispatch = createEventDispatcher();
 
-	function handleStartNew() {
+	function handleStartNew(e: Event) {
+		e.stopPropagation();
 		dispatch('startNew');
 	}
 
 	function handleGoToProject(e: Event) {
 		e.stopPropagation();
 		dispatch('goToProject');
-	}
-
-	function handleClose() {
-		dispatch('close');
 	}
 </script>
 

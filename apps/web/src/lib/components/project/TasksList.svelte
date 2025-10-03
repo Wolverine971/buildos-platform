@@ -165,52 +165,49 @@
 	);
 
 	// Task counts by type - using Svelte 5 runes for better performance
-	let taskCounts = $derived(
-		(() => {
-			const tasks = allTasksFromStore;
-			const counts = {
-				all: tasks.length,
-				active: 0,
-				scheduled: 0,
-				deleted: 0,
-				completed: 0,
-				overdue: 0,
-				recurring: 0
-			};
+	function computeTaskCounts() {
+		const tasks = allTasksFromStore;
+		const counts = {
+			all: tasks.length,
+			active: 0,
+			scheduled: 0,
+			deleted: 0,
+			completed: 0,
+			overdue: 0,
+			recurring: 0
+		};
 
-			// Calculate counts in a single pass for better performance
-			for (const task of tasks) {
-				// Inline task type calculation for reactivity
-				let taskType: string;
+		for (const task of tasks) {
+			let taskType: string;
 
-				if (task.task_type === 'recurring') {
-					taskType = 'recurring';
-				} else if (task.status === 'done') {
-					taskType = 'completed';
-				} else if (task.deleted_at) {
-					taskType = 'deleted';
-				} else if (
-					task.start_date &&
-					new Date(task.start_date) < new Date() &&
-					task.status !== 'done'
-				) {
-					taskType = 'overdue';
-				} else {
-					const hasCalendarEvent = task.task_calendar_events?.some(
-						(e: any) => e.sync_status === 'synced' || e.sync_status === 'pending'
-					);
-					taskType = hasCalendarEvent ? 'scheduled' : 'active';
-				}
-
-				// Increment the appropriate counter
-				if (taskType in counts) {
-					counts[taskType as keyof typeof counts]++;
-				}
+			if (task.task_type === 'recurring') {
+				taskType = 'recurring';
+			} else if (task.status === 'done') {
+				taskType = 'completed';
+			} else if (task.deleted_at) {
+				taskType = 'deleted';
+			} else if (
+				task.start_date &&
+				new Date(task.start_date) < new Date() &&
+				task.status !== 'done'
+			) {
+				taskType = 'overdue';
+			} else {
+				const hasCalendarEvent = task.task_calendar_events?.some(
+					(e: any) => e.sync_status === 'synced' || e.sync_status === 'pending'
+				);
+				taskType = hasCalendarEvent ? 'scheduled' : 'active';
 			}
 
-			return counts;
-		})()
-	);
+			if (taskType in counts) {
+				counts[taskType as keyof typeof counts]++;
+			}
+		}
+
+		return counts;
+	}
+
+	let taskCounts = $derived(computeTaskCounts());
 
 	// Check if task is loading/scheduling using Svelte 5 runes
 	let isTaskLoading = $derived(

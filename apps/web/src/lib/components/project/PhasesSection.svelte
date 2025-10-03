@@ -4,8 +4,8 @@
 <script lang="ts">
 	import { AlertCircle } from 'lucide-svelte';
 	import { onDestroy, createEventDispatcher } from 'svelte';
-	import { get } from 'svelte/store';
 	import { projectStoreV2 } from '$lib/stores/project.store';
+	import { notificationStore } from '$lib/stores/notification.store';
 	import { modalStore } from '$lib/stores/modal.store';
 	import { ProjectService } from '$lib/services/projectService';
 	import { toastService } from '$lib/stores/toast.store';
@@ -18,7 +18,6 @@
 	import TaskFilterDropdown from '$lib/components/phases/TaskFilterDropdown.svelte';
 
 	// Lazy loaded components - use $state for reactivity
-	let PhaseGenerationLoadingOverlay = $state<any>(null);
 	let KanbanView = $state<any>(null);
 	let TimelineView = $state<any>(null);
 	let PhaseForm = $state<any>(null);
@@ -34,11 +33,6 @@
 
 		try {
 			switch (name) {
-				case 'PhaseGenerationLoadingOverlay':
-					PhaseGenerationLoadingOverlay = (
-						await import('$lib/components/project/PhaseGenerationLoadingOverlay.svelte')
-					).default;
-					break;
 				case 'KanbanView':
 					KanbanView = (await import('$lib/components/phases/KanbanView.svelte')).default;
 					break;
@@ -75,11 +69,27 @@
 
 	// FIXED: Use direct $derived instead of manual subscription to prevent loops
 	let storeState = $derived($projectStoreV2);
+	let notificationState = $derived($notificationStore);
 
 	// Get data from v2 store (including project) using Svelte 5 runes
 	let project = $derived(storeState.project);
 	let phases = $derived(storeState.phases || []);
 	let tasks = $derived(storeState.tasks || []);
+	function computeGenerating() {
+		if (!project?.id) return false;
+		for (const notification of notificationState.notifications.values()) {
+			if (
+				notification.type === 'phase-generation' &&
+				notification.data.projectId === project.id &&
+				notification.status === 'processing'
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	let generating = $derived(computeGenerating());
 	// Define TaskFilter type locally
 	type TaskFilter = 'active' | 'scheduled' | 'deleted' | 'completed' | 'overdue' | 'recurring';
 
@@ -95,20 +105,20 @@
 
 	// Calculate backlog tasks (tasks not in any phase) using Svelte 5 runes
 	// Use IIFE to get the value directly
-	let currentBacklogTasks = $derived(
-		(() => {
-			const phasedTaskIds = new Set(
-				phases.flatMap((p: any) => p.tasks?.map((t: any) => t.id) || [])
-			);
-			return tasks.filter(
-				(t: any) =>
-					!phasedTaskIds.has(t.id) &&
-					t.status !== 'done' &&
-					t.status !== 'completed' &&
-					!t.deleted_at
-			);
-		})()
-	);
+	function computeCurrentBacklogTasks() {
+		const phasedTaskIds = new Set(
+			phases.flatMap((p: any) => p.tasks?.map((t: any) => t.id) || [])
+		);
+		return tasks.filter(
+			(t: any) =>
+				!phasedTaskIds.has(t.id) &&
+				t.status !== 'done' &&
+				t.status !== 'completed' &&
+				!t.deleted_at
+		);
+	}
+
+	let currentBacklogTasks = $derived(computeCurrentBacklogTasks());
 
 	let taskStats = $derived(
 		storeState.stats || {
@@ -137,38 +147,35 @@
 
 	// Count tasks by filter using Svelte 5 runes
 	// Use IIFE to get the value directly, not a function
-	let taskCountsByFilter = $derived(
-		(() => {
-			const counts: Record<TaskFilter, number> = {
-				active: 0,
-				scheduled: 0,
-				deleted: 0,
-				completed: 0,
-				overdue: 0,
-				recurring: 0
-			};
+	function computeTaskCountsByFilter() {
+		const counts: Record<TaskFilter, number> = {
+			active: 0,
+			scheduled: 0,
+			deleted: 0,
+			completed: 0,
+			overdue: 0,
+			recurring: 0
+		};
 
-			// Count tasks in phases
-			phases.forEach((phase: any) => {
-				phase.tasks?.forEach((task: any) => {
-					const type = getTaskType(task) as TaskFilter;
-					counts[type]++;
-				});
-			});
-
-			// Count backlog tasks
-			currentBacklogTasks.forEach((task: any) => {
+		phases.forEach((phase: any) => {
+			phase.tasks?.forEach((task: any) => {
 				const type = getTaskType(task) as TaskFilter;
 				counts[type]++;
 			});
+		});
 
-			return counts;
-		})()
-	);
+		currentBacklogTasks.forEach((task: any) => {
+			const type = getTaskType(task) as TaskFilter;
+			counts[type]++;
+		});
+
+		return counts;
+	}
+
+	let taskCountsByFilter = $derived(computeTaskCountsByFilter());
 
 	// Core UI state
 	let loading = $state(false);
-	let generating = $state(false);
 	let error = $state<string | null>(null);
 	let viewMode = $state<'kanban' | 'timeline'>('timeline');
 	let innerWidth = $state(640); // Default to Tailwind's sm: breakpoint
@@ -217,11 +224,7 @@
 	let isMobile = $derived(innerWidth < 640); // Align with Tailwind's sm: breakpoint
 
 	// Preload components based on conditions using Svelte 5 effects
-	$effect(() => {
-		if (generating && !PhaseGenerationLoadingOverlay) {
-			loadComponent('PhaseGenerationLoadingOverlay');
-		}
-	});
+	$effect(() => {});
 
 	$effect(() => {
 		if (hasPhases && viewMode === 'kanban' && !KanbanView) {
@@ -559,11 +562,6 @@
 		modalStore.open('deletePhaseTask', taskId);
 	}
 
-	// Set generating state from parent
-	export function setGenerating(value: boolean) {
-		generating = value;
-	}
-
 	// Cleanup
 	function cleanup() {
 		resetDragState();
@@ -738,19 +736,6 @@
 					on:createTask={(e) => handleCreateTaskForPhase(e.detail)}
 				/>
 			{/if}
-		{/if}
-	{/if}
-
-	{#if generating}
-		{#if loadingComponents['PhaseGenerationLoadingOverlay']}
-			<!-- Fallback loading state -->
-			<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-0">
-				<div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
-					<div class="text-sm text-gray-500">Loading...</div>
-				</div>
-			</div>
-		{:else if PhaseGenerationLoadingOverlay}
-			<PhaseGenerationLoadingOverlay isVisible={generating} isRegeneration={hasPhases} />
 		{/if}
 	{/if}
 </div>

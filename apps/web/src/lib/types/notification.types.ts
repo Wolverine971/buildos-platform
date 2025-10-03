@@ -8,7 +8,7 @@
  */
 
 import type { BrainDumpParseResult } from './brain-dump';
-import type { Phase } from './project';
+import type { Phase, Task } from './project';
 
 // ============================================================================
 // Core Enums & Primitives
@@ -93,14 +93,21 @@ export interface PercentageProgress {
 	message?: string;
 }
 
+export type StepStatus = 'pending' | 'processing' | 'completed' | 'error';
+
+export interface StepProgressItem {
+	key?: string;
+	name: string;
+	status: StepStatus;
+	message?: string;
+	etaSeconds?: number | null;
+}
+
 export interface StepsProgress {
 	type: 'steps';
 	currentStep: number;
 	totalSteps: number;
-	steps: Array<{
-		name: string;
-		status: 'pending' | 'processing' | 'completed' | 'error';
-	}>;
+	steps: StepProgressItem[];
 }
 
 export interface StreamingProgress {
@@ -182,9 +189,19 @@ export interface PhaseGenerationNotification extends BaseNotification {
 		isRegeneration: boolean;
 		strategy: 'phases-only' | 'schedule-in-phases' | 'calendar-optimized';
 		taskCount: number;
+		selectedStatuses: string[];
+		requestPayload: Record<string, unknown>;
 		result?: {
 			phases: Phase[];
-			backlogTasks: any[];
+			backlogTasks: Task[];
+			calendarEventCount?: number;
+			summaryMarkdown?: string;
+		};
+		telemetry?: {
+			startedAt: number;
+			finishedAt?: number;
+			durationMs?: number;
+			fallbackMode: 'sse' | 'timer';
 		};
 		error?: string;
 	};

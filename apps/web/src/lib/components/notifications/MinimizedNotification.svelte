@@ -1,4 +1,6 @@
 <!-- apps/web/src/lib/components/notifications/MinimizedNotification.svelte -->
+<svelte:options runes={true} />
+
 <script lang="ts">
 	/**
 	 * Minimized Notification Card
@@ -19,69 +21,112 @@
 
 	// Lazy-loaded type-specific components
 	let BrainDumpMinimizedView = $state<any>(null);
-
-	// Component loading state
-	let componentLoaded = $state(false);
+	let PhaseGenerationMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
-		if (notification.type === 'brain-dump' && !BrainDumpMinimizedView) {
-			try {
-				const module = await import('./types/brain-dump/BrainDumpMinimizedView.svelte');
-				BrainDumpMinimizedView = module.default;
-				componentLoaded = true;
-			} catch (error) {
-				console.error(
-					'[MinimizedNotification] Failed to load BrainDumpMinimizedView:',
-					error
-				);
+		try {
+			switch (notification.type) {
+				case 'brain-dump':
+					if (!BrainDumpMinimizedView) {
+						const module = await import(
+							'./types/brain-dump/BrainDumpMinimizedView.svelte'
+						);
+						BrainDumpMinimizedView = module.default;
+					}
+					break;
+				case 'phase-generation':
+					if (!PhaseGenerationMinimizedView) {
+						console.log('load PhaseGenerationMinimizedView');
+						const module = await import(
+							'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
+						);
+						PhaseGenerationMinimizedView = module.default;
+					}
+					break;
+				default:
+					break;
 			}
+		} catch (error) {
+			console.error('[MinimizedNotification] Failed to load type view:', error);
 		}
 	}
 
 	// Auto-load component when notification type changes
 	$effect(() => {
-		if (notification.type === 'brain-dump' && !componentLoaded) {
-			loadTypeSpecificComponent();
-		}
+		void loadTypeSpecificComponent();
 	});
 
-	// Check if we should use type-specific view
-	let useTypeSpecificView = $derived(
-		notification.type === 'brain-dump' && BrainDumpMinimizedView !== null
+	// Resolve the type-specific component (if loaded)
+	// FIX: Changed from $derived(() => { ... }) to $derived(expression)
+	let typeSpecificComponent = $derived(
+		notification.type === 'brain-dump'
+			? BrainDumpMinimizedView
+			: notification.type === 'phase-generation'
+				? PhaseGenerationMinimizedView
+				: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
+	// FIX: Simplified the $derived expression
 	let title = $derived(
-		(() => {
-			switch (notification.type) {
-				case 'brain-dump':
-					if (notification.status === 'processing') return 'Processing brain dump';
-					if (notification.status === 'success') return 'Brain dump complete';
-					if (notification.status === 'error') return 'Brain dump failed';
-					return 'Brain dump';
-				case 'phase-generation':
-					if (notification.status === 'processing')
-						return `Generating phases for ${notification.data.projectName}`;
-					if (notification.status === 'success') return 'Phases generated';
-					if (notification.status === 'error') return 'Phase generation failed';
-					return 'Phase generation';
-				case 'calendar-analysis':
-					if (notification.status === 'processing') return 'Analyzing calendar';
-					if (notification.status === 'success') return 'Calendar analyzed';
-					if (notification.status === 'error') return 'Calendar analysis failed';
-					return 'Calendar analysis';
-				default:
-					if (notification.type === 'generic') {
-						return notification.data.title;
-					}
-					return 'Processing';
-			}
-		})()
+		notification.type === 'brain-dump'
+			? notification.status === 'processing'
+				? 'Processing brain dump'
+				: notification.status === 'success'
+					? 'Brain dump complete'
+					: notification.status === 'error'
+						? 'Brain dump failed'
+						: 'Brain dump'
+			: notification.type === 'phase-generation'
+				? notification.status === 'processing'
+					? `Generating phases for ${notification.data.projectName}`
+					: notification.status === 'success'
+						? 'Phases generated'
+						: notification.status === 'error'
+							? 'Phase generation failed'
+							: 'Phase generation'
+				: notification.type === 'calendar-analysis'
+					? notification.status === 'processing'
+						? 'Analyzing calendar'
+						: notification.status === 'success'
+							? 'Calendar analyzed'
+							: notification.status === 'error'
+								? 'Calendar analysis failed'
+								: 'Calendar analysis'
+					: notification.type === 'generic'
+						? notification.data.title
+						: 'Processing'
 	);
 
-	// Get subtitle/progress message
-	let subtitle = $derived(notification.progress?.message || '');
+	// Get subtitle/progress message with type-safe handling across progress variants
+	function resolveSubtitle() {
+		if (!notification.progress) {
+			return '';
+		}
+
+		if (
+			'message' in notification.progress &&
+			typeof notification.progress.message === 'string' &&
+			notification.progress.message
+		) {
+			return notification.progress.message;
+		}
+
+		if (notification.progress.type === 'steps') {
+			const { steps, currentStep } = notification.progress;
+			if (!Array.isArray(steps) || steps.length === 0) {
+				return '';
+			}
+			const index = Math.min(currentStep, steps.length - 1);
+			const activeStep = steps[index];
+			return activeStep?.message || activeStep?.name || '';
+		}
+
+		return '';
+	}
+
+	let subtitle = $derived(resolveSubtitle());
 
 	// Handle click to expand
 	function handleClick() {
@@ -112,11 +157,11 @@
 	role="button"
 	tabindex="0"
 	aria-label="Expand {notification.type} notification"
-	aria-expanded="false"
+	aria-expanded={!notification.isMinimized}
 >
-	{#if useTypeSpecificView}
-		<!-- Type-specific view (brain dump, etc.) -->
-		<svelte:component this={BrainDumpMinimizedView} {notification} />
+	{#if typeSpecificComponent}
+		<!-- Type-specific view (brain dump, phase generation, etc.) -->
+		<svelte:component this={typeSpecificComponent} {notification} />
 	{:else}
 		<!-- Generic fallback view -->
 		<div class="p-4">
@@ -153,7 +198,7 @@
 			</div>
 
 			<!-- Progress bar (if percentage-based) -->
-			{#if notification.progress.type === 'percentage' && notification.progress.percentage !== undefined}
+			{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 				<div class="mt-3 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
 					<div
 						class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"

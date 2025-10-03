@@ -34,18 +34,31 @@
 	import WeeklyTaskCalendar from '$lib/components/dashboard/WeeklyTaskCalendar.svelte';
 	import FirstTimeBrainDumpCard from '$lib/components/dashboard/FirstTimeBrainDumpCard.svelte';
 	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
+	import {
+		brainDumpV2Store,
+		isModalOpen as brainDumpModalIsOpen
+	} from '$lib/stores/brain-dump-v2.store';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	// Lazy-loaded modal components
-	let TaskModal: any = null;
-	let DailyBriefModal: any = null;
+	let TaskModal = $state<any>(null);
+	let DailyBriefModal = $state<any>(null);
 	// BrainDumpModal is imported directly, not lazy loaded
 
 	// Props with proper types
-	export let user: User;
-	export let initialData: DashboardData | null = null;
-	export let isLoadingDashboard: boolean = false;
-	export let dashboardError: string | null = null;
+	type Props = {
+		user: User;
+		initialData?: DashboardData | null;
+		isLoadingDashboard?: boolean;
+		dashboardError?: string | null;
+	};
+
+	let {
+		user,
+		initialData = null,
+		isLoadingDashboard = false,
+		dashboardError = null
+	}: Props = $props();
 
 	// Event dispatcher
 	const dispatch = createEventDispatcher();
@@ -55,88 +68,97 @@
 	// ============================================
 
 	// Core data state - now using reactive store
-	let dashboardData: DashboardData | null = initialData;
 	console.log('[Dashboard] Initial data:', initialData);
 
 	// Use initial data until store is initialized
-	$: pastDueTasks = $dashboardStore.initialized
-		? $dashboardStore.pastDueTasks
-		: initialData?.pastDueTasks || [];
-	$: todaysTasks = $dashboardStore.initialized
-		? $dashboardStore.todaysTasks
-		: initialData?.todaysTasks || [];
-	$: tomorrowsTasks = $dashboardStore.initialized
-		? $dashboardStore.tomorrowsTasks
-		: initialData?.tomorrowsTasks || [];
-	$: weeklyTasks = $dashboardStore.initialized
-		? $dashboardStore.weeklyTasks
-		: initialData?.weeklyTasks || [];
-	$: weeklyTasksByDate = $dashboardStore.initialized
-		? $dashboardStore.weeklyTasksByDate
-		: initialData?.weeklyTasksByDate || {};
-	$: activeProjects = $dashboardStore.initialized
-		? $dashboardStore.activeProjects
-		: initialData?.activeProjects || [];
-	$: calendarStatus = $dashboardStore.initialized
-		? $dashboardStore.calendarStatus
-		: initialData?.calendarStatus
-			? {
-					isConnected: initialData.calendarStatus.isConnected || false,
-					loading: false,
-					error: null
+	const pastDueTasks = $derived(
+		$dashboardStore.initialized ? $dashboardStore.pastDueTasks : initialData?.pastDueTasks || []
+	);
+	const todaysTasks = $derived(
+		$dashboardStore.initialized ? $dashboardStore.todaysTasks : initialData?.todaysTasks || []
+	);
+	const tomorrowsTasks = $derived(
+		$dashboardStore.initialized
+			? $dashboardStore.tomorrowsTasks
+			: initialData?.tomorrowsTasks || []
+	);
+	const weeklyTasks = $derived(
+		$dashboardStore.initialized ? $dashboardStore.weeklyTasks : initialData?.weeklyTasks || []
+	);
+	const weeklyTasksByDate = $derived(
+		$dashboardStore.initialized
+			? $dashboardStore.weeklyTasksByDate
+			: initialData?.weeklyTasksByDate || {}
+	);
+	const activeProjects = $derived(
+		$dashboardStore.initialized
+			? $dashboardStore.activeProjects
+			: initialData?.activeProjects || []
+	);
+	const calendarStatus = $derived(
+		$dashboardStore.initialized
+			? $dashboardStore.calendarStatus
+			: initialData?.calendarStatus
+				? {
+						isConnected: initialData.calendarStatus.isConnected || false,
+						loading: false,
+						error: null
+					}
+				: { isConnected: false, loading: false, error: null }
+	);
+	const dashboardStats = $derived(
+		$dashboardStore.initialized
+			? $dashboardStore.stats
+			: initialData?.stats || {
+					totalProjects: 0,
+					activeTasks: 0,
+					completedToday: 0,
+					upcomingDeadlines: 0
 				}
-			: { isConnected: false, loading: false, error: null };
-	$: dashboardStats = $dashboardStore.initialized
-		? $dashboardStore.stats
-		: initialData?.stats || {
-				totalProjects: 0,
-				activeTasks: 0,
-				completedToday: 0,
-				upcomingDeadlines: 0
-			};
-	$: storeLoading = $dashboardStore.loading;
-	$: storeError = $dashboardStore.error;
-	$: storeInitialized = $dashboardStore.initialized;
+	);
+	const storeLoading = $derived($dashboardStore.loading);
+	const storeError = $derived($dashboardStore.error);
+	const storeInitialized = $derived($dashboardStore.initialized);
 
 	// Debug calendar status
-	$: console.log(
-		'[Dashboard] Calendar status:',
-		calendarStatus,
-		'Store initialized:',
-		storeInitialized
-	);
+	$effect(() => {
+		console.log(
+			'[Dashboard] Calendar status:',
+			calendarStatus,
+			'Store initialized:',
+			storeInitialized
+		);
+	});
 
 	// Modal states
-	let showTaskModal = false;
-	let selectedTask: any = null;
-	let taskModalLoading = false;
-	let showDailyBriefModal = false;
-	let selectedBrief: any = null;
-	let showBrainDumpModal = false;
-	let selectedBrainDumpProject: any = null;
+	let showTaskModal = $state(false);
+	let selectedTask = $state<any>(null);
+	let taskModalLoading = $state(false);
+	let showDailyBriefModal = $state(false);
+	let selectedBrief = $state<any>(null);
+	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
+	let selectedBrainDumpProject = $state<any>(null);
 
 	// Lazy loading states
-	let loadingBottomSections = false;
-	let bottomSectionsLoaded = false;
-	let bottomSectionsData: BottomSectionsData = {};
-	let lazyLoadError: string | null = null;
-	let todaysBrief: any = null;
-	let loadingBrief = false;
+	let loadingBottomSections = $state(false);
+	let bottomSectionsLoaded = $state(false);
+	let bottomSectionsData = $state<BottomSectionsData>({});
+	let lazyLoadError = $state<string | null>(null);
+	let todaysBrief = $state<any>(null);
+	let loadingBrief = $state(false);
 
 	// Lazy-loaded components
-	let BraindumpWeekView: any = null;
-	let PhaseCalendarView: any = null;
+	let BraindumpWeekView = $state<any>(null);
+	let PhaseCalendarView = $state<any>(null);
 
 	// Modal loading states
-	let loadingTaskModal = false;
-	let loadingDailyBriefModal = false;
+	let loadingTaskModal = $state(false);
+	let loadingDailyBriefModal = $state(false);
 
 	// Performance optimization states
 	let lazyLoadTrigger: HTMLElement;
 	let intersectionObserver: IntersectionObserver | null = null;
 	let invalidationTimeout: number | null = null;
-	let cachedStats: DashboardStats | null = null;
-	let lastStatsUpdate = 0;
 
 	// ============================================
 	// DATA EXTRACTION & COMPUTED PROPERTIES
@@ -182,66 +204,40 @@
 		});
 	}
 
-	// Computed stats with caching - use store data when available
-	$: {
-		const currentTime = Date.now();
-		const dataChanged =
-			!cachedStats || currentTime - lastStatsUpdate > 1000 || storeInitialized;
-
-		if (dataChanged && (storeInitialized || initialData)) {
-			const source = storeInitialized
-				? {
-						activeProjects,
-						pastDueTasks,
-						todaysTasks,
-						tomorrowsTasks,
-						weeklyTasks,
-						stats: dashboardStats
-					}
-				: initialData;
-
-			cachedStats = {
-				activeProjects: source.activeProjects || [],
-				pastDueTasks: source.pastDueTasks || [],
-				todaysTasks: source.todaysTasks || [],
-				tomorrowsTasks: source.tomorrowsTasks || [],
-				weeklyTasks: source.weeklyTasks || [],
-				weeklyProgress: source.stats?.weeklyProgress || { completed: 0, total: 0 },
-				lastUpdated: new Date().toISOString()
-			};
-			lastStatsUpdate = currentTime;
-		}
-	}
-
-	$: stats = cachedStats || {
-		activeProjects: initialData?.activeProjects || [],
-		pastDueTasks: initialData?.pastDueTasks || [],
-		todaysTasks: initialData?.todaysTasks || [],
-		tomorrowsTasks: initialData?.tomorrowsTasks || [],
-		weeklyTasks: initialData?.weeklyTasks || [],
-		weeklyProgress: initialData?.stats?.weeklyProgress || { completed: 0, total: 0 }
-	};
+	// Computed stats - use store data when available, fallback to initialData
+	const stats = $derived({
+		activeProjects: storeInitialized ? activeProjects : initialData?.activeProjects || [],
+		pastDueTasks: storeInitialized ? pastDueTasks : initialData?.pastDueTasks || [],
+		todaysTasks: storeInitialized ? todaysTasks : initialData?.todaysTasks || [],
+		tomorrowsTasks: storeInitialized ? tomorrowsTasks : initialData?.tomorrowsTasks || [],
+		weeklyTasks: storeInitialized ? weeklyTasks : initialData?.weeklyTasks || [],
+		weeklyProgress: storeInitialized
+			? dashboardStats?.weeklyProgress || { completed: 0, total: 0 }
+			: initialData?.stats?.weeklyProgress || { completed: 0, total: 0 },
+		lastUpdated: new Date().toISOString()
+	});
 
 	// User familiarity calculations
-	$: userFamiliarity = calculateUserFamiliarity();
-	$: showWelcomeMessages = shouldShowWelcomeMessages();
-	$: primaryCTA = getPrimaryCTA();
-	$: nudgeCards = initialData ? calculateNudgeCards() : null;
+	const userFamiliarity = $derived(calculateUserFamiliarity());
+	const showWelcomeMessages = $derived(shouldShowWelcomeMessages());
+	const primaryCTA = $derived(getPrimaryCTA());
+	const nudgeCards = $derived(initialData ? calculateNudgeCards() : null);
 
 	// Display mode calculation for progressive disclosure
-	$: displayMode = calculateDisplayMode();
-	$: showBrainDumpCard = displayMode === 'first-time'; // Only show for brand new users
-	$: showTaskCards = displayMode !== 'first-time';
-	$: showWeeklyCalendar =
+	const displayMode = $derived(calculateDisplayMode());
+	const showBrainDumpCard = $derived(displayMode === 'first-time');
+	const showTaskCards = $derived(displayMode !== 'first-time');
+	const showWeeklyCalendar = $derived(
 		displayMode === 'experienced' ||
-		(displayMode === 'intermediate' && weeklyTasks?.length > 0);
-	$: showStatsGrid = displayMode !== 'first-time';
-	$: isCompactBrainDumpCard = false; // Never show compact version
-	$: showLazyLoadedSections = displayMode !== 'first-time'; // Hide bottom sections for new users
+			(displayMode === 'intermediate' && (weeklyTasks?.length || 0) > 0)
+	);
+	const showStatsGrid = $derived(displayMode !== 'first-time');
+	const isCompactBrainDumpCard = $derived(false);
+	const showLazyLoadedSections = $derived(displayMode !== 'first-time');
 
 	// Progress metrics
-	$: productivityScore = calculateProductivityScore(stats?.weeklyProgress);
-	$: weeklyProgressText = getWeeklyProgressText(stats?.weeklyProgress);
+	const productivityScore = $derived(calculateProductivityScore(stats?.weeklyProgress));
+	const weeklyProgressText = $derived(getWeeklyProgressText(stats?.weeklyProgress));
 
 	// ============================================
 	// LIFECYCLE HOOKS
@@ -315,10 +311,7 @@
 						todaysBrief = data.todaysBrief;
 					}
 					bottomSectionsLoaded = true;
-					if (data.stats) {
-						cachedStats = { ...cachedStats, ...data.stats };
-						lastStatsUpdate = Date.now();
-					}
+					// Note: Stats are now handled via $derived, no manual caching needed
 					if (intersectionObserver) {
 						intersectionObserver.disconnect();
 					}
@@ -534,12 +527,12 @@
 
 	function handleStartBrainDump() {
 		console.log('[Dashboard] Opening brain dump modal');
-		showBrainDumpModal = true;
+		brainDumpV2Store.openModal();
 		selectedBrainDumpProject = null; // Let user select project in modal
 	}
 
 	async function handleBrainDumpClose() {
-		showBrainDumpModal = false;
+		brainDumpV2Store.closeModal();
 		selectedBrainDumpProject = null;
 		// Refresh dashboard data after brain dump
 		await requestRefresh();
@@ -547,7 +540,7 @@
 
 	async function handleBrainDumpNavigate(event: CustomEvent) {
 		const { url } = event.detail;
-		showBrainDumpModal = false;
+		brainDumpV2Store.closeModal();
 		selectedBrainDumpProject = null;
 		await tick();
 		if (url) {
@@ -645,7 +638,7 @@
 	}
 
 	// Display name helper
-	$: displayName = user?.name || user?.email?.split('@')[0] || 'there';
+	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
 </script>
 
 <main
@@ -1021,7 +1014,7 @@
 	on:close={handleBrainDumpClose}
 	on:navigateAndClose={handleBrainDumpNavigate}
 	onNavigateToProject={async (url: string) => {
-		showBrainDumpModal = false;
+		brainDumpV2Store.closeModal();
 		selectedBrainDumpProject = null;
 		await tick();
 		if (url) {

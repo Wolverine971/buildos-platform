@@ -58,12 +58,7 @@
 		{
 			"file": "src/lib/components/project/PhasesSection.svelte",
 			"type": "component",
-			"components": [
-				"PhaseGenerationLoadingOverlay",
-				"KanbanView",
-				"TimelineView",
-				"PhaseForm"
-			]
+			"components": ["KanbanView", "TimelineView", "PhaseForm"]
 		},
 		{
 			"file": "src/lib/components/project/ProjectHeaderMinimal.svelte",

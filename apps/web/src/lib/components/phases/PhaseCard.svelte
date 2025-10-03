@@ -85,18 +85,19 @@
 
 	// Direct reactive access to store - Svelte 5 optimized pattern
 	let storeState = $derived($projectStoreV2);
+
+	function resolveGlobalTaskFilters(): TaskFilter[] {
+		const filters = storeState?.globalTaskFilters || [
+			'active',
+			'scheduled',
+			'overdue',
+			'recurring'
+		];
+		return (filters as string[]).map((f) => f as TaskFilter);
+	}
+
 	// Ensure globalTaskFilters is always an array of TaskFilter
-	let globalTaskFilters = $derived<TaskFilter[]>(
-		(() => {
-			const filters = storeState?.globalTaskFilters || [
-				'active',
-				'scheduled',
-				'overdue',
-				'recurring'
-			];
-			return (filters as string[]).map((f) => f as TaskFilter);
-		})()
-	);
+	let globalTaskFilters = $derived<TaskFilter[]>(resolveGlobalTaskFilters());
 
 	// LOCAL FILTER STATE - using arrays for better reactivity
 	// Initialize from global filters to ensure consistency
@@ -214,31 +215,24 @@
 	// Remove debug logging that causes unnecessary re-runs
 
 	// Get filtered tasks based on active filters (global or local) using Svelte 5 runes
-	// Use IIFE to get the value directly, not a function
-	let filteredTasks = $derived(
-		(() => {
-			if (!phase.tasks || phase.tasks.length === 0) {
-				return [];
-			}
+	function computeFilteredTasks() {
+		if (!phase.tasks || phase.tasks.length === 0) {
+			return [];
+		}
 
-			// Use local filters if custom, otherwise use global
-			// Both are now guaranteed to be TaskFilter arrays
-			const activeFilters: TaskFilter[] = hasCustomFilters
-				? localPhaseFilters
-				: globalTaskFilters;
+		const activeFilters: TaskFilter[] = hasCustomFilters
+			? localPhaseFilters
+			: globalTaskFilters;
 
-			// Debug logging
-			// Calculate filtered tasks WITHOUT caching to fix reactivity
-			const filtered = phase?.tasks?.filter((task) => {
-				const taskType = getTaskType(task);
-				const shouldInclude = activeFilters.includes(taskType);
+		const filtered = phase?.tasks?.filter((task) => {
+			const taskType = getTaskType(task);
+			return activeFilters.includes(taskType);
+		});
 
-				return shouldInclude;
-			});
+		return filtered || [];
+	}
 
-			return filtered || [];
-		})()
-	);
+	let filteredTasks = $derived(computeFilteredTasks());
 
 	// Remove debug logging in production
 
@@ -253,32 +247,28 @@
 	};
 
 	// Calculate task counts with memoization using Svelte 5 runes
-	// Use IIFE to get the value directly, not a function
-	let phaseTaskCounts = $derived(
-		(() => {
-			// Reset counts
-			const counts: Record<TaskFilter, number> = {
-				active: 0,
-				scheduled: 0,
-				deleted: 0,
-				completed: 0,
-				overdue: 0
-			};
+	function computePhaseTaskCounts() {
+		const counts: Record<TaskFilter, number> = {
+			active: 0,
+			scheduled: 0,
+			deleted: 0,
+			completed: 0,
+			overdue: 0
+		};
 
-			// Debug: Check if phase.tasks exists
-			if (!phase.tasks || phase.tasks.length === 0) {
-				return counts;
-			}
-
-			// Count ALL tasks in the phase (not filtered)
-			phase.tasks.forEach((task) => {
-				const type = getTaskType(task) as TaskFilter;
-				counts[type]++;
-			});
-
+		if (!phase.tasks || phase.tasks.length === 0) {
 			return counts;
-		})()
-	);
+		}
+
+		phase.tasks.forEach((task) => {
+			const type = getTaskType(task) as TaskFilter;
+			counts[type]++;
+		});
+
+		return counts;
+	}
+
+	let phaseTaskCounts = $derived(computePhaseTaskCounts());
 
 	// Update local filters when global filters change (but only if not customized) using Svelte 5 effects
 	$effect(() => {

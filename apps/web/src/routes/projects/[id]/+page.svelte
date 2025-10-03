@@ -28,6 +28,7 @@
 	import { projectStoreV2 } from '$lib/stores/project.store';
 	import { ProjectDataService } from '$lib/services/projectData.service';
 	import { ProjectSynthesisService } from '$lib/services/project-synthesis.service';
+	import { startPhaseGeneration } from '$lib/services/phase-generation-notification.bridge';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ProjectService } from '$lib/services/projectService';
 	import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
@@ -56,7 +57,6 @@
 	let dataService: ProjectDataService;
 	let synthesisService: ProjectSynthesisService;
 	let projectService: ProjectService;
-	let phasesSection = $state<any>(null);
 
 	// Track if store has been initialized to avoid re-initialization (non-reactive)
 	let storeInitialized = false;
@@ -355,30 +355,27 @@
 	}
 
 	// Smart container height calculation based on content type and screen size
-	let smartContainerHeight = $derived(() => {
+	function computeSmartContainerHeight(): string {
 		const baseHeight = innerWidth < 640 ? 400 : 500; // Mobile vs desktop base
 		const hasData = getHasExistingDataForTab(activeTab);
 
 		switch (activeTab) {
 			case 'overview':
-				// Phases can be quite tall with multiple phases and tasks
 				return hasData ? 'auto' : `${baseHeight + 200}px`;
 			case 'tasks':
-				// Task lists can be long
 				return hasData ? 'auto' : `${baseHeight + 100}px`;
 			case 'notes':
-				// Notes are generally compact
 				return hasData ? 'auto' : `${baseHeight}px`;
 			case 'briefs':
-				// Briefs are in a grid layout, typically shorter
 				return hasData ? 'auto' : `${baseHeight}px`;
 			case 'synthesis':
-				// Synthesis can be quite long when generated
 				return hasData ? 'auto' : `${baseHeight + 150}px`;
 			default:
 				return `${baseHeight}px`;
 		}
-	});
+	}
+
+	let smartContainerHeight = $derived(computeSmartContainerHeight());
 
 	// Track previous activeTab to avoid redundant loads
 	let previousActiveTab = $state<string>('');
@@ -755,45 +752,27 @@
 	}
 
 	async function handlePhaseGenerationConfirm(params: any) {
-		if (phasesSection) {
-			phasesSection.setGenerating(true);
+		if (!project?.id) {
+			toastService.error('Project context missing. Unable to start phase generation.');
+			return;
 		}
 
 		try {
-			const response = await fetch(`/api/projects/${data.project?.id}/phases/generate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(params)
+			await startPhaseGeneration({
+				projectId: project.id,
+				projectName: project.name ?? 'Project',
+				isRegeneration: (projectStoreV2.getState().phases ?? []).length > 0,
+				taskCount:
+					typeof params.task_count === 'number'
+						? params.task_count
+						: (projectStoreV2.getState().tasks?.length ?? 0),
+				selectedStatuses: params.selected_statuses ?? [],
+				requestPayload: params
 			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to generate phases');
-			}
-
-			console.log('Phase generation result:', result);
-			if (result.data?.phases) {
-				console.log('Setting phases in store:', result.data.phases);
-				projectStoreV2.setPhases(result.data.phases);
-			} else {
-				console.log('No phases in result.data');
-			}
-			toastService.success('Phases generated successfully');
-
-			if (params.project_dates_changed) {
-				await handleProjectUpdated({
-					start_date: params.project_start_date,
-					end_date: params.project_end_date
-				});
-			}
-		} catch (err) {
-			const error = err instanceof Error ? err.message : 'Failed to generate phases';
-			toastService.error(error);
-		} finally {
-			if (phasesSection) {
-				phasesSection.setGenerating(false);
-			}
+		} catch (error) {
+			console.error('Failed to start phase generation notification:', error);
+			const message = error instanceof Error ? error.message : 'Failed to generate phases';
+			toastService.error(message);
 		}
 	}
 
@@ -1401,7 +1380,6 @@
 								<PhasesSkeleton />
 							{:else if PhasesSection}
 								<PhasesSection
-									bind:this={phasesSection}
 									calendarConnected={calendarStatus?.isConnected}
 									onEditTask={(task: Task) => modalStore.open('task', task)}
 									onCreateTask={(phaseId: Number) =>

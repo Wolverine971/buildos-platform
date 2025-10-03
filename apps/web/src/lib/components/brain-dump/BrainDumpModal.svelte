@@ -84,6 +84,7 @@
 	// Processing notification is now managed through unified store
 
 	import type { ParsedOperation, DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
+	type CleanupReason = 'close' | 'destroy' | 'handoff';
 
 	// Props - Using Svelte 5 $props() for runes mode
 	let {
@@ -142,6 +143,7 @@
 	let autoSaveTimeout: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
 	let isAutoSaving = $state(false);
 	let componentMounted = $state(true);
+	let cleanupCompleted = false;
 
 	// Processing abort controller for cleanup
 	let abortController: AbortController | null = null; // Controller references should NOT be reactive
@@ -290,6 +292,7 @@
 	});
 
 	async function initializeModal() {
+		cleanupCompleted = false;
 		// Clean up any stale abort controllers from previous sessions
 		if (abortController) {
 			console.log('[BrainDumpModal] Cleaning up stale abort controller on init');
@@ -464,7 +467,7 @@
 		}
 
 		// Clean up
-		cleanup();
+		cleanup(isHandedOff ? 'handoff' : 'close');
 
 		// Only reset store if:
 		// 1. We're not handing off to notification
@@ -497,9 +500,13 @@
 		// }
 	}
 
-	function cleanup() {
-		// FIXED: Comprehensive memory cleanup to prevent leaks
-		console.log('[BrainDumpModal] Starting comprehensive cleanup');
+	function cleanup(reason: CleanupReason = 'close') {
+		if (cleanupCompleted) {
+			console.debug('[BrainDumpModal] Skipping cleanup - already completed', { reason });
+			return;
+		}
+		cleanupCompleted = true;
+		console.debug('[BrainDumpModal] Running cleanup', { reason });
 
 		// 0. Abort any active SSE/streaming connections
 		// IMPORTANT: In multi-brain dump mode, the bridge manages API streams, so only abort if legacy mode
@@ -1233,8 +1240,9 @@
 	}
 
 	function handleStartNew() {
-		brainDumpActions.reset();
-		brainDumpActions.setModalView('project-selection');
+		brainDumpActions.resetForNewSession();
+		brainDumpActions.openModal();
+		brainDumpActions.clearParseResults();
 	}
 
 	// Keep edit operation handler for potential future use
@@ -1250,7 +1258,7 @@
 
 	onDestroy(() => {
 		componentMounted = false;
-		cleanup();
+		cleanup('destroy');
 	});
 </script>
 

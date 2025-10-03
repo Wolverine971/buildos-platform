@@ -19,52 +19,63 @@
 
 	// Lazy-loaded type-specific components
 	let BrainDumpModalContent = $state<any>(null);
-
-	// Component loading state
-	let componentLoaded = $state(false);
+	let PhaseGenerationModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
-		if (notification.type === 'brain-dump' && !BrainDumpModalContent) {
-			try {
-				const module = await import('./types/brain-dump/BrainDumpModalContent.svelte');
-				BrainDumpModalContent = module.default;
-				componentLoaded = true;
-			} catch (error) {
-				console.error('[NotificationModal] Failed to load BrainDumpModalContent:', error);
+		try {
+			switch (notification.type) {
+				case 'brain-dump':
+					if (!BrainDumpModalContent) {
+						const module = await import(
+							'./types/brain-dump/BrainDumpModalContent.svelte'
+						);
+						BrainDumpModalContent = module.default;
+					}
+					break;
+				case 'phase-generation':
+					if (!PhaseGenerationModalContent) {
+						const module = await import(
+							'./types/phase-generation/PhaseGenerationModalContent.svelte'
+						);
+						PhaseGenerationModalContent = module.default;
+					}
+					break;
+				default:
+					break;
 			}
+		} catch (error) {
+			console.error('[NotificationModal] Failed to load type modal content:', error);
 		}
 	}
 
 	// Auto-load component when notification type changes
 	$effect(() => {
-		if (notification.type === 'brain-dump' && !componentLoaded) {
-			loadTypeSpecificComponent();
-		}
+		loadTypeSpecificComponent();
 	});
 
-	// Check if we should use type-specific view
-	let useTypeSpecificView = $derived(
-		notification.type === 'brain-dump' && BrainDumpModalContent !== null
+	// Resolve the type-specific component (if loaded)
+	// FIX: Changed from $derived(() => { ... }) to $derived(expression)
+	let typeSpecificComponent = $derived(
+		notification.type === 'brain-dump'
+			? BrainDumpModalContent
+			: notification.type === 'phase-generation'
+				? PhaseGenerationModalContent
+				: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
+	// FIX: Simplified the $derived expression
 	let modalTitle = $derived(
-		(() => {
-			switch (notification.type) {
-				case 'brain-dump':
-					return 'Brain Dump Processing';
-				case 'phase-generation':
-					return `Phase Generation - ${notification.data.projectName}`;
-				case 'calendar-analysis':
-					return 'Calendar Analysis';
-				default:
-					if (notification.type === 'generic') {
-						return notification.data.title;
-					}
-					return 'Processing';
-			}
-		})()
+		notification.type === 'brain-dump'
+			? 'Brain Dump Processing'
+			: notification.type === 'phase-generation'
+				? `Phase Generation - ${notification.data.projectName}`
+				: notification.type === 'calendar-analysis'
+					? 'Calendar Analysis'
+					: notification.type === 'generic'
+						? notification.data.title
+						: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)
@@ -75,7 +86,12 @@
 
 	// Handle dismiss (remove notification completely)
 	function handleDismiss() {
-		notificationStore.remove(notification.id);
+		const targetId = notification?.id;
+		if (!targetId) {
+			console.warn('[NotificationModal] handleDismiss called without notification id');
+			return;
+		}
+		notificationStore.remove(targetId);
 	}
 
 	// Smart close handler - minimizes if processing, dismisses if done
@@ -86,38 +102,16 @@
 			handleDismiss();
 		}
 	}
-
-	// Event handlers for brain dump modal content
-	function handleModalEvent(event: CustomEvent) {
-		const { type, detail } = event;
-		console.log('[NotificationModal] Event from modal content:', type, detail);
-
-		// Forward events to appropriate handlers
-		switch (type) {
-			case 'minimize':
-				handleMinimize();
-				break;
-			case 'close':
-				handleDismiss();
-				break;
-			case 'cancel':
-				handleDismiss();
-				break;
-			default:
-				// Other events handled by parent component or notification system
-				break;
-		}
-	}
 </script>
 
-{#if useTypeSpecificView}
+{#if typeSpecificComponent}
 	<!-- Type-specific modal content (e.g., BrainDumpModalContent) - already has Modal wrapper -->
 	<svelte:component
-		this={BrainDumpModalContent}
+		this={typeSpecificComponent}
 		{notification}
-		on:minimize={handleModalEvent}
-		on:close={handleModalEvent}
-		on:cancel={handleModalEvent}
+		onminimize={handleMinimize}
+		onclose={handleDismiss}
+		oncancel={handleDismiss}
 	/>
 {:else}
 	<!-- Generic fallback modal -->
@@ -167,7 +161,7 @@
 						</p>
 
 						<!-- Progress bar for percentage-based progress -->
-						{#if notification.progress.type === 'percentage' && notification.progress.percentage !== undefined}
+						{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 							<div class="mt-4 max-w-md mx-auto">
 								<div
 									class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
@@ -184,7 +178,7 @@
 						{/if}
 
 						<!-- Step-based progress -->
-						{#if notification.progress.type === 'steps'}
+						{#if notification.progress?.type === 'steps'}
 							<div class="mt-6 space-y-2 max-w-md mx-auto">
 								{#each notification.progress.steps as step, index}
 									<div class="flex items-center gap-3">
@@ -236,18 +230,20 @@
 							Success!
 						</h3>
 						<p class="text-gray-600 dark:text-gray-400">
-							{notification.type === 'brain-dump' &&
-								'Brain dump processed successfully'}
-							{notification.type === 'phase-generation' &&
-								'Phases generated successfully'}
-							{notification.type === 'calendar-analysis' &&
-								'Calendar analyzed successfully'}
-							{notification.type === 'generic' && notification.data.message}
+							{notification.type === 'brain-dump'
+								? 'Brain dump processed successfully'
+								: notification.type === 'phase-generation'
+									? 'Phases generated successfully'
+									: notification.type === 'calendar-analysis'
+										? 'Calendar analyzed successfully'
+										: notification.type === 'generic'
+											? notification.data.message
+											: 'Operation completed successfully'}
 						</p>
 
 						<!-- Action buttons -->
 						<div class="mt-6 flex gap-3 justify-center">
-							{#if notification.actions.view}
+							{#if notification.actions?.view}
 								<button
 									onclick={notification.actions.view}
 									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -272,20 +268,20 @@
 							Error
 						</h3>
 						<p class="text-red-600 dark:text-red-400">
-							{#if notification.type === 'brain-dump'}
-								{notification.data.error || 'Brain dump processing failed'}
-							{:else if notification.type === 'phase-generation'}
-								{notification.data.error || 'Phase generation failed'}
-							{:else if notification.type === 'calendar-analysis'}
-								{notification.data.error || 'Calendar analysis failed'}
-							{:else if notification.type === 'generic'}
-								{notification.data.error || 'An error occurred'}
-							{/if}
+							{notification.type === 'brain-dump'
+								? notification.data?.error || 'Brain dump processing failed'
+								: notification.type === 'phase-generation'
+									? notification.data?.error || 'Phase generation failed'
+									: notification.type === 'calendar-analysis'
+										? notification.data?.error || 'Calendar analysis failed'
+										: notification.type === 'generic'
+											? notification.data?.error || 'An error occurred'
+											: 'An error occurred'}
 						</p>
 
 						<!-- Action buttons -->
 						<div class="mt-6 flex gap-3 justify-center">
-							{#if notification.actions.retry}
+							{#if notification.actions?.retry}
 								<button
 									onclick={notification.actions.retry}
 									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

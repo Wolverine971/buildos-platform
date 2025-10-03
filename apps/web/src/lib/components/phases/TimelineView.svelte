@@ -31,8 +31,8 @@
 	let phases = $derived(storeState.phases || []);
 	let tasks = $derived(storeState.tasks || []);
 
-	// FIXED: Convert complex computations to $derived.by()
-	let currentBacklogTasks = $derived.by(() => {
+	// FIXED: Convert complex computations to helper functions for $derived
+	function computeBacklogTasks() {
 		const phasedTaskIds = new Set(
 			phases.flatMap((p: any) => p.tasks?.map((t: any) => t.id) || [])
 		);
@@ -43,13 +43,15 @@
 					t.status !== 'done' &&
 					t.status !== 'completed' &&
 					!t.deleted_at &&
-					t.task_type !== 'recurring' // Exclude recurring from backlog
+					t.task_type !== 'recurring'
 			) || []
 		);
-	});
+	}
+
+	let currentBacklogTasks = $derived(computeBacklogTasks());
 
 	// Get recurring tasks for this project
-	let recurringTasks = $derived.by(() => {
+	function computeRecurringTasks() {
 		return (
 			tasks?.filter(
 				(t: any) =>
@@ -59,7 +61,9 @@
 					!t.deleted_at
 			) || []
 		);
-	});
+	}
+
+	let recurringTasks = $derived(computeRecurringTasks());
 
 	const dispatch = createEventDispatcher();
 
