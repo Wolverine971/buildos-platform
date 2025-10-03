@@ -26,17 +26,17 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Documentation Structure
 
-| Folder           | Contents                           | Key Documents                                     |
-| ---------------- | ---------------------------------- | ------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding   |
-| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards |
-| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking      |
-| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring               |
-| `/migrations/`   | Migration tracking                 | active migrations only                            |
-| `/integrations/` | Third-party services               | Google Calendar integration docs                  |
-| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                 |
-| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment |
-| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews              |
+| Folder           | Contents                           | Key Documents                                                     |
+| ---------------- | ---------------------------------- | ----------------------------------------------------------------- |
+| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding, admin-dashboard  |
+| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards                 |
+| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking                      |
+| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring                               |
+| `/migrations/`   | Migration tracking                 | active migrations (Phase 2.2, Phase 3, type updates)              |
+| `/integrations/` | Third-party services               | Google Calendar integration docs                                  |
+| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                                 |
+| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment                 |
+| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews                              |
 
 **Note:** Some documentation exists in both top-level folders (like `/features/`) and in `/technical/` for historical reasons. Prefer using `/technical/` for comprehensive technical documentation.
 
@@ -107,7 +107,7 @@ Stackable notification system for long-running processes:
 
 ### Project Management
 
-**Location:** `/features/` (various project-related docs)  
+**Location:** `/features/` (various project-related docs)
 **API:** `/technical/api/endpoints/projects.md`
 
 Project and task organization:
@@ -116,6 +116,18 @@ Project and task organization:
 - Task lists with priorities
 - Phase-based organization
 - Calendar integration
+
+### Admin Dashboard (LLM Usage Tracking)
+
+**Location:** `/features/admin-dashboard/`
+**Implementation:** `/technical/services/LLM_USAGE_IMPLEMENTATION_SUMMARY.md`
+
+Admin dashboard for monitoring LLM API usage, costs, and performance:
+
+- Real-time usage metrics and cost tracking
+- Model and operation breakdowns
+- User cost analytics
+- Performance monitoring
 
 ## Development Commands
 
@@ -167,11 +179,13 @@ See `/operations/deployment/` for complete deployment guides:
 
 ### Active Migrations
 
-See `/migrations/active/` for ongoing migration work:
+See `/migrations/active/` for completed and ongoing migration work:
 
-- Phase 2 brain dump migration
-- Type system updates
-- Implementation progress tracking
+- **Phase 2.2**: Store structure flattening (`PHASE_2_2_STORE_FLATTENING.md`)
+- **Phase 3**: Performance optimizations (`PHASE_3_PERFORMANCE_OPTIMIZATIONS.md`)
+- **Phase 2**: Brain dump migration (`PHASE_2_BRAIN_DUMP_MIGRATION_STATUS.md`)
+- **Type System**: Type updates and fixes (`TYPE_UPDATE_PROGRESS.md`, `TYPEFIX_PLAN.md`)
+- **Implementation**: Progress tracking (`IMPLEMENTATION_PROGRESS.md`)
 
 ## Related Documentation
 
