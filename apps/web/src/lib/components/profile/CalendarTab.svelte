@@ -29,7 +29,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import CalendarAnalysisModal from '$lib/components/calendar/CalendarAnalysisModal.svelte';
-	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
+	import { startCalendarAnalysis as startCalendarAnalysisNotification } from '$lib/services/calendar-analysis-notification.bridge';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	// import { getSupabase } from '$lib/supabase';
@@ -49,7 +49,6 @@
 	let isSavingCalendar = false;
 	let refreshingCalendar = false;
 	let showAnalysisModal = false;
-	let showAnalysisResults = false;
 	let analysisInProgress = false;
 	let calendarAnalysisHistory: any[] = [];
 	let calendarProjects: any[] = [];
@@ -282,8 +281,22 @@
 		if (analysisInProgress) return;
 
 		analysisInProgress = true;
-		showAnalysisResults = true;
-		// The CalendarAnalysisResults component will handle the actual analysis
+		try {
+			const { completion } = await startCalendarAnalysisNotification({
+				daysBack: 7,
+				daysForward: 60,
+				expandOnStart: true,
+				expandOnComplete: true
+			});
+
+			await completion;
+			await loadCalendarAnalysisHistory();
+		} catch (error) {
+			console.error('Failed to start calendar analysis', error);
+			toastService.error('Failed to initiate calendar analysis');
+		} finally {
+			analysisInProgress = false;
+		}
 	}
 
 	async function loadCalendarAnalysisHistory() {
@@ -953,15 +966,5 @@
 	onAnalyze={() => {
 		showAnalysisModal = false;
 		startCalendarAnalysis();
-	}}
-/>
-
-<CalendarAnalysisResults
-	bind:isOpen={showAnalysisResults}
-	autoStart={true}
-	onClose={() => {
-		showAnalysisResults = false;
-		analysisInProgress = false;
-		loadCalendarAnalysisHistory();
 	}}
 />

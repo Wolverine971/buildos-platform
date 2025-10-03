@@ -28,7 +28,7 @@ This specification outlines a **generic, stackable notification system** for Bui
 - **Phase 2 (Brain Dump Migration)**: ✅ Complete with streaming support
 - **Multi-Brain Dump Concurrent Processing**: ✅ Implemented (up to 3 concurrent, auto-queuing)
 - **SSR-Safe Environment Variables**: ✅ Implemented
-- **Phase 3 (Phase Generation Integration)**: ✅ ~90% Complete (implementation done, testing in progress)
+- **Phase 3 (Phase Generation Integration)**: ✅ Implementation Complete (manual QA pending)
 
 See detailed documentation:
 
@@ -895,9 +895,9 @@ transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     - [x] Clear legacy state when switching modes
     - [x] Modal integration with multi-mode detection
 
-### Phase 3: Phase Generation Integration ✅ ~90% COMPLETE
+### Phase 3: Phase Generation Integration ✅ COMPLETE (Manual QA Pending)
 
-**Status:** Implementation complete, pending comprehensive testing
+**Status:** Implementation complete, pending manual QA validation
 
 #### Objectives ✅ ACHIEVED
 
@@ -1039,7 +1039,7 @@ The bridge resolves `taskCount` and `selectedStatuses` from the preview response
     - Bridge invokes `projectStoreV2.setPhases` and `setBacklogTasks` upon success.
     - When regeneration adjusts project dates, the bridge calls the existing `handleProjectUpdated` callback to keep the UI in sync.
 
-#### Implementation Tasks ✅ 8/10 COMPLETE
+#### Implementation Tasks ✅ 9/10 COMPLETE
 
 - [x] ✅ Scaffold `phase-generation-notification.bridge.ts` with action registration + fallback timer progress
     - Location: `apps/web/src/lib/services/phase-generation-notification.bridge.ts` (544 lines)
@@ -1061,9 +1061,9 @@ The bridge resolves `taskCount` and `selectedStatuses` from the preview response
     - Confirmed deleted in git status
 - [x] ✅ Initialize bridge in `+layout.svelte`
     - Lines 49-51: Imports and initializes phase generation notification bridge
-- [~] ⚠️ Extend unit tests: store step updates, bridge retry path, hydration
-    - Test file exists: `apps/web/src/lib/services/__tests__/phase-generation-notification.bridge.test.ts`
-    - Has basic setup but needs review for comprehensive coverage
+- [x] ✅ Extend unit tests: store step updates, bridge retry path, hydration rebind
+    - Expanded coverage in `apps/web/src/lib/services/__tests__/phase-generation-notification.bridge.test.ts`
+    - Adds success step assertions, retry loop verification, and hydration action checks
 - [ ] ❌ End-to-end manual test matrix
     - Needs testing: initial generation, regeneration, calendar-optimized path, failure path
     - Requires QA validation in development/staging environment
@@ -1651,7 +1651,7 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 - Legacy state cleanup when switching modes
 - SSR-safe environment variable access pattern
 
-**Phase 3: Phase Generation Integration (90%)**
+**Phase 3: Phase Generation Integration (Complete – manual QA pending)**
 
 - ✅ Core bridge implementation (544 lines, comprehensive controller pattern)
 - ✅ Step-based progress tracking with 5 steps (queue, analyze, generate, schedule, finalize)
@@ -1662,17 +1662,17 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 - ✅ Retry functionality with full re-execution
 - ✅ PhaseGenerationLoadingOverlay deleted (blocking UI removed)
 - ✅ Bridge initialization in +layout.svelte
-- ⚠️ Unit tests exist but need comprehensive review
+- ✅ Unit tests expanded for progress, retry, and hydration rebinds
 - ⏳ End-to-end manual testing pending
 
 ### 🔨 In Progress
 
-**Phase 3: Phase Generation Integration (90%)**
+**Phase 3: Phase Generation Integration (Complete – manual QA pending)**
 
 - ✅ Core implementation complete (bridge, components, integration)
 - ✅ Bridge initialized and wired into project page flow
 - ✅ UI components (minimized view + modal content) implemented
-- ⚠️ Unit test coverage needs review/expansion
+- ✅ Unit test coverage expanded (progress state, retry loop, hydration)
 - ⏳ Awaiting end-to-end manual testing
 
 **Phase 4: Calendar Analysis Integration (0%)**
@@ -1681,9 +1681,9 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 
 ### 📋 Remaining Work
 
-1. **Phase 3 (10%)**: Finalize testing
-    - Comprehensive unit test coverage
-    - End-to-end manual QA testing
+1. **Phase 3 (manual QA)**: Finalize testing
+    - Manual QA testing matrix
+    - Verify notification persistence across projects in staging
 2. **Phase 4 (0%)**: Migrate calendar analysis to notification system
 3. **Phase 5 (0%)**: Polish, animations, accessibility audit
 4. **Phase 6 (0%)**: Future enhancements (desktop notifications, batch operations, etc.)
@@ -1694,7 +1694,7 @@ The phased implementation allowed for gradual rollout with feature flags, ensuri
 2. ✅ ~~Add multi-brain dump concurrent processing~~
 3. ✅ ~~Fix SSR initialization errors~~
 4. ✅ ~~Complete Phase 3 core implementation (bridge, components, integration)~~
-5. **Finalize Phase 3:** Complete unit tests and end-to-end testing
+5. **Finalize Phase 3:** ✅ Unit tests complete; manual end-to-end testing still pending
     - Review/expand unit test coverage in `phase-generation-notification.bridge.test.ts`
     - Manual QA testing matrix: initial generation, regeneration, all strategies, error handling
     - Verify notification persistence across page refreshes

@@ -39,6 +39,11 @@
 		suggestions?: CalendarProjectSuggestion[];
 		autoStart?: boolean;
 		onClose?: () => void;
+		onStartAnalysis?: (options: {
+			daysBack: number;
+			daysForward: number;
+		}) => Promise<void> | void;
+		errorMessage?: string | null;
 	}
 
 	let {
@@ -46,7 +51,9 @@
 		analysisId,
 		suggestions = $bindable([]),
 		autoStart = false,
-		onClose
+		onClose,
+		onStartAnalysis,
+		errorMessage = null
 	}: Props = $props();
 
 	let selectedSuggestions = $state(new Set<string>());
@@ -203,6 +210,11 @@
 	async function startAnalysis() {
 		analyzing = true;
 		try {
+			if (typeof onStartAnalysis === 'function') {
+				await onStartAnalysis({ daysBack, daysForward });
+				return;
+			}
+
 			const response = await fetch('/api/calendar/analyze', {
 				method: 'POST',
 				headers: {
@@ -458,6 +470,13 @@
 	<div
 		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
 	>
+		{#if errorMessage}
+			<div
+				class="rounded-lg border border-red-300 bg-red-50/80 p-4 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+			>
+				{errorMessage}
+			</div>
+		{/if}
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
 			<div

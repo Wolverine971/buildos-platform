@@ -4042,6 +4042,7 @@ export type Database = {
           last_parsed_input_projects: string | null;
           last_parsed_input_work_style: string | null;
           onboarding_completed_at: string | null;
+          onboarding_version: number | null;
           organization_method: string | null;
           preferred_work_hours: string | null;
           priorities: string | null;
@@ -4075,6 +4076,7 @@ export type Database = {
           last_parsed_input_projects?: string | null;
           last_parsed_input_work_style?: string | null;
           onboarding_completed_at?: string | null;
+          onboarding_version?: number | null;
           organization_method?: string | null;
           preferred_work_hours?: string | null;
           priorities?: string | null;
@@ -4108,6 +4110,7 @@ export type Database = {
           last_parsed_input_projects?: string | null;
           last_parsed_input_work_style?: string | null;
           onboarding_completed_at?: string | null;
+          onboarding_version?: number | null;
           organization_method?: string | null;
           preferred_work_hours?: string | null;
           priorities?: string | null;
@@ -4229,7 +4232,12 @@ export type Database = {
           daily_count_reset_at: string | null;
           daily_sms_count: number | null;
           daily_sms_limit: number | null;
+          evening_recap_enabled: boolean | null;
+          event_reminders_enabled: boolean | null;
           id: string;
+          morning_kickoff_enabled: boolean | null;
+          morning_kickoff_time: string | null;
+          next_up_enabled: boolean | null;
           opt_out_reason: string | null;
           opted_out: boolean | null;
           opted_out_at: string | null;
@@ -4250,7 +4258,12 @@ export type Database = {
           daily_count_reset_at?: string | null;
           daily_sms_count?: number | null;
           daily_sms_limit?: number | null;
+          evening_recap_enabled?: boolean | null;
+          event_reminders_enabled?: boolean | null;
           id?: string;
+          morning_kickoff_enabled?: boolean | null;
+          morning_kickoff_time?: string | null;
+          next_up_enabled?: boolean | null;
           opt_out_reason?: string | null;
           opted_out?: boolean | null;
           opted_out_at?: string | null;
@@ -4271,7 +4284,12 @@ export type Database = {
           daily_count_reset_at?: string | null;
           daily_sms_count?: number | null;
           daily_sms_limit?: number | null;
+          evening_recap_enabled?: boolean | null;
+          event_reminders_enabled?: boolean | null;
           id?: string;
+          morning_kickoff_enabled?: boolean | null;
+          morning_kickoff_time?: string | null;
+          next_up_enabled?: boolean | null;
           opt_out_reason?: string | null;
           opted_out?: boolean | null;
           opted_out_at?: string | null;
@@ -4301,11 +4319,16 @@ export type Database = {
           is_beta_user: boolean | null;
           last_visit: string | null;
           name: string | null;
+          onboarding_v2_completed_at: string | null;
+          onboarding_v2_skipped_calendar: boolean | null;
+          onboarding_v2_skipped_sms: boolean | null;
+          productivity_challenges: Json | null;
           stripe_customer_id: string | null;
           subscription_plan_id: string | null;
           subscription_status: string | null;
           trial_ends_at: string | null;
           updated_at: string;
+          usage_archetype: string | null;
         };
         Insert: {
           access_restricted?: boolean | null;
@@ -4319,11 +4342,16 @@ export type Database = {
           is_beta_user?: boolean | null;
           last_visit?: string | null;
           name?: string | null;
+          onboarding_v2_completed_at?: string | null;
+          onboarding_v2_skipped_calendar?: boolean | null;
+          onboarding_v2_skipped_sms?: boolean | null;
+          productivity_challenges?: Json | null;
           stripe_customer_id?: string | null;
           subscription_plan_id?: string | null;
           subscription_status?: string | null;
           trial_ends_at?: string | null;
           updated_at?: string;
+          usage_archetype?: string | null;
         };
         Update: {
           access_restricted?: boolean | null;
@@ -4337,11 +4365,16 @@ export type Database = {
           is_beta_user?: boolean | null;
           last_visit?: string | null;
           name?: string | null;
+          onboarding_v2_completed_at?: string | null;
+          onboarding_v2_skipped_calendar?: boolean | null;
+          onboarding_v2_skipped_sms?: boolean | null;
+          productivity_challenges?: Json | null;
           stripe_customer_id?: string | null;
           subscription_plan_id?: string | null;
           subscription_status?: string | null;
           trial_ends_at?: string | null;
           updated_at?: string;
+          usage_archetype?: string | null;
         };
         Relationships: [
           {
@@ -4445,6 +4478,18 @@ export type Database = {
           total_requests: number | null;
           total_tokens: number | null;
           user_id: string | null;
+        };
+        Relationships: [];
+      };
+      brief_email_stats: {
+        Row: {
+          avg_send_time_seconds: number | null;
+          date: string | null;
+          failed_count: number | null;
+          opened_count: number | null;
+          pending_count: number | null;
+          sent_count: number | null;
+          total_emails: number | null;
         };
         Relationships: [];
       };
@@ -4744,6 +4789,18 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_brief_email_status: {
+        Args: { p_brief_id: string };
+        Returns: {
+          email_id: string;
+          open_count: number;
+          opened_at: string;
+          recipient_email: string;
+          recipient_status: string;
+          sent_at: string;
+          status: string;
+        }[];
+      };
       get_brief_generation_stats: {
         Args: { end_date: string; start_date: string };
         Returns: {
@@ -4800,6 +4857,21 @@ export type Database = {
           inactive_31_plus_days: number;
           inactive_4_10_days: number;
           total_users: number;
+        }[];
+      };
+      get_onboarding_v2_progress: {
+        Args: { p_user_id: string };
+        Returns: Json;
+      };
+      get_pending_brief_emails: {
+        Args: { p_limit?: number };
+        Returns: {
+          brief_date: string;
+          brief_id: string;
+          created_at: string;
+          email_id: string;
+          subject: string;
+          user_id: string;
         }[];
       };
       get_pending_calendar_suggestions: {
@@ -5283,7 +5355,8 @@ export type Database = {
         | "cleanup_old_data"
         | "onboarding_analysis"
         | "other"
-        | "send_sms";
+        | "send_sms"
+        | "generate_brief_email";
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -5492,6 +5565,7 @@ export const Constants = {
         "onboarding_analysis",
         "other",
         "send_sms",
+        "generate_brief_email",
       ],
       recurrence_end_reason: [
         "indefinite",

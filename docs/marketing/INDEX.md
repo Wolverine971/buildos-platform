@@ -84,14 +84,14 @@
 - **[BuildOS Fundraising Strategy](investors/buildos-fundraising-strategy.md)** ✅
   - Comprehensive 700+ line strategy with VC analysis and pitch frameworks
   - Detailed metrics, timelines, and actionable fundraising guidance
-  - **Links to:** [VCs Master List](investors/VCs.md), [Investor Messaging](investors/investor-optimists.md)
 
-- **[VCs Master List](investors/VCs.md)** ✅
-  - Comprehensive research on 15+ top-tier venture capital firms
-  - Investment focus areas and portfolio analysis
-  - **Cross-references:** [VC Firm Profiles](#vc-firm-profiles)
+- **[Fundraising Preparedness Checklist](investors/fundraising-preparedness-checklist.md)** ✅
+  - Complete pre-fundraising checklist ([Part 2](investors/fundraising-preparedness-checklist-part-2.md))
 
-### 📧 Investor Messaging
+- **[VC Research Notes](investors/VC-notes.md)** ✅
+  - Quick reference notes on venture capital firms
+
+### 📧 Investor Messaging Frameworks
 
 - **[Investor Optimists Messaging](investors/investor-optimists.md)** ✅
   - Vision-driven messaging for growth-focused investors
@@ -101,66 +101,61 @@
   - Evidence-based messaging for conservative investors
   - Risk mitigation and proof point strategies
 
-### 👤 Individual Investor Profiles
-
-- **[Casey Caruso - Topology Ventures](investors/casey-caruso-topology-ventures-profile.md)** ✅
-  - Background, investment criteria, and approach strategy
-  - BuildOS fit analysis and contact information
-
-- **[Dennis Mortensen Profile](investors/dennis-mortensen-profile.md)** ✅
-  - Investor background and strategic approach recommendations
-
-- **[Paige Craig Profile](investors/paige-craig-profile.md)** ✅
-  - Investment focus and BuildOS positioning strategy
-
-- **[Jack Raines - Slow Ventures](investors/slow-ventures-jack-raines-profile.md)** ✅
-  - Profile and approach strategy for Slow Ventures partner
-
-- **[Tom Blomfield Profile](investors/tom-blomfield-profile.md)** ✅
-  - Former Monzo founder turned investor - strategic insights
-
 ### 🏢 VC Firm Profiles
 
-#### Tier 1 Venture Capital Firms
+**Location:** `/docs/marketing/investors/vc-firms/`
 
-- **[Andreessen Horowitz (a16z)](investors/vc-firms/andreessen-horowitz-a16z.md)** ✅
-  - Portfolio analysis and investment thesis alignment
+Detailed research on 25+ venture capital firms including:
 
-- **[Sequoia Capital](investors/vc-firms/sequoia-capital.md)** ✅
-  - Investment focus and BuildOS positioning strategy
+**Tier 1 Firms:**
 
-- **[First Round Capital](investors/vc-firms/first-round-capital.md)** ✅
-  - Early-stage focus and founder-friendly approach
+- Andreessen Horowitz (a16z)
+- Sequoia Capital
+- First Round Capital
 
-#### Growth & Product-Focused VCs
+**Growth & Product-Focused:**
 
-- **[Craft Ventures](investors/vc-firms/craft-ventures.md)** ✅
-  - David Sacks-led fund with product focus
+- Craft Ventures (David Sacks)
+- Point Nine Capital (SaaS focus)
+- Vermilion Fund
 
-- **[Point Nine Capital](investors/vc-firms/point-nine-capital.md)** ✅
-  - SaaS and productivity tool specialization
+**Additional Firms:**
+AIX Ventures, Bessemer, Character VC, Coatue, Context Ventures, General Catalyst, Greylock, Index Ventures, Insight Partners, Khosla Ventures, Lightspeed, Matrix Partners, Obvious Ventures, Pioneer Fund, Soma Capital, South Park Commons, Standard Capital, Thiel Capital/Founders Fund
 
-- **[Vermilion Fund](investors/vc-firms/vermilion-fund.md)** ✅
-  - Emerging fund with strategic positioning potential
+### 👤 Individual Investor Profiles
 
-#### Additional VC Profiles
+**Location:** `/docs/marketing/investors/profiles/`
 
-- **[AIX Ventures](investors/vc-firms/aix-ventures.md)** ✅
-- **[Bessemer Venture Partners](investors/vc-firms/bessemer-venture-partners.md)** ✅
-- **[Character VC](investors/vc-firms/character-vc.md)** ✅
-- **[Coatue Management](investors/vc-firms/coatue-management.md)** ✅
-- **[General Catalyst](investors/vc-firms/general-catalyst.md)** ✅
-- **[Greylock Partners](investors/vc-firms/greylock-partners.md)** ✅
-- **[Index Ventures](investors/vc-firms/index-ventures.md)** ✅
-- **[Insight Partners](investors/vc-firms/insight-partners.md)** ✅
-- **[Khosla Ventures](investors/vc-firms/khosla-ventures.md)** ✅
-- **[Lightspeed Venture Partners](investors/vc-firms/lightspeed-venture-partners.md)** ✅
-- **[Matrix Partners](investors/vc-firms/matrix-partners.md)** ✅
-- **[Obvious Ventures](investors/vc-firms/obvious-ventures.md)** ✅
-- **[Pioneer Fund](investors/vc-firms/pioneer-fund.md)** ✅
-- **[Soma Capital](investors/vc-firms/soma-capital.md)** ✅
-- **[South Park Commons](investors/vc-firms/south-park-commons.md)** ✅
-- **[Thiel Capital/Founders Fund](investors/vc-firms/thiel-capital-founders-fund.md)** ✅
+- **[Brian Singerman](investors/profiles/brian-singerman-founders-fund-profile.md)** - Founders Fund
+- **[Casey Caruso](investors/profiles/casey-caruso-topology-ventures-profile.md)** - Topology Ventures
+- **[Dennis Mortensen](investors/profiles/dennis-mortensen-profile.md)** - AI/ML investor
+- **[Paige Craig](investors/profiles/paige-craig-profile.md)** - Outlander VC
+- **[Jack Raines](investors/profiles/slow-ventures-jack-raines-profile.md)** - Slow Ventures
+- **[Tim Hsia](investors/profiles/tim-hsia-context-ventures-profile.md)** - Context Ventures
+- **[Tom Blomfield](investors/profiles/tom-blomfield-profile.md)** - YC Partner, Monzo founder
+
+### 📬 Warm Intro Email Templates
+
+**Location:** `/docs/marketing/investors/warm-intro-emails/`
+
+Personalized email templates for investor introductions:
+
+- Brian Singerman (GPX)
+- Casey Caruso (Topology Ventures)
+- Jack Raines (Slow Ventures)
+- Paige Craig (Outlander VC)
+- Sarah Guo (Conviction)
+- Tim Hsia (Context Ventures)
+- Tom Blomfield (YC)
+
+### 🎯 Outreach Materials
+
+**Location:** `/docs/marketing/investors/outreach/`
+
+- **[Investor Outreach Research Analysis](investors/outreach/2025-09-17_investor-outreach-research-analysis.md)** - Comprehensive analysis
+- **[Dennis Mortensen Advisory Email](investors/outreach/dennis-mortensen-advisory-outreach-email.md)** - Advisory board outreach
+- **[Paige Craig Outreach Template](investors/outreach/paige-craig-outreach-template.md)** - Specific outreach template
+- **[Tim Hsia Coffee Meeting Strategy](investors/outreach/tim-hsia-coffee-meeting-strategy.md)** - Meeting prep
 
 ---
 

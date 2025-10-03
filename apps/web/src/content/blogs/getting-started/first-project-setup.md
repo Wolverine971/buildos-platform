@@ -336,3 +336,177 @@ The goal isn't perfection—it's building a sustainable system that grows more v
 ---
 
 _Ready to create your first project? [Open Build OS](/) and transform your biggest idea into structured action._
+
+---
+
+## 📝 BLOG DEVELOPMENT NOTES
+
+### Content Enhancement Suggestions
+
+**Technical Implementation Details:**
+
+- **Brain Dump to Project Flow** (`/apps/web/docs/features/brain-dump/`)
+    - Dual processing mode: Context extraction + Task extraction (parallel LLM calls)
+    - Short processing (<500 chars) vs long processing (≥500 chars)
+    - Smart question generation to fill information gaps
+    - Real-time streaming updates via SSE
+    - Multi-brain dump support (up to 3 concurrent, with auto-queuing)
+
+- **Phase Generation Strategies** (`/apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md`)
+    - `phases-only`: Basic phase creation without calendar
+    - `schedule-in-phases`: Phase creation WITH calendar scheduling
+    - `calendar-optimized`: Advanced scheduling around existing commitments
+    - 5-step progress (queue → analyze → generate → schedule → finalize)
+    - Conflict detection and resolution
+
+- **Project Calendar Integration**
+    - Per-project Google Calendar creation
+    - Two-way sync with Google Calendar
+    - Webhook notifications for real-time updates
+    - Task scheduling automation
+    - Conflict detection between tasks and existing events
+
+**Visual Content Needed:**
+
+- Flowchart: Brain Dump → Context Extraction → Project Creation → Phase Generation
+- Screenshot: Project detail view with context fields
+- Diagram: Phase progression and task flow
+- Video: First project creation walkthrough (screen recording)
+- Infographic: "5 Types of Projects and Their Ideal Phase Structures"
+
+**Missing User Guidance:**
+
+- How to choose the right phase generation strategy
+- When to use calendar integration vs manual scheduling
+- How to handle project dependencies and prerequisites
+- Tips for naming conventions that scale (when you have 20+ projects)
+- How to use project templates (if/when feature exists)
+
+**Real-World Examples with Screenshots:**
+
+- **Software Project**: "Build Personal Website"
+    - Context fields: tech stack, deployment target, feature list, design references
+    - Phases: Planning → Design → Development → Testing → Launch
+
+- **Creative Project**: "Write Novel"
+    - Context fields: genre, target word count, character list, plot outline
+    - Phases: Outlining → First Draft → Revision → Beta Readers → Publication Prep
+
+- **Business Project**: "Launch Newsletter"
+    - Context fields: target audience, content pillars, publishing schedule, growth goals
+    - Phases: Research → Platform Setup → Content Creation → Audience Building → Monetization
+
+**Integration Points:**
+
+- **Notification System**: How project creation triggers stackable notifications
+- **Daily Briefs**: How new projects immediately appear in tomorrow's brief
+- **Real-time Updates**: Supabase Realtime for live project status changes
+- **Phase Management**: The notification-based phase generation experience
+
+### Advanced Topics to Cover
+
+**Phase Generation Deep Dive:**
+
+- Step-by-step breakdown of the 5-step generation process
+- How AI analyzes task dependencies and suggests phase order
+- Calendar optimization algorithm (scheduling around conflicts)
+- Fallback strategies when calendar integration fails
+- Regeneration: when and how to regenerate phases
+
+**Project Context Intelligence:**
+
+- How dynamic context fields adapt to project type
+- Custom context field creation and templates
+- Context field suggestions based on similar projects
+- Using context for better AI recommendations
+
+**Multi-Project Management:**
+
+- Strategies for juggling 3-5 active projects
+- Project portfolio balancing (creative vs business vs personal)
+- Cross-project dependencies and coordination
+- Archive/pause vs delete decisions
+
+### SEO & Marketing Angles
+
+**Keywords to Target:**
+
+- AI-powered project management
+- Brain dump to action items
+- Automated phase generation
+- Smart task scheduling
+- Project calendar integration
+- ADHD-friendly project planning
+- Context-driven organization
+- Multi-project management for entrepreneurs
+
+**Competitor Comparisons:**
+
+- vs Notion: BuildOS auto-generates structure, Notion requires manual setup
+- vs Asana: BuildOS adapts to your thinking, Asana forces rigid templates
+- vs ClickUp: BuildOS AI understands context, ClickUp is just task lists
+- vs Monday.com: BuildOS learns your patterns, Monday.com is static workflows
+
+**Social Proof Opportunities:**
+
+- "New users complete their first project setup in under 5 minutes"
+- "AI suggests the perfect phase structure 87% of the time (users keep it as-is)"
+- Testimonial: "I brain dumped my business idea and 30 seconds later had a complete project plan"
+
+### Technical Accuracy Checks
+
+**Verify Against Codebase:**
+
+- ✅ Dual processing for brain dumps (context + tasks in parallel)
+- ✅ Phase generation strategies (phases-only, schedule-in-phases, calendar-optimized)
+- ✅ Google Calendar per-project creation
+- ✅ Notification system for phase generation progress
+- ✅ Multi-brain dump support (3 concurrent, 5 queued)
+- ⚠️ "Auto-15% buffer time" - verify this claim in code
+- ⚠️ "87% of users keep auto-generated phases" - is this real data?
+- ⚠️ Project templates - does this feature exist?
+
+**Missing Technical Details:**
+
+- Explain RLS (Row Level Security) for project privacy
+- How project slugs are generated (for URLs)
+- Phase ordering algorithm (manual reorder vs AI suggestions)
+- Task-to-phase assignment logic
+- Background processing for large brain dumps
+
+### Content Gaps to Fill
+
+**Onboarding Integration:**
+
+- Reference the onboarding flow (`/apps/web/docs/features/onboarding/`)
+- Link to "your first brain dump" tutorial
+- Mention the guided project setup in onboarding
+- Connect to life goals setup (strategic alignment)
+
+**Error Handling & Troubleshooting:**
+
+- What if brain dump parsing fails?
+- What if calendar integration doesn't connect?
+- What if phase generation gets stuck?
+- How to recover from "project feels overwhelming"
+- When to split a project into multiple projects
+
+**Performance & Limits:**
+
+- How many projects can you have active?
+- Task limits per project?
+- Phase limits per project?
+- Calendar event sync limits?
+- Brain dump length limits?
+
+### Future Content Spin-offs
+
+**Related Blog Ideas:**
+
+- "5 Project Archetypes and How to Structure Each One"
+- "Calendar-Optimized Phase Generation: Behind the AI"
+- "From Chaos to Clarity: The Brain Dump → Project Pipeline"
+- "Multi-Project Mastery: Managing 10+ Active Projects Without Burnout"
+- "Project Context Fields: The Secret to Better AI Recommendations"
+
+---

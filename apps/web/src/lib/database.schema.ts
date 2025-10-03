@@ -1,5 +1,5 @@
-// apps/web/src/lib/database.schema.ts
-// Generated on: 2025-09-30T13:56:44.836Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2025-10-03T17:18:16.790Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -149,7 +149,7 @@ export type DatabaseSchema = {
 		metaData: Json | null;
 		parsed_results: Json | null;
 		project_id: string | null;
-		status: Database['public']['Enums']['brain_dump_status'];
+		status: string;
 		tags: string[] | null;
 		title: string | null;
 		updated_at: string;
@@ -551,7 +551,7 @@ export type DatabaseSchema = {
 		model_used: string;
 		openrouter_cache_status: string | null;
 		openrouter_request_id: string | null;
-		operation_type: Database['public']['Enums']['llm_operation_type'];
+		operation_type: string;
 		output_cost_usd: number;
 		profile: string | null;
 		project_id: string | null;
@@ -561,7 +561,7 @@ export type DatabaseSchema = {
 		request_completed_at: string;
 		request_started_at: string;
 		response_time_ms: number;
-		status: Database['public']['Enums']['llm_request_status'];
+		status: string;
 		streaming: boolean | null;
 		task_id: string | null;
 		temperature: number | null;
@@ -682,10 +682,10 @@ export type DatabaseSchema = {
 		project_id: string;
 		sync_enabled: boolean | null;
 		sync_error: string | null;
-		sync_status: Database['public']['Enums']['calendar_sync_status'] | null;
+		sync_status: string | null;
 		updated_at: string | null;
 		user_id: string;
-		visibility: Database['public']['Enums']['calendar_visibility'] | null;
+		visibility: string | null;
 	};
 	project_daily_briefs: {
 		brief_content: string;
@@ -769,7 +769,7 @@ export type DatabaseSchema = {
 		source: string | null;
 		source_metadata: Json | null;
 		start_date: string | null;
-		status: Database['public']['Enums']['project_status'];
+		status: string;
 		tags: string[] | null;
 		updated_at: string;
 		user_id: string;
@@ -812,7 +812,7 @@ export type DatabaseSchema = {
 		created_at: string;
 		error_message: string | null;
 		id: string;
-		job_type: Database['public']['Enums']['queue_type'];
+		job_type: string;
 		max_attempts: number | null;
 		metadata: Json | null;
 		priority: number | null;
@@ -821,7 +821,7 @@ export type DatabaseSchema = {
 		result: Json | null;
 		scheduled_for: string;
 		started_at: string | null;
-		status: Database['public']['Enums']['queue_status'];
+		status: string;
 		updated_at: string | null;
 		user_id: string;
 	};
@@ -863,12 +863,12 @@ export type DatabaseSchema = {
 		metadata: Json | null;
 		next_retry_at: string | null;
 		phone_number: string;
-		priority: Database['public']['Enums']['sms_priority'];
+		priority: string;
 		project_id: string | null;
 		queue_job_id: string | null;
 		scheduled_for: string | null;
 		sent_at: string | null;
-		status: Database['public']['Enums']['sms_status'];
+		status: string;
 		task_id: string | null;
 		template_id: string | null;
 		template_vars: Json | null;
@@ -938,7 +938,7 @@ export type DatabaseSchema = {
 		series_update_scope: string | null;
 		sync_error: string | null;
 		sync_source: string | null;
-		sync_status: Database['public']['Enums']['sync_status'];
+		sync_status: string;
 		sync_version: number | null;
 		task_id: string;
 		updated_at: string | null;
@@ -955,17 +955,17 @@ export type DatabaseSchema = {
 		id: string;
 		outdated: boolean | null;
 		parent_task_id: string | null;
-		priority: Database['public']['Enums']['priority_level'];
+		priority: string;
 		project_id: string | null;
-		recurrence_end_source: Database['public']['Enums']['recurrence_end_reason'] | null;
+		recurrence_end_source: string | null;
 		recurrence_ends: string | null;
-		recurrence_pattern: Database['public']['Enums']['recurrence_pattern'] | null;
+		recurrence_pattern: string | null;
 		source: string | null;
 		source_calendar_event_id: string | null;
 		start_date: string | null;
-		status: Database['public']['Enums']['task_status'];
+		status: string;
 		task_steps: string | null;
-		task_type: Database['public']['Enums']['task_type'];
+		task_type: string;
 		title: string;
 		updated_at: string;
 		user_id: string;
@@ -1048,6 +1048,7 @@ export type DatabaseSchema = {
 		last_parsed_input_projects: string | null;
 		last_parsed_input_work_style: string | null;
 		onboarding_completed_at: string | null;
+		onboarding_version: number | null;
 		organization_method: string | null;
 		preferred_work_hours: string | null;
 		priorities: string | null;
@@ -1087,7 +1088,12 @@ export type DatabaseSchema = {
 		daily_count_reset_at: string | null;
 		daily_sms_count: number | null;
 		daily_sms_limit: number | null;
+		evening_recap_enabled: boolean | null;
+		event_reminders_enabled: boolean | null;
 		id: string;
+		morning_kickoff_enabled: boolean | null;
+		morning_kickoff_time: string | null;
+		next_up_enabled: boolean | null;
 		opt_out_reason: string | null;
 		opted_out: boolean | null;
 		opted_out_at: string | null;
@@ -1114,11 +1120,16 @@ export type DatabaseSchema = {
 		is_beta_user: boolean | null;
 		last_visit: string | null;
 		name: string | null;
+		onboarding_v2_completed_at: string | null;
+		onboarding_v2_skipped_calendar: boolean | null;
+		onboarding_v2_skipped_sms: boolean | null;
+		productivity_challenges: Json | null;
 		stripe_customer_id: string | null;
 		subscription_plan_id: string | null;
 		subscription_status: string | null;
 		trial_ends_at: string | null;
 		updated_at: string;
+		usage_archetype: string | null;
 	};
 	visitors: {
 		created_at: string;

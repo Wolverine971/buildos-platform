@@ -28,7 +28,6 @@
 	const MAX_VISIBLE = 5;
 	let visibleStack = $derived(stack.slice(-MAX_VISIBLE));
 	let hiddenCount = $derived(Math.max(0, stack.length - MAX_VISIBLE));
-
 </script>
 
 {#if visibleStack.length > 0 || hiddenCount > 0}

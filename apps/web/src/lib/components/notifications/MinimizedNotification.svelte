@@ -22,6 +22,7 @@
 	// Lazy-loaded type-specific components
 	let BrainDumpMinimizedView = $state<any>(null);
 	let PhaseGenerationMinimizedView = $state<any>(null);
+	let CalendarAnalysisMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -35,12 +36,20 @@
 						BrainDumpMinimizedView = module.default;
 					}
 					break;
-			case 'phase-generation':
-				if (!PhaseGenerationMinimizedView) {
-					const module = await import(
-						'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
-					);
+				case 'phase-generation':
+					if (!PhaseGenerationMinimizedView) {
+						const module = await import(
+							'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
+						);
 						PhaseGenerationMinimizedView = module.default;
+					}
+					break;
+				case 'calendar-analysis':
+					if (!CalendarAnalysisMinimizedView) {
+						const module = await import(
+							'./types/calendar-analysis/CalendarAnalysisMinimizedView.svelte'
+						);
+						CalendarAnalysisMinimizedView = module.default;
 					}
 					break;
 				default:
@@ -63,7 +72,9 @@
 			? BrainDumpMinimizedView
 			: notification.type === 'phase-generation'
 				? PhaseGenerationMinimizedView
-				: null
+				: notification.type === 'calendar-analysis'
+					? CalendarAnalysisMinimizedView
+					: null
 	);
 
 	// Get notification title based on type (fallback for generic view)

@@ -27,6 +27,7 @@ For **package documentation**:
 - `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
 - `/integrations/` - Shared integrations (Supabase, Stripe)
 - `/research/` - Cross-cutting research
+- `/archive/` - Historical documentation (outdated development docs, brain dump research)
 
 ## 📝 Documentation Standards
 

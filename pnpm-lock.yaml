@@ -15,9 +15,15 @@ overrides:
 importers:
   .:
     devDependencies:
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.6
       turbo:
         specifier: ^2.3.3
         version: 2.5.8

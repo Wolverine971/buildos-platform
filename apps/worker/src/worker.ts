@@ -149,7 +149,6 @@ export async function startWorker() {
 
   // Register processors
   queue.process("generate_daily_brief", processBrief);
-  // @ts-expect-error - generate_brief_email will be added to enum after migration
   queue.process("generate_brief_email", processEmailBrief); // Phase 2: Email worker
   queue.process("generate_phases", processPhases);
   queue.process("onboarding_analysis", processOnboarding);

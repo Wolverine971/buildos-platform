@@ -20,6 +20,7 @@
 	// Lazy-loaded type-specific components
 	let BrainDumpModalContent = $state<any>(null);
 	let PhaseGenerationModalContent = $state<any>(null);
+	let CalendarAnalysisModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -39,6 +40,14 @@
 							'./types/phase-generation/PhaseGenerationModalContent.svelte'
 						);
 						PhaseGenerationModalContent = module.default;
+					}
+					break;
+				case 'calendar-analysis':
+					if (!CalendarAnalysisModalContent) {
+						const module = await import(
+							'./types/calendar-analysis/CalendarAnalysisModalContent.svelte'
+						);
+						CalendarAnalysisModalContent = module.default;
 					}
 					break;
 				default:
@@ -61,7 +70,9 @@
 			? BrainDumpModalContent
 			: notification.type === 'phase-generation'
 				? PhaseGenerationModalContent
-				: null
+				: notification.type === 'calendar-analysis'
+					? CalendarAnalysisModalContent
+					: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)

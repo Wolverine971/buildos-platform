@@ -114,8 +114,9 @@ Navigation organized by **what you want to do**, not just what exists.
 | Worker docs         | `/apps/worker/docs/`         | `/apps/worker/docs/README.md`                 |
 | Shared package docs | `/packages/*/docs/`          | Package README.md files                       |
 | Deployment guides   | `/**/operations/deployment/` | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) |
-| Business strategy   | `/apps/web/docs/business/`   | Business README.md                            |
-| Marketing materials | `/apps/web/docs/marketing/`  | Marketing INDEX.md                            |
+| Business strategy   | `/docs/business/`            | Business README.md                            |
+| Marketing materials | `/docs/marketing/`           | Marketing INDEX.md                            |
+| Archived docs       | `/docs/archive/`             | Archive README.md                             |
 
 ## Quick Reference
 

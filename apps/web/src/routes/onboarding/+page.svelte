@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		ChevronLeft,
@@ -30,7 +31,33 @@
 	} from '$lib/utils/voice';
 	import { toastService } from '$lib/stores/toast.store';
 
+	// V2 Onboarding Components
+	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
+	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
+
 	export let data: PageData;
+
+	// Feature flag: Check if v2 onboarding is enabled
+	const useV2 = $page.url.searchParams.get('v2') === 'true';
+
+	// V2 State
+	let v2CurrentStep = $state(0);
+	let v2OnboardingData = $state({
+		projectsCreated: 0,
+		calendarAnalyzed: false,
+		smsEnabled: false,
+		emailEnabled: false,
+		archetype: '',
+		challenges: [] as string[]
+	});
+
+	function handleV2Next() {
+		v2CurrentStep++;
+	}
+
+	function handleV2ProjectsCreated(projectIds: string[]) {
+		v2OnboardingData.projectsCreated = projectIds.length;
+	}
 
 	let currentStep = data.recommendedStep || 0;
 	let isTranscribing = false;
@@ -427,7 +454,25 @@
 			</p>
 		</div>
 	</div>
+{:else if useV2}
+	<!-- V2 Onboarding Flow -->
+	<div
+		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+	>
+		<div class="container mx-auto py-8">
+			{#if v2CurrentStep === 0}
+				<WelcomeStep onStart={handleV2Next} />
+			{:else if v2CurrentStep === 1}
+				<ProjectsCaptureStep
+					userContext={data.userContext}
+					onNext={handleV2Next}
+					onProjectsCreated={handleV2ProjectsCreated}
+				/>
+			{/if}
+		</div>
+	</div>
 {:else}
+	<!-- V1 Onboarding Flow -->
 	<div
 		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
 	>

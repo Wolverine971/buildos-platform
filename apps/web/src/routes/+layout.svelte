@@ -49,6 +49,10 @@
 		initPhaseGenerationNotificationBridge,
 		cleanupPhaseGenerationNotificationBridge
 	} from '$lib/services/phase-generation-notification.bridge';
+	import {
+		initCalendarAnalysisNotificationBridge,
+		cleanupCalendarAnalysisNotificationBridge
+	} from '$lib/services/calendar-analysis-notification.bridge';
 
 	export let data: LayoutData;
 
@@ -296,6 +300,7 @@
 		// Initialize notification bridges
 		initBrainDumpNotificationBridge();
 		initPhaseGenerationNotificationBridge();
+		initCalendarAnalysisNotificationBridge();
 
 		// Pre-load authenticated resources if user is already available
 		if (user) {
@@ -362,6 +367,7 @@
 			// Cleanup notification bridges
 			cleanupBrainDumpNotificationBridge();
 			cleanupPhaseGenerationNotificationBridge();
+			cleanupCalendarAnalysisNotificationBridge();
 
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {

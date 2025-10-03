@@ -8,8 +8,7 @@
 				"ToastContainer",
 				"PaymentWarning",
 				"TrialBanner",
-				"BackgroundJobIndicator",
-				"BrainDumpProcessingNotification"
+				"BackgroundJobIndicator"
 			]
 		},
 		{
@@ -40,20 +39,27 @@
 			]
 		},
 		{
-			"file": "src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte",
-			"type": "component",
-			"components": [
-				"ParseResultsDiffView",
-				"ProcessingModal",
-				"DualProcessingResults",
-				"OperationEditModal",
-				"SuccessView"
-			]
-		},
-		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
 			"components": ["BraindumpWeekView", "PhaseCalendarView", "TaskModal", "DailyBriefModal"]
+		},
+		{
+			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
+			"type": "component",
+			"components": [
+				"BrainDumpMinimizedView",
+				"PhaseGenerationMinimizedView",
+				"CalendarAnalysisMinimizedView"
+			]
+		},
+		{
+			"file": "src/lib/components/notifications/NotificationModal.svelte",
+			"type": "component",
+			"components": [
+				"BrainDumpModalContent",
+				"PhaseGenerationModalContent",
+				"CalendarAnalysisModalContent"
+			]
 		},
 		{
 			"file": "src/lib/components/project/PhasesSection.svelte",
@@ -102,6 +108,30 @@
 			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
 		},
 		{
+			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
+			"type": "component",
+			"components": [
+				"ParseResultsDiffView",
+				"DualProcessingResults",
+				"SuccessView",
+				"OperationEditModal"
+			]
+		},
+		{
+			"file": "src/lib/services/brain-dump-notification.bridge.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"initBrainDumpNotificationBridge",
+				"cleanupBrainDumpNotificationBridge",
+				"handleBrainDumpStreamUpdate",
+				"completeBrainDumpNotification",
+				"getActiveBrainDumpNotificationId",
+				"clearActiveBrainDumpNotification",
+				"cancelBrainDumpAPIStream"
+			]
+		},
+		{
 			"file": "src/lib/services/braindump-api.service.ts",
 			"type": "service",
 			"components": [],
@@ -124,6 +154,17 @@
 			"type": "service",
 			"components": [],
 			"exports": ["BriefClientService"]
+		},
+		{
+			"file": "src/lib/services/calendar-analysis-notification.bridge.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"initCalendarAnalysisNotificationBridge",
+				"cleanupCalendarAnalysisNotificationBridge",
+				"startCalendarAnalysis",
+				"restartCalendarAnalysis"
+			]
 		},
 		{
 			"file": "src/lib/services/calendar-analysis.service.ts",
@@ -192,6 +233,12 @@
 			"exports": ["LLMUsageService"]
 		},
 		{
+			"file": "src/lib/services/onboarding-v2.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OnboardingV2Service", "onboardingV2Service"]
+		},
+		{
 			"file": "src/lib/services/onboardingClient.service.ts",
 			"type": "service",
 			"components": [],
@@ -202,6 +249,16 @@
 			"type": "service",
 			"components": [],
 			"exports": ["OnboardingProgressService"]
+		},
+		{
+			"file": "src/lib/services/phase-generation-notification.bridge.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"initPhaseGenerationNotificationBridge",
+				"cleanupPhaseGenerationNotificationBridge",
+				"startPhaseGeneration"
+			]
 		},
 		{
 			"file": "src/lib/services/project-calendar.service.ts",
@@ -335,22 +392,26 @@
 			"components": [],
 			"exports": [
 				"brainDumpV2Store",
+				"brainDumpComputed",
 				"selectedProjectName",
 				"hasUnsavedChanges",
 				"canParse",
 				"canApply",
 				"enabledOperationsCount",
 				"disabledOperationsCount",
+				"hasParseResults",
+				"canAutoAccept",
 				"hasOperationErrors",
 				"hasCriticalErrors",
 				"operationErrorSummary",
 				"isProcessingActive",
-				"hasParseResults",
-				"canAutoAccept",
+				"processingStatus",
 				"isModalOpen",
 				"isNotificationOpen",
 				"isNotificationMinimized",
-				"processingStatus"
+				"showingParseResults",
+				"isTextareaCollapsed",
+				"processingProjectIds"
 			]
 		},
 		{
@@ -382,6 +443,22 @@
 			"type": "store",
 			"components": [],
 			"exports": ["navigationStore"]
+		},
+		{
+			"file": "src/lib/stores/notification.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"registerNotificationAction",
+				"unregisterNotificationAction",
+				"createNotificationStore",
+				"notificationStore",
+				"notificationsArray",
+				"expandedNotification",
+				"processingCount",
+				"visibleStack",
+				"hiddenCount"
+			]
 		},
 		{
 			"file": "src/lib/stores/project.store.ts",
@@ -427,17 +504,19 @@
 		}
 	],
 	"dependencies": {
-		"src/routes/+layout.svelte": [
-			"src/lib/components/brain-dump/BrainDumpProcessingNotification.svelte"
-		],
 		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
 		"src/routes/projects/+page.svelte": ["src/lib/components/brain-dump/BrainDumpModal.svelte"],
+		"src/lib/components/notifications/NotificationModal.svelte": [
+			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
+		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/notifications/MinimizedNotification.svelte",
+		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHeaderMinimal.svelte",
 		"src/lib/components/project/ProjectModals.svelte",
 		"src/lib/components/ui/RadioGroup.svelte"

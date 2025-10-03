@@ -173,18 +173,18 @@ describe('phase-generation-notification.bridge', () => {
 		const { notificationId } = await startPhaseGeneration(baseOptions);
 		await flushAsync();
 
-		let notification = get(notificationStore).notifications.get(
-			notificationId
-		) as PhaseGenerationNotification | undefined;
+		let notification = get(notificationStore).notifications.get(notificationId) as
+			| PhaseGenerationNotification
+			| undefined;
 		expect(notification?.status).toBe('error');
 		expect(errorSpy).toHaveBeenCalledWith('Initial failure');
 
 		notification?.actions.retry?.();
 		await flushAsync();
 
-		notification = get(notificationStore).notifications.get(
-			notificationId
-		) as PhaseGenerationNotification | undefined;
+		notification = get(notificationStore).notifications.get(notificationId) as
+			| PhaseGenerationNotification
+			| undefined;
 		expect(notification?.status).toBe('success');
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(successSpy).toHaveBeenCalled();

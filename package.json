@@ -14,11 +14,16 @@
     "format": "prettier --write .",
     "clean": "turbo clean",
     "pre-push": "turbo pre-push",
-    "gen:all": "pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
+    "gen:types": "tsx scripts/generate-types.ts",
+    "gen:schema": "tsx scripts/extract-database-schema.ts",
+    "gen:web": "pnpm --filter=web gen:web",
+    "gen:all": "pnpm run gen:types && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
     "label-paths": "tsx scripts/labelFilePaths.ts"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "prettier": "^3.6.2",
+    "tsx": "^4.20.3",
     "turbo": "^2.3.3"
   },
   "packageManager": "pnpm@9.15.2",
