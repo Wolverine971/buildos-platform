@@ -18,6 +18,7 @@
 	export let phaseValidationWarning: string | null = null;
 	export let dismissible = false;
 	export let compact = false;
+	export let onTaskClick: (taskId: string) => void = () => {};
 
 	let dismissed = false;
 
@@ -41,18 +42,6 @@
 
 	function dismiss() {
 		dismissed = true;
-	}
-
-	function scrollToTask(taskId: string) {
-		const element = document.getElementById(`task-schedule-item-${taskId}`);
-		if (element) {
-			element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			// Add a highlight effect
-			element.classList.add('ring-2', 'ring-primary-500', 'ring-offset-2');
-			setTimeout(() => {
-				element.classList.remove('ring-2', 'ring-primary-500', 'ring-offset-2');
-			}, 2000);
-		}
 	}
 
 	// Group conflicts by severity
@@ -138,33 +127,38 @@
 					<div class="px-3 sm:px-4 pb-2 sm:pb-3">
 						<div class="flex items-start gap-2">
 							<ul
-								class="text-sm text-red-700 dark:text-red-300 space-y-2 flex-1 ml-6"
+								class="text-sm text-red-700 dark:text-red-300 space-y-3 flex-1 ml-6"
 							>
 								{#each errorConflicts as conflict}
-									<li class="flex items-start gap-2">
-										<svelte:component
-											this={getConflictIcon(conflict.type)}
-											class="w-3 h-3 flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1">
-											<span>{conflict.description}</span>
-											{#if conflict.date}
-												<span
-													class="text-xs text-red-600 dark:text-red-400 ml-2"
-												>
-													({formatDate(conflict.date)}
-													{formatTime(conflict.date)})
+									<li class="flex flex-col gap-1.5">
+										<div class="flex items-start gap-2">
+											<svelte:component
+												this={getConflictIcon(conflict.type)}
+												class="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
+											/>
+											<div class="flex-1">
+												{#if conflict.taskName && conflict.taskId}
+													<button
+														onclick={() => onTaskClick(conflict.taskId)}
+														class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                 bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200
+                                 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+													>
+														{conflict.taskName}
+														<ExternalLink class="w-3 h-3" />
+													</button>
+												{/if}
+
+												<span class="block mt-1 text-sm text-red-700 dark:text-red-300">
+													{conflict.description}
 												</span>
-											{/if}
-											{#if conflict.taskId}
-												<button
-													onclick={() => scrollToTask(conflict.taskId)}
-													class="inline-flex items-center gap-1 ml-2 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline transition-colors"
-												>
-													<ExternalLink class="w-3 h-3" />
-													View task
-												</button>
-											{/if}
+
+												{#if conflict.date}
+													<span class="block text-xs text-red-600 dark:text-red-400 mt-0.5">
+														{formatDate(conflict.date)} at {formatTime(conflict.date)}
+													</span>
+												{/if}
+											</div>
 										</div>
 									</li>
 								{/each}
@@ -212,33 +206,38 @@
 					<div class="px-3 sm:px-4 pb-2 sm:pb-3">
 						<div class="flex items-start gap-2">
 							<ul
-								class="text-sm text-amber-700 dark:text-amber-300 space-y-2 flex-1 ml-6"
+								class="text-sm text-amber-700 dark:text-amber-300 space-y-3 flex-1 ml-6"
 							>
 								{#each warningConflicts as conflict}
-									<li class="flex items-start gap-2">
-										<svelte:component
-											this={getConflictIcon(conflict.type)}
-											class="w-3 h-3 flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1">
-											<span>{conflict.description}</span>
-											{#if conflict.date}
-												<span
-													class="text-xs text-amber-600 dark:text-amber-400 ml-2"
-												>
-													({formatDate(conflict.date)}
-													{formatTime(conflict.date)})
+									<li class="flex flex-col gap-1.5">
+										<div class="flex items-start gap-2">
+											<svelte:component
+												this={getConflictIcon(conflict.type)}
+												class="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
+											/>
+											<div class="flex-1">
+												{#if conflict.taskName && conflict.taskId}
+													<button
+														onclick={() => onTaskClick(conflict.taskId)}
+														class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200
+                                 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors"
+													>
+														{conflict.taskName}
+														<ExternalLink class="w-3 h-3" />
+													</button>
+												{/if}
+
+												<span class="block mt-1 text-sm text-amber-700 dark:text-amber-300">
+													{conflict.description}
 												</span>
-											{/if}
-											{#if conflict.taskId}
-												<button
-													onclick={() => scrollToTask(conflict.taskId)}
-													class="inline-flex items-center gap-1 ml-2 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline transition-colors"
-												>
-													<ExternalLink class="w-3 h-3" />
-													View task
-												</button>
-											{/if}
+
+												{#if conflict.date}
+													<span class="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+														{formatDate(conflict.date)} at {formatTime(conflict.date)}
+													</span>
+												{/if}
+											</div>
 										</div>
 									</li>
 								{/each}

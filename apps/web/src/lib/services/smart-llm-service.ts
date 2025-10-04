@@ -172,6 +172,17 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		bestFor: ['agentic-coding', 'json-mode', 'structured-output', 'reasoning-traces'],
 		limitations: []
 	},
+	'z-ai/glm-4.6': {
+		id: 'z-ai/glm-4.6',
+		name: 'GLM 4.6',
+		speed: 3.5,
+		smartness: 4.4,
+		cost: 0.5,
+		outputCost: 1.75,
+		provider: 'z-ai',
+		bestFor: ['coding', 'long-context', 'reasoning', 'structured-output', 'tool-use'],
+		limitations: ['fp8-quantization']
+	},
 	'qwen/qwen-2.5-72b-instruct': {
 		id: 'qwen/qwen-2.5-72b-instruct',
 		name: 'Qwen 2.5 72B',
@@ -324,6 +335,17 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		outputCost: 0.28,
 		provider: 'deepseek',
 		bestFor: ['briefs', 'reports', 'structured-content']
+	},
+	'z-ai/glm-4.6': {
+		id: 'z-ai/glm-4.6',
+		name: 'GLM 4.6',
+		speed: 3.5,
+		smartness: 4.4,
+		creativity: 4.2,
+		cost: 0.5,
+		outputCost: 1.75,
+		provider: 'z-ai',
+		bestFor: ['coding', 'long-content', 'reasoning', 'refined-writing', 'technical-docs']
 	},
 	'anthropic/claude-3-haiku': {
 		id: 'anthropic/claude-3-haiku',
@@ -1132,7 +1154,8 @@ export class SmartLLMService {
 			'google/gemini-2.5-flash-lite',
 			'groq/llama-3.1-8b-instant',
 			'x-ai/grok-4-fast:free',
-			'x-ai/grok-code-fast-1'
+			'x-ai/grok-code-fast-1',
+			'z-ai/glm-4.6'
 		];
 
 		return jsonModeModels.includes(modelId);

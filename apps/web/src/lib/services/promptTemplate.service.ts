@@ -149,10 +149,11 @@ export class PromptTemplateService {
 	/**
 	 * Optimized prompt for new project brain dumps (45% smaller, preserves quality)
 	 */
-	getOptimizedNewProjectPrompt(): string {
-		const today = new Date().toISOString().split('T')[0];
+	getOptimizedNewProjectPrompt(processingDateTime?: string): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
+		
 
-		return `You are a BuildOS synthesis engine. Convert brain dumps into structured CRUD operations.
+		return `You are a synthesis engine. Convert brain dumps into structured CRUD operations.
 
 
 **OBJECTIVE**: Transform unstructured thoughts → CREATE PROJECT with comprehensive context and detailed tasks
@@ -179,7 +180,7 @@ ${generateFrameworkAdaptationExamples()}
 **Output Format**:
 ${generateOperationIdInstructions()}
 
-Current date: ${today}
+Current date and time: ${currentDateTime}
 
 Respond with valid JSON matching the output structure.`;
 	}
@@ -187,10 +188,11 @@ Respond with valid JSON matching the output structure.`;
 	/**
 	 * Optimized prompt for existing project updates (50% smaller, preserves quality)
 	 */
-	getOptimizedExistingProjectPrompt(projectId: string, projectStartDate?: string): string {
-		const today = new Date().toISOString().split('T')[0];
+	getOptimizedExistingProjectPrompt(projectId: string, projectStartDate?: string, processingDateTime?: string): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
+		
 
-		return `You are a BuildOS synthesis engine for EXISTING project ${projectId}.
+		return `You are a synthesis engine for EXISTING project ${projectId}.
 
 
 **OBJECTIVE**: Process braindump → UPDATE existing project/tasks OR CREATE new items
@@ -220,7 +222,7 @@ ${generateRecurringTaskRules()}
 ${generateOperationIdInstructions()}
 
 Project timeline context: ${projectStartDate ? `Started ${projectStartDate}` : 'No start date'}
-Current date: ${today}
+Current date and time: ${currentDateTime}
 
 Respond with valid JSON matching the output structure.`;
 	}
@@ -1100,23 +1102,27 @@ Keep the brief actionable, specific, and highlight the most important parts. Foc
 		projectId?: string,
 		existingTasks?: Task[],
 		displayedQuestions?: DisplayedBrainDumpQuestion[],
-		isNewProject?: boolean
+		isNewProject?: boolean,
+		processingDateTime?: string
 	): string {
 		// Route to appropriate method based on project type
 		if (isNewProject || !projectId) {
-			return this.getNewProjectTaskExtractionPrompt(displayedQuestions);
+			return this.getNewProjectTaskExtractionPrompt(displayedQuestions, processingDateTime);
 		} else {
 			return this.getExistingProjectTaskExtractionPrompt(
 				projectId,
 				existingTasks,
-				displayedQuestions
+				displayedQuestions,
+				processingDateTime
 			);
 		}
 	}
 
 	private getNewProjectTaskExtractionPrompt(
-		displayedQuestions?: DisplayedBrainDumpQuestion[]
+		displayedQuestions?: DisplayedBrainDumpQuestion[],
+		processingDateTime?: string
 	): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
 		// Add question analysis section if questions were displayed
 		let questionSection = '';
 		if (displayedQuestions && displayedQuestions.length > 0) {
@@ -1128,6 +1134,9 @@ Keep the brief actionable, specific, and highlight the most important parts. Foc
 		}
 
 		return `A user just brain dumped information about a project and you are a task extraction engine.
+
+**IMPORTANT CONTEXT:**
+Current date and time: ${currentDateTime}
 
 ## Your Job:
 Create all tasks that are specified in the braindump but DO NOT proactively create preparatory, setup, or follow-up tasks unless the user explicitly instructs you to in the brain dump (e.g., "create setup tasks for X", "add follow-up tasks")
@@ -1226,8 +1235,10 @@ Respond with valid JSON matching the complete structure above.`;
 	private getExistingProjectTaskExtractionPrompt(
 		projectId: string,
 		existingTasks?: Task[],
-		displayedQuestions?: DisplayedBrainDumpQuestion[]
+		displayedQuestions?: DisplayedBrainDumpQuestion[],
+		processingDateTime?: string
 	): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
 		const existingTasksSection = existingTasks
 			? DataFormatterService.formatExistingTasksForPrompt(existingTasks)
 			: 'No existing tasks';
@@ -1242,9 +1253,12 @@ Respond with valid JSON matching the complete structure above.`;
 			questionSection = `\n\n## Questions to Analyze:\n${questionsText}\n\nDetermine if each question was addressed in the braindump. Include in your response:\n"questionAnalysis": {\n  "[questionId]": {\n    "wasAnswered": boolean,\n    "answerContent": "extracted answer if addressed, null otherwise"\n  }\n}\n`;
 		}
 
-		return `You are a BuildOS task extraction engine that can CREATE new tasks or UPDATE existing ones.
+		return `You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
 Mode: Extract/Update for EXISTING project ${projectId}
+
+**IMPORTANT CONTEXT:**
+Current date and time: ${currentDateTime}
 
 ## Current Project Data:
 
@@ -1393,25 +1407,30 @@ Respond with valid JSON matching the complete structure above.`;
 	getProjectContextPrompt(
 		existingProject: ProjectWithRelations | null,
 		userId: string,
-		isNewProject?: boolean
+		isNewProject?: boolean,
+		processingDateTime?: string
 	): string {
 		// Determine if this is a new or existing project
 		// If isNewProject is explicitly provided, use that; otherwise check existingProject
 		const isNew = isNewProject !== undefined ? isNewProject : !existingProject;
 
 		if (isNew) {
-			return this.getNewProjectContextPrompt(userId);
+			return this.getNewProjectContextPrompt(userId, processingDateTime);
 		} else {
-			return this.getExistingProjectContextPrompt(existingProject!, userId);
+			return this.getExistingProjectContextPrompt(existingProject!, userId, processingDateTime);
 		}
 	}
 
-	private getNewProjectContextPrompt(userId: string): string {
-		const today = new Date().toISOString().split('T')[0];
+	private getNewProjectContextPrompt(userId: string, processingDateTime?: string): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
+		const today = currentDateTime.split('T')[0];
 
 		return `A user just brain dumped information about a new project and you need to create a context document for the new projects.
 
 Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
+
+**IMPORTANT CONTEXT:**
+Current date and time: ${currentDateTime}
 
 ## Project Creation Decision:
 ${generateDecisionMatrix()}
@@ -1515,13 +1534,18 @@ Focus on extracting strategic project information and creating comprehensive con
 
 	private getExistingProjectContextPrompt(
 		existingProject: ProjectWithRelations,
-		userId: string
+		userId: string,
+		processingDateTime?: string
 	): string {
-		const today = new Date().toISOString().split('T')[0];
+		const currentDateTime = processingDateTime || new Date().toISOString();
+		const today = currentDateTime.split('T')[0];
 
-		return `You are a BuildOS context synthesis engine specializing in project context enrichment.
+		return `You are a context synthesis engine specializing in project context enrichment.
 
 Mode: UPDATE EXISTING PROJECT CONTEXT
+
+**IMPORTANT CONTEXT:**
+Current date and time: ${currentDateTime}
 
 Your Job is to update the project context document based on the user's brain dump. 
 The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
@@ -1614,7 +1638,7 @@ Focus on strategic project information. Transform the brain dump into context up
 		// Import the minimal preprocessing from prompt-components
 		const minimalPreprocessing = generateMinimalPreprocessingSteps();
 
-		return `You are a BuildOS synthesis engine specializing in project context enrichment.
+		return `You are a synthesis engine specializing in project context enrichment.
 
 ${minimalPreprocessing}
 
@@ -1685,7 +1709,7 @@ Respond with valid JSON.`;
 			description_preview: string;
 		}>
 	): string {
-		return `You are a BuildOS braindump analyzer. Your job is to analyze a braindump and determine what existing data needs to be updated.
+		return `You are a user braindump analyzer. Your job is to analyze a braindump and determine what existing data needs to be updated.
 
 ## Your Task:
 Analyze the braindump to identify:

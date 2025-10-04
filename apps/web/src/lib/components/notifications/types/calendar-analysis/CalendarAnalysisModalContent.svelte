@@ -12,11 +12,9 @@
 
 	let { notification } = $props<{ notification: CalendarAnalysisNotification }>();
 	const dispatch = createEventDispatcher();
-	let isOpen = $state(true);
 
 	function handleClose() {
-		isOpen = false;
-		notification.actions.dismiss?.();
+		notification?.actions?.dismiss?.();
 		dispatch('close');
 	}
 
@@ -53,7 +51,7 @@
 {#if isProcessing}
 	<Modal
 		isOpen={true}
-		onClose={handleMinimize}
+		onClose={handleClose}
 		title="Analyzing calendar"
 		size="md"
 		showCloseButton={true}
@@ -69,7 +67,7 @@
 	</Modal>
 {:else}
 	<CalendarAnalysisResults
-		bind:isOpen
+		isOpen={true}
 		analysisId={notification.data.analysisId}
 		{suggestions}
 		autoStart={false}

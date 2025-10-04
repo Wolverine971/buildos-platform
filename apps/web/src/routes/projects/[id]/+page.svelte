@@ -487,7 +487,7 @@
 				await dataService.loadTasks({ force: true });
 			}
 
-			toastService.success('Task updated successfully');
+			// toastService.success('Task updated successfully');
 		} catch (error) {
 			toastService.error('Failed to update task');
 			console.error('Error updating task:', error);
@@ -625,18 +625,16 @@
 		// Force reload of tasks and phases to ensure UI is fully synced
 		if (needsRefresh && dataService && data.project?.id) {
 			try {
-				// Set loading state while refreshing
-				projectStoreV2.setLoadingState('tasks', 'loading');
+				// FIXED: Don't manually set loading state - let loadTasks/loadPhases handle it
+				// This prevents the bug where manual 'loading' state blocks the force reload
 
-				// Reload tasks with calendar events
+				// Reload tasks with calendar events (force=true bypasses cache and duplicate checks)
 				await dataService.loadTasks({ force: true });
 				// Reload phases to update phase-level task counts and statuses
 				await dataService.loadPhases({ force: true });
-
-				projectStoreV2.setLoadingState('tasks', 'idle');
 			} catch (error) {
 				console.error('Error refreshing data after scheduling:', error);
-				projectStoreV2.setLoadingState('tasks', 'error');
+				// loadTasks/loadPhases already set error state internally, no need to set again
 			}
 		}
 	}

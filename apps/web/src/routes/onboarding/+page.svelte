@@ -35,6 +35,9 @@
 	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
 	import NotificationsStep from '$lib/components/onboarding-v2/NotificationsStep.svelte';
+	import ArchetypeStep from '$lib/components/onboarding-v2/ArchetypeStep.svelte';
+	import ChallengesStep from '$lib/components/onboarding-v2/ChallengesStep.svelte';
+	import SummaryStep from '$lib/components/onboarding-v2/SummaryStep.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,6 +69,14 @@
 
 	function handleV2EmailEnabled(enabled: boolean) {
 		v2OnboardingData.emailEnabled = enabled;
+	}
+
+	function handleV2ArchetypeSelected(archetype: string) {
+		v2OnboardingData.archetype = archetype;
+	}
+
+	function handleV2ChallengesSelected(challenges: string[]) {
+		v2OnboardingData.challenges = challenges;
 	}
 
 	let currentStep = $state(data.recommendedStep || 0);
@@ -484,6 +495,20 @@
 					onSMSEnabled={handleV2SMSEnabled}
 					onEmailEnabled={handleV2EmailEnabled}
 				/>
+			{:else if v2CurrentStep === 3}
+				<ArchetypeStep
+					userId={data.user.id}
+					onNext={handleV2Next}
+					onArchetypeSelected={handleV2ArchetypeSelected}
+				/>
+			{:else if v2CurrentStep === 4}
+				<ChallengesStep
+					userId={data.user.id}
+					onNext={handleV2Next}
+					onChallengesSelected={handleV2ChallengesSelected}
+				/>
+			{:else if v2CurrentStep === 5}
+				<SummaryStep userId={data.user.id} summary={v2OnboardingData} />
 			{/if}
 		</div>
 	</div>

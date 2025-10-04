@@ -77,11 +77,10 @@
 	}
 
 	function handleClose() {
-		// Call the dismiss action to remove the notification
-		notification.actions.dismiss?.();
-		// Notify parent so it can clean up the notification modal
+		// Clean up notification actions before closing
+		notification?.actions?.dismiss?.();
 		dispatch('close');
-	}
+	} 
 
 	function handleRetry() {
 		notification.actions.retry?.();
@@ -90,12 +89,14 @@
 	function handleViewProject() {
 		// Navigate to project
 		if (notification.actions.viewProject) {
+			// viewProject action already minimizes the notification (which closes the modal)
 			notification.actions.viewProject();
 		} else if (browser) {
-			goto(`/projects/${notification.data.projectId}`);
+			// Fallback: Force data invalidation to refresh project data even if already on the page
+			goto(`/projects/${notification.data.projectId}`, { invalidateAll: true });
+			// Close the modal after navigation (only needed in fallback path)
+			handleClose();
 		}
-		// Close the modal after navigation
-		handleClose();
 	}
 
 	const duration = $derived(

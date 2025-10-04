@@ -192,18 +192,31 @@ class ProjectStoreV2 {
 			return;
 		}
 
-		// Avoid duplicate requests
-		if (state.loadingStates.tasks === 'loading') {
+		// Avoid duplicate requests UNLESS forced (force overrides duplicate check)
+		if (!force && state.loadingStates.tasks === 'loading') {
+			console.log('[Store] Skipping duplicate tasks request (already loading)');
 			return;
 		}
 
 		this.updateLoadingState('tasks', 'loading');
 
-		// FIXED: Start performance monitoring
+		// Start performance monitoring
 		performanceMonitor.startTimer('store-operation-loadTasks', { projectId, force });
 
 		try {
-			const response = await fetch(`/api/projects/${projectId}/tasks`);
+			// Add timeout to prevent hanging forever
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => {
+				controller.abort();
+				console.error('[Store] Tasks fetch timed out after 15s');
+			}, 15000); // 15 second timeout
+
+			const response = await fetch(`/api/projects/${projectId}/tasks`, {
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
 			if (!response.ok) throw new Error('Failed to fetch tasks');
 
 			const result = await response.json();
@@ -221,7 +234,7 @@ class ProjectStoreV2 {
 
 				this.updateStats();
 
-				// FIXED: End performance monitoring on success
+				// End performance monitoring on success
 				performanceMonitor.endTimer('store-operation-loadTasks', {
 					projectId,
 					taskCount: tasksList.length
@@ -229,16 +242,22 @@ class ProjectStoreV2 {
 			} else {
 				console.error('[Store] Tasks API returned success: false', result);
 				this.setError('tasks', result.error || 'Failed to load tasks');
-				// FIXED: End performance monitoring on API error
+				// End performance monitoring on API error
 				performanceMonitor.endTimer('store-operation-loadTasks', {
 					projectId,
 					error: result.error
 				});
 			}
 		} catch (error) {
-			console.error('[Store] Error loading tasks:', error);
-			this.setError('tasks', error instanceof Error ? error.message : 'Failed to load tasks');
-			// FIXED: End performance monitoring on exception
+			// Handle timeout specifically
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.error('[Store] Tasks fetch aborted (timeout)');
+				this.setError('tasks', 'Request timed out. Please refresh the page.');
+			} else {
+				console.error('[Store] Error loading tasks:', error);
+				this.setError('tasks', error instanceof Error ? error.message : 'Failed to load tasks');
+			}
+			// End performance monitoring on exception
 			performanceMonitor.endTimer('store-operation-loadTasks', {
 				projectId,
 				error: error instanceof Error ? error.message : String(error)
@@ -280,14 +299,28 @@ class ProjectStoreV2 {
 		if (!force && this.isCacheValid('phases', 120000)) {
 			return;
 		}
-		if (state.loadingStates.phases === 'loading') {
+		// Avoid duplicate requests UNLESS forced (force overrides duplicate check)
+		if (!force && state.loadingStates.phases === 'loading') {
+			console.log('[Store] Skipping duplicate phases request (already loading)');
 			return;
 		}
 
 		this.updateLoadingState('phases', 'loading');
 
 		try {
-			const response = await fetch(`/api/projects/${projectId}/phases`);
+			// Add timeout to prevent hanging forever
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => {
+				controller.abort();
+				console.error('[Store] Phases fetch timed out after 15s');
+			}, 15000); // 15 second timeout
+
+			const response = await fetch(`/api/projects/${projectId}/phases`, {
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
 			if (!response.ok) throw new Error('Failed to fetch phases');
 
 			const result = await response.json();
@@ -315,11 +348,17 @@ class ProjectStoreV2 {
 				this.setError('phases', result.error || 'Failed to load phases');
 			}
 		} catch (error) {
-			console.error('[Store] Error loading phases:', error);
-			this.setError(
-				'phases',
-				error instanceof Error ? error.message : 'Failed to load phases'
-			);
+			// Handle timeout specifically
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.error('[Store] Phases fetch aborted (timeout)');
+				this.setError('phases', 'Request timed out. Please refresh the page.');
+			} else {
+				console.error('[Store] Error loading phases:', error);
+				this.setError(
+					'phases',
+					error instanceof Error ? error.message : 'Failed to load phases'
+				);
+			}
 		}
 	}
 

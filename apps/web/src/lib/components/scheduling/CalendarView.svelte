@@ -31,6 +31,7 @@
 	export let refreshing = false;
 	export let phaseStart: Date | string | null = null;
 	export let phaseEnd: Date | string | null = null;
+	export let highlightedTaskId: string | null = null;
 
 	const dispatch = createEventDispatcher();
 
@@ -131,15 +132,20 @@
 
 			const scheduleStart = new Date(schedule.proposedStart);
 			if (scheduleStart >= dayStart && scheduleStart <= dayEnd) {
+				const isHighlighted = highlightedTaskId === schedule.task.id;
+
 				dayEvents.push({
 					type: 'proposed',
 					title: schedule.task.title,
 					start: scheduleStart,
 					end: new Date(schedule.proposedEnd),
-					color: schedule.hasConflict
-						? 'bg-rose-200 dark:bg-rose-900/30'
-						: 'bg-primary-100 dark:bg-primary-900/30 border-primary-500',
-					schedule: schedule
+					color: isHighlighted
+						? 'bg-primary-200 dark:bg-primary-700 ring-2 ring-primary-500'
+						: schedule.hasConflict
+							? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400'
+							: 'bg-primary-100 dark:bg-primary-900/30 border-primary-500',
+					schedule: schedule,
+					isHighlighted
 				});
 			}
 		}

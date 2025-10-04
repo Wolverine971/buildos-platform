@@ -1,32 +1,36 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-03T07:13:02.347Z
+**Generated at:** 2025-10-04T03:48:37.332Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
-	"projectId": "6ffdcb04-250f-427b-8984-6ce76595daea",
-	"brainDumpLength": 676,
-	"existingTasksCount": 10,
-	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-03T07:13:02.346Z"
+  "userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
+  "projectId": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
+  "brainDumpLength": 805,
+  "existingTasksCount": 20,
+  "hasDisplayedQuestions": false,
+  "timestamp": "2025-10-04T03:48:37.326Z"
 }
 ```
 
+
 ## System Prompt
 
-````
-You are a BuildOS task extraction engine that can CREATE new tasks or UPDATE existing ones.
+```
+You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project 6ffdcb04-250f-427b-8984-6ce76595daea
+Mode: Extract/Update for EXISTING project fe85feb9-3c38-4f32-b598-2bf2d4ad0d25
+
+**IMPORTANT CONTEXT:**
+Current date and time: 2025-10-04T03:48:26.177Z
 
 ## Current Project Data:
 
-**EXISTING TASKS (10):**
-[{"id":"d53bffe4-3938-4c09-8c2b-b1edae512fbe","title":"World-building for Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":60,"description":"Add new world-building elements related to the forging culture in Aethermoor.","details":"Include The Forge Temples: ancient sites where dragon fire still burns, Smith's Guild hierarchy and traditions, The Quenching Ritual: how magical weapons are completed, and regional differences in forging techniques across Aethermoor."},{"id":"d9aaeccb-3561-4848-a5d6-00dd60364a28","title":"Outline chapter 3","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Plan the key events and elements for chapter 3.","details":"Elena's first attempt at magical forging, introduce the Shadow King's herald, and foreshadow the prophecy."},{"id":"34b035e5-9ed1-4e6a-bdb5-a0189b8ab294","title":"Revise chapter 2 based on feedback","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":60,"description":"Address issues identified in chapter 2.","details":"Strengthen the dialogue between Elena and Master Thorne, improve pacing in the middle of the chapter, and add more sensory details about the forge."},{"id":"dc2eb5d6-8562-4920-ad05-3db568bf59f6","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Create a prophecy that drives the plot of the novel.","details":"The prophecy should be tied to the main character's journey and the fate of the kingdom, incorporating themes of destiny and conflict."},{"id":"e7a88903-d69a-47b0-a3b3-fb38271f8261","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Gather information on blacksmithing techniques from the medieval period.","details":"Focus on tools, methods, and materials used in blacksmithing to inform the character's abilities and the magic system."},{"id":"48080bab-5669-4008-8649-0d62f1d757ec","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Create an outline for the initial chapters of the novel.","details":"The pacing in the middle feels slow. Need to strengthen the dialogue between Elena and Master Thorne. Add more sensory details about the forge."},{"id":"92a2e440-2d1b-49cb-89fd-71443986a98e","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Develop detailed profiles for the antagonist.","details":"The antagonist is The Shadow King. Explore his motivations, background, and how he opposes the main character."},{"id":"fd2f00af-bc07-4d16-9474-6c679aa48eb3","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":30,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"c6e788aa-a775-430e-b39c-d14ffab6b5b9","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Develop a unique magic system for the novel.","details":"Develop a unique magic system for the novel. Incorporate emotional influences on weapon properties: Anger = fire damage, Sorrow = ice/frost, Joy = healing properties, Fear = defensive shields. Research parallels with Japanese sword-making traditions, Damascus steel patterns for visual descriptions, Celtic mythology about smith gods (Goibniu), and types of medieval weapons beyond swords."},{"id":"4c2583e0-e34a-4e84-838e-754e3c0aa130","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Create a detailed backstory for the main character.","details":"Fix continuity issue regarding Elena's age; she is mentioned as 16 in chapter 1 and 17 in chapter 2."}]
+**EXISTING TASKS (2):**
+[{"id":"46ccd838-ebdd-4ace-9403-54e091f83792","title":"Prepare First 3 Chapters as Sample","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-04T00:00:00+00:00","duration_minutes":120,"description":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents.","details":"Ensure the chapters are polished and ready for submission."},{"id":"61e9b969-6465-498e-b6da-86657d0f94cc","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-07T14:30:00+00:00","duration_minutes":60,"description":"Create an outline for the initial chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in the first three chapters."}]
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -68,7 +72,7 @@ Mode: Extract/Update for EXISTING project 6ffdcb04-250f-427b-8984-6ce76595daea
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "6ffdcb04-250f-427b-8984-6ce76595daea",
+  "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -149,7 +153,11 @@ Include these questions in your response within the main JSON structure:
       "data": {
         "id": "task-123",
         "status": "in_progress",
-        "details": "Added implementation details, research notes, observations from brain dump. Include all context..."
+        "priority": "high",
+        "duration_minutes": 120,
+        "start_date": "2024-03-15T14:00:00",
+        "details": "Added implementation details, research notes, observations from brain dump. Include all context...",
+        "tags": ["urgent", "backend"]
       }
     },
     {
@@ -160,10 +168,32 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "6ffdcb04-250f-427b-8984-6ce76595daea",
+        "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
         "priority": "medium",
         "status": "backlog",
-        "task_type": "one_off"
+        "task_type": "one_off",
+        "duration_minutes": 60,
+        "start_date": "2024-03-16T10:30:00",
+        "tags": ["feature", "api"]
+      }
+    },
+    {
+      "id": "op-1234567890-task-create-2",
+      "table": "tasks",
+      "operation": "create",
+      "data": {
+        "title": "Daily standup meeting",
+        "description": "Morning team sync",
+        "details": "Quick 15-minute sync to share updates and blockers",
+        "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
+        "priority": "medium",
+        "status": "backlog",
+        "task_type": "recurring",
+        "duration_minutes": 15,
+        "start_date": "2024-03-15T09:00:00",
+        "recurrence_pattern": "daily",
+        "recurrence_ends": null,
+        "tags": ["meeting", "daily"]
       }
     }
   ],
@@ -184,47 +214,49 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-````
+```
 
 Respond with valid JSON matching the complete structure above.
-
 ```
 
 ## User Prompt
 
 ```
-
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-"Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
+"Got feedback from my critique group on chapters 1-3. Major revision needed.
 
-Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
+Chapter 1 issues:
 
-Weekly tasks:
+- Opening is too slow - start with action not description
+- Elena needs stronger voice from page 1
+- Cut the 3 pages of world history - weave it in later
 
-- Saturday mornings: Chapter revision and editing
-- Sunday afternoons: Plot planning for next week
+Chapter 2 improvements needed:
 
-Monthly milestones:
+- Master Thorne's dialogue too modern - needs more archaic feel
+- Add scene showing Elena's daily forge work before the discovery
+- The dragon forge discovery happens too easily - add obstacles
 
-- January: Complete chapters 1-10 (30,000 words)
-- February: Complete chapters 11-20 (30,000 words)
-- March: Complete chapters 21-30 and epilogue (35,000 words)
+Chapter 3 restructure:
 
-Also need to:
+- Move the prophecy reveal to chapter 5
+- Focus on Elena's emotional journey
+- Add more conflict with Kai about her destiny
 
-- Join local writers' critique group (meets 1st Tuesday of month)
-- Submit chapter 1 to beta readers by January 15th
-- Research literary agents for fantasy genre"
+Also, writing style notes:
 
+- Too many adverbs - search and destroy
+- Vary sentence structure more
+- Stop using 'suddenly' as a crutch
+- Better sensory details in action scenes"
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2939 tokens
-- **User Prompt:** ~205 tokens
-- **Total Estimate:** ~3145 tokens
+- **System Prompt:** ~2352 tokens
+- **User Prompt:** ~238 tokens
+- **Total Estimate:** ~2590 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
-```

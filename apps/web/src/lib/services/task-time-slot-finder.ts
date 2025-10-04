@@ -51,6 +51,31 @@ export class TaskTimeSlotFinder {
 			console.log('no calendar preferences');
 		}
 
+	// Provide default preferences if none exist (don't auto-create in DB)
+	const preferences = userCalendarPreferences || {
+		user_id: userId,
+		id: '',
+		timezone: 'America/New_York',
+		work_start_time: '09:00:00',
+		work_end_time: '17:00:00',
+		working_days: [1, 2, 3, 4, 5],
+		default_task_duration_minutes: 60,
+		min_task_duration_minutes: 30,
+		max_task_duration_minutes: 240,
+		exclude_holidays: true,
+		holiday_country_code: 'US',
+		prefer_morning_for_important_tasks: false,
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
+	};
+
+	if (userCalendarPreferencesError) {
+		console.warn('No calendar preferences found for user, using defaults:', {
+			userId,
+			errorCode: userCalendarPreferencesError.code
+		});
+	}
+
 		// Filter out recurring tasks (they shouldn't be adjusted)
 		const recurringTasks = tasksToSchedule.filter((task) => task.recurrence_pattern !== null);
 		const nonRecurringTasks = tasksToSchedule.filter(
@@ -60,7 +85,7 @@ export class TaskTimeSlotFinder {
 		// Group tasks by their start date (day only)
 		const tasksByDay = this.groupTasksByDay(
 			nonRecurringTasks,
-			userCalendarPreferences?.timezone || 'UTC'
+			preferences.timezone || 'UTC'
 		);
 
 		const scheduledTasks: Task[] = [];
@@ -69,13 +94,13 @@ export class TaskTimeSlotFinder {
 		// Get all working days that need existing task data
 		const workingDays = Object.entries(tasksByDay)
 			.map(([dateKey]) => new Date(dateKey))
-			.filter((dayDate) => this.isWorkingDay(dayDate, userCalendarPreferences));
+			.filter((dayDate) => this.isWorkingDay(dayDate, preferences));
 
 		// Batch fetch existing tasks for all working days
 		const existingTasksByDay = await this.getExistingTasksForDateRange(
 			workingDays,
 			userId,
-			userCalendarPreferences?.timezone || 'UTC'
+			preferences.timezone || 'UTC'
 		);
 
 		// Process each day's tasks
@@ -83,7 +108,7 @@ export class TaskTimeSlotFinder {
 			const dayDate = new Date(dateKey);
 
 			// Skip non-working days
-			if (!this.isWorkingDay(dayDate, userCalendarPreferences)) {
+			if (!this.isWorkingDay(dayDate, preferences)) {
 				// Add all tasks for this non-working day to bump queue
 				dayTasks.forEach((task) => {
 					bumpedTasks.push({
@@ -102,7 +127,7 @@ export class TaskTimeSlotFinder {
 				dayTasks,
 				existingTasks,
 				dayDate,
-				userCalendarPreferences
+				preferences
 			);
 
 			scheduledTasks.push(...scheduled);
@@ -112,7 +137,7 @@ export class TaskTimeSlotFinder {
 		// Process bumped tasks
 		const rescheduledTasks = await this.processBumpedTasks(
 			bumpedTasks,
-			userCalendarPreferences
+			preferences
 		);
 
 		// Combine all tasks: recurring (unchanged) + scheduled + rescheduled
@@ -455,10 +480,10 @@ export class TaskTimeSlotFinder {
 // export async function assignTasksToCalendar(
 // 	supabaseClient: any,
 // 	tasksToSchedule: Task[],
-// 	userCalendarPreferences: UserCalendarPreferences
+// 	preferences: UserCalendarPreferences
 // ): Promise<Task[]> {
 // 	const scheduler = new TaskTimeSlotFinder(supabaseClient);
-// 	return await scheduler.scheduleTasks(tasksToSchedule, userCalendarPreferences);
+// 	return await scheduler.scheduleTasks(tasksToSchedule, preferences);
 // }
 
 // Example usage:

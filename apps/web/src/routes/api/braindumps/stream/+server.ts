@@ -27,6 +27,9 @@ import { BrainDumpValidator } from '$lib/utils/braindump-validation';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
+		// Capture current datetime with timezone at the beginning of the request
+		const processingDateTime = new Date().toISOString();
+
 		// Validate authentication
 		const { user } = await safeGetSession();
 		if (!user) {
@@ -67,7 +70,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			userId: user.id,
 			supabase,
 			options,
-			autoAccept
+			autoAccept: !!autoAccept,
+			processingDateTime
 		});
 
 		// Return SSE response
@@ -87,7 +91,8 @@ async function processBrainDumpWithStreaming({
 	userId,
 	supabase,
 	options,
-	autoAccept
+	autoAccept,
+	processingDateTime
 }: {
 	content: string;
 	selectedProjectId?: string;
@@ -99,6 +104,7 @@ async function processBrainDumpWithStreaming({
 	supabase: SupabaseClient<Database>;
 	options: BrainDumpOptions | undefined;
 	autoAccept: boolean;
+	processingDateTime: string;
 }) {
 	const processor = new BrainDumpProcessor(supabase);
 	const activityLogger = new ActivityLogger(supabase);
@@ -374,7 +380,8 @@ async function processBrainDumpWithStreaming({
 				streamResults: true,
 				useDualProcessing: true
 			},
-			brainDumpId: brainDumpId as string
+			brainDumpId: brainDumpId as string,
+			processingDateTime
 		});
 
 		// Validate the result using the proper validation utilities

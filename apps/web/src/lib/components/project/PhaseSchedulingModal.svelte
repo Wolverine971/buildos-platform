@@ -10,7 +10,7 @@
 	- Separated concerns for task updates
 -->
 <script lang="ts">
-	import { Calendar, Loader2, X } from 'lucide-svelte';
+	import { Calendar, Loader2, X, ChevronDown } from 'lucide-svelte';
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -57,6 +57,11 @@
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
 	};
 
+	// New state for highlighting and mobile
+	let highlightedTaskId: string | null = null;
+	let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
+	let calendarExpanded = false; // Mobile calendar toggle
+
 	// Subscribe to store
 	const unsubscribe = schedulingStore.subscribe((state) => {
 		status = state.status;
@@ -101,8 +106,45 @@
 		if (clickedEvent.type === 'existing' && clickedEvent.htmlLink) {
 			window.open(clickedEvent.htmlLink, '_blank');
 		} else if (clickedEvent.type === 'proposed' && clickedEvent.schedule) {
-			schedulingStore.setEditingTask(clickedEvent.schedule.task.id);
+			const taskId = clickedEvent.schedule.task.id;
+			highlightAndScrollToTask(taskId);
 		}
+	}
+
+	/**
+	 * Highlight and scroll to a task in the list
+	 */
+	function highlightAndScrollToTask(taskId: string) {
+		// Clear existing timeout
+		if (highlightTimeout) {
+			clearTimeout(highlightTimeout);
+		}
+
+		// Set highlighted task
+		highlightedTaskId = taskId;
+
+		// Scroll to task
+		setTimeout(() => {
+			const element = document.getElementById(`task-schedule-item-${taskId}`);
+			if (element) {
+				element.scrollIntoView({
+					behavior: 'smooth',
+					block: 'center'
+				});
+			}
+		}, 100);
+
+		// Clear highlight after 3 seconds
+		highlightTimeout = setTimeout(() => {
+			highlightedTaskId = null;
+		}, 3000);
+	}
+
+	/**
+	 * Handle clicking on conflict warning - highlight affected task
+	 */
+	function handleConflictClick(taskId: string) {
+		highlightAndScrollToTask(taskId);
 	}
 
 	function handleDateChange(event: CustomEvent) {
@@ -191,7 +233,7 @@
 <Modal
 	{isOpen}
 	onClose={handleClose}
-	size="xl"
+	size="2xl"
 	closeOnBackdrop={status !== 'saving'}
 	closeOnEscape={status !== 'saving'}
 	persistent={status === 'saving'}
@@ -235,7 +277,12 @@
 		</div>
 
 		<!-- Alerts -->
-		<ScheduleConflictAlert {conflicts} {warnings} {phaseValidationWarning} />
+		<ScheduleConflictAlert
+			{conflicts}
+			{warnings}
+			{phaseValidationWarning}
+			onTaskClick={handleConflictClick}
+		/>
 
 		{#if error}
 			<div
@@ -257,7 +304,7 @@
 	</svelte:fragment>
 
 	<!-- Main Content -->
-	<div class="flex flex-col h-full max-h-[60vh]">
+	<div class="flex flex-col h-full max-h-[70vh]">
 		{#if status === 'loading'}
 			<div class="flex items-center justify-center py-12">
 				<Loader2 class="w-8 h-8 animate-spin text-gray-400 mr-3" />
@@ -278,50 +325,151 @@
 				</Button>
 			</div>
 		{:else}
-			<!-- Calendar View -->
-			<div class="flex-1">
-				<CalendarView
-					{viewMode}
-					{currentDate}
-					events={calendarEvents}
-					{proposedSchedules}
-					{workingHours}
-					loading={false}
-					refreshing={status === 'refreshing'}
-					phaseStart={phase.start_date}
-					phaseEnd={phase.end_date}
-					on:eventClick={handleEventClick}
-					on:dateChange={handleDateChange}
-					on:viewModeChange={handleViewModeChange}
-					on:refresh={handleRefresh}
-				/>
+			<!-- Desktop: Two-column layout -->
+			<div class="hidden lg:grid lg:grid-cols-[2fr_3fr] gap-0 h-full">
+				<!-- Left: Task List Panel -->
+				<div class="border-r border-gray-200 dark:border-gray-700 flex flex-col">
+					<div
+						class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+					>
+						<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+							Tasks to Schedule
+						</h3>
+						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							Click a task to edit its schedule
+						</p>
+					</div>
+
+					<div
+						id="task-list-panel"
+						class="flex-1 overflow-y-auto p-4"
+						role="list"
+						aria-label="Tasks to schedule"
+					>
+						<div class="space-y-3">
+							{#each proposedSchedules as schedule (schedule.task.id)}
+								<div role="listitem">
+									<TaskScheduleItem
+										{schedule}
+										isEditing={editingTaskId === schedule.task.id}
+										isHighlighted={highlightedTaskId === schedule.task.id}
+										compact={false}
+										on:editStart={handleTaskEditStart}
+										on:editCancel={handleTaskEditCancel}
+										on:editSave={handleTaskEditSave}
+										on:reset={handleTaskReset}
+									/>
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<div
+						class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+					>
+						<div class="text-xs text-gray-600 dark:text-gray-400">
+							{proposedSchedules.length} task{proposedSchedules.length === 1 ? '' : 's'}
+							{#if conflictCount > 0}
+								•
+								<span class="text-amber-600 dark:text-amber-400">
+									{conflictCount} with warning{conflictCount === 1 ? '' : 's'}
+								</span>
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<!-- Right: Calendar Panel -->
+				<div class="flex flex-col bg-white dark:bg-gray-900">
+					<CalendarView
+						{viewMode}
+						{currentDate}
+						events={calendarEvents}
+						{proposedSchedules}
+						{workingHours}
+						loading={false}
+						refreshing={status === 'refreshing'}
+						phaseStart={phase.start_date}
+						phaseEnd={phase.end_date}
+						highlightedTaskId={highlightedTaskId}
+						on:eventClick={handleEventClick}
+						on:dateChange={handleDateChange}
+						on:viewModeChange={handleViewModeChange}
+						on:refresh={handleRefresh}
+					/>
+				</div>
 			</div>
 
-			<!-- Task List -->
-			<div class="border-t border-gray-200 dark:border-gray-700 p-4">
-				<div class="flex items-center justify-between mb-3">
-					<h3 class="text-sm font-medium text-gray-900 dark:text-white">
-						Task Schedule ({proposedSchedules.length} tasks)
-					</h3>
-					{#if conflictCount > 0}
-						<span class="text-xs text-amber-600 dark:text-amber-400">
-							{conflictCount} conflict{conflictCount === 1 ? '' : 's'}
+			<!-- Mobile: Vertical stack -->
+			<div class="lg:hidden flex flex-col h-full">
+				<!-- Collapsible Calendar -->
+				<div class="border-b border-gray-200 dark:border-gray-700">
+					<button
+						onclick={() => (calendarExpanded = !calendarExpanded)}
+						class="w-full p-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+					>
+						<span class="text-sm font-semibold text-gray-900 dark:text-white">
+							<Calendar class="w-4 h-4 inline mr-2" />
+							Calendar View
 						</span>
+						<ChevronDown
+							class="w-5 h-5 transition-transform {calendarExpanded ? 'rotate-180' : ''}"
+						/>
+					</button>
+
+					{#if calendarExpanded}
+						<div class="h-96">
+							<CalendarView
+								{viewMode}
+								{currentDate}
+								events={calendarEvents}
+								{proposedSchedules}
+								{workingHours}
+								loading={false}
+								refreshing={status === 'refreshing'}
+								phaseStart={phase.start_date}
+								phaseEnd={phase.end_date}
+								highlightedTaskId={highlightedTaskId}
+								on:eventClick={handleEventClick}
+								on:dateChange={handleDateChange}
+								on:viewModeChange={handleViewModeChange}
+								on:refresh={handleRefresh}
+							/>
+						</div>
 					{/if}
 				</div>
 
-				<div id="task-schedule-list" class="space-y-2 max-h-48 overflow-y-auto">
-					{#each proposedSchedules as schedule (schedule.task.id)}
-						<TaskScheduleItem
-							{schedule}
-							isEditing={editingTaskId === schedule.task.id}
-							compact={true}
-							on:editStart={handleTaskEditStart}
-							on:editCancel={handleTaskEditCancel}
-							on:editSave={handleTaskEditSave}
-							on:reset={handleTaskReset}
-						/>
-					{/each}
+				<!-- Task List (always visible on mobile) -->
+				<div class="flex-1 overflow-y-auto p-4">
+					<div class="mb-3">
+						<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+							Tasks to Schedule
+						</h3>
+						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							{proposedSchedules.length} task{proposedSchedules.length === 1 ? '' : 's'}
+							{#if conflictCount > 0}
+								•
+								<span class="text-amber-600 dark:text-amber-400">
+									{conflictCount} with warning{conflictCount === 1 ? '' : 's'}
+								</span>
+							{/if}
+						</p>
+					</div>
+
+					<div class="space-y-2">
+						{#each proposedSchedules as schedule (schedule.task.id)}
+							<TaskScheduleItem
+								{schedule}
+								isEditing={editingTaskId === schedule.task.id}
+								isHighlighted={highlightedTaskId === schedule.task.id}
+								compact={true}
+								on:editStart={handleTaskEditStart}
+								on:editCancel={handleTaskEditCancel}
+								on:editSave={handleTaskEditSave}
+								on:reset={handleTaskReset}
+							/>
+						{/each}
+					</div>
 				</div>
 			</div>
 		{/if}

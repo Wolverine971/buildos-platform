@@ -160,7 +160,7 @@
 
 			if (result?.success) {
 				await invalidateTaskData();
-				toastService.success('Task updated successfully');
+				// toastService.success('Task updated successfully');
 			}
 		} catch (error) {
 			console.error(`Error updating ${field}:`, error);
@@ -185,11 +185,7 @@
 		showProjectContextModal = false;
 	}
 
-	// Task update handler
-	async function handleTaskUpdated() {
-		await invalidateTaskData();
-		toastService.success('Task updated successfully');
-	}
+
 
 	// Get status display info
 	function getStatusDisplay(status: string) {

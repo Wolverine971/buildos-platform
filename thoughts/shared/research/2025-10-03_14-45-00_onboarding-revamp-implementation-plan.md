@@ -19,6 +19,8 @@ last_updated: 2025-10-03
 last_updated_by: Claude Code
 ---
 
+<!-- todo: priority 2 -->
+
 # BuildOS Onboarding Revamp - Phased Implementation Plan
 
 **Date**: 2025-10-03T14:45:00-07:00

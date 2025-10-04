@@ -22,7 +22,8 @@ import type {
 	BrainDumpParseResult,
 	ExecutionResult,
 	BrainDumpMetadata,
-	DisplayedBrainDumpQuestion
+	DisplayedBrainDumpQuestion,
+	PreparatoryAnalysisResult
 } from '$lib/types/brain-dump';
 
 import type { ProjectWithRelations, Task } from '$lib/types/project';
@@ -180,10 +181,10 @@ export class BrainDumpProcessor {
 		brainDump: string,
 		project: ProjectWithRelations,
 		userId: string
-	): Promise<import('$lib/types/brain-dump').PreparatoryAnalysisResult | null> {
+	): Promise<PreparatoryAnalysisResult> {
 		try {
 			// Prepare light task data (only essential fields to save tokens)
-			const lightTasks = (project.tasks || []).map((task) => ({
+			const lightTasks = (project?.tasks || []).map((task) => ({
 				id: task.id,
 				title: task.title,
 				status: task.status,
@@ -228,7 +229,7 @@ export class BrainDumpProcessor {
 
 			// Extract and validate the result
 			const analysisResult =
-				response.result as import('$lib/types/brain-dump').PreparatoryAnalysisResult;
+				response as PreparatoryAnalysisResult;
 
 			// Enhanced validation with detailed logging
 			if (!analysisResult) {
@@ -247,7 +248,7 @@ export class BrainDumpProcessor {
 			}
 
 			// Validate required fields with defaults
-			const validatedResult: import('$lib/types/brain-dump').PreparatoryAnalysisResult = {
+			const validatedResult: PreparatoryAnalysisResult = {
 				analysis_summary: analysisResult.analysis_summary || 'Analysis completed',
 				braindump_classification: analysisResult.braindump_classification,
 				needs_context_update:
@@ -323,7 +324,8 @@ export class BrainDumpProcessor {
 		selectedProjectId,
 		displayedQuestions,
 		options = {},
-		brainDumpId
+		brainDumpId,
+		processingDateTime
 	}: {
 		brainDump: string;
 		userId: string;
@@ -331,6 +333,7 @@ export class BrainDumpProcessor {
 		displayedQuestions?: DisplayedBrainDumpQuestion[];
 		options?: BrainDumpOptions;
 		brainDumpId: string;
+		processingDateTime?: string;
 	}): Promise<BrainDumpParseResult> {
 		const startTime = Date.now();
 
@@ -346,7 +349,7 @@ export class BrainDumpProcessor {
 		}
 
 		// Run preparatory analysis for existing projects (optimization step)
-		let prepAnalysisResult: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null =
+		let prepAnalysisResult: PreparatoryAnalysisResult | null =
 			null;
 		if (existingProject && selectedProjectId) {
 			console.log('[BrainDumpProcessor] Running preparatory analysis for existing project');
@@ -419,7 +422,8 @@ export class BrainDumpProcessor {
 					existingProject,
 					displayedQuestions,
 					options: { ...options, streamResults: true },
-					prepAnalysisResult // Pass analysis result for optimization
+					prepAnalysisResult, // Pass analysis result for optimization
+					processingDateTime
 				});
 			} else {
 				// Route to appropriate single processing function
@@ -431,7 +435,8 @@ export class BrainDumpProcessor {
 						displayedQuestions,
 						options,
 						brainDumpId,
-						isNewProject
+						isNewProject,
+						processingDateTime
 					});
 				} else {
 					synthesisResult = await this.processWithStrategy({
@@ -441,7 +446,8 @@ export class BrainDumpProcessor {
 						displayedQuestions,
 						options,
 						brainDumpId,
-						isNewProject
+						isNewProject,
+						processingDateTime
 					});
 				}
 			}
@@ -609,7 +615,8 @@ export class BrainDumpProcessor {
 		options,
 		brainDumpId,
 		isNewProject,
-		analysisResult
+		analysisResult,
+		processingDateTime
 	}: {
 		brainDump: string;
 		userId: string;
@@ -618,14 +625,15 @@ export class BrainDumpProcessor {
 		options: BrainDumpOptions;
 		brainDumpId: string;
 		isNewProject: boolean;
-		analysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
+		analysisResult?: PreparatoryAnalysisResult | null;
+		processingDateTime?: string;
 	}): Promise<BrainDumpParseResult> {
 		const startTime = Date.now();
 
 		try {
 			// Get appropriate system instructions based on project type
 			const systemInstructionsPrompt = isNewProject
-				? this.promptTemplateService.getOptimizedNewProjectPrompt()
+				? this.promptTemplateService.getOptimizedNewProjectPrompt(processingDateTime)
 				: this.promptTemplateService.getOptimizedExistingProjectPrompt(
 						selectedProjectId!,
 						(
@@ -634,7 +642,8 @@ export class BrainDumpProcessor {
 								projectId: selectedProjectId!,
 								options: { includeTasks: false, includePhases: false }
 							})
-						).fullProjectWithRelations?.start_date || undefined
+						).fullProjectWithRelations?.start_date || undefined,
+						processingDateTime
 					);
 
 			// Get project context
@@ -659,7 +668,7 @@ export class BrainDumpProcessor {
 				? `${systemInstructionsPrompt}\n\n## Analysis Context:\n${projectContextPrompt}${questionsPrompt}`
 				: `${systemInstructionsPrompt}\n\n## Current Project Data:\n${projectContextPrompt}${questionsPrompt}`;
 
-			const fullUserPrompt = `Process this brain dump (occurred on ${new Date()}) into CRUD operations${
+			const fullUserPrompt = `Process this brain dump (occurred on ${processingDateTime || new Date().toISOString()}) into CRUD operations${
 				isNewProject ? '' : ' also'
 			} keep in mind that the brain dump may contain instructions for organizing the info:\n\n${brainDump}`;
 
@@ -893,7 +902,8 @@ export class BrainDumpProcessor {
 		existingProject,
 		displayedQuestions,
 		options,
-		prepAnalysisResult
+		prepAnalysisResult,
+		processingDateTime
 	}: {
 		brainDump: string;
 		brainDumpId: string;
@@ -902,7 +912,8 @@ export class BrainDumpProcessor {
 		existingProject: ProjectWithRelations | null;
 		displayedQuestions?: DisplayedBrainDumpQuestion[];
 		options: BrainDumpOptions;
-		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
+		prepAnalysisResult?: PreparatoryAnalysisResult | null;
+		processingDateTime?: string;
 	}): Promise<BrainDumpParseResult> {
 		const maxRetries = options.retryAttempts || 3;
 		const startTime = Date.now();
@@ -922,7 +933,8 @@ export class BrainDumpProcessor {
 						existingProject,
 						userId,
 						selectedProjectId,
-						prepAnalysisResult
+						prepAnalysisResult,
+						processingDateTime
 					}),
 					this.extractTasks({
 						brainDump,
@@ -930,7 +942,8 @@ export class BrainDumpProcessor {
 						userId,
 						existingTasks,
 						displayedQuestions,
-						prepAnalysisResult
+						prepAnalysisResult,
+						processingDateTime
 					})
 				]);
 
@@ -1000,13 +1013,15 @@ export class BrainDumpProcessor {
 		existingProject,
 		userId,
 		selectedProjectId,
-		prepAnalysisResult
+		prepAnalysisResult,
+		processingDateTime
 	}: {
 		brainDump: string;
 		existingProject: ProjectWithRelations | null;
 		userId: string;
 		selectedProjectId?: string;
-		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
+		prepAnalysisResult?: PreparatoryAnalysisResult | null;
+		processingDateTime?: string;
 	}): Promise<BrainDumpParseResult> {
 		// Determine if this is a new or existing project
 		const isNewProject = !existingProject && !selectedProjectId;
@@ -1040,7 +1055,8 @@ export class BrainDumpProcessor {
 		const systemPrompt = this.promptTemplateService.getProjectContextPrompt(
 			existingProject,
 			userId,
-			isNewProject
+			isNewProject,
+			processingDateTime
 		);
 
 		const userPrompt = `Process this brain dump for project context:\n\n${brainDump}`;
@@ -1091,14 +1107,16 @@ export class BrainDumpProcessor {
 		userId,
 		existingTasks,
 		displayedQuestions,
-		prepAnalysisResult
+		prepAnalysisResult,
+		processingDateTime
 	}: {
 		brainDump: string;
 		selectedProjectId?: string;
 		userId: string;
 		existingTasks?: Task[];
 		displayedQuestions?: DisplayedBrainDumpQuestion[];
-		prepAnalysisResult?: import('$lib/types/brain-dump').PreparatoryAnalysisResult | null;
+		prepAnalysisResult?: PreparatoryAnalysisResult | null;
+		processingDateTime?: string;
 	}): Promise<BrainDumpParseResult> {
 		const isNewProject = !selectedProjectId;
 
@@ -1120,7 +1138,8 @@ export class BrainDumpProcessor {
 			selectedProjectId,
 			tasksToPass, // Pass filtered tasks instead of all tasks
 			displayedQuestions,
-			isNewProject
+			isNewProject,
+			processingDateTime
 		);
 		const userPrompt = `Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:\n\n${brainDump}`;
 
