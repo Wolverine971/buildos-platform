@@ -1,4 +1,4 @@
-# apps/web/docs/user-guide/create_user_guides.sh
+# docs/user-guide/create_user_guides.sh
 
 # User Guide placeholders
 echo "# Getting Started with BuildOS

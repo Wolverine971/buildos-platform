@@ -1,6 +1,6 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-04T03:48:37.332Z
+**Generated at:** 2025-10-05T03:21:31.480Z
 **Environment:** Development
 
 ## Metadata
@@ -9,10 +9,10 @@
 {
   "userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
   "projectId": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
-  "brainDumpLength": 805,
+  "brainDumpLength": 77,
   "existingTasksCount": 20,
   "hasDisplayedQuestions": false,
-  "timestamp": "2025-10-04T03:48:37.326Z"
+  "timestamp": "2025-10-05T03:21:31.480Z"
 }
 ```
 
@@ -25,12 +25,7 @@ You are a task extraction engine that can CREATE new tasks or UPDATE existing on
 Mode: Extract/Update for EXISTING project fe85feb9-3c38-4f32-b598-2bf2d4ad0d25
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-04T03:48:26.177Z
-
-## Current Project Data:
-
-**EXISTING TASKS (2):**
-[{"id":"46ccd838-ebdd-4ace-9403-54e091f83792","title":"Prepare First 3 Chapters as Sample","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-04T00:00:00+00:00","duration_minutes":120,"description":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents.","details":"Ensure the chapters are polished and ready for submission."},{"id":"61e9b969-6465-498e-b6da-86657d0f94cc","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-07T14:30:00+00:00","duration_minutes":60,"description":"Create an outline for the initial chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in the first three chapters."}]
+Current date and time: 2025-10-05T03:21:27.052Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -222,41 +217,23 @@ Respond with valid JSON matching the complete structure above.
 ## User Prompt
 
 ```
+## Current Project Data:
+
+**EXISTING TASKS (20):**
+[{"id":"6d14404f-48d3-451c-a083-6bbee7183aad","title":"Revise Writing Style","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-20T13:00:00+00:00","duration_minutes":120,"description":"Implement writing style improvements based on critique group feedback.","details":"Search and destroy excessive adverbs, vary sentence structure, avoid using 'suddenly' as a crutch, and enhance sensory details in action scenes."},{"id":"20f048ce-84cf-4285-b7d0-329482816f45","title":"Create Series Bible","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T15:00:00+00:00","duration_minutes":90,"description":"Develop a series bible if 'The Last Ember' becomes Book 1.","details":"This document will outline characters, settings, and plot arcs for future books."},{"id":"8e44df73-95a7-43b4-9275-7b2c7f0a0c0f","title":"Write Short Stories in Same Universe for Magazines","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T13:00:00+00:00","duration_minutes":120,"description":"Create short stories set in the same universe as 'The Last Ember' for submission to magazines.","details":"These stories will help build the author's portfolio and audience."},{"id":"f974b88b-4891-4294-a7da-f4d098d06a60","title":"Start Building Author Platform on Social Media","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-10-04T00:00:00+00:00","duration_minutes":60,"description":"Begin establishing a presence on social media platforms.","details":"Focus on platforms that resonate with the target audience for 'The Last Ember'."},{"id":"2b7180ac-def3-4d84-9c1f-5b60df3b2542","title":"Set Up Author Website and Newsletter","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-06T13:00:00+00:00","duration_minutes":180,"description":"Create an author website and set up a newsletter for 'The Last Ember'.","details":"Include sections for book information, blog posts, and newsletter sign-up."},{"id":"de0e578f-4bde-4384-b24f-1ada3659d1cf","title":"Plan Pre-Launch Marketing Campaign","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T18:30:00+00:00","duration_minutes":120,"description":"Develop a marketing campaign for the pre-launch of 'The Last Ember'.","details":"Outline strategies for social media, email newsletters, and other promotional activities."},{"id":"c28149b3-2857-4789-913e-df6a05e094ac","title":"Find Cover Artist Specializing in Fantasy","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T15:30:00+00:00","duration_minutes":60,"description":"Research and contact cover artists who specialize in fantasy book covers.","details":"Select an artist whose style aligns with 'The Last Ember'."},{"id":"0a8e1b0a-7df8-44e2-9077-233d34fe5cc9","title":"Budget for Professional Editing","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-06T15:00:00+00:00","duration_minutes":30,"description":"Allocate a budget of $3000 for professional editing.","details":"This budget will cover the costs associated with hiring an editor for 'The Last Ember'."},{"id":"46ccd838-ebdd-4ace-9403-54e091f83792","title":"Prepare First 3 Chapters as Sample","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-06T16:00:00+00:00","duration_minutes":120,"description":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents.","details":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents. Major revisions needed based on critique group feedback: Chapter 1 - Open with action, strengthen Elena's voice, cut 3 pages of world history. Chapter 2 - Make Master Thorne's dialogue more archaic, add scene showing Elena's daily forge work, add obstacles to the dragon forge discovery. Chapter 3 - Move prophecy reveal to chapter 5, focus on Elena's emotional journey, add conflict with Kai about her destiny."},{"id":"e0578f40-d417-4ef4-aebd-d3cbb08fb28e","title":"Research Fantasy Literary Agents","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-06T14:00:00+00:00","duration_minutes":60,"description":"Compile a list of literary agents who represent fantasy authors.","details":"Focus on agents who have represented authors like Brandon Sanderson and Robin Hobb."},{"id":"dc16fb6f-7910-4771-b106-58fb5f18cca8","title":"Create 1-Page Synopsis","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-03T15:00:00+00:00","duration_minutes":60,"description":"Draft a concise 1-page synopsis of 'The Last Ember'.","details":"This synopsis will summarize the plot and main characters for agents."},{"id":"b033757a-fc7d-4565-88c3-fa4ece8fca8e","title":"Write Query Letter","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-03T13:00:00+00:00","duration_minutes":120,"description":"Draft a query letter for literary agents.","details":"This letter will be used to pitch 'The Last Ember' to agents."},{"id":"a12e36fd-0084-40ab-8070-a1c7321627a5","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-27T13:00:00+00:00","duration_minutes":60,"description":"Develop a detailed profile for the antagonist.","details":"The antagonist is The Shadow King. Explore his motivations, background, and how he opposes the main character. He was once a hero who saved the kingdom 500 years ago but was corrupted by the very magic he used to save everyone. He seeks Elena because only Dragon Smith weapons can free him from his curse."},{"id":"50662999-4861-4037-a195-63add9925786","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-23T13:00:00+00:00","duration_minutes":60,"description":"Create a detailed backstory for the main character.","details":"The main character is an orphan raised by a master blacksmith. Explore her childhood, motivations, and how her upbringing influences her abilities and personality. Elena lost her parents in a dragon attack at age 5 and was raised by Master Thorne, who found her in the ruins. She has recurring nightmares about fire and a secret: she is actually descended from the original Dragon Smiths. Master Thorne, a former royal blacksmith, is dying from lung disease from years at the forge and knows Elena's true heritage but keeps it secret."},{"id":"61e9b969-6465-498e-b6da-86657d0f94cc","title":"Outline first three chapters","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-21T13:00:00+00:00","duration_minutes":60,"description":"Create an outline for the initial chapters of the novel.","details":"Create an outline for the initial chapters of the novel. Incorporate feedback from the critique group: Chapter 1 - Opening too slow, start with action; Chapter 2 - Add scene showing Elena's daily forge work; Chapter 3 - Restructure to focus on emotional journey and conflict with Kai. Additionally, brainstorm alternatives for how Elena escapes the shadow realm in Chapter 15. Consider options where she doesn't escape or is rescued by someone else."},{"id":"d7de131a-6f7a-4ac2-bc08-8a87daced7cb","title":"Research Literary Agents for Fantasy Genre","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-24T13:00:00+00:00","duration_minutes":60,"description":"Compile a list of literary agents who represent fantasy authors.","details":"Focus on agents who have a good track record with fantasy novels."},{"id":"5d42af49-1fb0-499e-b508-3f15034d509b","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-22T13:00:00+00:00","duration_minutes":60,"description":"Gather information on blacksmithing techniques from the medieval period.","details":"Focus on tools, methods, and materials used in blacksmithing to ensure authenticity in the novel's portrayal of the main character's craft."},{"id":"85569ced-d948-43e8-b683-851b17cc4e1e","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-20T13:00:00+00:00","duration_minutes":60,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"8fb923f2-dba0-4dbe-9779-f7c900c0fc30","title":"Design the prophecy","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-21T13:00:00+00:00","duration_minutes":60,"description":"Create a prophecy that drives the plot of the novel.","details":"Create a prophecy that drives the plot of the novel. Additionally, strengthen the dialogue between Elena and Master Thorne, address the slow pacing in the middle of chapter 2, and add more sensory details about the forge."},{"id":"a658aa07-23e0-49d0-9693-98ec377ef498","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-20T15:00:00+00:00","duration_minutes":60,"description":"Develop a unique magic system for the novel.","details":"The magic system should be based on metal and fire, detailing how it works, its limitations, and its impact on the world and characters."}]
+
+---
+
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-"Got feedback from my critique group on chapters 1-3. Major revision needed.
-
-Chapter 1 issues:
-
-- Opening is too slow - start with action not description
-- Elena needs stronger voice from page 1
-- Cut the 3 pages of world history - weave it in later
-
-Chapter 2 improvements needed:
-
-- Master Thorne's dialogue too modern - needs more archaic feel
-- Add scene showing Elena's daily forge work before the discovery
-- The dragon forge discovery happens too easily - add obstacles
-
-Chapter 3 restructure:
-
-- Move the prophecy reveal to chapter 5
-- Focus on Elena's emotional journey
-- Add more conflict with Kai about her destiny
-
-Also, writing style notes:
-
-- Too many adverbs - search and destroy
-- Vary sentence structure more
-- Stop using 'suddenly' as a crutch
-- Better sensory details in action scenes"
+need to fix chapter 4. Chapter 4 is about tim the cat. need to flesh that out
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2352 tokens
-- **User Prompt:** ~238 tokens
-- **Total Estimate:** ~2590 tokens
+- **System Prompt:** ~2141 tokens
+- **User Prompt:** ~2422 tokens
+- **Total Estimate:** ~4563 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*

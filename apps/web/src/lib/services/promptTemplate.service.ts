@@ -151,7 +151,6 @@ export class PromptTemplateService {
 	 */
 	getOptimizedNewProjectPrompt(processingDateTime?: string): string {
 		const currentDateTime = processingDateTime || new Date().toISOString();
-		
 
 		return `You are a synthesis engine. Convert brain dumps into structured CRUD operations.
 
@@ -188,9 +187,12 @@ Respond with valid JSON matching the output structure.`;
 	/**
 	 * Optimized prompt for existing project updates (50% smaller, preserves quality)
 	 */
-	getOptimizedExistingProjectPrompt(projectId: string, projectStartDate?: string, processingDateTime?: string): string {
+	getOptimizedExistingProjectPrompt(
+		projectId: string,
+		projectStartDate?: string,
+		processingDateTime?: string
+	): string {
 		const currentDateTime = processingDateTime || new Date().toISOString();
-		
 
 		return `You are a synthesis engine for EXISTING project ${projectId}.
 
@@ -1100,7 +1102,6 @@ Keep the brief actionable, specific, and highlight the most important parts. Foc
 
 	getTaskExtractionPrompt(
 		projectId?: string,
-		existingTasks?: Task[],
 		displayedQuestions?: DisplayedBrainDumpQuestion[],
 		isNewProject?: boolean,
 		processingDateTime?: string
@@ -1111,7 +1112,6 @@ Keep the brief actionable, specific, and highlight the most important parts. Foc
 		} else {
 			return this.getExistingProjectTaskExtractionPrompt(
 				projectId,
-				existingTasks,
 				displayedQuestions,
 				processingDateTime
 			);
@@ -1234,14 +1234,13 @@ Respond with valid JSON matching the complete structure above.`;
 
 	private getExistingProjectTaskExtractionPrompt(
 		projectId: string,
-		existingTasks?: Task[],
 		displayedQuestions?: DisplayedBrainDumpQuestion[],
 		processingDateTime?: string
 	): string {
 		const currentDateTime = processingDateTime || new Date().toISOString();
-		const existingTasksSection = existingTasks
-			? DataFormatterService.formatExistingTasksForPrompt(existingTasks)
-			: 'No existing tasks';
+		// const existingTasksSection = existingTasks
+		// 	? DataFormatterService.formatExistingTasksForPrompt(existingTasks)
+		// 	: 'No existing tasks';
 
 		// Add question analysis section if questions were displayed
 		let questionSection = '';
@@ -1259,10 +1258,6 @@ Mode: Extract/Update for EXISTING project ${projectId}
 
 **IMPORTANT CONTEXT:**
 Current date and time: ${currentDateTime}
-
-## Current Project Data:
-
-${existingTasksSection}
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -1417,8 +1412,112 @@ Respond with valid JSON matching the complete structure above.`;
 		if (isNew) {
 			return this.getNewProjectContextPrompt(userId, processingDateTime);
 		} else {
-			return this.getExistingProjectContextPrompt(existingProject!, userId, processingDateTime);
+			return this.getExistingProjectContextPrompt(
+				existingProject!,
+				userId,
+				processingDateTime
+			);
 		}
+	}
+
+	/**
+	 * Get project context system prompt WITHOUT embedded project data
+	 * Project data should be passed in the user prompt instead
+	 */
+	getProjectContextSystemPrompt(
+		isNewProject: boolean,
+		processingDateTime?: string
+	): string {
+		if (isNewProject) {
+			return this.getNewProjectContextPrompt('', processingDateTime);
+		} else {
+			return this.getExistingProjectContextSystemPrompt(processingDateTime);
+		}
+	}
+
+	/**
+	 * Get existing project context system prompt WITHOUT embedded project data
+	 * This returns just the instructions - project data should be in user prompt
+	 */
+	private getExistingProjectContextSystemPrompt(processingDateTime?: string): string {
+		const currentDateTime = processingDateTime || new Date().toISOString();
+
+		return `You are a context synthesis engine specializing in project context enrichment.
+
+Mode: UPDATE EXISTING PROJECT CONTEXT
+
+**IMPORTANT CONTEXT:**
+Current date and time: ${currentDateTime}
+
+Your Job is to update the project context document based on the user's brain dump.
+The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
+DO NOT include task lists or specific task details - those are handled separately.
+
+${getDecisionMatrixUpdateCriteria()}
+
+## Update Rules:
+1. **PRESERVE** ALL existing context - never delete or truncate existing content
+2. **MERGE** new insights appropriately within existing structure
+3. **ADD** timestamps for significant updates: **[${currentDateTime.split('T')[0]}]** New info...
+4. **MAINTAIN** existing markdown structure and formatting
+5. **OUTPUT** the COMPLETE context document with all existing + new content
+6. **FOCUS** on strategic information, not tactical task details
+
+## When to Update Context:
+Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.
+
+## Update the Executive Summary:
+Update the executive summary to describe the current state and direction of the project when there are significant changes.
+
+## When NOT to Update Context:
+- Brain dump is ONLY about specific tasks or bug fixes
+- Simple status updates or progress reports
+- Day-to-day tactical information
+- Information that belongs in task details instead
+- Pure task lists or action items
+
+## Output JSON for Context Update:
+\`\`\`json
+{
+  "title": "Short title for brain dump",
+  "summary": "2-3 sentence summary of what was extracted from the braindump",
+  "insights": "Key insights or highlights from this braindump",
+  "tags": ["relevant", "tags"],
+  "metadata": {
+    "processingNote": "Explain why context was or wasn't updated"
+  },
+  "operations": [
+    {
+      "id": "op-[timestamp]-project-update",
+      "table": "projects",
+      "operation": "update",
+      "data": {
+        "id": "[PROJECT_ID]",
+        "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
+        "executive_summary": "Updated executive summary (only if project vision/scope changed)",
+        "tags": ["updated", "tags", "if", "changed"],
+        "status": "active|paused|completed|archived"
+      }
+    }
+  ]
+}
+\`\`\`
+
+## Output JSON for No Context Update Needed:
+\`\`\`json
+{
+  "title": "Title for the braindump",
+  "summary": "Summary of the braindump content",
+  "insights": "Key insights from the content",
+  "tags": ["relevant", "tags"],
+  "metadata": {
+    "processingNote": "No context update needed - [explain why: task-focused, progress update, etc.]"
+  },
+  "operations": []
+}
+\`\`\`
+
+Focus on strategic project information. Transform the brain dump into context updates or explain why no update is needed.`;
 	}
 
 	private getNewProjectContextPrompt(userId: string, processingDateTime?: string): string {

@@ -1,3 +1,4 @@
+// apps/web/src/lib/config/onboarding.config.ts
 /**
  * Onboarding V2 Configuration
  *

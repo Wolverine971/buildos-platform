@@ -255,7 +255,10 @@ class ProjectStoreV2 {
 				this.setError('tasks', 'Request timed out. Please refresh the page.');
 			} else {
 				console.error('[Store] Error loading tasks:', error);
-				this.setError('tasks', error instanceof Error ? error.message : 'Failed to load tasks');
+				this.setError(
+					'tasks',
+					error instanceof Error ? error.message : 'Failed to load tasks'
+				);
 			}
 			// End performance monitoring on exception
 			performanceMonitor.endTimer('store-operation-loadTasks', {

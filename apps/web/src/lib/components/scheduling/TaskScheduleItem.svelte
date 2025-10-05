@@ -156,7 +156,9 @@
 			<!-- Simplified Date Inputs: Start Date + Duration -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<div>
-					<label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+					<label
+						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+					>
 						Start Date & Time
 					</label>
 					<TextInput
@@ -169,7 +171,9 @@
 				</div>
 
 				<div>
-					<label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+					<label
+						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+					>
 						Duration (minutes)
 					</label>
 					<TextInput

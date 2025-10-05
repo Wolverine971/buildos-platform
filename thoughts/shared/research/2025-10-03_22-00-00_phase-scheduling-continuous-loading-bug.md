@@ -5,7 +5,8 @@ git_commit: 804149a327d20e64b02e9fc12b77e117a3fa2f53
 branch: main
 repository: buildos-platform
 topic: "Phase Scheduling Modal - Continuous Loading State Bug"
-tags: [research, codebase, bug-analysis, scheduling, loading-state, race-condition]
+tags:
+  [research, codebase, bug-analysis, scheduling, loading-state, race-condition]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude Code
@@ -45,20 +46,27 @@ Additionally, there's a **potential null preferences bug** in `task-time-slot-fi
 
 ```typescript
 async function scheduleAllTasks() {
-  if (phaseValidationWarning && phaseValidationWarning.includes('Phase dates issue')) {
-    toastService.error('Cannot schedule tasks: Phase dates are outside project boundaries.');
+  if (
+    phaseValidationWarning &&
+    phaseValidationWarning.includes("Phase dates issue")
+  ) {
+    toastService.error(
+      "Cannot schedule tasks: Phase dates are outside project boundaries.",
+    );
     return;
   }
 
   const success = await schedulingStore.saveSchedules(projectId);
 
   if (success) {
-    toastService.success(`Successfully scheduled ${proposedSchedules.length} tasks`);
-    dispatch('scheduled', {
+    toastService.success(
+      `Successfully scheduled ${proposedSchedules.length} tasks`,
+    );
+    dispatch("scheduled", {
       phaseId: phase.id,
       projectId,
       taskCount: proposedSchedules.length,
-      needsRefresh: true  // ← CRITICAL: Triggers parent refresh
+      needsRefresh: true, // ← CRITICAL: Triggers parent refresh
     });
     handleClose();
   }
@@ -130,6 +138,7 @@ async saveSchedules(projectId: string): Promise<boolean> {
 **File**: `apps/web/src/routes/api/projects/[id]/phases/[phaseId]/schedule/+server.ts`
 
 The endpoint:
+
 1. Validates schedule data
 2. **Uses `TaskTimeSlotFinder` to verify/optimize time slots** (Line 874-875)
 3. Updates each task in the database with new `start_date` and `duration_minutes`
@@ -137,21 +146,22 @@ The endpoint:
 5. Returns success response with warnings
 
 **Critical Code** (Lines 341-354):
+
 ```typescript
 // Get user calendar preferences
 const { data: preferences } = await supabase
-  .from('user_calendar_preferences')
-  .select('*')
-  .eq('user_id', user.id)
+  .from("user_calendar_preferences")
+  .select("*")
+  .eq("user_id", user.id)
   .single();
 
 const userPreferences = preferences || {
-  work_start_time: '09:00:00',
-  work_end_time: '17:00:00',
+  work_start_time: "09:00:00",
+  work_end_time: "17:00:00",
   working_days: [1, 2, 3, 4, 5],
   default_task_duration_minutes: 60,
   exclude_holidays: true,
-  timeZone: timeZone || 'America/New_York'
+  timeZone: timeZone || "America/New_York",
 };
 ```
 
@@ -163,7 +173,8 @@ const userPreferences = preferences || {
 
 ```typescript
 async function handleTasksScheduled(event: CustomEvent) {
-  const { successfulTasks, failedTasks, totalTasks, needsRefresh } = event.detail;
+  const { successfulTasks, failedTasks, totalTasks, needsRefresh } =
+    event.detail;
 
   // Show success message
   if (successfulTasks && successfulTasks.length > 0) {
@@ -172,7 +183,7 @@ async function handleTasksScheduled(event: CustomEvent) {
 
     if (failureCount > 0) {
       toastService.warning(
-        `Scheduled ${successCount} of ${totalTasks} tasks. ${failureCount} failed.`
+        `Scheduled ${successCount} of ${totalTasks} tasks. ${failureCount} failed.`,
       );
     } else {
       toastService.success(`Successfully scheduled ${successCount} tasks`);
@@ -183,17 +194,17 @@ async function handleTasksScheduled(event: CustomEvent) {
   if (needsRefresh && dataService && data.project?.id) {
     try {
       // Set loading state while refreshing
-      projectStoreV2.setLoadingState('tasks', 'loading');  // ← LOADING STATE SET
+      projectStoreV2.setLoadingState("tasks", "loading"); // ← LOADING STATE SET
 
       // Reload tasks with calendar events
       await dataService.loadTasks({ force: true });
       // Reload phases to update phase-level task counts and statuses
       await dataService.loadPhases({ force: true });
 
-      projectStoreV2.setLoadingState('tasks', 'idle');  // ← LOADING STATE CLEARED
+      projectStoreV2.setLoadingState("tasks", "idle"); // ← LOADING STATE CLEARED
     } catch (error) {
-      console.error('Error refreshing data after scheduling:', error);
-      projectStoreV2.setLoadingState('tasks', 'error');
+      console.error("Error refreshing data after scheduling:", error);
+      projectStoreV2.setLoadingState("tasks", "error");
     }
   }
 }
@@ -224,10 +235,11 @@ interface ProjectStoreState {
   // ... other state
 }
 
-type LoadingState = 'idle' | 'loading' | 'success' | 'error' | 'refreshing';
+type LoadingState = "idle" | "loading" | "success" | "error" | "refreshing";
 ```
 
 **Updated by**:
+
 - `projectStoreV2.setLoadingState(key, state)`
 - `projectStoreV2.loadTasks()` sets `loadingStates.tasks = 'loading'` → `'success'`
 - `projectStoreV2.loadPhases()` sets `loadingStates.phases = 'loading'` → `'success'`
@@ -240,7 +252,11 @@ type LoadingState = 'idle' | 'loading' | 'success' | 'error' | 'refreshing';
 class LoadingStateManager {
   private tabStates: Map<string, TabLoadingState> = new Map();
 
-  setDataLoading(tab: string, state: 'idle' | 'loading' | 'success' | 'error', hasExistingData: boolean) {
+  setDataLoading(
+    tab: string,
+    state: "idle" | "loading" | "success" | "error",
+    hasExistingData: boolean,
+  ) {
     // Updates tabStates for the given tab
   }
 
@@ -251,6 +267,7 @@ class LoadingStateManager {
 ```
 
 **Updated by**:
+
 - `loadingStateManager.setDataLoading('overview', 'success', true)` (Line 1245)
 - `loadingStateManager.setDataLoading('tasks', 'success', true)` (Line 1246)
 - Called during initial page load
@@ -269,16 +286,17 @@ let shouldShowSkeleton = $derived.by(() => {
 
     // Check if data has been loaded (success state) for the current tab
     // This now properly handles empty projects by checking loading state, not content
-    const hasData = getHasExistingDataForTab(activeTab);  // ← CHECKS STORE
+    const hasData = getHasExistingDataForTab(activeTab); // ← CHECKS STORE
 
     // Check if component is loading or not loaded
-    const isComponentLoading = loadingComponents[getComponentNameForTab(activeTab)] || false;
+    const isComponentLoading =
+      loadingComponents[getComponentNameForTab(activeTab)] || false;
     const isComponentLoaded = isComponentLoadedForTab(activeTab);
 
     // Show skeleton if data hasn't loaded OR if component is not ready
     return !hasData || isComponentLoading || !isComponentLoaded;
   } catch (error) {
-    console.error('[Page] Error accessing shouldShowSkeleton:', error);
+    console.error("[Page] Error accessing shouldShowSkeleton:", error);
     return true; // Default to showing skeleton on error
   }
 });
@@ -291,17 +309,19 @@ function getHasExistingDataForTab(tab: string): boolean {
   // Check if data has been loaded (regardless of whether it's empty)
   // This ensures skeleton only shows during actual loading, not for empty projects
   switch (tab) {
-    case 'overview':
-      return loadingStates.phases === 'success' && loadingStates.tasks === 'success';  // ← CHECKS STORE
-    case 'tasks':
-      return loadingStates.tasks === 'success';
-    case 'notes':
-      return loadingStates.notes === 'success';
-    case 'briefs':
-      return loadingStates.briefs === 'success';
-    case 'synthesis':
+    case "overview":
+      return (
+        loadingStates.phases === "success" && loadingStates.tasks === "success"
+      ); // ← CHECKS STORE
+    case "tasks":
+      return loadingStates.tasks === "success";
+    case "notes":
+      return loadingStates.notes === "success";
+    case "briefs":
+      return loadingStates.briefs === "success";
+    case "synthesis":
       // Synthesis is special - check both loading state and content
-      return loadingStates.synthesis === 'success' || synthesis !== null;
+      return loadingStates.synthesis === "success" || synthesis !== null;
     default:
       return false;
   }
@@ -371,6 +391,7 @@ async scheduleTasks(tasksToSchedule: Task[], userId: string): Promise<Task[]> {
 The file `task-time-slot-finder.ts` shows as **modified in git status** (uncommitted changes). The default preferences fallback (lines 54-77) appears to be a **recent bug fix** to handle the case where `userCalendarPreferences` is null.
 
 **Before this fix**, if a user had no calendar preferences:
+
 1. `userCalendarPreferences` would be `null`
 2. Code might have crashed or behaved unpredictably
 3. API endpoint might return partial success
@@ -391,16 +412,16 @@ await Promise.allSettled([
   dataService.loadTasks(),
   dataService.loadNotes(),
   dataService.loadStats(),
-  dataService.loadCalendarStatus()
+  dataService.loadCalendarStatus(),
 ]);
 
 // FIXED: Load overview component AFTER data is loaded and await it
-await loadComponent('PhasesSection', 'overview');
+await loadComponent("PhasesSection", "overview");
 
 // Mark all tabs as having data loaded
-loadingStateManager.setDataLoading('overview', 'success', true);  // ← UNCONDITIONAL
-loadingStateManager.setDataLoading('tasks', 'success', true);
-loadingStateManager.setDataLoading('notes', 'success', true);
+loadingStateManager.setDataLoading("overview", "success", true); // ← UNCONDITIONAL
+loadingStateManager.setDataLoading("tasks", "success", true);
+loadingStateManager.setDataLoading("notes", "success", true);
 ```
 
 **THE ISSUE**:
@@ -408,6 +429,7 @@ loadingStateManager.setDataLoading('notes', 'success', true);
 `Promise.allSettled()` **never rejects** - it resolves even if all promises fail. The code then **unconditionally** marks data as loaded (`'success'`).
 
 However, if `dataService.loadTasks()` actually failed:
+
 - `projectStoreV2.loadingStates.tasks` would be `'error'` or stuck at `'loading'`
 - `loadingStateManager` thinks it's `'success'`
 - Skeleton logic checks `loadingStates.tasks === 'success'` (from store)
@@ -493,11 +515,13 @@ The project page architecture uses **two independent loading state tracking syst
 2. **Secondary (Manager-based)**: `loadingStateManager.tabStates` - Updated during initialization
 
 **WHY THIS EXISTS**:
+
 - Manager tracks component loading vs data loading separately
 - Store tracks actual data fetch lifecycle
 - Intended for fine-grained loading UX (show skeleton only during real loading, not for empty data)
 
 **WHY IT'S PROBLEMATIC**:
+
 - Two sources of truth that can desync
 - Skeleton logic checks store states, but manager also sets states
 - No synchronization mechanism between them
@@ -528,6 +552,7 @@ Return tasks with updated start_date
 ```
 
 **Critical Design Flaw**: The service **refetches** preferences even though the API endpoint already fetched them. This duplication creates:
+
 - Extra DB queries
 - Potential for inconsistent defaults if not both updated
 - Risk of null handling bugs in either location
@@ -566,26 +591,29 @@ const results = await Promise.allSettled([
   dataService.loadTasks(),
   dataService.loadNotes(),
   dataService.loadStats(),
-  dataService.loadCalendarStatus()
+  dataService.loadCalendarStatus(),
 ]);
 
 // Check which operations succeeded
-const loadTasksResult = results[1];  // loadTasks() is index 1
+const loadTasksResult = results[1]; // loadTasks() is index 1
 const loadPhasesResult = results[0]; // loadPhases() is index 0
 
 // Only mark as loaded if actually successful
-if (loadPhasesResult.status === 'fulfilled' && loadTasksResult.status === 'fulfilled') {
-  console.log('[Page] Essential data loaded successfully');
+if (
+  loadPhasesResult.status === "fulfilled" &&
+  loadTasksResult.status === "fulfilled"
+) {
+  console.log("[Page] Essential data loaded successfully");
 } else {
-  console.error('[Page] Some data failed to load:', {
+  console.error("[Page] Some data failed to load:", {
     phases: loadPhasesResult.status,
-    tasks: loadTasksResult.status
+    tasks: loadTasksResult.status,
   });
   // Don't mark as success - let store states reflect reality
 }
 
 // Load component regardless (for error display)
-await loadComponent('PhasesSection', 'overview');
+await loadComponent("PhasesSection", "overview");
 ```
 
 ### Fix 3: Add Timeout/Retry Logic
@@ -635,6 +663,7 @@ async loadTasks(projectId: string, force = false): Promise<void> {
 **Solution**: Verify the uncommitted changes are correct and commit them
 
 **Action Items**:
+
 1. Review uncommitted changes to `task-time-slot-finder.ts`
 2. Add tests for null preferences case
 3. Commit the fix

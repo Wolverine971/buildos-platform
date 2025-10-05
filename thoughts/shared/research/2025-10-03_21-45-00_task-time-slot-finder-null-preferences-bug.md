@@ -5,7 +5,16 @@ git_commit: bdb68ab1643368d61bccb975270bd8b807421007
 branch: main
 repository: buildos-platform
 topic: "TaskTimeSlotFinder Null Preferences Bug Analysis"
-tags: [research, codebase, bug, task-scheduling, calendar-preferences, null-pointer, critical]
+tags:
+  [
+    research,
+    codebase,
+    bug,
+    task-scheduling,
+    calendar-preferences,
+    null-pointer,
+    critical,
+  ]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude
@@ -61,31 +70,34 @@ The `scheduleTasks()` method (lines 42-52) fetches user calendar preferences usi
 **File**: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/task-time-slot-finder.ts`
 
 **Problem Code (lines 42-52):**
+
 ```typescript
 const { data: userCalendarPreferences, error: userCalendarPreferencesError } =
-    await this.supabase
-        .from('user_calendar_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+  await this.supabase
+    .from("user_calendar_preferences")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
 
 if (userCalendarPreferencesError) {
-    console.error(userCalendarPreferencesError);
-    console.log('no calendar preferences');
+  console.error(userCalendarPreferencesError);
+  console.log("no calendar preferences");
 }
 // ❌ userCalendarPreferences is NULL but code continues!
 ```
 
 **Crash Point (lines 70-72):**
+
 ```typescript
 const workingDays = Object.entries(tasksByDay)
-    .map(([dateKey]) => new Date(dateKey))
-    .filter((dayDate) => this.isWorkingDay(dayDate, userCalendarPreferences));
-    //                                                  ^^^^^^^^^^^^^^^^^^^^^^
-    //                                                  NULL is passed here!
+  .map(([dateKey]) => new Date(dateKey))
+  .filter((dayDate) => this.isWorkingDay(dayDate, userCalendarPreferences));
+//                                                  ^^^^^^^^^^^^^^^^^^^^^^
+//                                                  NULL is passed here!
 ```
 
 **Null Access (lines 156-158):**
+
 ```typescript
 private isWorkingDay(date: Date, preferences: UserCalendarPreferences): boolean {
     const dayOfWeek = date.getDay();
@@ -103,6 +115,7 @@ Calendar preferences are **NOT automatically created** when users sign up. They 
 3. A database trigger creates them (no such trigger exists)
 
 **Evidence:**
+
 - No automatic creation in onboarding flow ([`apps/web/src/lib/server/onboarding.service.ts`](apps/web/src/lib/server/onboarding.service.ts))
 - No database trigger in migrations ([`apps/web/supabase/migrations/20241220_trial_system.sql`](apps/web/supabase/migrations/20241220_trial_system.sql))
 - Only upsert in preferences API endpoint ([`apps/web/src/routes/api/users/calendar-preferences/+server.ts:85`](apps/web/src/routes/api/users/calendar-preferences/+server.ts#L85))
@@ -111,13 +124,13 @@ Calendar preferences are **NOT automatically created** when users sign up. They 
 
 The bug exists in **5 different methods** in `TaskTimeSlotFinder`:
 
-| Method | Line(s) | Unsafe Access | Impact |
-|--------|---------|---------------|--------|
-| `scheduleTasks()` | 72, 86 | Calls `isWorkingDay(date, null)` | Crashes immediately |
-| `isWorkingDay()` | 158 | `preferences.working_days` | **TypeError** |
-| `scheduleTasksForDay()` | 267-270 | `preferences.work_start_time`, `work_end_time`, etc. | **TypeError** |
-| `processBumpedTasks()` | 393, 411 | `preferences.timezone`, `preferences.user_id` | **TypeError** |
-| `groupTasksByDay()` | 63, 78 | `preferences?.timezone` | ✅ Safe (optional chaining) |
+| Method                  | Line(s)  | Unsafe Access                                        | Impact                      |
+| ----------------------- | -------- | ---------------------------------------------------- | --------------------------- |
+| `scheduleTasks()`       | 72, 86   | Calls `isWorkingDay(date, null)`                     | Crashes immediately         |
+| `isWorkingDay()`        | 158      | `preferences.working_days`                           | **TypeError**               |
+| `scheduleTasksForDay()` | 267-270  | `preferences.work_start_time`, `work_end_time`, etc. | **TypeError**               |
+| `processBumpedTasks()`  | 393, 411 | `preferences.timezone`, `preferences.user_id`        | **TypeError**               |
+| `groupTasksByDay()`     | 63, 78   | `preferences?.timezone`                              | ✅ Safe (optional chaining) |
 
 **Inconsistency**: Some methods use safe optional chaining (`preferences?.timezone || 'UTC'`) while others directly access properties.
 
@@ -145,7 +158,10 @@ From the error logs, the execution flow is:
 
 ```typescript
 const scheduler = new TaskTimeSlotFinder(this.supabase);
-const scheduledTasks = await scheduler.scheduleTasks(tasksWithDates, this.userId);
+const scheduledTasks = await scheduler.scheduleTasks(
+  tasksWithDates,
+  this.userId,
+);
 ```
 
 The strategy catches the error and falls back to "simple date updates" (line 316), which is why the phase generation doesn't completely fail.
@@ -172,16 +188,19 @@ When calendar preferences don't exist, the system should use these defaults (fro
 ## Code References
 
 ### Primary Bug Location
+
 - [`apps/web/src/lib/services/task-time-slot-finder.ts:42-52`](apps/web/src/lib/services/task-time-slot-finder.ts#L42-L52) - Preferences query without null handling
 - [`apps/web/src/lib/services/task-time-slot-finder.ts:72`](apps/web/src/lib/services/task-time-slot-finder.ts#L72) - First unsafe call to `isWorkingDay()`
 - [`apps/web/src/lib/services/task-time-slot-finder.ts:86`](apps/web/src/lib/services/task-time-slot-finder.ts#L86) - Second unsafe call to `isWorkingDay()`
 - [`apps/web/src/lib/services/task-time-slot-finder.ts:156-163`](apps/web/src/lib/services/task-time-slot-finder.ts#L156-L163) - `isWorkingDay()` method accessing null properties
 
 ### Call Sites
+
 - [`apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts:288`](apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts#L288) - Usage in phase generation
 - [`apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts:313-316`](apps/web/src/lib/services/phase-generation/strategies/schedule-in-phases.strategy.ts#L313-L316) - Error handling fallback
 
 ### Reference Patterns (Correct Handling)
+
 - [`apps/web/src/routes/api/users/calendar-preferences/+server.ts:26-37`](apps/web/src/routes/api/users/calendar-preferences/+server.ts#L26-L37) - Default preferences object
 - [`apps/web/src/routes/profile/calendar/+server.ts:37-48`](apps/web/src/routes/profile/calendar/+server.ts#L37-L48) - Another example of defaults
 
@@ -206,13 +225,15 @@ This is a **type lie** - the signature claims non-null but accepts null at runti
 The codebase shows inconsistent patterns:
 
 **Safe Pattern (used in some places):**
+
 ```typescript
-const timezone = preferences?.timezone || 'UTC';  // ✅ Works with null
+const timezone = preferences?.timezone || "UTC"; // ✅ Works with null
 ```
 
 **Unsafe Pattern (used in other places):**
+
 ```typescript
-const timezone = preferences.timezone || 'UTC';   // ❌ Crashes with null
+const timezone = preferences.timezone || "UTC"; // ❌ Crashes with null
 ```
 
 The `TaskTimeSlotFinder` uses both patterns inconsistently, which is why some operations work and others crash.
@@ -222,50 +243,52 @@ The `TaskTimeSlotFinder` uses both patterns inconsistently, which is why some op
 **Location**: `apps/web/src/lib/services/task-time-slot-finder.ts` line 52
 
 **Change**:
+
 ```typescript
 // BEFORE (lines 42-52):
 const { data: userCalendarPreferences, error: userCalendarPreferencesError } =
-    await this.supabase
-        .from('user_calendar_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+  await this.supabase
+    .from("user_calendar_preferences")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
 
 if (userCalendarPreferencesError) {
-    console.error(userCalendarPreferencesError);
-    console.log('no calendar preferences');
+  console.error(userCalendarPreferencesError);
+  console.log("no calendar preferences");
 }
 // Continue with potentially null userCalendarPreferences ❌
 
 // AFTER (add this after line 52):
 const preferences = userCalendarPreferences || {
-    user_id: userId,
-    id: '',  // Not needed for internal operations
-    timezone: 'America/New_York',
-    work_start_time: '09:00:00',
-    work_end_time: '17:00:00',
-    working_days: [1, 2, 3, 4, 5],
-    default_task_duration_minutes: 60,
-    min_task_duration_minutes: 30,
-    max_task_duration_minutes: 240,
-    exclude_holidays: true,
-    holiday_country_code: 'US',
-    prefer_morning_for_important_tasks: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+  user_id: userId,
+  id: "", // Not needed for internal operations
+  timezone: "America/New_York",
+  work_start_time: "09:00:00",
+  work_end_time: "17:00:00",
+  working_days: [1, 2, 3, 4, 5],
+  default_task_duration_minutes: 60,
+  min_task_duration_minutes: 30,
+  max_task_duration_minutes: 240,
+  exclude_holidays: true,
+  holiday_country_code: "US",
+  prefer_morning_for_important_tasks: false,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 };
 
 if (userCalendarPreferencesError) {
-    console.warn('No calendar preferences found for user, using defaults:', {
-        userId,
-        errorCode: userCalendarPreferencesError.code
-    });
+  console.warn("No calendar preferences found for user, using defaults:", {
+    userId,
+    errorCode: userCalendarPreferencesError.code,
+  });
 }
 
 // Then replace ALL references to userCalendarPreferences with preferences
 ```
 
 **Affected Lines to Update**:
+
 - Line 63: `userCalendarPreferences?.timezone` → `preferences.timezone`
 - Line 72: `this.isWorkingDay(dayDate, userCalendarPreferences)` → `this.isWorkingDay(dayDate, preferences)`
 - Line 78: `userCalendarPreferences?.timezone` → `preferences.timezone`
@@ -293,6 +316,7 @@ This bug was previously identified in an earlier research session today:
 - [`thoughts/shared/research/2025-10-03_14-30-00_user-preferences-database-schema-research.md`](thoughts/shared/research/2025-10-03_14-30-00_user-preferences-database-schema-research.md) - Calendar preferences schema research
 
 The earlier research document provides additional context about:
+
 - Database schema details
 - Migration history
 - Broader architectural patterns

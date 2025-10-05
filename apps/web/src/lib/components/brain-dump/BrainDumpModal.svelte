@@ -35,7 +35,6 @@
 
 	// Service imports
 	import { brainDumpService } from '$lib/services/braindump-api.service';
-	import { shouldUseDualProcessing } from '$lib/constants/brain-dump-thresholds';
 	import { toastService } from '$lib/stores/toast.store';
 	import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
 	import { page } from '$app/stores';
@@ -866,22 +865,12 @@
 			abortController = null;
 		}
 
-		// Determine processing type based on content length and project
-		const inputLength = inputText.length;
-		const isShortBraindump =
-			selectedProject?.id !== 'new' && selectedProject?.id && inputLength < 500;
+		// Always use dual processing - preparatory analysis will optimize automatically
+		const processingType: 'dual' = 'dual';
 
-		let processingType: 'short' | 'dual';
-
-		if (isShortBraindump) {
-			processingType = 'short';
-		} else {
-			processingType = 'dual';
-		}
-
-		console.log('[BrainDumpModal] Processing type determined', {
+		console.log('[BrainDumpModal] Starting processing', {
 			processingType,
-			inputLength,
+			inputLength: inputText.length,
 			projectId: selectedProject?.id,
 			brainDumpId: currentBrainDumpId
 		});

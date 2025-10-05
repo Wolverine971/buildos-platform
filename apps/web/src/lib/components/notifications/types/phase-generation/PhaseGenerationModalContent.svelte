@@ -80,7 +80,7 @@
 		// Clean up notification actions before closing
 		notification?.actions?.dismiss?.();
 		dispatch('close');
-	} 
+	}
 
 	function handleRetry() {
 		notification.actions.retry?.();

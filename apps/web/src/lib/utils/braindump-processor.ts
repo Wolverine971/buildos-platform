@@ -5,7 +5,7 @@ import type { ProjectInfo } from '$lib/services/braindump-status.service';
 
 import { TaskExtractionPromptService } from '$lib/services/prompts/core/task-extraction';
 import { ProjectDataFetcher } from '$lib/services/prompts/core/project-data-fetcher';
-import { formatProjectData } from '$lib/services/prompts/core/data-formatter';
+import { DataFormatterService, formatProjectData } from '$lib/services/prompts/core/data-formatter';
 
 import { ActivityLogger } from './activityLogger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
@@ -13,7 +13,6 @@ import type { LLMMetadata } from '$lib/types/error-logging';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { shouldUseDualProcessing } from '$lib/constants/brain-dump-thresholds';
 
 import { OperationsExecutor, OperationValidator } from './operations-executor';
 import { TaskTimeSlotFinder } from '$lib/services/task-time-slot-finder';
@@ -181,7 +180,7 @@ export class BrainDumpProcessor {
 		brainDump: string,
 		project: ProjectWithRelations,
 		userId: string
-	): Promise<PreparatoryAnalysisResult> {
+	): Promise<PreparatoryAnalysisResult | null> {
 		try {
 			// Prepare light task data (only essential fields to save tokens)
 			const lightTasks = (project?.tasks || []).map((task) => ({
@@ -228,8 +227,7 @@ export class BrainDumpProcessor {
 			});
 
 			// Extract and validate the result
-			const analysisResult =
-				response as PreparatoryAnalysisResult;
+			const analysisResult = response as PreparatoryAnalysisResult;
 
 			// Enhanced validation with detailed logging
 			if (!analysisResult) {
@@ -349,8 +347,7 @@ export class BrainDumpProcessor {
 		}
 
 		// Run preparatory analysis for existing projects (optimization step)
-		let prepAnalysisResult: PreparatoryAnalysisResult | null =
-			null;
+		let prepAnalysisResult: PreparatoryAnalysisResult | null = null;
 		if (existingProject && selectedProjectId) {
 			console.log('[BrainDumpProcessor] Running preparatory analysis for existing project');
 			prepAnalysisResult = await this.runPreparatoryAnalysis(
@@ -376,16 +373,10 @@ export class BrainDumpProcessor {
 		const brainDumpLength = brainDump.length;
 		const existingProjectContextLength = existingProject?.context?.length || 0;
 
-		// Use the shared function for consistency
-		const shouldUseDualProcessingProcess = shouldUseDualProcessing(
-			brainDumpLength,
-			existingProjectContextLength
-		);
+		
 
 		// Centralized activity logging for processing start
-		const processingEventType = shouldUseDualProcessingProcess
-			? 'brain_dump_dual_processing_started'
-			: 'brain_dump_processing_started';
+		const processingEventType = 'brain_dump_dual_processing_started'
 
 		await this.activityLogger.logActivity(userId, processingEventType, {
 			input_length: brainDump.length,
@@ -394,8 +385,8 @@ export class BrainDumpProcessor {
 			displayed_questions_count: displayedQuestions?.length || 0,
 			auto_execute: options.autoExecute || false,
 			has_selected_project: !!selectedProjectId,
-			dual_processing: shouldUseDualProcessingProcess,
-			processing_type: shouldUseDualProcessingProcess ? 'dual' : 'single',
+			dual_processing: true,
+			processing_type: 'dual',
 			// Additional context for existing projects
 			...(existingProject && {
 				existing_context_length: existingProject.context?.length || 0,
@@ -403,9 +394,8 @@ export class BrainDumpProcessor {
 				existing_notes_count: existingProject.notes?.length || 0
 			}),
 			// Dual processing specific
-			...(shouldUseDualProcessingProcess && {
 				max_retries: options.retryAttempts || 3
-			})
+			
 		});
 
 		try {
@@ -413,7 +403,6 @@ export class BrainDumpProcessor {
 
 			let isNewProject = !selectedProjectId;
 			// Use dual processing if threshold is met
-			if (shouldUseDualProcessingProcess || options.useDualProcessing) {
 				synthesisResult = await this.processBrainDumpDual({
 					brainDump,
 					brainDumpId,
@@ -425,32 +414,6 @@ export class BrainDumpProcessor {
 					prepAnalysisResult, // Pass analysis result for optimization
 					processingDateTime
 				});
-			} else {
-				// Route to appropriate single processing function
-				if (selectedProjectId) {
-					synthesisResult = await this.processWithStrategy({
-						brainDump,
-						userId,
-						selectedProjectId,
-						displayedQuestions,
-						options,
-						brainDumpId,
-						isNewProject,
-						processingDateTime
-					});
-				} else {
-					synthesisResult = await this.processWithStrategy({
-						brainDump,
-						userId,
-						selectedProjectId: undefined,
-						displayedQuestions,
-						options,
-						brainDumpId,
-						isNewProject,
-						processingDateTime
-					});
-				}
-			}
 
 			// Validate project questions
 			if (synthesisResult.projectQuestions) {
@@ -510,7 +473,7 @@ export class BrainDumpProcessor {
 							metadata: synthesisResult.metadata
 						},
 						Date.now() - startTime,
-						shouldUseDualProcessingProcess ? 'dual' : 'single'
+						'dual'
 					);
 
 					// Add execution result to synthesis result
@@ -525,16 +488,10 @@ export class BrainDumpProcessor {
 			const duration = Date.now() - startTime;
 
 			// Determine the specific event type
-			let eventType = 'brain_dump_processing_completed';
-			if (shouldUseDualProcessingProcess) {
-				eventType = isNewProject
+			let eventType = isNewProject
 					? 'brain_dump_dual_new_project_completed'
 					: 'brain_dump_dual_existing_project_completed';
-			} else {
-				eventType = isNewProject
-					? 'brain_dump_new_project_completed'
-					: 'brain_dump_existing_project_completed';
-			}
+			
 
 			await this.activityLogger.logActivity(userId, eventType, {
 				operations_count: synthesisResult.operations?.length || 0,
@@ -543,7 +500,7 @@ export class BrainDumpProcessor {
 				input_length: brainDump.length,
 				brain_dump_length: brainDump.length,
 				mode: selectedProjectId ? 'update_existing' : 'create_new',
-				processing_type: shouldUseDualProcessingProcess ? 'dual' : 'single',
+				processing_type: 'dual',
 				auto_executed:
 					options.autoExecute && synthesisResult.executionResult ? true : false,
 				auto_execute: options.autoExecute || false,
@@ -566,9 +523,8 @@ export class BrainDumpProcessor {
 					)
 				}),
 				// Dual processing specific details
-				...(shouldUseDualProcessingProcess && {
 					max_retries: options.retryAttempts || 3
-				})
+				
 			});
 
 			return synthesisResult;
@@ -580,7 +536,7 @@ export class BrainDumpProcessor {
 			const llmMetadata: LLMMetadata = {
 				responseTimeMs: Date.now() - startTime,
 				provider: 'openai',
-				model: shouldUseDualProcessingProcess ? 'dual-processing' : 'single-model'
+				model: 'dual-processing'
 			};
 
 			await this.errorLogger.logBrainDumpError(error, brainDumpId, llmMetadata, {
@@ -588,7 +544,7 @@ export class BrainDumpProcessor {
 				projectId: selectedProjectId,
 				metadata: {
 					inputLength: brainDump.length,
-					dualProcessing: shouldUseDualProcessingProcess,
+					dualProcessing: true,
 					options,
 					errorContext: 'brain_dump_processing'
 				}
@@ -1052,14 +1008,36 @@ export class BrainDumpProcessor {
 
 		// NEVER add question generation to context processing
 		// Questions are ONLY generated in task extraction to avoid duplication
-		const systemPrompt = this.promptTemplateService.getProjectContextPrompt(
-			existingProject,
-			userId,
+
+		// Get system prompt without embedded project data
+		const systemPrompt = this.promptTemplateService.getProjectContextSystemPrompt(
 			isNewProject,
 			processingDateTime
 		);
 
-		const userPrompt = `Process this brain dump for project context:\n\n${brainDump}`;
+		// Format existing project data for user prompt (not system prompt)
+		const projectDataSection = existingProject
+			? formatProjectData({
+					user_id: userId,
+					fullProjectWithRelations: existingProject,
+					timestamp: new Date().toDateString()
+				})
+			: 'No existing project data';
+
+		// Build user prompt with project data
+		const userPrompt = existingProject
+			? `## Current Project Data:
+
+${projectDataSection}
+
+---
+
+Process this brain dump for project context:
+
+${brainDump}`
+			: `Process this brain dump for project context:
+
+${brainDump}`;
 
 		// Save prompt for auditing in development mode
 		await savePromptForAudit({
@@ -1136,12 +1114,30 @@ export class BrainDumpProcessor {
 
 		const systemPrompt = this.promptTemplateService.getTaskExtractionPrompt(
 			selectedProjectId,
-			tasksToPass, // Pass filtered tasks instead of all tasks
 			displayedQuestions,
 			isNewProject,
 			processingDateTime
 		);
-		const userPrompt = `Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:\n\n${brainDump}`;
+
+		// Format existing tasks for user prompt (not system prompt)
+		const existingTasksSection = tasksToPass
+			? DataFormatterService.formatExistingTasksForPrompt(tasksToPass)
+			: 'No existing tasks';
+
+		// Build user prompt with existing tasks data
+		const userPrompt = selectedProjectId
+			? `## Current Project Data:
+
+${existingTasksSection}
+
+---
+
+Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
+
+${brainDump}`
+			: `Extract tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
+
+${brainDump}`;
 
 		// Save prompt for auditing in development mode
 		await savePromptForAudit({
@@ -1167,7 +1163,6 @@ export class BrainDumpProcessor {
 
 		// Use dynamic model selection based on prompt complexity
 		const totalPromptLength = systemPrompt.length + userPrompt.length;
-		const { selectModelsForPromptComplexity } = await import('$lib/utils/llm-utils');
 		const preferredModels = selectModelsForPromptComplexity(
 			totalPromptLength,
 			isNewProject,
@@ -1239,11 +1234,23 @@ export class BrainDumpProcessor {
 
 			// Log to error service if available
 			if (this.errorLogger && brainDumpId) {
-				await this.errorLogger.logBrainDumpError(error, brainDumpId, {
-					attemptNumber,
-					contextError: contextResult.reason,
-					tasksError: tasksResult.reason
-				});
+				await this.errorLogger.logBrainDumpError(
+					error,
+					brainDumpId,
+					{
+						responseTimeMs: 0
+					},
+					{
+						userId,
+						projectId: selectedProjectId,
+						metadata: {
+							attemptNumber,
+							contextError: contextResult.reason,
+							tasksError: tasksResult.reason,
+							errorContext: 'dual_processing_complete_failure'
+						}
+					}
+				);
 			}
 
 			// Return minimal result with error
@@ -1254,12 +1261,20 @@ export class BrainDumpProcessor {
 					'Both context and task extraction failed. Please try again or contact support if the issue persists.',
 				insights: '',
 				tags: [],
-				metadata: {},
-				errors: [
+				metadata: {
+				totalOperations: 0,
+				tableBreakdown: {},
+				processingTime: 0,
+				timestamp: new Date().toISOString(),
+				processingMode: 'dual',
+				attemptNumber,
+				partialFailure: true,
+				failureDetails: [
 					`Context extraction failed: ${contextResult.reason}`,
 					`Task extraction failed: ${tasksResult.reason}`
 				]
-			};
+			}
+		};
 		}
 
 		const operations: ParsedOperation[] = [];

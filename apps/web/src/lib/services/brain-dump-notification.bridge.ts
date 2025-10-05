@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/brain-dump-notification.bridge.ts
 /**
  * Brain Dump Notification Bridge
  *
@@ -387,7 +388,7 @@ function createBrainDumpNotification(state: any): string {
 			brainDumpId,
 			inputText,
 			selectedProject,
-			processingType: processingType as 'dual' | 'short' | 'background',
+			processingType: processingType as 'dual' | 'background',
 			streamingState: streamingState || undefined,
 			parseResults: undefined,
 			executionResult: undefined
@@ -506,7 +507,7 @@ function updateBrainDumpNotification(notificationId: string, state: any) {
 			brainDumpId,
 			inputText,
 			selectedProject,
-			processingType: processingType as 'dual' | 'short' | 'background',
+			processingType: processingType as 'dual' | 'background',
 			streamingState,
 			parseResults,
 			executionResult
@@ -562,10 +563,6 @@ function getProgressMessage(state: any): string {
 		if (tasksProgress) {
 			return tasksProgress;
 		}
-	}
-
-	if (processingType === 'short') {
-		return 'Processing quick update...';
 	}
 
 	if (processingType === 'background') {
@@ -782,7 +779,6 @@ async function startProcessingAPICall(state: any) {
 	}
 
 	const selectedProjectId = selectedProject?.id === 'new' ? null : selectedProject?.id;
-	const isShortBraindump = processingType === 'short';
 
 	console.log('[BrainDumpNotificationBridge] Starting API call:', {
 		processingType,
@@ -799,123 +795,64 @@ async function startProcessingAPICall(state: any) {
 	}
 
 	try {
-		if (isShortBraindump) {
-			console.log('[BrainDumpNotificationBridge] Calling /stream-short');
-			await brainDumpService.parseShortBrainDumpWithStream(
-				inputText,
-				selectedProjectId,
-				brainDumpId,
-				displayedQuestions,
-				{
-					autoAccept: autoAcceptEnabled,
-					onProgress: (status: StreamingMessage) => {
-						// Update store with streaming state
-						if (MULTI_BRAINDUMP_ENABLED) {
-							handleBrainDumpStreamUpdateForId(brainDumpId, status);
-						} else {
-							handleBrainDumpStreamUpdate(status);
-						}
+		// Always use the full stream endpoint - preparatory analysis will optimize processing
+		console.log('[BrainDumpNotificationBridge] Calling /stream');
+		await brainDumpService.parseBrainDumpWithStream(
+			inputText,
+			selectedProjectId,
+			brainDumpId,
+			displayedQuestions,
+			{
+				autoAccept: autoAcceptEnabled,
+				onProgress: (status: StreamingMessage) => {
+					// Update store with streaming state (route to correct brain dump in multi mode)
+					if (MULTI_BRAINDUMP_ENABLED) {
+						handleBrainDumpStreamUpdateForId(brainDumpId, status);
+					} else {
+						handleBrainDumpStreamUpdate(status);
+					}
 
-						// If complete, commit parse results
-						if (status.type === 'complete' && status.result) {
-							if (MULTI_BRAINDUMP_ENABLED) {
-								brainDumpV2Store.updateBrainDumpParseResults(
-									brainDumpId,
-									status.result
-								);
-							} else {
-								brainDumpV2Store.setParseResults(status.result);
-							}
-						}
-					},
-					onComplete: (result: any) => {
-						console.log('[BrainDumpNotificationBridge] Processing complete:', {
-							brainDumpId,
-							hasOperations: !!result?.operations,
-							operationsCount: result?.operations?.length
-						});
-
-						if (result && result.operations) {
-							if (MULTI_BRAINDUMP_ENABLED) {
-								brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
-							} else {
-								brainDumpV2Store.setParseResults(result);
-							}
-						}
-					},
-					onError: (error: string) => {
-						console.error(
-							'[BrainDumpNotificationBridge] Processing error:',
-							brainDumpId,
-							error
-						);
+					// If complete, commit parse results
+					if (status.type === 'complete' && status.result) {
 						if (MULTI_BRAINDUMP_ENABLED) {
-							brainDumpV2Store.setBrainDumpError(brainDumpId, error);
+							brainDumpV2Store.updateBrainDumpParseResults(
+								brainDumpId,
+								status.result
+							);
 						} else {
-							brainDumpV2Store.setProcessingError(error);
+							brainDumpV2Store.setParseResults(status.result);
 						}
 					}
-				}
-			);
-		} else {
-			console.log('[BrainDumpNotificationBridge] Calling /stream');
-			await brainDumpService.parseBrainDumpWithStream(
-				inputText,
-				selectedProjectId,
-				brainDumpId,
-				displayedQuestions,
-				{
-					autoAccept: autoAcceptEnabled,
-					onProgress: (status: StreamingMessage) => {
-						// Update store with streaming state (route to correct brain dump in multi mode)
-						if (MULTI_BRAINDUMP_ENABLED) {
-							handleBrainDumpStreamUpdateForId(brainDumpId, status);
-						} else {
-							handleBrainDumpStreamUpdate(status);
-						}
+				},
+				onComplete: (result: any) => {
+					console.log('[BrainDumpNotificationBridge] Processing complete:', {
+						brainDumpId,
+						hasOperations: !!result?.operations,
+						operationsCount: result?.operations?.length
+					});
 
-						// If complete, commit parse results
-						if (status.type === 'complete' && status.result) {
-							if (MULTI_BRAINDUMP_ENABLED) {
-								brainDumpV2Store.updateBrainDumpParseResults(
-									brainDumpId,
-									status.result
-								);
-							} else {
-								brainDumpV2Store.setParseResults(status.result);
-							}
-						}
-					},
-					onComplete: (result: any) => {
-						console.log('[BrainDumpNotificationBridge] Processing complete:', {
-							brainDumpId,
-							hasOperations: !!result?.operations,
-							operationsCount: result?.operations?.length
-						});
-
-						if (result && result.operations) {
-							if (MULTI_BRAINDUMP_ENABLED) {
-								brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
-							} else {
-								brainDumpV2Store.setParseResults(result);
-							}
-						}
-					},
-					onError: (error: string) => {
-						console.error(
-							'[BrainDumpNotificationBridge] Processing error:',
-							brainDumpId,
-							error
-						);
+					if (result && result.operations) {
 						if (MULTI_BRAINDUMP_ENABLED) {
-							brainDumpV2Store.setBrainDumpError(brainDumpId, error);
+							brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
 						} else {
-							brainDumpV2Store.setProcessingError(error);
+							brainDumpV2Store.setParseResults(result);
 						}
 					}
+				},
+				onError: (error: string) => {
+					console.error(
+						'[BrainDumpNotificationBridge] Processing error:',
+						brainDumpId,
+						error
+					);
+					if (MULTI_BRAINDUMP_ENABLED) {
+						brainDumpV2Store.setBrainDumpError(brainDumpId, error);
+					} else {
+						brainDumpV2Store.setProcessingError(error);
+					}
 				}
-			);
-		}
+			}
+		);
 	} catch (error) {
 		console.error('[BrainDumpNotificationBridge] API call failed:', brainDumpId, error);
 		if (MULTI_BRAINDUMP_ENABLED) {

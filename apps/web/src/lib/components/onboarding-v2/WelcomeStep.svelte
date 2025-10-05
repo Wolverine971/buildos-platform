@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/WelcomeStep.svelte -->
 <script lang="ts">
 	import { Brain, Calendar, MessageSquare, Sparkles } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

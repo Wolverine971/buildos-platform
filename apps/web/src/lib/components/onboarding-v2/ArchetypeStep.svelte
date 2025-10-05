@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/ArchetypeStep.svelte -->
 <script lang="ts">
 	import { Brain, Bot, ListChecks, Sparkles } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -82,8 +83,8 @@
 				onclick={() => selectArchetype(archetype.id)}
 				class="group relative p-6 rounded-2xl border-2 transition-all duration-200 text-left
           {isSelected
-						? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 shadow-lg scale-105'
-						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:shadow-md'}"
+					? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 shadow-lg scale-105'
+					: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:shadow-md'}"
 			>
 				<!-- Selection indicator -->
 				{#if isSelected}

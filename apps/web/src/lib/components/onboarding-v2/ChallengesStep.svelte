@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/ChallengesStep.svelte -->
 <script lang="ts">
 	import { HelpCircle, Sparkles } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -86,8 +87,8 @@
 				onclick={() => toggleChallenge(challenge.id)}
 				class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left flex items-start gap-4
           {isSelected
-						? 'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-md'
-						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-300 hover:shadow-sm'}"
+					? 'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-md'
+					: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-300 hover:shadow-sm'}"
 			>
 				<!-- Checkbox -->
 				<div
@@ -130,7 +131,12 @@
 
 	<!-- Actions -->
 	<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-		<Button variant="ghost" onclick={skipChallenges} disabled={isSaving} class="order-2 sm:order-1">
+		<Button
+			variant="ghost"
+			onclick={skipChallenges}
+			disabled={isSaving}
+			class="order-2 sm:order-1"
+		>
 			Skip this step
 		</Button>
 

@@ -38,6 +38,7 @@
 	import ArchetypeStep from '$lib/components/onboarding-v2/ArchetypeStep.svelte';
 	import ChallengesStep from '$lib/components/onboarding-v2/ChallengesStep.svelte';
 	import SummaryStep from '$lib/components/onboarding-v2/SummaryStep.svelte';
+	import ProgressIndicator from '$lib/components/onboarding-v2/ProgressIndicator.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -479,7 +480,12 @@
 	<div
 		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
 	>
-		<div class="container mx-auto py-8">
+		<div class="container mx-auto py-8 px-4">
+			<!-- Progress Indicator (show for steps 1-4, not welcome or summary) -->
+			{#if v2CurrentStep > 0 && v2CurrentStep < 5}
+				<ProgressIndicator currentStep={v2CurrentStep} />
+			{/if}
+
 			{#if v2CurrentStep === 0}
 				<WelcomeStep onStart={handleV2Next} />
 			{:else if v2CurrentStep === 1}

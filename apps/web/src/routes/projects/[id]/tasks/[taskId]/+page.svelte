@@ -185,8 +185,6 @@
 		showProjectContextModal = false;
 	}
 
-
-
 	// Get status display info
 	function getStatusDisplay(status: string) {
 		const configs: Record<string, { label: string; color: string; icon: typeof Clock }> = {

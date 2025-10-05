@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte -->
 <script lang="ts">
 	import { Bell, Mail, Smartphone, Sun, Moon, Info } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

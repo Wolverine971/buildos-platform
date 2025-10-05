@@ -58,14 +58,14 @@ Modal disappears from UI
 
 ### Code References
 
-| Component | File Path | Line Numbers |
-|-----------|-----------|--------------|
-| NotificationModal | `apps/web/src/lib/components/notifications/NotificationModal.svelte` | 117-125 (event handlers) |
-| BrainDumpModalContent | `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte` | 364-366 (handleClose) |
-| PhaseGenerationModalContent | `apps/web/src/lib/components/notifications/types/phase-generation/PhaseGenerationModalContent.svelte` | 79-84 (handleClose) |
-| CalendarAnalysisModalContent | `apps/web/src/lib/components/notifications/types/calendar-analysis/CalendarAnalysisModalContent.svelte` | 17-21 (handleClose) |
-| Base Modal | `apps/web/src/lib/components/ui/Modal.svelte` | 10 (onClose prop), 182 (close button) |
-| Notification Store | `apps/web/src/lib/stores/notification.store.ts` | 417-454 (remove), 509-535 (minimize) |
+| Component                    | File Path                                                                                               | Line Numbers                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| NotificationModal            | `apps/web/src/lib/components/notifications/NotificationModal.svelte`                                    | 117-125 (event handlers)              |
+| BrainDumpModalContent        | `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte`               | 364-366 (handleClose)                 |
+| PhaseGenerationModalContent  | `apps/web/src/lib/components/notifications/types/phase-generation/PhaseGenerationModalContent.svelte`   | 79-84 (handleClose)                   |
+| CalendarAnalysisModalContent | `apps/web/src/lib/components/notifications/types/calendar-analysis/CalendarAnalysisModalContent.svelte` | 17-21 (handleClose)                   |
+| Base Modal                   | `apps/web/src/lib/components/ui/Modal.svelte`                                                           | 10 (onClose prop), 182 (close button) |
+| Notification Store           | `apps/web/src/lib/stores/notification.store.ts`                                                         | 417-454 (remove), 509-535 (minimize)  |
 
 ## Detailed Findings
 
@@ -78,12 +78,12 @@ Modal disappears from UI
 ```typescript
 // Line 364-366
 function handleClose() {
-    dispatch('close');
+  dispatch("close");
 }
 
 // Line 368-370
 function handleMinimize() {
-    dispatch('minimize');
+  dispatch("minimize");
 }
 ```
 
@@ -110,6 +110,7 @@ function handleMinimize() {
 5. **No local isOpen state management** - Relies on parent notification store
 
 **Event Flow**:
+
 ```
 User clicks X/ESC → Modal.onClose → handleClose() → dispatch('close')
 → NotificationModal.handleDismiss → notificationStore.remove()
@@ -127,15 +128,15 @@ User clicks X/ESC → Modal.onClose → handleClose() → dispatch('close')
 ```typescript
 // Lines 79-84
 function handleClose() {
-    // Call the dismiss action to remove the notification
-    // notification.actions.dismiss?.();  // ❌ COMMENTED OUT
-    // Notify parent so it can clean up the notification modal
-    dispatch('close');
+  // Call the dismiss action to remove the notification
+  // notification.actions.dismiss?.();  // ❌ COMMENTED OUT
+  // Notify parent so it can clean up the notification modal
+  dispatch("close");
 }
 
 // Lines 75-77
 function handleMinimize() {
-    dispatch('minimize');
+  dispatch("minimize");
 }
 ```
 
@@ -154,11 +155,13 @@ function handleMinimize() {
 #### Potential Issues
 
 **Issue #1: Commented-out dismiss action** (Line 81)
+
 - `notification.actions.dismiss?.()` is commented out
 - This action might perform cleanup beyond what `notificationStore.remove()` does
 - Parent's `handleDismiss` calls `notificationStore.remove()`, but notification-specific cleanup might be lost
 
 **Issue #2: Footer button confusion** (Lines 323-351)
+
 - Has both "Minimize" and "Close" buttons in footer
 - "Minimize" button always visible (line 324)
 - "Close" button shown conditionally (line 347)
@@ -172,6 +175,7 @@ function handleMinimize() {
 4. No nested Modal components
 
 **Event Flow**:
+
 ```
 User clicks X/Close → Modal.onClose → handleClose() → dispatch('close')
 → NotificationModal.handleDismiss → notificationStore.remove()
@@ -191,6 +195,7 @@ This component has **three critical bugs** that prevent proper closing.
 #### Bug #1: Wrong Close Handler When Processing
 
 **Lines 53-69**:
+
 ```svelte
 {#if isProcessing}
     <Modal
@@ -203,6 +208,7 @@ This component has **three critical bugs** that prevent proper closing.
 ```
 
 **Problem**:
+
 - When `isProcessing` is true (notification.status === 'processing'), the Modal uses `onClose={handleMinimize}` instead of `onClose={handleClose}`
 - User clicks X button expecting the modal to close
 - Instead, it only minimizes the notification
@@ -216,6 +222,7 @@ This component has **three critical bugs** that prevent proper closing.
 #### Bug #2: Nested Modal Components Architecture
 
 **Lines 53-81**:
+
 ```svelte
 {#if isProcessing}
     <Modal>  <!-- ❌ Modal #1 -->
@@ -230,6 +237,7 @@ This component has **three critical bugs** that prevent proper closing.
 ```
 
 **Problem**:
+
 - CalendarAnalysisModalContent conditionally renders TWO different Modal wrappers:
   1. Its own Modal when processing (line 54)
   2. CalendarAnalysisResults component when not processing (line 71)
@@ -237,6 +245,7 @@ This component has **three critical bugs** that prevent proper closing.
 - This creates architectural confusion and potential for both Modals to render
 
 **Impact**:
+
 - Two separate Modal lifecycles
 - Two different state management approaches
 - Harder to maintain consistent close behavior
@@ -248,6 +257,7 @@ This component has **three critical bugs** that prevent proper closing.
 #### Bug #3: State Synchronization Bug with isOpen
 
 **Lines 15, 17-21, 72**:
+
 ```typescript
 // Line 15
 let isOpen = $state(true);
@@ -265,6 +275,7 @@ function handleClose() {
 ```
 
 **Problem**:
+
 - CalendarAnalysisModalContent has local state: `let isOpen = $state(true)`
 - This is bound to CalendarAnalysisResults' `isOpen` prop
 - CalendarAnalysisResults declares: `isOpen = $bindable(false)` (CalendarAnalysisResults.svelte:53)
@@ -273,11 +284,13 @@ function handleClose() {
 - Setting `isOpen = false` doesn't close the processing Modal
 
 **Impact**:
+
 - Clicking close while processing: `isOpen = false` has no effect because processing Modal ignores it
 - State desync between parent and child
 - Modal appears "stuck" when trying to close during processing
 
 **Recommended Fix**:
+
 1. Remove local `isOpen` state from CalendarAnalysisModalContent
 2. Let CalendarAnalysisResults manage its own Modal state
 3. Use event-based communication instead of state binding
@@ -289,18 +302,19 @@ function handleClose() {
 ```typescript
 // Lines 17-26
 function handleClose() {
-    isOpen = false;  // ❌ Bug #3
-    // notification.actions.dismiss?.();  // ❌ No cleanup
-    dispatch('close');
+  isOpen = false; // ❌ Bug #3
+  // notification.actions.dismiss?.();  // ❌ No cleanup
+  dispatch("close");
 }
 
 function handleMinimize() {
-    notificationStore.minimize(notification.id);  // ✅ Direct store call
-    dispatch('minimize');
+  notificationStore.minimize(notification.id); // ✅ Direct store call
+  dispatch("minimize");
 }
 ```
 
 **Event Flow (Non-Processing)**:
+
 ```
 User clicks X → CalendarAnalysisResults.Modal.onClose
 → CalendarAnalysisResults.handleClose → sets isOpen=false + calls onClose prop
@@ -310,6 +324,7 @@ User clicks X → CalendarAnalysisResults.Modal.onClose
 ```
 
 **Event Flow (Processing)** ❌:
+
 ```
 User clicks X → Modal.onClose → handleMinimize (BUG #1)
 → notificationStore.minimize() → Notification minimized, not closed
@@ -320,22 +335,22 @@ User clicks X → Modal.onClose → handleMinimize (BUG #1)
 
 ## Comparison Table
 
-| Component | handleClose Implementation | Modal Wrapper | isOpen State | Close Works? | Issues |
-|-----------|---------------------------|---------------|--------------|--------------|---------|
-| **BrainDumpModalContent** | `dispatch('close')` | Single Modal, `isOpen={true}` | None (relies on parent) | ✅ Yes | None |
-| **PhaseGenerationModalContent** | `dispatch('close')` (+ commented cleanup) | Single Modal, `isOpen={true}` | None (relies on parent) | ⚠️ Likely | Commented-out cleanup code |
-| **CalendarAnalysisModalContent** | `isOpen = false` + `dispatch('close')` | Dual Modals (processing vs results) | Local `isOpen = $state(true)` | ❌ No | 3 critical bugs |
+| Component                        | handleClose Implementation                | Modal Wrapper                       | isOpen State                  | Close Works? | Issues                     |
+| -------------------------------- | ----------------------------------------- | ----------------------------------- | ----------------------------- | ------------ | -------------------------- |
+| **BrainDumpModalContent**        | `dispatch('close')`                       | Single Modal, `isOpen={true}`       | None (relies on parent)       | ✅ Yes       | None                       |
+| **PhaseGenerationModalContent**  | `dispatch('close')` (+ commented cleanup) | Single Modal, `isOpen={true}`       | None (relies on parent)       | ⚠️ Likely    | Commented-out cleanup code |
+| **CalendarAnalysisModalContent** | `isOpen = false` + `dispatch('close')`    | Dual Modals (processing vs results) | Local `isOpen = $state(true)` | ❌ No        | 3 critical bugs            |
 
 ### Key Differences
 
-| Aspect | BrainDump (Working) | PhaseGeneration | CalendarAnalysis (Broken) |
-|--------|---------------------|-----------------|---------------------------|
-| **Event Dispatch** | `dispatch('close')` | `dispatch('close')` | `isOpen = false` + `dispatch('close')` |
-| **Local State** | None | None | `isOpen = $state(true)` ❌ |
-| **Modal Count** | 1 | 1 | 2 (conditional) ❌ |
-| **Close Handler** | Always `handleClose` | Always `handleClose` | `handleMinimize` when processing ❌ |
-| **Cleanup Code** | None needed | Commented out ⚠️ | Commented out ⚠️ |
-| **State Binding** | None | None | `bind:isOpen` to child ❌ |
+| Aspect             | BrainDump (Working)  | PhaseGeneration      | CalendarAnalysis (Broken)              |
+| ------------------ | -------------------- | -------------------- | -------------------------------------- |
+| **Event Dispatch** | `dispatch('close')`  | `dispatch('close')`  | `isOpen = false` + `dispatch('close')` |
+| **Local State**    | None                 | None                 | `isOpen = $state(true)` ❌             |
+| **Modal Count**    | 1                    | 1                    | 2 (conditional) ❌                     |
+| **Close Handler**  | Always `handleClose` | Always `handleClose` | `handleMinimize` when processing ❌    |
+| **Cleanup Code**   | None needed          | Commented out ⚠️     | Commented out ⚠️                       |
+| **State Binding**  | None                 | None                 | `bind:isOpen` to child ❌              |
 
 ## Code References
 
@@ -359,21 +374,24 @@ User clicks X → Modal.onClose → handleMinimize (BUG #1)
 ```typescript
 // Lines 93-95
 function handleMinimize() {
-    notificationStore.minimize(notification.id);
+  notificationStore.minimize(notification.id);
 }
 
 // Lines 98-105
 function handleDismiss() {
-    const targetId = notification?.id;
-    if (!targetId) {
-        console.warn('[NotificationModal] handleDismiss called without notification id');
-        return;
-    }
-    notificationStore.remove(targetId);
+  const targetId = notification?.id;
+  if (!targetId) {
+    console.warn(
+      "[NotificationModal] handleDismiss called without notification id",
+    );
+    return;
+  }
+  notificationStore.remove(targetId);
 }
 ```
 
 **Event Handlers**:
+
 - `on:minimize` → calls `notificationStore.minimize(id)` (keeps notification in store, sets `isMinimized: true`)
 - `on:close` → calls `notificationStore.remove(id)` (deletes notification from store completely)
 - `on:cancel` → same as close
@@ -388,32 +406,35 @@ function handleDismiss() {
 
 ```typescript
 function minimize(id: string): void {
-    update((state) => {
-        const notification = state.notifications.get(id);
-        if (!notification) {
-            console.warn(`[NotificationStore] Cannot minimize - notification ${id} not found`);
-            return state;
-        }
+  update((state) => {
+    const notification = state.notifications.get(id);
+    if (!notification) {
+      console.warn(
+        `[NotificationStore] Cannot minimize - notification ${id} not found`,
+      );
+      return state;
+    }
 
-        const newNotifications = new Map(state.notifications);
-        newNotifications.set(id, {
-            ...notification,
-            isMinimized: true,  // ✅ Sets minimized flag
-            updatedAt: Date.now()
-        });
-
-        return {
-            ...state,
-            notifications: newNotifications,
-            expandedId: state.expandedId === id ? null : state.expandedId
-        };
+    const newNotifications = new Map(state.notifications);
+    newNotifications.set(id, {
+      ...notification,
+      isMinimized: true, // ✅ Sets minimized flag
+      updatedAt: Date.now(),
     });
 
-    persist();
+    return {
+      ...state,
+      notifications: newNotifications,
+      expandedId: state.expandedId === id ? null : state.expandedId,
+    };
+  });
+
+  persist();
 }
 ```
 
 **What it does**:
+
 - Sets `isMinimized: true` on the notification
 - Keeps notification in the store
 - Clears `expandedId` if this notification was expanded
@@ -425,39 +446,42 @@ function minimize(id: string): void {
 
 ```typescript
 function remove(id: string): void {
-    update((state) => {
-        const notification = state.notifications.get(id);
-        if (!notification) {
-            console.warn(`[NotificationStore] Cannot remove - notification ${id} not found`);
-            return state;
-        }
+  update((state) => {
+    const notification = state.notifications.get(id);
+    if (!notification) {
+      console.warn(
+        `[NotificationStore] Cannot remove - notification ${id} not found`,
+      );
+      return state;
+    }
 
-        const newNotifications = new Map(state.notifications);
-        newNotifications.delete(id);  // ✅ Completely removes from Map
+    const newNotifications = new Map(state.notifications);
+    newNotifications.delete(id); // ✅ Completely removes from Map
 
-        const newStack = state.stack.filter((stackId) => stackId !== id);
+    const newStack = state.stack.filter((stackId) => stackId !== id);
 
-        const newHistory = state.config.enableHistory
-            ? [...state.history, notification].slice(-50)
-            : state.history;
+    const newHistory = state.config.enableHistory
+      ? [...state.history, notification].slice(-50)
+      : state.history;
 
-        clearAutoCloseTimer(id);
-        cleanupNotificationActions(id);
+    clearAutoCloseTimer(id);
+    cleanupNotificationActions(id);
 
-        return {
-            ...state,
-            notifications: newNotifications,
-            stack: newStack,
-            expandedId: state.expandedId === id ? null : state.expandedId,
-            history: newHistory
-        };
-    });
+    return {
+      ...state,
+      notifications: newNotifications,
+      stack: newStack,
+      expandedId: state.expandedId === id ? null : state.expandedId,
+      history: newHistory,
+    };
+  });
 
-    persist();
+  persist();
 }
 ```
 
 **What it does**:
+
 - **Completely deletes** notification from Map
 - Removes from stack array
 - Adds to history
@@ -502,6 +526,7 @@ function handleBackdropClick(event: MouseEvent | TouchEvent) {
 ```
 
 **Triggers**:
+
 1. Close button (X) - calls `onClose()`
 2. ESC key - calls `onClose()` if `closeOnEscape={true}`
 3. Backdrop click - calls `onClose()` if `closeOnBackdrop={true}`
@@ -518,11 +543,11 @@ The codebase uses **Svelte 4 style event handling** with `createEventDispatcher`
 
 ```typescript
 // Child component
-import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 const dispatch = createEventDispatcher();
 
 function handleClose() {
-    dispatch('close');
+  dispatch("close");
 }
 ```
 
@@ -537,11 +562,12 @@ function handleClose() {
 **Finding**: This pattern works correctly in current Svelte 5 (backward compatible). No bugs found related to event forwarding itself.
 
 **Future Migration**: Svelte 5 recommends callback props instead:
+
 ```typescript
 // Child
 let { onclose } = $props();
 function handleClose() {
-    onclose?.();
+  onclose?.();
 }
 ```
 
@@ -579,6 +605,7 @@ function handleClose() {
 ### Priority 1: CalendarAnalysisModalContent (Critical)
 
 #### Fix Bug #1: Wrong close handler when processing
+
 ```diff
 {#if isProcessing}
     <Modal
@@ -589,6 +616,7 @@ function handleClose() {
 ```
 
 #### Fix Bug #2 & #3: Remove nested Modal, simplify state management
+
 ```diff
 - let isOpen = $state(true);
 
@@ -601,6 +629,7 @@ function handleClose() {
 ```
 
 Remove the processing Modal wrapper entirely:
+
 ```diff
 - {#if isProcessing}
 -     <Modal isOpen={true} onClose={handleMinimize} ...>
@@ -632,6 +661,7 @@ Then update CalendarAnalysisResults to handle processing state internally.
 ### Priority 2: PhaseGenerationModalContent (Medium)
 
 #### Fix: Uncomment cleanup code
+
 ```diff
   function handleClose() {
 -     // Call the dismiss action to remove the notification
@@ -651,12 +681,12 @@ Make all three components follow the same pattern as BrainDumpModalContent:
 
 ```typescript
 function handleClose() {
-    notification.actions.dismiss?.();
-    dispatch('close');
+  notification.actions.dismiss?.();
+  dispatch("close");
 }
 
 function handleMinimize() {
-    dispatch('minimize');
+  dispatch("minimize");
 }
 ```
 
@@ -669,6 +699,7 @@ No local state management, no nested Modals, simple event dispatch.
 After applying fixes, test these scenarios:
 
 ### CalendarAnalysisModalContent
+
 - [ ] Click X while analysis is **processing** → Should close, not minimize
 - [ ] Press ESC while processing → Should close
 - [ ] Click backdrop while processing → Should respect `closeOnBackdrop` setting
@@ -676,16 +707,19 @@ After applying fixes, test these scenarios:
 - [ ] Verify no double-Modal rendering
 
 ### PhaseGenerationModalContent
+
 - [ ] Click X during generation → Should close
 - [ ] Click "Close" button in footer → Should close
 - [ ] Click "Minimize" button → Should minimize (not close)
 - [ ] Verify notification actions cleanup happens
 
 ### BrainDumpModalContent
+
 - [ ] Verify still works after any shared component changes
 - [ ] All close methods work (X, ESC, custom buttons)
 
 ### All Components
+
 - [ ] Verify `notificationStore.remove()` is called on close
 - [ ] Verify notification is removed from store
 - [ ] Verify modal disappears from UI
@@ -718,6 +752,7 @@ After applying fixes, test these scenarios:
 **Root Cause**: CalendarAnalysisModalContent has architectural flaws with nested Modals, state synchronization bugs, and wrong event handlers, while PhaseGenerationModalContent likely works but has commented-out cleanup code.
 
 **Primary Bugs**:
+
 1. ❌ CalendarAnalysisModalContent uses `onClose={handleMinimize}` when processing
 2. ❌ CalendarAnalysisModalContent has nested Modal components with conflicting state
 3. ❌ CalendarAnalysisModalContent `isOpen` state binding creates desyncs

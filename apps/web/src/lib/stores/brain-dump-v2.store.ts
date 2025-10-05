@@ -42,7 +42,7 @@ export interface StartBrainDumpConfig {
 	inputText: string;
 	selectedProject: any;
 	isNewProject: boolean;
-	processingType: 'dual' | 'single' | 'short' | 'background';
+	processingType: 'dual' | 'single' | 'background';
 	jobId?: string;
 	autoAcceptEnabled?: boolean;
 	displayedQuestions?: DisplayedBrainDumpQuestion[];
@@ -64,7 +64,7 @@ export interface SingleBrainDumpState {
 	// Processing state
 	processing: {
 		phase: 'idle' | 'transcribing' | 'parsing' | 'saving' | 'applying';
-		type: 'dual' | 'single' | 'short' | 'background';
+		type: 'dual' | 'single' | 'background';
 		mutex: boolean; // Per-brain-dump mutex
 		startedAt: number | null;
 		jobId: string | null;
@@ -202,7 +202,7 @@ export interface UnifiedBrainDumpState {
 	processing: {
 		// Current processing state
 		phase: 'idle' | 'transcribing' | 'parsing' | 'saving' | 'applying';
-		type: 'dual' | 'single' | 'short' | 'background';
+		type: 'dual' | 'single' | 'background';
 		mutex: boolean;
 		startedAt: number | null;
 
@@ -617,7 +617,7 @@ export type BrainDumpV2Store = {
 
 	// Processing Actions
 	startProcessing: (config: {
-		type: 'dual' | 'single' | 'short' | 'background';
+		type: 'dual' | 'single' | 'background';
 		brainDumpId: string;
 		jobId?: string;
 		autoAcceptEnabled?: boolean;
@@ -801,7 +801,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					jobId: config.jobId || null,
 					autoAcceptEnabled: config.autoAcceptEnabled || false,
 					streaming:
-						config.processingType === 'dual' || config.processingType === 'short'
+						config.processingType === 'dual'
 							? {
 									contextStatus: 'pending',
 									tasksStatus: 'pending',
@@ -1534,7 +1534,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 		// ===== Processing Actions =====
 		startProcessing: async (config: {
-			type: 'dual' | 'single' | 'short' | 'background';
+			type: 'dual' | 'single' | 'background';
 			brainDumpId: string;
 			jobId?: string;
 			autoAcceptEnabled?: boolean;
@@ -1621,9 +1621,9 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					jobId: config.jobId || null,
 					activeBrainDumpId: config.brainDumpId,
 					autoAcceptEnabled: config.autoAcceptEnabled || false,
-					// Initialize streaming state for dual/short processing
+					// Initialize streaming state for dual processing
 					streaming:
-						config.type === 'dual' || config.type === 'short'
+						config.type === 'dual'
 							? {
 									contextStatus: 'pending',
 									tasksStatus: 'pending',

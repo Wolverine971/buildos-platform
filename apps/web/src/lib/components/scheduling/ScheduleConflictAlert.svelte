@@ -149,13 +149,19 @@
 													</button>
 												{/if}
 
-												<span class="block mt-1 text-sm text-red-700 dark:text-red-300">
+												<span
+													class="block mt-1 text-sm text-red-700 dark:text-red-300"
+												>
 													{conflict.description}
 												</span>
 
 												{#if conflict.date}
-													<span class="block text-xs text-red-600 dark:text-red-400 mt-0.5">
-														{formatDate(conflict.date)} at {formatTime(conflict.date)}
+													<span
+														class="block text-xs text-red-600 dark:text-red-400 mt-0.5"
+													>
+														{formatDate(conflict.date)} at {formatTime(
+															conflict.date
+														)}
 													</span>
 												{/if}
 											</div>
@@ -228,13 +234,19 @@
 													</button>
 												{/if}
 
-												<span class="block mt-1 text-sm text-amber-700 dark:text-amber-300">
+												<span
+													class="block mt-1 text-sm text-amber-700 dark:text-amber-300"
+												>
 													{conflict.description}
 												</span>
 
 												{#if conflict.date}
-													<span class="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-														{formatDate(conflict.date)} at {formatTime(conflict.date)}
+													<span
+														class="block text-xs text-amber-600 dark:text-amber-400 mt-0.5"
+													>
+														{formatDate(conflict.date)} at {formatTime(
+															conflict.date
+														)}
 													</span>
 												{/if}
 											</div>

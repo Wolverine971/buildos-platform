@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/SummaryStep.svelte -->
 <script lang="ts">
 	import {
 		CheckCircle,
@@ -40,7 +41,7 @@
 	const challengeLabels = $derived(
 		ONBOARDING_V2_CONFIG.challenges.reduce(
 			(acc, c) => {
-				acc[c.id] = c.label.split(' — ')[0]; // Get just the title part
+				acc[c.id] = c.label.split(' — ')[0] || c.label; // Get just the title part
 				return acc;
 			},
 			{} as Record<string, string>
@@ -112,16 +113,16 @@
 					</h3>
 					<p class="text-gray-600 dark:text-gray-400">
 						{#if summary.projectsCreated > 0}
-							Created <strong>{summary.projectsCreated}</strong> project{summary.projectsCreated !==
-							1
-								? 's'
-								: ''} from your brain dump
+							Created <strong>{summary.projectsCreated}</strong>
+							project{summary.projectsCreated !== 1 ? 's' : ''} from your brain dump
 						{:else}
 							No projects created yet — you can add them anytime!
 						{/if}
 					</p>
 					{#if summary.calendarAnalyzed}
-						<div class="mt-2 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+						<div
+							class="mt-2 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400"
+						>
 							<Calendar class="w-4 h-4" />
 							<span>Analyzed your Google Calendar</span>
 						</div>

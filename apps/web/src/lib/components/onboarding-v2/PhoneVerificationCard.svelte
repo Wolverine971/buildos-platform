@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/PhoneVerificationCard.svelte -->
 <script lang="ts">
 	import { Phone, Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

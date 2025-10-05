@@ -51,30 +51,30 @@ export class TaskTimeSlotFinder {
 			console.log('no calendar preferences');
 		}
 
-	// Provide default preferences if none exist (don't auto-create in DB)
-	const preferences = userCalendarPreferences || {
-		user_id: userId,
-		id: '',
-		timezone: 'America/New_York',
-		work_start_time: '09:00:00',
-		work_end_time: '17:00:00',
-		working_days: [1, 2, 3, 4, 5],
-		default_task_duration_minutes: 60,
-		min_task_duration_minutes: 30,
-		max_task_duration_minutes: 240,
-		exclude_holidays: true,
-		holiday_country_code: 'US',
-		prefer_morning_for_important_tasks: false,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString()
-	};
+		// Provide default preferences if none exist (don't auto-create in DB)
+		const preferences = userCalendarPreferences || {
+			user_id: userId,
+			id: '',
+			timezone: 'America/New_York',
+			work_start_time: '09:00:00',
+			work_end_time: '17:00:00',
+			working_days: [1, 2, 3, 4, 5],
+			default_task_duration_minutes: 60,
+			min_task_duration_minutes: 30,
+			max_task_duration_minutes: 240,
+			exclude_holidays: true,
+			holiday_country_code: 'US',
+			prefer_morning_for_important_tasks: false,
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString()
+		};
 
-	if (userCalendarPreferencesError) {
-		console.warn('No calendar preferences found for user, using defaults:', {
-			userId,
-			errorCode: userCalendarPreferencesError.code
-		});
-	}
+		if (userCalendarPreferencesError) {
+			console.warn('No calendar preferences found for user, using defaults:', {
+				userId,
+				errorCode: userCalendarPreferencesError.code
+			});
+		}
 
 		// Filter out recurring tasks (they shouldn't be adjusted)
 		const recurringTasks = tasksToSchedule.filter((task) => task.recurrence_pattern !== null);
@@ -83,10 +83,7 @@ export class TaskTimeSlotFinder {
 		);
 
 		// Group tasks by their start date (day only)
-		const tasksByDay = this.groupTasksByDay(
-			nonRecurringTasks,
-			preferences.timezone || 'UTC'
-		);
+		const tasksByDay = this.groupTasksByDay(nonRecurringTasks, preferences.timezone || 'UTC');
 
 		const scheduledTasks: Task[] = [];
 		const bumpedTasks: TaskWithOriginalTime[] = [];
@@ -135,10 +132,7 @@ export class TaskTimeSlotFinder {
 		}
 
 		// Process bumped tasks
-		const rescheduledTasks = await this.processBumpedTasks(
-			bumpedTasks,
-			preferences
-		);
+		const rescheduledTasks = await this.processBumpedTasks(bumpedTasks, preferences);
 
 		// Combine all tasks: recurring (unchanged) + scheduled + rescheduled
 		return [...recurringTasks, ...scheduledTasks, ...rescheduledTasks];

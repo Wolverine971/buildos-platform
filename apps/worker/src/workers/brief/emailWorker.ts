@@ -1,4 +1,4 @@
-// apps/worker/src/workers/brief/emailWorker.ts (REVISED - Uses Existing Email Tables)
+// apps/worker/src/workers/brief/emailWorker.ts
 import { supabase } from "../../lib/supabase";
 import { notifyUser, updateJobStatus } from "../shared/queueUtils";
 import { LegacyJob } from "../shared/jobAdapter";

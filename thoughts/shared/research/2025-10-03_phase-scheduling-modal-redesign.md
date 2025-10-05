@@ -184,9 +184,9 @@ let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 function handleCalendarEventClick(event: CustomEvent) {
   const { event: clickedEvent } = event.detail;
 
-  if (clickedEvent.type === 'existing' && clickedEvent.htmlLink) {
-    window.open(clickedEvent.htmlLink, '_blank');
-  } else if (clickedEvent.type === 'proposed' && clickedEvent.schedule) {
+  if (clickedEvent.type === "existing" && clickedEvent.htmlLink) {
+    window.open(clickedEvent.htmlLink, "_blank");
+  } else if (clickedEvent.type === "proposed" && clickedEvent.schedule) {
     const taskId = clickedEvent.schedule.task.id;
     highlightAndScrollToTask(taskId);
   }
@@ -208,8 +208,8 @@ function highlightAndScrollToTask(taskId: string) {
   const element = document.getElementById(`task-schedule-item-${taskId}`);
   if (element) {
     element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center'
+      behavior: "smooth",
+      block: "center",
     });
   }
 
@@ -463,29 +463,32 @@ export let isEditing = false;
 export let isHighlighted = false; // NEW - for highlighting from conflict clicks
 
 // Local editing state
-let tempStart = '';
+let tempStart = "";
 let tempDuration = 60; // NEW - duration in minutes
-let editError = '';
+let editError = "";
 
 // Initialize editing values when entering edit mode
 $: if (isEditing && !tempStart) {
   tempStart = formatDateTimeForInput(schedule.proposedStart);
-  tempDuration = calculateDuration(schedule.proposedStart, schedule.proposedEnd);
-  editError = '';
+  tempDuration = calculateDuration(
+    schedule.proposedStart,
+    schedule.proposedEnd,
+  );
+  editError = "";
 }
 
 /**
  * Calculate end time display based on start + duration
  */
 function calculateEndTime(start: string, durationMinutes: number): string {
-  if (!start || !durationMinutes) return 'N/A';
+  if (!start || !durationMinutes) return "N/A";
 
   try {
     const startDate = parseDateTimeFromInput(start);
     const endDate = addMinutes(startDate, durationMinutes);
     return formatTime(endDate);
   } catch {
-    return 'Invalid';
+    return "Invalid";
   }
 }
 
@@ -494,7 +497,7 @@ function calculateEndTime(start: string, durationMinutes: number): string {
  */
 function saveEdit() {
   if (!tempStart || !tempDuration || tempDuration <= 0) {
-    editError = 'Start time and duration are required';
+    editError = "Start time and duration are required";
     return;
   }
 
@@ -503,20 +506,20 @@ function saveEdit() {
 
   // Validate duration (max 8 hours)
   if (tempDuration > 480) {
-    editError = 'Task duration cannot exceed 8 hours';
+    editError = "Task duration cannot exceed 8 hours";
     return;
   }
 
-  dispatch('editSave', {
+  dispatch("editSave", {
     schedule,
     newStart,
-    newEnd
+    newEnd,
   });
 
   isEditing = false;
-  tempStart = '';
+  tempStart = "";
   tempDuration = 60;
-  editError = '';
+  editError = "";
 }
 ```
 
@@ -539,17 +542,17 @@ function getEventsForDay(date: Date): any[] {
       const isHighlighted = highlightedTaskId === schedule.task.id;
 
       dayEvents.push({
-        type: 'proposed',
+        type: "proposed",
         title: schedule.task.title,
         start: scheduleStart,
         end: new Date(schedule.proposedEnd),
         color: isHighlighted
-          ? 'bg-primary-200 dark:bg-primary-700 ring-2 ring-primary-500'
+          ? "bg-primary-200 dark:bg-primary-700 ring-2 ring-primary-500"
           : schedule.hasConflict
-            ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400'
-            : 'bg-primary-100 dark:bg-primary-900/30 border-primary-500',
+            ? "bg-amber-100 dark:bg-amber-900/30 border-amber-400"
+            : "bg-primary-100 dark:bg-primary-900/30 border-primary-500",
         schedule: schedule,
-        isHighlighted
+        isHighlighted,
       });
     }
   }
@@ -637,7 +640,7 @@ Following 8px grid system:
 .scrollable {
   @apply overflow-y-auto;
   scrollbar-width: thin; // Firefox
-  scrollbar-color: theme('colors.gray.300') theme('colors.gray.100');
+  scrollbar-color: theme("colors.gray.300") theme("colors.gray.100");
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -663,7 +666,7 @@ Following 8px grid system:
 // Desktop layout (≥1024px)
 @media (min-width: 1024px) {
   .phase-scheduling-modal {
-    max-width: theme('maxWidth.7xl'); // 1280px
+    max-width: theme("maxWidth.7xl"); // 1280px
   }
 
   .task-calendar-grid {
@@ -675,7 +678,7 @@ Following 8px grid system:
 // Tablet (768px - 1023px)
 @media (min-width: 768px) and (max-width: 1023px) {
   .phase-scheduling-modal {
-    max-width: theme('maxWidth.6xl'); // 1152px
+    max-width: theme("maxWidth.6xl"); // 1152px
   }
 
   // Stack vertically on tablet
@@ -768,11 +771,12 @@ Following BuildOS animation standards:
 ```scss
 // Task highlight pulse
 @keyframes highlight-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 theme('colors.primary.500' / 0.5);
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 theme("colors.primary.500" / 0.5);
   }
   50% {
-    box-shadow: 0 0 0 8px theme('colors.primary.500' / 0);
+    box-shadow: 0 0 0 8px theme("colors.primary.500" / 0);
   }
 }
 

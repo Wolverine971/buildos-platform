@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte -->
 <script lang="ts">
 	import { Rocket, Calendar, Loader2, Sparkles, CheckCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';

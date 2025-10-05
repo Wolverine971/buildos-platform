@@ -368,7 +368,9 @@
 						class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 					>
 						<div class="text-xs text-gray-600 dark:text-gray-400">
-							{proposedSchedules.length} task{proposedSchedules.length === 1 ? '' : 's'}
+							{proposedSchedules.length} task{proposedSchedules.length === 1
+								? ''
+								: 's'}
 							{#if conflictCount > 0}
 								•
 								<span class="text-amber-600 dark:text-amber-400">
@@ -391,7 +393,7 @@
 						refreshing={status === 'refreshing'}
 						phaseStart={phase.start_date}
 						phaseEnd={phase.end_date}
-						highlightedTaskId={highlightedTaskId}
+						{highlightedTaskId}
 						on:eventClick={handleEventClick}
 						on:dateChange={handleDateChange}
 						on:viewModeChange={handleViewModeChange}
@@ -413,7 +415,9 @@
 							Calendar View
 						</span>
 						<ChevronDown
-							class="w-5 h-5 transition-transform {calendarExpanded ? 'rotate-180' : ''}"
+							class="w-5 h-5 transition-transform {calendarExpanded
+								? 'rotate-180'
+								: ''}"
 						/>
 					</button>
 
@@ -429,7 +433,7 @@
 								refreshing={status === 'refreshing'}
 								phaseStart={phase.start_date}
 								phaseEnd={phase.end_date}
-								highlightedTaskId={highlightedTaskId}
+								{highlightedTaskId}
 								on:eventClick={handleEventClick}
 								on:dateChange={handleDateChange}
 								on:viewModeChange={handleViewModeChange}
@@ -446,7 +450,9 @@
 							Tasks to Schedule
 						</h3>
 						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-							{proposedSchedules.length} task{proposedSchedules.length === 1 ? '' : 's'}
+							{proposedSchedules.length} task{proposedSchedules.length === 1
+								? ''
+								: 's'}
 							{#if conflictCount > 0}
 								•
 								<span class="text-amber-600 dark:text-amber-400">

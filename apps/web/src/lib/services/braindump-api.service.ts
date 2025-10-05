@@ -177,81 +177,8 @@ class BrainDumpService extends ApiClient {
 	}
 
 	/**
-	 * Parse short brain dump with streaming for existing projects (< 500 chars)
-	 */
-	async parseShortBrainDumpWithStream(
-		text: string,
-		selectedProjectId: string,
-		brainDumpId?: string,
-		displayedQuestions?: DisplayedBrainDumpQuestion[],
-		options?: {
-			autoAccept?: boolean;
-			onProgress?: (status: StreamingMessage) => void;
-			onComplete?: (result: BrainDumpParseResult) => void;
-			onError?: (error: string) => void;
-		}
-	): Promise<void> {
-		try {
-			// Use fetch with POST to establish SSE connection
-			const response = await fetch('/api/braindumps/stream-short', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					content: text,
-					selectedProjectId,
-					brainDumpId,
-					displayedQuestions,
-					options: {
-						autoAccept: options?.autoAccept || false
-					}
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-			}
-
-			// Use shared SSE processor
-			await SSEProcessor.processStream(
-				response,
-				{
-					onProgress: (data) => {
-						// Handle different data types
-
-						if (data.type === 'complete' && data.result) {
-							options?.onComplete?.(data.result);
-						} else if (data.type === 'error') {
-							options?.onError?.(data.error || 'Unknown error');
-						} else {
-							options?.onProgress?.(data);
-						}
-					},
-					onComplete: (result) => {
-						options?.onComplete?.(result);
-					},
-					onError: (error) => {
-						options?.onError?.(typeof error === 'string' ? error : error.message);
-					}
-				},
-				{
-					timeout: 180000, // 3 minutes to match other processing timeouts
-					parseJSON: true,
-					onParseError: (error, chunk) => {
-						console.error('Failed to parse SSE data:', error, 'Chunk:', chunk);
-					}
-				}
-			);
-		} catch (error) {
-			console.error('Error in short brain dump streaming:', error);
-			options?.onError?.(error instanceof Error ? error.message : 'Unknown error');
-			throw error;
-		}
-	}
-
-	/**
-	 * Parse brain dump with streaming for long content
+	 * Parse brain dump with streaming
+	 * Uses preparatory analysis to intelligently optimize processing
 	 */
 	async parseBrainDumpWithStream(
 		text: string,
