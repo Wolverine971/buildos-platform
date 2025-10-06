@@ -1,0 +1,354 @@
+<!-- apps/web/src/lib/components/settings/NotificationPreferences.svelte -->
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
+	import { toastService } from '$lib/stores/toast.store';
+	import Button from '$lib/components/ui/Button.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import { Bell, Mail, Smartphone, Check, Loader, Moon } from 'lucide-svelte';
+	import type { EventType, UserNotificationPreferences } from '@buildos/shared-types';
+
+	interface Props {
+		userId: string;
+	}
+
+	let { userId }: Props = $props();
+
+	let preferences = $state<UserNotificationPreferences | null>(null);
+	let isLoading = $state(true);
+	let isSaving = $state(false);
+	let loadError = $state<string | null>(null);
+
+	// Preference settings for brief.completed (with defaults)
+	let pushEnabled = $state(true);
+	let emailEnabled = $state(true);
+	let inAppEnabled = $state(true);
+	let quietHoursEnabled = $state(false);
+	let quietHoursStart = $state('22:00');
+	let quietHoursEnd = $state('08:00');
+
+	onMount(async () => {
+		await loadPreferences();
+	});
+
+	async function loadPreferences() {
+		isLoading = true;
+		loadError = null;
+		try {
+			const prefs = await notificationPreferencesService.get('brief.completed');
+
+			if (prefs) {
+				preferences = prefs;
+
+				// Update state with loaded preferences
+				pushEnabled = prefs.push_enabled;
+				emailEnabled = prefs.email_enabled;
+				inAppEnabled = prefs.in_app_enabled;
+				quietHoursEnabled = prefs.quiet_hours_enabled;
+				quietHoursStart = prefs.quiet_hours_start;
+				quietHoursEnd = prefs.quiet_hours_end;
+			}
+		} catch (error) {
+			console.error('Failed to load notification preferences:', error);
+			loadError = error instanceof Error ? error.message : 'Failed to load preferences';
+			// Don't show toast on initial load failure - we'll show inline error
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function savePreferences() {
+		isSaving = true;
+		try {
+			await notificationPreferencesService.update('brief.completed', {
+				push_enabled: pushEnabled,
+				email_enabled: emailEnabled,
+				in_app_enabled: inAppEnabled,
+				quiet_hours_enabled: quietHoursEnabled,
+				quiet_hours_start: quietHoursStart,
+				quiet_hours_end: quietHoursEnd
+			});
+
+			toastService.success('Notification preferences saved successfully');
+			await loadPreferences(); // Reload to get latest data
+		} catch (error) {
+			console.error('Failed to save notification preferences:', error);
+			toastService.error('Failed to save notification preferences');
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	let hasAnyChannelEnabled = $derived(pushEnabled || emailEnabled || inAppEnabled);
+</script>
+
+<div class="space-y-6">
+	{#if isLoading}
+		<div class="flex flex-col items-center justify-center py-12 gap-3">
+			<svg
+				class="animate-spin h-8 w-8 text-primary"
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+			>
+				<circle
+					class="opacity-25"
+					cx="12"
+					cy="12"
+					r="10"
+					stroke="currentColor"
+					stroke-width="4"
+				></circle>
+				<path
+					class="opacity-75"
+					fill="currentColor"
+					d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+				></path>
+			</svg>
+			<p class="text-sm text-gray-500 dark:text-gray-400">
+				Loading notification preferences...
+			</p>
+		</div>
+	{:else if loadError}
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-800 shadow-lg"
+		>
+			<div class="p-6">
+				<div class="flex items-start gap-3">
+					<div class="flex-shrink-0">
+						<svg
+							class="w-6 h-6 text-red-600 dark:text-red-400"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+					</div>
+					<div class="flex-1">
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+							Unable to Load Preferences
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+							{loadError}
+						</p>
+						<Button on:click={loadPreferences} variant="outline" size="sm">
+							Try Again
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{:else}
+		<!-- Daily Brief Notification Settings -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
+		>
+			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex items-center gap-3">
+					<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Daily Brief Notifications
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Choose how you want to be notified when your daily brief is ready
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="p-6 space-y-6">
+				<!-- First-time setup info banner -->
+				{#if !preferences?.id}
+					<div
+						class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
+					>
+						<div class="flex items-start gap-3">
+							<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+							<div class="flex-1">
+								<h4 class="font-medium text-blue-900 dark:text-blue-100 mb-1">
+									Set Up Your Notification Preferences
+								</h4>
+								<p class="text-sm text-blue-800 dark:text-blue-200">
+									You're currently using the default notification settings. Customize how you
+									want to receive daily brief notifications below, then click Save to apply your
+									preferences.
+								</p>
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Email Notifications -->
+				<div
+					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+				>
+					<div class="flex items-start gap-3">
+						<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+						<div>
+							<label
+								for="email-notifications"
+								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+							>
+								Email Notifications
+							</label>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+								Receive your daily brief via email
+							</p>
+						</div>
+					</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							id="email-notifications"
+							class="sr-only peer"
+							bind:checked={emailEnabled}
+						/>
+						<div
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+						></div>
+					</label>
+				</div>
+
+				<!-- Push Notifications -->
+				<div
+					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+				>
+					<div class="flex items-start gap-3">
+						<Smartphone class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+						<div>
+							<label
+								for="push-notifications"
+								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+							>
+								Push Notifications
+							</label>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+								Get instant browser notifications
+							</p>
+						</div>
+					</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							id="push-notifications"
+							class="sr-only peer"
+							bind:checked={pushEnabled}
+						/>
+						<div
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"
+						></div>
+					</label>
+				</div>
+
+				<!-- In-App Notifications -->
+				<div
+					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+				>
+					<div class="flex items-start gap-3">
+						<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
+						<div>
+							<label
+								for="in-app-notifications"
+								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+							>
+								In-App Notifications
+							</label>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+								See notifications within the BuildOS app
+							</p>
+						</div>
+					</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							id="in-app-notifications"
+							class="sr-only peer"
+							bind:checked={inAppEnabled}
+						/>
+						<div
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"
+						></div>
+					</label>
+				</div>
+
+				{#if !hasAnyChannelEnabled}
+					<div
+						class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800"
+					>
+						<Moon
+							class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+						/>
+						<p class="text-sm text-amber-800 dark:text-amber-200">
+							You have disabled all notification channels. You won't receive any
+							notifications about completed daily briefs.
+						</p>
+					</div>
+				{/if}
+
+				<!-- Quiet Hours -->
+				<div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+					<div class="flex items-start gap-3 mb-4">
+						<Moon class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+						<div class="flex-1">
+							<div class="flex items-center justify-between">
+								<div>
+									<h4 class="font-medium text-gray-900 dark:text-white">
+										Quiet Hours
+									</h4>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+										Don't send push notifications during these hours
+									</p>
+								</div>
+								<label class="relative inline-flex items-center cursor-pointer">
+									<input
+										type="checkbox"
+										id="quiet-hours-enabled"
+										class="sr-only peer"
+										bind:checked={quietHoursEnabled}
+									/>
+									<div
+										class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"
+									></div>
+								</label>
+							</div>
+						</div>
+					</div>
+					{#if quietHoursEnabled}
+						<div class="grid grid-cols-2 gap-4">
+							<FormField label="Start Time" labelFor="quiet-start">
+								<TextInput
+									id="quiet-start"
+									type="time"
+									bind:value={quietHoursStart}
+								/>
+							</FormField>
+							<FormField label="End Time" labelFor="quiet-end">
+								<TextInput id="quiet-end" type="time" bind:value={quietHoursEnd} />
+							</FormField>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Save Button -->
+				<div class="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+					<Button
+						on:click={savePreferences}
+						disabled={isSaving}
+						variant="primary"
+						loading={isSaving}
+						icon={isSaving ? Loader : Check}
+					>
+						{isSaving ? 'Saving...' : 'Save Preferences'}
+					</Button>
+				</div>
+			</div>
+		</div>
+	{/if}
+</div>

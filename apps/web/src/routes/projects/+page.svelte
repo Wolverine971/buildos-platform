@@ -27,10 +27,10 @@
 	} from '$lib/stores/brain-dump-v2.store';
 
 	// Modal components - loaded dynamically
-	let NewProjectModal: any = null;
-	let ProjectBriefModal: any = null;
-	let BrainDumpModal: any = null;
-	let QuickProjectModal: any = null;
+	let NewProjectModal = $state<any>(null);
+	let ProjectBriefModal = $state<any>(null);
+	let BrainDumpModal = $state<any>(null);
+	let QuickProjectModal = $state<any>(null);
 
 	// Utils and types
 	import {

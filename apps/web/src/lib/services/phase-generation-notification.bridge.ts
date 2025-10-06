@@ -204,7 +204,7 @@ function attachActions(controller: PhaseGenerationController) {
 	notificationStore.update(controller.notificationId, {
 		actions: {
 			viewProject: () => {
-				notificationStore.minimize(controller.notificationId);
+				notificationStore.remove(controller.notificationId);
 				if (browser) {
 					// Force data invalidation to refresh project data even if already on the page
 					goto(`/projects/${controller.projectId}`, { invalidateAll: true });

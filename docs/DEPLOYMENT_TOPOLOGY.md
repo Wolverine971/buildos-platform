@@ -120,15 +120,18 @@ Features:
 
 ### @buildos/twilio-service
 
-**Location:** `/packages/twilio-service/`  
-**Purpose:** SMS service wrapper  
-**Used By:** Worker (primarily)
+**Location:** `/packages/twilio-service/`
+**Purpose:** SMS service wrapper
+**Used By:** Worker (primarily), Web (verification)
+**Documentation:** [Twilio/SMS Integration](integrations/twilio/README.md)
 
 Features:
 
-- SMS sending
-- Phone number validation
+- SMS sending via Twilio API
+- Phone number verification
 - Twilio webhook handling
+- Template rendering
+- User preference validation (quiet hours, opt-out)
 
 ### @buildos/config
 
@@ -186,11 +189,14 @@ Calendar changes synced to database
 
 ## Communication Patterns
 
+**For detailed diagrams and flows, see:** [Web-Worker Architecture](architecture/diagrams/WEB-WORKER-ARCHITECTURE.md)
+
 ### Web ↔ Worker
 
-- **Queue Jobs:** Web creates jobs in `queue_jobs` table (Supabase)
-- **Status Updates:** Worker updates job status, web polls for changes
-- **Webhooks:** Worker can notify web via webhooks (future)
+- **Queue Jobs:** Web creates jobs in `queue_jobs` table via `add_queue_job()` RPC
+- **Status Updates:** Worker updates job status, web receives real-time notifications
+- **Real-Time:** Supabase Realtime broadcasts for instant updates (no polling)
+- **No Direct HTTP:** All communication through Supabase PostgreSQL
 
 ### Web ↔ Supabase
 
@@ -296,7 +302,23 @@ See [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHE
 
 ## Related Documentation
 
+### Architecture
+
+- [Web-Worker Architecture](architecture/diagrams/WEB-WORKER-ARCHITECTURE.md) - Complete service communication patterns ⭐
+- [Queue System Flow](architecture/diagrams/QUEUE-SYSTEM-FLOW.md) - Job processing diagrams
 - [Monorepo Guide](MONOREPO_GUIDE.md) - Working with the monorepo
+
+### App Documentation
+
 - [Web App Docs](/apps/web/docs/) - Web application details
 - [Worker Docs](/apps/worker/docs/) - Worker service details
+
+### Integrations
+
+- [Twilio/SMS Integration](integrations/twilio/README.md) - SMS notifications system
+- [Supabase Integration](integrations/supabase/) - Database and auth
+- [Stripe Integration](integrations/stripe/) - Payment processing
+
+### Navigation
+
 - [Task Index](TASK_INDEX.md) - Task-based navigation

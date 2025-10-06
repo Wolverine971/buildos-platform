@@ -34,6 +34,9 @@
 		slug?: string;
 		recurring?: boolean;
 		common_attendees?: string[];
+		add_to_existing?: boolean;
+		existing_project_id?: string;
+		deduplication_reasoning?: string;
 	}
 
 	interface Props {
@@ -47,6 +50,7 @@
 			daysForward: number;
 		}) => Promise<void> | void;
 		errorMessage?: string | null;
+		embedded?: boolean; // When true, renders without Modal wrapper (for use inside notification modals)
 	}
 
 	let {
@@ -56,7 +60,8 @@
 		autoStart = false,
 		onClose,
 		onStartAnalysis,
-		errorMessage = null
+		errorMessage = null,
+		embedded = false
 	}: Props = $props();
 
 	let selectedSuggestions = $state(new Set<string>());
@@ -283,7 +288,6 @@
 
 				// Collect task selections for this suggestion
 				const taskSelections: Record<string, boolean> = {};
-				const taskModifications: Record<number, any> = {};
 				let selectedTaskCount = 0;
 
 				if (s.suggested_tasks && Array.isArray(s.suggested_tasks)) {
@@ -294,19 +298,6 @@
 
 						if (isSelected) {
 							selectedTaskCount++;
-						}
-
-						// Include task modifications if they exist
-						if (taskEdits[index]) {
-							// Validate task modifications before sending
-							const taskEdit = taskEdits[index];
-							if (
-								taskEdit.title &&
-								taskEdit.title.trim().length > 0 &&
-								taskEdit.title.length <= 255
-							) {
-								taskModifications[index] = taskEdit;
-							}
 						}
 					});
 				}
@@ -320,19 +311,11 @@
 								name: modifications.name,
 								description: modifications.description,
 								includeTasks: true,
-								taskSelections,
-								taskModifications:
-									Object.keys(taskModifications).length > 0
-										? taskModifications
-										: undefined
+								taskSelections
 							}
 						: {
 								includeTasks: true,
-								taskSelections,
-								taskModifications:
-									Object.keys(taskModifications).length > 0
-										? taskModifications
-										: undefined
+								taskSelections
 							}
 				};
 			});
@@ -435,17 +418,11 @@
 	}
 </script>
 
-<Modal
-	{isOpen}
-	onClose={handleClose}
-	title="Calendar Analysis Results"
-	size="xl"
-	showCloseButton={!analyzing && !processing}
-	closeOnBackdrop={false}
-	closeOnEscape={false}
->
+{#snippet resultsContent()}
 	<div
-		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
+		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 {embedded
+			? ''
+			: 'border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0'}"
 	>
 		{#if errorMessage}
 			<div
@@ -647,6 +624,25 @@
 												{modifications?.description ||
 													suggestion.suggested_description}
 											</p>
+
+											<!-- Deduplication Notice -->
+											{#if patterns?.add_to_existing && patterns?.existing_project_id}
+												<div
+													class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50"
+												>
+													<p
+														class="text-sm text-blue-700 dark:text-blue-300 font-medium"
+													>
+														💡 Matches existing project
+													</p>
+													<p
+														class="text-xs text-blue-600 dark:text-blue-400 mt-1"
+													>
+														{patterns.deduplication_reasoning ||
+															'Tasks will be added to your existing project instead of creating a duplicate.'}
+													</p>
+												</div>
+											{/if}
 										{/if}
 									</div>
 
@@ -1109,10 +1105,13 @@
 			</div>
 		{/if}
 	</div>
+{/snippet}
 
+{#snippet resultsFooter()}
 	<div
-		slot="footer"
-		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 {embedded
+			? ''
+			: 'border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'}"
 	>
 		{#if !analyzing}
 			<div class="text-sm text-gray-600 dark:text-gray-400 font-medium">
@@ -1149,7 +1148,30 @@
 			</div>
 		{/if}
 	</div>
-</Modal>
+{/snippet}
+
+<!-- Render with or without Modal wrapper depending on embedded mode -->
+{#if embedded}
+	<!-- Embedded mode: render content directly without Modal wrapper -->
+	{@render resultsContent()}
+	{@render resultsFooter()}
+{:else}
+	<!-- Standalone mode: wrap in Modal -->
+	<Modal
+		{isOpen}
+		onClose={handleClose}
+		title="Calendar Analysis Results"
+		size="xl"
+		showCloseButton={!analyzing && !processing}
+		closeOnBackdrop={false}
+		closeOnEscape={false}
+	>
+		{@render resultsContent()}
+		<div slot="footer">
+			{@render resultsFooter()}
+		</div>
+	</Modal>
+{/if}
 
 <!-- Task Edit Modal -->
 {#if isTaskEditModalOpen && editingTaskData}

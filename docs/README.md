@@ -17,7 +17,7 @@ For **package documentation**:
 
 ## What's in This Folder
 
-- `/architecture/` - System-wide architecture, data flows, ADRs
+- `/architecture/` - System-wide architecture, data flows, ADRs, diagrams
 - `/business/` - Business strategy, war room, communications guides
 - `/marketing/` - Brand, growth, social media, customer segments, investors
 - `/blogs/` - Content marketing, founder stories, user guides
@@ -25,7 +25,7 @@ For **package documentation**:
 - `/user-guide/` - End-user documentation and feature guides
 - `/writing/` - Writing resources and techniques
 - `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
-- `/integrations/` - Shared integrations (Supabase, Stripe)
+- `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
 - `/research/` - Cross-cutting research
 - `/archive/` - Historical documentation (outdated development docs, brain dump research)
 
@@ -49,7 +49,8 @@ For **package documentation**:
 
 1. [Monorepo Guide](MONOREPO_GUIDE.md) - Turborepo structure and workflows
 2. [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) - How apps deploy and communicate
-3. System Architecture - How pieces fit together (coming soon)
+3. [Web-Worker Architecture](architecture/diagrams/WEB-WORKER-ARCHITECTURE.md) - Complete service communication patterns
+4. [Queue System Flow](architecture/diagrams/QUEUE-SYSTEM-FLOW.md) - Job processing architecture
 
 ### By Task
 

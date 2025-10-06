@@ -22,6 +22,7 @@
 	// Lazy-loaded type-specific components
 	let BrainDumpMinimizedView = $state<any>(null);
 	let PhaseGenerationMinimizedView = $state<any>(null);
+	let ProjectSynthesisMinimizedView = $state<any>(null);
 	let CalendarAnalysisMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
@@ -42,6 +43,14 @@
 							'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
 						);
 						PhaseGenerationMinimizedView = module.default;
+					}
+					break;
+				case 'project-synthesis':
+					if (!ProjectSynthesisMinimizedView) {
+						const module = await import(
+							'./types/project-synthesis/ProjectSynthesisMinimizedView.svelte'
+						);
+						ProjectSynthesisMinimizedView = module.default;
 					}
 					break;
 				case 'calendar-analysis':
@@ -72,9 +81,11 @@
 			? BrainDumpMinimizedView
 			: notification.type === 'phase-generation'
 				? PhaseGenerationMinimizedView
-				: notification.type === 'calendar-analysis'
-					? CalendarAnalysisMinimizedView
-					: null
+				: notification.type === 'project-synthesis'
+					? ProjectSynthesisMinimizedView
+					: notification.type === 'calendar-analysis'
+						? CalendarAnalysisMinimizedView
+						: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
@@ -96,17 +107,25 @@
 						: notification.status === 'error'
 							? 'Phase generation failed'
 							: 'Phase generation'
-				: notification.type === 'calendar-analysis'
+				: notification.type === 'project-synthesis'
 					? notification.status === 'processing'
-						? 'Analyzing calendar'
+						? `Analyzing tasks for ${notification.data.projectName}`
 						: notification.status === 'success'
-							? 'Calendar analyzed'
+							? 'Synthesis complete'
 							: notification.status === 'error'
-								? 'Calendar analysis failed'
-								: 'Calendar analysis'
-					: notification.type === 'generic'
-						? notification.data.title
-						: 'Processing'
+								? 'Synthesis failed'
+								: 'Project synthesis'
+					: notification.type === 'calendar-analysis'
+						? notification.status === 'processing'
+							? 'Analyzing calendar'
+							: notification.status === 'success'
+								? 'Calendar analyzed'
+								: notification.status === 'error'
+									? 'Calendar analysis failed'
+									: 'Calendar analysis'
+						: notification.type === 'generic'
+							? notification.data.title
+							: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants

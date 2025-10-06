@@ -10,9 +10,12 @@ import type {
   EmailJobMetadata,
   RecurringTaskJobMetadata,
   CleanupJobMetadata,
+  SendSMSJobMetadata,
+  GenerateBriefEmailJobMetadata,
   BriefGenerationProgress,
   BriefGenerationStep,
 } from "./queue-types";
+import type { NotificationJobMetadata } from "./notification.types";
 
 // Validation error class
 export class ValidationError extends Error {
@@ -475,6 +478,102 @@ export function validateCleanupJobMetadata(
   return meta as unknown as CleanupJobMetadata;
 }
 
+export function validateSendSMSMetadata(metadata: unknown): SendSMSJobMetadata {
+  if (!metadata || typeof metadata !== "object") {
+    throw new ValidationError("metadata", metadata, "object");
+  }
+
+  const meta = metadata as Record<string, unknown>;
+
+  if (typeof meta.message_id !== "string") {
+    throw new ValidationError("message_id", meta.message_id, "string");
+  }
+
+  if (typeof meta.phone_number !== "string") {
+    throw new ValidationError("phone_number", meta.phone_number, "string");
+  }
+
+  if (typeof meta.message !== "string") {
+    throw new ValidationError("message", meta.message, "string");
+  }
+
+  if (typeof meta.user_id !== "string") {
+    throw new ValidationError("user_id", meta.user_id, "string");
+  }
+
+  const validPriorities = ["normal", "urgent"];
+  if (
+    meta.priority !== undefined &&
+    !validPriorities.includes(meta.priority as string)
+  ) {
+    throw new ValidationError(
+      "priority",
+      meta.priority,
+      validPriorities.join("|"),
+    );
+  }
+
+  if (
+    meta.template_key !== undefined &&
+    typeof meta.template_key !== "string"
+  ) {
+    throw new ValidationError("template_key", meta.template_key, "string");
+  }
+
+  if (
+    meta.scheduled_for !== undefined &&
+    typeof meta.scheduled_for !== "string"
+  ) {
+    throw new ValidationError("scheduled_for", meta.scheduled_for, "string");
+  }
+
+  return meta as unknown as SendSMSJobMetadata;
+}
+
+export function validateGenerateBriefEmailMetadata(
+  metadata: unknown,
+): GenerateBriefEmailJobMetadata {
+  if (!metadata || typeof metadata !== "object") {
+    throw new ValidationError("metadata", metadata, "object");
+  }
+
+  const meta = metadata as Record<string, unknown>;
+
+  if (typeof meta.emailId !== "string") {
+    throw new ValidationError("emailId", meta.emailId, "string");
+  }
+
+  return meta as unknown as GenerateBriefEmailJobMetadata;
+}
+
+export function validateNotificationMetadata(
+  metadata: unknown,
+): NotificationJobMetadata {
+  if (!metadata || typeof metadata !== "object") {
+    throw new ValidationError("metadata", metadata, "object");
+  }
+
+  const meta = metadata as Record<string, unknown>;
+
+  if (typeof meta.event_id !== "string") {
+    throw new ValidationError("event_id", meta.event_id, "string");
+  }
+
+  if (typeof meta.delivery_id !== "string") {
+    throw new ValidationError("delivery_id", meta.delivery_id, "string");
+  }
+
+  if (typeof meta.channel !== "string") {
+    throw new ValidationError("channel", meta.channel, "string");
+  }
+
+  if (typeof meta.event_type !== "string") {
+    throw new ValidationError("event_type", meta.event_type, "string");
+  }
+
+  return meta as unknown as NotificationJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
   jobType: T,
@@ -497,6 +596,12 @@ export function validateJobMetadata<T extends QueueJobType>(
       return validateRecurringTaskMetadata(metadata) as JobMetadataMap[T];
     case "cleanup_old_data":
       return validateCleanupJobMetadata(metadata) as JobMetadataMap[T];
+    case "send_sms":
+      return validateSendSMSMetadata(metadata) as JobMetadataMap[T];
+    case "generate_brief_email":
+      return validateGenerateBriefEmailMetadata(metadata) as JobMetadataMap[T];
+    case "send_notification":
+      return validateNotificationMetadata(metadata) as JobMetadataMap[T];
     case "other":
       return metadata as JobMetadataMap[T];
     default:

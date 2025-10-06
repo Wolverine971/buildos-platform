@@ -53,6 +53,10 @@
 		initCalendarAnalysisNotificationBridge,
 		cleanupCalendarAnalysisNotificationBridge
 	} from '$lib/services/calendar-analysis-notification.bridge';
+	import {
+		initProjectSynthesisNotificationBridge,
+		cleanupProjectSynthesisNotificationBridge
+	} from '$lib/services/project-synthesis-notification.bridge';
 
 	export let data: LayoutData;
 
@@ -301,6 +305,7 @@
 		initBrainDumpNotificationBridge();
 		initPhaseGenerationNotificationBridge();
 		initCalendarAnalysisNotificationBridge();
+		initProjectSynthesisNotificationBridge();
 
 		// Pre-load authenticated resources if user is already available
 		if (user) {
@@ -368,6 +373,7 @@
 			cleanupBrainDumpNotificationBridge();
 			cleanupPhaseGenerationNotificationBridge();
 			cleanupCalendarAnalysisNotificationBridge();
+			cleanupProjectSynthesisNotificationBridge();
 
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {

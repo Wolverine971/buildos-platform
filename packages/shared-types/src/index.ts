@@ -7,6 +7,9 @@ export * from "./queue-types";
 export * from "./validation";
 export * from "./api-types";
 
+// Export notification system types
+export * from "./notification.types";
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
   id: string;

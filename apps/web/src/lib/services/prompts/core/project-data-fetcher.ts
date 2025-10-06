@@ -23,6 +23,17 @@ export interface FullProjectDataWithQuestions extends FullProjectData {
 	questions?: ProjectQuestion[];
 }
 
+export interface ProjectSummary {
+	id: string;
+	name: string;
+	slug: string;
+	description: string | null;
+	executive_summary: string | null;
+	tags: string[];
+	status: string;
+	updated_at: string;
+}
+
 export class ProjectDataFetcher {
 	private supabase: SupabaseClient<Database>;
 
@@ -237,6 +248,41 @@ export class ProjectDataFetcher {
 				includeQuestions: false
 			}
 		});
+	}
+
+	/**
+	 * Get summaries of all user's active projects
+	 * Used for similarity detection when creating new projects
+	 * Returns lightweight project data (no tasks, notes, or phases)
+	 */
+	async getAllUserProjectsSummary(
+		userId: string,
+		options?: {
+			limit?: number;
+			includeStatus?: string[];
+		}
+	): Promise<ProjectSummary[]> {
+		const { limit = 50, includeStatus = ['active'] } = options || {};
+
+		try {
+			const { data, error } = await this.supabase
+				.from('projects')
+				.select('id, name, slug, description, executive_summary, tags, status, updated_at')
+				.eq('user_id', userId)
+				.in('status', includeStatus)
+				.order('updated_at', { ascending: false })
+				.limit(limit);
+
+			if (error) {
+				console.error('Error fetching user projects summary:', error);
+				return [];
+			}
+
+			return (data || []) as ProjectSummary[];
+		} catch (error) {
+			console.error('Error in getAllUserProjectsSummary:', error);
+			return [];
+		}
 	}
 }
 

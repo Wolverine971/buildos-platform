@@ -91,6 +91,7 @@
 		if (notification.actions.viewProject) {
 			// viewProject action already minimizes the notification (which closes the modal)
 			notification.actions.viewProject();
+			handleClose();
 		} else if (browser) {
 			// Fallback: Force data invalidation to refresh project data even if already on the page
 			goto(`/projects/${notification.data.projectId}`, { invalidateAll: true });

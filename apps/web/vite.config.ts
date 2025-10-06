@@ -19,14 +19,25 @@ export default defineConfig(({ mode }) => {
 					typecheck: !isDev
 				}
 			}),
-			// Compression plugin for production
+			// Gzip compression for production (fallback for older browsers)
 			isProd &&
 				viteCompression({
 					verbose: true,
 					disable: false,
-					threshold: 10240,
+					threshold: 1024, // Compress files larger than 1KB
 					algorithm: 'gzip',
-					ext: '.gz'
+					ext: '.gz',
+					deleteOriginFile: false
+				}),
+			// Brotli compression for production (better compression, ~15-25% smaller than gzip)
+			isProd &&
+				viteCompression({
+					verbose: true,
+					disable: false,
+					threshold: 1024, // Compress files larger than 1KB
+					algorithm: 'brotliCompress',
+					ext: '.br',
+					deleteOriginFile: false
 				}),
 			// Bundle analyzer
 			isAnalyze &&

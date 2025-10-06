@@ -1,5 +1,6 @@
 // packages/shared-types/src/queue-types.ts
 import type { Database } from "./database.types";
+import type { NotificationJobMetadata } from "./notification.types";
 
 // Re-export database enums as the single source of truth
 export type QueueJobType = Database["public"]["Enums"]["queue_type"];
@@ -127,6 +128,7 @@ export interface JobMetadataMap {
   cleanup_old_data: CleanupJobMetadata;
   send_sms: SendSMSJobMetadata;
   generate_brief_email: GenerateBriefEmailJobMetadata;
+  send_notification: NotificationJobMetadata;
   other: Record<string, unknown>;
 }
 
@@ -142,6 +144,7 @@ export interface JobResultMap {
   cleanup_old_data: CleanupResult;
   send_sms: SendSMSResult;
   generate_brief_email: GenerateBriefEmailResult;
+  send_notification: NotificationSendResult;
   other: unknown;
 }
 
@@ -219,6 +222,14 @@ export interface GenerateBriefEmailResult {
   error?: string;
 }
 
+export interface NotificationSendResult {
+  success: boolean;
+  deliveryId: string;
+  channel: string;
+  sentAt?: string;
+  error?: string;
+}
+
 // Generic queue job with type-safe metadata
 export interface QueueJob<T extends QueueJobType = QueueJobType> {
   id: string;
@@ -271,6 +282,10 @@ export function isValidJobMetadata<T extends QueueJobType>(
       return isCleanupMetadata(metadata);
     case "send_sms":
       return isSendSMSMetadata(metadata);
+    case "generate_brief_email":
+      return isGenerateBriefEmailMetadata(metadata);
+    case "send_notification":
+      return isNotificationMetadata(metadata);
     default:
       return true;
   }
@@ -359,6 +374,25 @@ function isSendSMSMetadata(obj: unknown): obj is SendSMSJobMetadata {
     typeof meta.phone_number === "string" &&
     typeof meta.message === "string" &&
     typeof meta.user_id === "string"
+  );
+}
+
+function isGenerateBriefEmailMetadata(
+  obj: unknown,
+): obj is GenerateBriefEmailJobMetadata {
+  if (!obj || typeof obj !== "object") return false;
+  const meta = obj as Record<string, unknown>;
+  return typeof meta.emailId === "string";
+}
+
+function isNotificationMetadata(obj: unknown): obj is NotificationJobMetadata {
+  if (!obj || typeof obj !== "object") return false;
+  const meta = obj as Record<string, unknown>;
+  return (
+    typeof meta.event_id === "string" &&
+    typeof meta.delivery_id === "string" &&
+    typeof meta.channel === "string" &&
+    typeof meta.event_type === "string"
   );
 }
 

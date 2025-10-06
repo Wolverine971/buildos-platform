@@ -1,31 +1,30 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-05T03:21:31.480Z
+**Generated at:** 2025-10-05T05:35:11.922Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-  "userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
-  "projectId": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
-  "brainDumpLength": 77,
-  "existingTasksCount": 20,
-  "hasDisplayedQuestions": false,
-  "timestamp": "2025-10-05T03:21:31.480Z"
+	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
+	"projectId": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
+	"brainDumpLength": 676,
+	"existingTasksCount": 9,
+	"hasDisplayedQuestions": false,
+	"timestamp": "2025-10-05T05:35:11.921Z"
 }
 ```
 
-
 ## System Prompt
 
-```
+````
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project fe85feb9-3c38-4f32-b598-2bf2d4ad0d25
+Mode: Extract/Update for EXISTING project 23ddacbb-c661-42a8-ad1e-92e0e84bd2a5
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-05T03:21:27.052Z
+Current date and time: 2025-10-05T05:35:06.500Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -67,7 +66,7 @@ Current date and time: 2025-10-05T03:21:27.052Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
+  "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -88,13 +87,21 @@ Current date and time: 2025-10-05T03:21:27.052Z
 - For updates, only include fields that should change
 - Preserve existing content unless explicitly being replaced
 - When updating task status to "done", DO NOT automatically create follow-up tasks unless explicitly mentioned
-- **CRITICAL**: The details field must capture ALL information from the brain dump related to each task:
-  - Implementation specifics and technical details
-  - Research notes and references
-  - Ideas and observations
-  - Context and background information
-  - Any non-actionable information that provides context
-- Nothing from the brain dump should be lost - if it's not a task title/description, it goes in details
+
+**CRITICAL - TASK DETAILS CAPTURE**:
+The `details` field is the user's memory and context repository. Capture EVERYTHING related to each task:
+- **ALL implementation specifics**: Technical approaches, code patterns, libraries, frameworks mentioned
+- **ALL research notes**: Links, references, inspiration, examples from the brain dump
+- **ALL ideas and observations**: User's thoughts, concerns, questions, "maybes"
+- **ALL context and background**: Why this task matters, dependencies, constraints
+- **ALL rationale**: The "why" behind decisions or approaches
+- **User's emotional context**: Excitement, concerns, uncertainties ("worried about...", "excited to...")
+- **Timeline thoughts**: When they want it done, urgency, deadlines mentioned
+- **Non-actionable info**: Anything that provides context even if not directly actionable
+
+**RULE**: Nothing from the brain dump should be lost. If it's not a task title/description, it MUST go in the details field. Err on the side of including TOO MUCH rather than too little. The details field can be long - that's good!
+
+**FOR UPDATES**: When updating existing tasks, ADD new details from the brain dump to the existing details field - don't replace unless the user explicitly says to replace
 
 **RECURRING TASK RULES**:
 - If a task mentions recurring patterns (daily, weekly, etc.), set task_type to "recurring"
@@ -163,7 +170,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
+        "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -180,7 +187,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "fe85feb9-3c38-4f32-b598-2bf2d4ad0d25",
+        "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -209,31 +216,54 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-```
+````
 
 Respond with valid JSON matching the complete structure above.
+
 ```
 
 ## User Prompt
 
 ```
+
 ## Current Project Data:
 
-**EXISTING TASKS (20):**
-[{"id":"6d14404f-48d3-451c-a083-6bbee7183aad","title":"Revise Writing Style","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-20T13:00:00+00:00","duration_minutes":120,"description":"Implement writing style improvements based on critique group feedback.","details":"Search and destroy excessive adverbs, vary sentence structure, avoid using 'suddenly' as a crutch, and enhance sensory details in action scenes."},{"id":"20f048ce-84cf-4285-b7d0-329482816f45","title":"Create Series Bible","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T15:00:00+00:00","duration_minutes":90,"description":"Develop a series bible if 'The Last Ember' becomes Book 1.","details":"This document will outline characters, settings, and plot arcs for future books."},{"id":"8e44df73-95a7-43b4-9275-7b2c7f0a0c0f","title":"Write Short Stories in Same Universe for Magazines","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T13:00:00+00:00","duration_minutes":120,"description":"Create short stories set in the same universe as 'The Last Ember' for submission to magazines.","details":"These stories will help build the author's portfolio and audience."},{"id":"f974b88b-4891-4294-a7da-f4d098d06a60","title":"Start Building Author Platform on Social Media","status":"backlog","priority":"medium","task_type":"recurring","start_date":"2025-10-04T00:00:00+00:00","duration_minutes":60,"description":"Begin establishing a presence on social media platforms.","details":"Focus on platforms that resonate with the target audience for 'The Last Ember'."},{"id":"2b7180ac-def3-4d84-9c1f-5b60df3b2542","title":"Set Up Author Website and Newsletter","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-06T13:00:00+00:00","duration_minutes":180,"description":"Create an author website and set up a newsletter for 'The Last Ember'.","details":"Include sections for book information, blog posts, and newsletter sign-up."},{"id":"de0e578f-4bde-4384-b24f-1ada3659d1cf","title":"Plan Pre-Launch Marketing Campaign","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T18:30:00+00:00","duration_minutes":120,"description":"Develop a marketing campaign for the pre-launch of 'The Last Ember'.","details":"Outline strategies for social media, email newsletters, and other promotional activities."},{"id":"c28149b3-2857-4789-913e-df6a05e094ac","title":"Find Cover Artist Specializing in Fantasy","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-07T15:30:00+00:00","duration_minutes":60,"description":"Research and contact cover artists who specialize in fantasy book covers.","details":"Select an artist whose style aligns with 'The Last Ember'."},{"id":"0a8e1b0a-7df8-44e2-9077-233d34fe5cc9","title":"Budget for Professional Editing","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-06T15:00:00+00:00","duration_minutes":30,"description":"Allocate a budget of $3000 for professional editing.","details":"This budget will cover the costs associated with hiring an editor for 'The Last Ember'."},{"id":"46ccd838-ebdd-4ace-9403-54e091f83792","title":"Prepare First 3 Chapters as Sample","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-06T16:00:00+00:00","duration_minutes":120,"description":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents.","details":"Select and format the first 3 chapters of 'The Last Ember' as a sample for agents. Major revisions needed based on critique group feedback: Chapter 1 - Open with action, strengthen Elena's voice, cut 3 pages of world history. Chapter 2 - Make Master Thorne's dialogue more archaic, add scene showing Elena's daily forge work, add obstacles to the dragon forge discovery. Chapter 3 - Move prophecy reveal to chapter 5, focus on Elena's emotional journey, add conflict with Kai about her destiny."},{"id":"e0578f40-d417-4ef4-aebd-d3cbb08fb28e","title":"Research Fantasy Literary Agents","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-06T14:00:00+00:00","duration_minutes":60,"description":"Compile a list of literary agents who represent fantasy authors.","details":"Focus on agents who have represented authors like Brandon Sanderson and Robin Hobb."},{"id":"dc16fb6f-7910-4771-b106-58fb5f18cca8","title":"Create 1-Page Synopsis","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-03T15:00:00+00:00","duration_minutes":60,"description":"Draft a concise 1-page synopsis of 'The Last Ember'.","details":"This synopsis will summarize the plot and main characters for agents."},{"id":"b033757a-fc7d-4565-88c3-fa4ece8fca8e","title":"Write Query Letter","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-03T13:00:00+00:00","duration_minutes":120,"description":"Draft a query letter for literary agents.","details":"This letter will be used to pitch 'The Last Ember' to agents."},{"id":"a12e36fd-0084-40ab-8070-a1c7321627a5","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-27T13:00:00+00:00","duration_minutes":60,"description":"Develop a detailed profile for the antagonist.","details":"The antagonist is The Shadow King. Explore his motivations, background, and how he opposes the main character. He was once a hero who saved the kingdom 500 years ago but was corrupted by the very magic he used to save everyone. He seeks Elena because only Dragon Smith weapons can free him from his curse."},{"id":"50662999-4861-4037-a195-63add9925786","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-23T13:00:00+00:00","duration_minutes":60,"description":"Create a detailed backstory for the main character.","details":"The main character is an orphan raised by a master blacksmith. Explore her childhood, motivations, and how her upbringing influences her abilities and personality. Elena lost her parents in a dragon attack at age 5 and was raised by Master Thorne, who found her in the ruins. She has recurring nightmares about fire and a secret: she is actually descended from the original Dragon Smiths. Master Thorne, a former royal blacksmith, is dying from lung disease from years at the forge and knows Elena's true heritage but keeps it secret."},{"id":"61e9b969-6465-498e-b6da-86657d0f94cc","title":"Outline first three chapters","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-21T13:00:00+00:00","duration_minutes":60,"description":"Create an outline for the initial chapters of the novel.","details":"Create an outline for the initial chapters of the novel. Incorporate feedback from the critique group: Chapter 1 - Opening too slow, start with action; Chapter 2 - Add scene showing Elena's daily forge work; Chapter 3 - Restructure to focus on emotional journey and conflict with Kai. Additionally, brainstorm alternatives for how Elena escapes the shadow realm in Chapter 15. Consider options where she doesn't escape or is rescued by someone else."},{"id":"d7de131a-6f7a-4ac2-bc08-8a87daced7cb","title":"Research Literary Agents for Fantasy Genre","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-24T13:00:00+00:00","duration_minutes":60,"description":"Compile a list of literary agents who represent fantasy authors.","details":"Focus on agents who have a good track record with fantasy novels."},{"id":"5d42af49-1fb0-499e-b508-3f15034d509b","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-22T13:00:00+00:00","duration_minutes":60,"description":"Gather information on blacksmithing techniques from the medieval period.","details":"Focus on tools, methods, and materials used in blacksmithing to ensure authenticity in the novel's portrayal of the main character's craft."},{"id":"85569ced-d948-43e8-b683-851b17cc4e1e","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","start_date":"2025-10-20T13:00:00+00:00","duration_minutes":60,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"8fb923f2-dba0-4dbe-9779-f7c900c0fc30","title":"Design the prophecy","status":"in_progress","priority":"high","task_type":"one_off","start_date":"2025-10-21T13:00:00+00:00","duration_minutes":60,"description":"Create a prophecy that drives the plot of the novel.","details":"Create a prophecy that drives the plot of the novel. Additionally, strengthen the dialogue between Elena and Master Thorne, address the slow pacing in the middle of chapter 2, and add more sensory details about the forge."},{"id":"a658aa07-23e0-49d0-9693-98ec377ef498","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-20T15:00:00+00:00","duration_minutes":60,"description":"Develop a unique magic system for the novel.","details":"The magic system should be based on metal and fire, detailing how it works, its limitations, and its impact on the world and characters."}]
+**EXISTING TASKS (9):**
+[{"id":"a68a8297-14d4-49d0-899a-81fe6d1e4684","title":"World-building additions for Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Incorporate new world-building elements into the story.","details":"Add The Forge Temples: ancient sites where dragon fire still burns, Smith's Guild hierarchy and traditions, and The Quenching Ritual: how magical weapons are completed. Also, explore regional differences in forging techniques across Aethermoor."},{"id":"a8cea9d5-8100-4c5d-ace9-fb430bbac37f","title":"Fix continuity issue in chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Address the continuity issue regarding Elena's age mentioned in chapter 1 and chapter 2.","details":"Elena's age is mentioned as 16 in chapter 1 but 17 in chapter 2. This needs to be corrected for consistency."},{"id":"7e38ab6e-3e97-4cea-867a-90e9e44e200e","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":60,"description":"Create the prophecy that drives the plot of the novel.","details":"Define the elements of the prophecy, its significance to the characters, and how it influences the story's direction."},{"id":"7e60c974-ae14-443f-a624-1897b0217c40","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Conduct research on historical blacksmithing techniques.","details":"Gather information on tools, methods, and materials used in medieval blacksmithing to inform the character's skills and the magic system."},{"id":"b526918e-21d8-44b2-9e98-ea5b95b878a6","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the first three chapters of the novel.","details":"Define the main events, character introductions, and plot developments that will occur in these chapters. Chapter 2 is finished with 4,500 words. The scene where Elena discovers the dragon forge went really well. Issues to address: strengthen the dialogue between Elena and Master Thorne, improve pacing in the middle, and add more sensory details about the forge."},{"id":"af7ab8c7-fbcd-454d-a87f-c7031aaf5716","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Develop detailed profiles for the antagonist, The Shadow King.","details":"Explore his motivations, background, and how he opposes the main character. Consider his powers and influence in the story. Chapter 3 plans include Elena's first attempt at magical forging, introducing the Shadow King's herald, and foreshadowing the prophecy."},{"id":"b62e6816-1e40-490d-8019-8c7b2a1325b9","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":240,"description":"Create a detailed map of the kingdom where the story takes place.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"4710d89c-e898-409e-b529-ce0772b44428","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Develop a unique magic system based on metal and fire.","details":"Develop a unique magic system based on metal and fire. Found interesting parallels with Japanese sword-making traditions - the idea of the smith's spirit entering the blade. Could adapt this: Elena's emotions during forging affect the weapon's properties. Anger = fire damage, Sorrow = ice/frost, Joy = healing properties, Fear = defensive shields. Also researching Damascus steel patterns for visual descriptions, Celtic mythology about smith gods (Goibniu), and types of medieval weapons beyond swords. Consider how the magic system affects the characters and plot."},{"id":"22805711-a8b3-4e35-85f0-8d8650c4560e","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create a detailed backstory for the main character, focusing on her being an orphan raised by a master blacksmith.","details":"Explore the main character's childhood, her relationship with her master, and how her past influences her abilities and motivations in the story."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-need to fix chapter 4. Chapter 4 is about tim the cat. need to flesh that out
+"Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
+
+Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
+
+Weekly tasks:
+
+- Saturday mornings: Chapter revision and editing
+- Sunday afternoons: Plot planning for next week
+
+Monthly milestones:
+
+- January: Complete chapters 1-10 (30,000 words)
+- February: Complete chapters 11-20 (30,000 words)
+- March: Complete chapters 21-30 and epilogue (35,000 words)
+
+Also need to:
+
+- Join local writers' critique group (meets 1st Tuesday of month)
+- Submit chapter 1 to beta readers by January 15th
+- Research literary agents for fantasy genre"
+
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~2141 tokens
-- **User Prompt:** ~2422 tokens
-- **Total Estimate:** ~4563 tokens
+- **User Prompt:** ~1338 tokens
+- **Total Estimate:** ~3479 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
+```

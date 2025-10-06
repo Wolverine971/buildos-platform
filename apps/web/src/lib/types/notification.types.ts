@@ -7,8 +7,9 @@
  * All notification types extend BaseNotification and use discriminated unions.
  */
 
-import type { BrainDumpParseResult } from './brain-dump';
-import type { Phase, Task } from './project';
+import type { BrainDumpParseResult, ParsedOperation } from './brain-dump';
+import type { Phase, Task, TaskComparison, SynthesisContent } from './project';
+import type { SynthesisOptions } from './synthesis';
 
 // ============================================================================
 // Core Enums & Primitives
@@ -31,6 +32,7 @@ export type NotificationStatus =
 export type NotificationType =
 	| 'brain-dump'
 	| 'phase-generation'
+	| 'project-synthesis'
 	| 'calendar-analysis'
 	| 'daily-brief'
 	| 'generic';
@@ -210,6 +212,57 @@ export interface PhaseGenerationNotification extends BaseNotification {
 }
 
 // ============================================================================
+// Project Synthesis Notification
+// ============================================================================
+
+export interface ProjectSynthesisNotification extends BaseNotification {
+	type: 'project-synthesis';
+	data: {
+		// Context
+		projectId: string;
+		projectName: string;
+
+		// Configuration (for retry)
+		options: SynthesisOptions;
+		requestPayload: {
+			regenerate: boolean;
+			includeDeleted: boolean;
+			options: SynthesisOptions;
+		};
+
+		// Metadata
+		taskCount: number;
+		selectedModules: string[];
+
+		// Results (populated on success)
+		result?: {
+			synthesisId: string;
+			operations: ParsedOperation[];
+			insights: string;
+			comparison: TaskComparison[];
+			summary: string;
+			operationsCount: number;
+			consolidationCount: number;
+			newTasksCount: number;
+			deletionsCount: number;
+		};
+
+		// Error details
+		error?: string;
+
+		// Telemetry
+		telemetry?: {
+			startedAt: number;
+			finishedAt?: number;
+			durationMs?: number;
+			generationModel?: string;
+		};
+	};
+	progress: NotificationProgress;
+	actions: NotificationActions;
+}
+
+// ============================================================================
 // Calendar Analysis Notification
 // ============================================================================
 
@@ -255,6 +308,7 @@ export interface GenericNotification extends BaseNotification {
 export type Notification =
 	| BrainDumpNotification
 	| PhaseGenerationNotification
+	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification
 	| GenericNotification;
 
@@ -313,6 +367,12 @@ export function isPhaseGenerationNotification(
 	notification: Notification
 ): notification is PhaseGenerationNotification {
 	return notification.type === 'phase-generation';
+}
+
+export function isProjectSynthesisNotification(
+	notification: Notification
+): notification is ProjectSynthesisNotification {
+	return notification.type === 'project-synthesis';
 }
 
 export function isCalendarAnalysisNotification(

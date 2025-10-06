@@ -266,10 +266,64 @@ function formatSingleTask(task: Task, mode: 'full' | 'summary'): string {
 	return `- ${parts.join(' ')}`;
 }
 
+/**
+ * Format project summaries list for similarity detection
+ * Used when checking for duplicate/similar projects during new project creation
+ */
+export function formatProjectsSummaryList(
+	projects: Array<{
+		id: string;
+		name: string;
+		slug: string;
+		description: string | null;
+		executive_summary: string | null;
+		tags: string[];
+		status: string;
+	}>
+): string {
+	if (!projects || projects.length === 0) {
+		return 'No existing projects.';
+	}
+
+	const sections: string[] = [];
+
+	projects.forEach((project, index) => {
+		const parts: string[] = [];
+
+		// Project number and name
+		parts.push(`### Project ${index + 1}: ${project.name}`);
+
+		// Description (truncated)
+		if (project.description) {
+			const desc = truncateContent(project.description, 200);
+			parts.push(`**Description**: ${desc}`);
+		}
+
+		// Executive summary (truncated)
+		if (project.executive_summary) {
+			const summary = truncateContent(project.executive_summary, 300);
+			parts.push(`**Summary**: ${summary}`);
+		}
+
+		// Tags
+		if (project.tags && project.tags.length > 0) {
+			parts.push(`**Tags**: ${project.tags.join(', ')}`);
+		}
+
+		// Project ID (for reference in recommendations)
+		parts.push(`**Project ID**: \`${project.id}\``);
+
+		sections.push(parts.join('\n'));
+	});
+
+	return sections.join('\n\n');
+}
+
 // Backward compatibility exports
 export const DataFormatterService = {
 	formatTasks,
 	formatUserContext,
 	formatExistingTasksForPrompt,
-	truncateContent
+	truncateContent,
+	formatProjectsSummaryList
 };

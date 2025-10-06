@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-04T07:39:08.588Z
+// Generated on: 2025-10-06T05:19:10.923Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -600,6 +600,49 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	notification_deliveries: {
+		attempts: number | null;
+		channel: string;
+		channel_identifier: string | null;
+		clicked_at: string | null;
+		created_at: string | null;
+		delivered_at: string | null;
+		event_id: string | null;
+		external_id: string | null;
+		failed_at: string | null;
+		id: string;
+		last_error: string | null;
+		max_attempts: number | null;
+		opened_at: string | null;
+		payload: Json;
+		recipient_user_id: string;
+		sent_at: string | null;
+		status: string;
+		subscription_id: string | null;
+		tracking_id: string | null;
+		updated_at: string | null;
+	};
+	notification_events: {
+		actor_user_id: string | null;
+		created_at: string | null;
+		event_source: string;
+		event_type: string;
+		id: string;
+		metadata: Json | null;
+		payload: Json;
+		target_user_id: string | null;
+	};
+	notification_subscriptions: {
+		admin_only: boolean | null;
+		created_at: string | null;
+		created_by: string | null;
+		event_type: string;
+		filters: Json | null;
+		id: string;
+		is_active: boolean | null;
+		updated_at: string | null;
+		user_id: string;
+	};
 	payment_methods: {
 		card_brand: string | null;
 		card_last4: string | null;
@@ -782,6 +825,17 @@ export type DatabaseSchema = {
 		project_data: Json;
 		project_id: string;
 		version_number: number;
+	};
+	push_subscriptions: {
+		auth_key: string;
+		created_at: string | null;
+		endpoint: string;
+		id: string;
+		is_active: boolean | null;
+		last_used_at: string | null;
+		p256dh_key: string;
+		user_agent: string | null;
+		user_id: string;
 	};
 	question_metrics: {
 		brain_dump_length: number | null;
@@ -1069,6 +1123,26 @@ export type DatabaseSchema = {
 		stripe_subscription_id: string | null;
 		user_id: string;
 	};
+	user_notification_preferences: {
+		batch_enabled: boolean | null;
+		batch_interval_minutes: number | null;
+		created_at: string | null;
+		email_enabled: boolean | null;
+		event_type: string;
+		id: string;
+		in_app_enabled: boolean | null;
+		max_per_day: number | null;
+		max_per_hour: number | null;
+		priority: string | null;
+		push_enabled: boolean | null;
+		quiet_hours_enabled: boolean | null;
+		quiet_hours_end: string | null;
+		quiet_hours_start: string | null;
+		sms_enabled: boolean | null;
+		timezone: string | null;
+		updated_at: string | null;
+		user_id: string;
+	};
 	user_notifications: {
 		action_url: string | null;
 		created_at: string | null;
@@ -1190,6 +1264,9 @@ export const tableNames = [
 	'llm_usage_logs',
 	'llm_usage_summary',
 	'notes',
+	'notification_deliveries',
+	'notification_events',
+	'notification_subscriptions',
 	'payment_methods',
 	'phase_task_schedules',
 	'phase_tasks',
@@ -1203,6 +1280,7 @@ export const tableNames = [
 	'project_synthesis',
 	'projects',
 	'projects_history',
+	'push_subscriptions',
 	'question_metrics',
 	'question_templates',
 	'queue_jobs',
@@ -1221,6 +1299,7 @@ export const tableNames = [
 	'user_calendar_tokens',
 	'user_context',
 	'user_discounts',
+	'user_notification_preferences',
 	'user_notifications',
 	'user_sms_preferences',
 	'users',

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { utcToZonedTime, getTimezoneOffset } from "date-fns-tz";
 
 import { supabase } from "../../lib/supabase";
+import { createServiceClient } from "@buildos/supabase-client";
 import {
   BriefJobData,
   notifyUser,
@@ -250,6 +251,48 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
     }
 
     await updateJobStatus(job.id, "completed", "brief");
+
+    // Emit notification event for brief completion
+    try {
+      const serviceClient = createServiceClient();
+
+      // Get task and project counts from project_daily_briefs
+      const { data: projectBriefs } = await supabase
+        .from("project_daily_briefs")
+        .select("id")
+        .eq("daily_brief_id", brief.id);
+
+      const projectCount = projectBriefs?.length || 0;
+
+      // Get total task count from tasks table
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("id")
+        .eq("user_id", job.data.userId)
+        .is("deleted_at", null);
+
+      const taskCount = tasks?.length || 0;
+
+      await serviceClient.rpc("emit_notification_event", {
+        p_event_type: "brief.completed",
+        p_event_source: "worker_job",
+        p_target_user_id: job.data.userId,
+        p_payload: {
+          brief_id: brief.id,
+          brief_date: briefDate,
+          timezone: timezone,
+          task_count: taskCount,
+          project_count: projectCount,
+        },
+      });
+
+      console.log(
+        `📬 Emitted brief.completed notification event for user ${job.data.userId}`,
+      );
+    } catch (notificationError) {
+      // Log error but don't fail the brief job
+      console.error("Failed to emit notification event:", notificationError);
+    }
 
     // Notify user - brief is ready, email will be sent separately
     await notifyUser(job.data.userId, "brief_completed", {

@@ -373,10 +373,8 @@ export class BrainDumpProcessor {
 		const brainDumpLength = brainDump.length;
 		const existingProjectContextLength = existingProject?.context?.length || 0;
 
-		
-
 		// Centralized activity logging for processing start
-		const processingEventType = 'brain_dump_dual_processing_started'
+		const processingEventType = 'brain_dump_dual_processing_started';
 
 		await this.activityLogger.logActivity(userId, processingEventType, {
 			input_length: brainDump.length,
@@ -394,8 +392,7 @@ export class BrainDumpProcessor {
 				existing_notes_count: existingProject.notes?.length || 0
 			}),
 			// Dual processing specific
-				max_retries: options.retryAttempts || 3
-			
+			max_retries: options.retryAttempts || 3
 		});
 
 		try {
@@ -403,17 +400,17 @@ export class BrainDumpProcessor {
 
 			let isNewProject = !selectedProjectId;
 			// Use dual processing if threshold is met
-				synthesisResult = await this.processBrainDumpDual({
-					brainDump,
-					brainDumpId,
-					userId,
-					selectedProjectId,
-					existingProject,
-					displayedQuestions,
-					options: { ...options, streamResults: true },
-					prepAnalysisResult, // Pass analysis result for optimization
-					processingDateTime
-				});
+			synthesisResult = await this.processBrainDumpDual({
+				brainDump,
+				brainDumpId,
+				userId,
+				selectedProjectId,
+				existingProject,
+				displayedQuestions,
+				options: { ...options, streamResults: true },
+				prepAnalysisResult, // Pass analysis result for optimization
+				processingDateTime
+			});
 
 			// Validate project questions
 			if (synthesisResult.projectQuestions) {
@@ -489,9 +486,8 @@ export class BrainDumpProcessor {
 
 			// Determine the specific event type
 			let eventType = isNewProject
-					? 'brain_dump_dual_new_project_completed'
-					: 'brain_dump_dual_existing_project_completed';
-			
+				? 'brain_dump_dual_new_project_completed'
+				: 'brain_dump_dual_existing_project_completed';
 
 			await this.activityLogger.logActivity(userId, eventType, {
 				operations_count: synthesisResult.operations?.length || 0,
@@ -523,8 +519,7 @@ export class BrainDumpProcessor {
 					)
 				}),
 				// Dual processing specific details
-					max_retries: options.retryAttempts || 3
-				
+				max_retries: options.retryAttempts || 3
 			});
 
 			return synthesisResult;
@@ -1262,19 +1257,19 @@ ${brainDump}`;
 				insights: '',
 				tags: [],
 				metadata: {
-				totalOperations: 0,
-				tableBreakdown: {},
-				processingTime: 0,
-				timestamp: new Date().toISOString(),
-				processingMode: 'dual',
-				attemptNumber,
-				partialFailure: true,
-				failureDetails: [
-					`Context extraction failed: ${contextResult.reason}`,
-					`Task extraction failed: ${tasksResult.reason}`
-				]
-			}
-		};
+					totalOperations: 0,
+					tableBreakdown: {},
+					processingTime: 0,
+					timestamp: new Date().toISOString(),
+					processingMode: 'dual',
+					attemptNumber,
+					partialFailure: true,
+					failureDetails: [
+						`Context extraction failed: ${contextResult.reason}`,
+						`Task extraction failed: ${tasksResult.reason}`
+					]
+				}
+			};
 		}
 
 		const operations: ParsedOperation[] = [];

@@ -30,14 +30,16 @@ buildos-platform/
 
 ### Essential Entry Points
 
-| When You Want To...               | Start Here                                               |
-| --------------------------------- | -------------------------------------------------------- |
-| **Understand the system**         | `/docs/README.md` (navigation hub)                       |
-| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`                           |
-| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)                 |
-| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md`       |
-| **Work on background jobs**       | `/apps/worker/docs/README.md` + `/apps/worker/CLAUDE.md` |
-| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                                |
+| When You Want To...               | Start Here                                                  |
+| --------------------------------- | ----------------------------------------------------------- |
+| **Understand the system**         | `/docs/README.md` (navigation hub)                          |
+| **See web-worker communication**  | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐ |
+| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`                              |
+| **Understand queue system**       | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`          |
+| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)                    |
+| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md`          |
+| **Work on background jobs**       | `/apps/worker/docs/README.md` + `/apps/worker/CLAUDE.md`    |
+| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                                   |
 
 ### Documentation by Scope
 
@@ -58,14 +60,17 @@ buildos-platform/
 | Onboarding Flow       | `/apps/web/docs/features/onboarding/`           |
 | Daily Briefs (Worker) | `/apps/worker/docs/features/daily-briefs/`      |
 
-### Deployment & Operations
+### Architecture & Deployment
 
-| Task                  | Documentation Path                                         |
-| --------------------- | ---------------------------------------------------------- |
-| Web → Vercel          | `/apps/web/docs/operations/deployment/`                    |
-| Worker → Railway      | `/apps/worker/docs/README.md`                              |
-| Environment Variables | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md` |
-| Active Migrations     | `/apps/web/docs/migrations/active/`                        |
+| Task                    | Documentation Path                                          |
+| ----------------------- | ----------------------------------------------------------- |
+| **System Architecture** | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐ |
+| Queue System Flow       | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`          |
+| Deployment Topology     | `/docs/DEPLOYMENT_TOPOLOGY.md`                              |
+| Web → Vercel            | `/apps/web/docs/operations/deployment/`                     |
+| Worker → Railway        | `/apps/worker/docs/README.md`                               |
+| Environment Variables   | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`  |
+| Active Migrations       | `/apps/web/docs/migrations/active/`                         |
 
 ## Essential Commands
 
@@ -311,10 +316,18 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ### Cross-Cutting Documentation
 
 - **Documentation Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md` ⭐
+- **Web-Worker Architecture:** `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐
+- **Queue System Flow:** `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`
+- **Deployment Topology:** `/docs/DEPLOYMENT_TOPOLOGY.md`
 - **Monorepo Workflows:** `/docs/MONOREPO_GUIDE.md`
-- **System Architecture:** `/docs/DEPLOYMENT_TOPOLOGY.md`
 - **Task-Based Navigation:** `/docs/TASK_INDEX.md`
 - **Documentation Hub:** `/docs/README.md`
+
+### Integration Documentation
+
+- **Twilio/SMS Integration:** `/docs/integrations/twilio/README.md`
+- **Supabase Integration:** `/docs/integrations/supabase/`
+- **Stripe Integration:** `/docs/integrations/stripe/`
 
 ### Technical Deep Dives
 

@@ -15,6 +15,9 @@ import {
 	generateProjectContextFramework,
 	generateDateParsing
 } from './prompts/core/prompt-components';
+import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
+import { formatProjectsSummaryList } from './prompts/core/data-formatter';
+import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
 type CalendarProjectSuggestion =
@@ -73,6 +76,11 @@ interface ProjectSuggestion {
 	confidence: number;
 	reasoning: string;
 	keywords: string[];
+
+	// Deduplication fields
+	add_to_existing?: boolean; // If true, add tasks to existing project instead of creating new
+	existing_project_id?: string; // ID of existing project to add tasks to
+	deduplication_reasoning?: string; // Explanation of why this matches existing project
 
 	// Suggested tasks following BuildOS task model
 	suggested_tasks?: Array<{
@@ -296,6 +304,21 @@ export class CalendarAnalysisService extends ApiService {
 		const today = new Date().toISOString().split('T')[0];
 		const now = new Date();
 
+		// Fetch existing projects for deduplication
+		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
+		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+			limit: 50,
+			includeStatus: ['active', 'planning']
+		});
+
+		const projectsContext = formatProjectsSummaryList(existingProjects || []);
+
+		if (DEBUG_LOGGING) {
+			console.log(
+				`[Calendar Analysis] Fetched ${existingProjects?.length || 0} existing projects for deduplication`
+			);
+		}
+
 		// Separate events into past and upcoming
 		const pastEvents = events.filter((e) => {
 			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
@@ -313,6 +336,9 @@ export class CalendarAnalysisService extends ApiService {
 			);
 		}
 
+		// Calculate adaptive task count based on upcoming events
+		const upcomingEventCount = upcomingEvents.length;
+
 		const prompt = `
 A user has asked you to analyze their google calendar and suggest projects based off the events.
 
@@ -321,6 +347,36 @@ Your role is to act like a project organizer and look at the google calendar eve
 **IMPORTANT CONTEXT**: Today's date is ${today}. You have access to both past and upcoming calendar events.
 
 You will be returning a JSON response of detailed "suggestions" array. See **Output Requirements** for correct JSON schema formatting.
+
+## User's Existing Projects
+
+${projectsContext || 'No existing projects found.'}
+
+---
+
+## CRITICAL: Project Deduplication Rules
+
+**IMPORTANT**: The user already has the projects listed above. When analyzing calendar events:
+
+1. **Check for matches** against existing projects:
+   - Compare by project name, description, tags, and context
+   - Look for semantic similarity (e.g., "Marketing Campaign" matches "Q4 Marketing Push")
+   - Consider if calendar events relate to existing project scope
+
+2. **If a match is found** (confidence >= 70%):
+   - Set "add_to_existing": true
+   - Set "existing_project_id": "<matching_project_id>"
+   - Set "deduplication_reasoning": "Explanation of why this matches existing project"
+   - Still generate suggested_tasks to add to the existing project
+
+3. **Only suggest NEW projects if**:
+   - Calendar events represent meaningfully different work
+   - No semantic match with existing projects
+   - Events indicate a distinct initiative or goal
+
+4. **When uncertain** (50-70% match):
+   - Err on the side of adding to existing projects
+   - Provide clear reasoning for the decision
 
 ## Project Detection Criteria
 
@@ -391,7 +447,6 @@ ${JSON.stringify(
 
 ## CRITICAL TASK GENERATION RULES
 
-**You MUST generate at least 2-5 tasks per project suggestion.**
 
 For each project, create tasks using ONE or BOTH of these approaches:
 
@@ -437,7 +492,7 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
 {
   "suggestions": [
     {
-      // Project fields (all required)
+      // Project fields (all required unless noted)
       "name": "Clear, action-oriented project name",
       "slug": "generated-from-name-lowercase-hyphens",
       "description": "2-3 sentence description of what this project is about",
@@ -454,12 +509,16 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
       "reasoning": "Clear explanation of why these events suggest a project",
       "keywords": ["detected", "keywords", "that", "indicated", "project"],
 
-      // Suggested tasks (REQUIRED - minimum 2 tasks per project)
+      // Deduplication fields (REQUIRED - check against existing projects)
+      "add_to_existing": false, // Set to true if this matches an existing project
+      "existing_project_id": null, // Set to existing project ID if add_to_existing is true
+      "deduplication_reasoning": "Explanation of deduplication decision (why new project or why adding to existing)",
+
       "suggested_tasks": [
         {
           "title": "Specific task title (max 255 chars)",
           "description": "Brief task description",
-          "details": "Comprehensive details about the task from event context or inferred next steps",
+          "details": "Comprehensive details including:\n- Event description\n- Meeting attendees (if from calendar event)\n- Location (if applicable)\n- Meeting link (if available)\n- Additional context or next steps",
           "status": "backlog",
           "priority": "medium", // low|medium|high based on urgency/importance
           "task_type": "one_off", // or "recurring" for repeating events
@@ -476,19 +535,22 @@ Return a JSON object with a "suggestions" array. Each suggestion must follow thi
 }
 
 **VALIDATION CHECKLIST** (verify before returning):
-- [ ] Each project has at least 2 tasks in suggested_tasks array
+- [ ] Checked all calendar events against existing projects for duplicates
+- [ ] Each suggestion has deduplication fields (add_to_existing, existing_project_id, deduplication_reasoning)
 - [ ] ALL task start_date values are >= ${today}
 - [ ] NO tasks have dates in the past
+- [ ] Task details include event metadata (attendees, location, links) when available
 - [ ] Tasks either correspond to upcoming events OR are inferred next steps
 - [ ] Project context incorporates insights from BOTH past and upcoming events
 - [ ] All required fields are present
 - [ ] Valid JSON that can be parsed
 
 IMPORTANT:
-- Only suggest projects with confidence >= ${minConfidence}
+- **Deduplication is CRITICAL** - always check against existing projects first
+- Only suggest NEW projects if meaningfully different from existing ones
 - Generate meaningful, actionable project names (not just event titles)
 - Create rich, comprehensive context using the BuildOS framework
-- **MUST generate 2-5 tasks per project** - use upcoming events and/or infer next steps
+- **Enrich task details** with meeting metadata (attendees, location, links)
 - **ALL tasks must have future dates (>= ${today})**
 - Use proper date formats (YYYY-MM-DD for dates, YYYY-MM-DDTHH:MM:SS for timestamps)
 - Ensure all required fields are present
@@ -503,12 +565,30 @@ IMPORTANT:
 				console.log(`[Calendar Analysis] Minimum confidence threshold: ${minConfidence}`);
 			}
 
+			const systemPrompt =
+				'You are an expert in analyzing calendar events to identify potential projects. Always respond with valid JSON following the specified schema.';
+
+			// Save prompt for auditing in development mode
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt: prompt,
+				scenarioType: 'calendar-analysis',
+				metadata: {
+					userId,
+					eventCount: events.length,
+					pastEventCount: pastEvents.length,
+					upcomingEventCount: upcomingEvents.length,
+					minConfidence,
+					existingProjectCount: existingProjects?.length || 0,
+					timestamp: new Date().toISOString()
+				}
+			});
+
 			// Use SmartLLMService's getJSONResponse method for better type safety and model routing
 			const response = await this.llmService.getJSONResponse<{
 				suggestions: ProjectSuggestion[];
 			}>({
-				systemPrompt:
-					'You are an AI assistant specialized in analyzing calendar events to identify potential projects. Always respond with valid JSON following the specified schema.',
+				systemPrompt,
 				userPrompt: prompt,
 				userId, // System-level operation
 				profile: 'balanced', // Use balanced profile for good accuracy/speed tradeoff
@@ -616,8 +696,117 @@ IMPORTANT:
 			const startDate = eventPatterns?.start_date;
 			const endDate = eventPatterns?.end_date;
 			const tags = eventPatterns?.tags || [];
+			const addToExisting = eventPatterns?.add_to_existing;
+			const existingProjectId = eventPatterns?.existing_project_id;
 
-			// Generate operations using existing pattern
+			// Check if this should add tasks to an existing project instead of creating new
+			if (addToExisting && existingProjectId) {
+				if (DEBUG_LOGGING) {
+					console.log(
+						`[Calendar Analysis] Adding tasks to existing project: ${existingProjectId}`
+					);
+				}
+
+				// Create task operations only
+				const operations: ParsedOperation[] = [];
+
+				if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
+					const tasksData = suggestion.suggested_tasks;
+					const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
+					const today = new Date();
+					today.setHours(0, 0, 0, 0);
+
+					operations.push(
+						...tasks
+							.map((task: any, index: number) => {
+								// Check if task is selected
+								const taskKey = `${suggestionId}-${index}`;
+								if (
+									modifications?.taskSelections &&
+									modifications.taskSelections[taskKey] === false
+								) {
+									return null;
+								}
+
+								// Apply task modifications
+								const modifiedTask = modifications?.taskModifications?.[index]
+									? { ...task, ...modifications.taskModifications[index] }
+									: task;
+
+								// Validate and reschedule past tasks
+								let rescheduledFromPast = false;
+								if (modifiedTask.start_date) {
+									const taskDate = new Date(modifiedTask.start_date);
+									if (taskDate < today) {
+										const originalDate = modifiedTask.start_date;
+										modifiedTask.start_date =
+											today.toISOString().split('T')[0] +
+											'T' +
+											(modifiedTask.start_date.includes('T')
+												? modifiedTask.start_date.split('T')[1]
+												: '09:00:00');
+										rescheduledFromPast = true;
+									}
+								}
+
+								return {
+									id: `calendar-task-${suggestionId}-${index}`,
+									operation: 'create' as const,
+									table: 'tasks' as const,
+									data: {
+										title: modifiedTask.title || 'Untitled Task',
+										description: modifiedTask.description || '',
+										details: rescheduledFromPast
+											? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
+											: modifiedTask.details || '',
+										status: modifiedTask.status || 'backlog',
+										priority: modifiedTask.priority || 'medium',
+										task_type: modifiedTask.task_type || 'one_off',
+										duration_minutes: modifiedTask.duration_minutes,
+										start_date: modifiedTask.start_date,
+										recurrence_pattern: modifiedTask.recurrence_pattern,
+										recurrence_ends: modifiedTask.recurrence_ends,
+										project_id: existingProjectId, // Use existing project ID
+										source: 'calendar_analysis',
+										source_calendar_event_id: modifiedTask.event_id,
+										tags: modifiedTask.tags
+									},
+									enabled: true
+								};
+							})
+							.filter((op): op is ParsedOperation => op !== null)
+					);
+				}
+
+				// Execute operations for adding tasks to existing project
+				const executor = new OperationsExecutor(this.supabase);
+				const result = await executor.executeOperations({
+					operations,
+					userId,
+					operationType: 'calendar_analysis_add_tasks'
+				});
+
+				if (!result.success) {
+					return {
+						success: false,
+						errors: result.errors || ['Failed to add tasks to existing project']
+					};
+				}
+
+				// Update suggestion status
+				await this.updateSuggestionStatus(suggestionId, 'accepted');
+
+				return {
+					success: true,
+					data: {
+						projectId: existingProjectId,
+						tasksCreated: operations.length,
+						addedToExisting: true
+					}
+				};
+			}
+
+			// Generate operations for creating NEW project
 			const projectName = modifications?.name || suggestion.suggested_name;
 			const operations: ParsedOperation[] = [
 				{

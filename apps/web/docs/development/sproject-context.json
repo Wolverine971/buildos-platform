@@ -49,6 +49,7 @@
 			"components": [
 				"BrainDumpMinimizedView",
 				"PhaseGenerationMinimizedView",
+				"ProjectSynthesisMinimizedView",
 				"CalendarAnalysisMinimizedView"
 			]
 		},
@@ -58,6 +59,7 @@
 			"components": [
 				"BrainDumpModalContent",
 				"PhaseGenerationModalContent",
+				"ProjectSynthesisModalContent",
 				"CalendarAnalysisModalContent"
 			]
 		},
@@ -156,6 +158,12 @@
 			"exports": ["BriefClientService"]
 		},
 		{
+			"file": "src/lib/services/browser-push.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["browserPushService"]
+		},
+		{
 			"file": "src/lib/services/calendar-analysis-notification.bridge.ts",
 			"type": "service",
 			"components": [],
@@ -233,6 +241,12 @@
 			"exports": ["LLMUsageService"]
 		},
 		{
+			"file": "src/lib/services/notification-preferences.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["notificationPreferencesService"]
+		},
+		{
 			"file": "src/lib/services/onboarding-v2.service.ts",
 			"type": "service",
 			"components": [],
@@ -265,6 +279,16 @@
 			"type": "service",
 			"components": [],
 			"exports": ["ProjectCalendarService"]
+		},
+		{
+			"file": "src/lib/services/project-synthesis-notification.bridge.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"startProjectSynthesis",
+				"initProjectSynthesisNotificationBridge",
+				"cleanupProjectSynthesisNotificationBridge"
+			]
 		},
 		{
 			"file": "src/lib/services/project-synthesis.service.ts",

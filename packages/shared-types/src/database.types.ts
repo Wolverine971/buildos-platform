@@ -2265,6 +2265,196 @@ export type Database = {
           },
         ];
       };
+      notification_deliveries: {
+        Row: {
+          attempts: number | null;
+          channel: string;
+          channel_identifier: string | null;
+          clicked_at: string | null;
+          created_at: string | null;
+          delivered_at: string | null;
+          event_id: string | null;
+          external_id: string | null;
+          failed_at: string | null;
+          id: string;
+          last_error: string | null;
+          max_attempts: number | null;
+          opened_at: string | null;
+          payload: Json;
+          recipient_user_id: string;
+          sent_at: string | null;
+          status: string;
+          subscription_id: string | null;
+          tracking_id: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          attempts?: number | null;
+          channel: string;
+          channel_identifier?: string | null;
+          clicked_at?: string | null;
+          created_at?: string | null;
+          delivered_at?: string | null;
+          event_id?: string | null;
+          external_id?: string | null;
+          failed_at?: string | null;
+          id?: string;
+          last_error?: string | null;
+          max_attempts?: number | null;
+          opened_at?: string | null;
+          payload?: Json;
+          recipient_user_id: string;
+          sent_at?: string | null;
+          status?: string;
+          subscription_id?: string | null;
+          tracking_id?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          attempts?: number | null;
+          channel?: string;
+          channel_identifier?: string | null;
+          clicked_at?: string | null;
+          created_at?: string | null;
+          delivered_at?: string | null;
+          event_id?: string | null;
+          external_id?: string | null;
+          failed_at?: string | null;
+          id?: string;
+          last_error?: string | null;
+          max_attempts?: number | null;
+          opened_at?: string | null;
+          payload?: Json;
+          recipient_user_id?: string;
+          sent_at?: string | null;
+          status?: string;
+          subscription_id?: string | null;
+          tracking_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_deliveries_recipient_user_id_fkey";
+            columns: ["recipient_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_deliveries_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_events: {
+        Row: {
+          actor_user_id: string | null;
+          created_at: string | null;
+          event_source: string;
+          event_type: string;
+          id: string;
+          metadata: Json | null;
+          payload: Json;
+          target_user_id: string | null;
+        };
+        Insert: {
+          actor_user_id?: string | null;
+          created_at?: string | null;
+          event_source: string;
+          event_type: string;
+          id?: string;
+          metadata?: Json | null;
+          payload?: Json;
+          target_user_id?: string | null;
+        };
+        Update: {
+          actor_user_id?: string | null;
+          created_at?: string | null;
+          event_source?: string;
+          event_type?: string;
+          id?: string;
+          metadata?: Json | null;
+          payload?: Json;
+          target_user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_actor_user_id_fkey";
+            columns: ["actor_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_events_target_user_id_fkey";
+            columns: ["target_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_subscriptions: {
+        Row: {
+          admin_only: boolean | null;
+          created_at: string | null;
+          created_by: string | null;
+          event_type: string;
+          filters: Json | null;
+          id: string;
+          is_active: boolean | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          admin_only?: boolean | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          event_type: string;
+          filters?: Json | null;
+          id?: string;
+          is_active?: boolean | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          admin_only?: boolean | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          event_type?: string;
+          filters?: Json | null;
+          id?: string;
+          is_active?: boolean | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_subscriptions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       payment_methods: {
         Row: {
           card_brand: string | null;
@@ -3042,6 +3232,50 @@ export type Database = {
           version_number?: number;
         };
         Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          auth_key: string;
+          created_at: string | null;
+          endpoint: string;
+          id: string;
+          is_active: boolean | null;
+          last_used_at: string | null;
+          p256dh_key: string;
+          user_agent: string | null;
+          user_id: string;
+        };
+        Insert: {
+          auth_key: string;
+          created_at?: string | null;
+          endpoint: string;
+          id?: string;
+          is_active?: boolean | null;
+          last_used_at?: string | null;
+          p256dh_key: string;
+          user_agent?: string | null;
+          user_id: string;
+        };
+        Update: {
+          auth_key?: string;
+          created_at?: string | null;
+          endpoint?: string;
+          id?: string;
+          is_active?: boolean | null;
+          last_used_at?: string | null;
+          p256dh_key?: string;
+          user_agent?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       question_metrics: {
         Row: {
@@ -4175,6 +4409,77 @@ export type Database = {
           },
         ];
       };
+      user_notification_preferences: {
+        Row: {
+          batch_enabled: boolean | null;
+          batch_interval_minutes: number | null;
+          created_at: string | null;
+          email_enabled: boolean | null;
+          event_type: string;
+          id: string;
+          in_app_enabled: boolean | null;
+          max_per_day: number | null;
+          max_per_hour: number | null;
+          priority: string | null;
+          push_enabled: boolean | null;
+          quiet_hours_enabled: boolean | null;
+          quiet_hours_end: string | null;
+          quiet_hours_start: string | null;
+          sms_enabled: boolean | null;
+          timezone: string | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          batch_enabled?: boolean | null;
+          batch_interval_minutes?: number | null;
+          created_at?: string | null;
+          email_enabled?: boolean | null;
+          event_type: string;
+          id?: string;
+          in_app_enabled?: boolean | null;
+          max_per_day?: number | null;
+          max_per_hour?: number | null;
+          priority?: string | null;
+          push_enabled?: boolean | null;
+          quiet_hours_enabled?: boolean | null;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          sms_enabled?: boolean | null;
+          timezone?: string | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          batch_enabled?: boolean | null;
+          batch_interval_minutes?: number | null;
+          created_at?: string | null;
+          email_enabled?: boolean | null;
+          event_type?: string;
+          id?: string;
+          in_app_enabled?: boolean | null;
+          max_per_day?: number | null;
+          max_per_hour?: number | null;
+          priority?: string | null;
+          push_enabled?: boolean | null;
+          quiet_hours_enabled?: boolean | null;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          sms_enabled?: boolean | null;
+          timezone?: string | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       user_notifications: {
         Row: {
           action_url: string | null;
@@ -4744,6 +5049,17 @@ export type Database = {
         Args: { p_order_threshold: number; p_project_id: string };
         Returns: undefined;
       };
+      emit_notification_event: {
+        Args: {
+          p_actor_user_id?: string;
+          p_event_source: string;
+          p_event_type: string;
+          p_metadata?: Json;
+          p_payload?: Json;
+          p_target_user_id?: string;
+        };
+        Returns: string;
+      };
       fail_queue_job: {
         Args: { p_error_message: string; p_job_id: string; p_retry?: boolean };
         Returns: boolean;
@@ -5271,6 +5587,21 @@ export type Database = {
         Args: { p_date: string; p_user_id: string };
         Returns: undefined;
       };
+      update_user_notification_preferences: {
+        Args: {
+          p_email_enabled?: boolean;
+          p_event_type: string;
+          p_in_app_enabled?: boolean;
+          p_push_enabled?: boolean;
+          p_quiet_hours_enabled?: boolean;
+          p_quiet_hours_end?: string;
+          p_quiet_hours_start?: string;
+          p_sms_enabled?: boolean;
+          p_timezone?: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       user_has_payment_issues: {
         Args: { p_user_id: string };
         Returns: boolean;
@@ -5356,7 +5687,8 @@ export type Database = {
         | "onboarding_analysis"
         | "other"
         | "send_sms"
-        | "generate_brief_email";
+        | "generate_brief_email"
+        | "send_notification";
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -5566,6 +5898,7 @@ export const Constants = {
         "other",
         "send_sms",
         "generate_brief_email",
+        "send_notification",
       ],
       recurrence_end_reason: [
         "indefinite",

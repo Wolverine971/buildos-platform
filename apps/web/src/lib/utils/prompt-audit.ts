@@ -68,7 +68,10 @@ export async function savePromptForAudit({
 				'existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md',
 
 			// Task synthesis
-			'task-synthesis': 'task-synthesis/task-synthesis-reorganization-prompt.md'
+			'task-synthesis': 'task-synthesis/task-synthesis-reorganization-prompt.md',
+
+			// Calendar analysis
+			'calendar-analysis': 'calendar-analysis/calendar-analysis-prompt.md'
 		};
 
 		const filePath = scenarioMap[scenarioType];

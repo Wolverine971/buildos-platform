@@ -1270,14 +1270,14 @@
 	>
 		<div
 			class="header-content"
-			data-brain-dump-header
-			style="--brain-dump-header-name: brain-dump-header"
+			data-brain-dump-header={isOpen ? true : undefined}
+			style={isOpen ? '--brain-dump-header-name: brain-dump-header' : ''}
 		>
 			<div class="flex items-center">
 				<div
 					class="p-2 bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded-xl mr-3"
-					data-brain-dump-indicator
-					style="--brain-dump-indicator-name: brain-dump-indicator"
+					data-brain-dump-indicator={isOpen ? true : undefined}
+					style={isOpen ? '--brain-dump-indicator-name: brain-dump-indicator' : ''}
 				>
 					<div class="w-2 h-2 bg-purple-500 rounded-full"></div>
 				</div>

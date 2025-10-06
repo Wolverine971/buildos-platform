@@ -1,14 +1,6 @@
 <!-- apps/web/src/lib/components/brain-dump/SuccessView.svelte -->
 <script lang="ts">
-	import {
-		Check,
-		ExternalLink,
-		FileText,
-		RefreshCw,
-		Sparkles,
-		ArrowRight,
-		X
-	} from 'lucide-svelte';
+	import { Check, ExternalLink, FileText, Sparkles, ArrowRight } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OperationErrorsDisplay from './OperationErrorsDisplay.svelte';

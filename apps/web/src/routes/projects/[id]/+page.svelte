@@ -29,6 +29,7 @@
 	import { ProjectDataService } from '$lib/services/projectData.service';
 	import { ProjectSynthesisService } from '$lib/services/project-synthesis.service';
 	import { startPhaseGeneration } from '$lib/services/phase-generation-notification.bridge';
+	import { startProjectSynthesis } from '$lib/services/project-synthesis-notification.bridge';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ProjectService } from '$lib/services/projectService';
 	import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
@@ -175,6 +176,48 @@
 			clearCalendarQueryParams();
 		}
 	});
+
+	// Handle ?tab= query parameter for navigation from notifications
+	$effect(() => {
+		if (!browser) return;
+
+		const searchParams = $page.url.searchParams;
+		const tabParam = searchParams.get('tab');
+
+		// Reset handler when no tab param
+		if (!tabParam) {
+			tabParamsHandled = false;
+			return;
+		}
+
+		// Wait for project and store to be initialized
+		if (!project?.id || !storeInitialized) {
+			return;
+		}
+
+		// Prevent duplicate handling
+		if (tabParamsHandled) {
+			return;
+		}
+
+		// Validate tab parameter
+		const validTabs = ['overview', 'tasks', 'notes', 'briefs', 'synthesis'];
+		if (!validTabs.includes(tabParam)) {
+			console.warn('[Page] Invalid tab parameter:', tabParam);
+			clearTabQueryParams();
+			return;
+		}
+
+		console.log('[Page] Setting active tab from URL parameter:', tabParam);
+		tabParamsHandled = true;
+
+		// Update the active tab in the store
+		projectStoreV2.updateStoreState({ activeTab: tabParam });
+
+		// Clear the tab parameter from URL for clean navigation
+		clearTabQueryParams();
+	});
+
 	let activeTab = $derived(storeState?.activeTab || 'overview');
 	let loadingStates = $derived(storeState?.loadingStates || {});
 	let stats = $derived(storeState?.stats || {});
@@ -183,6 +226,7 @@
 	const activeTasks = projectStoreV2.activeTasks;
 
 	let calendarParamsHandled = false;
+	let tabParamsHandled = false;
 
 	function mapCalendarError(code: string): string {
 		switch (code) {
@@ -237,6 +281,19 @@
 			`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
 		);
 	}
+
+	function clearTabQueryParams() {
+		if (!browser) return;
+
+		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.delete('tab');
+		window.history.replaceState(
+			{},
+			'',
+			`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+		);
+	}
+
 	const completedTasks = projectStoreV2.completedTasks;
 	const deletedTasks = projectStoreV2.deletedTasks;
 	const scheduledTasks = projectStoreV2.scheduledTasks;
@@ -650,21 +707,27 @@
 	}
 
 	async function handleGenerateSynthesis(options?: any) {
-		if (!synthesisService) return;
-
-		projectStoreV2.setLoadingState('synthesis', 'loading');
+		if (!project?.id) {
+			toastService.error('Project context missing. Unable to start synthesis.');
+			return;
+		}
 
 		try {
-			const synthesis = await synthesisService.generateSynthesis(options);
-			if (synthesis) {
-				projectStoreV2.setSynthesis(synthesis);
-			}
-			toastService.success('Synthesis generated successfully');
+			await startProjectSynthesis({
+				projectId: project.id,
+				projectName: project.name ?? 'Project',
+				taskCount: tasks?.length ?? 0,
+				options: options || {
+					selectedModules: ['task_synthesis'],
+					enableQuestions: false
+				},
+				includeDeleted: options?.includeDeleted ?? false,
+				regenerate: synthesis !== null
+			});
 		} catch (error) {
-			console.error('Error generating synthesis:', error);
-			toastService.error('Failed to generate synthesis');
-		} finally {
-			projectStoreV2.setLoadingState('synthesis', 'idle');
+			console.error('Failed to start project synthesis notification:', error);
+			const message = error instanceof Error ? error.message : 'Failed to start synthesis';
+			toastService.error(message);
 		}
 	}
 

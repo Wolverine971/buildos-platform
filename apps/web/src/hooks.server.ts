@@ -1,6 +1,5 @@
 // apps/web/src/hooks.server.ts
 import type { Handle, HandleServerError } from '@sveltejs/kit';
-// import { sequence } from '@sveltejs/kit/hooks';
 import { createSupabaseServer } from '$lib/supabase';
 import { dev } from '$app/environment';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
@@ -242,7 +241,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-// Combine all handles in sequence
+// Export handle
 export const handle = handleSupabase;
 
 // PERFORMANCE: Optimized error handler with minimal logging overhead

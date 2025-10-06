@@ -5,10 +5,22 @@ import type { FieldValidation } from './types';
 export const UUID_REGEX =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Table validation schemas
+/**
+ * Table validation schemas - ONLY for tables that users can directly manipulate
+ *
+ * ⚠️ SECURITY: These schemas define what fields users can modify.
+ * Only include tables that should be user-accessible through brain dump operations.
+ *
+ * Schemas are based on @buildos/shared-types database.types.ts
+ * Last synced: 2025-10-04
+ */
 export const tableSchemas: Record<string, Record<string, FieldValidation>> = {
 	projects: {
+		// Required fields (from TablesInsert<'projects'>)
 		name: { required: true, type: 'string', maxLength: 255 },
+		slug: { required: true, type: 'string' },
+
+		// Optional fields
 		description: { type: 'string' },
 		status: {
 			type: 'string',
@@ -18,13 +30,28 @@ export const tableSchemas: Record<string, Record<string, FieldValidation>> = {
 		end_date: { type: 'date' },
 		context: { type: 'string' },
 		executive_summary: { type: 'string' },
-		slug: { required: true, type: 'string' },
 		tags: { type: 'array', arrayType: 'string' },
-		user_id: { type: 'uuid' }
+
+		// Calendar-related fields
+		calendar_color_id: { type: 'string' },
+		calendar_settings: { type: 'jsonb' },
+		calendar_sync_enabled: { type: 'boolean' },
+
+		// Metadata fields
+		source: { type: 'string' },
+		source_metadata: { type: 'jsonb' },
+
+		// System fields (usually auto-populated, but allowed for operations)
+		user_id: { type: 'uuid' },
+		created_at: { type: 'date' },
+		updated_at: { type: 'date' }
 	},
 
 	tasks: {
+		// Required fields (from TablesInsert<'tasks'>)
 		title: { required: true, type: 'string', maxLength: 255 },
+
+		// Optional fields
 		description: { type: 'string' },
 		details: { type: 'string' },
 		status: {
@@ -34,72 +61,56 @@ export const tableSchemas: Record<string, Record<string, FieldValidation>> = {
 		priority: { type: 'string', enum: ['low', 'medium', 'high'] },
 		start_date: { type: 'date' },
 		completed_at: { type: 'date' },
+		deleted_at: { type: 'date' },
+
+		// Relationships
 		dependencies: { type: 'array', arrayType: 'uuid' },
 		project_id: { type: 'uuid' },
 		parent_task_id: { type: 'uuid' },
+
+		// Recurring task fields
 		task_type: { type: 'string', enum: ['one_off', 'recurring'] },
 		recurrence_pattern: {
 			type: 'string',
 			enum: ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 		},
 		recurrence_ends: { type: 'date' },
-		duration_minutes: { type: 'number' },
-		deleted_at: { type: 'date' },
-		outdated: { type: 'boolean' },
-		user_id: { type: 'uuid' }
-	},
+		recurrence_end_source: { type: 'string' },
 
-	brain_dumps: {
-		title: { type: 'string', maxLength: 255 },
-		content: { type: 'string' },
-		ai_insights: { type: 'string' },
-		ai_summary: { type: 'string' },
-		status: {
-			type: 'string',
-			enum: ['pending', 'parsed', 'saved', 'parsed_and_deleted']
-		},
-		tags: { type: 'array', arrayType: 'string' },
-		project_id: { type: 'uuid' },
-		user_id: { type: 'uuid' }
+		// Task metadata
+		duration_minutes: { type: 'number' },
+		outdated: { type: 'boolean' },
+		task_steps: { type: 'string' },
+
+		// Source tracking
+		source: { type: 'string' },
+		source_calendar_event_id: { type: 'string' },
+
+		// System fields
+		user_id: { type: 'uuid' },
+		created_at: { type: 'date' },
+		updated_at: { type: 'date' }
 	},
 
 	notes: {
+		// No required fields for notes (title or content must be present, validated in custom validation)
 		title: { type: 'string', maxLength: 255 },
 		content: { type: 'string' },
 		category: { type: 'string' },
 		tags: { type: 'array', arrayType: 'string' },
 		project_id: { type: 'uuid' },
-		user_id: { type: 'uuid' }
-	},
 
-	phases: {
-		name: { required: true, type: 'string', maxLength: 255 },
-		description: { type: 'string' },
-		project_id: { type: 'uuid', required: true },
-		start_date: { type: 'date', required: true },
-		end_date: { type: 'date', required: true },
-		order: { type: 'number', required: true },
-		scheduling_method: { type: 'string' },
-		user_id: { type: 'uuid' }
-	},
-
-	daily_briefs: {
-		brief_date: { type: 'date', required: true },
-		summary_content: { type: 'string', required: true },
-		insights: { type: 'string' },
-		priority_actions: { type: 'array', arrayType: 'string' },
-		project_brief_ids: { type: 'array', arrayType: 'string' },
-		generation_status: { type: 'string' },
-		generation_started_at: { type: 'date' },
-		generation_completed_at: { type: 'date' },
-		generation_error: { type: 'string' },
-		generation_progress: { type: 'jsonb' },
-		metadata: { type: 'jsonb' },
-		user_id: { type: 'uuid' }
+		// System fields
+		user_id: { type: 'uuid' },
+		created_at: { type: 'date' },
+		updated_at: { type: 'date' }
 	},
 
 	project_questions: {
+		// Required fields
 		question: { required: true, type: 'string' },
+
+		// Optional fields
 		project_id: { type: 'uuid' },
 		category: { type: 'string' },
 		priority: { type: 'string', enum: ['low', 'medium', 'high'] },
@@ -112,7 +123,11 @@ export const tableSchemas: Record<string, Record<string, FieldValidation>> = {
 		shown_to_user_count: { type: 'number' },
 		answered_at: { type: 'date' },
 		answer_brain_dump_id: { type: 'uuid' },
-		user_id: { type: 'uuid' }
+
+		// System fields
+		user_id: { type: 'uuid' },
+		created_at: { type: 'date' },
+		updated_at: { type: 'date' }
 	}
 };
 

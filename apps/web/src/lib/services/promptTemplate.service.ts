@@ -1424,10 +1424,7 @@ Respond with valid JSON matching the complete structure above.`;
 	 * Get project context system prompt WITHOUT embedded project data
 	 * Project data should be passed in the user prompt instead
 	 */
-	getProjectContextSystemPrompt(
-		isNewProject: boolean,
-		processingDateTime?: string
-	): string {
+	getProjectContextSystemPrompt(isNewProject: boolean, processingDateTime?: string): string {
 		if (isNewProject) {
 			return this.getNewProjectContextPrompt('', processingDateTime);
 		} else {

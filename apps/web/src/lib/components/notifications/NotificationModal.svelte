@@ -20,6 +20,7 @@
 	// Lazy-loaded type-specific components
 	let BrainDumpModalContent = $state<any>(null);
 	let PhaseGenerationModalContent = $state<any>(null);
+	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
@@ -40,6 +41,14 @@
 							'./types/phase-generation/PhaseGenerationModalContent.svelte'
 						);
 						PhaseGenerationModalContent = module.default;
+					}
+					break;
+				case 'project-synthesis':
+					if (!ProjectSynthesisModalContent) {
+						const module = await import(
+							'./types/project-synthesis/ProjectSynthesisModalContent.svelte'
+						);
+						ProjectSynthesisModalContent = module.default;
 					}
 					break;
 				case 'calendar-analysis':
@@ -70,9 +79,11 @@
 			? BrainDumpModalContent
 			: notification.type === 'phase-generation'
 				? PhaseGenerationModalContent
-				: notification.type === 'calendar-analysis'
-					? CalendarAnalysisModalContent
-					: null
+				: notification.type === 'project-synthesis'
+					? ProjectSynthesisModalContent
+					: notification.type === 'calendar-analysis'
+						? CalendarAnalysisModalContent
+						: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
@@ -82,11 +93,13 @@
 			? 'Brain Dump Processing'
 			: notification.type === 'phase-generation'
 				? `Phase Generation - ${notification.data.projectName}`
-				: notification.type === 'calendar-analysis'
-					? 'Calendar Analysis'
-					: notification.type === 'generic'
-						? notification.data.title
-						: 'Processing'
+				: notification.type === 'project-synthesis'
+					? `Project Synthesis - ${notification.data.projectName}`
+					: notification.type === 'calendar-analysis'
+						? 'Calendar Analysis'
+						: notification.type === 'generic'
+							? notification.data.title
+							: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)

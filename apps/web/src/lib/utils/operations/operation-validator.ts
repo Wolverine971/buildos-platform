@@ -40,10 +40,11 @@ export class OperationValidator {
 		// Get schema for the table
 		const schema = tableSchemas[table];
 		if (!schema) {
-			// If no schema defined, allow the operation
+			// ⚠️ SECURITY: If no schema is defined, reject the operation
+			// We should never allow operations on tables without explicit validation
 			return {
-				isValid: true,
-				sanitizedData: data
+				isValid: false,
+				error: `No validation schema defined for table: ${table}. This table may not be user-accessible.`
 			};
 		}
 
@@ -74,8 +75,24 @@ export class OperationValidator {
 		for (const [field, value] of Object.entries(data)) {
 			const validation = schema[field];
 
-			// Skip fields not in schema (allow flexibility)
-			if (!validation) {
+			// ⚠️ SECURITY: Silently remove unknown fields to prevent arbitrary data injection
+			// Special exceptions for system and metadata fields used during operation processing
+			const isMetadataField = field.startsWith('_');
+			const isProjectRef = field === 'project_ref'; // Special case for new project references
+			const isSystemField = field === 'id'; // Allow 'id' for update targeting (handled in executor)
+
+			if (!validation && !isMetadataField && !isProjectRef && !isSystemField) {
+				// Silently skip unknown fields - don't add them to sanitizedData
+				console.warn(
+					`Field '${field}' is not in schema for table '${table}'. Removing it from operation.`
+				);
+				continue;
+			}
+
+			// Allow metadata and system fields to pass through without validation
+			// Note: 'id' is allowed here but will be extracted to conditions in the executor
+			// 'user_id' in schema will be validated and overridden in the executor for security
+			if (isMetadataField || isProjectRef || isSystemField) {
 				sanitizedData[field] = value;
 				continue;
 			}
@@ -233,11 +250,17 @@ export class OperationValidator {
 	}
 
 	/**
-	 * Check if table name is valid
+	 * Check if table name is valid for user operations
+	 *
+	 * ⚠️ SECURITY: Only tables in this list can be modified through brain dump operations.
+	 * This prevents users from modifying system tables or other sensitive data.
 	 */
 	private isValidTable(table: string): boolean {
-		// Use the actual TableName type values
-		const validTables: TableName[] = ['projects', 'tasks', 'notes'];
+		// ONLY allow tables that:
+		// 1. Have validation schemas defined
+		// 2. Are safe for user operations
+		// 3. Match the TableName type from brain-dump types
+		const validTables: TableName[] = ['projects', 'tasks', 'notes', 'project_questions'];
 		return validTables.includes(table as TableName);
 	}
 

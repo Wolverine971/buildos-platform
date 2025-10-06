@@ -42,6 +42,7 @@
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
+	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 
 	export let data: PageData;
 	export let form;
@@ -121,7 +122,15 @@
 		const urlTab = $page.url.searchParams.get('tab');
 		if (
 			urlTab &&
-			['about', 'prompts', 'briefs', 'calendar', 'account', 'billing'].includes(urlTab)
+			[
+				'about',
+				'prompts',
+				'briefs',
+				'calendar',
+				'account',
+				'notifications',
+				'billing'
+			].includes(urlTab)
 		) {
 			activeTab = urlTab;
 		}
@@ -131,6 +140,7 @@
 		{ id: 'about', label: 'Work Profile', icon: Briefcase },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
+		{ id: 'notifications', label: 'Notifications', icon: Bell },
 		{ id: 'account', label: 'Account', icon: User },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
 	];
@@ -737,6 +747,9 @@
 				on:success={handleComponentSuccess}
 				on:error={handleComponentError}
 			/>
+		{:else if activeTab === 'notifications'}
+			<!-- Use the new NotificationsTab component -->
+			<NotificationsTab userId={data.user.id} />
 		{:else if activeTab === 'billing' && data.stripeEnabled}
 			<!-- Billing/Subscription Tab -->
 			<div class="space-y-6">

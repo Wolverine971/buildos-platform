@@ -5,9 +5,9 @@
 	import { createEventDispatcher } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Loader2, X, ChevronDown, AlertCircle } from 'lucide-svelte';
+	import { Loader2, X, ChevronDown } from 'lucide-svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
-	import { restartCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
+	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 
 	let { notification } = $props<{ notification: CalendarAnalysisNotification }>();
@@ -23,57 +23,46 @@
 		dispatch('minimize');
 	}
 
-	function handleRetry() {
-		notification.actions.retry?.();
-	}
-
-	const suggestions = $derived(
-		Array.isArray(notification.data.suggestions) ? notification.data.suggestions : []
-	);
-
 	const isProcessing = $derived(notification.status === 'processing');
-	const isError = $derived(notification.status === 'error');
 	const progressMessage = $derived(
 		notification.progress?.message ?? 'Analyzing calendar events...'
 	);
 
-	function handleStartAnalysisFromModal({
-		daysBack,
-		daysForward
-	}: {
-		daysBack: number;
-		daysForward: number;
-	}) {
-		return restartCalendarAnalysis(notification.id, { daysBack, daysForward });
-	}
+	// Prepare data for CalendarAnalysisResults component
+	const suggestions = $derived(
+		Array.isArray(notification.data.suggestions) ? notification.data.suggestions : []
+	);
+	const errorMessage = $derived(notification.data.error ?? null);
 </script>
 
-<!-- Single Modal wrapper for all states -->
-<Modal
-	isOpen={true}
-	onClose={handleClose}
-	title={isProcessing ? 'Analyzing calendar' : ''}
-	size={isProcessing ? 'md' : 'xl'}
-	showCloseButton={!isProcessing}
-	closeOnBackdrop={false}
-	closeOnEscape={true}
->
-	{#if isProcessing}
-		<!-- Processing State -->
+{#if isProcessing}
+	<!-- Processing State: Simple loading modal -->
+	<Modal
+		isOpen={true}
+		onClose={handleClose}
+		title=""
+		size="md"
+		showCloseButton={false}
+		closeOnBackdrop={false}
+		closeOnEscape={true}
+	>
+		<!-- Custom header with minimize button -->
 		<div
 			slot="header"
-			class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+			class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
 		>
-			<h2 class="text-xl font-bold text-gray-900 dark:text-white">Analyzing calendar</h2>
+			<h2 class="text-xl font-bold text-gray-900 dark:text-white">Analyzing Calendar</h2>
 			<div class="flex items-center gap-2">
 				<Button
 					variant="ghost"
+					size="sm"
 					on:click={handleMinimize}
 					aria-label="Minimize"
 					icon={ChevronDown}
 				></Button>
 				<Button
 					variant="ghost"
+					size="sm"
 					on:click={handleClose}
 					aria-label="Close notification"
 					icon={X}
@@ -89,90 +78,53 @@
 				notification tray when they're ready.
 			</p>
 		</div>
-	{:else}
-		<!-- Results State -->
-		<!-- TODO: Extract CalendarAnalysisResults content to avoid nested Modal -->
-		<!-- For now, render simple results summary -->
-		<div class="px-6 py-6">
-			{#if isError}
-				<div class="text-center py-8">
-					<AlertCircle class="w-16 h-16 text-red-600 dark:text-red-400 mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-						Analysis Failed
-					</h3>
-					<p class="text-red-600 dark:text-red-400 mb-6">
-						{notification.data.error ||
-							'An error occurred while analyzing your calendar'}
-					</p>
-					<div class="flex gap-3 justify-center">
-						<Button variant="primary" on:click={handleRetry}>Retry Analysis</Button>
-						<Button variant="secondary" on:click={handleClose}>Close</Button>
-					</div>
-				</div>
-			{:else if suggestions.length > 0}
-				<div class="space-y-4">
-					<div class="flex items-center justify-between mb-4">
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Found {suggestions.length} project suggestion{suggestions.length !==
-								1
-									? 's'
-									: ''}
-							</h3>
-							<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-								Analysis of {notification.data.eventCount || 0} calendar events
-							</p>
-						</div>
-					</div>
-
-					<!-- Suggestions List (simplified) -->
-					<div class="space-y-3 max-h-96 overflow-y-auto">
-						{#each suggestions as suggestion}
-							<div
-								class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800"
-							>
-								<h4 class="font-medium text-gray-900 dark:text-white">
-									{suggestion.suggested_name}
-								</h4>
-								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									{suggestion.suggested_description}
-								</p>
-								<div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
-									<span>{suggestion.event_count || 0} events</span>
-									{#if suggestion.confidence_score}
-										<span
-											>{Math.round(suggestion.confidence_score * 100)}%
-											confidence</span
-										>
-									{/if}
-								</div>
-							</div>
-						{/each}
-					</div>
-
-					<div
-						class="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
-					>
-						<Button variant="secondary" on:click={handleClose}>Close</Button>
-						<Button
-							variant="primary"
-							on:click={() => {
-								// Navigate to full calendar analysis results
-								window.location.href = '/profile?tab=calendar';
-							}}
-						>
-							View Full Results
-						</Button>
-					</div>
-				</div>
-			{:else}
-				<div class="text-center py-8">
-					<p class="text-gray-600 dark:text-gray-400">
-						No project suggestions found in your calendar
-					</p>
-					<Button variant="primary" on:click={handleClose} class="mt-4">Close</Button>
-				</div>
-			{/if}
+	</Modal>
+{:else}
+	<!-- Results State: Full CalendarAnalysisResults in embedded mode -->
+	<Modal
+		isOpen={true}
+		onClose={handleClose}
+		title=""
+		size="xl"
+		showCloseButton={false}
+		closeOnBackdrop={false}
+		closeOnEscape={true}
+	>
+		<!-- Custom header with minimize button -->
+		<div
+			slot="header"
+			class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+		>
+			<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+				Calendar Analysis Results
+			</h2>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="ghost"
+					size="sm"
+					on:click={handleMinimize}
+					aria-label="Minimize"
+					icon={ChevronDown}
+				></Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					on:click={handleClose}
+					aria-label="Close notification"
+					icon={X}
+				></Button>
+			</div>
 		</div>
-	{/if}
-</Modal>
+
+		<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
+		<CalendarAnalysisResults
+			isOpen={true}
+			analysisId={notification.data.analysisId}
+			bind:suggestions={notification.data.suggestions}
+			autoStart={false}
+			onClose={handleClose}
+			{errorMessage}
+			embedded={true}
+		/>
+	</Modal>
+{/if}
