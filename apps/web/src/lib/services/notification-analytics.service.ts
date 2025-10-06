@@ -77,6 +77,19 @@ export interface SubscriptionInfo {
 	last_notification_sent: string | null;
 }
 
+export interface SMSStats {
+	total_users_with_phone: number;
+	users_phone_verified: number;
+	users_sms_enabled: number;
+	users_opted_out: number;
+	phone_verification_rate: number;
+	sms_adoption_rate: number;
+	opt_out_rate: number;
+	total_sms_sent_24h: number;
+	sms_delivery_rate_24h: number;
+	avg_sms_delivery_time_seconds: number;
+}
+
 export class NotificationAnalyticsService {
 	/**
 	 * Get overview metrics
@@ -180,6 +193,21 @@ export class NotificationAnalyticsService {
 
 		const data = await response.json();
 		return data.data.subscriptions;
+	}
+
+	/**
+	 * Get SMS-specific statistics
+	 */
+	async getSMSStats(): Promise<SMSStats> {
+		const response = await fetch('/api/admin/notifications/analytics/sms-stats');
+
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.message || 'Failed to fetch SMS statistics');
+		}
+
+		const data = await response.json();
+		return data.data;
 	}
 }
 

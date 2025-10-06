@@ -8,13 +8,15 @@
 	import ChannelPerformanceTable from '$lib/components/admin/notifications/ChannelPerformanceTable.svelte';
 	import EventBreakdownTable from '$lib/components/admin/notifications/EventBreakdownTable.svelte';
 	import FailedDeliveriesTable from '$lib/components/admin/notifications/FailedDeliveriesTable.svelte';
+	import SMSInsightsCard from '$lib/components/admin/notifications/SMSInsightsCard.svelte';
 	import {
 		notificationAnalyticsService,
 		type Timeframe,
 		type AnalyticsOverview,
 		type ChannelMetrics,
 		type EventMetrics,
-		type FailedDelivery
+		type FailedDelivery,
+		type SMSStats
 	} from '$lib/services/notification-analytics.service';
 	import { notificationTestService } from '$lib/services/notification-test.service';
 
@@ -29,6 +31,7 @@
 	let channelMetrics = $state<ChannelMetrics[]>([]);
 	let eventMetrics = $state<EventMetrics[]>([]);
 	let failures = $state<FailedDelivery[]>([]);
+	let smsStats = $state<SMSStats | null>(null);
 
 	onMount(async () => {
 		await loadAnalytics();
@@ -54,11 +57,12 @@
 		error = null;
 
 		try {
-			[overview, channelMetrics, eventMetrics, failures] = await Promise.all([
+			[overview, channelMetrics, eventMetrics, failures, smsStats] = await Promise.all([
 				notificationAnalyticsService.getOverview(timeframe),
 				notificationAnalyticsService.getChannelPerformance(timeframe),
 				notificationAnalyticsService.getEventBreakdown(timeframe),
-				notificationAnalyticsService.getFailures('24h', 50)
+				notificationAnalyticsService.getFailures('24h', 50),
+				notificationAnalyticsService.getSMSStats()
 			]);
 		} catch (err) {
 			console.error('Error loading notification analytics:', err);
@@ -228,6 +232,11 @@
 		<!-- Channel Performance -->
 		<div class="mb-6">
 			<ChannelPerformanceTable data={channelMetrics} loading={isLoading} />
+		</div>
+
+		<!-- SMS Insights -->
+		<div class="mb-6">
+			<SMSInsightsCard data={smsStats} loading={isLoading} />
 		</div>
 
 		<!-- Event Type Breakdown -->

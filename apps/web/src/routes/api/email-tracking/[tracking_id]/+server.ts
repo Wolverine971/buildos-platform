@@ -37,6 +37,7 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 				`
 				id,
 				subject,
+				template_data,
 				email_recipients (
 					id,
 					recipient_email,
@@ -98,6 +99,40 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 
 				if (eventError) {
 					console.error(`Failed to log tracking event:`, eventError);
+				}
+			}
+
+			// NEW: Update notification_deliveries if this email is tied to a notification
+			// This connects the existing email tracking to the notification system
+			const deliveryId = email.template_data?.delivery_id;
+			if (deliveryId) {
+				console.log(`Updating notification_deliveries ${deliveryId} for email ${email.id}`);
+
+				// Only update if opened_at is null (first open)
+				const { data: delivery } = await supabase
+					.from('notification_deliveries')
+					.select('opened_at')
+					.eq('id', deliveryId)
+					.single();
+
+				if (delivery && !delivery.opened_at) {
+					const now = new Date().toISOString();
+					const { error: deliveryUpdateError } = await supabase
+						.from('notification_deliveries')
+						.update({
+							opened_at: now,
+							status: 'opened'
+						})
+						.eq('id', deliveryId);
+
+					if (deliveryUpdateError) {
+						console.error(
+							`Failed to update notification_deliveries ${deliveryId}:`,
+							deliveryUpdateError
+						);
+					} else {
+						console.log(`Successfully updated notification_deliveries ${deliveryId}`);
+					}
 				}
 			}
 		} else {

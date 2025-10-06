@@ -5,7 +5,7 @@
  */
 
 // Service Worker version - increment to force update
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.1.0';
 
 self.addEventListener('install', (event) => {
 	console.log(`[ServiceWorker v${SW_VERSION}] Installing...`);
@@ -52,7 +52,41 @@ self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
 
 	const urlToOpen = event.notification.data?.url || '/';
+	const deliveryId = event.notification.data?.delivery_id;
+	const action = event.action; // For action buttons on notifications
 
+	// Track click event via API (non-blocking)
+	if (deliveryId) {
+		console.log('[ServiceWorker] Tracking notification click, delivery_id:', deliveryId);
+
+		event.waitUntil(
+			fetch(`/api/notification-tracking/click/${deliveryId}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					metadata: {
+						action: action || 'notification_body',
+						user_agent: navigator.userAgent,
+						timestamp: new Date().toISOString()
+					}
+				})
+			})
+				.then((response) => {
+					if (response.ok) {
+						console.log('[ServiceWorker] Click tracked successfully');
+					} else {
+						console.error('[ServiceWorker] Click tracking failed:', response.status);
+					}
+				})
+				.catch((error) => {
+					console.error('[ServiceWorker] Failed to track notification click:', error);
+				})
+		);
+	}
+
+	// Navigate to URL
 	event.waitUntil(
 		self.clients
 			.matchAll({
@@ -73,15 +107,6 @@ self.addEventListener('notificationclick', (event) => {
 				}
 			})
 	);
-
-	// Track click event (optional - could make API call here)
-	if (event.notification.data?.delivery_id) {
-		console.log(
-			'[ServiceWorker] Notification clicked, delivery_id:',
-			event.notification.data.delivery_id
-		);
-		// TODO: Track click via API
-	}
 });
 
 // Handle notification close

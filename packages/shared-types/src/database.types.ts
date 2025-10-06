@@ -5341,6 +5341,21 @@ export type Database = {
           total_revenue: number;
         }[];
       };
+      get_sms_notification_stats: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          avg_sms_delivery_time_seconds: number;
+          opt_out_rate: number;
+          phone_verification_rate: number;
+          sms_adoption_rate: number;
+          sms_delivery_rate_24h: number;
+          total_sms_sent_24h: number;
+          total_users_with_phone: number;
+          users_opted_out: number;
+          users_phone_verified: number;
+          users_sms_enabled: number;
+        }[];
+      };
       get_subscription_changes: {
         Args: { p_timeframe?: string };
         Returns: {

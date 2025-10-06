@@ -436,6 +436,174 @@ const message = await formatSMSMessage(delivery);
 
 ---
 
+## Phase 6 Admin Dashboard Testing (New!)
+
+Phase 6 adds SMS-specific analytics and insights to the admin notification dashboard.
+
+### Test 1: Access Admin Dashboard
+
+1. Log in as an admin user
+2. Navigate to **Admin → Notifications**
+3. **Expected**: Dashboard loads with all analytics sections
+4. **Expected**: SMS Insights card visible between Channel Performance and Event Breakdown
+
+### Test 2: Phone Verification Metrics
+
+**Verify phone statistics display correctly**:
+
+```sql
+-- Check actual phone stats in database
+SELECT
+  COUNT(*) as total_with_phone,
+  COUNT(*) FILTER (WHERE phone_verified = true) as verified,
+  COUNT(*) FILTER (WHERE opted_out = true) as opted_out
+FROM user_sms_preferences
+WHERE phone_number IS NOT NULL;
+```
+
+**Expected in Dashboard**:
+
+- "Users with Phone" matches total_with_phone
+- "Verified" matches verified count with percentage
+- "Opted Out" matches opted_out count with percentage
+
+### Test 3: SMS Adoption Metrics
+
+**Verify adoption rate calculation**:
+
+```sql
+-- Check SMS enabled users
+SELECT COUNT(DISTINCT unp.user_id) as sms_enabled
+FROM user_notification_preferences unp
+JOIN user_sms_preferences usp ON usp.user_id = unp.user_id
+WHERE unp.sms_enabled = true
+  AND usp.phone_verified = true;
+```
+
+**Expected in Dashboard**:
+
+- "SMS Notifications Enabled" matches count
+- Adoption rate = (sms_enabled / verified_phones) \* 100
+- Progress bar reflects adoption percentage
+
+### Test 4: Recent Performance (24h)
+
+**Trigger some test SMS**:
+
+```sql
+-- Send test SMS notifications
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com'),
+  p_payload := jsonb_build_object('task_count', 5, 'event_type', 'brief.completed')
+);
+```
+
+**Expected in Dashboard**:
+
+- "Last 24 Hours" shows sent count
+- Delivery rate updates after SMS delivered
+- Avg delivery time displays in seconds
+
+### Test 5: Intelligent Insights
+
+**Test low adoption warning**:
+
+```sql
+-- If < 50% of verified users have SMS enabled
+-- Expected: Warning message about promoting SMS in onboarding
+```
+
+**Test high opt-out warning**:
+
+```sql
+-- If > 10% of verified users opted out
+-- Expected: Warning about reviewing message frequency
+```
+
+**Test low delivery rate**:
+
+```sql
+-- If delivery rate < 90%
+-- Expected: Warning about checking phone numbers/carrier issues
+```
+
+**Test success state**:
+
+- When adoption >= 70% AND delivery >= 95%
+- **Expected**: Green checkmark with success message
+
+### Test 6: Auto-Refresh
+
+1. Enable auto-refresh in dashboard (toggle at top)
+2. Send new SMS notification
+3. **Expected**: SMS stats update within 30 seconds
+4. **Expected**: Sent count increments
+5. **Expected**: Delivery rate updates after delivery
+
+### Test 7: API Endpoint Direct Test
+
+```bash
+# Test SMS stats API endpoint
+curl -X GET "https://your-domain.com/api/admin/notifications/analytics/sms-stats" \
+  -H "Authorization: Bearer YOUR_ADMIN_SESSION_TOKEN"
+
+# Expected response:
+{
+  "data": {
+    "total_users_with_phone": 45,
+    "users_phone_verified": 38,
+    "users_sms_enabled": 22,
+    "users_opted_out": 2,
+    "phone_verification_rate": 84.44,
+    "sms_adoption_rate": 57.89,
+    "opt_out_rate": 5.26,
+    "total_sms_sent_24h": 15,
+    "sms_delivery_rate_24h": 93.33,
+    "avg_sms_delivery_time_seconds": 2.45
+  }
+}
+```
+
+### Test 8: Channel Performance Table
+
+**Verify SMS appears in channel table**:
+
+1. Scroll to "Channel Performance" section
+2. **Expected**: SMS row with purple badge
+3. **Expected**: Metrics displayed (sent, success rate, open rate, click rate, delivery time)
+4. **Expected**: SMS data consistent with SMS Insights card
+
+### Test 9: Migration Applied
+
+```sql
+-- Verify function exists
+SELECT routine_name, routine_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+  AND routine_name = 'get_sms_notification_stats';
+
+-- Expected: One row showing FUNCTION
+
+-- Test function execution
+SELECT * FROM get_sms_notification_stats();
+
+-- Expected: Single row with all statistics
+```
+
+### Test 10: Error Handling
+
+**Test with no SMS data**:
+
+1. In a fresh database with no SMS messages
+2. Navigate to admin dashboard
+3. **Expected**: SMS Insights card shows zeros gracefully
+4. **Expected**: No crashes or errors
+5. **Expected**: Message "No SMS data available" if appropriate
+
+---
+
 ## Phase 1 & 2 Backend Testing
 
 ## Prerequisites

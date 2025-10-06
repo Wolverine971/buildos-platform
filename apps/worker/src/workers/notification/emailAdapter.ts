@@ -16,6 +16,30 @@ export interface DeliveryResult {
 }
 
 /**
+ * Rewrite links in HTML for click tracking
+ */
+function rewriteLinksForTracking(html: string, trackingId: string): string {
+  const baseUrl = "https://build-os.com";
+
+  // Rewrite all <a href="..."> tags to go through click tracking
+  return html.replace(
+    /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
+    (match, before, url, after) => {
+      // Skip if it's already a tracking link or an anchor link
+      if (url.startsWith("#") || url.includes("/api/email-tracking/")) {
+        return match;
+      }
+
+      // Encode the destination URL
+      const encodedUrl = encodeURIComponent(url);
+      const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
+
+      return `<a ${before}href="${trackingUrl}"${after}>`;
+    },
+  );
+}
+
+/**
  * Format notification payload as email HTML
  */
 function formatEmailTemplate(delivery: NotificationDelivery): {
@@ -125,9 +149,15 @@ export async function sendEmailNotification(
     // Generate tracking ID
     const trackingId = crypto.randomUUID();
 
+    // Rewrite links for click tracking
+    const htmlWithTrackedLinks = rewriteLinksForTracking(html, trackingId);
+
     // Add tracking pixel to HTML
     const trackingPixel = `<img src="https://build-os.com/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
-    const htmlWithTracking = html.replace("</body>", `${trackingPixel}</body>`);
+    const htmlWithTracking = htmlWithTrackedLinks.replace(
+      "</body>",
+      `${trackingPixel}</body>`,
+    );
 
     // Create email record
     const { data: emailRecord, error: emailError } = await supabase

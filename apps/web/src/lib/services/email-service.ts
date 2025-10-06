@@ -58,7 +58,8 @@ export class EmailService {
 			subject: data.subject,
 			html: data.html,
 			textBody,
-			trackingPixel
+			trackingPixel,
+			trackingId
 		});
 
 		try {
@@ -153,15 +154,22 @@ export class EmailService {
 		subject,
 		html,
 		textBody,
-		trackingPixel
+		trackingPixel,
+		trackingId
 	}: {
 		subject: string;
 		html?: string;
 		textBody: string;
 		trackingPixel: string;
+		trackingId: string | null;
 	}): string {
 		if (html) {
-			return trackingPixel ? this.appendTrackingPixel(html, trackingPixel) : html;
+			// Rewrite links for click tracking if tracking is enabled
+			let processedHtml = html;
+			if (trackingId) {
+				processedHtml = this.rewriteLinksForTracking(html, trackingId);
+			}
+			return trackingPixel ? this.appendTrackingPixel(processedHtml, trackingPixel) : processedHtml;
 		}
 
 		const content = textBody.replace(/\n/g, '<br>');
@@ -170,6 +178,27 @@ export class EmailService {
 			content,
 			trackingPixel
 		});
+	}
+
+	private rewriteLinksForTracking(html: string, trackingId: string): string {
+		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
+
+		// Rewrite all <a href="..."> tags to go through click tracking
+		return html.replace(
+			/<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
+			(match, before, url, after) => {
+				// Skip if it's already a tracking link or an anchor link
+				if (url.startsWith('#') || url.includes('/api/email-tracking/')) {
+					return match;
+				}
+
+				// Encode the destination URL
+				const encodedUrl = encodeURIComponent(url);
+				const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
+
+				return `<a ${before}href="${trackingUrl}"${after}>`;
+			}
+		);
 	}
 
 	private appendTrackingPixel(html: string, trackingPixel: string): string {

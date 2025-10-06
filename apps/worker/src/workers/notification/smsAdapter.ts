@@ -8,7 +8,7 @@
  */
 
 import { createServiceClient } from "@buildos/supabase-client";
-import type { NotificationDelivery } from "@buildos/shared-types";
+import type { NotificationDelivery, Json } from "@buildos/shared-types";
 
 const supabase = createServiceClient();
 
@@ -26,9 +26,9 @@ type SMSPriority = "low" | "normal" | "high" | "urgent";
 interface SMSTemplate {
   template_key: string;
   message_template: string;
-  template_vars: Record<string, string>;
-  max_length: number;
-  is_active: boolean;
+  template_vars: Json;
+  max_length: number | null;
+  is_active: boolean | null;
 }
 
 /**
