@@ -35,6 +35,7 @@ The dashboard leverages BuildOS's existing notification system infrastructure (P
 ## Research Question
 
 How should we build an admin dashboard that:
+
 1. Provides comprehensive analytics on the notification system's performance
 2. Enables admins to test notifications across all channels before production rollout
 3. Integrates seamlessly with existing admin UI patterns
@@ -49,23 +50,27 @@ How should we build an admin dashboard that:
 Based on comprehensive codebase research, the BuildOS notification system has:
 
 **Database Infrastructure (Complete)**
+
 - 5 core tables: `notification_events`, `notification_deliveries`, `notification_subscriptions`, `user_notification_preferences`, `push_subscriptions`
 - RPC functions: `emit_notification_event()`, `update_user_notification_preferences()`
 - Queue integration with `send_notification` job type
 
 **Event Types (3 of 10 implemented)**
+
 - ✅ `user.signup` - Admin notifications
 - ✅ `brief.completed` - User notifications
 - ✅ `brief.failed` - User notifications
 - ⏳ 7 event types defined but not wired up
 
 **Channel Adapters**
+
 - ✅ Browser Push (VAPID, service worker, full implementation)
 - ✅ Email (adapter using existing email infrastructure)
 - ✅ In-App (direct database insertion)
 - ⚠️ SMS (placeholder only, not implemented)
 
 **Key Files**
+
 - `/apps/web/supabase/migrations/20251006_notification_system_phase1.sql`
 - `/apps/web/supabase/migrations/20251006_notification_system_phase3.sql`
 - `/apps/worker/src/workers/notification/notificationWorker.ts`
@@ -77,6 +82,7 @@ Based on comprehensive codebase research, the BuildOS notification system has:
 BuildOS has a mature admin system with:
 
 **Admin Routes**: `/apps/web/src/routes/admin/`
+
 - Main dashboard (`+page.svelte`)
 - User management (`users/+page.svelte`)
 - Beta program (`beta/+page.svelte`)
@@ -87,6 +93,7 @@ BuildOS has a mature admin system with:
 - Subscriptions (`subscriptions/+page.svelte`)
 
 **Admin API**: 35+ endpoints under `/apps/web/src/routes/api/admin/`
+
 - Analytics (11 endpoints)
 - User management (4 endpoints)
 - Beta program (4 endpoints)
@@ -96,6 +103,7 @@ BuildOS has a mature admin system with:
 - LLM usage, revenue, subscriptions
 
 **Protection**:
+
 - Layout guard at `/admin/+layout.server.ts`
 - Database flag: `users.is_admin` (boolean)
 - API-level checks on all admin endpoints
@@ -103,6 +111,7 @@ BuildOS has a mature admin system with:
 ### 🔍 Gaps Identified
 
 **Missing from Notification System:**
+
 1. ❌ No analytics dashboard or reporting
 2. ❌ No notification testing/debugging tools
 3. ❌ No delivery monitoring UI
@@ -111,6 +120,7 @@ BuildOS has a mature admin system with:
 6. ❌ No way to view notification logs in UI
 
 **However, tracking data IS being collected:**
+
 - `notification_deliveries` table has `sent_at`, `delivered_at`, `opened_at`, `clicked_at`, `failed_at`
 - Retry attempts and error messages tracked
 - External IDs for provider tracking
@@ -138,12 +148,12 @@ BuildOS has a mature admin system with:
 
 **Layout**: 4-column grid
 
-| Metric | Query | Timeframe |
-|--------|-------|-----------|
-| **Total Sent (24h)** | `COUNT(*)` from `notification_deliveries` where `status = 'sent'` | Last 24 hours |
-| **Delivery Success Rate** | `(sent / total) * 100` | Last 24 hours |
-| **Avg Open Rate** | `(opened / sent) * 100` | Last 7 days |
-| **Avg Click Rate** | `(clicked / opened) * 100` | Last 7 days |
+| Metric                    | Query                                                             | Timeframe     |
+| ------------------------- | ----------------------------------------------------------------- | ------------- |
+| **Total Sent (24h)**      | `COUNT(*)` from `notification_deliveries` where `status = 'sent'` | Last 24 hours |
+| **Delivery Success Rate** | `(sent / total) * 100`                                            | Last 24 hours |
+| **Avg Open Rate**         | `(opened / sent) * 100`                                           | Last 7 days   |
+| **Avg Click Rate**        | `(clicked / opened) * 100`                                        | Last 7 days   |
 
 **Visual**: Large number with trend indicator (↑ 12% vs previous period)
 
@@ -153,14 +163,15 @@ BuildOS has a mature admin system with:
 
 **Layout**: Horizontal bar chart or table
 
-| Channel | Sent | Delivered | Opened | Clicked | Success Rate | Open Rate | Click Rate |
-|---------|------|-----------|--------|---------|--------------|-----------|------------|
-| Browser Push | 1,234 | 1,180 | 456 | 89 | 95.6% | 38.6% | 19.5% |
-| Email | 2,567 | 2,489 | 1,234 | 345 | 97.0% | 49.6% | 28.0% |
-| In-App | 3,456 | 3,456 | 2,345 | - | 100% | 67.9% | - |
-| SMS | 0 | 0 | - | - | - | - | - |
+| Channel      | Sent  | Delivered | Opened | Clicked | Success Rate | Open Rate | Click Rate |
+| ------------ | ----- | --------- | ------ | ------- | ------------ | --------- | ---------- |
+| Browser Push | 1,234 | 1,180     | 456    | 89      | 95.6%        | 38.6%     | 19.5%      |
+| Email        | 2,567 | 2,489     | 1,234  | 345     | 97.0%        | 49.6%     | 28.0%      |
+| In-App       | 3,456 | 3,456     | 2,345  | -       | 100%         | 67.9%     | -          |
+| SMS          | 0     | 0         | -      | -       | -            | -         | -          |
 
 **SQL Query**:
+
 ```sql
 SELECT
   channel,
@@ -183,13 +194,14 @@ ORDER BY total_sent DESC;
 
 **Layout**: Table with sortable columns
 
-| Event Type | Total Events | Deliveries | Subscribers | Avg Delivery Time | Open Rate | Click Rate |
-|------------|--------------|------------|-------------|-------------------|-----------|------------|
-| brief.completed | 1,234 | 3,702 | 3 channels | 2.3s | 45.2% | 12.3% |
-| user.signup | 45 | 90 | 2 admins | 0.8s | 78.9% | 56.7% |
-| brief.failed | 12 | 36 | 3 channels | 1.2s | 89.1% | 67.4% |
+| Event Type      | Total Events | Deliveries | Subscribers | Avg Delivery Time | Open Rate | Click Rate |
+| --------------- | ------------ | ---------- | ----------- | ----------------- | --------- | ---------- |
+| brief.completed | 1,234        | 3,702      | 3 channels  | 2.3s              | 45.2%     | 12.3%      |
+| user.signup     | 45           | 90         | 2 admins    | 0.8s              | 78.9%     | 56.7%      |
+| brief.failed    | 12           | 36         | 3 channels  | 1.2s              | 89.1%     | 67.4%      |
 
 **SQL Query**:
+
 ```sql
 SELECT
   ne.event_type,
@@ -216,6 +228,7 @@ ORDER BY total_events DESC;
 **X-axis**: Time (hourly or daily buckets)
 **Y-axis**: Count
 **Series**:
+
 - Sent (green)
 - Delivered (blue)
 - Opened (purple)
@@ -223,6 +236,7 @@ ORDER BY total_events DESC;
 - Failed (red)
 
 **SQL Query**:
+
 ```sql
 SELECT
   DATE_TRUNC('hour', created_at) as time_bucket,
@@ -243,12 +257,13 @@ ORDER BY time_bucket ASC;
 
 **Layout**: Alert-style table (only shown if failures exist)
 
-| Time | Event Type | Channel | Recipient | Error | Attempts | Actions |
-|------|------------|---------|-----------|-------|----------|---------|
-| 2 min ago | brief.completed | push | user@example.com | Subscription expired (410) | 3/3 | Resend, View Details |
-| 5 min ago | user.signup | email | admin@build-os.com | SMTP timeout | 2/3 | Retry, View Details |
+| Time      | Event Type      | Channel | Recipient          | Error                      | Attempts | Actions              |
+| --------- | --------------- | ------- | ------------------ | -------------------------- | -------- | -------------------- |
+| 2 min ago | brief.completed | push    | user@example.com   | Subscription expired (410) | 3/3      | Resend, View Details |
+| 5 min ago | user.signup     | email   | admin@build-os.com | SMTP timeout               | 2/3      | Retry, View Details  |
 
 **SQL Query**:
+
 ```sql
 SELECT
   nd.created_at,
@@ -270,6 +285,7 @@ LIMIT 50;
 ```
 
 **Actions**:
+
 - **Retry**: Call `POST /api/admin/notifications/deliveries/[id]/retry`
 - **Resend**: Call `POST /api/admin/notifications/deliveries/[id]/resend` (creates new delivery)
 - **View Details**: Open modal with full error stack trace and payload
@@ -280,12 +296,13 @@ LIMIT 50;
 
 **Layout**: Table showing active subscriptions
 
-| User | Email | Event Types | Push | Email | SMS | In-App | Last Notification |
-|------|-------|-------------|------|-------|-----|--------|-------------------|
-| DJ Wayne | djwayne35@gmail.com | user.signup, error.critical | ✓ | ✓ | - | ✓ | 2 hours ago |
-| User 1 | user1@example.com | brief.completed, brief.failed | ✓ | ✓ | - | ✓ | 1 day ago |
+| User     | Email               | Event Types                   | Push | Email | SMS | In-App | Last Notification |
+| -------- | ------------------- | ----------------------------- | ---- | ----- | --- | ------ | ----------------- |
+| DJ Wayne | djwayne35@gmail.com | user.signup, error.critical   | ✓    | ✓     | -   | ✓      | 2 hours ago       |
+| User 1   | user1@example.com   | brief.completed, brief.failed | ✓    | ✓     | -   | ✓      | 1 day ago         |
 
 **SQL Query**:
+
 ```sql
 SELECT
   u.id,
@@ -311,6 +328,7 @@ ORDER BY last_notification_sent DESC NULLS LAST;
 ### G. Controls & Filters
 
 **Timeframe Selector**:
+
 - Last 24 hours
 - Last 7 days (default)
 - Last 30 days
@@ -332,6 +350,7 @@ ORDER BY last_notification_sent DESC NULLS LAST;
 ### Purpose
 
 Allow admins to:
+
 1. Test notification delivery across all channels
 2. Preview notification appearance before sending to real users
 3. Debug delivery issues
@@ -427,11 +446,12 @@ Allow admins to:
 **Data Source**: Event Registry (from `/packages/shared-types/src/notification.types.ts`)
 
 **Display**:
+
 ```typescript
 interface EventOption {
   type: EventType;
-  label: string;           // "User Signup"
-  description: string;     // From EVENT_REGISTRY
+  label: string; // "User Signup"
+  description: string; // From EVENT_REGISTRY
   adminOnly: boolean;
   defaultChannels: NotificationChannel[];
   payloadSchema: ZodSchema;
@@ -439,6 +459,7 @@ interface EventOption {
 ```
 
 **Example Options**:
+
 - User Signup (admin only)
 - Brief Completed (user notification)
 - Brief Failed (user notification)
@@ -457,22 +478,25 @@ interface EventOption {
 **Dynamic Form Generation**: Based on Zod schema from EVENT_REGISTRY
 
 **Example for `user.signup`**:
+
 ```typescript
 payloadSchema: z.object({
   user_id: z.string().uuid(),
   user_email: z.string().email(),
-  signup_method: z.enum(['email', 'google_oauth']),
-  referral_source: z.string().optional()
-})
+  signup_method: z.enum(["email", "google_oauth"]),
+  referral_source: z.string().optional(),
+});
 ```
 
 **Rendered Form**:
+
 - `user_id`: Text input (UUID format)
 - `user_email`: Email input with validation
 - `signup_method`: Radio buttons (Email / Google OAuth)
 - `referral_source`: Text input (optional)
 
 **Helpers**:
+
 - **Use Sample Data**: Pre-fill with realistic test data
 - **Clear Form**: Reset all fields
 - **Validation**: Client-side validation using Zod schema
@@ -503,6 +527,7 @@ payloadSchema: z.object({
    - Bypasses subscription checks
 
 **User Search Component**:
+
 ```svelte
 <UserSearchInput
   onSelect={(user) => addRecipient(user)}
@@ -512,6 +537,7 @@ payloadSchema: z.object({
 ```
 
 **Selected Users Display**:
+
 ```svelte
 {#each selectedUsers as user}
   <div class="user-chip">
@@ -542,23 +568,29 @@ payloadSchema: z.object({
 **Checkboxes with Status Indicators**:
 
 **Browser Push**:
+
 - Show count: "2/3 selected users have active push subscriptions"
 - Disable if no users have subscriptions
 - Link to `/admin/notifications/push-setup` (future)
 
 **Email**:
+
 - Show count: "3/3 selected users have email addresses"
 - Always available (all users have emails)
 
 **SMS**:
+
 - Show status: "Not configured" or "X users have phone numbers"
 - Disable if Twilio not configured
+- **Note**: SMS channel requires implementation - see [SMS Notification Channel Design](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md)
 
 **In-App**:
+
 - Always available
 - Show note: "Will appear in notification bell icon"
 
 **Smart Defaults**:
+
 - Pre-select channels from `EVENT_REGISTRY[eventType].defaultChannels`
 - Disable channels with 0 available recipients
 
@@ -569,6 +601,7 @@ payloadSchema: z.object({
 **Tabs**: Browser Push | Email | In-App | SMS
 
 **Browser Push Preview**:
+
 ```
 ┌─────────────────────────────────────────┐
 │  BuildOS                           [×]  │
@@ -585,25 +618,24 @@ payloadSchema: z.object({
 ```
 
 **Email Preview**:
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <style>
-    /* Gradient header, responsive design */
-  </style>
-</head>
-<body>
-  <div style="background: linear-gradient(135deg, #6B46C1 0%, #9333EA 100%);">
-    <h1>New User Signup</h1>
-  </div>
-  <div style="padding: 20px;">
-    <p>test@example.com just signed up via Google OAuth</p>
-    <a href="https://build-os.com/admin/users">
-      View in Dashboard
-    </a>
-  </div>
-</body>
+  <head>
+    <style>
+      /* Gradient header, responsive design */
+    </style>
+  </head>
+  <body>
+    <div style="background: linear-gradient(135deg, #6B46C1 0%, #9333EA 100%);">
+      <h1>New User Signup</h1>
+    </div>
+    <div style="padding: 20px;">
+      <p>test@example.com just signed up via Google OAuth</p>
+      <a href="https://build-os.com/admin/users"> View in Dashboard </a>
+    </div>
+  </body>
 </html>
 ```
 
@@ -623,6 +655,7 @@ Shows mockup of notification in the bell icon dropdown
    - Channel-recipient compatibility check
 
 2. **Confirmation Modal**:
+
    ```
    Send Test Notification?
 
@@ -636,6 +669,7 @@ Shows mockup of notification in the bell icon dropdown
    ```
 
 3. **API Call**: `POST /api/admin/notifications/test`
+
    ```typescript
    {
      event_type: 'user.signup',
@@ -667,12 +701,13 @@ Shows mockup of notification in the bell icon dropdown
 
 **Table showing last 20 test notifications**:
 
-| Time | Event Type | Channels | Recipients | Status | Actions |
-|------|------------|----------|------------|--------|---------|
-| 2 min ago | user.signup | Push, Email | 2 users | ✓ 2/2 sent | View Details |
-| 1 hour ago | brief.completed | Push | 1 user | ✗ 0/1 sent | View Error, Retry |
+| Time       | Event Type      | Channels    | Recipients | Status     | Actions           |
+| ---------- | --------------- | ----------- | ---------- | ---------- | ----------------- |
+| 2 min ago  | user.signup     | Push, Email | 2 users    | ✓ 2/2 sent | View Details      |
+| 1 hour ago | brief.completed | Push        | 1 user     | ✗ 0/1 sent | View Error, Retry |
 
 **Click "View Details"**: Opens modal with:
+
 - Full payload (JSON)
 - Delivery attempts per channel
 - Timestamps (created, sent, delivered, opened, clicked)
@@ -689,12 +724,13 @@ Shows mockup of notification in the bell icon dropdown
 
 **Table**: All `notification_events` records
 
-| Time | Event Type | Source | Actor | Target | Deliveries | Actions |
-|------|------------|--------|-------|--------|------------|---------|
-| 2 min ago | user.signup | database_trigger | user@example.com | - | 2 | View Event |
-| 5 min ago | brief.completed | worker_job | - | user1@example.com | 3 | View Event |
+| Time      | Event Type      | Source           | Actor            | Target            | Deliveries | Actions    |
+| --------- | --------------- | ---------------- | ---------------- | ----------------- | ---------- | ---------- |
+| 2 min ago | user.signup     | database_trigger | user@example.com | -                 | 2          | View Event |
+| 5 min ago | brief.completed | worker_job       | -                | user1@example.com | 3          | View Event |
 
 **Filters**:
+
 - Event Type dropdown
 - Event Source dropdown
 - Date range
@@ -703,6 +739,7 @@ Shows mockup of notification in the bell icon dropdown
 - Test mode only checkbox
 
 **Actions**:
+
 - **View Event**: Modal with full payload and metadata
 - **Export**: Export filtered events to CSV
 
@@ -712,12 +749,13 @@ Shows mockup of notification in the bell icon dropdown
 
 **Table**: All `notification_deliveries` records
 
-| Time | Event Type | Channel | Recipient | Status | Sent | Opened | Clicked | Actions |
-|------|------------|---------|-----------|--------|------|--------|---------|---------|
-| 2 min ago | user.signup | push | admin@build-os.com | sent | ✓ | - | - | Resend |
-| 5 min ago | brief.completed | email | user@example.com | sent | ✓ | ✓ 3 min ago | ✓ 2 min ago | View |
+| Time      | Event Type      | Channel | Recipient          | Status | Sent | Opened      | Clicked     | Actions |
+| --------- | --------------- | ------- | ------------------ | ------ | ---- | ----------- | ----------- | ------- |
+| 2 min ago | user.signup     | push    | admin@build-os.com | sent   | ✓    | -           | -           | Resend  |
+| 5 min ago | brief.completed | email   | user@example.com   | sent   | ✓    | ✓ 3 min ago | ✓ 2 min ago | View    |
 
 **Filters**:
+
 - Channel dropdown
 - Status dropdown
 - Event Type dropdown
@@ -726,6 +764,7 @@ Shows mockup of notification in the bell icon dropdown
 - Show failed only checkbox
 
 **Status Badges**:
+
 - `pending` - Gray
 - `sent` - Green
 - `delivered` - Blue (for channels that support delivery confirmation)
@@ -733,6 +772,7 @@ Shows mockup of notification in the bell icon dropdown
 - `bounced` - Orange
 
 **Actions**:
+
 - **Resend**: Creates new delivery record and queues job
 - **Retry**: Retries failed delivery (same record, increments attempts)
 - **View**: Modal with full delivery details and payload
@@ -742,12 +782,14 @@ Shows mockup of notification in the bell icon dropdown
 ### C. Export Functionality
 
 **Export Options**:
+
 - Format: CSV, JSON
 - Scope: Current filter results, All data
 - Columns: Configurable (select which fields to include)
 - Date range: Specify start and end date
 
 **Generated File**:
+
 ```csv
 event_id,event_type,created_at,delivery_id,channel,recipient_email,status,sent_at,opened_at,clicked_at
 uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-10-06T12:00:02Z,,,
@@ -762,9 +804,11 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/overview`
 
 **Query Parameters**:
+
 - `timeframe`: '24h' | '7d' | '30d' | '90d' (default: '7d')
 
 **Response**:
+
 ```typescript
 {
   total_sent: number,
@@ -785,23 +829,25 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/channels`
 
 **Query Parameters**:
+
 - `timeframe`: '24h' | '7d' | '30d' | '90d' (default: '7d')
 
 **Response**:
+
 ```typescript
 {
   channels: Array<{
-    channel: NotificationChannel,
-    total_sent: number,
-    delivered: number,
-    opened: number,
-    clicked: number,
-    failed: number,
-    success_rate: number,
-    open_rate: number,
-    click_rate: number,
-    avg_delivery_time_ms: number
-  }>
+    channel: NotificationChannel;
+    total_sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    failed: number;
+    success_rate: number;
+    open_rate: number;
+    click_rate: number;
+    avg_delivery_time_ms: number;
+  }>;
 }
 ```
 
@@ -810,20 +856,22 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/events`
 
 **Query Parameters**:
+
 - `timeframe`: '24h' | '7d' | '30d' | '90d' (default: '30d')
 
 **Response**:
+
 ```typescript
 {
   events: Array<{
-    event_type: EventType,
-    total_events: number,
-    total_deliveries: number,
-    unique_subscribers: number,
-    avg_delivery_time_seconds: number,
-    open_rate: number,
-    click_rate: number
-  }>
+    event_type: EventType;
+    total_events: number;
+    total_deliveries: number;
+    unique_subscribers: number;
+    avg_delivery_time_seconds: number;
+    open_rate: number;
+    click_rate: number;
+  }>;
 }
 ```
 
@@ -832,20 +880,22 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/timeline`
 
 **Query Parameters**:
+
 - `timeframe`: '24h' | '7d' | '30d' | '90d' (default: '7d')
 - `granularity`: 'hour' | 'day' (auto-selected based on timeframe)
 
 **Response**:
+
 ```typescript
 {
   timeline: Array<{
-    time_bucket: string,  // ISO timestamp
-    sent: number,
-    delivered: number,
-    opened: number,
-    clicked: number,
-    failed: number
-  }>
+    time_bucket: string; // ISO timestamp
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    failed: number;
+  }>;
 }
 ```
 
@@ -854,25 +904,27 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/failures`
 
 **Query Parameters**:
+
 - `timeframe`: '24h' | '7d' | '30d' (default: '24h')
 - `limit`: number (default: 50)
 
 **Response**:
+
 ```typescript
 {
   failures: Array<{
-    delivery_id: string,
-    event_id: string,
-    event_type: EventType,
-    channel: NotificationChannel,
-    recipient_user_id: string,
-    recipient_email: string,
-    last_error: string,
-    attempts: number,
-    max_attempts: number,
-    created_at: string,
-    failed_at: string
-  }>
+    delivery_id: string;
+    event_id: string;
+    event_type: EventType;
+    channel: NotificationChannel;
+    recipient_user_id: string;
+    recipient_email: string;
+    last_error: string;
+    attempts: number;
+    max_attempts: number;
+    created_at: string;
+    failed_at: string;
+  }>;
 }
 ```
 
@@ -881,19 +933,20 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/analytics/subscriptions`
 
 **Response**:
+
 ```typescript
 {
   subscriptions: Array<{
-    user_id: string,
-    email: string,
-    name: string | null,
-    subscribed_events: EventType[],
-    push_enabled: boolean,
-    email_enabled: boolean,
-    sms_enabled: boolean,
-    in_app_enabled: boolean,
-    last_notification_sent: string | null
-  }>
+    user_id: string;
+    email: string;
+    name: string | null;
+    subscribed_events: EventType[];
+    push_enabled: boolean;
+    email_enabled: boolean;
+    sms_enabled: boolean;
+    in_app_enabled: boolean;
+    last_notification_sent: string | null;
+  }>;
 }
 ```
 
@@ -904,6 +957,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `POST /api/admin/notifications/test`
 
 **Request Body**:
+
 ```typescript
 {
   event_type: EventType,
@@ -915,6 +969,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 ```
 
 **Response**:
+
 ```typescript
 {
   event_id: string,
@@ -929,6 +984,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 ```
 
 **Behavior**:
+
 1. Validates payload against event schema
 2. Creates `notification_event` record (with `metadata.test_mode = true`)
 3. For each recipient × channel combination:
@@ -942,10 +998,12 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/test/history`
 
 **Query Parameters**:
+
 - `limit`: number (default: 20)
 - `offset`: number (default: 0)
 
 **Response**:
+
 ```typescript
 {
   tests: Array<{
@@ -972,22 +1030,24 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/recipients/search`
 
 **Query Parameters**:
+
 - `q`: string (search query for email/name)
 - `event_type`: EventType (optional, filter by subscribers)
 - `limit`: number (default: 20)
 
 **Response**:
+
 ```typescript
 {
   users: Array<{
-    id: string,
-    email: string,
-    name: string | null,
-    is_admin: boolean,
-    has_push_subscription: boolean,
-    has_phone: boolean,
-    is_subscribed_to_event?: boolean  // if event_type provided
-  }>
+    id: string;
+    email: string;
+    name: string | null;
+    is_admin: boolean;
+    has_push_subscription: boolean;
+    has_phone: boolean;
+    is_subscribed_to_event?: boolean; // if event_type provided
+  }>;
 }
 ```
 
@@ -1000,6 +1060,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 **Purpose**: Retry a failed delivery (increments attempts counter)
 
 **Response**:
+
 ```typescript
 {
   delivery_id: string,
@@ -1016,6 +1077,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 **Purpose**: Create a new delivery record and resend (useful for expired push subscriptions)
 
 **Response**:
+
 ```typescript
 {
   new_delivery_id: string,
@@ -1031,6 +1093,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/events`
 
 **Query Parameters**:
+
 - `event_type`: EventType (optional)
 - `event_source`: EventSource (optional)
 - `actor_user_id`: string (optional)
@@ -1042,6 +1105,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 - `offset`: number (default: 0)
 
 **Response**:
+
 ```typescript
 {
   events: Array<NotificationEvent>,
@@ -1054,6 +1118,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/events/[id]`
 
 **Response**:
+
 ```typescript
 {
   event: NotificationEvent,
@@ -1066,6 +1131,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/deliveries`
 
 **Query Parameters**:
+
 - `channel`: NotificationChannel (optional)
 - `status`: NotificationStatus (optional)
 - `event_type`: EventType (optional)
@@ -1077,6 +1143,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 - `offset`: number (default: 0)
 
 **Response**:
+
 ```typescript
 {
   deliveries: Array<NotificationDelivery & {
@@ -1092,6 +1159,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/deliveries/[id]`
 
 **Response**:
+
 ```typescript
 {
   delivery: NotificationDelivery,
@@ -1109,6 +1177,7 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 #### `GET /api/admin/notifications/export`
 
 **Query Parameters**:
+
 - Same as `/deliveries` or `/events`
 - `format`: 'csv' | 'json' (default: 'csv')
 - `include_columns`: string[] (optional, defaults to all)
@@ -1128,9 +1197,10 @@ export class NotificationAnalyticsService {
   /**
    * Get overview metrics
    */
-  async getOverview(timeframe: Timeframe = '7d'): Promise<AnalyticsOverview> {
-    const { data, error } = await fetch(`/api/admin/notifications/analytics/overview?timeframe=${timeframe}`)
-      .then(r => r.json());
+  async getOverview(timeframe: Timeframe = "7d"): Promise<AnalyticsOverview> {
+    const { data, error } = await fetch(
+      `/api/admin/notifications/analytics/overview?timeframe=${timeframe}`,
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data;
@@ -1139,9 +1209,12 @@ export class NotificationAnalyticsService {
   /**
    * Get channel performance metrics
    */
-  async getChannelPerformance(timeframe: Timeframe = '7d'): Promise<ChannelMetrics[]> {
-    const { data, error } = await fetch(`/api/admin/notifications/analytics/channels?timeframe=${timeframe}`)
-      .then(r => r.json());
+  async getChannelPerformance(
+    timeframe: Timeframe = "7d",
+  ): Promise<ChannelMetrics[]> {
+    const { data, error } = await fetch(
+      `/api/admin/notifications/analytics/channels?timeframe=${timeframe}`,
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data.channels;
@@ -1150,9 +1223,12 @@ export class NotificationAnalyticsService {
   /**
    * Get event type breakdown
    */
-  async getEventBreakdown(timeframe: Timeframe = '30d'): Promise<EventMetrics[]> {
-    const { data, error } = await fetch(`/api/admin/notifications/analytics/events?timeframe=${timeframe}`)
-      .then(r => r.json());
+  async getEventBreakdown(
+    timeframe: Timeframe = "30d",
+  ): Promise<EventMetrics[]> {
+    const { data, error } = await fetch(
+      `/api/admin/notifications/analytics/events?timeframe=${timeframe}`,
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data.events;
@@ -1161,9 +1237,10 @@ export class NotificationAnalyticsService {
   /**
    * Get delivery timeline
    */
-  async getTimeline(timeframe: Timeframe = '7d'): Promise<TimelineDataPoint[]> {
-    const { data, error } = await fetch(`/api/admin/notifications/analytics/timeline?timeframe=${timeframe}`)
-      .then(r => r.json());
+  async getTimeline(timeframe: Timeframe = "7d"): Promise<TimelineDataPoint[]> {
+    const { data, error } = await fetch(
+      `/api/admin/notifications/analytics/timeline?timeframe=${timeframe}`,
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data.timeline;
@@ -1172,9 +1249,13 @@ export class NotificationAnalyticsService {
   /**
    * Get recent failures
    */
-  async getFailures(timeframe: Timeframe = '24h', limit: number = 50): Promise<FailedDelivery[]> {
-    const { data, error } = await fetch(`/api/admin/notifications/analytics/failures?timeframe=${timeframe}&limit=${limit}`)
-      .then(r => r.json());
+  async getFailures(
+    timeframe: Timeframe = "24h",
+    limit: number = 50,
+  ): Promise<FailedDelivery[]> {
+    const { data, error } = await fetch(
+      `/api/admin/notifications/analytics/failures?timeframe=${timeframe}&limit=${limit}`,
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data.failures;
@@ -1184,8 +1265,9 @@ export class NotificationAnalyticsService {
    * Get active subscriptions
    */
   async getSubscriptions(): Promise<SubscriptionInfo[]> {
-    const { data, error } = await fetch('/api/admin/notifications/analytics/subscriptions')
-      .then(r => r.json());
+    const { data, error } = await fetch(
+      "/api/admin/notifications/analytics/subscriptions",
+    ).then((r) => r.json());
 
     if (error) throw error;
     return data.subscriptions;
@@ -1212,15 +1294,15 @@ export class NotificationTestService {
     recipient_user_ids: string[];
     channels: NotificationChannel[];
   }): Promise<TestNotificationResult> {
-    const response = await fetch('/api/admin/notifications/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...options, test_mode: true })
+    const response = await fetch("/api/admin/notifications/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...options, test_mode: true }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to send test notification');
+      throw new Error(error.message || "Failed to send test notification");
     }
 
     return response.json();
@@ -1229,11 +1311,16 @@ export class NotificationTestService {
   /**
    * Get test history
    */
-  async getHistory(limit: number = 20, offset: number = 0): Promise<TestHistoryResult> {
-    const response = await fetch(`/api/admin/notifications/test/history?limit=${limit}&offset=${offset}`);
+  async getHistory(
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<TestHistoryResult> {
+    const response = await fetch(
+      `/api/admin/notifications/test/history?limit=${limit}&offset=${offset}`,
+    );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch test history');
+      throw new Error("Failed to fetch test history");
     }
 
     return response.json();
@@ -1242,14 +1329,19 @@ export class NotificationTestService {
   /**
    * Search for recipients
    */
-  async searchRecipients(query: string, eventType?: EventType): Promise<RecipientSearchResult[]> {
+  async searchRecipients(
+    query: string,
+    eventType?: EventType,
+  ): Promise<RecipientSearchResult[]> {
     const params = new URLSearchParams({ q: query });
-    if (eventType) params.append('event_type', eventType);
+    if (eventType) params.append("event_type", eventType);
 
-    const response = await fetch(`/api/admin/notifications/recipients/search?${params}`);
+    const response = await fetch(
+      `/api/admin/notifications/recipients/search?${params}`,
+    );
 
     if (!response.ok) {
-      throw new Error('Failed to search recipients');
+      throw new Error("Failed to search recipients");
     }
 
     const data = await response.json();
@@ -1260,13 +1352,16 @@ export class NotificationTestService {
    * Retry failed delivery
    */
   async retryDelivery(deliveryId: string): Promise<void> {
-    const response = await fetch(`/api/admin/notifications/deliveries/${deliveryId}/retry`, {
-      method: 'POST'
-    });
+    const response = await fetch(
+      `/api/admin/notifications/deliveries/${deliveryId}/retry`,
+      {
+        method: "POST",
+      },
+    );
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to retry delivery');
+      throw new Error(error.message || "Failed to retry delivery");
     }
   }
 
@@ -1274,13 +1369,16 @@ export class NotificationTestService {
    * Resend notification (new delivery)
    */
   async resendDelivery(deliveryId: string): Promise<void> {
-    const response = await fetch(`/api/admin/notifications/deliveries/${deliveryId}/resend`, {
-      method: 'POST'
-    });
+    const response = await fetch(
+      `/api/admin/notifications/deliveries/${deliveryId}/resend`,
+      {
+        method: "POST",
+      },
+    );
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to resend delivery');
+      throw new Error(error.message || "Failed to resend delivery");
     }
   }
 }
@@ -1295,6 +1393,7 @@ export const notificationTestService = new NotificationTestService();
 ### No new tables required!
 
 All functionality uses existing tables:
+
 - `notification_events`
 - `notification_deliveries`
 - `notification_subscriptions`
@@ -1325,6 +1424,7 @@ WHERE status = 'failed';
 ### Metadata Additions
 
 **For test notifications**, add to `notification_events.metadata`:
+
 ```json
 {
   "test_mode": true,
@@ -1342,6 +1442,7 @@ WHERE status = 'failed';
 **Location**: `/apps/web/src/routes/admin/notifications/+page.svelte`
 
 **Structure**:
+
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -1469,6 +1570,7 @@ WHERE status = 'failed';
 **Location**: `/apps/web/src/routes/admin/notifications/test-bed/+page.svelte`
 
 **Structure**:
+
 ```svelte
 <script lang="ts">
   import { notificationTestService } from '$lib/services/notification-test.service';
@@ -1603,10 +1705,12 @@ WHERE status = 'failed';
 **Location**: `/apps/web/src/routes/admin/notifications/logs/+page.svelte`
 
 **Tabs**:
+
 - Event Log
 - Delivery Log
 
 **Features**:
+
 - Advanced filtering
 - Pagination
 - Export to CSV
@@ -1622,27 +1726,30 @@ WHERE status = 'failed';
 **All routes protected by**: `/apps/web/src/routes/admin/+layout.server.ts`
 
 ```typescript
-export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: LayoutServerLoad = async ({
+  locals: { safeGetSession, supabase },
+}) => {
   const { user } = await safeGetSession();
-  if (!user) throw redirect(303, '/auth/login');
+  if (!user) throw redirect(303, "/auth/login");
 
   const { data: dbUser } = await supabase
-    .from('users')
-    .select('is_admin')
-    .eq('id', user.id)
+    .from("users")
+    .select("is_admin")
+    .eq("id", user.id)
     .single();
 
-  if (!dbUser?.is_admin) throw redirect(303, '/');
+  if (!dbUser?.is_admin) throw redirect(303, "/");
 
   return { user };
 };
 ```
 
 **All API endpoints protected by**:
+
 ```typescript
 const { user } = await safeGetSession();
 if (!user?.is_admin) {
-  return ApiResponse.forbidden('Admin access required');
+  return ApiResponse.forbidden("Admin access required");
 }
 ```
 
@@ -1651,6 +1758,7 @@ if (!user?.is_admin) {
 ### B. Test Mode Isolation
 
 **Test notifications are flagged**:
+
 ```typescript
 // In notification_events.metadata
 {
@@ -1660,6 +1768,7 @@ if (!user?.is_admin) {
 ```
 
 **Filtering**:
+
 - Analytics can exclude test notifications
 - Logs can filter to show only test notifications
 - Test history only shows test notifications
@@ -1669,24 +1778,29 @@ if (!user?.is_admin) {
 ### C. Rate Limiting
 
 **Prevent abuse of test bed**:
+
 ```typescript
 // In /api/admin/notifications/test
 const MAX_RECIPIENTS_PER_TEST = 20;
 const MAX_TESTS_PER_HOUR = 50;
 
 if (recipient_user_ids.length > MAX_RECIPIENTS_PER_TEST) {
-  return ApiResponse.badRequest(`Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`);
+  return ApiResponse.badRequest(
+    `Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`,
+  );
 }
 
 // Check admin's test count in last hour
 const recentTests = await supabase
-  .from('notification_events')
-  .select('id', { count: 'exact' })
-  .eq('metadata->>test_sent_by', user.id)
-  .gte('created_at', new Date(Date.now() - 3600000).toISOString());
+  .from("notification_events")
+  .select("id", { count: "exact" })
+  .eq("metadata->>test_sent_by", user.id)
+  .gte("created_at", new Date(Date.now() - 3600000).toISOString());
 
 if (recentTests.count >= MAX_TESTS_PER_HOUR) {
-  return ApiResponse.badRequest(`Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`);
+  return ApiResponse.badRequest(
+    `Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`,
+  );
 }
 ```
 
@@ -1695,6 +1809,7 @@ if (recentTests.count >= MAX_TESTS_PER_HOUR) {
 ### D. Payload Validation
 
 **All payloads validated against Zod schemas**:
+
 ```typescript
 const eventDef = EVENT_REGISTRY[event_type];
 if (!eventDef) {
@@ -1715,6 +1830,7 @@ try {
 ### Phase 1: API Endpoints (Week 1)
 
 **Tasks**:
+
 - [ ] Create `/api/admin/notifications/analytics/` endpoints (6 endpoints)
 - [ ] Create `/api/admin/notifications/test` endpoint
 - [ ] Create `/api/admin/notifications/test/history` endpoint
@@ -1726,6 +1842,7 @@ try {
 - [ ] Create `/api/admin/notifications/export` endpoint
 
 **Files**:
+
 ```
 /apps/web/src/routes/api/admin/notifications/
 ├── analytics/
@@ -1752,6 +1869,7 @@ try {
 ```
 
 **Success Criteria**:
+
 - All endpoints return correct data
 - All endpoints have admin-only protection
 - Payload validation works
@@ -1762,12 +1880,14 @@ try {
 ### Phase 2: Services (Week 1-2)
 
 **Tasks**:
+
 - [ ] Create `notification-analytics.service.ts`
 - [ ] Create `notification-test.service.ts`
 - [ ] Add types to `notification.types.ts`
 - [ ] Write unit tests for services
 
 **Files**:
+
 ```
 /apps/web/src/lib/services/
 ├── notification-analytics.service.ts
@@ -1778,6 +1898,7 @@ try {
 ```
 
 **Success Criteria**:
+
 - Services properly typed
 - Error handling works
 - Unit tests pass
@@ -1787,6 +1908,7 @@ try {
 ### Phase 3: UI Components (Week 2-3)
 
 **Tasks**:
+
 - [ ] Create reusable components:
   - [ ] `MetricCard.svelte`
   - [ ] `TimeframeSelector.svelte`
@@ -1804,6 +1926,7 @@ try {
   - [ ] `TestHistoryTable.svelte`
 
 **Files**:
+
 ```
 /apps/web/src/lib/components/admin/notifications/
 ├── MetricCard.svelte
@@ -1823,6 +1946,7 @@ try {
 ```
 
 **Success Criteria**:
+
 - Components follow BuildOS design system
 - Svelte 5 runes syntax used
 - Accessible (ARIA labels, keyboard navigation)
@@ -1833,6 +1957,7 @@ try {
 ### Phase 4: Dashboard Page (Week 3)
 
 **Tasks**:
+
 - [ ] Create `/admin/notifications/+page.svelte`
 - [ ] Implement overview metrics
 - [ ] Implement channel performance section
@@ -1845,11 +1970,13 @@ try {
 - [ ] Add auto-refresh
 
 **File**:
+
 ```
 /apps/web/src/routes/admin/notifications/+page.svelte
 ```
 
 **Success Criteria**:
+
 - Page loads analytics data
 - All sections render correctly
 - Filters work
@@ -1862,6 +1989,7 @@ try {
 ### Phase 5: Test Bed Page (Week 4)
 
 **Tasks**:
+
 - [ ] Create `/admin/notifications/test-bed/+page.svelte`
 - [ ] Implement event type selection
 - [ ] Implement dynamic payload form
@@ -1874,11 +2002,13 @@ try {
 - [ ] Add confirmation modal
 
 **File**:
+
 ```
 /apps/web/src/routes/admin/notifications/test-bed/+page.svelte
 ```
 
 **Success Criteria**:
+
 - Can send test notifications
 - Payload validation works
 - Recipient search works
@@ -1892,6 +2022,7 @@ try {
 ### Phase 6: Logs Page (Week 5)
 
 **Tasks**:
+
 - [ ] Create `/admin/notifications/logs/+page.svelte`
 - [ ] Implement event log tab
 - [ ] Implement delivery log tab
@@ -1902,11 +2033,13 @@ try {
 - [ ] Add export functionality
 
 **File**:
+
 ```
 /apps/web/src/routes/admin/notifications/logs/+page.svelte
 ```
 
 **Success Criteria**:
+
 - Both tabs work
 - Filters work correctly
 - Pagination works
@@ -1919,12 +2052,14 @@ try {
 ### Phase 7: Navigation Integration (Week 5)
 
 **Tasks**:
+
 - [ ] Add "Notifications" card to main admin dashboard (`/admin/+page.svelte`)
 - [ ] Show notification metrics on main dashboard
 - [ ] Add navigation link in admin sidebar (if exists)
 - [ ] Add breadcrumbs to notification pages
 
 **Success Criteria**:
+
 - Notifications accessible from main admin dashboard
 - Navigation is intuitive
 - Breadcrumbs work
@@ -1934,6 +2069,7 @@ try {
 ### Phase 8: Testing & Polish (Week 6)
 
 **Tasks**:
+
 - [ ] Write integration tests
 - [ ] Write E2E tests (Playwright)
 - [ ] Test with real notification data
@@ -1945,6 +2081,7 @@ try {
 - [ ] Documentation
 
 **Success Criteria**:
+
 - All tests pass
 - Performance meets targets
 - Accessibility score > 95
@@ -1960,39 +2097,42 @@ try {
 ### A. Unit Tests
 
 **Services**:
+
 ```typescript
 // notification-analytics.service.test.ts
-describe('NotificationAnalyticsService', () => {
-  test('getOverview returns analytics data', async () => {
-    const overview = await notificationAnalyticsService.getOverview('7d');
-    expect(overview).toHaveProperty('total_sent');
-    expect(overview).toHaveProperty('delivery_success_rate');
+describe("NotificationAnalyticsService", () => {
+  test("getOverview returns analytics data", async () => {
+    const overview = await notificationAnalyticsService.getOverview("7d");
+    expect(overview).toHaveProperty("total_sent");
+    expect(overview).toHaveProperty("delivery_success_rate");
   });
 
-  test('getChannelPerformance returns channel metrics', async () => {
-    const metrics = await notificationAnalyticsService.getChannelPerformance('7d');
+  test("getChannelPerformance returns channel metrics", async () => {
+    const metrics =
+      await notificationAnalyticsService.getChannelPerformance("7d");
     expect(metrics).toBeInstanceOf(Array);
-    expect(metrics[0]).toHaveProperty('channel');
-    expect(metrics[0]).toHaveProperty('success_rate');
+    expect(metrics[0]).toHaveProperty("channel");
+    expect(metrics[0]).toHaveProperty("success_rate");
   });
 });
 ```
 
 **Components**:
+
 ```typescript
 // MetricCard.test.ts
-import { render } from '@testing-library/svelte';
-import MetricCard from './MetricCard.svelte';
+import { render } from "@testing-library/svelte";
+import MetricCard from "./MetricCard.svelte";
 
-test('renders metric value', () => {
+test("renders metric value", () => {
   const { getByText } = render(MetricCard, {
-    title: 'Total Sent',
+    title: "Total Sent",
     value: 1234,
-    trend: 12.5
+    trend: 12.5,
   });
 
-  expect(getByText('1234')).toBeInTheDocument();
-  expect(getByText('↑ 12.5%')).toBeInTheDocument();
+  expect(getByText("1234")).toBeInTheDocument();
+  expect(getByText("↑ 12.5%")).toBeInTheDocument();
 });
 ```
 
@@ -2001,26 +2141,33 @@ test('renders metric value', () => {
 ### B. Integration Tests
 
 **API Endpoints**:
+
 ```typescript
 // notification-analytics-api.test.ts
-describe('GET /api/admin/notifications/analytics/overview', () => {
-  test('returns 401 for non-authenticated users', async () => {
-    const response = await fetch('/api/admin/notifications/analytics/overview');
+describe("GET /api/admin/notifications/analytics/overview", () => {
+  test("returns 401 for non-authenticated users", async () => {
+    const response = await fetch("/api/admin/notifications/analytics/overview");
     expect(response.status).toBe(401);
   });
 
-  test('returns 403 for non-admin users', async () => {
-    const response = await authenticatedFetch('/api/admin/notifications/analytics/overview', regularUser);
+  test("returns 403 for non-admin users", async () => {
+    const response = await authenticatedFetch(
+      "/api/admin/notifications/analytics/overview",
+      regularUser,
+    );
     expect(response.status).toBe(403);
   });
 
-  test('returns analytics data for admin users', async () => {
-    const response = await authenticatedFetch('/api/admin/notifications/analytics/overview', adminUser);
+  test("returns analytics data for admin users", async () => {
+    const response = await authenticatedFetch(
+      "/api/admin/notifications/analytics/overview",
+      adminUser,
+    );
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data).toHaveProperty('total_sent');
-    expect(data).toHaveProperty('delivery_success_rate');
+    expect(data).toHaveProperty("total_sent");
+    expect(data).toHaveProperty("delivery_success_rate");
   });
 });
 ```
@@ -2030,45 +2177,46 @@ describe('GET /api/admin/notifications/analytics/overview', () => {
 ### C. E2E Tests
 
 **Playwright**:
+
 ```typescript
 // notification-dashboard.e2e.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('admin can view notification analytics', async ({ page }) => {
+test("admin can view notification analytics", async ({ page }) => {
   // Login as admin
-  await page.goto('/auth/login');
-  await page.fill('input[type="email"]', 'admin@build-os.com');
-  await page.fill('input[type="password"]', 'password');
+  await page.goto("/auth/login");
+  await page.fill('input[type="email"]', "admin@build-os.com");
+  await page.fill('input[type="password"]', "password");
   await page.click('button[type="submit"]');
 
   // Navigate to notifications dashboard
-  await page.goto('/admin/notifications');
+  await page.goto("/admin/notifications");
 
   // Check overview metrics are visible
-  await expect(page.locator('text=Total Sent (24h)')).toBeVisible();
-  await expect(page.locator('text=Delivery Success Rate')).toBeVisible();
+  await expect(page.locator("text=Total Sent (24h)")).toBeVisible();
+  await expect(page.locator("text=Delivery Success Rate")).toBeVisible();
 
   // Check chart is rendered
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator("canvas")).toBeVisible();
 
   // Check table is rendered
-  await expect(page.locator('table')).toBeVisible();
+  await expect(page.locator("table")).toBeVisible();
 });
 
-test('admin can send test notification', async ({ page }) => {
+test("admin can send test notification", async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/admin/notifications/test-bed');
+  await page.goto("/admin/notifications/test-bed");
 
   // Select event type
-  await page.selectOption('select[name="event_type"]', 'user.signup');
+  await page.selectOption('select[name="event_type"]', "user.signup");
 
   // Fill payload
-  await page.fill('input[name="user_email"]', 'test@example.com');
+  await page.fill('input[name="user_email"]', "test@example.com");
   await page.click('input[value="email"]'); // signup method
 
   // Select recipient
-  await page.fill('input[placeholder="Search users..."]', 'admin');
-  await page.click('text=admin@build-os.com');
+  await page.fill('input[placeholder="Search users..."]', "admin");
+  await page.click("text=admin@build-os.com");
 
   // Select channels
   await page.check('input[name="channel_push"]');
@@ -2081,7 +2229,7 @@ test('admin can send test notification', async ({ page }) => {
   await page.click('button:has-text("Send Test Notification")'); // in modal
 
   // Check success toast
-  await expect(page.locator('text=Test notification sent')).toBeVisible();
+  await expect(page.locator("text=Test notification sent")).toBeVisible();
 });
 ```
 
@@ -2090,14 +2238,17 @@ test('admin can send test notification', async ({ page }) => {
 ## 11. Code References
 
 **Notification System Design Spec**:
+
 - `docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md`
 
 **Existing Admin Infrastructure**:
+
 - `apps/web/src/routes/admin/+layout.server.ts` - Admin route protection
 - `apps/web/src/routes/admin/+page.svelte` - Main admin dashboard
 - `apps/web/src/routes/api/admin/analytics/` - Analytics endpoints pattern
 
 **Notification Infrastructure**:
+
 - `apps/web/supabase/migrations/20251006_notification_system_phase1.sql` - Database schema
 - `apps/worker/src/workers/notification/notificationWorker.ts` - Delivery worker
 - `apps/web/src/lib/services/notification-preferences.service.ts` - Preferences service
@@ -2105,6 +2256,7 @@ test('admin can send test notification', async ({ page }) => {
 - `packages/shared-types/src/notification.types.ts` - Type definitions
 
 **Relevant Database Tables**:
+
 - `notification_events` - Event log
 - `notification_deliveries` - Delivery tracking
 - `notification_subscriptions` - User subscriptions
@@ -2153,6 +2305,7 @@ This specification provides a comprehensive blueprint for building an **Admin No
 **Estimated Effort**: 120-160 hours total development time
 
 **Next Steps**:
+
 1. Review and approve specification
 2. Create GitHub issues/tickets for each phase
 3. Begin Phase 1 (API Endpoints)
@@ -2163,6 +2316,7 @@ This specification provides a comprehensive blueprint for building an **Admin No
 ## Related Documentation
 
 - [Extensible Notification System Design](/docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md)
+- [SMS Notification Channel Design](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md) ⭐ NEW
 - [Admin System Research](/thoughts/shared/research/2025-10-06_05-00-00_admin-routes-research.md)
 - [Notification Implementation Status](/thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md)
 - [User Management Research](/thoughts/shared/research/2025-10-06_05-00-00_user-admin-management-research.md)

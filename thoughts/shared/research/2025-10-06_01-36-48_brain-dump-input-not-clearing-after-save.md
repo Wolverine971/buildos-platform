@@ -38,6 +38,7 @@ User reports: "After I braindump and I save the braindump, the placeholder stays
 The brain dump input uses standard Svelte two-way binding with unidirectional store updates:
 
 **RecordingView.svelte** ([apps/web/src/lib/components/brain-dump/RecordingView.svelte:311-320](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/RecordingView.svelte#L311-L320))
+
 ```svelte
 <textarea
     bind:value={inputText}
@@ -50,6 +51,7 @@ The brain dump input uses standard Svelte two-way binding with unidirectional st
 ```
 
 **Data Flow**:
+
 1. User types → `bind:value` updates local state
 2. `on:input` triggers `handleTextInput()`
 3. Dispatches `textChange` event to parent
@@ -64,16 +66,17 @@ The brain dump input uses standard Svelte two-way binding with unidirectional st
 ```typescript
 interface UnifiedBrainDumpState {
   core: {
-    inputText: string;           // The actual input value
-    lastSavedContent: string;    // For unsaved changes detection
+    inputText: string; // The actual input value
+    lastSavedContent: string; // For unsaved changes detection
     currentBrainDumpId: string | null;
     // ...
-  }
+  };
   // ... other domains
 }
 ```
 
 **Multi-Brain Dump Mode** ([apps/web/src/lib/stores/brain-dump-v2.store.ts:139-146](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L139-L146))
+
 ```typescript
 interface UnifiedBrainDumpState {
   // Legacy fields (single brain dump mode)
@@ -116,6 +119,7 @@ When user clicks "Process" button:
 When user clicks "Start New Brain Dump":
 
 **SuccessView.svelte** ([apps/web/src/lib/components/brain-dump/SuccessView.svelte:189-198](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/SuccessView.svelte#L189-L198))
+
 ```svelte
 <Button on:click={handleStartNew}>
   Start New Brain Dump
@@ -125,57 +129,61 @@ When user clicks "Start New Brain Dump":
 ```typescript
 function handleStartNew(e: Event) {
   e.stopPropagation();
-  dispatch('startNew');  // ← Triggers event
+  dispatch("startNew"); // ← Triggers event
 }
 ```
 
 **BrainDumpModal.svelte** ([apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:1231-1235](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte#L1231-L1235))
+
 ```typescript
 function handleStartNew() {
-  brainDumpActions.resetForNewSession();  // ← Resets session
-  brainDumpActions.openModal();           // ← Opens modal
-  brainDumpActions.clearParseResults();   // ← Clears results
+  brainDumpActions.resetForNewSession(); // ← Resets session
+  brainDumpActions.openModal(); // ← Opens modal
+  brainDumpActions.clearParseResults(); // ← Clears results
 }
 ```
 
 **brain-dump-v2.store.ts** `resetForNewSession()` ([apps/web/src/lib/stores/brain-dump-v2.store.ts:1931-1949](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L1931-L1949))
+
 ```typescript
 resetForNewSession: () =>
   update((state) => {
-    const newState = createInitialState();  // ✅ Creates state with inputText: ''
+    const newState = createInitialState(); // ✅ Creates state with inputText: ''
     return {
       ...newState,
       ui: {
         ...newState.ui,
         modal: {
           ...newState.ui.modal,
-          isOpen: state.ui.modal.isOpen,     // Preserves modal open
-          currentView: 'project-selection'
-        }
+          isOpen: state.ui.modal.isOpen, // Preserves modal open
+          currentView: "project-selection",
+        },
       },
       persistence: {
         ...newState.persistence,
-        sessionId: crypto.randomUUID()
-      }
+        sessionId: crypto.randomUUID(),
+      },
     };
-  })
+  });
 ```
 
 **THE BUG**: `createInitialState()` ([apps/web/src/lib/stores/brain-dump-v2.store.ts:281-355](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L281-L355))
+
 ```typescript
 function createInitialState(): UnifiedBrainDumpState {
   return {
     core: {
-      inputText: '',  // ✅ Legacy field gets cleared
+      inputText: "", // ✅ Legacy field gets cleared
       // ...
     },
-    activeBrainDumps: new Map(),  // ❌ BUT this creates a NEW Map
+    activeBrainDumps: new Map(), // ❌ BUT this creates a NEW Map
     // ...
   };
 }
 ```
 
 **The Problem**:
+
 - In multi-brain dump mode, when modal reopens, it looks for the active brain dump in `activeBrainDumps` Map
 - If the old brain dump still exists there (which it does), it uses its `inputText`
 - `resetForNewSession()` creates a new empty Map, but **doesn't actually remove the old brain dump from the existing Map before replacing it**
@@ -185,8 +193,9 @@ function createInitialState(): UnifiedBrainDumpState {
 Let me trace the actual input value binding more carefully...
 
 **BrainDumpModal.svelte** ([apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:54](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte#L54))
+
 ```typescript
-let inputText = $derived(storeState?.core?.inputText ?? '');
+let inputText = $derived(storeState?.core?.inputText ?? "");
 ```
 
 **The REAL Bug**:
@@ -207,13 +216,13 @@ async function handleProjectSelect(event: CustomEvent) {
   // ... project selection logic
 
   // Check for existing draft
-  if (!MULTI_BRAINDUMP_ENABLED && project.id !== 'new') {
+  if (!MULTI_BRAINDUMP_ENABLED && project.id !== "new") {
     const draft = await brainDumpService.getDraft(project.id);
     if (draft?.data?.content) {
-      brainDumpActions.updateInputText(draft.data.content);  // ← LOADS DRAFT
+      brainDumpActions.updateInputText(draft.data.content); // ← LOADS DRAFT
       brainDumpActions.setSavedContent(
         draft.data.content,
-        draft.data.brainDumpId
+        draft.data.brainDumpId,
       );
     }
   }
@@ -221,6 +230,7 @@ async function handleProjectSelect(event: CustomEvent) {
 ```
 
 **HYPOTHESIS**: The bug might be:
+
 1. User processes brain dump for Project A with auto-accept
 2. Draft gets saved to database with status 'saved'
 3. User clicks "Start New Brain Dump"
@@ -237,11 +247,13 @@ Actually, looking at the code more carefully:
 **brain-dump-notification.bridge.ts** ([apps/web/src/lib/services/brain-dump-notification.bridge.ts:816-840](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/services/brain-dump-notification.bridge.ts#L816-L840))
 
 After successful auto-accept, the brain dump status is updated to 'saved', but:
+
 - ❌ The brain dump is NOT removed from `activeBrainDumps` Map
 - ❌ The `inputText` is NOT cleared
 
 **The Multi-Mode Bug**:
 In multi-brain dump mode:
+
 1. Brain dump completes with auto-accept → status becomes 'saved'
 2. Brain dump remains in `activeBrainDumps` Map with original `inputText`
 3. Success view is shown
@@ -253,6 +265,7 @@ In multi-brain dump mode:
 The store persists to `sessionStorage` with key `brain-dump-unified-state`. When the store is initialized, it loads from sessionStorage.
 
 **Potential Race Condition**:
+
 1. `resetForNewSession()` updates store to fresh state
 2. Store's persistence logic saves to sessionStorage
 3. But old state might still be in sessionStorage from before
@@ -268,18 +281,18 @@ Let me check the placeholder logic...
 
 ```typescript
 $: placeholderText = (() => {
-    if (isNewProject) {
-        return "What's on your mind? Share your thoughts, ideas, and tasks...";
-    }
+  if (isNewProject) {
+    return "What's on your mind? Share your thoughts, ideas, and tasks...";
+  }
 
-    if (displayedQuestions && displayedQuestions.length > 0) {
-        const questionsText = displayedQuestions
-            .map((q, i) => `${i + 1}. ${q.question}`)
-            .join('\n');
-        return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-    }
+  if (displayedQuestions && displayedQuestions.length > 0) {
+    const questionsText = displayedQuestions
+      .map((q, i) => `${i + 1}. ${q.question}`)
+      .join("\n");
+    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+  }
 
-    return `What's happening with ${selectedProjectName}?`;
+  return `What's happening with ${selectedProjectName}?`;
 })();
 ```
 
@@ -304,38 +317,47 @@ So my original analysis stands: the input text is not being cleared after proces
 ## Code References
 
 ### Critical Files
+
 - `apps/web/src/lib/stores/brain-dump-v2.store.ts:1931-1949` - `resetForNewSession()` function (doesn't clear activeBrainDumps properly in multi-mode)
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:1231-1235` - `handleStartNew()` (should clear completed brain dumps)
 - `apps/web/src/lib/services/brain-dump-notification.bridge.ts:816-840` - Auto-accept completion (should mark brain dump as completed and clear from active)
 - `apps/web/src/lib/stores/brain-dump-v2.store.ts:788-830` - `startBrainDump()` (adds to activeBrainDumps)
 
 ### Input Binding
+
 - `apps/web/src/lib/components/brain-dump/RecordingView.svelte:311-320` - Textarea with bind:value
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:54` - Input text derived from store
 
 ### Draft Management
+
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:1108-1189` - Project selection and draft loading
 - `apps/web/src/lib/stores/brain-dump-v2.store.ts:358-425` - SessionStorage persistence
 
 ## Architecture Insights
 
 ### State Management Pattern
+
 The brain dump system uses a **unified store** with two parallel state models:
+
 1. **Legacy fields** (`core.inputText`) - Single brain dump mode
 2. **Multi-brain dump Map** (`activeBrainDumps`) - Concurrent processing
 
 This dual-model creates complexity in cleanup logic.
 
 ### Svelte 5 Reactivity
+
 Uses `$derived` runes for computed values:
+
 ```typescript
-let inputText = $derived(storeState?.core?.inputText ?? '');
+let inputText = $derived(storeState?.core?.inputText ?? "");
 ```
 
 This is efficient but means the component reactively updates based on store changes.
 
 ### Auto-Accept Flow
+
 When auto-accept is enabled:
+
 1. Parse → Execute Operations → Update DB → Show Success
 2. Brain dump status becomes 'saved'
 3. **Missing step**: Clear input and remove from active brain dumps
@@ -372,7 +394,10 @@ resetForNewSession: () =>
 
     // Clear all completed brain dumps from activeBrainDumps
     state.activeBrainDumps.forEach((bd, id) => {
-      if (bd.processing.phase === 'success' || bd.processing.phase === 'complete') {
+      if (
+        bd.processing.phase === "success" ||
+        bd.processing.phase === "complete"
+      ) {
         state.activeBrainDumps.delete(id);
       }
     });
@@ -384,15 +409,15 @@ resetForNewSession: () =>
         modal: {
           ...newState.ui.modal,
           isOpen: state.ui.modal.isOpen,
-          currentView: 'project-selection'
-        }
+          currentView: "project-selection",
+        },
       },
       persistence: {
         ...newState.persistence,
-        sessionId: crypto.randomUUID()
-      }
+        sessionId: crypto.randomUUID(),
+      },
     };
-  })
+  });
 ```
 
 ### Option 3: Defensive Clear in handleStartNew
@@ -421,6 +446,7 @@ function handleStartNew() {
 ### Recommended Approach: Combination
 
 For maximum robustness:
+
 1. ✅ **Auto-complete on auto-accept success** (Option 1) - Proactive cleanup
 2. ✅ **Clear completed brain dumps in resetForNewSession** (Option 2) - Safety net
 3. ✅ **Filter draft loading** (Option 4) - Prevent old drafts from loading
@@ -428,17 +454,20 @@ For maximum robustness:
 ## Historical Context (from thoughts/)
 
 ### Previous Audits
+
 - **2025-09-30**: Comprehensive brain dump flow audit - No input clearing issues mentioned
 - **2025-09-30**: Complete refactoring (Phases 1-3) - Removed 1,128 lines of duplicate code
 - **2025-09-30**: Bug analysis covering 196 issues - No input clearing bugs documented
 
 ### Implementation History
+
 - **Phase 1**: Unified store pattern implementation
 - **Phase 2**: State structure flattening
 - **Phase 2.2**: Removed redundant UI state fields
 - **Phase 3**: Performance optimizations
 
 ### Conclusion from Historical Research
+
 This bug appears to be a **regression** or **edge case** not covered in the September 2025 refactoring. The multi-brain dump mode introduced concurrent processing capabilities but may not have fully addressed cleanup logic for auto-accepted brain dumps.
 
 ## Open Questions

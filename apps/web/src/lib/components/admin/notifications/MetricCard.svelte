@@ -22,14 +22,16 @@
 		suffix = ''
 	}: Props = $props();
 
-	let colorClasses = $derived({
-		blue: 'text-blue-600',
-		green: 'text-green-600',
-		red: 'text-red-600',
-		yellow: 'text-yellow-600',
-		purple: 'text-purple-600',
-		orange: 'text-orange-600'
-	}[color]);
+	let colorClasses = $derived(
+		{
+			blue: 'text-blue-600',
+			green: 'text-green-600',
+			red: 'text-red-600',
+			yellow: 'text-yellow-600',
+			purple: 'text-purple-600',
+			orange: 'text-orange-600'
+		}[color]
+	);
 
 	let formattedValue = $derived(
 		typeof value === 'number' ? new Intl.NumberFormat().format(value) : value

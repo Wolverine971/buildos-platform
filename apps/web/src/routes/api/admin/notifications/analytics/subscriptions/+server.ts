@@ -23,6 +23,9 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		return ApiResponse.success({ subscriptions: data || [] });
 	} catch (error) {
 		console.error('Error fetching notification subscription analytics:', error);
-		return ApiResponse.internalError(error, 'Failed to fetch notification subscription analytics');
+		return ApiResponse.internalError(
+			error,
+			'Failed to fetch notification subscription analytics'
+		);
 	}
 };

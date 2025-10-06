@@ -13,7 +13,8 @@
 		return new Intl.NumberFormat().format(num);
 	}
 
-	function formatPercentage(num: number): string {
+	function formatPercentage(num: number | null | undefined): string {
+		if (num == null) return '0.0%';
 		return `${num.toFixed(1)}%`;
 	}
 
@@ -25,9 +26,12 @@
 	}
 
 	function getEventTypeBadgeColor(eventType: string): string {
-		if (eventType.startsWith('user.')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-		if (eventType.startsWith('brief.')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-		if (eventType.startsWith('error.')) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+		if (eventType.startsWith('user.'))
+			return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+		if (eventType.startsWith('brief.'))
+			return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+		if (eventType.startsWith('error.'))
+			return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
 		return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
 	}
 </script>
@@ -89,7 +93,9 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody
+					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+				>
 					{#each data as event}
 						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -101,22 +107,36 @@
 									{formatEventType(event.event_type)}
 								</span>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"
+							>
 								{formatNumber(event.total_events)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatNumber(event.total_deliveries)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatNumber(event.unique_subscribers)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-								{event.avg_delivery_time_seconds.toFixed(2)}s
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
+								{event.avg_delivery_time_seconds != null
+									? `${event.avg_delivery_time_seconds.toFixed(2)}s`
+									: 'N/A'}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatPercentage(event.open_rate)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatPercentage(event.click_rate)}
 							</td>
 						</tr>

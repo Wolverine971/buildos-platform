@@ -27,6 +27,11 @@
 			]
 		},
 		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
+		},
+		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -103,11 +108,6 @@
 			"file": "src/lib/components/ui/RadioGroup.svelte",
 			"type": "component",
 			"components": ["Radio"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
@@ -241,10 +241,22 @@
 			"exports": ["LLMUsageService"]
 		},
 		{
+			"file": "src/lib/services/notification-analytics.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["NotificationAnalyticsService", "notificationAnalyticsService"]
+		},
+		{
 			"file": "src/lib/services/notification-preferences.service.ts",
 			"type": "service",
 			"components": [],
 			"exports": ["notificationPreferencesService"]
+		},
+		{
+			"file": "src/lib/services/notification-test.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["NotificationTestService", "notificationTestService"]
 		},
 		{
 			"file": "src/lib/services/onboarding-v2.service.ts",
@@ -530,12 +542,12 @@
 	"dependencies": {
 		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
 		"src/routes/projects/+page.svelte": ["src/lib/components/brain-dump/BrainDumpModal.svelte"],
-		"src/lib/components/notifications/NotificationModal.svelte": [
-			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
-		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
+		],
+		"src/lib/components/notifications/NotificationModal.svelte": [
+			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		]
 	},
 	"unusedComponents": [

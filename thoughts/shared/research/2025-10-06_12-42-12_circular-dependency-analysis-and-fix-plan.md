@@ -5,7 +5,15 @@ git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
 topic: "Circular Dependency Analysis and Fix Plan"
-tags: [research, circular-dependencies, architecture, refactoring, project-store, realtime-service]
+tags:
+  [
+    research,
+    circular-dependencies,
+    architecture,
+    refactoring,
+    project-store,
+    realtime-service,
+  ]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (Anthropic)
@@ -24,6 +32,7 @@ last_updated_by: Claude (Anthropic)
 Investigate the circular dependencies mentioned in the comprehensive audit (2025-10-05_00-00-00_buildos-web-comprehensive-audit.md) and create a detailed plan to fix them.
 
 The audit mentioned:
+
 - "4 files with workarounds (dynamic imports)"
 - "Circular Dependencies: Fragile module loading"
 - Priority 7: "Resolve circular dependencies" (Medium impact, Low effort)
@@ -35,6 +44,7 @@ The audit mentioned:
 **Root Cause**: The store needs to notify the real-time service about local optimistic updates to prevent duplicate notifications, while the service needs to update the store when database changes arrive via Supabase real-time subscriptions. This creates a bidirectional dependency.
 
 **Impact**:
+
 - **Current Risk**: Low - The dynamic import workaround in `brain-dump-navigation.ts` prevents module loading issues
 - **Architecture Smell**: Medium - Indicates tight coupling between store and service layers
 - **Maintainability**: Medium - New developers may not understand the workaround pattern
@@ -59,6 +69,7 @@ project.store.ts
 ```
 
 **Files Involved**:
+
 - `/apps/web/src/lib/stores/project.store.ts` - Project state management
 - `/apps/web/src/lib/services/realtimeProject.service.ts` - Real-time database sync
 - `/apps/web/src/lib/utils/brain-dump-navigation.ts` - Workaround with dynamic import
@@ -120,19 +131,24 @@ static async initialize(projectId: string, supabaseClient: SupabaseClient): Prom
  * Check if real-time sync is active for a project
  * This checks if RealtimeProjectService is initialized and connected
  */
-export async function isRealTimeSyncActive(projectId: string): Promise<boolean> {
-    try {
-        // Dynamic import to avoid circular dependencies
-        const { RealtimeProjectService } = await import('$lib/services/realtimeProject.service');
-        return RealtimeProjectService.isInitialized();
-    } catch (error) {
-        console.warn('Could not check real-time sync status:', error);
-        return false;
-    }
+export async function isRealTimeSyncActive(
+  projectId: string,
+): Promise<boolean> {
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { RealtimeProjectService } = await import(
+      "$lib/services/realtimeProject.service"
+    );
+    return RealtimeProjectService.isInitialized();
+  } catch (error) {
+    console.warn("Could not check real-time sync status:", error);
+    return false;
+  }
 }
 ```
 
 **Why This Workaround Exists**:
+
 - `brain-dump-navigation.ts` is a utility that needs to check real-time sync status
 - It's likely imported by the store or service (or transitively)
 - Using dynamic `import()` breaks the circular chain by making the dependency asynchronous
@@ -171,13 +187,13 @@ The research found **17 additional files** using dynamic imports, but these are 
 
 ### Solution Comparison Matrix
 
-| Solution | Effort | Risk | Maintainability | Testability | Architectural Cleanliness |
-|----------|--------|------|-----------------|-------------|---------------------------|
-| **Option 1: Callbacks** | Low | Low | Medium | Medium | Low |
-| **Option 2: Shared State Module** | Low | Low | Medium | Medium | Medium |
-| **Option 3: Event Bus** ✅ | Medium | Low | High | High | High |
-| **Option 4: Dependency Injection** | High | Medium | High | High | High |
-| **Option 5: Accept Dynamic Import** | None | Low | Low | Low | Low |
+| Solution                            | Effort | Risk   | Maintainability | Testability | Architectural Cleanliness |
+| ----------------------------------- | ------ | ------ | --------------- | ----------- | ------------------------- |
+| **Option 1: Callbacks**             | Low    | Low    | Medium          | Medium      | Low                       |
+| **Option 2: Shared State Module**   | Low    | Low    | Medium          | Medium      | Medium                    |
+| **Option 3: Event Bus** ✅          | Medium | Low    | High            | High        | High                      |
+| **Option 4: Dependency Injection**  | High   | Medium | High            | High        | High                      |
+| **Option 5: Accept Dynamic Import** | None   | Low    | Low             | Low         | Low                       |
 
 **Recommended: Option 3 (Event Bus Pattern)** - Best balance of effort, maintainability, and architectural cleanliness.
 
@@ -195,25 +211,25 @@ The research found **17 additional files** using dynamic imports, but these are 
 // apps/web/src/lib/services/realtimeProject.service.ts
 
 export class RealtimeProjectService {
-    private static onLocalUpdateCallback?: (entityId: string) => void;
+  private static onLocalUpdateCallback?: (entityId: string) => void;
 
-    static initialize(
-        projectId: string,
-        supabaseClient: SupabaseClient,
-        onLocalUpdate?: (entityId: string) => void
-    ): Promise<void> {
-        this.onLocalUpdateCallback = onLocalUpdate;
-        // ... rest of initialization
-    }
+  static initialize(
+    projectId: string,
+    supabaseClient: SupabaseClient,
+    onLocalUpdate?: (entityId: string) => void,
+  ): Promise<void> {
+    this.onLocalUpdateCallback = onLocalUpdate;
+    // ... rest of initialization
+  }
 
-    static trackLocalUpdate(entityId: string): void {
-        this.state.recentLocalUpdates.add(entityId);
-        setTimeout(() => {
-            this.state.recentLocalUpdates.delete(entityId);
-        }, 3000);
-    }
+  static trackLocalUpdate(entityId: string): void {
+    this.state.recentLocalUpdates.add(entityId);
+    setTimeout(() => {
+      this.state.recentLocalUpdates.delete(entityId);
+    }, 3000);
+  }
 
-    // Store can still call this method, but service no longer needs store import
+  // Store can still call this method, but service no longer needs store import
 }
 ```
 
@@ -227,20 +243,20 @@ export class RealtimeProjectService {
 
 // Create a local tracker instead
 class ProjectStoreV2 {
-    private realtimeTracker?: (entityId: string) => void;
+  private realtimeTracker?: (entityId: string) => void;
 
-    setRealtimeTracker(tracker: (entityId: string) => void): void {
-        this.realtimeTracker = tracker;
-    }
+  setRealtimeTracker(tracker: (entityId: string) => void): void {
+    this.realtimeTracker = tracker;
+  }
 
-    async createTaskOptimistically(taskData: any): Promise<void> {
-        const tempId = `temp_${Date.now()}`;
+  async createTaskOptimistically(taskData: any): Promise<void> {
+    const tempId = `temp_${Date.now()}`;
 
-        // Use callback instead of direct service call
-        this.realtimeTracker?.(tempId);
+    // Use callback instead of direct service call
+    this.realtimeTracker?.(tempId);
 
-        // ... rest of method
-    }
+    // ... rest of method
+  }
 }
 ```
 
@@ -249,29 +265,29 @@ class ProjectStoreV2 {
 ```typescript
 // apps/web/src/routes/projects/[id]/+page.svelte
 
-import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
-import { projectStoreV2 } from '$lib/stores/project.store';
+import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
+import { projectStoreV2 } from "$lib/stores/project.store";
 
 $effect(() => {
-    // Set up bidirectional communication via callbacks
-    projectStoreV2.setRealtimeTracker((id) => {
-        RealtimeProjectService.trackLocalUpdate(id);
-    });
+  // Set up bidirectional communication via callbacks
+  projectStoreV2.setRealtimeTracker((id) => {
+    RealtimeProjectService.trackLocalUpdate(id);
+  });
 
-    RealtimeProjectService.initialize(
-        projectId,
-        supabase,
-        (id) => projectStoreV2.updateStoreState(id)
-    );
+  RealtimeProjectService.initialize(projectId, supabase, (id) =>
+    projectStoreV2.updateStoreState(id),
+  );
 });
 ```
 
 **Pros**:
+
 - ✅ Breaks circular dependency
 - ✅ Low implementation effort
 - ✅ No new abstractions to learn
 
 **Cons**:
+
 - ❌ Still tightly coupled (just moved the coupling)
 - ❌ Callback hell if more interactions are needed
 - ❌ Doesn't improve testability much
@@ -297,37 +313,37 @@ $effect(() => {
  * This module breaks the circular dependency between store and service
  */
 class LocalUpdateTracker {
-    private recentUpdates = new Set<string>();
-    private timeouts = new Map<string, NodeJS.Timeout>();
+  private recentUpdates = new Set<string>();
+  private timeouts = new Map<string, NodeJS.Timeout>();
 
-    track(entityId: string, ttl: number = 3000): void {
-        this.recentUpdates.add(entityId);
+  track(entityId: string, ttl: number = 3000): void {
+    this.recentUpdates.add(entityId);
 
-        // Clear any existing timeout
-        const existingTimeout = this.timeouts.get(entityId);
-        if (existingTimeout) {
-            clearTimeout(existingTimeout);
-        }
-
-        // Set new timeout
-        const timeout = setTimeout(() => {
-            this.recentUpdates.delete(entityId);
-            this.timeouts.delete(entityId);
-        }, ttl);
-
-        this.timeouts.set(entityId, timeout);
+    // Clear any existing timeout
+    const existingTimeout = this.timeouts.get(entityId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
     }
 
-    isTracked(entityId: string): boolean {
-        return this.recentUpdates.has(entityId);
-    }
+    // Set new timeout
+    const timeout = setTimeout(() => {
+      this.recentUpdates.delete(entityId);
+      this.timeouts.delete(entityId);
+    }, ttl);
 
-    clear(): void {
-        // Clear all timeouts to prevent memory leaks
-        this.timeouts.forEach(timeout => clearTimeout(timeout));
-        this.timeouts.clear();
-        this.recentUpdates.clear();
-    }
+    this.timeouts.set(entityId, timeout);
+  }
+
+  isTracked(entityId: string): boolean {
+    return this.recentUpdates.has(entityId);
+  }
+
+  clear(): void {
+    // Clear all timeouts to prevent memory leaks
+    this.timeouts.forEach((timeout) => clearTimeout(timeout));
+    this.timeouts.clear();
+    this.recentUpdates.clear();
+  }
 }
 
 // Singleton instance
@@ -341,17 +357,17 @@ export const localUpdateTracker = new LocalUpdateTracker();
 
 // ❌ Remove: import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 // ✅ Add:
-import { localUpdateTracker } from '$lib/utils/local-update-tracker';
+import { localUpdateTracker } from "$lib/utils/local-update-tracker";
 
 class ProjectStoreV2 {
-    async createTaskOptimistically(taskData: any): Promise<void> {
-        const tempId = `temp_${Date.now()}`;
+  async createTaskOptimistically(taskData: any): Promise<void> {
+    const tempId = `temp_${Date.now()}`;
 
-        // Track via shared module instead of service
-        localUpdateTracker.track(tempId);
+    // Track via shared module instead of service
+    localUpdateTracker.track(tempId);
 
-        // ... rest of method
-    }
+    // ... rest of method
+  }
 }
 ```
 
@@ -360,21 +376,21 @@ class ProjectStoreV2 {
 
 // ❌ Remove: import { projectStoreV2 } from '$lib/stores/project.store';
 // Keep the import but only use for updates, not for tracking
-import { localUpdateTracker } from '$lib/utils/local-update-tracker';
+import { localUpdateTracker } from "$lib/utils/local-update-tracker";
 
 export class RealtimeProjectService {
-    private static handleDatabaseChange(change: any): void {
-        const entityId = change.new.id;
+  private static handleDatabaseChange(change: any): void {
+    const entityId = change.new.id;
 
-        // Check if this was a recent local update
-        if (localUpdateTracker.isTracked(entityId)) {
-            console.log('Skipping duplicate real-time update for', entityId);
-            return;
-        }
-
-        // Update the store with the change
-        projectStoreV2.updateStoreState(change);
+    // Check if this was a recent local update
+    if (localUpdateTracker.isTracked(entityId)) {
+      console.log("Skipping duplicate real-time update for", entityId);
+      return;
     }
+
+    // Update the store with the change
+    projectStoreV2.updateStoreState(change);
+  }
 }
 ```
 
@@ -384,15 +400,16 @@ export class RealtimeProjectService {
 // apps/web/src/lib/utils/brain-dump-navigation.ts
 
 // Can now use regular import instead of dynamic import!
-import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
+import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
 
 export function isRealTimeSyncActive(projectId: string): boolean {
-    // No more async/dynamic import needed
-    return RealtimeProjectService.isInitialized();
+  // No more async/dynamic import needed
+  return RealtimeProjectService.isInitialized();
 }
 ```
 
 **Pros**:
+
 - ✅ Completely breaks circular dependency
 - ✅ Shared concern is properly isolated
 - ✅ Fixes memory leak (clears timeouts properly)
@@ -400,6 +417,7 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 - ✅ Single Responsibility Principle
 
 **Cons**:
+
 - ❌ Introduces another module to maintain
 - ❌ Service still imports store for updates
 
@@ -422,41 +440,41 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 type EventCallback<T = any> = (data: T) => void;
 
 class EventBus {
-    private listeners = new Map<string, Set<EventCallback>>();
+  private listeners = new Map<string, Set<EventCallback>>();
 
-    on<T = any>(event: string, callback: EventCallback<T>): () => void {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, new Set());
+  on<T = any>(event: string, callback: EventCallback<T>): () => void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+
+    // Return unsubscribe function
+    return () => this.off(event, callback);
+  }
+
+  off(event: string, callback: EventCallback): void {
+    const callbacks = this.listeners.get(event);
+    if (callbacks) {
+      callbacks.delete(callback);
+    }
+  }
+
+  emit<T = any>(event: string, data?: T): void {
+    const callbacks = this.listeners.get(event);
+    if (callbacks) {
+      callbacks.forEach((callback) => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event listener for "${event}":`, error);
         }
-        this.listeners.get(event)!.add(callback);
-
-        // Return unsubscribe function
-        return () => this.off(event, callback);
+      });
     }
+  }
 
-    off(event: string, callback: EventCallback): void {
-        const callbacks = this.listeners.get(event);
-        if (callbacks) {
-            callbacks.delete(callback);
-        }
-    }
-
-    emit<T = any>(event: string, data?: T): void {
-        const callbacks = this.listeners.get(event);
-        if (callbacks) {
-            callbacks.forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error(`Error in event listener for "${event}":`, error);
-                }
-            });
-        }
-    }
-
-    clear(): void {
-        this.listeners.clear();
-    }
+  clear(): void {
+    this.listeners.clear();
+  }
 }
 
 // Singleton instance
@@ -464,9 +482,9 @@ export const eventBus = new EventBus();
 
 // Type-safe event names
 export const PROJECT_EVENTS = {
-    LOCAL_UPDATE: 'project:local-update',
-    REALTIME_CHANGE: 'project:realtime-change',
-    SYNC_STATUS_CHANGED: 'project:sync-status-changed'
+  LOCAL_UPDATE: "project:local-update",
+  REALTIME_CHANGE: "project:realtime-change",
+  SYNC_STATUS_CHANGED: "project:sync-status-changed",
 } as const;
 ```
 
@@ -477,21 +495,21 @@ export const PROJECT_EVENTS = {
 
 // ❌ Remove: import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 // ✅ Add:
-import { eventBus, PROJECT_EVENTS } from '$lib/utils/event-bus';
+import { eventBus, PROJECT_EVENTS } from "$lib/utils/event-bus";
 
 class ProjectStoreV2 {
-    async createTaskOptimistically(taskData: any): Promise<void> {
-        const tempId = `temp_${Date.now()}`;
+  async createTaskOptimistically(taskData: any): Promise<void> {
+    const tempId = `temp_${Date.now()}`;
 
-        // Emit event instead of calling service directly
-        eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: tempId });
+    // Emit event instead of calling service directly
+    eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: tempId });
 
-        // ... rest of method
+    // ... rest of method
 
-        if (result.data) {
-            eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: result.id });
-        }
+    if (result.data) {
+      eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: result.id });
     }
+  }
 }
 ```
 
@@ -556,24 +574,24 @@ export class RealtimeProjectService {
 // apps/web/src/lib/stores/project.store.ts
 
 class ProjectStoreV2 {
-    private unsubscribeRealtimeChanges?: () => void;
+  private unsubscribeRealtimeChanges?: () => void;
 
-    initialize(): void {
-        // Listen for real-time changes
-        this.unsubscribeRealtimeChanges = eventBus.on(
-            PROJECT_EVENTS.REALTIME_CHANGE,
-            (change) => this.handleRealtimeChange(change)
-        );
-    }
+  initialize(): void {
+    // Listen for real-time changes
+    this.unsubscribeRealtimeChanges = eventBus.on(
+      PROJECT_EVENTS.REALTIME_CHANGE,
+      (change) => this.handleRealtimeChange(change),
+    );
+  }
 
-    private handleRealtimeChange(change: any): void {
-        // Update store state based on real-time change
-        this.updateStoreState(change);
-    }
+  private handleRealtimeChange(change: any): void {
+    // Update store state based on real-time change
+    this.updateStoreState(change);
+  }
 
-    cleanup(): void {
-        this.unsubscribeRealtimeChanges?.();
-    }
+  cleanup(): void {
+    this.unsubscribeRealtimeChanges?.();
+  }
 }
 ```
 
@@ -583,14 +601,15 @@ class ProjectStoreV2 {
 // apps/web/src/lib/utils/brain-dump-navigation.ts
 
 // Can now use regular import!
-import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
+import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
 
 export function isRealTimeSyncActive(projectId: string): boolean {
-    return RealtimeProjectService.isInitialized();
+  return RealtimeProjectService.isInitialized();
 }
 ```
 
 **Pros**:
+
 - ✅ Complete decoupling - no imports between store and service
 - ✅ Type-safe event names
 - ✅ Easy to test (mock event bus)
@@ -600,6 +619,7 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 - ✅ Memory leak prevention (unsubscribe functions)
 
 **Cons**:
+
 - ❌ Slightly more code
 - ❌ Events are harder to trace than direct calls (need good logging)
 - ❌ Requires updating all 6 call sites in the store
@@ -619,25 +639,25 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 // apps/web/src/lib/interfaces/local-update-tracker.interface.ts
 
 export interface ILocalUpdateTracker {
-    track(entityId: string): void;
-    isTracked(entityId: string): boolean;
+  track(entityId: string): void;
+  isTracked(entityId: string): boolean;
 }
 
 // apps/web/src/lib/services/realtimeProject.service.ts
 
 export class RealtimeProjectService implements ILocalUpdateTracker {
-    // ... implements interface
+  // ... implements interface
 }
 
 // apps/web/src/lib/stores/project.store.ts
 
 class ProjectStoreV2 {
-    constructor(private localUpdateTracker: ILocalUpdateTracker) {}
+  constructor(private localUpdateTracker: ILocalUpdateTracker) {}
 
-    async createTaskOptimistically(taskData: any): Promise<void> {
-        // Use injected dependency
-        this.localUpdateTracker.track(tempId);
-    }
+  async createTaskOptimistically(taskData: any): Promise<void> {
+    // Use injected dependency
+    this.localUpdateTracker.track(tempId);
+  }
 }
 
 // Wire up with DI container
@@ -646,11 +666,13 @@ export const projectStoreV2 = new ProjectStoreV2(tracker);
 ```
 
 **Pros**:
+
 - ✅ Excellent for testing (inject mocks)
 - ✅ Follows SOLID principles
 - ✅ Scalable architecture
 
 **Cons**:
+
 - ❌ High effort - requires refactoring store to class-based with DI
 - ❌ Overkill for a single circular dependency
 - ❌ Requires DI container or manual wiring
@@ -665,17 +687,20 @@ export const projectStoreV2 = new ProjectStoreV2(tracker);
 **Approach**: Accept the current workaround as a pragmatic solution.
 
 **Rationale**:
+
 - The circular dependency is contained to 2 files
 - Dynamic import workaround is working
 - Only 1 location needs the workaround
 - Refactoring has opportunity cost
 
 **Pros**:
+
 - ✅ Zero effort
 - ✅ No risk of breaking changes
 - ✅ Current solution works
 
 **Cons**:
+
 - ❌ Technical debt remains
 - ❌ Architectural smell persists
 - ❌ May confuse new developers
@@ -743,33 +768,33 @@ export const projectStoreV2 = new ProjectStoreV2(tracker);
 
 ```typescript
 // Example test for event bus
-describe('EventBus', () => {
-    it('should emit and receive events', () => {
-        const callback = vi.fn();
-        eventBus.on('test-event', callback);
-        eventBus.emit('test-event', { data: 'test' });
-        expect(callback).toHaveBeenCalledWith({ data: 'test' });
-    });
+describe("EventBus", () => {
+  it("should emit and receive events", () => {
+    const callback = vi.fn();
+    eventBus.on("test-event", callback);
+    eventBus.emit("test-event", { data: "test" });
+    expect(callback).toHaveBeenCalledWith({ data: "test" });
+  });
 
-    it('should unsubscribe', () => {
-        const callback = vi.fn();
-        const unsubscribe = eventBus.on('test-event', callback);
-        unsubscribe();
-        eventBus.emit('test-event', { data: 'test' });
-        expect(callback).not.toHaveBeenCalled();
-    });
+  it("should unsubscribe", () => {
+    const callback = vi.fn();
+    const unsubscribe = eventBus.on("test-event", callback);
+    unsubscribe();
+    eventBus.emit("test-event", { data: "test" });
+    expect(callback).not.toHaveBeenCalled();
+  });
 });
 
 // Example test for store (now testable!)
-describe('ProjectStoreV2', () => {
-    it('should emit local update event on optimistic create', () => {
-        const emitSpy = vi.spyOn(eventBus, 'emit');
-        store.createTaskOptimistically({ name: 'Test' });
-        expect(emitSpy).toHaveBeenCalledWith(
-            PROJECT_EVENTS.LOCAL_UPDATE,
-            expect.objectContaining({ entityId: expect.stringContaining('temp_') })
-        );
-    });
+describe("ProjectStoreV2", () => {
+  it("should emit local update event on optimistic create", () => {
+    const emitSpy = vi.spyOn(eventBus, "emit");
+    store.createTaskOptimistically({ name: "Test" });
+    expect(emitSpy).toHaveBeenCalledWith(
+      PROJECT_EVENTS.LOCAL_UPDATE,
+      expect.objectContaining({ entityId: expect.stringContaining("temp_") }),
+    );
+  });
 });
 ```
 
@@ -808,6 +833,7 @@ This circular dependency emerged from a sophisticated UX pattern:
 6. **Store Update** → Only update UI if it's from another source
 
 **The Problem**: Steps 1 and 5 create a cycle:
+
 - Store needs to tell Service about local updates (step 1 → 5)
 - Service needs to update Store with remote changes (step 5 → 6)
 
@@ -824,12 +850,14 @@ This circular dependency emerged from a sophisticated UX pattern:
 The Event Bus is essentially an implementation of the Observer pattern (pub/sub). This is a well-established solution for decoupling in software architecture.
 
 **Benefits over direct calls**:
+
 - Loose coupling
 - Easy to add/remove listeners
 - No compile-time dependencies
 - Clear event contracts
 
 **Trade-offs**:
+
 - Slightly harder to trace execution flow
 - Requires good logging/debugging tools
 - Need to document event contracts
@@ -874,6 +902,7 @@ The circular dependency between `project.store.ts` and `realtimeProject.service.
 **Implementation Effort**: 6-7 hours of focused work with low risk of breaking changes.
 
 **Benefits**:
+
 - ✅ Eliminates circular dependency
 - ✅ Improves testability
 - ✅ Better separation of concerns

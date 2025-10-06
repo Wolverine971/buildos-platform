@@ -35,7 +35,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		const timeframe = (url.searchParams.get('timeframe') || '7d') as Timeframe;
-		const granularity = getGranularity(timeframe, url.searchParams.get('granularity') || undefined);
+		const granularity = getGranularity(
+			timeframe,
+			url.searchParams.get('granularity') || undefined
+		);
 		const interval = getTimeframeInterval(timeframe);
 
 		const { data, error } = await supabase.rpc('get_notification_delivery_timeline', {

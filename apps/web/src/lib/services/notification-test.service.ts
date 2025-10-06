@@ -95,10 +95,7 @@ export class NotificationTestService {
 	/**
 	 * Search for recipients
 	 */
-	async searchRecipients(
-		query: string,
-		eventType?: EventType
-	): Promise<RecipientSearchResult[]> {
+	async searchRecipients(query: string, eventType?: EventType): Promise<RecipientSearchResult[]> {
 		const params = new URLSearchParams({ q: query });
 		if (eventType) params.append('event_type', eventType);
 

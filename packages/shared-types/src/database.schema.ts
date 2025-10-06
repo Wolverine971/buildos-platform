@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-06T05:19:10.923Z
+// Generated on: 2025-10-06T20:09:41.981Z
 
 export type Json =
   | string
@@ -922,6 +922,7 @@ export type DatabaseSchema = {
     message_content: string;
     metadata: Json | null;
     next_retry_at: string | null;
+    notification_delivery_id: string | null;
     phone_number: string;
     priority: string;
     project_id: string | null;

@@ -17,6 +17,7 @@ related:
 Users report that when they pause while speaking during voice recording, previously spoken content is sometimes lost. Only the speech after the last pause is retained.
 
 **User Experience**:
+
 - User speaks: "I need to create a project"
 - User pauses (silence)
 - User continues: "and add some tasks"
@@ -32,21 +33,21 @@ The `onresult` event handler for SpeechRecognition **ONLY processes results from
 
 ```typescript
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-    let finalText = '';
-    let interimText = '';
+  let finalText = "";
+  let interimText = "";
 
-    // Process only new results for better performance
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-            finalText += transcript + ' ';
-        } else {
-            interimText += transcript;
-        }
+  // Process only new results for better performance
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const transcript = event.results[i][0].transcript;
+    if (event.results[i].isFinal) {
+      finalText += transcript + " ";
+    } else {
+      interimText += transcript;
     }
+  }
 
-    const combinedText = (finalText + interimText).trim();
-    liveTranscript.set(combinedText);  // ⚠️ OVERWRITES previous content
+  const combinedText = (finalText + interimText).trim();
+  liveTranscript.set(combinedText); // ⚠️ OVERWRITES previous content
 };
 ```
 
@@ -58,14 +59,14 @@ When SpeechRecognition detects silence or reaches its internal timeout, it fires
 
 ```typescript
 recognition.onend = () => {
-    // Auto-restart if still recording (improves reliability)
-    if (get(isRecording) && recognition) {
-        try {
-            recognition.start();
-        } catch (error) {
-            console.warn('[SpeechRecognition] Failed to restart:', error);
-        }
+  // Auto-restart if still recording (improves reliability)
+  if (get(isRecording) && recognition) {
+    try {
+      recognition.start();
+    } catch (error) {
+      console.warn("[SpeechRecognition] Failed to restart:", error);
     }
+  }
 };
 ```
 
@@ -107,11 +108,11 @@ The system has a fallback mechanism in `voiceRecording.service.ts:154-159`:
 
 ```typescript
 const shouldTranscribeAudio =
-    audioBlob &&
-    audioBlob.size > 1000 && // Minimum size to avoid empty recordings
-    (!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
-        !capturedLiveTranscript || // No live transcription captured
-        capturedLiveTranscript.length < 10); // Very short live transcription
+  audioBlob &&
+  audioBlob.size > 1000 && // Minimum size to avoid empty recordings
+  (!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
+    !capturedLiveTranscript || // No live transcription captured
+    capturedLiveTranscript.length < 10); // Very short live transcription
 ```
 
 **This helps iOS users** (who don't have live transcription) but doesn't solve the problem for desktop Chrome/Safari users who rely on live transcription.
@@ -121,6 +122,7 @@ const shouldTranscribeAudio =
 ### SpeechRecognition Event Flow
 
 **Normal Flow (No Pause)**:
+
 ```
 start() → onstart → onaudiostart → onsoundstart → onspeechstart
          → onresult (interim) → onresult (interim) → onresult (final)
@@ -128,6 +130,7 @@ start() → onstart → onaudiostart → onsoundstart → onspeechstart
 ```
 
 **With Auto-Restart (Pause)**:
+
 ```
 start() → onstart → onresult (final: "part 1") → onend
          → start() → onstart → onresult (final: "part 2") → onend
@@ -138,6 +141,7 @@ start() → onstart → onresult (final: "part 1") → onend
 ### The event.results Array
 
 According to Web Speech API spec:
+
 - `event.results` is a **SpeechRecognitionResultList** containing results from the **CURRENT session**
 - `event.resultIndex` is the index where new results start (to avoid reprocessing)
 - When recognition restarts, you get a **NEW** `event.results` array that **DOES NOT** include previous session results
@@ -158,6 +162,7 @@ private finalTranscriptSinceLastStop: string = '';
 ```
 
 This variable was **designed to accumulate transcript across restarts** but is:
+
 - ✅ Initialized in `startRecording()` (line 111)
 - ❌ **NEVER UPDATED** during recording
 - ✅ Reset in `stopRecording()` (line 178)
@@ -181,54 +186,54 @@ Modify `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/voice.ts`:
 
 ```typescript
 // Add module-level accumulator
-let accumulatedFinalTranscript = '';
+let accumulatedFinalTranscript = "";
 
 // In initializeSpeechRecognition():
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-    let newFinalText = '';
-    let interimText = '';
+  let newFinalText = "";
+  let interimText = "";
 
-    // Process only new results for better performance
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-            newFinalText += transcript + ' ';
-        } else {
-            interimText += transcript;
-        }
+  // Process only new results for better performance
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const transcript = event.results[i][0].transcript;
+    if (event.results[i].isFinal) {
+      newFinalText += transcript + " ";
+    } else {
+      interimText += transcript;
     }
+  }
 
-    // Accumulate final results
-    if (newFinalText) {
-        accumulatedFinalTranscript += newFinalText;
-    }
+  // Accumulate final results
+  if (newFinalText) {
+    accumulatedFinalTranscript += newFinalText;
+  }
 
-    // Combine accumulated final + current interim
-    const combinedText = (accumulatedFinalTranscript + interimText).trim();
-    liveTranscript.set(combinedText);
+  // Combine accumulated final + current interim
+  const combinedText = (accumulatedFinalTranscript + interimText).trim();
+  liveTranscript.set(combinedText);
 };
 
 // Reset accumulator when starting recording
 export async function startRecording(): Promise<void> {
-    // ... existing code ...
+  // ... existing code ...
 
-    // Reset accumulator
-    accumulatedFinalTranscript = '';
-    liveTranscript.set('');
+  // Reset accumulator
+  accumulatedFinalTranscript = "";
+  liveTranscript.set("");
 
-    // ... rest of function ...
+  // ... rest of function ...
 }
 
 // Clear accumulator when stopping
 export function stopRecording(): Promise<Blob | null> {
-    return new Promise((resolve) => {
-        // ... existing code ...
+  return new Promise((resolve) => {
+    // ... existing code ...
 
-        // In cleanupResources() or onstop:
-        accumulatedFinalTranscript = '';
+    // In cleanupResources() or onstop:
+    accumulatedFinalTranscript = "";
 
-        // ... rest of function ...
-    });
+    // ... rest of function ...
+  });
 }
 ```
 
@@ -239,12 +244,12 @@ Keep accumulation in `voiceRecording.service.ts` and update the service's `liveT
 ```typescript
 // In voiceRecording.service.ts
 this.liveTranscriptUnsubscribe = liveTranscript.subscribe((transcript) => {
-    // Check if this is a final result (ends with period, question mark, etc.)
-    // or accumulate differently
-    if (transcript && !this.currentLiveTranscript.endsWith(transcript)) {
-        this.finalTranscriptSinceLastStop += transcript + ' ';
-    }
-    this.currentLiveTranscript = this.finalTranscriptSinceLastStop + transcript;
+  // Check if this is a final result (ends with period, question mark, etc.)
+  // or accumulate differently
+  if (transcript && !this.currentLiveTranscript.endsWith(transcript)) {
+    this.finalTranscriptSinceLastStop += transcript + " ";
+  }
+  this.currentLiveTranscript = this.finalTranscriptSinceLastStop + transcript;
 });
 ```
 
@@ -282,8 +287,8 @@ Add test to verify transcript accumulation:
 
 ```typescript
 // voice.test.ts
-describe('SpeechRecognition transcript accumulation', () => {
-  it('should accumulate transcripts across auto-restarts', async () => {
+describe("SpeechRecognition transcript accumulation", () => {
+  it("should accumulate transcripts across auto-restarts", async () => {
     // Mock SpeechRecognition with auto-restart
     // Simulate first session: "part one"
     // Simulate restart
@@ -320,14 +325,17 @@ describe('SpeechRecognition transcript accumulation', () => {
 ## Performance Considerations
 
 ### Memory Impact
+
 - Minimal: Only stores accumulated string during active recording
 - Automatically cleared on stop/cleanup
 
 ### Processing Impact
+
 - Negligible: Simple string concatenation
 - No change to event processing frequency
 
 ### User Experience
+
 - **Before**: Frustrating loss of content, unpredictable behavior
 - **After**: Reliable capture of full speech, better UX
 
@@ -351,10 +359,12 @@ describe('SpeechRecognition transcript accumulation', () => {
 ## Conclusion
 
 The bug is a **simple but critical oversight** in the `onresult` handler:
+
 - ❌ Current code: `liveTranscript.set(combinedText)` overwrites previous content
 - ✅ Fixed code: Accumulate final results, then append interim results
 
 The fix is straightforward and low-risk:
+
 1. Add accumulator variable
 2. Append final results to accumulator
 3. Combine accumulator + interim for display

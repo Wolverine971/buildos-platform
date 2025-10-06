@@ -81,10 +81,13 @@
 		return {
 			phase: state?.processing?.phase ?? 'idle',
 			mutex: state?.processing?.mutex ?? false,
-			currentBrainDumpId: MULTI_BRAINDUMP_ENABLED ? '' : (state?.core?.currentBrainDumpId ?? ''),
-			activeBrainDumpId: !MULTI_BRAINDUMP_ENABLED && state?.processing?.mutex
-				? (state?.processing?.activeBrainDumpId ?? null)
-				: null
+			currentBrainDumpId: MULTI_BRAINDUMP_ENABLED
+				? ''
+				: (state?.core?.currentBrainDumpId ?? ''),
+			activeBrainDumpId:
+				!MULTI_BRAINDUMP_ENABLED && state?.processing?.mutex
+					? (state?.processing?.activeBrainDumpId ?? null)
+					: null
 		};
 	});
 	let currentPhase = $derived(processingState.phase);

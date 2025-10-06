@@ -18,15 +18,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const eventType = url.searchParams.get('event_type') as EventType | null;
 		const limit = parseInt(url.searchParams.get('limit') || '20', 10);
 
-		// Build the query
+		// Build the query - join with user_sms_preferences to get phone info
 		let usersQuery = supabase.from('users').select(`
 				id,
 				email,
 				name,
 				is_admin,
-				phone,
-				push_subscriptions!inner(id),
-				notification_subscriptions(event_type, is_active)
+				push_subscriptions(id),
+				notification_subscriptions!notification_subscriptions_user_id_fkey(event_type, is_active),
+				user_sms_preferences(phone_number, phone_verified)
 			`);
 
 		// Search filter
@@ -51,7 +51,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			name: u.name,
 			is_admin: u.is_admin,
 			has_push_subscription: (u.push_subscriptions || []).length > 0,
-			has_phone: !!u.phone,
+			has_phone: !!(
+				u.user_sms_preferences?.[0]?.phone_number &&
+				u.user_sms_preferences?.[0]?.phone_verified
+			),
 			is_subscribed_to_event: eventType
 				? (u.notification_subscriptions || []).some(
 						(sub: any) => sub.event_type === eventType && sub.is_active

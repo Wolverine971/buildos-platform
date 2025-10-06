@@ -100,13 +100,19 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-white dark:bg-gray-800 divide-y divide-red-200 dark:divide-red-800">
+				<tbody
+					class="bg-white dark:bg-gray-800 divide-y divide-red-200 dark:divide-red-800"
+				>
 					{#each data as delivery}
 						<tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatDate(delivery.created_at)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{delivery.event_type}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -118,13 +124,19 @@
 									{delivery.channel}
 								</span>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{delivery.recipient_email}
 							</td>
-							<td class="px-6 py-4 text-sm text-red-600 dark:text-red-400 max-w-xs truncate">
+							<td
+								class="px-6 py-4 text-sm text-red-600 dark:text-red-400 max-w-xs truncate"
+							>
 								{delivery.last_error}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{delivery.attempts}/{delivery.max_attempts}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">

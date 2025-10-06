@@ -20,6 +20,20 @@ const statusMap: Record<string, string> = {
 	canceled: 'cancelled'
 };
 
+// Map Twilio status to notification delivery status
+function mapTwilioStatusToDeliveryStatus(twilioStatus: string): string {
+	const deliveryStatusMap: Record<string, string> = {
+		queued: 'pending',
+		sending: 'sent',
+		sent: 'sent',
+		delivered: 'delivered',
+		failed: 'failed',
+		undelivered: 'failed',
+		canceled: 'failed'
+	};
+	return deliveryStatusMap[twilioStatus] || 'pending';
+}
+
 export const POST: RequestHandler = async ({ request, url }) => {
 	const supabase = createServiceClient();
 
@@ -79,15 +93,49 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				updateData.twilio_error_message = errorMessage;
 			}
 
-			const { error } = await supabase
+			// Update SMS message
+			const { data: updatedMessage, error } = await supabase
 				.from('sms_messages')
 				.update(updateData)
 				.eq('id', messageId)
-				.eq('twilio_sid', messageSid);
+				.eq('twilio_sid', messageSid)
+				.select('notification_delivery_id')
+				.single();
 
 			if (error) {
 				console.error('Failed to update SMS status:', error);
 				// Don't return error to Twilio, as it might retry
+			}
+
+			// If this SMS is linked to a notification delivery, update that too
+			if (updatedMessage?.notification_delivery_id) {
+				const deliveryStatus = mapTwilioStatusToDeliveryStatus(messageStatus);
+				const deliveryUpdate: any = {
+					status: deliveryStatus,
+					updated_at: new Date().toISOString()
+				};
+
+				if (messageStatus === 'sent' || messageStatus === 'sending') {
+					deliveryUpdate.sent_at = new Date().toISOString();
+				} else if (messageStatus === 'delivered') {
+					deliveryUpdate.delivered_at = new Date().toISOString();
+				} else if (messageStatus === 'failed' || messageStatus === 'undelivered') {
+					deliveryUpdate.failed_at = new Date().toISOString();
+					deliveryUpdate.last_error = errorMessage || `Twilio error: ${errorCode}`;
+				}
+
+				const { error: deliveryError } = await supabase
+					.from('notification_deliveries')
+					.update(deliveryUpdate)
+					.eq('id', updatedMessage.notification_delivery_id);
+
+				if (deliveryError) {
+					console.error('Failed to update notification delivery status:', deliveryError);
+				} else {
+					console.log(
+						`[TwilioWebhook] Updated notification delivery ${updatedMessage.notification_delivery_id} status to ${deliveryStatus}`
+					);
+				}
 			}
 
 			// If delivery failed, check if we should retry

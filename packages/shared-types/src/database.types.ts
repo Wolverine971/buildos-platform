@@ -3564,6 +3564,7 @@ export type Database = {
           message_content: string;
           metadata: Json | null;
           next_retry_at: string | null;
+          notification_delivery_id: string | null;
           phone_number: string;
           priority: Database["public"]["Enums"]["sms_priority"];
           project_id: string | null;
@@ -3590,6 +3591,7 @@ export type Database = {
           message_content: string;
           metadata?: Json | null;
           next_retry_at?: string | null;
+          notification_delivery_id?: string | null;
           phone_number: string;
           priority?: Database["public"]["Enums"]["sms_priority"];
           project_id?: string | null;
@@ -3616,6 +3618,7 @@ export type Database = {
           message_content?: string;
           metadata?: Json | null;
           next_retry_at?: string | null;
+          notification_delivery_id?: string | null;
           phone_number?: string;
           priority?: Database["public"]["Enums"]["sms_priority"];
           project_id?: string | null;
@@ -3634,6 +3637,13 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "sms_messages_notification_delivery_id_fkey";
+            columns: ["notification_delivery_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_deliveries";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "sms_messages_project_id_fkey";
             columns: ["project_id"];
@@ -4609,7 +4619,15 @@ export type Database = {
           urgent_alerts?: boolean | null;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "user_sms_preferences_user_id_fkey1";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       users: {
         Row: {
@@ -5175,6 +5193,83 @@ export type Database = {
           total_users: number;
         }[];
       };
+      get_notification_active_subscriptions: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          email: string;
+          email_enabled: boolean;
+          in_app_enabled: boolean;
+          last_notification_sent: string;
+          name: string;
+          push_enabled: boolean;
+          sms_enabled: boolean;
+          subscribed_events: string[];
+          user_id: string;
+        }[];
+      };
+      get_notification_channel_performance: {
+        Args: { p_interval?: string };
+        Returns: {
+          avg_delivery_time_ms: number;
+          channel: string;
+          click_rate: number;
+          clicked: number;
+          delivered: number;
+          failed: number;
+          open_rate: number;
+          opened: number;
+          success_rate: number;
+          total_sent: number;
+        }[];
+      };
+      get_notification_delivery_timeline: {
+        Args: { p_granularity?: string; p_interval?: string };
+        Returns: {
+          clicked: number;
+          delivered: number;
+          failed: number;
+          opened: number;
+          sent: number;
+          time_bucket: string;
+        }[];
+      };
+      get_notification_event_performance: {
+        Args: { p_interval?: string };
+        Returns: {
+          avg_delivery_time_seconds: number;
+          click_rate: number;
+          event_type: string;
+          open_rate: number;
+          total_deliveries: number;
+          total_events: number;
+          unique_subscribers: number;
+        }[];
+      };
+      get_notification_failed_deliveries: {
+        Args: { p_interval?: string; p_limit?: number };
+        Returns: {
+          attempts: number;
+          channel: string;
+          created_at: string;
+          delivery_id: string;
+          event_id: string;
+          event_type: string;
+          failed_at: string;
+          last_error: string;
+          max_attempts: number;
+          recipient_email: string;
+          recipient_user_id: string;
+        }[];
+      };
+      get_notification_overview_metrics: {
+        Args: { p_interval?: string; p_offset?: string };
+        Returns: {
+          avg_click_rate: number;
+          avg_open_rate: number;
+          delivery_success_rate: number;
+          total_sent: number;
+        }[];
+      };
       get_onboarding_v2_progress: {
         Args: { p_user_id: string };
         Returns: Json;
@@ -5301,6 +5396,16 @@ export type Database = {
           total_cost: number;
           total_requests: number;
           total_tokens: number;
+        }[];
+      };
+      get_user_sms_channel_info: {
+        Args: { p_user_id: string };
+        Returns: {
+          has_sms_available: boolean;
+          opted_out: boolean;
+          phone_number: string;
+          phone_verified: boolean;
+          phone_verified_at: string;
         }[];
       };
       get_user_subscription_status: {

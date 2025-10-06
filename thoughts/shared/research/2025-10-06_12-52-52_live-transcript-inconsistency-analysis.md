@@ -5,7 +5,8 @@ git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
 topic: "Live Transcript Inconsistency - Capability Detection and Caching Issues"
-tags: [research, bug, voice-recording, speech-recognition, brain-dump, capabilities]
+tags:
+  [research, bug, voice-recording, speech-recognition, brain-dump, capabilities]
 status: complete
 severity: medium
 last_updated: 2025-10-06
@@ -43,12 +44,13 @@ The capability is checked **once** in `initializeModal()` at line 432-435 of `Br
 
 ```javascript
 brainDumpActions.setVoiceCapabilities({
-    canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-    capabilitiesChecked: true
+  canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+  capabilitiesChecked: true,
 });
 ```
 
 **Flow**:
+
 1. Modal opens → `initializeModal()` called
 2. Voice service initialized with callbacks (line 407-430)
 3. **Capabilities immediately checked** (line 432-435)
@@ -96,6 +98,7 @@ function detectCapabilities() {
 ```
 
 **Issues**:
+
 - Cache is **module-level and persists across modal open/close**
 - Only cleared by `forceCleanup()` which happens on component unmount
 - Detection only checks if `SpeechRecognition` constructor exists in `window`
@@ -147,9 +150,9 @@ export async function startRecording(): Promise<void> {
 
 ```javascript
 export const forceCleanup = () => {
-    cleanupResources();
-    isInitialized = false;
-    capabilitiesCache = null; // ← Reset cache to re-detect on next use
+  cleanupResources();
+  isInitialized = false;
+  capabilitiesCache = null; // ← Reset cache to re-detect on next use
 };
 ```
 
@@ -178,6 +181,7 @@ public cleanup(): void {
 ```
 
 **Problem**: Cache is cleared on cleanup, which means:
+
 - **Each modal open** triggers a fresh capability detection
 - If the **timing differs** between opens (e.g., permissions prompt, browser state), detection results may differ
 - Creates inconsistent behavior across modal sessions
@@ -213,6 +217,7 @@ function initializeSpeechRecognition() {
 ```
 
 **Problems**:
+
 - Initialization errors are caught but **not propagated to the UI**
 - `recognition` is set to `null` but `capabilitiesCache.liveTranscriptSupported` stays `true`
 - User sees "Live transcript supported" but it's actually broken
@@ -236,6 +241,7 @@ function initializeSpeechRecognition() {
 Based on code analysis, here are the specific scenarios that cause failure:
 
 ### Scenario 1: Capability Detection Before Permission Grant
+
 1. User opens brain dump modal
 2. `detectCapabilities()` runs → finds `window.SpeechRecognition` → caches `liveTranscriptSupported: true`
 3. User clicks record button
@@ -244,18 +250,21 @@ Based on code analysis, here are the specific scenarios that cause failure:
 6. `canUseLiveTranscript` still shows `true` but no transcript appears
 
 ### Scenario 2: Browser-Specific Restrictions
+
 1. User on mobile Safari (partial SpeechRecognition support)
 2. `detectCapabilities()` finds `webkitSpeechRecognition` → caches `liveTranscriptSupported: true`
 3. User tries to record → SpeechRecognition fails due to iOS restrictions
 4. Error logged to console but UI still shows live transcript as available
 
 ### Scenario 3: Security Context Changes
+
 1. User initially on HTTPS → detection succeeds
 2. User navigates to mixed content page or loses secure context
 3. SpeechRecognition becomes unavailable but cache still shows `true`
 4. Next modal open uses stale cache → live transcript appears available but fails
 
 ### Scenario 4: Cache Inconsistency Across Sessions
+
 1. First modal open: permissions denied → detection may report `false` or fail silently
 2. Modal closes → `forceCleanup()` clears cache
 3. User grants permissions in browser settings
@@ -264,6 +273,7 @@ Based on code analysis, here are the specific scenarios that cause failure:
 6. But if permissions were somehow revoked, cached value is stale
 
 ### Scenario 5: Race Condition on Rapid Open/Close
+
 1. User opens modal → capability detection starts (asynchronous)
 2. User closes modal quickly → `forceCleanup()` clears cache
 3. Detection completes **after cleanup** → writes to cache
@@ -397,21 +407,21 @@ function initializeSpeechRecognition() {
 
 ```javascript
 async function initializeModal() {
-    // ... existing code ...
+  // ... existing code ...
 
-    // Set failure callback before initializing
-    setLiveTranscriptFailureCallback((error) => {
-        console.warn('[BrainDump] Live transcript disabled:', error);
-        brainDumpActions.setVoiceCapabilities({
-            canUseLiveTranscript: false,
-            capabilitiesChecked: true
-        });
-    });
-
+  // Set failure callback before initializing
+  setLiveTranscriptFailureCallback((error) => {
+    console.warn("[BrainDump] Live transcript disabled:", error);
     brainDumpActions.setVoiceCapabilities({
-        canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-        capabilitiesChecked: true
+      canUseLiveTranscript: false,
+      capabilitiesChecked: true,
     });
+  });
+
+  brainDumpActions.setVoiceCapabilities({
+    canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+    capabilitiesChecked: true,
+  });
 }
 ```
 
@@ -507,23 +517,23 @@ export const monitorMicrophonePermission = async (
 
 ```javascript
 async function initializeModal() {
-    // ... existing code ...
+  // ... existing code ...
 
-    // Monitor permission changes
-    await monitorMicrophonePermission((granted) => {
-        if (!granted) {
-            brainDumpActions.setVoiceCapabilities({
-                canUseLiveTranscript: false,
-                capabilitiesChecked: true
-            });
-        } else {
-            // Recheck capabilities
-            brainDumpActions.setVoiceCapabilities({
-                canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-                capabilitiesChecked: true
-            });
-        }
-    });
+  // Monitor permission changes
+  await monitorMicrophonePermission((granted) => {
+    if (!granted) {
+      brainDumpActions.setVoiceCapabilities({
+        canUseLiveTranscript: false,
+        capabilitiesChecked: true,
+      });
+    } else {
+      // Recheck capabilities
+      brainDumpActions.setVoiceCapabilities({
+        canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+        capabilitiesChecked: true,
+      });
+    }
+  });
 }
 ```
 
@@ -581,6 +591,7 @@ function detectCapabilities() {
 ## Implementation Priority
 
 ### Phase 1: Critical Fixes (1-2 hours)
+
 1. ✅ Add runtime validation after permission grant (FIX #1)
 2. ✅ Add failure callbacks to update UI (FIX #2)
 3. ✅ Add debug logging (FIX #5)
@@ -588,6 +599,7 @@ function detectCapabilities() {
 **Expected Result**: 80% reduction in inconsistency, users see accurate status
 
 ### Phase 2: Robustness Improvements (2-3 hours)
+
 4. ✅ Revalidate on each recording start (FIX #3)
 5. ✅ Add permission state monitoring (FIX #4)
 
@@ -630,48 +642,50 @@ function detectCapabilities() {
 
 ```typescript
 // Test capability detection consistency
-describe('Live Transcript Capability Detection', () => {
-    it('should detect SpeechRecognition if available', () => {
-        const capabilities = detectCapabilities();
-        expect(capabilities.liveTranscriptSupported).toBe(
-            !!(window.SpeechRecognition || window.webkitSpeechRecognition)
-        );
-    });
+describe("Live Transcript Capability Detection", () => {
+  it("should detect SpeechRecognition if available", () => {
+    const capabilities = detectCapabilities();
+    expect(capabilities.liveTranscriptSupported).toBe(
+      !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    );
+  });
 
-    it('should revalidate after permission grant', async () => {
-        // Mock getUserMedia
-        const mockStream = { getTracks: () => [] };
-        navigator.mediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream);
+  it("should revalidate after permission grant", async () => {
+    // Mock getUserMedia
+    const mockStream = { getTracks: () => [] };
+    navigator.mediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream);
 
-        await startRecording();
+    await startRecording();
 
-        // Check that runtime validation occurred
-        expect(capabilitiesCache.liveTranscriptSupported).toBeDefined();
-    });
+    // Check that runtime validation occurred
+    expect(capabilitiesCache.liveTranscriptSupported).toBeDefined();
+  });
 
-    it('should update cache on runtime failure', async () => {
-        // Mock SpeechRecognition that fails on start
-        window.SpeechRecognition = vi.fn().mockImplementation(() => ({
-            start: vi.fn().mockRejectedValue(new Error('not-allowed')),
-            stop: vi.fn()
-        }));
+  it("should update cache on runtime failure", async () => {
+    // Mock SpeechRecognition that fails on start
+    window.SpeechRecognition = vi.fn().mockImplementation(() => ({
+      start: vi.fn().mockRejectedValue(new Error("not-allowed")),
+      stop: vi.fn(),
+    }));
 
-        await startRecording();
+    await startRecording();
 
-        expect(capabilitiesCache.liveTranscriptSupported).toBe(false);
-    });
+    expect(capabilitiesCache.liveTranscriptSupported).toBe(false);
+  });
 });
 ```
 
 ## Related Issues & Code References
 
 ### Key Files
+
 - `/apps/web/src/lib/utils/voice.ts` - Core voice recording and capability detection
 - `/apps/web/src/lib/services/voiceRecording.service.ts` - Service wrapper for voice features
 - `/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte` - Main modal initialization
 - `/apps/web/src/lib/components/brain-dump/RecordingView.svelte` - UI that displays live transcript
 
 ### Related Research
+
 - `2025-10-06_15-50-04_braindump-textarea-lag-performance.md` - Performance optimization research
 - `2025-10-05_00-00-00_buildos-web-comprehensive-audit.md` - Comprehensive audit mentioning voice features
 

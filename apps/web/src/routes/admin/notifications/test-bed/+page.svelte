@@ -175,7 +175,9 @@
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Analytics</h3>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Analytics
+						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">View dashboard</p>
 					</div>
 				</div>
@@ -188,7 +190,9 @@
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Test Bed</h3>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Test Bed
+						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">Current page</p>
 					</div>
 				</div>
@@ -202,7 +206,9 @@
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Logs</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Event & delivery logs</p>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Event & delivery logs
+						</p>
 					</div>
 				</div>
 			</a>
@@ -303,7 +309,9 @@
 
 						{#if isSearching}
 							<div class="absolute right-3 top-3">
-								<div class="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+								<div
+									class="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"
+								></div>
 							</div>
 						{/if}
 
@@ -318,7 +326,9 @@
 										onclick={() => addRecipient(result)}
 										class="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 									>
-										<div class="text-sm font-medium text-gray-900 dark:text-white">
+										<div
+											class="text-sm font-medium text-gray-900 dark:text-white"
+										>
 											{result.email}
 										</div>
 										{#if result.name}
@@ -345,11 +355,15 @@
 									class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
 								>
 									<div>
-										<div class="text-sm font-medium text-gray-900 dark:text-white">
+										<div
+											class="text-sm font-medium text-gray-900 dark:text-white"
+										>
 											{recipient.email}
 										</div>
 										{#if recipient.name}
-											<div class="text-xs text-gray-500">{recipient.name}</div>
+											<div class="text-xs text-gray-500">
+												{recipient.name}
+											</div>
 										{/if}
 									</div>
 									<button
@@ -381,9 +395,12 @@
 							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 						/>
 						<div>
-							<div class="font-medium text-gray-900 dark:text-white">Browser Push</div>
+							<div class="font-medium text-gray-900 dark:text-white">
+								Browser Push
+							</div>
 							<p class="text-sm text-gray-500">
-								{selectedRecipients.filter((r) => r.has_push_subscription).length}/{selectedRecipients.length}
+								{selectedRecipients.filter((r) => r.has_push_subscription)
+									.length}/{selectedRecipients.length}
 								selected users have active push subscriptions
 							</p>
 						</div>
@@ -398,7 +415,9 @@
 						/>
 						<div>
 							<div class="font-medium text-gray-900 dark:text-white">Email</div>
-							<p class="text-sm text-gray-500">All selected users have email addresses</p>
+							<p class="text-sm text-gray-500">
+								All selected users have email addresses
+							</p>
 						</div>
 					</label>
 
@@ -412,7 +431,8 @@
 						<div>
 							<div class="font-medium text-gray-900 dark:text-white">SMS</div>
 							<p class="text-sm text-gray-500">
-								{selectedRecipients.filter((r) => r.has_phone).length}/{selectedRecipients.length}
+								{selectedRecipients.filter((r) => r.has_phone)
+									.length}/{selectedRecipients.length}
 								selected users have phone numbers
 							</p>
 						</div>
@@ -427,7 +447,9 @@
 						/>
 						<div>
 							<div class="font-medium text-gray-900 dark:text-white">In-App</div>
-							<p class="text-sm text-gray-500">Will appear in notification bell icon</p>
+							<p class="text-sm text-gray-500">
+								Will appear in notification bell icon
+							</p>
 						</div>
 					</label>
 				</div>

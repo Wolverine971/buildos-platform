@@ -5,7 +5,8 @@ git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
 topic: "Brain Dump Textarea Performance - Input Lag Investigation"
-tags: [research, codebase, performance, brain-dump, textarea, svelte5, reactivity]
+tags:
+  [research, codebase, performance, brain-dump, textarea, svelte5, reactivity]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (claude-sonnet-4-5)
@@ -50,6 +51,7 @@ BrainDumpModal.svelte (parent container)
 ```
 
 **State Flow**:
+
 ```
 User types → handleTextInput() → dispatch('textChange') → handleTextChange() →
 brainDumpActions.updateInputText() → Store mutation → All $derived recalculate →
@@ -62,14 +64,14 @@ All $effect blocks re-run → SessionStorage check
 
 ```javascript
 function handleTextInput() {
-    dispatch('textChange', inputText);  // ← NO THROTTLING!
+  dispatch("textChange", inputText); // ← NO THROTTLING!
 
-    // Throttle auto-save for very large inputs to prevent performance issues
-    if (inputText.length > 10000) {
-        debouncedAutoSave(5000);
-    } else {
-        debouncedAutoSave();
-    }
+  // Throttle auto-save for very large inputs to prevent performance issues
+  if (inputText.length > 10000) {
+    debouncedAutoSave(5000);
+  } else {
+    debouncedAutoSave();
+  }
 }
 ```
 
@@ -101,12 +103,14 @@ function handleTextChange(event: CustomEvent) {
 // This reduces overhead by ~50% - single reactive source instead of 20+ subscriptions
 let storeState = $derived($brainDumpV2Store);
 let modalIsOpenFromStore = $derived(storeState?.ui?.modal?.isOpen ?? false);
-let currentView = $derived(storeState?.ui?.modal?.currentView ?? 'project-selection');
+let currentView = $derived(
+  storeState?.ui?.modal?.currentView ?? "project-selection",
+);
 let selectedProject = $derived(storeState?.core?.selectedProject ?? null);
-let inputText = $derived(storeState?.core?.inputText ?? '');  // ← Re-derives on every keystroke!
-let currentPhase = $derived(storeState?.processing?.phase ?? 'idle');
+let inputText = $derived(storeState?.core?.inputText ?? ""); // ← Re-derives on every keystroke!
+let currentPhase = $derived(storeState?.processing?.phase ?? "idle");
 let isProcessing = $derived(storeState?.processing?.mutex ?? false);
-let isSaving = $derived(storeState?.processing?.phase === 'saving');
+let isSaving = $derived(storeState?.processing?.phase === "saving");
 // ... 15+ more $derived values
 ```
 
@@ -123,44 +127,44 @@ let isSaving = $derived(storeState?.processing?.phase === 'saving');
 ```javascript
 // Watch for view changes and load appropriate components
 $effect(() => {
-    if (currentView && browser && currentView !== previousView) {
-        previousView = currentView;
-        loadComponentsForView(currentView);
-    }
+  if (currentView && browser && currentView !== previousView) {
+    previousView = currentView;
+    loadComponentsForView(currentView);
+  }
 });
 
 // Initialize modal when opened
 $effect(() => {
-    if (isOpen && browser && !previousIsOpen && !isInitializing) {
-        previousIsOpen = true;
-        isInitializing = true;
-        initializeModal().finally(() => {
-            isInitializing = false;
-        });
-    } else if (!isOpen) {
-        previousIsOpen = false;
-    }
+  if (isOpen && browser && !previousIsOpen && !isInitializing) {
+    previousIsOpen = true;
+    isInitializing = true;
+    initializeModal().finally(() => {
+      isInitializing = false;
+    });
+  } else if (!isOpen) {
+    previousIsOpen = false;
+  }
 });
 
 // Clean up when modal closes
 $effect(() => {
-    if (!isOpen && browser && previousIsOpen && !isClosing) {
-        isClosing = true;
-        setTimeout(() => {
-            handleModalClose().finally(() => {
-                isClosing = false;
-            });
-        }, 50);
-    }
+  if (!isOpen && browser && previousIsOpen && !isClosing) {
+    isClosing = true;
+    setTimeout(() => {
+      handleModalClose().finally(() => {
+        isClosing = false;
+      });
+    }, 50);
+  }
 });
 
 // Sync modal state with store
 $effect(() => {
-    if (isOpen && !previousIsOpen && browser && !isClosing) {
-        if (!modalIsOpenFromStore) {
-            brainDumpActions.openModal();
-        }
+  if (isOpen && !previousIsOpen && browser && !isClosing) {
+    if (!modalIsOpenFromStore) {
+      brainDumpActions.openModal();
     }
+  }
 });
 ```
 
@@ -174,19 +178,19 @@ $effect(() => {
 
 ```javascript
 if (browser) {
-    subscribe((state) => {
-        // Persist state changes with debouncing
-        if (state.persistence.shouldPersist) {
-            const now = Date.now();
-            if (
-                !state.persistence.lastPersistedAt ||
-                now - state.persistence.lastPersistedAt > 1000
-            ) {
-                persistState(state);
-                state.persistence.lastPersistedAt = now;
-            }
-        }
-    });
+  subscribe((state) => {
+    // Persist state changes with debouncing
+    if (state.persistence.shouldPersist) {
+      const now = Date.now();
+      if (
+        !state.persistence.lastPersistedAt ||
+        now - state.persistence.lastPersistedAt > 1000
+      ) {
+        persistState(state);
+        state.persistence.lastPersistedAt = now;
+      }
+    }
+  });
 }
 ```
 
@@ -200,18 +204,18 @@ if (browser) {
 
 ```javascript
 $: placeholderText = (() => {
-    if (isNewProject) {
-        return "What's on your mind? Share your thoughts, ideas, and tasks...";
-    }
+  if (isNewProject) {
+    return "What's on your mind? Share your thoughts, ideas, and tasks...";
+  }
 
-    if (displayedQuestions && displayedQuestions.length > 0) {
-        const questionsText = displayedQuestions
-            .map((q, i) => `${i + 1}. ${q.question}`)
-            .join('\n');
-        return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-    }
+  if (displayedQuestions && displayedQuestions.length > 0) {
+    const questionsText = displayedQuestions
+      .map((q, i) => `${i + 1}. ${q.question}`)
+      .join("\n");
+    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+  }
 
-    return `What's happening with ${selectedProjectName}?`;
+  return `What's happening with ${selectedProjectName}?`;
 })();
 ```
 
@@ -222,6 +226,7 @@ $: placeholderText = (() => {
 ## Code References
 
 ### Primary Components
+
 - `apps/web/src/lib/components/brain-dump/RecordingView.svelte:311-320` - Textarea implementation
 - `apps/web/src/lib/components/brain-dump/RecordingView.svelte:105-115` - handleTextInput (unbounded dispatch)
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:688-691` - handleTextChange (store update)
@@ -229,6 +234,7 @@ $: placeholderText = (() => {
 - `apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:246-291` - Multiple $effect blocks
 
 ### Store & Services
+
 - `apps/web/src/lib/stores/brain-dump-v2.store.ts:674-688` - Persistence subscription
 - `apps/web/src/lib/services/braindump-api.service.ts` - API service for saving
 
@@ -237,6 +243,7 @@ $: placeholderText = (() => {
 ### Current Performance Characteristics
 
 **Keystroke → Frame Time Breakdown** (estimated):
+
 1. Event dispatch: ~0.5ms
 2. Store mutation: ~1ms
 3. $derived recalculations (20+ values): ~5-10ms
@@ -287,14 +294,14 @@ $effect(() => {
 
 ```typescript
 search: async (query: string, userId: string) => {
-    // Set loading state immediately
-    update((state) => ({ ...state, query, isLoading: true, error: null }));
+  // Set loading state immediately
+  update((state) => ({ ...state, query, isLoading: true, error: null }));
 
-    // Debounce the actual API call
-    searchTimeout = setTimeout(async () => {
-        // ... fetch implementation
-    }, 300);
-}
+  // Debounce the actual API call
+  searchTimeout = setTimeout(async () => {
+    // ... fetch implementation
+  }, 300);
+};
 ```
 
 #### 3. Throttle and debounce utilities
@@ -303,17 +310,17 @@ search: async (query: string, userId: string) => {
 
 ```typescript
 export function throttle<T extends (...args: any[]) => any>(
-    func: T,
-    limit: number
+  func: T,
+  limit: number,
 ): (...args: Parameters<T>) => void {
-    let inThrottle: boolean;
-    return (...args: Parameters<T>) => {
-        if (!inThrottle) {
-            func(...args);
-            inThrottle = true;
-            setTimeout(() => (inThrottle = false), limit);
-        }
-    };
+  let inThrottle: boolean;
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
 }
 ```
 
@@ -374,36 +381,36 @@ function handleTextChange(event: CustomEvent) {
 ```javascript
 // In BrainDumpModal.svelte
 
-import { untrack } from 'svelte';
+import { untrack } from "svelte";
 
 $effect(() => {
-    // Only track currentView, not entire store
-    const view = currentView;
+  // Only track currentView, not entire store
+  const view = currentView;
 
-    untrack(() => {
-        // This code won't re-run on other store changes (like inputText)
-        if (view && browser && view !== previousView) {
-            previousView = view;
-            loadComponentsForView(view);
-        }
-    });
+  untrack(() => {
+    // This code won't re-run on other store changes (like inputText)
+    if (view && browser && view !== previousView) {
+      previousView = view;
+      loadComponentsForView(view);
+    }
+  });
 });
 
 $effect(() => {
-    // Only track isOpen
-    const open = isOpen;
+  // Only track isOpen
+  const open = isOpen;
 
-    untrack(() => {
-        if (open && browser && !previousIsOpen && !isInitializing) {
-            previousIsOpen = true;
-            isInitializing = true;
-            initializeModal().finally(() => {
-                isInitializing = false;
-            });
-        } else if (!open) {
-            previousIsOpen = false;
-        }
-    });
+  untrack(() => {
+    if (open && browser && !previousIsOpen && !isInitializing) {
+      previousIsOpen = true;
+      isInitializing = true;
+      initializeModal().finally(() => {
+        isInitializing = false;
+      });
+    } else if (!open) {
+      previousIsOpen = false;
+    }
+  });
 });
 ```
 
@@ -422,27 +429,29 @@ $effect(() => {
 
 // Core input state (changes frequently)
 let inputState = $derived.by(() => ({
-    text: $brainDumpV2Store?.core?.inputText ?? '',
-    lastSaved: $brainDumpV2Store?.core?.lastSavedContent ?? '',
-    hasUnsaved: ($brainDumpV2Store?.core?.inputText ?? '') !== ($brainDumpV2Store?.core?.lastSavedContent ?? '')
+  text: $brainDumpV2Store?.core?.inputText ?? "",
+  lastSaved: $brainDumpV2Store?.core?.lastSavedContent ?? "",
+  hasUnsaved:
+    ($brainDumpV2Store?.core?.inputText ?? "") !==
+    ($brainDumpV2Store?.core?.lastSavedContent ?? ""),
 }));
 
 // UI state (changes rarely)
 let uiState = $derived.by(() => ({
-    modalOpen: $brainDumpV2Store?.ui?.modal?.isOpen ?? false,
-    currentView: $brainDumpV2Store?.ui?.modal?.currentView ?? 'project-selection'
+  modalOpen: $brainDumpV2Store?.ui?.modal?.isOpen ?? false,
+  currentView: $brainDumpV2Store?.ui?.modal?.currentView ?? "project-selection",
 }));
 
 // Processing state (changes rarely)
 let processingState = $derived.by(() => ({
-    phase: $brainDumpV2Store?.processing?.phase ?? 'idle',
-    mutex: $brainDumpV2Store?.processing?.mutex ?? false,
-    isSaving: ($brainDumpV2Store?.processing?.phase ?? 'idle') === 'saving'
+  phase: $brainDumpV2Store?.processing?.phase ?? "idle",
+  mutex: $brainDumpV2Store?.processing?.mutex ?? false,
+  isSaving: ($brainDumpV2Store?.processing?.phase ?? "idle") === "saving",
 }));
 
 // Project state (changes rarely)
 let projectState = $derived.by(() => ({
-    selected: $brainDumpV2Store?.core?.selectedProject ?? null
+  selected: $brainDumpV2Store?.core?.selectedProject ?? null,
 }));
 ```
 
@@ -460,18 +469,18 @@ let projectState = $derived.by(() => ({
 // In RecordingView.svelte
 
 let placeholderText = $derived.by(() => {
-    if (isNewProject) {
-        return "What's on your mind? Share your thoughts, ideas, and tasks...";
-    }
+  if (isNewProject) {
+    return "What's on your mind? Share your thoughts, ideas, and tasks...";
+  }
 
-    if (displayedQuestions && displayedQuestions.length > 0) {
-        const questionsText = displayedQuestions
-            .map((q, i) => `${i + 1}. ${q.question}`)
-            .join('\n');
-        return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-    }
+  if (displayedQuestions && displayedQuestions.length > 0) {
+    const questionsText = displayedQuestions
+      .map((q, i) => `${i + 1}. ${q.question}`)
+      .join("\n");
+    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+  }
 
-    return `What's happening with ${selectedProjectName}?`;
+  return `What's happening with ${selectedProjectName}?`;
 });
 ```
 
@@ -489,20 +498,20 @@ let placeholderText = $derived.by(() => {
 // In brain-dump-v2.store.ts
 
 if (browser) {
-    let persistTimeout: NodeJS.Timeout;
+  let persistTimeout: NodeJS.Timeout;
 
-    subscribe((state) => {
-        if (!state.persistence.shouldPersist) return;
+  subscribe((state) => {
+    if (!state.persistence.shouldPersist) return;
 
-        // Throttle persistence to max once per second
-        clearTimeout(persistTimeout);
-        persistTimeout = setTimeout(() => {
-            requestIdleCallback(() => {
-                persistState(state);
-                state.persistence.lastPersistedAt = Date.now();
-            });
-        }, 1000);
-    });
+    // Throttle persistence to max once per second
+    clearTimeout(persistTimeout);
+    persistTimeout = setTimeout(() => {
+      requestIdleCallback(() => {
+        persistState(state);
+        state.persistence.lastPersistedAt = Date.now();
+      });
+    }, 1000);
+  });
 }
 ```
 
@@ -561,12 +570,14 @@ function handleTextInput(event: Event) {
 ## Implementation Priority
 
 ### Phase 1: Quick Wins (30 minutes)
+
 1. ✅ Throttle store updates in `handleTextChange()` (FIX #1)
 2. ✅ Add `untrack()` to $effect blocks (FIX #2)
 
 **Expected Result**: 70-80% improvement in input responsiveness
 
 ### Phase 2: Structural Improvements (2 hours)
+
 3. ✅ Split $derived values by concern (FIX #3)
 4. ✅ Memoize placeholder text (FIX #4)
 5. ✅ Optimize SessionStorage persistence (FIX #5)
@@ -574,6 +585,7 @@ function handleTextInput(event: Event) {
 **Expected Result**: 85-90% improvement overall
 
 ### Phase 3: Maximum Performance (4 hours)
+
 6. ✅ Implement local textarea state (FIX #6)
 
 **Expected Result**: 95%+ improvement, native textarea feel
@@ -581,17 +593,20 @@ function handleTextInput(event: Event) {
 ## Testing Recommendations
 
 ### Manual Testing
+
 1. Type rapidly in textarea (100+ WPM)
 2. Paste large text blocks (>10k characters)
 3. Test on slower devices (throttled CPU in DevTools)
 4. Test with React DevTools profiler to measure render times
 
 ### Performance Metrics
+
 - **Current**: ~10-17ms per keystroke (can hit 30-50ms on slow devices)
 - **Target after Phase 1**: ~2-3ms per keystroke
 - **Target after Phase 3**: <1ms per keystroke (native feel)
 
 ### Edge Cases
+
 - Very large text (>50k characters)
 - Rapid typing with voice recording active
 - Multiple brain dump modals (if possible)

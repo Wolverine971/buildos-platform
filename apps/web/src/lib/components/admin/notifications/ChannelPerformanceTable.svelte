@@ -13,16 +13,19 @@
 		return new Intl.NumberFormat().format(num);
 	}
 
-	function formatPercentage(num: number): string {
+	function formatPercentage(num: number | null | undefined): string {
+		if (num == null) return '0.0%';
 		return `${num.toFixed(1)}%`;
 	}
 
-	function formatTime(ms: number): string {
+	function formatTime(ms: number | null | undefined): string {
+		if (ms == null) return 'N/A';
 		if (ms < 1000) return `${ms.toFixed(0)}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
 
-	function getSuccessRateColor(rate: number): string {
+	function getSuccessRateColor(rate: number | null | undefined): string {
+		if (rate == null) return 'text-gray-500';
 		if (rate >= 95) return 'text-green-600';
 		if (rate >= 85) return 'text-yellow-600';
 		return 'text-red-600';
@@ -91,7 +94,9 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody
+					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+				>
 					{#each data as channel}
 						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -103,9 +108,13 @@
 									{channel.channel}
 								</span>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								<div>
-									<div class="font-medium">{formatNumber(channel.total_sent)}</div>
+									<div class="font-medium">
+										{formatNumber(channel.total_sent)}
+									</div>
 									<div class="text-xs text-gray-500">
 										{formatNumber(channel.failed)} failed
 									</div>
@@ -114,19 +123,25 @@
 							<td class="px-6 py-4 whitespace-nowrap">
 								<div class="flex items-center">
 									<div class="flex-1">
-										<div class="text-sm font-medium {getSuccessRateColor(channel.success_rate)}">
+										<div
+											class="text-sm font-medium {getSuccessRateColor(
+												channel.success_rate
+											)}"
+										>
 											{formatPercentage(channel.success_rate)}
 										</div>
 										<div class="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
 											<div
 												class="bg-blue-600 h-1.5 rounded-full"
-												style="width: {channel.success_rate}%"
+												style="width: {channel.success_rate ?? 0}%"
 											></div>
 										</div>
 									</div>
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								<div>
 									<div>{formatPercentage(channel.open_rate)}</div>
 									<div class="text-xs text-gray-500">
@@ -134,7 +149,9 @@
 									</div>
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								<div>
 									<div>{formatPercentage(channel.click_rate)}</div>
 									<div class="text-xs text-gray-500">
@@ -142,7 +159,9 @@
 									</div>
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
 								{formatTime(channel.avg_delivery_time_ms)}
 							</td>
 						</tr>

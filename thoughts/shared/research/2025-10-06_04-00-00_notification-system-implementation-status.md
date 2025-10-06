@@ -51,8 +51,8 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 
 ### Migration Files
 
-| File | Purpose | Status |
-|------|---------|--------|
+| File                                      | Purpose             | Status     |
+| ----------------------------------------- | ------------------- | ---------- |
 | `20251006_notification_system_phase1.sql` | Core infrastructure | ✅ Applied |
 | `20251006_notification_system_phase3.sql` | Brief notifications | ✅ Applied |
 
@@ -61,6 +61,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 #### Core Tables
 
 1. **`notification_events`** - Immutable event log
+
    ```sql
    CREATE TABLE notification_events (
      id UUID PRIMARY KEY,
@@ -75,6 +76,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
    ```
 
 2. **`notification_subscriptions`** - Who subscribes to what
+
    ```sql
    CREATE TABLE notification_subscriptions (
      id UUID PRIMARY KEY,
@@ -88,6 +90,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
    ```
 
 3. **`user_notification_preferences`** - Per-event channel preferences
+
    ```sql
    CREATE TABLE user_notification_preferences (
      id UUID PRIMARY KEY,
@@ -107,6 +110,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
    ```
 
 4. **`notification_deliveries`** - Delivery tracking
+
    ```sql
    CREATE TABLE notification_deliveries (
      id UUID PRIMARY KEY,
@@ -172,23 +176,23 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 
 ### Implemented Events
 
-| Event Type | Status | Audience | Channels | Implementation |
-|------------|--------|----------|----------|----------------|
-| `user.signup` | ✅ Phase 1 | Admin only | Push, In-app | Database trigger |
-| `brief.completed` | ✅ Phase 3 | Per-user | Email, Push, In-app | Worker emission |
-| `brief.failed` | ✅ Phase 3 | Per-user | Email, Push, In-app | Worker emission |
+| Event Type        | Status     | Audience   | Channels            | Implementation   |
+| ----------------- | ---------- | ---------- | ------------------- | ---------------- |
+| `user.signup`     | ✅ Phase 1 | Admin only | Push, In-app        | Database trigger |
+| `brief.completed` | ✅ Phase 3 | Per-user   | Email, Push, In-app | Worker emission  |
+| `brief.failed`    | ✅ Phase 3 | Per-user   | Email, Push, In-app | Worker emission  |
 
 ### Spec'd But Not Implemented
 
-| Event Type | Planned For | Audience | Channels |
-|------------|-------------|----------|----------|
-| `user.trial_expired` | Phase 2 | Admin + User | Email, Push |
-| `payment.failed` | Phase 2 | Admin + User | Email, Push, SMS |
-| `error.critical` | Phase 2 | Admin | All |
-| `brain_dump.processed` | Phase 2 | Per-user | Push, In-app |
-| `task.due_soon` | Phase 2 | Per-user | Push, SMS, In-app |
-| `project.phase_scheduled` | Phase 2 | Per-user | Push, In-app |
-| `calendar.sync_failed` | Phase 2 | Per-user | Push, Email |
+| Event Type                | Planned For | Audience     | Channels          |
+| ------------------------- | ----------- | ------------ | ----------------- |
+| `user.trial_expired`      | Phase 2     | Admin + User | Email, Push       |
+| `payment.failed`          | Phase 2     | Admin + User | Email, Push, SMS  |
+| `error.critical`          | Phase 2     | Admin        | All               |
+| `brain_dump.processed`    | Phase 2     | Per-user     | Push, In-app      |
+| `task.due_soon`           | Phase 2     | Per-user     | Push, SMS, In-app |
+| `project.phase_scheduled` | Phase 2     | Per-user     | Push, In-app      |
+| `calendar.sync_failed`    | Phase 2     | Per-user     | Push, Email       |
 
 ---
 
@@ -199,6 +203,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/notification/notificationWorker.ts`
 
 **Capabilities:**
+
 - Web Push API integration via `web-push` library
 - VAPID authentication (requires env vars)
 - Subscription management (create, update, expire)
@@ -207,6 +212,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 - Automatic subscription expiration handling (410/404 status codes)
 
 **Dependencies:**
+
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` env vars
 - Service worker at `/static/sw.js`
 - Browser Push Service: `/apps/web/src/lib/services/browser-push.service.ts`
@@ -216,6 +222,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/notification/emailAdapter.ts`
 
 **Capabilities:**
+
 - HTML email template generation
 - Integration with existing email infrastructure
 - Tracking pixel insertion
@@ -225,6 +232,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 - Links to notification preferences
 
 **Flow:**
+
 1. Fetches user email from `users` table
 2. Formats HTML email with notification payload
 3. Creates email record with tracking ID
@@ -237,6 +245,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/notification/notificationWorker.ts`
 
 **Capabilities:**
+
 - Direct insertion into `user_notifications` table
 - Metadata passthrough (event_id, delivery_id, etc.)
 - Immediate delivery (no queue)
@@ -249,10 +258,13 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/notification/notificationWorker.ts`
 
 **Status:** Not implemented
+
 - Case exists in channel router
 - Returns error: "SMS notifications not yet implemented"
 - Twilio integration exists for other features (`/packages/twilio-service/`)
 - Could be wired up to existing Twilio service
+
+**See**: [SMS Notification Channel Design](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md) for complete implementation plan
 
 ---
 
@@ -263,6 +275,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/web/src/lib/services/notification-preferences.service.ts`
 
 **Methods:**
+
 - `get(eventType)` - Get preferences for event type
 - `getAll()` - Get all user preferences
 - `update(eventType, updates)` - Update preferences
@@ -273,6 +286,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 - `getDefaults(eventType)` - Get default preferences
 
 **Default Preferences:**
+
 ```typescript
 {
   // Admin events
@@ -291,6 +305,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/web/src/lib/services/browser-push.service.ts`
 
 **Methods:**
+
 - `isSupported()` - Check browser support
 - `hasPermission()` - Check permission status
 - `requestPermission()` - Request push permission
@@ -300,6 +315,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 - `isSubscribed()` - Check subscription status
 
 **Service Worker:**
+
 - Location: `/apps/web/static/sw.js`
 - Handles push events
 - Displays notifications
@@ -315,6 +331,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/notification/notificationWorker.ts`
 
 **Main Functions:**
+
 1. `processNotification(job)` - Process single notification job
 2. `processNotificationJobs()` - Batch process pending jobs
 3. `sendNotification(channel, delivery)` - Route to channel adapter
@@ -322,12 +339,14 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 5. `sendInAppNotification(delivery)` - In-app notification
 
 **Error Handling:**
+
 - Automatic retry with exponential backoff
 - Max 3 attempts per delivery
 - Subscription expiration detection
 - Progress tracking via database updates
 
 **Integration:**
+
 - Uses Supabase service client
 - Processes jobs from `queue_jobs` table
 - Updates `notification_deliveries` table
@@ -338,6 +357,7 @@ The BuildOS platform has a **fully implemented extensible notification system** 
 **Location:** `/apps/worker/src/workers/brief/briefWorker.ts`
 
 **Emission:**
+
 ```typescript
 // After successful brief generation
 await serviceClient.rpc("emit_notification_event", {
@@ -349,12 +369,13 @@ await serviceClient.rpc("emit_notification_event", {
     brief_date: briefDate,
     timezone: timezone,
     task_count: taskStats.total,
-    project_count: projectCount
-  }
+    project_count: projectCount,
+  },
 });
 ```
 
 **Error Handling:**
+
 - Non-blocking: Errors logged but don't fail brief job
 - Try-catch wrapper around emission
 - Continues even if notification fails
@@ -368,6 +389,7 @@ await serviceClient.rpc("emit_notification_event", {
 **Location:** `/apps/web/src/lib/components/settings/NotificationPreferences.svelte`
 
 **Features:**
+
 - Svelte 5 with runes syntax
 - Toggle for email, push, in-app channels
 - Quiet hours configuration (start/end time)
@@ -377,6 +399,7 @@ await serviceClient.rpc("emit_notification_event", {
 - First-time setup banner
 
 **Styling:**
+
 - Matches existing SMS preferences pattern
 - Uses Lucide icons (Bell, Mail, Smartphone, Moon)
 - Dark mode support
@@ -387,6 +410,7 @@ await serviceClient.rpc("emit_notification_event", {
 **Location:** `/apps/web/src/lib/components/profile/NotificationsTab.svelte`
 
 **Purpose:**
+
 - Tab wrapper for preferences component
 - Integrates with profile page tab system
 - Consistent with BriefsTab, CalendarTab pattern
@@ -396,6 +420,7 @@ await serviceClient.rpc("emit_notification_event", {
 **Location:** `/apps/web/src/routes/profile/+page.svelte`
 
 **Changes:**
+
 - Added `notifications` tab to `profileTabs` array
 - URL support: `?tab=notifications`
 - Tab content section renders NotificationsTab
@@ -408,14 +433,15 @@ await serviceClient.rpc("emit_notification_event", {
 
 ### Existing Bridges
 
-| Bridge | Purpose | Pattern |
-|--------|---------|---------|
-| `brain-dump-notification.bridge.ts` | Brain dump progress | UI-only notifications |
-| `phase-generation-notification.bridge.ts` | Phase gen progress | UI-only notifications |
-| `project-synthesis-notification.bridge.ts` | Synthesis progress | UI-only notifications |
-| `calendar-analysis-notification.bridge.ts` | Calendar analysis | UI-only notifications |
+| Bridge                                     | Purpose             | Pattern               |
+| ------------------------------------------ | ------------------- | --------------------- |
+| `brain-dump-notification.bridge.ts`        | Brain dump progress | UI-only notifications |
+| `phase-generation-notification.bridge.ts`  | Phase gen progress  | UI-only notifications |
+| `project-synthesis-notification.bridge.ts` | Synthesis progress  | UI-only notifications |
+| `calendar-analysis-notification.bridge.ts` | Calendar analysis   | UI-only notifications |
 
 **Key Difference:**
+
 - Bridge services create **in-memory UI notifications** for operation progress
 - Extensible notification system creates **persisted event-driven notifications** with multi-channel delivery
 - These are separate systems serving different purposes
@@ -427,6 +453,7 @@ await serviceClient.rpc("emit_notification_event", {
 ### What's Missing
 
 There are **no REST API endpoints** for the notification system. All interaction happens via:
+
 - RPC functions: `emit_notification_event`, `update_user_notification_preferences`
 - Direct database queries via Supabase client
 - Service layer abstractions
@@ -449,6 +476,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 ```
 
 **Current Approach:**
+
 - Frontend uses service layer directly (no API routes)
 - Worker emits events via RPC
 - Database triggers emit events directly
@@ -462,6 +490,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 **Location:** `/packages/shared-types/src/notification.types.ts`
 
 **Exports:**
+
 - Event types: `EventType`, `EventSource`, `NotificationChannel`, `NotificationStatus`, `NotificationPriority`
 - Core interfaces: `NotificationEvent`, `NotificationSubscription`, `UserNotificationPreferences`, `NotificationDelivery`, `PushSubscription`
 - Event payloads: `UserSignupEventPayload`, `BriefCompletedEventPayload`, `BriefFailedEventPayload`, etc.
@@ -471,6 +500,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 - API types: `EmitEventRequest`, `EmitEventResponse`, `UpdatePreferencesRequest`, etc.
 
 **Usage:**
+
 - Imported by both web app and worker
 - Type-safe event emissions
 - Validated payloads
@@ -482,6 +512,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 **Important:** This is the **generic stackable notification system** (UI-only), NOT the extensible notification system.
 
 **Exports:**
+
 - UI notification types: `BrainDumpNotification`, `PhaseGenerationNotification`, etc.
 - Progress types: `BinaryProgress`, `PercentageProgress`, `StepsProgress`, `StreamingProgress`
 - Store types: `NotificationStoreState`, `NotificationConfig`
@@ -497,6 +528,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 **Function:** `handle_new_user_trial()`
 
 **Flow:**
+
 1. User signs up
 2. Trigger runs on `users` INSERT
 3. Sets trial status and end date
@@ -509,12 +541,14 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 **Function:** `auto_subscribe_user_to_brief_notifications()`
 
 **Flow:**
+
 1. New user signs up
 2. Trigger runs AFTER INSERT on `users`
 3. Creates subscription to `brief.completed`
 4. Creates default preferences (email + push enabled)
 
 **Backfill:**
+
 - Existing users backfilled via migration
 - All users auto-subscribed
 - Preferences created with defaults
@@ -526,6 +560,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 ### Manual Testing Checklist
 
 **Phase 3 Implementation Doc** includes:
+
 - Prerequisites (VAPID keys, env vars)
 - Migration verification queries
 - Event creation verification
@@ -537,6 +572,7 @@ DELETE /api/notifications/push/subscribe  // Remove push subscription
 ### Monitoring Queries
 
 **Included in docs:**
+
 ```sql
 -- Brief notification deliveries (last 24h)
 SELECT channel, status, COUNT(*)
@@ -566,6 +602,7 @@ AND NOT push_enabled AND NOT email_enabled AND NOT in_app_enabled;
 ### Troubleshooting Documented
 
 **Phase 3 doc includes:**
+
 - No notification received → Check event, subscription, preferences, delivery
 - Email not sent → Check email record, job queue, worker logs
 - Preferences not saving → Check RLS policies, console errors, session
@@ -596,6 +633,7 @@ PRIVATE_BUILDOS_WEBHOOK_SECRET=your_webhook_secret
 ```
 
 **Generate VAPID Keys:**
+
 ```bash
 npx web-push generate-vapid-keys
 ```
@@ -609,7 +647,7 @@ npx web-push generate-vapid-keys
 ```json
 {
   "dependencies": {
-    "web-push": "^3.6.7"  // Browser push notifications
+    "web-push": "^3.6.7" // Browser push notifications
   }
 }
 ```
@@ -624,36 +662,36 @@ No additional dependencies - uses browser APIs
 
 ### Database Files
 
-| File | Lines | Status |
-|------|-------|--------|
-| `20251006_notification_system_phase1.sql` | 562 | ✅ Applied |
-| `20251006_notification_system_phase3.sql` | 248 | ✅ Applied |
+| File                                      | Lines | Status     |
+| ----------------------------------------- | ----- | ---------- |
+| `20251006_notification_system_phase1.sql` | 562   | ✅ Applied |
+| `20251006_notification_system_phase3.sql` | 248   | ✅ Applied |
 
 ### Worker Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `notificationWorker.ts` | 450 | Main worker processor |
-| `emailAdapter.ts` | 217 | Email delivery adapter |
-| `briefWorker.ts` (modified) | +15 | Event emission |
+| File                        | Lines | Purpose                |
+| --------------------------- | ----- | ---------------------- |
+| `notificationWorker.ts`     | 450   | Main worker processor  |
+| `emailAdapter.ts`           | 217   | Email delivery adapter |
+| `briefWorker.ts` (modified) | +15   | Event emission         |
 
 ### Web Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `notification-preferences.service.ts` | 303 | Preferences management |
-| `browser-push.service.ts` | 196 | Push subscription management |
-| `NotificationPreferences.svelte` | 355 | Preferences UI component |
-| `NotificationsTab.svelte` | ~50 | Tab wrapper |
-| `sw.js` | 94 | Service worker |
-| `profile/+page.svelte` (modified) | +5 | Tab integration |
+| File                                  | Lines | Purpose                      |
+| ------------------------------------- | ----- | ---------------------------- |
+| `notification-preferences.service.ts` | 303   | Preferences management       |
+| `browser-push.service.ts`             | 196   | Push subscription management |
+| `NotificationPreferences.svelte`      | 355   | Preferences UI component     |
+| `NotificationsTab.svelte`             | ~50   | Tab wrapper                  |
+| `sw.js`                               | 94    | Service worker               |
+| `profile/+page.svelte` (modified)     | +5    | Tab integration              |
 
 ### Type Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `notification.types.ts` (shared) | 297 | Event/delivery types |
-| `notification.types.ts` (web) | 406 | UI notification types (separate system) |
+| File                             | Lines | Purpose                                 |
+| -------------------------------- | ----- | --------------------------------------- |
+| `notification.types.ts` (shared) | 297   | Event/delivery types                    |
+| `notification.types.ts` (web)    | 406   | UI notification types (separate system) |
 
 **Total:** ~2,650 lines of code across 13+ files
 
@@ -727,12 +765,14 @@ No additional dependencies - uses browser APIs
 ### Event-Driven Architecture
 
 **Pattern:** Event Sourcing + CQRS
+
 - Events are immutable facts
 - Subscriptions determine who receives what
 - Preferences control how delivery happens
 - Deliveries are tracked separately
 
 **Benefits:**
+
 - Decoupled event sources from delivery
 - Audit trail of all notifications
 - Easy to add new channels/events
@@ -741,12 +781,14 @@ No additional dependencies - uses browser APIs
 ### Queue-Based Delivery
 
 **Pattern:** Queue Worker + Retry Logic
+
 - All deliveries go through queue
 - Jobs claimed atomically
 - Exponential backoff for retries
 - Max 3 attempts per delivery
 
 **Benefits:**
+
 - Handles spikes in notification volume
 - Resilient to temporary failures
 - Easy to scale workers horizontally
@@ -755,12 +797,14 @@ No additional dependencies - uses browser APIs
 ### Preference-First Design
 
 **Pattern:** User Consent + Granular Control
+
 - Users opt-in to notifications
 - Per-event, per-channel preferences
 - Quiet hours support
 - Frequency limits (defined but not enforced yet)
 
 **Benefits:**
+
 - Respects user preferences
 - Reduces notification fatigue
 - Compliance friendly (GDPR, etc.)
@@ -787,6 +831,7 @@ No additional dependencies - uses browser APIs
 **Lifecycle:** Start operation → Create notification → Update progress → Remove on complete
 
 **Key Difference:**
+
 - System 1 = Persisted events with multi-channel delivery (email, push, etc.)
 - System 2 = Ephemeral UI state for operation progress (no persistence)
 
@@ -806,10 +851,15 @@ No additional dependencies - uses browser APIs
 
 ### Phase 4: SMS Adapter
 
+**See**: [SMS Notification Channel Design](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md) for detailed implementation plan
+
 - [ ] Wire up Twilio service to notification worker
 - [ ] Implement phone verification flow
 - [ ] Add SMS templates
 - [ ] Update preference defaults
+- [ ] Add notification_delivery_id foreign key to sms_messages table
+- [ ] Implement SMS adapter in notification worker
+- [ ] Update webhook handler to sync both tables
 
 ### Phase 5: Advanced Features
 
@@ -1016,12 +1066,14 @@ The BuildOS notification system is **well-designed and partially implemented**. 
 **Status:** ✅ Phase 1 Complete | ✅ Phase 3 Complete | ❌ Phase 2 Not Started | ❌ API Layer Missing
 
 **Production Readiness:**
+
 - Database: ✅ Production ready
 - Worker: ✅ Production ready
 - Frontend: ✅ Production ready
 - Coverage: ⚠️ Only 3/10 events implemented
 
 **Next Critical Steps:**
+
 1. Implement remaining event types (Phase 2)
 2. Create REST API layer
 3. Build monitoring dashboard

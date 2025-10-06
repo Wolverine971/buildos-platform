@@ -28,11 +28,11 @@ describe('Prompt Audit', () => {
 	});
 
 	describe('savePromptForAudit', () => {
-		it('should save dual-processing-tasks-with-questions scenario correctly', async () => {
+		it('should save existing-project-dual-tasks-with-questions scenario correctly', async () => {
 			const params = {
 				systemPrompt: 'Test system prompt',
 				userPrompt: 'Test user prompt',
-				scenarioType: 'dual-processing-tasks-with-questions',
+				scenarioType: 'existing-project-dual-tasks-with-questions',
 				metadata: {
 					userId: 'test-user',
 					projectId: 'test-project'
@@ -44,7 +44,7 @@ describe('Prompt Audit', () => {
 			// Verify writeFile was called with correct path
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				expect.stringContaining(
-					'dual-processing/dual-processing-tasks-with-questions-prompt.md'
+					'existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md'
 				),
 				expect.stringContaining('Test system prompt'),
 				'utf-8'
@@ -52,15 +52,15 @@ describe('Prompt Audit', () => {
 
 			// Verify success log
 			expect(console.log).toHaveBeenCalledWith(
-				'✅ Prompt audit saved: dual-processing/dual-processing-tasks-with-questions-prompt.md'
+				'✅ Prompt audit saved: existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md'
 			);
 		});
 
-		it('should save existing-project-context-update scenario correctly', async () => {
+		it('should save short-braindump-context-update scenario correctly', async () => {
 			const params = {
 				systemPrompt: 'Context update system prompt',
 				userPrompt: 'Context update user prompt',
-				scenarioType: 'existing-project-context-update',
+				scenarioType: 'short-braindump-context-update',
 				metadata: {
 					userId: 'test-user',
 					projectId: 'test-project',
@@ -72,25 +72,27 @@ describe('Prompt Audit', () => {
 
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				expect.stringContaining(
-					'existing-project/existing-project-context-update-prompt.md'
+					'existing-project/short-braindump/context/short-braindump-context-update-prompt.md'
 				),
 				expect.stringContaining('Context update system prompt'),
 				'utf-8'
 			);
 		});
 
-		it('should save dual-processing-context scenario correctly', async () => {
+		it('should save existing-project-dual-context scenario correctly', async () => {
 			const params = {
 				systemPrompt: 'DP context system prompt',
 				userPrompt: 'DP context user prompt',
-				scenarioType: 'dual-processing-context',
+				scenarioType: 'existing-project-dual-context',
 				metadata: {}
 			};
 
 			await savePromptForAudit(params);
 
 			expect(fs.writeFile).toHaveBeenCalledWith(
-				expect.stringContaining('dual-processing/dual-processing-context-prompt.md'),
+				expect.stringContaining(
+					'existing-project/dual-processing/context/existing-project-context-prompt.md'
+				),
 				expect.stringContaining('DP context system prompt'),
 				'utf-8'
 			);
@@ -143,18 +145,19 @@ describe('Prompt Audit', () => {
 	});
 
 	describe('determineScenarioType', () => {
-		it('should return dual-processing-questions for dual processing with questions', () => {
+		it('should return existing-project-dual-tasks-with-questions for dual processing with questions', () => {
 			const result = determineScenarioType({
 				isNewProject: false,
 				brainDumpLength: 1000,
 				isDualProcessing: true,
-				processingType: 'questions'
+				processingType: 'tasks', // Fixed: 'questions' was invalid
+				hasQuestions: true // Fixed: Questions indicated via separate param
 			});
 
-			expect(result).toBe('dual-processing-questions');
+			expect(result).toBe('existing-project-dual-tasks-with-questions');
 		});
 
-		it('should return dual-processing-context for dual processing context', () => {
+		it('should return existing-project-dual-context for dual processing context', () => {
 			const result = determineScenarioType({
 				isNewProject: false,
 				brainDumpLength: 1000,
@@ -162,10 +165,10 @@ describe('Prompt Audit', () => {
 				processingType: 'context'
 			});
 
-			expect(result).toBe('dual-processing-context');
+			expect(result).toBe('existing-project-dual-context');
 		});
 
-		it('should return dual-processing-tasks for dual processing tasks', () => {
+		it('should return existing-project-dual-tasks for dual processing tasks', () => {
 			const result = determineScenarioType({
 				isNewProject: false,
 				brainDumpLength: 1000,
@@ -173,47 +176,52 @@ describe('Prompt Audit', () => {
 				processingType: 'tasks'
 			});
 
-			expect(result).toBe('dual-processing-tasks');
+			expect(result).toBe('existing-project-dual-tasks');
 		});
 
-		it('should return new-project-short for new project with short content', () => {
+		it('should return new-project-singular for new project with short content', () => {
 			const result = determineScenarioType({
 				isNewProject: true,
 				brainDumpLength: 400,
 				isDualProcessing: false
 			});
 
-			expect(result).toBe('new-project-short');
+			// Fixed: Length no longer differentiates new projects
+			expect(result).toBe('new-project-singular');
 		});
 
-		it('should return new-project-long for new project with long content', () => {
+		it('should return new-project-singular for new project with long content', () => {
 			const result = determineScenarioType({
 				isNewProject: true,
 				brainDumpLength: 600,
 				isDualProcessing: false
 			});
 
-			expect(result).toBe('new-project-long');
+			// Fixed: All non-dual new projects are 'singular'
+			expect(result).toBe('new-project-singular');
 		});
 
-		it('should return existing-project-short for existing project with short content', () => {
+		it('should return short-braindump-task-extraction for existing project with short content', () => {
 			const result = determineScenarioType({
 				isNewProject: false,
 				brainDumpLength: 400,
-				isDualProcessing: false
+				isDualProcessing: false,
+				isShortBrainDump: true, // Fixed: Added required param
+				processingType: 'tasks' // Fixed: Added required param
 			});
 
-			expect(result).toBe('existing-project-short');
+			expect(result).toBe('short-braindump-task-extraction');
 		});
 
-		it('should return existing-project-long for existing project with long content', () => {
+		it('should return existing-project-dual-context for existing project with long content', () => {
 			const result = determineScenarioType({
 				isNewProject: false,
 				brainDumpLength: 600,
 				isDualProcessing: false
 			});
 
-			expect(result).toBe('existing-project-long');
+			// Fixed: Fallback logic returns dual-context for longer existing projects
+			expect(result).toBe('existing-project-dual-context');
 		});
 	});
 });

@@ -12,16 +12,17 @@
 
 **Base Route**: `/api/admin/notifications/analytics/`
 
-| Endpoint | Purpose | Status |
-|----------|---------|--------|
-| `GET /overview` | Overview metrics with trends | ✅ Complete |
-| `GET /channels` | Channel performance comparison | ✅ Complete |
-| `GET /events` | Event type breakdown | ✅ Complete |
-| `GET /timeline` | Delivery timeline chart data | ✅ Complete |
-| `GET /failures` | Recent failed deliveries | ✅ Complete |
-| `GET /subscriptions` | Active subscription overview | ✅ Complete |
+| Endpoint             | Purpose                        | Status      |
+| -------------------- | ------------------------------ | ----------- |
+| `GET /overview`      | Overview metrics with trends   | ✅ Complete |
+| `GET /channels`      | Channel performance comparison | ✅ Complete |
+| `GET /events`        | Event type breakdown           | ✅ Complete |
+| `GET /timeline`      | Delivery timeline chart data   | ✅ Complete |
+| `GET /failures`      | Recent failed deliveries       | ✅ Complete |
+| `GET /subscriptions` | Active subscription overview   | ✅ Complete |
 
 **Features**:
+
 - Timeframe filtering (24h, 7d, 30d, 90d)
 - Trend calculation vs previous period
 - Granular metrics (success rate, open rate, click rate)
@@ -29,6 +30,7 @@
 - Comprehensive error handling
 
 **Files Created**:
+
 ```
 /apps/web/src/routes/api/admin/notifications/analytics/
 ├── overview/+server.ts
@@ -45,13 +47,14 @@
 
 **Base Route**: `/api/admin/notifications/test/`
 
-| Endpoint | Purpose | Status |
-|----------|---------|--------|
-| `POST /test` | Send test notification | ✅ Complete |
-| `GET /test/history` | Test notification history | ✅ Complete |
-| `GET /recipients/search` | Search users for testing | ✅ Complete |
+| Endpoint                 | Purpose                   | Status      |
+| ------------------------ | ------------------------- | ----------- |
+| `POST /test`             | Send test notification    | ✅ Complete |
+| `GET /test/history`      | Test notification history | ✅ Complete |
+| `GET /recipients/search` | Search users for testing  | ✅ Complete |
 
 **Features**:
+
 - Rate limiting (50 tests/hour, 20 recipients max)
 - Test mode metadata tagging
 - Payload validation
@@ -59,6 +62,7 @@
 - Admin audit trail
 
 **Files Created**:
+
 ```
 /apps/web/src/routes/api/admin/notifications/
 ├── test/+server.ts
@@ -72,12 +76,13 @@
 
 **Base Route**: `/api/admin/notifications/deliveries/[id]/`
 
-| Endpoint | Purpose | Status |
-|----------|---------|--------|
-| `POST /retry` | Retry failed delivery | ✅ Complete |
+| Endpoint       | Purpose                      | Status      |
+| -------------- | ---------------------------- | ----------- |
+| `POST /retry`  | Retry failed delivery        | ✅ Complete |
 | `POST /resend` | Create new delivery & resend | ✅ Complete |
 
 **Features**:
+
 - Attempt tracking
 - Max attempts validation
 - Queue job creation
@@ -85,6 +90,7 @@
 - Error handling
 
 **Files Created**:
+
 ```
 /apps/web/src/routes/api/admin/notifications/deliveries/[id]/
 ├── retry/+server.ts
@@ -97,16 +103,17 @@
 
 **Migration File**: `apps/web/supabase/migrations/20251006_notification_analytics_rpc_functions.sql`
 
-| Function | Purpose | Returns |
-|----------|---------|---------|
-| `get_notification_overview_metrics()` | High-level metrics | total_sent, success_rate, open_rate, click_rate |
-| `get_notification_channel_performance()` | Channel breakdown | Per-channel metrics with delivery times |
-| `get_notification_event_performance()` | Event type breakdown | Per-event metrics and subscriber counts |
-| `get_notification_delivery_timeline()` | Timeline data | Time-series data with configurable granularity |
-| `get_notification_failed_deliveries()` | Failed deliveries | Recent failures with error details |
-| `get_notification_active_subscriptions()` | Subscription overview | Active subscriptions with user details |
+| Function                                  | Purpose               | Returns                                         |
+| ----------------------------------------- | --------------------- | ----------------------------------------------- |
+| `get_notification_overview_metrics()`     | High-level metrics    | total_sent, success_rate, open_rate, click_rate |
+| `get_notification_channel_performance()`  | Channel breakdown     | Per-channel metrics with delivery times         |
+| `get_notification_event_performance()`    | Event type breakdown  | Per-event metrics and subscriber counts         |
+| `get_notification_delivery_timeline()`    | Timeline data         | Time-series data with configurable granularity  |
+| `get_notification_failed_deliveries()`    | Failed deliveries     | Recent failures with error details              |
+| `get_notification_active_subscriptions()` | Subscription overview | Active subscriptions with user details          |
 
 **Performance Optimizations**:
+
 - 4 new indexes for faster queries
 - Efficient aggregation queries
 - Timeframe-based filtering
@@ -123,6 +130,7 @@
 **File**: `notification-analytics.service.ts`
 
 **Methods**:
+
 - `getOverview(timeframe)` - Overview metrics
 - `getChannelPerformance(timeframe)` - Channel comparison
 - `getEventBreakdown(timeframe)` - Event type analysis
@@ -131,6 +139,7 @@
 - `getSubscriptions()` - Active subscriptions
 
 **TypeScript Interfaces**:
+
 - `AnalyticsOverview`
 - `ChannelMetrics`
 - `EventMetrics`
@@ -143,6 +152,7 @@
 **File**: `notification-test.service.ts`
 
 **Methods**:
+
 - `sendTest(options)` - Send test notification
 - `getHistory(limit, offset)` - Test history
 - `searchRecipients(query, eventType)` - User search
@@ -150,6 +160,7 @@
 - `resendDelivery(deliveryId)` - Resend notification
 
 **TypeScript Interfaces**:
+
 - `TestNotificationRequest`
 - `TestNotificationResult`
 - `TestHistoryItem`
@@ -160,12 +171,14 @@
 ## 📊 Implementation Stats
 
 **Total Files Created**: 15
+
 - API Endpoints: 11
 - Services: 2
 - SQL Migration: 1
 - Summary Document: 1
 
 **Total Lines of Code**: ~1,800 lines
+
 - API Endpoints: ~800 lines
 - SQL Functions: ~500 lines
 - Services: ~400 lines
@@ -247,22 +260,26 @@
 ## 🔐 Security Features
 
 ✅ **Admin-Only Access**
+
 - All endpoints check `user.is_admin` flag
 - Unauthorized users get 403 Forbidden
 - Layout-level protection at `/admin/*` routes
 
 ✅ **Rate Limiting**
+
 - Test notifications: 50 per hour per admin
 - Recipient limit: 20 per test
 - Prevents abuse and API overload
 
 ✅ **Input Validation**
+
 - Payload schema validation (using existing event schemas)
 - Timeframe parameter validation
 - Delivery ID validation
 - Channel availability checks
 
 ✅ **Audit Trail**
+
 - Test mode metadata tracks sender
 - Timestamps on all records
 - Original delivery ID on resend
@@ -390,6 +407,7 @@ All components should follow BuildOS design patterns:
 **Specification**: `thoughts/shared/research/2025-10-06_06-00-00_admin-notification-dashboard-spec.md`
 
 **Related Docs**:
+
 - Notification System Design: `docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md`
 - Notification Implementation Status: `thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md`
 - Admin System Research: `thoughts/shared/research/2025-10-06_05-00-00_admin-routes-research.md`
@@ -458,15 +476,19 @@ curl -X POST http://localhost:5173/api/admin/notifications/test \
 ### Common Issues
 
 **Issue**: "Function does not exist"
+
 - **Solution**: Run the analytics RPC migration: `apps/web/supabase/migrations/20251006_notification_analytics_rpc_functions.sql`
 
 **Issue**: "Permission denied for function"
+
 - **Solution**: Verify RLS policies and function grants in migration
 
 **Issue**: "Rate limit exceeded"
+
 - **Solution**: Wait 1 hour or increase `MAX_TESTS_PER_HOUR` in test endpoint
 
 **Issue**: "Admin access required"
+
 - **Solution**: Ensure logged-in user has `is_admin = true` in database
 
 ---
@@ -485,6 +507,7 @@ Phase 1 implementation is **complete and production-ready**:
 **Next Phase**: Build UI components and dashboard pages using these APIs.
 
 **Estimated Timeline for Phase 2**: 3-4 weeks
+
 - Week 1-2: Core components (13 components)
 - Week 3: Dashboard and test bed pages
 - Week 4: Logs page, navigation integration, testing
@@ -494,6 +517,7 @@ Phase 1 implementation is **complete and production-ready**:
 ## 📞 Support
 
 For questions or issues, refer to:
+
 - Specification doc: `thoughts/shared/research/2025-10-06_06-00-00_admin-notification-dashboard-spec.md`
 - Implementation summary: This file
 - API documentation: `/apps/web/docs/technical/api/endpoints/admin.md` (to be created)

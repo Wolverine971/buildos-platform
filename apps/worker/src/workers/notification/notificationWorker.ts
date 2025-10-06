@@ -18,6 +18,7 @@ import type {
 } from "@buildos/shared-types";
 import webpush from "web-push";
 import { sendEmailNotification } from "./emailAdapter.js";
+import { sendSMSNotification } from "./smsAdapter.js";
 
 interface ProcessingJob<T = any> {
   id: string;
@@ -217,11 +218,7 @@ async function sendNotification(
       return sendEmailNotification(delivery);
 
     case "sms":
-      // TODO: Implement in Phase 2
-      return {
-        success: false,
-        error: "SMS notifications not yet implemented",
-      };
+      return sendSMSNotification(delivery);
 
     default:
       return {

@@ -31,7 +31,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Validation
 		if (!event_type || !payload || !recipient_user_ids || !channels) {
-			return ApiResponse.badRequest('Missing required fields: event_type, payload, recipient_user_ids, channels');
+			return ApiResponse.badRequest(
+				'Missing required fields: event_type, payload, recipient_user_ids, channels'
+			);
 		}
 
 		if (recipient_user_ids.length === 0) {
@@ -39,7 +41,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		if (recipient_user_ids.length > MAX_RECIPIENTS_PER_TEST) {
-			return ApiResponse.badRequest(`Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`);
+			return ApiResponse.badRequest(
+				`Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`
+			);
 		}
 
 		if (channels.length === 0) {
@@ -58,7 +62,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			if (rateLimitError) {
 				console.error('Error checking rate limit:', rateLimitError);
 			} else if (count && count >= MAX_TESTS_PER_HOUR) {
-				return ApiResponse.badRequest(`Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`);
+				return ApiResponse.badRequest(
+					`Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`
+				);
 			}
 		}
 
