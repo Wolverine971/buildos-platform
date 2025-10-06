@@ -2,11 +2,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
+	import { browserPushService } from '$lib/services/browser-push.service';
+	import { smsService } from '$lib/services/sms.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import { Bell, Mail, Smartphone, Check, Loader, Moon } from 'lucide-svelte';
+	import PhoneVerificationModal from './PhoneVerificationModal.svelte';
+	import {
+		Bell,
+		Mail,
+		Smartphone,
+		MessageSquare,
+		Check,
+		Loader,
+		Moon,
+		AlertCircle
+	} from 'lucide-svelte';
 	import type { EventType, UserNotificationPreferences } from '@buildos/shared-types';
 
 	interface Props {
@@ -19,10 +31,20 @@
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let loadError = $state<string | null>(null);
+	let showPhoneVerificationModal = $state(false);
+	let phoneVerified = $state(false);
+	let phoneNumber = $state<string | null>(null);
+
+	// Push notification state
+	let pushSupported = $state(false);
+	let pushSubscribed = $state(false);
+	let pushPermissionStatus = $state<NotificationPermission>('default');
+	let pushSubscriptionError = $state<string | null>(null);
 
 	// Preference settings for brief.completed (with defaults)
 	let pushEnabled = $state(true);
 	let emailEnabled = $state(true);
+	let smsEnabled = $state(false);
 	let inAppEnabled = $state(true);
 	let quietHoursEnabled = $state(false);
 	let quietHoursStart = $state('22:00');
@@ -30,6 +52,7 @@
 
 	onMount(async () => {
 		await loadPreferences();
+		await checkPushSubscriptionStatus();
 	});
 
 	async function loadPreferences() {
@@ -44,10 +67,18 @@
 				// Update state with loaded preferences
 				pushEnabled = prefs.push_enabled;
 				emailEnabled = prefs.email_enabled;
+				smsEnabled = prefs.sms_enabled;
 				inAppEnabled = prefs.in_app_enabled;
 				quietHoursEnabled = prefs.quiet_hours_enabled;
 				quietHoursStart = prefs.quiet_hours_start;
 				quietHoursEnd = prefs.quiet_hours_end;
+			}
+
+			// Check phone verification status
+			const smsPrefs = await smsService.getSMSPreferences(userId);
+			if (smsPrefs.success && smsPrefs.data?.preferences) {
+				phoneVerified = smsPrefs.data.preferences.phone_verified || false;
+				phoneNumber = smsPrefs.data.preferences.phone_number || null;
 			}
 		} catch (error) {
 			console.error('Failed to load notification preferences:', error);
@@ -58,12 +89,95 @@
 		}
 	}
 
+	async function handleSMSToggle(enabled: boolean) {
+		if (enabled && !phoneVerified) {
+			// Show phone verification modal
+			showPhoneVerificationModal = true;
+			// Revert toggle state until verification is complete
+			smsEnabled = false;
+			return;
+		}
+
+		// If disabled or phone is already verified, update immediately
+		smsEnabled = enabled;
+	}
+
+	async function handlePhoneVerified() {
+		// Reload preferences to get updated phone status
+		await loadPreferences();
+		// Enable SMS now that phone is verified
+		smsEnabled = true;
+		toastService.success('Phone verified! SMS notifications enabled.');
+	}
+
+	async function checkPushSubscriptionStatus() {
+		try {
+			pushSupported = browserPushService.isSupported();
+			if (pushSupported) {
+				pushSubscribed = await browserPushService.isSubscribed();
+				pushPermissionStatus = Notification.permission;
+			}
+		} catch (error) {
+			console.error('Failed to check push subscription status:', error);
+		}
+	}
+
+	async function handlePushToggle(enabled: boolean) {
+		if (enabled) {
+			// User wants to enable push notifications
+			pushSubscriptionError = null;
+
+			try {
+				if (!browserPushService.isSupported()) {
+					throw new Error(
+						'Push notifications are not supported in this browser. Please try Chrome, Firefox, or Safari.'
+					);
+				}
+
+				// Request permission from browser
+				const hasPermission = await browserPushService.requestPermission();
+				if (!hasPermission) {
+					pushEnabled = false;
+					pushSubscriptionError =
+						'Notification permission was denied. Please enable notifications in your browser settings and try again.';
+					return;
+				}
+
+				// Subscribe to push service
+				await browserPushService.subscribe();
+				pushSubscribed = true;
+				pushPermissionStatus = 'granted';
+
+				toastService.success('Push notifications enabled!');
+			} catch (error) {
+				pushEnabled = false;
+				pushSubscriptionError =
+					error instanceof Error ? error.message : 'Failed to enable push notifications';
+				console.error('Failed to subscribe to push notifications:', error);
+				toastService.error('Failed to enable push notifications');
+			}
+		} else {
+			// User wants to disable push notifications
+			try {
+				await browserPushService.unsubscribe();
+				pushSubscribed = false;
+				toastService.success('Push notifications disabled');
+			} catch (error) {
+				console.error('Failed to unsubscribe from push notifications:', error);
+			}
+		}
+
+		// Update the toggle state
+		pushEnabled = enabled;
+	}
+
 	async function savePreferences() {
 		isSaving = true;
 		try {
 			await notificationPreferencesService.update('brief.completed', {
 				push_enabled: pushEnabled,
 				email_enabled: emailEnabled,
+				sms_enabled: smsEnabled,
 				in_app_enabled: inAppEnabled,
 				quiet_hours_enabled: quietHoursEnabled,
 				quiet_hours_start: quietHoursStart,
@@ -80,7 +194,7 @@
 		}
 	}
 
-	let hasAnyChannelEnabled = $derived(pushEnabled || emailEnabled || inAppEnabled);
+	let hasAnyChannelEnabled = $derived(pushEnabled || emailEnabled || smsEnabled || inAppEnabled);
 </script>
 
 <div class="space-y-6">
@@ -224,7 +338,7 @@
 				>
 					<div class="flex items-start gap-3">
 						<Smartphone class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-						<div>
+						<div class="flex-1">
 							<label
 								for="push-notifications"
 								class="font-medium text-gray-900 dark:text-white cursor-pointer"
@@ -234,6 +348,40 @@
 							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
 								Get instant browser notifications
 							</p>
+							{#if !pushSupported}
+								<div
+									class="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>Not supported in this browser</span>
+								</div>
+							{:else if pushEnabled && !pushSubscribed}
+								<div
+									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>Browser permission required</span>
+								</div>
+							{:else if pushEnabled && pushSubscribed}
+								<div class="mt-1.5 text-xs text-green-600 dark:text-green-400">
+									✓ Active subscription
+								</div>
+							{:else if pushPermissionStatus === 'denied'}
+								<div
+									class="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>Permission denied - check browser settings</span>
+								</div>
+							{/if}
+							{#if pushSubscriptionError}
+								<div
+									class="mt-2 flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400"
+								>
+									<AlertCircle class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+									<span>{pushSubscriptionError}</span>
+								</div>
+							{/if}
 						</div>
 					</div>
 					<label class="relative inline-flex items-center cursor-pointer">
@@ -241,10 +389,12 @@
 							type="checkbox"
 							id="push-notifications"
 							class="sr-only peer"
-							bind:checked={pushEnabled}
+							checked={pushEnabled}
+							onchange={(e) => handlePushToggle(e.currentTarget.checked)}
+							disabled={!pushSupported}
 						/>
 						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 						></div>
 					</label>
 				</div>
@@ -276,6 +426,52 @@
 						/>
 						<div
 							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"
+						></div>
+					</label>
+				</div>
+
+				<!-- SMS Notifications -->
+				<div
+					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+				>
+					<div class="flex items-start gap-3">
+						<MessageSquare
+							class="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5"
+						/>
+						<div class="flex-1">
+							<label
+								for="sms-notifications"
+								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+							>
+								SMS Notifications
+							</label>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+								Receive text messages when your brief is ready
+							</p>
+							{#if !phoneVerified}
+								<div
+									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>Phone verification required</span>
+								</div>
+							{:else if phoneNumber}
+								<div class="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+									Verified: {phoneNumber}
+								</div>
+							{/if}
+						</div>
+					</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							id="sms-notifications"
+							class="sr-only peer"
+							checked={smsEnabled}
+							onchange={(e) => handleSMSToggle(e.currentTarget.checked)}
+						/>
+						<div
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"
 						></div>
 					</label>
 				</div>
@@ -353,4 +549,11 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Phone Verification Modal -->
+	<PhoneVerificationModal
+		bind:isOpen={showPhoneVerificationModal}
+		onClose={() => (showPhoneVerificationModal = false)}
+		onVerified={handlePhoneVerified}
+	/>
 </div>

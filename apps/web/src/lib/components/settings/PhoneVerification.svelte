@@ -7,6 +7,12 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import { Phone, Check, Loader } from 'lucide-svelte';
 
+	interface Props {
+		onVerified?: () => void;
+	}
+
+	let { onVerified }: Props = $props();
+
 	let phoneNumber = $state('');
 	let verificationCode = $state('');
 	let verificationSent = $state(false);
@@ -42,8 +48,12 @@
 
 		if (result.success) {
 			toastService.success('Phone number verified successfully!');
-			// Refresh the page or emit an event to update parent component
-			window.location.reload();
+			// Call the onVerified callback or reload the page as fallback
+			if (onVerified) {
+				onVerified();
+			} else {
+				window.location.reload();
+			}
 		} else {
 			toastService.error(result.errors?.[0] || 'Invalid verification code');
 		}
@@ -97,6 +107,13 @@
 				labelFor="phone"
 				hint="Enter your phone number to receive SMS notifications"
 			>
+				<!-- Twilio Consent Language -->
+				<div class="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-blue-300 dark:border-blue-700">
+					<p class="text-sm text-gray-700 dark:text-gray-300">
+						By providing your phone number, you agree to receive SMS reminders and notifications from BuildOS. Message & data rates may apply. Reply <strong>STOP</strong> to unsubscribe at any time.
+					</p>
+				</div>
+
 				<div class="flex gap-2">
 					<TextInput
 						type="tel"

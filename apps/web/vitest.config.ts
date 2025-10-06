@@ -4,6 +4,10 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	resolve: {
+		// Ensure Svelte uses browser/client exports in tests (not SSR)
+		conditions: ['browser']
+	},
 	test: {
 		globals: true,
 		environment: 'node', // Use node for server-side tests by default

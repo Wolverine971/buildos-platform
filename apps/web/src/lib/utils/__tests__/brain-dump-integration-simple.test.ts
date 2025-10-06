@@ -12,6 +12,9 @@ import { BrainDumpProcessor } from '../braindump-processor';
 describe('Brain Dump Processor Integration - Simple Tests', () => {
 	let processor: BrainDumpProcessor;
 	let mockSupabase: any;
+	let mockSmartLLMService: any;
+	let mockActivityLogger: any;
+	let mockOperationsExecutor: any;
 	const testUserId = '550e8400-e29b-41d4-a716-446655440000';
 
 	// Mock Supabase client with comprehensive chaining support
@@ -42,6 +45,28 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 	beforeEach(() => {
 		mockSupabase = createMockSupabase();
 		processor = new BrainDumpProcessor(mockSupabase);
+
+		// Replace llmService instance (NOT llmPool)
+		mockSmartLLMService = {
+			getJSONResponse: vi.fn()
+		};
+		(processor as any).llmService = mockSmartLLMService;
+
+		// Replace activityLogger
+		mockActivityLogger = {
+			logActivity: vi.fn().mockResolvedValue(undefined)
+		};
+		(processor as any).activityLogger = mockActivityLogger;
+
+		// Replace operationsExecutor (for autoExecute tests)
+		mockOperationsExecutor = {
+			executeOperations: vi.fn().mockResolvedValue({
+				successful: [],
+				failed: []
+			})
+		};
+		(processor as any).operationsExecutor = mockOperationsExecutor;
+
 		vi.clearAllMocks();
 	});
 
@@ -90,12 +115,11 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 				}
 			};
 
-			vi.spyOn(processor['llmPool'], 'makeRequest').mockResolvedValue({
-				result: mockLLMResponse,
-				content: JSON.stringify(mockLLMResponse),
-				model: 'gpt-4o',
-				usage: { total_tokens: 500 }
-			});
+			// Mock SmartLLMService.getJSONResponse for new project (dual processing)
+			// New projects use 2 calls: context + tasks
+			mockSmartLLMService.getJSONResponse
+				.mockResolvedValueOnce(mockLLMResponse) // Context extraction
+				.mockResolvedValueOnce(mockLLMResponse); // Task extraction
 
 			// Mock successful project creation
 			mockSupabase.single.mockResolvedValue({
@@ -184,12 +208,19 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 				}
 			};
 
-			vi.spyOn(processor['llmPool'], 'makeRequest').mockResolvedValue({
-				result: mockLLMResponse,
-				content: JSON.stringify(mockLLMResponse),
-				model: 'gpt-4o',
-				usage: { total_tokens: 800 }
-			});
+			// Mock SmartLLMService.getJSONResponse for existing project (dual processing)
+			// Existing projects use 3 calls: prepAnalysis + context + tasks
+			const mockPrepAnalysis = {
+				braindump_classification: 'task-focused',
+				needs_context_update: false,
+				relevant_task_ids: [],
+				processing_recommendation: { skip_context: true, skip_tasks: false }
+			};
+
+			mockSmartLLMService.getJSONResponse
+				.mockResolvedValueOnce(mockPrepAnalysis) // Preparatory analysis
+				.mockResolvedValueOnce(mockLLMResponse) // Context extraction
+				.mockResolvedValueOnce(mockLLMResponse); // Task extraction
 
 			// Mock successful task creation
 			mockSupabase.single.mockResolvedValue({
@@ -229,8 +260,8 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 
 			const projectId = '550e8400-e29b-41d4-a716-446655440001';
 
-			// Mock LLM response with project and tasks
-			const mockLLMResponse = {
+			// Mock LLM response - split into context and task responses for dual processing
+			const mockContextResponse = {
 				title: 'Blog Platform',
 				summary: 'New blog platform with authentication and commenting',
 				insights: 'Comprehensive blogging platform with user management',
@@ -247,7 +278,22 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 							slug: 'blog-platform'
 						},
 						enabled: true
-					},
+					}
+				],
+				metadata: {
+					totalOperations: 1,
+					tableBreakdown: { projects: 1 },
+					processingTime: 400,
+					timestamp: new Date().toISOString(),
+					processingMode: 'dual'
+				}
+			};
+
+			const mockTaskResponse = {
+				title: 'Blog Platform',
+				summary: 'New blog platform with authentication and commenting',
+				insights: 'Comprehensive blogging platform with user management',
+				operations: [
 					{
 						id: 'op-2',
 						table: 'tasks',
@@ -276,25 +322,39 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 					}
 				],
 				metadata: {
-					totalOperations: 1,
-					tableBreakdown: { tasks: 1 },
-					processingTime: 800,
+					totalOperations: 2,
+					tableBreakdown: { tasks: 2 },
+					processingTime: 400,
 					timestamp: new Date().toISOString(),
-					project_info: {
-						id: projectId,
-						name: 'Simple Todo App',
-						slug: null,
-						isNew: false
-					},
-					processingMode: 'single'
+					processingMode: 'dual'
 				}
 			};
 
-			vi.spyOn(processor['llmPool'], 'makeRequest').mockResolvedValue({
-				result: mockLLMResponse,
-				content: JSON.stringify(mockLLMResponse),
-				model: 'gpt-4o',
-				usage: { total_tokens: 1200 }
+			// Mock SmartLLMService.getJSONResponse for new project (dual processing)
+			mockSmartLLMService.getJSONResponse
+				.mockResolvedValueOnce(mockContextResponse) // Context extraction (project)
+				.mockResolvedValueOnce(mockTaskResponse); // Task extraction (tasks)
+
+			// Mock successful execution of all 3 operations
+			mockOperationsExecutor.executeOperations.mockResolvedValueOnce({
+				successful: [
+					{
+						operationId: 'op-1',
+						table: 'projects',
+						recordId: '550e8400-e29b-41d4-a716-446655440003'
+					},
+					{
+						operationId: 'op-2',
+						table: 'tasks',
+						recordId: '550e8400-e29b-41d4-a716-446655440004'
+					},
+					{
+						operationId: 'op-3',
+						table: 'tasks',
+						recordId: '550e8400-e29b-41d4-a716-446655440005'
+					}
+				],
+				failed: []
 			});
 
 			// Mock database operations - first check for existing project, then create operations
@@ -365,19 +425,25 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 			const brainDump = 'Simple test brain dump';
 
 			// Mock LLM failure
-			vi.spyOn(processor['llmPool'], 'makeRequest').mockRejectedValue(
+			mockSmartLLMService.getJSONResponse.mockRejectedValue(
 				new Error('LLM service unavailable')
 			);
 
-			await expect(
-				processor.processBrainDump({
-					brainDump,
-					userId: testUserId,
-					selectedProjectId: 'new',
-					options: { autoExecute: true },
-					brainDumpId: 'test-brain-dump-id-3'
-				})
-			).rejects.toThrow('Brain dump processing failed');
+			// The processor now handles failures gracefully and returns a partial failure result
+			const result = await processor.processBrainDump({
+				brainDump,
+				userId: testUserId,
+				selectedProjectId: 'new',
+				options: { autoExecute: true, retryAttempts: 1 },
+				brainDumpId: 'test-brain-dump-id-3'
+			});
+
+			// Verify graceful failure handling
+			expect(result.title).toBe('Brain dump processing failed');
+			expect(result.summary).toContain('failed');
+			expect(result.operations).toHaveLength(0);
+			expect(result.metadata.partialFailure).toBe(true);
+			expect(result.metadata.failureDetails).toBeDefined();
 		});
 
 		it('should handle database operation failures', async () => {
@@ -413,12 +479,10 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 				}
 			};
 
-			vi.spyOn(processor['llmPool'], 'makeRequest').mockResolvedValue({
-				result: mockLLMResponse,
-				content: JSON.stringify(mockLLMResponse),
-				model: 'gpt-4o',
-				usage: { total_tokens: 300 }
-			});
+			// Mock SmartLLMService.getJSONResponse for new project
+			mockSmartLLMService.getJSONResponse
+				.mockResolvedValueOnce(mockLLMResponse) // Context extraction
+				.mockResolvedValueOnce(mockLLMResponse); // Task extraction
 
 			// Mock brain dump save success but operation execution failure
 			mockSupabase.single.mockResolvedValueOnce({

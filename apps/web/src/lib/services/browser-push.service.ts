@@ -7,7 +7,11 @@
 
 import { createSupabaseBrowser } from '@buildos/supabase-client';
 import type { CreatePushSubscriptionRequest } from '@buildos/shared-types';
-import { PUBLIC_VAPID_PUBLIC_KEY } from '$env/static/public';
+import {
+	PUBLIC_SUPABASE_ANON_KEY,
+	PUBLIC_SUPABASE_URL,
+	PUBLIC_VAPID_PUBLIC_KEY
+} from '$env/static/public';
 
 // VAPID public key must match the private key in worker
 // You need to generate these using: npx web-push generate-vapid-keys
@@ -27,7 +31,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 class BrowserPushService {
-	private supabase = createSupabaseBrowser();
+	private supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 	private registration: ServiceWorkerRegistration | null = null;
 
 	/**
@@ -116,8 +120,18 @@ class BrowserPushService {
 				user_agent: navigator.userAgent
 			};
 
+			// Get current user ID
+			const {
+				data: { user }
+			} = await this.supabase.auth.getUser();
+
+			if (!user) {
+				throw new Error('User not authenticated');
+			}
+
 			const { error } = await this.supabase.from('push_subscriptions').upsert(
 				{
+					user_id: user.id, // Explicitly set user_id
 					endpoint: request.endpoint,
 					p256dh_key: request.keys.p256dh,
 					auth_key: request.keys.auth,

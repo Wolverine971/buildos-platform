@@ -2,9 +2,10 @@
 
 /**
  * Content length thresholds for brain dump validation
- * With preparatory analysis, we no longer need short/long distinction
- * The analysis intelligently determines what processing is needed
+ * SHORT_MAX: Maximum length for short brain dumps (quick task capture)
+ * MAX: Absolute maximum to prevent abuse
  */
 export const CONTENT_LENGTH = {
+	SHORT_MAX: 500, // Maximum for short brain dumps
 	MAX: 100000 // Absolute maximum to prevent abuse
 } as const;

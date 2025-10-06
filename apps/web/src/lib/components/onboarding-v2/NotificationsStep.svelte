@@ -79,6 +79,28 @@
 					throw new Error('Failed to save SMS preferences');
 				}
 
+				// Also enable SMS for brief.completed notification if any SMS options are enabled
+				if (
+					smsPreferences.eventReminders ||
+					smsPreferences.nextUpNotifications ||
+					smsPreferences.morningKickoff ||
+					smsPreferences.eveningRecap
+				) {
+					const notifResponse = await fetch('/api/notification-preferences', {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							event_type: 'brief.completed',
+							sms_enabled: true
+						})
+					});
+
+					if (!notifResponse.ok) {
+						console.error('Failed to enable SMS for brief.completed notifications');
+						// Don't throw - this is non-critical
+					}
+				}
+
 				// Notify parent
 				if (onSMSEnabled) {
 					onSMSEnabled(true);

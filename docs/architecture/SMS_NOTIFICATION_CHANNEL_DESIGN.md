@@ -451,15 +451,17 @@ async function sendNotification(
 
 ---
 
-### Phase 3: User Onboarding & UX (Week 2)
+### Phase 3: User Onboarding & UX (Week 2) ✅ IMPLEMENTED
 
-#### Task 3.1: Subscription Flow Enhancement
+#### Task 3.1: Subscription Flow Enhancement ✅
 
 **Goal**: Prompt users to verify phone when enabling SMS notifications
 
+**Status**: ✅ Implemented
+
 **Location**: `apps/web/src/lib/components/settings/NotificationPreferences.svelte`
 
-**Changes**:
+**Implementation**:
 
 ```typescript
 // When user enables SMS for an event
@@ -510,103 +512,157 @@ async function handleSMSToggle(eventType: EventType, enabled: boolean) {
 </Modal>
 ```
 
-#### Task 3.3: Onboarding Integration
+#### Task 3.3: Onboarding Integration ✅
+
+**Status**: ✅ Implemented
 
 **Location**: `apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte`
 
-**Enhancement**: Add SMS notification setup during onboarding
+**Enhancement**: SMS notification setup integrated with notification system
 
-```svelte
-<!-- After calendar setup -->
-<section>
-  <h3>SMS Notifications (Optional)</h3>
-  <p>Get text messages for important updates</p>
+**Implementation**:
 
-  {#if !phoneVerified}
-    <PhoneVerificationCard bind:verified={phoneVerified} />
-  {:else}
-    <div class="success-state">
-      <CheckCircle /> Phone verified: {phoneNumber}
-    </div>
-
-    <!-- SMS preferences -->
-    <div class="preferences">
-      <label>
-        <input type="checkbox" bind:checked={smsPreferences.daily_brief} />
-        Daily brief notifications
-      </label>
-      <label>
-        <input type="checkbox" bind:checked={smsPreferences.task_reminders} />
-        Task reminders
-      </label>
-    </div>
-  {/if}
-</section>
-```
+- Onboarding already had PhoneVerificationCard component
+- Added automatic enabling of SMS for `brief.completed` event when phone is verified during onboarding
+- Uses new `/api/notification-preferences` endpoint to sync with notification system
+- Users can enable SMS options during onboarding and it automatically enables SMS channel
 
 ---
 
-### Phase 4: Status Synchronization (Week 2-3)
+## Phase 3 Implementation Summary
 
-#### Task 4.1: Enhanced Webhook Handler
+**Date Completed**: 2025-10-06
 
-**Goal**: Update both `sms_messages` and `notification_deliveries` on status changes
+**Files Created**:
+
+1. `apps/web/src/lib/components/settings/PhoneVerificationModal.svelte` - Modal wrapper for phone verification
+2. `apps/web/src/routes/api/notification-preferences/+server.ts` - API endpoint for notification preferences
+
+**Files Modified**:
+
+1. `apps/web/src/lib/components/settings/PhoneVerification.svelte` - Added onVerified callback support
+2. `apps/web/src/lib/components/settings/NotificationPreferences.svelte` - Added SMS toggle with phone verification check
+3. `apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte` - Integrated with notification system
+
+**Features Delivered**:
+
+- ✅ SMS toggle in notification preferences UI
+- ✅ Phone verification status indicator
+- ✅ Automatic phone verification modal when enabling SMS
+- ✅ Phone verification modal component (reusable)
+- ✅ Onboarding integration with notification system
+- ✅ API endpoint for notification preferences
+
+**User Flows Tested**:
+
+1. User enables SMS in settings → prompted to verify phone → verification complete → SMS enabled
+2. User with verified phone toggles SMS → preference saved immediately
+3. User completes onboarding with SMS → SMS enabled for brief.completed event
+
+---
+
+### Phase 4: Status Synchronization (Week 2-3) ✅ ENHANCED
+
+Phase 4 was partially implemented in Phase 2 and significantly enhanced with comprehensive logging, error categorization, and intelligent retry logic.
+
+#### Task 4.1: Enhanced Webhook Handler ✅
+
+**Goal**: Update both `sms_messages` and `notification_deliveries` on status changes with robust error handling and monitoring
+
+**Status**: ✅ Implemented & Enhanced
 
 **Location**: `apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
 
-**Enhancement**:
+**Core Features Implemented**:
+
+1. **Comprehensive Structured Logging**
+   - Request tracking with unique context
+   - Processing time measurements
+   - Status update logging at each step
+   - Error logging with full context
+
+2. **Intelligent Error Categorization**
+   - Permanent failures (invalid numbers, account issues)
+   - Temporary failures (carrier issues, unreachable)
+   - Rate limiting detection
+   - Unknown error handling
+   - Severity levels (low, medium, high, critical)
+
+3. **Enhanced Dual-Table Updates**
+   - Atomic updates to `sms_messages` first
+   - Synchronized updates to `notification_deliveries` if linked
+   - Comprehensive timestamp management (sent_at, delivered_at, failed_at)
+   - Error message propagation with context
+
+4. **Smart Retry Logic**
+   - Error-based retry decisions (permanent vs temporary failures)
+   - Adaptive backoff strategies by error type
+   - Rate limit aware (5min delay for rate limits)
+   - Carrier issue handling (3min base delay)
+   - Exponential backoff with attempt tracking
+
+5. **Security & Validation**
+   - Twilio signature validation
+   - Early parameter validation
+   - Safe error responses (always 200 to prevent Twilio retries)
+
+6. **Monitoring & Observability**
+   - Processing time tracking
+   - Success/failure metrics
+   - Error categorization for alerting
+   - Dual-table update confirmation
+
+**Key Functions**:
 
 ```typescript
-export const POST: RequestHandler = async ({ request }) => {
-  // ... existing Twilio signature validation
-
-  const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = formData;
-
-  // Update sms_messages table (existing)
-  await updateSMSMessage(MessageSid, MessageStatus, ErrorCode, ErrorMessage);
-
-  // NEW: Also update notification_deliveries if linked
-  const { data: smsMessage } = await supabase
-    .from("sms_messages")
-    .select("notification_delivery_id")
-    .eq("twilio_sid", MessageSid)
-    .single();
-
-  if (smsMessage?.notification_delivery_id) {
-    const deliveryStatus = mapTwilioStatusToDeliveryStatus(MessageStatus);
-
-    await supabase
-      .from("notification_deliveries")
-      .update({
-        status: deliveryStatus,
-        [deliveryStatus === "sent"
-          ? "sent_at"
-          : deliveryStatus === "failed"
-            ? "failed_at"
-            : "delivered_at"]: new Date().toISOString(),
-        last_error: ErrorMessage || null,
-      })
-      .eq("id", smsMessage.notification_delivery_id);
-  }
-
-  return ApiResponse.success();
-};
-
-function mapTwilioStatusToDeliveryStatus(
-  twilioStatus: string,
-): "sent" | "delivered" | "failed" {
-  const statusMap: Record<string, "sent" | "delivered" | "failed"> = {
-    queued: "sent",
-    sending: "sent",
-    sent: "sent",
-    delivered: "delivered",
-    failed: "failed",
-    undelivered: "failed",
-  };
-
-  return statusMap[twilioStatus] || "sent";
+// Error categorization for intelligent retry
+function categorizeErrorCode(errorCode: string | null): {
+  category: string;
+  shouldRetry: boolean;
+  severity: 'low' | 'medium' | 'high' | 'critical';
 }
+
+// Structured logging with context
+function logWebhookEvent(
+  level: 'info' | 'warn' | 'error',
+  message: string,
+  context: WebhookContext
+)
+
+// Enhanced status mapping
+function mapTwilioStatusToDeliveryStatus(twilioStatus: string): string
 ```
+
+**Retry Strategy**:
+- Invalid number → No retry (permanent)
+- Account issues → No retry (permanent)
+- Carrier issues → Retry with 3min base + exponential backoff
+- Rate limits → Retry with 5min base + exponential backoff
+- Unknown errors → Retry with 1min base + exponential backoff
+
+---
+
+## Phase 4 Implementation Summary
+
+**Date Completed**: 2025-10-06
+
+**File Modified**:
+- `apps/web/src/routes/api/webhooks/twilio/status/+server.ts` - Comprehensive enhancements
+
+**Key Improvements**:
+- ✅ Structured logging throughout webhook processing
+- ✅ Error categorization with 20+ Twilio error codes mapped
+- ✅ Intelligent retry logic based on error type
+- ✅ Processing time monitoring
+- ✅ Enhanced dual-table update reliability
+- ✅ Better error context propagation
+
+**Monitoring Capabilities**:
+- Webhook processing time tracking
+- Error severity levels for alerting
+- Retry attempt tracking
+- Dual-table update confirmation
+- Legacy SMS message support (fallback by Twilio SID)
 
 ---
 
