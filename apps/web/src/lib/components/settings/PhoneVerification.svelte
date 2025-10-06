@@ -108,9 +108,14 @@
 				hint="Enter your phone number to receive SMS notifications"
 			>
 				<!-- Twilio Consent Language -->
-				<div class="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-blue-300 dark:border-blue-700">
+				<div
+					class="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-blue-300 dark:border-blue-700"
+				>
 					<p class="text-sm text-gray-700 dark:text-gray-300">
-						By providing your phone number, you agree to receive SMS reminders and notifications from BuildOS. Message & data rates may apply. Reply <strong>STOP</strong> to unsubscribe at any time.
+						By providing your phone number, you agree to receive SMS reminders and
+						notifications from BuildOS. Message & data rates may apply. Reply <strong
+							>STOP</strong
+						> to unsubscribe at any time.
 					</p>
 				</div>
 

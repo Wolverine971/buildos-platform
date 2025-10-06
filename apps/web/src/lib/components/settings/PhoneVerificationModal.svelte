@@ -35,7 +35,8 @@
 					send you a verification code to confirm your number.
 				</p>
 				<p class="text-xs text-gray-500 dark:text-gray-500 italic">
-					By verifying, you consent to receive SMS reminders about your BuildOS schedule. Message & data rates may apply. Reply STOP to unsubscribe at any time.
+					By verifying, you consent to receive SMS reminders about your BuildOS schedule.
+					Message & data rates may apply. Reply STOP to unsubscribe at any time.
 				</p>
 			</div>
 		</div>

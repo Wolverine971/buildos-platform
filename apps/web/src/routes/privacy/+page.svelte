@@ -103,6 +103,13 @@
 						</li>
 						<li class="text-gray-700 dark:text-gray-300">
 							<strong class="text-gray-900 dark:text-white"
+								>Phone Number (Optional):</strong
+							> Your phone number, only if you choose to enable SMS notifications. Phone
+							numbers are verified before use and are used solely for sending you reminders
+							and notifications you've opted into
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white"
 								>Google Calendar Data:</strong
 							> Calendar events and scheduling information (only if you enable calendar
 							integration)
@@ -131,6 +138,10 @@
 						</li>
 						<li class="text-gray-700 dark:text-gray-300">
 							Generate AI-powered insights and task organization
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							Send you SMS reminders and notifications (only if you opt in and verify
+							your phone number)
 						</li>
 						<li class="text-gray-700 dark:text-gray-300">
 							Sync with your Google Calendar (when enabled)
@@ -192,6 +203,10 @@
 							authentication, and file storage infrastructure
 						</li>
 						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white">Twilio:</strong> SMS message
+							delivery service for sending notifications (only if you opt in to SMS notifications)
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
 							<strong class="text-gray-900 dark:text-white">Google Analytics:</strong>
 							Website usage analytics
 						</li>
@@ -200,6 +215,55 @@
 							Anthropic, and other LLM services for content processing
 						</li>
 					</ul>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+					SMS Notifications
+				</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<p class="text-gray-600 dark:text-gray-300 mb-4">
+						BuildOS offers optional SMS notifications to help you stay on track with
+						your schedule:
+					</p>
+					<ul class="space-y-2 text-gray-600 dark:text-gray-300">
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white">Opt-In Only:</strong> SMS notifications
+							are completely optional. You must explicitly enable them and verify your
+							phone number before receiving any messages
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white"
+								>Verification Required:</strong
+							> We verify phone numbers via Twilio Verify to ensure accuracy and prevent
+							misuse
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white">Message Types:</strong> We
+							send task reminders, daily brief notifications, and other productivity-related
+							alerts you've chosen to receive
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white"
+								>Unsubscribe Anytime:</strong
+							> Reply STOP to any message to immediately opt out of all SMS notifications
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white">No Spam:</strong> We only send
+							notifications you've explicitly enabled. We never send marketing or promotional
+							messages
+						</li>
+						<li class="text-gray-700 dark:text-gray-300">
+							<strong class="text-gray-900 dark:text-white">Rates May Apply:</strong> Standard
+							message and data rates from your carrier may apply
+						</li>
+					</ul>
+					<p class="text-gray-600 dark:text-gray-300 mt-4">
+						Your phone number is stored securely and is used exclusively for delivering
+						notifications. We do not sell, share, or use your phone number for any other
+						purpose.
+					</p>
 				</div>
 			</section>
 
@@ -289,7 +353,9 @@
 
 			<!-- Last Updated -->
 			<div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-				<p class="text-sm text-gray-500 dark:text-gray-400">Last updated: July 23, 2025</p>
+				<p class="text-sm text-gray-500 dark:text-gray-400">
+					Last updated: October 6, 2025
+				</p>
 			</div>
 		</div>
 

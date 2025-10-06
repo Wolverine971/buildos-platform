@@ -74,6 +74,7 @@ SELECT emit_notification_event(
 ```
 
 **Monitor Logs**: Watch for structured logging output:
+
 ```
 [TwilioWebhook] Received status update
 [TwilioWebhook] Processing status update
@@ -90,12 +91,14 @@ SELECT emit_notification_event(
 **Simulate**: Use invalid phone number or trigger carrier error
 
 **Expected Logs**:
+
 ```
 [TwilioWebhook] SMS delivery error detected (error_category: carrier_issue, severity: medium)
 [TwilioWebhook] Scheduling retry for failed SMS (delaySeconds: 180, attemptCount: 1)
 ```
 
 **Verify**:
+
 ```sql
 -- Check retry was scheduled
 SELECT
@@ -114,6 +117,7 @@ LIMIT 1;
 **Simulate**: Use clearly invalid number (e.g., +1234)
 
 **Expected Logs**:
+
 ```
 [TwilioWebhook] SMS delivery error detected (error_category: invalid_number, severity: high)
 [TwilioWebhook] Permanent failure - retry not attempted (reason: Error category indicates permanent failure)
@@ -126,6 +130,7 @@ LIMIT 1;
 **Simulate**: Hit Twilio rate limits (error code 20429)
 
 **Expected Behavior**:
+
 - Error categorized as 'rate_limit' with 'low' severity
 - Retry scheduled with 5-minute base delay
 - Exponential backoff applied for subsequent retries
@@ -168,6 +173,7 @@ WHERE nd.id = (
 ### Test 6: Monitoring & Observability
 
 **Check Logs for Metrics**:
+
 ```bash
 # In production logs, search for:
 grep "Webhook processed successfully" logs.txt | jq '.processingTimeMs'
@@ -176,8 +182,257 @@ grep "severity: critical" logs.txt
 ```
 
 **Performance Baseline**:
+
 - Successful webhook: < 100ms processing time
 - Failed with retry: < 200ms processing time
+
+---
+
+## Phase 5 Template Testing (New!)
+
+Phase 5 adds database-driven template support with caching and intelligent fallbacks.
+
+### Test 1: Template Rendering
+
+**Test database templates are being used**:
+
+```sql
+-- Verify templates exist
+SELECT template_key, message_template, is_active
+FROM sms_templates
+WHERE template_key LIKE 'notif_%';
+
+-- Should return 6 templates:
+-- notif_user_signup, notif_brief_completed, notif_brief_failed,
+-- notif_task_due_soon, notif_urgent_alert, notif_project_milestone
+```
+
+**Trigger notification with template**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com'),
+  p_payload := jsonb_build_object(
+    'task_count', 7,
+    'brief_date', '2025-10-07',
+    'event_type', 'brief.completed'
+  )
+);
+```
+
+**Expected**: SMS message should use template:
+
+```
+"Your BuildOS brief is ready! 7 tasks planned for 2025-10-07. Open app to view."
+```
+
+**Check Logs**:
+
+```
+[SMSAdapter] Rendered template notif_brief_completed: "..."
+```
+
+### Test 2: Template Caching
+
+**First request** (cache miss):
+
+```sql
+-- Trigger notification
+SELECT emit_notification_event(...);
+```
+
+**Check logs**: Should show database fetch
+
+```
+[SMSAdapter] Template notif_brief_completed fetched from database
+```
+
+**Second request** (cache hit):
+
+```sql
+-- Trigger same event type again within 5 minutes
+SELECT emit_notification_event(...);
+```
+
+**Check logs**: No database fetch, using cache
+
+```
+[SMSAdapter] Template notif_brief_completed from cache
+```
+
+**Verify cache stats** (if you add monitoring endpoint):
+
+```typescript
+// In worker
+import { getTemplateCacheStats } from "./workers/notification/smsAdapter";
+console.log(getTemplateCacheStats());
+// Output: { size: 1, templates: ['notif_brief_completed'] }
+```
+
+### Test 3: Missing Template Fallback
+
+**Disable a template**:
+
+```sql
+-- Deactivate template
+UPDATE sms_templates
+SET is_active = false
+WHERE template_key = 'notif_brief_completed';
+```
+
+**Clear cache** (in worker code):
+
+```typescript
+import { clearTemplateCache } from "./workers/notification/smsAdapter";
+clearTemplateCache();
+```
+
+**Trigger notification**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  ...
+);
+```
+
+**Expected**: Falls back to hardcoded formatting
+
+```
+[SMSAdapter] Template notif_brief_completed not found
+[SMSAdapter] Using fallback formatting for event type: brief.completed
+```
+
+**Message should still be sent** with hardcoded content
+
+**Cleanup**:
+
+```sql
+UPDATE sms_templates
+SET is_active = true
+WHERE template_key = 'notif_brief_completed';
+```
+
+### Test 4: Variable Substitution
+
+**Test with missing variable**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'task.due_soon',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com'),
+  p_payload := jsonb_build_object(
+    'task_name', 'Review pull request',
+    -- Intentionally omit 'due_time'
+    'event_type', 'task.due_soon'
+  )
+);
+```
+
+**Expected**:
+
+- Warning in logs: `Missing template variable: due_time`
+- Message keeps placeholder: `"⏰ Review pull request is due {{due_time}}"`
+
+**With all variables**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'task.due_soon',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com'),
+  p_payload := jsonb_build_object(
+    'task_name', 'Review pull request',
+    'due_time', 'in 30 minutes',
+    'event_type', 'task.due_soon'
+  )
+);
+```
+
+**Expected**: `"⏰ Review pull request is due in 30 minutes"`
+
+### Test 5: Max Length Enforcement
+
+**Create a long message**:
+
+```sql
+-- Update template to have very long content
+UPDATE sms_templates
+SET
+  message_template = 'Your BuildOS brief is ready with lots of extra information! You have {{task_count}} tasks planned for {{brief_date}}. This message is intentionally very long to test truncation behavior.',
+  max_length = 100
+WHERE template_key = 'notif_brief_completed';
+```
+
+**Trigger notification**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_payload := jsonb_build_object('task_count', 5, 'brief_date', 'today', 'event_type', 'brief.completed')
+  ...
+);
+```
+
+**Expected**:
+
+- Log: `[SMSAdapter] Message truncated from 150 to 100 chars`
+- Message is exactly 100 chars (97 content + "...")
+
+**Cleanup**:
+
+```sql
+-- Restore original template
+UPDATE sms_templates
+SET
+  message_template = 'Your BuildOS brief is ready! {{task_count}} tasks planned for {{brief_date}}. Open app to view.',
+  max_length = 160
+WHERE template_key = 'notif_brief_completed';
+```
+
+### Test 6: Custom Template Creation
+
+**Create a new template**:
+
+```sql
+INSERT INTO sms_templates (
+  template_key,
+  name,
+  message_template,
+  template_vars,
+  description,
+  max_length,
+  is_active
+) VALUES (
+  'notif_custom_test',
+  'Custom Test Template',
+  'Hello {{user_name}}, you have {{notification_count}} new notifications!',
+  '{"user_name": "string", "notification_count": "number"}'::jsonb,
+  'Test template for development',
+  160,
+  true
+);
+```
+
+**Test rendering** (if you expose the adapter for testing):
+
+```typescript
+// In test code
+const delivery = {
+  payload: {
+    event_type: "custom.test",
+    user_name: "Alice",
+    notification_count: 3,
+  },
+  // ... other required fields
+};
+
+const message = await formatSMSMessage(delivery);
+// Expected: "Hello Alice, you have 3 new notifications!"
+```
 
 ---
 

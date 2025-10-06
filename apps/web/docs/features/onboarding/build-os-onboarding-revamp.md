@@ -45,7 +45,7 @@ Here, you frame BuildOS as a **personal AI assistant that adapts to their prefer
     3. 🌅 _Morning Kickoff_: Text me in the morning to set the tone for the day.
     4. 🌙 _Evening Recap_: Text me at night to reflect on what I got done.
 
-     <!-- ask user what they accomplished based off of what i told you earlier today, also here are the next things you have coming up -->
+       <!-- ask user what they accomplished based off of what i told you earlier today, also here are the next things you have coming up -->
 
 - **Other Channel**:
     - ✉️ _Daily Briefs (Email)_: A morning digest with your upcoming projects & tasks. (Toggle opt-in)

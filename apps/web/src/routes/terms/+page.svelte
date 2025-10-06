@@ -115,6 +115,7 @@
 					<li>• Project and goal management</li>
 					<li>• Task tracking and prioritization</li>
 					<li>• AI-powered insights and recommendations</li>
+					<li>• SMS notifications (optional, opt-in only)</li>
 					<li>• Google Calendar integration (optional)</li>
 					<li>• Data export capabilities</li>
 				</ul>
@@ -200,7 +201,76 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					6. Acceptable Use
+					6. SMS Notifications and Consent
+				</h2>
+				<div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 mb-4">
+					<p class="text-green-800 dark:text-green-200 font-medium mb-2">
+						SMS Notifications Are Optional
+					</p>
+					<p class="text-gray-600 dark:text-gray-400">
+						BuildOS offers optional SMS notifications to help you stay on track with
+						your tasks and schedule. You are never required to provide your phone number
+						or enable SMS notifications to use BuildOS.
+					</p>
+				</div>
+
+				<p class="text-gray-600 dark:text-gray-400 mb-4">
+					By providing your phone number and verifying it, you explicitly consent to
+					receive SMS messages from BuildOS, including:
+				</p>
+				<ul class="space-y-2 text-gray-600 dark:text-gray-400 ml-6">
+					<li>• Task reminders and due date notifications</li>
+					<li>• Daily brief completion notifications</li>
+					<li>• Project milestone alerts</li>
+					<li>• Other productivity-related notifications you've enabled</li>
+				</ul>
+
+				<p class="text-gray-600 dark:text-gray-400 mt-4 mb-4">
+					<strong class="text-gray-900 dark:text-white">Important SMS Terms:</strong>
+				</p>
+				<ul class="space-y-2 text-gray-600 dark:text-gray-400 ml-6">
+					<li>
+						• <strong>Opt-In Required:</strong> You must explicitly enable SMS notifications
+						and verify your phone number before receiving any messages
+					</li>
+					<li>
+						• <strong>Verification:</strong> We use Twilio Verify to confirm phone numbers
+						and prevent misuse
+					</li>
+					<li>
+						• <strong>Message Frequency:</strong> Message frequency varies based on your
+						notification preferences and activity
+					</li>
+					<li>
+						• <strong>Rates May Apply:</strong> Message and data rates from your mobile carrier
+						may apply
+					</li>
+					<li>
+						• <strong>Opt-Out Anytime:</strong> Reply STOP to any message to immediately
+						unsubscribe from all SMS notifications
+					</li>
+					<li>• <strong>Help:</strong> Reply HELP to any message for assistance</li>
+					<li>
+						• <strong>No Marketing:</strong> We never send promotional or marketing messages
+						via SMS
+					</li>
+					<li>
+						• <strong>Delivery Service:</strong> SMS messages are delivered via Twilio, a
+						third-party service provider
+					</li>
+				</ul>
+
+				<p class="text-gray-600 dark:text-gray-400 mt-4">
+					By verifying your phone number, you confirm that you are the owner or authorized
+					user of that phone number and consent to receive SMS notifications from BuildOS
+					as described above. Your phone number will not be sold, shared, or used for any
+					purpose other than sending you the notifications you've opted into.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+					7. Acceptable Use
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400 mb-4">
 					You agree not to use BuildOS to:
@@ -222,7 +292,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					7. Service Availability and Beta Status
+					8. Service Availability and Beta Status
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					We strive to keep BuildOS available 24/7, but we do not guarantee uninterrupted
@@ -234,7 +304,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					8. Privacy and Data
+					9. Privacy and Data
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					Your privacy is important to us. Please review our
@@ -248,7 +318,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					9. Limitation of Liability
+					10. Limitation of Liability
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					BuildOS is provided "as is" without warranties of any kind, express or implied.
@@ -261,7 +331,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					10. Indemnification
+					11. Indemnification
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					You agree to indemnify and hold harmless BuildOS from any claims, damages,
@@ -272,7 +342,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					11. Termination
+					12. Termination
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400 mb-4">
 					Either party may terminate this agreement at any time:
@@ -293,7 +363,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					12. Governing Law and Disputes
+					13. Governing Law and Disputes
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					These terms are governed by the laws of Maryland, United States. Any disputes
@@ -304,7 +374,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					13. Changes to Terms
+					14. Changes to Terms
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					We may update these terms as BuildOS evolves. We'll notify users of significant
@@ -315,7 +385,7 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-					14. Contact Information
+					15. Contact Information
 				</h2>
 				<p class="text-gray-600 dark:text-gray-400">
 					For questions about these terms or legal matters, contact us at:
@@ -332,7 +402,9 @@
 
 			<!-- Last Updated -->
 			<div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-				<p class="text-sm text-gray-500 dark:text-gray-400">Last updated: July 10, 2025</p>
+				<p class="text-sm text-gray-500 dark:text-gray-400">
+					Last updated: October 6, 2025
+				</p>
 			</div>
 		</div>
 

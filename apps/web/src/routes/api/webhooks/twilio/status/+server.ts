@@ -184,7 +184,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				return json({ error: 'Invalid signature' }, { status: 401 });
 			}
 		} else {
-			logWebhookEvent('warn', 'Webhook signature missing (development mode?)', webhookContext);
+			logWebhookEvent(
+				'warn',
+				'Webhook signature missing (development mode?)',
+				webhookContext
+			);
 		}
 
 		// Map Twilio status to our enum
@@ -265,7 +269,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					deliveryUpdate.sent_at = new Date().toISOString();
 				} else if (messageStatus === 'delivered') {
 					deliveryUpdate.delivered_at = new Date().toISOString();
-				} else if (messageStatus === 'failed' || messageStatus === 'undelivered' || messageStatus === 'canceled') {
+				} else if (
+					messageStatus === 'failed' ||
+					messageStatus === 'undelivered' ||
+					messageStatus === 'canceled'
+				) {
 					deliveryUpdate.failed_at = new Date().toISOString();
 					deliveryUpdate.last_error = errorMessage
 						? `${errorMessage} (Code: ${errorCode})`
