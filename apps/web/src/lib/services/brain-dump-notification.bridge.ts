@@ -828,12 +828,26 @@ async function startProcessingAPICall(state: any) {
 					console.log('[BrainDumpNotificationBridge] Processing complete:', {
 						brainDumpId,
 						hasOperations: !!result?.operations,
-						operationsCount: result?.operations?.length
+						operationsCount: result?.operations?.length,
+						hasExecutionResult: !!result?.executionResult
 					});
 
 					if (result && result.operations) {
 						if (MULTI_BRAINDUMP_ENABLED) {
 							brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
+
+							// Option 1: Clear input on auto-accept success
+							// If auto-accept succeeded, complete the brain dump to clear input
+							if (result.executionResult) {
+								console.log(
+									'[BrainDumpNotificationBridge] Auto-accept completed, clearing brain dump:',
+									brainDumpId
+								);
+								// Small delay to allow success view to render
+								setTimeout(() => {
+									brainDumpV2Store.completeBrainDump(brainDumpId);
+								}, 500);
+							}
 						} else {
 							brainDumpV2Store.setParseResults(result);
 						}

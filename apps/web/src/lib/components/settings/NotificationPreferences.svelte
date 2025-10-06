@@ -170,15 +170,17 @@
 						class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
 					>
 						<div class="flex items-start gap-3">
-							<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+							<Bell
+								class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
+							/>
 							<div class="flex-1">
 								<h4 class="font-medium text-blue-900 dark:text-blue-100 mb-1">
 									Set Up Your Notification Preferences
 								</h4>
 								<p class="text-sm text-blue-800 dark:text-blue-200">
-									You're currently using the default notification settings. Customize how you
-									want to receive daily brief notifications below, then click Save to apply your
-									preferences.
+									You're currently using the default notification settings.
+									Customize how you want to receive daily brief notifications
+									below, then click Save to apply your preferences.
 								</p>
 							</div>
 						</div>

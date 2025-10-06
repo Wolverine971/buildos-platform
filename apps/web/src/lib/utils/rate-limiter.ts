@@ -91,12 +91,12 @@ export const RATE_LIMITS = {
 	// API endpoints
 	API_GENERAL: { requests: 100, windowMs: 60000 }, // 100 req/min
 	API_AUTH: { requests: 5, windowMs: 60000 }, // 5 req/min for auth
-	API_AI: { requests: 10, windowMs: 60000 }, // 10 AI requests/min
+	API_AI: { requests: 20, windowMs: 60000 }, // 20 AI requests/min
 
 	// User actions
 	BRAIN_DUMP: { requests: 20, windowMs: 300000 }, // 20 brain dumps/5min
-	PROJECT_CREATE: { requests: 10, windowMs: 300000 }, // 10 projects/5min
-	TASK_CREATE: { requests: 50, windowMs: 300000 }, // 50 tasks/5min
+	PROJECT_CREATE: { requests: 20, windowMs: 300000 }, // 20 projects/5min
+	TASK_CREATE: { requests: 100, windowMs: 300000 }, // 100 tasks/5min
 
 	// Email/notifications
 	EMAIL_SEND: { requests: 10, windowMs: 3600000 }, // 10 emails/hour

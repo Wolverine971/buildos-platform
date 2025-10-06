@@ -9,6 +9,9 @@ import {
 function createBackgroundJobsStore() {
 	const { subscribe, set, update } = writable<BackgroundJob[]>([]);
 
+	// Store cleanup interval ID to prevent memory leak
+	let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
 	// Initialize from service
 	if (browser) {
 		set(backgroundBrainDumpService.getAllJobs());
@@ -27,7 +30,7 @@ function createBackgroundJobsStore() {
 		});
 
 		// Clean up old jobs periodically
-		setInterval(() => {
+		cleanupInterval = setInterval(() => {
 			backgroundBrainDumpService.clearCompletedJobs();
 			set(backgroundBrainDumpService.getAllJobs());
 		}, 60000); // Every minute
@@ -38,6 +41,12 @@ function createBackgroundJobsStore() {
 		refresh: () => {
 			if (browser) {
 				set(backgroundBrainDumpService.getAllJobs());
+			}
+		},
+		destroy: () => {
+			if (cleanupInterval) {
+				clearInterval(cleanupInterval);
+				cleanupInterval = null;
 			}
 		}
 	};

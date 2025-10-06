@@ -20,41 +20,84 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { brainDumpAutoAccept } from '$lib/stores/brainDumpPreferences';
 
-	// Required props
-	export let projects: any[] = [];
-	export let selectedProject: any;
-	export let inputText = '';
-	export let currentPhase: 'idle' | 'transcribing' | 'parsing' | 'saving' = 'idle';
-	export let isProcessing = false;
-	export let isSaving = false;
-	export let voiceError = '';
-	export let microphonePermissionGranted = false;
-	export let voiceCapabilitiesChecked = false;
-	export let isInitializingRecording = false;
-	export let canUseLiveTranscript = false;
-	export let hasUnsavedChanges = false;
-	export let isVoiceSupported = false;
-	export let isCurrentlyRecording = false;
-	export let isLiveTranscribing = false;
-	export let accumulatedTranscript = '';
-	export let recordingDuration = 0;
-	export let showOverlay = false;
-	export let innerWidth = 0;
-	export let allowProjectChange = true;
-	export let inModal = false;
-	export let displayedQuestions: any[] = [];
-	export let processingProjectIds: Set<string> = new Set();
+	// Required props - Svelte 5 runes mode
+	let {
+		projects = [],
+		selectedProject,
+		inputText = '',
+		currentPhase = 'idle',
+		isProcessing = false,
+		isSaving = false,
+		voiceError = '',
+		microphonePermissionGranted = false,
+		voiceCapabilitiesChecked = false,
+		isInitializingRecording = false,
+		canUseLiveTranscript = false,
+		hasUnsavedChanges = false,
+		isVoiceSupported = false,
+		isCurrentlyRecording = false,
+		isLiveTranscribing = false,
+		accumulatedTranscript = '',
+		recordingDuration = 0,
+		showOverlay = false,
+		innerWidth = 0,
+		allowProjectChange = true,
+		inModal = false,
+		displayedQuestions = [],
+		processingProjectIds = new Set()
+	}: {
+		projects?: any[];
+		selectedProject?: any;
+		inputText?: string;
+		currentPhase?: 'idle' | 'transcribing' | 'parsing' | 'saving';
+		isProcessing?: boolean;
+		isSaving?: boolean;
+		voiceError?: string;
+		microphonePermissionGranted?: boolean;
+		voiceCapabilitiesChecked?: boolean;
+		isInitializingRecording?: boolean;
+		canUseLiveTranscript?: boolean;
+		hasUnsavedChanges?: boolean;
+		isVoiceSupported?: boolean;
+		isCurrentlyRecording?: boolean;
+		isLiveTranscribing?: boolean;
+		accumulatedTranscript?: string;
+		recordingDuration?: number;
+		showOverlay?: boolean;
+		innerWidth?: number;
+		allowProjectChange?: boolean;
+		inModal?: boolean;
+		displayedQuestions?: any[];
+		processingProjectIds?: Set<string>;
+	} = $props();
 
-	// Computed props
-	$: projectOptions = [{ id: 'new', name: 'New Project / Note', isProject: false }, ...projects];
-	$: isNewProject = !selectedProject || selectedProject.id === 'new';
-	$: selectedProjectName = selectedProject?.name || 'New Project / Note';
-	$: canParse =
-		inputText.trim().length > 0 && currentPhase === 'idle' && !isProcessing && !isSaving;
-	$: selectedProjectId = selectedProject?.id || 'new';
+	// PHASE 3 OPTIMIZATION: Local textarea state for zero-lag typing
+	// The textarea binds to local state for instant updates
+	// Changes are synced to parent (and store) with throttling
+	let localInputText = $state('');
+	let syncTimeout: NodeJS.Timeout;
 
-	// Format questions for placeholder
-	$: placeholderText = (() => {
+	// Initialize and sync prop changes to local state (when parent updates)
+	$effect(() => {
+		// Sync inputText prop to localInputText when it changes
+		localInputText = inputText;
+	});
+
+	// Computed props - Svelte 5 runes mode
+	let projectOptions = $derived([
+		{ id: 'new', name: 'New Project / Note', isProject: false },
+		...projects
+	]);
+	let isNewProject = $derived(!selectedProject || selectedProject.id === 'new');
+	let selectedProjectName = $derived(selectedProject?.name || 'New Project / Note');
+	let canParse = $derived(
+		localInputText.trim().length > 0 && currentPhase === 'idle' && !isProcessing && !isSaving
+	);
+	let selectedProjectId = $derived(selectedProject?.id || 'new');
+
+	// PHASE 2 OPTIMIZATION: Memoize placeholder text computation
+	// Only recomputes when actual dependencies change (not on every reactive cycle)
+	let placeholderText = $derived.by(() => {
 		if (isNewProject) {
 			return "What's on your mind? Share your thoughts, ideas, and tasks...";
 		}
@@ -67,7 +110,7 @@
 		}
 
 		return `What's happening with ${selectedProjectName}?`;
-	})();
+	});
 
 	const dispatch = createEventDispatcher();
 
@@ -75,14 +118,23 @@
 	let autoSaveTimeout: NodeJS.Timeout;
 
 	// Auto-accept state - properly subscribe to store value
-	$: autoAcceptEnabled = $brainDumpAutoAccept;
+	let autoAcceptEnabled = $derived($brainDumpAutoAccept);
 
 	onDestroy(() => {
+		// CRITICAL FIX: Flush any pending text changes before unmounting
+		// Prevents data loss if component is destroyed while sync is pending
+		if (syncTimeout) {
+			clearTimeout(syncTimeout);
+			try {
+				dispatch('textChange', localInputText);
+			} catch (e) {
+				// Parent might already be destroyed, silently ignore
+				console.warn('Could not dispatch pending text change on destroy:', e);
+			}
+		}
+
 		if (autoSaveTimeout) {
 			clearTimeout(autoSaveTimeout);
-		}
-		if (transitionTimeout) {
-			clearTimeout(transitionTimeout);
 		}
 	});
 
@@ -103,10 +155,15 @@
 	}
 
 	function handleTextInput() {
-		dispatch('textChange', inputText);
+		// PHASE 3 OPTIMIZATION: Throttle dispatch to parent (100ms)
+		// localInputText is already updated by bind:value instantly
+		clearTimeout(syncTimeout);
+		syncTimeout = setTimeout(() => {
+			dispatch('textChange', localInputText);
+		}, 100);
 
 		// Throttle auto-save for very large inputs to prevent performance issues
-		if (inputText.length > 10000) {
+		if (localInputText.length > 10000) {
 			// Longer delay for large texts
 			debouncedAutoSave(5000);
 		} else {
@@ -115,6 +172,12 @@
 	}
 
 	function handleTextBlur() {
+		// CRITICAL FIX: Flush any pending text changes before saving
+		// If user types and immediately blurs, we need to ensure latest text is synced
+		if (syncTimeout) {
+			clearTimeout(syncTimeout);
+			dispatch('textChange', localInputText);
+		}
 		dispatch('save');
 	}
 
@@ -140,25 +203,11 @@
 	}
 
 	function handleVoiceToggle() {
-		// Show transition state for immediate feedback
-		isTransitioning = true;
-
-		// Clear any existing transition timeout
-		if (transitionTimeout) {
-			clearTimeout(transitionTimeout);
-		}
-
 		if (isCurrentlyRecording) {
 			dispatch('stopRecording');
 		} else {
 			dispatch('startRecording');
 		}
-
-		// Reset transition state after a delay
-		transitionTimeout = setTimeout(() => {
-			isTransitioning = false;
-			transitionTimeout = null;
-		}, 500);
 	}
 
 	// Helper function to format recording duration
@@ -168,32 +217,10 @@
 		return `${mins}:${secs.toString().padStart(2, '0')}`;
 	}
 
-	// Voice transition state tracking
-	let isTransitioning = false;
-	let transitionTimeout: NodeJS.Timeout | null = null;
-
-	// Voice button state logic with enhanced loading states
-	$: voiceButtonState = (() => {
-		if (isInitializingRecording) {
-			return {
-				text: 'Initializing...',
-				icon: LoaderCircle,
-				variant: 'ghost',
-				disabled: true,
-				isLoading: true
-			};
-		}
-
-		if (isTransitioning) {
-			return {
-				text: 'Processing...',
-				icon: LoaderCircle,
-				variant: 'ghost',
-				disabled: true,
-				isLoading: true
-			};
-		}
-
+	// Voice button state logic with proper priority ordering
+	// CRITICAL: Check isCurrentlyRecording FIRST so recording state takes precedence
+	let voiceButtonState = $derived.by(() => {
+		// Priority 1: Active recording (user can stop)
 		if (isCurrentlyRecording) {
 			return {
 				text: 'Recording...',
@@ -204,6 +231,18 @@
 			};
 		}
 
+		// Priority 2: Initializing recording
+		if (isInitializingRecording) {
+			return {
+				text: 'Initializing...',
+				icon: LoaderCircle,
+				variant: 'ghost',
+				disabled: true,
+				isLoading: true
+			};
+		}
+
+		// Priority 3: Transcribing
 		if (currentPhase === 'transcribing') {
 			return {
 				text: 'Transcribing...',
@@ -214,6 +253,7 @@
 			};
 		}
 
+		// Priority 4: Microphone permission needed
 		if (!microphonePermissionGranted && voiceCapabilitiesChecked) {
 			return {
 				text: 'Grant microphone access',
@@ -224,6 +264,7 @@
 			};
 		}
 
+		// Priority 5: General processing
 		if (isProcessing || currentPhase !== 'idle') {
 			return {
 				text: 'Processing...',
@@ -234,6 +275,7 @@
 			};
 		}
 
+		// Default: Ready to record
 		return {
 			text: 'Start voice recording',
 			icon: Mic,
@@ -241,7 +283,7 @@
 			disabled: false,
 			isLoading: false
 		};
-	})();
+	});
 </script>
 
 <div
@@ -308,8 +350,9 @@
 
 		<!-- Textarea Container -->
 		<div class="flex-1 relative flex flex-col min-h-0 p-4 sm:p-5">
+			<!-- PHASE 3 OPTIMIZATION: Bind to local state for instant, zero-lag updates -->
 			<textarea
-				bind:value={inputText}
+				bind:value={localInputText}
 				on:input={handleTextInput}
 				on:blur={handleTextBlur}
 				placeholder={placeholderText}
@@ -317,7 +360,7 @@
 				class="flex-1 w-full p-4 pb-[env(keyboard-inset-height,4rem)] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl outline-none resize-none text-gray-900 dark:text-gray-100 text-base sm:text-[15px] leading-relaxed placeholder:text-gray-500 dark:placeholder:text-gray-500 placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/50 shadow-sm hover:shadow-md"
 				spellcheck="true"
 				autocomplete="off"
-			/>
+			></textarea>
 
 			<!-- Bottom Status Container (positioned at bottom of textarea) -->
 			<div
@@ -343,7 +386,7 @@
 					<div
 						class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 pointer-events-auto"
 					>
-						{#key `${isSaving}-${hasUnsavedChanges}-${inputText.trim().length > 0}`}
+						{#key `${isSaving}-${hasUnsavedChanges}-${localInputText.trim().length > 0}`}
 							{#if isSaving}
 								<span
 									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
@@ -352,7 +395,7 @@
 									<LoaderCircle class="w-3 h-3 flex-shrink-0 animate-spin" />
 									Saving...
 								</span>
-							{:else if hasUnsavedChanges && inputText.trim()}
+							{:else if hasUnsavedChanges && localInputText.trim()}
 								<span
 									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
 									in:fade={{ duration: 150 }}
@@ -362,7 +405,7 @@
 									/>
 									Unsaved changes
 								</span>
-							{:else if !hasUnsavedChanges && inputText.trim()}
+							{:else if !hasUnsavedChanges && localInputText.trim()}
 								<span
 									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
 									in:fade={{ duration: 150 }}
@@ -375,12 +418,12 @@
 					</div>
 
 					<!-- Character Count -->
-					{#if inputText.length > 0}
+					{#if localInputText.length > 0}
 						<div
 							class="text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded pointer-events-auto"
 							transition:fade={{ duration: 150 }}
 						>
-							{inputText.length} characters
+							{localInputText.length} characters
 						</div>
 					{/if}
 				</div>

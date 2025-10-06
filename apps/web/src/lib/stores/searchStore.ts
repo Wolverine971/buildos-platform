@@ -132,7 +132,14 @@ function createSearchStore() {
 			}
 		},
 
-		reset: () => set(initialState)
+		reset: () => {
+			clearTimeout(searchTimeout);
+			set(initialState);
+		},
+
+		destroy: () => {
+			clearTimeout(searchTimeout);
+		}
 	};
 }
 

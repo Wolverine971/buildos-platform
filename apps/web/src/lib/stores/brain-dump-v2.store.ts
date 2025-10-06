@@ -670,20 +670,39 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 	const { subscribe, set, update } = writable<UnifiedBrainDumpState>(initialState);
 
-	// Set up persistence subscription
+	// PHASE 2 OPTIMIZATION: Throttle persistence to reduce main thread blocking
+	// Only check for persistence once per second using setTimeout, not on every store update
 	if (browser) {
+		let persistTimeout: NodeJS.Timeout | null = null;
+		let lastPersistedAt = 0;
+
 		subscribe((state) => {
-			// Persist state changes with debouncing
-			if (state.persistence.shouldPersist) {
-				const now = Date.now();
-				if (
-					!state.persistence.lastPersistedAt ||
-					now - state.persistence.lastPersistedAt > 1000
-				) {
-					persistState(state);
-					state.persistence.lastPersistedAt = now;
-				}
+			if (!state.persistence.shouldPersist) return;
+
+			// Clear existing timeout
+			if (persistTimeout) {
+				clearTimeout(persistTimeout);
 			}
+
+			// Schedule persistence check (throttled to 1 second)
+			persistTimeout = setTimeout(() => {
+				const now = Date.now();
+				if (now - lastPersistedAt > 1000) {
+					// Use requestIdleCallback to avoid blocking main thread
+					if (typeof requestIdleCallback !== 'undefined') {
+						requestIdleCallback(() => {
+							persistState(state);
+							lastPersistedAt = now;
+							state.persistence.lastPersistedAt = now;
+						});
+					} else {
+						// Fallback for browsers without requestIdleCallback
+						persistState(state);
+						lastPersistedAt = now;
+						state.persistence.lastPersistedAt = now;
+					}
+				}
+			}, 1000);
 		});
 	}
 
@@ -1931,8 +1950,19 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 		resetForNewSession: () =>
 			update((state) => {
 				const newState = createInitialState();
+
+				// Option 2: Clear all active brain dumps when resetting for new session
+				// This ensures no old input text persists when starting fresh
+				console.log(
+					'[Store] Clearing',
+					state.activeBrainDumps.size,
+					'active brain dumps for new session'
+				);
+
 				return {
 					...newState,
+					// Explicitly set activeBrainDumps to new empty Map for multi-mode
+					activeBrainDumps: new Map(),
 					ui: {
 						...newState.ui,
 						modal: {

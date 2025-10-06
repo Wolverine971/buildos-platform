@@ -5,8 +5,9 @@ import twilio from 'twilio';
 import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
-import { PRIVATE_SUPABASE_SERVICE_KEY, PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
+import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { createServiceClient } from '@buildos/supabase-client';
 
 // Map Twilio status to our sms_status enum
 const statusMap: Record<string, string> = {
@@ -20,12 +21,7 @@ const statusMap: Record<string, string> = {
 };
 
 export const POST: RequestHandler = async ({ request, url }) => {
-	const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
-		auth: {
-			autoRefreshToken: false,
-			persistSession: false
-		}
-	});
+	const supabase = createServiceClient();
 
 	try {
 		// Get the raw request body for signature validation

@@ -21,6 +21,8 @@ last_updated: 2025-10-05
 last_updated_by: Claude (Anthropic)
 ---
 
+<!-- todo: priority 5 -->
+
 # Research: Comprehensive Senior Engineer Audit of BuildOS Web Application
 
 **Date**: 2025-10-05T00:00:00-08:00

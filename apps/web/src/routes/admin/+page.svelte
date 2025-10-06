@@ -23,7 +23,8 @@
 		DollarSign,
 		TrendingDown,
 		AlertTriangle,
-		XCircle
+		XCircle,
+		Bell
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import VisitorContributionChart from '$lib/components/analytics/VisitorContributionChart.svelte';
@@ -489,7 +490,7 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
 			<a
 				href="/admin/users"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
@@ -520,6 +521,23 @@
 							{comprehensiveAnalytics.userMetrics.totalUsers}
 						</span>
 					{/if}
+				</div>
+			</a>
+
+			<a
+				href="/admin/notifications"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<Bell class="h-8 w-8 text-indigo-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Notifications
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Analytics & testing
+						</p>
+					</div>
 				</div>
 			</a>
 

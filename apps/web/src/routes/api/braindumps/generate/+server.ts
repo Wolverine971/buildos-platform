@@ -5,6 +5,7 @@ import { OperationsExecutor } from '$utils/operations-executor';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LLMMetadata } from '$lib/types/error-logging';
+import { rateLimiter, RATE_LIMITS } from '$lib/utils/rate-limiter';
 // Improved cache implementation using WeakMap for automatic garbage collection
 // WeakMap allows processor instances to be garbage collected when no longer referenced
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
@@ -109,6 +110,29 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { user } = await safeGetSession();
 		if (!user) {
 			return ApiResponse.unauthorized();
+		}
+
+		// Apply rate limiting to prevent DoS attacks (expensive AI operation)
+		const rateLimitResult = rateLimiter.check(user.id, RATE_LIMITS.API_AI);
+		if (!rateLimitResult.allowed) {
+			const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
+			return new Response(
+				JSON.stringify({
+					error: 'Rate limit exceeded. Please wait before processing another brain dump.',
+					retryAfter,
+					resetTime: new Date(rateLimitResult.resetTime).toISOString()
+				}),
+				{
+					status: 429,
+					headers: {
+						'Content-Type': 'application/json',
+						'Retry-After': retryAfter.toString(),
+						'X-RateLimit-Limit': RATE_LIMITS.API_AI.requests.toString(),
+						'X-RateLimit-Remaining': '0',
+						'X-RateLimit-Reset': Math.ceil(rateLimitResult.resetTime / 1000).toString()
+					}
+				}
+			);
 		}
 
 		// Parse and validate request body

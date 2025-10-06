@@ -1,30 +1,31 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-05T05:35:11.922Z
+**Generated at:** 2025-10-06T18:37:12.563Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
-	"projectId": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
-	"brainDumpLength": 676,
-	"existingTasksCount": 9,
-	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-05T05:35:11.921Z"
+  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+  "projectId": "90647502-a367-444a-91b6-0d1a2a6fc25f",
+  "brainDumpLength": 677,
+  "existingTasksCount": 7,
+  "hasDisplayedQuestions": false,
+  "timestamp": "2025-10-06T18:37:12.562Z"
 }
 ```
 
+
 ## System Prompt
 
-````
+```
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project 23ddacbb-c661-42a8-ad1e-92e0e84bd2a5
+Mode: Extract/Update for EXISTING project 90647502-a367-444a-91b6-0d1a2a6fc25f
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-05T05:35:06.500Z
+Current date and time: 2025-10-06T18:37:03.836Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -66,7 +67,7 @@ Current date and time: 2025-10-05T05:35:06.500Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
+  "project_id": "90647502-a367-444a-91b6-0d1a2a6fc25f",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -87,21 +88,13 @@ Current date and time: 2025-10-05T05:35:06.500Z
 - For updates, only include fields that should change
 - Preserve existing content unless explicitly being replaced
 - When updating task status to "done", DO NOT automatically create follow-up tasks unless explicitly mentioned
-
-**CRITICAL - TASK DETAILS CAPTURE**:
-The `details` field is the user's memory and context repository. Capture EVERYTHING related to each task:
-- **ALL implementation specifics**: Technical approaches, code patterns, libraries, frameworks mentioned
-- **ALL research notes**: Links, references, inspiration, examples from the brain dump
-- **ALL ideas and observations**: User's thoughts, concerns, questions, "maybes"
-- **ALL context and background**: Why this task matters, dependencies, constraints
-- **ALL rationale**: The "why" behind decisions or approaches
-- **User's emotional context**: Excitement, concerns, uncertainties ("worried about...", "excited to...")
-- **Timeline thoughts**: When they want it done, urgency, deadlines mentioned
-- **Non-actionable info**: Anything that provides context even if not directly actionable
-
-**RULE**: Nothing from the brain dump should be lost. If it's not a task title/description, it MUST go in the details field. Err on the side of including TOO MUCH rather than too little. The details field can be long - that's good!
-
-**FOR UPDATES**: When updating existing tasks, ADD new details from the brain dump to the existing details field - don't replace unless the user explicitly says to replace
+- **CRITICAL**: The details field must capture ALL information from the brain dump related to each task:
+  - Implementation specifics and technical details
+  - Research notes and references
+  - Ideas and observations
+  - Context and background information
+  - Any non-actionable information that provides context
+- Nothing from the brain dump should be lost - if it's not a task title/description, it goes in details
 
 **RECURRING TASK RULES**:
 - If a task mentions recurring patterns (daily, weekly, etc.), set task_type to "recurring"
@@ -170,7 +163,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
+        "project_id": "90647502-a367-444a-91b6-0d1a2a6fc25f",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -187,7 +180,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "23ddacbb-c661-42a8-ad1e-92e0e84bd2a5",
+        "project_id": "90647502-a367-444a-91b6-0d1a2a6fc25f",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -216,54 +209,51 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-````
+```
 
 Respond with valid JSON matching the complete structure above.
-
 ```
 
 ## User Prompt
 
 ```
-
 ## Current Project Data:
 
-**EXISTING TASKS (9):**
-[{"id":"a68a8297-14d4-49d0-899a-81fe6d1e4684","title":"World-building additions for Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Incorporate new world-building elements into the story.","details":"Add The Forge Temples: ancient sites where dragon fire still burns, Smith's Guild hierarchy and traditions, and The Quenching Ritual: how magical weapons are completed. Also, explore regional differences in forging techniques across Aethermoor."},{"id":"a8cea9d5-8100-4c5d-ace9-fb430bbac37f","title":"Fix continuity issue in chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Address the continuity issue regarding Elena's age mentioned in chapter 1 and chapter 2.","details":"Elena's age is mentioned as 16 in chapter 1 but 17 in chapter 2. This needs to be corrected for consistency."},{"id":"7e38ab6e-3e97-4cea-867a-90e9e44e200e","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":60,"description":"Create the prophecy that drives the plot of the novel.","details":"Define the elements of the prophecy, its significance to the characters, and how it influences the story's direction."},{"id":"7e60c974-ae14-443f-a624-1897b0217c40","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Conduct research on historical blacksmithing techniques.","details":"Gather information on tools, methods, and materials used in medieval blacksmithing to inform the character's skills and the magic system."},{"id":"b526918e-21d8-44b2-9e98-ea5b95b878a6","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the first three chapters of the novel.","details":"Define the main events, character introductions, and plot developments that will occur in these chapters. Chapter 2 is finished with 4,500 words. The scene where Elena discovers the dragon forge went really well. Issues to address: strengthen the dialogue between Elena and Master Thorne, improve pacing in the middle, and add more sensory details about the forge."},{"id":"af7ab8c7-fbcd-454d-a87f-c7031aaf5716","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Develop detailed profiles for the antagonist, The Shadow King.","details":"Explore his motivations, background, and how he opposes the main character. Consider his powers and influence in the story. Chapter 3 plans include Elena's first attempt at magical forging, introducing the Shadow King's herald, and foreshadowing the prophecy."},{"id":"b62e6816-1e40-490d-8019-8c7b2a1325b9","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":240,"description":"Create a detailed map of the kingdom where the story takes place.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"4710d89c-e898-409e-b529-ce0772b44428","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Develop a unique magic system based on metal and fire.","details":"Develop a unique magic system based on metal and fire. Found interesting parallels with Japanese sword-making traditions - the idea of the smith's spirit entering the blade. Could adapt this: Elena's emotions during forging affect the weapon's properties. Anger = fire damage, Sorrow = ice/frost, Joy = healing properties, Fear = defensive shields. Also researching Damascus steel patterns for visual descriptions, Celtic mythology about smith gods (Goibniu), and types of medieval weapons beyond swords. Consider how the magic system affects the characters and plot."},{"id":"22805711-a8b3-4e35-85f0-8d8650c4560e","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create a detailed backstory for the main character, focusing on her being an orphan raised by a master blacksmith.","details":"Explore the main character's childhood, her relationship with her master, and how her past influences her abilities and motivations in the story."}]
+**EXISTING TASKS (1):**
+[{"id":"004d3a6f-d282-48ef-9c67-59cea4938ac7","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the initial chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in the first three chapters."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-"Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
+"Finished chapter 2 today - 4,500 words. The scene where Elena discovers the dragon forge went really well.
 
-Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
+Issues to address:
 
-Weekly tasks:
+- Need to strengthen the dialogue between Elena and Master Thorne
+- The pacing in the middle feels slow
+- Add more sensory details about the forge
 
-- Saturday mornings: Chapter revision and editing
-- Sunday afternoons: Plot planning for next week
+Chapter 3 plans:
 
-Monthly milestones:
+- Elena's first attempt at magical forging
+- Introduce the Shadow King's herald
+- Foreshadow the prophecy
 
-- January: Complete chapters 1-10 (30,000 words)
-- February: Complete chapters 11-20 (30,000 words)
-- March: Complete chapters 21-30 and epilogue (35,000 words)
+Also need to go back and fix continuity issue - Elena's age mentioned as 16 in chapter 1 but 17 in chapter 2."
 
-Also need to:
+ you are my sunshine my only sunshine you make me happy when skies are gray
 
-- Join local writers' critique group (meets 1st Tuesday of month)
-- Submit chapter 1 to beta readers by January 15th
-- Research literary agents for fantasy genre"
+ You'll never know dear how much I love you. Please don't take my sunshine away.
 
+test
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~2141 tokens
-- **User Prompt:** ~1338 tokens
-- **Total Estimate:** ~3479 tokens
+- **User Prompt:** ~312 tokens
+- **Total Estimate:** ~2453 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
-```

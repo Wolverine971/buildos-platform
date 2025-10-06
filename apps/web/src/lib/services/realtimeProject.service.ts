@@ -3,6 +3,7 @@ import { projectStoreV2 } from '$lib/stores/project.store';
 import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { browser } from '$app/environment';
 import { toastService } from '$lib/stores/toast.store';
+import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from '$lib/utils/event-bus';
 
 interface ServiceState {
 	channel: RealtimeChannel | null;
@@ -11,6 +12,7 @@ interface ServiceState {
 	supabaseClient: SupabaseClient | null;
 	currentUserId: string | null;
 	recentLocalUpdates: Set<string>; // Track recent local updates to avoid duplicates
+	localUpdateUnsubscribe: (() => void) | null; // Cleanup function for event bus
 }
 
 // Static timeout for debouncing phase reloads
@@ -23,7 +25,8 @@ export class RealtimeProjectService {
 		isSubscribed: false,
 		supabaseClient: null,
 		currentUserId: null,
-		recentLocalUpdates: new Set()
+		recentLocalUpdates: new Set(),
+		localUpdateUnsubscribe: null
 	};
 
 	/**
@@ -57,6 +60,21 @@ export class RealtimeProjectService {
 		if (!this.state.currentUserId) {
 			console.warn('[RealtimeService] No user ID found in session!');
 		}
+
+		// Listen for local updates from the store via event bus
+		// This replaces the direct trackLocalUpdate() calls from the store
+		this.state.localUpdateUnsubscribe = eventBus.on<LocalUpdatePayload>(
+			PROJECT_EVENTS.LOCAL_UPDATE,
+			(payload) => {
+				if (payload?.entityId) {
+					this.state.recentLocalUpdates.add(payload.entityId);
+					// Remove after 3 seconds
+					setTimeout(() => {
+						this.state.recentLocalUpdates.delete(payload.entityId);
+					}, 3000);
+				}
+			}
+		);
 
 		// Setup subscription
 		await this.setupSubscription();
@@ -147,13 +165,15 @@ export class RealtimeProjectService {
 
 	/**
 	 * Track a local update to avoid processing it from realtime
+	 * @deprecated This method is no longer needed externally.
+	 * The service now listens to LOCAL_UPDATE events from the event bus.
+	 * Keeping for backward compatibility but it's a no-op.
 	 */
 	static trackLocalUpdate(entityId: string): void {
-		this.state.recentLocalUpdates.add(entityId);
-		// Remove after 3 seconds
-		setTimeout(() => {
-			this.state.recentLocalUpdates.delete(entityId);
-		}, 3000);
+		// No-op: Event bus pattern handles this now
+		console.warn(
+			'trackLocalUpdate() is deprecated. Use eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE) instead.'
+		);
 	}
 
 	/**
@@ -465,6 +485,12 @@ export class RealtimeProjectService {
 			}
 		}
 
+		// Unsubscribe from event bus
+		if (this.state.localUpdateUnsubscribe) {
+			this.state.localUpdateUnsubscribe();
+			this.state.localUpdateUnsubscribe = null;
+		}
+
 		// Clear any pending timeout for local updates
 		this.state.recentLocalUpdates.clear();
 
@@ -481,7 +507,8 @@ export class RealtimeProjectService {
 			isSubscribed: false,
 			supabaseClient: null,
 			currentUserId: null,
-			recentLocalUpdates: new Set()
+			recentLocalUpdates: new Set(),
+			localUpdateUnsubscribe: null
 		};
 	}
 

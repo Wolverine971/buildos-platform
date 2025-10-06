@@ -18,7 +18,8 @@ class NotificationPreferencesService {
 	private supabase: SupabaseClient;
 
 	constructor(supabase?: SupabaseClient) {
-		this.supabase = supabase || createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+		this.supabase =
+			supabase || createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 	}
 
 	/**
@@ -26,7 +27,10 @@ class NotificationPreferencesService {
 	 */
 	async get(eventType: EventType): Promise<UserNotificationPreferences> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -53,7 +57,10 @@ class NotificationPreferencesService {
 	 */
 	async getAll(): Promise<UserNotificationPreferences[]> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -80,7 +87,10 @@ class NotificationPreferencesService {
 		updates: Partial<UserNotificationPreferences>
 	): Promise<void> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -108,7 +118,10 @@ class NotificationPreferencesService {
 	 */
 	async subscribe(eventType: EventType, filters?: Record<string, any>): Promise<void> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -136,7 +149,10 @@ class NotificationPreferencesService {
 	 */
 	async unsubscribe(eventType: EventType): Promise<void> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -158,7 +174,10 @@ class NotificationPreferencesService {
 	 */
 	async getSubscriptions(): Promise<NotificationSubscription[]> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
@@ -182,7 +201,10 @@ class NotificationPreferencesService {
 	 */
 	async isSubscribed(eventType: EventType): Promise<boolean> {
 		// Get current user ID
-		const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+		const {
+			data: { user },
+			error: authError
+		} = await this.supabase.auth.getUser();
 
 		if (authError || !user) {
 			return false;

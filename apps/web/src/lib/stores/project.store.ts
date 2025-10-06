@@ -2,7 +2,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Project, Note } from '$lib/types/project';
 import type { TaskWithCalendarEvents, ProcessedPhase } from '$lib/types/project-page.types';
-import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
+import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from '$lib/utils/event-bus';
 import { performanceMonitor } from '$lib/utils/performance-monitor';
 
 // Loading states for granular control
@@ -446,7 +446,11 @@ class ProjectStoreV2 {
 
 		// Track this update BEFORE API call to prevent race condition
 		// Use tempId for tracking since that's what's in the store now
-		RealtimeProjectService.trackLocalUpdate(tempId);
+		eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+			entityId: tempId,
+			entityType: 'task',
+			timestamp: Date.now()
+		});
 
 		try {
 			// Execute API call
@@ -454,7 +458,11 @@ class ProjectStoreV2 {
 
 			// Track the real ID as well after we get it
 			if (result?.id && result.id !== tempId) {
-				RealtimeProjectService.trackLocalUpdate(result.id);
+				eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+					entityId: result.id,
+					entityType: 'task',
+					timestamp: Date.now()
+				});
 			}
 
 			// Replace temp with real data in both tasks array AND phases
@@ -572,7 +580,11 @@ class ProjectStoreV2 {
 		this.updateStats();
 
 		// Track this update BEFORE API call to prevent race condition
-		RealtimeProjectService.trackLocalUpdate(taskId);
+		eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+			entityId: taskId,
+			entityType: 'task',
+			timestamp: Date.now()
+		});
 
 		try {
 			const result = await apiCall();
@@ -693,7 +705,11 @@ class ProjectStoreV2 {
 			await apiCall();
 
 			// Track this deletion to avoid processing it from realtime
-			RealtimeProjectService.trackLocalUpdate(taskId);
+			eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+				entityId: taskId,
+				entityType: 'task',
+				timestamp: Date.now()
+			});
 
 			// Confirm deletion
 			this.store.update((state) => ({
@@ -745,7 +761,11 @@ class ProjectStoreV2 {
 
 			// Track this update to avoid processing it from realtime
 			if (result?.id) {
-				RealtimeProjectService.trackLocalUpdate(result.id);
+				eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+					entityId: result.id,
+					entityType: 'note',
+					timestamp: Date.now()
+				});
 			}
 
 			this.store.update((state) => ({
@@ -800,7 +820,11 @@ class ProjectStoreV2 {
 
 			// Track this update to avoid processing it from realtime
 			if (result?.id) {
-				RealtimeProjectService.trackLocalUpdate(result.id);
+				eventBus.emit<LocalUpdatePayload>(PROJECT_EVENTS.LOCAL_UPDATE, {
+					entityId: result.id,
+					entityType: 'note',
+					timestamp: Date.now()
+				});
 			}
 
 			this.store.update((state) => ({

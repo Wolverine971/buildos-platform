@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte -->
 <script lang="ts">
-	import { onDestroy, createEventDispatcher, tick } from 'svelte';
+	import { onDestroy, createEventDispatcher, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
@@ -40,45 +40,91 @@
 	import { page } from '$app/stores';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
 	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
+	import { throttle } from '$lib/utils/performance-optimization';
 
 	const MULTI_BRAINDUMP_ENABLED = true;
 
 	// Store actions are accessed via brainDumpV2Store methods
 	const brainDumpActions = brainDumpV2Store;
 
-	// FIXED: Use Svelte 5 $derived for massive performance improvement (was 20+ derived stores)
-	// This reduces overhead by ~50% - single reactive source instead of 20+ subscriptions
-	let storeState = $derived($brainDumpV2Store);
-	let modalIsOpenFromStore = $derived(storeState?.ui?.modal?.isOpen ?? false);
-	let currentView = $derived(storeState?.ui?.modal?.currentView ?? 'project-selection');
-	let selectedProject = $derived(storeState?.core?.selectedProject ?? null);
-	let inputText = $derived(storeState?.core?.inputText ?? '');
-	let currentPhase = $derived(storeState?.processing?.phase ?? 'idle');
-	let isProcessing = $derived(storeState?.processing?.mutex ?? false);
-	let isSaving = $derived(storeState?.processing?.phase === 'saving');
-	let voiceError = $derived(storeState?.core?.voice?.error ?? '');
-	let parseResults = $derived(storeState?.core?.parseResults ?? null);
-	let disabledOperations = $derived(storeState?.core?.disabledOperations ?? new Set());
-	let successData = $derived(storeState?.results?.success ?? null);
-	let microphonePermissionGranted = $derived(
-		storeState?.core?.voice?.microphonePermissionGranted ?? false
-	);
-	let voiceCapabilitiesChecked = $derived(storeState?.core?.voice?.capabilitiesChecked ?? false);
-	let isInitializingRecording = $derived(
-		storeState?.core?.voice?.isInitializingRecording ?? false
-	);
-	let canUseLiveTranscript = $derived(storeState?.core?.voice?.canUseLiveTranscript ?? false);
-	// IMPORTANT: In multi-mode, don't use legacy currentBrainDumpId - each brain dump gets a fresh UUID
-	let currentBrainDumpId = $derived(
-		MULTI_BRAINDUMP_ENABLED ? '' : (storeState?.core?.currentBrainDumpId ?? '')
-	);
-	let activeProcessingBrainDumpId = $derived(
-		!MULTI_BRAINDUMP_ENABLED && storeState?.processing?.mutex
-			? (storeState?.processing?.activeBrainDumpId ?? null)
-			: null
-	);
-	let lastSavedContent = $derived(storeState?.core?.lastSavedContent ?? '');
-	let isNewProject = $derived(storeState?.core?.isNewProject ?? false);
+	// PHASE 2 OPTIMIZATION: Split $derived values by logical concern
+	// Groups related state together - only affected group re-derives when its data changes
+	// This prevents all 20+ values from recalculating on every store mutation
+
+	// Input state - changes frequently during typing (throttled now)
+	let inputState = $derived.by(() => {
+		const state = $brainDumpV2Store;
+		return {
+			text: state?.core?.inputText ?? '',
+			lastSaved: state?.core?.lastSavedContent ?? '',
+			isNew: state?.core?.isNewProject ?? false
+		};
+	});
+	let inputText = $derived(inputState.text);
+	let lastSavedContent = $derived(inputState.lastSaved);
+	let isNewProject = $derived(inputState.isNew);
+
+	// UI state - changes rarely (only on view/modal changes)
+	let uiState = $derived.by(() => {
+		const state = $brainDumpV2Store;
+		return {
+			modalOpen: state?.ui?.modal?.isOpen ?? false,
+			view: state?.ui?.modal?.currentView ?? 'project-selection'
+		};
+	});
+	let modalIsOpenFromStore = $derived(uiState.modalOpen);
+	let currentView = $derived(uiState.view);
+
+	// Processing state - changes during brain dump processing
+	let processingState = $derived.by(() => {
+		const state = $brainDumpV2Store;
+		return {
+			phase: state?.processing?.phase ?? 'idle',
+			mutex: state?.processing?.mutex ?? false,
+			currentBrainDumpId: MULTI_BRAINDUMP_ENABLED ? '' : (state?.core?.currentBrainDumpId ?? ''),
+			activeBrainDumpId: !MULTI_BRAINDUMP_ENABLED && state?.processing?.mutex
+				? (state?.processing?.activeBrainDumpId ?? null)
+				: null
+		};
+	});
+	let currentPhase = $derived(processingState.phase);
+	let isProcessing = $derived(processingState.mutex);
+	let isSaving = $derived(processingState.phase === 'saving');
+	let currentBrainDumpId = $derived(processingState.currentBrainDumpId);
+	let activeProcessingBrainDumpId = $derived(processingState.activeBrainDumpId);
+
+	// Project state - changes when project selection changes
+	let selectedProject = $derived($brainDumpV2Store?.core?.selectedProject ?? null);
+
+	// Voice state - changes during voice recording
+	let voiceState = $derived.by(() => {
+		const state = $brainDumpV2Store;
+		return {
+			error: state?.core?.voice?.error ?? '',
+			micPermission: state?.core?.voice?.microphonePermissionGranted ?? false,
+			capsChecked: state?.core?.voice?.capabilitiesChecked ?? false,
+			initializing: state?.core?.voice?.isInitializingRecording ?? false,
+			canLiveTranscript: state?.core?.voice?.canUseLiveTranscript ?? false
+		};
+	});
+	let voiceError = $derived(voiceState.error);
+	let microphonePermissionGranted = $derived(voiceState.micPermission);
+	let voiceCapabilitiesChecked = $derived(voiceState.capsChecked);
+	let isInitializingRecording = $derived(voiceState.initializing);
+	let canUseLiveTranscript = $derived(voiceState.canLiveTranscript);
+
+	// Results state - changes when processing completes
+	let resultsState = $derived.by(() => {
+		const state = $brainDumpV2Store;
+		return {
+			parseResults: state?.core?.parseResults ?? null,
+			disabledOps: state?.core?.disabledOperations ?? new Set(),
+			success: state?.results?.success ?? null
+		};
+	});
+	let parseResults = $derived(resultsState.parseResults);
+	let disabledOperations = $derived(resultsState.disabledOps);
+	let successData = $derived(resultsState.success);
 
 	// Processing notification is now managed through unified store
 
@@ -243,51 +289,68 @@
 	let isClosing = $state(false);
 
 	// Watch for view changes and load appropriate components - use $effect for side effects
+	// PERFORMANCE FIX: Use untrack() to only react to currentView changes, not entire store
 	$effect(() => {
-		if (currentView && browser && currentView !== previousView) {
-			previousView = currentView;
-			loadComponentsForView(currentView);
-		}
+		const view = currentView;
+		untrack(() => {
+			if (view && browser && view !== previousView) {
+				previousView = view;
+				loadComponentsForView(view);
+			}
+		});
 	});
 
 	// Initialize modal when opened - use $effect for side effects
+	// PERFORMANCE FIX: Use untrack() to only react to isOpen changes, not entire store
 	$effect(() => {
-		if (isOpen && browser && !previousIsOpen && !isInitializing) {
-			previousIsOpen = true;
-			isInitializing = true;
-			initializeModal().finally(() => {
-				isInitializing = false;
-			});
-		} else if (!isOpen) {
-			previousIsOpen = false;
-		}
+		const open = isOpen;
+		untrack(() => {
+			if (open && browser && !previousIsOpen && !isInitializing) {
+				previousIsOpen = true;
+				isInitializing = true;
+				initializeModal().finally(() => {
+					isInitializing = false;
+				});
+			} else if (!open) {
+				previousIsOpen = false;
+			}
+		});
 	});
 
 	// Clean up when modal closes - use $effect for side effects
+	// PERFORMANCE FIX: Use untrack() to only react to isOpen changes, not entire store
 	$effect(() => {
-		if (!isOpen && browser && previousIsOpen && !isClosing) {
-			isClosing = true;
-			// Add a small delay to prevent race conditions
-			setTimeout(() => {
-				handleModalClose().finally(() => {
-					isClosing = false;
-				});
-			}, 50);
-		}
+		const open = isOpen;
+		untrack(() => {
+			if (!open && browser && previousIsOpen && !isClosing) {
+				isClosing = true;
+				// Add a small delay to prevent race conditions
+				setTimeout(() => {
+					handleModalClose().finally(() => {
+						isClosing = false;
+					});
+				}, 50);
+			}
+		});
 	});
 
 	// When modal opens, ensure store is in correct state
 	// Remove bidirectional sync to avoid loops
+	// PERFORMANCE FIX: Use untrack() to only react to isOpen changes, not entire store
 	$effect(() => {
-		// Only sync when modal is being opened (not on every change)
-		// Don't sync if we're in the middle of closing
-		if (isOpen && !previousIsOpen && browser && !isClosing) {
-			console.log('[BrainDumpModal] Modal opening - ensuring store is ready');
-			// Open the modal in the store if it's not already open
-			if (!modalIsOpenFromStore) {
-				brainDumpActions.openModal();
+		const open = isOpen;
+		const modalOpen = modalIsOpenFromStore;
+		untrack(() => {
+			// Only sync when modal is being opened (not on every change)
+			// Don't sync if we're in the middle of closing
+			if (open && !previousIsOpen && browser && !isClosing) {
+				console.log('[BrainDumpModal] Modal opening - ensuring store is ready');
+				// Open the modal in the store if it's not already open
+				if (!modalOpen) {
+					brainDumpActions.openModal();
+				}
 			}
-		}
+		});
 	});
 
 	async function initializeModal() {
@@ -361,6 +424,12 @@
 				},
 				onPermissionGranted: () => {
 					brainDumpActions.setMicrophonePermission(true);
+				},
+				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
+					console.log('[BrainDumpModal] Runtime capability update:', update);
+					brainDumpActions.setVoiceCapabilities({
+						canUseLiveTranscript: update.canUseLiveTranscript
+					});
 				}
 			},
 			brainDumpService
@@ -685,8 +754,14 @@
 		brainDumpActions.clearParseResults();
 	}
 
+	// PERFORMANCE FIX: Throttle store updates to reduce reactive overhead
+	// Limits store mutations to max once per 100ms instead of every keystroke
+	const throttledUpdateInput = throttle((text: string) => {
+		brainDumpActions.updateInputText(text);
+	}, 100);
+
 	function handleTextChange(event: CustomEvent) {
-		brainDumpActions.updateInputText(event.detail);
+		throttledUpdateInput(event.detail);
 		debouncedAutoSave();
 	}
 
@@ -1156,14 +1231,22 @@
 	async function startRecording() {
 		if (!isVoiceSupported) return;
 
-		try {
-			brainDumpActions.setVoiceError('');
-			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
+		// Clear any previous errors
+		brainDumpActions.setVoiceError('');
 
+		// Set initializing state BEFORE starting (for UI feedback only - doesn't delay recording)
+		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
+
+		try {
+			// Start recording - this is where the actual work happens
 			await voiceRecordingService.startRecording(inputText);
 
-			isCurrentlyRecording = true;
+			// CRITICAL: Clear initializing state FIRST, then set recording state
+			// This prevents state overlap that could show "Initializing" instead of "Recording"
 			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+
+			// Now set recording state - button will show recording UI with stop capability
+			isCurrentlyRecording = true;
 		} catch (error) {
 			console.error('Recording error:', error);
 			const errorMessage =
@@ -1171,8 +1254,8 @@
 					? error.message
 					: 'Unable to access microphone. Please check your permissions.';
 			brainDumpActions.setVoiceError(errorMessage);
-			isCurrentlyRecording = false;
 			brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+			isCurrentlyRecording = false;
 		}
 	}
 
@@ -1433,7 +1516,7 @@
 							placeholder="Start typing or use voice recording..."
 							value={inputText}
 							oninput={(e) => {
-								brainDumpActions.updateInputText(e.currentTarget.value);
+								throttledUpdateInput(e.currentTarget.value);
 								debouncedAutoSave();
 							}}
 						></textarea>

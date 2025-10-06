@@ -10,6 +10,7 @@ import {
 	brainDumpV2Store as brainDumpActions,
 	type BrainDumpV2Store
 } from '$lib/stores/brain-dump-v2.store';
+import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 
 export interface RefreshDecision {
 	needsRefresh: boolean;
@@ -88,16 +89,14 @@ export function isOnProjectPage(projectId: string, currentPath?: string): boolea
 /**
  * Check if real-time sync is active for a project
  * This checks if RealtimeProjectService is initialized and connected
+ *
+ * Note: No longer needs dynamic import since the circular dependency
+ * between project.store.ts and realtimeProject.service.ts has been
+ * resolved using the event bus pattern.
  */
-export async function isRealTimeSyncActive(projectId: string): Promise<boolean> {
-	try {
-		// Dynamic import to avoid circular dependencies
-		const { RealtimeProjectService } = await import('$lib/services/realtimeProject.service');
-		return RealtimeProjectService.isInitialized();
-	} catch (error) {
-		console.warn('Could not check real-time sync status:', error);
-		return false;
-	}
+export function isRealTimeSyncActive(projectId: string): boolean {
+	// No longer async or dynamic - circular dependency resolved via event bus
+	return RealtimeProjectService.isInitialized();
 }
 
 /**
@@ -129,7 +128,7 @@ export async function smartNavigateToProject(
 			brainDumpActions.closeNotification();
 
 			// Trigger soft refresh if real-time sync not active
-			const syncActive = await isRealTimeSyncActive(projectId);
+			const syncActive = isRealTimeSyncActive(projectId);
 			if (!syncActive) {
 				// Emit custom event for project page to refresh its data
 				window.dispatchEvent(
@@ -191,7 +190,7 @@ export async function handleSeamlessProjectUpdate(
 	}
 
 	// Check real-time sync status
-	const syncActive = await isRealTimeSyncActive(projectId);
+	const syncActive = isRealTimeSyncActive(projectId);
 
 	if (syncActive) {
 		// Real-time sync will handle updates

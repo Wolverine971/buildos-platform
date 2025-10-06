@@ -1,18 +1,18 @@
 # Prompt Audit: new-project-dual-context
 
-**Generated at:** 2025-10-05T05:23:48.206Z
+**Generated at:** 2025-10-06T05:32:10.420Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
+	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
 	"projectId": null,
 	"brainDumpLength": 547,
 	"hasExistingProject": false,
 	"existingContextLength": 0,
-	"timestamp": "2025-10-05T05:23:48.206Z"
+	"timestamp": "2025-10-06T05:32:10.420Z"
 }
 ```
 
@@ -24,7 +24,7 @@ A user just brain dumped information about a new project and you need to create 
 Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-05T05:23:47.851Z
+Current date and time: 2025-10-06T05:32:10.069Z
 
 ## Project Creation Decision:
 **Decision Matrix**:
@@ -46,7 +46,7 @@ Convert natural language dates to YYYY-MM-DD format:
    - "Q2" → end_date: June 30th of current year
    - Always calculate actual YYYY-MM-DD dates, NEVER use relative terms
    - If no timeline mentioned, use start_date: today, end_date: null
-   - Current date context: Today is 2025-10-05
+   - Current date context: Today is 2025-10-06
 
 ## Context Generation Framework:
 **Context Generation Framework**:
@@ -158,7 +158,7 @@ Skip context (set to null) when brain dump is:
         "executive_summary": "2-3 sentence executive summary",
         "tags": ["project", "tags"],
         "status": "active",
-        "start_date": "2025-10-05",
+        "start_date": "2025-10-06",
         "end_date": null
       }
     }
@@ -191,7 +191,7 @@ Skip context (set to null) when brain dump is:
 				"executive_summary": null,
 				"tags": ["tasks"],
 				"status": "active",
-				"start_date": "2025-10-05",
+				"start_date": "2025-10-06",
 				"end_date": null
 			}
 		}

@@ -8,7 +8,8 @@ import {
 	liveTranscript,
 	voiceSupported,
 	liveTranscriptSupported,
-	forceCleanup
+	forceCleanup,
+	setCapabilityUpdateCallback
 } from '$lib/utils/voice';
 import { get, writable } from 'svelte/store';
 import { browser } from '$app/environment';
@@ -18,6 +19,7 @@ export interface VoiceRecordingCallbacks {
 	onError: (error: string) => void;
 	onPhaseChange: (phase: 'idle' | 'transcribing') => void;
 	onPermissionGranted?: () => void;
+	onCapabilityUpdate?: (update: { canUseLiveTranscript: boolean }) => void;
 }
 
 export interface TranscriptionService {
@@ -67,6 +69,11 @@ export class VoiceRecordingService {
 				this.currentLiveTranscript = transcript;
 			});
 		}
+
+		// Set up runtime capability update callback
+		if (callbacks.onCapabilityUpdate) {
+			setCapabilityUpdateCallback(callbacks.onCapabilityUpdate);
+		}
 	}
 
 	public isVoiceSupported(): boolean {
@@ -110,13 +117,13 @@ export class VoiceRecordingService {
 			// Reset transcript accumulator
 			this.finalTranscriptSinceLastStop = '';
 
-			// Add line break if there's existing content
+			// Start the actual recording FIRST (before text processing to minimize delay)
+			await voiceStartRecording();
+
+			// Add line break AFTER recording starts (non-blocking)
 			if (currentInputText.trim()) {
 				this.callbacks.onTextUpdate(currentInputText + '\n\n');
 			}
-
-			// Start the actual recording
-			await voiceStartRecording();
 
 			// Start timer - reset to 0 first
 			this.recordingStartTime = Date.now();
@@ -176,11 +183,17 @@ export class VoiceRecordingService {
 
 			// Reset transcript for next recording
 			this.finalTranscriptSinceLastStop = '';
+
+			// CRITICAL: Always reset phase to idle after stopping, regardless of path taken
+			this.callbacks.onPhaseChange('idle');
 		} catch (error) {
 			console.error('Stop recording error:', error);
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to stop recording';
 			this.callbacks.onError(errorMessage);
+
+			// CRITICAL: Reset phase to idle even on error to prevent stuck state
+			this.callbacks.onPhaseChange('idle');
 		}
 	}
 

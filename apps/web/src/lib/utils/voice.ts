@@ -20,6 +20,12 @@ let audioChunks: Blob[] = [];
 let currentStream: MediaStream | null = null;
 let isInitialized = false;
 
+// Accumulated transcript to preserve speech across SpeechRecognition restarts (e.g., after pauses)
+let accumulatedFinalTranscript = '';
+
+// Callback for runtime capability updates
+let onCapabilityUpdate: ((update: { canUseLiveTranscript: boolean }) => void) | null = null;
+
 // API-compatible MIME types (ordered by transcription API compatibility)
 const API_COMPATIBLE_MIME_TYPES = [
 	'audio/webm', // WebM format - widely supported by APIs
@@ -116,25 +122,42 @@ function initializeSpeechRecognition() {
 
 		// Optimized result handling
 		recognition.onresult = (event: SpeechRecognitionEvent) => {
-			let finalText = '';
+			let newFinalText = '';
 			let interimText = '';
 
 			// Process only new results for better performance
 			for (let i = event.resultIndex; i < event.results.length; i++) {
 				const transcript = event.results[i][0].transcript;
 				if (event.results[i].isFinal) {
-					finalText += transcript + ' ';
+					newFinalText += transcript + ' ';
 				} else {
 					interimText += transcript;
 				}
 			}
 
-			const combinedText = (finalText + interimText).trim();
+			// Accumulate final results across SpeechRecognition restarts
+			// This prevents loss of previous speech when user pauses and recognition auto-restarts
+			if (newFinalText) {
+				accumulatedFinalTranscript += newFinalText;
+			}
+
+			// Combine accumulated final results with current interim results
+			const combinedText = (accumulatedFinalTranscript + interimText).trim();
 			liveTranscript.set(combinedText);
 		};
 
 		recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
 			console.warn('[SpeechRecognition] Error:', event.error);
+
+			// Notify UI of capability loss on permission errors
+			if (
+				(event.error === 'not-allowed' || event.error === 'service-not-allowed') &&
+				onCapabilityUpdate
+			) {
+				console.log('[SpeechRecognition] Permission denied - updating capability status');
+				onCapabilityUpdate({ canUseLiveTranscript: false });
+			}
+
 			// Don't stop recording on speech recognition errors
 			// since MediaRecorder is the primary capture method
 		};
@@ -187,6 +210,7 @@ function cleanupResources() {
 	audioChunks = [];
 	isRecording.set(false);
 	liveTranscript.set('');
+	accumulatedFinalTranscript = ''; // Reset accumulated transcript
 }
 
 /* ---------- SAFE PUBLIC API ---------- */
@@ -215,6 +239,7 @@ export async function startRecording(): Promise<void> {
 	// Reset state
 	audioChunks = [];
 	liveTranscript.set('');
+	accumulatedFinalTranscript = ''; // Reset accumulated transcript for new recording
 
 	try {
 		// Request optimized audio stream
@@ -227,6 +252,37 @@ export async function startRecording(): Promise<void> {
 				autoGainControl: true // Normalize volume
 			}
 		});
+
+		// Runtime validation: Now that we have permissions, test if SpeechRecognition actually works
+		if (!isInitialized && capabilities.liveTranscriptSupported && recognition) {
+			try {
+				// Quick test: start and immediately stop to verify it works
+				recognition.start();
+				recognition.stop();
+
+				console.log('[SpeechRecognition] Runtime validation successful');
+
+				// Re-initialize for actual use
+				isInitialized = false;
+				recognition = null;
+				initializeSpeechRecognition();
+				isInitialized = true;
+
+				// Notify UI that live transcript is actually available
+				if (onCapabilityUpdate) {
+					onCapabilityUpdate({ canUseLiveTranscript: true });
+				}
+			} catch (error) {
+				console.warn('[SpeechRecognition] Runtime validation failed:', error);
+				recognition = null;
+				isInitialized = true; // Mark as initialized but failed
+
+				// Notify UI that live transcript is NOT available
+				if (onCapabilityUpdate) {
+					onCapabilityUpdate({ canUseLiveTranscript: false });
+				}
+			}
+		}
 
 		// Setup MediaRecorder with optimal settings
 		const recorderOptions: MediaRecorderOptions = {
@@ -256,11 +312,13 @@ export async function startRecording(): Promise<void> {
 		// 	console.log('[MediaRecorder] Started with MIME type:', mediaRecorder?.mimeType);
 		// };
 
-		// Start recording
-		isRecording.set(true);
+		// Start recording immediately (before state updates for minimal delay)
 		mediaRecorder.start(1000); // Collect data every second
 
-		// Start speech recognition if available
+		// Update state after recording has started
+		isRecording.set(true);
+
+		// Start speech recognition if available (non-blocking, happens after MediaRecorder starts)
 		if (recognition) {
 			try {
 				recognition.start();
@@ -357,6 +415,13 @@ export const forceCleanup = () => {
 	cleanupResources();
 	isInitialized = false;
 	capabilitiesCache = null; // Reset cache to re-detect on next use
+};
+
+// Set callback for runtime capability updates
+export const setCapabilityUpdateCallback = (
+	callback: (update: { canUseLiveTranscript: boolean }) => void
+): void => {
+	onCapabilityUpdate = callback;
 };
 
 // Check if microphone permission is granted (without starting recording)
