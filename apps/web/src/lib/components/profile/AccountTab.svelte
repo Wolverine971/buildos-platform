@@ -230,56 +230,59 @@
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 	>
 		<div class="border-b border-gray-200 dark:border-gray-700">
-			<nav class="flex space-x-8 px-6" aria-label="Account sections">
+			<nav class="flex overflow-x-auto px-4 sm:px-6 -mb-px scrollbar-hide" aria-label="Account sections">
 				<Button
 					on:click={() => switchSection('profile')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
-					class="py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0
 					{activeSection === 'profile'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
 						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
 					icon={User}
 				>
-					Profile Information
+					<span class="hidden sm:inline">Profile Information</span>
+					<span class="sm:hidden">Profile</span>
 				</Button>
 				<Button
 					on:click={() => switchSection('password')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
-					class="py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
 					{activeSection === 'password'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
 						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
 					icon={Lock}
 				>
-					Change Password
+					<span class="hidden sm:inline">Change Password</span>
+					<span class="sm:hidden">Password</span>
 				</Button>
 				<Button
 					on:click={() => switchSection('danger')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
-					class="py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
 					{activeSection === 'danger'
 						? 'border-red-500 text-red-600 dark:text-red-400'
 						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
 					icon={Trash2}
 				>
-					Delete Account
+					<span class="hidden sm:inline">Delete Account</span>
+					<span class="sm:hidden">Delete</span>
 				</Button>
 			</nav>
 		</div>
 
 		<!-- Section Content -->
-		<div class="p-6">
+		<div class="p-4 sm:p-6">
 			<!-- Profile Section -->
 			{#if activeSection === 'profile'}
-				<div class="space-y-6">
+				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+						<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">
 							Profile Information
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -322,8 +325,9 @@
 							variant="primary"
 							size="md"
 							{loading}
+							class="w-full sm:w-auto"
 						>
-							{loading ? 'Updating Profile...' : 'Update Profile'}
+							{loading ? 'Updating...' : 'Update Profile'}
 						</Button>
 					</div>
 				</div>
@@ -331,9 +335,9 @@
 
 			<!-- Password Section -->
 			{#if activeSection === 'password'}
-				<div class="space-y-6">
+				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+						<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">
 							Change Password
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -436,8 +440,9 @@
 							variant="primary"
 							size="md"
 							{loading}
+							class="w-full sm:w-auto"
 						>
-							{loading ? 'Updating Password...' : 'Update Password'}
+							{loading ? 'Updating...' : 'Update Password'}
 						</Button>
 					</div>
 				</div>
@@ -445,13 +450,13 @@
 
 			<!-- Danger Zone Section -->
 			{#if activeSection === 'danger'}
-				<div class="space-y-6">
+				<div class="space-y-4 sm:space-y-6">
 					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
+						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 sm:p-6"
 					>
-						<div class="flex items-center gap-3 mb-6">
+						<div class="flex items-center gap-3 mb-4 sm:mb-6">
 							<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-							<h3 class="text-lg font-semibold text-red-900 dark:text-red-100">
+							<h3 class="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100">
 								Delete Account
 							</h3>
 						</div>
@@ -485,16 +490,17 @@
 							</div>
 						</div>
 
-						<div class="flex justify-end mt-6">
+						<div class="flex justify-end mt-4 sm:mt-6">
 							<Button
 								on:click={() => (showDeleteConfirmation = true)}
 								disabled={loading}
 								variant="outline"
 								size="md"
-								class="text-red-600 hover:text-white hover:bg-red-600 border-red-600"
+								class="text-red-600 hover:text-white hover:bg-red-600 border-red-600 w-full sm:w-auto"
 								icon={Trash2}
 							>
-								Delete My Account
+								<span class="hidden sm:inline">Delete My Account</span>
+								<span class="sm:hidden">Delete Account</span>
 							</Button>
 						</div>
 					</div>

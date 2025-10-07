@@ -435,7 +435,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<div class="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
 			<div
@@ -500,48 +500,50 @@
 
 		<!-- Profile Header -->
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6"
+			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6"
 		>
-			<div class="flex items-start justify-between">
-				<div class="flex items-center space-x-4">
+			<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+				<div class="flex items-center space-x-3 sm:space-x-4">
 					<div
-						class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center"
+						class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0"
 					>
-						<User class="w-8 h-8 text-white" />
+						<User class="w-6 h-6 sm:w-8 sm:h-8 text-white" />
 					</div>
-					<div>
-						<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+					<div class="min-w-0">
+						<h1 class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
 							{data.user?.user_metadata?.name || 'Your Profile'}
 						</h1>
-						<p class="text-gray-600 dark:text-gray-400 flex items-center mt-1">
-							<Mail class="w-4 h-4 mr-2" />
-							{data.user?.email}
+						<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 flex items-center mt-1 truncate">
+							<Mail class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+							<span class="truncate">{data.user?.email}</span>
 						</p>
 						{#if userContext?.created_at}
 							<p
-								class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"
+								class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"
 							>
-								<Calendar class="w-4 h-4 mr-2" />
+								<Calendar class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
 								Member since {new Date(userContext.created_at).toLocaleDateString()}
 							</p>
 						{/if}
 					</div>
 				</div>
 
-				<div class="flex items-center space-x-3">
+				<div class="flex items-center">
 					{#if !userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
 						<Button
 							on:click={() => goto('/onboarding')}
 							variant="primary"
-							size="md"
-							class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+							size="sm"
+							class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
 						>
 							{#if progressData.missingRequiredFields?.length > 0}
-								<AlertCircle class="w-4 h-4 mr-2" />
-								Complete Onboarding
+								<AlertCircle class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+								<span class="hidden sm:inline">Complete Onboarding</span>
+								<span class="sm:hidden">Complete Setup</span>
 							{:else}
-								<Sparkles class="w-4 h-4 mr-2" />
-								Start Onboarding
+								<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+								<span class="hidden sm:inline">Start Onboarding</span>
+								<span class="sm:hidden">Get Started</span>
 							{/if}
 						</Button>
 					{/if}
@@ -551,14 +553,14 @@
 
 		<!-- Tab Navigation -->
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6"
+			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6"
 		>
 			<TabNav
 				tabs={profileTabs}
 				{activeTab}
 				on:change={(event) => switchTab(event.detail)}
 				containerClass="mb-0 border-0"
-				navClass="mx-0 px-6 sm:px-6"
+				navClass="mx-0 px-3 sm:px-6"
 				ariaLabel="Profile sections"
 			/>
 		</div>

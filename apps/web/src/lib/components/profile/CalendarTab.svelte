@@ -364,32 +364,32 @@
 		<div
 			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
 		>
-			<div class="p-6 border-b border-gray-200 dark:border-gray-700">
-				<div class="flex items-center justify-between">
+			<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 					<div class="flex items-center space-x-3">
-						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-							<Calendar class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+							<Calendar class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
 						</div>
-						<div>
-							<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+						<div class="min-w-0">
+							<h2 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
 								{#if calendarConnected}
 									{calendarData.calendarStatus?.google_email ||
 										'Calendar Connected'}
 								{:else}
-									Google Calendar Integration
+									Google Calendar
 								{/if}
 							</h2>
 							{#if !calendarConnected}
-								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									Connect your calendar to schedule tasks automatically
+								<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+									Connect to schedule tasks automatically
 								</p>
 							{/if}
 						</div>
 					</div>
 
 					{#if calendarConnected}
-						<div class="flex items-center space-x-3">
-							<div class="text-right">
+						<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+							<div class="text-left sm:text-right">
 								<div class="flex items-center space-x-2">
 									<CheckCircle class="w-4 h-4 text-green-500" />
 									<p
@@ -407,46 +407,50 @@
 								{/if}
 							</div>
 
-							<Button
-								on:click={refreshCalendarData}
-								disabled={refreshingCalendar}
-								variant="ghost"
-								size="sm"
-								title="Refresh calendar data"
-								icon={RefreshCw}
-								loading={refreshingCalendar}
-							></Button>
+							<div class="flex items-center gap-2">
+								<Button
+									on:click={refreshCalendarData}
+									disabled={refreshingCalendar}
+									variant="ghost"
+									size="sm"
+									title="Refresh calendar data"
+									icon={RefreshCw}
+									loading={refreshingCalendar}
+								></Button>
 
-							<form
-								method="POST"
-								action="?/disconnectCalendar"
-								use:enhance={() => {
-									return async ({ update }) => {
-										await update();
-										// Refresh calendar data after disconnect
-										await loadCalendarData();
-									};
-								}}
-							>
-								<Button type="submit" variant="danger" size="md" icon={Unlink}>
-									Disconnect
-								</Button>
-							</form>
+								<form
+									method="POST"
+									action="?/disconnectCalendar"
+									use:enhance={() => {
+										return async ({ update }) => {
+											await update();
+											// Refresh calendar data after disconnect
+											await loadCalendarData();
+										};
+									}}
+								>
+									<Button type="submit" variant="danger" size="sm" class="sm:size-md" icon={Unlink}>
+										<span class="hidden sm:inline">Disconnect</span>
+										<span class="sm:hidden">Disconnect</span>
+									</Button>
+								</form>
+							</div>
 						</div>
 					{:else}
-						<Button on:click={connectCalendar} variant="primary" size="md" icon={Link}>
-							Connect Calendar
+						<Button on:click={connectCalendar} variant="primary" size="md" icon={Link} class="w-full sm:w-auto">
+							<span class="hidden sm:inline">Connect Calendar</span>
+							<span class="sm:hidden">Connect</span>
 						</Button>
 					{/if}
 				</div>
 			</div>
 
 			<!-- Features List -->
-			<div class="p-6 bg-gray-50 dark:bg-gray-900/50">
+			<div class="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900/50">
 				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-					Available Features with Calendar Integration:
+					Calendar Features:
 				</h3>
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<div class="flex items-start space-x-2">
 						<CheckCircle class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
 						<div>
@@ -500,15 +504,15 @@
 			<div
 				class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 			>
-				<div class="p-6 border-b border-gray-200 dark:border-gray-700">
+				<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
 					<h2
-						class="text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+						class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
 					>
-						<Clock class="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
+						<Clock class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600 dark:text-blue-400" />
 						Calendar Preferences
 					</h2>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						Customize how tasks are scheduled on your calendar
+					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+						Customize how tasks are scheduled
 					</p>
 				</div>
 
@@ -525,9 +529,9 @@
 						};
 					}}
 				>
-					<div class="p-6 space-y-6">
+					<div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
 						<!-- Working Hours -->
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 							<FormField
 								label="Work Start Time"
 								labelFor="workStartTime"
@@ -567,7 +571,7 @@
 							>
 								Working Days
 							</label>
-							<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 								{#each DAY_NAMES as day, index}
 									<label class="flex items-center space-x-2 cursor-pointer">
 										<input
@@ -589,7 +593,7 @@
 						</div>
 
 						<!-- Task Duration Settings -->
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
 							<FormField
 								label="Default Duration (minutes)"
 								labelFor="defaultTaskDuration"
@@ -644,7 +648,7 @@
 						</div>
 
 						<!-- Location Settings -->
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 							<FormField
 								required
 								size="md"
@@ -737,6 +741,7 @@
 								variant="primary"
 								size="md"
 								icon={Save}
+								class="w-full sm:w-auto"
 							>
 								{isSavingCalendar ? 'Saving...' : 'Save Preferences'}
 							</Button>
@@ -750,17 +755,17 @@
 				<div
 					class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 				>
-					<div class="p-6 border-b border-gray-200 dark:border-gray-700">
+					<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
 						<h2
-							class="text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+							class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
 						>
 							<CalendarCheck
-								class="w-6 h-6 mr-2 text-green-600 dark:text-green-400"
+								class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-green-600 dark:text-green-400"
 							/>
 							Scheduled Tasks
 						</h2>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-							Tasks currently scheduled on your calendar
+						<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+							Tasks on your calendar
 						</p>
 					</div>
 
@@ -821,33 +826,33 @@
 				<div
 					class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 				>
-					<div class="p-6 border-b border-gray-200 dark:border-gray-700">
+					<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
 						<h2
-							class="text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+							class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
 						>
-							<Brain class="w-6 h-6 mr-2 text-purple-600 dark:text-purple-400" />
+							<Brain class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-purple-600 dark:text-purple-400" />
 							Calendar Intelligence
 						</h2>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-							Discover projects from your calendar events
+						<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+							Discover projects from calendar
 						</p>
 					</div>
 
-					<div class="p-6">
+					<div class="p-4 sm:p-6">
 						<!-- Analysis Button -->
 						<div
-							class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4"
+							class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-3 sm:p-4"
 						>
-							<div class="flex items-start justify-between">
-								<div>
+							<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+								<div class="flex-1">
 									<h4
-										class="font-medium text-gray-900 dark:text-white flex items-center"
+										class="font-medium text-gray-900 dark:text-white flex items-center text-sm sm:text-base"
 									>
 										<Sparkles class="w-4 h-4 mr-2 text-purple-500" />
 										Analyze Your Calendar
 									</h4>
-									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-										Let BuildOS find projects in your calendar events
+									<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+										Find projects in your calendar
 									</p>
 								</div>
 								<Button
@@ -857,8 +862,9 @@
 									disabled={analysisInProgress}
 									loading={analysisInProgress}
 									icon={Brain}
+									class="w-full sm:w-auto flex-shrink-0"
 								>
-									{analysisInProgress ? 'Analyzing...' : 'Analyze Calendar'}
+									{analysisInProgress ? 'Analyzing...' : 'Analyze'}
 								</Button>
 							</div>
 

@@ -18,7 +18,7 @@ export class SMSService extends ApiService {
 	private static instance: SMSService;
 
 	private constructor() {
-		super();
+		super('/api');
 	}
 
 	public static getInstance(): SMSService {
@@ -35,7 +35,7 @@ export class SMSService extends ApiService {
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', params.userId)
-				.single();
+				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
 
 			if (!prefs || !prefs.phone_verified) {
 				return {
@@ -87,7 +87,7 @@ export class SMSService extends ApiService {
 				.from('tasks')
 				.select('*, projects(name)')
 				.eq('id', taskId)
-				.single();
+				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
 
 			if (!task) {
 				return {
@@ -101,7 +101,7 @@ export class SMSService extends ApiService {
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', task.user_id)
-				.single();
+				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
 
 			if (!prefs?.phone_number || !prefs.task_reminders) {
 				return {
@@ -214,9 +214,9 @@ export class SMSService extends ApiService {
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', userId)
-				.single();
+				.maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 when no rows
 
-			if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+			if (error) throw error;
 
 			return {
 				success: true,
