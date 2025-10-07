@@ -368,10 +368,14 @@
 				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 					<div class="flex items-center space-x-3">
 						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
-							<Calendar class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
+							<Calendar
+								class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400"
+							/>
 						</div>
 						<div class="min-w-0">
-							<h2 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
+							<h2
+								class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white truncate"
+							>
 								{#if calendarConnected}
 									{calendarData.calendarStatus?.google_email ||
 										'Calendar Connected'}
@@ -429,7 +433,13 @@
 										};
 									}}
 								>
-									<Button type="submit" variant="danger" size="sm" class="sm:size-md" icon={Unlink}>
+									<Button
+										type="submit"
+										variant="danger"
+										size="sm"
+										class="sm:size-md"
+										icon={Unlink}
+									>
 										<span class="hidden sm:inline">Disconnect</span>
 										<span class="sm:hidden">Disconnect</span>
 									</Button>
@@ -437,7 +447,13 @@
 							</div>
 						</div>
 					{:else}
-						<Button on:click={connectCalendar} variant="primary" size="md" icon={Link} class="w-full sm:w-auto">
+						<Button
+							on:click={connectCalendar}
+							variant="primary"
+							size="md"
+							icon={Link}
+							class="w-full sm:w-auto"
+						>
 							<span class="hidden sm:inline">Connect Calendar</span>
 							<span class="sm:hidden">Connect</span>
 						</Button>
@@ -508,7 +524,9 @@
 					<h2
 						class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
 					>
-						<Clock class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600 dark:text-blue-400" />
+						<Clock
+							class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600 dark:text-blue-400"
+						/>
 						Calendar Preferences
 					</h2>
 					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -830,7 +848,9 @@
 						<h2
 							class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
 						>
-							<Brain class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-purple-600 dark:text-purple-400" />
+							<Brain
+								class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-purple-600 dark:text-purple-400"
+							/>
 							Calendar Intelligence
 						</h2>
 						<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -843,7 +863,9 @@
 						<div
 							class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-3 sm:p-4"
 						>
-							<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+							<div
+								class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+							>
 								<div class="flex-1">
 									<h4
 										class="font-medium text-gray-900 dark:text-white flex items-center text-sm sm:text-base"
@@ -851,7 +873,9 @@
 										<Sparkles class="w-4 h-4 mr-2 text-purple-500" />
 										Analyze Your Calendar
 									</h4>
-									<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+									<p
+										class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1"
+									>
 										Find projects in your calendar
 									</p>
 								</div>

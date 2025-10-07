@@ -10,16 +10,16 @@
 ## Prerequisites
 
 1. **VAPID Keys Configured**:
-   - `PUBLIC_VAPID_PUBLIC_KEY` set in web app
-   - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` set in worker
+    - `PUBLIC_VAPID_PUBLIC_KEY` set in web app
+    - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` set in worker
 
 2. **Service Worker Updated**:
-   - Version 1.1.0 deployed
-   - Browser cache cleared
+    - Version 1.1.0 deployed
+    - Browser cache cleared
 
 3. **User Subscribed to Push**:
-   - User has granted push notification permission
-   - Active push subscription in `push_subscriptions` table
+    - User has granted push notification permission
+    - Active push subscription in `push_subscriptions` table
 
 ---
 
@@ -28,12 +28,14 @@
 ### 1. Trigger a Test Notification
 
 **Option A: Via Admin Dashboard**
+
 1. Navigate to Admin > Notifications
 2. Create a test notification event
 3. Select push channel
 4. Send to test user
 
 **Option B: Via Database Insert**
+
 ```sql
 -- Insert test notification event
 INSERT INTO notification_events (
@@ -54,6 +56,7 @@ SELECT dispatch_notification_event('<event-id>');
 ```
 
 **Option C: Via API** (if endpoint exists)
+
 ```bash
 curl -X POST https://build-os.com/api/admin/notifications/send \
   -H "Content-Type: application/json" \
@@ -72,6 +75,7 @@ curl -X POST https://build-os.com/api/admin/notifications/send \
 ### 2. Verify Notification Delivery
 
 **Check notification_deliveries table:**
+
 ```sql
 SELECT
   id,
@@ -88,6 +92,7 @@ LIMIT 5;
 ```
 
 **Expected Result**:
+
 - Status: `sent`
 - `sent_at`: Has timestamp
 - `opened_at`: NULL (before click)
@@ -99,13 +104,14 @@ LIMIT 5;
 2. Click the notification
 3. Browser should open to the specified URL
 4. Check browser console for service worker logs:
-   - `[ServiceWorker] Notification clicked...`
-   - `[ServiceWorker] Tracking notification click...`
-   - `[ServiceWorker] Click tracked successfully`
+    - `[ServiceWorker] Notification clicked...`
+    - `[ServiceWorker] Tracking notification click...`
+    - `[ServiceWorker] Click tracked successfully`
 
 ### 4. Verify Tracking Recorded
 
 **Check notification_deliveries table again:**
+
 ```sql
 SELECT
   id,
@@ -123,6 +129,7 @@ LIMIT 1;
 ```
 
 **Expected Result**:
+
 - Status: `clicked`
 - `sent_at`: Original timestamp
 - `opened_at`: Same as `clicked_at` (click implies open for push)
@@ -135,11 +142,12 @@ LIMIT 1;
 1. Navigate to Admin > Notifications > Analytics
 2. Check push notification metrics
 3. Verify:
-   - Sent count increased
-   - Click rate > 0%
-   - Open rate > 0% (same as click rate for push)
+    - Sent count increased
+    - Click rate > 0%
+    - Open rate > 0% (same as click rate for push)
 
 **SQL Query for Metrics:**
+
 ```sql
 SELECT
   channel,
@@ -159,15 +167,19 @@ GROUP BY channel;
 ## Edge Cases to Test
 
 ### Test 1: Multiple Clicks on Same Notification
+
 **Expected**: Only first click updates `clicked_at`, subsequent clicks don't change timestamp
 
 ### Test 2: Notification Without delivery_id
+
 **Expected**: Service worker logs warning but doesn't crash, navigation still works
 
 ### Test 3: API Endpoint Down
+
 **Expected**: Service worker catches error, navigation still works, click not tracked
 
 ### Test 4: Notification Dismissed (Not Clicked)
+
 **Expected**: No tracking update, `clicked_at` remains NULL
 
 ---
@@ -175,6 +187,7 @@ GROUP BY channel;
 ## Browser Compatibility Tests
 
 Test in each browser:
+
 - [ ] Chrome Desktop
 - [ ] Firefox Desktop
 - [ ] Edge Desktop
@@ -186,6 +199,7 @@ Test in each browser:
 ## Success Criteria
 
 ✅ All tests pass if:
+
 1. Push notifications are received
 2. Clicking notification updates `notification_deliveries`
 3. `clicked_at` and `opened_at` are set correctly
@@ -199,21 +213,25 @@ Test in each browser:
 ## Troubleshooting
 
 ### Service Worker Not Updating
+
 - Clear browser cache
 - Unregister old service worker in DevTools > Application > Service Workers
 - Hard refresh (Cmd/Ctrl + Shift + R)
 
 ### Tracking API Returns 404
+
 - Verify route exists: `/api/notification-tracking/click/[delivery_id]/+server.ts`
 - Check SvelteKit build output
 - Verify Vercel deployment
 
 ### delivery_id Not in Notification Payload
+
 - Check `notificationWorker.ts` line 94
 - Verify `delivery.id` is included in push payload
 - Check service worker receives `data.delivery_id`
 
 ### Database Permission Error
+
 - Verify RLS policies on `notification_deliveries`
 - Check service role permissions
 - Ensure authenticated user can update their deliveries
@@ -223,6 +241,7 @@ Test in each browser:
 ## Cleanup
 
 After testing, delete test notifications:
+
 ```sql
 -- Delete test events and deliveries
 DELETE FROM notification_deliveries

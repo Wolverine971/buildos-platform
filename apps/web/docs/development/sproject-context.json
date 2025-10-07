@@ -235,6 +235,12 @@
 			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
 		},
 		{
+			"file": "src/lib/services/link-shortener.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["linkShortenerService"]
+		},
+		{
 			"file": "src/lib/services/llm-usage.service.ts",
 			"type": "service",
 			"components": [],

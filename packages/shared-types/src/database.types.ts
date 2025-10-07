@@ -2455,6 +2455,50 @@ export type Database = {
           },
         ];
       };
+      notification_tracking_links: {
+        Row: {
+          click_count: number | null;
+          created_at: string | null;
+          delivery_id: string;
+          destination_url: string;
+          first_clicked_at: string | null;
+          id: string;
+          last_clicked_at: string | null;
+          metadata: Json | null;
+          short_code: string;
+        };
+        Insert: {
+          click_count?: number | null;
+          created_at?: string | null;
+          delivery_id: string;
+          destination_url: string;
+          first_clicked_at?: string | null;
+          id?: string;
+          last_clicked_at?: string | null;
+          metadata?: Json | null;
+          short_code: string;
+        };
+        Update: {
+          click_count?: number | null;
+          created_at?: string | null;
+          delivery_id?: string;
+          destination_url?: string;
+          first_clicked_at?: string | null;
+          id?: string;
+          last_clicked_at?: string | null;
+          metadata?: Json | null;
+          short_code?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_tracking_links_delivery_id_fkey";
+            columns: ["delivery_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_deliveries";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       payment_methods: {
         Row: {
           card_brand: string | null;
@@ -5040,6 +5084,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
       };
+      cleanup_old_tracking_links: {
+        Args: { p_days_old?: number };
+        Returns: number;
+      };
       cleanup_project_history: {
         Args: { target_project_id: string };
         Returns: undefined;
@@ -5062,6 +5110,10 @@ export type Database = {
       create_manual_project_version: {
         Args: { created_by_user?: string; target_project_id: string };
         Returns: number;
+      };
+      create_tracking_link: {
+        Args: { p_delivery_id: string; p_destination_url: string };
+        Returns: string;
       };
       decrement_phase_order: {
         Args: { p_order_threshold: number; p_project_id: string };
@@ -5087,6 +5139,10 @@ export type Database = {
         Returns: {
           instance_date: string;
         }[];
+      };
+      generate_short_code: {
+        Args: { length?: number };
+        Returns: string;
       };
       get_admin_model_breakdown: {
         Args: { p_end_date: string; p_start_date: string };
@@ -5191,6 +5247,15 @@ export type Database = {
           inactive_31_plus_days: number;
           inactive_4_10_days: number;
           total_users: number;
+        }[];
+      };
+      get_link_click_stats: {
+        Args: { p_days_back?: number; p_delivery_id?: string };
+        Returns: {
+          click_through_rate: number;
+          total_clicks: number;
+          total_links: number;
+          unique_clicked_links: number;
         }[];
       };
       get_notification_active_subscriptions: {

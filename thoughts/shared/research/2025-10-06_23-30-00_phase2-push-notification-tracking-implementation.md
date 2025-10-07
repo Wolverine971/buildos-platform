@@ -28,6 +28,7 @@ related_spec: thoughts/shared/research/2025-10-06_22-08-35_notification-tracking
 **Result**: ✅ Successfully implemented end-to-end push notification click tracking with minimal changes to existing infrastructure.
 
 **Impact**:
+
 - Push notification clicks now tracked in `notification_deliveries` table
 - Service worker updated with tracking logic
 - Unified tracking API created for all notification channels
@@ -87,21 +88,23 @@ related_spec: thoughts/shared/research/2025-10-06_22-08-35_notification-tracking
 ### 1. Service Worker (`apps/web/static/sw.js`)
 
 **Changes**:
+
 - Incremented version from `1.0.0` to `1.1.0`
 - Implemented click tracking in `notificationclick` event listener
 - Added API call to `/api/notification-tracking/click/${deliveryId}`
 - Captures metadata: action, user_agent, timestamp
 
 **Before**:
+
 ```javascript
 // Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  const urlToOpen = event.notification.data?.url || "/";
 
   // TODO: Track click via API
   if (event.notification.data?.delivery_id) {
-    console.log('delivery_id:', event.notification.data.delivery_id);
+    console.log("delivery_id:", event.notification.data.delivery_id);
   }
 
   // Navigate to URL
@@ -110,12 +113,13 @@ self.addEventListener('notificationclick', (event) => {
 ```
 
 **After**:
+
 ```javascript
 // Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/';
+  const urlToOpen = event.notification.data?.url || "/";
   const deliveryId = event.notification.data?.delivery_id;
   const action = event.action;
 
@@ -123,26 +127,32 @@ self.addEventListener('notificationclick', (event) => {
   if (deliveryId) {
     event.waitUntil(
       fetch(`/api/notification-tracking/click/${deliveryId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           metadata: {
-            action: action || 'notification_body',
+            action: action || "notification_body",
             user_agent: navigator.userAgent,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      })
+        .then((response) => {
+          if (response.ok) {
+            console.log("[ServiceWorker] Click tracked successfully");
+          } else {
+            console.error(
+              "[ServiceWorker] Click tracking failed:",
+              response.status,
+            );
           }
         })
-      })
-      .then(response => {
-        if (response.ok) {
-          console.log('[ServiceWorker] Click tracked successfully');
-        } else {
-          console.error('[ServiceWorker] Click tracking failed:', response.status);
-        }
-      })
-      .catch(error => {
-        console.error('[ServiceWorker] Failed to track notification click:', error);
-      })
+        .catch((error) => {
+          console.error(
+            "[ServiceWorker] Failed to track notification click:",
+            error,
+          );
+        }),
     );
   }
 
@@ -152,6 +162,7 @@ self.addEventListener('notificationclick', (event) => {
 ```
 
 **Impact**:
+
 - Non-blocking: Tracking doesn't delay navigation
 - Graceful failure: Errors logged but don't break notification
 - Metadata captured: Action, user agent, timestamp
@@ -167,6 +178,7 @@ self.addEventListener('notificationclick', (event) => {
 **Purpose**: Unified API endpoint for tracking notification clicks across all channels.
 
 **Key Features**:
+
 - Accepts POST requests with optional metadata
 - Updates `notification_deliveries.clicked_at` timestamp
 - Sets `opened_at` if not already set (click implies open)
@@ -177,6 +189,7 @@ self.addEventListener('notificationclick', (event) => {
 **API Specification**:
 
 **Request**:
+
 ```http
 POST /api/notification-tracking/click/{delivery_id}
 Content-Type: application/json
@@ -191,6 +204,7 @@ Content-Type: application/json
 ```
 
 **Response** (Success):
+
 ```json
 {
   "success": true,
@@ -203,6 +217,7 @@ Content-Type: application/json
 ```
 
 **Response** (Error):
+
 ```json
 {
   "success": false,
@@ -212,12 +227,14 @@ Content-Type: application/json
 ```
 
 **HTTP Status Codes**:
+
 - `200 OK`: Click tracked successfully
 - `400 Bad Request`: Missing delivery_id
 - `404 Not Found`: Delivery not found
 - `500 Internal Server Error`: Database or server error
 
 **Database Updates**:
+
 ```sql
 -- On first click
 UPDATE notification_deliveries
@@ -231,6 +248,7 @@ WHERE id = {delivery_id};
 ```
 
 **Idempotency**:
+
 - Subsequent clicks on same delivery_id don't update `clicked_at`
 - Only first click is recorded
 - Returns `is_first_click: false` for duplicates
@@ -242,6 +260,7 @@ WHERE id = {delivery_id};
 **File**: `apps/web/tests/manual/test-push-notification-tracking.md`
 
 **Contents**:
+
 - Step-by-step test procedure
 - SQL queries for verification
 - Expected results at each step
@@ -251,6 +270,7 @@ WHERE id = {delivery_id};
 - Cleanup instructions
 
 **Test Coverage**:
+
 - ✅ Notification delivery
 - ✅ Click tracking
 - ✅ Database updates
@@ -335,23 +355,25 @@ WHERE id = {delivery_id};
 ### Error Handling
 
 **Service Worker**:
+
 ```javascript
 // Non-blocking tracking with error handling
 event.waitUntil(
   fetch(trackingUrl, options)
-    .then(response => {
+    .then((response) => {
       if (!response.ok) {
-        console.error('Tracking failed:', response.status);
+        console.error("Tracking failed:", response.status);
       }
     })
-    .catch(error => {
-      console.error('Tracking request failed:', error);
+    .catch((error) => {
+      console.error("Tracking request failed:", error);
       // Tracking failure doesn't break navigation
-    })
+    }),
 );
 ```
 
 **API Endpoint**:
+
 ```typescript
 // Graceful error handling with logging
 try {
@@ -372,17 +394,20 @@ try {
 ### Performance Considerations
 
 **Non-Blocking Tracking**:
+
 - Tracking API call uses `event.waitUntil()` - runs in background
 - Navigation happens immediately, not waiting for tracking response
 - User experience not impacted by tracking latency
 
 **Database Efficiency**:
+
 - Single UPDATE query per click
 - Indexes on `id` (primary key) - O(1) lookup
 - No joins or complex queries
 - Typical response time: < 50ms
 
 **Network Efficiency**:
+
 - Small JSON payload (~150 bytes)
 - POST request with minimal headers
 - No external API calls
@@ -395,6 +420,7 @@ try {
 ### Database Schema (Existing)
 
 **notification_deliveries**:
+
 ```sql
 CREATE TABLE notification_deliveries (
   id UUID PRIMARY KEY,
@@ -421,6 +447,7 @@ CREATE TABLE notification_deliveries (
 ### Tracking Data Structure
 
 **tracking_metadata JSONB**:
+
 ```json
 {
   "action": "notification_body",
@@ -432,6 +459,7 @@ CREATE TABLE notification_deliveries (
 ### Example Lifecycle
 
 **Initial State** (after notification sent):
+
 ```json
 {
   "id": "uuid-123",
@@ -446,6 +474,7 @@ CREATE TABLE notification_deliveries (
 ```
 
 **After First Click**:
+
 ```json
 {
   "id": "uuid-123",
@@ -464,6 +493,7 @@ CREATE TABLE notification_deliveries (
 ```
 
 **After Subsequent Clicks** (idempotent):
+
 ```json
 {
   "id": "uuid-123",
@@ -471,8 +501,8 @@ CREATE TABLE notification_deliveries (
   "status": "clicked",
   "sent_at": "2025-10-06T23:29:00Z",
   "delivered_at": null,
-  "opened_at": "2025-10-06T23:30:15Z",  // Unchanged
-  "clicked_at": "2025-10-06T23:30:15Z",  // Unchanged
+  "opened_at": "2025-10-06T23:30:15Z", // Unchanged
+  "clicked_at": "2025-10-06T23:30:15Z", // Unchanged
   "tracking_metadata": {
     "action": "notification_body",
     "user_agent": "Mozilla/5.0...",
@@ -516,6 +546,7 @@ CREATE TABLE notification_deliveries (
 ### SQL Verification Queries
 
 **Check Recent Push Deliveries**:
+
 ```sql
 SELECT
   id,
@@ -534,6 +565,7 @@ ORDER BY created_at DESC;
 ```
 
 **Calculate Push Notification Metrics**:
+
 ```sql
 SELECT
   COUNT(*) as total_sent,
@@ -548,6 +580,7 @@ WHERE channel = 'push'
 ```
 
 **Expected Metrics** (after rollout):
+
 - Open Rate: 60-90% (industry standard for push)
 - Click Rate: 10-30% (industry standard for push)
 - Average Time to Click: 30-300 seconds
@@ -589,11 +622,13 @@ WHERE channel = 'push'
 ### Phase 3: SMS Click Tracking
 
 **Prerequisites** (from Phase 2):
+
 - ✅ Unified tracking API created (`/api/notification-tracking/click/[delivery_id]`)
 - ✅ `notification_deliveries` schema ready
 - ✅ Analytics infrastructure in place
 
 **Remaining Work**:
+
 1. Create link shortener infrastructure
    - Database table: `notification_tracking_links`
    - API endpoint: `GET /l/[short_code]` (redirect + track)
@@ -607,10 +642,12 @@ WHERE channel = 'push'
 ### Phase 4: In-App Tracking
 
 **Prerequisites** (from Phase 2):
+
 - ✅ Unified tracking API created
 - ✅ `notification_deliveries` schema ready
 
 **Remaining Work**:
+
 1. Update in-app notification components
 2. Add view tracking on component mount
 3. Add click tracking on notification click
@@ -622,6 +659,7 @@ WHERE channel = 'push'
 ### Phase 5: Email Click Tracking
 
 **Status**: ✅ Already Complete (Phase 1)
+
 - Email click tracking implemented in Phase 1
 - Uses `/api/email-tracking/[tracking_id]/click/+server.ts`
 - Could be migrated to unified API in future refactor
@@ -691,14 +729,17 @@ WHERE channel = 'push'
 ### Code References
 
 **Service Worker**: `apps/web/static/sw.js`
+
 - Lines 8: Version increment (1.1.0)
 - Lines 49-110: notificationclick handler with tracking
 
 **Tracking API**: `apps/web/src/routes/api/notification-tracking/click/[delivery_id]/+server.ts`
+
 - Lines 11-102: POST handler for click tracking
 - Lines 107-114: GET handler for health check
 
 **Notification Worker**: `apps/worker/src/workers/notification/notificationWorker.ts`
+
 - Lines 82-97: Push notification payload (includes delivery_id)
 
 **Testing Guide**: `apps/web/tests/manual/test-push-notification-tracking.md`
@@ -706,9 +747,11 @@ WHERE channel = 'push'
 ### Environment Requirements
 
 **Web App** (apps/web):
+
 - `PUBLIC_VAPID_PUBLIC_KEY` - VAPID public key for push subscription
 
 **Worker Service** (apps/worker):
+
 - `VAPID_PUBLIC_KEY` - VAPID public key
 - `VAPID_PRIVATE_KEY` - VAPID private key
 - `VAPID_SUBJECT` - Contact email (defaults to mailto:support@buildos.com)
@@ -716,6 +759,7 @@ WHERE channel = 'push'
 ### Browser Support
 
 **Push Notifications**:
+
 - ✅ Chrome 42+ (Desktop & Android)
 - ✅ Firefox 44+ (Desktop & Android)
 - ✅ Edge 17+
@@ -723,6 +767,7 @@ WHERE channel = 'push'
 - ❌ Safari iOS (not supported)
 
 **Service Workers**:
+
 - ✅ All modern browsers
 - ❌ IE11 and older
 

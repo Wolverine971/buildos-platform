@@ -51,11 +51,13 @@ ORDER BY created_at DESC;
 **Expected**: At least 1 row with `is_active = true`
 
 **If NO ROWS**:
+
 - ❌ You haven't subscribed to push notifications in the browser
 - **Fix**: Go to Settings → Notifications → Enable "Push Notifications"
 - This calls `browserPushService.subscribe()` which saves to database
 
 **If ROW EXISTS but `is_active = false`**:
+
 - ❌ Subscription expired or was manually deactivated
 - **Fix**: Re-subscribe in Settings
 
@@ -81,18 +83,20 @@ ORDER BY created_at DESC;
 **Expected**: At least 1 row with `is_active = true` for the event type you're testing
 
 **If NO ROWS**:
+
 - ❌ User is not subscribed to this event type
 - **Fix Option 1**: Create subscription manually:
-  ```sql
-  INSERT INTO notification_subscriptions (user_id, event_type, is_active)
-  VALUES ('<your-user-id>', '<event-type>', true);
-  ```
+    ```sql
+    INSERT INTO notification_subscriptions (user_id, event_type, is_active)
+    VALUES ('<your-user-id>', '<event-type>', true);
+    ```
 - **Fix Option 2**: Use the subscription service:
-  ```typescript
-  await notificationPreferencesService.subscribe('brief.completed');
-  ```
+    ```typescript
+    await notificationPreferencesService.subscribe('brief.completed');
+    ```
 
 **Common Event Types**:
+
 - `user.signup` (admin-only)
 - `brief.completed` (user notifications)
 - `brief.failed`
@@ -118,10 +122,12 @@ WHERE user_id = '<your-user-id>'
 ```
 
 **Expected**:
+
 - Row exists with `push_enabled = true`
 - OR no row (defaults to push_enabled = true)
 
 **If `push_enabled = false`**:
+
 - ❌ User disabled push for this event type
 - **Fix**: Enable in Settings → Notifications
 
@@ -147,21 +153,24 @@ ORDER BY created_at DESC;
 ```
 
 **Status Meanings**:
+
 - `pending` - Queued but not yet sent
 - `sent` - Sent via web-push
 - `failed` - Send failed (check `last_error`)
 - `delivered` - Successfully delivered
 
 **If NO ROWS**:
+
 - ❌ No deliveries created = User has no subscription or push disabled
 - **Go back to steps 2 & 3**
 
 **If `status = 'failed'`**:
+
 - Check `last_error` column for reason
 - Common errors:
-  - "Push subscription expired" - Re-subscribe
-  - "VAPID keys not configured" - Check environment variables
-  - "Subscription endpoint invalid" - Re-subscribe
+    - "Push subscription expired" - Re-subscribe
+    - "VAPID keys not configured" - Check environment variables
+    - "Subscription endpoint invalid" - Re-subscribe
 
 ---
 
@@ -185,16 +194,19 @@ ORDER BY created_at DESC;
 ```
 
 **Status Meanings**:
+
 - `pending` - Waiting to be processed
 - `processing` - Currently being sent
 - `completed` - Successfully sent
 - `failed` - Failed after max retries
 
 **If `status = 'failed'`**:
+
 - Check `error_message` for details
 - Check `attempts` - should be ≤ 3
 
 **If `status = 'pending'` for more than 1 minute**:
+
 - ❌ Worker not running or not processing jobs
 - Check Railway logs for worker service
 - Check worker health: `curl https://<worker-url>/health`
@@ -204,11 +216,13 @@ ORDER BY created_at DESC;
 ### 6. Verify VAPID Keys Configuration
 
 **Web App** (.env):
+
 ```bash
 PUBLIC_VAPID_PUBLIC_KEY=<your-public-key>
 ```
 
 **Worker Service** (.env):
+
 ```bash
 VAPID_PUBLIC_KEY=<your-public-key>
 VAPID_PRIVATE_KEY=<your-private-key>
@@ -216,6 +230,7 @@ VAPID_SUBJECT=mailto:support@buildos.com
 ```
 
 **Check if keys match**:
+
 ```bash
 # In worker logs, look for:
 [NotificationWorker] VAPID keys configured ✓
@@ -225,11 +240,12 @@ VAPID_SUBJECT=mailto:support@buildos.com
 ```
 
 **If keys don't match**:
+
 - ❌ Push notifications will fail silently
 - **Fix**: Regenerate keys and update both apps:
-  ```bash
-  npx web-push generate-vapid-keys
-  ```
+    ```bash
+    npx web-push generate-vapid-keys
+    ```
 
 ---
 
@@ -238,20 +254,23 @@ VAPID_SUBJECT=mailto:support@buildos.com
 **Browser DevTools** → Application → Service Workers
 
 **Expected**:
+
 - Service worker status: **Activated and is running**
 - Version: `1.1.0` or higher
 - Source: `/sw.js`
 
 **If not activated**:
+
 - Clear browser cache
 - Hard refresh (Cmd/Ctrl + Shift + R)
 - Check browser console for registration errors
 
 **Test in Browser Console**:
+
 ```javascript
 // Check if service worker registered
-navigator.serviceWorker.ready.then(reg => {
-  console.log('Service worker ready:', reg);
+navigator.serviceWorker.ready.then((reg) => {
+	console.log('Service worker ready:', reg);
 });
 
 // Check notification permission
@@ -265,20 +284,23 @@ console.log('Notification permission:', Notification.permission);
 **Required**: `Notification.permission === "granted"`
 
 **Check in Browser Console**:
+
 ```javascript
 console.log(Notification.permission);
 // Should be: "granted"
 ```
 
 **If "denied"**:
+
 - ❌ User denied permission
 - **Fix**:
-  1. Go to browser settings
-  2. Find site permissions for build-os.com
-  3. Enable notifications
-  4. Refresh page and try again
+    1. Go to browser settings
+    2. Find site permissions for build-os.com
+    3. Enable notifications
+    4. Refresh page and try again
 
 **If "default"**:
+
 - ❌ User hasn't been asked yet
 - **Fix**: Go to Settings → Notifications → Enable "Push Notifications"
 
@@ -289,28 +311,31 @@ console.log(Notification.permission);
 ### Setup (One-Time)
 
 1. **Subscribe to Push Notifications**:
-   - Go to Settings → Notifications
-   - Toggle "Push Notifications" ON
-   - Grant browser permission when prompted
+    - Go to Settings → Notifications
+    - Toggle "Push Notifications" ON
+    - Grant browser permission when prompted
 
 2. **Create Notification Subscription**:
-   ```sql
-   INSERT INTO notification_subscriptions (user_id, event_type, is_active)
-   VALUES ('<your-user-id>', 'brief.completed', true);
-   ```
+
+    ```sql
+    INSERT INTO notification_subscriptions (user_id, event_type, is_active)
+    VALUES ('<your-user-id>', 'brief.completed', true);
+    ```
 
 3. **Verify Setup**:
-   ```sql
-   -- Should return at least 1 row
-   SELECT * FROM push_subscriptions WHERE user_id = '<your-user-id>' AND is_active = true;
 
-   -- Should return at least 1 row
-   SELECT * FROM notification_subscriptions WHERE user_id = '<your-user-id>' AND event_type = 'brief.completed';
-   ```
+    ```sql
+    -- Should return at least 1 row
+    SELECT * FROM push_subscriptions WHERE user_id = '<your-user-id>' AND is_active = true;
+
+    -- Should return at least 1 row
+    SELECT * FROM notification_subscriptions WHERE user_id = '<your-user-id>' AND event_type = 'brief.completed';
+    ```
 
 ### Send Test Notification
 
 **Request**:
+
 ```bash
 curl -X POST https://build-os.com/api/admin/notifications/test \
   -H "Content-Type: application/json" \
@@ -328,25 +353,27 @@ curl -X POST https://build-os.com/api/admin/notifications/test \
 ```
 
 **Response** (success):
+
 ```json
 {
-  "success": true,
-  "data": {
-    "event_id": "uuid-123",
-    "deliveries": [
-      {
-        "id": "delivery-uuid",
-        "channel": "push",
-        "recipient_user_id": "your-user-id",
-        "status": "pending",
-        "last_error": null
-      }
-    ]
-  }
+	"success": true,
+	"data": {
+		"event_id": "uuid-123",
+		"deliveries": [
+			{
+				"id": "delivery-uuid",
+				"channel": "push",
+				"recipient_user_id": "your-user-id",
+				"status": "pending",
+				"last_error": null
+			}
+		]
+	}
 }
 ```
 
 **If `deliveries` array is empty**:
+
 - ❌ No subscription or push disabled
 - Go back to Setup steps 2 & 3
 
@@ -366,22 +393,27 @@ WHERE id = '<delivery-id-from-response>';
 ## Common Issues & Solutions
 
 ### Issue 1: "Deliveries array is empty"
+
 **Cause**: No subscription or push disabled
 **Fix**: Create subscription (see Setup step 2)
 
 ### Issue 2: "Notification sent but not appearing"
+
 **Cause**: Service worker not registered or permission denied
 **Fix**: Check steps 7 & 8
 
 ### Issue 3: "Status = 'failed', error = 'Push subscription expired'"
+
 **Cause**: Browser push subscription expired
 **Fix**: Re-subscribe in Settings → Notifications
 
 ### Issue 4: "Queue job stuck in 'pending'"
+
 **Cause**: Worker not running
 **Fix**: Check Railway logs, restart worker if needed
 
 ### Issue 5: "VAPID keys mismatch"
+
 **Cause**: Public key in web ≠ private key in worker
 **Fix**: Regenerate keys, update both apps, redeploy
 

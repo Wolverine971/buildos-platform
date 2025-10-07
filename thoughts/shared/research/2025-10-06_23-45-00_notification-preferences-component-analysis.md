@@ -71,13 +71,14 @@ The NotificationPreferences component is **correctly and fully connected** to th
 **Location**: Lines 58-90 (`loadPreferences()`)
 
 **Flow**:
+
 ```typescript
 async function loadPreferences() {
   isLoading = true;
   loadError = null;
 
   // 1. Call service to get preferences
-  const prefs = await notificationPreferencesService.get('brief.completed');
+  const prefs = await notificationPreferencesService.get("brief.completed");
 
   // 2. Update local state
   if (prefs) {
@@ -101,6 +102,7 @@ async function loadPreferences() {
 ```
 
 **Status**: ✅ **Correct**
+
 - Uses proper service method
 - Updates all state variables
 - Handles errors gracefully
@@ -113,23 +115,24 @@ async function loadPreferences() {
 **Location**: Lines 174-195 (`savePreferences()`)
 
 **Flow**:
+
 ```typescript
 async function savePreferences() {
   isSaving = true;
 
   // 1. Call service to update preferences
-  await notificationPreferencesService.update('brief.completed', {
+  await notificationPreferencesService.update("brief.completed", {
     push_enabled: pushEnabled,
     email_enabled: emailEnabled,
     sms_enabled: smsEnabled,
     in_app_enabled: inAppEnabled,
     quiet_hours_enabled: quietHoursEnabled,
     quiet_hours_start: quietHoursStart,
-    quiet_hours_end: quietHoursEnd
+    quiet_hours_end: quietHoursEnd,
   });
 
   // 2. Show success toast
-  toastService.success('Notification preferences saved successfully');
+  toastService.success("Notification preferences saved successfully");
 
   // 3. Reload to get latest data
   await loadPreferences();
@@ -137,6 +140,7 @@ async function savePreferences() {
 ```
 
 **Status**: ✅ **Correct**
+
 - Uses proper service method
 - Passes all preference fields
 - Shows success/error feedback
@@ -152,6 +156,7 @@ async function savePreferences() {
 **Key Methods**:
 
 #### `get(eventType)` - Load Preferences
+
 ```typescript
 async get(eventType: EventType): Promise<UserNotificationPreferences> {
   // 1. Get current user
@@ -171,6 +176,7 @@ async get(eventType: EventType): Promise<UserNotificationPreferences> {
 ```
 
 **Status**: ✅ **Correct**
+
 - Properly authenticated (uses `auth.getUser()`)
 - Correct table name
 - Proper filtering (user_id + event_type)
@@ -178,6 +184,7 @@ async get(eventType: EventType): Promise<UserNotificationPreferences> {
 - Handles "no rows" error gracefully (PGRST116)
 
 #### `update(eventType, updates)` - Save Preferences
+
 ```typescript
 async update(
   eventType: EventType,
@@ -204,6 +211,7 @@ async update(
 ```
 
 **Status**: ✅ **Correct**
+
 - Uses `upsert` (creates if doesn't exist, updates if exists)
 - Proper conflict resolution on `(user_id, event_type)` unique constraint
 - Sets `updated_at` timestamp
@@ -216,6 +224,7 @@ async update(
 **Table**: `user_notification_preferences`
 
 **Structure** (from migration):
+
 ```sql
 CREATE TABLE IF NOT EXISTS user_notification_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -248,6 +257,7 @@ CREATE TABLE IF NOT EXISTS user_notification_preferences (
 ```
 
 **Status**: ✅ **Correct**
+
 - All fields used by component exist
 - Proper data types
 - Unique constraint on `(user_id, event_type)` (required for upsert)
@@ -278,6 +288,7 @@ USING (auth.uid() = user_id);
 ```
 
 **Status**: ✅ **Correct**
+
 - RLS is enabled ✅
 - SELECT policy allows users to read their own preferences ✅
 - ALL policy allows users to INSERT/UPDATE/DELETE their own preferences ✅
@@ -289,6 +300,7 @@ USING (auth.uid() = user_id);
 ### 6. Error Handling ✅
 
 **Component Level**:
+
 ```typescript
 try {
   await notificationPreferencesService.update(...);
@@ -300,17 +312,19 @@ try {
 ```
 
 **Service Level**:
+
 ```typescript
 if (authError || !user) {
-  throw new Error('User not authenticated');
+  throw new Error("User not authenticated");
 }
 
 if (error) {
-  throw error;  // Propagates to component
+  throw error; // Propagates to component
 }
 ```
 
 **Status**: ✅ **Correct**
+
 - Try-catch blocks in component
 - User feedback via toasts
 - Errors logged to console
@@ -322,21 +336,25 @@ if (error) {
 ### 7. User Experience Features ✅
 
 **Loading States**:
+
 - ✅ Spinner shown during initial load (lines 201-226)
 - ✅ Button disabled during save (line 541)
 - ✅ "Saving..." text shown during save (line 546)
 
 **Error States**:
+
 - ✅ Inline error display if load fails (lines 227-261)
 - ✅ Toast notifications for save errors (line 191)
 - ✅ Retry button for load failures (line 255)
 
 **Validation**:
+
 - ✅ Warning if all channels disabled (lines 479-491)
 - ✅ Phone verification required for SMS (lines 92-103, 451-462)
 - ✅ Push permission handling (lines 125-172, 351-385)
 
 **Data Consistency**:
+
 - ✅ Reloads preferences after save (line 188)
 - ✅ First-time setup banner (lines 282-302)
 - ✅ Shows verified phone number (lines 458-462)
@@ -346,6 +364,7 @@ if (error) {
 ## Verification Checklist
 
 ### Database Connection ✅
+
 - [x] Table exists in database
 - [x] Table has all required columns
 - [x] Unique constraint on (user_id, event_type)
@@ -353,6 +372,7 @@ if (error) {
 - [x] Cascading delete on user deletion
 
 ### Service Layer ✅
+
 - [x] Service exists and is imported
 - [x] `get()` method queries correct table
 - [x] `update()` method uses upsert correctly
@@ -361,6 +381,7 @@ if (error) {
 - [x] Default values provided
 
 ### Component Integration ✅
+
 - [x] Service imported and used
 - [x] State variables match database fields
 - [x] `loadPreferences()` updates all state
@@ -370,6 +391,7 @@ if (error) {
 - [x] onMount loads preferences
 
 ### User Experience ✅
+
 - [x] Loading spinner during load
 - [x] Save button shows loading state
 - [x] Success/error toasts
@@ -385,8 +407,9 @@ if (error) {
 ### ⚠️ Minor Issue: Event Type Hardcoded
 
 **Current**:
+
 ```typescript
-const prefs = await notificationPreferencesService.get('brief.completed');
+const prefs = await notificationPreferencesService.get("brief.completed");
 ```
 
 **Issue**: Event type is hardcoded as `'brief.completed'`
@@ -394,6 +417,7 @@ const prefs = await notificationPreferencesService.get('brief.completed');
 **Impact**: Low - Component only manages brief.completed preferences
 
 **Recommendation**:
+
 - Current implementation is fine for single-purpose component
 - If component needs to manage multiple event types, consider passing event type as prop
 
@@ -408,6 +432,7 @@ All database operations are properly connected and secured.
 ### Manual Testing Steps
 
 1. **Test Load**:
+
    ```sql
    -- Verify preferences load
    SELECT * FROM user_notification_preferences
@@ -419,6 +444,7 @@ All database operations are properly connected and secured.
    - Toggle preferences in UI
    - Click "Save Preferences"
    - Verify database updated:
+
    ```sql
    SELECT
      push_enabled,
@@ -448,17 +474,20 @@ All database operations are properly connected and secured.
 ### Expected Behavior
 
 **First Load (No Preferences)**:
+
 - Component loads defaults from service
 - Shows "Set Up Your Notification Preferences" banner
 - All toggles show default values
 
 **Save (First Time)**:
+
 - Creates new row in database (INSERT via upsert)
 - Shows success toast
 - Reloads preferences
 - Banner disappears
 
 **Save (Subsequent)**:
+
 - Updates existing row in database (UPDATE via upsert)
 - Shows success toast
 - Reloads preferences

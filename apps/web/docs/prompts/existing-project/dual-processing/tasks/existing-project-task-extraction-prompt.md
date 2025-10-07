@@ -1,18 +1,18 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-06T21:07:41.771Z
+**Generated at:** 2025-10-07T01:37:04.921Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"projectId": "existing-project-123",
-	"brainDumpLength": 41,
-	"existingTasksCount": 0,
+	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+	"projectId": "7623cf6f-0e73-41ff-b766-c446541e3904",
+	"brainDumpLength": 674,
+	"existingTasksCount": 9,
 	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-06T21:07:41.771Z"
+	"timestamp": "2025-10-07T01:37:04.920Z"
 }
 ```
 
@@ -21,10 +21,10 @@
 ````
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project existing-project-123
+Mode: Extract/Update for EXISTING project 7623cf6f-0e73-41ff-b766-c446541e3904
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-06T21:07:41.771Z
+Current date and time: 2025-10-07T01:36:58.255Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -66,7 +66,7 @@ Current date and time: 2025-10-06T21:07:41.771Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "existing-project-123",
+  "project_id": "7623cf6f-0e73-41ff-b766-c446541e3904",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -162,7 +162,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "existing-project-123",
+        "project_id": "7623cf6f-0e73-41ff-b766-c446541e3904",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -179,7 +179,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "existing-project-123",
+        "project_id": "7623cf6f-0e73-41ff-b766-c446541e3904",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -220,21 +220,41 @@ Respond with valid JSON matching the complete structure above.
 
 ## Current Project Data:
 
-No existing tasks
+**EXISTING TASKS (9):**
+[{"id":"88f09527-8460-4685-a65e-069e2bb1ef39","title":"Outline Chapter 3","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create an outline for Chapter 3 of the novel.","details":"Plans include Elena's first attempt at magical forging, introducing the Shadow King's herald, and foreshadowing the prophecy."},{"id":"2439e873-48c2-47b9-a26d-30ceb38770c9","title":"Fix continuity issue in chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":30,"description":"Correct the continuity issue regarding Elena's age mentioned as 16 in chapter 1 but 17 in chapter 2.","details":"Ensure that Elena's age is consistent throughout the chapters to maintain continuity."},{"id":"53af0e66-7411-4610-a452-2c9070779670","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":90,"description":"Create the prophecy that drives the plot.","details":"Develop the content and significance of the prophecy, how it relates to the main character and the antagonist, and its role in the story's progression."},{"id":"a89f33bc-7743-442f-ab97-de79d8d5e2d4","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Conduct research on blacksmithing techniques used in medieval times.","details":"Gather information on tools, methods, and materials used by blacksmiths to ensure authenticity in the novel's portrayal of the craft."},{"id":"19a63db6-ba3d-4156-b98a-c54cbf7cd1a3","title":"Outline first three chapters","status":"in_progress","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the first three chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in these chapters. Finished chapter 2 today - 4,500 words. The scene where Elena discovers the dragon forge went really well. Issues to address: Need to strengthen the dialogue between Elena and Master Thorne, the pacing in the middle feels slow, add more sensory details about the forge."},{"id":"a4a3042b-cb67-42ba-893f-92a6f6da1851","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Develop detailed profiles for the antagonist, The Shadow King.","details":"Explore his motivations, backstory, and how he opposes the main character. Understand his role in the overall plot."},{"id":"a7853ad2-2ea5-4465-bf46-2a497d70c445","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":240,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"72578b71-5860-46b1-a06e-66af9f05211f","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Develop a magic system based on metal and fire.","details":"Define how magic works in the world, the rules governing its use, and how it relates to the main character's abilities as a blacksmith. Found interesting parallels with Japanese sword-making traditions - the idea of the smith's spirit entering the blade. Could adapt this: Elena's emotions during forging affect the weapon's properties. Anger = fire damage, Sorrow = ice/frost, Joy = healing properties, Fear = defensive shields. Also researching Damascus steel patterns for visual descriptions, Celtic mythology about smith gods (Goibniu), and types of medieval weapons beyond swords. World-building additions include The Forge Temples: ancient sites where dragon fire still burns, Smith's Guild hierarchy and traditions, The Quenching Ritual: how magical weapons are completed, and regional differences in forging techniques across Aethermoor."},{"id":"2f43099c-2e81-4d81-a4e9-1cef77292bd1","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create a detailed backstory for the main character.","details":"The main character is an orphan raised by a master blacksmith. Explore her childhood, motivations, and how her upbringing influences her abilities and personality."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Add authentication feature to the project
+Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
+
+Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
+
+Weekly tasks:
+
+- Saturday mornings: Chapter revision and editing
+- Sunday afternoons: Plot planning for next week
+
+Monthly milestones:
+
+- January: Complete chapters 1-10 (30,000 words)
+- February: Complete chapters 11-20 (30,000 words)
+- March: Complete chapters 21-30 and epilogue (35,000 words)
+
+Also need to:
+
+- Join local writers' critique group (meets 1st Tuesday of month)
+- Submit chapter 1 to beta readers by January 15th
+- Research literary agents for fantasy genre
 
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2125 tokens
-- **User Prompt:** ~59 tokens
-- **Total Estimate:** ~2184 tokens
+- **System Prompt:** ~2141 tokens
+- **User Prompt:** ~1321 tokens
+- **Total Estimate:** ~3462 tokens
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*

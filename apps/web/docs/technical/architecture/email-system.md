@@ -133,13 +133,18 @@ Analytics Dashboard (/admin/notifications)
 All links in emails are automatically rewritten to go through click tracking:
 
 **Original HTML**:
+
 ```html
 <a href="https://build-os.com/app/briefs">View Your Brief</a>
 ```
 
 **Rewritten HTML**:
+
 ```html
-<a href="https://build-os.com/api/email-tracking/abc123/click?url=https%3A%2F%2Fbuild-os.com%2Fapp%2Fbriefs">View Your Brief</a>
+<a
+	href="https://build-os.com/api/email-tracking/abc123/click?url=https%3A%2F%2Fbuild-os.com%2Fapp%2Fbriefs"
+	>View Your Brief</a
+>
 ```
 
 **Implementation**:
@@ -208,20 +213,20 @@ updates.status = 'clicked';
 - **For notification tracking**: Check `notification_deliveries.opened_at` and `clicked_at` are being updated via `emails.template_data.delivery_id` link.
 - **For click tracking**: Verify links in email HTML are rewritten to include `/click?url=` parameter. Check network tab to see redirect flow.
 - **Test queries**:
-  ```sql
-  -- Check email and notification tracking sync
-  SELECT
-    e.id as email_id,
-    e.tracking_id,
-    er.opened_at as email_opened,
-    er.clicked_at as email_clicked,
-    nd.opened_at as notif_opened,
-    nd.clicked_at as notif_clicked,
-    nd.status as notif_status
-  FROM emails e
-  LEFT JOIN email_recipients er ON er.email_id = e.id
-  LEFT JOIN notification_deliveries nd ON (e.template_data->>'delivery_id')::uuid = nd.id
-  WHERE e.tracking_enabled = true
-  ORDER BY e.created_at DESC
-  LIMIT 10;
-  ```
+    ```sql
+    -- Check email and notification tracking sync
+    SELECT
+      e.id as email_id,
+      e.tracking_id,
+      er.opened_at as email_opened,
+      er.clicked_at as email_clicked,
+      nd.opened_at as notif_opened,
+      nd.clicked_at as notif_clicked,
+      nd.status as notif_status
+    FROM emails e
+    LEFT JOIN email_recipients er ON er.email_id = e.id
+    LEFT JOIN notification_deliveries nd ON (e.template_data->>'delivery_id')::uuid = nd.id
+    WHERE e.tracking_enabled = true
+    ORDER BY e.created_at DESC
+    LIMIT 10;
+    ```

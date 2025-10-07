@@ -230,7 +230,10 @@
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 	>
 		<div class="border-b border-gray-200 dark:border-gray-700">
-			<nav class="flex overflow-x-auto px-4 sm:px-6 -mb-px scrollbar-hide" aria-label="Account sections">
+			<nav
+				class="flex overflow-x-auto px-4 sm:px-6 -mb-px scrollbar-hide"
+				aria-label="Account sections"
+			>
 				<Button
 					on:click={() => switchSection('profile')}
 					disabled={loading}
@@ -282,7 +285,9 @@
 			{#if activeSection === 'profile'}
 				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">
+						<h3
+							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
+						>
 							Profile Information
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -337,7 +342,9 @@
 			{#if activeSection === 'password'}
 				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">
+						<h3
+							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
+						>
 							Change Password
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -456,7 +463,9 @@
 					>
 						<div class="flex items-center gap-3 mb-4 sm:mb-6">
 							<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-							<h3 class="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100">
+							<h3
+								class="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100"
+							>
 								Delete Account
 							</h3>
 						</div>

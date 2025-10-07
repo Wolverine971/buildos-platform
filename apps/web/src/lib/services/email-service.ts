@@ -169,7 +169,9 @@ export class EmailService {
 			if (trackingId) {
 				processedHtml = this.rewriteLinksForTracking(html, trackingId);
 			}
-			return trackingPixel ? this.appendTrackingPixel(processedHtml, trackingPixel) : processedHtml;
+			return trackingPixel
+				? this.appendTrackingPixel(processedHtml, trackingPixel)
+				: processedHtml;
 		}
 
 		const content = textBody.replace(/\n/g, '<br>');

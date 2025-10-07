@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-06T22:30:01.201Z
+// Generated on: 2025-10-07T01:40:31.977Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -643,6 +643,17 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	notification_tracking_links: {
+		click_count: number | null;
+		created_at: string | null;
+		delivery_id: string;
+		destination_url: string;
+		first_clicked_at: string | null;
+		id: string;
+		last_clicked_at: string | null;
+		metadata: Json | null;
+		short_code: string;
+	};
 	payment_methods: {
 		card_brand: string | null;
 		card_last4: string | null;
@@ -1268,6 +1279,7 @@ export const tableNames = [
 	'notification_deliveries',
 	'notification_events',
 	'notification_subscriptions',
+	'notification_tracking_links',
 	'payment_methods',
 	'phase_task_schedules',
 	'phase_tasks',

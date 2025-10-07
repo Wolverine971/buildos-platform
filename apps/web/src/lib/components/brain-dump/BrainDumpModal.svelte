@@ -517,6 +517,7 @@
 	async function handleModalClose() {
 		console.log('[BrainDumpModal] handleModalClose called');
 
+		const storeState = get(brainDumpV2Store);
 		// Determine if we've handed processing off to the notification system
 		// Multi-mode uses the activeBrainDumps Map instead of the legacy notification flag
 		const activeBrainDumpCount =

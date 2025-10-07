@@ -248,13 +248,96 @@ function mapPriority(notificationPriority?: string): SMSPriority {
 }
 
 /**
+ * Shorten URLs in SMS message for click tracking
+ * Replaces all HTTP(S) URLs with shortened tracking links
+ *
+ * @param message - Original message with URLs
+ * @param deliveryId - Notification delivery ID for tracking
+ * @returns Message with shortened URLs
+ */
+async function shortenUrlsInMessage(
+  message: string,
+  deliveryId: string,
+): Promise<string> {
+  try {
+    // Regex to find URLs (supports http and https)
+    const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
+    const urls = message.match(urlRegex) || [];
+
+    if (urls.length === 0) {
+      // No URLs found, return original message
+      return message;
+    }
+
+    let result = message;
+    let shortenedCount = 0;
+
+    // Process each URL
+    for (const url of urls) {
+      try {
+        // Call database function to create tracking link
+        const { data: shortCode, error } = await supabase.rpc(
+          "create_tracking_link",
+          {
+            p_delivery_id: deliveryId,
+            p_destination_url: url,
+          },
+        );
+
+        if (error) {
+          console.error(
+            `[SMSAdapter] Failed to shorten URL ${url}:`,
+            error.message,
+          );
+          // Keep original URL if shortening fails
+          continue;
+        }
+
+        if (!shortCode) {
+          console.warn(`[SMSAdapter] No short code generated for ${url}`);
+          continue;
+        }
+
+        // Replace URL with shortened version
+        // Assumes BASE_URL is https://build-os.com (update if different)
+        const shortUrl = `https://build-os.com/l/${shortCode}`;
+        result = result.replace(url, shortUrl);
+        shortenedCount++;
+
+        const savedChars = url.length - shortUrl.length;
+        console.log(
+          `[SMSAdapter] Shortened URL: ${url.substring(0, 50)}... → ${shortUrl} (saved ${savedChars} chars)`,
+        );
+      } catch (error: any) {
+        console.error(
+          `[SMSAdapter] Error shortening URL ${url}:`,
+          error.message,
+        );
+        // Keep original URL if shortening fails
+      }
+    }
+
+    console.log(
+      `[SMSAdapter] Shortened ${shortenedCount} of ${urls.length} URLs in message`,
+    );
+
+    return result;
+  } catch (error: any) {
+    console.error("[SMSAdapter] Error in shortenUrlsInMessage:", error.message);
+    // Return original message if something goes wrong
+    return message;
+  }
+}
+
+/**
  * Send SMS notification via existing SMS infrastructure
  *
  * Flow:
  * 1. Format message from notification payload
- * 2. Create sms_messages record with notification_delivery_id link
- * 3. Queue send_sms job (existing SMS worker will process it)
- * 4. Return success with sms_messages ID
+ * 2. Shorten URLs for click tracking (Phase 3)
+ * 3. Create sms_messages record with notification_delivery_id link
+ * 4. Queue send_sms job (existing SMS worker will process it)
+ * 5. Return success with sms_messages ID
  */
 export async function sendSMSNotification(
   delivery: NotificationDelivery,
@@ -271,7 +354,10 @@ export async function sendSMSNotification(
     const phoneNumber = delivery.channel_identifier;
 
     // Format SMS message from notification payload (now async with template support)
-    const messageContent = await formatSMSMessage(delivery);
+    let messageContent = await formatSMSMessage(delivery);
+
+    // Shorten URLs in message for click tracking (Phase 3)
+    messageContent = await shortenUrlsInMessage(messageContent, delivery.id);
 
     // Determine priority
     const priority = mapPriority(delivery.payload.priority);

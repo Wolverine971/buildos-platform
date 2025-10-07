@@ -242,53 +242,56 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4 sm:space-y-6">
 	<!-- Brief Preferences -->
 	<div
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 	>
-		<div class="p-6 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center justify-between">
-				<div>
-					<h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-						<Bell class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+				<div class="flex-1">
+					<h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center">
+						<Bell class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
 						Brief Preferences
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						Configure when and how often you receive your daily briefs
+					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+						Configure when you receive briefs
 					</p>
 				</div>
-				<div class="flex items-center space-x-2">
+				<div class="flex items-center gap-2 flex-wrap">
 					{#if !editingBriefPreferences}
 						<Button
 							on:click={() => startEditingBriefPreferences()}
 							variant="primary"
-							size="md"
+							size="sm"
+							class="flex-1 sm:flex-initial"
 						>
-							<Edit3 class="w-4 h-4 mr-2" />
+							<Edit3 class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
 							Edit
 						</Button>
 					{:else}
-						<Button on:click={() => resetBriefPreferences()} variant="ghost" size="md">
-							<RotateCcw class="w-4 h-4 mr-2" />
-							Reset
+						<Button on:click={() => resetBriefPreferences()} variant="ghost" size="sm" class="text-xs sm:text-sm">
+							<RotateCcw class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+							<span class="hidden sm:inline">Reset</span>
 						</Button>
 						<Button
 							on:click={() => cancelEditingBriefPreferences()}
 							variant="ghost"
-							size="md"
+							size="sm"
+							class="text-xs sm:text-sm"
 						>
-							<X class="w-4 h-4 mr-2" />
-							Cancel
+							<X class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+							<span class="hidden sm:inline">Cancel</span>
 						</Button>
 						<Button
 							on:click={() => saveBriefPreferences()}
 							disabled={briefPreferencesState.isSaving}
 							variant="primary"
-							size="md"
+							size="sm"
 							loading={briefPreferencesState.isSaving}
+							class="text-xs sm:text-sm"
 						>
-							<Save class="w-4 h-4 mr-2" />
+							<Save class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
 							Save
 						</Button>
 					{/if}
@@ -296,18 +299,18 @@
 			</div>
 		</div>
 
-		<div class="p-6">
+		<div class="p-4 sm:p-6">
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
 					></div>
-					<p class="text-gray-500 dark:text-gray-400 mt-4">Loading preferences...</p>
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">Loading preferences...</p>
 				</div>
 			{:else if briefPreferencesState.error}
 				<div class="text-center py-8">
 					<AlertCircle class="w-12 h-12 text-red-400 mx-auto mb-4" />
-					<p class="text-gray-500 dark:text-gray-400 mb-4">
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
 						Failed to load brief preferences
 					</p>
 					<Button on:click={loadBriefPreferences} variant="primary" size="sm">
@@ -317,7 +320,7 @@
 				</div>
 			{:else if !editingBriefPreferences && briefPreferences}
 				<!-- Display Mode -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 					<div>
 						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Frequency
@@ -364,21 +367,21 @@
 						</div>
 					</div>
 
-					<div class="md:col-span-2">
+					<div class="sm:col-span-2">
 						<label
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
 						>
 							Status
 						</label>
 						<div class="space-y-2">
-							<div class="flex items-center space-x-2">
+							<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 								<div
-									class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+									class={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit ${briefPreferences.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
 								>
 									{briefPreferences.is_active ? 'Active' : 'Inactive'}
 								</div>
 								{#if briefPreferencesState.nextScheduledBrief}
-									<span class="text-sm text-gray-500 dark:text-gray-400">
+									<span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
 										Next: {formatDateTime(
 											briefPreferencesState.nextScheduledBrief.toISOString()
 										)}
@@ -398,8 +401,8 @@
 				</div>
 			{:else if editingBriefPreferences}
 				<!-- Edit Mode -->
-				<div class="space-y-6">
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div class="space-y-4 sm:space-y-6">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 						<FormField label="Frequency" labelFor="brief-frequency">
 							<Select
 								id="brief-frequency"
@@ -449,12 +452,12 @@
 							</Select>
 						</FormField>
 
-						<div class="md:col-span-2 space-y-3">
-							<label class="flex items-center space-x-2">
+						<div class="sm:col-span-2 space-y-3">
+							<label class="flex items-start sm:items-center gap-2">
 								<input
 									type="checkbox"
 									bind:checked={briefPreferencesForm.is_active}
-									class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+									class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600 flex-shrink-0"
 								/>
 								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
 									Enable daily briefs
@@ -462,11 +465,11 @@
 							</label>
 
 							{#if briefPreferencesForm.is_active}
-								<label class="flex items-center space-x-2 ml-6">
+								<label class="flex items-start sm:items-center gap-2 ml-6">
 									<input
 										type="checkbox"
 										bind:checked={briefPreferencesForm.email_daily_brief}
-										class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+										class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600 flex-shrink-0"
 									/>
 									<span
 										class="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -509,18 +512,18 @@
 	<div
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 	>
-		<div class="p-6 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center justify-between">
-				<div>
-					<h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-						<Calendar class="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
+		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+				<div class="flex-1">
+					<h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center">
+						<Calendar class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600 dark:text-green-400" />
 						Scheduled Briefs
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						Upcoming and recent brief generation jobs
+					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+						Upcoming and recent jobs
 					</p>
 				</div>
-				<div class="flex items-center space-x-2">
+				<div class="flex items-center gap-2">
 					<Button
 						on:click={refreshBriefJobs}
 						disabled={refreshingJobs}
@@ -532,45 +535,46 @@
 					</Button>
 					<a
 						href="/projects?tab=briefs"
-						class="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+						class="inline-flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
 					>
-						View All Briefs
-						<ExternalLink class="w-4 h-4 ml-2" />
+						<span class="hidden sm:inline">View All Briefs</span>
+						<span class="sm:hidden">View All</span>
+						<ExternalLink class="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
 					</a>
 				</div>
 			</div>
 		</div>
 
-		<div class="p-6">
+		<div class="p-4 sm:p-6">
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
 					></div>
-					<p class="text-gray-500 dark:text-gray-400 mt-4">Loading scheduled briefs...</p>
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">Loading scheduled briefs...</p>
 				</div>
 			{:else if briefPreferencesState.jobs.length === 0}
 				<div class="text-center py-8">
 					<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-500 dark:text-gray-400 mb-4">No scheduled briefs found</p>
-					<p class="text-sm text-gray-400 dark:text-gray-500">
-						Enable brief preferences above to start scheduling daily briefs
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">No scheduled briefs found</p>
+					<p class="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
+						Enable brief preferences above to start scheduling
 					</p>
 				</div>
 			{:else}
-				<div class="space-y-4">
+				<div class="space-y-3 sm:space-y-4">
 					<!-- Upcoming Briefs -->
 					{#each getUpcomingJobs() as job}
 						<div
-							class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
 							transition:slide
 						>
-							<div class="flex items-center space-x-3">
+							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 								<div class="flex-shrink-0">
-									<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+									<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
 								</div>
-								<div>
-									<p class="text-sm font-medium text-gray-900 dark:text-white">
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
 										{formatDateTime(job.scheduled_for)}
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400">
@@ -578,9 +582,9 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex items-center space-x-2">
+							<div class="flex items-center gap-2 ml-6 sm:ml-0">
 								<span
-									class={`px-2 py-1 text-xs font-medium rounded-full ${formatJobStatus(job.status).color}`}
+									class={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
 								>
 									{formatJobStatus(job.status).text}
 								</span>
@@ -602,15 +606,15 @@
 					<!-- Recent Briefs -->
 					{#each getRecentJobs() as job}
 						<div
-							class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
 							transition:slide
 						>
-							<div class="flex items-center space-x-3">
+							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 								<div class="flex-shrink-0">
-									<Calendar class="w-5 h-5 text-gray-400" />
+									<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
 								</div>
-								<div>
-									<p class="text-sm font-medium text-gray-900 dark:text-white">
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
 										{formatDateTime(job.scheduled_for)}
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400">
@@ -618,15 +622,15 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex items-center space-x-2">
+							<div class="flex items-center gap-2 ml-6 sm:ml-0">
 								<span
-									class={`px-2 py-1 text-xs font-medium rounded-full ${formatJobStatus(job.status).color}`}
+									class={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
 								>
 									{formatJobStatus(job.status).text}
 								</span>
 								{#if job.error_message}
 									<span
-										class="text-xs text-red-500 dark:text-red-400"
+										class="text-xs text-red-500 dark:text-red-400 truncate"
 										title={job.error_message}
 									>
 										Error

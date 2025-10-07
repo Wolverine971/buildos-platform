@@ -181,6 +181,7 @@ CREATE TABLE notification_deliveries (
 #### Email-Specific Tables
 
 **`emails`** - Email message records:
+
 ```sql
 CREATE TABLE emails (
   id UUID PRIMARY KEY,
@@ -192,6 +193,7 @@ CREATE TABLE emails (
 ```
 
 **`email_recipients`** - Per-recipient tracking:
+
 ```sql
 CREATE TABLE email_recipients (
   id UUID PRIMARY KEY,
@@ -205,6 +207,7 @@ CREATE TABLE email_recipients (
 ```
 
 **`email_tracking_events`** - Granular event log:
+
 ```sql
 CREATE TABLE email_tracking_events (
   id UUID PRIMARY KEY,
@@ -243,6 +246,7 @@ email_tracking_events
 ### Open Tracking Flow
 
 1. **Email Generation** (emailAdapter.ts or email-service.ts):
+
    ```typescript
    const trackingId = crypto.randomUUID();
    const trackingPixel = `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" />`;
@@ -258,60 +262,62 @@ email_tracking_events
 2. **User Opens Email** → Email client loads tracking pixel
 
 3. **Tracking Endpoint** (`/api/email-tracking/[tracking_id]/+server.ts`):
+
    ```typescript
    // Find email by tracking_id
    const { data: email } = await supabase
-     .from('emails')
-     .select('id, template_data, email_recipients(*)')
-     .eq('tracking_id', tracking_id)
+     .from("emails")
+     .select("id, template_data, email_recipients(*)")
+     .eq("tracking_id", tracking_id)
      .single();
 
    // Update email_recipients
    await supabase
-     .from('email_recipients')
+     .from("email_recipients")
      .update({
        opened_at: recipient.opened_at || now,
        open_count: (recipient.open_count || 0) + 1,
-       last_opened_at: now
+       last_opened_at: now,
      })
-     .eq('id', recipient.id);
+     .eq("id", recipient.id);
 
    // ✅ NEW: Update notification_deliveries
    const deliveryId = email.template_data?.delivery_id;
    if (deliveryId) {
      await supabase
-       .from('notification_deliveries')
+       .from("notification_deliveries")
        .update({
          opened_at: now,
-         status: 'opened'
+         status: "opened",
        })
-       .eq('id', deliveryId)
-       .is('opened_at', null);  // Only first open
+       .eq("id", deliveryId)
+       .is("opened_at", null); // Only first open
    }
 
    // Return tracking pixel
    return new Response(transparentPixelBuffer, {
-     headers: { 'Content-Type': 'image/png' }
+     headers: { "Content-Type": "image/png" },
    });
    ```
 
 ### Click Tracking Flow
 
 1. **Link Rewriting** (email-service.ts / emailAdapter.ts):
+
    ```typescript
    function rewriteLinksForTracking(html: string, trackingId: string): string {
      return html.replace(
        /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
        (match, before, url, after) => {
          // Skip already-tracked or anchor links
-         if (url.startsWith('#') || url.includes('/api/email-tracking/')) {
+         if (url.startsWith("#") || url.includes("/api/email-tracking/")) {
            return match;
          }
 
          const encodedUrl = encodeURIComponent(url);
          const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
          return `<a ${before}href="${trackingUrl}"${after}>`;
-       }
+       },
      );
    }
    ```
@@ -319,31 +325,32 @@ email_tracking_events
 2. **User Clicks Link** → Browser requests tracking URL
 
 3. **Click Tracking Endpoint** (`/api/email-tracking/[tracking_id]/click/+server.ts`):
+
    ```typescript
    const tracking_id = params.tracking_id;
-   const destination = url.searchParams.get('url');
+   const destination = url.searchParams.get("url");
 
    // Find email
    const { data: email } = await supabase
-     .from('emails')
-     .select('id, template_data, email_recipients(*)')
-     .eq('tracking_id', tracking_id)
+     .from("emails")
+     .select("id, template_data, email_recipients(*)")
+     .eq("tracking_id", tracking_id)
      .single();
 
    // Update email_recipients.clicked_at
    for (const recipient of email.email_recipients) {
      await supabase
-       .from('email_recipients')
+       .from("email_recipients")
        .update({ clicked_at: recipient.clicked_at || now })
-       .eq('id', recipient.id);
+       .eq("id", recipient.id);
 
      // Log tracking event
-     await supabase.from('email_tracking_events').insert({
+     await supabase.from("email_tracking_events").insert({
        email_id: email.id,
        recipient_id: recipient.id,
-       event_type: 'clicked',
+       event_type: "clicked",
        event_data: { is_first_click: !recipient.clicked_at },
-       clicked_url: destination
+       clicked_url: destination,
      });
    }
 
@@ -351,19 +358,19 @@ email_tracking_events
    const deliveryId = email.template_data?.delivery_id;
    if (deliveryId) {
      const { data: delivery } = await supabase
-       .from('notification_deliveries')
-       .select('clicked_at, opened_at')
-       .eq('id', deliveryId)
+       .from("notification_deliveries")
+       .select("clicked_at, opened_at")
+       .eq("id", deliveryId)
        .single();
 
-     const updates: any = { status: 'clicked' };
+     const updates: any = { status: "clicked" };
      if (!delivery.clicked_at) updates.clicked_at = now;
      if (!delivery.opened_at) updates.opened_at = now; // Click implies open
 
      await supabase
-       .from('notification_deliveries')
+       .from("notification_deliveries")
        .update(updates)
-       .eq('id', deliveryId);
+       .eq("id", deliveryId);
    }
 
    // Redirect to destination
@@ -414,18 +421,22 @@ $$ LANGUAGE plpgsql;
 Once user testing confirms tracking works:
 
 **Email**:
+
 - Open Rate: 15-30% (industry standard)
 - Click Rate: 2-10%
 
 **Push** (Phase 2):
+
 - Open Rate: 60-90%
 - Click Rate: 10-30%
 
 **SMS** (Phase 3):
+
 - Open Rate: N/A (SMS doesn't support open tracking)
 - Click Rate: 10-20% (if contains links)
 
 **In-App** (Phase 4):
+
 - View Rate: >90%
 - Click Rate: 20-40%
 
@@ -491,19 +502,23 @@ ORDER BY channel, status;
 ### Email Tracking Endpoints
 
 **Open Tracking**:
+
 - `apps/web/src/routes/api/email-tracking/[tracking_id]/+server.ts`
 
 **Click Tracking**:
+
 - `apps/web/src/routes/api/email-tracking/[tracking_id]/click/+server.ts` (NEW)
 
 ### Email Services
 
 **Web App**:
+
 - `apps/web/src/lib/services/email-service.ts`
   - `rewriteLinksForTracking()` method
   - `composeHtmlBody()` - adds tracking pixel and rewrites links
 
 **Worker**:
+
 - `apps/worker/src/workers/notification/emailAdapter.ts`
   - `rewriteLinksForTracking()` function
   - `sendEmailNotification()` - creates email with tracking
@@ -511,15 +526,19 @@ ORDER BY channel, status;
 ### Analytics
 
 **RPC Functions**:
+
 - `apps/web/supabase/migrations/20251006_notification_analytics_rpc_functions.sql`
 
 **Frontend Service**:
+
 - `apps/web/src/lib/services/notification-analytics.service.ts`
 
 **API Endpoint**:
+
 - `apps/web/src/routes/api/admin/notifications/analytics/channels/+server.ts`
 
 **Dashboard UI**:
+
 - `apps/web/src/routes/admin/notifications/+page.svelte`
 
 ## Future Work

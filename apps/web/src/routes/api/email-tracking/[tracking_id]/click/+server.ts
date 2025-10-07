@@ -97,7 +97,8 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 
 				if (delivery) {
 					const now = new Date().toISOString();
-					const updates: { clicked_at?: string; opened_at?: string; status?: string } = {};
+					const updates: { clicked_at?: string; opened_at?: string; status?: string } =
+						{};
 
 					// Set clicked_at if not already set
 					if (!delivery.clicked_at) {
