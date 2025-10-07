@@ -146,7 +146,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 </body>
 </html>`;
 
-          // Create email record in existing emails table (status='pending')
+          // Create email record in existing emails table (status='scheduled')
           const { data: emailRecord, error: emailError } = await supabase
             .from("emails")
             .insert({
@@ -156,7 +156,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
               subject: subject,
               content: emailHtmlForStorage,
               category: "daily_brief",
-              status: "pending", // ← Not sent yet!
+              status: "scheduled", // ← Not sent yet!
               tracking_enabled: true,
               tracking_id: trackingId,
               template_data: {

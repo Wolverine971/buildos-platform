@@ -169,7 +169,7 @@ export async function sendEmailNotification(
         subject,
         content: htmlWithTracking,
         category: "notification",
-        status: "pending",
+        status: "scheduled",
         tracking_enabled: true,
         tracking_id: trackingId,
         template_data: {
