@@ -70,6 +70,7 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		const body = await request.json();
 		const {
 			event_reminders_enabled,
+			event_reminder_lead_time_minutes,
 			next_up_enabled,
 			morning_kickoff_enabled,
 			evening_recap_enabled,
@@ -96,6 +97,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 		if (event_reminders_enabled !== undefined) {
 			updateData.event_reminders_enabled = event_reminders_enabled;
+		}
+		if (event_reminder_lead_time_minutes !== undefined) {
+			updateData.event_reminder_lead_time_minutes = event_reminder_lead_time_minutes;
 		}
 		if (next_up_enabled !== undefined) {
 			updateData.next_up_enabled = next_up_enabled;

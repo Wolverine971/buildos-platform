@@ -2,6 +2,7 @@
 import { google, calendar_v3 } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleOAuthService } from './google-oauth-service';
+import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
 import * as crypto from 'crypto';
 
 export interface WebhookChannel {
@@ -31,6 +32,7 @@ interface RetryConfig {
 export class CalendarWebhookService {
 	private supabase: SupabaseClient;
 	private oAuthService: GoogleOAuthService;
+	private smsUpdateService: ScheduledSmsUpdateService;
 	private readonly retryConfig: RetryConfig = {
 		maxRetries: 5,
 		initialDelay: 1000, // 1 second
@@ -41,6 +43,7 @@ export class CalendarWebhookService {
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
 		this.oAuthService = new GoogleOAuthService(supabase);
+		this.smsUpdateService = new ScheduledSmsUpdateService(supabase);
 	}
 
 	/**
@@ -1096,6 +1099,38 @@ export class CalendarWebhookService {
 			console.log(
 				`[BATCH_PROCESS] Completed: processed ${processedCount} out of ${taskEvents.length} task-related events`
 			);
+
+			// Phase 3: Update scheduled SMS messages for affected events
+			try {
+				console.log('[BATCH_PROCESS] Checking for scheduled SMS updates...');
+
+				// Extract event changes for SMS processing
+				const eventChanges = ScheduledSmsUpdateService.extractEventChangesFromBatch(
+					batchUpdates.taskEventUpdates,
+					batchUpdates.deletions,
+					taskEventMap
+				);
+
+				if (eventChanges.length > 0) {
+					const smsResult = await this.smsUpdateService.processCalendarEventChanges(
+						userId,
+						eventChanges
+					);
+
+					console.log('[BATCH_PROCESS] SMS update results:', {
+						cancelled: smsResult.cancelled,
+						rescheduled: smsResult.updated,
+						regenerated: smsResult.regenerated,
+						errors: smsResult.errors
+					});
+				} else {
+					console.log('[BATCH_PROCESS] No SMS updates needed');
+				}
+			} catch (smsError) {
+				// Don't fail the entire batch if SMS updates fail
+				console.error('[BATCH_PROCESS] Error updating scheduled SMS:', smsError);
+			}
+
 			return processedCount;
 		} catch (error) {
 			console.error('[BATCH_PROCESS] Error in batch processing:', error);

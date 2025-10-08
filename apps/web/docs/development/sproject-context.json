@@ -387,6 +387,12 @@
 			"exports": ["RecurringInstanceService"]
 		},
 		{
+			"file": "src/lib/services/scheduledSmsUpdate.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ScheduledSmsUpdateService"]
+		},
+		{
 			"file": "src/lib/services/smart-llm-service.ts",
 			"type": "service",
 			"components": [],

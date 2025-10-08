@@ -133,18 +133,48 @@ export class DailyBriefEmailSender {
 
   /**
    * Check if user has opted in for email notifications
+   * Checks both email_daily_brief AND is_active flags
    */
   async shouldSendEmail(userId: string): Promise<boolean> {
     try {
-      const { data: preferences } = await this.supabase
+      const { data: preferences, error } = await this.supabase
         .from("user_brief_preferences")
-        .select("email_daily_brief")
+        .select("email_daily_brief, is_active")
         .eq("user_id", userId)
         .single();
 
-      return preferences?.email_daily_brief === true;
+      if (error) {
+        console.error(
+          `❌ Error fetching email preferences for user ${userId}:`,
+          error,
+        );
+        console.error(`   → Error code: ${error.code}`);
+        console.error(`   → Error message: ${error.message}`);
+        return false;
+      }
+
+      if (!preferences) {
+        console.warn(
+          `⚠️  No brief preferences found for user ${userId} - user may not have completed onboarding`,
+        );
+        return false;
+      }
+
+      const shouldSend =
+        preferences.email_daily_brief === true &&
+        preferences.is_active === true;
+
+      console.log(`📧 Email eligibility check for user ${userId}:
+   → email_daily_brief: ${preferences.email_daily_brief}
+   → is_active: ${preferences.is_active}
+   → Result: ${shouldSend ? "SEND EMAIL ✅" : "SKIP EMAIL ❌"}`);
+
+      return shouldSend;
     } catch (error) {
-      console.error("Error checking email preferences:", error);
+      console.error(
+        `❌ Unexpected error checking email preferences for user ${userId}:`,
+        error,
+      );
       return false;
     }
   }

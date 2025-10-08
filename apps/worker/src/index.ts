@@ -6,6 +6,7 @@ import express from "express";
 
 import { supabase } from "./lib/supabase";
 import { registerEmailTrackingRoute } from "./routes/email-tracking";
+import smsScheduledRoutes from "./routes/sms/scheduled";
 import { startScheduler } from "./scheduler";
 import { queue, startWorker } from "./worker";
 
@@ -61,6 +62,44 @@ app.use(
 app.use(express.json());
 
 registerEmailTrackingRoute(app);
+
+// Register SMS management routes
+app.use("/sms/scheduled", smsScheduledRoutes);
+
+/**
+ * Validate timezone string using Intl API
+ * Returns true if timezone is valid IANA timezone
+ */
+function isValidTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get safe timezone with validation and fallback
+ * Falls back to UTC if timezone is invalid with warning log
+ */
+function getSafeTimezone(
+  timezone: string | null | undefined,
+  userId: string,
+): string {
+  if (!timezone) {
+    return "UTC";
+  }
+
+  if (isValidTimezone(timezone)) {
+    return timezone;
+  }
+
+  console.warn(
+    `⚠️ Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`,
+  );
+  return "UTC";
+}
 
 // Health check endpoint
 app.get("/health", async (_req, res) => {
@@ -121,14 +160,24 @@ app.post("/queue/brief", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Get user's timezone preference early (before force regenerate calculation)
+    // This ensures consistent timezone resolution throughout the request
+    const { data: preferences } = await supabase
+      .from("user_brief_preferences")
+      .select("timezone")
+      .eq("user_id", userId)
+      .single();
+
+    // Resolve and validate timezone (fallback to UTC if invalid)
+    const rawTimezone = requestedTimezone || preferences?.timezone || "UTC";
+    const timezone = getSafeTimezone(rawTimezone, userId);
+
     // Handle force regenerate
     if (forceRegenerate) {
+      // Use consistent timezone (from preferences or requested)
       const targetBriefDate =
         requestedBriefDate ||
-        format(
-          utcToZonedTime(new Date(), requestedTimezone || "UTC"),
-          "yyyy-MM-dd",
-        );
+        format(utcToZonedTime(new Date(), timezone), "yyyy-MM-dd");
 
       // Atomically cancel existing jobs for this date
       const { count } = await queue.cancelBriefJobsForDate(
@@ -137,19 +186,10 @@ app.post("/queue/brief", async (req, res) => {
       );
       if (count > 0) {
         console.log(
-          `🚫 Force regenerate: Cancelled ${count} existing brief job(s) for ${targetBriefDate}`,
+          `🚫 Force regenerate: Cancelled ${count} existing brief job(s) for ${targetBriefDate} (timezone: ${timezone})`,
         );
       }
     }
-
-    // Get user's timezone preference
-    const { data: preferences } = await supabase
-      .from("user_brief_preferences")
-      .select("timezone")
-      .eq("user_id", userId)
-      .single();
-
-    const timezone = requestedTimezone || preferences?.timezone || "UTC";
 
     // Determine when to schedule the job
     let scheduleTime: Date;
@@ -361,6 +401,72 @@ app.get("/queue/stats", async (_req, res) => {
     console.error("Error fetching queue stats:", error);
     res.status(500).json({
       error: "Failed to fetch queue stats",
+      message: error.message,
+    });
+  }
+});
+
+// Stale jobs stats endpoint
+app.get("/queue/stale-stats", async (req, res) => {
+  try {
+    const { getStaleJobStats } = await import("./lib/utils/queueCleanup");
+
+    const thresholdHours = parseInt(
+      (req.query.thresholdHours as string) || "24",
+    );
+    const stats = await getStaleJobStats({
+      staleThresholdHours: thresholdHours,
+    });
+
+    res.json({
+      thresholdHours,
+      ...stats,
+      message:
+        stats.staleCount > 0
+          ? `Found ${stats.staleCount} stale job(s) that can be cleaned up`
+          : "No stale jobs found",
+    });
+  } catch (error: any) {
+    console.error("Error fetching stale job stats:", error);
+    res.status(500).json({
+      error: "Failed to fetch stale job stats",
+      message: error.message,
+    });
+  }
+});
+
+// Manual cleanup endpoint
+app.post("/queue/cleanup", async (req, res) => {
+  try {
+    const { cleanupStaleJobs } = await import("./lib/utils/queueCleanup");
+
+    const {
+      staleThresholdHours = 24,
+      oldFailedJobsDays = 7,
+      dryRun = false,
+    } = req.body;
+
+    console.log(
+      `🧹 Manual cleanup triggered (dryRun: ${dryRun}, threshold: ${staleThresholdHours}h, oldFailed: ${oldFailedJobsDays}d)`,
+    );
+
+    const result = await cleanupStaleJobs({
+      staleThresholdHours,
+      oldFailedJobsDays,
+      dryRun,
+    });
+
+    res.json({
+      success: true,
+      ...result,
+      message: dryRun
+        ? "Dry run completed - no jobs were modified"
+        : `Cleanup completed - cancelled ${result.staleCancelled} stale job(s) and archived ${result.oldFailedCancelled} old failed job(s)`,
+    });
+  } catch (error: any) {
+    console.error("Error during manual cleanup:", error);
+    res.status(500).json({
+      error: "Failed to run cleanup",
       message: error.message,
     });
   }

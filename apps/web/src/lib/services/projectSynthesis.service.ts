@@ -9,6 +9,7 @@ import type { SynthesisOptions } from '$lib/types/synthesis';
 import { TaskSynthesisPrompt } from '$lib/services/synthesis/task-synthesis-prompt';
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
 import { SmartLLMService } from './smart-llm-service';
+import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
 type SupabaseClient = ReturnType<typeof createCustomClient>;
 
@@ -86,6 +87,28 @@ export class ProjectSynthesisService {
 				: this.buildSynthesisPrompt(fullProjectContextPrompt, projectId);
 			const systemPrompt =
 				'You are an expert project manager and task analyst. Analyze the provided project data and return structured JSON with CRUD operations for task consolidation and next steps. Ensure all task fields are properly handled and operations are well-reasoned.';
+
+			// Determine scenario type for prompt audit
+			const scenarioType = options.synthesisOptions?.selectedModules.includes(
+				'task_synthesis'
+			)
+				? 'project-synthesis-task-synthesis'
+				: 'project-synthesis-default';
+
+			// Save prompt for audit (development mode only)
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType,
+				metadata: {
+					projectId,
+					userId,
+					regenerate: options.regenerate,
+					includeDeleted: options.includeDeleted,
+					selectedModules: options.synthesisOptions?.selectedModules || [],
+					taskSynthesisConfig: options.synthesisOptions?.config.task_synthesis || null
+				}
+			});
 
 			// Use LLM pool to generate synthesis
 			const response = await this.llmService.getJSONResponse({

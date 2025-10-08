@@ -1170,6 +1170,7 @@ describe("In-App Notification Tracking Integration", () => {
    - [ ] Network tab shows POST to `/api/notification-tracking/open/:id`
    - [ ] Response: `is_first_open: true`
 3. **Database Verification**:
+
    ```sql
    SELECT opened_at, status
    FROM notification_deliveries
@@ -1187,6 +1188,7 @@ describe("In-App Notification Tracking Integration", () => {
    - [ ] Request body includes: `action: 'view_results'`
    - [ ] Navigation works correctly
 3. **Database Verification**:
+
    ```sql
    SELECT clicked_at, status, tracking_metadata
    FROM notification_deliveries
@@ -1206,6 +1208,7 @@ describe("In-App Notification Tracking Integration", () => {
    - [ ] Request: `dismiss_reason: 'remove'`
    - [ ] Notification disappears from UI
 4. **Database Verification**:
+
    ```sql
    SELECT tracking_metadata
    FROM notification_deliveries

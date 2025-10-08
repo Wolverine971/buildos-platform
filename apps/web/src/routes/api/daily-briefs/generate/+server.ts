@@ -8,6 +8,28 @@ import { BriefGenerationValidator } from '$lib/services/dailyBrief/validator';
 import { DailyBriefEmailSender } from '$lib/services/dailyBrief/emailSender';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
+import { getCurrentDateInTimezone } from '$lib/utils/timezone';
+
+/**
+ * Validate timezone string and return safe timezone
+ * Falls back to UTC if invalid with warning log
+ */
+function getSafeTimezone(timezone: string | null | undefined, userId: string): string {
+	if (!timezone) {
+		return 'UTC';
+	}
+
+	try {
+		// Validate timezone using Intl API
+		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+		return timezone;
+	} catch {
+		console.warn(
+			`[Brief Generation] Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`
+		);
+		return 'UTC';
+	}
+}
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -23,7 +45,27 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const { briefDate, forceRegenerate = false, streaming = false, background = false } = body;
 
 	const userId = user.id;
-	const targetDate = briefDate || new Date().toISOString().split('T')[0];
+
+	// Calculate target date in user's timezone (avoid DB call if briefDate provided)
+	let targetDate: string;
+	if (briefDate) {
+		// User explicitly provided a date, use it as-is
+		targetDate = briefDate;
+	} else {
+		// Calculate today's date in user's timezone to avoid midnight edge cases
+		const { data: preferences } = await supabase
+			.from('user_brief_preferences')
+			.select('timezone')
+			.eq('user_id', userId)
+			.single();
+
+		const userTimezone = getSafeTimezone(preferences?.timezone, userId);
+		targetDate = getCurrentDateInTimezone(userTimezone);
+
+		console.log(
+			`[Brief Generation] Calculated target date for user ${userId}: ${targetDate} (timezone: ${userTimezone})`
+		);
+	}
 
 	// Initialize services
 	const activityLogger = new ActivityLogger(supabase);
@@ -88,7 +130,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		throw error(401, 'Unauthorized');
 	}
 
-	const briefDate = url.searchParams.get('briefDate') || new Date().toISOString().split('T')[0];
+	const userId = user.id;
+	const briefDateParam = url.searchParams.get('briefDate');
 	const forceRegenerate = url.searchParams.get('forceRegenerate') === 'true';
 	const streaming = url.searchParams.get('streaming') === 'true';
 
@@ -96,7 +139,24 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		throw error(400, 'This endpoint is for streaming only');
 	}
 
-	const userId = user.id;
+	// Calculate target date in user's timezone (avoid DB call if briefDate provided)
+	let briefDate: string;
+	if (briefDateParam) {
+		briefDate = briefDateParam;
+	} else {
+		const { data: preferences } = await supabase
+			.from('user_brief_preferences')
+			.select('timezone')
+			.eq('user_id', userId)
+			.single();
+
+		const userTimezone = getSafeTimezone(preferences?.timezone, userId);
+		briefDate = getCurrentDateInTimezone(userTimezone);
+
+		console.log(
+			`[Brief Generation SSE] Calculated target date for user ${userId}: ${briefDate} (timezone: ${userTimezone})`
+		);
+	}
 
 	// Initialize services
 	const activityLogger = new ActivityLogger(supabase);

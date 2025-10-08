@@ -1,6 +1,18 @@
 <!-- apps/web/src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte -->
 <script lang="ts">
-	import { Rocket, Calendar, Loader2, Sparkles, CheckCircle } from 'lucide-svelte';
+	import {
+		Rocket,
+		Calendar,
+		Loader2,
+		Sparkles,
+		CheckCircle,
+		Mic,
+		MicOff,
+		Square,
+		LoaderCircle,
+		Info,
+		TriangleAlert
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { brainDumpService } from '$lib/services/braindump-api.service';
@@ -9,6 +21,7 @@
 	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
 	import { scale, fade } from 'svelte/transition';
+	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
 
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
@@ -20,6 +33,21 @@
 
 	let projectInput = $state('');
 	let isProcessing = $state(false);
+
+	// Voice recording state - integrated from VoiceRecordingService
+	// Follows same patterns as BrainDumpModal (see BrainDumpModal.svelte:173-189)
+	let isVoiceSupported = $state(false);
+	let isCurrentlyRecording = $state(false);
+	let recordingDuration = $state(0);
+	let voiceError = $state('');
+	let isInitializingRecording = $state(false);
+	let canUseLiveTranscript = $state(false);
+	let microphonePermissionGranted = $state(false);
+	let voiceCapabilitiesChecked = $state(false);
+
+	// Derived voice state (reactive to service updates)
+	let accumulatedTranscript = $derived(voiceRecordingService.getCurrentLiveTranscript());
+	let isLiveTranscribing = $derived(voiceRecordingService.isLiveTranscribing());
 
 	// Calendar connection state
 	let hasCalendarConnected = $state(false);
@@ -95,6 +123,64 @@
 			isConnectingCalendar = false;
 		}
 	}
+
+	// Initialize voice recording service
+	// Follows BrainDumpModal pattern (see BrainDumpModal.svelte:407-444)
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		// Initialize voice capability
+		isVoiceSupported = voiceRecordingService.isVoiceSupported();
+
+		// Initialize service with callbacks
+		voiceRecordingService.initialize(
+			{
+				onTextUpdate: (text: string) => {
+					// Respect 5000 character limit
+					if (text.length > 5000) {
+						projectInput = text.substring(0, 5000);
+						toastService.warning('Voice input truncated to 5000 characters');
+					} else {
+						projectInput = text;
+					}
+				},
+				onError: (error: string) => {
+					voiceError = error;
+					toastService.error(error);
+				},
+				onPhaseChange: (phase: 'idle' | 'transcribing') => {
+					// Could add isTranscribing state if needed for UI feedback
+					console.log('[Voice] Phase change:', phase);
+				},
+				onPermissionGranted: () => {
+					microphonePermissionGranted = true;
+					console.log('[Voice] Microphone permission granted');
+				},
+				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
+					canUseLiveTranscript = update.canUseLiveTranscript;
+					voiceCapabilitiesChecked = true;
+					console.log('[Voice] Capabilities updated:', update);
+				}
+			},
+			brainDumpService
+		);
+
+		// Set initial capability state
+		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+		voiceCapabilitiesChecked = true;
+
+		// Subscribe to recording duration
+		const durationStore = voiceRecordingService.getRecordingDuration();
+		const unsubscribe = durationStore.subscribe((value) => {
+			recordingDuration = value;
+		});
+
+		// Cleanup on unmount
+		return () => {
+			unsubscribe();
+			voiceRecordingService.cleanup();
+		};
+	});
 
 	// Initialize calendar status and handle OAuth callback
 	$effect(() => {
@@ -264,8 +350,120 @@
 	}
 
 	function skipProjectCapture() {
+		// Stop recording before navigating
+		if (isCurrentlyRecording) {
+			toastService.warning('Please stop recording before continuing');
+			return;
+		}
 		onNext();
 	}
+
+	// Voice recording handlers
+	// Follows BrainDumpModal pattern (see BrainDumpModal.svelte:1234-1276)
+	async function startRecording() {
+		if (!isVoiceSupported) return;
+
+		voiceError = '';
+		isInitializingRecording = true;
+
+		try {
+			await voiceRecordingService.startRecording(projectInput);
+			isInitializingRecording = false;
+			isCurrentlyRecording = true;
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: 'Unable to access microphone. Please check your permissions.';
+			voiceError = errorMessage;
+			isInitializingRecording = false;
+			isCurrentlyRecording = false;
+		}
+	}
+
+	async function stopRecording() {
+		if (!isCurrentlyRecording) return;
+
+		try {
+			await voiceRecordingService.stopRecording(projectInput);
+			isCurrentlyRecording = false;
+		} catch (error) {
+			console.error('Stop recording error:', error);
+			isCurrentlyRecording = false;
+		}
+	}
+
+	function toggleRecording() {
+		if (isCurrentlyRecording) {
+			stopRecording();
+		} else {
+			startRecording();
+		}
+	}
+
+	// Utility functions
+	function isIOS(): boolean {
+		if (typeof window === 'undefined') return false;
+		return /iPad|iPhone|iPod/.test(navigator.userAgent);
+	}
+
+	function formatDuration(seconds: number): string {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	// Voice button state machine
+	// Follows RecordingView pattern (see RecordingView.svelte:220-286)
+	let voiceButtonState = $derived.by(() => {
+		// Priority 1: Recording
+		if (isCurrentlyRecording) {
+			return {
+				icon: MicOff,
+				ariaLabel: 'Stop recording',
+				disabled: false,
+				isLoading: false
+			};
+		}
+
+		// Priority 2: Initializing
+		if (isInitializingRecording) {
+			return {
+				icon: LoaderCircle,
+				ariaLabel: 'Initializing microphone...',
+				disabled: true,
+				isLoading: true
+			};
+		}
+
+		// Priority 3: Permission needed
+		if (!microphonePermissionGranted && voiceCapabilitiesChecked) {
+			return {
+				icon: Mic,
+				ariaLabel: 'Grant microphone access',
+				disabled: false,
+				isLoading: false
+			};
+		}
+
+		// Priority 4: Processing
+		if (isProcessing) {
+			return {
+				icon: Mic,
+				ariaLabel: 'Processing...',
+				disabled: true,
+				isLoading: false
+			};
+		}
+
+		// Default: Ready
+		return {
+			icon: Mic,
+			ariaLabel: 'Start voice recording',
+			disabled: false,
+			isLoading: false
+		};
+	});
 </script>
 
 <div class="max-w-3xl mx-auto px-4">
@@ -331,15 +529,56 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Brain dump textarea -->
-		<div class="mb-6">
-			<Textarea
-				bind:value={projectInput}
-				placeholder="Don't worry about structure — just brain dump. What are you building? What goals do you have? What's on your mind?"
-				rows={8}
-				disabled={isProcessing}
-				class="w-full"
-			/>
+		<!-- Voice Error Display -->
+		{#if voiceError}
+			<div
+				class="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800 rounded-lg shadow-sm"
+				transition:fade={{ duration: 200 }}
+			>
+				<TriangleAlert class="w-4 h-4 flex-shrink-0" />
+				<span>{voiceError}</span>
+			</div>
+		{/if}
+
+		<!-- Brain dump textarea with voice integration -->
+		<div class="mb-6 relative">
+			<!-- Live Transcript Preview (during recording) -->
+			{#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
+				<div
+					class="mb-2 p-2.5 px-3.5 bg-gradient-to-r from-purple-50/60 to-pink-50/60 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200/40 dark:border-purple-800/40 rounded-lg backdrop-blur-md max-h-20 overflow-y-auto"
+					transition:fade={{ duration: 200 }}
+				>
+					<p
+						class="text-sm text-gray-600 dark:text-gray-400 italic m-0 leading-normal break-words"
+					>
+						{accumulatedTranscript}
+					</p>
+				</div>
+			{/if}
+
+			<!-- Textarea Input -->
+			<div class="relative">
+				<Textarea
+					bind:value={projectInput}
+					placeholder="Don't worry about structure — just brain dump. What are you building? What goals do you have? What's on your mind?"
+					rows={8}
+					disabled={isProcessing}
+					class="w-full"
+				/>
+
+				<!-- iOS Notice (when recording on iOS without live transcript) -->
+				{#if isVoiceSupported && isIOS() && !canUseLiveTranscript && isCurrentlyRecording}
+					<div
+						class="absolute bottom-2 left-4 right-4 flex items-center gap-2 p-2 px-3 bg-primary-50/90 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 text-xs rounded-md"
+						transition:fade={{ duration: 200 }}
+					>
+						<Info class="w-3.5 h-3.5 flex-shrink-0" />
+						<span>Audio will be transcribed when you stop recording</span>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Character Counter -->
 			<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
 				Minimum 20 characters • {projectInput.length} characters
 			</p>
@@ -526,32 +765,99 @@
 		{/if}
 
 		<!-- Actions -->
-		<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-			<Button
-				variant="ghost"
-				on:click={skipProjectCapture}
-				disabled={isProcessing}
-				class="order-2 sm:order-1"
-			>
-				I'll add projects later
-			</Button>
-
-			<Button
-				variant="primary"
-				size="lg"
-				on:click={processBrainDump}
-				disabled={projectInput.trim().length < 20 || isProcessing}
-				loading={isProcessing}
-				class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2"
-			>
-				{#if isProcessing}
-					<Loader2 class="w-5 h-5 mr-2 animate-spin" />
-					Creating Projects...
+		<div class="flex items-center justify-between gap-4">
+			<!-- Left side: Recording Status or Skip Button -->
+			<div class="flex-1">
+				{#if isCurrentlyRecording}
+					<!-- Recording Status Badge -->
+					<div
+						class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 rounded-full text-sm text-red-700 dark:text-red-300"
+						transition:fade={{ duration: 200 }}
+					>
+						<span class="font-medium">Recording</span>
+						<span class="tabular-nums opacity-90">
+							{formatDuration(recordingDuration)}
+						</span>
+						{#if isLiveTranscribing && canUseLiveTranscript}
+							<span
+								class="hidden sm:inline text-emerald-500 dark:text-emerald-400 text-xs font-semibold"
+							>
+								• Live
+							</span>
+						{/if}
+					</div>
 				{:else}
-					Continue
-					<Sparkles class="w-5 h-5 ml-2" />
+					<!-- Skip Button -->
+					<Button variant="ghost" on:click={skipProjectCapture} disabled={isProcessing}>
+						I'll add projects later
+					</Button>
 				{/if}
-			</Button>
+			</div>
+
+			<!-- Right side: Voice Button + Continue Button -->
+			<div class="flex items-center gap-3">
+				<!-- Voice Recording Button -->
+				{#if isVoiceSupported && ONBOARDING_V2_CONFIG.features.enableVoiceInput}
+					<button
+						onclick={toggleRecording}
+						disabled={voiceButtonState.disabled}
+						aria-label={voiceButtonState.ariaLabel}
+						class="relative w-12 h-12 p-0 rounded-full transition-all {isCurrentlyRecording
+							? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white scale-110 animate-recording-pulse shadow-lg'
+							: 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md text-gray-700 dark:text-gray-300'} disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+					>
+						{#if voiceButtonState.isLoading}
+							<LoaderCircle class="w-5 h-5 mx-auto animate-spin" />
+						{:else if isCurrentlyRecording}
+							<Square class="w-4 h-4 mx-auto fill-current" />
+						{:else}
+							<svelte:component
+								this={voiceButtonState.icon}
+								class="w-5 h-5 mx-auto"
+							/>
+						{/if}
+					</button>
+				{/if}
+
+				<!-- Continue Button -->
+				<Button
+					variant="primary"
+					size="lg"
+					on:click={processBrainDump}
+					disabled={projectInput.trim().length < 20 ||
+						isProcessing ||
+						isCurrentlyRecording}
+					loading={isProcessing}
+					class="min-w-[140px]"
+				>
+					{#if isProcessing}
+						<Loader2 class="w-5 h-5 mr-2 animate-spin" />
+						Creating Projects...
+					{:else}
+						Continue
+						<Sparkles class="w-5 h-5 ml-2" />
+					{/if}
+				</Button>
+			</div>
 		</div>
 	{/if}
 </div>
+
+<style>
+	/* Recording pulse animation for voice button */
+	@keyframes recording-pulse {
+		0% {
+			box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+		}
+		50% {
+			box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15);
+		}
+		100% {
+			box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
+		}
+	}
+
+	:global(.animate-recording-pulse) {
+		animation: recording-pulse 2s infinite;
+	}
+</style>

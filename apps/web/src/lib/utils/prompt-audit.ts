@@ -77,7 +77,16 @@ export async function savePromptForAudit({
 			'calendar-analysis-part1-event-grouping':
 				'calendar-analysis/2-part/part1-event-grouping-prompt.md',
 			'calendar-analysis-part2-project-creation':
-				'calendar-analysis/2-part/part2-project-creation-prompt.md'
+				'calendar-analysis/2-part/part2-project-creation-prompt.md',
+
+			// Phase generation
+			'phase-generation-phases-only': 'phase-generation/phases-only-prompt.md',
+			'phase-generation-schedule-in-phases': 'phase-generation/schedule-in-phases-prompt.md',
+			'phase-generation-calendar-optimized': 'phase-generation/calendar-optimized-prompt.md',
+
+			// Project synthesis
+			'project-synthesis-default': 'project-synthesis/default-synthesis-prompt.md',
+			'project-synthesis-task-synthesis': 'project-synthesis/task-synthesis-modular-prompt.md'
 		};
 
 		const filePath = scenarioMap[scenarioType];

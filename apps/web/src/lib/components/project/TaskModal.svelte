@@ -18,6 +18,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import RecurrenceSelector from '$lib/components/tasks/RecurrenceSelector.svelte';
 	import RecurringDeleteModal from '$lib/components/tasks/RecurringDeleteModal.svelte';
+	import TaskBraindumpSection from '$lib/components/project/TaskBraindumpSection.svelte';
 	import { ProjectService } from '$lib/services/projectService';
 	import {
 		Calendar,
@@ -1444,6 +1445,11 @@
 						size="sm"
 					/>
 				</FormField>
+
+				<!-- Braindumps Section (only show when editing) -->
+				{#if isEditing && task?.id}
+					<TaskBraindumpSection taskId={task.id} />
+				{/if}
 
 				<!-- Deleted Status -->
 				{#if isDeleted}

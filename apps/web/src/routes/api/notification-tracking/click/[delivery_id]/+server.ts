@@ -19,15 +19,6 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 			return json({ success: false, error: 'delivery_id is required' }, { status: 400 });
 		}
 
-		// Parse request body for optional metadata
-		let metadata = {};
-		try {
-			const body = await request.json();
-			metadata = body.metadata || {};
-		} catch (e) {
-			// Body is optional
-		}
-
 		console.log(`[NotificationTracking] Click tracking for delivery: ${delivery_id}`);
 
 		// Get current delivery record
@@ -63,11 +54,6 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 		// Set opened_at if not already set (click implies open)
 		if (isFirstOpen) {
 			updateData.opened_at = now;
-		}
-
-		// Store optional metadata (user_agent, action, etc.)
-		if (Object.keys(metadata).length > 0) {
-			updateData.tracking_metadata = metadata;
 		}
 
 		console.log(

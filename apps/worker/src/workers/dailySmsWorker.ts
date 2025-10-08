@@ -1,11 +1,11 @@
 // apps/worker/src/workers/dailySmsWorker.ts
 /**
- * Daily SMS Worker
+ * Daily SMS Worker - Phase 2 with LLM Message Generation
  *
  * Processes daily SMS scheduling jobs for calendar event reminders.
  * - Fetches calendar events for the user's day
  * - Filters events that need SMS reminders
- * - Generates messages (LLM in Phase 2, templates for Phase 1)
+ * - Generates intelligent messages via LLM (DeepSeek)
  * - Creates scheduled_sms_messages records
  * - Queues send_sms jobs for scheduled times
  */
@@ -23,6 +23,10 @@ import {
   endOfDay,
 } from "date-fns";
 import { queue } from "../worker";
+import {
+  SMSMessageGenerator,
+  type EventContext,
+} from "../lib/services/smsMessageGenerator";
 
 interface DailySMSJobData {
   userId: string;
@@ -157,6 +161,9 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       message: `Processing ${calendarEvents.length} events`,
     });
 
+    // Initialize SMS message generator
+    const smsGenerator = new SMSMessageGenerator();
+
     // Filter events that need SMS reminders
     const now = new Date();
     const scheduledMessages: any[] = [];
@@ -168,8 +175,8 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         continue;
       }
 
-      const eventStart = parseISO(event.event_start);
-      const reminderTime = addMinutes(eventStart, -leadTimeMinutes);
+      const parsedEventStart = parseISO(event.event_start);
+      const reminderTime = addMinutes(parsedEventStart, -leadTimeMinutes);
 
       // Skip if reminder time is in the past
       if (isBefore(reminderTime, now)) {
@@ -219,24 +226,42 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         }
       }
 
-      // Generate message (simple template for Phase 1, LLM in Phase 2)
-      const timeUntil =
-        leadTimeMinutes < 60
-          ? `${leadTimeMinutes} mins`
-          : `${Math.floor(leadTimeMinutes / 60)} hour${leadTimeMinutes >= 120 ? "s" : ""}`;
-
+      // Generate message using LLM (with template fallback)
       const eventTitle = event.event_title || "Untitled Event";
-      let message = `${eventTitle} in ${timeUntil}`;
+      const eventStart = parseISO(event.event_start);
+      const eventEnd = event.event_end ? parseISO(event.event_end) : eventStart;
 
-      // Add link if available and short
-      if (event.event_link && event.event_link.length < 50) {
-        message += `. Link: ${event.event_link}`;
+      // Build event context for LLM
+      const eventContext: EventContext = {
+        eventId: event.calendar_event_id,
+        title: eventTitle,
+        startTime: eventStart,
+        endTime: eventEnd,
+        link: event.event_link || undefined,
+        isAllDay: false, // We already filtered out all-day events
+        userTimezone: timezone,
+        // Note: description, location, attendees not available in task_calendar_events
+        // Will be enhanced in future when we fetch full event details
+      };
+
+      // Generate intelligent SMS message
+      let generatedMessage;
+      try {
+        generatedMessage = await smsGenerator.generateEventReminder(
+          eventContext,
+          leadTimeMinutes,
+          userId,
+        );
+      } catch (error) {
+        console.error(
+          `❌ [DailySMS] Error generating message for event "${eventTitle}":`,
+          error,
+        );
+        // Skip this event if message generation fails completely
+        continue;
       }
 
-      // Truncate to 160 chars
-      if (message.length > 160) {
-        message = message.substring(0, 157) + "...";
-      }
+      const message = generatedMessage.content;
 
       scheduledMessages.push({
         user_id: userId,
@@ -246,15 +271,17 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         event_title: eventTitle,
         event_start: event.event_start,
         event_end: event.event_end,
-        event_details: null, // Phase 2: Will store location, description, attendees
+        event_details: null, // Future: Will store location, description, attendees from Google Calendar API
         scheduled_for: reminderTime.toISOString(),
         timezone,
         status: "scheduled",
-        generated_via: "template", // Will be 'llm' in Phase 2
+        generated_via: generatedMessage.generatedVia, // 'llm' or 'template'
+        llm_model: generatedMessage.model, // e.g., "deepseek/deepseek-chat"
+        generation_cost_usd: generatedMessage.costUsd || null,
       });
 
       console.log(
-        `✅ [DailySMS] Created reminder for "${event.event_title}" at ${format(reminderTime, "yyyy-MM-dd HH:mm:ss")}`,
+        `✅ [DailySMS] Created ${generatedMessage.generatedVia} reminder for "${event.event_title}" at ${format(reminderTime, "yyyy-MM-dd HH:mm:ss")} (${message.length} chars)`,
       );
     }
 

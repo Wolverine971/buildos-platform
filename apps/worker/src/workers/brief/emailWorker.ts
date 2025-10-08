@@ -19,14 +19,23 @@ export interface EmailBriefJobData {
 export async function processEmailBriefJob(
   job: LegacyJob<EmailBriefJobData>,
 ): Promise<void> {
-  console.log(
-    `📧 Processing email job ${job.id} for email ${job.data.emailId}`,
-  );
+  console.log(`📧 Processing email job ${job.id}
+   → Email ID: ${job.data.emailId}
+   → Job Attempts: ${job.attemptsMade || 0}
+   → Started At: ${new Date().toISOString()}`);
 
   try {
     await updateJobStatus(job.id, "processing", "email");
 
     const { emailId } = job.data;
+
+    if (!emailId) {
+      throw new Error(
+        "Invalid job data: emailId is required but was not provided",
+      );
+    }
+
+    console.log(`📬 Fetching email record ${emailId} from database...`);
 
     // 1. Fetch the email record from existing emails table
     const { data: email, error: emailError } = await supabase
@@ -35,11 +44,21 @@ export async function processEmailBriefJob(
       .eq("id", emailId)
       .single();
 
-    if (emailError || !email) {
-      throw new Error(
-        `Email record not found: ${emailError?.message || "Email does not exist"}`,
-      );
+    if (emailError) {
+      console.error(`❌ Database error fetching email ${emailId}:`, emailError);
+      throw new Error(`Email record fetch failed: ${emailError.message}`);
     }
+
+    if (!email) {
+      console.error(`❌ Email record ${emailId} does not exist in database`);
+      throw new Error("Email record not found: Email does not exist");
+    }
+
+    console.log(`✅ Email record found:
+   → Status: ${email.status}
+   → Subject: ${email.subject}
+   → Created By: ${email.created_by}
+   → Recipients: ${email.email_recipients?.length || 0}`);
 
     // Extract brief info from template_data
     const templateData = email.template_data as Record<string, any> | null;
@@ -58,15 +77,29 @@ export async function processEmailBriefJob(
     );
 
     // 2. Check if email should still be sent (user may have disabled since queuing)
-    const { data: preferences } = await supabase
+    console.log(`🔍 Checking current email preferences for user ${userId}...`);
+    const { data: preferences, error: prefError } = await supabase
       .from("user_brief_preferences")
       .select("email_daily_brief, is_active")
       .eq("user_id", userId)
       .single();
 
+    if (prefError) {
+      console.error(
+        `❌ Error fetching preferences for user ${userId}:`,
+        prefError,
+      );
+      throw new Error(`Failed to fetch preferences: ${prefError.message}`);
+    }
+
+    console.log(`📋 User preferences:
+   → email_daily_brief: ${preferences?.email_daily_brief}
+   → is_active: ${preferences?.is_active}`);
+
     if (!preferences?.email_daily_brief || !preferences?.is_active) {
       console.log(
-        `📭 Email preferences changed, marking as cancelled for user ${userId}`,
+        `📭 Email preferences changed, marking as cancelled for user ${userId}
+   → Reason: ${!preferences?.is_active ? "Preferences not active" : "Email daily brief disabled"}`,
       );
 
       // Update email status to cancelled

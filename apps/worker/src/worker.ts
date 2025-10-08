@@ -12,6 +12,7 @@ import {
   getEnvironmentConfig,
   validateEnvironment,
 } from "./config/queueConfig";
+import { cleanupStaleJobs } from "./lib/utils/queueCleanup";
 
 // Validate environment before starting
 const { valid, errors } = validateEnvironment();
@@ -123,8 +124,9 @@ async function processSMS(job: ProcessingJob) {
  */
 async function processEmailBrief(job: ProcessingJob) {
   const startTime = Date.now();
+  const emailId = job.data.emailId || "unknown";
 
-  await job.log(`📧 Email generation started for brief ${job.data.briefId}`);
+  await job.log(`📧 Email sending started for email ${emailId}`);
 
   try {
     // Convert ProcessingJob to type-safe legacy format
@@ -138,7 +140,7 @@ async function processEmailBrief(job: ProcessingJob) {
 
     return { success: true, duration };
   } catch (error: any) {
-    await job.log(`❌ Email generation failed: ${error.message}`);
+    await job.log(`❌ Email sending failed: ${error.message}`);
     throw error;
   }
 }
@@ -222,6 +224,28 @@ export async function startWorker() {
     console.warn(
       "⚠️  SMS functionality disabled - Twilio credentials not configured",
     );
+  }
+
+  // Clean up stale jobs on startup to prevent accidental processing of old jobs
+  try {
+    console.log("🧹 Running startup cleanup check...");
+    const cleanupResult = await cleanupStaleJobs({
+      staleThresholdHours: 24,
+      oldFailedJobsDays: 0, // Don't clean up old failed jobs on startup
+      dryRun: false,
+    });
+
+    if (cleanupResult.staleCancelled > 0) {
+      console.log(
+        `✅ Cancelled ${cleanupResult.staleCancelled} stale job(s) on startup`,
+      );
+    }
+    if (cleanupResult.errors.length > 0) {
+      console.warn("⚠️  Cleanup had errors:", cleanupResult.errors);
+    }
+  } catch (error: any) {
+    console.error("❌ Startup cleanup failed:", error.message);
+    // Continue startup even if cleanup fails - don't block the worker
   }
 
   // Start processing

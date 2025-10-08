@@ -94,20 +94,35 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
     // Phase 2 REVISED: Create email record and queue email job (non-blocking)
     let emailRecordId: string | null = null;
+    let emailQueuedSuccessfully = false;
     try {
       const emailSender = new DailyBriefEmailSender(supabase);
       const shouldSend = await emailSender.shouldSendEmail(job.data.userId);
 
       if (shouldSend) {
+        console.log(
+          `📧 User ${job.data.userId} is eligible for email, proceeding with email creation...`,
+        );
+
         // Get user email
-        const { data: user } = await supabase
+        const { data: user, error: userError } = await supabase
           .from("users")
           .select("email")
           .eq("id", job.data.userId)
           .single();
 
+        if (userError) {
+          console.error(
+            `❌ Error fetching user email for ${job.data.userId}:`,
+            userError,
+          );
+          throw new Error(`Failed to fetch user: ${userError.message}`);
+        }
+
         if (!user?.email) {
-          console.warn(`No email found for user ${job.data.userId}, skipping`);
+          console.warn(
+            `⚠️  No email address found for user ${job.data.userId}, cannot send email`,
+          );
         } else {
           // Generate tracking ID
           const trackingId = crypto.randomUUID();
@@ -207,12 +222,40 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
             if (queueError) {
               console.error(
-                `Failed to queue email job for email ${emailRecord.id}:`,
+                `❌ CRITICAL: Failed to queue email job for email ${emailRecord.id}:`,
                 queueError,
               );
+              console.error(`   → Error code: ${queueError.code}`);
+              console.error(`   → Error message: ${queueError.message}`);
+              console.error(
+                `   → Brief ID: ${brief.id}, User ID: ${job.data.userId}`,
+              );
+
+              // Mark email as failed since we couldn't queue it
+              await supabase
+                .from("emails")
+                .update({
+                  status: "failed",
+                  template_data: {
+                    brief_id: brief.id,
+                    brief_date: briefDate,
+                    user_id: job.data.userId,
+                    error: {
+                      message: queueError.message,
+                      code: queueError.code,
+                      timestamp: new Date().toISOString(),
+                    },
+                  },
+                })
+                .eq("id", emailRecord.id);
+
+              throw new Error(
+                `Failed to queue email job: ${queueError.message}`,
+              );
             } else {
+              emailQueuedSuccessfully = true;
               console.log(
-                `📨 Queued email job ${emailJob} for email ${emailRecord.id} (brief ${brief.id})`,
+                `✅ Successfully queued email job ${emailJob} for email ${emailRecord.id} (brief ${brief.id})`,
               );
             }
           }
@@ -301,11 +344,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       timezone: timezone,
       message: `Your daily brief for ${briefDate} is ready!`,
       emailRecordCreated: !!emailRecordId,
+      emailQueued: emailQueuedSuccessfully,
     });
 
-    console.log(
-      `✅ Completed brief generation for user ${job.data.userId} - Date: ${briefDate}, Timezone: ${timezone}`,
-    );
+    console.log(`✅ Completed brief generation for user ${job.data.userId}
+   → Brief ID: ${brief.id}
+   → Brief Date: ${briefDate}
+   → Timezone: ${timezone}
+   → Email Record Created: ${emailRecordId ? "YES ✅" : "NO ❌"}
+   → Email Job Queued: ${emailQueuedSuccessfully ? "YES ✅" : "NO ❌"}`);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

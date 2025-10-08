@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import type { Project, Phase } from '$lib/types/project';
 import { validatePhaseDatesAgainstProject } from '$lib/utils/dateValidation';
+import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
 export abstract class BaseSchedulingStrategy {
 	protected supabase: SupabaseClient;
@@ -96,6 +97,28 @@ export abstract class BaseSchedulingStrategy {
 	}
 
 	protected async callLLM(systemPrompt: string, userPrompt: string, tasks: Task[]): Promise<any> {
+		// Determine scenario type for prompt audit based on scheduling method
+		const schedulingMethod = this.context.config.schedulingMethod;
+		const scenarioType = `phase-generation-${schedulingMethod.replace(/_/g, '-')}`;
+
+		// Save prompt for audit (development mode only)
+		await savePromptForAudit({
+			systemPrompt,
+			userPrompt,
+			scenarioType,
+			metadata: {
+				schedulingMethod,
+				taskCount: tasks.length,
+				projectId: this.context.project.id,
+				projectName: this.context.project.name,
+				isRegeneration: this.context.isRegeneration,
+				preservedPhaseCount: this.context.preservedPhases?.length || 0,
+				includeRecurringTasks: this.context.config.includeRecurringTasks,
+				allowRecurringReschedule: this.context.config.allowRecurringReschedule,
+				preserveExistingDates: this.context.config.preserveExistingDates
+			}
+		});
+
 		// This will be injected or imported from the actual LLM service
 		// For now, returning a placeholder
 		const { SmartLLMService } = await import('$lib/services/smart-llm-service');
