@@ -582,9 +582,13 @@
 					>
 						<!-- Section Header -->
 						<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+							<div
+								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+							>
 								<div class="flex items-center gap-2 sm:gap-3">
-									<div class={`p-1.5 sm:p-2 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0`}>
+									<div
+										class={`p-1.5 sm:p-2 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0`}
+									>
 										<svelte:component
 											this={config.icon}
 											class={`w-4 h-4 sm:w-5 sm:h-5 ${config.color}`}
@@ -596,7 +600,9 @@
 										>
 											{config.title}
 										</h2>
-										<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+										<p
+											class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+										>
 											{config.description}
 										</p>
 									</div>
@@ -646,7 +652,9 @@
 											class={`w-5 h-5 sm:w-6 sm:h-6 ${config.color}`}
 										/>
 									</div>
-									<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
+									<p
+										class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-3 sm:mb-4"
+									>
 										No information added yet.
 									</p>
 									<Button
@@ -768,9 +776,13 @@
 						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 					>
 						<div class="p-4 sm:p-6">
-							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+							<div
+								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6"
+							>
 								<div class="flex items-center gap-3">
-									<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg flex-shrink-0">
+									<div
+										class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg flex-shrink-0"
+									>
 										<CheckCircle
 											class="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400"
 										/>
@@ -782,14 +794,18 @@
 											{data.subscriptionDetails.subscription
 												.subscription_plans?.name || 'Pro Plan'}
 										</h2>
-										<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+										<p
+											class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1"
+										>
 											Active subscription
 										</p>
 									</div>
 								</div>
 
 								<div class="text-left sm:text-right">
-									<p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+									<p
+										class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"
+									>
 										${(
 											data.subscriptionDetails.subscription.subscription_plans
 												?.price / 100
@@ -888,7 +904,9 @@
 												>
 													${(invoice.amount_paid / 100).toFixed(2)}
 												</p>
-												<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+												<p
+													class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+												>
 													{new Date(
 														invoice.created_at
 													).toLocaleDateString()}

@@ -397,8 +397,8 @@
 							Let us analyze your calendar
 						</h3>
 						<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-							Connect your Google Calendar and we'll automatically create projects based on
-							your meetings and events. No manual entry needed!
+							Connect your Google Calendar and we'll automatically create projects
+							based on your meetings and events. No manual entry needed!
 						</p>
 					</div>
 				</div>
@@ -406,15 +406,21 @@
 				<!-- Benefits -->
 				<div class="mb-5 space-y-2 text-sm text-gray-700 dark:text-gray-300">
 					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<CheckCircle
+							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+						/>
 						<span>Automatic project detection from recurring meetings</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<CheckCircle
+							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+						/>
 						<span>Pre-filled tasks with meeting details and dates</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<CheckCircle
+							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+						/>
 						<span>Smart scheduling around your existing commitments</span>
 					</div>
 				</div>
@@ -480,8 +486,8 @@
 							</span>
 						</h4>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
-							We can analyze your calendar and automatically suggest projects based on your
-							meetings and events.
+							We can analyze your calendar and automatically suggest projects based on
+							your meetings and events.
 						</p>
 					</div>
 				</div>
@@ -497,7 +503,9 @@
 				</Button>
 
 				{#if calendarAnalysisStarted}
-					<p class="text-xs text-blue-600 dark:text-blue-400 mt-3 flex items-center gap-2">
+					<p
+						class="text-xs text-blue-600 dark:text-blue-400 mt-3 flex items-center gap-2"
+					>
 						<Loader2 class="w-3 h-3 animate-spin" />
 						Analysis in progress — Check notification panel (bottom-right corner)
 					</p>

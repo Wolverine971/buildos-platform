@@ -38,18 +38,21 @@ The current notification test-bed page uses a linear 4-step flow that's function
 ### Current Test-Bed Flow (apps/web/src/routes/admin/notifications/test-bed/+page.svelte)
 
 **Structure:**
+
 - **Step 1:** Select Event Type (dropdown with 3 predefined events)
 - **Step 2:** Configure Payload (text inputs for payload fields)
 - **Step 3:** Select Recipients (search with debounced lookup)
 - **Step 4:** Select Channels (checkboxes for push, email, sms, in_app)
 
 **Strengths:**
+
 - Simple, linear flow
 - Clear step-by-step process
 - Good recipient search with debouncing
 - Shows channel availability per user (push subscriptions, phone numbers)
 
 **Limitations:**
+
 - No user context beyond basic info (email, name)
 - Limited event types (only 3 hardcoded)
 - Payload configuration is generic text inputs
@@ -60,6 +63,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 ### Email Composer Pattern (apps/web/src/lib/components/admin/EmailComposerModal.svelte)
 
 **Key Features:**
+
 - **User Context Loading** (line 119-149): Fetches rich user data when modal opens
 - **Context Panel** (line 372): Collapsible panel with user info, beta status, activity
 - **Template Selection** (line 377-397): Predefined templates with smart defaults
@@ -70,6 +74,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - **Send Confirmation** (line 234-274): Confirm before sending with clear recipient
 
 **Pattern Strengths:**
+
 - Rich user context helps personalize communications
 - Multiple modes (manual, AI, split) accommodate different workflows
 - Clear preview of what will be sent
@@ -81,6 +86,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 ### Architecture
 
 **Main Components:**
+
 1. **User Search & Selection** (inspired by admin/users table)
 2. **User Context Panel** (inspired by EmailComposerModal)
 3. **Notification Type Selector**
@@ -95,6 +101,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 **Layout:** Top section, similar to admin/users search bar
 
 **Features:**
+
 - Search input with debounced lookup (reuse existing `notificationTestService.searchRecipients`)
 - Search by email, name, or user ID
 - Display search results in a dropdown or inline list
@@ -106,11 +113,13 @@ The current notification test-bed page uses a linear 4-step flow that's function
   - Last activity indicator
 
 **Behavior:**
+
 - When user is selected, load full context immediately
 - Support multi-select mode (optional, for bulk testing)
 - "Clear selection" button to start over
 
 **API Endpoints:**
+
 - Existing: `GET /api/admin/notifications/recipients/search?q={query}`
 - New: `GET /api/admin/users/{userId}/context` (already exists for email composer)
 
@@ -121,12 +130,14 @@ The current notification test-bed page uses a linear 4-step flow that's function
 **Content Sections:**
 
 **A. Basic Info**
+
 - Name, email, member since
 - Subscription status (free, trial, paid)
 - Last active date
 - Admin status
 
 **B. Notification Preferences** (NEW - key differentiator from email)
+
 - Table showing event types and channel preferences
 - Format:
   ```
@@ -140,6 +151,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - Show rate limits if configured
 
 **C. Activity Summary**
+
 - Projects: count (with link to view)
 - Brain dumps: count
 - Tasks created/completed
@@ -147,17 +159,20 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - Phase generation status
 
 **D. Channel Capabilities** (NEW)
+
 - **Push Subscriptions:** Count of active subscriptions, devices
 - **Email:** Verified status, bounce history
 - **SMS:** Phone number (if available), opt-in status
 - **In-App:** Always available
 
 **E. Recent Notifications** (NEW - valuable context)
+
 - Last 5 notifications sent to this user
 - Format: `[Event Type] via [Channel] - [Status] - [Date]`
 - Click to view details
 
 **Implementation:**
+
 - Reuse `UserContextPanel` component from email composer
 - Extend with new `NotificationContextSection` component
 - API: Create new endpoint `GET /api/admin/users/{userId}/notification-context`
@@ -169,12 +184,14 @@ The current notification test-bed page uses a linear 4-step flow that's function
 **Available Event Types (from shared-types/src/notification.types.ts):**
 
 **Admin Events:**
+
 - `user.signup` - New user signup notification
 - `user.trial_expired` - Trial expiration notice
 - `payment.failed` - Payment failure alert
 - `error.critical` - Critical error notification
 
 **User Events:**
+
 - `brief.completed` - Daily brief ready notification
 - `brief.failed` - Daily brief generation failed
 - `brain_dump.processed` - Brain dump processing complete
@@ -183,6 +200,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - `calendar.sync_failed` - Calendar sync failure alert
 
 **Features:**
+
 - Each event type has description tooltip
 - Show if event is admin-only
 - Show if user is subscribed to this event type
@@ -190,6 +208,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - Sample payload preview for each type
 
 **Behavior:**
+
 - When event type selected, auto-populate payload with intelligent defaults
 - Load payload template based on selected user's actual data where possible
 - Example: For `brief.completed`, use real brief count and recent project names
@@ -199,6 +218,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 **Layout:** Two modes (toggle between them)
 
 **A. Form Mode (Default):**
+
 - Dynamic form fields based on selected event type
 - Use typed payload interfaces from `notification.types.ts`:
   - `UserSignupEventPayload`
@@ -217,6 +237,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - "Use Real Data" button - populates from user's actual records
 
 **B. JSON Mode (Advanced):**
+
 - Raw JSON editor with syntax highlighting
 - JSON validation
 - "Format JSON" button
@@ -224,6 +245,7 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - Useful for testing edge cases or custom payloads
 
 **Features:**
+
 - "Load Sample Data" button (current behavior)
 - "Load Real User Data" button (NEW - powerful!)
   - Example: For `task.due_soon`, load a real upcoming task
@@ -260,6 +282,7 @@ Improved checkboxes with detailed status:
 ```
 
 **Features:**
+
 - Disable checkboxes for unavailable channels
 - Show warnings for channels user has disabled
 - Display rate limit status
@@ -270,6 +293,7 @@ Improved checkboxes with detailed status:
 Preview what the notification will look like in each channel:
 
 **Push Preview:**
+
 ```
 ┌─────────────────────────────────────┐
 │ 🔔 BuildOS                          │
@@ -283,12 +307,14 @@ Preview what the notification will look like in each channel:
 ```
 
 **Email Preview:**
+
 - Subject line
 - Plain text body
 - Formatted HTML preview (if applicable)
 - Show personalization tokens replaced with real values
 
 **SMS Preview:**
+
 ```
 BuildOS: Your daily brief is ready!
 5 tasks across 2 projects. View at:
@@ -299,11 +325,13 @@ Sent 2:45 PM
 ```
 
 **In-App Preview:**
+
 - Notification bell icon format
 - Title, body, action button
 - Icon and timestamp
 
 **Implementation:**
+
 - Create `NotificationPreview` component
 - Use channel-specific preview templates
 - Support for rich preview (HTML email, etc.)
@@ -315,6 +343,7 @@ Sent 2:45 PM
 **Controls:**
 
 **Primary Actions:**
+
 - **"Send Test Notification"** button (primary CTA)
   - Confirm dialog: "Send [event_type] to [user_email] via [channels]?"
   - Shows count of notifications (1 event × N channels)
@@ -324,6 +353,7 @@ Sent 2:45 PM
   - Useful for debugging or documentation
 
 **Secondary Actions:**
+
 - **"Save as Template"** (NEW)
   - Save current configuration for later use
   - Name the template
@@ -332,12 +362,14 @@ Sent 2:45 PM
   - Quick access to saved configurations
 
 **After Sending:**
+
 - Success toast: "Test notification sent! Event ID: {id}"
 - **"View Event Details"** link → Goes to logs page filtered to this event
 - **"Send Another"** button - clears form but keeps user selected
 - **"Test Different Channels"** - keeps everything but changes channels
 
 **History Section (NEW - Collapsible):**
+
 - Show last 10 tests sent from this page
 - Format: `[Time] [Event Type] → [User Email] via [Channels] - [Status]`
 - Click to reload that configuration
@@ -346,6 +378,7 @@ Sent 2:45 PM
 #### 7. Additional Features
 
 **A. Bulk Testing Mode (Optional Enhancement)**
+
 - Toggle: "Test with multiple users"
 - Multi-select in user search
 - Send same notification to multiple users
@@ -353,16 +386,19 @@ Sent 2:45 PM
 - Confirmation shows list of all recipients
 
 **B. Compare Mode (Optional Enhancement)**
+
 - Side-by-side comparison of how notification looks to different users
 - Useful for testing personalization
 - Example: Compare what admin sees vs regular user
 
 **C. Scheduling (Future)**
+
 - "Schedule for later" option
 - Choose delivery time
 - Useful for testing time-based behavior (quiet hours, etc.)
 
 **D. A/B Testing Support (Future)**
+
 - Test different payload variations
 - Compare delivery rates and engagement
 - Track which version performs better
@@ -372,12 +408,14 @@ Sent 2:45 PM
 #### Visual Design
 
 **Color Coding:**
+
 - Green: Available/enabled channels
 - Yellow: Warnings (disabled by user, rate limits)
 - Red: Unavailable channels or errors
 - Blue: Information and tips
 
 **Icons:**
+
 - 📱 Push notifications
 - 📧 Email
 - 📞 SMS
@@ -388,6 +426,7 @@ Sent 2:45 PM
 - ℹ️ Information
 
 **Layout:**
+
 - Sticky header with user selection
 - Collapsible sections to reduce overwhelm
 - Two-column layout where appropriate
@@ -444,6 +483,7 @@ Sent 2:45 PM
 #### API Endpoints
 
 **New:**
+
 - `GET /api/admin/users/:userId/notification-context` - Rich user context
 - `POST /api/admin/notifications/preview` - Generate preview without sending
 - `GET /api/admin/notifications/templates` - List saved templates
@@ -451,12 +491,14 @@ Sent 2:45 PM
 - `DELETE /api/admin/notifications/templates/:id` - Delete template
 
 **Enhanced:**
+
 - `POST /api/admin/notifications/test` - Add preview support
 - `GET /api/admin/notifications/test/history` - Add filtering, pagination
 
 #### Data Flow
 
 1. **User Selection:**
+
    ```
    User types in search → Debounce 300ms → API call
    → Display results → User clicks
@@ -468,6 +510,7 @@ Sent 2:45 PM
    ```
 
 2. **Event Type Selection:**
+
    ```
    User selects event type
    → Load payload template
@@ -477,6 +520,7 @@ Sent 2:45 PM
    ```
 
 3. **Configuration:**
+
    ```
    User edits payload
    → Validate payload
@@ -498,24 +542,28 @@ Sent 2:45 PM
 ### Migration Plan
 
 #### Phase 1: Core Refactor (Week 1)
+
 - [ ] Create new component structure
 - [ ] Implement user search with context loading
 - [ ] Build enhanced user context panel
 - [ ] Migrate existing event types to new selector
 
 #### Phase 2: Enhanced Configuration (Week 2)
+
 - [ ] Implement form-based payload editor
 - [ ] Add JSON mode toggle
 - [ ] Create "Use Real Data" functionality
 - [ ] Build channel selector with status
 
 #### Phase 3: Preview & Polish (Week 3)
+
 - [ ] Implement multi-channel preview
 - [ ] Add preview generation service
 - [ ] Build test history component
 - [ ] Add copy and template features
 
 #### Phase 4: Advanced Features (Future)
+
 - [ ] Bulk testing mode
 - [ ] Template management
 - [ ] Compare mode
@@ -524,18 +572,21 @@ Sent 2:45 PM
 ### Testing Plan
 
 #### Unit Tests
+
 - `NotificationPayloadEditor.test.ts` - Form validation, JSON mode
 - `ChannelSelector.test.ts` - Availability logic, warnings
 - `NotificationPreview.test.ts` - Preview generation for each channel
 - `notification-context.service.test.ts` - API integration
 
 #### Integration Tests
+
 - End-to-end flow: Search → Select → Configure → Preview → Send
 - Multi-user selection flow
 - Template save/load flow
 - History tracking
 
 #### Manual Testing Checklist
+
 - [ ] Test with user who has all channels available
 - [ ] Test with user who has disabled email notifications
 - [ ] Test with user with no phone number
@@ -551,19 +602,23 @@ Sent 2:45 PM
 ### Key Files Analyzed
 
 **Current Implementation:**
+
 - `apps/web/src/routes/admin/notifications/test-bed/+page.svelte` - Current test-bed
 - `apps/web/src/lib/services/notification-test.service.ts` - Test service
 
 **Email Composer Pattern:**
+
 - `apps/web/src/routes/admin/users/+page.svelte` - User list with email action
 - `apps/web/src/lib/components/admin/EmailComposerModal.svelte` - Modal pattern
 
 **Notification System:**
+
 - `packages/shared-types/src/notification.types.ts` - Type definitions
 - `apps/web/src/lib/services/notification-preferences.service.ts` - User preferences
 - `apps/web/src/lib/services/notification-analytics.service.ts` - Analytics
 
 **Related Components:**
+
 - `apps/web/src/lib/components/admin/UserContextPanel.svelte` - User context display
 
 ## Architecture Insights
@@ -571,6 +626,7 @@ Sent 2:45 PM
 ### Pattern Recognition
 
 The EmailComposerModal demonstrates a superior UX pattern for admin tools:
+
 1. **Context-First**: Load all relevant user data upfront
 2. **Progressive Disclosure**: Start simple, reveal complexity as needed
 3. **Preview Before Action**: Always show what will happen
@@ -582,12 +638,14 @@ These patterns should be applied to the notification test-bed.
 ### Key Differences: Email vs Notifications
 
 **Email (Simpler):**
+
 - Single channel (email)
 - Freeform content
 - AI generation helpful for personalization
 - No subscription management
 
 **Notifications (More Complex):**
+
 - Multiple channels (push, email, sms, in-app)
 - Structured payloads (typed)
 - User preferences per event type per channel
@@ -600,11 +658,13 @@ These patterns should be applied to the notification test-bed.
 ## Related Documentation
 
 ### BuildOS Documentation
+
 - `/apps/web/docs/features/notifications/README.md` - Notification system docs
 - `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` - System architecture
 - `/apps/web/CLAUDE.md` - Web app development guide
 
 ### Existing Research
+
 - `thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md` - Notification tracking
 - `thoughts/shared/research/2025-10-07_00-15-00_phase4-in-app-notification-tracking-spec.md` - In-app notifications
 
@@ -637,17 +697,20 @@ These patterns should be applied to the notification test-bed.
 ## Success Metrics
 
 ### Usability
+
 - Time to send first test notification (target: < 30 seconds)
 - Number of clicks required (target: < 5)
 - User satisfaction score from admin users
 
 ### Functionality
+
 - Support for all 11 event types
 - Support for all 4 channels
 - Accurate previews (validated against actual deliveries)
 - 95%+ uptime for context loading
 
 ### Developer Experience
+
 - Component reusability (target: 60%+ shared with email composer)
 - Test coverage (target: 80%+)
 - Type safety (TypeScript strict mode)

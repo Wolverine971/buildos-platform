@@ -57,14 +57,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const result = await twilioClient.verifyPhoneNumber(phoneNumber);
 
 		// Log verification attempt
-		await supabase.from('user_sms_preferences').upsert({
-			user_id: session.user.id,
-			phone_number: phoneNumber,
-			phone_verified: false,
-			updated_at: new Date().toISOString()
-		}, {
-			onConflict: 'user_id'
-		});
+		await supabase.from('user_sms_preferences').upsert(
+			{
+				user_id: session.user.id,
+				phone_number: phoneNumber,
+				phone_verified: false,
+				updated_at: new Date().toISOString()
+			},
+			{
+				onConflict: 'user_id'
+			}
+		);
 
 		return ApiResponse.success({
 			verificationSent: true,

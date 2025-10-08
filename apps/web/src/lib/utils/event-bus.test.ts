@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/event-bus.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from './event-bus';
 

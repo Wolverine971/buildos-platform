@@ -22,6 +22,7 @@ last_updated_by: Claude (Sonnet 4.5)
 ## Research Question
 
 How should we redesign the calendar analysis flow to use a 2-part LLM process that:
+
 1. First identifies project patterns from calendar events (without full data model complexity)
 2. Then creates BuildOS projects with proper deduplication and task generation
 
@@ -55,6 +56,7 @@ private async analyzeEventsWithAI({
 ```
 
 **Single Prompt Contains:**
+
 1. User's existing projects (up to 50, with truncated descriptions/summaries)
 2. ALL past events (formatted as JSON arrays)
 3. ALL upcoming events (formatted as JSON arrays)
@@ -95,6 +97,7 @@ private async analyzeEventsWithAI({
 From `calendar-service.ts:86-148`:
 
 **Full CalendarEvent Interface includes:**
+
 - Basic: `id`, `summary`, `description`, `status`, `location`
 - Timing: `start`, `end`, `recurringEventId`, `timeZone`
 - People: `creator`, `organizer`, `attendees` (with responseStatus)
@@ -103,6 +106,7 @@ From `calendar-service.ts:86-148`:
 - Recurrence: `recurrence` (RRULE strings)
 
 **Currently sent to LLM** (lines 386-419):
+
 ```typescript
 {
   id: e.id,
@@ -119,6 +123,7 @@ From `calendar-service.ts:86-148`:
 ```
 
 **Available but NOT sent:**
+
 - Conference links (hangoutLink, conferenceData)
 - Attendee names and response statuses
 - Event type (focusTime, outOfOffice)
@@ -130,6 +135,7 @@ From `calendar-service.ts:86-148`:
 From research on `prompts/core/prompt-components.ts` and `data-models.ts`:
 
 **Project Model**: 13 core fields
+
 - Identity: name, slug, description, context, executive_summary
 - Status: status, visibility
 - Dates: start_date, end_date
@@ -137,6 +143,7 @@ From research on `prompts/core/prompt-components.ts` and `data-models.ts`:
 - Calendar: calendar_color_id, calendar_settings, calendar_sync_enabled
 
 **Task Model**: 16+ fields
+
 - Core: title, description, details
 - Organization: project_id/project_ref, parent_task_id, tags, dependencies
 - Status: status, priority, task_type
@@ -145,6 +152,7 @@ From research on `prompts/core/prompt-components.ts` and `data-models.ts`:
 - Source: source, source_calendar_event_id
 
 **Context Framework**: 6-section flexible structure
+
 1. Situation & Environment
 2. Purpose & Vision & Framing
 3. Scope & Boundaries
@@ -157,28 +165,36 @@ From research on `prompts/core/prompt-components.ts` and `data-models.ts`:
 From `project-data-fetcher.ts:258-286` and `data-formatter.ts:273-320`:
 
 **Fetching Logic:**
+
 ```typescript
-const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
-  limit: 50,
-  includeStatus: ['active', 'planning']
-});
+const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(
+  userId,
+  {
+    limit: 50,
+    includeStatus: ["active", "planning"],
+  },
+);
 ```
 
 **Data Included in Summary:**
+
 - id, name, slug
 - description (truncated to 200 chars)
 - executive_summary (truncated to 300 chars)
 - tags, status, updated_at
 
 **Data NOT Included:**
+
 - Project context (richest semantic information)
 - Tasks, phases, notes
 - Start/end dates
 - Paused or completed projects
 
 **Formatting for LLM:**
+
 ```markdown
 ### Project 1: [Name]
+
 **Description**: [200 chars]
 **Summary**: [300 chars]
 **Tags**: [list]
@@ -213,6 +229,7 @@ Project Suggestions
 **Purpose**: Pure pattern recognition - group related calendar events and identify project themes
 
 **Input Data:**
+
 ```typescript
 interface EventPatternInput {
   events: LightweightCalendarEvent[];
@@ -237,6 +254,7 @@ interface LightweightCalendarEvent {
 ```
 
 **Prompt Focus:**
+
 1. Identify patterns in event titles/descriptions
 2. Group events that seem related
 3. Detect recurring meetings (same title, similar attendees)
@@ -244,6 +262,7 @@ interface LightweightCalendarEvent {
 5. Suggest high-level project themes
 
 **Output Schema:**
+
 ```typescript
 interface EventGroupAnalysis {
   groups: EventGroup[];
@@ -283,6 +302,7 @@ interface EventGroup {
 ```
 
 **Benefits:**
+
 - Lightweight event format (50-70% token reduction)
 - No existing projects needed (not checking duplicates yet)
 - No complex data models (not creating projects yet)
@@ -296,6 +316,7 @@ interface EventGroup {
 **Purpose**: Transform event groups into BuildOS projects with proper deduplication and task generation
 
 **Input Data:**
+
 ```typescript
 interface ProjectCreationInput {
   event_groups: EventGroup[]; // From Part 1
@@ -308,6 +329,7 @@ interface ProjectCreationInput {
 ```
 
 **Prompt Focus:**
+
 1. Check each event group against existing projects (deduplication)
 2. Generate comprehensive project context using BuildOS framework
 3. Create appropriate tasks from calendar events
@@ -315,6 +337,7 @@ interface ProjectCreationInput {
 5. Follow BuildOS data models exactly
 
 **Output Schema:**
+
 ```typescript
 interface ProjectCreationResult {
   suggestions: ProjectSuggestion[];
@@ -360,7 +383,14 @@ interface TaskSuggestion {
   task_type: "one_off" | "recurring";
   duration_minutes?: number;
   start_date?: string; // YYYY-MM-DDTHH:MM:SS (MUST be >= today)
-  recurrence_pattern?: "daily" | "weekdays" | "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
+  recurrence_pattern?:
+    | "daily"
+    | "weekdays"
+    | "weekly"
+    | "biweekly"
+    | "monthly"
+    | "quarterly"
+    | "yearly";
   recurrence_ends?: string; // YYYY-MM-DD
   event_id?: string; // Linked calendar event
   tags?: string[];
@@ -368,6 +398,7 @@ interface TaskSuggestion {
 ```
 
 **Benefits:**
+
 - Event groups already identified (no need to rediscover patterns)
 - Only relevant events included (not all 300+)
 - Can dedicate tokens to rich context generation
@@ -443,6 +474,7 @@ async createProjectsFromGroups(input): Promise<ProjectSuggestion[]> {
 
 2. **`calendar-analysis.service.ts:1144-1181`** (bug fix)
    - Add deduplication fields to `event_patterns` object:
+
    ```typescript
    event_patterns: {
      executive_summary: suggestion.executive_summary,
@@ -500,6 +532,7 @@ You are analyzing calendar events to identify patterns and group related events 
 ## Your Task
 
 Group related calendar events and identify project themes. Focus on:
+
 1. Recurring meetings with similar titles/attendees
 2. Clusters of events around similar topics
 3. Project-indicating keywords (sprint, launch, milestone, review, planning, etc.)
@@ -508,15 +541,15 @@ Group related calendar events and identify project themes. Focus on:
 ## Calendar Events (${events.length} total)
 
 ${JSON.stringify(events.map(e => ({
-  id: e.id,
-  title: e.summary,
-  description_snippet: e.description?.substring(0, 200),
-  start: e.start?.dateTime || e.start?.date,
-  end: e.end?.dateTime || e.end?.date,
-  is_recurring: !!e.recurringEventId,
-  attendee_count: e.attendees?.length || 0,
-  is_organizer: e.organizer?.self || false,
-  location: e.location
+id: e.id,
+title: e.summary,
+description_snippet: e.description?.substring(0, 200),
+start: e.start?.dateTime || e.start?.date,
+end: e.end?.dateTime || e.end?.date,
+is_recurring: !!e.recurringEventId,
+attendee_count: e.attendees?.length || 0,
+is_organizer: e.organizer?.self || false,
+location: e.location
 })), null, 2)}
 
 ## Output Format
@@ -524,29 +557,29 @@ ${JSON.stringify(events.map(e => ({
 Return JSON with this structure:
 
 {
-  "groups": [
-    {
-      "group_id": "group-1",
-      "project_theme": "High-level theme description",
-      "suggested_project_name": "Specific project name",
-      "confidence": 0.8,
-      "event_ids": ["event-1", "event-2", ...],
-      "event_count": 5,
-      "keywords": ["keyword1", "keyword2"],
-      "recurring_pattern": "weekly" or null,
-      "meeting_series": true or false,
-      "reasoning": "Why these events were grouped together",
-      "key_participants": ["email1@example.com", "email2@example.com"],
-      "time_range": {
-        "earliest_event": "YYYY-MM-DD",
-        "latest_event": "YYYY-MM-DD"
-      },
-      "estimated_start_date": "YYYY-MM-DD",
-      "estimated_end_date": "YYYY-MM-DD" or null,
-      "suggested_tags": ["tag1", "tag2"]
-    }
-  ],
-  "ungrouped_event_ids": ["event-x", "event-y"]
+"groups": [
+{
+"group_id": "group-1",
+"project_theme": "High-level theme description",
+"suggested_project_name": "Specific project name",
+"confidence": 0.8,
+"event_ids": ["event-1", "event-2", ...],
+"event_count": 5,
+"keywords": ["keyword1", "keyword2"],
+"recurring_pattern": "weekly" or null,
+"meeting_series": true or false,
+"reasoning": "Why these events were grouped together",
+"key_participants": ["email1@example.com", "email2@example.com"],
+"time_range": {
+"earliest_event": "YYYY-MM-DD",
+"latest_event": "YYYY-MM-DD"
+},
+"estimated_start_date": "YYYY-MM-DD",
+"estimated_end_date": "YYYY-MM-DD" or null,
+"suggested_tags": ["tag1", "tag2"]
+}
+],
+"ungrouped_event_ids": ["event-x", "event-y"]
 }
 
 ## Guidelines
@@ -673,6 +706,7 @@ ${projectsContext || 'No existing projects found.'}
 You've already identified ${eventGroups.length} event groups. Now create BuildOS projects for each group.
 
 ${eventGroups.map((group, idx) => `
+
 ### Group ${idx + 1}: ${group.project_theme}
 
 **Suggested Name**: ${group.suggested_project_name}
@@ -684,31 +718,33 @@ ${eventGroups.map((group, idx) => `
 
 **Events in this group**:
 ${JSON.stringify(
-  group.event_ids.map(id => {
-    const event = events.find(e => e.id === id);
-    return {
-      id: event?.id,
-      title: event?.summary,
-      description: event?.description?.substring(0, 500),
-      start: event?.start?.dateTime || event?.start?.date,
-      end: event?.end?.dateTime || event?.end?.date,
-      attendees: event?.attendees?.map(a => a.email),
-      organizer: event?.organizer?.email,
-      location: event?.location,
-      hangoutLink: event?.hangoutLink
-    };
-  }),
-  null,
-  2
+group.event_ids.map(id => {
+const event = events.find(e => e.id === id);
+return {
+id: event?.id,
+title: event?.summary,
+description: event?.description?.substring(0, 500),
+start: event?.start?.dateTime || event?.start?.date,
+end: event?.end?.dateTime || event?.end?.date,
+attendees: event?.attendees?.map(a => a.email),
+organizer: event?.organizer?.email,
+location: event?.location,
+hangoutLink: event?.hangoutLink
+};
+}),
+null,
+2
 )}
 `).join('\n---\n')}
 
 ## Data Models
 
 ### Project Model (REQUIRED structure):
+
 ${getProjectModel(true)}
 
 ### Task Model (REQUIRED structure):
+
 ${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
 
 ${generateProjectContextFramework('condensed')}
@@ -718,9 +754,9 @@ ${generateProjectContextFramework('condensed')}
 Return JSON:
 
 {
-  "suggestions": [
-    {
-      "event_group_id": "group-1",
+"suggestions": [
+{
+"event_group_id": "group-1",
 
       // Project fields
       "name": "Specific project name",
@@ -760,7 +796,8 @@ Return JSON:
         }
       ]
     }
-  ]
+
+]
 }
 
 ## CRITICAL RULES
@@ -1010,6 +1047,7 @@ async analyzeUserCalendar(
 ### Fixing Deduplication Field Storage
 
 **Current code** (`calendar-analysis.service.ts:1164-1170`):
+
 ```typescript
 event_patterns: {
   executive_summary: suggestion.executive_summary,
@@ -1021,6 +1059,7 @@ event_patterns: {
 ```
 
 **Fixed code**:
+
 ```typescript
 event_patterns: {
   executive_summary: suggestion.executive_summary,
@@ -1040,6 +1079,7 @@ event_patterns: {
 ### Token Efficiency Gains
 
 **Current Single-Prompt Approach:**
+
 - Base prompt: ~800 tokens
 - Existing projects (50): ~1000 tokens
 - Events (300): ~1200 tokens
@@ -1047,6 +1087,7 @@ event_patterns: {
 - **Total: ~3400 tokens**
 
 **New 2-Part Approach:**
+
 - **Part 1**: ~1000-1500 tokens (lightweight events only)
 - **Part 2**: ~1500-2000 tokens per batch of 5 groups
 - **Total**: ~2500-3500 tokens (similar), BUT:
@@ -1163,6 +1204,7 @@ event_patterns: {
 ### Success Metrics
 
 Track these to measure improvement:
+
 - Average project suggestions per analysis
 - Deduplication accuracy (% correctly matched to existing projects)
 - Task date validation pass rate (% tasks with future dates)

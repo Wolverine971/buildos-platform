@@ -439,7 +439,9 @@ Return JSON with this structure:
 
 		try {
 			if (DEBUG_LOGGING) {
-				console.log(`[Calendar Analysis Part 1] Analyzing ${events.length} events for patterns`);
+				console.log(
+					`[Calendar Analysis Part 1] Analyzing ${events.length} events for patterns`
+				);
 			}
 
 			// Save prompt for auditing
@@ -504,7 +506,9 @@ Return JSON with this structure:
 			});
 
 			if (DEBUG_LOGGING) {
-				console.log(`[Calendar Analysis Part 1] Generated ${validatedGroups.length} event groups`);
+				console.log(
+					`[Calendar Analysis Part 1] Generated ${validatedGroups.length} event groups`
+				);
 				if (validatedGroups.length < groups.length) {
 					console.log(
 						`[Calendar Analysis Part 1] Filtered out ${groups.length - validatedGroups.length} invalid groups`
@@ -809,7 +813,9 @@ Return JSON:
 			});
 
 			if (DEBUG_LOGGING) {
-				console.log(`[Calendar Analysis Part 2] Generated ${suggestions.length} project suggestions`);
+				console.log(
+					`[Calendar Analysis Part 2] Generated ${suggestions.length} project suggestions`
+				);
 				console.log(
 					`[Calendar Analysis Part 2] Deduplication results:`,
 					suggestions.map((s) => ({
@@ -869,7 +875,10 @@ Return JSON:
 			}
 
 			// Validate required deduplication fields
-			if (!suggestion.deduplication_reasoning || suggestion.deduplication_reasoning.trim() === '') {
+			if (
+				!suggestion.deduplication_reasoning ||
+				suggestion.deduplication_reasoning.trim() === ''
+			) {
 				console.warn(
 					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has empty deduplication_reasoning (required field)`
 				);

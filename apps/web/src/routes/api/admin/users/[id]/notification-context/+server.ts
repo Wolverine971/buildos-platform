@@ -63,10 +63,7 @@ export interface UserNotificationContext {
 	};
 }
 
-export const GET: RequestHandler = async ({
-	params,
-	locals: { supabase, safeGetSession }
-}) => {
+export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	try {
 		const { user } = await safeGetSession();
 
@@ -106,13 +103,14 @@ export const GET: RequestHandler = async ({
 
 		// Map preferences with subscription status
 		const subscriptionMap = new Map(
-			subscriptions?.map(sub => [sub.event_type, sub.is_active]) ?? []
+			subscriptions?.map((sub) => [sub.event_type, sub.is_active]) ?? []
 		);
 
-		const preferencesWithSubscription = preferences?.map(pref => ({
-			...pref,
-			is_subscribed: subscriptionMap.get(pref.event_type as EventType) ?? false
-		})) ?? [];
+		const preferencesWithSubscription =
+			preferences?.map((pref) => ({
+				...pref,
+				is_subscribed: subscriptionMap.get(pref.event_type as EventType) ?? false
+			})) ?? [];
 
 		// Get channel capabilities
 		const capabilities: NotificationChannelCapability[] = [];
@@ -155,7 +153,11 @@ export const GET: RequestHandler = async ({
 			console.error('Error fetching user SMS preferences:', smsError);
 		}
 
-		const hasSMS = !!(smsPrefs?.phone_number && smsPrefs?.phone_verified && !smsPrefs?.opted_out);
+		const hasSMS = !!(
+			smsPrefs?.phone_number &&
+			smsPrefs?.phone_verified &&
+			!smsPrefs?.opted_out
+		);
 
 		capabilities.push({
 			channel: 'sms',
@@ -179,7 +181,8 @@ export const GET: RequestHandler = async ({
 		// Get recent notifications (last 5)
 		const { data: recentNotifications, error: notifError } = await supabase
 			.from('notification_deliveries')
-			.select(`
+			.select(
+				`
 				id,
 				event_id,
 				channel,
@@ -188,7 +191,8 @@ export const GET: RequestHandler = async ({
 				delivered_at,
 				opened_at,
 				notification_events!inner(event_type)
-			`)
+			`
+			)
 			.eq('recipient_user_id', userId)
 			.order('created_at', { ascending: false })
 			.limit(5);
@@ -197,15 +201,16 @@ export const GET: RequestHandler = async ({
 			console.error('Error fetching recent notifications:', notifError);
 		}
 
-		const formattedNotifications = recentNotifications?.map(notif => ({
-			id: notif.id,
-			event_type: (notif.notification_events as any)?.event_type as EventType,
-			channel: notif.channel as NotificationChannel,
-			status: notif.status,
-			created_at: notif.created_at,
-			delivered_at: notif.delivered_at,
-			opened_at: notif.opened_at
-		})) ?? [];
+		const formattedNotifications =
+			recentNotifications?.map((notif) => ({
+				id: notif.id,
+				event_type: (notif.notification_events as any)?.event_type as EventType,
+				channel: notif.channel as NotificationChannel,
+				status: notif.status,
+				created_at: notif.created_at,
+				delivered_at: notif.delivered_at,
+				opened_at: notif.opened_at
+			})) ?? [];
 
 		// Build complete notification context
 		const notificationContext: UserNotificationContext = {

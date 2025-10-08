@@ -139,7 +139,15 @@
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-16 h-16" />
+				<video
+					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+					class="w-16 h-16"
+					autoplay
+					loop
+					muted
+					playsinline
+					aria-label="BuildOS Icon"
+				></video>
 			</div>
 
 			<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome back</h2>

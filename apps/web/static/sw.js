@@ -1,3 +1,4 @@
+// apps/web/static/sw.js
 /**
  * Service Worker for Push Notifications
  *

@@ -123,12 +123,20 @@ export function startScheduler() {
     await checkAndScheduleBriefs();
   });
 
+  // Run at midnight to schedule daily SMS reminders
+  cron.schedule("0 0 * * *", async () => {
+    console.log("📱 Checking for daily SMS reminders...");
+    await checkAndScheduleDailySMS();
+  });
+
   // Also run once at startup
   setTimeout(() => {
     checkAndScheduleBriefs();
   }, 5000);
 
-  console.log("⏰ Scheduler started - checking every hour");
+  console.log(
+    "⏰ Scheduler started - checking every hour (briefs) and midnight (SMS)",
+  );
 }
 
 /**
@@ -550,4 +558,94 @@ export function validateUserPreference(
   }
 
   return errors;
+}
+
+/**
+ * Check and schedule daily SMS event reminders
+ * Runs at midnight (12:00 AM) to queue SMS scheduling jobs for users
+ */
+async function checkAndScheduleDailySMS() {
+  try {
+    console.log("📱 [SMS Scheduler] Starting daily SMS check...");
+
+    // Get all users with SMS event reminders enabled
+    const { data: smsPreferences, error } = await supabase
+      .from("user_sms_preferences")
+      .select(
+        "user_id, timezone, event_reminders_enabled, reminder_lead_time_minutes",
+      )
+      .eq("event_reminders_enabled", true)
+      .eq("phone_verified", true)
+      .eq("opted_out", false);
+
+    if (error) {
+      console.error(
+        "❌ [SMS Scheduler] Error fetching SMS preferences:",
+        error,
+      );
+      return;
+    }
+
+    if (!smsPreferences || smsPreferences.length === 0) {
+      console.log(
+        "📝 [SMS Scheduler] No users with SMS event reminders enabled",
+      );
+      return;
+    }
+
+    console.log(
+      `📋 [SMS Scheduler] Found ${smsPreferences.length} user(s) with SMS enabled`,
+    );
+
+    // Queue a job for each user to process their daily SMS
+    let queuedCount = 0;
+    let skippedCount = 0;
+
+    for (const pref of smsPreferences) {
+      try {
+        const userTimezone = pref.timezone || "UTC";
+        const now = new Date();
+
+        // Calculate today's date in user's timezone
+        const userNow = utcToZonedTime(now, userTimezone);
+        const todayDate = format(userNow, "yyyy-MM-dd");
+
+        // Queue job to process this user's daily SMS
+        const jobData = {
+          userId: pref.user_id,
+          date: todayDate,
+          timezone: userTimezone,
+          leadTimeMinutes: pref.reminder_lead_time_minutes || 15,
+        };
+
+        const dedupKey = `schedule-daily-sms-${pref.user_id}-${todayDate}`;
+
+        await queue.add("schedule_daily_sms", pref.user_id, jobData, {
+          priority: 5, // Medium priority
+          scheduledFor: now, // Process immediately
+          dedupKey,
+        });
+
+        queuedCount++;
+        console.log(
+          `✅ [SMS Scheduler] Queued SMS job for user ${pref.user_id} (${todayDate})`,
+        );
+      } catch (jobError) {
+        console.error(
+          `❌ [SMS Scheduler] Error queuing SMS job for user ${pref.user_id}:`,
+          jobError,
+        );
+        skippedCount++;
+      }
+    }
+
+    console.log(
+      `📊 [SMS Scheduler] Summary: ${queuedCount} queued, ${skippedCount} skipped`,
+    );
+  } catch (error) {
+    console.error(
+      "❌ [SMS Scheduler] Error in checkAndScheduleDailySMS:",
+      error,
+    );
+  }
 }

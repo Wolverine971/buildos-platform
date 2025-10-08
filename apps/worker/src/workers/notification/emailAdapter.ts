@@ -1,3 +1,4 @@
+// apps/worker/src/workers/notification/emailAdapter.ts
 /**
  * Email Adapter for Notification System
  *
@@ -207,8 +208,7 @@ export async function sendEmailNotification(
     }
 
     // Send email immediately via webhook to web app
-    const webhookUrl =
-      process.env.PUBLIC_APP_URL || "https://build-os.com";
+    const webhookUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
     const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
@@ -247,9 +247,9 @@ export async function sendEmailNotification(
       );
 
       if (!webhookResponse.ok) {
-        const errorData = (await webhookResponse
-          .json()
-          .catch(() => ({}))) as { error?: string };
+        const errorData = (await webhookResponse.json().catch(() => ({}))) as {
+          error?: string;
+        };
         throw new Error(
           errorData.error || `Webhook returned ${webhookResponse.status}`,
         );

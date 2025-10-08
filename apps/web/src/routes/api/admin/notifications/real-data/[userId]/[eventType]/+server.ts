@@ -3,10 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EventType } from '@buildos/shared-types';
 
-export const GET: RequestHandler = async ({
-	params,
-	locals: { supabase, safeGetSession }
-}) => {
+export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	try {
 		const { user } = await safeGetSession();
 
@@ -73,12 +70,14 @@ export const GET: RequestHandler = async ({
 				// Fetch user's most recent brain dump
 				const { data: brainDump } = await supabase
 					.from('brain_dumps')
-					.select(`
+					.select(
+						`
 						id,
 						project_id,
 						processing_time_ms,
 						projects!inner(name)
-					`)
+					`
+					)
 					.eq('user_id', userId)
 					.not('project_id', 'is', null)
 					.order('created_at', { ascending: false })
@@ -108,12 +107,14 @@ export const GET: RequestHandler = async ({
 				const now = new Date().toISOString();
 				const { data: task } = await supabase
 					.from('tasks')
-					.select(`
+					.select(
+						`
 						id,
 						title,
 						due_date,
 						projects!inner(id, name)
-					`)
+					`
+					)
 					.eq('user_id', userId)
 					.not('due_date', 'is', null)
 					.gte('due_date', now)
@@ -143,12 +144,14 @@ export const GET: RequestHandler = async ({
 				// Fetch user's most recent project with phases
 				const { data: phase } = await supabase
 					.from('project_phases')
-					.select(`
+					.select(
+						`
 						id,
 						name,
 						target_date,
 						projects!inner(id, name)
-					`)
+					`
+					)
 					.eq('projects.user_id', userId)
 					.not('target_date', 'is', null)
 					.order('target_date', { ascending: false })
@@ -178,11 +181,13 @@ export const GET: RequestHandler = async ({
 				// Fetch user's calendar info
 				const { data: calendar } = await supabase
 					.from('project_calendars')
-					.select(`
+					.select(
+						`
 						id,
 						project_id,
 						last_sync_error
-					`)
+					`
+					)
 					.eq('user_id', userId)
 					.not('last_sync_error', 'is', null)
 					.order('updated_at', { ascending: false })

@@ -96,7 +96,7 @@
 	function formatFieldLabel(key: string): string {
 		return key
 			.split('_')
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
 	}
 
@@ -130,11 +130,7 @@
 				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Mode</span>
 			{/if}
 		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={toggleMode}
-		>
+		<Button variant="outline" size="sm" onclick={toggleMode}>
 			{#if mode === 'form'}
 				<Code class="w-4 h-4 mr-2" />
 				Switch to JSON
@@ -178,7 +174,11 @@
 								id={key}
 								type={fieldType}
 								value={getFieldValue(payload[key])}
-								oninput={(e) => handleFormFieldChange(key, parseFieldValue(e.currentTarget.value, payload[key]))}
+								oninput={(e) =>
+									handleFormFieldChange(
+										key,
+										parseFieldValue(e.currentTarget.value, payload[key])
+									)}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 									   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
 									   focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -197,12 +197,7 @@
 				<span class="text-xs text-gray-500 dark:text-gray-400">
 					Edit raw JSON payload
 				</span>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={formatJson}
-					class="text-xs"
-				>
+				<Button variant="ghost" size="sm" onclick={formatJson} class="text-xs">
 					Format JSON
 				</Button>
 			</div>
@@ -218,10 +213,16 @@
 				placeholder=""
 			/>
 			{#if jsonError}
-				<div class="flex items-start space-x-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-					<AlertCircle class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+				<div
+					class="flex items-start space-x-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<AlertCircle
+						class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+					/>
 					<div class="flex-1">
-						<p class="text-sm font-medium text-red-800 dark:text-red-200">Invalid JSON</p>
+						<p class="text-sm font-medium text-red-800 dark:text-red-200">
+							Invalid JSON
+						</p>
 						<p class="text-xs text-red-600 dark:text-red-400 mt-1">{jsonError}</p>
 					</div>
 				</div>

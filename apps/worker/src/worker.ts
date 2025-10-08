@@ -6,6 +6,7 @@ import { processPhasesJob } from "./workers/phases/phasesWorker";
 import { processOnboardingAnalysisJob } from "./workers/onboarding/onboardingWorker";
 import { processSMSJob } from "./workers/smsWorker";
 import { processNotification } from "./workers/notification/notificationWorker";
+import { processDailySMS } from "./workers/dailySmsWorker";
 import { createLegacyJob } from "./workers/shared/jobAdapter";
 import {
   getEnvironmentConfig,
@@ -162,6 +163,36 @@ async function processNotificationWrapper(job: ProcessingJob) {
 }
 
 /**
+ * Daily SMS scheduler processor (Calendar event reminders)
+ */
+async function processScheduleDailySMS(job: ProcessingJob) {
+  const { userId, date } = job.data;
+  const startTime = Date.now();
+
+  await job.log(
+    `📱 Daily SMS scheduling started for user ${userId}, date ${date}`,
+  );
+
+  try {
+    // Convert ProcessingJob to type-safe legacy format
+    const legacyJob = createLegacyJob(job);
+
+    // Process daily SMS scheduling
+    const result = await processDailySMS(legacyJob);
+
+    const duration = Date.now() - startTime;
+    await job.log(
+      `✅ Daily SMS scheduling completed in ${duration}ms - ${result.scheduled_count || 0} messages scheduled`,
+    );
+
+    return result;
+  } catch (error: any) {
+    await job.log(`❌ Daily SMS scheduling failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -176,8 +207,9 @@ export async function startWorker() {
   // Register notification processor (multi-channel: push, email, in-app, SMS)
   queue.process("send_notification", processNotificationWrapper);
 
-  // Register SMS processor (will fail gracefully if Twilio not configured)
-  queue.process("send_sms", processSMS);
+  // Register SMS processors
+  queue.process("schedule_daily_sms", processScheduleDailySMS); // Daily calendar event SMS scheduling
+  queue.process("send_sms", processSMS); // Send individual SMS (will fail gracefully if Twilio not configured)
 
   // Check if Twilio is configured
   const twilioEnabled = !!(

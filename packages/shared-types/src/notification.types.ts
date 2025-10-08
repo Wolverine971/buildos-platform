@@ -1,3 +1,4 @@
+// packages/shared-types/src/notification.types.ts
 /**
  * Shared Notification Types for BuildOS Platform
  *

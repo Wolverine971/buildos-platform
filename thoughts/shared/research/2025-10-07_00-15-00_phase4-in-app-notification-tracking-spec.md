@@ -31,12 +31,14 @@ related_specs:
 Phase 4 completes the notification tracking system by implementing comprehensive analytics for in-app notifications. Phases 1-3 (Email, Push, SMS) are complete and operational. This phase focuses on tracking user interactions with the in-app notification stack system.
 
 **Current State**:
+
 - ✅ Email tracking complete (opens + clicks)
 - ✅ Push notification tracking complete (clicks)
 - ✅ SMS click tracking complete (link shortener + redirects)
 - ❌ In-app tracking: **NOT IMPLEMENTED** - No analytics on any user interactions
 
 **Gap**: The in-app notification system has **ZERO tracking** - we have no visibility into:
+
 - Whether users see notifications
 - Which notifications users expand
 - Which action buttons users click
@@ -67,6 +69,7 @@ Phase 4 completes the notification tracking system by implementing comprehensive
 ### The Issue
 
 BuildOS has a sophisticated in-app notification system with:
+
 - Stack-based UI (bottom-right corner)
 - Minimized/expanded states
 - Type-specific notification content (brain dump, phase generation, etc.)
@@ -74,6 +77,7 @@ BuildOS has a sophisticated in-app notification system with:
 - Session persistence
 
 **But we track ZERO user interactions:**
+
 - Don't know if users see notifications
 - Don't know which notifications users expand
 - Don't know which actions users take
@@ -91,6 +95,7 @@ BuildOS has a sophisticated in-app notification system with:
 ### Expected Metrics (Industry Benchmarks)
 
 **In-App Notifications Should Have:**
+
 - View Rate: **>90%** (most users should see them)
 - Open Rate: **20-40%** (expand to full modal)
 - Click Rate: **10-30%** (take action)
@@ -105,6 +110,7 @@ BuildOS has a sophisticated in-app notification system with:
 ### Component Architecture
 
 **Core System** (Svelte 5 Runes):
+
 ```
 notification.store.ts (core state)
     ↓
@@ -117,6 +123,7 @@ NotificationStackManager.svelte (orchestrator)
 ```
 
 **Key Files**:
+
 - **Core Store**: `/apps/web/src/lib/stores/notification.store.ts`
   - Map-based reactivity with Svelte 5 `$state`
   - Methods: `add()`, `expand()`, `minimize()`, `remove()`, `update()`
@@ -160,6 +167,7 @@ NotificationStackManager.svelte (orchestrator)
 ### Current Tracking Status
 
 **❌ NO TRACKING AT ALL**:
+
 - No tracking in `notification.store.ts` methods
 - No tracking in `MinimizedNotification.svelte` click handlers
 - No tracking in `NotificationModal.svelte` close handlers
@@ -167,6 +175,7 @@ NotificationStackManager.svelte (orchestrator)
 - No tracking in bridge services
 
 **Evidence**:
+
 ```typescript
 // notification.store.ts - NO tracking
 expand(id) {
@@ -188,18 +197,22 @@ remove(id) {
 ### Notification Types & Actions
 
 **Brain Dump Notifications**:
+
 - Actions: "View Results", "Edit", "Dismiss", "Navigate to History"
 - Complex multi-step operations (edit operations, project creation)
 
 **Phase Generation Notifications**:
+
 - Actions: "View Phase", "Approve", "Regenerate"
 - Project-specific workflows
 
 **Project Synthesis Notifications**:
+
 - Actions: "View Project", "View Tasks", "Dismiss"
 - Navigation to project details
 
 **Calendar Analysis Notifications**:
+
 - Actions: "View Calendar", "Sync Again", "Dismiss"
 - Calendar integration workflows
 
@@ -212,6 +225,7 @@ remove(id) {
 **Use `notification_deliveries` table** - Part of the unified notification tracking system.
 
 **Pros**:
+
 - ✅ Consistent with email, push, SMS tracking
 - ✅ Single source of truth for all channels
 - ✅ Enables cross-channel analytics comparison
@@ -220,11 +234,13 @@ remove(id) {
 - ✅ Future-proof for multi-channel campaigns
 
 **Cons**:
+
 - ⚠️ Requires integration work: Link in-app UI to notification_deliveries records
 - ⚠️ Must create notification_deliveries records for in-app notifications
 - ⚠️ Slightly more complex implementation
 
 **Schema**:
+
 ```typescript
 notification_deliveries {
   id: UUID
@@ -240,6 +256,7 @@ notification_deliveries {
 ```
 
 **Flow**:
+
 ```
 1. Event occurs → Create notification_event
 2. Create notification_delivery (channel='in_app')
@@ -254,12 +271,14 @@ notification_deliveries {
 **Use existing `user_notifications` table** - Independent in-app notification system.
 
 **Pros**:
+
 - ✅ Simpler implementation (less integration work)
 - ✅ Already has `read_at` field
 - ✅ Direct mapping to UI state
 - ✅ Faster to implement
 
 **Cons**:
+
 - ❌ Separate from unified notification analytics
 - ❌ Can't compare in-app to email/push/SMS easily
 - ❌ Requires adding `clicked_at` column via migration
@@ -267,6 +286,7 @@ notification_deliveries {
 - ❌ Doesn't align with long-term architecture
 
 **Schema**:
+
 ```typescript
 user_notifications {
   id: UUID
@@ -283,6 +303,7 @@ user_notifications {
 ### Decision: **Option A (Unified System)**
 
 **Rationale**:
+
 1. **Architectural Consistency**: Aligns with Phases 1-3 (email, push, SMS)
 2. **Analytics Value**: Enables cross-channel comparison and unified reporting
 3. **Future-Proof**: Supports multi-channel campaigns and advanced analytics
@@ -299,17 +320,18 @@ user_notifications {
 
 **FR1: Track Notification Lifecycle Events**
 
-| Event | Description | Database Update | Status Transition |
-|-------|-------------|-----------------|-------------------|
-| **View** | Notification appears in stack | `delivered_at = NOW()` | `pending → delivered` |
-| **Expand** | User clicks to open modal | `opened_at = NOW()` | `delivered → opened` |
-| **Click** | User clicks action button | `clicked_at = NOW()` | `opened → clicked` |
-| **Minimize** | User collapses modal | (metadata only) | `opened → delivered` |
-| **Dismiss** | User removes notification | (metadata only) | `* → dismissed` |
+| Event        | Description                   | Database Update        | Status Transition     |
+| ------------ | ----------------------------- | ---------------------- | --------------------- |
+| **View**     | Notification appears in stack | `delivered_at = NOW()` | `pending → delivered` |
+| **Expand**   | User clicks to open modal     | `opened_at = NOW()`    | `delivered → opened`  |
+| **Click**    | User clicks action button     | `clicked_at = NOW()`   | `opened → clicked`    |
+| **Minimize** | User collapses modal          | (metadata only)        | `opened → delivered`  |
+| **Dismiss**  | User removes notification     | (metadata only)        | `* → dismissed`       |
 
 **FR2: Track Action-Specific Interactions**
 
 For each notification type, track which specific action was clicked:
+
 - Brain Dump: "view", "edit", "navigate_history"
 - Phase Generation: "view_phase", "approve", "regenerate"
 - Project Synthesis: "view_project", "view_tasks"
@@ -332,18 +354,21 @@ For each notification type, track which specific action was clicked:
 ### Non-Functional Requirements
 
 **NFR1: Performance**
+
 - Tracking calls must be async (non-blocking UI)
 - < 50ms overhead per tracking call
 - No impact on notification render performance
 - Graceful degradation if tracking fails
 
 **NFR2: Reliability**
+
 - Tracking failures must not break UI
 - Retry logic for failed tracking calls
 - Local fallback if API unavailable
 - Log errors without user-facing impact
 
 **NFR3: Observability**
+
 - Log all tracking attempts
 - Monitor tracking success rate
 - Alert on tracking failures > 5%
@@ -403,25 +428,24 @@ For each notification type, track which specific action was clicked:
  * Tracks user interactions with in-app notifications
  */
 export class InAppNotificationTrackingService {
-
   /**
    * Track when notification appears in stack
    */
   async trackView(deliveryId: string): Promise<void> {
     try {
       await fetch(`/api/notification-tracking/view/${deliveryId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           timestamp: new Date().toISOString(),
           metadata: {
-            client_type: 'web',
-            user_agent: navigator.userAgent
-          }
-        })
+            client_type: "web",
+            user_agent: navigator.userAgent,
+          },
+        }),
       });
     } catch (error) {
-      console.error('Failed to track notification view:', error);
+      console.error("Failed to track notification view:", error);
       // Fail silently - don't break UI
     }
   }
@@ -432,18 +456,18 @@ export class InAppNotificationTrackingService {
   async trackExpand(deliveryId: string): Promise<void> {
     try {
       await fetch(`/api/notification-tracking/open/${deliveryId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           timestamp: new Date().toISOString(),
           metadata: {
-            client_type: 'web',
-            interaction_type: 'expand'
-          }
-        })
+            client_type: "web",
+            interaction_type: "expand",
+          },
+        }),
       });
     } catch (error) {
-      console.error('Failed to track notification expand:', error);
+      console.error("Failed to track notification expand:", error);
     }
   }
 
@@ -453,44 +477,47 @@ export class InAppNotificationTrackingService {
   async trackClick(
     deliveryId: string,
     action: string,
-    notificationType: string
+    notificationType: string,
   ): Promise<void> {
     try {
       await fetch(`/api/notification-tracking/click/${deliveryId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           timestamp: new Date().toISOString(),
           metadata: {
             action,
             notification_type: notificationType,
-            client_type: 'web'
-          }
-        })
+            client_type: "web",
+          },
+        }),
       });
     } catch (error) {
-      console.error('Failed to track notification click:', error);
+      console.error("Failed to track notification click:", error);
     }
   }
 
   /**
    * Track when user dismisses notification
    */
-  async trackDismiss(deliveryId: string, reason: 'minimize' | 'remove'): Promise<void> {
+  async trackDismiss(
+    deliveryId: string,
+    reason: "minimize" | "remove",
+  ): Promise<void> {
     try {
       await fetch(`/api/notification-tracking/dismiss/${deliveryId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           timestamp: new Date().toISOString(),
           metadata: {
             dismiss_reason: reason,
-            client_type: 'web'
-          }
-        })
+            client_type: "web",
+          },
+        }),
       });
     } catch (error) {
-      console.error('Failed to track notification dismiss:', error);
+      console.error("Failed to track notification dismiss:", error);
     }
   }
 }
@@ -505,9 +532,9 @@ export const inAppTrackingService = new InAppNotificationTrackingService();
 ```typescript
 // /apps/web/src/routes/api/notification-tracking/view/[delivery_id]/+server.ts
 
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { createServerSupabaseClient } from '$lib/server/supabase';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { createServerSupabaseClient } from "$lib/server/supabase";
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   const { delivery_id } = params;
@@ -517,19 +544,19 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
   // Update notification_deliveries
   const { data, error } = await supabase
-    .from('notification_deliveries')
+    .from("notification_deliveries")
     .update({
       delivered_at: timestamp,
-      status: 'delivered',
-      tracking_metadata: metadata
+      status: "delivered",
+      tracking_metadata: metadata,
     })
-    .eq('id', delivery_id)
-    .is('delivered_at', null)  // Only update if not already delivered
+    .eq("id", delivery_id)
+    .is("delivered_at", null) // Only update if not already delivered
     .select()
     .single();
 
   if (error) {
-    console.error('Failed to track notification view:', error);
+    console.error("Failed to track notification view:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 
@@ -537,7 +564,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     success: true,
     delivery_id,
     delivered_at: data?.delivered_at,
-    is_first_view: !!data
+    is_first_view: !!data,
   });
 };
 ```
@@ -561,9 +588,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 ```typescript
 // /apps/web/src/routes/api/notification-tracking/dismiss/[delivery_id]/+server.ts
 
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { createServerSupabaseClient } from '$lib/server/supabase';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { createServerSupabaseClient } from "$lib/server/supabase";
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   const { delivery_id } = params;
@@ -573,21 +600,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
   // Update metadata with dismissal info (don't change status)
   const { error } = await supabase
-    .from('notification_deliveries')
+    .from("notification_deliveries")
     .update({
-      tracking_metadata: supabase.rpc('jsonb_merge', {
-        existing: supabase.raw('tracking_metadata'),
+      tracking_metadata: supabase.rpc("jsonb_merge", {
+        existing: supabase.raw("tracking_metadata"),
         new_data: {
           dismissed: true,
           dismiss_reason: metadata.dismiss_reason,
-          dismissed_at: new Date().toISOString()
-        }
-      })
+          dismissed_at: new Date().toISOString(),
+        },
+      }),
     })
-    .eq('id', delivery_id);
+    .eq("id", delivery_id);
 
   if (error) {
-    console.error('Failed to track notification dismiss:', error);
+    console.error("Failed to track notification dismiss:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 
@@ -602,7 +629,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 ```typescript
 // Add tracking to key methods
 
-import { inAppTrackingService } from '$lib/services/in-app-notification-tracking.service';
+import { inAppTrackingService } from "$lib/services/in-app-notification-tracking.service";
 
 class NotificationStore {
   // ... existing code ...
@@ -635,7 +662,7 @@ class NotificationStore {
       // ✅ NEW: Track minimize event
       const notification = this.notifications.get(id);
       if (notification?.deliveryId) {
-        inAppTrackingService.trackDismiss(notification.deliveryId, 'minimize');
+        inAppTrackingService.trackDismiss(notification.deliveryId, "minimize");
       }
     }
   }
@@ -645,7 +672,7 @@ class NotificationStore {
 
     // ✅ NEW: Track removal before deleting
     if (notification?.deliveryId) {
-      inAppTrackingService.trackDismiss(notification.deliveryId, 'remove');
+      inAppTrackingService.trackDismiss(notification.deliveryId, "remove");
     }
 
     this.notifications.delete(id);
@@ -743,10 +770,10 @@ class NotificationStore {
 function createNotification(brainDumpId: string, deliveryId: string) {
   notificationStore.add({
     id: `brain-dump-${brainDumpId}`,
-    type: 'brain-dump',
+    type: "brain-dump",
     brainDumpId,
-    deliveryId,  // ✅ NEW: Link to notification_deliveries record
-    status: 'processing',
+    deliveryId, // ✅ NEW: Link to notification_deliveries record
+    status: "processing",
     // ...
   });
 }
@@ -783,6 +810,7 @@ function createNotification(brainDumpId: string, deliveryId: string) {
    - Verify error handling
 
 **Success Criteria**:
+
 - Tracking service compiles without errors
 - API endpoints respond correctly
 - Database updates work as expected
@@ -818,6 +846,7 @@ function createNotification(brainDumpId: string, deliveryId: string) {
    - Verify database updates
 
 **Success Criteria**:
+
 - View tracking fires when notification appears
 - Expand tracking fires when modal opens
 - Dismiss tracking fires on minimize/remove
@@ -855,6 +884,7 @@ function createNotification(brainDumpId: string, deliveryId: string) {
    - Action registry integration
 
 **Success Criteria**:
+
 - All action buttons fire tracking calls
 - Metadata includes action name and notification type
 - Database records action-specific data
@@ -890,6 +920,7 @@ function createNotification(brainDumpId: string, deliveryId: string) {
    - Validate data accuracy
 
 **Success Criteria**:
+
 - Dashboard shows in-app channel data
 - Metrics calculate correctly
 - Real-time updates work
@@ -932,7 +963,8 @@ function createNotification(brainDumpId: string, deliveryId: string) {
    - Update developer docs
 
 **Success Criteria**:
-- >90% test coverage
+
+- > 90% test coverage
 - All manual tests pass
 - Documentation complete and accurate
 - No critical bugs
@@ -948,59 +980,59 @@ function createNotification(brainDumpId: string, deliveryId: string) {
 ```typescript
 // in-app-notification-tracking.service.test.ts
 
-describe('InAppNotificationTrackingService', () => {
+describe("InAppNotificationTrackingService", () => {
   let service: InAppNotificationTrackingService;
 
   beforeEach(() => {
     service = new InAppNotificationTrackingService();
   });
 
-  test('trackView calls correct endpoint', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch');
+  test("trackView calls correct endpoint", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
 
-    await service.trackView('delivery-123');
+    await service.trackView("delivery-123");
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/notification-tracking/view/delivery-123',
+      "/api/notification-tracking/view/delivery-123",
       expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('timestamp')
-      })
+        method: "POST",
+        body: expect.stringContaining("timestamp"),
+      }),
     );
   });
 
-  test('trackExpand calls correct endpoint', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch');
+  test("trackExpand calls correct endpoint", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
 
-    await service.trackExpand('delivery-123');
+    await service.trackExpand("delivery-123");
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/notification-tracking/open/delivery-123',
-      expect.any(Object)
+      "/api/notification-tracking/open/delivery-123",
+      expect.any(Object),
     );
   });
 
-  test('trackClick includes action metadata', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch');
+  test("trackClick includes action metadata", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
 
-    await service.trackClick('delivery-123', 'view_results', 'brain-dump');
+    await service.trackClick("delivery-123", "view_results", "brain-dump");
 
     const callArgs = fetchSpy.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
 
-    expect(body.metadata.action).toBe('view_results');
-    expect(body.metadata.notification_type).toBe('brain-dump');
+    expect(body.metadata.action).toBe("view_results");
+    expect(body.metadata.notification_type).toBe("brain-dump");
   });
 
-  test('errors are caught and logged', async () => {
-    const consoleSpy = vi.spyOn(console, 'error');
-    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
+  test("errors are caught and logged", async () => {
+    const consoleSpy = vi.spyOn(console, "error");
+    vi.spyOn(global, "fetch").mockRejectedValue(new Error("Network error"));
 
-    await service.trackView('delivery-123');
+    await service.trackView("delivery-123");
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Failed to track notification view:',
-      expect.any(Error)
+      "Failed to track notification view:",
+      expect.any(Error),
     );
   });
 });
@@ -1011,9 +1043,9 @@ describe('InAppNotificationTrackingService', () => {
 ```typescript
 // /api/notification-tracking/view/[delivery_id]/+server.test.ts
 
-describe('POST /api/notification-tracking/view/:delivery_id', () => {
-  test('updates delivered_at on first view', async () => {
-    const delivery = await createTestDelivery({ channel: 'in_app' });
+describe("POST /api/notification-tracking/view/:delivery_id", () => {
+  test("updates delivered_at on first view", async () => {
+    const delivery = await createTestDelivery({ channel: "in_app" });
 
     const response = await request(app)
       .post(`/api/notification-tracking/view/${delivery.id}`)
@@ -1024,13 +1056,13 @@ describe('POST /api/notification-tracking/view/:delivery_id', () => {
 
     const updated = await getDelivery(delivery.id);
     expect(updated.delivered_at).toBeTruthy();
-    expect(updated.status).toBe('delivered');
+    expect(updated.status).toBe("delivered");
   });
 
-  test('does not update on subsequent views', async () => {
+  test("does not update on subsequent views", async () => {
     const delivery = await createTestDelivery({
-      channel: 'in_app',
-      delivered_at: new Date()
+      channel: "in_app",
+      delivered_at: new Date(),
     });
 
     const response = await request(app)
@@ -1047,24 +1079,24 @@ describe('POST /api/notification-tracking/view/:delivery_id', () => {
 **Notification Lifecycle Test**:
 
 ```typescript
-describe('In-App Notification Tracking Integration', () => {
-  test('full lifecycle tracking', async () => {
+describe("In-App Notification Tracking Integration", () => {
+  test("full lifecycle tracking", async () => {
     // 1. Create notification event
-    const event = await createNotificationEvent('brain_dump.completed', userId);
+    const event = await createNotificationEvent("brain_dump.completed", userId);
 
     // 2. Create delivery record
     const delivery = await createNotificationDelivery({
       event_id: event.id,
-      channel: 'in_app',
-      recipient_user_id: userId
+      channel: "in_app",
+      recipient_user_id: userId,
     });
 
     // 3. Simulate notification appearing in UI
     notificationStore.add({
-      id: 'test-notif',
-      type: 'brain-dump',
+      id: "test-notif",
+      type: "brain-dump",
       deliveryId: delivery.id,
-      status: 'completed'
+      status: "completed",
     });
 
     await waitFor(() => {
@@ -1073,22 +1105,26 @@ describe('In-App Notification Tracking Integration', () => {
     });
 
     // 4. Simulate user expanding notification
-    notificationStore.expand('test-notif');
+    notificationStore.expand("test-notif");
 
     await waitFor(() => {
       const updated = getDelivery(delivery.id);
       expect(updated.opened_at).toBeTruthy();
-      expect(updated.status).toBe('opened');
+      expect(updated.status).toBe("opened");
     });
 
     // 5. Simulate user clicking action
-    await inAppTrackingService.trackClick(delivery.id, 'view_results', 'brain-dump');
+    await inAppTrackingService.trackClick(
+      delivery.id,
+      "view_results",
+      "brain-dump",
+    );
 
     await waitFor(() => {
       const updated = getDelivery(delivery.id);
       expect(updated.clicked_at).toBeTruthy();
-      expect(updated.status).toBe('clicked');
-      expect(updated.tracking_metadata.action).toBe('view_results');
+      expect(updated.status).toBe("clicked");
+      expect(updated.tracking_metadata.action).toBe("view_results");
     });
   });
 });
@@ -1098,10 +1134,11 @@ describe('In-App Notification Tracking Integration', () => {
 
 **File**: `/apps/web/tests/manual/test-in-app-notification-tracking.md`
 
-```markdown
+````markdown
 # Manual Test: In-App Notification Tracking
 
 ## Prerequisites
+
 - Logged in as test user
 - Chrome DevTools open (Network tab)
 - Database access for verification
@@ -1120,8 +1157,10 @@ describe('In-App Notification Tracking Integration', () => {
    FROM notification_deliveries
    WHERE id = 'DELIVERY_ID';
    ```
-   - [ ] `delivered_at` is set
-   - [ ] `status = 'delivered'`
+````
+
+- [ ] `delivered_at` is set
+- [ ] `status = 'delivered'`
 
 ## Test 2: Notification Expand Tracking
 
@@ -1136,6 +1175,7 @@ describe('In-App Notification Tracking Integration', () => {
    FROM notification_deliveries
    WHERE id = 'DELIVERY_ID';
    ```
+
    - [ ] `opened_at` is set
    - [ ] `status = 'opened'`
 
@@ -1152,6 +1192,7 @@ describe('In-App Notification Tracking Integration', () => {
    FROM notification_deliveries
    WHERE id = 'DELIVERY_ID';
    ```
+
    - [ ] `clicked_at` is set
    - [ ] `status = 'clicked'`
    - [ ] `tracking_metadata.action = 'view_results'`
@@ -1170,12 +1211,14 @@ describe('In-App Notification Tracking Integration', () => {
    FROM notification_deliveries
    WHERE id = 'DELIVERY_ID';
    ```
+
    - [ ] `tracking_metadata.dismissed = true`
    - [ ] `tracking_metadata.dismiss_reason = 'remove'`
 
 ## Test 5: All Notification Types
 
 Repeat tests 1-4 for each notification type:
+
 - [ ] Brain Dump
 - [ ] Phase Generation
 - [ ] Project Synthesis
@@ -1198,7 +1241,8 @@ Repeat tests 1-4 for each notification type:
    - [ ] Notification still appears
    - [ ] No error messages shown to user
    - [ ] Console shows tracking error (but UI works)
-```
+
+````
 
 ---
 
@@ -1309,9 +1353,10 @@ async trackView(deliveryId: string) {
   // Track normally
   await this.trackingService.trackView(deliveryId);
 }
-```
+````
 
 **Data Retention**:
+
 ```sql
 -- Auto-cleanup old tracking data (90 days)
 DELETE FROM notification_deliveries
@@ -1329,6 +1374,7 @@ WHERE channel = 'in_app'
 **Goal**: Verify functionality, catch bugs
 
 **Steps**:
+
 1. Deploy to staging environment
 2. Team manually tests all notification types
 3. Verify analytics dashboard shows data
@@ -1342,12 +1388,14 @@ WHERE channel = 'in_app'
 **Goal**: Validate in production, monitor performance
 
 **Steps**:
+
 1. Enable for beta user cohort
 2. Monitor tracking success rate
 3. Monitor API performance
 4. Collect user feedback
 
 **Success Criteria**:
+
 - Tracking success rate >99%
 - No performance degradation
 - No user complaints
@@ -1358,16 +1406,19 @@ WHERE channel = 'in_app'
 **Goal**: Safe, monitored production release
 
 **Steps**:
+
 1. Day 1: 25% of users
 2. Day 3: 50% of users (if no issues)
 3. Day 5: 100% of users (if no issues)
 
 **Monitoring**:
+
 - Track error rates
 - Monitor API performance
 - Watch for anomalies in analytics
 
 **Rollback Triggers**:
+
 - Error rate >5%
 - API latency >200ms p95
 - User complaints
@@ -1378,6 +1429,7 @@ WHERE channel = 'in_app'
 **Goal**: Complete rollout, monitoring, optimization
 
 **Steps**:
+
 1. 100% rollout complete
 2. Monitor for 1 week
 3. Optimize based on data
@@ -1392,6 +1444,7 @@ WHERE channel = 'in_app'
 **Context**: "Delivered" means notification created, "Impression" means user actually saw it.
 
 **Options**:
+
 - A) Current plan: Track `delivered_at` when notification appears in stack
 - B) Add separate `impression_at` field for when notification is visible on screen
 - C) Track impressions separately (how long notification was visible)
@@ -1403,6 +1456,7 @@ WHERE channel = 'in_app'
 **Context**: How long notification was expanded/visible.
 
 **Options**:
+
 - A) Don't track session time (current plan)
 - B) Track time between expand and minimize
 - C) Track total visible time (including minimized state)
@@ -1414,6 +1468,7 @@ WHERE channel = 'in_app'
 **Context**: For long notifications (brain dump results), track how much user scrolled.
 
 **Options**:
+
 - A) Don't track scroll depth (current plan)
 - B) Track scroll percentage in modal
 - C) Track interaction with specific elements (accordions, tabs)
@@ -1425,6 +1480,7 @@ WHERE channel = 'in_app'
 **Context**: User doesn't dismiss notification, sees it again after page refresh.
 
 **Options**:
+
 - A) Track each "view" (current plan - may inflate metrics)
 - B) Track only first view (requires session tracking)
 - C) Track "sessions" separately from "views"

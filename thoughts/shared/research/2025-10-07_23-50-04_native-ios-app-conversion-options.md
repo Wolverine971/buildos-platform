@@ -34,6 +34,7 @@ BuildOS can be converted to a native iOS app using **four primary approaches**, 
 5. **Maintenance efficiency** - Single codebase for web and mobile
 
 The BuildOS architecture is **exceptionally well-suited** for native conversion due to:
+
 - **API-first design**: 159 REST endpoints already in place
 - **Supabase backend**: Official mobile SDKs available
 - **Mobile-ready auth**: PKCE OAuth flow compatible with native apps
@@ -44,6 +45,7 @@ The BuildOS architecture is **exceptionally well-suited** for native conversion 
 ## Current BuildOS Web App Overview
 
 ### Tech Stack
+
 - **Framework**: SvelteKit 2.31 + Svelte 5 (runes syntax)
 - **Backend**: Supabase (PostgreSQL + Auth + Realtime)
 - **AI/LLM**: OpenRouter (DeepSeek Chat V3 primary, GPT-4/Claude fallbacks)
@@ -52,6 +54,7 @@ The BuildOS architecture is **exceptionally well-suited** for native conversion 
 - **Deployment**: Vercel (web), Railway (worker service)
 
 ### Core Features Requiring Native Support
+
 1. **Brain Dump System** - Voice recording, AI streaming, real-time processing
 2. **Calendar Integration** - Google Calendar sync, event management
 3. **Notifications** - Push, SMS, in-app notifications
@@ -64,7 +67,9 @@ The BuildOS architecture is **exceptionally well-suited** for native conversion 
 10. **Real-time Updates** - Supabase Realtime subscriptions
 
 ### Current Mobile Support
+
 ✅ **Excellent PWA foundation**:
+
 - Full manifest with iOS splash screens (14 devices)
 - Responsive design (1,678+ responsive class instances)
 - Safe area insets for notched devices
@@ -72,6 +77,7 @@ The BuildOS architecture is **exceptionally well-suited** for native conversion 
 - Install prompts and standalone mode
 
 ❌ **Missing for native**:
+
 - No service worker (no offline support)
 - Limited touch gestures (no swipe/pinch)
 - No native navigation patterns
@@ -119,26 +125,26 @@ This creates `/apps/web/ios/` with a native Xcode project.
 Update `capacitor.config.ts`:
 
 ```typescript
-import { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'com.buildos.app',
-  appName: 'BuildOS',
-  webDir: 'build', // SvelteKit build output
+  appId: "com.buildos.app",
+  appName: "BuildOS",
+  webDir: "build", // SvelteKit build output
   server: {
-    androidScheme: 'https',
-    iosScheme: 'capacitor'  // Use capacitor:// scheme
+    androidScheme: "https",
+    iosScheme: "capacitor", // Use capacitor:// scheme
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       backgroundColor: "#1F2937",
-      showSpinner: false
+      showSpinner: false,
     },
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"]
-    }
-  }
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+  },
 };
 
 export default config;
@@ -151,15 +157,15 @@ const config = {
   kit: {
     adapter: adapter({
       // Generate static build for Capacitor
-      fallback: 'index.html',
-      strict: false
+      fallback: "index.html",
+      strict: false,
     }),
     paths: {
       // Use relative paths for Capacitor
-      base: process.env.CAPACITOR ? '' : undefined,
-      relative: true
-    }
-  }
+      base: process.env.CAPACITOR ? "" : undefined,
+      relative: true,
+    },
+  },
 };
 ```
 
@@ -194,8 +200,8 @@ pnpm add @capacitor-community/calendar  # Calendar access (EventKit)
 
 ```typescript
 // /apps/web/src/lib/utils/capacitor-auth.ts
-import { Browser } from '@capacitor/browser';
-import { App } from '@capacitor/app';
+import { Browser } from "@capacitor/browser";
+import { App } from "@capacitor/app";
 
 export async function handleGoogleOAuth() {
   const authUrl = `${PUBLIC_GOOGLE_OAUTH_URL}?redirect_uri=buildos://callback`;
@@ -204,8 +210,8 @@ export async function handleGoogleOAuth() {
   await Browser.open({ url: authUrl });
 
   // Listen for deep link callback
-  const listener = await App.addListener('appUrlOpen', (data) => {
-    const code = new URL(data.url).searchParams.get('code');
+  const listener = await App.addListener("appUrlOpen", (data) => {
+    const code = new URL(data.url).searchParams.get("code");
     if (code) {
       // Exchange code for token via existing API
       exchangeCodeForToken(code);
@@ -219,7 +225,7 @@ export async function handleGoogleOAuth() {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-calendar.service.ts
-import { Calendar } from '@capacitor-community/calendar';
+import { Calendar } from "@capacitor-community/calendar";
 
 export class CapacitorCalendarService {
   async requestPermissions() {
@@ -233,7 +239,7 @@ export class CapacitorCalendarService {
       startDate: task.start_date,
       endDate: task.due_date,
       location: task.location,
-      notes: task.description
+      notes: task.description,
     });
   }
 
@@ -248,33 +254,39 @@ export class CapacitorCalendarService {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-push.service.ts
-import { PushNotifications } from '@capacitor/push-notifications';
+import { PushNotifications } from "@capacitor/push-notifications";
 
 export class CapacitorPushService {
   async initialize() {
     // Request permissions
     let permStatus = await PushNotifications.requestPermissions();
-    if (permStatus.receive === 'granted') {
+    if (permStatus.receive === "granted") {
       await PushNotifications.register();
     }
 
     // Get device token for APNs
-    await PushNotifications.addListener('registration', (token) => {
+    await PushNotifications.addListener("registration", (token) => {
       // Send token to backend for targeting
       this.registerDeviceToken(token.value);
     });
 
     // Handle received notifications
-    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      // Show in-app notification
-      this.showInAppNotification(notification);
-    });
+    await PushNotifications.addListener(
+      "pushNotificationReceived",
+      (notification) => {
+        // Show in-app notification
+        this.showInAppNotification(notification);
+      },
+    );
 
     // Handle notification tap
-    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      // Navigate to relevant screen
-      this.handleNotificationTap(action.notification.data);
-    });
+    await PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (action) => {
+        // Navigate to relevant screen
+        this.handleNotificationTap(action.notification.data);
+      },
+    );
   }
 }
 ```
@@ -283,7 +295,7 @@ export class CapacitorPushService {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-voice.service.ts
-import { Filesystem } from '@capacitor/filesystem';
+import { Filesystem } from "@capacitor/filesystem";
 
 export class CapacitorVoiceService {
   async recordAudio() {
@@ -298,11 +310,11 @@ export class CapacitorVoiceService {
   async transcribe(audioBlob) {
     // Send to existing /api/transcribe endpoint
     const formData = new FormData();
-    formData.append('audio', audioBlob);
+    formData.append("audio", audioBlob);
 
-    const response = await fetch('/api/transcribe', {
-      method: 'POST',
-      body: formData
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData,
     });
 
     return response.json();
@@ -314,19 +326,19 @@ export class CapacitorVoiceService {
 
 ```typescript
 // /apps/web/src/lib/services/offline-queue.service.ts
-import { Preferences } from '@capacitor/preferences';
-import { Network } from '@capacitor/network';
+import { Preferences } from "@capacitor/preferences";
+import { Network } from "@capacitor/network";
 
 export class OfflineQueueService {
   private queue: QueuedOperation[] = [];
 
   async initialize() {
     // Load queue from storage
-    const { value } = await Preferences.get({ key: 'offline_queue' });
+    const { value } = await Preferences.get({ key: "offline_queue" });
     this.queue = value ? JSON.parse(value) : [];
 
     // Listen for network status
-    Network.addListener('networkStatusChange', (status) => {
+    Network.addListener("networkStatusChange", (status) => {
       if (status.connected) {
         this.processQueue();
       }
@@ -383,6 +395,7 @@ npx cap open ios
 ```
 
 **App Store submission**:
+
 1. Create App Store Connect record
 2. Configure App ID with capabilities (Push, OAuth, Calendar)
 3. Generate provisioning profiles
@@ -457,42 +470,42 @@ pnpm add -D vite-plugin-pwa
 Configure in `vite.config.ts`:
 
 ```typescript
-import { sveltekit } from '@sveltejs/kit/vite';
-import { VitePWA } from 'vite-plugin-pwa';
+import { sveltekit } from "@sveltejs/kit/vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
     sveltekit(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
       manifest: {
         // Already exists in static/site.webmanifest
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/,
-            handler: 'NetworkFirst',
+            handler: "NetworkFirst",
             options: {
-              cacheName: 'supabase-cache',
+              cacheName: "supabase-cache",
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 5 * 60 // 5 minutes
-              }
-            }
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+            },
           },
           {
             urlPattern: /\/api\/.*/,
-            handler: 'NetworkFirst',
+            handler: "NetworkFirst",
             options: {
-              cacheName: 'api-cache'
-            }
-          }
-        ]
-      }
-    })
-  ]
+              cacheName: "api-cache",
+            },
+          },
+        ],
+      },
+    }),
+  ],
 });
 ```
 
@@ -531,14 +544,17 @@ Add to `<head>` in `app.html`:
 
 ```html
 <!-- iOS status bar -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta
+  name="apple-mobile-web-app-status-bar-style"
+  content="black-translucent"
+/>
 
 <!-- iOS splash screens (already present) -->
 <!-- See /apps/web/src/lib/components/layout/IOSSplashScreens.svelte -->
 
 <!-- Disable iOS gestures interfering with app -->
-<meta name="apple-mobile-web-app-title" content="BuildOS">
+<meta name="apple-mobile-web-app-title" content="BuildOS" />
 ```
 
 ### Pros ✅
@@ -586,6 +602,7 @@ Tauri is a **Rust-based native runtime** similar to Capacitor, but with a smalle
 ### Current Status
 
 🚧 **Tauri Mobile is in beta** (as of 2025):
+
 - iOS support: Beta (unstable)
 - Android support: Beta
 - Limited plugin ecosystem
@@ -603,6 +620,7 @@ Tauri is a **Rust-based native runtime** similar to Capacitor, but with a smalle
 ### When to Consider
 
 Wait until Tauri Mobile reaches **stable 2.0 release**, then re-evaluate for:
+
 - **Performance-critical apps** - Tauri is faster than Capacitor
 - **Smaller bundle sizes** - ~5-10MB vs 30-40MB
 - **Desktop + mobile** - Tauri excels at desktop apps
@@ -638,11 +656,13 @@ SwiftUI App → BuildOS APIs (existing) → Supabase/Services
 #### Phase 1: Foundation (3-4 weeks)
 
 **1. Setup Xcode Project**
+
 - SwiftUI app template
 - Configure App Groups, Keychain Sharing
 - Setup Swift Package Manager dependencies
 
 **2. Core Services** (1 week)
+
 ```swift
 // NetworkService.swift
 class NetworkService {
@@ -669,6 +689,7 @@ class AuthService: ObservableObject {
 ```
 
 **3. Data Models** (1 week)
+
 ```swift
 // Models matching existing database schema
 struct Project: Codable, Identifiable {
@@ -690,6 +711,7 @@ struct Task: Codable, Identifiable {
 ```
 
 **4. Supabase Integration** (1 week)
+
 ```swift
 // Using supabase-swift SDK
 import Supabase
@@ -713,30 +735,35 @@ class SupabaseManager {
 #### Phase 2: Core Features (6-8 weeks)
 
 **1. Authentication** (1 week)
+
 - Login/Register screens
 - Google OAuth flow (ASWebAuthenticationSession)
 - Keychain token storage
 - Session management
 
 **2. Dashboard** (2 weeks)
+
 - Task list with sections (overdue, today, tomorrow)
 - Pull-to-refresh
 - Task completion toggle
 - Navigation to projects
 
 **3. Brain Dump** (2 weeks)
+
 - Voice recording (AVAudioRecorder)
 - Speech-to-text (Speech framework OR send to Whisper)
 - SSE streaming client for AI processing
 - Results display
 
 **4. Project Management** (2 weeks)
+
 - Project list and detail views
 - Task creation/editing
 - Phase management
 - Context documents
 
 **5. Calendar Integration** (1 week)
+
 - EventKit for iOS Calendar
 - Google Calendar API client
 - Sync settings
@@ -744,22 +771,26 @@ class SupabaseManager {
 #### Phase 3: Advanced Features (4-6 weeks)
 
 **1. Push Notifications** (1 week)
+
 - APNs registration
 - Remote notification handling
 - Notification actions
 - Badge management
 
 **2. Offline Support** (2 weeks)
+
 - Core Data or SwiftData for local storage
 - Sync queue for offline operations
 - Conflict resolution
 
 **3. Daily Briefs** (1 week)
+
 - Brief list and detail views
 - Rich text rendering
 - Email integration
 
 **4. Settings & Preferences** (1 week)
+
 - Profile editing
 - Notification preferences
 - Calendar settings
@@ -1013,22 +1044,22 @@ class BrainDumpViewModel: ObservableObject {
 
 ## Comparison Matrix
 
-| Factor | Capacitor | PWA | Tauri Mobile | Native Swift |
-|--------|-----------|-----|--------------|--------------|
-| **Time to MVP** | 3-4 weeks | 1 week | 6-10 weeks | 4-6 months |
-| **Development Cost** | $ | $ | $$ | $$$$ |
-| **Code Reuse** | 95% | 100% | 90% | 0% |
-| **Performance** | Good (8/10) | Fair (6/10) | Great (9/10) | Excellent (10/10) |
-| **Native Features** | ✅ Full | ⚠️ Limited | ✅ Full | ✅ Full |
-| **Offline Support** | ✅ Good | ⚠️ Limited | ✅ Good | ✅ Excellent |
-| **App Store** | ✅ Yes | ❌ No | ✅ Yes | ✅ Yes |
-| **Push Notifications** | ✅ Yes | ❌ No (iOS) | ✅ Yes | ✅ Yes |
-| **Maintenance Burden** | Low | Very Low | Medium | High |
-| **Bundle Size** | 30-40MB | 5-10MB | 10-15MB | 15-20MB |
-| **Animation Quality** | Good | Fair | Great | Excellent |
-| **Learning Curve** | Low | None | Medium | High |
-| **Community Support** | Large | Huge | Small | Huge |
-| **Vendor Lock-in** | Medium | None | Low | High (Apple) |
+| Factor                 | Capacitor   | PWA         | Tauri Mobile | Native Swift      |
+| ---------------------- | ----------- | ----------- | ------------ | ----------------- |
+| **Time to MVP**        | 3-4 weeks   | 1 week      | 6-10 weeks   | 4-6 months        |
+| **Development Cost**   | $           | $           | $$           | $$$$              |
+| **Code Reuse**         | 95%         | 100%        | 90%          | 0%                |
+| **Performance**        | Good (8/10) | Fair (6/10) | Great (9/10) | Excellent (10/10) |
+| **Native Features**    | ✅ Full     | ⚠️ Limited  | ✅ Full      | ✅ Full           |
+| **Offline Support**    | ✅ Good     | ⚠️ Limited  | ✅ Good      | ✅ Excellent      |
+| **App Store**          | ✅ Yes      | ❌ No       | ✅ Yes       | ✅ Yes            |
+| **Push Notifications** | ✅ Yes      | ❌ No (iOS) | ✅ Yes       | ✅ Yes            |
+| **Maintenance Burden** | Low         | Very Low    | Medium       | High              |
+| **Bundle Size**        | 30-40MB     | 5-10MB      | 10-15MB      | 15-20MB           |
+| **Animation Quality**  | Good        | Fair        | Great        | Excellent         |
+| **Learning Curve**     | Low         | None        | Medium       | High              |
+| **Community Support**  | Large       | Huge        | Small        | Huge              |
+| **Vendor Lock-in**     | Medium      | None        | Low          | High (Apple)      |
 
 ---
 
@@ -1067,24 +1098,28 @@ class BrainDumpViewModel: ObservableObject {
 #### Migration Path
 
 **Phase 1 (Weeks 1-2): Foundation**
+
 - Add Capacitor to /apps/web
 - Install core plugins
 - Setup iOS project in Xcode
 - Configure build pipeline
 
 **Phase 2 (Weeks 2-3): Native Integration**
+
 - Implement OAuth deep linking
 - Add push notifications
 - Integrate EventKit calendar
 - Setup offline queue
 
 **Phase 3 (Week 3-4): Polish & Submit**
+
 - iOS-specific UI tweaks
 - Testing on devices
 - App Store assets
 - Submit for review
 
 **Phase 4 (Month 2+): Iterate**
+
 - Monitor analytics
 - Fix iOS-specific issues
 - Consider native rewrites for critical paths
@@ -1093,6 +1128,7 @@ class BrainDumpViewModel: ObservableObject {
 #### When to Consider Native Rewrite
 
 Re-evaluate after **6-12 months** if:
+
 - iOS users are 50%+ of user base
 - Performance is a top complaint
 - Complex animations are needed
@@ -1100,6 +1136,7 @@ Re-evaluate after **6-12 months** if:
 - Budget allows dedicated iOS team
 
 You can **migrate incrementally**:
+
 - Keep Capacitor for 80% of app
 - Rewrite critical screens in native Swift
 - Use Capacitor's "Native Shell" pattern
@@ -1113,24 +1150,28 @@ You can **migrate incrementally**:
 #### Month 1: MVP Launch
 
 **Week 1: Setup**
+
 - [ ] Add Capacitor dependencies
 - [ ] Initialize iOS project
 - [ ] Configure build pipeline
 - [ ] Setup deep linking
 
 **Week 2: Core Features**
+
 - [ ] Google OAuth integration
 - [ ] Push notifications setup
 - [ ] Calendar permissions (EventKit)
 - [ ] Offline queue system
 
 **Week 3: Adaptation**
+
 - [ ] Voice recording optimization
 - [ ] SSE streaming client
 - [ ] Preferences (secure storage)
 - [ ] Network status handling
 
 **Week 4: Polish & Submit**
+
 - [ ] iOS UI tweaks (safe areas, etc.)
 - [ ] Device testing (iPhone 12-15)
 - [ ] App Store assets
@@ -1159,12 +1200,14 @@ You can **migrate incrementally**:
 ### API Compatibility
 
 **Current APIs** (159 endpoints) work as-is with Capacitor:
+
 - ✅ REST endpoints: No changes needed
 - ✅ SSE streaming: Works in WKWebView
 - ✅ WebSocket (Supabase Realtime): Works in WKWebView
 - ✅ OAuth: Needs deep link configuration only
 
 **Required Changes**:
+
 1. Add `Authorization: Bearer` header support (currently cookie-only)
 2. Add deep link routes for OAuth callbacks
 3. Update CORS for capacitor:// scheme
@@ -1172,6 +1215,7 @@ You can **migrate incrementally**:
 ### Authentication Flow
 
 **Current (Web)**:
+
 ```
 User clicks "Sign in with Google"
   → Redirect to Google OAuth
@@ -1181,6 +1225,7 @@ User clicks "Sign in with Google"
 ```
 
 **Capacitor (Mobile)**:
+
 ```
 User clicks "Sign in with Google"
   → Open Google OAuth in Browser plugin
@@ -1195,8 +1240,8 @@ User clicks "Sign in with Google"
 
 ```typescript
 // /apps/web/src/lib/utils/auth.ts
-import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 export async function signInWithGoogle() {
   const isNative = Capacitor.isNativePlatform();
@@ -1204,7 +1249,7 @@ export async function signInWithGoogle() {
   if (isNative) {
     // Mobile OAuth flow
     const authUrl = generateGoogleOAuthURL({
-      redirectUri: 'buildos://auth/google/callback'
+      redirectUri: "buildos://auth/google/callback",
     });
 
     await Browser.open({ url: authUrl });
@@ -1213,7 +1258,7 @@ export async function signInWithGoogle() {
   } else {
     // Web OAuth flow (existing)
     window.location.href = generateGoogleOAuthURL({
-      redirectUri: window.location.origin + '/auth/google/callback'
+      redirectUri: window.location.origin + "/auth/google/callback",
     });
   }
 }
@@ -1222,10 +1267,12 @@ export async function signInWithGoogle() {
 ### Data Sync Strategy
 
 **Online**:
+
 - Direct API calls
 - Supabase Realtime for live updates
 
 **Offline**:
+
 - Queue mutations in Preferences storage
 - Sync queue on network reconnect
 - Optimistic UI updates
@@ -1234,8 +1281,8 @@ export async function signInWithGoogle() {
 
 ```typescript
 // /apps/web/src/lib/stores/sync.store.ts
-import { Preferences } from '@capacitor/preferences';
-import { Network } from '@capacitor/network';
+import { Preferences } from "@capacitor/preferences";
+import { Network } from "@capacitor/network";
 
 class SyncManager {
   private queue: QueuedOperation[] = [];
@@ -1244,8 +1291,8 @@ class SyncManager {
     // Add to queue
     this.queue.push(operation);
     await Preferences.set({
-      key: 'sync_queue',
-      value: JSON.stringify(this.queue)
+      key: "sync_queue",
+      value: JSON.stringify(this.queue),
     });
 
     // Try to sync immediately
@@ -1263,18 +1310,18 @@ class SyncManager {
         await this.executeOperation(operation);
         this.queue.shift(); // Remove from queue
       } catch (error) {
-        if (error.message.includes('network')) {
+        if (error.message.includes("network")) {
           break; // Stop processing, wait for connection
         } else {
           this.queue.shift(); // Remove failed operation
-          console.error('Sync failed:', operation, error);
+          console.error("Sync failed:", operation, error);
         }
       }
     }
 
     await Preferences.set({
-      key: 'sync_queue',
-      value: JSON.stringify(this.queue)
+      key: "sync_queue",
+      value: JSON.stringify(this.queue),
     });
   }
 }
@@ -1283,17 +1330,20 @@ class SyncManager {
 ### Performance Optimization
 
 **Bundle Size**:
+
 - Current web build: ~2-3MB gzipped
 - Capacitor overhead: ~5MB
 - Total iOS app: ~30-40MB (acceptable)
 
 **Optimization strategies**:
+
 1. Code splitting (already implemented)
 2. Lazy load modals (already implemented)
 3. Image optimization (already using progressive loading)
 4. Remove unused dependencies
 
 **Runtime Performance**:
+
 - WKWebView is fast (uses Safari's Nitro engine)
 - Svelte is lightweight (no virtual DOM)
 - Use CSS transforms (GPU-accelerated)
@@ -1302,6 +1352,7 @@ class SyncManager {
 ### App Store Requirements
 
 **Capabilities needed**:
+
 - [ ] Push Notifications
 - [ ] Background Modes (for push)
 - [ ] Calendar (EventKit)
@@ -1309,6 +1360,7 @@ class SyncManager {
 - [ ] Sign in with Apple (required if offering Google OAuth)
 
 **Privacy descriptions** (Info.plist):
+
 ```xml
 <key>NSMicrophoneUsageDescription</key>
 <string>BuildOS needs microphone access to record voice brain dumps</string>
@@ -1321,6 +1373,7 @@ class SyncManager {
 ```
 
 **App Store Review Considerations**:
+
 1. **Sign in with Apple**: Required if offering Google OAuth (can add easily)
 2. **Metadata**: Clear app description and screenshots
 3. **Guidelines**: Hybrid apps must provide value (BuildOS clearly does)
@@ -1333,6 +1386,7 @@ class SyncManager {
 ### Capacitor (Recommended)
 
 **Development**: 3-4 weeks
+
 - Setup: 2 days @ $75/hr = $1,200
 - Integration: 5 days @ $75/hr = $3,000
 - Testing: 3 days @ $75/hr = $1,800
@@ -1340,6 +1394,7 @@ class SyncManager {
 - **Total**: ~$7,200
 
 **Annual Costs**:
+
 - Apple Developer Account: $99/year
 - Push notification service: $0 (using Supabase)
 - Maintenance: ~4 hours/month @ $75/hr = $3,600/year
@@ -1348,11 +1403,13 @@ class SyncManager {
 ### PWA
 
 **Development**: 1 week
+
 - Service worker: 3 days @ $75/hr = $1,800
 - Testing: 1 day @ $75/hr = $600
 - **Total**: ~$2,400
 
 **Annual Costs**:
+
 - No app store fees
 - Maintenance: ~2 hours/month = $1,800/year
 - **Total Year 1**: ~$4,200
@@ -1360,11 +1417,13 @@ class SyncManager {
 ### Native Swift
 
 **Development**: 4-6 months
+
 - iOS developer: 6 months @ $120k/year = $60,000
 - Or agency: 6 months @ $150/hr × 160hrs/month = $144,000
 - **Total**: $60,000-$144,000
 
 **Annual Costs**:
+
 - Apple Developer Account: $99/year
 - Dedicated iOS developer: ~$120k/year salary
 - Or maintenance contract: ~$30k/year
@@ -1376,33 +1435,33 @@ class SyncManager {
 
 ### Capacitor Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| WebView performance issues | Medium | Medium | Profile early, optimize hot paths |
-| App Store rejection | Low | High | Follow guidelines, add Sign in with Apple |
-| Plugin compatibility issues | Low | Medium | Test plugins early, have fallbacks |
-| Large bundle size | High | Low | Acceptable for productivity app |
-| Complex animations laggy | Medium | Low | Use CSS transforms, simplify if needed |
+| Risk                        | Likelihood | Impact | Mitigation                                |
+| --------------------------- | ---------- | ------ | ----------------------------------------- |
+| WebView performance issues  | Medium     | Medium | Profile early, optimize hot paths         |
+| App Store rejection         | Low        | High   | Follow guidelines, add Sign in with Apple |
+| Plugin compatibility issues | Low        | Medium | Test plugins early, have fallbacks        |
+| Large bundle size           | High       | Low    | Acceptable for productivity app           |
+| Complex animations laggy    | Medium     | Low    | Use CSS transforms, simplify if needed    |
 
 ### PWA Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| Low discoverability | High | High | Heavy marketing, clear install instructions |
-| User confusion | High | Medium | Onboarding flow for installation |
-| iOS storage limits | Medium | Medium | Implement aggressive cleanup |
-| No push notifications | High | High | Use SMS/email instead |
-| Safari restrictions | High | Medium | Design around limitations |
+| Risk                  | Likelihood | Impact | Mitigation                                  |
+| --------------------- | ---------- | ------ | ------------------------------------------- |
+| Low discoverability   | High       | High   | Heavy marketing, clear install instructions |
+| User confusion        | High       | Medium | Onboarding flow for installation            |
+| iOS storage limits    | Medium     | Medium | Implement aggressive cleanup                |
+| No push notifications | High       | High   | Use SMS/email instead                       |
+| Safari restrictions   | High       | Medium | Design around limitations                   |
 
 ### Native Swift Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| High development cost | High | High | Phased rollout, secure funding first |
-| Feature lag behind web | High | Medium | Shared API layer, prioritize ruthlessly |
-| Platform fragmentation | Medium | Medium | Focus on iOS first, Android later |
-| Maintenance burden | High | High | Hire dedicated mobile team |
-| Longer time to market | High | High | Accept tradeoff for quality |
+| Risk                   | Likelihood | Impact | Mitigation                              |
+| ---------------------- | ---------- | ------ | --------------------------------------- |
+| High development cost  | High       | High   | Phased rollout, secure funding first    |
+| Feature lag behind web | High       | Medium | Shared API layer, prioritize ruthlessly |
+| Platform fragmentation | Medium     | Medium | Focus on iOS first, Android later       |
+| Maintenance burden     | High       | High   | Hire dedicated mobile team              |
+| Longer time to market  | High       | High   | Accept tradeoff for quality             |
 
 ---
 
@@ -1452,16 +1511,19 @@ class SyncManager {
 ### Long-term Vision
 
 **Year 1**: Capacitor MVP
+
 - Launch on App Store
 - Validate iOS market
 - Iterate based on feedback
 
 **Year 2**: Optimization
+
 - Profile and optimize hot paths
 - Add iOS-specific features (widgets, Siri)
 - Consider native rewrites for critical screens
 
 **Year 3+**: Platform maturity
+
 - Evaluate full native rewrite if iOS is 50%+ of users
 - Or continue with Capacitor if serving users well
 - Expand to Android using same Capacitor codebase

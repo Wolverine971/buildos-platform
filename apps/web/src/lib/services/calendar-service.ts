@@ -84,69 +84,68 @@ export interface BulkDeleteEventParams {
 // Response types
 
 export interface CalendarEvent {
-  kind: "calendar#event";
-  etag: string;
-  id: string;
-  status: "confirmed" | "tentative" | "cancelled";
-  htmlLink: string;
-  created: string; // ISO timestamp
-  updated: string; // ISO timestamp
-  summary: string;
-  description?: string; // Event description/notes
-  location?: string; // Event location
-  colorId?: string; // Event color
-  creator: {
-    email: string;
-    displayName?: string;
-    self?: boolean;
-  };
-  organizer: {
-    email: string;
-    displayName?: string;
-    self?: boolean;
-  };
-  start: {
-    dateTime?: string; // ISO timestamp
-    date?: string; // For all-day events
-    timeZone?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  recurringEventId?: string;
-  originalStartTime?: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  iCalUID: string;
-  sequence: number;
-  attendees?: {
-    email: string;
-    displayName?: string;
-    organizer?: boolean;
-    self?: boolean;
-    responseStatus: "accepted" | "declined" | "tentative" | "needsAction";
-    comment?: string;
-    additionalGuests?: number;
-  }[];
-  reminders?: {
-    useDefault: boolean;
-    overrides?: {
-      method: "email" | "popup";
-      minutes: number;
-    }[];
-  };
-  eventType?: "default" | "outOfOffice" | "focusTime" | string;
-  transparency?: "opaque" | "transparent";
-  visibility?: "default" | "public" | "private" | "confidential";
-  recurrence?: string[]; // RRULE strings
-  hangoutLink?: string; // Google Meet link
-  conferenceData?: any; // Conference info
+	kind: 'calendar#event';
+	etag: string;
+	id: string;
+	status: 'confirmed' | 'tentative' | 'cancelled';
+	htmlLink: string;
+	created: string; // ISO timestamp
+	updated: string; // ISO timestamp
+	summary: string;
+	description?: string; // Event description/notes
+	location?: string; // Event location
+	colorId?: string; // Event color
+	creator: {
+		email: string;
+		displayName?: string;
+		self?: boolean;
+	};
+	organizer: {
+		email: string;
+		displayName?: string;
+		self?: boolean;
+	};
+	start: {
+		dateTime?: string; // ISO timestamp
+		date?: string; // For all-day events
+		timeZone?: string;
+	};
+	end: {
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
+	recurringEventId?: string;
+	originalStartTime?: {
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
+	iCalUID: string;
+	sequence: number;
+	attendees?: {
+		email: string;
+		displayName?: string;
+		organizer?: boolean;
+		self?: boolean;
+		responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+		comment?: string;
+		additionalGuests?: number;
+	}[];
+	reminders?: {
+		useDefault: boolean;
+		overrides?: {
+			method: 'email' | 'popup';
+			minutes: number;
+		}[];
+	};
+	eventType?: 'default' | 'outOfOffice' | 'focusTime' | string;
+	transparency?: 'opaque' | 'transparent';
+	visibility?: 'default' | 'public' | 'private' | 'confidential';
+	recurrence?: string[]; // RRULE strings
+	hangoutLink?: string; // Google Meet link
+	conferenceData?: any; // Conference info
 }
-
 
 export interface GetCalendarEventsResponse {
 	event_count: number;
@@ -1699,5 +1698,3 @@ export class CalendarService {
 		}
 	}
 }
-
-

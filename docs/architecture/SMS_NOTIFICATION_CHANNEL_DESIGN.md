@@ -1305,12 +1305,14 @@ SMS click tracking was implemented as part of the unified notification tracking 
 ### Files Created/Modified
 
 **Created**:
+
 - `supabase/migrations/20251007_notification_tracking_links.sql`
 - `apps/web/src/routes/l/[short_code]/+server.ts`
 - `apps/web/src/lib/services/link-shortener.service.ts`
 - `apps/web/tests/manual/test-sms-click-tracking.md`
 
 **Modified**:
+
 - `apps/worker/src/workers/notification/smsAdapter.ts`
 
 ### Analytics Integration

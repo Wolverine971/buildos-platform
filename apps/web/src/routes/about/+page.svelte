@@ -27,13 +27,15 @@
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
 			<header class="text-center">
 				<div class="flex justify-center mb-8">
-					<img
-						src="/brain-bolt.png"
-						alt="BuildOS application icon"
+					<video
+						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-20 h-20"
-						width="80"
-						height="80"
-					/>
+						autoplay
+						loop
+						muted
+						playsinline
+						aria-label="BuildOS application icon"
+					></video>
 				</div>
 				<h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
 					About <span class="text-blue-600">BuildOS</span>

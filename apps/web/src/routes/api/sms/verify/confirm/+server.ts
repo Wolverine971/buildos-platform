@@ -47,15 +47,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				persistSession: false
 			}
 		});
-		const { error } = await supabase.from('user_sms_preferences').upsert({
-			user_id: session.user.id,
-			phone_number: phoneNumber,
-			phone_verified: true,
-			phone_verified_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		}, {
-			onConflict: 'user_id'
-		});
+		const { error } = await supabase.from('user_sms_preferences').upsert(
+			{
+				user_id: session.user.id,
+				phone_number: phoneNumber,
+				phone_verified: true,
+				phone_verified_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			},
+			{
+				onConflict: 'user_id'
+			}
+		);
 
 		if (error) {
 			console.error('Failed to update user preferences:', error);

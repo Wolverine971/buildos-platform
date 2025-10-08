@@ -13,7 +13,10 @@
 	import { notificationRealDataService } from '$lib/services/notification-real-data.service';
 	import type { UserNotificationContext as NotificationContextType } from '../../users/[id]/notification-context/+server';
 	import type { EventType } from '@buildos/shared-types';
-	import type { ChannelPayloads, NotificationChannel } from '$lib/types/notification-channel-payloads';
+	import type {
+		ChannelPayloads,
+		NotificationChannel
+	} from '$lib/types/notification-channel-payloads';
 
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
@@ -36,7 +39,8 @@
 
 	// Check if user is subscribed to selected event
 	let userIsSubscribed = $derived(
-		userContext?.preferences.find((p: any) => p.event_type === selectedEventType)?.is_subscribed ?? false
+		userContext?.preferences.find((p: any) => p.event_type === selectedEventType)
+			?.is_subscribed ?? false
 	);
 
 	async function searchRecipients() {
@@ -233,7 +237,9 @@
 					<!-- Search Input -->
 					<div class="relative">
 						<div class="relative">
-							<Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+							<Search
+								class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+							/>
 							<input
 								type="text"
 								bind:value={recipientSearch}
@@ -249,14 +255,18 @@
 
 						<!-- Search Results Dropdown -->
 						{#if searchResults.length > 0}
-							<div class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+							<div
+								class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+							>
 								{#each searchResults as result}
 									<button
 										type="button"
 										onclick={() => selectUser(result)}
 										class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
 									>
-										<div class="text-sm font-medium text-gray-900 dark:text-white">
+										<div
+											class="text-sm font-medium text-gray-900 dark:text-white"
+										>
 											{result.email}
 										</div>
 										{#if result.name}
@@ -273,7 +283,9 @@
 					</div>
 				{:else}
 					<!-- Selected User Display -->
-					<div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+					<div
+						class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+					>
 						<div>
 							<div class="text-sm font-medium text-gray-900 dark:text-white">
 								{selectedUser.email}
@@ -294,7 +306,9 @@
 				{#if contextLoading}
 					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
 						<Loader2 class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-						<p class="text-gray-600 dark:text-gray-400">Loading user notification context...</p>
+						<p class="text-gray-600 dark:text-gray-400">
+							Loading user notification context...
+						</p>
 					</div>
 				{:else if userContext}
 					<UserNotificationContext context={userContext} />
@@ -307,7 +321,7 @@
 					</h2>
 					<NotificationTypeSelector
 						value={selectedEventType}
-						userIsSubscribed={userIsSubscribed}
+						{userIsSubscribed}
 						onchange={handleEventTypeChange}
 					/>
 				</div>
@@ -331,13 +345,20 @@
 									/>
 									<div class="flex-1">
 										<div class="flex items-center space-x-2">
-											<div class="font-medium text-gray-900 dark:text-white capitalize">
+											<div
+												class="font-medium text-gray-900 dark:text-white capitalize"
+											>
 												{capability.channel}
 											</div>
 											{#if capability.available}
-												<span class="text-xs text-green-600 dark:text-green-400">✓ Available</span>
+												<span
+													class="text-xs text-green-600 dark:text-green-400"
+													>✓ Available</span
+												>
 											{:else}
-												<span class="text-xs text-gray-400">✗ Not available</span>
+												<span class="text-xs text-gray-400"
+													>✗ Not available</span
+												>
 											{/if}
 										</div>
 										<p class="text-sm text-gray-500">
@@ -347,7 +368,9 @@
 								</label>
 							{/each}
 						{:else}
-							<p class="text-sm text-gray-500">Select a user to see available channels</p>
+							<p class="text-sm text-gray-500">
+								Select a user to see available channels
+							</p>
 						{/if}
 					</div>
 				</div>
@@ -357,10 +380,7 @@
 					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						Step 4: Configure Channel Payloads
 					</h2>
-					<ChannelPayloadEditor
-						selectedChannels={selectedChannels}
-						bind:channelPayloads
-					/>
+					<ChannelPayloadEditor {selectedChannels} bind:channelPayloads />
 				</div>
 
 				<!-- Send Button -->

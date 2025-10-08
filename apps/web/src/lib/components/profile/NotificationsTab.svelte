@@ -19,7 +19,9 @@
 			<Bell class="w-5 h-5 sm:w-6 sm:h-6 text-white" />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Notification Settings</h2>
+			<h2 class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
+				Notification Settings
+			</h2>
 			<p class="text-xs sm:text-base text-gray-600 dark:text-gray-400 mt-1">
 				Manage how you receive notifications
 			</p>

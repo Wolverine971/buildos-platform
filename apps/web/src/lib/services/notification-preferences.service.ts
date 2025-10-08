@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/notification-preferences.service.ts
 /**
  * Notification Preferences Service
  *

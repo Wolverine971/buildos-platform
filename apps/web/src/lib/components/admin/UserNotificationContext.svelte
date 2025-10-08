@@ -1,6 +1,16 @@
 <!-- apps/web/src/lib/components/admin/UserNotificationContext.svelte -->
 <script lang="ts">
-	import { ChevronDown, ChevronUp, Bell, Mail, MessageSquare, Smartphone, CheckCircle, XCircle, Clock } from 'lucide-svelte';
+	import {
+		ChevronDown,
+		ChevronUp,
+		Bell,
+		Mail,
+		MessageSquare,
+		Smartphone,
+		CheckCircle,
+		XCircle,
+		Clock
+	} from 'lucide-svelte';
 	import type { UserNotificationContext } from '../../../routes/api/admin/users/[id]/notification-context/+server';
 
 	interface Props {
@@ -84,19 +94,26 @@
 				<div class="grid grid-cols-2 gap-2 text-sm">
 					<div>
 						<span class="text-gray-600 dark:text-gray-400">Name:</span>
-						<span class="ml-1 text-gray-900 dark:text-white">{context.basic.name || 'Not provided'}</span>
+						<span class="ml-1 text-gray-900 dark:text-white"
+							>{context.basic.name || 'Not provided'}</span
+						>
 					</div>
 					<div>
 						<span class="text-gray-600 dark:text-gray-400">Email:</span>
-						<span class="ml-1 text-gray-900 dark:text-white">{context.basic.email}</span>
+						<span class="ml-1 text-gray-900 dark:text-white">{context.basic.email}</span
+						>
 					</div>
 					<div>
 						<span class="text-gray-600 dark:text-gray-400">Member since:</span>
-						<span class="ml-1 text-gray-900 dark:text-white">{formatDate(context.basic.created_at)}</span>
+						<span class="ml-1 text-gray-900 dark:text-white"
+							>{formatDate(context.basic.created_at)}</span
+						>
 					</div>
 					<div>
 						<span class="text-gray-600 dark:text-gray-400">Last active:</span>
-						<span class="ml-1 text-gray-900 dark:text-white">{formatDate(context.basic.last_visit)}</span>
+						<span class="ml-1 text-gray-900 dark:text-white"
+							>{formatDate(context.basic.last_visit)}</span
+						>
 					</div>
 				</div>
 			</div>
@@ -115,9 +132,15 @@
 							{:else}
 								<XCircle class="w-4 h-4 text-gray-400" />
 							{/if}
-							<Icon class="w-4 h-4 {capability.available ? 'text-blue-600' : 'text-gray-400'}" />
+							<Icon
+								class="w-4 h-4 {capability.available
+									? 'text-blue-600'
+									: 'text-gray-400'}"
+							/>
 							<div class="flex-1">
-								<div class="text-sm font-medium text-gray-900 dark:text-white capitalize">
+								<div
+									class="text-sm font-medium text-gray-900 dark:text-white capitalize"
+								>
 									{capability.channel}
 								</div>
 								<div class="text-xs text-gray-500 dark:text-gray-400">
@@ -132,56 +155,89 @@
 			<!-- Notification Preferences -->
 			{#if context.preferences.length > 0}
 				<div>
-					<h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
+					<h4
+						class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2"
+					>
 						Notification Preferences ({context.preferences.length} event types)
 					</h4>
 					<div class="overflow-x-auto">
 						<table class="min-w-full text-xs">
 							<thead class="bg-gray-50 dark:bg-gray-800">
 								<tr>
-									<th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Event Type</th>
-									<th class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300">Push</th>
-									<th class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300">Email</th>
-									<th class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300">SMS</th>
-									<th class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300">In-App</th>
-									<th class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300">Subscribed</th>
+									<th
+										class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300"
+										>Event Type</th
+									>
+									<th
+										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										>Push</th
+									>
+									<th
+										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										>Email</th
+									>
+									<th
+										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										>SMS</th
+									>
+									<th
+										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										>In-App</th
+									>
+									<th
+										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										>Subscribed</th
+									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 								{#each context.preferences as pref}
 									<tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-										<td class="px-2 py-1 text-gray-900 dark:text-white">{pref.event_type}</td>
+										<td class="px-2 py-1 text-gray-900 dark:text-white"
+											>{pref.event_type}</td
+										>
 										<td class="px-2 py-1 text-center">
 											{#if pref.push_enabled}
-												<CheckCircle class="w-4 h-4 text-green-500 mx-auto" />
+												<CheckCircle
+													class="w-4 h-4 text-green-500 mx-auto"
+												/>
 											{:else}
 												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.email_enabled}
-												<CheckCircle class="w-4 h-4 text-green-500 mx-auto" />
+												<CheckCircle
+													class="w-4 h-4 text-green-500 mx-auto"
+												/>
 											{:else}
 												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.sms_enabled}
-												<CheckCircle class="w-4 h-4 text-green-500 mx-auto" />
+												<CheckCircle
+													class="w-4 h-4 text-green-500 mx-auto"
+												/>
 											{:else}
 												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.in_app_enabled}
-												<CheckCircle class="w-4 h-4 text-green-500 mx-auto" />
+												<CheckCircle
+													class="w-4 h-4 text-green-500 mx-auto"
+												/>
 											{:else}
 												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.is_subscribed}
-												<span class="text-green-600 dark:text-green-400 font-medium">Yes</span>
+												<span
+													class="text-green-600 dark:text-green-400 font-medium"
+													>Yes</span
+												>
 											{:else}
 												<span class="text-gray-500">No</span>
 											{/if}
@@ -202,15 +258,21 @@
 				<div class="grid grid-cols-3 gap-2 text-sm">
 					<div>
 						<div class="text-gray-600 dark:text-gray-400">Projects</div>
-						<div class="text-lg font-semibold text-purple-600">{context.activity.project_count}</div>
+						<div class="text-lg font-semibold text-purple-600">
+							{context.activity.project_count}
+						</div>
 					</div>
 					<div>
 						<div class="text-gray-600 dark:text-gray-400">Brain Dumps</div>
-						<div class="text-lg font-semibold text-indigo-600">{context.activity.brain_dump_count}</div>
+						<div class="text-lg font-semibold text-indigo-600">
+							{context.activity.brain_dump_count}
+						</div>
 					</div>
 					<div>
 						<div class="text-gray-600 dark:text-gray-400">Briefs</div>
-						<div class="text-lg font-semibold text-blue-600">{context.activity.brief_count}</div>
+						<div class="text-lg font-semibold text-blue-600">
+							{context.activity.brief_count}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -218,13 +280,17 @@
 			<!-- Recent Notifications -->
 			{#if context.recent_notifications.length > 0}
 				<div>
-					<h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
+					<h4
+						class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2"
+					>
 						Recent Notifications ({context.recent_notifications.length})
 					</h4>
 					<div class="space-y-2">
 						{#each context.recent_notifications as notification}
 							{@const Icon = getChannelIcon(notification.channel)}
-							<div class="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded">
+							<div
+								class="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+							>
 								<div class="flex items-center space-x-2 flex-1">
 									<Icon class="w-4 h-4 text-gray-500" />
 									<span class="text-gray-900 dark:text-white font-medium">

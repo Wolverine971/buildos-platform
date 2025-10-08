@@ -613,6 +613,7 @@ Phase 7 implements click tracking for links in SMS messages using a custom link 
 ### Overview
 
 SMS click tracking works by:
+
 1. Automatically detecting URLs in SMS message content
 2. Replacing them with shortened tracking links (e.g., `https://build-os.com/l/abc123`)
 3. Tracking clicks when users visit the short link
@@ -622,6 +623,7 @@ SMS click tracking works by:
 ### Prerequisites
 
 1. **Apply Migration**:
+
 ```bash
 cd apps/web
 # Apply tracking links migration
@@ -629,6 +631,7 @@ psql $DATABASE_URL -f supabase/migrations/20251007_notification_tracking_links.s
 ```
 
 2. **Verify Tables**:
+
 ```sql
 -- Check table exists
 SELECT table_name FROM information_schema.tables
@@ -640,6 +643,7 @@ WHERE routine_name IN ('generate_short_code', 'create_tracking_link');
 ```
 
 3. **Rebuild Worker** (if needed):
+
 ```bash
 cd apps/worker
 pnpm build
@@ -703,6 +707,7 @@ LIMIT 1;
 ### Test 2: Click Tracking and Redirect
 
 **On Phone**:
+
 1. Receive SMS message on your phone
 2. Tap the shortened link (e.g., `https://build-os.com/l/abc123`)
 3. **Expected**: Browser opens and quickly redirects to destination
@@ -859,6 +864,7 @@ WHERE delivery_id = (
 In browser, navigate to: `https://build-os.com/l/invalid123`
 
 **Expected**:
+
 - Redirects to home page (/)
 - No error page shown
 - Graceful handling
@@ -951,15 +957,18 @@ Expected log output when SMS is sent:
 ### Troubleshooting
 
 **URLs Not Shortened**:
+
 - Check migration applied: `SELECT * FROM pg_proc WHERE proname = 'create_tracking_link'`
 - Check worker has service role key
 - Check worker logs for errors
 
 **Link Redirects to Home Instead of Destination**:
+
 - Verify short code exists: `SELECT * FROM notification_tracking_links WHERE short_code = '<code>'`
 - Check RLS policies allow read access
 
 **Click Not Tracked**:
+
 - Check delivery ID: `SELECT clicked_at FROM notification_deliveries WHERE id = '<delivery-id>'`
 - Verify redirect endpoint update succeeded
 - Check browser console for errors

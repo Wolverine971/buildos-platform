@@ -116,6 +116,13 @@ export interface GenerateBriefEmailJobMetadata {
   emailId: string; // ID from emails table
 }
 
+export interface ScheduleDailySMSJobMetadata {
+  userId: string;
+  date: string; // YYYY-MM-DD
+  timezone: string;
+  leadTimeMinutes: number;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
   generate_daily_brief: DailyBriefJobMetadata;
@@ -129,7 +136,14 @@ export interface JobMetadataMap {
   send_sms: SendSMSJobMetadata;
   generate_brief_email: GenerateBriefEmailJobMetadata;
   send_notification: NotificationJobMetadata;
+  schedule_daily_sms: ScheduleDailySMSJobMetadata;
   other: Record<string, unknown>;
+}
+
+export interface ScheduleDailySMSResult {
+  success: boolean;
+  scheduled_count?: number;
+  message?: string;
 }
 
 // Job result types
@@ -145,6 +159,7 @@ export interface JobResultMap {
   send_sms: SendSMSResult;
   generate_brief_email: GenerateBriefEmailResult;
   send_notification: NotificationSendResult;
+  schedule_daily_sms: ScheduleDailySMSResult;
   other: unknown;
 }
 

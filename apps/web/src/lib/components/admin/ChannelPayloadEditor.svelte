@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/admin/ChannelPayloadEditor.svelte -->
 <script lang="ts">
 	import type {
 		ChannelPayloads,
@@ -79,7 +80,9 @@
 					<!-- Push Notification Form -->
 					<div class="space-y-4">
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Title *
 							</label>
 							<input
@@ -91,7 +94,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Body *
 							</label>
 							<textarea
@@ -104,7 +109,9 @@
 
 						<div class="grid grid-cols-2 gap-4">
 							<div>
-								<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
 									Priority
 								</label>
 								<select
@@ -118,7 +125,9 @@
 							</div>
 
 							<div>
-								<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
 									Tag
 								</label>
 								<input
@@ -131,7 +140,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Action URL
 							</label>
 							<input
@@ -143,7 +154,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Icon URL
 							</label>
 							<input
@@ -155,7 +168,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Event Type
 							</label>
 							<input
@@ -171,7 +186,9 @@
 					<div class="space-y-4">
 						<div class="grid grid-cols-2 gap-4">
 							<div>
-								<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
 									Type
 								</label>
 								<select
@@ -185,7 +202,9 @@
 							</div>
 
 							<div>
-								<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
 									Priority
 								</label>
 								<select
@@ -200,7 +219,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Title *
 							</label>
 							<input
@@ -212,7 +233,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Body *
 							</label>
 							<textarea
@@ -224,7 +247,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Action URL
 							</label>
 							<input
@@ -236,7 +261,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Expires At
 							</label>
 							<input
@@ -250,7 +277,9 @@
 					<!-- Email Notification Form -->
 					<div class="space-y-4">
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Subject *
 							</label>
 							<input
@@ -262,7 +291,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Body *
 							</label>
 							<textarea
@@ -277,7 +308,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Action URL (CTA Button)
 							</label>
 							<input
@@ -289,7 +322,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Image URL
 							</label>
 							<input
@@ -301,7 +336,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Event Type
 							</label>
 							<input
@@ -316,7 +353,9 @@
 					<!-- SMS Notification Form -->
 					<div class="space-y-4">
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Title
 							</label>
 							<input
@@ -328,7 +367,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Message *
 							</label>
 							<textarea
@@ -344,7 +385,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Priority
 							</label>
 							<select
@@ -358,7 +401,9 @@
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							>
 								Event Type
 							</label>
 							<input

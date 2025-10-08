@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/event-bus.ts
 /**
  * Lightweight Event Bus for decoupling store and service communication
  *

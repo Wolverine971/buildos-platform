@@ -137,7 +137,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 					// Skip this channel if identifier is required but missing
 					if ((channel === 'push' || channel === 'sms') && !channelIdentifier) {
-						console.warn(`[TestNotification] Skipping ${channel} for user ${recipientId} - channel not available`);
+						console.warn(
+							`[TestNotification] Skipping ${channel} for user ${recipientId} - channel not available`
+						);
 						continue;
 					}
 
@@ -184,13 +186,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 		} else {
 			// Production mode: use the standard RPC that checks subscriptions
-			const { data: rpcEventId, error: eventError } = await supabase.rpc('emit_notification_event', {
-				p_event_type: event_type,
-				p_event_source: 'api_action',
-				p_actor_user_id: user.id,
-				p_payload: payload,
-				p_metadata: metadata
-			});
+			const { data: rpcEventId, error: eventError } = await supabase.rpc(
+				'emit_notification_event',
+				{
+					p_event_type: event_type,
+					p_event_source: 'api_action',
+					p_actor_user_id: user.id,
+					p_payload: payload,
+					p_metadata: metadata
+				}
+			);
 
 			if (eventError) {
 				console.error('Error emitting notification event:', eventError);

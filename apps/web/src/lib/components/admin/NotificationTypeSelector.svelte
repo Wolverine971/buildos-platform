@@ -9,7 +9,11 @@
 		onchange?: (eventType: EventType) => void;
 	}
 
-	let { value = $bindable('brief.completed' as EventType), userIsSubscribed = false, onchange }: Props = $props();
+	let {
+		value = $bindable('brief.completed' as EventType),
+		userIsSubscribed = false,
+		onchange
+	}: Props = $props();
 
 	interface EventTypeOption {
 		value: EventType;
@@ -31,7 +35,7 @@
 		{
 			value: 'user.trial_expired',
 			label: 'Trial Expired',
-			description: 'Notifies when user\'s trial period has expired',
+			description: "Notifies when user's trial period has expired",
 			adminOnly: true,
 			category: 'admin'
 		},
@@ -94,9 +98,9 @@
 		}
 	];
 
-	let selectedEvent = $derived(eventTypes.find(e => e.value === value));
-	let adminEvents = $derived(eventTypes.filter(e => e.category === 'admin'));
-	let userEvents = $derived(eventTypes.filter(e => e.category === 'user'));
+	let selectedEvent = $derived(eventTypes.find((e) => e.value === value));
+	let adminEvents = $derived(eventTypes.filter((e) => e.category === 'admin'));
+	let userEvents = $derived(eventTypes.filter((e) => e.category === 'user'));
 
 	function handleChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
@@ -109,7 +113,10 @@
 
 <div class="space-y-3">
 	<div>
-		<label for="event-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+		<label
+			for="event-type"
+			class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+		>
 			Notification Event Type
 		</label>
 		<select
@@ -138,7 +145,9 @@
 	</div>
 
 	{#if selectedEvent}
-		<div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+		<div
+			class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+		>
 			<!-- Event Info -->
 			<div class="flex items-start justify-between mb-3">
 				<div class="flex-1">
@@ -147,12 +156,16 @@
 							{selectedEvent.label}
 						</h4>
 						{#if selectedEvent.adminOnly}
-							<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+							>
 								<Shield class="w-3 h-3 mr-1" />
 								Admin Only
 							</span>
 						{:else}
-							<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+							>
 								<User class="w-3 h-3 mr-1" />
 								User Event
 							</span>
@@ -168,7 +181,9 @@
 			<div class="space-y-2 text-xs">
 				<div class="flex items-center space-x-2">
 					<span class="text-gray-600 dark:text-gray-400">Event Type:</span>
-					<code class="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-900 dark:text-white">
+					<code
+						class="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-900 dark:text-white"
+					>
 						{selectedEvent.value}
 					</code>
 				</div>
@@ -180,9 +195,13 @@
 						<span class="text-gray-600 dark:text-gray-400">
 							Selected user is
 							{#if userIsSubscribed}
-								<span class="text-green-600 dark:text-green-400 font-medium">subscribed</span>
+								<span class="text-green-600 dark:text-green-400 font-medium"
+									>subscribed</span
+								>
 							{:else}
-								<span class="text-orange-600 dark:text-orange-400 font-medium">not subscribed</span>
+								<span class="text-orange-600 dark:text-orange-400 font-medium"
+									>not subscribed</span
+								>
 							{/if}
 							to this event type
 						</span>

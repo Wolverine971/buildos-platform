@@ -15,6 +15,7 @@ This spec addresses a critical UX gap in the Onboarding V2 ProjectsCaptureStep w
 **Current Problem**: Users see a "Analyze My Calendar" button, but if clicked without a connected calendar, they get an error toast telling them to go to their Profile page.
 
 **Proposed Solution**: Create a clear two-phase flow that:
+
 1. **Detects** calendar connection status upfront
 2. **Guides** users to connect calendar first with clear value proposition
 3. **Enables** calendar analysis after connection
@@ -42,11 +43,12 @@ This spec addresses a critical UX gap in the Onboarding V2 ProjectsCaptureStep w
 **File**: `/apps/web/src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte`
 
 **Current Behavior** (Lines 27-44):
+
 ```typescript
 // Check if user has Google Calendar connected
 async function checkCalendarConnection(): Promise<boolean> {
 	try {
-		const response = await fetch('/api/calendar/status');  // ⚠️ BUG: Wrong endpoint
+		const response = await fetch('/api/calendar/status'); // ⚠️ BUG: Wrong endpoint
 		const result = await response.json();
 		return result.success && result.data?.connected;
 	} catch (error) {
@@ -66,29 +68,30 @@ $effect(() => {
 **Issues Identified**:
 
 1. **Wrong API Endpoint** (Line 30)
-   - Currently calls: `/api/calendar/status` (doesn't exist)
-   - Should call: `/api/calendar` (GET method)
-   - Response format: `{ success: true, connected: boolean, userId: string }`
+    - Currently calls: `/api/calendar/status` (doesn't exist)
+    - Should call: `/api/calendar` (GET method)
+    - Response format: `{ success: true, connected: boolean, userId: string }`
 
 2. **Poor Error Handling** (Line 46-52)
-   - If calendar not connected, shows error toast: "Please connect your Google Calendar first from the Profile page."
-   - Forces user to navigate away from onboarding flow
-   - Breaks onboarding momentum
+    - If calendar not connected, shows error toast: "Please connect your Google Calendar first from the Profile page."
+    - Forces user to navigate away from onboarding flow
+    - Breaks onboarding momentum
 
 3. **Unclear Value Proposition** (Line 234-236)
-   - Generic text: "Want BuildOS to analyze your Google Calendar?"
-   - Doesn't emphasize the benefit: "We'll automatically create projects based on your meetings"
-   - Lacks urgency/compelling reason
+    - Generic text: "Want BuildOS to analyze your Google Calendar?"
+    - Doesn't emphasize the benefit: "We'll automatically create projects based on your meetings"
+    - Lacks urgency/compelling reason
 
 4. **No Inline Connection Option**
-   - Users must leave onboarding to connect calendar
-   - No way to connect calendar within the flow
+    - Users must leave onboarding to connect calendar
+    - No way to connect calendar within the flow
 
 ### Current Calendar Analysis Service
 
 **File**: `/apps/web/src/lib/services/calendar-analysis.service.ts`
 
 **Key Methods**:
+
 - `analyzeUserCalendar(userId, options)` - Main analysis function
 - Returns: `{ analysisId, suggestions, eventsAnalyzed }`
 - Fetches 30 days back, 60 days forward (configurable)
@@ -96,6 +99,7 @@ $effect(() => {
 - Creates project suggestions with tasks
 
 **Current Integration** (Line 46-74):
+
 - Uses `startCalendarAnalysis()` from `calendar-analysis-notification.bridge.ts`
 - Starts analysis via notification stack
 - Shows progress in notification panel (bottom-right)
@@ -327,12 +331,9 @@ async function handleConnectCalendar() {
 				isConnectingCalendar = false;
 			}
 		}, 500);
-
 	} catch (error) {
 		console.error('Calendar connection error:', error);
-		toastService.error(
-			error instanceof Error ? error.message : 'Failed to connect calendar'
-		);
+		toastService.error(error instanceof Error ? error.message : 'Failed to connect calendar');
 		isConnectingCalendar = false;
 	}
 }
@@ -396,6 +397,7 @@ $effect(() => {
 **GET** `/api/calendar`
 
 **Response**:
+
 ```typescript
 {
 	success: boolean;
@@ -419,6 +421,7 @@ $effect(() => {
 **Implementation File**: `/apps/web/src/lib/services/google-oauth-service.ts`
 
 **Required Scopes**:
+
 - `https://www.googleapis.com/auth/calendar.readonly` (minimum)
 - `https://www.googleapis.com/auth/calendar.events` (for task scheduling)
 
@@ -432,10 +435,14 @@ $effect(() => {
 
 ```svelte
 <!-- Calendar Connection CTA Card -->
-<div class="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm">
+<div
+	class="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm"
+>
 	<!-- Header -->
 	<div class="flex items-start gap-4 mb-4">
-		<div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+		<div
+			class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0"
+		>
 			<Calendar class="w-6 h-6 text-white" />
 		</div>
 		<div class="flex-1">
@@ -443,7 +450,8 @@ $effect(() => {
 				Let us analyze your calendar
 			</h3>
 			<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-				Connect your Google Calendar and we'll automatically create projects based on your meetings and events. No manual entry needed!
+				Connect your Google Calendar and we'll automatically create projects based on your
+				meetings and events. No manual entry needed!
 			</p>
 		</div>
 	</div>
@@ -466,7 +474,9 @@ $effect(() => {
 
 	<!-- Demo Preview (Optional) -->
 	{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-		<div class="mb-4 bg-white dark:bg-gray-900 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700">
+		<div
+			class="mb-4 bg-white dark:bg-gray-900 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700"
+		>
 			<p class="text-gray-400 text-xs mb-1">
 				🎥 [15-second demo: Calendar → Projects transformation]
 			</p>
@@ -525,12 +535,7 @@ $effect(() => {
 			</div>
 		</div>
 
-		<Button
-			variant="primary"
-			size="lg"
-			onclick={handleStartCalendarAnalysis}
-			class="w-full"
-		>
+		<Button variant="primary" size="lg" onclick={handleStartCalendarAnalysis} class="w-full">
 			<Sparkles class="w-5 h-5 mr-2" />
 			Analyze My Calendar Now
 		</Button>
@@ -542,20 +547,27 @@ $effect(() => {
 
 ```svelte
 <!-- Calendar Analysis Available -->
-<div class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+<div
+	class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+>
 	<div class="flex items-start gap-4 mb-4">
-		<div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+		<div
+			class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0"
+		>
 			<CheckCircle class="w-5 h-5 text-white" />
 		</div>
 		<div class="flex-1">
 			<h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
 				Google Calendar Connected
-				<span class="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+				<span
+					class="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full"
+				>
 					Ready
 				</span>
 			</h4>
 			<p class="text-sm text-gray-600 dark:text-gray-400">
-				We can analyze your calendar and automatically suggest projects based on your meetings and events.
+				We can analyze your calendar and automatically suggest projects based on your
+				meetings and events.
 			</p>
 		</div>
 	</div>
@@ -604,22 +616,22 @@ $effect(() => {
 
 #### Headlines by State
 
-| State | Headline | Subtext |
-|-------|----------|---------|
-| Not Connected | "Let us analyze your calendar" | "Connect your Google Calendar and we'll automatically create projects based on your meetings and events." |
-| Connecting | "Connecting to Google Calendar..." | "This will open a new window for authorization" |
-| Connection Success | "Calendar Connected! 🎉" | "Ready to analyze your schedule" |
-| Connected | "Google Calendar Connected" | "We can analyze your calendar and automatically suggest projects" |
-| Analysis Running | "Analyzing your calendar..." | "Check notification panel for progress and results" |
+| State              | Headline                           | Subtext                                                                                                   |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Not Connected      | "Let us analyze your calendar"     | "Connect your Google Calendar and we'll automatically create projects based on your meetings and events." |
+| Connecting         | "Connecting to Google Calendar..." | "This will open a new window for authorization"                                                           |
+| Connection Success | "Calendar Connected! 🎉"           | "Ready to analyze your schedule"                                                                          |
+| Connected          | "Google Calendar Connected"        | "We can analyze your calendar and automatically suggest projects"                                         |
+| Analysis Running   | "Analyzing your calendar..."       | "Check notification panel for progress and results"                                                       |
 
 #### Button Labels
 
-| Action | Primary Button | Secondary Button |
-|--------|---------------|------------------|
-| Not Connected | "Connect Google Calendar" | "Skip for now — I'll connect later" |
-| Connection Success | "Analyze My Calendar Now" | — |
-| Connected | "Analyze My Calendar" | — |
-| Analysis Running | — (disabled) | "Continue to Next Step" |
+| Action             | Primary Button            | Secondary Button                    |
+| ------------------ | ------------------------- | ----------------------------------- |
+| Not Connected      | "Connect Google Calendar" | "Skip for now — I'll connect later" |
+| Connection Success | "Analyze My Calendar Now" | —                                   |
+| Connected          | "Analyze My Calendar"     | —                                   |
+| Analysis Running   | — (disabled)              | "Continue to Next Step"             |
 
 ### 4.3 Accessibility
 
@@ -653,6 +665,7 @@ $effect(() => {
 **Request**: None (uses session auth)
 
 **Response**:
+
 ```typescript
 {
 	success: true,
@@ -662,6 +675,7 @@ $effect(() => {
 ```
 
 **Error Response**:
+
 ```typescript
 {
 	success: false,
@@ -677,12 +691,14 @@ $effect(() => {
 **Endpoint**: `GET /auth/google/calendar`
 
 **Behavior**:
+
 1. Initiates Google OAuth consent screen
 2. Requests calendar permissions
 3. Stores OAuth token in database
 4. Redirects back to onboarding or provided callback URL
 
 **Required Environment Variables**:
+
 ```env
 PUBLIC_GOOGLE_CLIENT_ID=xxx
 GOOGLE_CLIENT_SECRET=xxx
@@ -697,6 +713,7 @@ GOOGLE_CLIENT_SECRET=xxx
 **Bridge**: `startCalendarAnalysis()` from `calendar-analysis-notification.bridge.ts`
 
 **Parameters**:
+
 ```typescript
 {
 	daysBack: 7,        // Analyze past 7 days for context
@@ -719,6 +736,7 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: New user account, no Google Calendar connected
 
 **Steps**:
+
 1. Navigate to `/onboarding?v2=true`
 2. Complete welcome step
 3. Arrive at ProjectsCaptureStep
@@ -732,6 +750,7 @@ GOOGLE_CLIENT_SECRET=xxx
 11. Continue to next step
 
 **Expected Results**:
+
 - ✅ Shows "Calendar Not Connected" state
 - ✅ OAuth popup opens correctly
 - ✅ Success message appears after connection
@@ -744,12 +763,14 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: User with Google Calendar already connected
 
 **Steps**:
+
 1. Navigate to `/onboarding?v2=true`
 2. Complete welcome step
 3. Arrive at ProjectsCaptureStep
 4. Observe calendar CTA state
 
 **Expected Results**:
+
 - ✅ Shows "Calendar Connected" state immediately
 - ✅ Shows "Analyze My Calendar" button
 - ✅ No connection CTA visible
@@ -759,6 +780,7 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: New user, no calendar connected
 
 **Steps**:
+
 1. Navigate to `/onboarding?v2=true`
 2. Arrive at ProjectsCaptureStep
 3. Click "Skip for now"
@@ -767,6 +789,7 @@ GOOGLE_CLIENT_SECRET=xxx
 6. Observe state
 
 **Expected Results**:
+
 - ✅ User can skip without errors
 - ✅ State persists across navigation
 - ✅ Can still connect later
@@ -776,12 +799,14 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: Browser blocks popup windows
 
 **Steps**:
+
 1. Block popups in browser settings
 2. Navigate to ProjectsCaptureStep
 3. Click "Connect Google Calendar"
 4. Observe error handling
 
 **Expected Results**:
+
 - ✅ Shows clear error message
 - ✅ Suggests allowing popups
 - ✅ Provides alternative connection method
@@ -791,12 +816,14 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: User cancels OAuth consent screen
 
 **Steps**:
+
 1. Navigate to ProjectsCaptureStep
 2. Click "Connect Google Calendar"
 3. Cancel OAuth consent screen
 4. Return to onboarding
 
 **Expected Results**:
+
 - ✅ Shows "Connection cancelled" message
 - ✅ Returns to "Not Connected" state
 - ✅ Can retry connection
@@ -806,11 +833,13 @@ GOOGLE_CLIENT_SECRET=xxx
 **Setup**: Simulate network failure
 
 **Steps**:
+
 1. Block network requests to `/api/calendar`
 2. Navigate to ProjectsCaptureStep
 3. Observe error handling
 
 **Expected Results**:
+
 - ✅ Shows graceful error state
 - ✅ Offers retry option
 - ✅ Doesn't break page
@@ -903,14 +932,14 @@ describe('ProjectsCaptureStep - Calendar Connection', () => {
 
 ### 6.3 Edge Cases
 
-| Edge Case | Handling |
-|-----------|----------|
-| User already has calendar connected but analysis fails | Show error, allow retry |
-| OAuth token expired | Detect during analysis, prompt reconnection |
-| Multiple calendar accounts | Use primary calendar (future: allow selection) |
-| User disconnects calendar during onboarding | Detect on next interaction, show reconnect CTA |
-| Slow network connection | Show loading states, implement timeout (30s) |
-| User has no calendar events | Analysis completes with 0 suggestions, show helpful message |
+| Edge Case                                              | Handling                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| User already has calendar connected but analysis fails | Show error, allow retry                                     |
+| OAuth token expired                                    | Detect during analysis, prompt reconnection                 |
+| Multiple calendar accounts                             | Use primary calendar (future: allow selection)              |
+| User disconnects calendar during onboarding            | Detect on next interaction, show reconnect CTA              |
+| Slow network connection                                | Show loading states, implement timeout (30s)                |
+| User has no calendar events                            | Analysis completes with 0 suggestions, show helpful message |
 
 ---
 
@@ -918,13 +947,13 @@ describe('ProjectsCaptureStep - Calendar Connection', () => {
 
 ### Primary KPIs
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| **Calendar Connection Rate** | 40%+ of users | Track connections during onboarding |
-| **Analysis Completion Rate** | 80%+ of connected users | Track analysis starts vs completions |
-| **Project Creation from Calendar** | 30%+ of analyses | Track accepted suggestions |
-| **Time to Connect** | <60 seconds | Measure from CTA click to connection success |
-| **Drop-off Reduction** | -20% drop-off at this step | Compare before/after implementation |
+| Metric                             | Target                     | Measurement                                  |
+| ---------------------------------- | -------------------------- | -------------------------------------------- |
+| **Calendar Connection Rate**       | 40%+ of users              | Track connections during onboarding          |
+| **Analysis Completion Rate**       | 80%+ of connected users    | Track analysis starts vs completions         |
+| **Project Creation from Calendar** | 30%+ of analyses           | Track accepted suggestions                   |
+| **Time to Connect**                | <60 seconds                | Measure from CTA click to connection success |
+| **Drop-off Reduction**             | -20% drop-off at this step | Compare before/after implementation          |
 
 ### Secondary Metrics
 
@@ -980,6 +1009,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Popup blockers interfere with OAuth flow
 
 **Solution**:
+
 - Embed OAuth flow in iframe or full-page redirect
 - Use `postMessage` for communication
 - Fallback to current popup method
@@ -991,6 +1021,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Users with multiple calendars want to choose which to analyze
 
 **Solution**:
+
 - Show dropdown of available calendars after connection
 - Allow multi-calendar selection
 - Store preferences for future analyses
@@ -1002,6 +1033,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Users want to see what will be analyzed before starting
 
 **Solution**:
+
 - Show event count preview by time range
 - Display sample event titles
 - Allow date range adjustment
@@ -1013,6 +1045,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Analyzing 90 days of events takes time
 
 **Solution**:
+
 - Start with recent 30 days (fast)
 - Show initial results
 - Offer "Analyze More" option for extended range
@@ -1024,6 +1057,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Some users want to start with calendar analysis
 
 **Solution**:
+
 - Add option in WelcomeStep: "Start with Calendar Analysis"
 - Reorder steps dynamically
 - Skip brain dump if calendar analysis succeeds
@@ -1037,6 +1071,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Not all users benefit equally from calendar analysis
 
 **Solution**:
+
 - Use heuristics to determine if calendar analysis is valuable
 - Show different CTAs based on user type
 - Example: "Looks like you have recurring meetings" vs "No meetings found"
@@ -1048,6 +1083,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Analysis completes after user leaves onboarding
 
 **Solution**:
+
 - Email results to user
 - Show banner on return: "Your calendar analysis is ready!"
 - Persist results across sessions
@@ -1059,6 +1095,7 @@ analytics.track('Onboarding: Calendar Skip', {
 **Problem**: Users want control over sync frequency and scope
 
 **Solution**:
+
 - Add settings panel for calendar sync
 - Options: sync frequency, event types, privacy filters
 - Save preferences for ongoing sync
@@ -1072,107 +1109,107 @@ analytics.track('Onboarding: Calendar Skip', {
 ### Development Tasks
 
 - [ ] **Fix API endpoint** in `checkCalendarConnection()` function
-  - Change `/api/calendar/status` → `/api/calendar`
-  - Update response handling
+    - Change `/api/calendar/status` → `/api/calendar`
+    - Update response handling
 
 - [ ] **Add `handleConnectCalendar()` function**
-  - Implement OAuth popup flow
-  - Add popup blocker detection
-  - Add success/failure handling
+    - Implement OAuth popup flow
+    - Add popup blocker detection
+    - Add success/failure handling
 
 - [ ] **Update UI states** in ProjectsCaptureStep.svelte
-  - Add "Not Connected" state with value proposition
-  - Add "Connection Success" transient state
-  - Add "Connected" state with analysis CTA
-  - Add loading states for all async operations
+    - Add "Not Connected" state with value proposition
+    - Add "Connection Success" transient state
+    - Add "Connected" state with analysis CTA
+    - Add loading states for all async operations
 
 - [ ] **Add error handling**
-  - Network errors
-  - OAuth errors
-  - Popup blocked errors
-  - Connection check failures
+    - Network errors
+    - OAuth errors
+    - Popup blocked errors
+    - Connection check failures
 
 - [ ] **Add analytics tracking**
-  - Connection attempts
-  - Connection success/failure
-  - Analysis starts
-  - Skip events
+    - Connection attempts
+    - Connection success/failure
+    - Analysis starts
+    - Skip events
 
 - [ ] **Write unit tests**
-  - Test all connection states
-  - Test OAuth flow
-  - Test error handling
-  - Test skip functionality
+    - Test all connection states
+    - Test OAuth flow
+    - Test error handling
+    - Test skip functionality
 
 - [ ] **Manual testing**
-  - Test all user flows
-  - Test edge cases
-  - Test on multiple browsers
-  - Test with popup blockers
+    - Test all user flows
+    - Test edge cases
+    - Test on multiple browsers
+    - Test with popup blockers
 
 - [ ] **Update documentation**
-  - Update ProjectsCaptureStep component docs
-  - Update onboarding flow diagram
-  - Update API documentation
+    - Update ProjectsCaptureStep component docs
+    - Update onboarding flow diagram
+    - Update API documentation
 
 ### Design Tasks
 
 - [ ] **Create high-fidelity mockups**
-  - Not Connected state
-  - Connection Success state
-  - Connected state
-  - Error states
+    - Not Connected state
+    - Connection Success state
+    - Connected state
+    - Error states
 
 - [ ] **Design demo video/animation** (optional)
-  - 15-second calendar → projects transformation
-  - Show value proposition visually
+    - 15-second calendar → projects transformation
+    - Show value proposition visually
 
 - [ ] **Design loading states**
-  - Connection in progress
-  - Analysis in progress
-  - Success animations
+    - Connection in progress
+    - Analysis in progress
+    - Success animations
 
 ### QA Tasks
 
 - [ ] **Functional testing**
-  - All user flows work end-to-end
-  - OAuth flow completes successfully
-  - Analysis starts correctly
-  - Skip functionality works
+    - All user flows work end-to-end
+    - OAuth flow completes successfully
+    - Analysis starts correctly
+    - Skip functionality works
 
 - [ ] **Cross-browser testing**
-  - Chrome, Firefox, Safari, Edge
-  - Test popup behavior
-  - Test OAuth flow
+    - Chrome, Firefox, Safari, Edge
+    - Test popup behavior
+    - Test OAuth flow
 
 - [ ] **Mobile testing**
-  - Responsive design works
-  - OAuth flow works on mobile
-  - Touch interactions work
+    - Responsive design works
+    - OAuth flow works on mobile
+    - Touch interactions work
 
 - [ ] **Accessibility testing**
-  - Keyboard navigation works
-  - Screen reader compatible
-  - Color contrast meets WCAG AA
-  - Focus states visible
+    - Keyboard navigation works
+    - Screen reader compatible
+    - Color contrast meets WCAG AA
+    - Focus states visible
 
 ### Deployment Tasks
 
 - [ ] **Staging deployment**
-  - Deploy to staging environment
-  - Test with real Google OAuth
-  - Verify analytics events
+    - Deploy to staging environment
+    - Test with real Google OAuth
+    - Verify analytics events
 
 - [ ] **Production deployment**
-  - Deploy to production
-  - Monitor error rates
-  - Monitor connection success rates
+    - Deploy to production
+    - Monitor error rates
+    - Monitor connection success rates
 
 - [ ] **Post-launch monitoring**
-  - Track KPIs
-  - Gather user feedback
-  - Monitor error logs
-  - Optimize based on data
+    - Track KPIs
+    - Gather user feedback
+    - Monitor error logs
+    - Optimize based on data
 
 ---
 
@@ -1189,18 +1226,21 @@ analytics.track('Onboarding: Calendar Skip', {
 ### B. API Reference
 
 **Calendar Connection Check**:
+
 ```typescript
 GET /api/calendar
 Response: { success: boolean, connected: boolean, userId: string }
 ```
 
 **Google OAuth Flow**:
+
 ```typescript
 GET /auth/google/calendar
 Redirects to Google OAuth consent screen
 ```
 
 **Calendar Analysis**:
+
 ```typescript
 POST /api/calendar/analyze
 Body: { daysBack: number, daysForward: number }
@@ -1211,9 +1251,9 @@ Response: { analysisId: string, suggestions: ProjectSuggestion[] }
 
 ```typescript
 interface Props {
-	userContext?: any;          // From previous onboarding inputs
-	onNext: () => void;         // Navigate to next step
-	onProjectsCreated: (ids: string[]) => void;  // Track created projects
+	userContext?: any; // From previous onboarding inputs
+	onNext: () => void; // Navigate to next step
+	onProjectsCreated: (ids: string[]) => void; // Track created projects
 }
 ```
 
@@ -1267,8 +1307,8 @@ interface Props {
 
 ## 📝 Changelog
 
-| Date | Author | Changes |
-|------|--------|---------|
+| Date       | Author | Changes               |
+| ---------- | ------ | --------------------- |
 | 2025-10-07 | Claude | Initial draft created |
 
 ---

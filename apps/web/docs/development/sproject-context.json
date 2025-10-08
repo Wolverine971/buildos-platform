@@ -259,6 +259,12 @@
 			"exports": ["notificationPreferencesService"]
 		},
 		{
+			"file": "src/lib/services/notification-real-data.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["NotificationRealDataService", "notificationRealDataService"]
+		},
+		{
 			"file": "src/lib/services/notification-test.service.ts",
 			"type": "service",
 			"components": [],

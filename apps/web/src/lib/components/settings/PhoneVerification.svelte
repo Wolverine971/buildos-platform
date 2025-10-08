@@ -140,7 +140,7 @@
 						type="tel"
 						id="phone"
 						value={phoneNumber}
-						on:input={(e)=>handlePhoneInput(e.detail)}
+						on:input={(e) => handlePhoneInput(e.detail)}
 						placeholder="(555) 123-4567"
 						disabled={isLoading}
 						class="flex-1"

@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-07T01:40:31.977Z
+// Generated on: 2025-10-08T05:53:24.789Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -918,6 +918,32 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	scheduled_sms_messages: {
+		calendar_event_id: string | null;
+		cancelled_at: string | null;
+		created_at: string | null;
+		event_details: Json | null;
+		event_end: string | null;
+		event_start: string | null;
+		event_title: string | null;
+		generated_via: string | null;
+		generation_cost_usd: number | null;
+		id: string;
+		last_error: string | null;
+		llm_model: string | null;
+		max_send_attempts: number | null;
+		message_content: string;
+		message_type: string;
+		scheduled_for: string;
+		send_attempts: number | null;
+		sent_at: string | null;
+		sms_message_id: string | null;
+		status: string;
+		timezone: string;
+		twilio_sid: string | null;
+		updated_at: string | null;
+		user_id: string;
+	};
 	sms_messages: {
 		attempt_count: number | null;
 		created_at: string | null;
@@ -1188,6 +1214,7 @@ export type DatabaseSchema = {
 		phone_verified_at: string | null;
 		quiet_hours_end: string | null;
 		quiet_hours_start: string | null;
+		reminder_lead_time_minutes: number | null;
 		task_reminders: boolean | null;
 		timezone: string | null;
 		updated_at: string | null;
@@ -1299,6 +1326,7 @@ export const tableNames = [
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',
+	'scheduled_sms_messages',
 	'sms_messages',
 	'sms_templates',
 	'subscription_plans',

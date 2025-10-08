@@ -248,9 +248,13 @@
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
 	>
 		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+			<div
+				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
+			>
 				<div class="flex-1">
-					<h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center">
+					<h3
+						class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center"
+					>
 						<Bell class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
 						Brief Preferences
 					</h3>
@@ -270,7 +274,12 @@
 							Edit
 						</Button>
 					{:else}
-						<Button on:click={() => resetBriefPreferences()} variant="ghost" size="sm" class="text-xs sm:text-sm">
+						<Button
+							on:click={() => resetBriefPreferences()}
+							variant="ghost"
+							size="sm"
+							class="text-xs sm:text-sm"
+						>
 							<RotateCcw class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
 							<span class="hidden sm:inline">Reset</span>
 						</Button>
@@ -305,7 +314,9 @@
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
 					></div>
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">Loading preferences...</p>
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">
+						Loading preferences...
+					</p>
 				</div>
 			{:else if briefPreferencesState.error}
 				<div class="text-center py-8">
@@ -381,7 +392,9 @@
 									{briefPreferences.is_active ? 'Active' : 'Inactive'}
 								</div>
 								{#if briefPreferencesState.nextScheduledBrief}
-									<span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+									<span
+										class="text-xs sm:text-sm text-gray-500 dark:text-gray-400"
+									>
 										Next: {formatDateTime(
 											briefPreferencesState.nextScheduledBrief.toISOString()
 										)}
@@ -515,8 +528,12 @@
 		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				<div class="flex-1">
-					<h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center">
-						<Calendar class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600 dark:text-green-400" />
+					<h3
+						class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center"
+					>
+						<Calendar
+							class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600 dark:text-green-400"
+						/>
 						Scheduled Briefs
 					</h3>
 					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -551,12 +568,16 @@
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
 					></div>
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">Loading scheduled briefs...</p>
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">
+						Loading scheduled briefs...
+					</p>
 				</div>
 			{:else if briefPreferencesState.jobs.length === 0}
 				<div class="text-center py-8">
 					<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">No scheduled briefs found</p>
+					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
+						No scheduled briefs found
+					</p>
 					<p class="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
 						Enable brief preferences above to start scheduling
 					</p>
@@ -571,10 +592,14 @@
 						>
 							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 								<div class="flex-shrink-0">
-									<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+									<Clock
+										class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400"
+									/>
 								</div>
 								<div class="min-w-0">
-									<p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+									<p
+										class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+									>
 										{formatDateTime(job.scheduled_for)}
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400">
@@ -614,7 +639,9 @@
 									<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
 								</div>
 								<div class="min-w-0">
-									<p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+									<p
+										class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+									>
 										{formatDateTime(job.scheduled_for)}
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400">

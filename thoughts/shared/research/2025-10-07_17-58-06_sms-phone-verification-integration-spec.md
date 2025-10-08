@@ -5,7 +5,15 @@ git_commit: 6f9c8dc2b31bed0d2dd4f601c0bb7999f134c2c7
 branch: main
 repository: buildos-platform
 topic: "SMS Phone Verification Integration in Profile/Notifications Page"
-tags: [research, sms, phone-verification, notifications, profile, implementation-spec]
+tags:
+  [
+    research,
+    sms,
+    phone-verification,
+    notifications,
+    profile,
+    implementation-spec,
+  ]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude Code
@@ -53,6 +61,7 @@ This specification documents the complete SMS phone verification flow integratio
 ### ❌ Issues & Bugs Found
 
 1. **PhoneVerification.svelte Line 93-97**
+
    ```svelte
    $effect(() => {
      if (phoneNumber) {
@@ -60,6 +69,7 @@ This specification documents the complete SMS phone verification flow integratio
      }
    });
    ```
+
    **Problem**: This creates an infinite loop. The effect watches `phoneNumber`, then modifies it, triggering the effect again.
 
    **Solution**: Remove the effect and format on input event instead.
@@ -229,13 +239,15 @@ CREATE TABLE user_sms_preferences (
 **Purpose**: Initiate phone number verification process
 
 **Request Body**:
+
 ```json
 {
-  "phoneNumber": "+15551234567"  // E.164 format or US format
+  "phoneNumber": "+15551234567" // E.164 format or US format
 }
 ```
 
 **Response (Success - 200)**:
+
 ```json
 {
   "success": true,
@@ -247,6 +259,7 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Response (Error - 409 Conflict)**:
+
 ```json
 {
   "success": false,
@@ -255,6 +268,7 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Response (Error - 429 Rate Limit)**:
+
 ```json
 {
   "success": false,
@@ -264,12 +278,14 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Twilio Integration**:
+
 - Uses Twilio Verify Service (`PRIVATE_TWILIO_VERIFY_SERVICE_SID`)
 - Sends 6-digit code via SMS
 - Code expires in 10 minutes
 - Max 5 attempts per phone number per hour
 
 **Database Side Effects**:
+
 - Creates or updates `user_sms_preferences` with:
   - `phone_number` = provided number
   - `phone_verified` = `false`
@@ -280,6 +296,7 @@ CREATE TABLE user_sms_preferences (
 **Purpose**: Confirm verification code and mark phone as verified
 
 **Request Body**:
+
 ```json
 {
   "phoneNumber": "+15551234567",
@@ -288,6 +305,7 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Response (Success - 200)**:
+
 ```json
 {
   "success": true,
@@ -299,6 +317,7 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Response (Error - 400 Bad Request)**:
+
 ```json
 {
   "success": false,
@@ -307,10 +326,12 @@ CREATE TABLE user_sms_preferences (
 ```
 
 **Twilio Integration**:
+
 - Calls `twilioClient.checkVerification(phoneNumber, code)`
 - Returns `true` if code matches, `false` otherwise
 
 **Database Side Effects**:
+
 - Updates `user_sms_preferences`:
   - `phone_verified` = `true`
   - `phone_verified_at` = NOW()
@@ -326,6 +347,7 @@ CREATE TABLE user_sms_preferences (
 **Purpose**: Two-step phone verification UI
 
 **Props**:
+
 ```typescript
 interface Props {
   onVerified?: () => void;
@@ -333,6 +355,7 @@ interface Props {
 ```
 
 **State Variables**:
+
 - `phoneNumber: string` - User's input, formatted as (555) 123-4567
 - `verificationCode: string` - 6-digit code input
 - `verificationSent: boolean` - Toggles between Step 1 and Step 2
@@ -367,12 +390,13 @@ function formatPhoneInput(value: string): string {
 function resetVerification() {
   // Return to Step 1
   verificationSent = false;
-  verificationCode = '';
+  verificationCode = "";
 }
 ```
 
 **❌ BUG TO FIX**:
 Remove the `$effect` that causes infinite loop:
+
 ```svelte
 <!-- REMOVE THIS -->
 $effect(() => {
@@ -384,6 +408,7 @@ $effect(() => {
 
 **✅ CORRECT APPROACH**:
 Format on input event:
+
 ```svelte
 <TextInput
   type="tel"
@@ -399,6 +424,7 @@ Format on input event:
 **Purpose**: Modal wrapper for phone verification flow
 
 **Props**:
+
 ```typescript
 interface Props {
   isOpen: boolean;
@@ -408,6 +434,7 @@ interface Props {
 ```
 
 **Behavior**:
+
 - Opens when `isOpen` = true
 - Renders `PhoneVerification` component
 - On verification success:
@@ -419,6 +446,7 @@ interface Props {
 **Purpose**: Multi-channel notification preferences for daily briefs
 
 **Key Features**:
+
 1. **Email Toggle** - Always available
 2. **Push Toggle** - Requires browser permission
 3. **In-App Toggle** - Always available
@@ -446,24 +474,25 @@ async function handlePhoneVerified() {
   // 2. Auto-enable SMS toggle
   smsEnabled = true;
   // 3. Show success toast
-  toastService.success('Phone verified! SMS notifications enabled.');
+  toastService.success("Phone verified! SMS notifications enabled.");
 }
 ```
 
 **Display States**:
 
-| Phone Status | Toggle State | Display |
-|-------------|-------------|---------|
-| Not verified | OFF | ⚠️ "Phone verification required" |
-| Verified | OFF | ✓ "Verified: +1 (555) 123-4567" |
-| Verified | ON | ✓ "Verified: +1 (555) 123-4567" |
-| Opted out | OFF (disabled) | "SMS notifications opted out" |
+| Phone Status | Toggle State   | Display                          |
+| ------------ | -------------- | -------------------------------- |
+| Not verified | OFF            | ⚠️ "Phone verification required" |
+| Verified     | OFF            | ✓ "Verified: +1 (555) 123-4567"  |
+| Verified     | ON             | ✓ "Verified: +1 (555) 123-4567"  |
+| Opted out    | OFF (disabled) | "SMS notifications opted out"    |
 
 ### `NotificationsTab.svelte`
 
 **Purpose**: Profile page tab that wraps notification settings
 
 **Implementation**:
+
 ```svelte
 <div class="space-y-6">
   <div class="flex items-start gap-3">
@@ -487,11 +516,13 @@ async function handlePhoneVerified() {
 **File**: `/apps/web/src/lib/components/settings/PhoneVerification.svelte`
 
 **Issues to Fix**:
+
 1. Remove `$effect` infinite loop (lines 93-97)
 2. Add formatting on input event instead
 3. Ensure phone number is converted to E.164 before API calls
 
 **Changes**:
+
 ```svelte
 <!-- REMOVE the $effect block -->
 
@@ -556,6 +587,7 @@ async function confirmVerification() {
 ### Phase 2: Integration Verification ✅
 
 **Checklist**:
+
 - [x] Verify `NotificationPreferences.svelte` correctly shows modal
 - [x] Verify `handlePhoneVerified()` callback properly reloads preferences
 - [x] Verify SMS toggle auto-enables after verification
@@ -621,6 +653,7 @@ async function confirmVerification() {
 ## Security Considerations
 
 ### Phone Number Uniqueness
+
 - **Constraint**: One phone number per user account
 - **Enforcement**: API checks `user_sms_preferences` before sending verification
 - **SQL Query**:
@@ -632,11 +665,13 @@ async function confirmVerification() {
   ```
 
 ### Rate Limiting
+
 - **Twilio Level**: Max 5 verification attempts per phone per hour
 - **Database Level**: `daily_sms_limit` and `daily_sms_count` tracking
 - **Error Handling**: Return 429 status code with retry-after hint
 
 ### RLS Policies
+
 ```sql
 -- Users can only view/update their own SMS preferences
 CREATE POLICY "Users can view their own SMS preferences"
@@ -649,6 +684,7 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 ```
 
 ### Input Validation
+
 - **Phone Number**: E.164 format (+1 for US)
 - **Verification Code**: 6 numeric characters
 - **Quiet Hours**: HH:MM 24-hour format
@@ -658,15 +694,15 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 ### User-Facing Errors
 
-| Scenario | Error Message | Action |
-|----------|--------------|--------|
-| Empty phone | "Please enter a phone number" | Block submit |
-| Invalid format | "Invalid phone number format" | Show inline |
-| Duplicate phone | "This phone number is already verified by another user" | Toast |
-| Rate limited | "Too many verification attempts. Please try again later." | Toast |
-| Invalid code | "Invalid verification code" | Toast, allow retry |
-| Network error | "Failed to send verification" | Toast, allow retry |
-| Verification expired | "Verification code expired. Please request a new one." | Toast, reset |
+| Scenario             | Error Message                                             | Action             |
+| -------------------- | --------------------------------------------------------- | ------------------ |
+| Empty phone          | "Please enter a phone number"                             | Block submit       |
+| Invalid format       | "Invalid phone number format"                             | Show inline        |
+| Duplicate phone      | "This phone number is already verified by another user"   | Toast              |
+| Rate limited         | "Too many verification attempts. Please try again later." | Toast              |
+| Invalid code         | "Invalid verification code"                               | Toast, allow retry |
+| Network error        | "Failed to send verification"                             | Toast, allow retry |
+| Verification expired | "Verification code expired. Please request a new one."    | Toast, reset       |
 
 ### Developer Errors (Logged Only)
 
@@ -685,6 +721,7 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 ### STOP Keyword Handling
 
 **Implemented in Twilio Messaging Service**:
+
 - Auto-opt-out on "STOP", "UNSUBSCRIBE", "CANCEL"
 - Updates `user_sms_preferences.opted_out = true`
 - No further SMS sent to opted-out users
@@ -699,18 +736,21 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 ## Future Enhancements
 
 ### P1 - High Priority
+
 1. **Resend Code** - Allow users to request new code if first expires
 2. **Phone Number Change** - Allow verified users to change phone number
 3. **International Support** - Support non-US phone numbers
 4. **SMS Preview** - Show what notifications will look like via SMS
 
 ### P2 - Medium Priority
+
 1. **SMS Delivery Status** - Show user if SMS was delivered/failed
 2. **SMS History** - View past SMS notifications in settings
 3. **Multiple Phones** - Allow verified alternate phone numbers
 4. **Custom Quiet Hours per Notification Type** - Different hours for different events
 
 ### P3 - Nice to Have
+
 1. **WhatsApp Support** - Alternative to SMS
 2. **2FA Integration** - Use verified phone for account security
 3. **SMS Templates Preview** - Let users customize notification text
@@ -721,6 +761,7 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 ### File Locations
 
 **Components**:
+
 - `/apps/web/src/lib/components/settings/PhoneVerification.svelte`
 - `/apps/web/src/lib/components/settings/PhoneVerificationModal.svelte`
 - `/apps/web/src/lib/components/settings/NotificationPreferences.svelte`
@@ -728,18 +769,22 @@ FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 - `/apps/web/src/lib/components/profile/NotificationsTab.svelte`
 
 **API Routes**:
+
 - `/apps/web/src/routes/api/sms/verify/+server.ts`
 - `/apps/web/src/routes/api/sms/verify/confirm/+server.ts`
 
 **Services**:
+
 - `/apps/web/src/lib/services/sms.service.ts`
 - `/apps/web/src/lib/services/notification-preferences.service.ts`
 
 **Database**:
+
 - `/apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql`
 - `/apps/web/supabase/migrations/20251006_sms_notification_channel_phase1.sql`
 
 **Documentation**:
+
 - `/docs/integrations/twilio/README.md`
 - `/docs/guides/sms-setup-guide.md`
 - `/docs/testing/SMS_NOTIFICATION_TESTING_GUIDE.md`

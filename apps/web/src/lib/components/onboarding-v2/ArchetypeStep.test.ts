@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/onboarding-v2/ArchetypeStep.test.ts
 /**
  * @vitest-environment jsdom
  */

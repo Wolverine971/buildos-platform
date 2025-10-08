@@ -35,7 +35,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const expectedSecret = PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
 		if (!expectedSecret) {
-			console.error('[NotificationEmailWebhook] PRIVATE_BUILDOS_WEBHOOK_SECRET not configured');
+			console.error(
+				'[NotificationEmailWebhook] PRIVATE_BUILDOS_WEBHOOK_SECRET not configured'
+			);
 			return json({ error: 'Webhook not configured' }, { status: 500 });
 		}
 

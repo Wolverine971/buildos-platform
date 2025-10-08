@@ -166,14 +166,17 @@ export class SMSService extends ApiService {
 					data: { user }
 				} = await supabase.auth.getUser();
 				if (user) {
-					await supabase.from('user_sms_preferences').upsert({
-						user_id: user.id,
-						phone_number: phoneNumber,
-						phone_verified: true,
-						phone_verified_at: new Date().toISOString()
-					}, {
-						onConflict: 'user_id'
-					});
+					await supabase.from('user_sms_preferences').upsert(
+						{
+							user_id: user.id,
+							phone_number: phoneNumber,
+							phone_verified: true,
+							phone_verified_at: new Date().toISOString()
+						},
+						{
+							onConflict: 'user_id'
+						}
+					);
 				}
 			}
 
@@ -246,13 +249,16 @@ export class SMSService extends ApiService {
 		}>
 	): Promise<ServiceResponse<{ updated: boolean }>> {
 		try {
-			const { error } = await supabase.from('user_sms_preferences').upsert({
-				user_id: userId,
-				...preferences,
-				updated_at: new Date().toISOString()
-			}, {
-				onConflict: 'user_id'
-			});
+			const { error } = await supabase.from('user_sms_preferences').upsert(
+				{
+					user_id: userId,
+					...preferences,
+					updated_at: new Date().toISOString()
+				},
+				{
+					onConflict: 'user_id'
+				}
+			);
 
 			if (error) throw error;
 
@@ -271,13 +277,16 @@ export class SMSService extends ApiService {
 
 	async optOut(userId: string): Promise<ServiceResponse<{ optedOut: boolean }>> {
 		try {
-			const { error } = await supabase.from('user_sms_preferences').upsert({
-				user_id: userId,
-				opted_out: true,
-				opted_out_at: new Date().toISOString()
-			}, {
-				onConflict: 'user_id'
-			});
+			const { error } = await supabase.from('user_sms_preferences').upsert(
+				{
+					user_id: userId,
+					opted_out: true,
+					opted_out_at: new Date().toISOString()
+				},
+				{
+					onConflict: 'user_id'
+				}
+			);
 
 			if (error) throw error;
 

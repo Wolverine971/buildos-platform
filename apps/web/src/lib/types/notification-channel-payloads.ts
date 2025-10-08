@@ -1,3 +1,4 @@
+// apps/web/src/lib/types/notification-channel-payloads.ts
 /**
  * Type definitions for channel-specific notification payloads
  * Based on the worker implementation in apps/worker/src/workers/notification/notificationWorker.ts
@@ -97,7 +98,10 @@ export interface ChannelPayloads {
  */
 export const DEFAULT_CHANNEL_PAYLOADS: Record<
 	NotificationChannel,
-	PushNotificationPayload | InAppNotificationPayload | EmailNotificationPayload | SMSNotificationPayload
+	| PushNotificationPayload
+	| InAppNotificationPayload
+	| EmailNotificationPayload
+	| SMSNotificationPayload
 > = {
 	push: {
 		title: 'BuildOS Notification',

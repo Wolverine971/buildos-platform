@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/notification-real-data.service.ts
 /**
  * Notification Real Data Service
  *
@@ -16,9 +17,7 @@ export class NotificationRealDataService {
 	 * Load real data for a specific user and event type
 	 */
 	async loadRealData(userId: string, eventType: EventType): Promise<RealDataResult> {
-		const response = await fetch(
-			`/api/admin/notifications/real-data/${userId}/${eventType}`
-		);
+		const response = await fetch(`/api/admin/notifications/real-data/${userId}/${eventType}`);
 
 		if (!response.ok) {
 			const error = await response.json();
@@ -55,21 +54,21 @@ export class NotificationRealDataService {
 	getRealDataDescription(eventType: EventType): string {
 		switch (eventType) {
 			case 'brief.completed':
-				return 'Loads data from user\'s most recent daily brief';
+				return "Loads data from user's most recent daily brief";
 			case 'brief.failed':
-				return 'Uses user\'s timezone and current date';
+				return "Uses user's timezone and current date";
 			case 'brain_dump.processed':
-				return 'Loads data from user\'s most recent brain dump with project';
+				return "Loads data from user's most recent brain dump with project";
 			case 'task.due_soon':
-				return 'Loads user\'s next upcoming task';
+				return "Loads user's next upcoming task";
 			case 'project.phase_scheduled':
-				return 'Loads data from user\'s most recent scheduled phase';
+				return "Loads data from user's most recent scheduled phase";
 			case 'calendar.sync_failed':
-				return 'Loads data from user\'s last calendar sync error';
+				return "Loads data from user's last calendar sync error";
 			case 'user.signup':
-				return 'Loads user\'s signup information';
+				return "Loads user's signup information";
 			case 'user.trial_expired':
-				return 'Loads user\'s trial expiration date';
+				return "Loads user's trial expiration date";
 			default:
 				return 'Real data not available for this event type';
 		}

@@ -22,6 +22,7 @@ last_updated_by: Claude Code
 ## Research Question
 
 Why is the daily brief email generation failing with the error:
+
 ```
 Failed to create email record: {
   code: '23514',
@@ -77,6 +78,7 @@ const { data: emailRecord, error: emailError } = await supabase
 ```
 
 **Valid Status Values Expected by Code**:
+
 - `'pending'` - Email created but not yet sent
 - `'scheduled'` - Email scheduled for future sending
 - `'sent'` - Email successfully sent
@@ -85,6 +87,7 @@ const { data: emailRecord, error: emailError } = await supabase
 - `'draft'` - Email in draft state
 
 **Evidence Sources**:
+
 - `apps/worker/PHASE2_REVISED_IMPLEMENTATION.md:40` - Documents these status values
 - `apps/web/supabase/migrations/20240120_add_performance_indexes.sql:56-58` - Index uses `'draft', 'scheduled'`
 - `apps/worker/src/workers/brief/emailWorker.ts:130, 172` - Code uses `'sent'` and `'failed'`
@@ -93,6 +96,7 @@ const { data: emailRecord, error: emailError } = await supabase
 ### 3. Database Schema Issue
 
 **The `emails` Table Was Created Manually**:
+
 - No migration file exists that creates the `emails` table
 - The table was likely created via Supabase UI
 - This is why there's no documented schema for it
@@ -111,6 +115,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
 ```
 
 **Why this is wrong for `emails` table**:
+
 - `email_logs` is for **already-sent** emails (historical log)
 - `emails` table is for email **records** that go through a lifecycle (pending → sent/failed)
 - The constraint from `email_logs` does NOT include `'pending'` because logs only record completed sends
@@ -121,6 +126,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
 **Migration `20250930_add_email_brief_job_type_part2.sql` expects `'pending'` to be valid**:
 
 **Line 38-41**: Creates index assuming `status = 'pending'` is valid
+
 ```sql
 CREATE INDEX IF NOT EXISTS idx_emails_status_category
   ON emails(status, category, created_at)
@@ -128,12 +134,14 @@ CREATE INDEX IF NOT EXISTS idx_emails_status_category
 ```
 
 **Line 76-80**: RPC function queries `status = 'pending'`
+
 ```sql
 WHERE e.status = 'pending'
   AND e.category = 'daily_brief'
 ```
 
 **Line 138**: View aggregates all three statuses
+
 ```sql
 COUNT(*) FILTER (WHERE e.status = 'sent') as sent_count,
 COUNT(*) FILTER (WHERE e.status = 'failed') as failed_count,
@@ -147,17 +155,20 @@ This migration clearly expects `'pending'` to be a valid status value!
 **Two-Phase Email Delivery**:
 
 **Phase 1** - Brief Generation (`briefWorker.ts`):
+
 1. Generate daily brief content
 2. Create email record with `status: 'pending'` ← **FAILS HERE**
 3. Queue email job for later processing
 
 **Phase 2** - Email Sending (`emailWorker.ts`):
+
 1. Pick up queued email job
 2. Fetch email record
 3. Send via SMTP or webhook
 4. Update status to `'sent'` or `'failed'`
 
 **Why `'pending'` is essential**:
+
 - Allows non-blocking email delivery
 - Separates brief generation from email sending
 - Enables retry logic for failed emails
@@ -276,11 +287,13 @@ SELECT EXISTS(
 ### Related Issues
 
 **Railway SMTP Blocking** (`thoughts/shared/research/2025-09-26_21-14-50_email_sending_railway_production_issue.md`):
+
 - Railway blocks SMTP ports on Free/Trial/Hobby plans
 - Solution: Webhook-based email delivery as primary method
 - This is unrelated to the current constraint issue but explains the webhook infrastructure
 
 **Email Tracking System** (`thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`):
+
 - Email tracking system upgraded on 2025-10-06
 - Now updates both `email_recipients` and `notification_deliveries` tables
 - Email open/click tracking fully functional

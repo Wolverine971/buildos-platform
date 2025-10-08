@@ -1,19 +1,7 @@
 <!-- apps/web/src/routes/contact/+page.svelte -->
 <script lang="ts">
 	import { Mail, Linkedin, Twitter, MessageCircle, Lightbulb, TrendingUp } from 'lucide-svelte';
-	import { onMount } from 'svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-
-	// Preload critical images
-	let imageLoaded = false;
-
-	onMount(() => {
-		const img = new Image();
-		img.onload = () => {
-			imageLoaded = true;
-		};
-		img.src = '/brain-bolt.png';
-	});
 
 	const contactMethods = [
 		{
@@ -104,16 +92,15 @@
 		<!-- Header -->
 		<header class="text-center mb-12">
 			<div class="flex justify-center mb-6">
-				<img
-					src="/brain-bolt.png"
-					alt="BuildOS"
-					class="w-14 h-14 transition-opacity duration-300"
-					class:opacity-0={!imageLoaded}
-					class:opacity-100={imageLoaded}
-					width="56"
-					height="56"
-					loading="eager"
-				/>
+				<video
+					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+					class="w-14 h-14"
+					autoplay
+					loop
+					muted
+					playsinline
+					aria-label="BuildOS"
+				></video>
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
 				Building BuildOS
