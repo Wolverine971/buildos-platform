@@ -11,15 +11,31 @@
 </script>
 
 <div class="flex flex-col items-center justify-center min-h-[600px] text-center px-4">
-	<!-- Hero graphic with animation -->
+	<!-- Hero video animation -->
 	<div class="mb-8 relative">
 		<div
 			class="absolute inset-0 bg-gradient-to-br from-purple-400 to-blue-600 blur-3xl opacity-20 animate-pulse"
 		></div>
-		<div
-			class="relative bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-8 shadow-2xl"
-		>
-			<Brain class="w-16 h-16 text-white" />
+		<div class="relative rounded-md">
+			<video
+				autoplay
+				loop
+				muted
+				playsinline
+				class="w-32 h-32 sm:w-40 sm:h-40 object-contain rounded-md"
+				aria-label="BuildOS brain animation"
+			>
+				<source
+					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+					type="video/mp4"
+				/>
+				<!-- Fallback for browsers that don't support video -->
+				<div
+					class="w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-8 shadow-2xl flex items-center justify-center"
+				>
+					<Brain class="w-16 h-16 text-white" />
+				</div>
+			</video>
 		</div>
 	</div>
 

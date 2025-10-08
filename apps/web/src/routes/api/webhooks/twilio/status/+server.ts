@@ -5,9 +5,8 @@ import twilio from 'twilio';
 import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
-import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { createServiceClient } from '@buildos/supabase-client';
+import { smsMetricsService } from '../../../../../worker/src/lib/services/smsMetrics.service';
 
 /**
  * Webhook Context for logging and monitoring
@@ -239,7 +238,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				.update(updateData)
 				.eq('id', messageId)
 				.eq('twilio_sid', messageSid)
-				.select('notification_delivery_id, attempt_count, max_attempts, priority, user_id')
+				.select('notification_delivery_id, attempt_count, max_attempts, priority, user_id, sent_at, delivered_at')
 				.single();
 
 			if (smsError) {
@@ -254,6 +253,93 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					...webhookContext,
 					hasNotificationDelivery: !!updatedMessage?.notification_delivery_id
 				});
+
+				// Track delivery metrics when message is delivered
+				if (messageStatus === 'delivered' && updatedMessage?.user_id) {
+					const sentAt = updatedMessage.sent_at;
+					const deliveredAt = updatedMessage.delivered_at;
+
+					if (sentAt && deliveredAt) {
+						const deliveryTimeMs = new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
+
+						// Record delivery metrics (non-blocking)
+						smsMetricsService
+							.recordDelivered(updatedMessage.user_id, messageId, deliveryTimeMs)
+							.catch((err) => {
+								logWebhookEvent('error', 'Failed to record delivery metrics', {
+									...webhookContext,
+									error: err.message
+								});
+							});
+
+						logWebhookEvent('info', 'Delivery metrics tracked', {
+							...webhookContext,
+							deliveryTimeMs
+						});
+					} else {
+						logWebhookEvent('warn', 'Cannot calculate delivery time - missing timestamps', {
+							...webhookContext,
+							hasSentAt: !!sentAt,
+							hasDeliveredAt: !!deliveredAt
+						});
+					}
+				}
+			}
+
+			// Phase 4: Update scheduled_sms_messages if linked
+			const { data: scheduledSms } = await supabase
+				.from('scheduled_sms_messages')
+				.select('id, status, send_attempts, max_send_attempts')
+				.eq('sms_message_id', messageId)
+				.maybeSingle();
+
+			if (scheduledSms) {
+				logWebhookEvent('info', 'Found linked scheduled SMS', {
+					...webhookContext,
+					scheduledSmsId: scheduledSms.id
+				});
+
+				const scheduledUpdateData: any = {
+					updated_at: new Date().toISOString()
+				};
+
+				// Map status for scheduled SMS
+				if (messageStatus === 'delivered') {
+					scheduledUpdateData.status = 'delivered' as const;
+				} else if (messageStatus === 'sent' || messageStatus === 'sending') {
+					// Keep as 'sent' if already sent, don't downgrade to 'sending'
+					if (scheduledSms.status !== 'delivered') {
+						scheduledUpdateData.status = 'sent' as const;
+					}
+				} else if (
+					messageStatus === 'failed' ||
+					messageStatus === 'undelivered' ||
+					messageStatus === 'canceled'
+				) {
+					scheduledUpdateData.status = 'failed' as const;
+					scheduledUpdateData.last_error = errorMessage
+						? `${errorMessage} (Code: ${errorCode})`
+						: `Twilio error code: ${errorCode}`;
+				}
+
+				const { error: scheduledError } = await supabase
+					.from('scheduled_sms_messages')
+					.update(scheduledUpdateData)
+					.eq('id', scheduledSms.id);
+
+				if (scheduledError) {
+					logWebhookEvent('error', 'Failed to update scheduled SMS', {
+						...webhookContext,
+						scheduledSmsId: scheduledSms.id,
+						error: scheduledError.message
+					});
+				} else {
+					logWebhookEvent('info', 'Scheduled SMS updated successfully', {
+						...webhookContext,
+						scheduledSmsId: scheduledSms.id,
+						newStatus: scheduledUpdateData.status
+					});
+				}
 			}
 
 			// Step 2 of dual-table update: Update notification delivery if linked
@@ -310,8 +396,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			// Enhanced retry logic with error categorization
 			if ((messageStatus === 'failed' || messageStatus === 'undelivered') && updatedMessage) {
 				const shouldRetry = errorInfo.shouldRetry;
+				const attemptCount = updatedMessage.attempt_count ?? 0;
+				const maxAttempts = updatedMessage.max_attempts ?? 3;
 
-				if (shouldRetry && updatedMessage.attempt_count < updatedMessage.max_attempts) {
+				if (shouldRetry && attemptCount < maxAttempts) {
 					// Calculate backoff delay based on attempt count and error severity
 					let baseDelay = 60; // 1 minute base
 					if (errorInfo.category === 'rate_limit') {
@@ -320,13 +408,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						baseDelay = 180; // 3 minutes for carrier issues
 					}
 
-					const delay = Math.pow(2, updatedMessage.attempt_count) * baseDelay; // Exponential backoff
+					const delay = Math.pow(2, attemptCount) * baseDelay; // Exponential backoff
 					const scheduledFor = new Date(Date.now() + delay * 1000);
 
 					logWebhookEvent('info', 'Scheduling retry for failed SMS', {
 						...webhookContext,
-						attemptCount: updatedMessage.attempt_count,
-						maxAttempts: updatedMessage.max_attempts,
+						attemptCount,
+						maxAttempts,
 						delaySeconds: delay,
 						scheduledFor: scheduledFor.toISOString(),
 						errorCategory: errorInfo.category
@@ -337,7 +425,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						p_job_type: 'send_sms',
 						p_metadata: {
 							message_id: messageId,
-							retry_attempt: updatedMessage.attempt_count + 1,
+							retry_attempt: attemptCount + 1,
 							previous_error: errorMessage,
 							error_code: errorCode,
 							error_category: errorInfo.category
@@ -361,8 +449,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				} else {
 					logWebhookEvent('warn', 'Max retry attempts reached', {
 						...webhookContext,
-						attemptCount: updatedMessage.attempt_count,
-						maxAttempts: updatedMessage.max_attempts
+						attemptCount,
+						maxAttempts
 					});
 				}
 			}
@@ -378,7 +466,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				.from('sms_messages')
 				.update({
 					twilio_status: messageStatus,
-					status: mappedStatus,
+					status: mappedStatus as any,
 					delivered_at: messageStatus === 'delivered' ? new Date().toISOString() : null,
 					sent_at:
 						messageStatus === 'sent' || messageStatus === 'sending'

@@ -15,18 +15,18 @@ import type { LegacyJob } from "./shared/jobAdapter";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import {
   addMinutes,
+  endOfDay,
   format,
-  isAfter,
   isBefore,
   parseISO,
   startOfDay,
-  endOfDay,
 } from "date-fns";
 import { queue } from "../worker";
 import {
-  SMSMessageGenerator,
   type EventContext,
+  SMSMessageGenerator,
 } from "../lib/services/smsMessageGenerator";
+import { smsMetricsService } from "../lib/services/smsMetrics.service";
 
 interface DailySMSJobData {
   userId: string;
@@ -70,11 +70,12 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     // Verify user is still opted in and phone verified
     if (
       !smsPrefs.phone_verified ||
+      !smsPrefs.phone_number ||
       smsPrefs.opted_out ||
       !smsPrefs.event_reminders_enabled
     ) {
       console.log(
-        `⏭️ [DailySMS] User ${userId} not eligible for SMS (phone_verified: ${smsPrefs.phone_verified}, opted_out: ${smsPrefs.opted_out}, event_reminders_enabled: ${smsPrefs.event_reminders_enabled})`,
+        `⏭️ [DailySMS] User ${userId} not eligible for SMS (phone_verified: ${smsPrefs.phone_verified}, phone_number: ${!!smsPrefs.phone_number}, opted_out: ${smsPrefs.opted_out}, event_reminders_enabled: ${smsPrefs.event_reminders_enabled})`,
       );
       return { success: true, message: "User not eligible for SMS reminders" };
     }
@@ -137,7 +138,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     if (eventsError) {
       console.error(
-        `❌ [DailySMS] Error fetching calendar events:`,
+        "❌ [DailySMS] Error fetching calendar events:",
         eventsError,
       );
       throw eventsError;
@@ -167,11 +168,12 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     // Filter events that need SMS reminders
     const now = new Date();
     const scheduledMessages: any[] = [];
+    let quietHoursSkipCount = 0;
 
     for (const event of calendarEvents) {
       // Skip if event_start is null
       if (!event.event_start) {
-        console.log(`⏭️ [DailySMS] Skipping event with null start time`);
+        console.log("⏭️ [DailySMS] Skipping event with null start time");
         continue;
       }
 
@@ -222,6 +224,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
           console.log(
             `⏭️ [DailySMS] Skipping event "${event.event_title}" - falls in quiet hours`,
           );
+          quietHoursSkipCount++;
           continue;
         }
       }
@@ -263,6 +266,18 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
       const message = generatedMessage.content;
 
+      // Track LLM generation metrics (non-blocking)
+      smsMetricsService
+        .recordLLMGeneration(
+          userId,
+          generatedMessage.generatedVia,
+          generatedMessage.costUsd,
+          generatedMessage.metadata?.generationTimeMs,
+        )
+        .catch((err) =>
+          console.error('[DailySMS] Error tracking LLM metrics:', err),
+        );
+
       scheduledMessages.push({
         user_id: userId,
         message_content: message,
@@ -286,8 +301,17 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     }
 
     if (scheduledMessages.length === 0) {
-      console.log(`📝 [DailySMS] No eligible events for SMS reminders`);
+      console.log("📝 [DailySMS] No eligible events for SMS reminders");
       return { success: true, message: "No eligible events for reminders" };
+    }
+
+    // Track quiet hours skips (non-blocking)
+    if (quietHoursSkipCount > 0) {
+      smsMetricsService
+        .recordQuietHoursSkip(userId, quietHoursSkipCount)
+        .catch((err) =>
+          console.error('[DailySMS] Error tracking quiet hours skips:', err),
+        );
     }
 
     // Check if scheduled messages would exceed daily limit
@@ -296,6 +320,14 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       console.log(
         `⚠️ [DailySMS] Would exceed daily limit. Limiting to ${remainingQuota} messages`,
       );
+
+      // Track daily limit hit (non-blocking)
+      smsMetricsService
+        .recordDailyLimitHit(userId)
+        .catch((err) =>
+          console.error('[DailySMS] Error tracking daily limit hit:', err),
+        );
+
       scheduledMessages.splice(remainingQuota);
     }
 
@@ -314,7 +346,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     if (insertError) {
       console.error(
-        `❌ [DailySMS] Error inserting scheduled messages:`,
+        "❌ [DailySMS] Error inserting scheduled messages:",
         insertError,
       );
       throw insertError;
@@ -324,21 +356,67 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       `✅ [DailySMS] Created ${insertedMessages?.length} scheduled SMS message(s)`,
     );
 
-    // Queue send_sms jobs for each scheduled message
+    // Track scheduled count metrics (non-blocking)
+    if (insertedMessages && insertedMessages.length > 0) {
+      smsMetricsService
+        .recordScheduled(userId, insertedMessages.length)
+        .catch((err) =>
+          console.error('[DailySMS] Error tracking scheduled count:', err),
+        );
+    }
+
+    // Phase 4: Create sms_messages records and link to scheduled SMS
     for (const msg of insertedMessages || []) {
+      // Create sms_messages record
+      const { data: smsMessage, error: smsError } = await supabase
+        .from("sms_messages")
+        .insert({
+          user_id: userId,
+          phone_number: smsPrefs.phone_number,
+          message_content: msg.message_content,
+          status: "scheduled",
+          priority: "normal",
+          scheduled_for: msg.scheduled_for,
+          metadata: {
+            scheduled_sms_id: msg.id,
+            calendar_event_id: msg.calendar_event_id,
+            event_title: msg.event_title,
+          },
+        })
+        .select()
+        .single();
+
+      if (smsError || !smsMessage) {
+        console.error("❌ [DailySMS] Error creating sms_message:", smsError);
+        continue; // Skip this message but continue with others
+      }
+
+      // Link sms_message_id back to scheduled SMS
+      await supabase
+        .from("scheduled_sms_messages")
+        .update({ sms_message_id: smsMessage.id })
+        .eq("id", msg.id);
+
+      // Queue send_sms job with both IDs
       await queue.add(
         "send_sms",
         userId,
         {
-          message_id: msg.id,
+          message_id: smsMessage.id, // sms_messages.id
+          scheduled_sms_id: msg.id, // scheduled_sms_messages.id
           phone_number: smsPrefs.phone_number,
           message: msg.message_content,
+          user_id: userId,
         },
         {
           priority: 5,
           scheduledFor: new Date(msg.scheduled_for),
-          dedupKey: `send-sms-${msg.id}`,
+          dedupKey: `send-scheduled-sms-${msg.id}`,
         },
+      );
+
+      console.log(
+        `✅ [DailySMS] Created sms_message ${smsMessage.id} for scheduled SMS ${msg.id}`,
       );
     }
 

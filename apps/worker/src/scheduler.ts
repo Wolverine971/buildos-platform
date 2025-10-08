@@ -16,6 +16,8 @@ import { supabase } from "./lib/supabase";
 import { queue } from "./worker";
 import type { Database } from "@buildos/shared-types";
 import { BriefBackoffCalculator } from "./lib/briefBackoffCalculator";
+import { smsAlertsService } from "./lib/services/smsAlerts.service";
+import { smsMetricsService } from "./lib/services/smsMetrics.service";
 
 export type UserBriefPreference =
   Database["public"]["Tables"]["user_brief_preferences"]["Row"];
@@ -129,13 +131,19 @@ export function startScheduler() {
     await checkAndScheduleDailySMS();
   });
 
+  // Run hourly to check SMS alert thresholds and refresh metrics view
+  cron.schedule("0 * * * *", async () => {
+    console.log("🚨 Checking SMS alert thresholds...");
+    await checkSMSAlerts();
+  });
+
   // Also run once at startup
   setTimeout(() => {
     checkAndScheduleBriefs();
   }, 5000);
 
   console.log(
-    "⏰ Scheduler started - checking every hour (briefs) and midnight (SMS)",
+    "⏰ Scheduler started - checking every hour (briefs, SMS alerts) and midnight (SMS scheduling)",
   );
 }
 
@@ -647,5 +655,43 @@ async function checkAndScheduleDailySMS() {
       "❌ [SMS Scheduler] Error in checkAndScheduleDailySMS:",
       error,
     );
+  }
+}
+
+/**
+ * Check SMS alert thresholds and refresh metrics view
+ * Runs hourly to monitor SMS system health and trigger alerts
+ */
+async function checkSMSAlerts() {
+  try {
+    console.log("🚨 [SMS Alerts] Starting hourly alert check...");
+
+    // Step 1: Refresh materialized view to get latest metrics
+    console.log("📊 [SMS Alerts] Refreshing metrics materialized view...");
+    await smsMetricsService.refreshMaterializedView();
+    console.log("✅ [SMS Alerts] Metrics view refreshed successfully");
+
+    // Step 2: Check all alert thresholds
+    console.log("🔍 [SMS Alerts] Checking alert thresholds...");
+    const triggeredAlerts = await smsAlertsService.checkAlerts();
+
+    if (triggeredAlerts.length === 0) {
+      console.log("✅ [SMS Alerts] All metrics within acceptable thresholds");
+    } else {
+      console.log(
+        `🚨 [SMS Alerts] ${triggeredAlerts.length} alert(s) triggered:`,
+      );
+      triggeredAlerts.forEach((alert) => {
+        console.log(
+          `   - ${alert.severity.toUpperCase()}: ${alert.alert_type}`,
+        );
+        console.log(`     Message: ${alert.message}`);
+        console.log(`     Channel: ${alert.notification_channel}`);
+      });
+    }
+
+    console.log("✅ [SMS Alerts] Alert check completed successfully");
+  } catch (error) {
+    console.error("❌ [SMS Alerts] Error in checkSMSAlerts:", error);
   }
 }
