@@ -140,17 +140,16 @@ async function sendInAppNotification(
 ): Promise<DeliveryResult> {
   try {
     // Insert into existing user_notifications table
+    // Note: user_notifications schema doesn't have metadata column
+    // Schema: id, user_id, type, title, message, priority, action_url, read_at, dismissed_at, expires_at, created_at
     const { error } = await supabase.from("user_notifications").insert({
       user_id: delivery.recipient_user_id,
       type: delivery.payload.type || "info",
-      title: delivery.payload.title,
-      message: delivery.payload.body,
-      action_url: delivery.payload.action_url,
-      metadata: {
-        event_id: delivery.event_id,
-        delivery_id: delivery.id,
-        ...delivery.payload.data,
-      },
+      title: delivery.payload.title || "Notification",
+      message: delivery.payload.body || "",
+      priority: delivery.payload.priority || "normal",
+      action_url: delivery.payload.action_url || undefined,
+      expires_at: delivery.payload.expires_at || undefined,
     });
 
     if (error) {
@@ -238,7 +237,7 @@ async function sendNotification(
 export async function processNotification(
   job: ProcessingJob<NotificationJobMetadata>,
 ): Promise<void> {
-  const { event_id, delivery_id, channel, event_type } = job.metadata;
+  const { event_id, delivery_id, channel, event_type } = job.data;
 
   console.log(
     `[NotificationWorker] Processing notification job ${job.id} for delivery ${delivery_id} (${channel})`,
@@ -258,15 +257,38 @@ export async function processNotification(
       );
     }
 
-    // Skip if already sent
-    if (delivery.status === "sent" || delivery.status === "delivered") {
+    // Skip if already sent or currently being processed
+    if (
+      delivery.status === "sent" ||
+      delivery.status === "delivered" ||
+      delivery.status === "clicked"
+    ) {
       console.log(
-        `[NotificationWorker] Delivery ${delivery_id} already sent, skipping`,
+        `[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`,
       );
       return;
     }
 
-    // Send notification
+    // Skip if max attempts exceeded
+    const maxAttempts = delivery.max_attempts || 3;
+    const currentAttempts = delivery.attempts || 0;
+    if (currentAttempts >= maxAttempts) {
+      console.warn(
+        `[NotificationWorker] Delivery ${delivery_id} has exceeded max attempts (${currentAttempts}/${maxAttempts}), marking as failed`,
+      );
+      await supabase
+        .from("notification_deliveries")
+        .update({
+          status: "failed",
+          failed_at: new Date().toISOString(),
+          last_error: `Exceeded maximum attempts (${maxAttempts})`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery_id);
+      return;
+    }
+
+    // Send notification (status will be updated after send completes)
     const typedDelivery: NotificationDelivery = {
       ...delivery,
       channel: delivery.channel as NotificationChannel,
@@ -289,9 +311,13 @@ export async function processNotification(
       updated_at: delivery.updated_at || new Date().toISOString(),
     };
 
+    console.log(
+      `[NotificationWorker] Sending ${channel} notification to delivery ${delivery_id} (attempt ${(delivery.attempts || 0) + 1}/${delivery.max_attempts || 3})`,
+    );
+
     const result = await sendNotification(channel, typedDelivery);
 
-    // Update delivery record
+    // Update delivery record with final status
     const updateData: any = {
       attempts: (delivery.attempts || 0) + 1,
       updated_at: new Date().toISOString(),
@@ -300,10 +326,12 @@ export async function processNotification(
     if (result.success) {
       updateData.status = "sent";
       updateData.sent_at = new Date().toISOString();
-      updateData.external_id = result.external_id;
+      if (result.external_id) {
+        updateData.external_id = result.external_id;
+      }
 
       console.log(
-        `[NotificationWorker] Successfully sent notification ${delivery_id}`,
+        `[NotificationWorker] ✅ Successfully sent ${channel} notification ${delivery_id}`,
       );
     } else {
       updateData.status = "failed";
@@ -311,10 +339,11 @@ export async function processNotification(
       updateData.last_error = result.error;
 
       console.error(
-        `[NotificationWorker] Failed to send notification ${delivery_id}: ${result.error}`,
+        `[NotificationWorker] ❌ Failed to send ${channel} notification ${delivery_id}: ${result.error}`,
       );
     }
 
+    // Always update status, even if there's an error
     const { error: updateError } = await supabase
       .from("notification_deliveries")
       .update(updateData)
@@ -322,9 +351,21 @@ export async function processNotification(
 
     if (updateError) {
       console.error(
-        `[NotificationWorker] Failed to update delivery record: ${updateError.message}`,
+        `[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status for ${delivery_id}: ${updateError.message}`,
+      );
+      console.error(
+        `[NotificationWorker] This may cause duplicate sends! Delivery data:`,
+        updateData,
+      );
+      // Still throw to mark job as failed, but the notification was already sent
+      throw new Error(
+        `Failed to update delivery status: ${updateError.message}`,
       );
     }
+
+    console.log(
+      `[NotificationWorker] Updated delivery ${delivery_id} status to '${updateData.status}'`,
+    );
 
     // If failed and can retry, throw error to trigger retry
     if (
@@ -333,11 +374,55 @@ export async function processNotification(
     ) {
       throw new Error(result.error);
     }
+
+    // Success - job will be marked complete by the queue
   } catch (error: any) {
     console.error(
-      `[NotificationWorker] Error processing notification job:`,
+      `[NotificationWorker] Error processing notification job ${job.id}:`,
       error,
     );
+
+    // Try to mark delivery as failed if not already updated to a final state
+    try {
+      const { data: currentDelivery } = await supabase
+        .from("notification_deliveries")
+        .select("status, attempts")
+        .eq("id", delivery_id)
+        .single();
+
+      // Only mark as failed if not already in a final state
+      if (
+        currentDelivery &&
+        currentDelivery.status !== "sent" &&
+        currentDelivery.status !== "delivered" &&
+        currentDelivery.status !== "clicked" &&
+        currentDelivery.status !== "failed"
+      ) {
+        const currentAttempts = currentDelivery.attempts || 0;
+
+        await supabase
+          .from("notification_deliveries")
+          .update({
+            status: "failed",
+            failed_at: new Date().toISOString(),
+            last_error: error.message,
+            attempts: currentAttempts + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", delivery_id)
+          .eq("status", currentDelivery.status); // Optimistic lock
+
+        console.log(
+          `[NotificationWorker] Marked delivery ${delivery_id} as failed after error (attempt ${currentAttempts + 1})`,
+        );
+      }
+    } catch (cleanupError) {
+      console.error(
+        `[NotificationWorker] Could not mark delivery as failed:`,
+        cleanupError,
+      );
+    }
+
     throw error;
   }
 }
@@ -383,10 +468,10 @@ export async function processNotificationJobs(): Promise<void> {
             })
             .eq("id", job.id);
 
-          // Type the job metadata
+          // Type the job - convert database 'metadata' to ProcessingJob 'data'
           const typedJob: ProcessingJob<NotificationJobMetadata> = {
             ...job,
-            metadata: job.metadata as unknown as NotificationJobMetadata,
+            data: job.metadata as unknown as NotificationJobMetadata,
             attempts: job.attempts || 0,
             max_attempts: job.max_attempts || 3,
           };

@@ -5,6 +5,7 @@ import { processEmailBriefJob } from "./workers/brief/emailWorker";
 import { processPhasesJob } from "./workers/phases/phasesWorker";
 import { processOnboardingAnalysisJob } from "./workers/onboarding/onboardingWorker";
 import { processSMSJob } from "./workers/smsWorker";
+import { processNotification } from "./workers/notification/notificationWorker";
 import { createLegacyJob } from "./workers/shared/jobAdapter";
 import {
   getEnvironmentConfig,
@@ -142,6 +143,25 @@ async function processEmailBrief(job: ProcessingJob) {
 }
 
 /**
+ * Notification processor (Multi-channel notifications)
+ */
+async function processNotificationWrapper(job: ProcessingJob) {
+  const channel = job.data.channel || "unknown";
+  await job.log(`📬 Processing ${channel} notification`);
+
+  try {
+    // Process notification (already handles ProcessingJob type)
+    await processNotification(job);
+    await job.log(`✅ ${channel} notification sent successfully`);
+
+    return { success: true };
+  } catch (error: any) {
+    await job.log(`❌ ${channel} notification failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -152,6 +172,9 @@ export async function startWorker() {
   queue.process("generate_brief_email", processEmailBrief); // Phase 2: Email worker
   queue.process("generate_phases", processPhases);
   queue.process("onboarding_analysis", processOnboarding);
+
+  // Register notification processor (multi-channel: push, email, in-app, SMS)
+  queue.process("send_notification", processNotificationWrapper);
 
   // Register SMS processor (will fail gracefully if Twilio not configured)
   queue.process("send_sms", processSMS);
@@ -206,9 +229,11 @@ export async function startWorker() {
 
   // List enabled job types
   const jobTypes = [
-    "brief_generation",
-    "phases_generation",
+    "generate_daily_brief",
+    "generate_brief_email",
+    "generate_phases",
     "onboarding_analysis",
+    "send_notification",
   ];
 
   if (twilioEnabled) {
