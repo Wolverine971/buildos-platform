@@ -16,18 +16,10 @@ import type {
   NotificationStatus,
   PushSubscription as PushSubscriptionType,
 } from "@buildos/shared-types";
+import type { ProcessingJob } from "../../lib/supabaseQueue.js";
 import webpush from "web-push";
 import { sendEmailNotification } from "./emailAdapter.js";
 import { sendSMSNotification } from "./smsAdapter.js";
-
-interface ProcessingJob<T = any> {
-  id: string;
-  user_id: string;
-  job_type: string;
-  metadata: T;
-  attempts: number;
-  max_attempts: number;
-}
 
 const supabase = createServiceClient();
 
@@ -237,7 +229,7 @@ async function sendNotification(
 export async function processNotification(
   job: ProcessingJob<NotificationJobMetadata>,
 ): Promise<void> {
-  const { event_id, delivery_id, channel, event_type } = job.data;
+  const { delivery_id, channel } = job.data;
 
   console.log(
     `[NotificationWorker] Processing notification job ${job.id} for delivery ${delivery_id} (${channel})`,
@@ -470,10 +462,14 @@ export async function processNotificationJobs(): Promise<void> {
 
           // Type the job - convert database 'metadata' to ProcessingJob 'data'
           const typedJob: ProcessingJob<NotificationJobMetadata> = {
-            ...job,
+            id: job.id,
+            userId: job.user_id,
             data: job.metadata as unknown as NotificationJobMetadata,
             attempts: job.attempts || 0,
-            max_attempts: job.max_attempts || 3,
+            updateProgress: async () => {}, // Stub - not used in direct processing
+            log: async (message: string) => {
+              console.log(`[Job ${job.id}] ${message}`);
+            },
           };
 
           // Process notification

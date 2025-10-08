@@ -206,36 +206,77 @@ export async function sendEmailNotification(
       );
     }
 
-    // Queue email job for actual sending
-    const { data: emailJobId, error: queueError } = await supabase.rpc(
-      "add_queue_job",
-      {
-        p_user_id: delivery.recipient_user_id,
-        p_job_type: "generate_brief_email",
-        p_metadata: {
-          emailId: emailRecord.id,
-        },
-        p_priority: 5,
-        p_scheduled_for: new Date().toISOString(),
-        p_dedup_key: `email-${emailRecord.id}`,
-      },
-    );
+    // Send email immediately via webhook to web app
+    const webhookUrl =
+      process.env.PUBLIC_APP_URL || "https://build-os.com";
+    const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
-    if (queueError) {
+    if (!webhookSecret) {
+      console.error(
+        "[EmailAdapter] PRIVATE_BUILDOS_WEBHOOK_SECRET not configured - cannot send notification emails",
+      );
       return {
         success: false,
-        error: `Failed to queue email job: ${queueError.message}`,
+        error: "Webhook secret not configured",
       };
     }
 
-    console.log(
-      `[EmailAdapter] Queued email job ${emailJobId} for email ${emailRecord.id} (delivery ${delivery.id})`,
-    );
+    try {
+      const webhookResponse = await fetch(
+        `${webhookUrl}/api/webhooks/send-notification-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${webhookSecret}`,
+          },
+          body: JSON.stringify({
+            recipientEmail: user.email,
+            recipientName: user.name,
+            recipientUserId: delivery.recipient_user_id,
+            subject,
+            htmlContent: htmlWithTracking,
+            textContent: text,
+            trackingId,
+            emailRecordId: emailRecord.id,
+            deliveryId: delivery.id,
+            eventId: delivery.event_id,
+            eventType: delivery.payload.event_type,
+          }),
+        },
+      );
 
-    return {
-      success: true,
-      external_id: emailRecord.id,
-    };
+      if (!webhookResponse.ok) {
+        const errorData = (await webhookResponse
+          .json()
+          .catch(() => ({}))) as { error?: string };
+        throw new Error(
+          errorData.error || `Webhook returned ${webhookResponse.status}`,
+        );
+      }
+
+      const webhookResult = (await webhookResponse.json()) as {
+        messageId?: string;
+      };
+
+      console.log(
+        `[EmailAdapter] ✅ Email sent via webhook for email ${emailRecord.id} (delivery ${delivery.id}, messageId: ${webhookResult.messageId})`,
+      );
+
+      return {
+        success: true,
+        external_id: emailRecord.id,
+      };
+    } catch (webhookError: any) {
+      console.error(
+        "[EmailAdapter] Failed to send email via webhook:",
+        webhookError,
+      );
+      return {
+        success: false,
+        error: `Webhook error: ${webhookError.message}`,
+      };
+    }
   } catch (error: any) {
     console.error("[EmailAdapter] Failed to send email notification:", error);
     return {
