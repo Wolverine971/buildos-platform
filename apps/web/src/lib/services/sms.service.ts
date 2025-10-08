@@ -18,7 +18,7 @@ export class SMSService extends ApiService {
 	private static instance: SMSService;
 
 	private constructor() {
-		super('/api');
+		super('');
 	}
 
 	public static getInstance(): SMSService {
@@ -171,6 +171,8 @@ export class SMSService extends ApiService {
 						phone_number: phoneNumber,
 						phone_verified: true,
 						phone_verified_at: new Date().toISOString()
+					}, {
+						onConflict: 'user_id'
 					});
 				}
 			}
@@ -248,6 +250,8 @@ export class SMSService extends ApiService {
 				user_id: userId,
 				...preferences,
 				updated_at: new Date().toISOString()
+			}, {
+				onConflict: 'user_id'
 			});
 
 			if (error) throw error;
@@ -271,6 +275,8 @@ export class SMSService extends ApiService {
 				user_id: userId,
 				opted_out: true,
 				opted_out_at: new Date().toISOString()
+			}, {
+				onConflict: 'user_id'
 			});
 
 			if (error) throw error;

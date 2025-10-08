@@ -3,12 +3,12 @@
 	import { Rocket, Calendar, Loader2, Sparkles, CheckCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import CalendarAnalysisModal from '$lib/components/calendar/CalendarAnalysisModal.svelte';
-	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import { brainDumpService } from '$lib/services/braindump-api.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
+	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
+	import { scale, fade } from 'svelte/transition';
 
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
@@ -20,86 +20,178 @@
 
 	let projectInput = $state('');
 	let isProcessing = $state(false);
-	let showCalendarAnalysis = $state(false);
-	let showCalendarResults = $state(false);
-	let calendarAnalysisId = $state<string | undefined>(undefined);
-	let calendarSuggestions = $state<any[]>([]);
-	let calendarErrorMessage = $state<string | null>(null);
+
+	// Calendar connection state
 	let hasCalendarConnected = $state(false);
+	let isCheckingConnection = $state(true);
+	let connectionError = $state<string | null>(null);
+	let isConnectingCalendar = $state(false);
+	let showConnectionSuccess = $state(false);
+
 	let createdProjects = $state<string[]>([]);
 	let showSuccess = $state(false);
+	let calendarAnalysisStarted = $state(false);
 
-	// Check if user has Google Calendar connected
+	/**
+	 * Check if user has Google Calendar connected
+	 * FIXED: Use correct API endpoint
+	 */
 	async function checkCalendarConnection(): Promise<boolean> {
 		try {
-			const response = await fetch('/api/calendar/status');
+			isCheckingConnection = true;
+			connectionError = null;
+
+			// FIXED: Correct endpoint is /api/calendar (GET)
+			const response = await fetch('/api/calendar');
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
 			const result = await response.json();
-			return result.success && result.data?.connected;
+
+			// Response format: { success: boolean, connected: boolean, userId: string }
+			return result.success && result.connected === true;
 		} catch (error) {
 			console.error('Failed to check calendar connection:', error);
+			connectionError = error instanceof Error ? error.message : 'Connection check failed';
 			return false;
+		} finally {
+			isCheckingConnection = false;
 		}
 	}
 
-	// Initialize calendar status
+	/**
+	 * Initiate Google Calendar OAuth connection
+	 * Opens OAuth flow in same window (will redirect back to onboarding)
+	 */
+	async function handleConnectCalendar() {
+		try {
+			isConnectingCalendar = true;
+
+			// Fetch the calendar auth URL with redirect back to onboarding
+			// IMPORTANT: URL-encode the redirect parameter to preserve query params
+			const redirectPath = '/onboarding?v2=true';
+			const encodedRedirect = encodeURIComponent(redirectPath);
+			const response = await fetch(`/profile/calendar?redirect=${encodedRedirect}`);
+
+			if (!response.ok) {
+				throw new Error('Failed to get calendar auth URL');
+			}
+
+			const result = await response.json();
+
+			if (!result.calendarAuthUrl) {
+				throw new Error('No auth URL returned');
+			}
+
+			// Navigate to the auth URL (will redirect to Google OAuth, then back to onboarding)
+			window.location.href = result.calendarAuthUrl;
+		} catch (error) {
+			console.error('Calendar connection error:', error);
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to connect calendar'
+			);
+			isConnectingCalendar = false;
+		}
+	}
+
+	// Initialize calendar status and handle OAuth callback
 	$effect(() => {
+		// Check if user just returned from OAuth
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+
+			// Handle success callback
+			if (params.get('calendar') === '1' && params.get('success') === 'calendar_connected') {
+				// Calendar was just connected!
+				showConnectionSuccess = true;
+				toastService.success('Google Calendar connected successfully! 🎉');
+
+				// Auto-hide success message after 5 seconds
+				setTimeout(() => {
+					showConnectionSuccess = false;
+				}, 5000);
+
+				// Clean up URL params
+				params.delete('calendar');
+				params.delete('success');
+				const newUrl = `${window.location.pathname}?${params.toString()}`;
+				window.history.replaceState({}, '', newUrl);
+			}
+
+			// Handle error callback
+			if (params.get('calendar') === '1' && params.get('error')) {
+				const error = params.get('error');
+				let errorMessage = 'Failed to connect Google Calendar';
+
+				switch (error) {
+					case 'access_denied':
+						errorMessage = 'Access to Google Calendar was denied';
+						break;
+					case 'no_authorization_code':
+						errorMessage = 'No authorization code received from Google';
+						break;
+					case 'invalid_state':
+						errorMessage = 'Invalid security token. Please try again.';
+						break;
+					case 'token_exchange_failed':
+						errorMessage = 'Failed to exchange authorization code for tokens';
+						break;
+					default:
+						errorMessage = `Calendar connection failed: ${error}`;
+				}
+
+				toastService.error(errorMessage);
+
+				// Clean up URL params
+				params.delete('calendar');
+				params.delete('error');
+				const newUrl = `${window.location.pathname}?${params.toString()}`;
+				window.history.replaceState({}, '', newUrl);
+			}
+		}
+
+		// Check calendar connection status
 		checkCalendarConnection().then((connected) => {
 			hasCalendarConnected = connected;
 		});
 	});
 
-	async function handleStartCalendarAnalysis(options: { daysBack: number; daysForward: number }) {
+	/**
+	 * Start calendar analysis
+	 * Only callable when calendar is connected
+	 */
+	async function handleStartCalendarAnalysis() {
 		try {
-			const response = await fetch('/api/calendar/analyze', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					daysBack: options.daysBack,
-					daysForward: options.daysForward
-				})
+			// Double-check connection before analysis
+			const connected = await checkCalendarConnection();
+
+			if (!connected) {
+				toastService.error('Please connect your Google Calendar first.');
+				hasCalendarConnected = false;
+				return;
+			}
+
+			// Start calendar analysis via notification stack
+			const { notificationId } = await startCalendarAnalysis({
+				daysBack: 7,
+				daysForward: 60,
+				expandOnStart: false, // Keep minimized
+				expandOnComplete: true // Auto-expand when complete
 			});
 
-			const result = await response.json();
+			calendarAnalysisStarted = true;
 
-			if (!result.success) {
-				if (result.error?.includes('not connected')) {
-					calendarErrorMessage =
-						'Please connect your Google Calendar first from the Profile page.';
-				} else {
-					calendarErrorMessage = result.error || 'Failed to analyze calendar';
-				}
-				throw new Error(result.error || 'Failed to analyze calendar');
-			}
-
-			const data = result.data;
-			calendarAnalysisId = data.analysisId;
-			calendarSuggestions = data.suggestions || [];
-
-			if (calendarSuggestions.length === 0) {
-				toastService.info('No project patterns found in your calendar');
-			}
+			toastService.success(
+				'Calendar analysis started! Check the notification in the bottom-right corner.'
+			);
 		} catch (error) {
 			console.error('Calendar analysis error:', error);
-			// Error message already set above if it's a connection issue
-			if (!calendarErrorMessage) {
-				toastService.error(
-					error instanceof Error ? error.message : 'Failed to analyze calendar events'
-				);
-			}
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to start calendar analysis'
+			);
 		}
-	}
-
-	function showCalendarAnalysisModal() {
-		calendarErrorMessage = null; // Reset error message
-		showCalendarAnalysis = true;
-		showCalendarResults = true;
-	}
-
-	function handleCalendarClose() {
-		showCalendarResults = false;
-		showCalendarAnalysis = false;
 	}
 
 	async function processBrainDump() {
@@ -253,44 +345,177 @@
 			</p>
 		</div>
 
-		<!-- Calendar analysis CTA -->
-		<div
-			class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
-		>
-			<div class="flex items-start gap-4">
-				<Calendar class="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
-				<div class="flex-1">
-					<h4 class="font-semibold mb-2 text-gray-900 dark:text-white">
-						Want BuildOS to analyze your Google Calendar?
-					</h4>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-						We can automatically suggest projects based on your meetings and events.
-					</p>
-
-					<!-- Placeholder for video demo -->
+		<!-- Calendar Connection & Analysis Section -->
+		{#if showConnectionSuccess}
+			<!-- Connection Success Animation (Transient State) -->
+			<div
+				class="mb-6 p-5 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800 shadow-sm"
+				in:scale={{ duration: 400, start: 0.9 }}
+				out:fade={{ duration: 300 }}
+			>
+				<div class="flex items-center gap-3 mb-4">
 					<div
-						class="mb-4 bg-gray-100 dark:bg-gray-900 rounded-lg p-6 text-center border border-gray-300 dark:border-gray-600"
+						class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0"
 					>
-						<p class="text-gray-400 text-sm mb-1">
-							🎥 [Demo video: Calendar analysis in action - 15 seconds]
-						</p>
-						<p class="text-xs text-gray-500">
-							See how BuildOS finds projects from your calendar
+						<CheckCircle class="w-6 h-6 text-white" />
+					</div>
+					<div class="flex-1">
+						<h4 class="font-semibold text-green-900 dark:text-green-100">
+							Calendar Connected! 🎉
+						</h4>
+						<p class="text-sm text-green-700 dark:text-green-300">
+							Ready to analyze your schedule
 						</p>
 					</div>
-
-					<Button
-						variant="secondary"
-						on:click={showCalendarAnalysisModal}
-						class="w-full sm:w-auto"
-						disabled={isProcessing}
-					>
-						<Calendar class="w-4 h-4 mr-2" />
-						Analyze My Calendar
-					</Button>
 				</div>
+
+				<Button
+					variant="primary"
+					size="lg"
+					onclick={handleStartCalendarAnalysis}
+					disabled={calendarAnalysisStarted}
+					class="w-full"
+				>
+					<Sparkles class="w-5 h-5 mr-2" />
+					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar Now'}
+				</Button>
 			</div>
-		</div>
+		{:else if !hasCalendarConnected && !isCheckingConnection}
+			<!-- Calendar Not Connected - Value Proposition CTA -->
+			<div
+				class="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm"
+			>
+				<!-- Header -->
+				<div class="flex items-start gap-4 mb-4">
+					<div
+						class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0"
+					>
+						<Calendar class="w-6 h-6 text-white" />
+					</div>
+					<div class="flex-1">
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+							Let us analyze your calendar
+						</h3>
+						<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+							Connect your Google Calendar and we'll automatically create projects based on
+							your meetings and events. No manual entry needed!
+						</p>
+					</div>
+				</div>
+
+				<!-- Benefits -->
+				<div class="mb-5 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+					<div class="flex items-center gap-2">
+						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<span>Automatic project detection from recurring meetings</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<span>Pre-filled tasks with meeting details and dates</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<CheckCircle class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<span>Smart scheduling around your existing commitments</span>
+					</div>
+				</div>
+
+				<!-- Demo Preview (Optional Placeholder) -->
+				{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
+					<div
+						class="mb-4 bg-white dark:bg-gray-900 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700"
+					>
+						<p class="text-gray-400 text-xs mb-1">
+							🎥 [15-second demo: Calendar → Projects transformation]
+						</p>
+					</div>
+				{/if}
+
+				<!-- Primary CTA -->
+				<Button
+					variant="primary"
+					size="lg"
+					onclick={handleConnectCalendar}
+					disabled={isConnectingCalendar}
+					loading={isConnectingCalendar}
+					class="w-full mb-3"
+				>
+					{#if isConnectingCalendar}
+						<Loader2 class="w-5 h-5 mr-2 animate-spin" />
+						Connecting...
+					{:else}
+						<Calendar class="w-5 h-5 mr-2" />
+						Connect Google Calendar
+					{/if}
+				</Button>
+
+				<!-- Secondary Action -->
+				<button
+					class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 w-full text-center transition-colors"
+					onclick={skipProjectCapture}
+					disabled={isConnectingCalendar}
+				>
+					Skip for now — I'll connect later
+				</button>
+			</div>
+		{:else if hasCalendarConnected}
+			<!-- Calendar Connected - Ready to Analyze -->
+			<div
+				class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+			>
+				<div class="flex items-start gap-4 mb-4">
+					<div
+						class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0"
+					>
+						<CheckCircle class="w-5 h-5 text-white" />
+					</div>
+					<div class="flex-1">
+						<h4
+							class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2"
+						>
+							Google Calendar Connected
+							<span
+								class="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full"
+							>
+								Ready
+							</span>
+						</h4>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							We can analyze your calendar and automatically suggest projects based on your
+							meetings and events.
+						</p>
+					</div>
+				</div>
+
+				<Button
+					variant="secondary"
+					onclick={handleStartCalendarAnalysis}
+					disabled={calendarAnalysisStarted}
+					class="w-full sm:w-auto"
+				>
+					<Calendar class="w-4 h-4 mr-2" />
+					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar'}
+				</Button>
+
+				{#if calendarAnalysisStarted}
+					<p class="text-xs text-blue-600 dark:text-blue-400 mt-3 flex items-center gap-2">
+						<Loader2 class="w-3 h-3 animate-spin" />
+						Analysis in progress — Check notification panel (bottom-right corner)
+					</p>
+				{/if}
+			</div>
+
+			<!-- Divider -->
+			<div class="mb-6 flex items-center gap-3">
+				<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+				<span class="text-sm text-gray-500 dark:text-gray-400 font-medium">OR</span>
+				<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+			</div>
+
+			<!-- Manual Brain Dump Label -->
+			<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+				Describe your projects manually
+			</h4>
+		{/if}
 
 		<!-- Actions -->
 		<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -322,14 +547,3 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Calendar Analysis Modal -->
-<CalendarAnalysisResults
-	bind:isOpen={showCalendarResults}
-	bind:analysisId={calendarAnalysisId}
-	bind:suggestions={calendarSuggestions}
-	autoStart={showCalendarAnalysis}
-	onClose={handleCalendarClose}
-	onStartAnalysis={handleStartCalendarAnalysis}
-	errorMessage={calendarErrorMessage}
-/>

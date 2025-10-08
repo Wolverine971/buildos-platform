@@ -53,6 +53,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			phone_verified: true,
 			phone_verified_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
+		}, {
+			onConflict: 'user_id'
 		});
 
 		if (error) {

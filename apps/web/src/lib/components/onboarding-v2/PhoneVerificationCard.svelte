@@ -38,9 +38,8 @@
 		}
 	}
 
-	function handlePhoneInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const formatted = formatPhoneNumber(target.value);
+	function handlePhoneInput(num: string) {
+		const formatted = formatPhoneNumber(num);
 		phoneNumber = formatted;
 		error = null;
 	}
@@ -132,6 +131,7 @@
 	}
 
 	function handleKeyPress(event: KeyboardEvent) {
+		console.log(event)
 		if (event.key === 'Enter') {
 			if (!codeSent) {
 				sendVerificationCode();
@@ -208,8 +208,8 @@
 						<TextInput
 							id="phone-number"
 							bind:value={phoneNumber}
-							on:input={handlePhoneInput}
-							on:keypress={handleKeyPress}
+							on:input={(e)=>handlePhoneInput(e.detail)}
+							on:keypress={(e)=>handleKeyPress(e.detail)}
 							type="tel"
 							placeholder="(555) 123-4567"
 							disabled={isSending}
@@ -278,7 +278,7 @@
 						<TextInput
 							id="verification-code"
 							bind:value={verificationCode}
-							on:keypress={handleKeyPress}
+							on:keypress={(e) =>handleKeyPress(e.detail)}
 							type="text"
 							inputmode="numeric"
 							pattern="[0-9]*"

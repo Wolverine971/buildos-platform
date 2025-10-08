@@ -1,66 +1,114 @@
 <!-- apps/web/src/routes/admin/notifications/test-bed/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Send, Bell, Eye } from 'lucide-svelte';
+	import { Send, Bell, Eye, Search, Loader2, Database, RotateCw } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import UserNotificationContext from '$lib/components/admin/UserNotificationContext.svelte';
+	import NotificationTypeSelector from '$lib/components/admin/NotificationTypeSelector.svelte';
+	import PayloadEditor from '$lib/components/admin/PayloadEditor.svelte';
 	import {
 		notificationTestService,
 		type RecipientSearchResult
 	} from '$lib/services/notification-test.service';
+	import { notificationRealDataService } from '$lib/services/notification-real-data.service';
+	import type { UserNotificationContext as NotificationContextType } from '../../users/[id]/notification-context/+server';
+	import type { EventType } from '@buildos/shared-types';
 
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 
-	// Test notification config
-	let selectedEventType = $state<string>('user.signup');
-	let payload = $state<Record<string, any>>({
-		user_email: '',
-		signup_method: 'email'
-	});
-	let selectedRecipients = $state<RecipientSearchResult[]>([]);
-	let selectedChannels = $state<string[]>(['push', 'in_app']);
+	// User selection and context
+	let selectedUser = $state<RecipientSearchResult | null>(null);
+	let userContext = $state<NotificationContextType | null>(null);
+	let contextLoading = $state(false);
 	let recipientSearch = $state('');
 	let searchResults = $state<RecipientSearchResult[]>([]);
 	let isSearching = $state(false);
 
-	// Event types available for testing
-	const eventTypes = [
-		{
-			value: 'user.signup',
-			label: 'User Signup',
-			description: 'New user signs up for BuildOS',
-			adminOnly: true,
-			payloadExample: { user_email: 'test@example.com', signup_method: 'email' }
-		},
-		{
-			value: 'brief.completed',
-			label: 'Brief Completed',
-			description: 'Daily brief generation complete',
-			adminOnly: false,
-			payloadExample: {
-				brief_id: 'test-brief-id',
-				brief_date: new Date().toISOString().split('T')[0],
-				timezone: 'America/Los_Angeles',
-				task_count: 5,
-				project_count: 2
-			}
-		},
-		{
-			value: 'brief.failed',
-			label: 'Brief Failed',
-			description: 'Daily brief generation failed',
-			adminOnly: false,
-			payloadExample: {
-				brief_date: new Date().toISOString().split('T')[0],
-				error: 'Test error message',
-				timezone: 'America/Los_Angeles'
-			}
-		}
-	];
+	// Test notification config
+	let selectedEventType = $state<EventType>('brief.completed');
+	let payload = $state<Record<string, any>>({
+		brief_id: 'test-brief-id',
+		brief_date: new Date().toISOString().split('T')[0],
+		timezone: 'America/Los_Angeles',
+		task_count: 5,
+		project_count: 2
+	});
+	let selectedChannels = $state<string[]>(['push', 'in_app']);
+	let payloadMode = $state<'form' | 'json'>('form');
+	let loadingRealData = $state(false);
+	let realDataMessage = $state<string | null>(null);
 
-	let selectedEvent = $derived(eventTypes.find((e) => e.value === selectedEventType));
+	// Payload examples for each event type
+	const payloadExamples: Record<EventType, Record<string, any>> = {
+		// Admin events
+		'user.signup': {
+			user_email: 'test@example.com',
+			signup_method: 'email'
+		},
+		'user.trial_expired': {
+			user_email: 'test@example.com',
+			trial_end_date: new Date().toISOString()
+		},
+		'payment.failed': {
+			user_email: 'test@example.com',
+			amount: 29.99,
+			error_message: 'Card declined'
+		},
+		'error.critical': {
+			error_type: 'database_connection',
+			error_message: 'Unable to connect to database',
+			timestamp: new Date().toISOString()
+		},
+		// User events
+		'brief.completed': {
+			brief_id: 'test-brief-id',
+			brief_date: new Date().toISOString().split('T')[0],
+			timezone: 'America/Los_Angeles',
+			task_count: 5,
+			project_count: 2
+		},
+		'brief.failed': {
+			brief_date: new Date().toISOString().split('T')[0],
+			error_message: 'Test error message',
+			timezone: 'America/Los_Angeles'
+		},
+		'brain_dump.processed': {
+			brain_dump_id: 'test-dump-id',
+			project_id: 'test-project-id',
+			project_name: 'My Test Project',
+			tasks_created: 5,
+			processing_time_ms: 1500
+		},
+		'task.due_soon': {
+			task_id: 'test-task-id',
+			task_title: 'Important task',
+			project_id: 'test-project-id',
+			project_name: 'My Project',
+			due_date: new Date(Date.now() + 86400000).toISOString(),
+			hours_until_due: 24
+		},
+		'project.phase_scheduled': {
+			project_id: 'test-project-id',
+			project_name: 'My Project',
+			phase_id: 'test-phase-id',
+			phase_name: 'Implementation',
+			scheduled_date: new Date().toISOString(),
+			task_count: 8
+		},
+		'calendar.sync_failed': {
+			calendar_id: 'test-calendar-id',
+			project_id: 'test-project-id',
+			error_message: 'Authentication failed',
+			sync_attempted_at: new Date().toISOString()
+		}
+	};
+
+	// Check if user is subscribed to selected event
+	let userIsSubscribed = $derived(
+		userContext?.preferences.find((p: any) => p.event_type === selectedEventType)?.is_subscribed ?? false
+	);
 
 	async function searchRecipients() {
 		if (recipientSearch.trim().length < 2) {
@@ -78,27 +126,91 @@
 		}
 	}
 
-	function addRecipient(recipient: RecipientSearchResult) {
-		if (!selectedRecipients.find((r) => r.id === recipient.id)) {
-			selectedRecipients = [...selectedRecipients, recipient];
-		}
+	async function selectUser(user: RecipientSearchResult) {
+		selectedUser = user;
 		recipientSearch = '';
 		searchResults = [];
+
+		// Load user notification context
+		await loadUserContext(user.id);
 	}
 
-	function removeRecipient(recipientId: string) {
-		selectedRecipients = selectedRecipients.filter((r) => r.id !== recipientId);
+	function clearUserSelection() {
+		selectedUser = null;
+		userContext = null;
+	}
+
+	async function loadUserContext(userId: string) {
+		contextLoading = true;
+		try {
+			const response = await fetch(`/api/admin/users/${userId}/notification-context`);
+			if (!response.ok) throw new Error('Failed to load user context');
+			const data = await response.json();
+			userContext = data.data;
+		} catch (err) {
+			console.error('Error loading user context:', err);
+			error = 'Failed to load user notification context';
+		} finally {
+			contextLoading = false;
+		}
+	}
+
+	function handleEventTypeChange(eventType: EventType) {
+		selectedEventType = eventType;
+		// Auto-populate with sample payload
+		payload = { ...payloadExamples[eventType] };
+		// Clear real data message when changing event types
+		realDataMessage = null;
 	}
 
 	function useSampleData() {
-		if (selectedEvent) {
-			payload = { ...selectedEvent.payloadExample };
+		payload = { ...payloadExamples[selectedEventType] };
+		realDataMessage = null;
+	}
+
+	async function loadRealData() {
+		if (!selectedUser) {
+			error = 'Please select a user first';
+			return;
+		}
+
+		if (!notificationRealDataService.canLoadRealData(selectedEventType)) {
+			error = 'Real data not available for this event type';
+			return;
+		}
+
+		loadingRealData = true;
+		realDataMessage = null;
+		error = null;
+
+		try {
+			const result = await notificationRealDataService.loadRealData(
+				selectedUser.id,
+				selectedEventType
+			);
+			payload = result.payload;
+			realDataMessage = `✓ Loaded real data from ${selectedUser.email}'s records`;
+		} catch (err) {
+			console.error('Error loading real data:', err);
+			error = err instanceof Error ? err.message : 'Failed to load real data';
+			// On error, suggest using sample data
+			realDataMessage = 'No real data found. Try using sample data instead.';
+		} finally {
+			loadingRealData = false;
 		}
 	}
 
+	let canLoadRealData = $derived(
+		selectedUser && notificationRealDataService.canLoadRealData(selectedEventType)
+	);
+
+	let realDataDescription = $derived(
+		notificationRealDataService.getRealDataDescription(selectedEventType)
+	);
+
 	async function sendTestNotification() {
-		if (selectedRecipients.length === 0) {
-			error = 'Please select at least one recipient';
+		if (!selectedUser) {
+			error = 'Please select a user';
 			return;
 		}
 
@@ -112,18 +224,17 @@
 		successMessage = null;
 
 		try {
-			const result = await notificationTestService.sendTest({
-				event_type: selectedEventType as any,
+			await notificationTestService.sendTest({
+				event_type: selectedEventType,
 				payload,
-				recipient_user_ids: selectedRecipients.map((r) => r.id),
+				recipient_user_ids: [selectedUser.id],
 				channels: selectedChannels as any
 			});
 
-			successMessage = `Test notification sent to ${selectedRecipients.length} recipient(s) across ${selectedChannels.length} channel(s)`;
+			successMessage = `Test notification sent to ${selectedUser.email} across ${selectedChannels.length} channel(s)`;
 
-			// Reset form
-			selectedRecipients = [];
-			payload = selectedEvent?.payloadExample || {};
+			// Keep user selected but reset payload to sample
+			payload = { ...payloadExamples[selectedEventType] };
 		} catch (err) {
 			console.error('Error sending test notification:', err);
 			error = err instanceof Error ? err.message : 'Failed to send test notification';
@@ -142,13 +253,6 @@
 			searchResults = [];
 		}
 	});
-
-	// Reset payload when event type changes
-	$effect(() => {
-		if (selectedEvent) {
-			payload = { ...selectedEvent.payloadExample };
-		}
-	});
 </script>
 
 <svelte:head>
@@ -161,7 +265,7 @@
 		<!-- Header -->
 		<AdminPageHeader
 			title="Notification Test Bed"
-			description="Test notification delivery across all channels before production rollout"
+			description="Test notifications with full user context and multi-channel preview"
 			icon={Send}
 			showBack={true}
 		/>
@@ -231,110 +335,46 @@
 		{/if}
 
 		<div class="space-y-6">
-			<!-- Step 1: Select Event Type -->
+			<!-- Step 1: User Search & Selection -->
 			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
 				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-					Step 1: Select Event Type
+					Step 1: Select User
 				</h2>
 
-				<select
-					bind:value={selectedEventType}
-					class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-				>
-					{#each eventTypes as eventType}
-						<option value={eventType.value}>{eventType.label}</option>
-					{/each}
-				</select>
-
-				{#if selectedEvent}
-					<div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-						<p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-							<strong>Description:</strong>
-							{selectedEvent.description}
-						</p>
-						<p class="text-sm text-gray-700 dark:text-gray-300">
-							<strong>Admin Only:</strong>
-							{selectedEvent.adminOnly ? 'Yes' : 'No'}
-						</p>
-					</div>
-				{/if}
-			</div>
-
-			<!-- Step 2: Configure Payload -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-				<div class="flex items-center justify-between mb-4">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-						Step 2: Configure Payload
-					</h2>
-					<Button size="sm" variant="secondary" on:click={useSampleData}>
-						Use Sample Data
-					</Button>
-				</div>
-
-				<div class="space-y-4">
-					{#each Object.keys(payload) as key}
-						<div>
-							<label
-								for={key}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>
-								{key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-							</label>
-							<input
-								id={key}
-								type="text"
-								bind:value={payload[key]}
-								class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-							/>
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<!-- Step 3: Select Recipients -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-					Step 3: Select Recipients
-				</h2>
-
-				<div class="space-y-4">
+				{#if !selectedUser}
 					<!-- Search Input -->
 					<div class="relative">
-						<input
-							type="text"
-							bind:value={recipientSearch}
-							placeholder="Search users by email or name..."
-							class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-						/>
-
-						{#if isSearching}
-							<div class="absolute right-3 top-3">
-								<div
-									class="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"
-								></div>
-							</div>
-						{/if}
+						<div class="relative">
+							<Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+							<input
+								type="text"
+								bind:value={recipientSearch}
+								placeholder="Search users by email or name..."
+								class="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+							/>
+							{#if isSearching}
+								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+									<Loader2 class="w-5 h-5 animate-spin text-blue-600" />
+								</div>
+							{/if}
+						</div>
 
 						<!-- Search Results Dropdown -->
 						{#if searchResults.length > 0}
-							<div
-								class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-							>
+							<div class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
 								{#each searchResults as result}
 									<button
 										type="button"
-										onclick={() => addRecipient(result)}
-										class="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+										onclick={() => selectUser(result)}
+										class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
 									>
-										<div
-											class="text-sm font-medium text-gray-900 dark:text-white"
-										>
+										<div class="text-sm font-medium text-gray-900 dark:text-white">
 											{result.email}
 										</div>
 										{#if result.name}
 											<div class="text-xs text-gray-500">{result.name}</div>
 										{/if}
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-gray-500 mt-1">
 											{result.has_push_subscription ? '📱 Push' : ''}
 											{result.has_phone ? '📞 SMS' : ''}
 										</div>
@@ -343,133 +383,149 @@
 							</div>
 						{/if}
 					</div>
+				{:else}
+					<!-- Selected User Display -->
+					<div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+						<div>
+							<div class="text-sm font-medium text-gray-900 dark:text-white">
+								{selectedUser.email}
+							</div>
+							{#if selectedUser.name}
+								<div class="text-xs text-gray-500">{selectedUser.name}</div>
+							{/if}
+						</div>
+						<Button variant="ghost" size="sm" onclick={clearUserSelection}>
+							Change User
+						</Button>
+					</div>
+				{/if}
+			</div>
 
-					<!-- Selected Recipients -->
-					{#if selectedRecipients.length > 0}
-						<div class="space-y-2">
-							<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-								Selected Recipients ({selectedRecipients.length})
-							</p>
-							{#each selectedRecipients as recipient}
-								<div
-									class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+			<!-- User Notification Context (shown after user is selected) -->
+			{#if selectedUser}
+				{#if contextLoading}
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+						<Loader2 class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+						<p class="text-gray-600 dark:text-gray-400">Loading user notification context...</p>
+					</div>
+				{:else if userContext}
+					<UserNotificationContext context={userContext} />
+				{/if}
+
+				<!-- Step 2: Select Notification Type -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+						Step 2: Select Notification Type
+					</h2>
+					<NotificationTypeSelector
+						value={selectedEventType}
+						userIsSubscribed={userIsSubscribed}
+						onchange={handleEventTypeChange}
+					/>
+				</div>
+
+				<!-- Step 3: Configure Payload -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+							Step 3: Configure Payload
+						</h2>
+						<div class="flex items-center space-x-2">
+							{#if canLoadRealData}
+								<Button
+									size="sm"
+									variant="primary"
+									onclick={loadRealData}
+									disabled={loadingRealData}
+									icon={Database}
+									loading={loadingRealData}
+									title={realDataDescription}
 								>
-									<div>
-										<div
-											class="text-sm font-medium text-gray-900 dark:text-white"
-										>
-											{recipient.email}
-										</div>
-										{#if recipient.name}
-											<div class="text-xs text-gray-500">
-												{recipient.name}
-											</div>
-										{/if}
-									</div>
-									<button
-										type="button"
-										onclick={() => removeRecipient(recipient.id)}
-										class="text-red-600 hover:text-red-700"
-									>
-										Remove
-									</button>
-								</div>
-							{/each}
+									Use Real Data
+								</Button>
+							{/if}
+							<Button size="sm" variant="secondary" onclick={useSampleData} icon={RotateCw}>
+								Reset to Sample
+							</Button>
+						</div>
+					</div>
+
+					{#if canLoadRealData}
+						<div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+							<p class="text-sm text-blue-800 dark:text-blue-200">
+								💡 <strong>Real Data Available:</strong> {realDataDescription}
+							</p>
 						</div>
 					{/if}
+
+					{#if realDataMessage}
+						<div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+							<p class="text-sm text-green-800 dark:text-green-200">
+								{realDataMessage}
+							</p>
+						</div>
+					{/if}
+
+					<PayloadEditor
+						bind:payload
+						bind:mode={payloadMode}
+					/>
 				</div>
-			</div>
 
-			<!-- Step 4: Select Channels -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-					Step 4: Select Channels
-				</h2>
+				<!-- Step 4: Select Channels -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+						Step 4: Select Channels
+					</h2>
 
-				<div class="space-y-3">
-					<label class="flex items-center space-x-3 cursor-pointer">
-						<input
-							type="checkbox"
-							value="push"
-							bind:group={selectedChannels}
-							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-						/>
-						<div>
-							<div class="font-medium text-gray-900 dark:text-white">
-								Browser Push
-							</div>
-							<p class="text-sm text-gray-500">
-								{selectedRecipients.filter((r) => r.has_push_subscription)
-									.length}/{selectedRecipients.length}
-								selected users have active push subscriptions
-							</p>
-						</div>
-					</label>
-
-					<label class="flex items-center space-x-3 cursor-pointer">
-						<input
-							type="checkbox"
-							value="email"
-							bind:group={selectedChannels}
-							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-						/>
-						<div>
-							<div class="font-medium text-gray-900 dark:text-white">Email</div>
-							<p class="text-sm text-gray-500">
-								All selected users have email addresses
-							</p>
-						</div>
-					</label>
-
-					<label class="flex items-center space-x-3 cursor-pointer">
-						<input
-							type="checkbox"
-							value="sms"
-							bind:group={selectedChannels}
-							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-						/>
-						<div>
-							<div class="font-medium text-gray-900 dark:text-white">SMS</div>
-							<p class="text-sm text-gray-500">
-								{selectedRecipients.filter((r) => r.has_phone)
-									.length}/{selectedRecipients.length}
-								selected users have phone numbers
-							</p>
-						</div>
-					</label>
-
-					<label class="flex items-center space-x-3 cursor-pointer">
-						<input
-							type="checkbox"
-							value="in_app"
-							bind:group={selectedChannels}
-							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-						/>
-						<div>
-							<div class="font-medium text-gray-900 dark:text-white">In-App</div>
-							<p class="text-sm text-gray-500">
-								Will appear in notification bell icon
-							</p>
-						</div>
-					</label>
+					<div class="space-y-3">
+						{#if userContext}
+							{#each userContext.channels as capability}
+								<label class="flex items-center space-x-3 cursor-pointer">
+									<input
+										type="checkbox"
+										value={capability.channel}
+										bind:group={selectedChannels}
+										disabled={!capability.available}
+										class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+									/>
+									<div class="flex-1">
+										<div class="flex items-center space-x-2">
+											<div class="font-medium text-gray-900 dark:text-white capitalize">
+												{capability.channel}
+											</div>
+											{#if capability.available}
+												<span class="text-xs text-green-600 dark:text-green-400">✓ Available</span>
+											{:else}
+												<span class="text-xs text-gray-400">✗ Not available</span>
+											{/if}
+										</div>
+										<p class="text-sm text-gray-500">
+											{capability.details}
+										</p>
+									</div>
+								</label>
+							{/each}
+						{:else}
+							<p class="text-sm text-gray-500">Select a user to see available channels</p>
+						{/if}
+					</div>
 				</div>
-			</div>
 
-			<!-- Send Button -->
-			<div class="flex justify-center">
-				<Button
-					on:click={sendTestNotification}
-					disabled={isLoading ||
-						selectedRecipients.length === 0 ||
-						selectedChannels.length === 0}
-					variant="primary"
-					size="lg"
-					icon={Send}
-					loading={isLoading}
-				>
-					Send Test Notification
-				</Button>
-			</div>
+				<!-- Send Button -->
+				<div class="flex justify-center">
+					<Button
+						onclick={sendTestNotification}
+						disabled={isLoading || !selectedUser || selectedChannels.length === 0}
+						variant="primary"
+						size="lg"
+						icon={Send}
+						loading={isLoading}
+					>
+						Send Test Notification
+					</Button>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

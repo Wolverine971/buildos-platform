@@ -26,7 +26,8 @@
 		}
 
 		isLoading = true;
-		const result = await smsService.verifyPhoneNumber(phoneNumber);
+		const e164Phone = toE164(phoneNumber);
+		const result = await smsService.verifyPhoneNumber(e164Phone);
 
 		if (result.success) {
 			verificationSent = true;
@@ -44,7 +45,8 @@
 		}
 
 		isVerifying = true;
-		const result = await smsService.confirmVerification(phoneNumber, verificationCode);
+		const e164Phone = toE164(phoneNumber);
+		const result = await smsService.confirmVerification(e164Phone, verificationCode);
 
 		if (result.success) {
 			toastService.success('Phone number verified successfully!');
@@ -90,11 +92,25 @@
 		return value;
 	}
 
-	$effect(() => {
-		if (phoneNumber) {
-			phoneNumber = formatPhoneInput(phoneNumber);
+	function toE164(formattedPhone: string): string {
+		// Remove all non-numeric characters
+		const cleaned = formattedPhone.replace(/\D/g, '');
+
+		// Convert to E.164 format
+		if (cleaned.length === 10) {
+			return `+1${cleaned}`;
 		}
-	});
+		if (cleaned.length === 11 && cleaned.startsWith('1')) {
+			return `+${cleaned}`;
+		}
+		// Return as-is if already has + or invalid
+		return cleaned.startsWith('+') ? formattedPhone : `+${cleaned}`;
+	}
+
+	function handlePhoneInput(num: string) {
+		const formatted = formatPhoneInput(num);
+		phoneNumber = formatted;
+	}
 </script>
 
 <div class="space-y-6">
@@ -123,7 +139,8 @@
 					<TextInput
 						type="tel"
 						id="phone"
-						bind:value={phoneNumber}
+						value={phoneNumber}
+						on:input={(e)=>handlePhoneInput(e.detail)}
 						placeholder="(555) 123-4567"
 						disabled={isLoading}
 						class="flex-1"

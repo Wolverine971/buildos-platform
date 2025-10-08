@@ -1213,6 +1213,122 @@ FROM user_sms_preferences;
 
 ---
 
+## Enhancement: SMS Click Tracking (Phase 3)
+
+**Date Completed**: 2025-10-07
+
+**Status**: ✅ IMPLEMENTED
+
+### Overview
+
+SMS click tracking was implemented as part of the unified notification tracking system. This enhancement allows tracking when users click on links in SMS messages, providing valuable analytics on SMS engagement.
+
+### Implementation
+
+**Database Migration**: `supabase/migrations/20251007_notification_tracking_links.sql`
+
+- Created `notification_tracking_links` table
+  - `short_code` (6-character base62 unique ID)
+  - `delivery_id` (links to `notification_deliveries`)
+  - `destination_url` (original long URL)
+  - `click_count`, `first_clicked_at`, `last_clicked_at` (tracking fields)
+- Added database functions:
+  - `generate_short_code()` - generates random 6-char codes
+  - `create_tracking_link()` - creates tracking link with collision handling
+  - `get_link_click_stats()` - analytics queries
+  - `cleanup_old_tracking_links()` - data retention
+
+**Redirect Endpoint**: `apps/web/src/routes/l/[short_code]/+server.ts`
+
+- Public endpoint for shortened links (e.g., `https://build-os.com/l/abc123`)
+- Looks up short code in database
+- Updates tracking statistics
+- Updates notification_deliveries (clicked_at, opened_at, status)
+- Redirects to destination URL
+- Graceful error handling (redirects to home on error)
+
+**Link Shortener Service**: `apps/web/src/lib/services/link-shortener.service.ts`
+
+- `createTrackingLink()` - creates shortened URLs
+- `shortenUrlsInText()` - finds and replaces all URLs in text
+- `getLinkStats()` - retrieves click analytics
+
+**SMS Adapter Enhancement**: `apps/worker/src/workers/notification/smsAdapter.ts`
+
+- Added `shortenUrlsInMessage()` function
+- Automatically shortens all HTTP(S) URLs before sending SMS
+- Uses regex to find URLs in message content
+- Calls `create_tracking_link()` database function
+- Replaces long URLs with short tracking links
+- Logs character savings
+- Graceful fallback if shortening fails
+
+### Benefits
+
+1. **Character Savings**: Reduces SMS character count (35 chars vs 100+ for long URLs)
+2. **Click Analytics**: Track SMS engagement via click-through rate
+3. **User Behavior**: Understand which SMS notifications users interact with
+4. **Unified Tracking**: Consistent tracking across all notification channels (email, push, SMS)
+5. **Privacy-Friendly**: Custom link shortener (no third-party tracking)
+
+### Example Flow
+
+```
+1. SMS adapter formats message:
+   "Your brief is ready! View: https://build-os.com/app/briefs/today"
+
+2. SMS adapter calls shortenUrlsInMessage():
+   - Finds URL via regex
+   - Calls create_tracking_link(delivery_id, url)
+   - Gets short_code: "a1b2c3"
+   - Replaces URL with: https://build-os.com/l/a1b2c3
+
+3. SMS sent with shortened link:
+   "Your brief is ready! View: https://build-os.com/l/a1b2c3"
+
+4. User taps link on phone
+5. Browser hits /l/a1b2c3
+6. Endpoint updates tracking and redirects to destination
+7. Dashboard shows SMS click rate
+```
+
+### Testing
+
+**Manual Test Guide**: `apps/web/tests/manual/test-sms-click-tracking.md`
+
+- Complete step-by-step testing instructions
+- SQL verification queries
+- Edge case testing (multiple URLs, no URLs, invalid codes)
+- Performance benchmarks
+- Troubleshooting guide
+
+### Files Created/Modified
+
+**Created**:
+- `supabase/migrations/20251007_notification_tracking_links.sql`
+- `apps/web/src/routes/l/[short_code]/+server.ts`
+- `apps/web/src/lib/services/link-shortener.service.ts`
+- `apps/web/tests/manual/test-sms-click-tracking.md`
+
+**Modified**:
+- `apps/worker/src/workers/notification/smsAdapter.ts`
+
+### Analytics Integration
+
+SMS click tracking integrates with existing analytics:
+
+- `notification_deliveries.clicked_at` - first click timestamp
+- `notification_deliveries.status = 'clicked'` - delivery status update
+- `notification_tracking_links.click_count` - total clicks per link
+- Admin dashboard can show SMS click-through rate alongside other channels
+
+### Related
+
+- Main Tracking Spec: `/thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`
+- Phase 2 (Push Tracking): `/thoughts/shared/research/2025-10-06_23-30-00_phase2-push-notification-tracking-implementation.md`
+
+---
+
 ## Related Documentation
 
 - [Notification System Implementation Status](/thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md)
@@ -1291,7 +1407,7 @@ FROM user_sms_preferences;
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-10-06
+**Document Version**: 1.1
+**Last Updated**: 2025-10-07
 **Author**: Claude (AI Assistant)
-**Status**: Draft - Ready for Review
+**Status**: Active - Phase 3 Click Tracking Complete

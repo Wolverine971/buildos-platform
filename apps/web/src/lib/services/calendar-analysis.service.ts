@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/calendar-analysis.service.ts
 import { ApiService, type ServiceResponse } from './base/api-service';
-import { CalendarService } from './calendar-service';
+import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
 import type { ParsedOperation, ExecutionResult } from '$lib/types/brain-dump';
@@ -32,34 +32,10 @@ interface AnalysisResult {
 	eventsAnalyzed: number;
 }
 
-interface CalendarEvent {
-	id?: string; // Make id optional to match CalendarService type
-	summary?: string;
-	description?: string;
-	start?: {
-		dateTime?: string;
-		date?: string;
-	};
-	end?: {
-		dateTime?: string;
-		date?: string;
-	};
-	attendees?: Array<{
-		email: string;
-		self?: boolean;
-		organizer?: boolean;
-		responseStatus?: string;
-	}>;
-	organizer?: {
-		email: string;
-		self?: boolean;
-	};
-	recurringEventId?: string;
-	status?: string;
-	location?: string;
-}
-
 interface ProjectSuggestion {
+	// Reference to source event group from Part 1
+	event_group_id?: string; // Reference to EventGroup.group_id from Part 1
+
 	// Project fields matching BuildOS data model
 	name: string; // Required project name
 	slug: string; // Required slug generated from name
@@ -77,15 +53,15 @@ interface ProjectSuggestion {
 	reasoning: string;
 	keywords: string[];
 
-	// Deduplication fields
-	add_to_existing?: boolean; // If true, add tasks to existing project instead of creating new
-	existing_project_id?: string; // ID of existing project to add tasks to
-	deduplication_reasoning?: string; // Explanation of why this matches existing project
+	// Deduplication fields (REQUIRED - always check against existing projects)
+	add_to_existing: boolean; // If true, add tasks to existing project instead of creating new
+	existing_project_id: string | null; // ID of existing project to add tasks to
+	deduplication_reasoning: string; // REQUIRED: Explanation of deduplication decision
 
 	// Suggested tasks following BuildOS task model
 	suggested_tasks?: Array<{
 		title: string; // Required, max 255 chars
-		description: string;
+		description: string; // Required
 		details?: string; // Comprehensive specifics
 		status: 'backlog' | 'in_progress' | 'done' | 'blocked';
 		priority: 'low' | 'medium' | 'high';
@@ -104,6 +80,55 @@ interface ProjectSuggestion {
 		event_id?: string; // Link to calendar event
 		tags?: string[];
 	}>;
+}
+
+// Part 1: Event Pattern Analysis interfaces
+interface LightweightCalendarEvent {
+	id: string;
+	title: string;
+	description_snippet?: string; // First 200 chars
+	start: string;
+	end: string;
+	is_recurring: boolean;
+	attendee_count: number;
+	is_organizer: boolean;
+	location?: string;
+}
+
+interface EventGroup {
+	group_id: string; // Generated: "group-1", "group-2", etc.
+
+	// High-level project identification
+	project_theme: string; // e.g., "Marketing Campaign Planning"
+	suggested_project_name: string; // e.g., "Q4 Marketing Campaign"
+	confidence: number; // 0-1 score
+
+	// Event relationships
+	event_ids: string[]; // IDs of events in this group
+	event_count: number;
+
+	// Pattern analysis
+	keywords: string[]; // Keywords that indicated this pattern
+	recurring_pattern?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+	meeting_series: boolean; // Is this a recurring meeting series?
+
+	// Context
+	reasoning: string; // Why these events were grouped together
+	key_participants: string[]; // Unique email addresses across events
+	time_range: {
+		earliest_event: string;
+		latest_event: string;
+	};
+
+	// Preliminary metadata
+	estimated_start_date: string; // YYYY-MM-DD
+	estimated_end_date: string | null; // YYYY-MM-DD or null if ongoing
+	suggested_tags: string[];
+}
+
+interface EventGroupAnalysis {
+	groups: EventGroup[];
+	ungrouped_event_ids: string[]; // Events that don't fit any pattern
 }
 
 // Constants
@@ -189,8 +214,46 @@ export class CalendarAnalysisService extends ApiService {
 			// Store event snapshots for future reference
 			await this.storeAnalysisEvents(analysis.id, relevantEvents);
 
-			// Send to LLM for analysis
-			const suggestions = await this.analyzeEventsWithAI({ events: relevantEvents, userId });
+			// Part 1: Analyze event patterns and group them
+			const eventGroups = await this.analyzeEventPatterns({
+				events: relevantEvents,
+				userId
+			});
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis] Event groups identified: ${eventGroups.length}`);
+			}
+
+			// Early exit if no groups found
+			if (eventGroups.length === 0) {
+				if (DEBUG_LOGGING) {
+					console.log(
+						`[Calendar Analysis] No event groups identified. Completing analysis with 0 suggestions.`
+					);
+				}
+
+				await this.updateAnalysisRecord(analysis.id, {
+					status: 'completed',
+					events_analyzed: relevantEvents.length,
+					events_excluded: events.length - relevantEvents.length,
+					projects_suggested: 0,
+					confidence_average: null,
+					completed_at: new Date().toISOString()
+				});
+
+				return {
+					analysisId: analysis.id,
+					suggestions: [],
+					eventsAnalyzed: relevantEvents.length
+				};
+			}
+
+			// Part 2: Create projects from event groups with deduplication
+			const suggestions = await this.createProjectsFromGroups({
+				eventGroups,
+				events: relevantEvents,
+				userId
+			});
 
 			if (DEBUG_LOGGING) {
 				console.log(`[Calendar Analysis] AI generated ${suggestions.length} suggestions`);
@@ -286,7 +349,550 @@ export class CalendarAnalysisService extends ApiService {
 	}
 
 	/**
+	 * Part 1: Analyze event patterns and group related events
+	 * This method focuses purely on pattern recognition without the complexity of data models
+	 */
+	private async analyzeEventPatterns({
+		events,
+		userId
+	}: {
+		events: CalendarEvent[];
+		userId: string;
+	}): Promise<EventGroup[]> {
+		if (events.length === 0) {
+			return [];
+		}
+
+		const today = new Date().toISOString().split('T')[0];
+
+		// Create lightweight event format for pattern analysis
+		const lightweightEvents: LightweightCalendarEvent[] = events.map((e) => ({
+			id: e.id || 'unknown',
+			title: e.summary,
+			description_snippet: e.description?.substring(0, 200),
+			start: e.start?.dateTime || e.start?.date || '',
+			end: e.end?.dateTime || e.end?.date || '',
+			is_recurring: !!e.recurringEventId,
+			attendee_count: e.attendees?.length || 0,
+			is_organizer: e.organizer?.self || false,
+			location: e.location
+		}));
+
+		const systemPrompt = `You are an expert at analyzing calendar patterns to identify potential projects. Always respond with valid JSON following the specified schema.`;
+
+		const userPrompt = `You are analyzing calendar events to identify patterns and group related events that might represent projects.
+
+**Today's date**: ${today}
+
+## Your Task
+
+Group related calendar events and identify project themes. Focus on:
+1. Recurring meetings with similar titles/attendees
+2. Clusters of events around similar topics
+3. Project-indicating keywords (sprint, launch, milestone, review, planning, kickoff, deadline, sync, standup, retrospective, design, implementation)
+4. Series of events building toward a goal
+
+## Calendar Events (${events.length} total)
+
+${JSON.stringify(lightweightEvents, null, 2)}
+
+## Output Format
+
+Return JSON with this structure:
+
+{
+  "groups": [
+    {
+      "group_id": "group-1",
+      "project_theme": "High-level theme description",
+      "suggested_project_name": "Specific project name",
+      "confidence": 0.8,
+      "event_ids": ["event-1", "event-2"],
+      "event_count": 5,
+      "keywords": ["keyword1", "keyword2"],
+      "recurring_pattern": "weekly" or null,
+      "meeting_series": true or false,
+      "reasoning": "Why these events were grouped together",
+      "key_participants": ["email1@example.com", "email2@example.com"],
+      "time_range": {
+        "earliest_event": "YYYY-MM-DD",
+        "latest_event": "YYYY-MM-DD"
+      },
+      "estimated_start_date": "YYYY-MM-DD",
+      "estimated_end_date": "YYYY-MM-DD" or null,
+      "suggested_tags": ["tag1", "tag2"]
+    }
+  ],
+  "ungrouped_event_ids": ["event-x", "event-y"]
+}
+
+## Guidelines
+
+- Only group events that are clearly related
+- Confidence >= 0.5 for grouping (be selective)
+- One event can only belong to one group
+- Ungrouped events go in ungrouped_event_ids
+- Be specific with project names (not just "Team Sync")
+- Include ALL relevant events in time_range calculation
+- Ensure all event IDs in groups exist in the input events
+- Extract dates carefully from event start/end fields`;
+
+		try {
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis Part 1] Analyzing ${events.length} events for patterns`);
+			}
+
+			// Save prompt for auditing
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType: 'calendar-analysis-part1-event-grouping',
+				metadata: {
+					userId,
+					eventCount: events.length,
+					timestamp: new Date().toISOString()
+				}
+			});
+
+			// Call LLM
+			const response = await this.llmService.getJSONResponse<EventGroupAnalysis>({
+				systemPrompt,
+				userPrompt,
+				userId,
+				profile: 'balanced',
+				temperature: 0.3,
+				validation: {
+					retryOnParseError: true,
+					validateSchema: true,
+					maxRetries: 2
+				},
+				operationType: 'calendar_analysis_part1'
+			});
+
+			const groups = response.groups || [];
+
+			// Validate event IDs in groups
+			const validEventIds = new Set(events.map((e) => e.id));
+			const validatedGroups = groups.filter((group) => {
+				// Check all event IDs exist
+				const invalidIds = group.event_ids.filter((id) => !validEventIds.has(id));
+				if (invalidIds.length > 0) {
+					console.warn(
+						`[Calendar Analysis Part 1] Group "${group.group_id}" references ${invalidIds.length} non-existent event IDs:`,
+						invalidIds
+					);
+					return false; // Filter out groups with invalid event IDs
+				}
+
+				// Validate event_count matches event_ids length
+				if (group.event_count !== group.event_ids.length) {
+					console.warn(
+						`[Calendar Analysis Part 1] Group "${group.group_id}" has mismatched event_count: ${group.event_count} vs actual: ${group.event_ids.length}`
+					);
+					group.event_count = group.event_ids.length; // Fix the count
+				}
+
+				// Validate confidence is in valid range
+				if (group.confidence < 0 || group.confidence > 1) {
+					console.warn(
+						`[Calendar Analysis Part 1] Group "${group.group_id}" has invalid confidence: ${group.confidence}. Clamping to [0, 1]`
+					);
+					group.confidence = Math.max(0, Math.min(1, group.confidence));
+				}
+
+				return true;
+			});
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis Part 1] Generated ${validatedGroups.length} event groups`);
+				if (validatedGroups.length < groups.length) {
+					console.log(
+						`[Calendar Analysis Part 1] Filtered out ${groups.length - validatedGroups.length} invalid groups`
+					);
+				}
+				console.log(
+					`[Calendar Analysis Part 1] Ungrouped events: ${response.ungrouped_event_ids?.length || 0}`
+				);
+				if (validatedGroups.length > 0) {
+					console.log(
+						`[Calendar Analysis Part 1] Groups:`,
+						validatedGroups.map((g) => ({
+							id: g.group_id,
+							name: g.suggested_project_name,
+							eventCount: g.event_count,
+							confidence: g.confidence
+						}))
+					);
+				}
+			}
+
+			return validatedGroups;
+		} catch (error) {
+			this.errorLogger.logError(error, {
+				userId,
+				metadata: {
+					operation: 'calendar_analysis_part1_event_grouping',
+					eventCount: events.length
+				}
+			});
+			return [];
+		}
+	}
+
+	/**
+	 * Part 2: Create BuildOS projects from event groups with deduplication
+	 * This method transforms event groups into structured projects with tasks
+	 */
+	private async createProjectsFromGroups({
+		eventGroups,
+		events,
+		userId
+	}: {
+		eventGroups: EventGroup[];
+		events: CalendarEvent[];
+		userId: string;
+	}): Promise<ProjectSuggestion[]> {
+		if (eventGroups.length === 0) {
+			return [];
+		}
+
+		const today = new Date().toISOString().split('T')[0];
+		const now = new Date();
+
+		// Fetch existing projects for deduplication
+		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
+		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+			limit: 50,
+			includeStatus: ['active', 'planning']
+		});
+
+		const projectsContext = formatProjectsSummaryList(existingProjects || []);
+
+		if (DEBUG_LOGGING) {
+			console.log(`[Calendar Analysis Part 2] Processing ${eventGroups.length} event groups`);
+			console.log(
+				`[Calendar Analysis Part 2] Checking against ${existingProjects?.length || 0} existing projects`
+			);
+		}
+
+		// Create a map of events for quick lookup
+		const eventMap = new Map(events.map((e) => [e.id, e]));
+
+		// Separate events into past and upcoming for context
+		const pastEvents = events.filter((e) => {
+			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+			return eventDate < now;
+		});
+
+		const upcomingEvents = events.filter((e) => {
+			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+			return eventDate >= now;
+		});
+
+		// Build detailed event groups section
+		const eventGroupsSection = eventGroups
+			.map((group, idx) => {
+				// Get full event details for events in this group
+				const groupEvents = group.event_ids
+					.map((id) => eventMap.get(id))
+					.filter((e): e is CalendarEvent => e !== undefined);
+
+				// Separate into past and upcoming
+				const groupPastEvents = groupEvents.filter((e) => {
+					const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+					return eventDate < now;
+				});
+
+				const groupUpcomingEvents = groupEvents.filter((e) => {
+					const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+					return eventDate >= now;
+				});
+
+				return `
+### Group ${idx + 1}: ${group.project_theme}
+
+**Suggested Name**: ${group.suggested_project_name}
+**Confidence**: ${group.confidence}
+**Event Count**: ${group.event_count}
+**Keywords**: ${group.keywords.join(', ')}
+**Time Range**: ${group.time_range.earliest_event} to ${group.time_range.latest_event}
+**Reasoning**: ${group.reasoning}
+
+**Past Events in this group (${groupPastEvents.length} events - for context only)**:
+${JSON.stringify(
+	groupPastEvents.map((e) => ({
+		id: e.id,
+		title: e.summary,
+		description: e.description?.substring(0, 500),
+		start: e.start?.dateTime || e.start?.date,
+		end: e.end?.dateTime || e.end?.date,
+		attendees: e.attendees?.map((a) => a.email),
+		organizer: e.organizer?.email,
+		location: e.location
+	})),
+	null,
+	2
+)}
+
+**Upcoming Events in this group (${groupUpcomingEvents.length} events - create tasks from these)**:
+${JSON.stringify(
+	groupUpcomingEvents.map((e) => ({
+		id: e.id,
+		title: e.summary,
+		description: e.description?.substring(0, 500),
+		start: e.start?.dateTime || e.start?.date,
+		end: e.end?.dateTime || e.end?.date,
+		attendees: e.attendees?.map((a) => a.email),
+		organizer: e.organizer?.email,
+		location: e.location,
+		hangoutLink: e.hangoutLink
+	})),
+	null,
+	2
+)}
+`;
+			})
+			.join('\n---\n');
+
+		const systemPrompt = `You are an expert in creating structured projects from calendar event patterns. Always respond with valid JSON following the specified schema.`;
+
+		const userPrompt = `You are creating BuildOS projects from calendar event groups with proper deduplication.
+
+**Today's date**: ${today}
+
+## User's Existing Projects
+
+${projectsContext || 'No existing projects found.'}
+
+## CRITICAL: Project Deduplication Rules
+
+**IMPORTANT**: Check each event group against existing projects above.
+
+1. **If match found** (confidence >= 70%):
+   - Set "add_to_existing": true
+   - Set "existing_project_id": "uuid"
+   - Set "deduplication_reasoning": "Why this matches"
+   - Still generate tasks to add to existing project
+
+2. **Only create NEW project if**:
+   - No semantic match with existing projects
+   - Events represent meaningfully different work
+
+3. **When uncertain** (50-70%):
+   - Err on side of adding to existing projects
+
+## Event Groups to Process
+
+You've already identified ${eventGroups.length} event groups. Now create BuildOS projects for each group.
+
+${eventGroupsSection}
+
+## Data Models
+
+### Project Model (REQUIRED structure):
+${getProjectModel(true)}
+
+### Task Model (REQUIRED structure):
+${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
+
+${generateProjectContextFramework('condensed')}
+
+## Output Format
+
+Return JSON:
+
+{
+  "suggestions": [
+    {
+      "event_group_id": "group-1",
+
+      // Project fields
+      "name": "Specific project name",
+      "slug": "project-slug",
+      "description": "2-3 sentence description",
+      "context": "Comprehensive markdown using BuildOS framework above",
+      "executive_summary": "Brief summary <500 chars",
+      "status": "active",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD" or null,
+      "tags": ["tag1", "tag2"],
+
+      // Metadata
+      "event_ids": ["all", "event", "ids"],
+      "confidence": 0.8,
+      "reasoning": "Why this is a project",
+      "keywords": ["keyword1", "keyword2"],
+
+      // Deduplication (ALWAYS REQUIRED)
+      "add_to_existing": false,
+      "existing_project_id": null,
+      "deduplication_reasoning": "Checked against existing projects. No match found because...",
+
+      // Tasks (minimum 2 per project)
+      "suggested_tasks": [
+        {
+          "title": "Task title",
+          "description": "Task description",
+          "details": "Comprehensive details including event info",
+          "status": "backlog",
+          "priority": "medium",
+          "task_type": "one_off",
+          "duration_minutes": 60,
+          "start_date": "YYYY-MM-DDTHH:MM:SS",
+          "event_id": "calendar-event-id",
+          "tags": ["tag1"]
+        }
+      ]
+    }
+  ]
+}
+
+## CRITICAL RULES
+
+1. **ALL tasks must have start_date >= ${today}**
+2. **Minimum 2 tasks per project**
+3. **ALWAYS provide deduplication_reasoning** (even if creating new project)
+4. **Include meeting details** in task details (attendees, location, hangoutLink)
+5. **Rich context** using BuildOS framework
+6. **Exact data model compliance**`;
+
+		try {
+			if (DEBUG_LOGGING) {
+				console.log(
+					`[Calendar Analysis Part 2] Generating projects from ${eventGroups.length} groups`
+				);
+			}
+
+			// Save prompt for auditing
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType: 'calendar-analysis-part2-project-creation',
+				metadata: {
+					userId,
+					eventGroupCount: eventGroups.length,
+					existingProjectCount: existingProjects?.length || 0,
+					pastEventCount: pastEvents.length,
+					upcomingEventCount: upcomingEvents.length,
+					timestamp: new Date().toISOString()
+				}
+			});
+
+			// Call LLM
+			const response = await this.llmService.getJSONResponse<{
+				suggestions: ProjectSuggestion[];
+			}>({
+				systemPrompt,
+				userPrompt,
+				userId,
+				profile: 'balanced',
+				temperature: 0.3,
+				validation: {
+					retryOnParseError: true,
+					validateSchema: true,
+					maxRetries: 2
+				},
+				operationType: 'calendar_analysis_part2'
+			});
+
+			const suggestions = response.suggestions || [];
+
+			// Validate event group references
+			const validGroupIds = new Set(eventGroups.map((g) => g.group_id));
+			suggestions.forEach((suggestion) => {
+				if (suggestion.event_group_id && !validGroupIds.has(suggestion.event_group_id)) {
+					console.warn(
+						`[Calendar Analysis Part 2] Suggestion "${suggestion.name}" references non-existent event_group_id: ${suggestion.event_group_id}`
+					);
+					suggestion.event_group_id = undefined; // Clear invalid reference
+				}
+			});
+
+			if (DEBUG_LOGGING) {
+				console.log(`[Calendar Analysis Part 2] Generated ${suggestions.length} project suggestions`);
+				console.log(
+					`[Calendar Analysis Part 2] Deduplication results:`,
+					suggestions.map((s) => ({
+						name: s.name,
+						add_to_existing: s.add_to_existing,
+						existing_project_id: s.existing_project_id
+					}))
+				);
+			}
+
+			// Validate suggestions
+			this.validateProjectSuggestions(suggestions, today);
+
+			return suggestions;
+		} catch (error) {
+			this.errorLogger.logError(error, {
+				userId,
+				metadata: {
+					operation: 'calendar_analysis_part2_project_creation',
+					eventGroupCount: eventGroups.length
+				}
+			});
+			return [];
+		}
+	}
+
+	/**
+	 * Validate project suggestions for common issues
+	 */
+	private validateProjectSuggestions(suggestions: ProjectSuggestion[], today: string): void {
+		const todayDate = new Date(today);
+		todayDate.setHours(0, 0, 0, 0);
+
+		suggestions.forEach((suggestion) => {
+			// Check for past-dated tasks
+			if (suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
+				const pastTasks = suggestion.suggested_tasks.filter((task) => {
+					if (!task.start_date) return false;
+					const taskDate = new Date(task.start_date);
+					return taskDate < todayDate;
+				});
+
+				if (pastTasks.length > 0) {
+					console.warn(
+						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has ${pastTasks.length} task(s) with past dates`,
+						pastTasks.map((t) => ({ title: t.title, start_date: t.start_date }))
+					);
+				}
+			}
+
+			// Check for minimum task count
+			const taskCount = suggestion.suggested_tasks?.length || 0;
+			if (taskCount < 2) {
+				console.warn(
+					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has only ${taskCount} task(s). Minimum 2 expected.`
+				);
+			}
+
+			// Validate required deduplication fields
+			if (!suggestion.deduplication_reasoning || suggestion.deduplication_reasoning.trim() === '') {
+				console.warn(
+					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has empty deduplication_reasoning (required field)`
+				);
+			}
+
+			// Validate deduplication consistency
+			if (suggestion.add_to_existing && !suggestion.existing_project_id) {
+				console.warn(
+					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has add_to_existing=true but no existing_project_id`
+				);
+			}
+
+			if (!suggestion.add_to_existing && suggestion.existing_project_id) {
+				console.warn(
+					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has existing_project_id but add_to_existing=false`
+				);
+			}
+		});
+	}
+
+	/**
 	 * Analyze events with AI to detect project patterns with confidence threshold
+	 * @deprecated Use analyzeEventPatterns + createProjectsFromGroups instead
 	 */
 	private async analyzeEventsWithAI({
 		events,
@@ -602,7 +1208,7 @@ IMPORTANT:
 			});
 
 			// Filter by minimum confidence score
-			const suggestions = response.suggestions || response.projects || [];
+			const suggestions = response.suggestions || [];
 
 			if (DEBUG_LOGGING) {
 				console.log(`[Calendar Analysis] Raw suggestions from AI: ${suggestions.length}`);
@@ -1193,7 +1799,11 @@ IMPORTANT:
 				start_date: suggestion.start_date,
 				end_date: suggestion.end_date,
 				tags: suggestion.tags,
-				slug: suggestion.slug
+				slug: suggestion.slug,
+				// CRITICAL: Store deduplication fields
+				add_to_existing: suggestion.add_to_existing,
+				existing_project_id: suggestion.existing_project_id,
+				deduplication_reasoning: suggestion.deduplication_reasoning
 			},
 			status: 'pending' as const
 		}));

@@ -1,4 +1,4 @@
-<!-- todo: priority 3 -->
+<!-- todo: priority 2 -->
 
 # BuildOS Onboarding Assets Checklist
 

@@ -63,7 +63,7 @@
 						playsinline
 						class="w-24 h-24 md:w-32 md:h-32 rounded-2xl object-cover bg-black"
 					>
-						<source src="/mountain-moving.mp4" type="video/mp4" />
+						<source src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4" type="video/mp4" />
 					</video>
 				</div>
 			</div>

@@ -78,42 +78,143 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				}
 			: undefined;
 
-		// Emit notification event using RPC function
-		const { data: eventId, error: eventError } = await supabase.rpc('emit_notification_event', {
-			p_event_type: event_type,
-			p_event_source: 'api_action',
-			p_actor_user_id: user.id,
-			p_payload: payload,
-			p_metadata: metadata
-		});
+		// In test mode, create deliveries manually for specified recipients and channels
+		// This bypasses the subscription requirement
+		let eventId: string;
+		let deliveries: any[] = [];
 
-		if (eventError) {
-			console.error('Error emitting notification event:', eventError);
-			return ApiResponse.databaseError(eventError);
-		}
+		if (test_mode) {
+			// Create notification event
+			const { data: eventData, error: eventError } = await supabase
+				.from('notification_events')
+				.insert({
+					event_type,
+					event_source: 'api_action',
+					actor_user_id: user.id,
+					payload,
+					metadata
+				})
+				.select('id')
+				.single();
 
-		// Get the created deliveries for this event
-		const { data: deliveries, error: deliveriesError } = await supabase
-			.from('notification_deliveries')
-			.select(
-				`
-				id,
-				channel,
-				recipient_user_id,
-				status,
-				last_error
-			`
-			)
-			.eq('event_id', eventId);
+			if (eventError) {
+				console.error('Error creating test notification event:', eventError);
+				return ApiResponse.databaseError(eventError);
+			}
 
-		if (deliveriesError) {
-			console.error('Error fetching deliveries:', deliveriesError);
-			// Don't fail the request, just return without delivery details
+			eventId = eventData.id;
+
+			// Create deliveries for each recipient and channel
+			for (const recipientId of recipient_user_ids) {
+				for (const channel of channels) {
+					// Get channel identifier based on channel type
+					let channelIdentifier: string | null = null;
+
+					if (channel === 'push') {
+						// Get push subscription endpoint
+						const { data: pushSub } = await supabase
+							.from('push_subscriptions')
+							.select('endpoint')
+							.eq('user_id', recipientId)
+							.eq('is_active', true)
+							.limit(1)
+							.single();
+
+						channelIdentifier = pushSub?.endpoint || null;
+					} else if (channel === 'sms') {
+						// Get phone number from SMS preferences
+						const { data: smsInfo } = await supabase
+							.from('user_sms_preferences')
+							.select('phone_number, phone_verified, opted_out')
+							.eq('user_id', recipientId)
+							.single();
+
+						// Only set phone if verified and not opted out
+						if (smsInfo?.phone_verified && !smsInfo?.opted_out) {
+							channelIdentifier = smsInfo.phone_number;
+						}
+					}
+
+					// Skip this channel if identifier is required but missing
+					if ((channel === 'push' || channel === 'sms') && !channelIdentifier) {
+						console.warn(`[TestNotification] Skipping ${channel} for user ${recipientId} - channel not available`);
+						continue;
+					}
+
+					// Create delivery record
+					const { data: delivery, error: deliveryError } = await supabase
+						.from('notification_deliveries')
+						.insert({
+							event_id: eventId,
+							recipient_user_id: recipientId,
+							channel,
+							channel_identifier: channelIdentifier,
+							payload,
+							status: 'pending'
+						})
+						.select('id, channel, recipient_user_id, status')
+						.single();
+
+					if (deliveryError) {
+						console.error(`Error creating delivery for ${channel}:`, deliveryError);
+						continue;
+					}
+
+					deliveries.push(delivery);
+
+					// Queue notification job
+					const { error: jobError } = await supabase.from('queue_jobs').insert({
+						user_id: recipientId,
+						job_type: 'send_notification',
+						status: 'pending',
+						scheduled_for: new Date().toISOString(),
+						queue_job_id: `notif_${delivery.id}`,
+						metadata: {
+							event_id: eventId,
+							delivery_id: delivery.id,
+							channel,
+							event_type
+						}
+					});
+
+					if (jobError) {
+						console.error(`Error queuing notification job for ${channel}:`, jobError);
+					}
+				}
+			}
+		} else {
+			// Production mode: use the standard RPC that checks subscriptions
+			const { data: rpcEventId, error: eventError } = await supabase.rpc('emit_notification_event', {
+				p_event_type: event_type,
+				p_event_source: 'api_action',
+				p_actor_user_id: user.id,
+				p_payload: payload,
+				p_metadata: metadata
+			});
+
+			if (eventError) {
+				console.error('Error emitting notification event:', eventError);
+				return ApiResponse.databaseError(eventError);
+			}
+
+			eventId = rpcEventId;
+
+			// Get the created deliveries
+			const { data: deliveriesData, error: deliveriesError } = await supabase
+				.from('notification_deliveries')
+				.select('id, channel, recipient_user_id, status, last_error')
+				.eq('event_id', eventId);
+
+			if (deliveriesError) {
+				console.error('Error fetching deliveries:', deliveriesError);
+			} else {
+				deliveries = deliveriesData || [];
+			}
 		}
 
 		return ApiResponse.success({
 			event_id: eventId,
-			deliveries: deliveries || []
+			deliveries
 		});
 	} catch (error) {
 		console.error('Error sending test notification:', error);

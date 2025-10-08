@@ -82,20 +82,71 @@ export interface BulkDeleteEventParams {
 }
 
 // Response types
+
 export interface CalendarEvent {
-	id?: string | null;
-	summary?: string | null;
-	start?: calendar_v3.Schema$EventDateTime;
-	end?: calendar_v3.Schema$EventDateTime;
-	description?: string | null;
-	location?: string | null;
-	attendees?: Array<{
-		email?: string | null;
-		displayName?: string | null;
-		responseStatus?: string | null;
-	}>;
-	htmlLink?: string | null;
+  kind: "calendar#event";
+  etag: string;
+  id: string;
+  status: "confirmed" | "tentative" | "cancelled";
+  htmlLink: string;
+  created: string; // ISO timestamp
+  updated: string; // ISO timestamp
+  summary: string;
+  description?: string; // Event description/notes
+  location?: string; // Event location
+  colorId?: string; // Event color
+  creator: {
+    email: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  organizer: {
+    email: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  start: {
+    dateTime?: string; // ISO timestamp
+    date?: string; // For all-day events
+    timeZone?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  recurringEventId?: string;
+  originalStartTime?: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  iCalUID: string;
+  sequence: number;
+  attendees?: {
+    email: string;
+    displayName?: string;
+    organizer?: boolean;
+    self?: boolean;
+    responseStatus: "accepted" | "declined" | "tentative" | "needsAction";
+    comment?: string;
+    additionalGuests?: number;
+  }[];
+  reminders?: {
+    useDefault: boolean;
+    overrides?: {
+      method: "email" | "popup";
+      minutes: number;
+    }[];
+  };
+  eventType?: "default" | "outOfOffice" | "focusTime" | string;
+  transparency?: "opaque" | "transparent";
+  visibility?: "default" | "public" | "private" | "confidential";
+  recurrence?: string[]; // RRULE strings
+  hangoutLink?: string; // Google Meet link
+  conferenceData?: any; // Conference info
 }
+
 
 export interface GetCalendarEventsResponse {
 	event_count: number;
@@ -390,7 +441,9 @@ export class CalendarService {
 			};
 
 			const response = await calendar.events.list(requestParams);
-			const events = response.data.items || [];
+			// Cast the Google Calendar API response to our CalendarEvent type
+			// This preserves ALL event data including description, location, attendees, etc.
+			const events: CalendarEvent[] = (response.data.items || []) as CalendarEvent[];
 
 			return {
 				event_count: events.length,
@@ -399,20 +452,7 @@ export class CalendarService {
 					end: requestParams.timeMax,
 					timeZone: requestParams.timeZone
 				},
-				events: events.map((event) => ({
-					id: event.id,
-					summary: event.summary,
-					start: event.start,
-					end: event.end,
-					description: event.description,
-					location: event.location,
-					attendees: event.attendees?.map((a) => ({
-						email: a.email,
-						displayName: a.displayName,
-						responseStatus: a.responseStatus
-					})),
-					htmlLink: event.htmlLink
-				}))
+				events // Return all event data without mapping/stripping
 			};
 		} catch (error: any) {
 			console.error('Error getting calendar events:', error);
@@ -1659,3 +1699,5 @@ export class CalendarService {
 		}
 	}
 }
+
+

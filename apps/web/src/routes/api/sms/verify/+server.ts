@@ -62,6 +62,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			phone_number: phoneNumber,
 			phone_verified: false,
 			updated_at: new Date().toISOString()
+		}, {
+			onConflict: 'user_id'
 		});
 
 		return ApiResponse.success({

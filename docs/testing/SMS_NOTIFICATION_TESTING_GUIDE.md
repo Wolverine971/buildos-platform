@@ -604,6 +604,389 @@ SELECT * FROM get_sms_notification_stats();
 
 ---
 
+## Phase 7: SMS Click Tracking Testing (New!)
+
+**Date Added**: 2025-10-07
+
+Phase 7 implements click tracking for links in SMS messages using a custom link shortener. This allows tracking when users tap links in SMS notifications.
+
+### Overview
+
+SMS click tracking works by:
+1. Automatically detecting URLs in SMS message content
+2. Replacing them with shortened tracking links (e.g., `https://build-os.com/l/abc123`)
+3. Tracking clicks when users visit the short link
+4. Redirecting to the original destination
+5. Updating analytics in `notification_deliveries` table
+
+### Prerequisites
+
+1. **Apply Migration**:
+```bash
+cd apps/web
+# Apply tracking links migration
+psql $DATABASE_URL -f supabase/migrations/20251007_notification_tracking_links.sql
+```
+
+2. **Verify Tables**:
+```sql
+-- Check table exists
+SELECT table_name FROM information_schema.tables
+WHERE table_name = 'notification_tracking_links';
+
+-- Check functions exist
+SELECT routine_name FROM information_schema.routines
+WHERE routine_name IN ('generate_short_code', 'create_tracking_link');
+```
+
+3. **Rebuild Worker** (if needed):
+```bash
+cd apps/worker
+pnpm build
+# Restart worker service
+```
+
+### Test 1: URL Shortening in SMS
+
+**Send SMS with URL**:
+
+```sql
+-- Trigger SMS with URL in payload
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com' LIMIT 1),
+  p_payload := jsonb_build_object(
+    'title', 'Your Brief is Ready',
+    'body', 'View your brief: https://build-os.com/app/briefs/today',
+    'task_count', 5
+  )
+);
+```
+
+**Verify URL Shortened**:
+
+```sql
+-- Check SMS message content
+SELECT
+  id,
+  message_content,
+  status,
+  created_at
+FROM sms_messages
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- Expected: message_content contains https://build-os.com/l/[6-chars], NOT the full URL
+```
+
+**Verify Tracking Link Created**:
+
+```sql
+-- Check tracking link was created
+SELECT
+  short_code,
+  delivery_id,
+  destination_url,
+  click_count,
+  created_at
+FROM notification_tracking_links
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- Expected:
+-- - short_code: 6 alphanumeric characters (e.g., "a1B2c3")
+-- - destination_url: Original URL (https://build-os.com/app/briefs/today)
+-- - click_count: 0 (not yet clicked)
+```
+
+### Test 2: Click Tracking and Redirect
+
+**On Phone**:
+1. Receive SMS message on your phone
+2. Tap the shortened link (e.g., `https://build-os.com/l/abc123`)
+3. **Expected**: Browser opens and quickly redirects to destination
+4. **Expected**: Land on the destination page (e.g., /app/briefs/today)
+
+**Verify Click Tracked**:
+
+```sql
+-- Check tracking link stats
+SELECT
+  short_code,
+  destination_url,
+  click_count,
+  first_clicked_at,
+  last_clicked_at
+FROM notification_tracking_links
+WHERE short_code = '<short-code-from-sms>';
+
+-- Expected:
+-- - click_count: 1
+-- - first_clicked_at: Timestamp when you clicked
+-- - last_clicked_at: Same as first_clicked_at
+```
+
+**Verify Delivery Updated**:
+
+```sql
+-- Check notification delivery
+SELECT
+  id,
+  channel,
+  status,
+  clicked_at,
+  opened_at
+FROM notification_deliveries
+WHERE id = (
+  SELECT delivery_id FROM notification_tracking_links
+  WHERE short_code = '<short-code>'
+);
+
+-- Expected:
+-- - status: 'clicked'
+-- - clicked_at: Timestamp when link was clicked
+-- - opened_at: Same as clicked_at (click implies open for SMS)
+```
+
+### Test 3: Multiple Clicks
+
+**Repeat the click** from Test 2 (tap the same link again).
+
+**Verify Counts Update**:
+
+```sql
+SELECT
+  short_code,
+  click_count,
+  first_clicked_at,
+  last_clicked_at,
+  EXTRACT(EPOCH FROM (last_clicked_at - first_clicked_at)) as seconds_between_clicks
+FROM notification_tracking_links
+WHERE short_code = '<short-code>';
+
+-- Expected:
+-- - click_count: 2 (incremented)
+-- - first_clicked_at: Unchanged (still first click)
+-- - last_clicked_at: Updated to second click time
+-- - seconds_between_clicks: > 0
+```
+
+**Verify Delivery NOT Updated**:
+
+```sql
+-- Delivery should only update on FIRST click
+SELECT clicked_at
+FROM notification_deliveries
+WHERE id = (SELECT delivery_id FROM notification_tracking_links WHERE short_code = '<short-code>');
+
+-- Expected: clicked_at UNCHANGED from first click
+```
+
+### Test 4: Multiple URLs in Same SMS
+
+**Send SMS with multiple links**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com' LIMIT 1),
+  p_payload := jsonb_build_object(
+    'body', 'Your brief: https://build-os.com/app/briefs/today and tasks: https://build-os.com/app/tasks'
+  )
+);
+```
+
+**Verify Both URLs Shortened**:
+
+```sql
+-- Should return 2 rows for same delivery
+SELECT
+  short_code,
+  destination_url,
+  click_count
+FROM notification_tracking_links
+WHERE delivery_id = (
+  SELECT id FROM notification_deliveries
+  WHERE channel = 'sms'
+  ORDER BY created_at DESC
+  LIMIT 1
+)
+ORDER BY created_at;
+
+-- Expected:
+-- - 2 rows
+-- - Different short_codes
+-- - Different destination_urls
+-- - Both click_count = 0
+```
+
+### Test 5: SMS Without URLs
+
+**Send SMS without any links**:
+
+```sql
+SELECT emit_notification_event(
+  p_event_type := 'brief.completed',
+  p_event_source := 'test',
+  p_target_user_id := (SELECT id FROM users WHERE email = 'your@email.com' LIMIT 1),
+  p_payload := jsonb_build_object(
+    'body', 'Your brief is ready! No links here.'
+  )
+);
+```
+
+**Verify No Tracking Links Created**:
+
+```sql
+SELECT COUNT(*) as tracking_links_count
+FROM notification_tracking_links
+WHERE delivery_id = (
+  SELECT id FROM notification_deliveries
+  WHERE channel = 'sms'
+  ORDER BY created_at DESC
+  LIMIT 1
+);
+
+-- Expected: tracking_links_count = 0
+```
+
+### Test 6: Invalid Short Code
+
+**Visit non-existent link**:
+
+In browser, navigate to: `https://build-os.com/l/invalid123`
+
+**Expected**:
+- Redirects to home page (/)
+- No error page shown
+- Graceful handling
+
+### Test 7: Character Savings
+
+**Check URL length reduction**:
+
+```sql
+WITH link_stats AS (
+  SELECT
+    short_code,
+    destination_url,
+    LENGTH('https://build-os.com/l/' || short_code) as short_length,
+    LENGTH(destination_url) as original_length
+  FROM notification_tracking_links
+  ORDER BY created_at DESC
+  LIMIT 5
+)
+SELECT
+  short_code,
+  original_length,
+  short_length,
+  original_length - short_length as chars_saved,
+  ROUND(100.0 * (original_length - short_length) / original_length, 1) as percent_saved
+FROM link_stats;
+
+-- Expected:
+-- - Short URLs always ~35 characters
+-- - Significant savings for long URLs (50-70% reduction)
+```
+
+### Test 8: Link Analytics
+
+**Get click statistics**:
+
+```sql
+-- Overall stats (last 7 days)
+SELECT * FROM get_link_click_stats(NULL, 7);
+
+-- Stats for specific delivery
+SELECT * FROM get_link_click_stats('<delivery-id>'::UUID, 7);
+
+-- Expected returns:
+-- - total_links: Number of tracking links created
+-- - total_clicks: Sum of all click_counts
+-- - unique_clicked_links: Number of links with click_count > 0
+-- - click_through_rate: Percentage of links that were clicked
+```
+
+### Test 9: End-to-End Flow
+
+**Complete flow test**:
+
+1. User has verified phone ✅
+2. User has SMS enabled for `brief.completed` ✅
+3. Trigger notification with URL in message
+4. Verify SMS sent with shortened URL
+5. Click link on phone
+6. Verify redirect works
+7. Verify click tracked in database
+8. Check admin dashboard shows click rate (if implemented)
+
+### Test 10: Performance
+
+**Measure redirect latency**:
+
+Using browser DevTools or curl:
+
+```bash
+# Measure redirect time
+time curl -w "@curl-format.txt" -o /dev/null -s "https://build-os.com/l/<short-code>"
+
+# Expected:
+# - Redirect time: < 100ms
+# - Total time to destination: < 500ms (depending on network)
+```
+
+### Test 11: Worker Logs
+
+**Check worker logs for URL shortening**:
+
+Expected log output when SMS is sent:
+
+```
+[SMSAdapter] Shortened URL: https://build-os.com/app/briefs/today... → https://build-os.com/l/abc123 (saved 45 chars)
+[SMSAdapter] Shortened 1 of 1 URLs in message
+```
+
+### Troubleshooting
+
+**URLs Not Shortened**:
+- Check migration applied: `SELECT * FROM pg_proc WHERE proname = 'create_tracking_link'`
+- Check worker has service role key
+- Check worker logs for errors
+
+**Link Redirects to Home Instead of Destination**:
+- Verify short code exists: `SELECT * FROM notification_tracking_links WHERE short_code = '<code>'`
+- Check RLS policies allow read access
+
+**Click Not Tracked**:
+- Check delivery ID: `SELECT clicked_at FROM notification_deliveries WHERE id = '<delivery-id>'`
+- Verify redirect endpoint update succeeded
+- Check browser console for errors
+
+### Success Criteria
+
+All of the following should pass:
+
+- ✅ SMS messages contain shortened URLs (not full URLs)
+- ✅ Shortened URL format: `https://build-os.com/l/[6-chars]`
+- ✅ Clicking link redirects to destination
+- ✅ Click updates `notification_tracking_links.click_count`
+- ✅ Click updates `notification_deliveries.clicked_at` (first click only)
+- ✅ Multiple clicks increment count but don't update delivery
+- ✅ Multiple URLs in same SMS are all shortened
+- ✅ SMS without URLs doesn't create tracking links
+- ✅ Invalid short codes redirect to home (no error)
+- ✅ Character count reduced (important for SMS limits)
+
+### Related Documentation
+
+- Complete Test Guide: `apps/web/tests/manual/test-sms-click-tracking.md`
+- Main Tracking Spec: `thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md`
+- SMS Design Doc: `docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md`
+
+---
+
 ## Phase 1 & 2 Backend Testing
 
 ## Prerequisites

@@ -353,8 +353,8 @@
 			<!-- PHASE 3 OPTIMIZATION: Bind to local state for instant, zero-lag updates -->
 			<textarea
 				bind:value={localInputText}
-				on:input={handleTextInput}
-				on:blur={handleTextBlur}
+				oninput={handleTextInput}
+				onblur={handleTextBlur}
 				placeholder={placeholderText}
 				disabled={isProcessing || isInitializingRecording}
 				class="flex-1 w-full p-4 pb-[env(keyboard-inset-height,4rem)] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl outline-none resize-none text-gray-900 dark:text-gray-100 text-base sm:text-[15px] leading-relaxed placeholder:text-gray-500 dark:placeholder:text-gray-500 placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/50 shadow-sm hover:shadow-md"
@@ -480,7 +480,7 @@
 						<input
 							type="checkbox"
 							checked={!!autoAcceptEnabled}
-							on:change={() => brainDumpAutoAccept.toggle()}
+							onchange={() => brainDumpAutoAccept.toggle()}
 							disabled={isProcessing || currentPhase !== 'idle'}
 							class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
 						/>
@@ -493,7 +493,7 @@
 				{#if isVoiceSupported}
 					<div class="relative flex items-center">
 						<button
-							on:click={handleVoiceToggle}
+							onclick={handleVoiceToggle}
 							disabled={voiceButtonState.disabled}
 							class="ml-auto w-11 h-11 sm:w-12 sm:h-12 p-0 rounded-full flex-shrink-0 transition-all duration-200 relative overflow-visible flex items-center justify-center shadow-sm {voiceButtonState.isLoading
 								? 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
