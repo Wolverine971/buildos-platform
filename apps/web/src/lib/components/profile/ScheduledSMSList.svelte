@@ -261,6 +261,7 @@
 		<!-- Messages List -->
 		<div class="space-y-3">
 			{#each filteredMessages() as message (message.id)}
+				{@const StatusIcon = getStatusIcon(message.status)}
 				<div
 					class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
 					transition:slide
@@ -269,7 +270,6 @@
 						<div class="flex-1 min-w-0">
 							<!-- Status Badge -->
 							<div class="flex items-center gap-2 mb-2">
-								{@const StatusIcon = getStatusIcon(message.status)}
 								<span
 									class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusColor(
 										message.status
