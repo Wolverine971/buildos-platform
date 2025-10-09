@@ -317,7 +317,7 @@ export function transformEventPayload(
         throw new Error(`No transformer found for event type: ${eventType}`);
     }
   } catch (error) {
-    console.error(
+    console?.error(
       `[PayloadTransformer] Error transforming ${eventType}:`,
       error,
     );
