@@ -179,6 +179,36 @@
 					"slug": "anti-ai-assistant-execution-engine",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
+				},
+				"future-of-personal-knowledge-management": {
+					"title": "The Future of Personal Knowledge Management: From Collection to Action",
+					"description": "Personal knowledge management is shifting from manual curation to AI-assisted discovery, from static archives to dynamic context that evolves with your thinking. Here's what that means for how we work.",
+					"author": "DJ Wayne",
+					"date": "2025-10-09",
+					"lastmod": "2025-10-09",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"knowledge-management",
+						"AI",
+						"productivity",
+						"future-of-work",
+						"neurodiversity",
+						"PKM",
+						"note-taking",
+						"brain-dump",
+						"strategic-forgetting",
+						"action-oriented",
+						"ADHD",
+						"AI-organization"
+					],
+					"readingTime": 12,
+					"excerpt": "Most knowledge management is productivity theater—80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence.",
+					"pic": "knowledge-management-future",
+					"slug": "future-of-personal-knowledge-management",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management.md"
 				}
 			}
 		},
@@ -269,7 +299,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-10-09T19:36:21.470Z",
-	"totalPosts": 10,
+	"generatedAt": "2025-10-09T22:08:58.628Z",
+	"totalPosts": 11,
 	"totalCategories": 4
 }

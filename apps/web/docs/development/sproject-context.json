@@ -27,6 +27,11 @@
 			]
 		},
 		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
+		},
+		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -103,11 +108,6 @@
 			"file": "src/lib/components/ui/RadioGroup.svelte",
 			"type": "component",
 			"components": ["Radio"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
@@ -566,12 +566,12 @@
 	"dependencies": {
 		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
 		"src/routes/projects/+page.svelte": ["src/lib/components/brain-dump/BrainDumpModal.svelte"],
-		"src/lib/components/notifications/NotificationModal.svelte": [
-			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
-		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
+		],
+		"src/lib/components/notifications/NotificationModal.svelte": [
+			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		]
 	},
 	"unusedComponents": [
