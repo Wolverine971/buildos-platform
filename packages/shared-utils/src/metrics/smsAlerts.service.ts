@@ -1,4 +1,4 @@
-// apps/worker/src/lib/services/smsAlerts.service.ts
+// packages/sms-metrics/src/smsAlerts.service.ts
 /**
  * SMS Alerts Service
  *
@@ -12,7 +12,7 @@
  * Phase: 6.2 (Monitoring & Metrics)
  */
 
-import { supabase } from "../supabase";
+import { createServiceClient } from "@buildos/supabase-client";
 import { SMSMetricsService } from "./smsMetrics.service";
 import { format } from "date-fns";
 
@@ -38,6 +38,7 @@ export interface Alert {
 }
 
 export class SMSAlertsService {
+  private supabase = createServiceClient();
   private metricsService: SMSMetricsService;
 
   constructor() {
@@ -110,7 +111,7 @@ export class SMSAlertsService {
     threshold: AlertThreshold,
     metrics: any,
   ): Promise<Alert | null> {
-    let metricValue: number | null = null;
+    let metricValue: number = 0;
     let message: string = "";
 
     switch (threshold.alert_type) {
@@ -204,7 +205,7 @@ export class SMSAlertsService {
         return null;
     }
 
-    if (message && metricValue !== null) {
+    if (message) {
       return {
         alert_type: threshold.alert_type,
         severity: threshold.severity,
@@ -261,8 +262,8 @@ export class SMSAlertsService {
    */
   private async getEnabledThresholds(): Promise<AlertThreshold[]> {
     try {
-      const { data, error } = await supabase
-        .from("sms_alert_thresholds")
+      const { data, error } = await this.supabase
+        .from("sms_alert_thresholds" as any)
         .select("*")
         .eq("enabled", true);
 
@@ -270,7 +271,7 @@ export class SMSAlertsService {
         throw error;
       }
 
-      return (data as AlertThreshold[]) || [];
+      return (data as unknown as AlertThreshold[]) || [];
     } catch (error) {
       console.error("[SMSAlerts] Error fetching thresholds:", error);
       return [];
@@ -462,16 +463,18 @@ export class SMSAlertsService {
    */
   private async recordAlert(alert: Alert): Promise<void> {
     try {
-      const { error } = await supabase.from("sms_alert_history").insert({
-        alert_type: alert.alert_type,
-        severity: alert.severity,
-        metric_value: alert.metric_value,
-        threshold_value: alert.threshold_value,
-        message: alert.message,
-        notification_channel: alert.notification_channel,
-        notification_sent: true,
-        triggered_at: new Date().toISOString(),
-      });
+      const { error } = await this.supabase
+        .from("sms_alert_history" as any)
+        .insert({
+          alert_type: alert.alert_type,
+          severity: alert.severity,
+          metric_value: alert.metric_value,
+          threshold_value: alert.threshold_value,
+          message: alert.message,
+          notification_channel: alert.notification_channel,
+          notification_sent: true,
+          triggered_at: new Date().toISOString(),
+        });
 
       if (error) {
         throw error;
@@ -488,8 +491,8 @@ export class SMSAlertsService {
    */
   private async updateLastTriggered(thresholdId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from("sms_alert_thresholds")
+      const { error } = await this.supabase
+        .from("sms_alert_thresholds" as any)
         .update({ last_triggered_at: new Date().toISOString() })
         .eq("id", thresholdId);
 
@@ -506,8 +509,8 @@ export class SMSAlertsService {
    */
   async resolveAlert(alertId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from("sms_alert_history")
+      const { error } = await this.supabase
+        .from("sms_alert_history" as any)
         .update({ resolved_at: new Date().toISOString() })
         .eq("id", alertId)
         .is("resolved_at", null);
@@ -527,8 +530,8 @@ export class SMSAlertsService {
    */
   async getUnresolvedAlerts(limit: number = 50): Promise<any[]> {
     try {
-      const { data, error } = await supabase
-        .from("sms_alert_history")
+      const { data, error } = await this.supabase
+        .from("sms_alert_history" as any)
         .select("*")
         .is("resolved_at", null)
         .order("triggered_at", { ascending: false })
@@ -554,8 +557,8 @@ export class SMSAlertsService {
     limit: number = 100,
   ): Promise<any[]> {
     try {
-      let query = supabase
-        .from("sms_alert_history")
+      let query = this.supabase
+        .from("sms_alert_history" as any)
         .select("*")
         .gte("triggered_at", startDate);
 
@@ -579,5 +582,24 @@ export class SMSAlertsService {
   }
 }
 
-// Export singleton instance
-export const smsAlertsService = new SMSAlertsService();
+// Lazy singleton instance (created on first access)
+let smsAlertsServiceInstance: SMSAlertsService | null = null;
+
+export const smsAlertsService = {
+  get instance(): SMSAlertsService {
+    if (!smsAlertsServiceInstance) {
+      smsAlertsServiceInstance = new SMSAlertsService();
+    }
+    return smsAlertsServiceInstance;
+  },
+  // Proxy all methods for backward compatibility
+  checkAlerts: (...args: Parameters<SMSAlertsService["checkAlerts"]>) =>
+    smsAlertsService.instance.checkAlerts(...args),
+  resolveAlert: (...args: Parameters<SMSAlertsService["resolveAlert"]>) =>
+    smsAlertsService.instance.resolveAlert(...args),
+  getUnresolvedAlerts: (
+    ...args: Parameters<SMSAlertsService["getUnresolvedAlerts"]>
+  ) => smsAlertsService.instance.getUnresolvedAlerts(...args),
+  getAlertHistory: (...args: Parameters<SMSAlertsService["getAlertHistory"]>) =>
+    smsAlertsService.instance.getAlertHistory(...args),
+};

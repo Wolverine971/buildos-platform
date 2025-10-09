@@ -1,4 +1,4 @@
-// apps/worker/src/lib/services/smsMetrics.service.ts
+// packages/sms-metrics/src/smsMetrics.service.ts
 /**
  * SMS Metrics Service
  *
@@ -13,7 +13,7 @@
  * Phase: 6.2 (Monitoring & Metrics)
  */
 
-import { supabase } from "../supabase";
+import { createServiceClient } from "@buildos/supabase-client";
 import { format } from "date-fns";
 
 export interface SMSMetrics {
@@ -62,6 +62,8 @@ export interface UserMetrics {
 }
 
 export class SMSMetricsService {
+  private supabase = createServiceClient();
+
   /**
    * Record SMS scheduled count for a user
    */
@@ -69,7 +71,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -98,7 +100,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -128,7 +130,7 @@ export class SMSMetricsService {
       const today = format(new Date(), "yyyy-MM-dd");
 
       // Record delivered count
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -141,7 +143,7 @@ export class SMSMetricsService {
       });
 
       // Record average delivery time (will be averaged in materialized view)
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -169,7 +171,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -198,7 +200,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -234,7 +236,7 @@ export class SMSMetricsService {
           ? "llm_success_count"
           : "template_fallback_count";
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -245,7 +247,7 @@ export class SMSMetricsService {
 
       // Record LLM cost if available
       if (generatedVia === "llm" && costUsd !== undefined) {
-        await supabase.rpc("record_sms_metric", {
+        await (this.supabase.rpc as any)("record_sms_metric", {
           p_metric_date: today,
           p_metric_hour: null,
           p_user_id: userId,
@@ -257,7 +259,7 @@ export class SMSMetricsService {
 
       // Record generation time if available
       if (generationTimeMs !== undefined) {
-        await supabase.rpc("record_sms_metric", {
+        await (this.supabase.rpc as any)("record_sms_metric", {
           p_metric_date: today,
           p_metric_hour: null,
           p_user_id: userId,
@@ -282,7 +284,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -304,7 +306,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -328,7 +330,7 @@ export class SMSMetricsService {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc("record_sms_metric", {
+      await (this.supabase.rpc as any)("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -351,10 +353,13 @@ export class SMSMetricsService {
     endDate?: string,
   ): Promise<DailyMetricsSummary[]> {
     try {
-      const { data, error } = await supabase.rpc("get_sms_daily_metrics", {
-        p_start_date: startDate,
-        p_end_date: endDate || startDate,
-      });
+      const { data, error } = await (this.supabase.rpc as any)(
+        "get_sms_daily_metrics",
+        {
+          p_start_date: startDate,
+          p_end_date: endDate || startDate,
+        },
+      );
 
       if (error) {
         throw error;
@@ -375,10 +380,13 @@ export class SMSMetricsService {
     days: number = 30,
   ): Promise<UserMetrics[]> {
     try {
-      const { data, error } = await supabase.rpc("get_user_sms_metrics", {
-        p_user_id: userId,
-        p_days: days,
-      });
+      const { data, error } = await (this.supabase.rpc as any)(
+        "get_user_sms_metrics",
+        {
+          p_user_id: userId,
+          p_days: days,
+        },
+      );
 
       if (error) {
         throw error;
@@ -411,7 +419,9 @@ export class SMSMetricsService {
    */
   async refreshMaterializedView(): Promise<void> {
     try {
-      const { error } = await supabase.rpc("refresh_sms_metrics_daily");
+      const { error } = await (this.supabase.rpc as any)(
+        "refresh_sms_metrics_daily",
+      );
 
       if (error) {
         throw error;
@@ -459,8 +469,8 @@ export class SMSMetricsService {
     days: number = 7,
   ): Promise<number> {
     try {
-      const { data, error } = await supabase
-        .from("sms_metrics")
+      const { data, error } = await this.supabase
+        .from("sms_metrics" as any)
         .select("metric_type, metric_value")
         .eq("user_id", userId)
         .gte(
@@ -476,11 +486,16 @@ export class SMSMetricsService {
         throw error;
       }
 
-      const llmSuccessCount = (data || [])
+      const metrics = (data || []) as unknown as Array<{
+        metric_type: string;
+        metric_value: number;
+      }>;
+
+      const llmSuccessCount = metrics
         .filter((m) => m.metric_type === "llm_success_count")
         .reduce((sum, m) => sum + Number(m.metric_value), 0);
 
-      const templateFallbackCount = (data || [])
+      const templateFallbackCount = metrics
         .filter((m) => m.metric_type === "template_fallback_count")
         .reduce((sum, m) => sum + Number(m.metric_value), 0);
 
@@ -500,8 +515,8 @@ export class SMSMetricsService {
    */
   async getAvgLLMCostPerUser(days: number = 30): Promise<number> {
     try {
-      const { data, error } = await supabase
-        .from("sms_metrics")
+      const { data, error } = await this.supabase
+        .from("sms_metrics" as any)
         .select("user_id, metric_value")
         .eq("metric_type", "llm_cost_usd")
         .gte(
@@ -518,11 +533,16 @@ export class SMSMetricsService {
 
       if (!data || data.length === 0) return 0;
 
-      const totalCost = data.reduce(
+      const costMetrics = data as unknown as Array<{
+        user_id: string;
+        metric_value: number;
+      }>;
+
+      const totalCost = costMetrics.reduce(
         (sum, m) => sum + Number(m.metric_value),
         0,
       );
-      const uniqueUsers = new Set(data.map((m) => m.user_id)).size;
+      const uniqueUsers = new Set(costMetrics.map((m) => m.user_id)).size;
 
       if (uniqueUsers === 0) return 0;
 
@@ -537,5 +557,59 @@ export class SMSMetricsService {
   }
 }
 
-// Export singleton instance
-export const smsMetricsService = new SMSMetricsService();
+// Lazy singleton instance (created on first access)
+let smsMetricsServiceInstance: SMSMetricsService | null = null;
+
+export const smsMetricsService = {
+  get instance(): SMSMetricsService {
+    if (!smsMetricsServiceInstance) {
+      smsMetricsServiceInstance = new SMSMetricsService();
+    }
+    return smsMetricsServiceInstance;
+  },
+  // Proxy all methods for backward compatibility
+  recordScheduled: (
+    ...args: Parameters<SMSMetricsService["recordScheduled"]>
+  ) => smsMetricsService.instance.recordScheduled(...args),
+  recordSent: (...args: Parameters<SMSMetricsService["recordSent"]>) =>
+    smsMetricsService.instance.recordSent(...args),
+  recordDelivered: (
+    ...args: Parameters<SMSMetricsService["recordDelivered"]>
+  ) => smsMetricsService.instance.recordDelivered(...args),
+  recordFailed: (...args: Parameters<SMSMetricsService["recordFailed"]>) =>
+    smsMetricsService.instance.recordFailed(...args),
+  recordCancelled: (
+    ...args: Parameters<SMSMetricsService["recordCancelled"]>
+  ) => smsMetricsService.instance.recordCancelled(...args),
+  recordLLMGeneration: (
+    ...args: Parameters<SMSMetricsService["recordLLMGeneration"]>
+  ) => smsMetricsService.instance.recordLLMGeneration(...args),
+  recordOptOut: (...args: Parameters<SMSMetricsService["recordOptOut"]>) =>
+    smsMetricsService.instance.recordOptOut(...args),
+  recordQuietHoursSkip: (
+    ...args: Parameters<SMSMetricsService["recordQuietHoursSkip"]>
+  ) => smsMetricsService.instance.recordQuietHoursSkip(...args),
+  recordDailyLimitHit: (
+    ...args: Parameters<SMSMetricsService["recordDailyLimitHit"]>
+  ) => smsMetricsService.instance.recordDailyLimitHit(...args),
+  getDailyMetrics: (
+    ...args: Parameters<SMSMetricsService["getDailyMetrics"]>
+  ) => smsMetricsService.instance.getDailyMetrics(...args),
+  getUserMetrics: (...args: Parameters<SMSMetricsService["getUserMetrics"]>) =>
+    smsMetricsService.instance.getUserMetrics(...args),
+  getTodayMetrics: (
+    ...args: Parameters<SMSMetricsService["getTodayMetrics"]>
+  ) => smsMetricsService.instance.getTodayMetrics(...args),
+  refreshMaterializedView: (
+    ...args: Parameters<SMSMetricsService["refreshMaterializedView"]>
+  ) => smsMetricsService.instance.refreshMaterializedView(...args),
+  calculateDeliveryRate: (
+    ...args: Parameters<SMSMetricsService["calculateDeliveryRate"]>
+  ) => smsMetricsService.instance.calculateDeliveryRate(...args),
+  calculateLLMSuccessRate: (
+    ...args: Parameters<SMSMetricsService["calculateLLMSuccessRate"]>
+  ) => smsMetricsService.instance.calculateLLMSuccessRate(...args),
+  getAvgLLMCostPerUser: (
+    ...args: Parameters<SMSMetricsService["getAvgLLMCostPerUser"]>
+  ) => smsMetricsService.instance.getAvgLLMCostPerUser(...args),
+};

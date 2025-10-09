@@ -26,7 +26,7 @@ import {
   type EventContext,
   SMSMessageGenerator,
 } from "../lib/services/smsMessageGenerator";
-import { smsMetricsService } from "../lib/services/smsMetrics.service";
+import { smsMetricsService } from "@buildos/shared-utils";
 
 interface DailySMSJobData {
   userId: string;

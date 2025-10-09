@@ -9,6 +9,7 @@ export * from "./api-types";
 
 // Export notification system types
 export * from "./notification.types";
+export * from "./payloadTransformer";
 
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {

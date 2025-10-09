@@ -5,7 +5,9 @@
  * Client-side service for fetching SMS metrics and alerts from dashboard APIs
  */
 
-import { getSupabase } from '$lib/supabaseClient';
+import { supabase } from '$lib/supabase';
+
+// import { getSupabase } from '$lib/supabase';
 
 export interface DailyMetric {
 	metric_date: string;
@@ -247,7 +249,6 @@ export class SMSMonitoringService {
 	 * Get authentication headers
 	 */
 	private async getAuthHeaders(): Promise<Record<string, string>> {
-		const supabase = getSupabase();
 		const {
 			data: { session }
 		} = await supabase.auth.getSession();

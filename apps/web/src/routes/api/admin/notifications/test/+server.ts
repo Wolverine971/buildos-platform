@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EventType, NotificationChannel } from '@buildos/shared-types';
+import { transformEventPayload, validateNotificationPayload } from '@buildos/shared-types';
 
 // Rate limiting constants
 const MAX_RECIPIENTS_PER_TEST = 20;
@@ -50,6 +51,24 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.badRequest('At least one channel is required');
 		}
 
+		// Validate or transform payload
+		// If payload doesn't have title/body, try to transform from event payload
+		// If it does have title/body, validate them
+		let notificationPayload = payload;
+		if (!validateNotificationPayload(payload as any)) {
+			console.log('[TestNotification] Payload missing title/body, attempting transformation');
+			try {
+				notificationPayload = transformEventPayload(event_type, payload);
+				console.log('[TestNotification] Transformed payload:', notificationPayload);
+			} catch (error: any) {
+				return ApiResponse.badRequest(
+					`Invalid payload: must have title and body, or be a valid event payload. Error: ${error.message}`
+				);
+			}
+		} else {
+			console.log('[TestNotification] Payload already has valid title/body');
+		}
+
 		// Rate limiting check
 		if (test_mode) {
 			const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
@@ -91,7 +110,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					event_type,
 					event_source: 'api_action',
 					actor_user_id: user.id,
-					payload,
+					payload, // Keep original event payload
 					metadata
 				})
 				.select('id')
@@ -151,7 +170,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							recipient_user_id: recipientId,
 							channel,
 							channel_identifier: channelIdentifier,
-							payload,
+							payload: notificationPayload, // Use transformed payload with title/body
 							status: 'pending'
 						})
 						.select('id, channel, recipient_user_id, status')

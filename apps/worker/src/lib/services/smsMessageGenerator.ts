@@ -42,6 +42,7 @@ export interface GeneratedSMS {
     promptTokens?: number;
     completionTokens?: number;
     totalTokens?: number;
+    generationTimeMs?: number;
   };
 }
 

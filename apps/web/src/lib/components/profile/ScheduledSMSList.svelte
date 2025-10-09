@@ -11,7 +11,7 @@
 		AlertCircle,
 		CheckCircle
 	} from 'lucide-svelte';
-	import { format, parseISO, isPast, isFuture } from 'date-fns';
+	import { format, parseISO, isFuture } from 'date-fns';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import Button from '$lib/components/ui/Button.svelte';
 

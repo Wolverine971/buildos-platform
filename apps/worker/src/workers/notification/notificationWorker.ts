@@ -16,6 +16,12 @@ import type {
   NotificationChannel,
   NotificationStatus,
   PushSubscription as PushSubscriptionType,
+  EventType,
+} from "@buildos/shared-types";
+import {
+  transformEventPayload,
+  validateNotificationPayload,
+  getFallbackPayload,
 } from "@buildos/shared-types";
 import type { ProcessingJob } from "../../lib/supabaseQueue.js";
 import webpush from "web-push";
@@ -38,6 +44,83 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn(
     "[NotificationWorker] VAPID keys not configured - push notifications will not work",
   );
+}
+
+// =====================================================
+// PAYLOAD TRANSFORMATION
+// =====================================================
+
+/**
+ * Enrich delivery payload with transformed event data if needed
+ * If payload already has title and body, use it as-is
+ * Otherwise, transform the event payload
+ */
+async function enrichDeliveryPayload(
+  delivery: NotificationDelivery,
+): Promise<NotificationDelivery> {
+  // If payload already has valid title and body, use as-is
+  if (validateNotificationPayload(delivery.payload as any)) {
+    console.log(
+      `[NotificationWorker] Delivery ${delivery.id} already has valid payload, skipping transformation`,
+    );
+    return delivery;
+  }
+
+  // Get the event data to transform
+  const { data: event, error } = await supabase
+    .from("notification_events")
+    .select("event_type, payload")
+    .eq("id", delivery.event_id)
+    .single();
+
+  if (error || !event) {
+    console.warn(
+      `[NotificationWorker] Could not fetch event ${delivery.event_id} for transformation:`,
+      error,
+    );
+    // Use fallback payload
+    const fallbackPayload = getFallbackPayload("brief.completed" as EventType);
+    return {
+      ...delivery,
+      payload: fallbackPayload,
+    };
+  }
+
+  try {
+    // Transform event payload to notification payload
+    const transformedPayload = transformEventPayload(
+      event.event_type as EventType,
+      event.payload as any,
+    );
+
+    console.log(
+      `[NotificationWorker] Transformed ${event.event_type} event payload for delivery ${delivery.id}`,
+    );
+
+    // Merge transformed payload with existing delivery payload
+    // This preserves any channel-specific fields that were already set
+    return {
+      ...delivery,
+      payload: {
+        ...transformedPayload,
+        ...delivery.payload, // Allow delivery payload to override if present
+      },
+    };
+  } catch (error: any) {
+    console.error(
+      `[NotificationWorker] Error transforming event ${event.event_type}:`,
+      error,
+    );
+    // Use fallback payload
+    const fallbackPayload = getFallbackPayload(event.event_type as EventType);
+    return {
+      ...delivery,
+      payload: {
+        ...fallbackPayload,
+        ...delivery.payload,
+      },
+    };
+  }
 }
 
 // =====================================================
@@ -72,9 +155,10 @@ async function sendPushNotification(
     };
 
     // Format notification payload
+    // Note: payload is guaranteed to have title and body by enrichDeliveryPayload
     const payload = JSON.stringify({
-      title: delivery.payload.title || "BuildOS Notification",
-      body: delivery.payload.body || "",
+      title: delivery.payload.title,
+      body: delivery.payload.body,
       icon:
         delivery.payload.icon_url ||
         "/AppImages/android/android-launchericon-192-192.png",
@@ -135,11 +219,12 @@ async function sendInAppNotification(
     // Insert into existing user_notifications table
     // Note: user_notifications schema doesn't have metadata column
     // Schema: id, user_id, type, title, message, priority, action_url, read_at, dismissed_at, expires_at, created_at
+    // Note: payload is guaranteed to have title and body by enrichDeliveryPayload
     const { error } = await supabase.from("user_notifications").insert({
       user_id: delivery.recipient_user_id,
       type: delivery.payload.type || "info",
-      title: delivery.payload.title || "Notification",
-      message: delivery.payload.body || "",
+      title: delivery.payload.title,
+      message: delivery.payload.body,
       priority: delivery.payload.priority || "normal",
       action_url: delivery.payload.action_url || undefined,
       expires_at: delivery.payload.expires_at || undefined,
@@ -282,7 +367,7 @@ export async function processNotification(
     }
 
     // Send notification (status will be updated after send completes)
-    const typedDelivery: NotificationDelivery = {
+    let typedDelivery: NotificationDelivery = {
       ...delivery,
       channel: delivery.channel as NotificationChannel,
       status: delivery.status as NotificationStatus,
@@ -303,6 +388,20 @@ export async function processNotification(
       created_at: delivery.created_at || new Date().toISOString(),
       updated_at: delivery.updated_at || new Date().toISOString(),
     };
+
+    // Enrich payload with transformed event data if needed
+    typedDelivery = await enrichDeliveryPayload(typedDelivery);
+
+    // Validate that we have a proper payload after transformation
+    if (!validateNotificationPayload(typedDelivery.payload as any)) {
+      console.error(
+        `[NotificationWorker] Delivery ${delivery_id} has invalid payload after transformation:`,
+        typedDelivery.payload,
+      );
+      throw new Error(
+        "Invalid notification payload: missing or empty title/body",
+      );
+    }
 
     console.log(
       `[NotificationWorker] Sending ${channel} notification to delivery ${delivery_id} (attempt ${(delivery.attempts || 0) + 1}/${delivery.max_attempts || 3})`,

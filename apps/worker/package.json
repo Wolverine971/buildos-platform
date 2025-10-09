@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@buildos/shared-types": "workspace:*",
+    "@buildos/shared-utils": "workspace:*",
     "@buildos/supabase-client": "workspace:*",
     "@buildos/twilio-service": "workspace:*",
     "@supabase/supabase-js": "^2.38.4",

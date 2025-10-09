@@ -6,7 +6,7 @@ import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 import { createServiceClient } from '@buildos/supabase-client';
-import { smsMetricsService } from '../../../../../worker/src/lib/services/smsMetrics.service';
+import { smsMetricsService } from '@buildos/shared-utils';
 
 /**
  * Webhook Context for logging and monitoring

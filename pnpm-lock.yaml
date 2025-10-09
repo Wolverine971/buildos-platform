@@ -33,6 +33,9 @@ importers:
       "@buildos/shared-types":
         specifier: workspace:*
         version: link:../../packages/shared-types
+      "@buildos/shared-utils":
+        specifier: workspace:*
+        version: link:../../packages/shared-utils
       "@buildos/supabase-client":
         specifier: workspace:*
         version: link:../../packages/supabase-client
@@ -310,6 +313,9 @@ importers:
       "@buildos/shared-types":
         specifier: workspace:*
         version: link:../../packages/shared-types
+      "@buildos/shared-utils":
+        specifier: workspace:*
+        version: link:../../packages/shared-utils
       "@buildos/supabase-client":
         specifier: workspace:*
         version: link:../../packages/supabase-client
@@ -401,6 +407,50 @@ importers:
       "@supabase/supabase-js":
         specifier: ^2.53.0
         version: 2.58.0
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.0(jiti@1.21.7)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.2)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
+  packages/shared-utils:
+    dependencies:
+      "@buildos/shared-types":
+        specifier: workspace:*
+        version: link:../shared-types
+      "@buildos/supabase-client":
+        specifier: workspace:*
+        version: link:../supabase-client
+      date-fns:
+        specifier: ^2.30.0
+        version: 2.30.0
+    devDependencies:
+      "@types/node":
+        specifier: ^20.11.10
+        version: 20.19.17
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.0(jiti@1.21.7)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.2)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/sms-metrics:
+    dependencies:
+      "@buildos/supabase-client":
+        specifier: workspace:*
+        version: link:../supabase-client
+      date-fns:
+        specifier: ^2.30.0
+        version: 2.30.0
+    devDependencies:
+      "@types/node":
+        specifier: ^20.11.10
+        version: 20.19.17
       tsup:
         specifier: ^8.3.5
         version: 8.5.0(jiti@1.21.7)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.2)(yaml@2.8.1)

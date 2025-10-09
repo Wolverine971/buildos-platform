@@ -2,7 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createServiceClient } from '@buildos/supabase-client';
-import { smsMetricsService } from '../../../../../../worker/src/lib/services/smsMetrics.service';
+import { smsMetricsService } from '@buildos/shared-utils';
 
 /**
  * GET /api/sms/metrics/today

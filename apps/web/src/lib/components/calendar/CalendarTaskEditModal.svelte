@@ -187,7 +187,13 @@
 	</svelte:fragment>
 
 	<!-- Form Content -->
-	<form on:submit|preventDefault={handleSave} class="px-4 py-4 space-y-6">
+	<form
+		on:submit={(e) => {
+			e.preventDefault();
+			handleSave();
+		}}
+		class="px-4 py-4 space-y-6"
+	>
 		{#each fieldGroups as group}
 			{@const groupFields = group.fields.filter((f) => shouldDisplayField(f))}
 

@@ -16,8 +16,7 @@ import { supabase } from "./lib/supabase";
 import { queue } from "./worker";
 import type { Database } from "@buildos/shared-types";
 import { BriefBackoffCalculator } from "./lib/briefBackoffCalculator";
-import { smsAlertsService } from "./lib/services/smsAlerts.service";
-import { smsMetricsService } from "./lib/services/smsMetrics.service";
+import { smsAlertsService, smsMetricsService } from "@buildos/shared-utils";
 
 export type UserBriefPreference =
   Database["public"]["Tables"]["user_brief_preferences"]["Row"];

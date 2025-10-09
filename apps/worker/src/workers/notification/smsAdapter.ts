@@ -224,8 +224,9 @@ async function formatSMSMessage(
 
     default:
       // Generic fallback - truncate to fit SMS limit
-      const title = payload.title || "BuildOS notification";
-      const body = payload.body || "";
+      // Note: payload is guaranteed to have title and body by enrichDeliveryPayload
+      const title = payload.title;
+      const body = payload.body;
       const message = body ? `${title}: ${body}` : title;
 
       // Truncate to 155 chars to leave room for opt-out info if needed

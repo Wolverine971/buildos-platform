@@ -42,6 +42,7 @@ function rewriteLinksForTracking(html: string, trackingId: string): string {
 
 /**
  * Format notification payload as email HTML
+ * Note: payload is guaranteed to have title and body by enrichDeliveryPayload
  */
 function formatEmailTemplate(delivery: NotificationDelivery): {
   html: string;
@@ -55,16 +56,16 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${payload.title || "BuildOS Notification"}</title>
+  <title>${payload.title}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">${payload.title || "BuildOS Notification"}</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${payload.title}</h1>
   </div>
 
   <div style="background: #fff; padding: 30px; border: 1px solid #e1e8ed; border-top: none; border-radius: 0 0 10px 10px;">
     <div style="font-size: 16px; color: #555; margin-bottom: 20px;">
-      ${payload.body || ""}
+      ${payload.body}
     </div>
 
     ${
@@ -108,9 +109,9 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
   `.trim();
 
   const text = `
-${payload.title || "BuildOS Notification"}
+${payload.title}
 
-${payload.body || ""}
+${payload.body}
 
 ${payload.action_url ? `View details: ${payload.action_url}` : ""}
 
@@ -145,7 +146,7 @@ export async function sendEmailNotification(
 
     // Format email content
     const { html, text } = formatEmailTemplate(delivery);
-    const subject = delivery.payload.title || "BuildOS Notification";
+    const subject = delivery.payload.title;
 
     // Generate tracking ID
     const trackingId = crypto.randomUUID();

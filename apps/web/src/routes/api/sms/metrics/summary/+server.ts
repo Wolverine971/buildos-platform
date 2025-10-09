@@ -2,8 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createServiceClient } from '@buildos/supabase-client';
-import { smsMetricsService } from '../../../../../../worker/src/lib/services/smsMetrics.service';
-import { smsAlertsService } from '../../../../../../worker/src/lib/services/smsAlerts.service';
+import { smsMetricsService, smsAlertsService } from '@buildos/shared-utils';
 import { format, subDays } from 'date-fns';
 
 /**
