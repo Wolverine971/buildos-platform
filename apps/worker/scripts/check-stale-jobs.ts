@@ -1,4 +1,4 @@
-// Temporary script to check for stale queue jobs
+// apps/worker/scripts/check-stale-jobs.ts
 import { supabase } from "../src/lib/supabase";
 
 async function checkStaleJobs() {

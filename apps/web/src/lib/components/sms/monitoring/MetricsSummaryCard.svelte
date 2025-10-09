@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/sms/monitoring/MetricsSummaryCard.svelte -->
 <script lang="ts">
 	// apps/web/src/lib/components/sms/monitoring/MetricsSummaryCard.svelte
 	/**
@@ -16,18 +17,10 @@
 	// Derive health status
 	let healthStatus = $derived(summary.health.status);
 	let healthColor = $derived(
-		healthStatus === 'healthy'
-			? 'green'
-			: healthStatus === 'degraded'
-			? 'yellow'
-			: 'red'
+		healthStatus === 'healthy' ? 'green' : healthStatus === 'degraded' ? 'yellow' : 'red'
 	);
 	let healthIcon = $derived(
-		healthStatus === 'healthy'
-			? '✓'
-			: healthStatus === 'degraded'
-			? '⚠'
-			: '✕'
+		healthStatus === 'healthy' ? '✓' : healthStatus === 'degraded' ? '⚠' : '✕'
 	);
 
 	/**
@@ -59,9 +52,11 @@
 		<div class="health-text">
 			<h2>System Status</h2>
 			<p class="status-label" data-color={healthColor}>
-				{healthStatus === 'healthy' ? 'All Systems Operational' :
-				 healthStatus === 'degraded' ? 'Performance Degraded' :
-				 'Critical Issues Detected'}
+				{healthStatus === 'healthy'
+					? 'All Systems Operational'
+					: healthStatus === 'degraded'
+						? 'Performance Degraded'
+						: 'Critical Issues Detected'}
 			</p>
 		</div>
 	</div>
@@ -74,7 +69,9 @@
 			<div class="metric-items">
 				<div class="metric-item">
 					<span class="metric-label">Scheduled</span>
-					<span class="metric-value">{formatNumber(summary.today?.scheduled_count || 0)}</span>
+					<span class="metric-value"
+						>{formatNumber(summary.today?.scheduled_count || 0)}</span
+					>
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Sent</span>
@@ -82,11 +79,15 @@
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Delivered</span>
-					<span class="metric-value">{formatNumber(summary.today?.delivered_count || 0)}</span>
+					<span class="metric-value"
+						>{formatNumber(summary.today?.delivered_count || 0)}</span
+					>
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Failed</span>
-					<span class="metric-value error">{formatNumber(summary.today?.failed_count || 0)}</span>
+					<span class="metric-value error"
+						>{formatNumber(summary.today?.failed_count || 0)}</span
+					>
 				</div>
 			</div>
 		</div>
@@ -105,13 +106,18 @@
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Delivery Rate</span>
-					<span class="metric-value" class:success={summary.week.delivery_rate_percent >= 90}>
+					<span
+						class="metric-value"
+						class:success={summary.week.delivery_rate_percent >= 90}
+					>
 						{formatPercent(summary.week.delivery_rate_percent)}
 					</span>
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Total Failed</span>
-					<span class="metric-value error">{formatNumber(summary.week.totals.failed)}</span>
+					<span class="metric-value error"
+						>{formatNumber(summary.week.totals.failed)}</span
+					>
 				</div>
 			</div>
 		</div>
@@ -122,7 +128,10 @@
 			<div class="metric-items">
 				<div class="metric-item">
 					<span class="metric-label">LLM Success Rate</span>
-					<span class="metric-value" class:success={summary.week.llm_success_rate_percent >= 50}>
+					<span
+						class="metric-value"
+						class:success={summary.week.llm_success_rate_percent >= 50}
+					>
 						{formatPercent(summary.week.llm_success_rate_percent)}
 					</span>
 				</div>
@@ -132,11 +141,15 @@
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Template Fallback</span>
-					<span class="metric-value">{formatNumber(summary.week.totals.templateFallback)}</span>
+					<span class="metric-value"
+						>{formatNumber(summary.week.totals.templateFallback)}</span
+					>
 				</div>
 				<div class="metric-item">
 					<span class="metric-label">Avg Daily Cost</span>
-					<span class="metric-value">{formatCurrency(summary.week.avg_daily_cost_usd)}</span>
+					<span class="metric-value"
+						>{formatCurrency(summary.week.avg_daily_cost_usd)}</span
+					>
 				</div>
 			</div>
 		</div>

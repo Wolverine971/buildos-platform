@@ -1,8 +1,9 @@
+// apps/worker/tests/integration/sms-event-scheduling/mocks.ts
 /**
  * Mock implementations for SMS Event Scheduling Integration Tests
  */
 
-import { vi, type Mock } from 'vitest';
+import { vi, type Mock } from "vitest";
 
 /**
  * Mock Twilio Client for testing SMS sends without real API calls
@@ -22,45 +23,47 @@ export class MockTwilioClient {
   private maxFailures: number = 0;
 
   constructor() {
-    this.sendSMS = vi.fn(async (params: { to: string; body: string; metadata?: any }) => {
-      // Simulate failure if configured
-      if (this.shouldFail && this.failureCount < this.maxFailures) {
-        this.failureCount++;
-        throw new Error(`Twilio API Error: ${this.getFailureReason()}`);
-      }
+    this.sendSMS = vi.fn(
+      async (params: { to: string; body: string; metadata?: any }) => {
+        // Simulate failure if configured
+        if (this.shouldFail && this.failureCount < this.maxFailures) {
+          this.failureCount++;
+          throw new Error(`Twilio API Error: ${this.getFailureReason()}`);
+        }
 
-      // Generate mock Twilio SID
-      const sid = `SM${Date.now()}${Math.random().toString(36).substring(7)}`;
+        // Generate mock Twilio SID
+        const sid = `SM${Date.now()}${Math.random().toString(36).substring(7)}`;
 
-      // Record the sent message
-      const sentMessage = {
-        to: params.to,
-        body: params.body,
-        metadata: params.metadata,
-        sid,
-        timestamp: new Date(),
-      };
+        // Record the sent message
+        const sentMessage = {
+          to: params.to,
+          body: params.body,
+          metadata: params.metadata,
+          sid,
+          timestamp: new Date(),
+        };
 
-      this.sentMessages.push(sentMessage);
+        this.sentMessages.push(sentMessage);
 
-      // Return mock Twilio response
-      return {
-        sid,
-        status: 'queued',
-        to: params.to,
-        from: '+15555550000',
-        body: params.body,
-        dateCreated: new Date(),
-        dateSent: null,
-        dateUpdated: new Date(),
-        direction: 'outbound-api',
-        errorCode: null,
-        errorMessage: null,
-        price: null,
-        priceUnit: 'USD',
-        uri: `/2010-04-01/Accounts/test/Messages/${sid}.json`,
-      };
-    });
+        // Return mock Twilio response
+        return {
+          sid,
+          status: "queued",
+          to: params.to,
+          from: "+15555550000",
+          body: params.body,
+          dateCreated: new Date(),
+          dateSent: null,
+          dateUpdated: new Date(),
+          direction: "outbound-api",
+          errorCode: null,
+          errorMessage: null,
+          price: null,
+          priceUnit: "USD",
+          uri: `/2010-04-01/Accounts/test/Messages/${sid}.json`,
+        };
+      },
+    );
   }
 
   /**
@@ -130,11 +133,15 @@ export class MockTwilioClient {
     if (phoneNumber) {
       const messages = this.getMessagesTo(phoneNumber);
       if (messages.length > 0) {
-        throw new Error(`Expected no messages to ${phoneNumber}, but ${messages.length} were sent`);
+        throw new Error(
+          `Expected no messages to ${phoneNumber}, but ${messages.length} were sent`,
+        );
       }
     } else {
       if (this.sentMessages.length > 0) {
-        throw new Error(`Expected no messages sent, but ${this.sentMessages.length} were sent`);
+        throw new Error(
+          `Expected no messages sent, but ${this.sentMessages.length} were sent`,
+        );
       }
     }
   }
@@ -144,10 +151,10 @@ export class MockTwilioClient {
    */
   private getFailureReason(): string {
     const reasons = [
-      'Carrier temporarily unavailable',
-      'Rate limit exceeded',
-      'Invalid phone number format',
-      'Message blocked by carrier',
+      "Carrier temporarily unavailable",
+      "Rate limit exceeded",
+      "Invalid phone number format",
+      "Message blocked by carrier",
     ];
     return reasons[this.failureCount % reasons.length];
   }
@@ -169,7 +176,7 @@ export class MockLLMService {
   constructor() {
     this.generateText = vi.fn(async (params: any) => {
       if (this.shouldFail) {
-        throw new Error('LLM API Error: Service unavailable');
+        throw new Error("LLM API Error: Service unavailable");
       }
 
       // Generate mock response
@@ -186,7 +193,7 @@ export class MockLLMService {
 
       return {
         text: response,
-        model: 'deepseek/deepseek-chat',
+        model: "deepseek/deepseek-chat",
         costUsd: 0.0001,
         metadata: {
           tokens: {
@@ -211,7 +218,7 @@ export class MockLLMService {
    */
   private extractEventTitle(prompt: string): string {
     const match = prompt.match(/(?:Title|Event):\s*([^\n]+)/i);
-    return match ? match[1].trim() : 'Untitled Event';
+    return match ? match[1].trim() : "Untitled Event";
   }
 
   /**
@@ -263,7 +270,7 @@ export function createMockEnvironment() {
 export function createMockCalendarWebhook(
   userId: string,
   eventId: string,
-  action: 'created' | 'updated' | 'deleted',
+  action: "created" | "updated" | "deleted",
   eventData?: {
     title?: string;
     startTime?: string;
@@ -272,19 +279,20 @@ export function createMockCalendarWebhook(
 ) {
   const baseEvent = {
     id: eventId,
-    summary: eventData?.title || 'Test Event',
+    summary: eventData?.title || "Test Event",
     start: {
       dateTime: eventData?.startTime || new Date().toISOString(),
     },
     end: {
-      dateTime: eventData?.endTime || new Date(Date.now() + 3600000).toISOString(),
+      dateTime:
+        eventData?.endTime || new Date(Date.now() + 3600000).toISOString(),
     },
-    status: action === 'deleted' ? 'cancelled' : 'confirmed',
+    status: action === "deleted" ? "cancelled" : "confirmed",
   };
 
   return {
     userId,
-    calendarId: 'primary',
+    calendarId: "primary",
     action,
     event: baseEvent,
   };

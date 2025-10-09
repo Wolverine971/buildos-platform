@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/(app)/sms/monitoring/+page.svelte -->
 <script lang="ts">
 	// apps/web/src/routes/(app)/sms/monitoring/+page.svelte
 	/**
@@ -127,13 +128,21 @@
 				<span class="last-refresh">Last updated: {formatLastRefresh()}</span>
 			</div>
 
-			<button
-				class="btn-refresh"
-				onclick={refresh}
-				disabled={loading}
-			>
-				<svg class="icon" class:spinning={loading} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+			<button class="btn-refresh" onclick={refresh} disabled={loading}>
+				<svg
+					class="icon"
+					class:spinning={loading}
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+					/>
 				</svg>
 				Refresh
 			</button>
@@ -143,8 +152,19 @@
 				class:active={autoRefreshEnabled}
 				onclick={toggleAutoRefresh}
 			>
-				<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+				<svg
+					class="icon"
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
 				</svg>
 				Auto-refresh: {autoRefreshEnabled ? 'ON' : 'OFF'}
 			</button>
@@ -154,8 +174,19 @@
 	<!-- Error State -->
 	{#if error}
 		<div class="error-banner">
-			<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+			<svg
+				class="icon"
+				xmlns="http://www.w3.org/2000/svg"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
 			</svg>
 			<div>
 				<strong>Error loading dashboard</strong>
@@ -191,8 +222,8 @@
 			<!-- Footer Info -->
 			<div class="dashboard-footer">
 				<p class="info-text">
-					Dashboard refreshes every 60 seconds when auto-refresh is enabled.
-					Metrics are aggregated hourly via materialized views.
+					Dashboard refreshes every 60 seconds when auto-refresh is enabled. Metrics are
+					aggregated hourly via materialized views.
 				</p>
 			</div>
 		</div>
@@ -283,8 +314,12 @@
 	}
 
 	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* Error Banner */

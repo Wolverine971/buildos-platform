@@ -386,22 +386,25 @@ export class TestSetup {
     leadTime?: number;
     quietHours?: { start: string; end: string };
     dailyLimit?: number;
-  }): Promise<TestUser>
+  }): Promise<TestUser>;
 
-  async createCalendarEvent(userId: string, options: {
-    title?: string;
-    startTime?: Date;
-    durationMinutes?: number;
-    calendarEventId?: string;
-  }): Promise<TestCalendarEvent>
+  async createCalendarEvent(
+    userId: string,
+    options: {
+      title?: string;
+      startTime?: Date;
+      durationMinutes?: number;
+      calendarEventId?: string;
+    },
+  ): Promise<TestCalendarEvent>;
 
-  async triggerDailyScheduler(userId: string, date?: string): Promise<void>
+  async triggerDailyScheduler(userId: string, date?: string): Promise<void>;
 
-  async getScheduledMessages(userId: string): Promise<ScheduledSmsMessage[]>
+  async getScheduledMessages(userId: string): Promise<ScheduledSmsMessage[]>;
 
-  async getSMSMessages(userId: string): Promise<SmsMessage[]>
+  async getSMSMessages(userId: string): Promise<SmsMessage[]>;
 
-  async cleanup(): Promise<void>
+  async cleanup(): Promise<void>;
 }
 ```
 
@@ -420,20 +423,20 @@ export class TestSetup {
 
 ```typescript
 export class TimeController {
-  reset(): void
-  fastForward(minutes: number): void
-  getCurrentTime(): Date
+  reset(): void;
+  fastForward(minutes: number): void;
+  getCurrentTime(): Date;
 }
 
 export class TestDataBuilder {
-  static eventTomorrow(hour: number, minute: number): Date
-  static eventInDays(days: number, hour: number, minute: number): Date
+  static eventTomorrow(hour: number, minute: number): Date;
+  static eventInDays(days: number, hour: number, minute: number): Date;
 }
 
 export class SMSAssertions {
-  static assertValidSMSContent(content: string): void
-  static assertContainsEventDetails(content: string, eventTitle: string): void
-  static assertWithinSMSLength(content: string): void
+  static assertValidSMSContent(content: string): void;
+  static assertContainsEventDetails(content: string, eventTitle: string): void;
+  static assertWithinSMSLength(content: string): void;
 }
 
 export class QueueHelpers {
@@ -441,14 +444,14 @@ export class QueueHelpers {
     client: SupabaseClient,
     jobType: string,
     userId: string,
-    timeoutMs: number
-  ): Promise<void>
+    timeoutMs: number,
+  ): Promise<void>;
 
   static async waitFor(
     condition: () => Promise<boolean>,
     timeoutMs: number,
-    intervalMs: number
-  ): Promise<void>
+    intervalMs: number,
+  ): Promise<void>;
 }
 ```
 
@@ -466,22 +469,22 @@ export class QueueHelpers {
 
 ```typescript
 export class MockTwilioClient {
-  public sendSMS: Mock
+  public sendSMS: Mock;
   public sentMessages: Array<{
     to: string;
     body: string;
     metadata?: any;
     sid: string;
     timestamp: Date;
-  }>
+  }>;
 
-  constructor()
+  constructor();
 
-  setFailureMode(maxFailures: number): void
-  setLatency(latencyMs: number): void
-  expectMessageSent(phoneNumber: string, expectedContent?: string): void
-  getMessagesByPhoneNumber(phoneNumber: string): SentMessage[]
-  reset(): void
+  setFailureMode(maxFailures: number): void;
+  setLatency(latencyMs: number): void;
+  expectMessageSent(phoneNumber: string, expectedContent?: string): void;
+  getMessagesByPhoneNumber(phoneNumber: string): SentMessage[];
+  reset(): void;
 }
 ```
 
@@ -489,15 +492,15 @@ export class MockTwilioClient {
 
 ```typescript
 export class MockLLMService {
-  public generateMessage: Mock
-  public generatedMessages: string[]
+  public generateMessage: Mock;
+  public generatedMessages: string[];
 
-  constructor()
+  constructor();
 
-  setNextResponse(message: string): void
-  setFailureMode(shouldFail: boolean): void
-  expectMessageGenerated(): void
-  reset(): void
+  setNextResponse(message: string): void;
+  setFailureMode(shouldFail: boolean): void;
+  expectMessageGenerated(): void;
+  reset(): void;
 }
 ```
 

@@ -1,3 +1,4 @@
+// apps/worker/src/lib/services/smsMetrics.service.ts
 /**
  * SMS Metrics Service
  *
@@ -12,8 +13,8 @@
  * Phase: 6.2 (Monitoring & Metrics)
  */
 
-import { supabase } from '../supabase';
-import { format } from 'date-fns';
+import { supabase } from "../supabase";
+import { format } from "date-fns";
 
 export interface SMSMetrics {
   // Operational metrics
@@ -66,20 +67,22 @@ export class SMSMetricsService {
    */
   async recordScheduled(userId: string, count: number = 1): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'scheduled_count',
+        p_metric_type: "scheduled_count",
         p_metric_value: count,
         p_metadata: {},
       });
 
-      console.log(`[SMSMetrics] Recorded ${count} scheduled SMS for user ${userId}`);
+      console.log(
+        `[SMSMetrics] Recorded ${count} scheduled SMS for user ${userId}`,
+      );
     } catch (error) {
-      console.error('[SMSMetrics] Error recording scheduled count:', error);
+      console.error("[SMSMetrics] Error recording scheduled count:", error);
       // Non-critical - don't throw
     }
   }
@@ -93,13 +96,13 @@ export class SMSMetricsService {
     twilioSid?: string,
   ): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'sent_count',
+        p_metric_type: "sent_count",
         p_metric_value: 1,
         p_metadata: {
           sms_message_id: smsMessageId,
@@ -109,7 +112,7 @@ export class SMSMetricsService {
 
       console.log(`[SMSMetrics] Recorded sent SMS for user ${userId}`);
     } catch (error) {
-      console.error('[SMSMetrics] Error recording sent count:', error);
+      console.error("[SMSMetrics] Error recording sent count:", error);
     }
   }
 
@@ -122,14 +125,14 @@ export class SMSMetricsService {
     deliveryTimeMs: number,
   ): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
       // Record delivered count
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'delivered_count',
+        p_metric_type: "delivered_count",
         p_metric_value: 1,
         p_metadata: {
           sms_message_id: smsMessageId,
@@ -138,11 +141,11 @@ export class SMSMetricsService {
       });
 
       // Record average delivery time (will be averaged in materialized view)
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'avg_delivery_time_ms',
+        p_metric_type: "avg_delivery_time_ms",
         p_metric_value: deliveryTimeMs,
         p_metadata: {},
       });
@@ -151,7 +154,7 @@ export class SMSMetricsService {
         `[SMSMetrics] Recorded delivery for user ${userId} (${deliveryTimeMs}ms)`,
       );
     } catch (error) {
-      console.error('[SMSMetrics] Error recording delivery:', error);
+      console.error("[SMSMetrics] Error recording delivery:", error);
     }
   }
 
@@ -164,13 +167,13 @@ export class SMSMetricsService {
     errorMessage?: string,
   ): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'failed_count',
+        p_metric_type: "failed_count",
         p_metric_value: 1,
         p_metadata: {
           sms_message_id: smsMessageId,
@@ -180,7 +183,7 @@ export class SMSMetricsService {
 
       console.log(`[SMSMetrics] Recorded failed SMS for user ${userId}`);
     } catch (error) {
-      console.error('[SMSMetrics] Error recording failed count:', error);
+      console.error("[SMSMetrics] Error recording failed count:", error);
     }
   }
 
@@ -193,13 +196,13 @@ export class SMSMetricsService {
     reason?: string,
   ): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'cancelled_count',
+        p_metric_type: "cancelled_count",
         p_metric_value: 1,
         p_metadata: {
           sms_message_id: smsMessageId,
@@ -209,7 +212,7 @@ export class SMSMetricsService {
 
       console.log(`[SMSMetrics] Recorded cancelled SMS for user ${userId}`);
     } catch (error) {
-      console.error('[SMSMetrics] Error recording cancelled count:', error);
+      console.error("[SMSMetrics] Error recording cancelled count:", error);
     }
   }
 
@@ -218,18 +221,20 @@ export class SMSMetricsService {
    */
   async recordLLMGeneration(
     userId: string,
-    generatedVia: 'llm' | 'template',
+    generatedVia: "llm" | "template",
     costUsd?: number,
     generationTimeMs?: number,
   ): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
       // Record generation method
       const metricType =
-        generatedVia === 'llm' ? 'llm_success_count' : 'template_fallback_count';
+        generatedVia === "llm"
+          ? "llm_success_count"
+          : "template_fallback_count";
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
@@ -239,12 +244,12 @@ export class SMSMetricsService {
       });
 
       // Record LLM cost if available
-      if (generatedVia === 'llm' && costUsd !== undefined) {
-        await supabase.rpc('record_sms_metric', {
+      if (generatedVia === "llm" && costUsd !== undefined) {
+        await supabase.rpc("record_sms_metric", {
           p_metric_date: today,
           p_metric_hour: null,
           p_user_id: userId,
-          p_metric_type: 'llm_cost_usd',
+          p_metric_type: "llm_cost_usd",
           p_metric_value: costUsd,
           p_metadata: {},
         });
@@ -252,11 +257,11 @@ export class SMSMetricsService {
 
       // Record generation time if available
       if (generationTimeMs !== undefined) {
-        await supabase.rpc('record_sms_metric', {
+        await supabase.rpc("record_sms_metric", {
           p_metric_date: today,
           p_metric_hour: null,
           p_user_id: userId,
-          p_metric_type: 'avg_generation_time_ms',
+          p_metric_type: "avg_generation_time_ms",
           p_metric_value: generationTimeMs,
           p_metadata: {},
         });
@@ -266,7 +271,7 @@ export class SMSMetricsService {
         `[SMSMetrics] Recorded ${generatedVia} generation for user ${userId}`,
       );
     } catch (error) {
-      console.error('[SMSMetrics] Error recording LLM generation:', error);
+      console.error("[SMSMetrics] Error recording LLM generation:", error);
     }
   }
 
@@ -275,20 +280,20 @@ export class SMSMetricsService {
    */
   async recordOptOut(userId: string): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'opt_out_count',
+        p_metric_type: "opt_out_count",
         p_metric_value: 1,
         p_metadata: {},
       });
 
       console.log(`[SMSMetrics] Recorded opt-out for user ${userId}`);
     } catch (error) {
-      console.error('[SMSMetrics] Error recording opt-out:', error);
+      console.error("[SMSMetrics] Error recording opt-out:", error);
     }
   }
 
@@ -297,20 +302,22 @@ export class SMSMetricsService {
    */
   async recordQuietHoursSkip(userId: string, count: number = 1): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'quiet_hours_skip_count',
+        p_metric_type: "quiet_hours_skip_count",
         p_metric_value: count,
         p_metadata: {},
       });
 
-      console.log(`[SMSMetrics] Recorded ${count} quiet hours skips for user ${userId}`);
+      console.log(
+        `[SMSMetrics] Recorded ${count} quiet hours skips for user ${userId}`,
+      );
     } catch (error) {
-      console.error('[SMSMetrics] Error recording quiet hours skip:', error);
+      console.error("[SMSMetrics] Error recording quiet hours skip:", error);
     }
   }
 
@@ -319,20 +326,20 @@ export class SMSMetricsService {
    */
   async recordDailyLimitHit(userId: string): Promise<void> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
-      await supabase.rpc('record_sms_metric', {
+      await supabase.rpc("record_sms_metric", {
         p_metric_date: today,
         p_metric_hour: null,
         p_user_id: userId,
-        p_metric_type: 'daily_limit_hit_count',
+        p_metric_type: "daily_limit_hit_count",
         p_metric_value: 1,
         p_metadata: {},
       });
 
       console.log(`[SMSMetrics] Recorded daily limit hit for user ${userId}`);
     } catch (error) {
-      console.error('[SMSMetrics] Error recording daily limit hit:', error);
+      console.error("[SMSMetrics] Error recording daily limit hit:", error);
     }
   }
 
@@ -344,7 +351,7 @@ export class SMSMetricsService {
     endDate?: string,
   ): Promise<DailyMetricsSummary[]> {
     try {
-      const { data, error } = await supabase.rpc('get_sms_daily_metrics', {
+      const { data, error } = await supabase.rpc("get_sms_daily_metrics", {
         p_start_date: startDate,
         p_end_date: endDate || startDate,
       });
@@ -355,7 +362,7 @@ export class SMSMetricsService {
 
       return (data as DailyMetricsSummary[]) || [];
     } catch (error) {
-      console.error('[SMSMetrics] Error fetching daily metrics:', error);
+      console.error("[SMSMetrics] Error fetching daily metrics:", error);
       return [];
     }
   }
@@ -363,9 +370,12 @@ export class SMSMetricsService {
   /**
    * Get user-specific metrics for a date range
    */
-  async getUserMetrics(userId: string, days: number = 30): Promise<UserMetrics[]> {
+  async getUserMetrics(
+    userId: string,
+    days: number = 30,
+  ): Promise<UserMetrics[]> {
     try {
-      const { data, error } = await supabase.rpc('get_user_sms_metrics', {
+      const { data, error } = await supabase.rpc("get_user_sms_metrics", {
         p_user_id: userId,
         p_days: days,
       });
@@ -376,7 +386,7 @@ export class SMSMetricsService {
 
       return (data as UserMetrics[]) || [];
     } catch (error) {
-      console.error('[SMSMetrics] Error fetching user metrics:', error);
+      console.error("[SMSMetrics] Error fetching user metrics:", error);
       return [];
     }
   }
@@ -386,12 +396,12 @@ export class SMSMetricsService {
    */
   async getTodayMetrics(): Promise<DailyMetricsSummary | null> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
       const metrics = await this.getDailyMetrics(today);
 
       return metrics.length > 0 ? metrics[0] : null;
     } catch (error) {
-      console.error('[SMSMetrics] Error fetching today metrics:', error);
+      console.error("[SMSMetrics] Error fetching today metrics:", error);
       return null;
     }
   }
@@ -401,26 +411,32 @@ export class SMSMetricsService {
    */
   async refreshMaterializedView(): Promise<void> {
     try {
-      const { error } = await supabase.rpc('refresh_sms_metrics_daily');
+      const { error } = await supabase.rpc("refresh_sms_metrics_daily");
 
       if (error) {
         throw error;
       }
 
-      console.log('[SMSMetrics] Materialized view refreshed successfully');
+      console.log("[SMSMetrics] Materialized view refreshed successfully");
     } catch (error) {
-      console.error('[SMSMetrics] Error refreshing materialized view:', error);
+      console.error("[SMSMetrics] Error refreshing materialized view:", error);
     }
   }
 
   /**
    * Calculate delivery success rate for a user
    */
-  async calculateDeliveryRate(userId: string, days: number = 7): Promise<number> {
+  async calculateDeliveryRate(
+    userId: string,
+    days: number = 7,
+  ): Promise<number> {
     try {
       const metrics = await this.getUserMetrics(userId, days);
 
-      const totalSent = metrics.reduce((sum, m) => sum + (m.sent_count || 0), 0);
+      const totalSent = metrics.reduce(
+        (sum, m) => sum + (m.sent_count || 0),
+        0,
+      );
       const totalDelivered = metrics.reduce(
         (sum, m) => sum + (m.delivered_count || 0),
         0,
@@ -430,7 +446,7 @@ export class SMSMetricsService {
 
       return (totalDelivered / totalSent) * 100;
     } catch (error) {
-      console.error('[SMSMetrics] Error calculating delivery rate:', error);
+      console.error("[SMSMetrics] Error calculating delivery rate:", error);
       return 0;
     }
   }
@@ -438,25 +454,34 @@ export class SMSMetricsService {
   /**
    * Calculate LLM success rate for a user
    */
-  async calculateLLMSuccessRate(userId: string, days: number = 7): Promise<number> {
+  async calculateLLMSuccessRate(
+    userId: string,
+    days: number = 7,
+  ): Promise<number> {
     try {
       const { data, error } = await supabase
-        .from('sms_metrics')
-        .select('metric_type, metric_value')
-        .eq('user_id', userId)
-        .gte('metric_date', format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'))
-        .in('metric_type', ['llm_success_count', 'template_fallback_count']);
+        .from("sms_metrics")
+        .select("metric_type, metric_value")
+        .eq("user_id", userId)
+        .gte(
+          "metric_date",
+          format(
+            new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+            "yyyy-MM-dd",
+          ),
+        )
+        .in("metric_type", ["llm_success_count", "template_fallback_count"]);
 
       if (error) {
         throw error;
       }
 
       const llmSuccessCount = (data || [])
-        .filter((m) => m.metric_type === 'llm_success_count')
+        .filter((m) => m.metric_type === "llm_success_count")
         .reduce((sum, m) => sum + Number(m.metric_value), 0);
 
       const templateFallbackCount = (data || [])
-        .filter((m) => m.metric_type === 'template_fallback_count')
+        .filter((m) => m.metric_type === "template_fallback_count")
         .reduce((sum, m) => sum + Number(m.metric_value), 0);
 
       const totalGenerations = llmSuccessCount + templateFallbackCount;
@@ -465,7 +490,7 @@ export class SMSMetricsService {
 
       return (llmSuccessCount / totalGenerations) * 100;
     } catch (error) {
-      console.error('[SMSMetrics] Error calculating LLM success rate:', error);
+      console.error("[SMSMetrics] Error calculating LLM success rate:", error);
       return 0;
     }
   }
@@ -475,11 +500,17 @@ export class SMSMetricsService {
    */
   async getAvgLLMCostPerUser(days: number = 30): Promise<number> {
     try {
-      const { data, error} = await supabase
-        .from('sms_metrics')
-        .select('user_id, metric_value')
-        .eq('metric_type', 'llm_cost_usd')
-        .gte('metric_date', format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
+      const { data, error } = await supabase
+        .from("sms_metrics")
+        .select("user_id, metric_value")
+        .eq("metric_type", "llm_cost_usd")
+        .gte(
+          "metric_date",
+          format(
+            new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+            "yyyy-MM-dd",
+          ),
+        );
 
       if (error) {
         throw error;
@@ -487,14 +518,20 @@ export class SMSMetricsService {
 
       if (!data || data.length === 0) return 0;
 
-      const totalCost = data.reduce((sum, m) => sum + Number(m.metric_value), 0);
+      const totalCost = data.reduce(
+        (sum, m) => sum + Number(m.metric_value),
+        0,
+      );
       const uniqueUsers = new Set(data.map((m) => m.user_id)).size;
 
       if (uniqueUsers === 0) return 0;
 
       return totalCost / uniqueUsers / days;
     } catch (error) {
-      console.error('[SMSMetrics] Error calculating avg LLM cost per user:', error);
+      console.error(
+        "[SMSMetrics] Error calculating avg LLM cost per user:",
+        error,
+      );
       return 0;
     }
   }

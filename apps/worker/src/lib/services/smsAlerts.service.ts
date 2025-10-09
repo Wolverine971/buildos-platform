@@ -1,3 +1,4 @@
+// apps/worker/src/lib/services/smsAlerts.service.ts
 /**
  * SMS Alerts Service
  *
@@ -11,17 +12,17 @@
  * Phase: 6.2 (Monitoring & Metrics)
  */
 
-import { supabase } from '../supabase';
-import { SMSMetricsService } from './smsMetrics.service';
-import { format } from 'date-fns';
+import { supabase } from "../supabase";
+import { SMSMetricsService } from "./smsMetrics.service";
+import { format } from "date-fns";
 
 export interface AlertThreshold {
   id: string;
   alert_type: string;
   threshold_value: number;
-  comparison_operator: '<' | '>' | '<=' | '>=' | '=';
-  severity: 'critical' | 'warning' | 'info';
-  notification_channel: 'pagerduty' | 'slack' | 'email';
+  comparison_operator: "<" | ">" | "<=" | ">=" | "=";
+  severity: "critical" | "warning" | "info";
+  notification_channel: "pagerduty" | "slack" | "email";
   enabled: boolean;
   cooldown_minutes: number;
   last_triggered_at: string | null;
@@ -47,14 +48,14 @@ export class SMSAlertsService {
    * Check all enabled alerts and trigger notifications if thresholds are exceeded
    */
   async checkAlerts(): Promise<Alert[]> {
-    console.log('[SMSAlerts] Starting alert check...');
+    console.log("[SMSAlerts] Starting alert check...");
 
     try {
       // Get today's metrics
       const todayMetrics = await this.metricsService.getTodayMetrics();
 
       if (!todayMetrics) {
-        console.log('[SMSAlerts] No metrics available for today');
+        console.log("[SMSAlerts] No metrics available for today");
         return [];
       }
 
@@ -90,16 +91,14 @@ export class SMSAlertsService {
       }
 
       if (triggeredAlerts.length > 0) {
-        console.log(
-          `[SMSAlerts] ${triggeredAlerts.length} alert(s) triggered`,
-        );
+        console.log(`[SMSAlerts] ${triggeredAlerts.length} alert(s) triggered`);
       } else {
-        console.log('[SMSAlerts] No alerts triggered');
+        console.log("[SMSAlerts] No alerts triggered");
       }
 
       return triggeredAlerts;
     } catch (error) {
-      console.error('[SMSAlerts] Error checking alerts:', error);
+      console.error("[SMSAlerts] Error checking alerts:", error);
       return [];
     }
   }
@@ -112,57 +111,90 @@ export class SMSAlertsService {
     metrics: any,
   ): Promise<Alert | null> {
     let metricValue: number | null = null;
-    let message: string = '';
+    let message: string = "";
 
     switch (threshold.alert_type) {
-      case 'delivery_rate_critical':
+      case "delivery_rate_critical":
         metricValue = metrics.delivery_rate_percent || 0;
-        if (this.compareValues(metricValue, threshold.threshold_value, threshold.comparison_operator)) {
+        if (
+          this.compareValues(
+            metricValue,
+            threshold.threshold_value,
+            threshold.comparison_operator,
+          )
+        ) {
           message = `SMS delivery rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
         }
         break;
 
-      case 'llm_failure_critical':
+      case "llm_failure_critical":
         const llmTotal =
-          (metrics.llm_success_count || 0) + (metrics.template_fallback_count || 0);
+          (metrics.llm_success_count || 0) +
+          (metrics.template_fallback_count || 0);
         const llmFailureRate =
           llmTotal > 0
             ? ((metrics.template_fallback_count || 0) / llmTotal) * 100
             : 0;
         metricValue = llmFailureRate;
-        if (this.compareValues(metricValue, threshold.threshold_value, threshold.comparison_operator)) {
+        if (
+          this.compareValues(
+            metricValue,
+            threshold.threshold_value,
+            threshold.comparison_operator,
+          )
+        ) {
           message = `LLM failure rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
         }
         break;
 
-      case 'llm_cost_spike_warning':
+      case "llm_cost_spike_warning":
         const avgCost = await this.metricsService.getAvgLLMCostPerUser(30);
-        const todayCost = (metrics.llm_cost_usd || 0) / (metrics.active_users || 1);
+        const todayCost =
+          (metrics.llm_cost_usd || 0) / (metrics.active_users || 1);
         const costMultiplier = avgCost > 0 ? todayCost / avgCost : 0;
         metricValue = costMultiplier;
-        if (this.compareValues(metricValue, threshold.threshold_value, threshold.comparison_operator)) {
+        if (
+          this.compareValues(
+            metricValue,
+            threshold.threshold_value,
+            threshold.comparison_operator,
+          )
+        ) {
           message = `LLM cost is ${costMultiplier.toFixed(2)}x the 30-day average (today: $${todayCost.toFixed(4)}, avg: $${avgCost.toFixed(4)})`;
         }
         break;
 
-      case 'opt_out_rate_warning':
+      case "opt_out_rate_warning":
         const optOutRate =
           metrics.active_users > 0
             ? ((metrics.opt_out_count || 0) / metrics.active_users) * 100
             : 0;
         metricValue = optOutRate;
-        if (this.compareValues(metricValue, threshold.threshold_value, threshold.comparison_operator)) {
+        if (
+          this.compareValues(
+            metricValue,
+            threshold.threshold_value,
+            threshold.comparison_operator,
+          )
+        ) {
           message = `Opt-out rate is ${metricValue.toFixed(1)}% (${metrics.opt_out_count} of ${metrics.active_users} users)`;
         }
         break;
 
-      case 'daily_limit_hit_warning':
+      case "daily_limit_hit_warning":
         const limitHitRate =
           metrics.active_users > 0
-            ? ((metrics.daily_limit_hit_count || 0) / metrics.active_users) * 100
+            ? ((metrics.daily_limit_hit_count || 0) / metrics.active_users) *
+              100
             : 0;
         metricValue = limitHitRate;
-        if (this.compareValues(metricValue, threshold.threshold_value, threshold.comparison_operator)) {
+        if (
+          this.compareValues(
+            metricValue,
+            threshold.threshold_value,
+            threshold.comparison_operator,
+          )
+        ) {
           message = `Daily limit hit rate is ${metricValue.toFixed(1)}% (${metrics.daily_limit_hit_count} of ${metrics.active_users} users)`;
         }
         break;
@@ -195,15 +227,15 @@ export class SMSAlertsService {
     operator: string,
   ): boolean {
     switch (operator) {
-      case '<':
+      case "<":
         return metricValue < thresholdValue;
-      case '>':
+      case ">":
         return metricValue > thresholdValue;
-      case '<=':
+      case "<=":
         return metricValue <= thresholdValue;
-      case '>=':
+      case ">=":
         return metricValue >= thresholdValue;
-      case '=':
+      case "=":
         return metricValue === thresholdValue;
       default:
         return false;
@@ -230,9 +262,9 @@ export class SMSAlertsService {
   private async getEnabledThresholds(): Promise<AlertThreshold[]> {
     try {
       const { data, error } = await supabase
-        .from('sms_alert_thresholds')
-        .select('*')
-        .eq('enabled', true);
+        .from("sms_alert_thresholds")
+        .select("*")
+        .eq("enabled", true);
 
       if (error) {
         throw error;
@@ -240,7 +272,7 @@ export class SMSAlertsService {
 
       return (data as AlertThreshold[]) || [];
     } catch (error) {
-      console.error('[SMSAlerts] Error fetching thresholds:', error);
+      console.error("[SMSAlerts] Error fetching thresholds:", error);
       return [];
     }
   }
@@ -251,15 +283,15 @@ export class SMSAlertsService {
   private async sendNotification(alert: Alert): Promise<void> {
     try {
       switch (alert.notification_channel) {
-        case 'slack':
+        case "slack":
           await this.sendSlackNotification(alert);
           break;
 
-        case 'pagerduty':
+        case "pagerduty":
           await this.sendPagerDutyNotification(alert);
           break;
 
-        case 'email':
+        case "email":
           await this.sendEmailNotification(alert);
           break;
 
@@ -269,7 +301,7 @@ export class SMSAlertsService {
           );
       }
     } catch (error) {
-      console.error('[SMSAlerts] Error sending notification:', error);
+      console.error("[SMSAlerts] Error sending notification:", error);
     }
   }
 
@@ -282,11 +314,13 @@ export class SMSAlertsService {
     const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
     if (!webhookUrl) {
-      console.log('[SMSAlerts] SLACK_WEBHOOK_URL not configured, skipping Slack notification');
-      console.log('[SMSAlerts] Would have sent Slack alert:', {
+      console.log(
+        "[SMSAlerts] SLACK_WEBHOOK_URL not configured, skipping Slack notification",
+      );
+      console.log("[SMSAlerts] Would have sent Slack alert:", {
         type: alert.alert_type,
         severity: alert.severity,
-        message: alert.message
+        message: alert.message,
       });
       return;
     }
@@ -349,7 +383,9 @@ export class SMSAlertsService {
     }
     */
 
-    console.log('[SMSAlerts] Slack notification skipped (integration commented out)');
+    console.log(
+      "[SMSAlerts] Slack notification skipped (integration commented out)",
+    );
   }
 
   /**
@@ -362,12 +398,12 @@ export class SMSAlertsService {
 
     if (!integrationKey) {
       console.log(
-        '[SMSAlerts] PAGERDUTY_INTEGRATION_KEY not configured, skipping PagerDuty notification',
+        "[SMSAlerts] PAGERDUTY_INTEGRATION_KEY not configured, skipping PagerDuty notification",
       );
-      console.log('[SMSAlerts] Would have sent PagerDuty alert:', {
+      console.log("[SMSAlerts] Would have sent PagerDuty alert:", {
         type: alert.alert_type,
         severity: alert.severity,
-        message: alert.message
+        message: alert.message,
       });
       return;
     }
@@ -408,7 +444,9 @@ export class SMSAlertsService {
     }
     */
 
-    console.log('[SMSAlerts] PagerDuty notification skipped (integration commented out)');
+    console.log(
+      "[SMSAlerts] PagerDuty notification skipped (integration commented out)",
+    );
   }
 
   /**
@@ -416,7 +454,7 @@ export class SMSAlertsService {
    */
   private async sendEmailNotification(alert: Alert): Promise<void> {
     // TODO: Implement email notification via existing email service
-    console.log('[SMSAlerts] Email notification not yet implemented');
+    console.log("[SMSAlerts] Email notification not yet implemented");
   }
 
   /**
@@ -424,7 +462,7 @@ export class SMSAlertsService {
    */
   private async recordAlert(alert: Alert): Promise<void> {
     try {
-      const { error } = await supabase.from('sms_alert_history').insert({
+      const { error } = await supabase.from("sms_alert_history").insert({
         alert_type: alert.alert_type,
         severity: alert.severity,
         metric_value: alert.metric_value,
@@ -441,7 +479,7 @@ export class SMSAlertsService {
 
       console.log(`[SMSAlerts] Alert recorded in history: ${alert.alert_type}`);
     } catch (error) {
-      console.error('[SMSAlerts] Error recording alert:', error);
+      console.error("[SMSAlerts] Error recording alert:", error);
     }
   }
 
@@ -451,15 +489,15 @@ export class SMSAlertsService {
   private async updateLastTriggered(thresholdId: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('sms_alert_thresholds')
+        .from("sms_alert_thresholds")
         .update({ last_triggered_at: new Date().toISOString() })
-        .eq('id', thresholdId);
+        .eq("id", thresholdId);
 
       if (error) {
         throw error;
       }
     } catch (error) {
-      console.error('[SMSAlerts] Error updating last_triggered_at:', error);
+      console.error("[SMSAlerts] Error updating last_triggered_at:", error);
     }
   }
 
@@ -469,10 +507,10 @@ export class SMSAlertsService {
   async resolveAlert(alertId: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('sms_alert_history')
+        .from("sms_alert_history")
         .update({ resolved_at: new Date().toISOString() })
-        .eq('id', alertId)
-        .is('resolved_at', null);
+        .eq("id", alertId)
+        .is("resolved_at", null);
 
       if (error) {
         throw error;
@@ -480,7 +518,7 @@ export class SMSAlertsService {
 
       console.log(`[SMSAlerts] Alert ${alertId} resolved`);
     } catch (error) {
-      console.error('[SMSAlerts] Error resolving alert:', error);
+      console.error("[SMSAlerts] Error resolving alert:", error);
     }
   }
 
@@ -490,10 +528,10 @@ export class SMSAlertsService {
   async getUnresolvedAlerts(limit: number = 50): Promise<any[]> {
     try {
       const { data, error } = await supabase
-        .from('sms_alert_history')
-        .select('*')
-        .is('resolved_at', null)
-        .order('triggered_at', { ascending: false })
+        .from("sms_alert_history")
+        .select("*")
+        .is("resolved_at", null)
+        .order("triggered_at", { ascending: false })
         .limit(limit);
 
       if (error) {
@@ -502,7 +540,7 @@ export class SMSAlertsService {
 
       return data || [];
     } catch (error) {
-      console.error('[SMSAlerts] Error fetching unresolved alerts:', error);
+      console.error("[SMSAlerts] Error fetching unresolved alerts:", error);
       return [];
     }
   }
@@ -517,16 +555,16 @@ export class SMSAlertsService {
   ): Promise<any[]> {
     try {
       let query = supabase
-        .from('sms_alert_history')
-        .select('*')
-        .gte('triggered_at', startDate);
+        .from("sms_alert_history")
+        .select("*")
+        .gte("triggered_at", startDate);
 
       if (endDate) {
-        query = query.lte('triggered_at', endDate);
+        query = query.lte("triggered_at", endDate);
       }
 
       const { data, error } = await query
-        .order('triggered_at', { ascending: false })
+        .order("triggered_at", { ascending: false })
         .limit(limit);
 
       if (error) {
@@ -535,7 +573,7 @@ export class SMSAlertsService {
 
       return data || [];
     } catch (error) {
-      console.error('[SMSAlerts] Error fetching alert history:', error);
+      console.error("[SMSAlerts] Error fetching alert history:", error);
       return [];
     }
   }

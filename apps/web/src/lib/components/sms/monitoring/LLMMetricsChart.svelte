@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/sms/monitoring/LLMMetricsChart.svelte -->
 <script lang="ts">
 	// apps/web/src/lib/components/sms/monitoring/LLMMetricsChart.svelte
 	/**
@@ -52,12 +53,8 @@
 	}
 
 	// Calculate totals and percentages
-	let totalGenerated = $derived(
-		weekData.totals.llmSuccess + weekData.totals.templateFallback
-	);
-	let llmPercent = $derived(
-		calculatePercentage(weekData.totals.llmSuccess, totalGenerated)
-	);
+	let totalGenerated = $derived(weekData.totals.llmSuccess + weekData.totals.templateFallback);
+	let llmPercent = $derived(calculatePercentage(weekData.totals.llmSuccess, totalGenerated));
 	let templatePercent = $derived(
 		calculatePercentage(weekData.totals.templateFallback, totalGenerated)
 	);
@@ -71,16 +68,19 @@
 
 	// Cost per message
 	let costPerMessage = $derived(
-		totalGenerated > 0
-			? formatCurrency(weekData.totals.llmCost / totalGenerated)
-			: '$0.0000'
+		totalGenerated > 0 ? formatCurrency(weekData.totals.llmCost / totalGenerated) : '$0.0000'
 	);
 </script>
 
 <div class="llm-metrics-chart">
 	<div class="chart-header">
 		<h3>LLM Performance</h3>
-		<div class="rate-badge" class:healthy={isHealthy} class:degraded={isDegraded} class:critical={isCritical}>
+		<div
+			class="rate-badge"
+			class:healthy={isHealthy}
+			class:degraded={isDegraded}
+			class:critical={isCritical}
+		>
 			{formatPercent(weekData.llm_success_rate_percent)}
 		</div>
 	</div>
@@ -135,13 +135,9 @@
 
 	<!-- Health Message -->
 	{#if isHealthy}
-		<div class="health-message success">
-			✓ LLM success rate is healthy (target: ≥50%)
-		</div>
+		<div class="health-message success">✓ LLM success rate is healthy (target: ≥50%)</div>
 	{:else if isDegraded}
-		<div class="health-message warning">
-			⚠ LLM success rate is below target (target: ≥50%)
-		</div>
+		<div class="health-message warning">⚠ LLM success rate is below target (target: ≥50%)</div>
 	{:else}
 		<div class="health-message error">
 			✕ Critical: LLM failing frequently, using template fallback

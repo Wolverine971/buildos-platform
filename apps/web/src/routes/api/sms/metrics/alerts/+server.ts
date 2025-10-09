@@ -50,10 +50,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		} else if (type === 'history') {
 			// Get alert history
 			if (!startDate) {
-				return json(
-					{ error: 'start_date is required for history type' },
-					{ status: 400 }
-				);
+				return json({ error: 'start_date is required for history type' }, { status: 400 });
 			}
 
 			// Validate date format
@@ -75,7 +72,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				}
 			});
 		} else {
-			return json({ error: 'Invalid type parameter. Must be unresolved or history' }, { status: 400 });
+			return json(
+				{ error: 'Invalid type parameter. Must be unresolved or history' },
+				{ status: 400 }
+			);
 		}
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error fetching alerts:', error);

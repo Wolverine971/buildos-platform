@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/sms/monitoring/ActiveAlertsList.svelte -->
 <script lang="ts">
 	// apps/web/src/lib/components/sms/monitoring/ActiveAlertsList.svelte
 	/**
@@ -72,11 +73,11 @@
 			await smsMonitoringService.resolveAlert(alertId);
 
 			// Remove from recent list
-			alerts.recent = alerts.recent.filter(a => a.id !== alertId);
+			alerts.recent = alerts.recent.filter((a) => a.id !== alertId);
 			alerts.unresolved_count = Math.max(0, alerts.unresolved_count - 1);
 
 			// Check if any critical alerts remain
-			alerts.has_critical = alerts.recent.some(a => a.severity === 'critical');
+			alerts.has_critical = alerts.recent.some((a) => a.severity === 'critical');
 		} catch (error: any) {
 			console.error('Failed to resolve alert:', error);
 			alert(`Failed to resolve alert: ${error.message}`);
@@ -92,7 +93,9 @@
 		<div>
 			<h3>Active Alerts</h3>
 			<p class="subtitle">
-				{alerts.unresolved_count} unresolved {alerts.unresolved_count === 1 ? 'alert' : 'alerts'}
+				{alerts.unresolved_count} unresolved {alerts.unresolved_count === 1
+					? 'alert'
+					: 'alerts'}
 				{#if alerts.has_critical}
 					<span class="critical-badge">Critical</span>
 				{/if}
@@ -102,8 +105,19 @@
 
 	{#if alerts.recent.length === 0}
 		<div class="no-alerts">
-			<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+			<svg
+				class="icon"
+				xmlns="http://www.w3.org/2000/svg"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
 			</svg>
 			<p>No active alerts - all systems operational</p>
 		</div>
@@ -115,7 +129,10 @@
 						<div class="alert-title">
 							<span class="severity-icon">{getSeverityIcon(alert.severity)}</span>
 							<span class="alert-type">{alert.alert_type.replace(/_/g, ' ')}</span>
-							<span class="severity-badge" data-severity={getSeverityClass(alert.severity)}>
+							<span
+								class="severity-badge"
+								data-severity={getSeverityClass(alert.severity)}
+							>
 								{alert.severity}
 							</span>
 						</div>
@@ -139,7 +156,9 @@
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Notified</span>
-							<span class="detail-value">{alert.notification_sent ? '✓ Yes' : '✗ No'}</span>
+							<span class="detail-value"
+								>{alert.notification_sent ? '✓ Yes' : '✗ No'}</span
+							>
 						</div>
 					</div>
 

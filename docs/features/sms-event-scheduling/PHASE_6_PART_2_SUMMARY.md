@@ -165,13 +165,15 @@ BuildOS SMS Monitoring | [timestamp]
 // Track LLM generation metrics (non-blocking)
 smsMetricsService
   .recordLLMGeneration(userId, generatedVia, costUsd, generationTimeMs)
-  .catch((err) => console.error('[DailySMS] Error tracking LLM metrics:', err));
+  .catch((err) => console.error("[DailySMS] Error tracking LLM metrics:", err));
 
 // Track quiet hours skips
 if (quietHoursSkipCount > 0) {
   smsMetricsService
     .recordQuietHoursSkip(userId, quietHoursSkipCount)
-    .catch((err) => console.error('[DailySMS] Error tracking quiet hours skips:', err));
+    .catch((err) =>
+      console.error("[DailySMS] Error tracking quiet hours skips:", err),
+    );
 }
 ```
 
@@ -189,7 +191,9 @@ if (quietHoursSkipCount > 0) {
 // Track sent metrics (non-blocking)
 smsMetricsService
   .recordSent(job.data.user_id, message_id, twilioMessage.sid)
-  .catch((err) => console.error('[SMS Worker] Error tracking sent metrics:', err));
+  .catch((err) =>
+    console.error("[SMS Worker] Error tracking sent metrics:", err),
+  );
 ```
 
 #### Twilio Webhook Handler (`apps/web/src/routes/api/webhooks/twilio/status/+server.ts`)
@@ -202,15 +206,16 @@ smsMetricsService
 
 ```typescript
 // Track delivery metrics when message is delivered
-if (messageStatus === 'delivered' && updatedMessage?.user_id) {
-  const deliveryTimeMs = new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
+if (messageStatus === "delivered" && updatedMessage?.user_id) {
+  const deliveryTimeMs =
+    new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
 
   smsMetricsService
     .recordDelivered(updatedMessage.user_id, messageId, deliveryTimeMs)
     .catch((err) => {
-      logWebhookEvent('error', 'Failed to record delivery metrics', {
+      logWebhookEvent("error", "Failed to record delivery metrics", {
         ...webhookContext,
-        error: err.message
+        error: err.message,
       });
     });
 }
@@ -262,10 +267,12 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** Daily aggregated metrics for date range
 
 **Query Params:**
+
 - `start_date` (required): YYYY-MM-DD
 - `end_date` (optional): YYYY-MM-DD
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -290,15 +297,19 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** User-specific metrics with summary
 
 **Query Params:**
+
 - `user_id` (optional): Defaults to current user
 - `days` (optional): 1-365, default 30
 
 **Response:**
+
 ```json
 {
   "success": true,
   "data": {
-    "metrics": [ /* daily metrics */ ],
+    "metrics": [
+      /* daily metrics */
+    ],
     "summary": {
       "total_scheduled": 25,
       "total_sent": 24,
@@ -318,6 +329,7 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** Today's snapshot with health indicators
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -339,11 +351,14 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** Comprehensive dashboard overview (today + 7-day + alerts)
 
 **Response:**
+
 ```json
 {
   "success": true,
   "data": {
-    "today": { /* today metrics */ },
+    "today": {
+      /* today metrics */
+    },
     "week": {
       "totals": { "scheduled": 1050, "sent": 1020, "delivered": 975 },
       "delivery_rate_percent": 95.59,
@@ -366,6 +381,7 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** Alert history and unresolved alerts
 
 **Query Params:**
+
 - `type`: `unresolved` (default) | `history`
 - `limit`: 1-200, default 50
 - `start_date`: YYYY-MM-DD (required for history)
@@ -376,11 +392,13 @@ cron.schedule("0 * * * *", async () => {
 **Purpose:** Resolve an alert
 
 **Body:**
+
 ```json
 { "alert_id": "alert-uuid" }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -420,13 +438,13 @@ cron.schedule("0 * * * *", async () => {
 
 ### Complete Metrics List
 
-| Metric Type | Metrics | Count |
-|-------------|---------|-------|
-| **Operational** | scheduled, sent, delivered, failed, cancelled | 5 |
-| **Performance** | avg_delivery_time_ms, avg_generation_time_ms | 2 |
-| **Quality** | llm_success_count, template_fallback_count, delivery_success_rate | 3 |
-| **Cost** | llm_cost_usd, sms_cost_usd | 2 |
-| **Engagement** | opt_out_count, quiet_hours_skip_count, daily_limit_hit_count | 3 |
+| Metric Type     | Metrics                                                           | Count |
+| --------------- | ----------------------------------------------------------------- | ----- |
+| **Operational** | scheduled, sent, delivered, failed, cancelled                     | 5     |
+| **Performance** | avg_delivery_time_ms, avg_generation_time_ms                      | 2     |
+| **Quality**     | llm_success_count, template_fallback_count, delivery_success_rate | 3     |
+| **Cost**        | llm_cost_usd, sms_cost_usd                                        | 2     |
+| **Engagement**  | opt_out_count, quiet_hours_skip_count, daily_limit_hit_count      | 3     |
 
 **Total:** 15 distinct metrics
 
@@ -443,13 +461,13 @@ cron.schedule("0 * * * *", async () => {
 
 ### Alert Types
 
-| Alert | Threshold | Severity | Channel | Cooldown |
-|-------|-----------|----------|---------|----------|
-| Delivery rate critical | < 90% | Critical | PagerDuty | 60 min |
-| LLM failure critical | > 50% fallback | Critical | PagerDuty | 30 min |
-| LLM cost spike warning | > 2x average | Warning | Slack | 120 min |
-| Opt-out rate warning | > 10% | Warning | Slack | 240 min |
-| Daily limit hit warning | > 20% | Warning | Slack | 180 min |
+| Alert                   | Threshold      | Severity | Channel   | Cooldown |
+| ----------------------- | -------------- | -------- | --------- | -------- |
+| Delivery rate critical  | < 90%          | Critical | PagerDuty | 60 min   |
+| LLM failure critical    | > 50% fallback | Critical | PagerDuty | 30 min   |
+| LLM cost spike warning  | > 2x average   | Warning  | Slack     | 120 min  |
+| Opt-out rate warning    | > 10%          | Warning  | Slack     | 240 min  |
+| Daily limit hit warning | > 20%          | Warning  | Slack     | 180 min  |
 
 ### Notification Channels
 
@@ -466,15 +484,19 @@ cron.schedule("0 * * * *", async () => {
 **Decision:** All metrics tracking uses `.catch()` to prevent core SMS functionality disruption.
 
 **Rationale:**
+
 - Metrics failures should never block SMS delivery
 - Silent errors are logged but don't propagate
 - System remains operational even if metrics DB is down
 
 **Implementation:**
+
 ```typescript
 smsMetricsService
   .recordSent(userId, messageId, twilioSid)
-  .catch((err) => console.error('[SMS Worker] Error tracking sent metrics:', err));
+  .catch((err) =>
+    console.error("[SMS Worker] Error tracking sent metrics:", err),
+  );
 ```
 
 ### 2. Materialized Views
@@ -482,12 +504,14 @@ smsMetricsService
 **Decision:** Use PostgreSQL materialized views for dashboard queries.
 
 **Rationale:**
+
 - Raw metrics table will grow to millions of rows
 - Dashboard queries need sub-second response times
 - Hourly refresh is acceptable for monitoring use case
 - CONCURRENTLY option prevents table locks
 
 **Refresh Strategy:**
+
 ```typescript
 // Runs hourly via scheduler
 await smsMetricsService.refreshMaterializedView();
@@ -500,6 +524,7 @@ await smsMetricsService.refreshMaterializedView();
 **Decision:** Implement cooldown periods to prevent alert spam.
 
 **Rationale:**
+
 - Thresholds violations can persist for hours
 - Don't want to spam PagerDuty/Slack every hour
 - Configurable per alert type based on severity
@@ -510,12 +535,14 @@ await smsMetricsService.refreshMaterializedView();
 **Decision:** `record_sms_metric()` uses ON CONFLICT DO UPDATE with increment.
 
 **Rationale:**
+
 - Multiple workers can record same metric concurrently
 - Atomic operation prevents race conditions
 - Simplifies application code (no need to query first)
 - Efficient for high-throughput scenarios
 
 **Implementation:**
+
 ```sql
 INSERT INTO sms_metrics (...)
 VALUES (...)
@@ -531,14 +558,18 @@ DO UPDATE SET
 **Decision:** Export service instances as singletons.
 
 **Rationale:**
+
 - Consistent across all imports
 - Avoids multiple Supabase client instantiations
 - Simplifies testing (can mock singleton)
 - Standard pattern in Node.js applications
 
 **Implementation:**
+
 ```typescript
-export class SMSMetricsService { /* ... */ }
+export class SMSMetricsService {
+  /* ... */
+}
 export const smsMetricsService = new SMSMetricsService();
 ```
 
@@ -577,11 +608,13 @@ export const smsMetricsService = new SMSMetricsService();
 ### Environment Setup Required
 
 1. **Database Migration**
+
    ```bash
    psql $DATABASE_URL < apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
    ```
 
 2. **Environment Variables**
+
    ```bash
    SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
    PAGERDUTY_INTEGRATION_KEY=your_integration_key

@@ -1,15 +1,21 @@
+// apps/worker/tests/integration/sms-event-scheduling/02-calendar-sync.test.ts
 /**
  * Integration Tests: Calendar Event Synchronization
  *
  * Tests how scheduled SMS messages react to calendar event changes
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { setupIntegrationTest } from './setup';
-import { TimeController, TestDataBuilder, SMSAssertions, QueueHelpers } from './helpers';
-import { addMinutes, format } from 'date-fns';
+import { describe, it, expect, beforeEach } from "vitest";
+import { setupIntegrationTest } from "./setup";
+import {
+  TimeController,
+  TestDataBuilder,
+  SMSAssertions,
+  QueueHelpers,
+} from "./helpers";
+import { addMinutes, format } from "date-fns";
 
-describe('SMS Event Scheduling - Calendar Sync', () => {
+describe("SMS Event Scheduling - Calendar Sync", () => {
   const testSetup = setupIntegrationTest();
   const timeController = new TimeController();
 
@@ -17,15 +23,15 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
     timeController.reset();
   });
 
-  describe('Event Deletion', () => {
-    it('should cancel SMS when calendar event is deleted', async () => {
+  describe("Event Deletion", () => {
+    it("should cancel SMS when calendar event is deleted", async () => {
       // Arrange: Create user and schedule SMS for event
       const user = await testSetup.createTestUser({
         leadTime: 15,
       });
 
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Team Meeting',
+        title: "Team Meeting",
         startTime: TestDataBuilder.eventTomorrow(10, 0),
       });
 
@@ -34,7 +40,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
 
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -42,17 +48,17 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Verify SMS scheduled
       let scheduledMessages = await testSetup.getScheduledMessages(user.id);
       expect(scheduledMessages).toHaveLength(1);
-      expect(scheduledMessages[0].status).toBe('scheduled');
+      expect(scheduledMessages[0].status).toBe("scheduled");
 
       // Act: Delete calendar event via webhook simulation
       const { error: deleteError } = await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
-          sync_status: 'deleted',
+          sync_status: "deleted",
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       expect(deleteError).toBeNull();
 
@@ -60,27 +66,27 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // In real implementation, this would be handled by calendar-webhook-service.ts
       const { error: cancelError } = await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
-          status: 'cancelled',
+          status: "cancelled",
           cancelled_at: new Date().toISOString(),
-          last_error: 'Calendar event deleted',
+          last_error: "Calendar event deleted",
         })
-        .eq('calendar_event_id', event.calendar_event_id)
-        .eq('status', 'scheduled');
+        .eq("calendar_event_id", event.calendar_event_id)
+        .eq("status", "scheduled");
 
       expect(cancelError).toBeNull();
 
       // Assert: Verify SMS cancelled
       scheduledMessages = await testSetup.getScheduledMessages(user.id);
       expect(scheduledMessages).toHaveLength(1);
-      expect(scheduledMessages[0].status).toBe('cancelled');
-      expect(scheduledMessages[0].last_error).toBe('Calendar event deleted');
+      expect(scheduledMessages[0].status).toBe("cancelled");
+      expect(scheduledMessages[0].last_error).toBe("Calendar event deleted");
 
-      console.log('✅ SMS cancelled when calendar event deleted');
+      console.log("✅ SMS cancelled when calendar event deleted");
     }, 30000);
 
-    it('should not send SMS when event is deleted before send time', async () => {
+    it("should not send SMS when event is deleted before send time", async () => {
       // Arrange: Create user and event
       const user = await testSetup.createTestUser({
         leadTime: 15,
@@ -88,7 +94,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
 
       const eventTime = TestDataBuilder.eventTomorrow(14, 0);
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Client Call',
+        title: "Client Call",
         startTime: eventTime,
       });
 
@@ -96,7 +102,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -109,12 +115,12 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Act: Delete event
       await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
-          sync_status: 'deleted',
+          sync_status: "deleted",
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Note: In real implementation, the smsWorker.ts pre-send validation
       // checks if the calendar event still exists. Since we can't easily
@@ -124,31 +130,31 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Verify event is marked deleted
       const { data: deletedEvent } = await testSetup
         .getClient()
-        .from('task_calendar_events')
-        .select('sync_status')
-        .eq('calendar_event_id', event.calendar_event_id)
+        .from("task_calendar_events")
+        .select("sync_status")
+        .eq("calendar_event_id", event.calendar_event_id)
         .single();
 
-      expect(deletedEvent?.sync_status).toBe('deleted');
+      expect(deletedEvent?.sync_status).toBe("deleted");
 
       // Verify scheduled message exists (would be cancelled by pre-send validation)
       const { data: currentMsg } = await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
-        .select('status')
-        .eq('id', scheduledMsg.id)
+        .from("scheduled_sms_messages")
+        .select("status")
+        .eq("id", scheduledMsg.id)
         .single();
 
-      expect(currentMsg?.status).toBe('scheduled');
+      expect(currentMsg?.status).toBe("scheduled");
 
       console.log(
-        '✅ Pre-send validation will catch deleted event (worker validation tested)',
+        "✅ Pre-send validation will catch deleted event (worker validation tested)",
       );
     }, 30000);
   });
 
-  describe('Event Time Changes', () => {
-    it('should reschedule SMS when event time changes', async () => {
+  describe("Event Time Changes", () => {
+    it("should reschedule SMS when event time changes", async () => {
       // Arrange: Create user and event at 10 AM
       const user = await testSetup.createTestUser({
         leadTime: 15,
@@ -156,7 +162,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
 
       const originalTime = TestDataBuilder.eventTomorrow(10, 0);
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Q4 Planning',
+        title: "Q4 Planning",
         startTime: originalTime,
       });
 
@@ -164,7 +170,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -177,33 +183,35 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       const expectedInitialTime = addMinutes(originalTime, -15);
       expect(initialScheduledFor.getTime()).toBe(expectedInitialTime.getTime());
 
-      console.log(`📅 Initial SMS scheduled for: ${format(initialScheduledFor, 'HH:mm')}`);
+      console.log(
+        `📅 Initial SMS scheduled for: ${format(initialScheduledFor, "HH:mm")}`,
+      );
 
       // Act: Reschedule event to 2 PM
       const newTime = TestDataBuilder.eventTomorrow(14, 0);
       await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
           event_start: newTime.toISOString(),
           event_end: addMinutes(newTime, 30).toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Simulate calendar webhook handler rescheduling SMS
       const newScheduledTime = addMinutes(newTime, -15); // 1:45 PM
 
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
           scheduled_for: newScheduledTime.toISOString(),
           event_start: newTime.toISOString(),
           event_end: addMinutes(newTime, 30).toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Assert: Verify SMS rescheduled to 1:45 PM
       scheduledMessages = await testSetup.getScheduledMessages(user.id);
@@ -213,11 +221,11 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       expect(updatedScheduledFor.getTime()).toBe(newScheduledTime.getTime());
 
       console.log(
-        `✅ SMS rescheduled from ${format(initialScheduledFor, 'HH:mm')} to ${format(updatedScheduledFor, 'HH:mm')}`,
+        `✅ SMS rescheduled from ${format(initialScheduledFor, "HH:mm")} to ${format(updatedScheduledFor, "HH:mm")}`,
       );
     }, 30000);
 
-    it('should handle multiple time changes correctly', async () => {
+    it("should handle multiple time changes correctly", async () => {
       // Arrange: Create user and event
       const user = await testSetup.createTestUser({
         leadTime: 15,
@@ -225,7 +233,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
 
       const time1 = TestDataBuilder.eventTomorrow(9, 0);
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Standup',
+        title: "Standup",
         startTime: time1,
       });
 
@@ -233,7 +241,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -246,23 +254,23 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       const time2 = TestDataBuilder.eventTomorrow(11, 0);
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
           scheduled_for: addMinutes(time2, -15).toISOString(),
           event_start: time2.toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Change 2: Move to 3 PM
       const time3 = TestDataBuilder.eventTomorrow(15, 0);
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
           scheduled_for: addMinutes(time3, -15).toISOString(),
           event_start: time3.toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Assert: Final time is 2:45 PM (15 min before 3 PM)
       const finalMessages = await testSetup.getScheduledMessages(user.id);
@@ -272,19 +280,19 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       const expectedFinalTime = addMinutes(time3, -15);
       expect(finalScheduledFor.getTime()).toBe(expectedFinalTime.getTime());
 
-      console.log('✅ Multiple time changes handled correctly');
+      console.log("✅ Multiple time changes handled correctly");
     }, 30000);
   });
 
-  describe('Event Details Changes', () => {
-    it('should update message when event title changes', async () => {
+  describe("Event Details Changes", () => {
+    it("should update message when event title changes", async () => {
       // Arrange: Create user and event
       const user = await testSetup.createTestUser({
         leadTime: 15,
       });
 
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Meeting',
+        title: "Meeting",
         startTime: TestDataBuilder.eventTomorrow(10, 0),
       });
 
@@ -292,7 +300,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -300,33 +308,33 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Get original message
       const originalMessages = await testSetup.getScheduledMessages(user.id);
       expect(originalMessages).toHaveLength(1);
-      expect(originalMessages[0].event_title).toBe('Meeting');
+      expect(originalMessages[0].event_title).toBe("Meeting");
 
       const originalContent = originalMessages[0].message_content;
       console.log(`📝 Original message: "${originalContent}"`);
 
       // Act: Update event title
-      const newTitle = 'Q4 Strategy Planning';
+      const newTitle = "Q4 Strategy Planning";
       await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
           event_title: newTitle,
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Simulate webhook handler updating scheduled SMS
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
           event_title: newTitle,
           // In real implementation, message_content would be regenerated
-          message_content: originalContent.replace('Meeting', newTitle),
+          message_content: originalContent.replace("Meeting", newTitle),
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Assert: Verify message updated
       const updatedMessages = await testSetup.getScheduledMessages(user.id);
@@ -337,14 +345,14 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       console.log(`✅ Message updated with new title: "${newTitle}"`);
     }, 30000);
 
-    it('should preserve message customization when possible', async () => {
+    it("should preserve message customization when possible", async () => {
       // Arrange: Create user and event
       const user = await testSetup.createTestUser({
         leadTime: 15,
       });
 
       const event = await testSetup.createCalendarEvent(user.id, {
-        title: 'Team Sync',
+        title: "Team Sync",
         startTime: TestDataBuilder.eventTomorrow(14, 0),
       });
 
@@ -352,7 +360,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -367,7 +375,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Act: Make minor change (duration change doesn't require regeneration)
       await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
           event_end: addMinutes(
             new Date(originalMsg.event_end || originalMsg.event_start),
@@ -375,12 +383,12 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
           ).toISOString(), // Extend by 30 min
           updated_at: new Date().toISOString(),
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Simulate webhook: Minor changes don't trigger regeneration
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
           event_end: addMinutes(
             new Date(originalMsg.event_end || originalMsg.event_start),
@@ -389,26 +397,26 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
           updated_at: new Date().toISOString(),
           // message_content NOT changed - preserve LLM-generated message
         })
-        .eq('calendar_event_id', event.calendar_event_id);
+        .eq("calendar_event_id", event.calendar_event_id);
 
       // Assert: Message content unchanged
       const updatedMessages = await testSetup.getScheduledMessages(user.id);
       expect(updatedMessages).toHaveLength(1);
       expect(updatedMessages[0].message_content).toBe(originalContent);
 
-      console.log('✅ Message content preserved for minor event changes');
+      console.log("✅ Message content preserved for minor event changes");
     }, 30000);
   });
 
-  describe('Event Creation After Scheduling', () => {
-    it('should not automatically schedule SMS for new events created mid-day', async () => {
+  describe("Event Creation After Scheduling", () => {
+    it("should not automatically schedule SMS for new events created mid-day", async () => {
       // Arrange: Create user and initial event
       const user = await testSetup.createTestUser({
         leadTime: 15,
       });
 
       const event1 = await testSetup.createCalendarEvent(user.id, {
-        title: 'Morning Standup',
+        title: "Morning Standup",
         startTime: TestDataBuilder.eventTomorrow(9, 0),
       });
 
@@ -416,7 +424,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -427,7 +435,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
 
       // Act: User creates new event mid-day
       const event2 = await testSetup.createCalendarEvent(user.id, {
-        title: 'Afternoon Meeting',
+        title: "Afternoon Meeting",
         startTime: TestDataBuilder.eventTomorrow(14, 0),
       });
 
@@ -437,14 +445,16 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Assert: Still only 1 SMS scheduled (new event not auto-scheduled)
       scheduledMessages = await testSetup.getScheduledMessages(user.id);
       expect(scheduledMessages).toHaveLength(1);
-      expect(scheduledMessages[0].event_title).toBe('Morning Standup');
+      expect(scheduledMessages[0].event_title).toBe("Morning Standup");
 
-      console.log('✅ New events created mid-day not auto-scheduled until next midnight run');
+      console.log(
+        "✅ New events created mid-day not auto-scheduled until next midnight run",
+      );
     }, 30000);
   });
 
-  describe('Bulk Event Changes', () => {
-    it('should handle bulk event updates efficiently', async () => {
+  describe("Bulk Event Changes", () => {
+    it("should handle bulk event updates efficiently", async () => {
       // Arrange: Create user with 5 events
       const user = await testSetup.createTestUser({
         leadTime: 15,
@@ -463,7 +473,7 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       await testSetup.triggerDailyScheduler(user.id);
       await QueueHelpers.waitForJobCompletion(
         testSetup.getClient(),
-        'schedule_daily_sms',
+        "schedule_daily_sms",
         user.id,
         15000,
       );
@@ -475,39 +485,45 @@ describe('SMS Event Scheduling - Calendar Sync', () => {
       // Act: Delete 2 events
       await testSetup
         .getClient()
-        .from('task_calendar_events')
+        .from("task_calendar_events")
         .update({
-          sync_status: 'deleted',
+          sync_status: "deleted",
           updated_at: new Date().toISOString(),
         })
-        .in(
-          'calendar_event_id',
-          [events[1].calendar_event_id, events[3].calendar_event_id],
-        );
+        .in("calendar_event_id", [
+          events[1].calendar_event_id,
+          events[3].calendar_event_id,
+        ]);
 
       // Simulate webhook cancelling related SMS
       await testSetup
         .getClient()
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({
-          status: 'cancelled',
+          status: "cancelled",
           cancelled_at: new Date().toISOString(),
-          last_error: 'Calendar event deleted',
+          last_error: "Calendar event deleted",
         })
-        .in(
-          'calendar_event_id',
-          [events[1].calendar_event_id, events[3].calendar_event_id],
-        );
+        .in("calendar_event_id", [
+          events[1].calendar_event_id,
+          events[3].calendar_event_id,
+        ]);
 
       // Assert: 3 SMS remaining (2 cancelled)
       scheduledMessages = await testSetup.getScheduledMessages(user.id);
-      const activeMessages = scheduledMessages.filter((m) => m.status === 'scheduled');
-      const cancelledMessages = scheduledMessages.filter((m) => m.status === 'cancelled');
+      const activeMessages = scheduledMessages.filter(
+        (m) => m.status === "scheduled",
+      );
+      const cancelledMessages = scheduledMessages.filter(
+        (m) => m.status === "cancelled",
+      );
 
       expect(activeMessages).toHaveLength(3);
       expect(cancelledMessages).toHaveLength(2);
 
-      console.log('✅ Bulk event deletion handled correctly (3 active, 2 cancelled)');
+      console.log(
+        "✅ Bulk event deletion handled correctly (3 active, 2 cancelled)",
+      );
     }, 30000);
   });
 });

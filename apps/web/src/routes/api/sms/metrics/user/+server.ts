@@ -28,7 +28,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Validate days parameter
 		if (isNaN(days) || days < 1 || days > 365) {
-			return json({ error: 'Invalid days parameter. Must be between 1 and 365' }, { status: 400 });
+			return json(
+				{ error: 'Invalid days parameter. Must be between 1 and 365' },
+				{ status: 400 }
+			);
 		}
 
 		// Only allow users to view their own metrics (unless admin)

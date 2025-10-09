@@ -238,7 +238,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				.update(updateData)
 				.eq('id', messageId)
 				.eq('twilio_sid', messageSid)
-				.select('notification_delivery_id, attempt_count, max_attempts, priority, user_id, sent_at, delivered_at')
+				.select(
+					'notification_delivery_id, attempt_count, max_attempts, priority, user_id, sent_at, delivered_at'
+				)
 				.single();
 
 			if (smsError) {
@@ -260,7 +262,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					const deliveredAt = updatedMessage.delivered_at;
 
 					if (sentAt && deliveredAt) {
-						const deliveryTimeMs = new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
+						const deliveryTimeMs =
+							new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
 
 						// Record delivery metrics (non-blocking)
 						smsMetricsService
@@ -277,11 +280,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							deliveryTimeMs
 						});
 					} else {
-						logWebhookEvent('warn', 'Cannot calculate delivery time - missing timestamps', {
-							...webhookContext,
-							hasSentAt: !!sentAt,
-							hasDeliveredAt: !!deliveredAt
-						});
+						logWebhookEvent(
+							'warn',
+							'Cannot calculate delivery time - missing timestamps',
+							{
+								...webhookContext,
+								hasSentAt: !!sentAt,
+								hasDeliveredAt: !!deliveredAt
+							}
+						);
 					}
 				}
 			}

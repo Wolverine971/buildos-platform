@@ -1,15 +1,21 @@
+// apps/worker/tests/integration/sms-event-scheduling/01-scheduling.test.ts
 /**
  * Integration Tests: End-to-End SMS Event Scheduling Flow
  *
  * Tests the complete flow from calendar event creation to SMS delivery
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { setupIntegrationTest } from './setup';
-import { TimeController, TestDataBuilder, SMSAssertions, QueueHelpers } from './helpers';
-import { addMinutes, format } from 'date-fns';
+import { describe, it, expect, beforeEach } from "vitest";
+import { setupIntegrationTest } from "./setup";
+import {
+  TimeController,
+  TestDataBuilder,
+  SMSAssertions,
+  QueueHelpers,
+} from "./helpers";
+import { addMinutes, format } from "date-fns";
 
-describe('SMS Event Scheduling - End to End', () => {
+describe("SMS Event Scheduling - End to End", () => {
   const testSetup = setupIntegrationTest();
   const timeController = new TimeController();
 
@@ -17,10 +23,10 @@ describe('SMS Event Scheduling - End to End', () => {
     timeController.reset();
   });
 
-  it('should schedule and send SMS for calendar event', async () => {
+  it("should schedule and send SMS for calendar event", async () => {
     // Arrange: Create test user with SMS enabled
     const user = await testSetup.createTestUser({
-      timezone: 'America/Los_Angeles',
+      timezone: "America/Los_Angeles",
       phoneVerified: true,
       remindersEnabled: true,
       leadTime: 15, // 15 minutes before event
@@ -29,21 +35,26 @@ describe('SMS Event Scheduling - End to End', () => {
     // Create calendar event for tomorrow at 10 AM
     const eventTime = TestDataBuilder.eventTomorrow(10, 0);
     const event = await testSetup.createCalendarEvent(user.id, {
-      title: 'Team Standup',
+      title: "Team Standup",
       startTime: eventTime,
       durationMinutes: 30,
     });
 
-    console.log('📅 Created calendar event:', event.event_title, 'at', event.event_start);
+    console.log(
+      "📅 Created calendar event:",
+      event.event_title,
+      "at",
+      event.event_start,
+    );
 
     // Act: Trigger daily scheduler (midnight run)
-    const targetDate = format(eventTime, 'yyyy-MM-dd');
+    const targetDate = format(eventTime, "yyyy-MM-dd");
     await testSetup.triggerDailyScheduler(user.id, targetDate);
 
     // Wait for scheduler job to complete
     await QueueHelpers.waitForJobCompletion(
       testSetup.getClient(),
-      'schedule_daily_sms',
+      "schedule_daily_sms",
       user.id,
       15000, // 15 second timeout
     );
@@ -56,8 +67,8 @@ describe('SMS Event Scheduling - End to End', () => {
 
     expect(scheduledMsg.user_id).toBe(user.id);
     expect(scheduledMsg.calendar_event_id).toBe(event.calendar_event_id);
-    expect(scheduledMsg.event_title).toBe('Team Standup');
-    expect(scheduledMsg.status).toBe('scheduled');
+    expect(scheduledMsg.event_title).toBe("Team Standup");
+    expect(scheduledMsg.status).toBe("scheduled");
 
     // Verify scheduled time is 15 minutes before event
     const scheduledTime = new Date(scheduledMsg.scheduled_for);
@@ -66,16 +77,19 @@ describe('SMS Event Scheduling - End to End', () => {
 
     // Verify message content
     SMSAssertions.assertValidSMSContent(scheduledMsg.message_content);
-    SMSAssertions.assertContainsEventDetails(scheduledMsg.message_content, 'Team Standup');
+    SMSAssertions.assertContainsEventDetails(
+      scheduledMsg.message_content,
+      "Team Standup",
+    );
 
-    console.log('✅ Scheduled SMS:', scheduledMsg.message_content);
+    console.log("✅ Scheduled SMS:", scheduledMsg.message_content);
 
     // Assert: Verify sms_messages record created and linked
     const smsMessages = await testSetup.getSMSMessages(user.id);
     expect(smsMessages).toHaveLength(1);
 
     const smsMsg = smsMessages[0];
-    expect(smsMsg.status).toBe('scheduled');
+    expect(smsMsg.status).toBe("scheduled");
     expect(smsMsg.phone_number).toBe(user.smsPreferences.phone_number);
     expect(smsMsg.message_content).toBe(scheduledMsg.message_content);
 
@@ -83,10 +97,10 @@ describe('SMS Event Scheduling - End to End', () => {
     expect(scheduledMsg.sms_message_id).toBe(smsMsg.id);
     expect(smsMsg.metadata?.scheduled_sms_id).toBe(scheduledMsg.id);
 
-    console.log('✅ Test passed: SMS scheduled correctly for calendar event');
+    console.log("✅ Test passed: SMS scheduled correctly for calendar event");
   }, 30000); // 30 second timeout for full test
 
-  it('should send SMS at scheduled time', async () => {
+  it("should send SMS at scheduled time", async () => {
     // This test would require:
     // 1. Mock Twilio client
     // 2. Time travel to send time
@@ -99,14 +113,14 @@ describe('SMS Event Scheduling - End to End', () => {
     expect(true).toBe(true); // Placeholder
   });
 
-  it('should handle LLM generation with fallback to template', async () => {
+  it("should handle LLM generation with fallback to template", async () => {
     // Arrange: Create user and event
     const user = await testSetup.createTestUser({
       leadTime: 15,
     });
 
     const event = await testSetup.createCalendarEvent(user.id, {
-      title: 'Q4 Planning Meeting',
+      title: "Q4 Planning Meeting",
       startTime: TestDataBuilder.eventTomorrow(14, 30),
     });
 
@@ -115,7 +129,7 @@ describe('SMS Event Scheduling - End to End', () => {
 
     await QueueHelpers.waitForJobCompletion(
       testSetup.getClient(),
-      'schedule_daily_sms',
+      "schedule_daily_sms",
       user.id,
       15000,
     );
@@ -127,25 +141,25 @@ describe('SMS Event Scheduling - End to End', () => {
     const msg = scheduledMessages[0];
     expect(msg.generated_via).toMatch(/^(llm|template)$/);
 
-    if (msg.generated_via === 'llm') {
+    if (msg.generated_via === "llm") {
       expect(msg.llm_model).toBeTruthy();
       expect(msg.generation_cost_usd).toBeGreaterThan(0);
-      console.log('✅ Message generated via LLM:', msg.llm_model);
+      console.log("✅ Message generated via LLM:", msg.llm_model);
     } else {
-      console.log('✅ Message generated via template fallback');
+      console.log("✅ Message generated via template fallback");
     }
 
     SMSAssertions.assertValidSMSContent(msg.message_content);
   }, 30000);
 
-  it('should not schedule SMS for past events', async () => {
+  it("should not schedule SMS for past events", async () => {
     // Arrange: Create user
     const user = await testSetup.createTestUser();
 
     // Create event in the past
     const pastTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
     await testSetup.createCalendarEvent(user.id, {
-      title: 'Past Event',
+      title: "Past Event",
       startTime: pastTime,
     });
 
@@ -154,7 +168,7 @@ describe('SMS Event Scheduling - End to End', () => {
 
     await QueueHelpers.waitForJobCompletion(
       testSetup.getClient(),
-      'schedule_daily_sms',
+      "schedule_daily_sms",
       user.id,
       15000,
     );
@@ -163,26 +177,26 @@ describe('SMS Event Scheduling - End to End', () => {
     const scheduledMessages = await testSetup.getScheduledMessages(user.id);
     expect(scheduledMessages).toHaveLength(0);
 
-    console.log('✅ Correctly skipped past event');
+    console.log("✅ Correctly skipped past event");
   }, 30000);
 
-  it('should schedule multiple messages for multiple events', async () => {
+  it("should schedule multiple messages for multiple events", async () => {
     // Arrange: Create user
     const user = await testSetup.createTestUser();
 
     // Create 3 events
     const event1 = await testSetup.createCalendarEvent(user.id, {
-      title: 'Morning Standup',
+      title: "Morning Standup",
       startTime: TestDataBuilder.eventTomorrow(9, 0),
     });
 
     const event2 = await testSetup.createCalendarEvent(user.id, {
-      title: 'Client Call',
+      title: "Client Call",
       startTime: TestDataBuilder.eventTomorrow(14, 0),
     });
 
     const event3 = await testSetup.createCalendarEvent(user.id, {
-      title: 'Team Retro',
+      title: "Team Retro",
       startTime: TestDataBuilder.eventTomorrow(16, 30),
     });
 
@@ -191,7 +205,7 @@ describe('SMS Event Scheduling - End to End', () => {
 
     await QueueHelpers.waitForJobCompletion(
       testSetup.getClient(),
-      'schedule_daily_sms',
+      "schedule_daily_sms",
       user.id,
       15000,
     );
@@ -202,12 +216,12 @@ describe('SMS Event Scheduling - End to End', () => {
 
     // Verify each message
     const titles = scheduledMessages.map((m) => m.event_title).sort();
-    expect(titles).toEqual(['Client Call', 'Morning Standup', 'Team Retro']);
+    expect(titles).toEqual(["Client Call", "Morning Standup", "Team Retro"]);
 
-    console.log('✅ Scheduled 3 SMS for 3 events');
+    console.log("✅ Scheduled 3 SMS for 3 events");
   }, 30000);
 
-  it('should respect daily SMS limit', async () => {
+  it("should respect daily SMS limit", async () => {
     // Arrange: Create user with limit of 2 SMS per day
     const user = await testSetup.createTestUser({
       dailyLimit: 2,
@@ -226,7 +240,7 @@ describe('SMS Event Scheduling - End to End', () => {
 
     await QueueHelpers.waitForJobCompletion(
       testSetup.getClient(),
-      'schedule_daily_sms',
+      "schedule_daily_sms",
       user.id,
       15000,
     );
@@ -235,6 +249,8 @@ describe('SMS Event Scheduling - End to End', () => {
     const scheduledMessages = await testSetup.getScheduledMessages(user.id);
     expect(scheduledMessages.length).toBeLessThanOrEqual(2);
 
-    console.log(`✅ Respected daily limit: ${scheduledMessages.length} messages scheduled (limit: 2)`);
+    console.log(
+      `✅ Respected daily limit: ${scheduledMessages.length} messages scheduled (limit: 2)`,
+    );
   }, 30000);
 });

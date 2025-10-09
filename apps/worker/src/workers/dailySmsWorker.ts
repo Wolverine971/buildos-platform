@@ -275,7 +275,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
           generatedMessage.metadata?.generationTimeMs,
         )
         .catch((err) =>
-          console.error('[DailySMS] Error tracking LLM metrics:', err),
+          console.error("[DailySMS] Error tracking LLM metrics:", err),
         );
 
       scheduledMessages.push({
@@ -310,7 +310,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordQuietHoursSkip(userId, quietHoursSkipCount)
         .catch((err) =>
-          console.error('[DailySMS] Error tracking quiet hours skips:', err),
+          console.error("[DailySMS] Error tracking quiet hours skips:", err),
         );
     }
 
@@ -325,7 +325,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordDailyLimitHit(userId)
         .catch((err) =>
-          console.error('[DailySMS] Error tracking daily limit hit:', err),
+          console.error("[DailySMS] Error tracking daily limit hit:", err),
         );
 
       scheduledMessages.splice(remainingQuota);
@@ -361,7 +361,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordScheduled(userId, insertedMessages.length)
         .catch((err) =>
-          console.error('[DailySMS] Error tracking scheduled count:', err),
+          console.error("[DailySMS] Error tracking scheduled count:", err),
         );
     }
 

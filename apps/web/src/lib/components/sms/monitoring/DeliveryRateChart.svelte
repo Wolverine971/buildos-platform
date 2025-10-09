@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/sms/monitoring/DeliveryRateChart.svelte -->
 <script lang="ts">
 	// apps/web/src/lib/components/sms/monitoring/DeliveryRateChart.svelte
 	/**
@@ -46,21 +47,26 @@
 	let deliveredPercent = $derived(
 		calculatePercentage(weekData.totals.delivered, weekData.totals.sent)
 	);
-	let failedPercent = $derived(
-		calculatePercentage(weekData.totals.failed, weekData.totals.sent)
-	);
+	let failedPercent = $derived(calculatePercentage(weekData.totals.failed, weekData.totals.sent));
 	let pendingPercent = $derived(100 - deliveredPercent - failedPercent);
 
 	// Health status
 	let isHealthy = $derived(weekData.delivery_rate_percent >= 90);
-	let isDegraded = $derived(weekData.delivery_rate_percent >= 75 && weekData.delivery_rate_percent < 90);
+	let isDegraded = $derived(
+		weekData.delivery_rate_percent >= 75 && weekData.delivery_rate_percent < 90
+	);
 	let isCritical = $derived(weekData.delivery_rate_percent < 75);
 </script>
 
 <div class="delivery-rate-chart">
 	<div class="chart-header">
 		<h3>Delivery Performance</h3>
-		<div class="rate-badge" class:healthy={isHealthy} class:degraded={isDegraded} class:critical={isCritical}>
+		<div
+			class="rate-badge"
+			class:healthy={isHealthy}
+			class:degraded={isDegraded}
+			class:critical={isCritical}
+		>
 			{formatPercent(weekData.delivery_rate_percent)}
 		</div>
 	</div>
@@ -106,24 +112,20 @@
 			<span class="legend-dot pending"></span>
 			<span class="legend-label">Pending</span>
 			<span class="legend-value">
-				{formatNumber(weekData.totals.sent - weekData.totals.delivered - weekData.totals.failed)}
+				{formatNumber(
+					weekData.totals.sent - weekData.totals.delivered - weekData.totals.failed
+				)}
 			</span>
 		</div>
 	</div>
 
 	<!-- Health Message -->
 	{#if isHealthy}
-		<div class="health-message success">
-			✓ Delivery rate is healthy (target: ≥90%)
-		</div>
+		<div class="health-message success">✓ Delivery rate is healthy (target: ≥90%)</div>
 	{:else if isDegraded}
-		<div class="health-message warning">
-			⚠ Delivery rate is below target (target: ≥90%)
-		</div>
+		<div class="health-message warning">⚠ Delivery rate is below target (target: ≥90%)</div>
 	{:else}
-		<div class="health-message error">
-			✕ Critical: Delivery rate significantly below target
-		</div>
+		<div class="health-message error">✕ Critical: Delivery rate significantly below target</div>
 	{/if}
 </div>
 

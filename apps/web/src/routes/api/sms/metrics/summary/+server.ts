@@ -61,15 +61,19 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		const weeklyLLMSuccessRate =
 			weeklyTotals.llmSuccess + weeklyTotals.templateFallback > 0
-				? ((weeklyTotals.llmSuccess / (weeklyTotals.llmSuccess + weeklyTotals.templateFallback)) *
+				? (
+						(weeklyTotals.llmSuccess /
+							(weeklyTotals.llmSuccess + weeklyTotals.templateFallback)) *
 						100
-				  ).toFixed(2)
+					).toFixed(2)
 				: '0.00';
 
 		// Calculate health status
 		const deliveryHealthy = parseFloat(weeklyDeliveryRate) >= 90;
 		const llmHealthy = parseFloat(weeklyLLMSuccessRate) >= 50;
-		const hasActiveCriticalAlerts = unresolvedAlerts.some((alert) => alert.severity === 'critical');
+		const hasActiveCriticalAlerts = unresolvedAlerts.some(
+			(alert) => alert.severity === 'critical'
+		);
 
 		return json({
 			success: true,
@@ -99,11 +103,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 					llm_healthy: llmHealthy,
 					alerts_healthy: !hasActiveCriticalAlerts,
 					overall_healthy: deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts,
-					status: deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts
-						? 'healthy'
-						: hasActiveCriticalAlerts
-						? 'critical'
-						: 'degraded'
+					status:
+						deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts
+							? 'healthy'
+							: hasActiveCriticalAlerts
+								? 'critical'
+								: 'degraded'
 				}
 			},
 			timestamp: new Date().toISOString()
