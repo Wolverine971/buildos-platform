@@ -465,10 +465,7 @@
 			>
 				<!-- Description -->
 				{#if project?.description}
-					<div
-						class="max-w-none mb-4"
-						in:fade={{ duration: 200, delay: 100 }}
-					>
+					<div class="max-w-none mb-4" in:fade={{ duration: 200, delay: 100 }}>
 						{project.description}
 					</div>
 				{/if}

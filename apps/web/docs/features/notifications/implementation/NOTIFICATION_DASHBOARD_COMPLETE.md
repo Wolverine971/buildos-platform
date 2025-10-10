@@ -32,27 +32,27 @@ Created in `/apps/web/src/lib/components/admin/notifications/`:
 Created in `/apps/web/src/routes/admin/notifications/`:
 
 1. **/admin/notifications/+page.svelte** - **Analytics Dashboard**
-   - Overview metrics (total sent, success rate, open rate, click rate)
-   - Trend indicators vs previous period
-   - Failed deliveries alert section
-   - Channel performance comparison table
-   - Event type breakdown table
-   - Auto-refresh functionality (30s intervals)
-   - Timeframe filtering (24h, 7d, 30d, 90d)
+    - Overview metrics (total sent, success rate, open rate, click rate)
+    - Trend indicators vs previous period
+    - Failed deliveries alert section
+    - Channel performance comparison table
+    - Event type breakdown table
+    - Auto-refresh functionality (30s intervals)
+    - Timeframe filtering (24h, 7d, 30d, 90d)
 
 2. **/admin/notifications/test-bed/+page.svelte** - **Test Bed**
-   - Event type selection with sample data
-   - Dynamic payload configuration
-   - User search with debouncing
-   - Recipient selection with availability indicators
-   - Channel selection (push, email, SMS, in-app)
-   - Test notification sending with rate limiting
-   - Success/error feedback
+    - Event type selection with sample data
+    - Dynamic payload configuration
+    - User search with debouncing
+    - Recipient selection with availability indicators
+    - Channel selection (push, email, SMS, in-app)
+    - Test notification sending with rate limiting
+    - Success/error feedback
 
 3. **/admin/notifications/logs/+page.svelte** - **Logs Page**
-   - Tabbed interface (Events / Deliveries)
-   - Placeholder for future full implementation
-   - Coming soon notice with alternative options
+    - Tabbed interface (Events / Deliveries)
+    - Placeholder for future full implementation
+    - Coming soon notice with alternative options
 
 #### **3. Main Admin Dashboard Integration**
 
@@ -171,21 +171,21 @@ Currently shows placeholder - full logs functionality coming in next phase.
 
 1. **Run Migration**: Apply SQL migration for RPC functions
 
-   ```bash
-   cd apps/web
-   pnpm supabase db push
-   ```
+    ```bash
+    cd apps/web
+    pnpm supabase db push
+    ```
 
 2. **Test Locally**:
-   - Start dev server: `pnpm dev`
-   - Navigate to `/admin/notifications`
-   - Verify all analytics load correctly
-   - Test sending a notification in test bed
+    - Start dev server: `pnpm dev`
+    - Navigate to `/admin/notifications`
+    - Verify all analytics load correctly
+    - Test sending a notification in test bed
 
 3. **Production Deployment**:
-   - Migrations will auto-apply on deployment
-   - Verify admin users can access dashboard
-   - Monitor for any errors in production logs
+    - Migrations will auto-apply on deployment
+    - Verify admin users can access dashboard
+    - Monitor for any errors in production logs
 
 ### **Future Enhancements** (Phase 3)
 

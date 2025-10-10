@@ -25,11 +25,21 @@ export type UserBriefPreference =
 const ENGAGEMENT_BACKOFF_ENABLED =
   process.env.ENGAGEMENT_BACKOFF_ENABLED === "true";
 
+// Pre-generation buffer to ensure briefs are ready before notification time
+// Start generating briefs 2 minutes before the user's scheduled time
+const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
+
 // Initialize backoff calculator
 const backoffCalculator = new BriefBackoffCalculator();
 
 /**
  * Queue brief generation using Supabase queue
+ * @param userId - User ID
+ * @param scheduledFor - When to START generating the brief
+ * @param options - Additional options
+ * @param timezone - User's timezone
+ * @param engagementMetadata - Re-engagement tracking metadata
+ * @param notificationScheduledFor - When to SEND the notification (user's scheduled time)
  */
 async function queueBriefGeneration(
   userId: string,
@@ -40,6 +50,7 @@ async function queueBriefGeneration(
     isReengagement: boolean;
     daysSinceLastLogin: number;
   },
+  notificationScheduledFor?: Date,
 ): Promise<any> {
   // Fetch the latest timezone from user preferences
   const { data: preferences } = await supabase
@@ -56,7 +67,12 @@ async function queueBriefGeneration(
     options?.requestedBriefDate || format(zonedDate, "yyyy-MM-dd");
 
   console.log(`📅 Queueing brief for user ${userId}:`);
-  console.log(`   - Scheduled for (UTC): ${scheduledFor.toISOString()}`);
+  console.log(`   - Generation starts (UTC): ${scheduledFor.toISOString()}`);
+  if (notificationScheduledFor) {
+    console.log(
+      `   - Notification sends (UTC): ${notificationScheduledFor.toISOString()}`,
+    );
+  }
   console.log(`   - User timezone: ${userTimezone}`);
   console.log(`   - Brief date: ${briefDate}`);
   if (engagementMetadata) {
@@ -73,6 +89,7 @@ async function queueBriefGeneration(
       ? { ...options, requestedBriefDate: undefined, ...engagementMetadata }
       : engagementMetadata,
     timezone: userTimezone,
+    notificationScheduledFor: notificationScheduledFor?.toISOString(), // When to send notification
   };
 
   // Calculate priority based on immediacy
@@ -207,6 +224,7 @@ async function checkAndScheduleBriefs() {
     const usersToSchedule: Array<{
       preference: any;
       nextRunTime: Date;
+      generationStartTime: Date;
       engagementMetadata?: {
         isReengagement: boolean;
         daysSinceLastLogin: number;
@@ -256,9 +274,19 @@ async function checkAndScheduleBriefs() {
         continue;
       }
 
+      // Calculate when to START generation (buffer before notification time)
+      const generationStartTime = new Date(
+        nextRunTime.getTime() - GENERATION_BUFFER_MS,
+      );
+
       // Check if the next run time is within the next hour
       if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
-        usersToSchedule.push({ preference, nextRunTime, engagementMetadata });
+        usersToSchedule.push({
+          preference,
+          nextRunTime, // User's scheduled notification time
+          generationStartTime, // When to start generating
+          engagementMetadata,
+        });
       }
     }
 
@@ -292,10 +320,12 @@ async function checkAndScheduleBriefs() {
 
     // Filter out users who already have jobs scheduled
     const usersToQueue = usersToSchedule.filter(
-      ({ preference, nextRunTime }) => {
+      ({ preference, generationStartTime }) => {
         const userJobs = existingJobsMap.get(preference.user_id) || [];
-        const windowStart = new Date(nextRunTime.getTime() - timeWindow);
-        const windowEnd = new Date(nextRunTime.getTime() + timeWindow);
+        const windowStart = new Date(
+          generationStartTime.getTime() - timeWindow,
+        );
+        const windowEnd = new Date(generationStartTime.getTime() + timeWindow);
 
         const hasConflict = userJobs.some(
           (jobTime) => jobTime >= windowStart && jobTime <= windowEnd,
@@ -321,16 +351,24 @@ async function checkAndScheduleBriefs() {
     console.log(`📨 Queueing ${usersToQueue.length} brief(s) in parallel...`);
     const queueResults = await Promise.allSettled(
       usersToQueue.map(
-        async ({ preference, nextRunTime, engagementMetadata }) => {
+        async ({
+          preference,
+          nextRunTime,
+          generationStartTime,
+          engagementMetadata,
+        }) => {
+          console.log(`⏰ Scheduling brief for user ${preference.user_id}:`);
           console.log(
-            `⏰ Scheduling brief for user ${preference.user_id} at ${nextRunTime.toISOString()}`,
+            `   - Generation starts: ${generationStartTime.toISOString()}`,
           );
+          console.log(`   - Notification sends: ${nextRunTime.toISOString()}`);
           await queueBriefGeneration(
             preference.user_id,
-            nextRunTime,
+            generationStartTime, // Start generating early
             undefined,
             preference.timezone || "UTC",
             engagementMetadata,
+            nextRunTime, // Send notification at user's scheduled time
           );
           return preference.user_id;
         },

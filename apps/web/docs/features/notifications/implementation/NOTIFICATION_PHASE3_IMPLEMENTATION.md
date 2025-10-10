@@ -48,70 +48,70 @@ graph LR
 #### Email Adapter (New)
 
 - **`apps/worker/src/workers/notification/emailAdapter.ts`**
-  - Formats notification payloads as HTML emails
-  - Integrates with existing email infrastructure
-  - Creates email records and queues email jobs
-  - Adds tracking pixels for email opens
+    - Formats notification payloads as HTML emails
+    - Integrates with existing email infrastructure
+    - Creates email records and queues email jobs
+    - Adds tracking pixels for email opens
 
 #### Notification Worker (Modified)
 
 - **`apps/worker/src/workers/notification/notificationWorker.ts`**
-  - Added import for `sendEmailNotification`
-  - Updated email case to call email adapter
-  - Maintains channel routing for push, email, in-app
+    - Added import for `sendEmailNotification`
+    - Updated email case to call email adapter
+    - Maintains channel routing for push, email, in-app
 
 #### Brief Worker (Modified)
 
 - **`apps/worker/src/workers/brief/briefWorker.ts`**
-  - Added import for `createServiceClient`
-  - Emits `brief.completed` notification events after successful brief generation
-  - Includes task count and project count in event payload
-  - Non-blocking: errors logged but don't fail brief job
+    - Added import for `createServiceClient`
+    - Emits `brief.completed` notification events after successful brief generation
+    - Includes task count and project count in event payload
+    - Non-blocking: errors logged but don't fail brief job
 
 ### Database Migration
 
 #### Phase 3 Migration (New)
 
 - **`apps/web/supabase/migrations/20251006_notification_system_phase3.sql`**
-  - Adds `brief.completed` and `brief.failed` event types
-  - Creates auto-subscription trigger for new users
-  - Backfills existing users with subscriptions
-  - Sets up RLS policies for user preferences
-  - Creates helper function `update_user_notification_preferences`
-  - Adds performance indexes
+    - Adds `brief.completed` and `brief.failed` event types
+    - Creates auto-subscription trigger for new users
+    - Backfills existing users with subscriptions
+    - Sets up RLS policies for user preferences
+    - Creates helper function `update_user_notification_preferences`
+    - Adds performance indexes
 
 ### Web App Files
 
 #### Notification Preferences Service (Existing)
 
 - **`apps/web/src/lib/services/notification-preferences.service.ts`**
-  - Already created in Phase 1
-  - Provides get/update methods for preferences
-  - Handles subscription management
+    - Already created in Phase 1
+    - Provides get/update methods for preferences
+    - Handles subscription management
 
 #### Notification Preferences Component (New)
 
 - **`apps/web/src/lib/components/settings/NotificationPreferences.svelte`**
-  - Svelte 5 component with runes syntax
-  - Toggles for email, push, and in-app notifications
-  - Quiet hours configuration
-  - Save/load preferences from service
-  - Matches existing SMS preferences styling
+    - Svelte 5 component with runes syntax
+    - Toggles for email, push, and in-app notifications
+    - Quiet hours configuration
+    - Save/load preferences from service
+    - Matches existing SMS preferences styling
 
 #### Notifications Tab Component (New)
 
 - **`apps/web/src/lib/components/profile/NotificationsTab.svelte`**
-  - Tab wrapper for notification preferences
-  - Integrates with profile page tab system
-  - Consistent with BriefsTab, CalendarTab pattern
+    - Tab wrapper for notification preferences
+    - Integrates with profile page tab system
+    - Consistent with BriefsTab, CalendarTab pattern
 
 #### Profile Page (Modified)
 
 - **`apps/web/src/routes/profile/+page.svelte`**
-  - Added import for `NotificationsTab`
-  - Added `notifications` tab to `profileTabs` array
-  - Added URL support for `?tab=notifications`
-  - Added tab content section for notifications
+    - Added import for `NotificationsTab`
+    - Added `notifications` tab to `profileTabs` array
+    - Added URL support for `?tab=notifications`
+    - Added tab content section for notifications
 
 ---
 
@@ -121,20 +121,20 @@ graph LR
 
 ```typescript
 // Brief worker completes brief generation
-await updateJobStatus(job.id, "completed", "brief");
+await updateJobStatus(job.id, 'completed', 'brief');
 
 // Emit notification event
-await serviceClient.rpc("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_event_source: "worker_job",
-  p_target_user_id: userId,
-  p_payload: {
-    brief_id: brief.id,
-    brief_date: briefDate,
-    timezone: timezone,
-    task_count: 15,
-    project_count: 3,
-  },
+await serviceClient.rpc('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: userId,
+	p_payload: {
+		brief_id: brief.id,
+		brief_date: briefDate,
+		timezone: timezone,
+		task_count: 15,
+		project_count: 3
+	}
 });
 ```
 
@@ -215,77 +215,77 @@ VALUES (
 ### Prerequisites
 
 - [ ] **Set up environment variables** (see `NOTIFICATION_PHASE3_ENV_SETUP.md`)
-  - Generate VAPID keys: `npx web-push generate-vapid-keys`
-  - Add `PUBLIC_VAPID_PUBLIC_KEY` to `apps/web/.env`
-  - Add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` to `apps/worker/.env`
+    - Generate VAPID keys: `npx web-push generate-vapid-keys`
+    - Add `PUBLIC_VAPID_PUBLIC_KEY` to `apps/web/.env`
+    - Add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` to `apps/worker/.env`
 
 ### Manual Testing
 
 - [ ] **Run Phase 3 migration**
 
-  ```bash
-  cd apps/web
-  npx supabase db push
-  # Or manually apply 20251006_notification_system_phase3.sql
-  ```
+    ```bash
+    cd apps/web
+    npx supabase db push
+    # Or manually apply 20251006_notification_system_phase3.sql
+    ```
 
 - [ ] **Generate a test brief**
 
-  ```bash
-  # In Supabase SQL Editor or via API
-  # Trigger a brief generation for your user
-  ```
+    ```bash
+    # In Supabase SQL Editor or via API
+    # Trigger a brief generation for your user
+    ```
 
 - [ ] **Verify notification event created**
 
-  ```sql
-  SELECT * FROM notification_events
-  WHERE event_type = 'brief.completed'
-  ORDER BY created_at DESC
-  LIMIT 5;
-  ```
+    ```sql
+    SELECT * FROM notification_events
+    WHERE event_type = 'brief.completed'
+    ORDER BY created_at DESC
+    LIMIT 5;
+    ```
 
 - [ ] **Verify deliveries queued**
 
-  ```sql
-  SELECT d.*, e.event_type
-  FROM notification_deliveries d
-  JOIN notification_events e ON e.id = d.event_id
-  WHERE e.event_type = 'brief.completed'
-  ORDER BY d.created_at DESC;
-  ```
+    ```sql
+    SELECT d.*, e.event_type
+    FROM notification_deliveries d
+    JOIN notification_events e ON e.id = d.event_id
+    WHERE e.event_type = 'brief.completed'
+    ORDER BY d.created_at DESC;
+    ```
 
 - [ ] **Check email job queued**
 
-  ```sql
-  SELECT * FROM queue_jobs
-  WHERE job_type = 'send_notification'
-  AND metadata->>'event_type' = 'brief.completed'
-  ORDER BY created_at DESC;
-  ```
+    ```sql
+    SELECT * FROM queue_jobs
+    WHERE job_type = 'send_notification'
+    AND metadata->>'event_type' = 'brief.completed'
+    ORDER BY created_at DESC;
+    ```
 
 - [ ] **Verify worker processes notification**
-  - Check worker logs for notification processing
-  - Should see email adapter creating email record
+    - Check worker logs for notification processing
+    - Should see email adapter creating email record
 
 - [ ] **Check email record created**
 
-  ```sql
-  SELECT * FROM emails
-  WHERE category = 'notification'
-  ORDER BY created_at DESC;
-  ```
+    ```sql
+    SELECT * FROM emails
+    WHERE category = 'notification'
+    ORDER BY created_at DESC;
+    ```
 
 - [ ] **Test preferences UI**
-  - Visit `/profile?tab=notifications`
-  - Toggle channels on/off
-  - Enable quiet hours
-  - Save and verify database update
+    - Visit `/profile?tab=notifications`
+    - Toggle channels on/off
+    - Enable quiet hours
+    - Save and verify database update
 
 - [ ] **Test preference changes**
-  - Disable email channel
-  - Generate another brief
-  - Verify no email notification created
+    - Disable email channel
+    - Generate another brief
+    - Verify no email notification created
 
 ### End-to-End Test
 
@@ -356,73 +356,73 @@ AND NOT in_app_enabled;
 
 1. **Check event was created**
 
-   ```sql
-   SELECT * FROM notification_events
-   WHERE target_user_id = 'your-user-id'
-   AND event_type = 'brief.completed'
-   ORDER BY created_at DESC LIMIT 1;
-   ```
+    ```sql
+    SELECT * FROM notification_events
+    WHERE target_user_id = 'your-user-id'
+    AND event_type = 'brief.completed'
+    ORDER BY created_at DESC LIMIT 1;
+    ```
 
 2. **Check subscription exists**
 
-   ```sql
-   SELECT * FROM notification_subscriptions
-   WHERE user_id = 'your-user-id'
-   AND event_type = 'brief.completed';
-   ```
+    ```sql
+    SELECT * FROM notification_subscriptions
+    WHERE user_id = 'your-user-id'
+    AND event_type = 'brief.completed';
+    ```
 
 3. **Check preferences**
 
-   ```sql
-   SELECT * FROM user_notification_preferences
-   WHERE user_id = 'your-user-id'
-   AND event_type = 'brief.completed';
-   ```
+    ```sql
+    SELECT * FROM user_notification_preferences
+    WHERE user_id = 'your-user-id'
+    AND event_type = 'brief.completed';
+    ```
 
 4. **Check delivery records**
-   ```sql
-   SELECT * FROM notification_deliveries
-   WHERE recipient_user_id = 'your-user-id'
-   ORDER BY created_at DESC;
-   ```
+    ```sql
+    SELECT * FROM notification_deliveries
+    WHERE recipient_user_id = 'your-user-id'
+    ORDER BY created_at DESC;
+    ```
 
 ### Email not sent
 
 1. **Check email record created**
 
-   ```sql
-   SELECT * FROM emails
-   WHERE category = 'notification'
-   AND template_data->>'delivery_id' = 'your-delivery-id';
-   ```
+    ```sql
+    SELECT * FROM emails
+    WHERE category = 'notification'
+    AND template_data->>'delivery_id' = 'your-delivery-id';
+    ```
 
 2. **Check email job queued**
 
-   ```sql
-   SELECT * FROM queue_jobs
-   WHERE job_type = 'generate_brief_email'
-   AND metadata->>'emailId' = 'your-email-id';
-   ```
+    ```sql
+    SELECT * FROM queue_jobs
+    WHERE job_type = 'generate_brief_email'
+    AND metadata->>'emailId' = 'your-email-id';
+    ```
 
 3. **Check worker logs**
-   ```
-   [NotificationWorker] Processing notification job...
-   [EmailAdapter] Queued email job...
-   ```
+    ```
+    [NotificationWorker] Processing notification job...
+    [EmailAdapter] Queued email job...
+    ```
 
 ### Preferences not saving
 
 1. **Check RLS policies**
-   - User must be authenticated
-   - `auth.uid()` must match `user_id`
+    - User must be authenticated
+    - `auth.uid()` must match `user_id`
 
 2. **Check console errors**
-   - Network errors
-   - Permission errors
+    - Network errors
+    - Permission errors
 
 3. **Verify user session**
-   - User must be logged in
-   - Session must be valid
+    - User must be logged in
+    - Session must be valid
 
 ---
 

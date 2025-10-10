@@ -204,16 +204,12 @@
 			<div class="flex items-center min-w-0 flex-1">
 				<!-- Logo -->
 				<div class="flex-shrink-0 flex items-center">
-					<a
-						href="/"
-						class="flex items-center"
-						on:click={() => handleMenuItemClick('/')}
-					>
-					<!-- Logo text - big and bold -->
-					<span
-						class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent"
-						>BuildOS</span
-					>
+					<a href="/" class="flex items-center" on:click={() => handleMenuItemClick('/')}>
+						<!-- Logo text - big and bold -->
+						<span
+							class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent"
+							>BuildOS</span
+						>
 					</a>
 				</div>
 
@@ -265,28 +261,32 @@
 						title="Brain Dump"
 						btnType="container"
 					>
-					<div class="relative flex items-center justify-center">
-						<!-- brain-bolt icon - responsive sizing -->
-						<img
-							src="/brain-bolt.png"
-							alt="Brain Dump"
-							class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-transform group-hover:scale-105"
-						/>
-						<!-- Overlay icon - changes based on modal state -->
-						{#if showBrainDumpModal}
-							<!-- Zap icon when modal is open - centered on brain-bolt -->
-							<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-								<div class="relative">
-									<!-- Glow effect for zap -->
-									<div
-										class="absolute inset-0 bg-yellow-400 rounded-full blur-md opacity-70 animate-pulse"
-										style="transform: scale(2.5);"
-									></div>
-									<Zap class="w-4 h-5 sm:w-5 sm:h-6 text-yellow-500 relative z-10 drop-shadow-lg" />
+						<div class="relative flex items-center justify-center">
+							<!-- brain-bolt icon - responsive sizing -->
+							<img
+								src="/brain-bolt.png"
+								alt="Brain Dump"
+								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-transform group-hover:scale-105"
+							/>
+							<!-- Overlay icon - changes based on modal state -->
+							{#if showBrainDumpModal}
+								<!-- Zap icon when modal is open - centered on brain-bolt -->
+								<div
+									class="absolute inset-0 flex items-center justify-center pointer-events-none"
+								>
+									<div class="relative">
+										<!-- Glow effect for zap -->
+										<div
+											class="absolute inset-0 bg-yellow-400 rounded-full blur-md opacity-70 animate-pulse"
+											style="transform: scale(2.5);"
+										></div>
+										<Zap
+											class="w-4 h-5 sm:w-5 sm:h-6 text-yellow-500 relative z-10 drop-shadow-lg"
+										/>
+									</div>
 								</div>
-							</div>
-						{/if}
-					</div>
+							{/if}
+						</div>
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">Brain Dump</span>
 					</Button>

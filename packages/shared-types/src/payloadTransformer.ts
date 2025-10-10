@@ -51,22 +51,47 @@ export interface TransformResult {
 function transformBriefCompleted(
   payload: BriefCompletedEventPayload,
 ): NotificationPayload {
-  const taskText =
-    payload.task_count === 1 ? "1 task" : `${payload.task_count || 0} tasks`;
+  const todaysCount = payload.todays_task_count || 0;
+  const overdueCount = payload.overdue_task_count || 0;
+  const upcomingCount = payload.upcoming_task_count || 0;
+
   const projectText =
     payload.project_count === 1
       ? "1 project"
       : `${payload.project_count || 0} projects`;
 
+  // Build a comprehensive task breakdown message
+  const taskBreakdown: string[] = [];
+
+  if (todaysCount > 0) {
+    taskBreakdown.push(`Today: ${todaysCount}`);
+  }
+
+  if (overdueCount > 0) {
+    taskBreakdown.push(`Overdue: ${overdueCount}`);
+  }
+
+  if (upcomingCount > 0) {
+    taskBreakdown.push(`Upcoming: ${upcomingCount}`);
+  }
+
+  // If no tasks at all, show "No tasks"
+  const taskSummary = taskBreakdown.length > 0
+    ? taskBreakdown.join(" | ")
+    : "No tasks scheduled";
+
   return {
     title: "Your Daily Brief is Ready! 📋",
-    body: `${taskText} across ${projectText} for ${payload.brief_date}`,
+    body: `${taskSummary} across ${projectText}`,
     action_url: `/briefs/${payload.brief_id}`,
     icon_url: "/AppImages/android/android-launchericon-192-192.png",
     data: {
       brief_id: payload.brief_id,
       brief_date: payload.brief_date,
       timezone: payload.timezone,
+      todays_task_count: todaysCount,
+      overdue_task_count: overdueCount,
+      upcoming_task_count: upcomingCount,
     },
   };
 }

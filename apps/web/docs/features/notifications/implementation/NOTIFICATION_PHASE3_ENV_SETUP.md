@@ -109,11 +109,11 @@ console.log(import.meta.env.PUBLIC_VAPID_PUBLIC_KEY);
 2. Enable push notifications (you'll be prompted for permission)
 3. Check browser console for errors
 4. Verify subscription in database:
-   ```sql
-   SELECT * FROM push_subscriptions
-   WHERE user_id = 'your-user-id'
-   AND is_active = true;
-   ```
+    ```sql
+    SELECT * FROM push_subscriptions
+    WHERE user_id = 'your-user-id'
+    AND is_active = true;
+    ```
 
 ---
 
@@ -134,23 +134,23 @@ console.log(import.meta.env.PUBLIC_VAPID_PUBLIC_KEY);
 
 1. Verify VAPID keys match:
 
-   ```bash
-   # Web app
-   echo $PUBLIC_VAPID_PUBLIC_KEY
+    ```bash
+    # Web app
+    echo $PUBLIC_VAPID_PUBLIC_KEY
 
-   # Worker
-   echo $VAPID_PUBLIC_KEY
-   ```
+    # Worker
+    echo $VAPID_PUBLIC_KEY
+    ```
 
 2. Check browser permissions:
-   - Browser Settings → Privacy → Notifications
-   - Ensure your site has notification permission
+    - Browser Settings → Privacy → Notifications
+    - Ensure your site has notification permission
 
 3. Check service worker registration:
-   ```javascript
-   // In browser console
-   navigator.serviceWorker.ready.then((reg) => console.log("SW ready:", reg));
-   ```
+    ```javascript
+    // In browser console
+    navigator.serviceWorker.ready.then((reg) => console.log('SW ready:', reg));
+    ```
 
 ---
 

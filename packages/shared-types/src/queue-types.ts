@@ -32,6 +32,7 @@ export interface DailyBriefJobMetadata {
   customTemplate?: string;
   requestedBriefDate?: string;
   generation_progress?: BriefGenerationProgress;
+  notificationScheduledFor?: string; // ISO 8601 timestamp for when to send notification
 }
 
 export interface BriefGenerationProgress {

@@ -7,94 +7,94 @@ All files have been created for Phase 1 of the Extensible Notification System. B
 ### Migration File
 
 - `apps/web/supabase/migrations/20251006_notification_system_phase1.sql`
-  - Creates all notification tables
-  - Adds RPC functions
-  - Sets up RLS policies
-  - Seeds admin subscriptions
-  - **Action Required:** Run this migration against your Supabase database
+    - Creates all notification tables
+    - Adds RPC functions
+    - Sets up RLS policies
+    - Seeds admin subscriptions
+    - **Action Required:** Run this migration against your Supabase database
 
 ## Shared Types
 
 ### Type Definitions
 
 - `packages/shared-types/src/notification.types.ts`
-  - Event types and payloads
-  - Channel and delivery interfaces
-  - Job metadata types
-  - Analytics types
-  - **Action Required:** Run `pnpm build` in packages/shared-types
+    - Event types and payloads
+    - Channel and delivery interfaces
+    - Job metadata types
+    - Analytics types
+    - **Action Required:** Run `pnpm build` in packages/shared-types
 
 ### Index Update
 
 - `packages/shared-types/src/index.ts`
-  - Updated to export notification types
+    - Updated to export notification types
 
 ## Worker Service
 
 ### Notification Worker
 
 - `apps/worker/src/workers/notification/notificationWorker.ts`
-  - Main notification processor
-  - Browser push adapter (using web-push)
-  - In-app notification adapter
-  - Delivery tracking and retry logic
-  - **Action Required:** Install `web-push` package
+    - Main notification processor
+    - Browser push adapter (using web-push)
+    - In-app notification adapter
+    - Delivery tracking and retry logic
+    - **Action Required:** Install `web-push` package
 
 ## Web App Services
 
 ### Notification Preferences Service
 
 - `apps/web/src/lib/services/notification-preferences.service.ts`
-  - Get/update preferences
-  - Subscribe/unsubscribe from events
-  - Default preferences
+    - Get/update preferences
+    - Subscribe/unsubscribe from events
+    - Default preferences
 
 ### Browser Push Service
 
 - `apps/web/src/lib/services/browser-push.service.ts`
-  - Push subscription management
-  - Permission handling
-  - Service worker integration
+    - Push subscription management
+    - Permission handling
+    - Service worker integration
 
 ## Static Assets
 
 ### Service Worker
 
 - `apps/web/static/sw.js`
-  - Service worker for push notifications
-  - Handles push events
-  - Notification click handling
-  - **Action Required:** Ensure service worker is registered in your app
+    - Service worker for push notifications
+    - Handles push events
+    - Notification click handling
+    - **Action Required:** Ensure service worker is registered in your app
 
 ## Documentation
 
 ### Implementation Guide
 
 - `docs/architecture/NOTIFICATION_SYSTEM_PHASE1_IMPLEMENTATION.md`
-  - Complete setup instructions
-  - Usage examples
-  - Testing procedures
-  - Troubleshooting guide
-  - Monitoring queries
+    - Complete setup instructions
+    - Usage examples
+    - Testing procedures
+    - Troubleshooting guide
+    - Monitoring queries
 
 ### Design Specification
 
 - `docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md`
-  - Already exists (design spec)
-  - Referenced for Phase 1 implementation
+    - Already exists (design spec)
+    - Referenced for Phase 1 implementation
 
 ## Files Checked (Auto-updated)
 
 ### Database Schema (Web)
 
 - `apps/web/src/lib/database.schema.ts`
-  - **Status:** ✅ Automatically updated with new tables
-  - Shows notification_events, notification_subscriptions, notification_deliveries, push_subscriptions, user_notification_preferences
+    - **Status:** ✅ Automatically updated with new tables
+    - Shows notification_events, notification_subscriptions, notification_deliveries, push_subscriptions, user_notification_preferences
 
 ### Shared Types (Packages)
 
 - `packages/shared-types/src/database.schema.ts`
-  - **Status:** ✅ Will be updated after migration runs
+    - **Status:** ✅ Will be updated after migration runs
 
 ---
 

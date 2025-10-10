@@ -5223,6 +5223,7 @@ export type Database = {
           p_event_type: string;
           p_metadata?: Json;
           p_payload?: Json;
+          p_scheduled_for?: string;
           p_target_user_id?: string;
         };
         Returns: string;

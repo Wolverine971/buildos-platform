@@ -159,7 +159,12 @@ export interface BriefCompletedEventPayload {
   brief_id: string;
   brief_date: string;
   timezone: string;
-  task_count: number;
+  task_count: number; // Kept for backward compatibility (same as todays_task_count)
+  todays_task_count: number;
+  overdue_task_count: number;
+  upcoming_task_count: number;
+  next_seven_days_task_count: number;
+  recently_completed_count: number;
   project_count: number;
 }
 

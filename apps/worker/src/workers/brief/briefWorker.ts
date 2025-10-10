@@ -302,21 +302,58 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       // Get task and project counts from project_daily_briefs
       const { data: projectBriefs } = await supabase
         .from("project_daily_briefs")
-        .select("id")
+        .select("id, metadata")
         .eq("daily_brief_id", brief.id);
 
       const projectCount = projectBriefs?.length || 0;
 
-      // Get total task count from tasks table
-      const { data: tasks } = await supabase
-        .from("tasks")
-        .select("id")
-        .eq("user_id", job.data.userId)
-        .is("deleted_at", null);
+      // Calculate all task counts from project briefs for comprehensive notification
+      const todaysTaskCount = projectBriefs?.reduce((sum, pb) => {
+        const metadata = pb.metadata as any;
+        return sum + (metadata?.todays_task_count || 0);
+      }, 0) || 0;
 
-      const taskCount = tasks?.length || 0;
+      const overdueTaskCount = projectBriefs?.reduce((sum, pb) => {
+        const metadata = pb.metadata as any;
+        return sum + (metadata?.overdue_task_count || 0);
+      }, 0) || 0;
 
-      await serviceClient.rpc("emit_notification_event", {
+      const upcomingTaskCount = projectBriefs?.reduce((sum, pb) => {
+        const metadata = pb.metadata as any;
+        return sum + (metadata?.upcoming_task_count || 0);
+      }, 0) || 0;
+
+      const nextSevenDaysTaskCount = projectBriefs?.reduce((sum, pb) => {
+        const metadata = pb.metadata as any;
+        return sum + (metadata?.next_seven_days_task_count || 0);
+      }, 0) || 0;
+
+      const recentlyCompletedCount = projectBriefs?.reduce((sum, pb) => {
+        const metadata = pb.metadata as any;
+        return sum + (metadata?.recently_completed_count || 0);
+      }, 0) || 0;
+
+      // Get notification scheduled time from job data (if provided)
+      const notificationScheduledFor = job.data.notificationScheduledFor
+        ? new Date(job.data.notificationScheduledFor)
+        : undefined;
+
+      if (notificationScheduledFor) {
+        console.log(
+          `📅 Scheduling notification for ${notificationScheduledFor.toISOString()} (user's preferred time)`,
+        );
+      } else {
+        console.log(
+          `📅 Sending notification immediately (no scheduled time provided)`,
+        );
+      }
+
+      console.log(
+        `📊 Task counts - Today: ${todaysTaskCount}, Overdue: ${overdueTaskCount}, Upcoming: ${upcomingTaskCount}, Next 7 days: ${nextSevenDaysTaskCount}, Recently completed: ${recentlyCompletedCount}`,
+      );
+
+      // Type assertion needed until database types are regenerated after migration
+      await (serviceClient.rpc as any)("emit_notification_event", {
         p_event_type: "brief.completed",
         p_event_source: "worker_job",
         p_target_user_id: job.data.userId,
@@ -324,9 +361,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
           brief_id: brief.id,
           brief_date: briefDate,
           timezone: timezone,
-          task_count: taskCount,
+          task_count: todaysTaskCount, // Keep for backward compatibility
+          todays_task_count: todaysTaskCount,
+          overdue_task_count: overdueTaskCount,
+          upcoming_task_count: upcomingTaskCount,
+          next_seven_days_task_count: nextSevenDaysTaskCount,
+          recently_completed_count: recentlyCompletedCount,
           project_count: projectCount,
         },
+        p_scheduled_for: notificationScheduledFor?.toISOString(), // Schedule at user's preferred time
       });
 
       console.log(
@@ -336,16 +379,6 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       // Log error but don't fail the brief job
       console.error("Failed to emit notification event:", notificationError);
     }
-
-    // Notify user - brief is ready, email will be sent separately
-    await notifyUser(job.data.userId, "brief_completed", {
-      briefId: brief.id,
-      briefDate: brief.brief_date,
-      timezone: timezone,
-      message: `Your daily brief for ${briefDate} is ready!`,
-      emailRecordCreated: !!emailRecordId,
-      emailQueued: emailQueuedSuccessfully,
-    });
 
     console.log(`✅ Completed brief generation for user ${job.data.userId}
    → Brief ID: ${brief.id}

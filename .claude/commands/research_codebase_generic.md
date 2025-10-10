@@ -51,9 +51,11 @@ Then wait for the user's research query.
 5. **Gather metadata for the research document:**
    - generate all relevant metadata
    - Filename: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+   - **CRITICAL**: Research documents MUST be saved in `/thoughts/shared/research/` with proper timestamps
+   - NEVER save research documents at the project root or in other locations
 
 6. **Generate research document:**
-   - Use the metadata gathered in step 4
+   - Use the metadata gathered in step 5
    - Structure the document with YAML frontmatter followed by content:
 
      ```markdown
@@ -178,3 +180,56 @@ Then wait for the user's research query.
   - Update frontmatter when adding follow-up research
   - Use snake_case for multi-word field names (e.g., `last_updated`, `git_commit`)
   - Tags should be relevant to the research topic and components studied
+
+## Document Organization Guidelines
+
+### Where to Save Different Document Types
+
+**Research Documents (Always in `/thoughts/shared/research/`):**
+
+- All codebase research with timestamped filenames: `YYYY-MM-DD_HH-MM-SS_topic.md`
+- Planning and exploration documents
+- Meta-documentation (documentation about documentation)
+- Feature ideas and brainstorming
+- Investigation results and analysis
+
+**Implementation/Progress Documents (In appropriate feature docs):**
+
+- Implementation summaries → `/apps/web/docs/features/[feature]/implementation/`
+- Progress checklists → `/apps/web/docs/features/[feature]/implementation/`
+- Phase completion docs → `/apps/web/docs/features/[feature]/implementation/`
+- Environment setup guides → `/apps/web/docs/features/[feature]/implementation/`
+
+**Specifications (In feature docs):**
+
+- Feature specifications → `/apps/web/docs/features/[feature]/`
+- API documentation → `/apps/web/docs/technical/api/`
+- Architecture decisions → `/docs/architecture/decisions/`
+
+**NEVER:**
+
+- Save documents at the project root (except CLAUDE.md, README.md, CHANGELOG.md)
+- Create random markdown files outside the established structure
+- Save research documents in feature directories (use `/thoughts/shared/research/` instead)
+
+### Examples of Proper Organization
+
+**Good:**
+
+- `/thoughts/shared/research/2025-10-06_06-00-00_notification-system-research.md` ✅
+- `/apps/web/docs/features/notifications/implementation/PHASE1_IMPLEMENTATION_SUMMARY.md` ✅
+- `/apps/web/docs/features/brain-dump/README.md` ✅
+
+**Bad:**
+
+- `/NOTIFICATION_RESEARCH.md` ❌ (should be in thoughts/shared/research/ with timestamp)
+- `/apps/web/docs/features/notifications/2025-10-06_research.md` ❌ (research goes in thoughts/)
+- `/random-notes.md` ❌ (no random files at root)
+
+### When Creating New Documents
+
+1. **Ask yourself**: Is this research/exploration or implementation tracking?
+2. **Research/Exploration** → `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+3. **Implementation/Progress** → `/apps/web/docs/features/[feature]/implementation/`
+4. **Specification** → `/apps/web/docs/features/[feature]/`
+5. **Always use proper timestamps** for research documents (YYYY-MM-DD_HH-MM-SS format)

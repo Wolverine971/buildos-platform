@@ -129,6 +129,9 @@ function extractTemplateVars(
 
     case "brief.completed":
       vars.task_count = flatPayload.task_count || 0;
+      vars.todays_task_count = flatPayload.todays_task_count || 0;
+      vars.overdue_task_count = flatPayload.overdue_task_count || 0;
+      vars.upcoming_task_count = flatPayload.upcoming_task_count || 0;
       vars.brief_date = flatPayload.brief_date || "today";
       break;
 
@@ -209,10 +212,21 @@ async function formatSMSMessage(
       return `BuildOS: New user ${payload.user_email || payload.data?.user_email || "unknown"} signed up via ${payload.signup_method || payload.data?.signup_method || "web"}`;
 
     case "brief.completed":
-      const taskCount = payload.task_count || payload.data?.task_count || 0;
-      const briefDate =
-        payload.brief_date || payload.data?.brief_date || "today";
-      return `Your BuildOS brief is ready! ${taskCount} tasks planned for ${briefDate}. Open app to view.`;
+      const todaysCount = payload.todays_task_count || payload.data?.todays_task_count || 0;
+      const overdueCount = payload.overdue_task_count || payload.data?.overdue_task_count || 0;
+      const upcomingCount = payload.upcoming_task_count || payload.data?.upcoming_task_count || 0;
+
+      // Build task breakdown for SMS
+      const taskParts: string[] = [];
+      if (todaysCount > 0) taskParts.push(`Today: ${todaysCount}`);
+      if (overdueCount > 0) taskParts.push(`Overdue: ${overdueCount}`);
+      if (upcomingCount > 0) taskParts.push(`Upcoming: ${upcomingCount}`);
+
+      const taskSummary = taskParts.length > 0
+        ? taskParts.join(" | ")
+        : "No tasks scheduled";
+
+      return `Your BuildOS brief is ready! ${taskSummary}. Open app to view.`;
 
     case "brief.failed":
       return "Your daily brief failed to generate. Please check the app or contact support.";

@@ -193,60 +193,60 @@
 ### Manual Testing Checklist
 
 - [ ] Analytics Overview Endpoint
-  - [ ] Test with different timeframes (24h, 7d, 30d, 90d)
-  - [ ] Verify trend calculations
-  - [ ] Check admin-only access
+    - [ ] Test with different timeframes (24h, 7d, 30d, 90d)
+    - [ ] Verify trend calculations
+    - [ ] Check admin-only access
 
 - [ ] Channel Performance Endpoint
-  - [ ] Verify metrics per channel
-  - [ ] Check success/open/click rate calculations
-  - [ ] Verify delivery time calculations
+    - [ ] Verify metrics per channel
+    - [ ] Check success/open/click rate calculations
+    - [ ] Verify delivery time calculations
 
 - [ ] Event Performance Endpoint
-  - [ ] Verify metrics per event type
-  - [ ] Check subscriber counts
-  - [ ] Verify event type filtering
+    - [ ] Verify metrics per event type
+    - [ ] Check subscriber counts
+    - [ ] Verify event type filtering
 
 - [ ] Timeline Endpoint
-  - [ ] Test hourly granularity (24h timeframe)
-  - [ ] Test daily granularity (7d+ timeframes)
-  - [ ] Verify time-series data format
+    - [ ] Test hourly granularity (24h timeframe)
+    - [ ] Test daily granularity (7d+ timeframes)
+    - [ ] Verify time-series data format
 
 - [ ] Failures Endpoint
-  - [ ] Verify failed deliveries listing
-  - [ ] Check error message display
-  - [ ] Test limit parameter
+    - [ ] Verify failed deliveries listing
+    - [ ] Check error message display
+    - [ ] Test limit parameter
 
 - [ ] Subscriptions Endpoint
-  - [ ] Verify active subscriptions
-  - [ ] Check channel preference display
-  - [ ] Verify last notification timestamp
+    - [ ] Verify active subscriptions
+    - [ ] Check channel preference display
+    - [ ] Verify last notification timestamp
 
 - [ ] Test Notification Endpoint
-  - [ ] Send test with valid payload
-  - [ ] Test rate limiting (50/hour)
-  - [ ] Test recipient limit (20 max)
-  - [ ] Verify test mode metadata
+    - [ ] Send test with valid payload
+    - [ ] Test rate limiting (50/hour)
+    - [ ] Test recipient limit (20 max)
+    - [ ] Verify test mode metadata
 
 - [ ] Test History Endpoint
-  - [ ] Verify test notification history
-  - [ ] Check pagination
-  - [ ] Verify delivery status display
+    - [ ] Verify test notification history
+    - [ ] Check pagination
+    - [ ] Verify delivery status display
 
 - [ ] Recipient Search Endpoint
-  - [ ] Search by email
-  - [ ] Search by name
-  - [ ] Test event type filtering
+    - [ ] Search by email
+    - [ ] Search by name
+    - [ ] Test event type filtering
 
 - [ ] Retry Delivery Endpoint
-  - [ ] Retry failed delivery
-  - [ ] Verify max attempts check
-  - [ ] Check queue job creation
+    - [ ] Retry failed delivery
+    - [ ] Verify max attempts check
+    - [ ] Check queue job creation
 
 - [ ] Resend Delivery Endpoint
-  - [ ] Create new delivery
-  - [ ] Verify fresh attempt count
-  - [ ] Check queue job creation
+    - [ ] Create new delivery
+    - [ ] Verify fresh attempt count
+    - [ ] Check queue job creation
 
 ### Database Testing
 
@@ -292,49 +292,49 @@
 ### Required Components
 
 1. **MetricCard.svelte**
-   - Display overview metrics
-   - Trend indicators (↑↓)
-   - Loading states
+    - Display overview metrics
+    - Trend indicators (↑↓)
+    - Loading states
 
 2. **TimeframeSelector.svelte**
-   - Dropdown: 24h, 7d, 30d, 90d
-   - Auto-refresh toggle
-   - Refresh button
+    - Dropdown: 24h, 7d, 30d, 90d
+    - Auto-refresh toggle
+    - Refresh button
 
 3. **ChannelPerformanceTable.svelte**
-   - Sortable table
-   - Success rate indicators
-   - Delivery time display
+    - Sortable table
+    - Success rate indicators
+    - Delivery time display
 
 4. **DeliveryTimelineChart.svelte**
-   - Multi-series line chart
-   - Configurable granularity
-   - Interactive tooltips
+    - Multi-series line chart
+    - Configurable granularity
+    - Interactive tooltips
 
 5. **EventBreakdownTable.svelte**
-   - Event type metrics
-   - Subscriber counts
-   - Sortable columns
+    - Event type metrics
+    - Subscriber counts
+    - Sortable columns
 
 6. **FailedDeliveriesTable.svelte**
-   - Error messages
-   - Retry/resend buttons
-   - Status badges
+    - Error messages
+    - Retry/resend buttons
+    - Status badges
 
 7. **SubscriptionOverviewTable.svelte**
-   - User subscriptions
-   - Channel preferences
-   - Last notification timestamp
+    - User subscriptions
+    - Channel preferences
+    - Last notification timestamp
 
 8. **EventTypeSelector.svelte**
-   - Dropdown with event registry
-   - Event description
-   - Default channel display
+    - Dropdown with event registry
+    - Event description
+    - Default channel display
 
 9. **PayloadForm.svelte**
-   - Dynamic form from Zod schema
-   - Validation feedback
-   - Sample data button
+    - Dynamic form from Zod schema
+    - Validation feedback
+    - Sample data button
 
 10. **UserSearchInput.svelte**
     - Debounced search
@@ -359,27 +359,27 @@
 ### Required Pages
 
 1. **/admin/notifications/+page.svelte** (Dashboard)
-   - Overview metrics
-   - Channel performance section
-   - Timeline chart
-   - Event breakdown
-   - Failed deliveries alert
-   - Subscription overview
+    - Overview metrics
+    - Channel performance section
+    - Timeline chart
+    - Event breakdown
+    - Failed deliveries alert
+    - Subscription overview
 
 2. **/admin/notifications/test-bed/+page.svelte** (Test Bed)
-   - Event type selection
-   - Payload configuration
-   - Recipient selection
-   - Channel selection
-   - Preview panes
-   - Send test button
-   - Recent tests
+    - Event type selection
+    - Payload configuration
+    - Recipient selection
+    - Channel selection
+    - Preview panes
+    - Send test button
+    - Recent tests
 
 3. **/admin/notifications/logs/+page.svelte** (Logs)
-   - Event log tab
-   - Delivery log tab
-   - Advanced filters
-   - Export button
+    - Event log tab
+    - Delivery log tab
+    - Advanced filters
+    - Export button
 
 ### Integration Tasks
 
@@ -451,21 +451,21 @@ curl -X POST http://localhost:5173/api/admin/notifications/test \
 
 ```svelte
 <script lang="ts">
-  import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
-  import { onMount } from 'svelte';
+	import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
+	import { onMount } from 'svelte';
 
-  let overview = $state(null);
+	let overview = $state(null);
 
-  onMount(async () => {
-    overview = await notificationAnalyticsService.getOverview('7d');
-  });
+	onMount(async () => {
+		overview = await notificationAnalyticsService.getOverview('7d');
+	});
 </script>
 
 {#if overview}
-  <div>
-    <h2>Total Sent (24h): {overview.total_sent}</h2>
-    <p>Success Rate: {overview.delivery_success_rate}%</p>
-  </div>
+	<div>
+		<h2>Total Sent (24h): {overview.total_sent}</h2>
+		<p>Success Rate: {overview.delivery_success_rate}%</p>
+	</div>
 {/if}
 ```
 
