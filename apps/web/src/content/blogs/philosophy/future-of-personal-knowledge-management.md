@@ -27,7 +27,6 @@ excerpt: "Most knowledge management is productivity theater—80% of notes are n
 pic: 'knowledge-management-future'
 ---
 
-
 Here's the paradox of modern productivity: we have more tools than ever for capturing our thoughts, yet most of us can't find what we wrote last week. We text ourselves ideas while driving. Email ourselves screenshots of inspiration. Save bookmarks we'll never revisit. Create elaborate folder systems we abandon by Tuesday.
 
 We're drowning in notes we'll never read again.

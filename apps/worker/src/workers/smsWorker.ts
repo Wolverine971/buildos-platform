@@ -104,7 +104,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
         // Track cancelled metrics (non-blocking)
         smsMetricsService
           .recordCancelled(job.data.user_id, scheduled_sms_id, "User cancelled")
-          .catch((err) =>
+          .catch((err: unknown) =>
             console.error(
               "[SMS Worker] Error tracking cancelled metrics:",
               err,
@@ -326,7 +326,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
     // Track sent metrics (non-blocking)
     smsMetricsService
       .recordSent(job.data.user_id, message_id, twilioMessage.sid)
-      .catch((err) =>
+      .catch((err: unknown) =>
         console.error("[SMS Worker] Error tracking sent metrics:", err),
       );
 
@@ -396,7 +396,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
     // Track failed metrics (non-blocking)
     smsMetricsService
       .recordFailed(job.data.user_id, message_id, error.message)
-      .catch((err) =>
+      .catch((err: unknown) =>
         console.error("[SMS Worker] Error tracking failed metrics:", err),
       );
 

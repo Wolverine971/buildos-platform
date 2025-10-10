@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --sourcemap",
+    "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "build:types": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "dev": "tsup src/index.ts --format cjs,esm --sourcemap --watch",
     "clean": "rm -rf dist .turbo",

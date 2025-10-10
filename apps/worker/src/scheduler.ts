@@ -680,13 +680,20 @@ async function checkSMSAlerts() {
       console.log(
         `🚨 [SMS Alerts] ${triggeredAlerts.length} alert(s) triggered:`,
       );
-      triggeredAlerts.forEach((alert) => {
-        console.log(
-          `   - ${alert.severity.toUpperCase()}: ${alert.alert_type}`,
-        );
-        console.log(`     Message: ${alert.message}`);
-        console.log(`     Channel: ${alert.notification_channel}`);
-      });
+      triggeredAlerts.forEach(
+        (alert: {
+          severity: string;
+          alert_type: string;
+          message: string;
+          notification_channel: string;
+        }) => {
+          console.log(
+            `   - ${alert.severity.toUpperCase()}: ${alert.alert_type}`,
+          );
+          console.log(`     Message: ${alert.message}`);
+          console.log(`     Channel: ${alert.notification_channel}`);
+        },
+      );
     }
 
     console.log("✅ [SMS Alerts] Alert check completed successfully");
