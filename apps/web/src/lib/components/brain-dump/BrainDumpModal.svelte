@@ -1362,11 +1362,21 @@
 		>
 			<div class="flex items-center">
 				<div
-					class="p-2 bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded-xl mr-3"
+					class="p-1.5 bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded-xl mr-3 overflow-hidden"
 					data-brain-dump-indicator={isOpen ? true : undefined}
 					style={isOpen ? '--brain-dump-indicator-name: brain-dump-indicator' : ''}
 				>
-					<div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+					<!-- brain-bolt animation video -->
+					{#if isOpen}
+						<video
+							src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
+							autoplay
+							loop
+							muted
+							playsinline
+							class="w-8 h-8 rounded-lg"
+						></video>
+					{/if}
 				</div>
 				<div>
 					<h2 class="text-xl font-bold text-gray-900 dark:text-white">Brain Dump</h2>

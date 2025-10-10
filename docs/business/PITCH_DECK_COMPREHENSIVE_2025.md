@@ -4,7 +4,7 @@
 
 **Last Updated**: October 9, 2025
 **Prepared For**: Investor Meetings & Fundraising
-**Round**: Pre-Seed / Seed ($2-5M)
+**Round**: Pre-Seed / Seed ($1-5M)
 
 ---
 
@@ -359,16 +359,19 @@ _Transforming scattered thoughts into organized action_
 ### 1. Voice is Becoming Habit-Forming
 
 **What's happening:**
+
 - Voice AI is having its breakthrough moment (Advanced Voice Mode, Gemini Live)
 - Talking to AI is becoming as natural as texting
 - It's habit-forming — once people start, they don't stop
 
 **Why it matters:**
+
 - Humans think faster than they type
 - Voice lowers friction to near-zero
 - This changes what's possible for productivity tools
 
 **Our advantage:**
+
 - We're building voice-native brain dumping from day one
 - Not retrofitting voice onto old architecture
 
@@ -377,16 +380,19 @@ _Transforming scattered thoughts into organized action_
 ### 2. Context Engineering is Misunderstood
 
 **What most people don't understand:**
+
 - Everyone's focused on what AI agents can DO
 - But AI can't help without the right CONTEXT
 - Context engineering — understanding the user first — is way more important than agents taking actions
 
 **What we're doing differently:**
+
 - We focus on understanding the user FIRST, then offering advice
 - We engineer context at a granular level — every brain dump compounds
 - This enables us to make the AI extremely tailored to each user
 
 **Why it matters:**
+
 - This is the insight everyone else is missing
 - You need properly engineered context for AI to truly help with complex work
 - This is what creates our moat
@@ -396,16 +402,19 @@ _Transforming scattered thoughts into organized action_
 ### 3. A Starving Market Getting Bigger
 
 **Who needs this:**
+
 - ADHD community is desperate for solutions that work how they think
 - As attention spans get shorter, more people face similar challenges
 - Social media and constant notifications have created "ADHD-like" symptoms in everyone
 
 **Why it matters:**
+
 - We're not creating demand — we're fulfilling desperate need
 - Starting with ADHD gives us a passionate beachhead
 - Market is expanding as attention economy intensifies
 
 **The numbers:**
+
 - 15M+ adults diagnosed with ADHD in US
 - 200M+ knowledge workers globally feeling overwhelmed
 - Market growing every year as attention spans shrink
@@ -415,16 +424,15 @@ _Transforming scattered thoughts into organized action_
 ### The Convergence
 
 **Voice makes input frictionless**
-+
-**Context engineering (done right) makes AI actually useful**
-+
-**A growing, desperate market**
-=
-**A unique window for BuildOS**
+
+- **Context engineering (done right) makes AI actually useful**
+- # **A growing, desperate market**
+  **A unique window for BuildOS**
 
 ### Why This Creates Opportunity
 
 **We're not saying we're the best. We're saying:**
+
 - There's a pattern emerging that others haven't connected yet
 - We have a 12-18 month window before everyone figures this out
 - We're building at the convergence point of these three trends
@@ -473,14 +481,17 @@ _Transforming scattered thoughts into organized action_
 ### What We're Building NOW
 
 **1. User Context Moat** (compounds over time)
+
 - Every brain dump makes switching harder
 - Context accumulation is the lock-in
 
 **2. Community Trust** (can't be bought)
+
 - ADHD community loyalty is fierce
 - Founder authenticity matters
 
 **3. AI-Native Architecture** (requires ground-up rebuild)
+
 - Incumbents trapped in old data models
 - We're built for AI from day 1
 
@@ -495,7 +506,7 @@ _Transforming scattered thoughts into organized action_
 
 ---
 
-## Slide 10: 12-Month Vision (If Funded)
+## Slide 10: The Next 6-12 Months (If Funded)
 
 ### Visual Layout
 
@@ -503,67 +514,82 @@ _Transforming scattered thoughts into organized action_
 
 ### Copy
 
-**WHAT $2M GETS US**
+**WHAT $1M GETS US**
+
+### Next Milestone (6 Months)
+
+**Core Focus: Validate & Ship V1.0**
+
+- **Validate core use case** with engaged user base
+- **Grow signups & early paid subscribers** (target: 500-1,000 paying)
+- **Complete onboarding, analytics, and activation loops**
+- **Build GTM motion** around strongest user segments
 
 ### Immediate Impact (Month 1-3)
 
-- Enable cofounder (Zach) to quit job and work full-time
-- Hire 2 full-stack engineers
-- **Build Project War Room** (thought partnership feature)
-  - Take projects to a "War Room" for deep exploration
-  - Mock out scenarios with AI
-  - Like having a consultant walk you through your project
-- Launch sharing and collaboration features
+- Support founder salary + 1 strong full-stack engineer
+- **Ship V1.0** (MVP finalization)
+  - Dial in notifications and daily briefs
+  - Optimize brain dump → organization flow
+  - Payment system launch ($20/mo tier)
+- Marketing & distribution experiments (find what works)
 
 ### Growth Targets
 
-**Month 3 (January 2026)**
-- **1,000 paying subscribers**
-- **$20-25K MRR**
-- Project War Room feature live
+**Month 3 (March 2026)**
 
-**Month 6 (April 2026)**
-- **2,500 paying subscribers**
-- **$50K MRR** ($600K ARR)
-- Product-market fit validated
+- **500+ engaged users**
+- **100-200 paying subscribers**
+- V1.0 shipped and stable
+- Core activation loops working
 
-**Month 12 (October 2026)**
-- **Expanding beyond ADHD** to broader market
-- **$50K+ MRR sustained**
-- **Clear path to Series A** or profitability
+**Month 6 (June 2026)**
+
+- **1,000+ engaged users**
+- **500-1,000 paying subscribers**
+- **$10-20K MRR**
+- Product-market fit signals validated
+
+**Month 12 (December 2026)**
+
+- **Scaling what works**
+- **$25-40K MRR**
+- **Clear path to Series A** or continue bootstrapping
 
 ### Product Roadmap
 
-**Q4 2025**
-- Dialing in notifications
-- Project War Room foundation
-- Payment system launch ($20/mo tier)
+**Q4 2025 - Q1 2026**
 
-**Q1 2026**
-- Collaboration features
-- iOS app development
+- Ship V1.0 (core experience dialed in)
+- Notification & accountability features
+- Payment system launch
 - Voice input optimization
 
 **Q2 2026**
-- BuildOS MCP (Model Context Protocol)
-- Other AI agents can access BuildOS context
-- Integrations with popular tools
+
+- Project War Room foundation (thought partnership)
+- Sharing and collaboration features
+- iOS app development begins
 
 **Q3-Q4 2026**
+
+- BuildOS MCP (Model Context Protocol) exploration
 - Scale what's working
-- Series A preparation or path to profitability
+- Evaluate Series A or profitability path
 
-### Use of Funds ($2M)
+### Use of Funds ($1M)
 
-- **50% Team** ($1M) — Cofounder salary, 2 engineers, designers as needed
-- **30% Product** ($600K) — Project War Room, iOS, rapid experimentation
-- **20% Growth & Operations** ($400K) — Marketing, tools, legal, runway
+- **60% Team** ($600K) — Founder salary, 1 engineer, contract design/UX as needed
+- **25% Product Development** ($250K) — V1.0 completion, infrastructure, rapid experimentation
+- **15% Growth & Operations** ($150K) — Marketing experiments, tools, legal, buffer
+
+**Burn Rate**: ~$30K/month → **12-18 month runway**
 
 ### Speaker Notes
 
-- "$2M gives us 30 months of focused execution."
-- "We're targeting 1,000 subscribers in 3 months, 2,500 by month 6."
-- "Stay lean, move fast, find PMF before scaling team."
+- "$1M gives us 12-18 months of focused execution to validate PMF."
+- "We're staying lean: founder + 1 engineer to ship V1.0 and find what works."
+- "Targeting 500-1,000 paying subscribers in 6 months to prove the model."
 
 ---
 
@@ -578,21 +604,32 @@ _Transforming scattered thoughts into organized action_
 
 **THE INVESTMENT OPPORTUNITY**
 
-### Seeking: $2M Pre-Seed / Seed Round
+### Seeking: $1M Pre-Seed / Seed Round
 
 **What This Gets You**
 
-- **Ownership**: 10% equity (pre-money: ~$18M)
-- **Timeline**: 30-month runway to scale
+- **Ownership**: ~7-10% equity (pre-money: ~$10-14M)
+- **Timeline**: 12-18 month runway to validate PMF
 - **Board Seat**: 1 investor board seat available
 - **Advisory**: Quarterly strategy sessions
 
+**Valuation is flexible — we're focused on long-term partnership fit.**
+
 **Financial Structure**
 
-- **Burn rate**: ~$40K/month (grows gradually with hiring)
-- **Target Month 6**: 2,500 subscribers = $50K MRR
+- **Burn rate**: ~$30K/month → 12-18 month runway
+- **Target Month 6**: 500-1,000 paying subscribers = $10-20K MRR
 - **Payback period**: 2 months at scale
 - **LTV/CAC**: 45:1 (strong unit economics)
+
+### Next Milestone (6 Months)
+
+**Core Focus: Validate & Ship V1.0**
+
+- Validate core use case with engaged user base
+- Grow signups & early paid subscribers
+- Complete onboarding, analytics, and activation loops
+- Build GTM motion around strongest user segments
 
 ### Preferred Investor Profile
 
@@ -604,17 +641,20 @@ _Transforming scattered thoughts into organized action_
 ✓ **Patient Capital** — You're thinking 10 years, not 2
 
 **Bonus Points:**
+
 - Experience with productivity, AI, or dev tools
 - Understanding of LLM ecosystem
 - Personal experience with ADHD or productivity challenges
 
+**We're flexible on round structure (SAFE or Priced) and valuation to align with long-term partners who believe in the vision.**
+
 ### The Deal Terms
 
 - **Security**: SAFE or Priced Round (flexible)
-- **Valuation**: ~$18M pre-money (10% for $2M)
-- **Minimum Check**: $100K
-- **Lead Preferred**: Yes ($500K+ check)
-- **Timeline**: Close by Q1 2026
+- **Valuation**: ~$10-14M pre-money (~7-10% for $1M)
+- **Minimum Check**: $50K
+- **Lead Preferred**: Yes ($250K+ check)
+- **Timeline**: Target close by Q4 2025 (December)
 
 ### Current Cap Table
 
@@ -626,16 +666,17 @@ _Transforming scattered thoughts into organized action_
 
 ### Why Now is the Best Entry Point
 
-- **Early stage** (before full PMF validation increases valuation)
-- **Clear market need** (83 signups at $3 CAC)
-- **Technical foundation built** (product works, ready to scale)
+- **Early stage** (pre-PMF validation, best valuation opportunity)
+- **Clear market need** (83 signups at $3 CAC proves demand)
+- **Technical foundation built** (product works, ready to ship V1.0)
 - **Timing window** (12-18 months before market gets crowded)
-- **30-month runway** (time to find PMF and scale)
+- **Lean & focused** (founder + 1 engineer to validate and scale)
 
 ### Speaker Notes
 
-- "We're raising to get the RIGHT partner, not just money."
-- "83 signups at $3 CAC proves demand exists."
+- "We're raising $1M to get the RIGHT partner and validate PMF over the next 12-18 months."
+- "Valuation is flexible — we care more about finding long-term aligned partners."
+- "Target close by December 2025 so we can hit the ground running in Q1 2026."
 - "If you believe AI-native productivity tools will win, this is your entry point."
 
 ---
@@ -674,6 +715,7 @@ _Become the Context Checkpoint for All AI Agents_
 - We become the source of truth for user context across the AI ecosystem
 
 **Why this matters:**
+
 - AI agents can DO things, but they need to UNDERSTAND you first
 - BuildOS becomes the infrastructure layer for human-AI collaboration
 - We're not just a productivity tool — we're the context layer for the AI age
@@ -687,6 +729,7 @@ _Enable the Creativity Renaissance_
 - AI that's always with you, ready to help, because it actually understands you
 
 **How we're getting there:**
+
 - **Right market** (ADHD beachhead → everyone)
 - **Right strategy** (context engineering first, actions second)
 - **Right timing** (voice + context + desperate need converging now)
@@ -735,6 +778,7 @@ _Enable the Creativity Renaissance_
 **This is bigger than organizing tasks.**
 
 This is about:
+
 - Building the missing infrastructure layer for human-AI collaboration
 - Empowering neurodivergent minds to change the world
 - Creating the creativity renaissance that shortens idea-to-execution time to near-zero
@@ -760,21 +804,25 @@ This is about:
 **Why There's Room for Us**
 
 **Traditional Tools (Notion, Linear)**
+
 - Built for manual input, adding AI features after
 - Complex systems getting more complex
 - Can't easily rebuild architecture
 
 **AI Startups (Agent-focused)**
+
 - Focused on what AI can DO
 - Missing the context engineering insight
 - Automation over understanding
 
 **General AI (ChatGPT)**
+
 - General AI, not productivity-focused
 - No context persistence
 - No execution layer
 
 **Our Position**
+
 - AI-native from day one
 - Context engineering first, actions second
 - Starting with starving market (ADHD)
@@ -861,15 +909,18 @@ This is about:
 ## Contact & Next Steps
 
 **DJ Wayne**
+
 - Email: dj@build-os.com
 - Twitter: @djwayne3
 - LinkedIn: linkedin.com/in/djwayne
 
 **Zach Tyler**
+
 - Email: zach@build-os.com
 - LinkedIn: linkedin.com/in/zach-tyler
 
 **Company**
+
 - Website: build-os.com
 - Demo: build-os.com/demo
 
