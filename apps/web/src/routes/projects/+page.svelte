@@ -173,7 +173,7 @@
 		},
 		{
 			id: 'briefs',
-			label: 'Daily Brief History',
+			label: 'Daily Briefs',
 			icon: FileText,
 			count: briefsLoaded ? projectBriefs.length : undefined
 		}
@@ -522,16 +522,16 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-		<!-- Page header with custom button group -->
-		<div class="mb-8">
-			<!-- Modified header section with both buttons -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+	<div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+		<!-- Page header - Apple-style refined -->
+		<div class="mb-6 sm:mb-8">
+			<!-- Header section with improved spacing -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
 				<div>
-					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+					<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight">
 						Projects
 					</h1>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 						{#if projectsLoaded}
 							{projects.length} active {projects.length === 1
 								? 'project'

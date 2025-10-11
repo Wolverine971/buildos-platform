@@ -644,9 +644,9 @@
 <main
 	class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors"
 >
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
+	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
 		<!-- Header Section with Apple-style typography -->
-		<header class="mb-8 sm:mb-10">
+		<header class="mb-4 sm:mb-6">
 			<h1
 				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent"
 			>
@@ -662,7 +662,7 @@
 		<!-- Error State -->
 		{#if dashboardError}
 			<div
-				class="mb-6 sm:mb-8 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 sm:p-6 border border-red-200 dark:border-red-800 transition-colors"
+				class="mb-4 sm:mb-6 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 sm:p-6 border border-red-200 dark:border-red-800 transition-colors"
 			>
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 dark:text-red-400 mx-auto mb-3" />
@@ -685,7 +685,7 @@
 		{:else if initialData}
 			<!-- Brain Dump Card for First-Time Users -->
 			{#if showBrainDumpCard}
-				<section class="mb-6 sm:mb-8">
+				<section class="mb-4 sm:mb-6">
 					<FirstTimeBrainDumpCard
 						isCompact={isCompactBrainDumpCard}
 						on:startBrainDump={handleStartBrainDump}
@@ -695,7 +695,7 @@
 
 			<!-- Quick Actions - Only show if bottom sections are loaded and there's a daily brief -->
 			{#if bottomSectionsLoaded && todaysBrief && initialData?.activeProjects && displayMode !== 'first-time'}
-				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 					<!-- Daily Brief -->
 					<DailyBriefCard brief={todaysBrief} on:openBrief={handleOpenBrief} />
 				</section>
@@ -704,7 +704,7 @@
 			<!-- Welcome Message with modern gradient -->
 			{#if showWelcomeMessages && primaryCTA && displayMode !== 'first-time'}
 				<div
-					class="mb-6 sm:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
+					class="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 				>
 					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 						<div class="flex-1">
@@ -731,7 +731,7 @@
 
 			<!-- Nudge Cards -->
 			{#if nudgeCards?.length}
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 sm:mb-8">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
 					{#each nudgeCards as card}
 						<div
 							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
@@ -785,7 +785,7 @@
 
 				<!-- Desktop: Grid view -->
 				<section
-					class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-6 sm:mb-8"
+					class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
 				>
 					{#key pastDueTasks}
 						<TaskDetailsCard
@@ -822,7 +822,7 @@
 
 			<!-- Weekly Calendar -->
 			{#if showWeeklyCalendar && weeklyTasks && weeklyTasks.length > 0}
-				<section class="mb-6 sm:mb-8">
+				<section class="mb-4 sm:mb-6">
 					{#key weeklyTasksByDate}
 						<WeeklyTaskCalendar
 							tasksByDate={weeklyTasksByDate}
@@ -835,7 +835,7 @@
 
 			<!-- Stats Grid -->
 			{#if showStatsGrid}
-				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 					<!-- Weekly Progress with glass effect -->
 					<div
 						class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
@@ -950,13 +950,13 @@
 			<!-- Lazy loaded sections -->
 			{#if showLazyLoadedSections && bottomSectionsLoaded}
 				{#if BraindumpWeekView}
-					<section class="mb-6 sm:mb-8">
+					<section class="mb-4 sm:mb-6">
 						<svelte:component this={BraindumpWeekView} data={bottomSectionsData} />
 					</section>
 				{/if}
 
 				{#if PhaseCalendarView}
-					<section class="mb-6 sm:mb-8">
+					<section class="mb-4 sm:mb-6">
 						<svelte:component this={PhaseCalendarView} data={bottomSectionsData} />
 					</section>
 				{/if}

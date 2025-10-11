@@ -201,7 +201,7 @@
 		}
 
 		// Validate tab parameter
-		const validTabs = ['overview', 'tasks', 'notes', 'briefs', 'synthesis'];
+		const validTabs = ['overview', 'tasks', 'notes', 'briefs', 'synthesis', 'braindumps'];
 		if (!validTabs.includes(tabParam)) {
 			console.warn('[Page] Invalid tab parameter:', tabParam);
 			clearTabQueryParams();
@@ -308,6 +308,7 @@
 	let NotesSection = $state<any>(null);
 	let ProjectSynthesis = $state<any>(null);
 	let PhasesSection = $state<any>(null);
+	let BraindumpsSection = $state<any>(null);
 
 	// Component loading states - must be reactive in Svelte 5
 	let loadingComponents = $state<Record<string, boolean>>({});
@@ -340,6 +341,11 @@
 				case 'PhasesSection':
 					const module = await import('$lib/components/project/PhasesSection.svelte');
 					PhasesSection = module.default;
+					break;
+				case 'BraindumpsSection':
+					BraindumpsSection = (
+						await import('$lib/components/project/BraindumpsSection.svelte')
+					).default;
 					break;
 			}
 		} catch (error) {
@@ -406,6 +412,8 @@
 			case 'synthesis':
 				// Synthesis is special - check both loading state and content
 				return loadingStates.synthesis === 'success' || synthesis !== null;
+			case 'braindumps':
+				return loadingStates.braindumps === 'success';
 			default:
 				return false;
 		}
@@ -461,7 +469,8 @@
 								tasks: 'TasksList',
 								notes: 'NotesSection',
 								synthesis: 'ProjectSynthesis',
-								overview: 'PhasesSection'
+								overview: 'PhasesSection',
+								braindumps: 'BraindumpsSection'
 							};
 
 							const componentName =
@@ -485,6 +494,14 @@
 									await loadDataForTab('briefs');
 								}
 							}
+
+							// For braindumps, load data when tab is activated
+							if (currentTab === 'braindumps') {
+								const hasExistingData = loadingStates.braindumps === 'success';
+								if (!hasExistingData) {
+									await projectStoreV2.loadBraindumps();
+								}
+							}
 						} catch (error) {
 							console.error('[Page] Error loading tab:', currentTab, error);
 						}
@@ -500,7 +517,8 @@
 			tasks: 'TasksList',
 			notes: 'NotesSection',
 			synthesis: 'ProjectSynthesis',
-			overview: 'PhasesSection'
+			overview: 'PhasesSection',
+			braindumps: 'BraindumpsSection'
 		};
 
 		const componentName = componentMap[tab as keyof typeof componentMap];
@@ -952,6 +970,51 @@
 		toastService.success('Tasks scheduled successfully');
 	}
 
+	// Braindump handlers
+	function handleOpenBraindump(braindump: any) {
+		// Open braindump in modal or navigate to detail page
+		console.log('[Page] Opening braindump:', braindump.id);
+		// TODO: Implement braindump detail modal if needed
+	}
+
+	async function handleDeleteBraindump(braindumpId: string) {
+		if (!project?.id) return;
+
+		// Optimistic delete
+		const previousBraindumps = storeState.braindumps;
+		projectStoreV2.updateStoreState({
+			braindumps: previousBraindumps?.filter((bd) => bd.id !== braindumpId) || null
+		});
+
+		try {
+			const response = await fetch(`/api/braindumps/${braindumpId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to delete braindump');
+			}
+
+			toastService.success('Brain dump deleted');
+		} catch (error) {
+			// Rollback on error
+			projectStoreV2.updateStoreState({
+				braindumps: previousBraindumps
+			});
+
+			toastService.error('Failed to delete brain dump');
+			console.error('Error deleting braindump:', error);
+		}
+	}
+
+	function handleTaskClick(taskId: string) {
+		// Find the task and open it in the task modal
+		const task = tasks?.find((t) => t.id === taskId);
+		if (task) {
+			modalStore.open('task', task);
+		}
+	}
+
 	// Tab counts from store data using Svelte 5 runes
 	// These are already derived stores from projectStoreV2, so we can access them directly with $
 	let tabCounts = $derived.by(() => {
@@ -967,7 +1030,8 @@
 			doneTasks: completedTasksList?.length || 0,
 			phases: phases?.length || 0,
 			scheduled: scheduledTasksList?.length || 0,
-			briefs: briefs?.length || 0
+			briefs: briefs?.length || 0,
+			braindumps: storeState.braindumps?.length || 0
 		};
 	});
 
@@ -1068,7 +1132,8 @@
 			tasks: 'TasksList',
 			notes: 'NotesSection',
 			synthesis: 'ProjectSynthesis',
-			overview: 'PhasesSection'
+			overview: 'PhasesSection',
+			braindumps: 'BraindumpsSection'
 		};
 		return componentMap[tab as keyof typeof componentMap] || '';
 	}
@@ -1085,6 +1150,8 @@
 				return ProjectSynthesis !== null;
 			case 'briefs':
 				return true; // No lazy loading for briefs
+			case 'braindumps':
+				return BraindumpsSection !== null;
 			default:
 				return true;
 		}
@@ -1177,6 +1244,15 @@
 			}
 			PhasesSection = null;
 
+			if (BraindumpsSection && typeof BraindumpsSection.cleanup === 'function') {
+				try {
+					BraindumpsSection.cleanup();
+				} catch (error) {
+					console.warn('[Page] BraindumpsSection cleanup error:', error);
+				}
+			}
+			BraindumpsSection = null;
+
 			// Reset initialization state
 			storeInitialized = false;
 
@@ -1244,6 +1320,7 @@
 				NotesSection = null;
 				ProjectSynthesis = null;
 				PhasesSection = null;
+				BraindumpsSection = null;
 
 				// Reset initialization flags
 				storeInitialized = false;
@@ -1532,6 +1609,25 @@
 									onDeleteSynthesis={handleDeleteSynthesis}
 									onGenerationFinished={() =>
 										dataService?.loadSynthesis({ force: true })}
+								/>
+							{:else}
+								<div class="flex items-center justify-center py-16">
+									<LoadingSkeleton message={loadingMessage} height="200px" />
+								</div>
+							{/if}
+						{/if}
+					</div>
+
+					<!-- Braindumps Tab -->
+					<div class:hidden={activeTab !== 'braindumps'}>
+						{#if activeTab === 'braindumps'}
+							{#if shouldShowSkeleton && loadingStates.braindumps === 'loading'}
+								<LoadingSkeleton message="Loading brain dumps..." height="300px" />
+							{:else if BraindumpsSection}
+								<BraindumpsSection
+									onOpenBraindump={handleOpenBraindump}
+									onDeleteBraindump={handleDeleteBraindump}
+									onTaskClick={handleTaskClick}
 								/>
 							{:else}
 								<div class="flex items-center justify-center py-16">

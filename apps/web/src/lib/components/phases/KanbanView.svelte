@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/phases/KanbanView.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onDestroy } from 'svelte';
+	import { createEventDispatcher, onDestroy, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { LayoutGrid } from 'lucide-svelte';
@@ -8,7 +8,6 @@
 	import RecurringTasksSection from './RecurringTasksSection.svelte';
 	import PhaseCard from './PhaseCard.svelte';
 	import { projectStoreV2 } from '$lib/stores/project.store';
-	import { get } from 'svelte/store';
 
 	let {
 		project,

@@ -257,7 +257,7 @@
 	class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
 >
 	<!-- Header -->
-	<div class="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-700">
+	<div class="p-2 sm:p-4 border-b border-gray-100 dark:border-gray-700">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
 			<div class="flex items-center gap-4">
 				<div
@@ -347,7 +347,7 @@
 	</div>
 
 	<!-- Content -->
-	<div class="p-4 sm:p-6">
+	<div class="p-2 sm:p-4">
 		{#if totalPhases === 0}
 			<!-- Empty state -->
 			<div class="text-center py-8 sm:py-12">
@@ -376,7 +376,7 @@
 						{@const colorConfig = getPhaseColorConfig(phase)}
 						<button
 							on:click={() => handlePhaseClick(phase)}
-							class="w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] min-h-[88px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700"
+							class="w-full text-left p-2 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] min-h-[80px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700"
 							style={active
 								? `border-color: ${colorConfig.hex}; box-shadow: 0 0 0 1px ${colorConfig.hex}20;`
 								: ''}

@@ -70,100 +70,100 @@
 </script>
 
 <div
-	class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-5 sm:p-6 backdrop-blur-sm hover:shadow-md transition-shadow"
+	class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-5 md:p-6 backdrop-blur-sm hover:shadow-md transition-all"
 >
 	{#if brief}
-		<!-- Brief Available - Ultra Compact Mobile View -->
-		<div class="space-y-2 sm:space-y-3">
-			<!-- Header with icon and time -->
-			<div class="flex items-start justify-between">
-				<div class="flex items-center flex-1 min-w-0">
-					<Calendar
-						class="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0"
-					/>
+		<!-- Brief Available - Clean Mobile-First Design -->
+		<div class="space-y-3 sm:space-y-4">
+			<!-- Header - Simplified for mobile -->
+			<div class="flex items-start justify-between gap-2">
+				<div class="flex items-start flex-1 min-w-0">
+					<div
+						class="p-1.5 sm:p-2 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg sm:rounded-xl mr-2 sm:mr-3 flex-shrink-0"
+					>
+						<Calendar
+							class="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400"
+						/>
+					</div>
 					<div class="flex-1 min-w-0">
 						<h2
-							class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 dark:text-white truncate"
+							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white tracking-tight"
 						>
 							Daily Brief
 						</h2>
 						<p
-							class="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-0.5"
+							class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center mt-0.5 sm:mt-1"
 						>
-							<Clock class="mr-1 h-3 w-3" />
-							{formatTimeOnly(brief.created_at)}
+							<Clock class="mr-1 h-3 w-3 flex-shrink-0" />
+							<span>{formatTimeOnly(brief.created_at)}</span>
 						</p>
 					</div>
 				</div>
 
-				<!-- Quick stats badges -->
-				{#if quickStats && (quickStats.priorities > 0 || quickStats.tasks > 0)}
-					<div class="flex items-center gap-2 flex-shrink-0">
-						{#if quickStats.priorities > 0}
-							<span
-								class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700/50"
-							>
-								{quickStats.priorities} priorities
-							</span>
-						{/if}
-					</div>
+				<!-- Quick stats badge - more compact -->
+				{#if quickStats && quickStats.priorities > 0}
+					<span
+						class="inline-flex items-center px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50 whitespace-nowrap"
+					>
+						{quickStats.priorities}
+						<span class="hidden sm:inline ml-1">priorities</span>
+					</span>
 				{/if}
 			</div>
 
-			<!-- Brief preview with markdown rendering -->
+			<!-- Brief preview - optimized typography for mobile -->
 			<div
 				class="prose prose-sm dark:prose-invert max-w-none line-clamp-3 leading-relaxed
-				prose-headings:text-sm prose-headings:font-semibold prose-headings:text-gray-900 dark:prose-headings:text-white
-				prose-p:text-xs sm:prose-p:text-sm prose-p:text-gray-600 dark:prose-p:text-gray-400 prose-p:mb-1
-				prose-li:text-xs sm:prose-li:text-sm prose-li:text-gray-600 dark:prose-li:text-gray-400 prose-li:mb-0.5
-				prose-strong:text-gray-700 dark:prose-strong:text-gray-300 prose-strong:font-semibold
-				prose-ul:mt-1 prose-ul:mb-1 prose-ol:mt-1 prose-ol:mb-1
+				prose-headings:text-sm prose-headings:font-semibold prose-headings:text-gray-900 dark:prose-headings:text-white prose-headings:tracking-tight
+				prose-p:text-xs sm:prose-p:text-sm prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-p:mb-1 prose-p:leading-relaxed
+				prose-li:text-xs sm:prose-li:text-sm prose-li:text-gray-700 dark:prose-li:text-gray-300 prose-li:mb-0.5
+				prose-strong:text-gray-900 dark:prose-strong:text-white prose-strong:font-semibold
+				prose-ul:mt-1 prose-ul:mb-1 prose-ul:space-y-0.5 prose-ol:mt-1 prose-ol:mb-1
 				prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-400 prose-blockquote:border-gray-300 dark:prose-blockquote:border-gray-600"
 			>
 				{@html renderMarkdown(getBriefPreview(brief.summary_content))}
 			</div>
 
-			<!-- Action button -->
+			<!-- Action button - Apple-like styling -->
 			<Button
 				on:click={openBriefModal}
 				variant="outline"
-				class="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold shadow-sm hover:shadow-md transition-all"
+				class="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm hover:shadow transition-all"
 			>
-				View Full Brief
-				<ArrowRight class="ml-1 h-4 w-4" />
+				<span class="text-sm">View Full Brief</span>
+				<ArrowRight class="ml-1.5 h-4 w-4" />
 			</Button>
 		</div>
 	{:else}
-		<!-- No Brief - Compact Prompt -->
-		<div class="space-y-2 sm:space-y-3">
-			<!-- Header with Apple-style gradient -->
-			<div class="flex items-center">
+		<!-- No Brief - Clean Prompt with Apple Aesthetics -->
+		<div class="space-y-3 sm:space-y-4">
+			<!-- Header with refined gradient -->
+			<div class="flex items-start">
 				<div
-					class="p-2 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl mr-3"
+					class="p-2 sm:p-2.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl mr-3 flex-shrink-0"
 				>
-					<Sparkles class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+					<Sparkles class="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
 				</div>
-				<h2
-					class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white tracking-tight"
-				>
-					Ready to start your day?
-				</h2>
+				<div>
+					<h2
+						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white tracking-tight leading-tight"
+					>
+						Ready to start your day?
+					</h2>
+					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-1">
+						Generate your AI-powered daily brief with priorities and insights
+					</p>
+				</div>
 			</div>
 
-			<!-- Prompt text with better typography -->
-			<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-				Generate your AI-powered daily brief with priorities and insights tailored to your
-				projects
-			</p>
-
-			<!-- Generate button with Apple-style gradient -->
+			<!-- Generate button - refined Apple styling -->
 			<Button
 				on:click={navigateToBriefs}
 				variant="primary"
-				class="w-full mt-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+				class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
 				icon={Sparkles}
 			>
-				Generate Brief
+				<span class="text-sm">Generate Brief</span>
 			</Button>
 		</div>
 	{/if}

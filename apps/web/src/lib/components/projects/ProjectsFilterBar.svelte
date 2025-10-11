@@ -69,7 +69,6 @@
 		<!-- Filter Controls -->
 		{#if activeTab === 'projects'}
 			<div class="flex items-center space-x-2">
-				<Filter class="w-4 h-4 text-gray-500 dark:text-gray-400" />
 				<Select
 					bind:value={projectFilter}
 					on:change={handleProjectFilterChange}
@@ -99,7 +98,6 @@
 				</Select>
 			</div>
 			<div class="flex items-center space-x-2">
-				<Filter class="w-4 h-4 text-gray-500 dark:text-gray-400" />
 				<Select
 					bind:value={selectedProjectFilter}
 					on:change={handleSelectedProjectChange}

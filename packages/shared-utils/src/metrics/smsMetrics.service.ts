@@ -416,21 +416,36 @@ export class SMSMetricsService {
 
   /**
    * Refresh materialized view (call hourly via cron)
+   *
+   * @deprecated The SMS metrics materialized view was never created in the database.
+   * TODO: Create migration file apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
+   * to implement the full SMS metrics infrastructure including:
+   * - sms_metrics table
+   * - sms_metrics_daily materialized view
+   * - refresh_sms_metrics_daily() RPC function
+   * - sms_alert_thresholds table
+   * - sms_alert_history table
+   *
+   * For now, this method does nothing to avoid calling non-existent database function.
    */
   async refreshMaterializedView(): Promise<void> {
-    try {
-      const { error } = await (this.supabase.rpc as any)(
-        "refresh_sms_metrics_daily",
-      );
-
-      if (error) {
-        throw error;
-      }
-
-      console.log("[SMSMetrics] Materialized view refreshed successfully");
-    } catch (error) {
-      console.error("[SMSMetrics] Error refreshing materialized view:", error);
-    }
+    console.warn(
+      "[SMSMetrics] refreshMaterializedView() called but SMS metrics infrastructure not yet implemented. Skipping."
+    );
+    // Commented out until migration is applied:
+    // try {
+    //   const { error } = await (this.supabase.rpc as any)(
+    //     "refresh_sms_metrics_daily",
+    //   );
+    //
+    //   if (error) {
+    //     throw error;
+    //   }
+    //
+    //   console.log("[SMSMetrics] Materialized view refreshed successfully");
+    // } catch (error) {
+    //   console.error("[SMSMetrics] Error refreshing materialized view:", error);
+    // }
   }
 
   /**
@@ -600,6 +615,9 @@ export const smsMetricsService = {
   getTodayMetrics: (
     ...args: Parameters<SMSMetricsService["getTodayMetrics"]>
   ) => smsMetricsService.instance.getTodayMetrics(...args),
+  /**
+   * @deprecated SMS metrics infrastructure not yet implemented. See SMSMetricsService.refreshMaterializedView()
+   */
   refreshMaterializedView: (
     ...args: Parameters<SMSMetricsService["refreshMaterializedView"]>
   ) => smsMetricsService.instance.refreshMaterializedView(...args),

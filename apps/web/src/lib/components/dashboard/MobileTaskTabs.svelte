@@ -88,10 +88,10 @@
 </script>
 
 <div
-	class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm"
+	class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 sm:p-4 border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm"
 >
 	<!-- Tab buttons with Apple-style design -->
-	<div class="flex gap-1 mb-5 p-1 bg-gray-100 dark:bg-gray-800/50 rounded-xl">
+	<div class="flex gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-800/50 rounded-xl">
 		{#each tabs as tab}
 			<Button
 				on:click={() => (activeTab = tab.id)}
@@ -103,7 +103,10 @@
 				btnType="container"
 				size="sm"
 			>
-				<span>{tab.label}</span>
+				<span class="flex items-center gap-1.5">
+					<span>{tab.label}</span>
+					
+				</span>
 			</Button>
 		{/each}
 	</div>
@@ -137,9 +140,9 @@
 					{@const displayInfo = getTaskDisplayInfo(task)}
 					<Button
 						on:click={() => handleTaskClickInternal(task)}
-						class="w-full text-left bg-gray-50/50 dark:bg-gray-700/30 rounded-xl p-4 border-l-3 {getPriorityColor(
+						class="w-full text-left bg-gray-50/50 dark:bg-gray-700/30 rounded-xl p-3 border-l-3 {getPriorityColor(
 							task.priority
-						)} 
+						)}
 						hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all relative group border border-gray-200/50 dark:border-gray-700/50"
 						variant="ghost"
 						btnType="container"

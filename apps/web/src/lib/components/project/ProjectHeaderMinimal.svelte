@@ -96,20 +96,16 @@
 	let showCustomizeButton = $derived(showCalendarSettings && !hasProjectCalendar);
 
 	// Functions
-	function toggleExpanded(event?: MouseEvent) {
-		// Prevent expansion if clicking on action buttons
-		if (event) {
-			const target = event.target as HTMLElement;
-			// Check if the click is on a button or within the action-buttons area
-			if (
-				target.closest('.action-buttons') ||
-				target.closest('button:not(.header-clickable)')
-			) {
-				return;
-			}
-		}
+	function toggleExpanded() {
 		isExpanded = !isExpanded;
 		localStorage.setItem('projectHeaderExpanded', String(isExpanded));
+	}
+
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			toggleExpanded();
+		}
 	}
 
 	function handleEditContext() {
@@ -237,26 +233,43 @@
 		class="project-header-minimal {isExpanded ? 'expanded' : 'collapsed'}"
 		aria-labelledby="project-title"
 	>
-		<!-- Always Visible Header Bar (clickable to expand) -->
-		<button
-			class="header-bar header-clickable"
-			on:click={toggleExpanded}
-			aria-expanded={isExpanded}
-			aria-controls="header-content"
-			aria-label="{isExpanded ? 'Collapse' : 'Expand'} project details"
-		>
-			<!-- Left side: Project title -->
-			<h1
-				id="project-title"
-				class="project-title"
-				data-project-name
-				style="--project-name: project-name-{project?.id};"
+		<!-- Always Visible Header Bar -->
+		<div class="header-bar">
+			<!-- Left side: Clickable title area with expand button -->
+			<div
+				class="title-section"
+				on:click={toggleExpanded}
+				on:keydown={handleKeyDown}
+				role="button"
+				tabindex="0"
 			>
-				{project?.name}
-			</h1>
+				<h1
+					id="project-title"
+					class="project-title"
+					data-project-name
+					style="--project-name: project-name-{project?.id};"
+				>
+					{project?.name}
+				</h1>
 
-			<!-- Right side: Action buttons (always interactive) -->
-			<div class="action-buttons" on:click|stopPropagation>
+				<!-- Integrated expand button -->
+				<button
+					class="expand-toggle"
+					on:click|stopPropagation={toggleExpanded}
+					aria-label="{isExpanded ? 'Collapse' : 'Expand'} project details"
+					aria-expanded={isExpanded}
+					aria-controls="header-content"
+				>
+					<span class="expand-label">{isExpanded ? 'Less' : 'Details'}</span>
+					<ChevronDown
+						class="expand-icon {isExpanded ? 'rotate-180' : ''}"
+						aria-hidden="true"
+					/>
+				</button>
+			</div>
+
+			<!-- Right side: Action buttons -->
+			<div class="action-buttons">
 				<!-- Desktop buttons -->
 				<div class="hidden sm:flex items-center gap-2">
 					{#if onEdit}
@@ -442,16 +455,6 @@
 						</div>
 					{/if}
 				</div>
-			</div>
-		</button>
-
-		<!-- Subtle dropdown indicator bar -->
-		<div class="dropdown-bar" on:click={toggleExpanded}>
-			<div class="dropdown-indicator">
-				<ChevronDown
-					class="dropdown-arrow {isExpanded ? 'rotate-180' : ''}"
-					aria-hidden="true"
-				/>
 			</div>
 		</div>
 
@@ -673,16 +676,41 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 10px 12px;
-		min-height: 44px;
-		gap: 12px;
+		padding: 12px 16px;
+		min-height: 56px;
+		gap: 16px;
 		width: 100%;
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		color: inherit;
 		position: relative;
+	}
+
+	/* Title section - clickable area */
+	.title-section {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex: 1;
+		cursor: pointer;
+		padding: 4px 0;
+		margin: -4px 0; /* Extend click area */
+		transition: opacity 0.2s ease;
+	}
+
+	.title-section:hover {
+		opacity: 0.8;
+	}
+
+	.title-section:active {
+		opacity: 0.6;
+	}
+
+	.title-section:focus {
+		outline: 2px solid rgb(59 130 246);
+		outline-offset: 2px;
+		border-radius: 8px;
+	}
+
+	.title-section:focus:not(:focus-visible) {
+		outline: none;
 	}
 
 	.project-title {
@@ -692,84 +720,102 @@
 		margin: 0;
 		line-height: 1.2;
 		flex: 1;
+		user-select: none;
 	}
 
 	:global(.dark) .project-title {
 		color: rgb(255 255 255);
 	}
 
-	/* Subtle dropdown bar positioned at bottom */
-	.dropdown-bar {
-		position: absolute;
-		bottom: 0;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 100%;
-		height: 16px;
-		display: flex;
+	/* Integrated expand toggle button - Apple style */
+	.expand-toggle {
+		display: inline-flex;
 		align-items: center;
-		justify-content: center;
-		transition: opacity 0.2s ease;
-		opacity: 0.3;
-		/* pointer-events: none; */
+		gap: 6px;
+		padding: 6px 12px;
+
+		background: rgba(0, 0, 0, 0.04);
+		border: 1px solid rgba(0, 0, 0, 0.06);
+		border-radius: 16px;
+
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: rgb(75 85 99);
+		letter-spacing: -0.01em;
+
 		cursor: pointer;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
-	/* Show more prominently on header hover */
-	.project-header-minimal.collapsed:hover .dropdown-bar {
-		opacity: 0.7;
-	}
-
-	.project-header-minimal.expanded .dropdown-bar {
-		opacity: 0.5;
-	}
-
-	.dropdown-indicator {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 1px 12px;
-		border-radius: 2px;
-		width: 100%;
-		transition: all 0.2s ease;
-
-		/* subtle gradient bottom → top */
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.15), transparent);
-	}
-
-	.dropdown-indicator:hover {
-		/* slightly darker on hover */
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent);
-	}
-
-	/* Dark mode base */
-	:global(.dark) .dropdown-indicator {
-		background: linear-gradient(to top, rgba(255, 255, 255, 0.12), transparent);
-	}
-
-	:global(.dark) .dropdown-indicator:hover {
-		background: linear-gradient(to top, rgba(255, 255, 255, 0.2), transparent);
-	}
-
-	/* Collapsed state still enlarges padding */
-	.project-header-minimal.collapsed:hover .dropdown-indicator {
-		padding: 1px 16px;
-	}
-
-	.dropdown-arrow {
-		width: 10px;
-		height: 10px;
-		color: rgb(107 114 128);
-		transition: transform 0.3s var(--timing-function);
-		opacity: 0.8;
-	}
-
-	:global(.dark) .dropdown-arrow {
+	:global(.dark) .expand-toggle {
+		background: rgba(255, 255, 255, 0.06);
+		border-color: rgba(255, 255, 255, 0.08);
 		color: rgb(156 163 175);
 	}
 
-	.dropdown-arrow.rotate-180 {
+	/* Hover state - subtle lift */
+	.expand-toggle:hover {
+		background: rgba(0, 0, 0, 0.06);
+		border-color: rgba(0, 0, 0, 0.1);
+		color: rgb(17 24 39);
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+	}
+
+	:global(.dark) .expand-toggle:hover {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: rgba(255, 255, 255, 0.12);
+		color: rgb(229 231 235);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Active/pressed state */
+	.expand-toggle:active {
+		transform: translateY(0);
+		transition-duration: 0.1s;
+	}
+
+	/* Focus state for keyboard navigation */
+	.expand-toggle:focus {
+		outline: 2px solid rgb(59 130 246);
+		outline-offset: 2px;
+	}
+
+	.expand-toggle:focus:not(:focus-visible) {
+		outline: none;
+	}
+
+	/* Label text */
+	.expand-label {
+		line-height: 1;
+	}
+
+	/* Chevron icon */
+	.expand-icon {
+		width: 14px;
+		height: 14px;
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		flex-shrink: 0;
+	}
+
+	.expand-icon.rotate-180 {
 		transform: rotate(180deg);
+	}
+
+	/* Mobile: Hide label, icon only */
+	@media (max-width: 640px) {
+		.expand-label {
+			display: none;
+		}
+
+		.expand-toggle {
+			padding: 8px;
+			min-width: 32px;
+			justify-content: center;
+		}
 	}
 
 	.action-buttons {
@@ -901,7 +947,13 @@
 		}
 
 		.header-bar {
-			padding: 8px 16px;
+			padding: 10px 16px;
+			min-height: 48px;
+			gap: 12px;
+		}
+
+		.title-section {
+			gap: 8px;
 		}
 
 		.expandable-content {
@@ -909,7 +961,7 @@
 		}
 
 		.project-title {
-			font-size: 1rem;
+			font-size: 1.125rem;
 		}
 	}
 

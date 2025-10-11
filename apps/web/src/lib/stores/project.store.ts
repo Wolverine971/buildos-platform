@@ -38,6 +38,7 @@ interface ProjectStoreV2State {
 	phases: ProcessedPhase[];
 	briefs: any[];
 	synthesis: any | null;
+	braindumps: any[] | null;
 
 	// Metadata
 	stats: {
@@ -62,6 +63,7 @@ interface ProjectStoreV2State {
 		synthesis: LoadingState;
 		stats: LoadingState;
 		calendar: LoadingState;
+		braindumps: LoadingState;
 	};
 
 	// Error states
@@ -74,6 +76,7 @@ interface ProjectStoreV2State {
 		synthesis: string | null;
 		stats: string | null;
 		calendar: string | null;
+		braindumps: string | null;
 	};
 
 	// UI State
@@ -107,6 +110,7 @@ class ProjectStoreV2 {
 			phases: [],
 			briefs: [],
 			synthesis: null,
+			braindumps: null,
 			stats: {
 				total: 0,
 				completed: 0,
@@ -126,7 +130,8 @@ class ProjectStoreV2 {
 				briefs: 'idle',
 				synthesis: 'idle',
 				stats: 'idle',
-				calendar: 'idle'
+				calendar: 'idle',
+				braindumps: 'idle'
 			},
 			errors: {
 				project: null,
@@ -136,7 +141,8 @@ class ProjectStoreV2 {
 				briefs: null,
 				synthesis: null,
 				stats: null,
-				calendar: null
+				calendar: null,
+				braindumps: null
 			},
 			activeTab: 'overview',
 			selectedFilters: [],
@@ -389,6 +395,38 @@ class ProjectStoreV2 {
 			}
 		} catch (error) {
 			this.setError('stats', error instanceof Error ? error.message : 'Failed to load stats');
+		}
+	}
+
+	async loadBraindumps(force = false): Promise<void> {
+		const state = get(this.store);
+
+		if (!state.project?.id) return;
+
+		if (!force && this.isCacheValid('braindumps', 120000)) return; // 2 minute cache
+		if (state.loadingStates.braindumps === 'loading') return;
+
+		this.updateLoadingState('braindumps', 'loading');
+
+		try {
+			const response = await fetch(`/api/projects/${state.project.id}/braindumps`);
+			if (!response.ok) throw new Error('Failed to fetch braindumps');
+
+			const result = await response.json();
+			const braindumpsList = result.braindumps || [];
+
+			this.store.update((state) => ({
+				...state,
+				braindumps: braindumpsList,
+				loadingStates: { ...state.loadingStates, braindumps: 'success' },
+				errors: { ...state.errors, braindumps: null },
+				lastFetch: { ...state.lastFetch, braindumps: Date.now() }
+			}));
+		} catch (error) {
+			this.setError(
+				'braindumps',
+				error instanceof Error ? error.message : 'Failed to load braindumps'
+			);
 		}
 	}
 
@@ -1133,6 +1171,7 @@ class ProjectStoreV2 {
 			phases: [],
 			briefs: [],
 			synthesis: null,
+			braindumps: null,
 			stats: {
 				total: 0,
 				completed: 0,
@@ -1152,7 +1191,8 @@ class ProjectStoreV2 {
 				briefs: 'idle',
 				synthesis: 'idle',
 				stats: 'idle',
-				calendar: 'idle'
+				calendar: 'idle',
+				braindumps: 'idle'
 			},
 			errors: {
 				project: null,
@@ -1162,7 +1202,8 @@ class ProjectStoreV2 {
 				briefs: null,
 				synthesis: null,
 				stats: null,
-				calendar: null
+				calendar: null,
+				braindumps: null
 			},
 			globalTaskFilters: ['active', 'scheduled', 'overdue', 'recurring'],
 			phaseTaskFilters: {},

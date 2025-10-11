@@ -103,38 +103,25 @@
 
 <a
 	href="/projects/{project.id}"
-	class={`block p-4 ${isArchived ? 'opacity-90' : ''}`}
+	class={`block p-3 sm:p-4 ${isArchived ? 'opacity-90' : ''}`}
 	aria-label={isArchived ? 'View archived project' : undefined}
 >
-	<!-- Header with title, status and edit button -->
-	<div class="flex items-start justify-between mb-2">
-		<div class="flex-1 min-w-0 pr-2">
-			<div class="flex items-center gap-2">
-				<h3
-					class="text-base font-semibold text-gray-900 dark:text-white truncate"
-					data-project-name
-					style="--project-name: project-name-{project.id};"
-				>
-					{project.name || 'Untitled Project'}
-				</h3>
-				<!-- Edit button inline with title -->
-				<Button
-					type="button"
-					on:click={handleEdit}
-					variant="ghost"
-					size="sm"
-					title="Edit project"
-					class="opacity-0 group-hover:opacity-100 transition-opacity"
-				>
-					<Edit3 class="w-3.5 h-3.5" />
-				</Button>
-			</div>
+	<!-- Header with title and status -->
+	<div class="flex items-start justify-between mb-1.5 sm:mb-2">
+		<div class="flex-1 min-w-0 pr-1">
+			<h3
+				class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight"
+				data-project-name
+				style="--project-name: project-name-{project.id};"
+			>
+				{project.name || 'Untitled Project'}
+			</h3>
 		</div>
-		<!-- Status indicator -->
+		<!-- Status indicator - icon only on mobile -->
 		{#if project.status && projectStatusConfig}
-			<div class="flex items-center space-x-1 flex-shrink-0">
-				<svelte:component this={projectStatusConfig} class="w-4 h-4 {projectStatusColor}" />
-				<span class="text-xs font-medium {projectStatusColor} capitalize">
+			<div class="flex items-center space-x-1 flex-shrink-0 ml-1">
+				<svelte:component this={projectStatusConfig} class="w-3.5 h-3.5 sm:w-4 sm:h-4 {projectStatusColor}" />
+				<span class="hidden sm:inline text-xs font-medium {projectStatusColor} capitalize">
 					{projectStatusText}
 				</span>
 			</div>
@@ -143,39 +130,40 @@
 
 	{#if isArchived}
 		<div
-			class="mb-3 flex items-center gap-2 rounded-md border border-dashed border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/40 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300"
+			class="mb-2 flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/40 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-gray-600 dark:text-gray-300"
 		>
-			<Archive class="w-3.5 h-3.5" />
-			<span>Archived project — read only</span>
+			<Archive class="w-3 h-3" />
+			<span class="hidden sm:inline">Archived — read only</span>
+			<span class="sm:hidden">Archived</span>
 		</div>
 	{/if}
 
-	<!-- Description - exactly 2 lines -->
+	<!-- Description - compact on mobile -->
 	{#if project.description}
-		<p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 min-h-[2.5rem]">
+		<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]">
 			{project.description}
 		</p>
 	{:else}
-		<p class="text-sm text-gray-500 dark:text-gray-400 italic mb-3 min-h-[2.5rem]">
+		<p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]">
 			No description
 		</p>
 	{/if}
 
-	<!-- Progress bar and stats in compact layout -->
+	<!-- Progress bar and stats - ultra compact for mobile -->
 	{#if hasTaskStats}
-		<div class="space-y-2">
+		<div class="space-y-1.5 sm:space-y-2">
 			<!-- Progress bar with percentage -->
-			<div class="flex items-center gap-3">
+			<div class="flex items-center gap-2">
 				<div class="flex-1">
-					<div class="flex items-center justify-between text-xs mb-1">
+					<div class="flex items-center justify-between text-[10px] sm:text-xs mb-0.5">
 						<span class="text-gray-500 dark:text-gray-400">Progress</span>
-						<span class="font-medium text-gray-700 dark:text-gray-300">
+						<span class="font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
 							{completionRate}%
 						</span>
 					</div>
-					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
 						<div
-							class="bg-primary-600 dark:bg-primary-500 h-1.5 rounded-full transition-all duration-300"
+							class="bg-primary-600 dark:bg-primary-500 h-1 rounded-full transition-all duration-300"
 							style="width: {completionRate}%"
 						/>
 					</div>
@@ -183,23 +171,23 @@
 			</div>
 
 			<!-- Task stats in compact row -->
-			<div class="flex items-center gap-3 text-xs">
-				<div class="flex items-center gap-1">
-					<CheckCircle2 class="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-					<span class="text-gray-600 dark:text-gray-400">
+			<div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+				<div class="flex items-center gap-0.5 sm:gap-1">
+					<CheckCircle2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 dark:text-green-400" />
+					<span class="text-gray-600 dark:text-gray-400 tabular-nums">
 						{project.taskStats.completed}
 					</span>
 				</div>
-				<div class="flex items-center gap-1">
-					<Clock class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-					<span class="text-gray-600 dark:text-gray-400">
+				<div class="flex items-center gap-0.5 sm:gap-1">
+					<Clock class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
+					<span class="text-gray-600 dark:text-gray-400 tabular-nums">
 						{project.taskStats.active}
 					</span>
 				</div>
 				{#if hasBlockedTasks}
-					<div class="flex items-center gap-1">
-						<AlertCircle class="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-						<span class="text-gray-600 dark:text-gray-400">
+					<div class="flex items-center gap-0.5 sm:gap-1">
+						<AlertCircle class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 dark:text-red-400" />
+						<span class="text-gray-600 dark:text-gray-400 tabular-nums">
 							{project.taskStats.blocked}
 						</span>
 					</div>
@@ -207,41 +195,43 @@
 			</div>
 		</div>
 	{:else}
-		<div class="text-xs text-gray-500 dark:text-gray-400 italic">No tasks yet</div>
+		<div class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">No tasks yet</div>
 	{/if}
 
-	<!-- View Brief Button -->
+	<!-- View Brief Button - compact on mobile -->
 	{#if projectBrief}
-		<div class="mt-3 mb-2">
+		<div class="mt-2 sm:mt-3 mb-1 sm:mb-2">
 			<Button
 				type="button"
 				on:click={handleViewBrief}
 				variant="outline"
 				size="sm"
-				class="w-full text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+				class="w-full text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[10px] sm:text-xs py-1 sm:py-1.5"
 				data-no-pulse
 			>
-				<FileText class="w-3.5 h-3.5 mr-1.5" />
-				View Brief
+				<FileText class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+				<span class="hidden sm:inline">View Brief</span>
+				<span class="sm:hidden">Brief</span>
 			</Button>
 		</div>
 	{/if}
 
-	<!-- Tags in compact layout -->
+	<!-- Tags - ultra compact on mobile -->
 	{#if hasTags}
-		<div class="flex flex-wrap gap-1.5">
-			{#each visibleTags as tag}
+		<div class="flex flex-wrap gap-1">
+			{#each visibleTags.slice(0, 2) as tag}
 				<span
-					class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 truncate max-w-[80px] sm:max-w-none"
+					title={tag}
 				>
 					{tag}
 				</span>
 			{/each}
-			{#if extraTagsCount > 0}
+			{#if hasTags && project.tags.length > 2}
 				<span
-					class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
 				>
-					+{extraTagsCount} more
+					+{project.tags.length - 2}
 				</span>
 			{/if}
 		</div>
@@ -266,7 +256,16 @@
 	}
 
 	/* Ensure consistent height for description area */
+	.min-h-\[2rem\] {
+		min-height: 2rem;
+	}
+
 	.min-h-\[2\.5rem\] {
 		min-height: 2.5rem;
+	}
+
+	/* Tabular numbers for better alignment */
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 </style>

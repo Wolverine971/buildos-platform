@@ -96,7 +96,7 @@
 	class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
 >
 	<!-- Header -->
-	<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+	<div class="p-2 sm:p-4 border-b border-gray-200 dark:border-gray-700">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 			<h2
 				class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
@@ -116,7 +116,7 @@
 	</div>
 
 	<!-- Content -->
-	<div class="p-4 sm:p-6">
+	<div class="p-2 sm:p-4">
 		{#if getTotalTasks() === 0}
 			<!-- Empty state -->
 			<div class="text-center py-8 sm:py-12">

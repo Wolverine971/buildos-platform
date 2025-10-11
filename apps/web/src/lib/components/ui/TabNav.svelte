@@ -44,22 +44,21 @@
 				variant="ghost"
 				size="md"
 				btnType="container"
-				class="border-b-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap rounded-t-lg px-2 sm:px-4 py-2 sm:py-3 focus:ring-0 focus:ring-offset-0 flex-shrink-0 min-w-fit
+				class="border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap rounded-t-lg px-3 sm:px-4 py-2.5 sm:py-3 focus:ring-0 focus:ring-offset-0 flex-shrink-0 min-w-fit
 					{activeTab === tab.id
-					? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
-					: 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}"
+					? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20'
+					: 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'}"
 			>
 				<span class="inline-flex items-center gap-1.5 sm:gap-2">
 					{#if tab.icon}
-						<svelte:component this={tab.icon} class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+						<svelte:component this={tab.icon} class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
 					{/if}
-					<span class="hidden sm:inline">{tab.label}</span>
-					<span class="sm:hidden">{tab.label.split(' ')[0]}</span>
+					<span>{tab.label}</span>
 					{#if !tab.hideCount && tab.count !== undefined}
 						<span
-							class="ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 text-xs rounded-full
+							class="ml-0.5 sm:ml-1 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs rounded-full font-medium tabular-nums
 								{activeTab === tab.id
-								? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+								? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
 								: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
 						>
 							{tab.count}
@@ -79,5 +78,10 @@
 	}
 	.scrollbar-hide::-webkit-scrollbar {
 		display: none;
+	}
+
+	/* Tabular numbers for consistent count display */
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 </style>

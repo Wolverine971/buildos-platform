@@ -13,7 +13,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 
 	// Define ExtendedTabType locally
-	type ExtendedTabType = 'overview' | 'tasks' | 'notes' | 'briefs' | 'synthesis';
+	type ExtendedTabType = 'overview' | 'tasks' | 'notes' | 'briefs' | 'synthesis' | 'braindumps';
 
 	export let activeTab: ExtendedTabType = 'overview';
 	export let tabCounts: {
@@ -24,6 +24,7 @@
 		phases: number;
 		scheduled: number;
 		briefs: number;
+		braindumps: number;
 	};
 	export let isMobile: boolean = false;
 
@@ -68,10 +69,18 @@
 			count: tabCounts.notes
 		},
 		{
+			id: 'braindumps',
+			label: 'Brain Dumps',
+			mobileLabel: 'Dumps',
+			icon: Brain,
+			count: tabCounts.braindumps,
+			hideCount: true
+		},
+		{
 			id: 'synthesis',
 			label: 'AI Summary',
 			mobileLabel: 'AI',
-			icon: Brain,
+			icon: AlertCircle,
 			hideCount: true
 		}
 	];

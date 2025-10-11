@@ -351,3 +351,34 @@ export interface EnrichedBraindump extends BrainDump {
 	linkedProject: any;
 	linkedTypes: BrainDumpTableType[];
 }
+
+// ==========================================
+// PROJECT BRAINDUMPS TAB TYPES
+// ==========================================
+
+export interface LinkedTask {
+	id: string;
+	title: string;
+	status: string;
+}
+
+export interface LinkedNote {
+	id: string;
+	title: string;
+}
+
+export interface BraindumpWithLinks {
+	id: string;
+	title: string;
+	content: string;
+	ai_summary?: string;
+	status: 'processed' | 'processing' | 'pending';
+	created_at: string;
+	updated_at: string;
+	linked_at: string; // When linked to project
+	linked_tasks: LinkedTask[];
+	linked_notes: LinkedNote[];
+}
+
+export type BraindumpSortField = 'created_at' | 'linked_at';
+export type BraindumpSortDirection = 'asc' | 'desc';

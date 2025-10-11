@@ -22,7 +22,7 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 	{#each projects as project (project.id)}
 		<div
 			class={`group bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden ${project.status === 'archived' ? 'archived-card' : ''}`}
