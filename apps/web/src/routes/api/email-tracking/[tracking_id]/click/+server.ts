@@ -2,20 +2,22 @@
 
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { createLogger } from '@buildos/shared-utils';
 
 export const GET: RequestHandler = async ({ params, url, locals: { supabase } }) => {
+	const baseLogger = createLogger('web:api:email-tracking', supabase);
 	const tracking_id = params.tracking_id;
 	const destination = url.searchParams.get('url');
 
 	// If no destination URL provided, redirect to home
 	if (!destination) {
-		console.warn(`No destination URL for tracking_id: ${tracking_id}`);
+		baseLogger.warn('No destination URL for click tracking', {
+			trackingId: tracking_id
+		});
 		throw redirect(302, '/');
 	}
 
 	try {
-		console.log(`Email click tracking request for tracking_id: ${tracking_id}`);
-
 		// Find the email by tracking ID
 		const { data: email, error: emailError } = await supabase
 			.from('emails')
@@ -35,12 +37,57 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 			.single();
 
 		if (emailError || !email) {
-			console.log(`Email not found for tracking_id: ${tracking_id}`, emailError?.message);
+			baseLogger.warn('Email not found for click tracking', {
+				trackingId: tracking_id,
+				error: emailError?.message
+			});
 			// Still redirect even if tracking fails
 			throw redirect(302, destination);
 		}
 
-		console.log(`Found email ${email.id} for click tracking`);
+		// Try to extract correlation ID from notification delivery
+		let correlationId: string | undefined;
+		const deliveryId = (email.template_data as any)?.delivery_id;
+		if (deliveryId) {
+			const { data: delivery } = await supabase
+				.from('notification_deliveries')
+				.select('event_id')
+				.eq('id', deliveryId)
+				.single();
+
+			if (delivery?.event_id) {
+				const { data: event } = await supabase
+					.from('notification_events')
+					.select('metadata')
+					.eq('id', delivery.event_id)
+					.single();
+
+				if (
+					event?.metadata &&
+					typeof event.metadata === 'object' &&
+					'correlationId' in event.metadata
+				) {
+					correlationId = event.metadata.correlationId as string;
+				}
+			}
+		}
+
+		// Create logger with correlation context
+		const logger = correlationId
+			? baseLogger.child('click', {
+					correlationId,
+					trackingId: tracking_id,
+					emailId: email.id,
+					deliveryId,
+					destinationUrl: destination.substring(0, 100)
+				})
+			: baseLogger.child('click', {
+					trackingId: tracking_id,
+					emailId: email.id,
+					destinationUrl: destination.substring(0, 100)
+				});
+
+		logger.info('Email click tracking requested');
 
 		// Update each recipient's click tracking
 		if (email.email_recipients && email.email_recipients.length > 0) {
@@ -48,9 +95,11 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 				const now = new Date().toISOString();
 				const isFirstClick = !recipient.clicked_at;
 
-				console.log(
-					`Tracking click for recipient: ${recipient.recipient_email}, first click: ${isFirstClick}`
-				);
+				logger.info('Tracking email click', {
+					recipientEmail: recipient.recipient_email,
+					recipientId: recipient.id,
+					isFirstClick
+				});
 
 				// Update recipient click tracking
 				const { error: updateError } = await supabase
@@ -61,7 +110,9 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 					.eq('id', recipient.id);
 
 				if (updateError) {
-					console.error(`Failed to update recipient click tracking:`, updateError);
+					logger.error('Failed to update recipient click tracking', updateError, {
+						recipientId: recipient.id
+					});
 				}
 
 				// Log tracking event
@@ -77,16 +128,15 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 				});
 
 				if (eventError) {
-					console.error(`Failed to log click tracking event:`, eventError);
+					logger.error('Failed to log click tracking event', eventError, {
+						recipientId: recipient.id
+					});
 				}
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification
-			const deliveryId = email.template_data?.delivery_id;
 			if (deliveryId) {
-				console.log(
-					`Updating notification_deliveries ${deliveryId} clicked_at for email ${email.id}`
-				);
+				logger.debug('Checking notification delivery for click update');
 
 				// Only update if clicked_at is null (first click)
 				const { data: delivery } = await supabase
@@ -120,20 +170,21 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 							.eq('id', deliveryId);
 
 						if (deliveryUpdateError) {
-							console.error(
-								`Failed to update notification_deliveries ${deliveryId}:`,
+							logger.error(
+								'Failed to update notification delivery',
 								deliveryUpdateError
 							);
 						} else {
-							console.log(
-								`Successfully updated notification_deliveries ${deliveryId} with click`
-							);
+							logger.info('Updated notification delivery status to clicked', {
+								setClickedAt: !!updates.clicked_at,
+								setOpenedAt: !!updates.opened_at
+							});
 						}
 					}
 				}
 			}
 		} else {
-			console.log(`No recipients found for email ${email.id}`);
+			logger.warn('No recipients found for email');
 		}
 
 		// Redirect to destination URL
@@ -144,7 +195,7 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 			throw error;
 		}
 
-		console.error('Error in email click tracking:', error);
+		baseLogger.error('Error in email click tracking', error);
 
 		// Still redirect to destination even if there's an error
 		throw redirect(302, destination);

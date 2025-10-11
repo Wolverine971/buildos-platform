@@ -27,8 +27,15 @@ import type { ProcessingJob } from "../../lib/supabaseQueue.js";
 import webpush from "web-push";
 import { sendEmailNotification } from "./emailAdapter.js";
 import { sendSMSNotification } from "./smsAdapter.js";
+import {
+  createLogger,
+  generateCorrelationId,
+  extractCorrelationContext,
+  type Logger,
+} from "@buildos/shared-utils";
 
 const supabase = createServiceClient();
+const logger = createLogger("worker:notification", supabase);
 
 // =====================================================
 // VAPID CONFIGURATION
@@ -40,10 +47,9 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@buildos.com";
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  logger.info("VAPID keys configured successfully");
 } else {
-  console.warn(
-    "[NotificationWorker] VAPID keys not configured - push notifications will not work",
-  );
+  logger.warn("VAPID keys not configured - push notifications will not work");
 }
 
 // =====================================================
@@ -57,11 +63,15 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
  */
 async function enrichDeliveryPayload(
   delivery: NotificationDelivery,
+  jobLogger: Logger,
 ): Promise<NotificationDelivery> {
   // If payload already has valid title and body, use as-is
   if (validateNotificationPayload(delivery.payload as any)) {
-    console.log(
-      `[NotificationWorker] Delivery ${delivery.id} already has valid payload, skipping transformation`,
+    jobLogger.debug(
+      "Delivery already has valid payload, skipping transformation",
+      {
+        notificationDeliveryId: delivery.id,
+      },
     );
     return delivery;
   }
@@ -74,10 +84,11 @@ async function enrichDeliveryPayload(
     .single();
 
   if (error || !event) {
-    console.warn(
-      `[NotificationWorker] Could not fetch event ${delivery.event_id} for transformation:`,
-      error,
-    );
+    jobLogger.warn("Could not fetch event for transformation", {
+      notificationEventId: delivery.event_id,
+      notificationDeliveryId: delivery.id,
+      error: error?.message,
+    });
     // Use fallback payload
     const fallbackPayload = getFallbackPayload("brief.completed" as EventType);
     return {
@@ -93,9 +104,10 @@ async function enrichDeliveryPayload(
       event.payload as any,
     );
 
-    console.log(
-      `[NotificationWorker] Transformed ${event.event_type} event payload for delivery ${delivery.id}`,
-    );
+    jobLogger.debug("Transformed event payload for delivery", {
+      notificationDeliveryId: delivery.id,
+      eventType: event.event_type,
+    });
 
     // Merge transformed payload with existing delivery payload
     // This preserves any channel-specific fields that were already set
@@ -107,10 +119,10 @@ async function enrichDeliveryPayload(
       },
     };
   } catch (error: any) {
-    console.error(
-      `[NotificationWorker] Error transforming event ${event.event_type}:`,
-      error,
-    );
+    jobLogger.error("Error transforming event payload", error, {
+      notificationDeliveryId: delivery.id,
+      eventType: event.event_type,
+    });
     // Use fallback payload
     const fallbackPayload = getFallbackPayload(event.event_type as EventType);
     return {
@@ -139,7 +151,10 @@ interface DeliveryResult {
 async function sendPushNotification(
   delivery: NotificationDelivery,
   pushSubscription: PushSubscriptionType,
+  jobLogger: Logger,
 ): Promise<DeliveryResult> {
+  const pushLogger = jobLogger.child("push");
+
   try {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       throw new Error("VAPID keys not configured");
@@ -153,6 +168,12 @@ async function sendPushNotification(
         auth: pushSubscription.auth_key,
       },
     };
+
+    pushLogger.debug("Sending push notification", {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+      subscriptionId: pushSubscription.id,
+    });
 
     // Format notification payload
     // Note: payload is guaranteed to have title and body by enrichDeliveryPayload
@@ -185,10 +206,21 @@ async function sendPushNotification(
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", pushSubscription.id);
 
+    pushLogger.info("Push notification sent successfully", {
+      notificationDeliveryId: delivery.id,
+      subscriptionId: pushSubscription.id,
+    });
+
     return { success: true };
   } catch (error: any) {
     // Handle subscription expiration
     if (error.statusCode === 410 || error.statusCode === 404) {
+      pushLogger.warn("Push subscription expired or not found", {
+        notificationDeliveryId: delivery.id,
+        subscriptionId: pushSubscription.id,
+        statusCode: error.statusCode,
+      });
+
       // Subscription expired - deactivate it
       await supabase
         .from("push_subscriptions")
@@ -201,7 +233,11 @@ async function sendPushNotification(
       };
     }
 
-    console.error("[NotificationWorker] Push notification failed:", error);
+    pushLogger.error("Push notification failed", error, {
+      notificationDeliveryId: delivery.id,
+      subscriptionId: pushSubscription.id,
+    });
+
     return {
       success: false,
       error: error.message || "Unknown push notification error",
@@ -214,8 +250,16 @@ async function sendPushNotification(
  */
 async function sendInAppNotification(
   delivery: NotificationDelivery,
+  jobLogger: Logger,
 ): Promise<DeliveryResult> {
+  const inAppLogger = jobLogger.child("in_app");
+
   try {
+    inAppLogger.debug("Creating in-app notification", {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
+
     // Insert into existing user_notifications table
     // Note: user_notifications schema doesn't have metadata column
     // Schema: id, user_id, type, title, message, priority, action_url, read_at, dismissed_at, expires_at, created_at
@@ -234,9 +278,18 @@ async function sendInAppNotification(
       throw error;
     }
 
+    inAppLogger.info("In-app notification created successfully", {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
+
     return { success: true };
   } catch (error: any) {
-    console.error("[NotificationWorker] In-app notification failed:", error);
+    inAppLogger.error("In-app notification failed", error, {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
+
     return {
       success: false,
       error: error.message || "Unknown in-app notification error",
@@ -250,6 +303,7 @@ async function sendInAppNotification(
 async function sendNotification(
   channel: NotificationChannel,
   delivery: NotificationDelivery,
+  jobLogger: Logger,
 ): Promise<DeliveryResult> {
   switch (channel) {
     case "push": {
@@ -270,6 +324,10 @@ async function sendNotification(
         .single();
 
       if (error || !pushSub) {
+        jobLogger.warn("Push subscription not found or inactive", {
+          notificationDeliveryId: delivery.id,
+          recipientUserId: delivery.recipient_user_id,
+        });
         return {
           success: false,
           error: "Push subscription not found or inactive",
@@ -285,19 +343,23 @@ async function sendNotification(
         is_active: pushSub.is_active || false,
       };
 
-      return sendPushNotification(delivery, subscription);
+      return sendPushNotification(delivery, subscription, jobLogger);
     }
 
     case "in_app":
-      return sendInAppNotification(delivery);
+      return sendInAppNotification(delivery, jobLogger);
 
     case "email":
-      return sendEmailNotification(delivery);
+      return sendEmailNotification(delivery, jobLogger);
 
     case "sms":
-      return sendSMSNotification(delivery);
+      return sendSMSNotification(delivery, jobLogger);
 
     default:
+      jobLogger.error("Unknown notification channel", undefined, {
+        channel,
+        notificationDeliveryId: delivery.id,
+      });
       return {
         success: false,
         error: `Unknown notification channel: ${channel}`,
@@ -317,9 +379,24 @@ export async function processNotification(
 ): Promise<void> {
   const { delivery_id, channel } = job.data;
 
-  console.log(
-    `[NotificationWorker] Processing notification job ${job.id} for delivery ${delivery_id} (${channel})`,
-  );
+  // Extract or generate correlation ID for tracking across systems
+  const correlationContext = job.data.correlationId
+    ? { correlationId: job.data.correlationId }
+    : extractCorrelationContext(job.data as any);
+  const correlationId =
+    correlationContext.correlationId || generateCorrelationId();
+
+  // Create child logger with correlation ID and job context
+  const jobLogger = logger.child("process", {
+    correlationId,
+    jobId: job.id,
+    notificationDeliveryId: delivery_id,
+    channel,
+  });
+
+  jobLogger.info("Processing notification job", {
+    attempts: job.attempts,
+  });
 
   try {
     // Get delivery record
@@ -330,6 +407,9 @@ export async function processNotification(
       .single();
 
     if (fetchError || !delivery) {
+      jobLogger.error("Delivery not found", fetchError, {
+        notificationDeliveryId: delivery_id,
+      });
       throw new Error(
         `Delivery ${delivery_id} not found: ${fetchError?.message}`,
       );
@@ -341,9 +421,9 @@ export async function processNotification(
       delivery.status === "delivered" ||
       delivery.status === "clicked"
     ) {
-      console.log(
-        `[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`,
-      );
+      jobLogger.info("Delivery already completed, skipping", {
+        status: delivery.status,
+      });
       return;
     }
 
@@ -351,9 +431,10 @@ export async function processNotification(
     const maxAttempts = delivery.max_attempts || 3;
     const currentAttempts = delivery.attempts || 0;
     if (currentAttempts >= maxAttempts) {
-      console.warn(
-        `[NotificationWorker] Delivery ${delivery_id} has exceeded max attempts (${currentAttempts}/${maxAttempts}), marking as failed`,
-      );
+      jobLogger.warn("Max attempts exceeded, marking as failed", {
+        currentAttempts,
+        maxAttempts,
+      });
       await supabase
         .from("notification_deliveries")
         .update({
@@ -390,24 +471,30 @@ export async function processNotification(
     };
 
     // Enrich payload with transformed event data if needed
-    typedDelivery = await enrichDeliveryPayload(typedDelivery);
+    typedDelivery = await enrichDeliveryPayload(typedDelivery, jobLogger);
 
     // Validate that we have a proper payload after transformation
     if (!validateNotificationPayload(typedDelivery.payload as any)) {
-      console.error(
-        `[NotificationWorker] Delivery ${delivery_id} has invalid payload after transformation:`,
-        typedDelivery.payload,
-      );
+      jobLogger.error("Invalid payload after transformation", undefined, {
+        payload: typedDelivery.payload,
+      });
       throw new Error(
         "Invalid notification payload: missing or empty title/body",
       );
     }
 
-    console.log(
-      `[NotificationWorker] Sending ${channel} notification to delivery ${delivery_id} (attempt ${(delivery.attempts || 0) + 1}/${delivery.max_attempts || 3})`,
-    );
+    const attemptNumber = (delivery.attempts || 0) + 1;
+    const totalAttempts = delivery.max_attempts || 3;
 
-    const result = await sendNotification(channel, typedDelivery);
+    jobLogger.info("Sending notification", {
+      attemptNumber,
+      totalAttempts,
+      channel,
+    });
+
+    const startTime = Date.now();
+    const result = await sendNotification(channel, typedDelivery, jobLogger);
+    const durationMs = Date.now() - startTime;
 
     // Update delivery record with final status
     const updateData: any = {
@@ -422,17 +509,19 @@ export async function processNotification(
         updateData.external_id = result.external_id;
       }
 
-      console.log(
-        `[NotificationWorker] ✅ Successfully sent ${channel} notification ${delivery_id}`,
-      );
+      jobLogger.info("Notification sent successfully", {
+        durationMs,
+        externalId: result.external_id,
+      });
     } else {
       updateData.status = "failed";
       updateData.failed_at = new Date().toISOString();
       updateData.last_error = result.error;
 
-      console.error(
-        `[NotificationWorker] ❌ Failed to send ${channel} notification ${delivery_id}: ${result.error}`,
-      );
+      jobLogger.error("Notification send failed", undefined, {
+        durationMs,
+        error: result.error,
+      });
     }
 
     // Always update status, even if there's an error
@@ -442,12 +531,13 @@ export async function processNotification(
       .eq("id", delivery_id);
 
     if (updateError) {
-      console.error(
-        `[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status for ${delivery_id}: ${updateError.message}`,
-      );
-      console.error(
-        `[NotificationWorker] This may cause duplicate sends! Delivery data:`,
-        updateData,
+      jobLogger.fatal(
+        "CRITICAL: Failed to update delivery status",
+        updateError,
+        {
+          updateData,
+          warning: "This may cause duplicate sends!",
+        },
       );
       // Still throw to mark job as failed, but the notification was already sent
       throw new Error(
@@ -455,9 +545,10 @@ export async function processNotification(
       );
     }
 
-    console.log(
-      `[NotificationWorker] Updated delivery ${delivery_id} status to '${updateData.status}'`,
-    );
+    jobLogger.debug("Updated delivery status", {
+      newStatus: updateData.status,
+      attempts: updateData.attempts,
+    });
 
     // If failed and can retry, throw error to trigger retry
     if (
@@ -469,10 +560,7 @@ export async function processNotification(
 
     // Success - job will be marked complete by the queue
   } catch (error: any) {
-    console.error(
-      `[NotificationWorker] Error processing notification job ${job.id}:`,
-      error,
-    );
+    jobLogger.error("Error processing notification job", error);
 
     // Try to mark delivery as failed if not already updated to a final state
     try {
@@ -504,15 +592,12 @@ export async function processNotification(
           .eq("id", delivery_id)
           .eq("status", currentDelivery.status); // Optimistic lock
 
-        console.log(
-          `[NotificationWorker] Marked delivery ${delivery_id} as failed after error (attempt ${currentAttempts + 1})`,
-        );
+        jobLogger.info("Marked delivery as failed after error", {
+          attemptNumber: currentAttempts + 1,
+        });
       }
     } catch (cleanupError) {
-      console.error(
-        `[NotificationWorker] Could not mark delivery as failed:`,
-        cleanupError,
-      );
+      jobLogger.error("Could not mark delivery as failed", cleanupError);
     }
 
     throw error;
@@ -521,21 +606,21 @@ export async function processNotification(
 
 /**
  * Process notification jobs from queue
+ * Uses atomic claim_pending_jobs RPC to prevent race conditions
  */
 export async function processNotificationJobs(): Promise<void> {
+  const batchLogger = logger.child("batch");
+
   try {
-    // Claim pending notification jobs
-    const { data: jobs, error } = await supabase
-      .from("queue_jobs")
-      .select("*")
-      .eq("job_type", "send_notification")
-      .eq("status", "pending")
-      .lte("scheduled_for", new Date().toISOString())
-      .order("scheduled_for", { ascending: true })
-      .limit(10);
+    // Atomically claim pending notification jobs
+    // This uses FOR UPDATE SKIP LOCKED to prevent multiple workers from claiming the same job
+    const { data: jobs, error } = await supabase.rpc("claim_pending_jobs", {
+      p_job_types: ["send_notification"],
+      p_batch_size: 10,
+    });
 
     if (error) {
-      console.error("[NotificationWorker] Error fetching jobs:", error);
+      batchLogger.error("Error claiming jobs", error);
       return;
     }
 
@@ -543,77 +628,107 @@ export async function processNotificationJobs(): Promise<void> {
       return;
     }
 
-    console.log(
-      `[NotificationWorker] Processing ${jobs.length} notification jobs`,
-    );
+    batchLogger.info("Claimed notification jobs for processing", {
+      jobCount: jobs.length,
+    });
 
-    // Process jobs in parallel
-    await Promise.allSettled(
+    // Process jobs in parallel with proper error isolation
+    const results = await Promise.allSettled(
       jobs.map(async (job) => {
-        try {
-          // Mark as processing
-          await supabase
-            .from("queue_jobs")
-            .update({
-              status: "processing",
-              started_at: new Date().toISOString(),
-            })
-            .eq("id", job.id);
+        // Create per-job logger
+        const jobBatchLogger = batchLogger.child("job", {
+          jobId: job.queue_job_id,
+          dbJobId: job.id,
+          userId: job.user_id,
+        });
 
+        try {
           // Type the job - convert database 'metadata' to ProcessingJob 'data'
           const typedJob: ProcessingJob<NotificationJobMetadata> = {
-            id: job.id,
+            id: job.queue_job_id,
             userId: job.user_id,
             data: job.metadata as unknown as NotificationJobMetadata,
             attempts: job.attempts || 0,
             updateProgress: async () => {}, // Stub - not used in direct processing
             log: async (message: string) => {
-              console.log(`[Job ${job.id}] ${message}`);
+              jobBatchLogger.debug("Job progress update", { message });
             },
           };
 
           // Process notification
           await processNotification(typedJob);
 
-          // Mark as completed
-          await supabase
-            .from("queue_jobs")
-            .update({
-              status: "completed",
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", job.id);
-        } catch (error: any) {
-          console.error(`[NotificationWorker] Job ${job.id} failed:`, error);
+          // Mark as completed using atomic RPC
+          const { error: completeError } = await supabase.rpc(
+            "complete_queue_job",
+            {
+              p_job_id: job.id,
+              p_result: null,
+            },
+          );
 
-          // Mark as failed or retrying
+          if (completeError) {
+            jobBatchLogger.error(
+              "Failed to mark job as completed",
+              completeError,
+            );
+            throw new Error(
+              `Failed to mark job as completed: ${completeError.message}`,
+            );
+          }
+
+          jobBatchLogger.info("Job completed successfully");
+        } catch (error: any) {
+          jobBatchLogger.error("Job processing failed", error, {
+            attempts: job.attempts || 0,
+          });
+
+          // Mark as failed using atomic RPC (with retry logic)
           const currentAttempts = job.attempts || 0;
           const maxAttempts = job.max_attempts || 3;
-          const isRetryable = currentAttempts < maxAttempts;
+          const shouldRetry = currentAttempts + 1 < maxAttempts;
 
-          await supabase
-            .from("queue_jobs")
-            .update({
-              status: isRetryable ? "pending" : "failed",
-              error_message: error.message,
-              attempts: currentAttempts + 1,
-              updated_at: new Date().toISOString(),
-              // Exponential backoff for retries
-              scheduled_for: isRetryable
-                ? new Date(
-                    Date.now() + Math.pow(2, currentAttempts) * 60000,
-                  ).toISOString()
-                : undefined,
-            })
-            .eq("id", job.id);
+          const { error: failError } = await supabase.rpc("fail_queue_job", {
+            p_job_id: job.id,
+            p_error_message: error.message || "Unknown error",
+            p_retry: shouldRetry,
+          });
+
+          if (failError) {
+            jobBatchLogger.error("Failed to mark job as failed", failError, {
+              shouldRetry,
+            });
+          }
+
+          throw error;
         }
       }),
     );
+
+    // Log summary
+    const successfulJobs = results.filter(
+      (result) => result.status === "fulfilled",
+    ).length;
+    const failedJobs = results.filter(
+      (result) => result.status === "rejected",
+    ).length;
+
+    if (failedJobs > 0) {
+      batchLogger.warn("Some jobs failed during processing", {
+        failedCount: failedJobs,
+        successfulCount: successfulJobs,
+        totalCount: jobs.length,
+      });
+    }
+    if (successfulJobs > 0) {
+      batchLogger.info("Batch processing completed", {
+        successfulCount: successfulJobs,
+        failedCount: failedJobs,
+        totalCount: jobs.length,
+      });
+    }
   } catch (error) {
-    console.error(
-      "[NotificationWorker] Fatal error in processNotificationJobs:",
-      error,
-    );
+    batchLogger.fatal("Fatal error in processNotificationJobs", error);
   }
 }
 

@@ -5,7 +5,15 @@ git_commit: 27b0cb62a982e6a98364bf465c89048c874fa6c3
 branch: main
 repository: buildos-platform
 topic: "Notification System Analysis - Repeated Notifications and Task Count Discrepancies"
-tags: [research, notifications, task-count, multi-device, brief-completed, payload-transformer]
+tags:
+  [
+    research,
+    notifications,
+    task-count,
+    multi-device,
+    brief-completed,
+    payload-transformer,
+  ]
 status: complete
 last_updated: 2025-10-10
 last_updated_by: Claude Code
@@ -22,10 +30,12 @@ last_updated_by: Claude Code
 ## Research Question
 
 User reported two issues:
+
 1. "Notifications that are getting pinged repeatedly somehow"
 2. "Computing the number of tasks differently"
 
 Investigation goals:
+
 - Understand why notifications appear to be repeated
 - Trace how task counts are calculated and where discrepancies occur
 - Identify root causes and provide recommendations
@@ -39,6 +49,7 @@ Investigation goals:
 The system sends push notifications to **ALL active devices** for a user (desktop Chrome, mobile Chrome, etc.). This is **intentional and matches industry standards** (Gmail, Slack, Discord all behave this way).
 
 **Technical Details**:
+
 - Each device creates a unique push subscription
 - `emit_notification_event` RPC loops through ALL active subscriptions
 - Creates one delivery + one job for EACH subscription
@@ -53,11 +64,13 @@ The system sends push notifications to **ALL active devices** for a user (deskto
 **Root Cause**: Notification shows only **today's tasks**, not all pending tasks
 
 **Technical Details**:
+
 - Notification: `task_count` = sum of `todays_task_count` from project briefs
 - "Today's tasks" = tasks with `start_date` within today's bounds (timezone-aware)
 - Excludes: overdue tasks, upcoming tasks, tasks without start dates
 
 **Potential Discrepancy**: User might see different counts in:
+
 - **Notification**: "2 tasks" (only today's tasks)
 - **Brief UI**: Shows 5 categories (today, overdue, upcoming, next 7 days, completed)
 - **Project Pages**: Shows all pending tasks (could be 20+)
@@ -103,6 +116,7 @@ async subscribe(): Promise<void> {
 ```
 
 **Key Points**:
+
 - Desktop Chrome: unique endpoint
 - Mobile Chrome: unique endpoint
 - Safari: unique endpoint
@@ -164,6 +178,7 @@ END LOOP;  -- ✅ Creates one delivery + one job PER device
 ```
 
 **Result**:
+
 - User with 1 device: 1 delivery + 1 job
 - User with 3 devices: 3 deliveries + 3 jobs
 - Each delivery tracked separately in `notification_deliveries` table
@@ -182,13 +197,14 @@ if (
   delivery.status === "clicked"
 ) {
   console.log(
-    `[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`
+    `[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`,
   );
   return;
 }
 ```
 
 **Deduplication Strategy**:
+
 - ✅ **Per-delivery deduplication**: Each delivery processed exactly once
 - ❌ **No cross-device deduplication**: By design, each device gets its own notification
 - ✅ **Idempotent jobs**: Re-running a job for completed delivery is no-op
@@ -197,21 +213,23 @@ if (
 
 **✅ INTENTIONAL BY DESIGN** - Matches industry standards:
 
-| Service | Behavior |
-|---------|----------|
-| **Gmail** | Notifications appear on ALL logged-in devices |
-| **Slack** | Notifications sent to ALL active devices (with smart dismissal) |
-| **Discord** | Notifications appear on ALL devices |
-| **WhatsApp** | Notifications sent to ALL devices until one is opened |
-| **BuildOS** | Notifications sent to ALL active devices ✅ |
+| Service      | Behavior                                                        |
+| ------------ | --------------------------------------------------------------- |
+| **Gmail**    | Notifications appear on ALL logged-in devices                   |
+| **Slack**    | Notifications sent to ALL active devices (with smart dismissal) |
+| **Discord**  | Notifications appear on ALL devices                             |
+| **WhatsApp** | Notifications sent to ALL devices until one is opened           |
+| **BuildOS**  | Notifications sent to ALL active devices ✅                     |
 
 **Design Rationale**:
+
 1. **User expectation**: Users expect to see notifications wherever they are
 2. **Device availability**: User might not have their primary device with them
 3. **Reliability**: If one device is offline, others still receive notification
 4. **Engagement**: Increases likelihood of notification being seen
 
 **Advanced Patterns (Not Currently Implemented)**:
+
 - Smart dismissal (dismiss on other devices when opened on one)
 - Primary device preference (allow users to designate primary device)
 - Focus-based delivery (only send to device user is actively using)
@@ -230,16 +248,14 @@ Tasks are categorized into 5 groups:
 
 ```typescript
 const todaysTasks = project.tasks.filter((task: TaskWithCalendarEvent) => {
-  if (!task.start_date || task.outdated || task.status === "done")
-    return false;
+  if (!task.start_date || task.outdated || task.status === "done") return false;
   const taskStartDate = parseISO(task.start_date);
-  return (
-    taskStartDate >= todayBounds.start && taskStartDate <= todayBounds.end
-  );
+  return taskStartDate >= todayBounds.start && taskStartDate <= todayBounds.end;
 });
 ```
 
 **Criteria**:
+
 - Has `start_date`
 - `outdated = false`
 - `status != 'done'`
@@ -251,8 +267,7 @@ const todaysTasks = project.tasks.filter((task: TaskWithCalendarEvent) => {
 
 ```typescript
 const overdueTasks = tasks.filter((task) => {
-  if (!task.start_date || task.status === "done" || task.outdated)
-    return false;
+  if (!task.start_date || task.status === "done" || task.outdated) return false;
   const taskStartDate = parseISO(task.start_date);
   return taskStartDate < todayBounds.start; // Before today
 });
@@ -263,6 +278,7 @@ const overdueTasks = tasks.filter((task) => {
 ##### C. Upcoming Tasks (Lines 512-526)
 
 Two strategies based on project structure:
+
 - **With phases**: Tasks in current phase from today forward (limited to 10)
 - **Without phases**: Next 10 tasks from today forward
 
@@ -281,7 +297,9 @@ const nextSevenDaysTasks = getUpcomingTasks(project.tasks, briefDate, timezone);
 
 ```typescript
 const recentlyCompletedTasks = getRecentlyCompletedTasks(
-  project.tasks, briefDate, timezone
+  project.tasks,
+  briefDate,
+  timezone,
 );
 // Returns tasks completed in last 24 hours (based on updated_at)
 ```
@@ -302,10 +320,11 @@ const { data: projectBriefs } = await supabase
 const projectCount = projectBriefs?.length || 0;
 
 // Calculate task count from project briefs (today's tasks only)
-const taskCount = projectBriefs?.reduce((sum, pb) => {
-  const metadata = pb.metadata as any;
-  return sum + (metadata?.todays_task_count || 0); // ← ONLY TODAY'S TASKS
-}, 0) || 0;
+const taskCount =
+  projectBriefs?.reduce((sum, pb) => {
+    const metadata = pb.metadata as any;
+    return sum + (metadata?.todays_task_count || 0); // ← ONLY TODAY'S TASKS
+  }, 0) || 0;
 ```
 
 **Critical Finding**: Notification `task_count` = **ONLY today's tasks**, not all tasks
@@ -323,7 +342,7 @@ await (serviceClient.rpc as any)("emit_notification_event", {
     brief_id: brief.id,
     brief_date: briefDate,
     timezone: timezone,
-    task_count: taskCount,        // ← TODAY'S TASKS ONLY
+    task_count: taskCount, // ← TODAY'S TASKS ONLY
     project_count: projectCount,
   },
   p_scheduled_for: notificationScheduledFor?.toISOString(),
@@ -365,20 +384,22 @@ Where `{taskCount}` = **only today's tasks**
 
 #### 2.5 Task Count Discrepancy Scenarios
 
-| Context | Task Count Shown | Calculation |
-|---------|------------------|-------------|
-| **Notification** | 2 tasks | `todays_task_count` only |
-| **Brief Summary** | All 5 categories | Shows today, overdue, upcoming, next 7 days, completed separately |
-| **Project Page** | All pending tasks | All tasks with `status != 'done'` and `!outdated` |
-| **LLM Analysis** | All 5 counts | Uses full metadata for AI insights |
+| Context           | Task Count Shown  | Calculation                                                       |
+| ----------------- | ----------------- | ----------------------------------------------------------------- |
+| **Notification**  | 2 tasks           | `todays_task_count` only                                          |
+| **Brief Summary** | All 5 categories  | Shows today, overdue, upcoming, next 7 days, completed separately |
+| **Project Page**  | All pending tasks | All tasks with `status != 'done'` and `!outdated`                 |
+| **LLM Analysis**  | All 5 counts      | Uses full metadata for AI insights                                |
 
 **Example Scenario**:
+
 - **Today's tasks**: 2 (start today)
 - **Overdue tasks**: 10 (started before today, not done)
 - **Upcoming tasks**: 8 (start after today)
 - **Total pending**: 20 tasks
 
 **What user sees**:
+
 - **Notification**: "2 tasks across 3 projects" ← Potentially misleading
 - **Brief UI**: Shows all categories with full context
 - **User perception**: "Why does notification say 2 tasks when I have 20?"
@@ -457,6 +478,7 @@ Where `{taskCount}` = **only today's tasks**
 **Rationale**: Matches industry standards, provides best user experience
 
 **Action Items**:
+
 - ✅ No code changes needed
 - Document behavior in user-facing help docs
 - Consider adding "smart dismissal" feature in future (dismiss on all devices when opened on one)
@@ -464,6 +486,7 @@ Where `{taskCount}` = **only today's tasks**
 #### Option B: Add Device Control Settings (Optional)
 
 **Implementation**:
+
 1. Add `send_to_all_devices` boolean to `user_notification_preferences` table
 2. Add `is_preferred` boolean to `push_subscriptions` table
 3. Modify RPC to filter subscriptions based on preference
@@ -480,12 +503,14 @@ Where `{taskCount}` = **only today's tasks**
 **Change**: Update notification message to clarify what tasks are counted
 
 **Before**:
+
 ```
 "Your Daily Brief is Ready! 📋"
 "2 tasks across 3 projects for 2025-10-10"
 ```
 
 **After**:
+
 ```
 "Your Daily Brief is Ready! 📋"
 "2 tasks scheduled for today across 3 projects"
@@ -499,6 +524,7 @@ Or:
 ```
 
 **Implementation**:
+
 1. Modify `transformBriefCompleted()` in `payloadTransformer.ts:51-72`
 2. Pass all task counts in event payload (not just `todays_task_count`)
 3. Update notification message template
@@ -506,6 +532,7 @@ Or:
 **Complexity**: Low | **Timeline**: 1-2 hours
 
 **Files to modify**:
+
 - `apps/worker/src/workers/brief/briefWorker.ts:302-344` - Include all counts in payload
 - `packages/shared-types/src/payloadTransformer.ts:51-72` - Update message format
 
@@ -514,29 +541,37 @@ Or:
 **Change**: Change `task_count` to include today + overdue + upcoming
 
 **Before**:
+
 ```typescript
-const taskCount = projectBriefs?.reduce((sum, pb) => {
-  const metadata = pb.metadata as any;
-  return sum + (metadata?.todays_task_count || 0);
-}, 0) || 0;
+const taskCount =
+  projectBriefs?.reduce((sum, pb) => {
+    const metadata = pb.metadata as any;
+    return sum + (metadata?.todays_task_count || 0);
+  }, 0) || 0;
 ```
 
 **After**:
+
 ```typescript
-const taskCount = projectBriefs?.reduce((sum, pb) => {
-  const metadata = pb.metadata as any;
-  return sum +
-    (metadata?.todays_task_count || 0) +
-    (metadata?.overdue_task_count || 0) +
-    (metadata?.upcoming_task_count || 0);
-}, 0) || 0;
+const taskCount =
+  projectBriefs?.reduce((sum, pb) => {
+    const metadata = pb.metadata as any;
+    return (
+      sum +
+      (metadata?.todays_task_count || 0) +
+      (metadata?.overdue_task_count || 0) +
+      (metadata?.upcoming_task_count || 0)
+    );
+  }, 0) || 0;
 ```
 
 **Pros**:
+
 - Matches user's mental model of "tasks I need to do"
 - More accurate representation of workload
 
 **Cons**:
+
 - Could be overwhelming (showing 20+ tasks in notification)
 - Less actionable ("what do I do TODAY?")
 
@@ -626,10 +661,12 @@ The multi-device notification behavior is **intentional and matches industry sta
 The notification shows **only today's tasks**, while users might expect to see all pending tasks. This creates a discrepancy between the notification message and the brief UI.
 
 **Recommended fix**: Update notification message to clarify task count scope:
+
 - From: "2 tasks across 3 projects"
 - To: "2 tasks scheduled for today across 3 projects"
 
 Or provide breakdown:
+
 - "Today: 2 | Overdue: 10 | Upcoming: 8 across 3 projects"
 
 **Priority**: Medium - Not breaking functionality, but could reduce user confusion

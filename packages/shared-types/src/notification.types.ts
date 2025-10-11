@@ -230,6 +230,7 @@ export interface NotificationJobMetadata {
   delivery_id: string;
   channel: NotificationChannel;
   event_type: EventType;
+  correlationId?: string; // Optional correlation ID for tracking across systems
 }
 
 // =====================================================

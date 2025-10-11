@@ -7,6 +7,7 @@
 
 import { createServiceClient } from "@buildos/supabase-client";
 import type { NotificationDelivery } from "@buildos/shared-types";
+import type { Logger } from "@buildos/shared-utils";
 
 const supabase = createServiceClient();
 
@@ -128,8 +129,16 @@ Manage your notification preferences: https://build-os.com/settings/notification
  */
 export async function sendEmailNotification(
   delivery: NotificationDelivery,
+  jobLogger: Logger,
 ): Promise<DeliveryResult> {
+  const emailLogger = jobLogger.child("email");
+
   try {
+    emailLogger.debug("Sending email notification", {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
+
     // Get user email
     const { data: user, error: userError } = await supabase
       .from("users")
@@ -138,6 +147,11 @@ export async function sendEmailNotification(
       .single();
 
     if (userError || !user?.email) {
+      emailLogger.warn("User email not found", {
+        notificationDeliveryId: delivery.id,
+        recipientUserId: delivery.recipient_user_id,
+        error: userError?.message,
+      });
       return {
         success: false,
         error: "User email not found",
@@ -202,10 +216,10 @@ export async function sendEmailNotification(
       });
 
     if (recipientError) {
-      console.error(
-        "[EmailAdapter] Failed to create recipient record:",
-        recipientError,
-      );
+      emailLogger.error("Failed to create recipient record", recipientError, {
+        emailRecordId: emailRecord.id,
+        recipientEmail: user.email,
+      });
     }
 
     // Send email immediately via webhook to web app
@@ -213,8 +227,12 @@ export async function sendEmailNotification(
     const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error(
-        "[EmailAdapter] PRIVATE_BUILDOS_WEBHOOK_SECRET not configured - cannot send notification emails",
+      emailLogger.error(
+        "PRIVATE_BUILDOS_WEBHOOK_SECRET not configured - cannot send notification emails",
+        undefined,
+        {
+          notificationDeliveryId: delivery.id,
+        },
       );
       return {
         success: false,
@@ -260,26 +278,32 @@ export async function sendEmailNotification(
         messageId?: string;
       };
 
-      console.log(
-        `[EmailAdapter] ✅ Email sent via webhook for email ${emailRecord.id} (delivery ${delivery.id}, messageId: ${webhookResult.messageId})`,
-      );
+      emailLogger.info("Email sent successfully via webhook", {
+        emailRecordId: emailRecord.id,
+        notificationDeliveryId: delivery.id,
+        messageId: webhookResult.messageId,
+        recipientEmail: user.email,
+      });
 
       return {
         success: true,
         external_id: emailRecord.id,
       };
     } catch (webhookError: any) {
-      console.error(
-        "[EmailAdapter] Failed to send email via webhook:",
-        webhookError,
-      );
+      emailLogger.error("Failed to send email via webhook", webhookError, {
+        emailRecordId: emailRecord.id,
+        notificationDeliveryId: delivery.id,
+      });
       return {
         success: false,
         error: `Webhook error: ${webhookError.message}`,
       };
     }
   } catch (error: any) {
-    console.error("[EmailAdapter] Failed to send email notification:", error);
+    emailLogger.error("Failed to send email notification", error, {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
     return {
       success: false,
       error: error.message || "Unknown error sending email",

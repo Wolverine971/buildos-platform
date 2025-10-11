@@ -80,6 +80,13 @@
 		v2OnboardingData.challenges = challenges;
 	}
 
+	function handleV2StepClick(stepIndex: number) {
+		// Allow navigation to any step by clicking on the progress indicator
+		if (stepIndex !== v2CurrentStep) {
+			v2CurrentStep = stepIndex;
+		}
+	}
+
 	let currentStep = $state(data.recommendedStep || 0);
 	let isTranscribing = $state(false);
 	let microphonePermissionGranted = $state(false);
@@ -483,7 +490,7 @@
 		<div class="container mx-auto py-8 px-4">
 			<!-- Progress Indicator (show for steps 1-4, not welcome or summary) -->
 			{#if v2CurrentStep > 0 && v2CurrentStep < 5}
-				<ProgressIndicator currentStep={v2CurrentStep} />
+				<ProgressIndicator currentStep={v2CurrentStep} onStepClick={handleV2StepClick} />
 			{/if}
 
 			{#if v2CurrentStep === 0}

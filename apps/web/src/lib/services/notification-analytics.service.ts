@@ -23,11 +23,13 @@ export interface AnalyticsOverview {
 export interface ChannelMetrics {
 	channel: string;
 	total_sent: number;
-	delivered: number;
+	sent: number; // NEW: Explicit sent count (status = 'sent')
+	delivered: number; // FIXED: Now counts status = 'delivered' (not 'sent')
 	opened: number;
 	clicked: number;
 	failed: number;
-	success_rate: number;
+	success_rate: number; // % that were sent successfully
+	delivery_rate: number; // NEW: % that were confirmed delivered
 	open_rate: number;
 	click_rate: number;
 	avg_delivery_time_ms: number;

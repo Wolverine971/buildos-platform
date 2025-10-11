@@ -76,9 +76,8 @@ function transformBriefCompleted(
   }
 
   // If no tasks at all, show "No tasks"
-  const taskSummary = taskBreakdown.length > 0
-    ? taskBreakdown.join(" | ")
-    : "No tasks scheduled";
+  const taskSummary =
+    taskBreakdown.length > 0 ? taskBreakdown.join(" | ") : "No tasks scheduled";
 
   return {
     title: "Your Daily Brief is Ready! 📋",

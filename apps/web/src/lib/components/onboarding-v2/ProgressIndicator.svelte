@@ -3,11 +3,13 @@
 	import { CheckCircle } from 'lucide-svelte';
 	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 
-	interface Props {
+	let {
+		currentStep,
+		onStepClick = () => {}
+	}: {
 		currentStep: number;
-	}
-
-	let { currentStep }: Props = $props();
+		onStepClick?: (stepIndex: number) => void;
+	} = $props();
 
 	const steps = Object.values(ONBOARDING_V2_CONFIG.steps).sort((a, b) => a.order - b.order);
 	const totalSteps = steps.length;
@@ -41,13 +43,16 @@
 
 					<!-- Step circle -->
 					<button
-						class="relative z-10 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center
+						class="relative z-10 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer
+              hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500/50
               {isCompleted
-							? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg shadow-green-500/30'
+							? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
 							: isCurrent
 								? 'bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg shadow-purple-500/30 animate-pulse scale-110'
-								: 'bg-gray-200 dark:bg-gray-700'}"
-						disabled={true}
+								: 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}"
+						onclick={() => onStepClick(index)}
+						aria-label="Go to step {index + 1}: {step.title}"
+						title="Go to step {index + 1}: {step.title}"
 					>
 						{#if isCompleted}
 							<CheckCircle class="w-5 h-5 text-white" />

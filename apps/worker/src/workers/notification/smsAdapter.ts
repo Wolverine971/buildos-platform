@@ -10,6 +10,7 @@
 
 import { createServiceClient } from "@buildos/supabase-client";
 import type { NotificationDelivery, Json } from "@buildos/shared-types";
+import type { Logger } from "@buildos/shared-utils";
 
 const supabase = createServiceClient();
 
@@ -45,7 +46,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 /**
  * Fetch template from database with caching
  */
-async function getTemplate(templateKey: string): Promise<SMSTemplate | null> {
+async function getTemplate(
+  templateKey: string,
+  smsLogger: Logger,
+): Promise<SMSTemplate | null> {
   // Check cache first
   const cached = templateCache.get(templateKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -63,10 +67,10 @@ async function getTemplate(templateKey: string): Promise<SMSTemplate | null> {
       .single();
 
     if (error) {
-      console.warn(
-        `[SMSAdapter] Template ${templateKey} not found:`,
-        error.message,
-      );
+      smsLogger.warn("SMS template not found, will use fallback", {
+        templateKey,
+        error: error.message,
+      });
       // Cache the null result to avoid repeated failed lookups
       templateCache.set(templateKey, { template: null, timestamp: Date.now() });
       return null;
@@ -76,10 +80,9 @@ async function getTemplate(templateKey: string): Promise<SMSTemplate | null> {
     templateCache.set(templateKey, { template: data, timestamp: Date.now() });
     return data;
   } catch (error: any) {
-    console.error(
-      `[SMSAdapter] Error fetching template ${templateKey}:`,
-      error,
-    );
+    smsLogger.error("Error fetching SMS template", error, {
+      templateKey,
+    });
     return null;
   }
 }
@@ -91,11 +94,14 @@ async function getTemplate(templateKey: string): Promise<SMSTemplate | null> {
 function renderTemplate(
   template: string,
   variables: Record<string, any>,
+  smsLogger: Logger,
 ): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
     const value = variables[varName];
     if (value === undefined || value === null) {
-      console.warn(`[SMSAdapter] Missing template variable: ${varName}`);
+      smsLogger.warn("Missing template variable", {
+        variableName: varName,
+      });
       return match; // Keep the placeholder if variable not found
     }
     return String(value);
@@ -161,6 +167,7 @@ function extractTemplateVars(
  */
 async function formatSMSMessage(
   delivery: NotificationDelivery,
+  smsLogger: Logger,
 ): Promise<string> {
   const { payload } = delivery;
   const eventType = payload.event_type || payload.eventType;
@@ -179,22 +186,29 @@ async function formatSMSMessage(
 
   // Try to use database template first
   if (templateKey) {
-    const template = await getTemplate(templateKey);
+    const template = await getTemplate(templateKey, smsLogger);
     if (template) {
       const variables = extractTemplateVars(payload, eventType);
-      const rendered = renderTemplate(template.message_template, variables);
-
-      console.log(
-        `[SMSAdapter] Rendered template ${templateKey}: "${rendered}"`,
+      const rendered = renderTemplate(
+        template.message_template,
+        variables,
+        smsLogger,
       );
+
+      smsLogger.debug("Rendered SMS template", {
+        templateKey,
+        messageLength: rendered.length,
+      });
 
       // Enforce max length if specified
       if (template.max_length && rendered.length > template.max_length) {
         const truncated =
           rendered.substring(0, template.max_length - 3) + "...";
-        console.warn(
-          `[SMSAdapter] Message truncated from ${rendered.length} to ${template.max_length} chars`,
-        );
+        smsLogger.warn("SMS message truncated to max length", {
+          originalLength: rendered.length,
+          maxLength: template.max_length,
+          templateKey,
+        });
         return truncated;
       }
 
@@ -203,18 +217,21 @@ async function formatSMSMessage(
   }
 
   // Fallback to hardcoded formatting if template not found
-  console.info(
-    `[SMSAdapter] Using fallback formatting for event type: ${eventType}`,
-  );
+  smsLogger.info("Using fallback SMS formatting", {
+    eventType,
+  });
 
   switch (eventType) {
     case "user.signup":
       return `BuildOS: New user ${payload.user_email || payload.data?.user_email || "unknown"} signed up via ${payload.signup_method || payload.data?.signup_method || "web"}`;
 
     case "brief.completed":
-      const todaysCount = payload.todays_task_count || payload.data?.todays_task_count || 0;
-      const overdueCount = payload.overdue_task_count || payload.data?.overdue_task_count || 0;
-      const upcomingCount = payload.upcoming_task_count || payload.data?.upcoming_task_count || 0;
+      const todaysCount =
+        payload.todays_task_count || payload.data?.todays_task_count || 0;
+      const overdueCount =
+        payload.overdue_task_count || payload.data?.overdue_task_count || 0;
+      const upcomingCount =
+        payload.upcoming_task_count || payload.data?.upcoming_task_count || 0;
 
       // Build task breakdown for SMS
       const taskParts: string[] = [];
@@ -222,9 +239,8 @@ async function formatSMSMessage(
       if (overdueCount > 0) taskParts.push(`Overdue: ${overdueCount}`);
       if (upcomingCount > 0) taskParts.push(`Upcoming: ${upcomingCount}`);
 
-      const taskSummary = taskParts.length > 0
-        ? taskParts.join(" | ")
-        : "No tasks scheduled";
+      const taskSummary =
+        taskParts.length > 0 ? taskParts.join(" | ") : "No tasks scheduled";
 
       return `Your BuildOS brief is ready! ${taskSummary}. Open app to view.`;
 
@@ -269,11 +285,13 @@ function mapPriority(notificationPriority?: string): SMSPriority {
  *
  * @param message - Original message with URLs
  * @param deliveryId - Notification delivery ID for tracking
+ * @param smsLogger - Logger instance for tracking
  * @returns Message with shortened URLs
  */
 async function shortenUrlsInMessage(
   message: string,
   deliveryId: string,
+  smsLogger: Logger,
 ): Promise<string> {
   try {
     // Regex to find URLs (supports http and https)
@@ -301,16 +319,19 @@ async function shortenUrlsInMessage(
         );
 
         if (error) {
-          console.error(
-            `[SMSAdapter] Failed to shorten URL ${url}:`,
-            error.message,
-          );
+          smsLogger.error("Failed to shorten URL", error, {
+            url: url.substring(0, 100),
+            notificationDeliveryId: deliveryId,
+          });
           // Keep original URL if shortening fails
           continue;
         }
 
         if (!shortCode) {
-          console.warn(`[SMSAdapter] No short code generated for ${url}`);
+          smsLogger.warn("No short code generated for URL", {
+            url: url.substring(0, 100),
+            notificationDeliveryId: deliveryId,
+          });
           continue;
         }
 
@@ -321,25 +342,29 @@ async function shortenUrlsInMessage(
         shortenedCount++;
 
         const savedChars = url.length - shortUrl.length;
-        console.log(
-          `[SMSAdapter] Shortened URL: ${url.substring(0, 50)}... → ${shortUrl} (saved ${savedChars} chars)`,
-        );
+        smsLogger.debug("Shortened URL successfully", {
+          originalUrl: url.substring(0, 50),
+          shortUrl,
+          savedChars,
+        });
       } catch (error: any) {
-        console.error(
-          `[SMSAdapter] Error shortening URL ${url}:`,
-          error.message,
-        );
+        smsLogger.error("Error shortening URL", error, {
+          url: url.substring(0, 100),
+        });
         // Keep original URL if shortening fails
       }
     }
 
-    console.log(
-      `[SMSAdapter] Shortened ${shortenedCount} of ${urls.length} URLs in message`,
-    );
+    if (shortenedCount > 0) {
+      smsLogger.info("URL shortening completed", {
+        shortenedCount,
+        totalUrls: urls.length,
+      });
+    }
 
     return result;
   } catch (error: any) {
-    console.error("[SMSAdapter] Error in shortenUrlsInMessage:", error.message);
+    smsLogger.error("Error in shortenUrlsInMessage", error);
     // Return original message if something goes wrong
     return message;
   }
@@ -357,10 +382,22 @@ async function shortenUrlsInMessage(
  */
 export async function sendSMSNotification(
   delivery: NotificationDelivery,
+  jobLogger: Logger,
 ): Promise<DeliveryResult> {
+  const smsLogger = jobLogger.child("sms");
+
   try {
+    smsLogger.debug("Sending SMS notification", {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
+
     // Validate phone number is present
     if (!delivery.channel_identifier) {
+      smsLogger.warn("Phone number missing from delivery record", {
+        notificationDeliveryId: delivery.id,
+        recipientUserId: delivery.recipient_user_id,
+      });
       return {
         success: false,
         error: "Phone number missing from delivery record",
@@ -370,17 +407,24 @@ export async function sendSMSNotification(
     const phoneNumber = delivery.channel_identifier;
 
     // Format SMS message from notification payload (now async with template support)
-    let messageContent = await formatSMSMessage(delivery);
+    let messageContent = await formatSMSMessage(delivery, smsLogger);
 
     // Shorten URLs in message for click tracking (Phase 3)
-    messageContent = await shortenUrlsInMessage(messageContent, delivery.id);
+    messageContent = await shortenUrlsInMessage(
+      messageContent,
+      delivery.id,
+      smsLogger,
+    );
 
     // Determine priority
     const priority = mapPriority(delivery.payload.priority);
 
-    console.log(
-      `[SMSAdapter] Formatting SMS for delivery ${delivery.id}: "${messageContent}" to ${phoneNumber}`,
-    );
+    smsLogger.debug("Formatted SMS message", {
+      notificationDeliveryId: delivery.id,
+      phoneNumber,
+      messageLength: messageContent.length,
+      priority,
+    });
 
     // Create SMS message record with notification link
     const { data: smsMessage, error: smsError } = await supabase
@@ -403,16 +447,20 @@ export async function sendSMSNotification(
       .single();
 
     if (smsError) {
-      console.error("[SMSAdapter] Failed to create SMS message:", smsError);
+      smsLogger.error("Failed to create SMS message record", smsError, {
+        notificationDeliveryId: delivery.id,
+        phoneNumber,
+      });
       return {
         success: false,
         error: `Failed to create SMS message: ${smsError.message}`,
       };
     }
 
-    console.log(
-      `[SMSAdapter] Created SMS message ${smsMessage.id} for delivery ${delivery.id}`,
-    );
+    smsLogger.info("Created SMS message record", {
+      smsMessageId: smsMessage.id,
+      notificationDeliveryId: delivery.id,
+    });
 
     // Queue SMS job using existing queue_sms_message RPC
     // This will be processed by the SMS worker
@@ -432,7 +480,10 @@ export async function sendSMSNotification(
     );
 
     if (queueError) {
-      console.error("[SMSAdapter] Failed to queue SMS:", queueError);
+      smsLogger.error("Failed to queue SMS job", queueError, {
+        smsMessageId: smsMessage.id,
+        notificationDeliveryId: delivery.id,
+      });
 
       // Update SMS message status to failed
       await supabase
@@ -446,16 +497,22 @@ export async function sendSMSNotification(
       };
     }
 
-    console.log(
-      `[SMSAdapter] Queued SMS job (message ID: ${messageId}) for delivery ${delivery.id}`,
-    );
+    smsLogger.info("SMS queued successfully", {
+      smsMessageId: smsMessage.id,
+      queueJobId: messageId,
+      notificationDeliveryId: delivery.id,
+      phoneNumber,
+    });
 
     return {
       success: true,
       external_id: smsMessage.id, // Use sms_messages ID as external reference
     };
   } catch (error: any) {
-    console.error("[SMSAdapter] Failed to send SMS notification:", error);
+    smsLogger.error("Failed to send SMS notification", error, {
+      notificationDeliveryId: delivery.id,
+      recipientUserId: delivery.recipient_user_id,
+    });
     return {
       success: false,
       error: error.message || "Unknown error sending SMS",
@@ -469,7 +526,8 @@ export async function sendSMSNotification(
  */
 export function clearTemplateCache(): void {
   templateCache.clear();
-  console.log("[SMSAdapter] Template cache cleared");
+  // Note: This is a utility function without logger context
+  // Logger would be passed if called from main flow
 }
 
 /**

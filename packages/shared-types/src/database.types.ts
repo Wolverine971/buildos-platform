@@ -2404,6 +2404,73 @@ export type Database = {
           },
         ];
       };
+      notification_logs: {
+        Row: {
+          correlation_id: string;
+          created_at: string;
+          error_stack: string | null;
+          id: string;
+          level: string;
+          message: string;
+          metadata: Json | null;
+          namespace: string | null;
+          notification_delivery_id: string | null;
+          notification_event_id: string | null;
+          request_id: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          correlation_id: string;
+          created_at?: string;
+          error_stack?: string | null;
+          id?: string;
+          level: string;
+          message: string;
+          metadata?: Json | null;
+          namespace?: string | null;
+          notification_delivery_id?: string | null;
+          notification_event_id?: string | null;
+          request_id?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          correlation_id?: string;
+          created_at?: string;
+          error_stack?: string | null;
+          id?: string;
+          level?: string;
+          message?: string;
+          metadata?: Json | null;
+          namespace?: string | null;
+          notification_delivery_id?: string | null;
+          notification_event_id?: string | null;
+          request_id?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_notification_delivery_id_fkey";
+            columns: ["notification_delivery_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_deliveries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_logs_notification_event_id_fkey";
+            columns: ["notification_event_id"];
+            isOneToOne: false;
+            referencedRelation: "notification_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_logs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       notification_subscriptions: {
         Row: {
           admin_only: boolean | null;
@@ -5034,7 +5101,7 @@ export type Database = {
         Args: {
           p_dedup_key?: string;
           p_job_type: string;
-          p_metadata?: Json;
+          p_metadata: Json;
           p_priority?: number;
           p_scheduled_for?: string;
           p_user_id: string;
@@ -5123,9 +5190,10 @@ export type Database = {
           p_user_id: string;
         };
         Returns: {
-          cancelled_job_id: string;
-          cancelled_queue_job_id: string;
-          previous_status: string;
+          id: string;
+          job_type: string;
+          queue_job_id: string;
+          status: string;
         }[];
       };
       cancel_jobs_in_time_window: {
@@ -5157,15 +5225,19 @@ export type Database = {
         Args: { p_batch_size?: number; p_job_types: string[] };
         Returns: {
           attempts: number;
+          completed_at: string;
           created_at: string;
+          error_message: string;
           id: string;
-          job_type: Database["public"]["Enums"]["queue_type"];
+          job_type: string;
           max_attempts: number;
           metadata: Json;
           priority: number;
           queue_job_id: string;
           scheduled_for: string;
-          status: Database["public"]["Enums"]["queue_status"];
+          started_at: string;
+          status: string;
+          updated_at: string;
           user_id: string;
         }[];
       };
@@ -5378,9 +5450,11 @@ export type Database = {
           click_rate: number;
           clicked: number;
           delivered: number;
+          delivery_rate: number;
           failed: number;
           open_rate: number;
           opened: number;
+          sent: number;
           success_rate: number;
           total_sent: number;
         }[];
@@ -5754,7 +5828,7 @@ export type Database = {
         Returns: Json;
       };
       reset_stalled_jobs: {
-        Args: { p_stall_timeout?: unknown };
+        Args: { p_stall_timeout?: string };
         Returns: number;
       };
       restore_deleted_task: {
@@ -5898,6 +5972,27 @@ export type Database = {
           p_new_scheduled_for: string;
         };
         Returns: boolean;
+      };
+      update_sms_status_atomic: {
+        Args: {
+          p_error_code?: number;
+          p_error_message?: string;
+          p_mapped_status: string;
+          p_message_id: string;
+          p_twilio_sid: string;
+          p_twilio_status: string;
+        };
+        Returns: {
+          attempt_count: number;
+          delivered_at: string;
+          max_attempts: number;
+          notification_delivery_id: string;
+          priority: string;
+          sent_at: string;
+          updated_delivery: boolean;
+          updated_sms: boolean;
+          user_id: string;
+        }[];
       };
       update_user_notification_preferences: {
         Args: {

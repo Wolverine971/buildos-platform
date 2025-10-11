@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-10T16:45:37.917Z
+// Generated on: 2025-10-11T00:31:43.882Z
 
 export type Json =
   | string
@@ -637,6 +637,20 @@ export type DatabaseSchema = {
     metadata: Json | null;
     payload: Json;
     target_user_id: string | null;
+  };
+  notification_logs: {
+    correlation_id: string;
+    created_at: string;
+    error_stack: string | null;
+    id: string;
+    level: string;
+    message: string;
+    metadata: Json | null;
+    namespace: string | null;
+    notification_delivery_id: string | null;
+    notification_event_id: string | null;
+    request_id: string | null;
+    user_id: string | null;
   };
   notification_subscriptions: {
     admin_only: boolean | null;
@@ -1311,6 +1325,7 @@ export const tableNames = [
   "notes",
   "notification_deliveries",
   "notification_events",
+  "notification_logs",
   "notification_subscriptions",
   "notification_tracking_links",
   "payment_methods",

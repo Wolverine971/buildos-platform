@@ -8,3 +8,6 @@
 
 // Metrics module
 export * from "./metrics";
+
+// Logging module
+export * from "./logging";

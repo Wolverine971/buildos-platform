@@ -1,8 +1,10 @@
 // apps/web/src/routes/api/email-tracking/[tracking_id]/+server.ts
 
 import type { RequestHandler } from './$types';
+import { createLogger } from '@buildos/shared-utils';
 
 export const GET: RequestHandler = async ({ params, request, locals: { supabase } }) => {
+	const baseLogger = createLogger('web:api:email-tracking', supabase);
 	const transparentPixel = Buffer.from(
 		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGAWA0dpQAAAABJRU5ErkJggg==',
 		'base64'
@@ -21,9 +23,6 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 
 	try {
 		const tracking_id = params.tracking_id;
-
-		// Log the tracking attempt
-		console.log(`Email tracking request for tracking_id: ${tracking_id}`);
 
 		const userAgent = request.headers.get('user-agent') || '';
 		const forwardedFor = request.headers.get('x-forwarded-for');
@@ -51,14 +50,55 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 			.single();
 
 		if (emailError || !email) {
-			console.log(`Email not found for tracking_id: ${tracking_id}`, emailError?.message);
+			baseLogger.warn('Email not found for tracking pixel', {
+				trackingId: tracking_id,
+				error: emailError?.message
+			});
 			// Still return a 1x1 transparent pixel even if tracking fails
 			return pixelResponse;
 		}
 
-		console.log(
-			`Found email ${email.id} with ${email.email_recipients?.length || 0} recipients`
-		);
+		// Try to extract correlation ID from notification delivery
+		let correlationId: string | undefined;
+		const deliveryId = (email.template_data as any)?.delivery_id;
+		if (deliveryId) {
+			const { data: delivery } = await supabase
+				.from('notification_deliveries')
+				.select('event_id')
+				.eq('id', deliveryId)
+				.single();
+
+			if (delivery?.event_id) {
+				const { data: event } = await supabase
+					.from('notification_events')
+					.select('metadata')
+					.eq('id', delivery.event_id)
+					.single();
+
+				if (
+					event?.metadata &&
+					typeof event.metadata === 'object' &&
+					'correlationId' in event.metadata
+				) {
+					correlationId = event.metadata.correlationId as string;
+				}
+			}
+		}
+
+		// Create logger with correlation context
+		const logger = correlationId
+			? baseLogger.child('open', {
+					correlationId,
+					trackingId: tracking_id,
+					emailId: email.id,
+					deliveryId
+				})
+			: baseLogger.child('open', { trackingId: tracking_id, emailId: email.id });
+
+		logger.info('Email tracking pixel requested', {
+			recipientCount: email.email_recipients?.length || 0,
+			userAgent: userAgent.substring(0, 100)
+		});
 
 		// Update each recipient's open tracking
 		if (email.email_recipients && email.email_recipients.length > 0) {
@@ -66,9 +106,12 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 				const now = new Date().toISOString();
 				const isFirstOpen = !recipient.opened_at;
 
-				console.log(
-					`Tracking open for recipient: ${recipient.recipient_email}, first open: ${isFirstOpen}`
-				);
+				logger.info('Tracking email open', {
+					recipientEmail: recipient.recipient_email,
+					recipientId: recipient.id,
+					isFirstOpen,
+					openCount: (recipient.open_count || 0) + 1
+				});
 
 				// Update recipient tracking
 				const { error: updateError } = await supabase
@@ -81,7 +124,9 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 					.eq('id', recipient.id);
 
 				if (updateError) {
-					console.error(`Failed to update recipient tracking:`, updateError);
+					logger.error('Failed to update recipient tracking', updateError, {
+						recipientId: recipient.id
+					});
 				}
 
 				// Log tracking event
@@ -98,15 +143,16 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 				});
 
 				if (eventError) {
-					console.error(`Failed to log tracking event:`, eventError);
+					logger.error('Failed to log email tracking event', eventError, {
+						recipientId: recipient.id
+					});
 				}
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification
 			// This connects the existing email tracking to the notification system
-			const deliveryId = email.template_data?.delivery_id;
 			if (deliveryId) {
-				console.log(`Updating notification_deliveries ${deliveryId} for email ${email.id}`);
+				logger.debug('Checking notification delivery for update');
 
 				// Only update if opened_at is null (first open)
 				const { data: delivery } = await supabase
@@ -126,23 +172,20 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 						.eq('id', deliveryId);
 
 					if (deliveryUpdateError) {
-						console.error(
-							`Failed to update notification_deliveries ${deliveryId}:`,
-							deliveryUpdateError
-						);
+						logger.error('Failed to update notification delivery', deliveryUpdateError);
 					} else {
-						console.log(`Successfully updated notification_deliveries ${deliveryId}`);
+						logger.info('Updated notification delivery status to opened');
 					}
 				}
 			}
 		} else {
-			console.log(`No recipients found for email ${email.id}`);
+			logger.warn('No recipients found for email');
 		}
 
 		// Return 1x1 transparent pixel
 		return pixelResponse;
 	} catch (error) {
-		console.error('Error in email tracking:', error);
+		baseLogger.error('Error in email tracking', error);
 
 		// Still return a pixel even if there's an error
 		return pixelResponse;

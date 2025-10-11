@@ -308,30 +308,35 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       const projectCount = projectBriefs?.length || 0;
 
       // Calculate all task counts from project briefs for comprehensive notification
-      const todaysTaskCount = projectBriefs?.reduce((sum, pb) => {
-        const metadata = pb.metadata as any;
-        return sum + (metadata?.todays_task_count || 0);
-      }, 0) || 0;
+      const todaysTaskCount =
+        projectBriefs?.reduce((sum, pb) => {
+          const metadata = pb.metadata as any;
+          return sum + (metadata?.todays_task_count || 0);
+        }, 0) || 0;
 
-      const overdueTaskCount = projectBriefs?.reduce((sum, pb) => {
-        const metadata = pb.metadata as any;
-        return sum + (metadata?.overdue_task_count || 0);
-      }, 0) || 0;
+      const overdueTaskCount =
+        projectBriefs?.reduce((sum, pb) => {
+          const metadata = pb.metadata as any;
+          return sum + (metadata?.overdue_task_count || 0);
+        }, 0) || 0;
 
-      const upcomingTaskCount = projectBriefs?.reduce((sum, pb) => {
-        const metadata = pb.metadata as any;
-        return sum + (metadata?.upcoming_task_count || 0);
-      }, 0) || 0;
+      const upcomingTaskCount =
+        projectBriefs?.reduce((sum, pb) => {
+          const metadata = pb.metadata as any;
+          return sum + (metadata?.upcoming_task_count || 0);
+        }, 0) || 0;
 
-      const nextSevenDaysTaskCount = projectBriefs?.reduce((sum, pb) => {
-        const metadata = pb.metadata as any;
-        return sum + (metadata?.next_seven_days_task_count || 0);
-      }, 0) || 0;
+      const nextSevenDaysTaskCount =
+        projectBriefs?.reduce((sum, pb) => {
+          const metadata = pb.metadata as any;
+          return sum + (metadata?.next_seven_days_task_count || 0);
+        }, 0) || 0;
 
-      const recentlyCompletedCount = projectBriefs?.reduce((sum, pb) => {
-        const metadata = pb.metadata as any;
-        return sum + (metadata?.recently_completed_count || 0);
-      }, 0) || 0;
+      const recentlyCompletedCount =
+        projectBriefs?.reduce((sum, pb) => {
+          const metadata = pb.metadata as any;
+          return sum + (metadata?.recently_completed_count || 0);
+        }, 0) || 0;
 
       // Get notification scheduled time from job data (if provided)
       const notificationScheduledFor = job.data.notificationScheduledFor

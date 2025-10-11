@@ -31,6 +31,13 @@
 		return 'text-red-600';
 	}
 
+	function getDeliveryRateColor(rate: number | null | undefined): string {
+		if (rate == null) return 'text-gray-500';
+		if (rate >= 90) return 'text-green-600';
+		if (rate >= 75) return 'text-yellow-600';
+		return 'text-red-600';
+	}
+
 	function getChannelBadgeColor(channel: string): string {
 		const colors: Record<string, string> = {
 			push: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -45,6 +52,13 @@
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
 	<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 		<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Channel Performance</h3>
+		<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+			Track notification delivery metrics across channels. <span class="font-medium"
+				>Success Rate</span
+			>
+			shows % sent successfully, while
+			<span class="font-medium">Delivery Rate</span> shows % confirmed delivered.
+		</p>
 	</div>
 
 	{#if loading}
@@ -70,12 +84,27 @@
 						<th
 							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
 						>
+							Total
+						</th>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+						>
 							Sent
 						</th>
 						<th
 							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
 						>
+							Delivered
+						</th>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+						>
 							Success Rate
+						</th>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+						>
+							Delivery Rate
 						</th>
 						<th
 							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
@@ -90,7 +119,7 @@
 						<th
 							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
 						>
-							Avg Delivery
+							Avg Time
 						</th>
 					</tr>
 				</thead>
@@ -99,6 +128,7 @@
 				>
 					{#each data as channel}
 						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+							<!-- Channel -->
 							<td class="px-6 py-4 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
@@ -108,6 +138,7 @@
 									{channel.channel}
 								</span>
 							</td>
+							<!-- Total (all notifications) -->
 							<td
 								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
 							>
@@ -120,6 +151,26 @@
 									</div>
 								</div>
 							</td>
+							<!-- Sent (status='sent') -->
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
+								<div class="font-medium">
+									{formatNumber(channel.sent)}
+								</div>
+							</td>
+							<!-- Delivered (status='delivered') -->
+							<td
+								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+							>
+								<div>
+									<div class="font-medium">
+										{formatNumber(channel.delivered)}
+									</div>
+									<div class="text-xs text-gray-500">confirmed</div>
+								</div>
+							</td>
+							<!-- Success Rate (% sent successfully) -->
 							<td class="px-6 py-4 whitespace-nowrap">
 								<div class="flex items-center">
 									<div class="flex-1">
@@ -139,6 +190,27 @@
 									</div>
 								</div>
 							</td>
+							<!-- Delivery Rate (% of sent that were delivered) - NEW -->
+							<td class="px-6 py-4 whitespace-nowrap">
+								<div class="flex items-center">
+									<div class="flex-1">
+										<div
+											class="text-sm font-medium {getDeliveryRateColor(
+												channel.delivery_rate
+											)}"
+										>
+											{formatPercentage(channel.delivery_rate)}
+										</div>
+										<div class="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
+											<div
+												class="bg-green-600 h-1.5 rounded-full"
+												style="width: {channel.delivery_rate ?? 0}%"
+											></div>
+										</div>
+									</div>
+								</div>
+							</td>
+							<!-- Open Rate -->
 							<td
 								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
 							>
@@ -149,6 +221,7 @@
 									</div>
 								</div>
 							</td>
+							<!-- Click Rate -->
 							<td
 								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
 							>
@@ -159,6 +232,7 @@
 									</div>
 								</div>
 							</td>
+							<!-- Avg Delivery Time -->
 							<td
 								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
 							>

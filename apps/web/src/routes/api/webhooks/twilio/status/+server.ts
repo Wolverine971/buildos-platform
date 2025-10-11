@@ -6,18 +6,7 @@ import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 import { createServiceClient } from '@buildos/supabase-client';
-import { smsMetricsService } from '@buildos/shared-utils';
-
-/**
- * Webhook Context for logging and monitoring
- */
-interface WebhookContext {
-	messageSid: string;
-	messageId?: string;
-	userId?: string;
-	status: string;
-	timestamp: string;
-}
+import { smsMetricsService, createLogger, extractCorrelationContext } from '@buildos/shared-utils';
 
 /**
  * Map Twilio status to our sms_status enum
@@ -97,34 +86,9 @@ function categorizeErrorCode(errorCode: string | null): {
 	return { category: 'unknown', shouldRetry: true, severity: 'medium' };
 }
 
-/**
- * Log webhook event with structured context
- */
-function logWebhookEvent(
-	level: 'info' | 'warn' | 'error',
-	message: string,
-	context: Partial<WebhookContext> & Record<string, any>
-) {
-	const timestamp = new Date().toISOString();
-	const logEntry = {
-		timestamp,
-		level,
-		source: 'twilio_webhook',
-		message,
-		...context
-	};
-
-	if (level === 'error') {
-		console.error('[TwilioWebhook]', message, logEntry);
-	} else if (level === 'warn') {
-		console.warn('[TwilioWebhook]', message, logEntry);
-	} else {
-		console.log('[TwilioWebhook]', message, logEntry);
-	}
-}
-
 export const POST: RequestHandler = async ({ request, url }) => {
 	const supabase = createServiceClient();
+	const baseLogger = createLogger('web:webhook:twilio', supabase);
 	const startTime = Date.now();
 
 	try {
@@ -144,25 +108,35 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Early validation
 		if (!messageSid || !messageStatus) {
-			logWebhookEvent('error', 'Missing required parameters', {
+			baseLogger.error('Missing required parameters', undefined, {
 				messageSid: messageSid || 'missing',
-				messageStatus: messageStatus || 'missing',
-				timestamp: new Date().toISOString()
+				messageStatus: messageStatus || 'missing'
 			});
 			return json({ error: 'Missing required parameters' }, { status: 400 });
 		}
 
-		// Create webhook context for logging
-		const webhookContext: WebhookContext = {
-			messageSid,
-			messageId: messageId || undefined,
-			userId: userId || undefined,
-			status: messageStatus,
-			timestamp: new Date().toISOString()
-		};
+		// Try to extract correlation ID from SMS message metadata
+		let correlationId: string | undefined;
+		if (messageId) {
+			const { data: smsMessage } = await supabase
+				.from('sms_messages')
+				.select('metadata')
+				.eq('id', messageId)
+				.single();
 
-		logWebhookEvent('info', 'Received status update', {
-			...webhookContext,
+			if (smsMessage?.metadata) {
+				const context = extractCorrelationContext(smsMessage.metadata as any);
+				correlationId = context.correlationId;
+			}
+		}
+
+		// Create logger with correlation ID if available
+		const logger = correlationId
+			? baseLogger.child('status', { correlationId, messageSid, messageId, userId })
+			: baseLogger.child('status', { messageSid, messageId, userId });
+
+		logger.info('Received Twilio status webhook', {
+			messageStatus,
 			errorCode,
 			hasError: !!errorCode
 		});
@@ -179,15 +153,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			);
 
 			if (!isValid) {
-				logWebhookEvent('error', 'Invalid Twilio webhook signature', webhookContext);
+				logger.error('Invalid Twilio webhook signature');
 				return json({ error: 'Invalid signature' }, { status: 401 });
 			}
 		} else {
-			logWebhookEvent(
-				'warn',
-				'Webhook signature missing (development mode?)',
-				webhookContext
-			);
+			logger.warn('Webhook signature missing (development mode?)');
 		}
 
 		// Map Twilio status to our enum
@@ -196,8 +166,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Categorize error if present
 		const errorInfo = categorizeErrorCode(errorCode);
 
-		logWebhookEvent('info', 'Processing status update', {
-			...webhookContext,
+		logger.info('Processing SMS status update', {
 			mappedStatus,
 			errorCategory: errorInfo.category,
 			errorSeverity: errorInfo.severity
@@ -205,26 +174,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Update message status in database
 		if (messageId) {
-			const updateData: any = {
-				twilio_status: messageStatus,
-				status: mappedStatus,
-				updated_at: new Date().toISOString()
-			};
-
-			// Set appropriate timestamp based on status
-			if (messageStatus === 'delivered') {
-				updateData.delivered_at = new Date().toISOString();
-			} else if (messageStatus === 'sent' || messageStatus === 'sending') {
-				updateData.sent_at = updateData.sent_at || new Date().toISOString();
-			}
-
-			// Store error information
+			// Store error information if present
 			if (errorCode || errorMessage) {
-				updateData.twilio_error_code = parseInt(errorCode || '0');
-				updateData.twilio_error_message = errorMessage;
-
-				logWebhookEvent('warn', 'SMS delivery error detected', {
-					...webhookContext,
+				logger.warn('SMS delivery error detected', {
 					errorCode,
 					errorMessage,
 					errorCategory: errorInfo.category,
@@ -232,34 +184,37 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				});
 			}
 
-			// Update SMS message - Step 1 of dual-table update
-			const { data: updatedMessage, error: smsError } = await supabase
-				.from('sms_messages')
-				.update(updateData)
-				.eq('id', messageId)
-				.eq('twilio_sid', messageSid)
-				.select(
-					'notification_delivery_id, attempt_count, max_attempts, priority, user_id, sent_at, delivered_at'
-				)
+			// ATOMIC dual-table update using RPC (prevents race conditions)
+			// This updates both sms_messages and notification_deliveries in a single transaction
+			const { data: updateResult, error: atomicError } = await supabase
+				.rpc('update_sms_status_atomic', {
+					p_message_id: messageId,
+					p_twilio_sid: messageSid,
+					p_twilio_status: messageStatus,
+					p_mapped_status: mappedStatus,
+					p_error_code: errorCode ? parseInt(errorCode) : undefined,
+					p_error_message: errorMessage || undefined
+				})
 				.single();
 
-			if (smsError) {
-				logWebhookEvent('error', 'Failed to update SMS message', {
-					...webhookContext,
-					error: smsError.message,
-					errorCode: smsError.code
+			if (atomicError) {
+				logger.error('Failed to update SMS status atomically', atomicError, {
+					errorCode: atomicError.code
 				});
 				// Don't return error to Twilio, as it might retry unnecessarily
+			} else if (!updateResult) {
+				logger.error('SMS message not found for update');
 			} else {
-				logWebhookEvent('info', 'SMS message updated successfully', {
-					...webhookContext,
-					hasNotificationDelivery: !!updatedMessage?.notification_delivery_id
+				logger.info('SMS status updated atomically', {
+					hasNotificationDelivery: !!updateResult.notification_delivery_id,
+					updatedSms: updateResult.updated_sms,
+					updatedDelivery: updateResult.updated_delivery
 				});
 
 				// Track delivery metrics when message is delivered
-				if (messageStatus === 'delivered' && updatedMessage?.user_id) {
-					const sentAt = updatedMessage.sent_at;
-					const deliveredAt = updatedMessage.delivered_at;
+				if (messageStatus === 'delivered' && updateResult?.user_id) {
+					const sentAt = updateResult.sent_at;
+					const deliveredAt = updateResult.delivered_at;
 
 					if (sentAt && deliveredAt) {
 						const deliveryTimeMs =
@@ -267,31 +222,25 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 						// Record delivery metrics (non-blocking)
 						smsMetricsService
-							.recordDelivered(updatedMessage.user_id, messageId, deliveryTimeMs)
+							.recordDelivered(updateResult.user_id, messageId, deliveryTimeMs)
 							.catch((err) => {
-								logWebhookEvent('error', 'Failed to record delivery metrics', {
-									...webhookContext,
-									error: err.message
-								});
+								logger.error('Failed to record delivery metrics', err);
 							});
 
-						logWebhookEvent('info', 'Delivery metrics tracked', {
-							...webhookContext,
+						logger.info('Delivery metrics tracked', {
 							deliveryTimeMs
 						});
 					} else {
-						logWebhookEvent(
-							'warn',
-							'Cannot calculate delivery time - missing timestamps',
-							{
-								...webhookContext,
-								hasSentAt: !!sentAt,
-								hasDeliveredAt: !!deliveredAt
-							}
-						);
+						logger.warn('Cannot calculate delivery time - missing timestamps', {
+							hasSentAt: !!sentAt,
+							hasDeliveredAt: !!deliveredAt
+						});
 					}
 				}
 			}
+
+			// Store reference to update result for later use
+			const updatedMessage = updateResult;
 
 			// Phase 4: Update scheduled_sms_messages if linked
 			const { data: scheduledSms } = await supabase
@@ -301,8 +250,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				.maybeSingle();
 
 			if (scheduledSms) {
-				logWebhookEvent('info', 'Found linked scheduled SMS', {
-					...webhookContext,
+				logger.info('Found linked scheduled SMS', {
 					scheduledSmsId: scheduledSms.id
 				});
 
@@ -335,70 +283,19 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					.eq('id', scheduledSms.id);
 
 				if (scheduledError) {
-					logWebhookEvent('error', 'Failed to update scheduled SMS', {
-						...webhookContext,
-						scheduledSmsId: scheduledSms.id,
-						error: scheduledError.message
+					logger.error('Failed to update scheduled SMS', scheduledError, {
+						scheduledSmsId: scheduledSms.id
 					});
 				} else {
-					logWebhookEvent('info', 'Scheduled SMS updated successfully', {
-						...webhookContext,
+					logger.info('Scheduled SMS updated successfully', {
 						scheduledSmsId: scheduledSms.id,
 						newStatus: scheduledUpdateData.status
 					});
 				}
 			}
 
-			// Step 2 of dual-table update: Update notification delivery if linked
-			if (updatedMessage?.notification_delivery_id) {
-				const deliveryStatus = mapTwilioStatusToDeliveryStatus(messageStatus);
-				const deliveryUpdate: any = {
-					status: deliveryStatus,
-					updated_at: new Date().toISOString()
-				};
-
-				// Set appropriate timestamp for notification delivery
-				if (messageStatus === 'sent' || messageStatus === 'sending') {
-					deliveryUpdate.sent_at = new Date().toISOString();
-				} else if (messageStatus === 'delivered') {
-					deliveryUpdate.delivered_at = new Date().toISOString();
-				} else if (
-					messageStatus === 'failed' ||
-					messageStatus === 'undelivered' ||
-					messageStatus === 'canceled'
-				) {
-					deliveryUpdate.failed_at = new Date().toISOString();
-					deliveryUpdate.last_error = errorMessage
-						? `${errorMessage} (Code: ${errorCode})`
-						: `Twilio error code: ${errorCode}`;
-				}
-
-				logWebhookEvent('info', 'Updating notification delivery', {
-					...webhookContext,
-					deliveryId: updatedMessage.notification_delivery_id,
-					deliveryStatus
-				});
-
-				const { error: deliveryError } = await supabase
-					.from('notification_deliveries')
-					.update(deliveryUpdate)
-					.eq('id', updatedMessage.notification_delivery_id);
-
-				if (deliveryError) {
-					logWebhookEvent('error', 'Failed to update notification delivery', {
-						...webhookContext,
-						deliveryId: updatedMessage.notification_delivery_id,
-						error: deliveryError.message,
-						errorCode: deliveryError.code
-					});
-				} else {
-					logWebhookEvent('info', 'Dual-table update completed successfully', {
-						...webhookContext,
-						deliveryId: updatedMessage.notification_delivery_id,
-						finalStatus: deliveryStatus
-					});
-				}
-			}
+			// Note: notification_deliveries update is now handled atomically by update_sms_status_atomic RPC
+			// This prevents race conditions and ensures data consistency
 
 			// Enhanced retry logic with error categorization
 			if ((messageStatus === 'failed' || messageStatus === 'undelivered') && updatedMessage) {
@@ -418,8 +315,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					const delay = Math.pow(2, attemptCount) * baseDelay; // Exponential backoff
 					const scheduledFor = new Date(Date.now() + delay * 1000);
 
-					logWebhookEvent('info', 'Scheduling retry for failed SMS', {
-						...webhookContext,
+					logger.info('Scheduling retry for failed SMS', {
 						attemptCount,
 						maxAttempts,
 						delaySeconds: delay,
@@ -442,20 +338,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					});
 
 					if (queueError) {
-						logWebhookEvent('error', 'Failed to queue retry job', {
-							...webhookContext,
-							error: queueError.message
-						});
+						logger.error('Failed to queue retry job', queueError);
 					}
 				} else if (!shouldRetry) {
-					logWebhookEvent('warn', 'Permanent failure - retry not attempted', {
-						...webhookContext,
+					logger.warn('Permanent failure - retry not attempted', {
 						errorCategory: errorInfo.category,
 						reason: 'Error category indicates permanent failure'
 					});
 				} else {
-					logWebhookEvent('warn', 'Max retry attempts reached', {
-						...webhookContext,
+					logger.warn('Max retry attempts reached', {
 						attemptCount,
 						maxAttempts
 					});
@@ -463,11 +354,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			}
 		} else {
 			// Fallback: Update by Twilio SID if message_id not provided (legacy SMS messages)
-			logWebhookEvent('info', 'Updating SMS by Twilio SID (no message_id)', {
-				messageSid,
-				status: messageStatus,
-				timestamp: new Date().toISOString()
-			});
+			logger.info('Updating SMS by Twilio SID (no message_id)');
 
 			const { error: sidUpdateError } = await supabase
 				.from('sms_messages')
@@ -486,19 +373,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				.eq('twilio_sid', messageSid);
 
 			if (sidUpdateError) {
-				logWebhookEvent('error', 'Failed to update SMS by SID', {
-					messageSid,
-					error: sidUpdateError.message
-				});
+				logger.error('Failed to update SMS by SID', sidUpdateError);
 			}
 		}
 
 		// Calculate and log processing time
 		const processingTime = Date.now() - startTime;
-		logWebhookEvent('info', 'Webhook processed successfully', {
-			messageSid,
-			messageId: messageId || 'none',
-			status: messageStatus,
+		logger.info('Webhook processed successfully', {
 			processingTimeMs: processingTime
 		});
 
@@ -506,9 +387,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		return json({ success: true, processed: true });
 	} catch (error: any) {
 		const processingTime = Date.now() - startTime;
-		logWebhookEvent('error', 'Webhook processing failed', {
-			error: error.message,
-			stack: error.stack,
+		baseLogger.error('Webhook processing failed', error, {
 			processingTimeMs: processingTime
 		});
 
