@@ -85,7 +85,6 @@ async function auditEnumFields(): Promise<EnumFieldAudit[]> {
 		{ table: 'beta_events', field: 'event_type' },
 		{ table: 'beta_event_attendance', field: 'rsvp_status' },
 		{ table: 'beta_signups', field: 'signup_status' },
-		{ table: 'project_phases_generation', field: 'generation_status' },
 		{ table: 'projects_history', field: 'status' },
 		{ table: 'task_calendar_events', field: 'sync_status' },
 		{ table: 'users', field: 'subscription_status' },

@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-11T01:29:30.682Z
+// Generated on: 2025-10-11T18:41:35.721Z
 
 export type Json =
   | string
@@ -490,38 +490,6 @@ export type DatabaseSchema = {
     last_submission: string | null;
     submission_count: number | null;
   };
-  generated_phase_tasks: {
-    confidence_score: number | null;
-    created_at: string;
-    generated_phase_id: string;
-    id: string;
-    is_approved: boolean | null;
-    reasoning: string | null;
-    suggested_due_date: string | null;
-    suggested_start_date: string | null;
-    task_id: string;
-  };
-  generated_phases: {
-    approved_at: string | null;
-    approved_by: string | null;
-    confidence_score: number | null;
-    created_at: string;
-    deliverables: string[] | null;
-    description: string | null;
-    generation_id: string;
-    id: string;
-    is_approved: boolean | null;
-    metadata: Json | null;
-    name: string;
-    objectives: string[] | null;
-    phase_id: string | null;
-    project_id: string;
-    success_criteria: string[] | null;
-    suggested_duration_days: number | null;
-    suggested_end_date: string | null;
-    suggested_order: number;
-    suggested_start_date: string | null;
-  };
   invoices: {
     amount_due: number;
     amount_paid: number;
@@ -611,6 +579,7 @@ export type DatabaseSchema = {
     channel: string;
     channel_identifier: string | null;
     clicked_at: string | null;
+    correlation_id: string | null;
     created_at: string | null;
     delivered_at: string | null;
     event_id: string | null;
@@ -630,6 +599,7 @@ export type DatabaseSchema = {
   };
   notification_events: {
     actor_user_id: string | null;
+    correlation_id: string | null;
     created_at: string | null;
     event_source: string;
     event_type: string;
@@ -685,18 +655,6 @@ export type DatabaseSchema = {
     updated_at: string | null;
     user_id: string;
   };
-  phase_task_schedules: {
-    conflict_warnings: string[] | null;
-    created_at: string | null;
-    id: string;
-    is_confirmed: boolean | null;
-    phase_id: string;
-    proposed_end: string;
-    proposed_start: string;
-    scheduling_notes: string | null;
-    task_id: string | null;
-    updated_at: string | null;
-  };
   phase_tasks: {
     assignment_reason: string | null;
     created_at: string;
@@ -717,15 +675,6 @@ export type DatabaseSchema = {
     start_date: string;
     updated_at: string;
     user_id: string;
-  };
-  project_brief_template_usage: {
-    brief_date: string;
-    id: string;
-    metadata: Json | null;
-    project_id: string | null;
-    template_id: string | null;
-    used_at: string | null;
-    user_id: string | null;
   };
   project_brief_templates: {
     context_snapshot: Json | null;
@@ -774,24 +723,6 @@ export type DatabaseSchema = {
     project_id: string;
     template_id: string | null;
     updated_at: string;
-    user_id: string;
-  };
-  project_phases_generation: {
-    created_at: string | null;
-    generation_completed_at: string | null;
-    generation_error: string | null;
-    generation_progress: Json | null;
-    generation_started_at: string | null;
-    generation_status: string | null;
-    id: string;
-    metadata: Json | null;
-    phases_count: number | null;
-    phases_data: Json | null;
-    project_id: string;
-    regenerated: boolean | null;
-    template_used: string | null;
-    total_duration_days: number | null;
-    updated_at: string | null;
     user_id: string;
   };
   project_questions: {
@@ -1316,8 +1247,6 @@ export const tableNames = [
   "failed_payments",
   "feedback",
   "feedback_rate_limit",
-  "generated_phase_tasks",
-  "generated_phases",
   "invoices",
   "llm_prompts",
   "llm_usage_logs",
@@ -1329,14 +1258,11 @@ export const tableNames = [
   "notification_subscriptions",
   "notification_tracking_links",
   "payment_methods",
-  "phase_task_schedules",
   "phase_tasks",
   "phases",
-  "project_brief_template_usage",
   "project_brief_templates",
   "project_calendars",
   "project_daily_briefs",
-  "project_phases_generation",
   "project_questions",
   "project_synthesis",
   "projects",

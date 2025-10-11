@@ -1786,152 +1786,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      generated_phase_tasks: {
-        Row: {
-          confidence_score: number | null;
-          created_at: string;
-          generated_phase_id: string;
-          id: string;
-          is_approved: boolean | null;
-          reasoning: string | null;
-          suggested_due_date: string | null;
-          suggested_start_date: string | null;
-          task_id: string;
-        };
-        Insert: {
-          confidence_score?: number | null;
-          created_at?: string;
-          generated_phase_id: string;
-          id?: string;
-          is_approved?: boolean | null;
-          reasoning?: string | null;
-          suggested_due_date?: string | null;
-          suggested_start_date?: string | null;
-          task_id: string;
-        };
-        Update: {
-          confidence_score?: number | null;
-          created_at?: string;
-          generated_phase_id?: string;
-          id?: string;
-          is_approved?: boolean | null;
-          reasoning?: string | null;
-          suggested_due_date?: string | null;
-          suggested_start_date?: string | null;
-          task_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "generated_phase_tasks_generated_phase_id_fkey";
-            columns: ["generated_phase_id"];
-            isOneToOne: false;
-            referencedRelation: "generated_phases";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "generated_phase_tasks_task_id_fkey";
-            columns: ["task_id"];
-            isOneToOne: false;
-            referencedRelation: "recurring_task_summary";
-            referencedColumns: ["task_id"];
-          },
-          {
-            foreignKeyName: "generated_phase_tasks_task_id_fkey";
-            columns: ["task_id"];
-            isOneToOne: false;
-            referencedRelation: "tasks";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      generated_phases: {
-        Row: {
-          approved_at: string | null;
-          approved_by: string | null;
-          confidence_score: number | null;
-          created_at: string;
-          deliverables: string[] | null;
-          description: string | null;
-          generation_id: string;
-          id: string;
-          is_approved: boolean | null;
-          metadata: Json | null;
-          name: string;
-          objectives: string[] | null;
-          phase_id: string | null;
-          project_id: string;
-          success_criteria: string[] | null;
-          suggested_duration_days: number | null;
-          suggested_end_date: string | null;
-          suggested_order: number;
-          suggested_start_date: string | null;
-        };
-        Insert: {
-          approved_at?: string | null;
-          approved_by?: string | null;
-          confidence_score?: number | null;
-          created_at?: string;
-          deliverables?: string[] | null;
-          description?: string | null;
-          generation_id: string;
-          id?: string;
-          is_approved?: boolean | null;
-          metadata?: Json | null;
-          name: string;
-          objectives?: string[] | null;
-          phase_id?: string | null;
-          project_id: string;
-          success_criteria?: string[] | null;
-          suggested_duration_days?: number | null;
-          suggested_end_date?: string | null;
-          suggested_order: number;
-          suggested_start_date?: string | null;
-        };
-        Update: {
-          approved_at?: string | null;
-          approved_by?: string | null;
-          confidence_score?: number | null;
-          created_at?: string;
-          deliverables?: string[] | null;
-          description?: string | null;
-          generation_id?: string;
-          id?: string;
-          is_approved?: boolean | null;
-          metadata?: Json | null;
-          name?: string;
-          objectives?: string[] | null;
-          phase_id?: string | null;
-          project_id?: string;
-          success_criteria?: string[] | null;
-          suggested_duration_days?: number | null;
-          suggested_end_date?: string | null;
-          suggested_order?: number;
-          suggested_start_date?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "generated_phases_generation_id_fkey";
-            columns: ["generation_id"];
-            isOneToOne: false;
-            referencedRelation: "project_phases_generation";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "generated_phases_phase_id_fkey";
-            columns: ["phase_id"];
-            isOneToOne: false;
-            referencedRelation: "phases";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "generated_phases_project_id_fkey";
-            columns: ["project_id"];
-            isOneToOne: false;
-            referencedRelation: "projects";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       invoices: {
         Row: {
           amount_due: number;
@@ -2271,6 +2125,7 @@ export type Database = {
           channel: string;
           channel_identifier: string | null;
           clicked_at: string | null;
+          correlation_id: string | null;
           created_at: string | null;
           delivered_at: string | null;
           event_id: string | null;
@@ -2293,6 +2148,7 @@ export type Database = {
           channel: string;
           channel_identifier?: string | null;
           clicked_at?: string | null;
+          correlation_id?: string | null;
           created_at?: string | null;
           delivered_at?: string | null;
           event_id?: string | null;
@@ -2315,6 +2171,7 @@ export type Database = {
           channel?: string;
           channel_identifier?: string | null;
           clicked_at?: string | null;
+          correlation_id?: string | null;
           created_at?: string | null;
           delivered_at?: string | null;
           event_id?: string | null;
@@ -2359,6 +2216,7 @@ export type Database = {
       notification_events: {
         Row: {
           actor_user_id: string | null;
+          correlation_id: string | null;
           created_at: string | null;
           event_source: string;
           event_type: string;
@@ -2369,6 +2227,7 @@ export type Database = {
         };
         Insert: {
           actor_user_id?: string | null;
+          correlation_id?: string | null;
           created_at?: string | null;
           event_source: string;
           event_type: string;
@@ -2379,6 +2238,7 @@ export type Database = {
         };
         Update: {
           actor_user_id?: string | null;
+          correlation_id?: string | null;
           created_at?: string | null;
           event_source?: string;
           event_type?: string;
@@ -2610,67 +2470,6 @@ export type Database = {
           },
         ];
       };
-      phase_task_schedules: {
-        Row: {
-          conflict_warnings: string[] | null;
-          created_at: string | null;
-          id: string;
-          is_confirmed: boolean | null;
-          phase_id: string;
-          proposed_end: string;
-          proposed_start: string;
-          scheduling_notes: string | null;
-          task_id: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          conflict_warnings?: string[] | null;
-          created_at?: string | null;
-          id?: string;
-          is_confirmed?: boolean | null;
-          phase_id: string;
-          proposed_end: string;
-          proposed_start: string;
-          scheduling_notes?: string | null;
-          task_id?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          conflict_warnings?: string[] | null;
-          created_at?: string | null;
-          id?: string;
-          is_confirmed?: boolean | null;
-          phase_id?: string;
-          proposed_end?: string;
-          proposed_start?: string;
-          scheduling_notes?: string | null;
-          task_id?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "phase_task_schedules_phase_id_fkey";
-            columns: ["phase_id"];
-            isOneToOne: false;
-            referencedRelation: "phases";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "phase_task_schedules_task_id_fkey";
-            columns: ["task_id"];
-            isOneToOne: false;
-            referencedRelation: "recurring_task_summary";
-            referencedColumns: ["task_id"];
-          },
-          {
-            foreignKeyName: "phase_task_schedules_task_id_fkey";
-            columns: ["task_id"];
-            isOneToOne: false;
-            referencedRelation: "tasks";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       phase_tasks: {
         Row: {
           assignment_reason: string | null;
@@ -2770,58 +2569,6 @@ export type Database = {
           },
           {
             foreignKeyName: "phases_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      project_brief_template_usage: {
-        Row: {
-          brief_date: string;
-          id: string;
-          metadata: Json | null;
-          project_id: string | null;
-          template_id: string | null;
-          used_at: string | null;
-          user_id: string | null;
-        };
-        Insert: {
-          brief_date: string;
-          id?: string;
-          metadata?: Json | null;
-          project_id?: string | null;
-          template_id?: string | null;
-          used_at?: string | null;
-          user_id?: string | null;
-        };
-        Update: {
-          brief_date?: string;
-          id?: string;
-          metadata?: Json | null;
-          project_id?: string | null;
-          template_id?: string | null;
-          used_at?: string | null;
-          user_id?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "project_brief_template_usage_project_id_fkey";
-            columns: ["project_id"];
-            isOneToOne: false;
-            referencedRelation: "projects";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "project_brief_template_usage_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "project_brief_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "project_brief_template_usage_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -3036,71 +2783,6 @@ export type Database = {
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      project_phases_generation: {
-        Row: {
-          created_at: string | null;
-          generation_completed_at: string | null;
-          generation_error: string | null;
-          generation_progress: Json | null;
-          generation_started_at: string | null;
-          generation_status: string | null;
-          id: string;
-          metadata: Json | null;
-          phases_count: number | null;
-          phases_data: Json | null;
-          project_id: string;
-          regenerated: boolean | null;
-          template_used: string | null;
-          total_duration_days: number | null;
-          updated_at: string | null;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string | null;
-          generation_completed_at?: string | null;
-          generation_error?: string | null;
-          generation_progress?: Json | null;
-          generation_started_at?: string | null;
-          generation_status?: string | null;
-          id?: string;
-          metadata?: Json | null;
-          phases_count?: number | null;
-          phases_data?: Json | null;
-          project_id: string;
-          regenerated?: boolean | null;
-          template_used?: string | null;
-          total_duration_days?: number | null;
-          updated_at?: string | null;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string | null;
-          generation_completed_at?: string | null;
-          generation_error?: string | null;
-          generation_progress?: Json | null;
-          generation_started_at?: string | null;
-          generation_status?: string | null;
-          id?: string;
-          metadata?: Json | null;
-          phases_count?: number | null;
-          phases_data?: Json | null;
-          project_id?: string;
-          regenerated?: boolean | null;
-          template_used?: string | null;
-          total_duration_days?: number | null;
-          updated_at?: string | null;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "project_phases_generation_project_id_fkey";
-            columns: ["project_id"];
-            isOneToOne: false;
-            referencedRelation: "projects";
             referencedColumns: ["id"];
           },
         ];
@@ -5793,6 +5475,20 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown };
         Returns: string;
+      };
+      log_notification_event: {
+        Args: {
+          p_context?: Json;
+          p_correlation_id?: string;
+          p_delivery_id?: string;
+          p_event_id?: string;
+          p_level: string;
+          p_message: string;
+          p_metadata?: Json;
+          p_namespace?: string;
+          p_user_id?: string;
+        };
+        Returns: undefined;
       };
       normalize_queue_job_metadata: {
         Args: Record<PropertyKey, never>;

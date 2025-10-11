@@ -46,21 +46,23 @@ BEGIN
     v_enriched_metadata := v_enriched_metadata || jsonb_build_object('correlationId', v_correlation_id);
   END IF;
 
-  -- Insert event with correlation ID in metadata
+  -- Insert event with correlation ID in both metadata AND dedicated column
   INSERT INTO notification_events (
     event_type,
     event_source,
     actor_user_id,
     target_user_id,
     payload,
-    metadata  -- Contains correlationId
+    metadata,  -- Contains correlationId for flexibility
+    correlation_id  -- Dedicated column for performance
   ) VALUES (
     p_event_type,
     p_event_source,
     p_actor_user_id,
     p_target_user_id,
     p_payload,
-    v_enriched_metadata  -- Store correlation ID
+    v_enriched_metadata,  -- Store correlation ID in metadata
+    v_correlation_id  -- Store correlation ID in dedicated column
   ) RETURNING id INTO v_event_id;
 
   -- Find active subscriptions for this event type
@@ -91,7 +93,7 @@ BEGIN
         WHERE user_id = v_subscription.user_id
           AND is_active = true
       LOOP
-        -- Create delivery record
+        -- Create delivery record with correlation ID
         INSERT INTO notification_deliveries (
           event_id,
           subscription_id,
@@ -99,7 +101,8 @@ BEGIN
           channel,
           channel_identifier,
           payload,
-          status
+          status,
+          correlation_id
         ) VALUES (
           v_event_id,
           v_subscription.id,
@@ -107,7 +110,8 @@ BEGIN
           'push',
           v_push_sub.endpoint,
           p_payload,
-          'pending'
+          'pending',
+          v_correlation_id
         ) RETURNING id INTO v_delivery_id;
 
         -- Queue notification job with correlation ID in metadata
@@ -143,14 +147,16 @@ BEGIN
         recipient_user_id,
         channel,
         payload,
-        status
+        status,
+        correlation_id
       ) VALUES (
         v_event_id,
         v_subscription.id,
         v_subscription.user_id,
         'in_app',
         p_payload,
-        'pending'
+        'pending',
+        v_correlation_id
       ) RETURNING id INTO v_delivery_id;
 
       INSERT INTO queue_jobs (
@@ -184,14 +190,16 @@ BEGIN
         recipient_user_id,
         channel,
         payload,
-        status
+        status,
+        correlation_id
       ) VALUES (
         v_event_id,
         v_subscription.id,
         v_subscription.user_id,
         'email',
         p_payload,
-        'pending'
+        'pending',
+        v_correlation_id
       ) RETURNING id INTO v_delivery_id;
 
       INSERT INTO queue_jobs (
@@ -225,14 +233,16 @@ BEGIN
         recipient_user_id,
         channel,
         payload,
-        status
+        status,
+        correlation_id
       ) VALUES (
         v_event_id,
         v_subscription.id,
         v_subscription.user_id,
         'sms',
         p_payload,
-        'pending'
+        'pending',
+        v_correlation_id
       ) RETURNING id INTO v_delivery_id;
 
       INSERT INTO queue_jobs (
@@ -273,18 +283,29 @@ COMMENT ON FUNCTION emit_notification_event IS 'Emits a notification event and q
 --
 -- 1. Extracts correlation ID from p_metadata or p_payload (if provided)
 -- 2. Generates a new correlation ID if none provided
--- 3. Stores correlation ID in notification_events.metadata
--- 4. Passes correlation ID to all queue jobs in metadata
--- 5. Supports all channels: push, in_app, email, sms
+-- 3. Stores correlation ID in notification_events.metadata (for flexibility)
+-- 4. Stores correlation ID in notification_events.correlation_id (for performance)
+-- 5. Stores correlation ID in notification_deliveries.correlation_id (inherited from event)
+-- 6. Passes correlation ID to all queue jobs in metadata (for worker extraction)
+-- 7. Supports all channels: push, in_app, email, sms
 --
 -- Correlation ID flow:
 -- - Web API → generates correlation ID → passes in p_metadata
--- - RPC function → extracts correlation ID → stores in event.metadata
--- - RPC function → passes correlation ID to queue jobs
+-- - RPC function → extracts correlation ID → stores in event.metadata AND event.correlation_id
+-- - RPC function → creates deliveries with correlation_id column populated
+-- - RPC function → passes correlation ID to queue jobs in metadata
 -- - Worker → extracts correlation ID from job.metadata
 -- - Worker → logs all operations with correlation ID
 -- - Webhooks → extract correlation ID from message metadata
 -- - Webhooks → log updates with correlation ID
 --
+-- Why both metadata JSONB and dedicated column?
+-- - Metadata: Flexible, can store in nested structures, backward compatible
+-- - Column: Fast queries, proper indexing, type safety, efficient JOINs
+-- - Both: Redundancy ensures correlation ID is never lost
+--
 -- This enables full request tracing across the entire notification lifecycle.
+--
+-- IMPORTANT: This migration depends on 20251011_add_correlation_id_columns.sql
+-- which adds the correlation_id columns to notification_events and notification_deliveries.
 --

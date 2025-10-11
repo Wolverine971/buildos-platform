@@ -351,9 +351,9 @@ export class EmailGenerationService {
 				.eq('user_id', userId)
 				.gte('created_at', thirtyDaysAgoISO),
 
-			// Phase generations count
+			// Phases count (directly from phases table)
 			this.supabase
-				.from('project_phases_generation')
+				.from('phases')
 				.select('*', { count: 'exact', head: true })
 				.eq('user_id', userId),
 
