@@ -40,7 +40,7 @@ export class DunningService {
         *,
         users (
           email,
-          full_name,
+          name,
           stripe_customer_id
         ),
         customer_subscriptions (
@@ -134,7 +134,7 @@ export class DunningService {
 			to: payment.users.email,
 			subject: template.subject,
 			body: template.body
-				.replace('{{name}}', payment.users.full_name || 'Customer')
+				.replace('{{name}}', payment.users.name || 'Customer')
 				.replace('{{update_payment_link}}', updatePaymentUrl)
 				.replace('{{reactivate_link}}', reactivateUrl),
 			userId: payment.user_id,

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Correlation tracking (critical for tracing requests across systems)
-  correlation_id UUID NOT NULL,
+  correlation_id UUID, -- Nullable: not all logs have correlation context
   request_id TEXT,
 
   -- Context (foreign keys to related entities)
@@ -68,6 +68,10 @@ CREATE INDEX IF NOT EXISTS idx_notification_logs_namespace
 -- Composite index for common query pattern: filtering by level + time range
 CREATE INDEX IF NOT EXISTS idx_notification_logs_level_created
   ON notification_logs(level, created_at DESC);
+
+-- Full-text search index for message and namespace
+CREATE INDEX IF NOT EXISTS idx_notification_logs_search
+  ON notification_logs USING GIN (to_tsvector('english', message || ' ' || COALESCE(namespace, '')));
 
 -- =====================================================
 -- 3. GRANT PERMISSIONS

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EventType, NotificationChannel } from '@buildos/shared-types';
 import { transformEventPayload, validateNotificationPayload } from '@buildos/shared-types';
+import { generateCorrelationId } from '@buildos/shared-utils';
 
 // Rate limiting constants
 const MAX_RECIPIENTS_PER_TEST = 20;
@@ -87,15 +88,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 		}
 
+		// Generate correlation ID for end-to-end tracking
+		const correlationId = generateCorrelationId();
+
 		// Create the notification event with test mode metadata
 		const metadata = test_mode
 			? {
 					test_mode: true,
 					test_sent_by: user.id,
 					test_recipients: recipient_user_ids,
-					test_channels: channels
+					test_channels: channels,
+					correlationId // Add correlation ID for tracking
 				}
-			: undefined;
+			: {
+					correlationId // Add correlation ID for tracking
+				};
 
 		// In test mode, create deliveries manually for specified recipients and channels
 		// This bypasses the subscription requirement
@@ -194,7 +201,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							event_id: eventId,
 							delivery_id: delivery.id,
 							channel,
-							event_type
+							event_type,
+							correlationId // Pass correlation ID to worker
 						}
 					});
 
@@ -211,8 +219,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					p_event_type: event_type,
 					p_event_source: 'api_action',
 					p_actor_user_id: user.id,
-					p_payload: payload,
-					p_metadata: metadata
+					p_payload: {
+						...payload,
+						correlationId // Add to payload for event context
+					},
+					p_metadata: {
+						...metadata,
+						correlationId // Add to metadata for worker extraction
+					}
 				}
 			);
 

@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-11T00:31:43.882Z
+// Generated on: 2025-10-11T01:29:30.682Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1215,6 +1215,7 @@ export type DatabaseSchema = {
 		daily_sms_count: number | null;
 		daily_sms_limit: number | null;
 		evening_recap_enabled: boolean | null;
+		event_reminder_lead_time_minutes: number | null;
 		event_reminders_enabled: boolean | null;
 		id: string;
 		morning_kickoff_enabled: boolean | null;
@@ -1228,7 +1229,6 @@ export type DatabaseSchema = {
 		phone_verified_at: string | null;
 		quiet_hours_end: string | null;
 		quiet_hours_start: string | null;
-		reminder_lead_time_minutes: number | null;
 		task_reminders: boolean | null;
 		timezone: string | null;
 		updated_at: string | null;

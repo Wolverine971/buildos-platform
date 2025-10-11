@@ -188,7 +188,7 @@
 
 	<div class="space-y-6">
 		<!-- Phone Verification Card -->
-		<PhoneVerificationCard onVerified={handlePhoneVerified} onSkip={handleSkipSMS} />
+		<PhoneVerificationCard {userId} onVerified={handlePhoneVerified} onSkip={handleSkipSMS} />
 
 		<!-- SMS Options (only show if phone verified) -->
 		{#if showSMSOptions}

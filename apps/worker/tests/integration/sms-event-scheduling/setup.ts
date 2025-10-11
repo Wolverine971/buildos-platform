@@ -16,7 +16,7 @@ export interface TestUser {
     phone_number: string;
     phone_verified: boolean;
     event_reminders_enabled: boolean;
-    reminder_lead_time_minutes: number;
+    event_reminder_lead_time_minutes: number;
     quiet_hours_start?: string;
     quiet_hours_end?: string;
     daily_sms_limit: number;
@@ -86,7 +86,7 @@ export class TestSetup {
       phone_number: options.phoneVerified !== false ? "+15555551234" : null,
       phone_verified: options.phoneVerified !== false,
       event_reminders_enabled: options.remindersEnabled !== false,
-      reminder_lead_time_minutes: options.leadTime || 15,
+      event_reminder_lead_time_minutes: options.leadTime || 15,
       quiet_hours_start: options.quietHours?.start || null,
       quiet_hours_end: options.quietHours?.end || null,
       daily_sms_limit: options.dailyLimit || 10,

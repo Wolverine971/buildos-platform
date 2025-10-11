@@ -617,7 +617,7 @@ async function checkAndScheduleDailySMS() {
     const { data: smsPreferences, error } = await supabase
       .from("user_sms_preferences")
       .select(
-        "user_id, timezone, event_reminders_enabled, reminder_lead_time_minutes",
+        "user_id, timezone, event_reminders_enabled, event_reminder_lead_time_minutes",
       )
       .eq("event_reminders_enabled", true)
       .eq("phone_verified", true)
@@ -660,7 +660,7 @@ async function checkAndScheduleDailySMS() {
           userId: pref.user_id,
           date: todayDate,
           timezone: userTimezone,
-          leadTimeMinutes: pref.reminder_lead_time_minutes || 15,
+          leadTimeMinutes: pref.event_reminder_lead_time_minutes || 15,
         };
 
         const dedupKey = `schedule-daily-sms-${pref.user_id}-${todayDate}`;

@@ -68,6 +68,7 @@ END $$;
 -- =====================================================
 -- Atomically claims a batch of pending jobs by updating their status to 'processing'
 -- This prevents race conditions where multiple workers claim the same job
+-- IMPORTANT: Includes proper ENUM to TEXT casting for job_type and status
 
 CREATE OR REPLACE FUNCTION claim_pending_jobs(
   p_job_types TEXT[],
@@ -101,7 +102,7 @@ BEGIN
     SELECT queue_jobs.id
     FROM queue_jobs
     WHERE queue_jobs.status = 'pending'
-      AND queue_jobs.job_type = ANY(p_job_types)
+      AND queue_jobs.job_type::TEXT = ANY(p_job_types)  -- FIXED: Cast enum to text
       AND queue_jobs.scheduled_for <= NOW()
     ORDER BY queue_jobs.priority DESC, queue_jobs.scheduled_for ASC
     LIMIT p_batch_size
@@ -111,9 +112,9 @@ BEGIN
     queue_jobs.id,
     queue_jobs.queue_job_id,
     queue_jobs.user_id,
-    queue_jobs.job_type,
+    queue_jobs.job_type::TEXT,     -- FIXED: Cast enum to text
     queue_jobs.metadata,
-    queue_jobs.status,
+    queue_jobs.status::TEXT,       -- FIXED: Cast enum to text
     queue_jobs.priority,
     queue_jobs.attempts,
     queue_jobs.max_attempts,
@@ -126,7 +127,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION claim_pending_jobs IS 'Atomically claims a batch of pending jobs for processing, preventing race conditions with SKIP LOCKED';
+COMMENT ON FUNCTION claim_pending_jobs IS 'Atomically claims a batch of pending jobs for processing with proper ENUM to TEXT casting';
 
 -- =====================================================
 -- 2. COMPLETE QUEUE JOB

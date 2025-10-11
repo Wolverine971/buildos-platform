@@ -14,7 +14,11 @@
  *   logger.error('Brief failed', error, { userId, briefId });
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+// import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  createServiceClient,
+  TypedSupabaseClient,
+} from "@buildos/supabase-client";
 import type {
   LogLevel,
   LogContext,
@@ -41,9 +45,9 @@ const LOG_EMOJIS: Record<LogLevel, string> = {
 
 export class Logger {
   private config: LoggerConfig;
-  private supabase?: SupabaseClient;
+  private supabase: TypedSupabaseClient | undefined;
 
-  constructor(config: LoggerConfig, supabase?: SupabaseClient) {
+  constructor(config: LoggerConfig, supabase?: TypedSupabaseClient) {
     this.config = config;
     this.supabase = supabase;
   }
@@ -142,11 +146,8 @@ export class Logger {
     }
 
     // Database output (async, non-blocking)
-    if (
-      this.config.enableDatabase &&
-      this.supabase &&
-      (level === "error" || level === "fatal")
-    ) {
+    // Log all levels for notification system correlation tracking
+    if (this.config.enableDatabase && this.supabase) {
       this.logToDatabase(entry).catch((err) =>
         console.error("[Logger] Failed to log to database:", err),
       );
@@ -193,30 +194,30 @@ export class Logger {
   }
 
   /**
-   * Database logging (for error tracking)
+   * Database logging (for notification system correlation tracking)
    */
   private async logToDatabase(entry: LogEntry): Promise<void> {
     if (!this.supabase) return;
 
     try {
-      // Log to error_logs table (adjust based on your schema)
-      await this.supabase.from("error_logs").insert({
-        error_type: "application_error",
-        error_message: entry.message,
-        error_stack: entry.error?.stack,
-        severity: entry.level,
-        user_id: entry.context.userId,
-        project_id: entry.context.projectId,
-        brain_dump_id: entry.context.brainDumpId,
-        endpoint: entry.namespace,
-        request_id: entry.context.requestId,
+      // Log to notification_logs table for correlation tracking
+      // Note: Type assertion needed until database types are regenerated after migration
+      await this.supabase.from("notification_logs").insert({
+        level: entry.level,
+        message: entry.message,
+        namespace: entry.namespace,
+        correlation_id: entry.context.correlationId || null,
+        request_id: entry.context.requestId || null,
+        user_id: entry.context.userId || null,
+        notification_event_id: entry.context.notificationEventId || null,
+        notification_delivery_id: entry.context.notificationDeliveryId || null,
+        error_stack: entry.error?.stack || null,
         metadata: {
-          namespace: entry.namespace,
-          correlationId: entry.context.correlationId,
+          ...entry.context,
           ...entry.metadata,
         },
-        environment: process.env.NODE_ENV || "development",
-      });
+        created_at: entry.timestamp.toISOString(),
+      } as any);
     } catch (error) {
       // Don't fail the application if logging fails
       console.error("[Logger] Database logging failed:", error);
@@ -310,7 +311,7 @@ export class Logger {
  */
 export function createLogger(
   namespace: string,
-  supabase?: SupabaseClient,
+  supabase?: TypedSupabaseClient,
   options?: Partial<LoggerConfig>,
 ): Logger {
   // Determine min log level from environment

@@ -7,17 +7,19 @@
 	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
+		userId: string;
 		onVerified: (phoneNumber: string) => void;
 		onSkip: () => void;
 	}
 
-	let { onVerified, onSkip }: Props = $props();
+	let { userId, onVerified, onSkip }: Props = $props();
 
 	let phoneNumber = $state('');
 	let verificationCode = $state('');
 	let codeSent = $state(false);
 	let isVerifying = $state(false);
 	let isSending = $state(false);
+	let isLoadingExisting = $state(true);
 	let verified = $state(false);
 	let error = $state<string | null>(null);
 	let resendCooldown = $state(0);
@@ -152,6 +154,32 @@
 		resendCooldown = 0;
 	}
 
+	// Load existing phone preferences on mount
+	$effect(() => {
+		async function loadExistingPhone() {
+			try {
+				const result = await smsService.getSMSPreferences(userId);
+				if (result.success && result.data?.preferences) {
+					const prefs = result.data.preferences;
+					if (prefs.phone_verified && prefs.phone_number) {
+						// Format the phone number for display
+						phoneNumber = formatPhoneNumber(prefs.phone_number);
+						verified = true;
+						// Notify parent that phone is already verified
+						onVerified(prefs.phone_number);
+					}
+				}
+			} catch (err) {
+				console.error('Failed to load existing phone preferences:', err);
+				// Don't show error to user - just let them add phone normally
+			} finally {
+				isLoadingExisting = false;
+			}
+		}
+
+		loadExistingPhone();
+	});
+
 	// Cleanup on unmount
 	$effect(() => {
 		return () => {
@@ -180,7 +208,15 @@
 				Get text reminders for important tasks and daily summaries
 			</p>
 
-			{#if verified}
+			{#if isLoadingExisting}
+				<!-- Loading State -->
+				<div class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+					<Loader2 class="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						Checking for existing phone number...
+					</p>
+				</div>
+			{:else if verified}
 				<!-- Success State -->
 				<div
 					class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800"

@@ -4748,6 +4748,7 @@ export type Database = {
           daily_sms_count: number | null;
           daily_sms_limit: number | null;
           evening_recap_enabled: boolean | null;
+          event_reminder_lead_time_minutes: number | null;
           event_reminders_enabled: boolean | null;
           id: string;
           morning_kickoff_enabled: boolean | null;
@@ -4761,7 +4762,6 @@ export type Database = {
           phone_verified_at: string | null;
           quiet_hours_end: string | null;
           quiet_hours_start: string | null;
-          reminder_lead_time_minutes: number | null;
           task_reminders: boolean | null;
           timezone: string | null;
           updated_at: string | null;
@@ -4775,6 +4775,7 @@ export type Database = {
           daily_sms_count?: number | null;
           daily_sms_limit?: number | null;
           evening_recap_enabled?: boolean | null;
+          event_reminder_lead_time_minutes?: number | null;
           event_reminders_enabled?: boolean | null;
           id?: string;
           morning_kickoff_enabled?: boolean | null;
@@ -4788,7 +4789,6 @@ export type Database = {
           phone_verified_at?: string | null;
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
-          reminder_lead_time_minutes?: number | null;
           task_reminders?: boolean | null;
           timezone?: string | null;
           updated_at?: string | null;
@@ -4802,6 +4802,7 @@ export type Database = {
           daily_sms_count?: number | null;
           daily_sms_limit?: number | null;
           evening_recap_enabled?: boolean | null;
+          event_reminder_lead_time_minutes?: number | null;
           event_reminders_enabled?: boolean | null;
           id?: string;
           morning_kickoff_enabled?: boolean | null;
@@ -4815,7 +4816,6 @@ export type Database = {
           phone_verified_at?: string | null;
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
-          reminder_lead_time_minutes?: number | null;
           task_reminders?: boolean | null;
           timezone?: string | null;
           updated_at?: string | null;

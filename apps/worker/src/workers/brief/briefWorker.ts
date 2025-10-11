@@ -12,6 +12,7 @@ import {
 import { LegacyJob } from "../shared/jobAdapter";
 import { generateDailyBrief } from "./briefGenerator";
 import { DailyBriefEmailSender } from "../../lib/services/email-sender";
+import { generateCorrelationId } from "@buildos/shared-utils";
 
 /**
  * Validates if a timezone string is valid
@@ -357,6 +358,12 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
         `📊 Task counts - Today: ${todaysTaskCount}, Overdue: ${overdueTaskCount}, Upcoming: ${upcomingTaskCount}, Next 7 days: ${nextSevenDaysTaskCount}, Recently completed: ${recentlyCompletedCount}`,
       );
 
+      // Generate correlation ID for end-to-end tracking
+      const correlationId = generateCorrelationId();
+      console.log(
+        `🔗 Generated correlation ID: ${correlationId} for brief.completed notification`,
+      );
+
       // Type assertion needed until database types are regenerated after migration
       await (serviceClient.rpc as any)("emit_notification_event", {
         p_event_type: "brief.completed",
@@ -373,6 +380,10 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
           next_seven_days_task_count: nextSevenDaysTaskCount,
           recently_completed_count: recentlyCompletedCount,
           project_count: projectCount,
+          correlationId, // Add correlation ID to payload
+        },
+        p_metadata: {
+          correlationId, // Add correlation ID to metadata for tracking
         },
         p_scheduled_for: notificationScheduledFor?.toISOString(), // Schedule at user's preferred time
       });
