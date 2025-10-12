@@ -581,7 +581,28 @@
 	</header>
 
 	{#if hasPhases}
-		<div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 sm:p-4 space-y-3">
+		<div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 sm:p-4 space-y-4">
+			<!-- Task Filters - Only show if there are phases -->
+			{#if Object.values(currentTaskCounts).some((count) => count > 0)}
+				<div class="space-y-2">
+					<!-- Conditional rendering for responsive filter components -->
+					{#if !isMobile}
+						<TaskFilterBar
+							activeFilters={globalTaskFilters}
+							taskCounts={currentTaskCounts}
+							on:toggle={handleGlobalFilterToggle}
+							on:selectAll={handleGlobalSelectAll}
+						/>
+					{:else}
+						<TaskFilterDropdown
+							activeFilters={globalTaskFilters}
+							taskCounts={currentTaskCounts}
+							on:change={handleGlobalFilterChange}
+						/>
+					{/if}
+				</div>
+			{/if}
+
 			<!-- Actions Section -->
 			<PhasesActionsSection
 				{viewMode}
@@ -602,29 +623,6 @@
 				on:assignBacklogTasks={handleAssignBacklogTasks}
 				on:rescheduleOverdueTasks={handleRescheduleOverdueTasks}
 			/>
-
-			<!-- Task Filters - Only show if there are phases -->
-			{#if Object.values(currentTaskCounts).some((count) => count > 0)}
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-					Filter tasks across all phases
-				</h3>
-
-				<!-- Conditional rendering for responsive filter components -->
-				{#if !isMobile}
-					<TaskFilterBar
-						activeFilters={globalTaskFilters}
-						taskCounts={currentTaskCounts}
-						on:toggle={handleGlobalFilterToggle}
-						on:selectAll={handleGlobalSelectAll}
-					/>
-				{:else}
-					<TaskFilterDropdown
-						activeFilters={globalTaskFilters}
-						taskCounts={currentTaskCounts}
-						on:change={handleGlobalFilterChange}
-					/>
-				{/if}
-			{/if}
 		</div>
 	{/if}
 

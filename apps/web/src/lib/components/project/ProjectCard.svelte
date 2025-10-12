@@ -120,7 +120,10 @@
 		<!-- Status indicator - icon only on mobile -->
 		{#if project.status && projectStatusConfig}
 			<div class="flex items-center space-x-1 flex-shrink-0 ml-1">
-				<svelte:component this={projectStatusConfig} class="w-3.5 h-3.5 sm:w-4 sm:h-4 {projectStatusColor}" />
+				<svelte:component
+					this={projectStatusConfig}
+					class="w-3.5 h-3.5 sm:w-4 sm:h-4 {projectStatusColor}"
+				/>
 				<span class="hidden sm:inline text-xs font-medium {projectStatusColor} capitalize">
 					{projectStatusText}
 				</span>
@@ -140,11 +143,15 @@
 
 	<!-- Description - compact on mobile -->
 	{#if project.description}
-		<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]">
+		<p
+			class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]"
+		>
 			{project.description}
 		</p>
 	{:else}
-		<p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]">
+		<p
+			class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]"
+		>
 			No description
 		</p>
 	{/if}
@@ -173,7 +180,9 @@
 			<!-- Task stats in compact row -->
 			<div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
 				<div class="flex items-center gap-0.5 sm:gap-1">
-					<CheckCircle2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 dark:text-green-400" />
+					<CheckCircle2
+						class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 dark:text-green-400"
+					/>
 					<span class="text-gray-600 dark:text-gray-400 tabular-nums">
 						{project.taskStats.completed}
 					</span>
@@ -186,7 +195,9 @@
 				</div>
 				{#if hasBlockedTasks}
 					<div class="flex items-center gap-0.5 sm:gap-1">
-						<AlertCircle class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 dark:text-red-400" />
+						<AlertCircle
+							class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 dark:text-red-400"
+						/>
 						<span class="text-gray-600 dark:text-gray-400 tabular-nums">
 							{project.taskStats.blocked}
 						</span>
@@ -195,7 +206,9 @@
 			</div>
 		</div>
 	{:else}
-		<div class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">No tasks yet</div>
+		<div class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">
+			No tasks yet
+		</div>
 	{/if}
 
 	<!-- View Brief Button - compact on mobile -->

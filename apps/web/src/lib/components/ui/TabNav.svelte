@@ -51,7 +51,10 @@
 			>
 				<span class="inline-flex items-center gap-1.5 sm:gap-2">
 					{#if tab.icon}
-						<svelte:component this={tab.icon} class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+						<svelte:component
+							this={tab.icon}
+							class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0"
+						/>
 					{/if}
 					<span>{tab.label}</span>
 					{#if !tab.hideCount && tab.count !== undefined}

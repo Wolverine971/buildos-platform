@@ -105,7 +105,6 @@
 			>
 				<span class="flex items-center gap-1.5">
 					<span>{tab.label}</span>
-					
 				</span>
 			</Button>
 		{/each}
@@ -140,7 +139,7 @@
 					{@const displayInfo = getTaskDisplayInfo(task)}
 					<Button
 						on:click={() => handleTaskClickInternal(task)}
-						class="w-full text-left bg-gray-50/50 dark:bg-gray-700/30 rounded-xl p-3 border-l-3 {getPriorityColor(
+						class="w-full text-left justify-start bg-gray-50/50 dark:bg-gray-700/30 rounded-xl p-3 border-l-3 {getPriorityColor(
 							task.priority
 						)}
 						hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all relative group border border-gray-200/50 dark:border-gray-700/50"

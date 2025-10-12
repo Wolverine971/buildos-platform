@@ -133,12 +133,6 @@ export const PATCH: RequestHandler = async ({
 					calendarOperation = 'delete';
 				}
 
-				// Handle completion status change (match single task endpoint behavior)
-				if (data.status === 'done' && existingTask?.status !== 'done') {
-					data.completed_at = new Date().toISOString();
-				} else if (data.status !== 'done' && existingTask?.status === 'done') {
-					data.completed_at = null;
-				}
 				// Clean the task data
 				const cleanedData = cleanDataForTable('tasks', {
 					...data,

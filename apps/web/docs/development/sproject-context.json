@@ -107,7 +107,13 @@
 		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
-			"components": ["TasksList", "NotesSection", "ProjectSynthesis", "PhasesSection"]
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
+			]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",

@@ -279,25 +279,14 @@ async function updateSingleInstance(
 	instanceDate: string,
 	userId: string
 ) {
-	// Handle completion for recurring task instance
-	const instanceData: any = {
+	// Create or update the instance record
+	const { error: instanceError } = await supabase.from('recurring_task_instances').upsert({
 		task_id: task.id,
 		instance_date: instanceDate,
 		user_id: userId,
 		notes: JSON.stringify({ exception: true, updates }),
 		updated_at: new Date().toISOString()
-	};
-
-	// If marking instance as completed, set status and completed_at
-	if (updates.status === 'completed') {
-		instanceData.status = 'completed';
-		instanceData.completed_at = new Date().toISOString();
-	}
-
-	// Create or update the instance record
-	const { error: instanceError } = await supabase
-		.from('recurring_task_instances')
-		.upsert(instanceData);
+	});
 
 	if (instanceError) {
 		throw instanceError;
@@ -309,21 +298,6 @@ async function updateSingleInstance(
 	);
 
 	if (calendarEvent) {
-		// If marking instance as completed, delete the calendar event
-		if (updates.status === 'completed') {
-			await calendarService.deleteCalendarEvent(userId, {
-				event_id: calendarEvent.calendar_event_id,
-				calendar_id: calendarEvent.calendar_id || 'primary'
-			});
-			return {
-				success: true,
-				affected_instances: 1,
-				scope: 'single',
-				instance_date: instanceDate,
-				calendar_event_deleted: true
-			};
-		}
-
 		// Mark as exception
 		await supabase
 			.from('task_calendar_events')
@@ -458,10 +432,7 @@ async function updateAllInstances(
 	}
 
 	// Check if task is being marked as done - need to remove calendar events after update
-	const shouldRemoveCalendar =
-		updates.status === 'done' &&
-		task.status !== 'done' &&
-		task.task_calendar_events?.length > 0;
+	const shouldRemoveCalendar = updates.status === 'done' && task.status !== 'done' && task.task_calendar_events?.length > 0;
 	// Update the task itself
 	const { error: updateError } = await supabase
 		.from('tasks')
@@ -513,20 +484,6 @@ async function updateAllInstances(
 			})
 			.eq('task_id', task.id)
 			.eq('is_exception', true);
-	}
-
-	// Remove all calendar events if task is being marked as done
-	if (shouldRemoveCalendar) {
-		for (const event of task.task_calendar_events || []) {
-			try {
-				await calendarService.deleteCalendarEvent(userId, {
-					event_id: event.calendar_event_id,
-					calendar_id: event.calendar_id || 'primary'
-				});
-			} catch (error) {
-				console.error('Error deleting calendar event on completion:', error);
-			}
-		}
 	}
 
 	return {

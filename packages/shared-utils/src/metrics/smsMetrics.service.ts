@@ -430,7 +430,7 @@ export class SMSMetricsService {
    */
   async refreshMaterializedView(): Promise<void> {
     console.warn(
-      "[SMSMetrics] refreshMaterializedView() called but SMS metrics infrastructure not yet implemented. Skipping."
+      "[SMSMetrics] refreshMaterializedView() called but SMS metrics infrastructure not yet implemented. Skipping.",
     );
     // Commented out until migration is applied:
     // try {

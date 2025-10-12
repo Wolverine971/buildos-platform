@@ -22,6 +22,7 @@ last_updated_by: Claude
 ## Research Question
 
 User reported problems generating daily briefs after recent updates to queue jobs and datamodels. The investigation needed to:
+
 1. Trace the complete flow of brief generation (worker queue and manual web triggers)
 2. Check for proper datamodel usage and type consistency
 3. Fix specific SMS metrics refresh bug: `Could not find the function public.refresh_sms_metrics_daily`
@@ -41,12 +42,15 @@ All bugs have been fixed and typecheck passes successfully.
 ## Bug #1: SMS Metrics Function Doesn't Exist ❌
 
 ### Location
+
 `packages/shared-utils/src/metrics/smsMetrics.service.ts:423`
 
 ### Problem
+
 The `refreshMaterializedView()` method called `refresh_sms_metrics_daily()` database RPC function which **was never created**.
 
 ### Error Message
+
 ```
 [SMSMetrics] Error refreshing materialized view: {
   code: 'PGRST202',
@@ -57,18 +61,22 @@ The `refreshMaterializedView()` method called `refresh_sms_metrics_daily()` data
 ```
 
 ### Root Cause
+
 The SMS metrics infrastructure documented in Phase 6 Part 2 was **never actually implemented**:
+
 - Migration file `apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql` was documented but never created
 - No materialized view `sms_metrics_daily` exists
 - No RPC function `refresh_sms_metrics_daily()` exists
 - Supporting tables (`sms_alert_thresholds`, `sms_alert_history`) are missing
 
 ### Impact
+
 - Function was called hourly by scheduler in `apps/worker/src/scheduler.ts:708`
 - Caused error logs on every cron execution
 - Could have blocked brief generation if error handling wasn't robust
 
 ### Fix Applied
+
 Commented out the non-existent function call and added comprehensive TODO documentation:
 
 ```typescript
@@ -93,6 +101,7 @@ async refreshMaterializedView(): Promise<void> {
 Also marked the proxy method as deprecated in the singleton export.
 
 **Files Modified:**
+
 - `packages/shared-utils/src/metrics/smsMetrics.service.ts` (lines 417-449, 618-623)
 
 ---
@@ -100,12 +109,15 @@ Also marked the proxy method as deprecated in the singleton export.
 ## Bug #2: Missing Field in BriefJobData ❌
 
 ### Location
+
 `apps/worker/src/workers/brief/briefWorker.ts:343`
 
 ### Problem
+
 Worker code referenced `job.data.notificationScheduledFor` but this field didn't exist in the `BriefJobData` interface.
 
 ### Code Reference
+
 ```typescript
 // Line 343 in briefWorker.ts
 const notificationScheduledFor = job.data.notificationScheduledFor
@@ -116,14 +128,17 @@ const notificationScheduledFor = job.data.notificationScheduledFor
 But the `BriefJobData` interface (in `apps/worker/src/workers/shared/queueUtils.ts`) didn't have this field.
 
 ### Root Cause
+
 The field `notificationScheduledFor` was added to `DailyBriefJobMetadata` in shared types (commit `705bb77e`) but was never added to the worker's legacy `BriefJobData` interface.
 
 ### Impact
+
 - Runtime undefined access (returns `undefined`)
 - Notification scheduling silently failed
 - No compilation error due to TypeScript's optional chaining
 
 ### Fix Applied
+
 Added the missing field to `BriefJobData`:
 
 ```typescript
@@ -140,6 +155,7 @@ export interface BriefJobData
 ```
 
 **Files Modified:**
+
 - `apps/worker/src/workers/shared/queueUtils.ts` (line 19)
 
 ---
@@ -147,39 +163,45 @@ export interface BriefJobData
 ## Bug #3: Type Inconsistencies ⚠️
 
 ### Location
+
 `apps/worker/src/workers/shared/queueUtils.ts:14-28`
 
 ### Problem
+
 The `BriefJobData` interface makes `briefDate` and `timezone` **optional**, but `DailyBriefJobMetadata` (in shared types) defines them as **required**.
 
 ### Code Comparison
 
 **Shared Types** (`packages/shared-types/src/queue-types.ts:25-35`):
+
 ```typescript
 export interface DailyBriefJobMetadata {
   briefDate: string; // REQUIRED
-  timezone: string;  // REQUIRED
+  timezone: string; // REQUIRED
   // ...
 }
 ```
 
 **Worker Types** (`apps/worker/src/workers/shared/queueUtils.ts:14-28`):
+
 ```typescript
 export interface BriefJobData
   extends Omit<DailyBriefJobMetadata, "briefDate" | "timezone"> {
   userId: string;
   briefDate?: string; // OPTIONAL ⚠️
-  timezone?: string;  // OPTIONAL ⚠️
+  timezone?: string; // OPTIONAL ⚠️
   // ...
 }
 ```
 
 ### Impact
+
 - Creates maintenance burden with defensive fallback logic
 - Type safety broken across web-worker boundary
 - Requires fallback code in `briefWorker.ts` (lines 50-76)
 
 ### Mitigation
+
 Added clarifying comments to document the intentional optionality:
 
 ```typescript
@@ -188,7 +210,9 @@ timezone?: string; // Made optional for backward compat (worker has fallback log
 ```
 
 ### Recommendation for Future
+
 Either:
+
 1. **Make fields required**: Enforce at job creation time, remove worker fallbacks
 2. **Update shared types**: Make fields optional in `DailyBriefJobMetadata` if truly optional
 3. **Document contract**: Add JSDoc explaining which fields are truly required vs optional
@@ -237,6 +261,7 @@ Either:
    - Schedules notification for user's preferred time
 
 **Key Files:**
+
 - `apps/worker/src/workers/brief/briefWorker.ts` (32-423)
 - `apps/worker/src/workers/brief/briefGenerator.ts` (67-1312)
 - `apps/worker/src/scheduler.ts` (169-401)
@@ -261,6 +286,7 @@ Either:
    - Worker handles actual BullMQ queue integration
 
 **Key Files:**
+
 - `apps/web/src/routes/api/daily-briefs/generate/+server.ts` (34-199)
 - `apps/web/src/lib/services/briefClient.service.ts` (54-291)
 - `apps/web/src/lib/services/railwayWorker.service.ts` (95-135)
@@ -268,17 +294,20 @@ Either:
 ### Queue Job Type Definitions
 
 **Shared Types** (`packages/shared-types/src/queue-types.ts`):
+
 - `DailyBriefJobMetadata` (lines 25-35) - Canonical type definition
 - `BriefGenerationProgress` (lines 37-48) - Progress tracking
 - `JobMetadataMap` (lines 128-142) - Type-safe job mapping
 - `QueueJob<T>` (lines 250-268) - Generic type-safe queue job
 
 **Worker Types** (`apps/worker/src/workers/shared/queueUtils.ts`):
+
 - `BriefJobData` (lines 14-29) - Legacy compatibility wrapper
 - Extends `DailyBriefJobMetadata` with omissions for optional fields
 - Adds worker-specific fields (`isReengagement`, `daysSinceLastLogin`)
 
 **Recent Changes** (from git history):
+
 - Commit `705bb77e`: Added `notificationScheduledFor` to `DailyBriefJobMetadata`
 - Commit `b5ae1749`: Added comprehensive task count fields to `BriefCompletedEventPayload`
 - Commit `e3bfce7c`: Added correlation ID tracking across systems
@@ -287,18 +316,21 @@ Either:
 ### Database Schema
 
 **Core Tables:**
+
 - `queue_jobs` - Job tracking with atomic operations
 - `daily_briefs` - Main brief records
 - `project_daily_briefs` - Per-project briefs
 - `user_brief_preferences` - User settings (timezone, frequency, email)
 
 **Email Tables:**
+
 - `emails` - Email records with tracking
 - `email_recipients` - Per-recipient tracking
 - `email_logs` - SMTP send logs
 - `email_tracking_events` - Event tracking
 
 **Key RPCs:**
+
 - `add_queue_job` - Atomic job insertion with deduplication
 - `claim_pending_jobs` - Atomic batch job claiming
 - `complete_queue_job` - Mark job completed
@@ -311,23 +343,23 @@ Either:
 
 ### Bugs and Fixes
 
-| Bug | File | Lines | Status |
-|-----|------|-------|--------|
-| SMS metrics function | `packages/shared-utils/src/metrics/smsMetrics.service.ts` | 417-449 | ✅ Fixed |
-| Missing field | `apps/worker/src/workers/shared/queueUtils.ts` | 19 | ✅ Fixed |
-| Type inconsistency | `apps/worker/src/workers/shared/queueUtils.ts` | 14-28 | ⚠️ Documented |
+| Bug                  | File                                                      | Lines   | Status        |
+| -------------------- | --------------------------------------------------------- | ------- | ------------- |
+| SMS metrics function | `packages/shared-utils/src/metrics/smsMetrics.service.ts` | 417-449 | ✅ Fixed      |
+| Missing field        | `apps/worker/src/workers/shared/queueUtils.ts`            | 19      | ✅ Fixed      |
+| Type inconsistency   | `apps/worker/src/workers/shared/queueUtils.ts`            | 14-28   | ⚠️ Documented |
 
 ### Key Implementation Files
 
-| Component | File | Lines | Purpose |
-|-----------|------|-------|---------|
-| Brief Worker | `apps/worker/src/workers/brief/briefWorker.ts` | 31-423 | Job processor |
-| Brief Generator | `apps/worker/src/workers/brief/briefGenerator.ts` | 67-1312 | Core generation |
-| Scheduler | `apps/worker/src/scheduler.ts` | 169-401 | Cron scheduling |
-| Queue System | `apps/worker/src/lib/supabaseQueue.ts` | 43-574 | Queue management |
-| Manual API | `apps/web/src/routes/api/daily-briefs/generate/+server.ts` | 34-199 | Web endpoint |
-| Client Service | `apps/web/src/lib/services/briefClient.service.ts` | 54-291 | Client logic |
-| Shared Types | `packages/shared-types/src/queue-types.ts` | 25-438 | Type definitions |
+| Component       | File                                                       | Lines   | Purpose          |
+| --------------- | ---------------------------------------------------------- | ------- | ---------------- |
+| Brief Worker    | `apps/worker/src/workers/brief/briefWorker.ts`             | 31-423  | Job processor    |
+| Brief Generator | `apps/worker/src/workers/brief/briefGenerator.ts`          | 67-1312 | Core generation  |
+| Scheduler       | `apps/worker/src/scheduler.ts`                             | 169-401 | Cron scheduling  |
+| Queue System    | `apps/worker/src/lib/supabaseQueue.ts`                     | 43-574  | Queue management |
+| Manual API      | `apps/web/src/routes/api/daily-briefs/generate/+server.ts` | 34-199  | Web endpoint     |
+| Client Service  | `apps/web/src/lib/services/briefClient.service.ts`         | 54-291  | Client logic     |
+| Shared Types    | `packages/shared-types/src/queue-types.ts`                 | 25-438  | Type definitions |
 
 ---
 
@@ -403,6 +435,7 @@ Real-time Notification (Supabase Realtime)
 ## Testing Recommendations
 
 ### Immediate Testing
+
 1. ✅ Run typecheck: `pnpm --filter=worker typecheck` - **PASSED**
 2. ✅ Build shared-utils: `pnpm --filter=@buildos/shared-utils build` - **PASSED**
 3. ⏳ Test manual brief generation from web UI
@@ -410,6 +443,7 @@ Real-time Notification (Supabase Realtime)
 5. ⏳ Verify notification scheduling works correctly
 
 ### Regression Testing
+
 1. Test brief generation with missing timezone (should fallback to UTC)
 2. Test brief generation with invalid timezone (should fallback to UTC)
 3. Test brief generation with missing briefDate (should use "today" in user TZ)
@@ -417,6 +451,7 @@ Real-time Notification (Supabase Realtime)
 5. Test email job queuing (should not block brief completion)
 
 ### Integration Testing
+
 1. End-to-end: Manual trigger → Queue → Worker → Brief → Email → Notification
 2. End-to-end: Scheduler → Queue → Worker → Brief → Email → Notification
 3. Error scenarios: LLM failure, email failure, database errors
@@ -428,6 +463,7 @@ Real-time Notification (Supabase Realtime)
 ## Conclusion
 
 All identified bugs have been fixed:
+
 - ✅ SMS metrics function error eliminated (deprecated with TODO)
 - ✅ Missing `notificationScheduledFor` field added to `BriefJobData`
 - ✅ Type inconsistencies documented with clarifying comments
@@ -435,11 +471,13 @@ All identified bugs have been fixed:
 - ✅ Shared-utils package builds successfully
 
 The daily brief generation system is now ready for testing. The fixes address:
+
 1. Runtime errors from non-existent database functions
 2. Undefined field access causing silent failures
 3. Type clarity for future maintainability
 
 **Next Steps:**
+
 1. Test manual brief generation from web UI
 2. Monitor worker logs for any remaining errors
 3. Consider implementing full SMS metrics infrastructure or removing the code

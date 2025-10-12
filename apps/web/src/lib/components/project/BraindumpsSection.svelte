@@ -180,7 +180,8 @@
 									}}
 									variant="ghost"
 									size="sm"
-									class="w-full text-left justify-start {sortField === option.field
+									class="w-full text-left justify-start {sortField ===
+									option.field
 										? 'bg-blue-50 dark:bg-blue-900/30'
 										: ''}"
 								>
@@ -209,7 +210,9 @@
 			class="flex flex-col items-center justify-center py-12 bg-gray-50 dark:bg-gray-800
                  rounded-lg border border-gray-200 dark:border-gray-700"
 		>
-			<LoaderCircle class="w-8 h-8 animate-spin text-primary-600 dark:text-primary-400 mb-3" />
+			<LoaderCircle
+				class="w-8 h-8 animate-spin text-primary-600 dark:text-primary-400 mb-3"
+			/>
 			<p class="text-sm text-gray-600 dark:text-gray-400">Loading brain dumps...</p>
 		</div>
 	{:else if hasError}

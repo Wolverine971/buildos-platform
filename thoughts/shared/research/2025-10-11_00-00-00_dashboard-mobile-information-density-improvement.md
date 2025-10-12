@@ -61,6 +61,7 @@ This specification addresses layout and information density issues on the BuildO
 ### Component-by-Component Analysis
 
 #### Dashboard.svelte (Main Container)
+
 ```
 Container: px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10
 Header section: mb-8 sm:mb-10
@@ -68,6 +69,7 @@ Section gaps: mb-6 sm:mb-8 (between major sections)
 ```
 
 #### MobileTaskTabs.svelte
+
 ```
 Container card: rounded-2xl shadow-sm p-5 border
 Tab button container: mb-5 p-1
@@ -78,6 +80,7 @@ Individual tasks: p-4 border-l-3 rounded-xl
 ```
 
 #### TaskDetailsCard.svelte (Desktop)
+
 ```
 Container: rounded-xl shadow-sm border p-4 sm:p-5
 Header: mb-4 (with count badge)
@@ -86,6 +89,7 @@ Individual tasks: p-2 sm:p-2.5 md:p-3
 ```
 
 #### WeeklyTaskCalendar.svelte
+
 ```
 Container: rounded-xl shadow-sm border
 Header: p-4 sm:p-6 border-b
@@ -95,6 +99,7 @@ Mobile tasks: p-3 rounded-lg
 ```
 
 #### BraindumpWeekView.svelte
+
 ```
 Container: rounded-xl shadow-sm border
 Header: p-4 sm:p-6 border-b
@@ -104,6 +109,7 @@ Mobile braindumps: p-3 rounded-lg
 ```
 
 #### PhaseCalendarView.svelte
+
 ```
 Container: rounded-xl shadow-sm border
 Header: p-6 sm:p-8 border-b ⚠️ (Larger than others)
@@ -118,6 +124,7 @@ Mobile list items: p-5 rounded-2xl min-h-[88px] ⚠️ (Larger than others)
 **Goal:** Reclaim vertical space without losing visual hierarchy
 
 **Change:**
+
 ```svelte
 <!-- Current: Dashboard.svelte:649 -->
 <header class="mb-8 sm:mb-10">
@@ -127,6 +134,7 @@ Mobile list items: p-5 rounded-2xl min-h-[88px] ⚠️ (Larger than others)
 ```
 
 **Impact:**
+
 - Mobile: Saves 16px (from mb-8 to mb-4)
 - Desktop: Saves 16px (from mb-10 to mb-6)
 - Still maintains clear separation from navigation
@@ -136,6 +144,7 @@ Mobile list items: p-5 rounded-2xl min-h-[88px] ⚠️ (Larger than others)
 **Goal:** Show information density at a glance without tab switching
 
 **Change:**
+
 ```svelte
 <!-- Current: MobileTaskTabs.svelte:96-107 -->
 <Button ...>
@@ -156,6 +165,7 @@ Mobile list items: p-5 rounded-2xl min-h-[88px] ⚠️ (Larger than others)
 ```
 
 **Visual Design:**
+
 - Count badge appears inline with tab label
 - Small, compact badge (h-5, min-w-[20px])
 - Subtle background to avoid visual clutter
@@ -177,6 +187,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 **Specific Changes:**
 
 #### MobileTaskTabs.svelte
+
 ```svelte
 <!-- Line 91: Container padding -->
 <!-- Current: p-5 -->
@@ -195,6 +206,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```
 
 #### TaskDetailsCard.svelte
+
 ```svelte
 <!-- Line 81: Keep p-4 for mobile (already optimal) -->
 <!-- No change needed for container -->
@@ -204,6 +216,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```
 
 #### WeeklyTaskCalendar.svelte
+
 ```svelte
 <!-- Line 99: Header padding -->
 <!-- Current: p-4 sm:p-6 -->
@@ -220,6 +233,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```
 
 #### BraindumpWeekView.svelte
+
 ```svelte
 <!-- Line 77: Header padding -->
 <!-- Current: p-4 sm:p-6 -->
@@ -236,6 +250,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```
 
 #### PhaseCalendarView.svelte
+
 ```svelte
 <!-- Line 260: Header padding (largest outlier) -->
 <!-- Current: p-6 sm:p-8 -->
@@ -258,6 +273,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 **Goal:** Reduce gaps between sections while maintaining readability
 
 **Change:**
+
 ```svelte
 <!-- Dashboard.svelte: Multiple locations using mb-6 sm:mb-8 -->
 <!-- Current: mb-6 sm:mb-8 -->
@@ -335,16 +351,16 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 
 ### Space Savings (Mobile)
 
-| Component | Current Mobile Padding | Proposed | Savings |
-|-----------|----------------------|----------|---------|
-| Welcome Header Margin | 32px (mb-8) | 16px (mb-4) | **16px** |
-| MobileTaskTabs Container | 20px (p-5) | 16px (p-4) | **8px** (4px × 2 sides) |
-| MobileTaskTabs Tab Margin | 20px (mb-5) | 16px (mb-4) | **4px** |
-| MobileTaskTabs Tasks | 16px (p-4) | 12px (p-3) | **8px** (4px × 2 sides) |
-| PhaseCalendarView Header | 24px (p-6) | 16px (p-4) | **16px** (8px × 2 sides) |
-| PhaseCalendarView Items | 20px (p-5) | 16px (p-4) | **8px** (4px × 2 sides) |
-| Section Gaps (×7 sections) | 24px (mb-6) | 16px (mb-4) | **56px** (8px × 7) |
-| **Total Mobile Savings** | | | **~116px** |
+| Component                  | Current Mobile Padding | Proposed    | Savings                  |
+| -------------------------- | ---------------------- | ----------- | ------------------------ |
+| Welcome Header Margin      | 32px (mb-8)            | 16px (mb-4) | **16px**                 |
+| MobileTaskTabs Container   | 20px (p-5)             | 16px (p-4)  | **8px** (4px × 2 sides)  |
+| MobileTaskTabs Tab Margin  | 20px (mb-5)            | 16px (mb-4) | **4px**                  |
+| MobileTaskTabs Tasks       | 16px (p-4)             | 12px (p-3)  | **8px** (4px × 2 sides)  |
+| PhaseCalendarView Header   | 24px (p-6)             | 16px (p-4)  | **16px** (8px × 2 sides) |
+| PhaseCalendarView Items    | 20px (p-5)             | 16px (p-4)  | **8px** (4px × 2 sides)  |
+| Section Gaps (×7 sections) | 24px (mb-6)            | 16px (mb-4) | **56px** (8px × 7)       |
+| **Total Mobile Savings**   |                        |             | **~116px**               |
 
 ### Information Density Improvements
 
@@ -363,17 +379,20 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ## Implementation Priority
 
 ### Phase 1: Quick Wins (High Impact, Low Effort)
+
 1. ✅ Add task counts to tabs (MobileTaskTabs.svelte)
 2. ✅ Reduce welcome message top margin (Dashboard.svelte)
 3. ✅ Reduce section spacing (Dashboard.svelte)
 
 ### Phase 2: Padding Standardization (Medium Effort)
+
 4. ✅ Standardize MobileTaskTabs padding
 5. ✅ Standardize WeeklyTaskCalendar padding
 6. ✅ Standardize BraindumpWeekView padding
 7. ✅ Standardize PhaseCalendarView padding
 
 ### Phase 3: Refinement (Low Priority)
+
 8. ⏱️ Create reusable dashboard card components with standardized styles
 9. ⏱️ Extract spacing constants to central design tokens file
 10. ⏱️ Add responsive breakpoint variations if needed
@@ -381,18 +400,21 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ## Testing Checklist
 
 ### Visual Testing
+
 - [ ] Desktop view maintains good spacing and readability
 - [ ] Tablet view (768px-1024px) has appropriate padding
 - [ ] Mobile view (320px-640px) maximizes information density
 - [ ] Dark mode looks consistent with light mode
 
 ### Functional Testing
+
 - [ ] Task count badges update correctly when tasks change
 - [ ] All touch targets remain ≥44×44px
 - [ ] Scrolling behavior works smoothly
 - [ ] No layout shift or flickering on load
 
 ### Cross-Browser Testing
+
 - [ ] Safari iOS (mobile)
 - [ ] Chrome Android (mobile)
 - [ ] Chrome Desktop
@@ -400,6 +422,7 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 - [ ] Firefox Desktop
 
 ### Accessibility Testing
+
 - [ ] Screen reader announces counts correctly
 - [ ] Keyboard navigation works smoothly
 - [ ] Focus indicators are visible
@@ -427,44 +450,50 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ## Success Metrics
 
 ### Quantitative
+
 - Mobile viewport shows 15-20% more content above the fold
 - Reduced scroll distance by ~116px on mobile dashboard
 - Consistent padding across all 5 major card components
 
 ### Qualitative
+
 - User feedback on "cleaner" or "less cluttered" interface
 - Improved visual cohesion and professional appearance
 - Easier at-a-glance understanding of task distribution
 
 ## Potential Risks & Mitigation
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Too cramped on small screens | High | Test on 320px width devices; adjust if needed |
-| Touch targets too small | Critical | Verify all buttons/cards maintain ≥44×44px |
-| Desktop looks sparse | Medium | Desktop keeps slightly more padding (sm: variants) |
-| User preference for current spacing | Medium | A/B test or gather user feedback before full rollout |
+| Risk                                | Impact   | Mitigation                                           |
+| ----------------------------------- | -------- | ---------------------------------------------------- |
+| Too cramped on small screens        | High     | Test on 320px width devices; adjust if needed        |
+| Touch targets too small             | Critical | Verify all buttons/cards maintain ≥44×44px           |
+| Desktop looks sparse                | Medium   | Desktop keeps slightly more padding (sm: variants)   |
+| User preference for current spacing | Medium   | A/B test or gather user feedback before full rollout |
 
 ## Design Rationale
 
 ### Why These Specific Values?
 
 **p-4 (16px) for cards:**
+
 - Industry standard for card padding on mobile
 - Matches Material Design and iOS HIG recommendations
 - Balances whitespace with content density
 
 **p-3 (12px) for list items:**
+
 - Sufficient space for comfortable tapping
 - Allows more items in scrollable lists
 - Common pattern in mobile-first designs (Twitter, Instagram)
 
 **mb-4 (16px) for sections:**
+
 - Clear visual separation without waste
 - Responsive: scales up to mb-6 (24px) on desktop
 - Aligns with 4px grid system
 
 **Count badges inline with tabs:**
+
 - Saves vertical space vs separate row
 - Common pattern (Gmail, Slack, Discord)
 - Provides immediate context without clutter
@@ -472,18 +501,22 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ## Alternative Approaches Considered
 
 ### 1. Variable Density Modes
+
 **Approach:** Allow users to toggle between "Comfortable" and "Compact" views
 **Rejected Because:** Adds complexity; most users prefer optimized defaults
 
 ### 2. Dynamic Padding Based on Content
+
 **Approach:** Reduce padding only when many items present
 **Rejected Because:** Inconsistent experience; unexpected layout shifts
 
 ### 3. Progressive Disclosure
+
 **Approach:** Show only summary, expand on tap
 **Rejected Because:** Adds interaction friction; users want to see tasks immediately
 
 ### 4. Remove Cards, Use Flat Design
+
 **Approach:** Eliminate card containers entirely
 **Rejected Because:** Reduces visual hierarchy and scannability
 

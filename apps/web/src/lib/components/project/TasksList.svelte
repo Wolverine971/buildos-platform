@@ -16,7 +16,8 @@
 		ArrowUp,
 		ArrowDown,
 		CalendarCheck,
-		RefreshCw
+		RefreshCw,
+		X
 	} from 'lucide-svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -137,6 +138,24 @@
 	let sortDirection: SortDirection = $state('asc');
 	let showSortDropdown = $state(false);
 	let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+	// ===== BULK SELECTION STATE =====
+	let selectedTaskIds = $state(new Set<string>());
+	let bulkActionInProgress = $state(false);
+	let bulkActionWarnings = $state<string[]>([]);
+
+	// UI state for bulk action dropdowns
+	let showBulkStatusDropdown = $state(false);
+	let showBulkPriorityDropdown = $state(false);
+
+	// Reactive computed values for selection
+	let allTasksSelected = $derived(
+		filteredTasks.length > 0 && filteredTasks.every((task) => selectedTaskIds.has(task.id))
+	);
+
+	let someTasksSelected = $derived(selectedTaskIds.size > 0 && !allTasksSelected);
+
+	let selectedTasks = $derived(filteredTasks.filter((task) => selectedTaskIds.has(task.id)));
 
 	// Filter and sort tasks using Svelte 5 runes for better performance
 	let filteredTasks = $derived(
@@ -260,6 +279,67 @@
 		showSortDropdown = false;
 	}
 
+	// ===== BULK SELECTION FUNCTIONS =====
+
+	/**
+	 * Toggle individual task selection
+	 * CRITICAL: Stop event propagation to prevent opening task edit modal
+	 */
+	function toggleTaskSelection(taskId: string, event: Event) {
+		event.stopPropagation();
+
+		if (selectedTaskIds.has(taskId)) {
+			selectedTaskIds.delete(taskId);
+		} else {
+			selectedTaskIds.add(taskId);
+		}
+
+		// CRITICAL: Reassign to trigger Svelte 5 reactivity
+		selectedTaskIds = new Set(selectedTaskIds);
+	}
+
+	/**
+	 * Toggle "select all" for current filtered view
+	 */
+	function toggleSelectAll() {
+		if (allTasksSelected) {
+			// Deselect all
+			selectedTaskIds = new Set();
+		} else {
+			// Select all filtered tasks
+			selectedTaskIds = new Set(filteredTasks.map((t) => t.id));
+		}
+	}
+
+	/**
+	 * Clear all selections and warnings
+	 */
+	function clearSelection() {
+		selectedTaskIds = new Set();
+		bulkActionWarnings = [];
+		showBulkStatusDropdown = false;
+		showBulkPriorityDropdown = false;
+	}
+
+	/**
+	 * Clean up selection after filter changes
+	 * Removes tasks that are no longer in filtered view
+	 */
+	function cleanupSelection() {
+		const validTaskIds = new Set(filteredTasks.map((t) => t.id));
+		const newSelection = new Set<string>();
+
+		for (const id of selectedTaskIds) {
+			if (validTaskIds.has(id)) {
+				newSelection.add(id);
+			}
+		}
+
+		if (newSelection.size !== selectedTaskIds.size) {
+			selectedTaskIds = newSelection;
+		}
+	}
+
 	// Task actions
 	async function handleScheduleTask(task: TaskWithCalendarEvents) {
 		if (!task.id) return;
@@ -341,6 +421,355 @@
 		}
 	}
 
+	// ===== BULK OPERATION HANDLERS =====
+
+	/**
+	 * Handle bulk status change with optimistic updates
+	 */
+	async function handleBulkStatusChange(
+		newStatus: 'backlog' | 'in_progress' | 'done' | 'blocked'
+	) {
+		if (selectedTaskIds.size === 0 || !projectId) return;
+
+		bulkActionInProgress = true;
+		bulkActionWarnings = [];
+		showBulkStatusDropdown = false;
+
+		try {
+			const updates = Array.from(selectedTaskIds).map((id) => ({
+				id,
+				data: {
+					status: newStatus,
+					...(newStatus === 'done' ? { completed_at: new Date().toISOString() } : {}),
+					...(newStatus !== 'done' &&
+					selectedTasks.find((t) => t.id === id)?.status === 'done'
+						? { completed_at: null }
+						: {})
+				}
+			}));
+
+			// Optimistic update
+			updates.forEach(({ id, data }) => {
+				const task = allTasksFromStore.find((t) => t.id === id);
+				if (task) {
+					projectStoreV2.updateTask({ ...task, ...data });
+				}
+			});
+
+			// Call batch API
+			const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ updates })
+			});
+
+			if (!response.ok) {
+				throw new Error('Batch update failed');
+			}
+
+			const resp = await response.json();
+
+			const result = resp.data
+			// Handle partial failures
+			if (result.failed && result.failed.length > 0) {
+				result.failed.forEach(({ id, error }: { id: string; error: string }) => {
+					const originalTask = allTasksFromStore.find((t) => t.id === id);
+					if (originalTask) {
+						projectStoreV2.updateTask(originalTask);
+					}
+					bulkActionWarnings.push(`Failed to update task: ${error}`);
+				});
+			}
+
+			// Update store with successful results
+			if (result.successful) {
+				result.successful.forEach((task: any) => {
+					projectStoreV2.updateTask(task);
+				});
+			}
+
+			toastService.success(
+				`${result.summary?.successful || result.successful?.length || 0} task${result.summary?.successful > 1 ? 's' : ''} updated`
+			);
+
+			// Clear selection after successful operation
+			if (!result.failed || result.failed.length === 0) {
+				clearSelection();
+			}
+		} catch (error) {
+			console.error('Bulk status change failed:', error);
+			toastService.error('Failed to update tasks');
+
+			// Rollback all optimistic updates
+			selectedTasks.forEach((task) => {
+				const originalTask = allTasksFromStore.find((t) => t.id === task.id);
+				if (originalTask) {
+					projectStoreV2.updateTask(originalTask);
+				}
+			});
+		} finally {
+			bulkActionInProgress = false;
+		}
+	}
+
+	/**
+	 * Handle bulk priority change
+	 */
+	async function handleBulkPriorityChange(newPriority: 'low' | 'medium' | 'high') {
+		if (selectedTaskIds.size === 0 || !projectId) return;
+
+		bulkActionInProgress = true;
+		bulkActionWarnings = [];
+		showBulkPriorityDropdown = false;
+
+		try {
+			const updates = Array.from(selectedTaskIds).map((id) => ({
+				id,
+				data: { priority: newPriority }
+			}));
+
+			// Optimistic update
+			updates.forEach(({ id, data }) => {
+				const task = allTasksFromStore.find((t) => t.id === id);
+				if (task) {
+					projectStoreV2.updateTask({ ...task, ...data });
+				}
+			});
+
+			// Call batch API
+			const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ updates })
+			});
+
+			if (!response.ok) {
+				throw new Error('Batch update failed');
+			}
+
+			const result = await response.json();
+
+			// Handle results
+			if (result.failed && result.failed.length > 0) {
+				result.failed.forEach(({ id, error }: { id: string; error: string }) => {
+					const originalTask = allTasksFromStore.find((t) => t.id === id);
+					if (originalTask) {
+						projectStoreV2.updateTask(originalTask);
+					}
+					bulkActionWarnings.push(`Failed to update task: ${error}`);
+				});
+			}
+
+			if (result.successful) {
+				result.successful.forEach((task: any) => projectStoreV2.updateTask(task));
+			}
+
+			toastService.success(
+				`${result.summary?.successful || result.successful?.length || 0} task${result.summary?.successful > 1 ? 's' : ''} updated`
+			);
+
+			// Clear selection after successful operation
+			if (!result.failed || result.failed.length === 0) {
+				clearSelection();
+			}
+		} catch (error) {
+			console.error('Bulk priority change failed:', error);
+			toastService.error('Failed to update tasks');
+
+			// Rollback all optimistic updates
+			selectedTasks.forEach((task) => {
+				const originalTask = allTasksFromStore.find((t) => t.id === task.id);
+				if (originalTask) {
+					projectStoreV2.updateTask(originalTask);
+				}
+			});
+		} finally {
+			bulkActionInProgress = false;
+		}
+	}
+
+	/**
+	 * Handle bulk remove dates with confirmation
+	 */
+	async function handleBulkRemoveDates() {
+		if (selectedTaskIds.size === 0 || !projectId) return;
+
+		// Check which tasks actually have dates
+		const tasksWithDates = selectedTasks.filter((t) => t.start_date);
+
+		if (tasksWithDates.length === 0) {
+			toastService.info('No tasks have dates to remove');
+			return;
+		}
+
+		// Confirm with user
+		const confirmed = confirm(
+			`Remove start dates from ${tasksWithDates.length} task${tasksWithDates.length > 1 ? 's' : ''}? This will also remove them from your calendar.`
+		);
+
+		if (!confirmed) return;
+
+		bulkActionInProgress = true;
+		bulkActionWarnings = [];
+
+		try {
+			const updates = tasksWithDates.map((task) => ({
+				id: task.id,
+				data: {
+					start_date: null,
+					// Also clear recurrence if it's a recurring task
+					...(task.task_type === 'recurring'
+						? {
+								task_type: 'one_off',
+								recurrence_pattern: null,
+								recurrence_ends: null
+							}
+						: {})
+				}
+			}));
+
+			// Optimistic update
+			updates.forEach(({ id, data }) => {
+				const task = allTasksFromStore.find((t) => t.id === id);
+				if (task) {
+					projectStoreV2.updateTask({ ...task, ...data });
+				}
+			});
+
+			// Call batch API (will automatically handle calendar cleanup)
+			const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ updates })
+			});
+
+			if (!response.ok) {
+				throw new Error('Batch update failed');
+			}
+
+			const result = await response.json();
+
+			// Handle results
+			if (result.failed && result.failed.length > 0) {
+				result.failed.forEach(({ id, error }: { id: string; error: string }) => {
+					const originalTask = allTasksFromStore.find((t) => t.id === id);
+					if (originalTask) {
+						projectStoreV2.updateTask(originalTask);
+					}
+					bulkActionWarnings.push(`Failed to update task: ${error}`);
+				});
+			}
+
+			if (result.successful) {
+				result.successful.forEach((task: any) => projectStoreV2.updateTask(task));
+			}
+
+			toastService.success(
+				`Removed dates from ${result.summary?.successful || result.successful?.length || 0} task${result.summary?.successful > 1 ? 's' : ''}`
+			);
+
+			// Clear selection after successful operation
+			if (!result.failed || result.failed.length === 0) {
+				clearSelection();
+			}
+		} catch (error) {
+			console.error('Bulk remove dates failed:', error);
+			toastService.error('Failed to remove dates');
+
+			// Rollback all optimistic updates
+			tasksWithDates.forEach((task) => {
+				const originalTask = allTasksFromStore.find((t) => t.id === task.id);
+				if (originalTask) {
+					projectStoreV2.updateTask(originalTask);
+				}
+			});
+		} finally {
+			bulkActionInProgress = false;
+		}
+	}
+
+	/**
+	 * Handle bulk delete (soft delete) with confirmation
+	 */
+	async function handleBulkDelete() {
+		if (selectedTaskIds.size === 0 || !projectId) return;
+
+		// Confirm with user
+		const confirmed = confirm(
+			`Delete ${selectedTaskIds.size} task${selectedTaskIds.size > 1 ? 's' : ''}? You can restore them later from the Deleted filter.`
+		);
+
+		if (!confirmed) return;
+
+		bulkActionInProgress = true;
+		bulkActionWarnings = [];
+
+		try {
+			const updates = Array.from(selectedTaskIds).map((id) => ({
+				id,
+				data: { deleted_at: new Date().toISOString() }
+			}));
+
+			// Optimistic update
+			updates.forEach(({ id, data }) => {
+				const task = allTasksFromStore.find((t) => t.id === id);
+				if (task) {
+					projectStoreV2.updateTask({ ...task, ...data });
+				}
+			});
+
+			// Call batch API (will automatically handle calendar cleanup)
+			const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ updates })
+			});
+
+			if (!response.ok) {
+				throw new Error('Batch update failed');
+			}
+
+			const result = await response.json();
+
+			// Handle results
+			if (result.failed && result.failed.length > 0) {
+				result.failed.forEach(({ id, error }: { id: string; error: string }) => {
+					const originalTask = allTasksFromStore.find((t) => t.id === id);
+					if (originalTask) {
+						projectStoreV2.updateTask(originalTask);
+					}
+					bulkActionWarnings.push(`Failed to delete task: ${error}`);
+				});
+			}
+
+			if (result.successful) {
+				result.successful.forEach((task: any) => projectStoreV2.updateTask(task));
+			}
+
+			toastService.success(
+				`Deleted ${result.summary?.successful || result.successful?.length || 0} task${result.summary?.successful > 1 ? 's' : ''}`
+			);
+
+			// Clear selection after successful operation
+			if (!result.failed || result.failed.length === 0) {
+				clearSelection();
+			}
+		} catch (error) {
+			console.error('Bulk delete failed:', error);
+			toastService.error('Failed to delete tasks');
+
+			// Rollback all optimistic updates
+			selectedTasks.forEach((task) => {
+				const originalTask = allTasksFromStore.find((t) => t.id === task.id);
+				if (originalTask) {
+					projectStoreV2.updateTask(originalTask);
+				}
+			});
+		} finally {
+			bulkActionInProgress = false;
+		}
+	}
+
 	// Utility functions
 	function getTaskIcon(task: TaskWithCalendarEvents) {
 		const type = getTaskType(task);
@@ -412,6 +841,14 @@
 		}
 	}
 
+	// Cleanup selection when filters change
+	$effect(() => {
+		// This runs whenever activeFilters or filteredTasks changes
+		if (selectedTaskIds.size > 0) {
+			cleanupSelection();
+		}
+	});
+
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	});
@@ -482,6 +919,8 @@
 		/>
 	</div>
 
+	
+
 	<!-- Task Type Filters -->
 	<div class="space-y-3">
 		<div class="flex flex-wrap gap-2">
@@ -532,6 +971,181 @@
 		{/if}
 	</div>
 
+	<!-- Selection Controls with Actions -->
+	{#if filteredTasks.length > 0}
+		<div class="space-y-3">
+			<div class="flex flex-col sm:flex-row sm:items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+				<!-- Left: Select All Checkbox -->
+				<label
+					class="flex items-center gap-2.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-shrink-0"
+				>
+					<input
+						type="checkbox"
+						checked={allTasksSelected}
+						indeterminate={someTasksSelected}
+						onchange={toggleSelectAll}
+						class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600
+							focus:ring-blue-500 focus:ring-offset-0 cursor-pointer
+							dark:bg-gray-700 dark:checked:bg-blue-600 dark:checked:border-blue-600"
+						aria-label="Select all tasks"
+					/>
+					<span class="font-semibold text-gray-900 dark:text-white text-sm">
+						{#if selectedTaskIds.size > 0}
+							<span class="text-blue-600 dark:text-blue-400">{selectedTaskIds.size}</span> of {filteredTasks.length} selected
+						{:else}
+							Select all <span class="text-gray-500 dark:text-gray-400">({filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'})</span>
+						{/if}
+					</span>
+				</label>
+
+				<!-- Right: Bulk Actions (fade in when tasks selected) -->
+				<div class="flex items-center gap-2 flex-wrap flex-1 justify-end transition-all {selectedTaskIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
+					<!-- Status Dropdown -->
+					<div class="relative">
+						<Button
+							onclick={(e) => {
+								e.stopPropagation();
+								showBulkStatusDropdown = !showBulkStatusDropdown;
+								showBulkPriorityDropdown = false;
+							}}
+							variant="outline"
+							size="sm"
+							icon={Circle}
+							iconPosition="left"
+							disabled={bulkActionInProgress}
+						>
+							Status
+							<ChevronDown class="w-3 h-3 ml-1" />
+						</Button>
+
+						{#if showBulkStatusDropdown}
+							<div
+								class="absolute z-30 mt-1 w-40 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
+							>
+								{#each [{ value: 'backlog', label: 'Backlog', icon: Circle }, { value: 'in_progress', label: 'In Progress', icon: LoaderCircle }, { value: 'done', label: 'Done', icon: CircleCheck }, { value: 'blocked', label: 'Blocked', icon: TriangleAlert }] as status}
+									<button
+										onclick={(e) => {
+											e.stopPropagation();
+											handleBulkStatusChange(status.value);
+										}}
+										class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
+									>
+										<svelte:component this={status.icon} class="w-3.5 h-3.5" />
+										{status.label}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Priority Dropdown -->
+					<div class="relative">
+						<Button
+							onclick={(e) => {
+								e.stopPropagation();
+								showBulkPriorityDropdown = !showBulkPriorityDropdown;
+								showBulkStatusDropdown = false;
+							}}
+							variant="outline"
+							size="sm"
+							icon={ArrowUp}
+							iconPosition="left"
+							disabled={bulkActionInProgress}
+						>
+							Priority
+							<ChevronDown class="w-3 h-3 ml-1" />
+						</Button>
+
+						{#if showBulkPriorityDropdown}
+							<div
+								class="absolute z-30 mt-1 w-36 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
+							>
+								{#each [{ value: 'high', label: 'High', color: 'text-red-600' }, { value: 'medium', label: 'Medium', color: 'text-yellow-600' }, { value: 'low', label: 'Low', color: 'text-green-600' }] as priority}
+									<button
+										onclick={(e) => {
+											e.stopPropagation();
+											handleBulkPriorityChange(priority.value);
+										}}
+										class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
+									>
+										<ArrowUp class="w-3.5 h-3.5 {priority.color}" />
+										{priority.label}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Remove Dates Button -->
+					<Button
+						onclick={(e) => {
+							e.stopPropagation();
+							handleBulkRemoveDates();
+						}}
+						variant="outline"
+						size="sm"
+						icon={CalendarX}
+						iconPosition="left"
+						disabled={bulkActionInProgress}
+						class="hidden sm:inline-flex"
+					>
+						Remove Dates
+					</Button>
+
+					<!-- Delete Button -->
+					<Button
+						onclick={(e) => {
+							e.stopPropagation();
+							handleBulkDelete();
+						}}
+						variant="outline"
+						size="sm"
+						icon={Trash2}
+						iconPosition="left"
+						class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+						disabled={bulkActionInProgress}
+					>
+						Delete
+					</Button>
+
+					<!-- Clear Selection Button -->
+					<Button
+						onclick={clearSelection}
+						variant="ghost"
+						size="sm"
+						icon={X}
+						iconPosition="left"
+						disabled={bulkActionInProgress}
+					>
+						Clear
+					</Button>
+				</div>
+			</div>
+
+			<!-- Warnings -->
+			{#if bulkActionWarnings.length > 0}
+				<div
+					class="flex items-start gap-2 text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3"
+				>
+					<TriangleAlert class="w-4 h-4 flex-shrink-0 mt-0.5" />
+					<div class="space-y-1">
+						{#each bulkActionWarnings as warning}
+							<div>{warning}</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Loading State -->
+			{#if bulkActionInProgress}
+				<div class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+					<LoaderCircle class="w-4 h-4 animate-spin" />
+					<span>Processing...</span>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Tasks List -->
 	{#if filteredTasks.length === 0}
 		<div
@@ -562,181 +1176,205 @@
 						<CurrentTimeIndicator label="Now" showTime={true} className="w-full" />
 					</div>
 				{/if}
-				<div
-					id="task-{task.id}"
-					class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all relative cursor-pointer
-					hover:bg-gray-50 dark:hover:bg-gray-750 active:scale-[0.99]
-					{getTaskType(task) === 'deleted' ? 'opacity-75' : ''}
-					{getTaskType(task) === 'completed' ? 'opacity-60' : ''}
-					{isTaskLoading(task.id) ? 'opacity-50' : ''}"
-					role="button"
-					tabindex="0"
-					onclick={() => onEditTask(task)}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							onEditTask(task);
-						}
-					}}
-					aria-label="Edit task: {task.title}"
-				>
-					<!-- Loading overlay -->
-					{#if isTaskLoading(task.id)}
-						<div
-							class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 rounded-lg pointer-events-none z-10 flex items-center justify-center"
-						>
-							<LoaderCircle
-								class="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400"
-							/>
-						</div>
-					{/if}
 
-					<!-- Task Content -->
-					<div class="p-4">
-						<div class="flex items-start gap-3">
-							<!-- Task Icon/Checkbox -->
-							<Button
-								onclick={(e) => {
-									e.stopPropagation();
-									handleToggleTaskComplete(task);
-								}}
-								variant="ghost"
-								size="sm"
-								class="{getTaskColor(task)} mt-0.5 hover:opacity-80 p-0"
-								disabled={getTaskType(task) === 'deleted' || isTaskLoading(task.id)}
-								icon={getTaskIcon(task)}
-								aria-label="{getTaskType(task) === 'completed'
-									? 'Mark as incomplete'
-									: 'Mark as complete'}: {task.title}"
-							/>
+				<!-- Task Row with Checkbox -->
+				<div class="flex items-center gap-3">
+					<!-- Selection Checkbox (outside card) -->
+					<input
+						type="checkbox"
+						checked={selectedTaskIds.has(task.id)}
+						onchange={(e) => toggleTaskSelection(task.id, e)}
+						onclick={(e) => e.stopPropagation()}
+						class="h-4 w-4  rounded border-gray-300 dark:border-gray-600 text-blue-600
+							focus:ring-blue-500 focus:ring-offset-0 cursor-pointer flex-shrink-0
+							dark:bg-gray-700 dark:checked:bg-blue-600 dark:checked:border-blue-600"
+						aria-label="Select task: {task.title}"
+					/>
 
-							<!-- Task Details -->
-							<div class="flex-1 min-w-0">
-								<h4
-									class="text-sm font-medium text-gray-900 dark:text-white {getTaskType(
-										task
-									) === 'completed'
-										? 'line-through'
-										: ''}"
-								>
-									{task.title}
-									{#if task.task_type === 'recurring'}
-										<RefreshCw
-											class="inline-block w-3.5 h-3.5 ml-1 text-blue-500 dark:text-blue-400"
-											title="Recurring task - {getRecurrenceText(
-												task.recurrence_pattern
-											) || 'repeating'}"
+					<!-- Task Card -->
+					<div
+						id="task-{task.id}"
+						class="flex-1 rounded-lg border transition-all relative cursor-pointer active:scale-[0.99]
+						{selectedTaskIds.has(task.id)
+							? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 shadow-sm'
+							: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 hover:shadow-md'}
+						{getTaskType(task) === 'deleted' ? 'opacity-75' : ''}
+						{getTaskType(task) === 'completed' ? 'opacity-60' : ''}
+						{isTaskLoading(task.id) ? 'opacity-50' : ''}"
+						role="button"
+						tabindex="0"
+						onclick={() => onEditTask(task)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								onEditTask(task);
+							}
+						}}
+						aria-label="Edit task: {task.title}"
+						aria-selected={selectedTaskIds.has(task.id)}
+					>
+						<!-- Loading overlay -->
+						{#if isTaskLoading(task.id)}
+							<div
+								class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 rounded-lg pointer-events-none z-10 flex items-center justify-center"
+							>
+								<LoaderCircle
+									class="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400"
+								/>
+							</div>
+						{/if}
+
+						<!-- Task Content -->
+						<div class="p-4">
+							<div class="flex items-start gap-3">
+								<!-- Task Icon/Status Button -->
+								<!-- <Button
+									onclick={(e) => {
+										e.stopPropagation();
+										handleToggleTaskComplete(task);
+									}}
+									variant="ghost"
+									size="sm"
+									class="{getTaskColor(task)} mt-0.5 hover:opacity-80 p-0"
+									disabled={getTaskType(task) === 'deleted' ||
+										isTaskLoading(task.id)}
+									icon={getTaskIcon(task)}
+									aria-label="{getTaskType(task) === 'completed'
+										? 'Mark as incomplete'
+										: 'Mark as complete'}: {task.title}"
+								/> -->
+
+								<!-- Task Details -->
+								<div class="flex-1 min-w-0">
+									<h4
+										class="text-sm font-medium text-gray-900 dark:text-white {getTaskType(
+											task
+										) === 'completed'
+											? 'line-through'
+											: ''}"
+									>
+										{task.title}
+										{#if task.task_type === 'recurring'}
+											<RefreshCw
+												class="inline-block w-3.5 h-3.5 ml-1 text-blue-500 dark:text-blue-400"
+												title="Recurring task - {getRecurrenceText(
+													task.recurrence_pattern
+												) || 'repeating'}"
+											/>
+										{/if}
+										<RecentActivityIndicator
+											createdAt={task.created_at}
+											updatedAt={task.updated_at}
+											size="xs"
+										/>
+									</h4>
+
+									<!-- Task Meta -->
+									<div class="flex flex-wrap items-center gap-3 mt-1">
+										{#if task.priority}
+											<span
+												class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border {priorityColors[
+													task.priority
+												]}"
+											>
+												{task.priority}
+											</span>
+										{/if}
+
+										{#if task.start_date}
+											<span
+												class="text-xs text-gray-500 dark:text-gray-400 flex items-center"
+											>
+												<Calendar class="w-3 h-3 mr-1" />
+												{formatDateTimeForDisplay(task.start_date)}
+											</span>
+										{/if}
+
+										{#if task.task_calendar_events?.find((e) => e.sync_status === 'synced' || e.sync_status === 'pending')}
+											<a
+												href={task?.task_calendar_events?.find(
+													(e) =>
+														e.sync_status === 'synced' ||
+														e.sync_status === 'pending'
+												).event_link}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center"
+												onclick={(e) => e.stopPropagation()}
+											>
+												<CalendarCheck class="w-3 h-3 mr-1" />
+												In calendar
+											</a>
+										{/if}
+
+										{#if task.completed_at}
+											<span class="text-xs text-gray-500 dark:text-gray-400">
+												Completed {formatRelativeTime(task.completed_at)}
+											</span>
+										{/if}
+									</div>
+								</div>
+								<!-- End Task Details -->
+
+								<!-- Actions -->
+								<div class="flex items-center gap-1 flex-shrink-0">
+									{#if getTaskType(task) === 'active' && !task.task_calendar_events?.find((e) => e.sync_status === 'synced' || e.sync_status === 'pending') && task.start_date && !isDateInPast(task.start_date) && calendarConnected}
+										<Button
+											onclick={(e) => {
+												e.stopPropagation();
+												handleScheduleTask(task);
+											}}
+											disabled={isTaskScheduling(task.id) ||
+												isTaskLoading(task.id)}
+											variant="ghost"
+											size="sm"
+											class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+											title="Add to calendar"
+											icon={isTaskScheduling(task.id)
+												? LoaderCircle
+												: CalendarPlus}
+											aria-label="Add task to calendar: {task.title}"
 										/>
 									{/if}
-									<RecentActivityIndicator
-										createdAt={task.created_at}
-										updatedAt={task.updated_at}
-										size="xs"
-									/>
-								</h4>
 
-								<!-- Task Meta -->
-								<div class="flex flex-wrap items-center gap-3 mt-1">
-									{#if task.priority}
-										<span
-											class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border {priorityColors[
-												task.priority
-											]}"
-										>
-											{task.priority}
-										</span>
+									{#if getTaskType(task) === 'active'}
+										<Button
+											onclick={(e) => {
+												e.stopPropagation();
+												onMarkDeleted(task);
+											}}
+											disabled={isTaskLoading(task.id)}
+											variant="ghost"
+											size="sm"
+											class="p-1.5 text-gray-400 hover:text-orange-600 dark:hover:text-orange-400"
+											title="Mark as deleted"
+											icon={Trash2}
+											aria-label="Mark task as deleted: {task.title}"
+										/>
 									{/if}
 
-									{#if task.start_date}
-										<span
-											class="text-xs text-gray-500 dark:text-gray-400 flex items-center"
-										>
-											<Calendar class="w-3 h-3 mr-1" />
-											{formatDateTimeForDisplay(task.start_date)}
-										</span>
-									{/if}
-
-									{#if task.task_calendar_events?.find((e) => e.sync_status === 'synced' || e.sync_status === 'pending')}
-										<a
-											href={task?.task_calendar_events?.find(
-												(e) =>
-													e.sync_status === 'synced' ||
-													e.sync_status === 'pending'
-											).event_link}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center"
-											onclick={(e) => e.stopPropagation()}
-										>
-											<CalendarCheck class="w-3 h-3 mr-1" />
-											In calendar
-										</a>
-									{/if}
-
-									{#if task.completed_at}
-										<span class="text-xs text-gray-500 dark:text-gray-400">
-											Completed {formatRelativeTime(task.completed_at)}
-										</span>
+									{#if getTaskType(task) === 'deleted'}
+										<Button
+											onclick={(e) => {
+												e.stopPropagation();
+												handleRestoreTask(task);
+											}}
+											disabled={isTaskLoading(task.id)}
+											variant="ghost"
+											size="sm"
+											class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+											title="Restore task"
+											icon={RotateCcw}
+											aria-label="Restore task: {task.title}"
+										/>
 									{/if}
 								</div>
 							</div>
-
-							<!-- Actions -->
-							<div class="flex items-center gap-1 flex-shrink-0">
-								{#if getTaskType(task) === 'active' && !task.task_calendar_events?.find((e) => e.sync_status === 'synced' || e.sync_status === 'pending') && task.start_date && !isDateInPast(task.start_date) && calendarConnected}
-									<Button
-										onclick={(e) => {
-											e.stopPropagation();
-											handleScheduleTask(task);
-										}}
-										disabled={isTaskScheduling(task.id) ||
-											isTaskLoading(task.id)}
-										variant="ghost"
-										size="sm"
-										class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-										title="Add to calendar"
-										icon={isTaskScheduling(task.id)
-											? LoaderCircle
-											: CalendarPlus}
-										aria-label="Add task to calendar: {task.title}"
-									/>
-								{/if}
-
-								{#if getTaskType(task) === 'active'}
-									<Button
-										onclick={(e) => {
-											e.stopPropagation();
-											onMarkDeleted(task);
-										}}
-										disabled={isTaskLoading(task.id)}
-										variant="ghost"
-										size="sm"
-										class="p-1.5 text-gray-400 hover:text-orange-600 dark:hover:text-orange-400"
-										title="Mark as deleted"
-										icon={Trash2}
-										aria-label="Mark task as deleted: {task.title}"
-									/>
-								{/if}
-
-								{#if getTaskType(task) === 'deleted'}
-									<Button
-										onclick={(e) => {
-											e.stopPropagation();
-											handleRestoreTask(task);
-										}}
-										disabled={isTaskLoading(task.id)}
-										variant="ghost"
-										size="sm"
-										class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
-										title="Restore task"
-										icon={RotateCcw}
-										aria-label="Restore task: {task.title}"
-									/>
-								{/if}
-							</div>
 						</div>
+						<!-- End Task Card -->
 					</div>
 				</div>
+				<!-- End Task Row -->
 			{/each}
 
 			<!-- Check if we should show indicator at the bottom (after all tasks) -->

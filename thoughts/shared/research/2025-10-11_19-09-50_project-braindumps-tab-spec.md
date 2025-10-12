@@ -39,12 +39,14 @@ Based on comprehensive research of the existing codebase, I've identified:
 **File**: `/apps/web/src/routes/(app)/projects/[id]/+page.svelte` (1,591 lines)
 
 **Current Tab System**:
+
 - 5 existing tabs: Overview, Tasks, Daily Briefs, Notes, AI Summary
 - Tab component: `/apps/web/src/lib/components/project/ProjectTabs.svelte` (120 lines)
 - Lazy-loaded tab content with progressive data loading
 - State managed in `projectStoreV2` (`/apps/web/src/lib/stores/project.store.ts`)
 
 **Key Architecture Patterns**:
+
 ```typescript
 // Tab definition
 {
@@ -70,6 +72,7 @@ async function loadComponent(name: string) {
 **Primary Card Component**: `/apps/web/src/lib/components/history/BraindumpHistoryCard.svelte`
 
 **Features**:
+
 - Border-based design with color coding (amber for unlinked, green for new projects, purple for regular)
 - Two-section layout: header (project/type + time) and content (preview + metadata)
 - `line-clamp-2` text truncation with stripped markdown
@@ -79,22 +82,24 @@ async function loadComponent(name: string) {
 - Responsive spacing: `px-3 py-2 sm:px-4 sm:py-3`
 
 **Data Structure**:
+
 ```typescript
 interface Braindump {
   id: string;
   content: string;
   ai_summary?: string;
-  status: 'processed' | 'processing' | 'pending';
+  status: "processed" | "processing" | "pending";
   updated_at: string;
   created_at: string;
   isNote: boolean;
   isNewProject: boolean;
   linkedProject: { id: string; name: string } | null;
-  linkedTypes: Array<'project' | 'task' | 'note'>;
+  linkedTypes: Array<"project" | "task" | "note">;
 }
 ```
 
 **Modal Component**: `/apps/web/src/lib/components/history/BraindumpModalHistory.svelte`
+
 - Full content view with markdown rendering
 - Linked tasks/notes/projects sections
 - Expandable sections
@@ -107,19 +112,21 @@ interface Braindump {
 ```typescript
 brain_dump_links: {
   id: number;
-  brain_dump_id: string;    // FK → brain_dumps.id
+  brain_dump_id: string; // FK → brain_dumps.id
   created_at: string;
-  note_id: string | null;   // FK → notes.id
+  note_id: string | null; // FK → notes.id
   project_id: string | null; // FK → projects.id
-  task_id: string | null;   // FK → tasks.id
+  task_id: string | null; // FK → tasks.id
 }
 ```
 
 **Query Pattern for Project Braindumps**:
+
 ```typescript
 const { data } = await supabase
-  .from('brain_dump_links')
-  .select(`
+  .from("brain_dump_links")
+  .select(
+    `
     brain_dump_id,
     created_at as linked_at,
     task_id,
@@ -130,17 +137,20 @@ const { data } = await supabase
     ),
     tasks (id, title, status, position),
     notes (id, title)
-  `)
-  .eq('project_id', projectId)
-  .order('created_at', { ascending: false });
+  `,
+  )
+  .eq("project_id", projectId)
+  .order("created_at", { ascending: false });
 ```
 
 **Relationship Structure**:
+
 - One braindump can link to multiple entities
 - Task links typically include both `task_id` and `project_id`
 - Created by `OperationsExecutor.createBrainDumpLinks()` during brain dump processing
 
 **Existing API**: `/apps/web/src/routes/api/tasks/[id]/braindumps/+server.ts`
+
 - Similar pattern can be used for project braindumps endpoint
 
 ### 4. Sortable List Patterns
@@ -148,22 +158,24 @@ const { data } = await supabase
 **Reference Implementation**: `/apps/web/src/lib/components/project/TasksList.svelte`
 
 **Sort UI Pattern**:
+
 - Dropdown button for sort field selection (ChevronDown icon)
 - Toggle button for direction (ArrowUp/ArrowDown icons)
 - Sort fields: `created_at`, `updated_at`, custom fields
 
 **State Management (Svelte 5 Runes)**:
+
 ```typescript
-let sortField: SortField = $state('created_at');
-let sortDirection: SortDirection = $state('desc');
+let sortField: SortField = $state("created_at");
+let sortDirection: SortDirection = $state("desc");
 let showSortDropdown = $state(false);
 
 function setSortField(field: SortField) {
   if (sortField === field) {
-    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+    sortDirection = sortDirection === "desc" ? "asc" : "desc";
   } else {
     sortField = field;
-    sortDirection = 'desc';
+    sortDirection = "desc";
   }
   showSortDropdown = false;
 }
@@ -174,14 +186,15 @@ let sortedBraindumps = $derived(
     const aDate = new Date(a[sortField]);
     const bDate = new Date(b[sortField]);
     const comparison = aDate.getTime() - bDate.getTime();
-    return sortDirection === 'desc' ? -comparison : comparison;
-  })
+    return sortDirection === "desc" ? -comparison : comparison;
+  }),
 );
 ```
 
 ### 5. Responsive Design Patterns
 
 **Card Layout Standards**:
+
 ```css
 /* Container */
 bg-white dark:bg-gray-800
@@ -202,18 +215,21 @@ w-4 h-4 sm:w-5 sm:h-5
 ```
 
 **Grid Layouts**:
+
 ```svelte
 <!-- Standard pattern: 1 → 2 → 3 columns -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 ```
 
 **Mobile-First Approach**:
+
 - Default to vertical stacking
 - Hide non-essential elements on mobile: `<span class="hidden sm:inline">`
 - Adjust spacing: `gap-2 sm:gap-3 md:gap-4`
 - Touch-friendly targets: minimum 44px height
 
 **Line Clamping**:
+
 ```typescript
 // Utility function
 function truncateContent(content: string, maxLength: number = 150): string {
@@ -262,6 +278,7 @@ Server Load (minimal) → Store Init → Progressive Load → Real-time Sync
 ### Store Integration
 
 The `projectStoreV2` should be extended to include:
+
 ```typescript
 interface ProjectStoreV2State {
   // Existing fields...
@@ -284,6 +301,7 @@ Add a new "Brain Dumps" tab to the project detail page that displays all braindu
 ### 2. User Stories
 
 **As a user, I want to:**
+
 1. See all braindumps related to my project in one place
 2. View a preview of each braindump's content without opening it
 3. Expand braindumps to read full content
@@ -299,6 +317,7 @@ Add a new "Brain Dumps" tab to the project detail page that displays all braindu
 **File**: `/apps/web/src/lib/components/project/ProjectTabs.svelte`
 
 Add new tab:
+
 ```typescript
 {
   id: 'braindumps',
@@ -311,14 +330,15 @@ Add new tab:
 ```
 
 Update `ExtendedTabType`:
+
 ```typescript
 type ExtendedTabType =
-  | 'overview'
-  | 'tasks'
-  | 'briefs'
-  | 'notes'
-  | 'synthesis'
-  | 'braindumps';  // Add this
+  | "overview"
+  | "tasks"
+  | "briefs"
+  | "notes"
+  | "synthesis"
+  | "braindumps"; // Add this
 ```
 
 #### 3.2 Main Component: `BraindumpsSection.svelte`
@@ -328,6 +348,7 @@ type ExtendedTabType =
 **Purpose**: Container component for the braindumps tab content
 
 **Props**:
+
 ```typescript
 interface Props {
   onOpenBraindump?: (braindump: BraindumpWithLinks) => void;
@@ -336,12 +357,13 @@ interface Props {
 ```
 
 **State**:
+
 ```typescript
-import { projectStoreV2 } from '$lib/stores/project.store';
+import { projectStoreV2 } from "$lib/stores/project.store";
 
 // Sort state
-let sortField: 'created_at' | 'linked_at' = $state('linked_at');
-let sortDirection: 'asc' | 'desc' = $state('desc');
+let sortField: "created_at" | "linked_at" = $state("linked_at");
+let sortDirection: "asc" | "desc" = $state("desc");
 let showSortDropdown = $state(false);
 
 // UI state
@@ -352,10 +374,11 @@ let showDetailModal = $state(false);
 // Data from store
 $: storeState = $projectStoreV2;
 $: braindumps = storeState.braindumps || [];
-$: isLoading = storeState.loadingStates.braindumps === 'loading';
+$: isLoading = storeState.loadingStates.braindumps === "loading";
 ```
 
 **Computed Values**:
+
 ```typescript
 // Sorted braindumps
 let sortedBraindumps = $derived(
@@ -363,8 +386,8 @@ let sortedBraindumps = $derived(
     const aDate = new Date(a[sortField]);
     const bDate = new Date(b[sortField]);
     const comparison = aDate.getTime() - bDate.getTime();
-    return sortDirection === 'desc' ? -comparison : comparison;
-  })
+    return sortDirection === "desc" ? -comparison : comparison;
+  }),
 );
 
 // Braindump count
@@ -372,6 +395,7 @@ let braindumpCount = $derived(braindumps.length);
 ```
 
 **Layout Structure**:
+
 ```svelte
 <div class="space-y-4">
   <!-- Header with sort controls -->
@@ -440,6 +464,7 @@ let braindumpCount = $derived(braindumps.length);
 ```
 
 **Functions**:
+
 ```typescript
 function toggleExpand(braindumpId: string) {
   if (expandedBraindumpIds.has(braindumpId)) {
@@ -469,6 +494,7 @@ function handleDelete(event: CustomEvent) {
 **Purpose**: Individual braindump card with preview, expand/collapse, and linked tasks
 
 **Props**:
+
 ```typescript
 interface Props {
   braindump: BraindumpWithLinks;
@@ -486,16 +512,17 @@ export let onDelete: (() => void) | undefined = undefined;
 ```
 
 **Data Structure**:
+
 ```typescript
 interface BraindumpWithLinks {
   id: string;
   title: string;
   content: string;
   ai_summary?: string;
-  status: 'processed' | 'processing' | 'pending';
+  status: "processed" | "processing" | "pending";
   created_at: string;
   updated_at: string;
-  linked_at: string;  // When linked to project
+  linked_at: string; // When linked to project
   linked_tasks: {
     id: string;
     title: string;
@@ -510,6 +537,7 @@ interface BraindumpWithLinks {
 ```
 
 **Layout Structure**:
+
 ```svelte
 <div
   class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2
@@ -635,11 +663,12 @@ interface BraindumpWithLinks {
 ```
 
 **Helper Functions**:
+
 ```typescript
 function truncateContent(content: string, maxLength: number = 150): string {
-  const stripped = content.replace(/[#*_`]/g, '').trim();
+  const stripped = content.replace(/[#*_`]/g, "").trim();
   return stripped.length > maxLength
-    ? stripped.substring(0, maxLength) + '...'
+    ? stripped.substring(0, maxLength) + "..."
     : stripped;
 }
 
@@ -651,16 +680,16 @@ function getTimeDisplay(dateStr: string): string {
     return formatDistanceToNow(date, { addSuffix: true });
   }
 
-  return format(date, 'MMM d, yyyy');
+  return format(date, "MMM d, yyyy");
 }
 
 function getBorderColor(braindump: BraindumpWithLinks): string {
   // Regular braindumps
-  return 'border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700';
+  return "border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700";
 }
 
 function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter' || event.key === ' ') {
+  if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
     onClick?.();
   }
@@ -668,6 +697,7 @@ function handleKeyDown(event: KeyboardEvent) {
 ```
 
 **Responsive Styles**:
+
 - Card padding: `px-3 py-2 sm:px-4 sm:py-3`
 - Title text: `text-sm sm:text-base`
 - Content text: `text-sm`
@@ -681,23 +711,24 @@ function handleKeyDown(event: KeyboardEvent) {
 **File**: `/apps/web/src/routes/api/projects/[id]/braindumps/+server.ts` (NEW)
 
 ```typescript
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   const { id: projectId } = params;
   const session = await locals.getSession();
 
   if (!session?.user) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
+    return json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = locals.supabase;
 
   // Get all braindumps linked to this project
   const { data: braindumpLinks, error } = await supabase
-    .from('brain_dump_links')
-    .select(`
+    .from("brain_dump_links")
+    .select(
+      `
       brain_dump_id,
       created_at as linked_at,
       task_id,
@@ -722,14 +753,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         id,
         title
       )
-    `)
-    .eq('project_id', projectId)
-    .eq('brain_dumps.user_id', session.user.id)
-    .order('created_at', { ascending: false });
+    `,
+    )
+    .eq("project_id", projectId)
+    .eq("brain_dumps.user_id", session.user.id)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error('Error fetching project braindumps:', error);
-    return json({ error: 'Failed to fetch braindumps' }, { status: 500 });
+    console.error("Error fetching project braindumps:", error);
+    return json({ error: "Failed to fetch braindumps" }, { status: 500 });
   }
 
   // Transform data to group by braindump
@@ -744,7 +776,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         ...braindump,
         linked_at: link.linked_at,
         linked_tasks: [],
-        linked_notes: []
+        linked_notes: [],
       });
     }
 
@@ -765,9 +797,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   }
 
   // Convert map to array and sort tasks by position
-  const braindumps = Array.from(braindumpsMap.values()).map(bd => ({
+  const braindumps = Array.from(braindumpsMap.values()).map((bd) => ({
     ...bd,
-    linked_tasks: bd.linked_tasks.sort((a: any, b: any) => a.position - b.position)
+    linked_tasks: bd.linked_tasks.sort(
+      (a: any, b: any) => a.position - b.position,
+    ),
   }));
 
   return json({ braindumps });
@@ -779,6 +813,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 **File**: `/apps/web/src/lib/stores/project.store.ts`
 
 Add to store state:
+
 ```typescript
 interface ProjectStoreV2State {
   // ... existing fields
@@ -798,6 +833,7 @@ interface ProjectStoreV2State {
 ```
 
 Add data loading function:
+
 ```typescript
 async loadBraindumps(force = false): Promise<void> {
   const state = get(projectStoreV2);
@@ -852,9 +888,10 @@ async loadBraindumps(force = false): Promise<void> {
 ```
 
 Add to progressive loading in `+page.svelte`:
+
 ```typescript
 $effect(() => {
-  if (project?.id && activeTab === 'braindumps') {
+  if (project?.id && activeTab === "braindumps") {
     // Load braindumps when tab is active
     projectStoreV2.loadBraindumps();
   }
@@ -871,13 +908,13 @@ $effect(() => {
 const tabs = [
   // ... existing tabs
   {
-    id: 'braindumps',
-    label: 'Brain Dumps',
+    id: "braindumps",
+    label: "Brain Dumps",
     icon: Brain,
-    mobileLabel: 'Dumps',
+    mobileLabel: "Dumps",
     count: $projectStoreV2.braindumps?.length || 0,
-    hideCount: false
-  }
+    hideCount: false,
+  },
 ];
 ```
 
@@ -891,15 +928,17 @@ let BraindumpsSection = $state<any>(null);
 async function loadComponent(name: string, tab: string) {
   // ... existing cases
 
-  if (name === 'BraindumpsSection') {
-    BraindumpsSection = (await import('$lib/components/project/BraindumpsSection.svelte')).default;
+  if (name === "BraindumpsSection") {
+    BraindumpsSection = (
+      await import("$lib/components/project/BraindumpsSection.svelte")
+    ).default;
   }
 }
 
 // Tab loading effect
 $effect(() => {
-  if (activeTab === 'braindumps' && !BraindumpsSection) {
-    loadComponent('BraindumpsSection', 'braindumps');
+  if (activeTab === "braindumps" && !BraindumpsSection) {
+    loadComponent("BraindumpsSection", "braindumps");
   }
 });
 ```
@@ -929,7 +968,7 @@ $effect(() => {
 ```typescript
 function handleOpenBraindump(braindump: BraindumpWithLinks) {
   // Optional: track analytics
-  console.log('Opened braindump:', braindump.id);
+  console.log("Opened braindump:", braindump.id);
 }
 
 async function handleDeleteBraindump(braindumpId: string) {
@@ -938,28 +977,28 @@ async function handleDeleteBraindump(braindumpId: string) {
   const previousBraindumps = state.braindumps;
 
   projectStoreV2.updateStoreState({
-    braindumps: state.braindumps?.filter(bd => bd.id !== braindumpId) || null
+    braindumps: state.braindumps?.filter((bd) => bd.id !== braindumpId) || null,
   });
 
   try {
     const response = await fetch(`/api/braindumps/${braindumpId}`, {
-      method: 'DELETE'
+      method: "DELETE",
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete braindump');
+      throw new Error("Failed to delete braindump");
     }
 
     // Show success toast
-    toastStore.success('Brain dump deleted');
+    toastStore.success("Brain dump deleted");
   } catch (error) {
     // Rollback on error
     projectStoreV2.updateStoreState({
-      braindumps: previousBraindumps
+      braindumps: previousBraindumps,
     });
 
-    toastStore.error('Failed to delete brain dump');
-    console.error('Error deleting braindump:', error);
+    toastStore.error("Failed to delete brain dump");
+    console.error("Error deleting braindump:", error);
   }
 }
 ```
@@ -974,7 +1013,7 @@ export interface BraindumpWithLinks {
   title: string;
   content: string;
   ai_summary?: string;
-  status: 'processed' | 'processing' | 'pending';
+  status: "processed" | "processing" | "pending";
   created_at: string;
   updated_at: string;
   linked_at: string;
@@ -994,13 +1033,14 @@ export interface LinkedNote {
   title: string;
 }
 
-export type BraindumpSortField = 'created_at' | 'linked_at';
-export type SortDirection = 'asc' | 'desc';
+export type BraindumpSortField = "created_at" | "linked_at";
+export type SortDirection = "asc" | "desc";
 ```
 
 ### 7. Mobile Responsive Behavior
 
 #### Desktop (≥768px)
+
 - 3-column grid for cards
 - Full task titles visible
 - Hover effects for delete button
@@ -1008,12 +1048,14 @@ export type SortDirection = 'asc' | 'desc';
 - Status badges always visible
 
 #### Tablet (640px - 767px)
+
 - 2-column grid for cards
 - Truncated task titles (20 chars)
 - Touch-optimized tap targets
 - Medium spacing
 
 #### Mobile (<640px)
+
 - Single column layout
 - Compact padding (`px-3 py-2`)
 - Smaller text sizes (`text-xs`, `text-sm`)
@@ -1024,6 +1066,7 @@ export type SortDirection = 'asc' | 'desc';
 ### 8. Empty States
 
 **No Braindumps**:
+
 ```svelte
 <EmptyState
   icon={Brain}
@@ -1037,6 +1080,7 @@ export type SortDirection = 'asc' | 'desc';
 ```
 
 **Loading State**:
+
 ```svelte
 <LoadingSkeleton
   message="Loading brain dumps..."
@@ -1045,6 +1089,7 @@ export type SortDirection = 'asc' | 'desc';
 ```
 
 **Error State**:
+
 ```svelte
 <ErrorState
   title="Failed to load brain dumps"
@@ -1059,12 +1104,14 @@ export type SortDirection = 'asc' | 'desc';
 ### 9. Accessibility
 
 **Keyboard Navigation**:
+
 - Tab through cards with `Tab` key
 - Activate cards with `Enter` or `Space`
 - Delete with `Delete` or `Backspace` when focused
 - Sort dropdown with arrow keys
 
 **Screen Reader Support**:
+
 ```svelte
 <div
   role="button"
@@ -1076,6 +1123,7 @@ export type SortDirection = 'asc' | 'desc';
 ```
 
 **ARIA Labels**:
+
 - Sort buttons: `aria-label="Sort by {field}"`
 - Direction toggle: `aria-label="Sort direction: {direction}"`
 - Delete button: `aria-label="Delete brain dump"`
@@ -1084,15 +1132,18 @@ export type SortDirection = 'asc' | 'desc';
 ### 10. Performance Considerations
 
 **Lazy Loading**:
+
 - Component loaded only when tab is activated
 - Data loaded on first tab visit, then cached
 
 **Optimization**:
+
 - Virtual scrolling if >100 braindumps (future enhancement)
 - Intersection Observer for card animations
 - Debounced search/filter (future enhancement)
 
 **Caching**:
+
 - Store-level cache with 1-2 minute TTL
 - Invalidate cache on create/update/delete operations
 - Force refresh with pull-to-refresh (mobile)
@@ -1100,16 +1151,19 @@ export type SortDirection = 'asc' | 'desc';
 ### 11. Testing Strategy
 
 **Unit Tests**:
+
 - `BraindumpProjectCard.svelte`: Rendering, expand/collapse, event handlers
 - `BraindumpsSection.svelte`: Sorting, filtering, empty states
 - Store functions: `loadBraindumps()`, cache invalidation
 
 **Integration Tests**:
+
 - API endpoint: `/api/projects/[id]/braindumps`
 - Tab switching: Data loading on activation
 - Modal integration: Click card → open modal
 
 **E2E Tests**:
+
 - Complete user flow: Navigate to project → Click braindumps tab → View cards
 - Sort by created/linked date
 - Expand/collapse content
@@ -1117,6 +1171,7 @@ export type SortDirection = 'asc' | 'desc';
 - Delete braindump
 
 **Visual Regression Tests**:
+
 - Card appearance (desktop/mobile)
 - Empty states
 - Loading states
@@ -1125,6 +1180,7 @@ export type SortDirection = 'asc' | 'desc';
 ### 12. Future Enhancements
 
 **Phase 2**:
+
 1. **Search/Filter**: Search braindump content, filter by status
 2. **Bulk Operations**: Select multiple, delete/export
 3. **Export**: Download braindumps as markdown/JSON
@@ -1132,6 +1188,7 @@ export type SortDirection = 'asc' | 'desc';
 5. **AI Summary Toggle**: Show AI summary instead of raw content
 
 **Phase 3**:
+
 1. **Virtual Scrolling**: For projects with 100+ braindumps
 2. **Timeline View**: Chronological visualization
 3. **Graph View**: Connections between braindumps and tasks
@@ -1142,6 +1199,7 @@ export type SortDirection = 'asc' | 'desc';
 ## Implementation Checklist
 
 ### Phase 1: Data Layer
+
 - [ ] Create `/api/projects/[id]/braindumps/+server.ts` endpoint
 - [ ] Add TypeScript types: `BraindumpWithLinks`, `LinkedTask`, `LinkedNote`
 - [ ] Update `project.store.ts` with braindumps state
@@ -1149,12 +1207,14 @@ export type SortDirection = 'asc' | 'desc';
 - [ ] Test API endpoint with Postman/curl
 
 ### Phase 2: Components
+
 - [ ] Create `BraindumpProjectCard.svelte` component
 - [ ] Create `BraindumpsSection.svelte` container
 - [ ] Add reusable `StatusBadge.svelte` (if not exists)
 - [ ] Test components in isolation with mock data
 
 ### Phase 3: Tab Integration
+
 - [ ] Update `ProjectTabs.svelte` with new tab definition
 - [ ] Add lazy loading in `+page.svelte`
 - [ ] Add tab content section
@@ -1162,6 +1222,7 @@ export type SortDirection = 'asc' | 'desc';
 - [ ] Test tab switching and data loading
 
 ### Phase 4: Polish
+
 - [ ] Add empty states (no braindumps, error)
 - [ ] Add loading skeletons
 - [ ] Implement responsive styles (mobile/tablet/desktop)
@@ -1170,6 +1231,7 @@ export type SortDirection = 'asc' | 'desc';
 - [ ] Test dark mode
 
 ### Phase 5: Testing
+
 - [ ] Write unit tests for components
 - [ ] Write integration tests for API
 - [ ] Write E2E tests for user flows
@@ -1177,6 +1239,7 @@ export type SortDirection = 'asc' | 'desc';
 - [ ] Manual testing on mobile devices
 
 ### Phase 6: Documentation
+
 - [ ] Update project page README
 - [ ] Add component documentation
 - [ ] Update CHANGELOG
@@ -1189,19 +1252,23 @@ export type SortDirection = 'asc' | 'desc';
 ### Key Files
 
 **Existing Components to Reference**:
+
 - `/apps/web/src/lib/components/history/BraindumpHistoryCard.svelte` - Card design pattern
 - `/apps/web/src/lib/components/project/TasksList.svelte` - Sortable list pattern
 - `/apps/web/src/lib/components/project/PhaseCard.svelte` - Responsive card with expand/collapse
 - `/apps/web/src/routes/(app)/projects/[id]/+page.svelte:441-500` - Tab loading logic
 
 **Data Models**:
+
 - `/packages/shared-types/src/database.schema.ts:141-148` - `brain_dump_links` table
 - `/apps/web/src/routes/api/tasks/[id]/braindumps/+server.ts` - Similar API pattern
 
 **Store**:
+
 - `/apps/web/src/lib/stores/project.store.ts:1-1509` - Project store implementation
 
 **Design System**:
+
 - `/apps/web/src/lib/components/ui/Button.svelte` - Button component
 - `/apps/web/src/lib/components/ui/EmptyState.svelte` - Empty state component
 - `/apps/web/src/lib/components/ui/LoadingSkeleton.svelte` - Loading skeleton
@@ -1232,6 +1299,7 @@ export type SortDirection = 'asc' | 'desc';
 This specification provides a complete blueprint for adding a Braindumps tab to the project detail page. The implementation leverages existing components (`BraindumpHistoryCard`), follows established patterns (lazy loading, sortable lists), and integrates seamlessly with the existing architecture.
 
 **Key Design Decisions**:
+
 1. **Reuse `BraindumpHistoryCard.svelte`** as the foundation for card design
 2. **Follow lazy-loading pattern** from existing tabs (PhasesSection, TasksList)
 3. **Use `brain_dump_links` table** to query all related braindumps

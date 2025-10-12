@@ -81,9 +81,7 @@
 					<div
 						class="p-1.5 sm:p-2 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg sm:rounded-xl mr-2 sm:mr-3 flex-shrink-0"
 					>
-						<Calendar
-							class="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400"
-						/>
+						<Calendar class="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
 					</div>
 					<div class="flex-1 min-w-0">
 						<h2
@@ -150,7 +148,9 @@
 					>
 						Ready to start your day?
 					</h2>
-					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-1">
+					<p
+						class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-1"
+					>
 						Generate your AI-powered daily brief with priorities and insights
 					</p>
 				</div>
