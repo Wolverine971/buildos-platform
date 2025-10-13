@@ -38,7 +38,7 @@ export function getSenderByEmail(email: string): EmailSender | null {
 	if (email === EMAIL_SENDERS.zach.email) {
 		return EMAIL_SENDERS.zach;
 	}
-	return null;
+	return EMAIL_SENDERS.dj;
 }
 
 /**

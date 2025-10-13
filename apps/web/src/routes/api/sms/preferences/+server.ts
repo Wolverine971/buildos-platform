@@ -7,6 +7,7 @@ const DEFAULT_PREFERENCES = {
 	phone_number: null,
 	phone_verified: false,
 	event_reminders_enabled: false,
+	event_reminder_lead_time_minutes: 15,
 	next_up_enabled: false,
 	morning_kickoff_enabled: false,
 	morning_kickoff_time: '08:00:00',
@@ -14,6 +15,9 @@ const DEFAULT_PREFERENCES = {
 	task_reminders: false,
 	daily_brief_sms: false,
 	urgent_alerts: false,
+	quiet_hours_start: '22:00:00',
+	quiet_hours_end: '08:00:00',
+	timezone: null,
 	opted_out: false
 };
 
@@ -83,15 +87,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			timezone
 		} = body;
 
-		// Check if preferences exist
-		const { data: existingPreferences } = await supabase
-			.from('user_sms_preferences')
-			.select('*')
-			.eq('user_id', user.id)
-			.maybeSingle();
-
 		// Build update object with only provided fields
-		const updateData: Record<string, any> = {
+		const updateData: any = {
+			user_id: user.id,
 			updated_at: new Date().toISOString()
 		};
 
@@ -132,34 +130,16 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			updateData.timezone = timezone;
 		}
 
-		let preferences;
-		let error;
-
-		if (existingPreferences) {
-			// Update existing preferences
-			const { data, error: updateError } = await supabase
-				.from('user_sms_preferences')
-				.update(updateData)
-				.eq('user_id', user.id)
-				.select()
-				.single();
-
-			preferences = data;
-			error = updateError;
-		} else {
-			// Create new preferences with defaults
-			const { data, error: insertError } = await supabase
-				.from('user_sms_preferences')
-				.insert({
-					user_id: user.id,
-					...updateData
-				})
-				.select()
-				.single();
-
-			preferences = data;
-			error = insertError;
-		}
+		// Use UPSERT to atomically insert or update - prevents race conditions
+		// This handles the case where multiple requests try to create preferences simultaneously
+		const { data: preferences, error } = await supabase
+			.from('user_sms_preferences')
+			.upsert(updateData, {
+				onConflict: 'user_id',
+				ignoreDuplicates: false
+			})
+			.select()
+			.single();
 
 		if (error) {
 			console.error('Error updating SMS preferences:', error);

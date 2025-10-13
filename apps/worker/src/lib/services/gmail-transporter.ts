@@ -1,4 +1,13 @@
 // apps/worker/src/lib/services/gmail-transporter.ts
+//
+// ⚠️⚠️⚠️ WARNING: DO NOT USE DIRECT SMTP FROM WORKER ⚠️⚠️⚠️
+//
+// Railway blocks SMTP ports (25, 465, 587). Direct email sending will fail!
+// Use WebhookEmailService instead to send emails via the web app.
+//
+// This file is kept for legacy purposes only.
+// ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
 import type { Transporter } from "nodemailer";
 import * as nodemailer from "nodemailer";
 
@@ -28,7 +37,7 @@ export function createGmailTransporter(config: GmailConfig): Transporter {
     service: "gmail",
     auth: {
       user: config.email,
-      pass: config.password,
+      pass: config?.password,
     },
   });
 }

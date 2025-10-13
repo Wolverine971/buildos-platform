@@ -76,7 +76,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			subject: body.subject,
 			body: body.textContent || body.subject,
 			html: body.htmlContent,
-			from: 'buildos',
+			from: 'dj', // ✅ Fixed: Use valid sender type (was 'buildos' which doesn't exist)
 			userId: body.recipientUserId,
 			emailId: body.emailRecordId,
 			trackingEnabled: !!body.trackingId,

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { AlertCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { FailedDelivery } from '$lib/services/notification-analytics.service';
 
 	interface Props {
@@ -12,6 +13,19 @@
 	}
 
 	let { data, loading = false, onRetry, onResend }: Props = $props();
+
+	let selectedError = $state<FailedDelivery | null>(null);
+	let showErrorModal = $state(false);
+
+	function openErrorModal(delivery: FailedDelivery) {
+		selectedError = delivery;
+		showErrorModal = true;
+	}
+
+	function closeErrorModal() {
+		showErrorModal = false;
+		selectedError = null;
+	}
 
 	function formatDate(dateString: string): string {
 		const date = new Date(dateString);
@@ -129,10 +143,15 @@
 							>
 								{delivery.recipient_email}
 							</td>
-							<td
-								class="px-6 py-4 text-sm text-red-600 dark:text-red-400 max-w-xs truncate"
-							>
-								{delivery.last_error}
+							<td class="px-6 py-4 text-sm max-w-xs">
+								<button
+									type="button"
+									class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline decoration-dotted cursor-pointer text-left truncate block w-full"
+									onclick={() => openErrorModal(delivery)}
+									title="Click to view full error"
+								>
+									{delivery.last_error}
+								</button>
 							</td>
 							<td
 								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
@@ -164,3 +183,93 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Error Details Modal -->
+<Modal
+	isOpen={showErrorModal}
+	onClose={closeErrorModal}
+	title="Error Details"
+	size="lg"
+>
+	{#if selectedError}
+		{@const delivery = selectedError}
+		<div class="p-6 space-y-4">
+			<!-- Delivery Information -->
+			<div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+				<h4 class="font-semibold text-gray-900 dark:text-white">Delivery Information</h4>
+				<div class="grid grid-cols-2 gap-4 text-sm">
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Event Type:</span>
+						<span class="ml-2 text-gray-900 dark:text-white">{delivery.event_type}</span>
+					</div>
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Channel:</span>
+						<span
+							class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
+								delivery.channel
+							)}"
+						>
+							{delivery.channel}
+						</span>
+					</div>
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Recipient:</span>
+						<span class="ml-2 text-gray-900 dark:text-white">{delivery.recipient_email}</span>
+					</div>
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Time:</span>
+						<span class="ml-2 text-gray-900 dark:text-white"
+							>{formatDate(delivery.created_at)}</span
+						>
+					</div>
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Attempts:</span>
+						<span class="ml-2 text-gray-900 dark:text-white"
+							>{delivery.attempts}/{delivery.max_attempts}</span
+						>
+					</div>
+					<div>
+						<span class="text-gray-500 dark:text-gray-400">Delivery ID:</span>
+						<span class="ml-2 text-gray-900 dark:text-white font-mono text-xs"
+							>{delivery.delivery_id}</span
+						>
+					</div>
+				</div>
+			</div>
+
+			<!-- Error Message -->
+			<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+				<h4 class="font-semibold text-red-800 dark:text-red-200 mb-2">Error Message</h4>
+				<div
+					class="text-sm text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap break-words"
+				>
+					{delivery.last_error}
+				</div>
+			</div>
+
+			<!-- Action Buttons -->
+			<div class="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+				{#if delivery.attempts < delivery.max_attempts}
+					<Button
+						variant="secondary"
+						on:click={() => {
+							onRetry?.(delivery.delivery_id);
+							closeErrorModal();
+						}}
+					>
+						Retry Delivery
+					</Button>
+				{/if}
+				<Button
+					variant="primary"
+					on:click={() => {
+						onResend?.(delivery.delivery_id);
+						closeErrorModal();
+					}}
+				>
+					Resend Delivery
+				</Button>
+			</div>
+		</div>
+	{/if}
+</Modal>

@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 import { generateMinimalEmailHTML } from "../utils/emailTemplate";
 import { renderMarkdown } from "../utils/markdown";
-import { EmailService } from "./email-service";
 import { WebhookEmailService } from "./webhook-email-service";
 
 // Valid email recipient statuses per database constraint
@@ -32,61 +31,38 @@ export interface DailyBriefResult {
 }
 
 export class DailyBriefEmailSender {
-  private emailService: EmailService;
-  private webhookEmailService: WebhookEmailService | null = null;
+  private webhookEmailService: WebhookEmailService;
   private baseUrl = "https://build-os.com";
-  private useWebhook: boolean;
 
   constructor(private supabase: SupabaseClient) {
-    this.emailService = new EmailService(supabase);
+    // ⚠️ CRITICAL: Worker is deployed on Railway which blocks SMTP ports (25, 465, 587)
+    // ALL email sending MUST go through webhooks to the web app (deployed on Vercel)
+    // The web app has no port restrictions and can send via Gmail SMTP
 
-    // Log the raw environment variable value for debugging
     console.log("🔍 Email Sender Constructor - Environment Check:");
     console.log(
-      `   → Raw USE_WEBHOOK_EMAIL value: "${process.env.USE_WEBHOOK_EMAIL}"`,
+      `   → Webhook URL: ${process.env.BUILDOS_WEBHOOK_URL || "NOT SET"}`,
     );
     console.log(
-      `   → Type of USE_WEBHOOK_EMAIL: ${typeof process.env.USE_WEBHOOK_EMAIL}`,
-    );
-    console.log(
-      `   → Strict equality to 'true': ${process.env.USE_WEBHOOK_EMAIL === "true"}`,
-    );
-    console.log(
-      `   → Webhook URL present: ${process.env.BUILDOS_WEBHOOK_URL ? "YES" : "NO"}`,
-    );
-    console.log(
-      `   → SMTP Host present: ${process.env.SMTP_HOST ? "YES" : "NO"}`,
+      `   → Webhook Secret configured: ${process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET ? "YES" : "NO"}`,
     );
 
-    // Use webhook if configured, otherwise fallback to direct SMTP
-    this.useWebhook = process.env.USE_WEBHOOK_EMAIL === "true";
-    console.log(`   → Decision: useWebhook = ${this.useWebhook}`);
+    // ALWAYS use webhooks (no SMTP fallback)
+    this.useWebhook = true;
 
-    if (this.useWebhook) {
-      try {
-        this.webhookEmailService = new WebhookEmailService();
-        console.log(
-          "📨 Email sender initialized: Using WEBHOOK service for BuildOS",
-        );
-        console.log(
-          "   → Webhook URL configured:",
-          process.env.BUILDOS_WEBHOOK_URL ? "Yes" : "No",
-        );
-        if (process.env.BUILDOS_WEBHOOK_URL) {
-          console.log(
-            `   → Webhook URL domain: ${new URL(process.env.BUILDOS_WEBHOOK_URL).hostname}`,
-          );
-        }
-      } catch (error) {
-        console.error("❌ Failed to initialize webhook email service:", error);
-        console.log("⚠️  Falling back to DIRECT SMTP email service");
-        this.useWebhook = false;
-      }
-    } else {
-      console.log("📧 Email sender initialized: Using DIRECT SMTP service");
+    try {
+      this.webhookEmailService = new WebhookEmailService();
       console.log(
-        `   → Reason: USE_WEBHOOK_EMAIL="${process.env.USE_WEBHOOK_EMAIL}" !== 'true'`,
+        "✅ Email sender initialized: Using WEBHOOK service (Railway SMTP ports are blocked)",
       );
+      console.log(
+        `   → Webhook URL: ${process.env.BUILDOS_WEBHOOK_URL || "https://build-os.com/webhooks/daily-brief-email"}`,
+      );
+    } catch (error) {
+      console.error("❌ CRITICAL: Failed to initialize webhook email service:", error);
+      console.error("   → Email sending will NOT work!");
+      console.error("   → Check PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable");
+      throw new Error("Webhook email service initialization failed - email sending unavailable");
     }
   }
 
@@ -374,80 +350,53 @@ Manage preferences: https://build-os.com/settings
       }
       recipientRecordId = recipientRecord?.id || null;
 
-      // Send the email via webhook or direct SMTP
-      if (this.useWebhook && this.webhookEmailService) {
-        // Use webhook to trigger email in main BuildOS app
-        console.log(`🔗 Sending email via WEBHOOK service...`);
-        console.log(`   → Email Record ID: ${emailRecord.id}`);
-        console.log(`   → Tracking ID: ${trackingId}`);
+      // Send email via webhook to web app (Railway blocks SMTP ports)
+      if (!this.webhookEmailService) {
+        throw new Error("Webhook email service not initialized - cannot send email");
+      }
 
-        const webhookResult =
-          await this.webhookEmailService.sendDailyBriefEmail(
-            userId,
-            brief.id,
-            briefDate,
-            email,
-            {
-              emailRecordId: emailRecord.id,
-              recipientRecordId: recipientRecord?.id,
-              trackingId: trackingEnabled ? trackingId : undefined,
-              subject,
-            },
-          );
+      console.log(`🔗 Sending email via WEBHOOK service...`);
+      console.log(`   → Email Record ID: ${emailRecord.id}`);
+      console.log(`   → Tracking ID: ${trackingId}`);
 
-        if (!webhookResult.success) {
-          console.error(`❌ Webhook email send failed: ${webhookResult.error}`);
-          throw new Error(webhookResult.error || "Webhook email failed");
-        }
-
-        console.log(`✅ Webhook email sent successfully`);
-        console.log(`   → Response: ${webhookResult?.error || "Email queued"}`);
-
-        // Update email status to sent
-        await this.supabase
-          .from("emails")
-          .update({ status: "sent" })
-          .eq("id", emailRecord.id);
-
-        const sentStatus: EmailRecipientStatus = "sent";
-        await this.supabase
-          .from("email_recipients")
-          .update({ status: sentStatus })
-          .eq("id", recipientRecord?.id);
-      } else {
-        // Fallback to direct email sending
-        console.log(`📤 Sending email via DIRECT SMTP service...`);
-        console.log(`   → Email Record ID: ${emailRecord.id}`);
-        console.log(
-          `   → SMTP configured: ${process.env.SMTP_HOST ? "Yes" : "No"}`,
+      const webhookResult =
+        await this.webhookEmailService.sendDailyBriefEmail(
+          userId,
+          brief.id,
+          briefDate,
+          email,
+          {
+            emailRecordId: emailRecord.id,
+            recipientRecordId: recipientRecord?.id,
+            trackingId: trackingEnabled ? trackingId : undefined,
+            subject,
+          },
         );
 
-        await this.emailService.sendEmail({
-          to: email,
-          subject: subject,
-          body: htmlContent,
-          plainText: plainText,
-          metadata: {
-            type: "daily_brief",
-            brief_date: briefDate,
-            brief_id: brief.id,
-            user_id: userId,
-            email_id: emailRecord.id,
-            tracking_id: trackingEnabled ? trackingId : undefined,
-          },
-          userId,
-          emailId: emailRecord.id,
-          recipientId: recipientRecord?.id,
-          trackingPixel,
-        });
-
-        console.log(`✅ Direct SMTP email sent successfully`);
+      if (!webhookResult.success) {
+        console.error(`❌ Webhook email send failed: ${webhookResult.error}`);
+        throw new Error(webhookResult.error || "Webhook email failed");
       }
+
+      console.log(`✅ Webhook email sent successfully`);
+      console.log(`   → Response: ${webhookResult?.error || "Email queued"}`);
+
+      // Update email status to sent
+      await this.supabase
+        .from("emails")
+        .update({ status: "sent" })
+        .eq("id", emailRecord.id);
+
+      const sentStatus: EmailRecipientStatus = "sent";
+      await this.supabase
+        .from("email_recipients")
+        .update({ status: sentStatus })
+        .eq("id", recipientRecord?.id);
 
       console.log(`📨 Daily brief email completed:
    → Sent to: ${email}
    → Date: ${briefDate}
-   → Method: ${this.useWebhook ? "WEBHOOK" : "DIRECT SMTP"}
+   → Method: WEBHOOK (via web app)
    → Tracking ID: ${trackingId}
    → Success: true`);
       return true;
@@ -455,7 +404,7 @@ Manage preferences: https://build-os.com/settings
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       console.error(`❌ Email send failed:
-   → Method attempted: ${this.useWebhook ? "WEBHOOK" : "DIRECT SMTP"}
+   → Method attempted: WEBHOOK (via web app)
    → Error: ${errorMessage}
    → Email Record ID: ${emailRecordId || "not created"}
    → Recipient Record ID: ${recipientRecordId || "not created"}`);

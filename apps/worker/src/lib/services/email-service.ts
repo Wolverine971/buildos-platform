@@ -1,4 +1,18 @@
 // apps/worker/src/lib/services/email-service.ts
+//
+// ⚠️⚠️⚠️ WARNING: DO NOT USE THIS FILE FOR NEW EMAIL SENDING ⚠️⚠️⚠️
+//
+// This file contains DIRECT SMTP email sending which WILL FAIL on Railway!
+// Railway blocks outbound SMTP ports (25, 465, 587).
+//
+// ✅ INSTEAD, use WebhookEmailService which sends emails via the web app:
+//    - WebhookEmailService → /webhooks/daily-brief-email → Web app sends via Gmail
+//
+// This file is kept for legacy purposes only and should NOT be used for new code.
+// All new email sending should go through webhooks to avoid Railway port restrictions.
+//
+// ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createGmailTransporter,

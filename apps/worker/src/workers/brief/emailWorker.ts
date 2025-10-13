@@ -1,8 +1,16 @@
 // apps/worker/src/workers/brief/emailWorker.ts
+//
+// ⚠️ NOTE: This worker processes LEGACY daily brief email jobs.
+// New daily brief emails are sent via the notification system (emailAdapter.ts + webhook).
+// This file remains for backward compatibility with queued jobs.
+//
+// Railway blocks SMTP ports - all email sending must go through webhooks to /web.
+
 import { supabase } from "../../lib/supabase";
 import { notifyUser, updateJobStatus } from "../shared/queueUtils";
 import { LegacyJob } from "../shared/jobAdapter";
-import { EmailService } from "../../lib/services/email-service";
+// ⚠️ DO NOT USE: EmailService uses direct SMTP which fails on Railway
+// import { EmailService } from "../../lib/services/email-service";
 
 /**
  * Job data structure for brief email sending
@@ -119,9 +127,9 @@ export async function processEmailBriefJob(
       return;
     }
 
-    // 3. Send email using existing email service
-    // The email record already has the content, just need to send it
-    const emailService = new EmailService(supabase);
+    // 3. Send email via webhook to web app (Railway blocks SMTP ports)
+    // ⚠️ CRITICAL: Cannot use EmailService directly - it tries SMTP which fails on Railway
+    // Must send via webhook to /web app which has no port restrictions
 
     // Get user email address
     const { data: user } = await supabase
@@ -134,30 +142,47 @@ export async function processEmailBriefJob(
       throw new Error(`No email address found for user ${userId}`);
     }
 
-    console.log(`📨 Sending email to ${user.email}`);
+    console.log(`📨 Sending email to ${user.email} via webhook to web app`);
 
-    // Send email (content already in email.content)
-    // EmailService will handle webhook vs SMTP
-    await emailService.sendEmail({
-      to: user.email,
-      subject: email.subject,
-      body: email.content, // HTML already generated
-      metadata: {
-        type: "daily_brief",
-        brief_id: briefId,
-        brief_date: briefDate,
-        user_id: userId,
-        email_id: emailId,
-        tracking_id: email.tracking_id ?? undefined,
+    // Send via webhook to web app's email endpoint
+    const webhookUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
+    const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      throw new Error("PRIVATE_BUILDOS_WEBHOOK_SECRET not configured");
+    }
+
+    const webhookResponse = await fetch(
+      `${webhookUrl}/webhooks/daily-brief-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Webhook-Signature": webhookSecret, // Simple auth for now
+        },
+        body: JSON.stringify({
+          userId,
+          briefId,
+          briefDate,
+          recipientEmail: user.email,
+          metadata: {
+            emailRecordId: emailId,
+            recipientRecordId: email.email_recipients?.[0]?.id,
+            trackingId: email.tracking_id,
+            subject: email.subject,
+          },
+        }),
       },
-      userId: userId,
-      emailId: emailId,
-      recipientId: email.email_recipients?.[0]?.id ?? undefined,
-      trackingPixel:
-        email.tracking_enabled && email.tracking_id
-          ? `<img src="https://build-os.com/api/email-tracking/${email.tracking_id}" width="1" height="1" style="display:none;" alt="" />`
-          : undefined,
-    });
+    );
+
+    if (!webhookResponse.ok) {
+      const errorText = await webhookResponse.text().catch(() => "Unknown error");
+      throw new Error(
+        `Webhook email send failed: ${webhookResponse.status} - ${errorText}`,
+      );
+    }
+
+    console.log(`✅ Email sent successfully via webhook`);
 
     // 4. Update email status to sent (existing emails table)
     await supabase.from("emails").update({ status: "sent" }).eq("id", emailId);

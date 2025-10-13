@@ -30,12 +30,18 @@
 	let isSaving = $state(false);
 
 	// Preference settings
+	let eventRemindersEnabled = $state(false);
+	let eventReminderLeadTime = $state(15);
+	let nextUpEnabled = $state(false);
+	let morningKickoffEnabled = $state(false);
+	let morningKickoffTime = $state('08:00');
+	let eveningRecapEnabled = $state(false);
 	let taskReminders = $state(false);
 	let dailyBriefSms = $state(false);
 	let urgentAlerts = $state(true);
-	let quietHoursStart = $state('21:00');
+	let quietHoursStart = $state('22:00');
 	let quietHoursEnd = $state('08:00');
-	let timezone = $state('America/Los_Angeles');
+	let timezone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 	onMount(async () => {
 		await loadPreferences();
@@ -49,12 +55,18 @@
 			preferences = result.data.preferences;
 
 			// Update state with loaded preferences
+			eventRemindersEnabled = preferences.event_reminders_enabled || false;
+			eventReminderLeadTime = preferences.event_reminder_lead_time_minutes || 15;
+			nextUpEnabled = preferences.next_up_enabled || false;
+			morningKickoffEnabled = preferences.morning_kickoff_enabled || false;
+			morningKickoffTime = preferences.morning_kickoff_time || '08:00';
+			eveningRecapEnabled = preferences.evening_recap_enabled || false;
 			taskReminders = preferences.task_reminders || false;
 			dailyBriefSms = preferences.daily_brief_sms || false;
 			urgentAlerts = preferences.urgent_alerts !== false; // Default to true
-			quietHoursStart = preferences.quiet_hours_start || '21:00';
+			quietHoursStart = preferences.quiet_hours_start || '22:00';
 			quietHoursEnd = preferences.quiet_hours_end || '08:00';
-			timezone = preferences.timezone || 'America/Los_Angeles';
+			timezone = preferences.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		}
 
 		isLoading = false;
@@ -64,6 +76,12 @@
 		isSaving = true;
 
 		const result = await smsService.updateSMSPreferences(userId, {
+			event_reminders_enabled: eventRemindersEnabled,
+			event_reminder_lead_time_minutes: eventReminderLeadTime,
+			next_up_enabled: nextUpEnabled,
+			morning_kickoff_enabled: morningKickoffEnabled,
+			morning_kickoff_time: morningKickoffTime,
+			evening_recap_enabled: eveningRecapEnabled,
 			task_reminders: taskReminders,
 			daily_brief_sms: dailyBriefSms,
 			urgent_alerts: urgentAlerts,
@@ -210,13 +228,177 @@
 					</div>
 				</div>
 				<div class="p-6 space-y-6">
+					<!-- Event Reminders -->
+					<div class="space-y-3">
+						<div
+							class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+						>
+							<div class="flex items-start gap-3">
+								<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+								<div>
+									<label
+										for="event-reminders"
+										class="font-medium text-gray-900 dark:text-white cursor-pointer"
+									>
+										Event Reminders
+									</label>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+										Get SMS reminders before your calendar events
+									</p>
+								</div>
+							</div>
+							<label class="relative inline-flex items-center cursor-pointer">
+								<input
+									type="checkbox"
+									id="event-reminders"
+									class="sr-only peer"
+									bind:checked={eventRemindersEnabled}
+									disabled={isOptedOut}
+								/>
+								<div
+									class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+								></div>
+							</label>
+						</div>
+						{#if eventRemindersEnabled}
+							<div class="ml-12 mr-4">
+								<FormField label="Reminder Lead Time" labelFor="event-lead-time">
+									<select
+										id="event-lead-time"
+										bind:value={eventReminderLeadTime}
+										disabled={isOptedOut}
+										class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+									>
+										<option value={5}>5 minutes before</option>
+										<option value={10}>10 minutes before</option>
+										<option value={15}>15 minutes before</option>
+										<option value={30}>30 minutes before</option>
+										<option value={60}>1 hour before</option>
+									</select>
+								</FormField>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Next Up -->
+					<div
+						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					>
+						<div class="flex items-start gap-3">
+							<MessageSquare
+								class="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5"
+							/>
+							<div>
+								<label
+									for="next-up"
+									class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								>
+									Next Up Alerts
+								</label>
+								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+									Get a heads up text before your next upcoming event
+								</p>
+							</div>
+						</div>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input
+								type="checkbox"
+								id="next-up"
+								class="sr-only peer"
+								bind:checked={nextUpEnabled}
+								disabled={isOptedOut}
+							/>
+							<div
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							></div>
+						</label>
+					</div>
+
+					<!-- Morning Kickoff -->
+					<div class="space-y-3">
+						<div
+							class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+						>
+							<div class="flex items-start gap-3">
+								<Sun class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+								<div>
+									<label
+										for="morning-kickoff"
+										class="font-medium text-gray-900 dark:text-white cursor-pointer"
+									>
+										Morning Kickoff
+									</label>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+										Get a morning SMS about what you have going on for the day
+									</p>
+								</div>
+							</div>
+							<label class="relative inline-flex items-center cursor-pointer">
+								<input
+									type="checkbox"
+									id="morning-kickoff"
+									class="sr-only peer"
+									bind:checked={morningKickoffEnabled}
+									disabled={isOptedOut}
+								/>
+								<div
+									class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+								></div>
+							</label>
+						</div>
+						{#if morningKickoffEnabled}
+							<div class="ml-12 mr-4">
+								<FormField label="Send Time" labelFor="morning-time">
+									<TextInput
+										id="morning-time"
+										type="time"
+										bind:value={morningKickoffTime}
+										disabled={isOptedOut}
+									/>
+								</FormField>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Evening Recap -->
+					<div
+						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					>
+						<div class="flex items-start gap-3">
+							<Moon class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+							<div>
+								<label
+									for="evening-recap"
+									class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								>
+									Evening Recap
+								</label>
+								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+									Get an evening SMS recapping what happened during the day
+								</p>
+							</div>
+						</div>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input
+								type="checkbox"
+								id="evening-recap"
+								class="sr-only peer"
+								bind:checked={eveningRecapEnabled}
+								disabled={isOptedOut}
+							/>
+							<div
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							></div>
+						</label>
+					</div>
+
 					<!-- Task Reminders -->
 					<div
 						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
 					>
 						<div class="flex items-start gap-3">
 							<MessageSquare
-								class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5"
+								class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5"
 							/>
 							<div>
 								<label
@@ -239,7 +421,7 @@
 								disabled={isOptedOut}
 							/>
 							<div
-								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 							></div>
 						</label>
 					</div>

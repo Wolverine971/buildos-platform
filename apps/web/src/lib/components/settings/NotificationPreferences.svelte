@@ -170,6 +170,7 @@
 		// Update the toggle state
 		pushEnabled = enabled;
 	}
+	// fix this
 
 	async function savePreferences() {
 		isSaving = true;
