@@ -21,6 +21,7 @@
 	} from 'lucide-svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import type { TaskWithCalendarEvents } from '$lib/types/project-page.types';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
 	import CurrentTimeIndicator from '$lib/components/ui/CurrentTimeIndicator.svelte';
@@ -147,6 +148,11 @@
 	// UI state for bulk action dropdowns
 	let showBulkStatusDropdown = $state(false);
 	let showBulkPriorityDropdown = $state(false);
+
+	// Confirmation modal state
+	let showRemoveDatesModal = $state(false);
+	let showDeleteModal = $state(false);
+	let tasksWithDatesToRemove = $state<any[]>([]);
 
 	// Reactive computed values for selection
 	let allTasksSelected = $derived(
@@ -469,7 +475,7 @@
 
 			const resp = await response.json();
 
-			const result = resp.data
+			const result = resp.data;
 			// Handle partial failures
 			if (result.failed && result.failed.length > 0) {
 				result.failed.forEach(({ id, error }: { id: string; error: string }) => {
@@ -591,7 +597,7 @@
 	/**
 	 * Handle bulk remove dates with confirmation
 	 */
-	async function handleBulkRemoveDates() {
+	function handleBulkRemoveDates() {
 		if (selectedTaskIds.size === 0 || !projectId) return;
 
 		// Check which tasks actually have dates
@@ -602,18 +608,23 @@
 			return;
 		}
 
-		// Confirm with user
-		const confirmed = confirm(
-			`Remove start dates from ${tasksWithDates.length} task${tasksWithDates.length > 1 ? 's' : ''}? This will also remove them from your calendar.`
-		);
+		// Show confirmation modal
+		tasksWithDatesToRemove = tasksWithDates;
+		showRemoveDatesModal = true;
+	}
 
-		if (!confirmed) return;
+	/**
+	 * Execute bulk remove dates after confirmation
+	 */
+	async function executeBulkRemoveDates() {
+		if (!projectId) return;
 
+		showRemoveDatesModal = false;
 		bulkActionInProgress = true;
 		bulkActionWarnings = [];
 
 		try {
-			const updates = tasksWithDates.map((task) => ({
+			const updates = tasksWithDatesToRemove.map((task) => ({
 				id: task.id,
 				data: {
 					start_date: null,
@@ -677,7 +688,7 @@
 			toastService.error('Failed to remove dates');
 
 			// Rollback all optimistic updates
-			tasksWithDates.forEach((task) => {
+			tasksWithDatesToRemove.forEach((task) => {
 				const originalTask = allTasksFromStore.find((t) => t.id === task.id);
 				if (originalTask) {
 					projectStoreV2.updateTask(originalTask);
@@ -685,22 +696,27 @@
 			});
 		} finally {
 			bulkActionInProgress = false;
+			tasksWithDatesToRemove = [];
 		}
 	}
 
 	/**
 	 * Handle bulk delete (soft delete) with confirmation
 	 */
-	async function handleBulkDelete() {
+	function handleBulkDelete() {
 		if (selectedTaskIds.size === 0 || !projectId) return;
 
-		// Confirm with user
-		const confirmed = confirm(
-			`Delete ${selectedTaskIds.size} task${selectedTaskIds.size > 1 ? 's' : ''}? You can restore them later from the Deleted filter.`
-		);
+		// Show confirmation modal
+		showDeleteModal = true;
+	}
 
-		if (!confirmed) return;
+	/**
+	 * Execute bulk delete after confirmation
+	 */
+	async function executeBulkDelete() {
+		if (!projectId) return;
 
+		showDeleteModal = false;
 		bulkActionInProgress = true;
 		bulkActionWarnings = [];
 
@@ -919,8 +935,6 @@
 		/>
 	</div>
 
-	
-
 	<!-- Task Type Filters -->
 	<div class="space-y-3">
 		<div class="flex flex-wrap gap-2">
@@ -974,7 +988,9 @@
 	<!-- Selection Controls with Actions -->
 	{#if filteredTasks.length > 0}
 		<div class="space-y-3">
-			<div class="flex flex-col sm:flex-row sm:items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+			<div
+				class="flex flex-col sm:flex-row sm:items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700"
+			>
 				<!-- Left: Select All Checkbox -->
 				<label
 					class="flex items-center gap-2.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-shrink-0"
@@ -991,15 +1007,26 @@
 					/>
 					<span class="font-semibold text-gray-900 dark:text-white text-sm">
 						{#if selectedTaskIds.size > 0}
-							<span class="text-blue-600 dark:text-blue-400">{selectedTaskIds.size}</span> of {filteredTasks.length} selected
+							<span class="text-blue-600 dark:text-blue-400"
+								>{selectedTaskIds.size}</span
+							>
+							of {filteredTasks.length} selected
 						{:else}
-							Select all <span class="text-gray-500 dark:text-gray-400">({filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'})</span>
+							Select all <span class="text-gray-500 dark:text-gray-400"
+								>({filteredTasks.length}
+								{filteredTasks.length === 1 ? 'task' : 'tasks'})</span
+							>
 						{/if}
 					</span>
 				</label>
 
 				<!-- Right: Bulk Actions (fade in when tasks selected) -->
-				<div class="flex items-center gap-2 flex-wrap flex-1 justify-end transition-all {selectedTaskIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
+				<div
+					class="flex items-center gap-2 flex-wrap flex-1 justify-end transition-all {selectedTaskIds.size >
+					0
+						? 'opacity-100'
+						: 'opacity-0 pointer-events-none'}"
+				>
 					<!-- Status Dropdown -->
 					<div class="relative">
 						<Button
@@ -1138,7 +1165,9 @@
 
 			<!-- Loading State -->
 			{#if bulkActionInProgress}
-				<div class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+				<div
+					class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3"
+				>
 					<LoaderCircle class="w-4 h-4 animate-spin" />
 					<span>Processing...</span>
 				</div>
@@ -1185,7 +1214,7 @@
 						checked={selectedTaskIds.has(task.id)}
 						onchange={(e) => toggleTaskSelection(task.id, e)}
 						onclick={(e) => e.stopPropagation()}
-						class="h-4 w-4  rounded border-gray-300 dark:border-gray-600 text-blue-600
+						class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600
 							focus:ring-blue-500 focus:ring-offset-0 cursor-pointer flex-shrink-0
 							dark:bg-gray-700 dark:checked:bg-blue-600 dark:checked:border-blue-600"
 						aria-label="Select task: {task.title}"
@@ -1403,6 +1432,72 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Remove Dates Confirmation Modal -->
+<ConfirmationModal
+	isOpen={showRemoveDatesModal}
+	title="Remove Task Dates"
+	confirmText="Remove Dates"
+	cancelText="Cancel"
+	confirmVariant="primary"
+	icon="warning"
+	on:confirm={executeBulkRemoveDates}
+	on:cancel={() => {
+		showRemoveDatesModal = false;
+		tasksWithDatesToRemove = [];
+	}}
+>
+	<svelte:fragment slot="content">
+		<p class="text-sm text-gray-600 dark:text-gray-400">
+			Remove start dates from <span class="font-semibold text-gray-900 dark:text-white"
+				>{tasksWithDatesToRemove.length} task{tasksWithDatesToRemove.length > 1
+					? 's'
+					: ''}</span
+			>?
+		</p>
+	</svelte:fragment>
+
+	<svelte:fragment slot="details">
+		<div class="mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+			<p>This action will:</p>
+			<ul class="list-disc list-inside ml-2 space-y-0.5">
+				<li>Remove start dates from selected tasks</li>
+				<li>Remove them from your calendar</li>
+				<li>Clear any recurrence patterns</li>
+			</ul>
+		</div>
+	</svelte:fragment>
+</ConfirmationModal>
+
+<!-- Delete Tasks Confirmation Modal -->
+<ConfirmationModal
+	isOpen={showDeleteModal}
+	title="Delete Tasks"
+	confirmText="Delete"
+	cancelText="Cancel"
+	confirmVariant="primary"
+	icon="danger"
+	on:confirm={executeBulkDelete}
+	on:cancel={() => (showDeleteModal = false)}
+>
+	<svelte:fragment slot="content">
+		<p class="text-sm text-gray-600 dark:text-gray-400">
+			Delete <span class="font-semibold text-gray-900 dark:text-white"
+				>{selectedTaskIds.size} task{selectedTaskIds.size > 1 ? 's' : ''}</span
+			>?
+		</p>
+	</svelte:fragment>
+
+	<svelte:fragment slot="details">
+		<div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+			<p>
+				You can restore deleted tasks later from the <span class="font-medium"
+					>Deleted filter</span
+				>.
+			</p>
+		</div>
+	</svelte:fragment>
+</ConfirmationModal>
 
 <style>
 	.line-through {

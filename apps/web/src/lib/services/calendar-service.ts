@@ -43,6 +43,8 @@ export interface ScheduleTaskParams {
 	recurrence_ends?: string;
 }
 
+export type CalendarSendUpdatesOption = 'all' | 'externalOnly' | 'none';
+
 export interface UpdateCalendarEventParams {
 	event_id: string;
 	calendar_id?: string;
@@ -63,6 +65,7 @@ export interface UpdateCalendarEventParams {
 	update_scope?: 'single' | 'all' | 'future';
 	// For single instance updates - the specific instance date
 	instance_date?: string;
+	sendUpdates?: CalendarSendUpdatesOption;
 }
 
 export interface DeleteCalendarEventParams {
@@ -354,6 +357,63 @@ export class CalendarService {
 		}
 
 		return `${sanitized}\n\n${linkBlock}`;
+	}
+
+	private extractOrganizerMetadata(event: calendar_v3.Schema$Event | null | undefined): {
+		organizer_email: string | null;
+		organizer_display_name: string | null;
+		organizer_self: boolean | null;
+	} {
+		const organizer = event?.organizer;
+
+		return {
+			organizer_email: organizer?.email ?? null,
+			organizer_display_name: organizer?.displayName ?? null,
+			organizer_self:
+				typeof organizer?.self === 'boolean' ? organizer.self : (organizer?.self ?? null)
+		};
+	}
+
+	private normalizeAttendees(attendees: calendar_v3.Schema$EventAttendee[] | null | undefined): {
+		email: string;
+		displayName?: string;
+		organizer?: boolean;
+		self?: boolean;
+		responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+		comment?: string;
+		additionalGuests?: number;
+	}[] {
+		if (!attendees || attendees.length === 0) {
+			return [];
+		}
+
+		return attendees
+			.filter((attendee): attendee is calendar_v3.Schema$EventAttendee => !!attendee?.email)
+			.map((attendee) => ({
+				email: attendee.email!,
+				displayName: attendee.displayName ?? undefined,
+				organizer: attendee.organizer ?? undefined,
+				self: attendee.self ?? undefined,
+				responseStatus: this.normalizeAttendeeResponseStatus(attendee.responseStatus),
+				comment: attendee.comment ?? undefined,
+				additionalGuests:
+					typeof attendee.additionalGuests === 'number'
+						? attendee.additionalGuests
+						: undefined
+			}));
+	}
+
+	private normalizeAttendeeResponseStatus(
+		status: string | null | undefined
+	): 'accepted' | 'declined' | 'tentative' | 'needsAction' {
+		switch (status) {
+			case 'accepted':
+			case 'declined':
+			case 'tentative':
+				return status;
+			default:
+				return 'needsAction';
+		}
 	}
 
 	/**
@@ -651,6 +711,8 @@ export class CalendarService {
 			});
 
 			if (response.data) {
+				const organizerMetadata = this.extractOrganizerMetadata(response.data);
+				const attendeesForStorage = this.normalizeAttendees(response.data.attendees);
 				// Save the relationship with proper recurring event tracking
 				const isRecurring = recurrence.length > 0;
 
@@ -671,7 +733,11 @@ export class CalendarService {
 					last_synced_at: new Date().toISOString(),
 					sync_status: 'synced',
 					sync_source: 'app',
-					updated_at: new Date().toISOString()
+					updated_at: new Date().toISOString(),
+					organizer_email: organizerMetadata.organizer_email,
+					organizer_display_name: organizerMetadata.organizer_display_name,
+					organizer_self: organizerMetadata.organizer_self,
+					attendees: attendeesForStorage
 				});
 
 				await this.markAppInitiatedChange(response.data.id!, userId);
@@ -723,7 +789,8 @@ export class CalendarService {
 				timeZone,
 				recurrence,
 				update_scope = 'all',
-				instance_date
+				instance_date,
+				sendUpdates
 			} = params;
 
 			// Handle different update scopes for recurring events
@@ -818,8 +885,16 @@ export class CalendarService {
 			const response = await calendar.events.update({
 				calendarId: calendar_id,
 				eventId: effectiveEventId,
-				requestBody: updatePayload
+				requestBody: updatePayload,
+				sendUpdates
 			});
+
+			if (!response.data) {
+				throw new Error('Calendar API did not return updated event details');
+			}
+
+			const organizerMetadata = this.extractOrganizerMetadata(response.data);
+			const attendeesForStorage = this.normalizeAttendees(response.data.attendees);
 
 			// Track the update scope in database
 			if (update_scope === 'single' && instance_date) {
@@ -836,6 +911,10 @@ export class CalendarService {
 					event_start: start_time ? new Date(start_time).toISOString() : undefined,
 					event_end: end_time ? new Date(end_time).toISOString() : undefined,
 					event_title: summary,
+					organizer_email: organizerMetadata.organizer_email,
+					organizer_display_name: organizerMetadata.organizer_display_name,
+					organizer_self: organizerMetadata.organizer_self,
+					attendees: attendeesForStorage,
 					sync_status: 'synced',
 					sync_source: 'app',
 					last_synced_at: new Date().toISOString(),
@@ -843,48 +922,47 @@ export class CalendarService {
 				});
 			}
 
-			// Update our tracking record if times or recurrence changed
-			if (start_time || end_time || recurrence !== undefined) {
-				const updates: any = {
-					last_synced_at: new Date().toISOString(),
-					sync_status: 'synced',
-					sync_source: 'app',
-					series_update_scope: update_scope
-				};
+			// Update our tracking record with synced metadata
+			const updates: Record<string, any> = {
+				last_synced_at: new Date().toISOString(),
+				sync_status: 'synced',
+				sync_source: 'app',
+				series_update_scope: update_scope,
+				organizer_email: organizerMetadata.organizer_email,
+				organizer_display_name: organizerMetadata.organizer_display_name,
+				organizer_self: organizerMetadata.organizer_self,
+				attendees: attendeesForStorage
+			};
 
-				if (start_time) {
-					updates.event_start = new Date(start_time).toISOString();
-				}
-
-				if (end_time) {
-					updates.event_end = new Date(end_time).toISOString();
-				}
-
-				// Update recurrence_rule if recurrence was changed
-				if (recurrence !== undefined) {
-					if (
-						recurrence === null ||
-						(Array.isArray(recurrence) && recurrence.length === 0)
-					) {
-						updates.recurrence_rule = null;
-						updates.is_master_event = false;
-					} else if (Array.isArray(recurrence) && recurrence.length > 0) {
-						updates.recurrence_rule = recurrence[0];
-						updates.is_master_event = true;
-					} else if (typeof recurrence === 'string') {
-						updates.recurrence_rule = recurrence;
-						updates.is_master_event = true;
-					}
-				}
-
-				await this.supabase
-					.from('task_calendar_events')
-					.update({
-						...updates,
-						updated_at: new Date().toISOString()
-					})
-					.eq('calendar_event_id', event_id);
+			if (start_time) {
+				updates.event_start = new Date(start_time).toISOString();
 			}
+
+			if (end_time) {
+				updates.event_end = new Date(end_time).toISOString();
+			}
+
+			// Update recurrence_rule if recurrence was changed
+			if (recurrence !== undefined) {
+				if (recurrence === null || (Array.isArray(recurrence) && recurrence.length === 0)) {
+					updates.recurrence_rule = null;
+					updates.is_master_event = false;
+				} else if (Array.isArray(recurrence) && recurrence.length > 0) {
+					updates.recurrence_rule = recurrence[0];
+					updates.is_master_event = true;
+				} else if (typeof recurrence === 'string') {
+					updates.recurrence_rule = recurrence;
+					updates.is_master_event = true;
+				}
+			}
+
+			await this.supabase
+				.from('task_calendar_events')
+				.update({
+					...updates,
+					updated_at: new Date().toISOString()
+				})
+				.eq('calendar_event_id', event_id);
 
 			await this.markAppInitiatedChange(event_id, userId);
 

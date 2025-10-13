@@ -32,7 +32,7 @@ export class PhaseGenerationOrchestrator {
 		this.supabase = supabase;
 		this.userId = userId;
 		this.projectId = projectId;
-		this.config = { ...config, userId }; // Add userId to config
+		this.config = { ...config, userId, projectId }; // Enrich config with identifiers
 	}
 
 	/**

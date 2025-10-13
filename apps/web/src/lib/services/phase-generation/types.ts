@@ -16,6 +16,7 @@ export interface PhaseGenerationConfig {
 	preserveHistoricalPhases?: boolean; // When true (default), preserve completed/current phases during regeneration
 	userInstructions?: string; // User-provided guidance for phase generation
 	userId?: string;
+	projectId?: string;
 	// Calendar event handling during phase regeneration
 	calendarHandling?: 'update' | 'clear_and_reschedule' | 'preserve'; // Default: 'update' (current behavior)
 	preserveRecurringEvents?: boolean; // When true, preserve recurring master events during cleanup

@@ -360,7 +360,13 @@
 			"file": "src/lib/services/promptTemplate.service.ts",
 			"type": "service",
 			"components": [],
-			"exports": ["PromptTemplateService"]
+			"exports": [
+				"PromptTemplateService",
+				"buildPhaseGenerationSystemPromptCall1",
+				"buildPhaseGenerationUserPromptCall1",
+				"buildTaskOrderingSystemPromptCall2",
+				"buildTaskOrderingUserPromptCall2"
+			]
 		},
 		{
 			"file": "src/lib/services/railwayWorker.service.ts",

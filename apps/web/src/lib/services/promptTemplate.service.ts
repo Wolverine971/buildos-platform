@@ -5,6 +5,7 @@ import type { Database } from '@buildos/shared-types';
 import type { Project, ProjectWithRelations, Task } from '$lib/types/project';
 import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PhaseGenerationConfig } from '$lib/services/phase-generation/types';
 
 // Import refactored services
 import { DataFormatterService, formatProjectData } from './prompts/core/data-formatter';
@@ -2002,4 +2003,235 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 
 Analyze the braindump and respond with ONLY the JSON, no other text.`;
 	}
+}
+
+type PhaseRow = Database['public']['Tables']['phases']['Row'];
+type TaskCalendarEventRow = Database['public']['Tables']['task_calendar_events']['Row'];
+type TaskWithEvents = Task & { task_calendar_events?: TaskCalendarEventRow[] | null };
+
+function summarizeHistoricalPhases(phases: PhaseRow[]): string {
+	if (!phases || phases.length === 0) {
+		return 'None preserved.';
+	}
+
+	return phases
+		.map(
+			(phase, idx) =>
+				`${idx + 1}. ${phase.name} (${phase.start_date} → ${phase.end_date}) - ${
+					phase.description || 'No description provided.'
+				}`
+		)
+		.join('\n');
+}
+
+function summarizeTasksForPrompt(tasks: TaskWithEvents[], limit = 20): string {
+	if (!tasks || tasks.length === 0) {
+		return 'No tasks queued for scheduling.';
+	}
+
+	return tasks
+		.slice(0, limit)
+		.map((task) => {
+			const dependencies =
+				task.dependencies && task.dependencies.length > 0
+					? `Dependencies: ${task.dependencies.join(', ')}`
+					: 'Dependencies: none';
+
+			const recurrence =
+				task.task_type === 'recurring'
+					? `Recurring pattern: ${task.recurrence_pattern || 'unspecified'}`
+					: 'One-off task';
+
+			const attendees =
+				task.task_calendar_events && task.task_calendar_events.length > 0
+					? `Existing calendar events: ${task.task_calendar_events.length}`
+					: 'Existing calendar events: none';
+
+			return `- [${task.id}] ${task.title || 'Untitled task'} (${task.status})\n  ${dependencies}\n  ${recurrence}\n  ${attendees}`;
+		})
+		.join('\n');
+}
+
+export function buildPhaseGenerationSystemPromptCall1(config: PhaseGenerationConfig): string {
+	const nowIso = new Date().toISOString();
+	const schedulingMethodDescriptions: Record<string, string> = {
+		phases_only:
+			'Create phases that group work logically but do not assign individual tasks to phases.',
+		schedule_in_phases:
+			'Create phases and assign tasks to each phase without calendar-level scheduling.',
+		calendar_optimized:
+			'Create phases, assign tasks, and optimize for calendar execution where possible.'
+	};
+
+	const schedulingInstruction =
+		schedulingMethodDescriptions[config.schedulingMethod] ??
+		schedulingMethodDescriptions.schedule_in_phases;
+
+	const taskAssignmentInstruction =
+		config.schedulingMethod === 'phases_only'
+			? 'Focus on outlining the phase structure from now onward. Use task_ids when it helps communicate intent, but it is acceptable to leave phases without tasks if placement is unclear.'
+			: 'Every task provided must appear exactly once in a phase’s task_ids array. Do not leave tasks unscheduled.';
+
+	return `You are an expert project manager specializing in structured, phase-based execution for neurodiverse teams.
+
+Your mission is to design project phases with thoughtful grouping and realistic timelines.
+
+Key Directives:
+1. Produce complete, end-to-end coverage for work beginning now (${nowIso}) through project completion.
+2. Respect historical phases that have already finished; only generate phases for remaining work.
+3. ${schedulingInstruction}
+4. Plan phase start and end dates within the window from ${nowIso} to the project end date (or a reasonable completion date if none is supplied). Do not schedule work before ${nowIso}.
+5. ${taskAssignmentInstruction}
+6. Use balanced durations. Avoid extremely short (≤1 day) or excessively long (≥30 days) phases unless the work demands it.
+7. Anticipate logically necessary work, even if explicit tasks are not yet created.
+
+Output Requirements:
+- Provide name, description, start_date, end_date for each phase.
+- Include task_ids array referencing which tasks belong in each phase (ordering handled later).
+- Ensure phase timelines fall within the overall project timeline.`;
+}
+
+export function buildPhaseGenerationUserPromptCall1(
+	projectData: {
+		project: Project;
+		tasks: TaskWithEvents[];
+		existingPhases: PhaseRow[];
+	},
+	tasksToSchedule: TaskWithEvents[],
+	historicalPhases: PhaseRow[],
+	config: PhaseGenerationConfig
+): string {
+	const project = projectData.project;
+	const timelineStart = config.projectStartDate || project.start_date || 'unspecified';
+	const timelineEnd = config.projectEndDate || project.end_date || 'unspecified';
+	const preservedSummary = summarizeHistoricalPhases(historicalPhases);
+	const taskSummary = summarizeTasksForPrompt(tasksToSchedule, 40);
+	const nowIso = new Date().toISOString();
+	const taskSchedulingExpectation =
+		config.schedulingMethod === 'phases_only'
+			? 'Phases emphasize structure; include task_ids when it clarifies intent.'
+			: 'Every listed task must be placed in exactly one phase task_ids array.';
+
+	return `Project Overview:
+- Name: ${project.name}
+- Description: ${project.description || 'No description provided.'}
+- Timeline: ${timelineStart} → ${timelineEnd}
+- Status: ${project.status}
+- Tags: ${(project.tags || []).join(', ') || 'None'}
+
+Preserved Historical Phases:
+${preservedSummary}
+
+Open Tasks to Schedule (up to 40 shown):
+${taskSummary}
+
+Additional Notes:
+- Current planning start (UTC): ${nowIso}
+- User instructions: ${config.userInstructions || 'None provided.'}
+- Include recurring tasks: ${config.includeRecurringTasks ? 'yes' : 'no'}
+- Scheduling method: ${config.schedulingMethod}
+- Task scheduling expectation: ${taskSchedulingExpectation}`;
+}
+
+export function buildTaskOrderingSystemPromptCall2(config: PhaseGenerationConfig): string {
+	return `You are an expert operations planner.
+
+Goal: Define execution order for tasks within each phase produced earlier.
+
+Guidelines:
+1. Respect task dependencies — predecessors must have lower order values.
+2. Tasks with no direct dependency relationships may share the same order (parallel work).
+3. Keep order values simple non-negative integers (0, 1, 2, ...).
+4. Highlight readiness of tasks that already have supporting context (notes, calendar events).
+5. Favor earlier order values for critical path tasks or blockers.
+
+Output format (no additional text):
+{
+  "phases": [
+    {
+      "phase_id": <number matching the phase index from the input>,
+      "tasks": [
+        { "task_id": "<task id string>", "order": <non-negative integer> }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Include every phase from the input even if it ends up with zero tasks (use an empty tasks array).
+- For schedule_in_phases and calendar_optimized modes, every task provided must appear exactly once across all phases.
+- Orders must start at 0 within each phase; increment when sequencing requires it. Parallel tasks share the same order value.
+- Do not return any explanation or commentary—only the JSON payload described above.`;
+}
+
+export function buildTaskOrderingUserPromptCall2(
+	phases: Array<{
+		name: string;
+		description: string;
+		start_date: string;
+		end_date: string;
+		task_ids: string[];
+	}>,
+	tasks: TaskWithEvents[]
+): string {
+	const taskMap = new Map(
+		tasks.map((task) => [
+			task.id,
+			{
+				title: task.title || 'Untitled task',
+				dependencies: task.dependencies ?? [],
+				duration: task.duration_minutes ?? 60,
+				status: task.status,
+				task_type: task.task_type,
+				hasCalendarEvent: Boolean(task.task_calendar_events?.length)
+			}
+		])
+	);
+
+	const phaseSummaries = phases
+		.map((phase, idx) => {
+			const taskLines =
+				phase.task_ids.length > 0
+					? phase.task_ids
+							.map((taskId) => {
+								const details = taskMap.get(taskId);
+								if (!details) {
+									return `  - ${taskId}: [missing task details]`;
+								}
+
+								const deps =
+									details.dependencies.length > 0
+										? `Dependencies: ${details.dependencies.join(', ')}`
+										: 'Dependencies: none';
+
+								const calendarFlag = details.hasCalendarEvent
+									? 'Existing calendar event'
+									: 'No calendar event';
+
+								return `  - ${taskId}: ${details.title}\n      ${deps}\n      Duration: ${details.duration} minutes | ${calendarFlag} | Type: ${details.task_type}`;
+							})
+							.join('\n')
+					: '  (no tasks assigned)';
+
+			return `Phase ${idx} – ${phase.name} (${phase.start_date} → ${phase.end_date})\nDescription: ${
+				phase.description || 'No description provided.'
+			}\nTasks:\n${taskLines}`;
+		})
+		.join('\n\n');
+
+	const orphanTasks = tasks
+		.filter((task) => !phases.some((phase) => phase.task_ids.includes(task.id)))
+		.map((task) => `- ${task.id}: ${task.title || 'Untitled task'} (${task.status})`)
+		.join('\n');
+
+	const orphanSection =
+		orphanTasks.length > 0
+			? `\nUnassigned Tasks:\n${orphanTasks}\n`
+			: '\nAll tasks have been assigned to phases.\n';
+
+	return `Phase Drafts Requiring Task Ordering:
+${phaseSummaries}
+
+${orphanSection}
+Focus on assigning integer order values per task within each phase.`;
 }

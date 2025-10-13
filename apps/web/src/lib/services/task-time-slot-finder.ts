@@ -27,12 +27,135 @@ interface TaskWithOriginalTime extends Task {
 	originalTime?: Date;
 }
 
+export interface NextAvailableSlotRequest {
+	userId: string;
+	durationMinutes: number;
+	startAfter: Date;
+	endBefore: Date;
+	preferredHours?: number[];
+	timeZone?: string;
+}
+
+export interface NextAvailableSlotResult {
+	start: Date;
+	end: Date;
+	timeZone: string;
+}
+
 export class TaskTimeSlotFinder {
 	private supabase: any;
 	private maxDaysToLookAhead = 7;
 
 	constructor(supabaseClient: any) {
 		this.supabase = supabaseClient;
+	}
+
+	/**
+	 * Find the next available timeslot for a task inside the provided window.
+	 */
+	async findNextAvailableSlot(
+		params: NextAvailableSlotRequest
+	): Promise<NextAvailableSlotResult | null> {
+		const { userId, durationMinutes, startAfter, endBefore } = params;
+
+		if (endBefore <= startAfter) {
+			return null;
+		}
+
+		const { data: userCalendarPreferences, error: userCalendarPreferencesError } =
+			await this.supabase
+				.from('user_calendar_preferences')
+				.select('*')
+				.eq('user_id', userId)
+				.single();
+
+		if (userCalendarPreferencesError) {
+			console.error(userCalendarPreferencesError);
+			console.log('no calendar preferences');
+		}
+
+		const preferences = userCalendarPreferences || {
+			user_id: userId,
+			id: '',
+			timezone: params.timeZone || 'UTC',
+			work_start_time: '09:00:00',
+			work_end_time: '17:00:00',
+			working_days: [1, 2, 3, 4, 5],
+			default_task_duration_minutes: 60,
+			min_task_duration_minutes: 30,
+			max_task_duration_minutes: 240,
+			exclude_holidays: true,
+			holiday_country_code: 'US',
+			prefer_morning_for_important_tasks: false,
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString()
+		};
+
+		const timezone = preferences.timezone || params.timeZone || 'UTC';
+		const defaultDuration = preferences.default_task_duration_minutes || 60;
+		const effectiveDuration = durationMinutes || defaultDuration;
+
+		let searchDate = startOfDay(startAfter);
+		const endBoundary = startOfDay(endBefore);
+
+		let daysChecked = 0;
+
+		while (searchDate <= endBoundary && daysChecked < this.maxDaysToLookAhead) {
+			daysChecked += 1;
+
+			if (!this.isWorkingDay(searchDate, preferences)) {
+				searchDate = addDays(searchDate, 1);
+				continue;
+			}
+
+			const existingTasks = await this.getExistingTasksForDay(searchDate, userId, timezone);
+
+			const workDayStart = this.createDateTime(
+				searchDate,
+				preferences.work_start_time || '09:00:00',
+				timezone
+			);
+			const workDayEnd = this.createDateTime(
+				searchDate,
+				preferences.work_end_time || '17:00:00',
+				timezone
+			);
+
+			const firstDayStart = toZonedTime(startAfter, timezone);
+			const earliestStart =
+				daysChecked === 1
+					? firstDayStart.getTime() > workDayStart.getTime()
+						? firstDayStart
+						: workDayStart
+					: workDayStart;
+
+			const occupiedSlots = this.getOccupiedSlots(existingTasks, defaultDuration, timezone);
+
+			const availableSlot = this.findAvailableSlot(
+				earliestStart,
+				workDayEnd,
+				effectiveDuration,
+				occupiedSlots
+			);
+
+			if (availableSlot) {
+				const slotEndUtc = fromZonedTime(availableSlot.end, timezone);
+				if (slotEndUtc > endBefore) {
+					searchDate = addDays(searchDate, 1);
+					continue;
+				}
+
+				return {
+					start: fromZonedTime(availableSlot.start, timezone),
+					end: slotEndUtc,
+					timeZone: timezone
+				};
+			}
+
+			searchDate = addDays(searchDate, 1);
+		}
+
+		return null;
 	}
 
 	/**

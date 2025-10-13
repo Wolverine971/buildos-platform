@@ -2475,6 +2475,7 @@ export type Database = {
           assignment_reason: string | null;
           created_at: string;
           id: string;
+          order: number;
           phase_id: string;
           suggested_start_date: string | null;
           task_id: string;
@@ -2483,6 +2484,7 @@ export type Database = {
           assignment_reason?: string | null;
           created_at?: string;
           id?: string;
+          order?: number;
           phase_id: string;
           suggested_start_date?: string | null;
           task_id: string;
@@ -2491,6 +2493,7 @@ export type Database = {
           assignment_reason?: string | null;
           created_at?: string;
           id?: string;
+          order?: number;
           phase_id?: string;
           suggested_start_date?: string | null;
           task_id?: string;
@@ -3165,6 +3168,7 @@ export type Database = {
           attempts: number | null;
           completed_at: string | null;
           created_at: string;
+          dedup_key: string | null;
           error_message: string | null;
           id: string;
           job_type: Database["public"]["Enums"]["queue_type"];
@@ -3184,6 +3188,7 @@ export type Database = {
           attempts?: number | null;
           completed_at?: string | null;
           created_at?: string;
+          dedup_key?: string | null;
           error_message?: string | null;
           id?: string;
           job_type: Database["public"]["Enums"]["queue_type"];
@@ -3203,6 +3208,7 @@ export type Database = {
           attempts?: number | null;
           completed_at?: string | null;
           created_at?: string;
+          dedup_key?: string | null;
           error_message?: string | null;
           id?: string;
           job_type?: Database["public"]["Enums"]["queue_type"];
@@ -3688,6 +3694,7 @@ export type Database = {
       };
       task_calendar_events: {
         Row: {
+          attendees: Json | null;
           calendar_event_id: string;
           calendar_id: string;
           created_at: string | null;
@@ -3700,6 +3707,9 @@ export type Database = {
           is_exception: boolean | null;
           is_master_event: boolean | null;
           last_synced_at: string | null;
+          organizer_display_name: string | null;
+          organizer_email: string | null;
+          organizer_self: boolean | null;
           original_start_time: string | null;
           project_calendar_id: string | null;
           recurrence_instance_date: string | null;
@@ -3715,6 +3725,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          attendees?: Json | null;
           calendar_event_id: string;
           calendar_id: string;
           created_at?: string | null;
@@ -3727,6 +3738,9 @@ export type Database = {
           is_exception?: boolean | null;
           is_master_event?: boolean | null;
           last_synced_at?: string | null;
+          organizer_display_name?: string | null;
+          organizer_email?: string | null;
+          organizer_self?: boolean | null;
           original_start_time?: string | null;
           project_calendar_id?: string | null;
           recurrence_instance_date?: string | null;
@@ -3742,6 +3756,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          attendees?: Json | null;
           calendar_event_id?: string;
           calendar_id?: string;
           created_at?: string | null;
@@ -3754,6 +3769,9 @@ export type Database = {
           is_exception?: boolean | null;
           is_master_event?: boolean | null;
           last_synced_at?: string | null;
+          organizer_display_name?: string | null;
+          organizer_email?: string | null;
+          organizer_self?: boolean | null;
           original_start_time?: string | null;
           project_calendar_id?: string | null;
           recurrence_instance_date?: string | null;

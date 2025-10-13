@@ -3,7 +3,7 @@ import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
-import type { ParsedOperation, ExecutionResult } from '$lib/types/brain-dump';
+import type { ParsedOperation } from '$lib/types/brain-dump';
 import dayjs from 'dayjs';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -12,8 +12,7 @@ import { generateSlug } from '$lib/utils/operations/validation-utils';
 import {
 	getProjectModel,
 	getTaskModel,
-	generateProjectContextFramework,
-	generateDateParsing
+	generateProjectContextFramework
 } from './prompts/core/prompt-components';
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
 import { formatProjectsSummaryList } from './prompts/core/data-formatter';
@@ -22,7 +21,6 @@ import { savePromptForAudit } from '$lib/utils/prompt-audit';
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
 type CalendarProjectSuggestion =
 	Database['public']['Tables']['calendar_project_suggestions']['Row'];
-type CalendarAnalysisEvent = Database['public']['Tables']['calendar_analysis_events']['Row'];
 type CalendarAnalysisPreferences =
 	Database['public']['Tables']['calendar_analysis_preferences']['Row'];
 

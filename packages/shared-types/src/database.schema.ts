@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-12T17:44:47.664Z
+// Generated on: 2025-10-13T04:39:49.503Z
 
 export type Json =
   | string
@@ -659,6 +659,7 @@ export type DatabaseSchema = {
     assignment_reason: string | null;
     created_at: string;
     id: string;
+    order: number;
     phase_id: string;
     suggested_start_date: string | null;
     task_id: string;
@@ -826,6 +827,7 @@ export type DatabaseSchema = {
     attempts: number | null;
     completed_at: string | null;
     created_at: string;
+    dedup_key: string | null;
     error_message: string | null;
     id: string;
     job_type: string;
@@ -961,6 +963,7 @@ export type DatabaseSchema = {
     recorded_at: string | null;
   };
   task_calendar_events: {
+    attendees: Json | null;
     calendar_event_id: string;
     calendar_id: string;
     created_at: string | null;
@@ -973,6 +976,9 @@ export type DatabaseSchema = {
     is_exception: boolean | null;
     is_master_event: boolean | null;
     last_synced_at: string | null;
+    organizer_display_name: string | null;
+    organizer_email: string | null;
+    organizer_self: boolean | null;
     original_start_time: string | null;
     project_calendar_id: string | null;
     recurrence_instance_date: string | null;

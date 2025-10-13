@@ -4,7 +4,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { PhaseGenerationOrchestrator } from '$lib/services/phase-generation/orchestrator';
+import { generatePhasesProcedural } from '$lib/services/phase-generation/generate-phases-procedural';
 import type { PhaseGenerationConfig, SchedulingMethod } from '$lib/services/phase-generation/types';
+
+const USE_PROCEDURAL_PHASE_GENERATION = true;
+// (process.env.USE_PROCEDURAL_PHASE_GENERATION || '').toLowerCase() === 'true';
 
 /**
  * Phase Generation API Handler
@@ -46,6 +50,7 @@ export const POST: RequestHandler = async ({
 			preserveHistoricalPhases: body.preserve_historical_phases !== false, // Default to true (preserve history)
 			userInstructions: body.user_instructions || '', // Add user instructions
 			userId: user.id,
+			projectId,
 			// Calendar handling configuration
 			calendarHandling: body.calendar_handling || 'update', // Default to current behavior
 			preserveRecurringEvents: body.preserve_recurring_events || false,
@@ -58,7 +63,20 @@ export const POST: RequestHandler = async ({
 			return ApiResponse.badRequest(validationError);
 		}
 
-		// 5. Create and execute orchestrator
+		const useProcedural = USE_PROCEDURAL_PHASE_GENERATION || body?.use_procedural === true;
+
+		if (useProcedural) {
+			const result = await generatePhasesProcedural(config, supabase);
+
+			return ApiResponse.success({
+				...result,
+				project_dates_updated: config.projectDatesChanged,
+				calendar_optimization_pending: config.schedulingMethod === 'calendar_optimized',
+				recurring_tasks_included: config.includeRecurringTasks
+			});
+		}
+
+		// 5. Create and execute orchestrator (legacy path)
 		const orchestrator = new PhaseGenerationOrchestrator(supabase, user.id, projectId, config);
 
 		const result = await orchestrator.generate();
