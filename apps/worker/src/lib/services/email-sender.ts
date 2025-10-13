@@ -47,9 +47,7 @@ export class DailyBriefEmailSender {
       `   → Webhook Secret configured: ${process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET ? "YES" : "NO"}`,
     );
 
-    // ALWAYS use webhooks (no SMTP fallback)
-    this.useWebhook = true;
-
+    // ALWAYS use webhooks (no SMTP fallback - Railway blocks SMTP ports)
     try {
       this.webhookEmailService = new WebhookEmailService();
       console.log(
@@ -59,10 +57,17 @@ export class DailyBriefEmailSender {
         `   → Webhook URL: ${process.env.BUILDOS_WEBHOOK_URL || "https://build-os.com/webhooks/daily-brief-email"}`,
       );
     } catch (error) {
-      console.error("❌ CRITICAL: Failed to initialize webhook email service:", error);
+      console.error(
+        "❌ CRITICAL: Failed to initialize webhook email service:",
+        error,
+      );
       console.error("   → Email sending will NOT work!");
-      console.error("   → Check PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable");
-      throw new Error("Webhook email service initialization failed - email sending unavailable");
+      console.error(
+        "   → Check PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable",
+      );
+      throw new Error(
+        "Webhook email service initialization failed - email sending unavailable",
+      );
     }
   }
 
@@ -109,27 +114,43 @@ export class DailyBriefEmailSender {
 
   /**
    * Check if user has opted in for email notifications
-   * Checks both email_daily_brief AND is_active flags
+   * Checks should_email_daily_brief from notification preferences AND is_active from brief preferences
    */
   async shouldSendEmail(userId: string): Promise<boolean> {
     try {
-      const { data: preferences, error } = await this.supabase
-        .from("user_brief_preferences")
-        .select("email_daily_brief, is_active")
-        .eq("user_id", userId)
-        .single();
+      // Check notification preferences for email opt-in
+      const { data: notificationPrefs, error: notificationError } =
+        await this.supabase
+          .from("user_notification_preferences")
+          .select("should_email_daily_brief")
+          .eq("user_id", userId)
+          .eq("event_type", "user") // User-level daily brief preferences
+          .single();
 
-      if (error) {
+      if (notificationError && notificationError.code !== "PGRST116") {
         console.error(
-          `❌ Error fetching email preferences for user ${userId}:`,
-          error,
+          `❌ Error fetching notification preferences for user ${userId}:`,
+          notificationError,
         );
-        console.error(`   → Error code: ${error.code}`);
-        console.error(`   → Error message: ${error.message}`);
         return false;
       }
 
-      if (!preferences) {
+      // Check brief preferences for is_active (brief generation)
+      const { data: briefPrefs, error: briefError } = await this.supabase
+        .from("user_brief_preferences")
+        .select("is_active")
+        .eq("user_id", userId)
+        .single();
+
+      if (briefError && briefError.code !== "PGRST116") {
+        console.error(
+          `❌ Error fetching brief preferences for user ${userId}:`,
+          briefError,
+        );
+        return false;
+      }
+
+      if (!briefPrefs) {
         console.warn(
           `⚠️  No brief preferences found for user ${userId} - user may not have completed onboarding`,
         );
@@ -137,12 +158,12 @@ export class DailyBriefEmailSender {
       }
 
       const shouldSend =
-        preferences.email_daily_brief === true &&
-        preferences.is_active === true;
+        notificationPrefs?.should_email_daily_brief === true &&
+        briefPrefs.is_active === true;
 
       console.log(`📧 Email eligibility check for user ${userId}:
-   → email_daily_brief: ${preferences.email_daily_brief}
-   → is_active: ${preferences.is_active}
+   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief ?? "not set"}
+   → is_active: ${briefPrefs.is_active}
    → Result: ${shouldSend ? "SEND EMAIL ✅" : "SKIP EMAIL ❌"}`);
 
       return shouldSend;
@@ -267,7 +288,7 @@ Manage preferences: https://build-os.com/settings
    → Email: ${email}
    → Brief Date: ${briefDate}
    → Brief ID: ${brief.id}
-   → Method: ${this.useWebhook ? "WEBHOOK" : "DIRECT SMTP"}`);
+   → Method: WEBHOOK (Railway blocks SMTP)`);
 
       // Generate tracking ID for this email
       const trackingId = this.generateTrackingId();
@@ -352,26 +373,27 @@ Manage preferences: https://build-os.com/settings
 
       // Send email via webhook to web app (Railway blocks SMTP ports)
       if (!this.webhookEmailService) {
-        throw new Error("Webhook email service not initialized - cannot send email");
+        throw new Error(
+          "Webhook email service not initialized - cannot send email",
+        );
       }
 
       console.log(`🔗 Sending email via WEBHOOK service...`);
       console.log(`   → Email Record ID: ${emailRecord.id}`);
       console.log(`   → Tracking ID: ${trackingId}`);
 
-      const webhookResult =
-        await this.webhookEmailService.sendDailyBriefEmail(
-          userId,
-          brief.id,
-          briefDate,
-          email,
-          {
-            emailRecordId: emailRecord.id,
-            recipientRecordId: recipientRecord?.id,
-            trackingId: trackingEnabled ? trackingId : undefined,
-            subject,
-          },
-        );
+      const webhookResult = await this.webhookEmailService.sendDailyBriefEmail(
+        userId,
+        brief.id,
+        briefDate,
+        email,
+        {
+          emailRecordId: emailRecord.id,
+          recipientRecordId: recipientRecord?.id,
+          trackingId: trackingEnabled ? trackingId : undefined,
+          subject,
+        },
+      );
 
       if (!webhookResult.success) {
         console.error(`❌ Webhook email send failed: ${webhookResult.error}`);

@@ -185,12 +185,7 @@
 </div>
 
 <!-- Error Details Modal -->
-<Modal
-	isOpen={showErrorModal}
-	onClose={closeErrorModal}
-	title="Error Details"
-	size="lg"
->
+<Modal isOpen={showErrorModal} onClose={closeErrorModal} title="Error Details" size="lg">
 	{#if selectedError}
 		{@const delivery = selectedError}
 		<div class="p-6 space-y-4">
@@ -200,7 +195,8 @@
 				<div class="grid grid-cols-2 gap-4 text-sm">
 					<div>
 						<span class="text-gray-500 dark:text-gray-400">Event Type:</span>
-						<span class="ml-2 text-gray-900 dark:text-white">{delivery.event_type}</span>
+						<span class="ml-2 text-gray-900 dark:text-white">{delivery.event_type}</span
+						>
 					</div>
 					<div>
 						<span class="text-gray-500 dark:text-gray-400">Channel:</span>
@@ -214,7 +210,9 @@
 					</div>
 					<div>
 						<span class="text-gray-500 dark:text-gray-400">Recipient:</span>
-						<span class="ml-2 text-gray-900 dark:text-white">{delivery.recipient_email}</span>
+						<span class="ml-2 text-gray-900 dark:text-white"
+							>{delivery.recipient_email}</span
+						>
 					</div>
 					<div>
 						<span class="text-gray-500 dark:text-gray-400">Time:</span>
@@ -238,7 +236,9 @@
 			</div>
 
 			<!-- Error Message -->
-			<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+			<div
+				class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+			>
 				<h4 class="font-semibold text-red-800 dark:text-red-200 mb-2">Error Message</h4>
 				<div
 					class="text-sm text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap break-words"
@@ -248,7 +248,9 @@
 			</div>
 
 			<!-- Action Buttons -->
-			<div class="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+			<div
+				class="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700"
+			>
 				{#if delivery.attempts < delivery.max_attempts}
 					<Button
 						variant="secondary"

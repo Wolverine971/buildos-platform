@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-13T04:39:49.503Z
+// Generated on: 2025-10-13T20:55:07.958Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1127,6 +1127,8 @@ export type DatabaseSchema = {
 		quiet_hours_enabled: boolean | null;
 		quiet_hours_end: string | null;
 		quiet_hours_start: string | null;
+		should_email_daily_brief: boolean | null;
+		should_sms_daily_brief: boolean | null;
 		sms_enabled: boolean | null;
 		timezone: string | null;
 		updated_at: string | null;

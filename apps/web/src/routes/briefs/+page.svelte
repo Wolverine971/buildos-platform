@@ -1345,6 +1345,7 @@
 <!-- Briefs Settings Modal -->
 <BriefsSettingsModal
 	isOpen={showSettingsModal}
+	user={data.user}
 	onClose={() => (showSettingsModal = false)}
 	on:save={() => {
 		toastService.success('Brief settings updated successfully');

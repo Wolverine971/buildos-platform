@@ -68,6 +68,38 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Create Supabase client and EmailService
 		const supabase = createServiceClient();
+
+		// ✅ TRIPLE-CHECK USER PREFERENCES
+		// Final safety check before sending via SMTP
+		// This ensures we respect user preferences even if they changed between queuing and sending
+		if (body.eventType) {
+			const { data: prefs, error: prefError } = await supabase
+				.from('user_notification_preferences')
+				.select('email_enabled')
+				.eq('user_id', body.recipientUserId)
+				.eq('event_type', body.eventType)
+				.single();
+
+			if (prefError || !prefs || !prefs.email_enabled) {
+				console.log(
+					`[NotificationEmailWebhook] ❌ Email cancelled - user preferences do not allow (delivery: ${body.deliveryId})`,
+					{
+						eventType: body.eventType,
+						userId: body.recipientUserId,
+						prefError: prefError?.message,
+						emailEnabled: prefs?.email_enabled
+					}
+				);
+				return json(
+					{
+						success: false,
+						error: 'Cancelled: User preferences do not allow email notifications for this event type'
+					},
+					{ status: 200 } // Return 200 to prevent retries
+				);
+			}
+		}
+
 		const emailService = new EmailService(supabase);
 
 		// Send email immediately via Gmail

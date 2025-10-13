@@ -8,6 +8,7 @@
 import { createServiceClient } from "@buildos/supabase-client";
 import type { NotificationDelivery } from "@buildos/shared-types";
 import type { Logger } from "@buildos/shared-utils";
+import { checkUserPreferences } from "./preferenceChecker.js";
 
 const supabase = createServiceClient();
 
@@ -138,6 +139,30 @@ export async function sendEmailNotification(
       notificationDeliveryId: delivery.id,
       recipientUserId: delivery.recipient_user_id,
     });
+
+    // ✅ DOUBLE-CHECK USER PREFERENCES
+    // This is a safety check in case preferences changed between worker check and adapter execution
+    const eventType = delivery.payload.event_type || "unknown";
+    const prefCheck = await checkUserPreferences(
+      delivery.recipient_user_id,
+      eventType,
+      "email",
+      emailLogger,
+    );
+
+    if (!prefCheck.allowed) {
+      emailLogger.info(
+        "Email notification cancelled - user preferences do not allow",
+        {
+          reason: prefCheck.reason,
+          eventType,
+        },
+      );
+      return {
+        success: false,
+        error: `Cancelled: ${prefCheck.reason}`,
+      };
+    }
 
     // Get user email
     const { data: user, error: userError } = await supabase

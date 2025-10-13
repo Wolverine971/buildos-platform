@@ -533,6 +533,12 @@
 			]
 		},
 		{
+			"file": "src/lib/stores/notificationPreferences.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["notificationPreferencesStore"]
+		},
+		{
 			"file": "src/lib/stores/project.store.ts",
 			"type": "store",
 			"components": [],

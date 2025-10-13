@@ -4335,6 +4335,8 @@ export type Database = {
           quiet_hours_enabled: boolean | null;
           quiet_hours_end: string | null;
           quiet_hours_start: string | null;
+          should_email_daily_brief: boolean | null;
+          should_sms_daily_brief: boolean | null;
           sms_enabled: boolean | null;
           timezone: string | null;
           updated_at: string | null;
@@ -4355,6 +4357,8 @@ export type Database = {
           quiet_hours_enabled?: boolean | null;
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
+          should_email_daily_brief?: boolean | null;
+          should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
           timezone?: string | null;
           updated_at?: string | null;
@@ -4375,6 +4379,8 @@ export type Database = {
           quiet_hours_enabled?: boolean | null;
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
+          should_email_daily_brief?: boolean | null;
+          should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
           timezone?: string | null;
           updated_at?: string | null;
@@ -4991,7 +4997,7 @@ export type Database = {
       emit_notification_event: {
         Args: {
           p_actor_user_id?: string;
-          p_event_source: string;
+          p_event_source?: string;
           p_event_type: string;
           p_metadata?: Json;
           p_payload?: Json;
@@ -5492,7 +5498,7 @@ export type Database = {
       };
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown };
-        Returns: string;
+        Returns: unknown;
       };
       log_notification_event: {
         Args: {

@@ -33,6 +33,7 @@ import {
   extractCorrelationContext,
   type Logger,
 } from "@buildos/shared-utils";
+import { checkUserPreferences } from "./preferenceChecker.js";
 
 const supabase = createServiceClient();
 const logger = createLogger("worker:notification", supabase);
@@ -485,6 +486,42 @@ export async function processNotification(
 
     const attemptNumber = (delivery.attempts || 0) + 1;
     const totalAttempts = delivery.max_attempts || 3;
+
+    // ✅ CHECK USER PREFERENCES BEFORE SENDING
+    // Preferences may have changed since the delivery was queued
+    const eventType = typedDelivery.payload.event_type || "unknown";
+    const prefCheck = await checkUserPreferences(
+      typedDelivery.recipient_user_id,
+      eventType,
+      channel,
+      jobLogger,
+    );
+
+    if (!prefCheck.allowed) {
+      jobLogger.info("Notification cancelled - user preferences do not allow", {
+        reason: prefCheck.reason,
+        channel,
+        eventType,
+      });
+
+      // Mark delivery as cancelled (not failed)
+      await supabase
+        .from("notification_deliveries")
+        .update({
+          status: "failed", // Use 'failed' status but with specific error message
+          failed_at: new Date().toISOString(),
+          last_error: `Cancelled: ${prefCheck.reason}`,
+          attempts: (delivery.attempts || 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery_id);
+
+      // Job completes successfully (don't retry)
+      jobLogger.debug("Marked delivery as cancelled", {
+        notificationDeliveryId: delivery_id,
+      });
+      return; // Exit successfully - job will be marked as completed
+    }
 
     jobLogger.info("Sending notification", {
       attemptNumber,

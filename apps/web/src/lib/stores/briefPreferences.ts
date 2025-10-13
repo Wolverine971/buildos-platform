@@ -10,7 +10,6 @@ export interface BriefPreferences {
 	time_of_day: string;
 	timezone: string;
 	is_active: boolean;
-	email_daily_brief?: boolean;
 	created_at?: string;
 	updated_at?: string;
 }
@@ -45,14 +44,15 @@ const initialState: BriefPreferencesState = {
 };
 
 // Default preferences
+// NOTE: Brief preferences control WHEN briefs are generated.
+// For notification delivery preferences (email/SMS), see notificationPreferences store.
 const DEFAULT_PREFERENCES: Omit<BriefPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'> =
 	{
 		frequency: 'daily',
 		day_of_week: 1, // Monday
 		time_of_day: '09:00:00',
 		timezone: 'UTC',
-		is_active: true,
-		email_daily_brief: false
+		is_active: true
 	};
 
 function createBriefPreferencesStore() {

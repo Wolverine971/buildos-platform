@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
+	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browserPushService } from '$lib/services/browser-push.service';
 	import { smsService } from '$lib/services/sms.service';
 	import { toastService } from '$lib/stores/toast.store';
@@ -35,6 +36,11 @@
 	let phoneVerified = $state(false);
 	let phoneNumber = $state<string | null>(null);
 
+	// Daily brief notification preferences
+	let dailyBriefEmailEnabled = $state(false);
+	let dailyBriefSmsEnabled = $state(false);
+	let dailyBriefPrefsLoaded = $state(false);
+
 	// Push notification state
 	let pushSupported = $state(false);
 	let pushSubscribed = $state(false);
@@ -51,9 +57,26 @@
 	let quietHoursEnd = $state('08:00');
 
 	onMount(async () => {
-		await loadPreferences();
-		await checkPushSubscriptionStatus();
+		await Promise.all([
+			loadPreferences(),
+			loadDailyBriefPreferences(),
+			checkPushSubscriptionStatus()
+		]);
 	});
+
+	async function loadDailyBriefPreferences() {
+		try {
+			await notificationPreferencesStore.load();
+			const state = $notificationPreferencesStore;
+			if (state.preferences) {
+				dailyBriefEmailEnabled = state.preferences.should_email_daily_brief;
+				dailyBriefSmsEnabled = state.preferences.should_sms_daily_brief;
+				dailyBriefPrefsLoaded = true;
+			}
+		} catch (error) {
+			console.error('Failed to load daily brief notification preferences:', error);
+		}
+	}
 
 	async function loadPreferences() {
 		isLoading = true;
@@ -87,6 +110,42 @@
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	async function saveDailyBriefPreferences() {
+		try {
+			await notificationPreferencesStore.save({
+				should_email_daily_brief: dailyBriefEmailEnabled,
+				should_sms_daily_brief: dailyBriefSmsEnabled
+			});
+			toastService.success('Daily brief notification preferences saved');
+		} catch (error) {
+			console.error('Failed to save daily brief preferences:', error);
+			// Store already sets error, but show toast for visibility
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to save preferences'
+			);
+			// Reload to reset state
+			await loadDailyBriefPreferences();
+		}
+	}
+
+	async function handleDailyBriefEmailToggle(enabled: boolean) {
+		dailyBriefEmailEnabled = enabled;
+		await saveDailyBriefPreferences();
+	}
+
+	async function handleDailyBriefSmsToggle(enabled: boolean) {
+		if (enabled && !phoneVerified) {
+			// Show phone verification modal
+			showPhoneVerificationModal = true;
+			// Revert toggle state until verification is complete
+			dailyBriefSmsEnabled = false;
+			return;
+		}
+
+		dailyBriefSmsEnabled = enabled;
+		await saveDailyBriefPreferences();
 	}
 
 	async function handleSMSToggle(enabled: boolean) {
@@ -177,8 +236,6 @@
 		try {
 			await notificationPreferencesService.update('brief.completed', {
 				push_enabled: pushEnabled,
-				email_enabled: emailEnabled,
-				sms_enabled: smsEnabled,
 				in_app_enabled: inAppEnabled,
 				quiet_hours_enabled: quietHoursEnabled,
 				quiet_hours_start: quietHoursStart,
@@ -195,7 +252,9 @@
 		}
 	}
 
-	let hasAnyChannelEnabled = $derived(pushEnabled || emailEnabled || smsEnabled || inAppEnabled);
+	let hasAnyChannelEnabled = $derived(
+		pushEnabled || inAppEnabled || dailyBriefEmailEnabled || dailyBriefSmsEnabled
+	);
 </script>
 
 <div class="space-y-6">
@@ -261,7 +320,7 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Daily Brief Notification Settings -->
+		<!-- Daily Brief Notification Settings (User-Level Preferences) -->
 		<div
 			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
 		>
@@ -278,31 +337,8 @@
 					</div>
 				</div>
 			</div>
-			<div class="p-6 space-y-6">
-				<!-- First-time setup info banner -->
-				{#if !preferences?.id}
-					<div
-						class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
-					>
-						<div class="flex items-start gap-3">
-							<Bell
-								class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
-							/>
-							<div class="flex-1">
-								<h4 class="font-medium text-blue-900 dark:text-blue-100 mb-1">
-									Set Up Your Notification Preferences
-								</h4>
-								<p class="text-sm text-blue-800 dark:text-blue-200">
-									You're currently using the default notification settings.
-									Customize how you want to receive daily brief notifications
-									below, then click Save to apply your preferences.
-								</p>
-							</div>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Email Notifications -->
+			<div class="p-6 space-y-4">
+				<!-- Daily Brief Email -->
 				<div
 					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
 				>
@@ -310,22 +346,23 @@
 						<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
 						<div>
 							<label
-								for="email-notifications"
+								for="daily-brief-email"
 								class="font-medium text-gray-900 dark:text-white cursor-pointer"
 							>
-								Email Notifications
+								Email Daily Brief
 							</label>
 							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-								Receive your daily brief via email
+								Get your daily brief via email when it's ready
 							</p>
 						</div>
 					</div>
 					<label class="relative inline-flex items-center cursor-pointer">
 						<input
 							type="checkbox"
-							id="email-notifications"
+							id="daily-brief-email"
 							class="sr-only peer"
-							bind:checked={emailEnabled}
+							checked={dailyBriefEmailEnabled}
+							onchange={(e) => handleDailyBriefEmailToggle(e.currentTarget.checked)}
 						/>
 						<div
 							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
@@ -333,6 +370,72 @@
 					</label>
 				</div>
 
+				<!-- Daily Brief SMS -->
+				<div
+					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+				>
+					<div class="flex items-start gap-3">
+						<MessageSquare
+							class="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5"
+						/>
+						<div class="flex-1">
+							<label
+								for="daily-brief-sms"
+								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+							>
+								SMS Daily Brief
+							</label>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+								Receive text messages when your brief is ready
+							</p>
+							{#if !phoneVerified}
+								<div
+									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>Phone verification required</span>
+								</div>
+							{:else if phoneNumber}
+								<div class="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+									Verified: {phoneNumber}
+								</div>
+							{/if}
+						</div>
+					</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							id="daily-brief-sms"
+							class="sr-only peer"
+							checked={dailyBriefSmsEnabled}
+							onchange={(e) => handleDailyBriefSmsToggle(e.currentTarget.checked)}
+						/>
+						<div
+							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"
+						></div>
+					</label>
+				</div>
+			</div>
+		</div>
+
+		<!-- Additional Notification Channels -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
+		>
+			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex items-center gap-3">
+					<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Additional Notification Channels
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Configure push and in-app notifications for your daily briefs
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="p-6 space-y-6">
 				<!-- Push Notifications -->
 				<div
 					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
@@ -431,52 +534,6 @@
 					</label>
 				</div>
 
-				<!-- SMS Notifications -->
-				<div
-					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-				>
-					<div class="flex items-start gap-3">
-						<MessageSquare
-							class="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5"
-						/>
-						<div class="flex-1">
-							<label
-								for="sms-notifications"
-								class="font-medium text-gray-900 dark:text-white cursor-pointer"
-							>
-								SMS Notifications
-							</label>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-								Receive text messages when your brief is ready
-							</p>
-							{#if !phoneVerified}
-								<div
-									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
-								>
-									<AlertCircle class="w-3.5 h-3.5" />
-									<span>Phone verification required</span>
-								</div>
-							{:else if phoneNumber}
-								<div class="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
-									Verified: {phoneNumber}
-								</div>
-							{/if}
-						</div>
-					</div>
-					<label class="relative inline-flex items-center cursor-pointer">
-						<input
-							type="checkbox"
-							id="sms-notifications"
-							class="sr-only peer"
-							checked={smsEnabled}
-							onchange={(e) => handleSMSToggle(e.currentTarget.checked)}
-						/>
-						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"
-						></div>
-					</label>
-				</div>
-
 				{#if !hasAnyChannelEnabled}
 					<div
 						class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800"
@@ -485,8 +542,8 @@
 							class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
 						/>
 						<p class="text-sm text-amber-800 dark:text-amber-200">
-							You have disabled all notification channels. You won't receive any
-							notifications about completed daily briefs.
+							All notification channels are disabled. Enable at least one channel
+							above to receive daily brief notifications.
 						</p>
 					</div>
 				{/if}

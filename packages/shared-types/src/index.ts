@@ -24,10 +24,15 @@ export interface BriefGenerationJob {
 // Common types used across apps
 export interface UserPreferences {
   timezone?: string;
-  email_daily_brief?: boolean;
   frequency?: "daily" | "weekly";
   time_of_day?: string;
   day_of_week?: number;
+}
+
+// Daily brief notification preferences
+export interface DailyBriefNotificationPreferences {
+  should_email_daily_brief: boolean;
+  should_sms_daily_brief: boolean;
 }
 
 export interface ProjectContext {

@@ -17,7 +17,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -40,7 +40,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -62,7 +62,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00", // 9 AM local time
         timezone: "America/New_York",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -84,7 +84,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "Asia/Tokyo",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -107,7 +107,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "America/New_York",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -129,7 +129,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -152,7 +152,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -175,7 +175,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -197,7 +197,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -222,7 +222,7 @@ describe("Scheduler - calculateNextRunTime", () => {
           time_of_day: "09:00:00",
           timezone: "UTC",
           is_active: true,
-          email_daily_brief: true,
+          // email_daily_brief removed - now in user_notification_preferences
           day_of_week: day,
           created_at: "2025-01-01T00:00:00Z",
           updated_at: "2025-01-01T00:00:00Z",
@@ -245,7 +245,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -269,7 +269,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "invalid-time",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -289,7 +289,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "25:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -309,7 +309,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:75:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -329,7 +329,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "-01:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -349,7 +349,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -371,7 +371,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "00:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -393,7 +393,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "23:59:59",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -417,7 +417,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -439,7 +439,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -462,7 +462,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: null,
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -483,7 +483,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: null,
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -505,7 +505,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -677,7 +677,7 @@ describe("Scheduler - Integration Tests", () => {
         time_of_day: "09:00:00", // 9 AM NZDT (UTC+13)
         timezone: "Pacific/Auckland",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -699,7 +699,7 @@ describe("Scheduler - Integration Tests", () => {
         time_of_day: "09:00:00", // 9 AM PDT (UTC-7)
         timezone: "America/Los_Angeles",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -723,7 +723,7 @@ describe("Scheduler - Integration Tests", () => {
         time_of_day: "09:00:00",
         timezone: "America/New_York",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
@@ -746,7 +746,7 @@ describe("Scheduler - Integration Tests", () => {
         time_of_day: "09:00:00",
         timezone: "UTC",
         is_active: true,
-        email_daily_brief: true,
+        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",

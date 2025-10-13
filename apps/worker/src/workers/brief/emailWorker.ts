@@ -86,28 +86,60 @@ export async function processEmailBriefJob(
 
     // 2. Check if email should still be sent (user may have disabled since queuing)
     console.log(`🔍 Checking current email preferences for user ${userId}...`);
-    const { data: preferences, error: prefError } = await supabase
+
+    // Check notification preferences for email opt-in
+    const { data: notificationPrefs, error: notificationError } = await supabase
+      .from("user_notification_preferences")
+      .select("should_email_daily_brief")
+      .eq("user_id", userId)
+      .eq("event_type", "user") // User-level daily brief preferences
+      .single();
+
+    if (notificationError && notificationError.code !== "PGRST116") {
+      console.error(
+        `❌ Error fetching notification preferences for user ${userId}:`,
+        notificationError,
+      );
+      throw new Error(
+        `Failed to fetch notification preferences: ${notificationError.message}`,
+      );
+    }
+
+    // Check brief preferences for is_active (brief generation)
+    const { data: briefPrefs, error: briefError } = await supabase
       .from("user_brief_preferences")
-      .select("email_daily_brief, is_active")
+      .select("is_active")
       .eq("user_id", userId)
       .single();
 
-    if (prefError) {
+    if (briefError && briefError.code !== "PGRST116") {
       console.error(
-        `❌ Error fetching preferences for user ${userId}:`,
-        prefError,
+        `❌ Error fetching brief preferences for user ${userId}:`,
+        briefError,
       );
-      throw new Error(`Failed to fetch preferences: ${prefError.message}`);
+      throw new Error(
+        `Failed to fetch brief preferences: ${briefError.message}`,
+      );
     }
 
     console.log(`📋 User preferences:
-   → email_daily_brief: ${preferences?.email_daily_brief}
-   → is_active: ${preferences?.is_active}`);
+   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief ?? "not set"}
+   → is_active: ${briefPrefs?.is_active}`);
 
-    if (!preferences?.email_daily_brief || !preferences?.is_active) {
+    const shouldSendEmail =
+      notificationPrefs?.should_email_daily_brief === true &&
+      briefPrefs?.is_active === true;
+
+    if (!shouldSendEmail) {
+      const reason = !briefPrefs?.is_active
+        ? "Brief generation not active"
+        : !notificationPrefs?.should_email_daily_brief
+          ? "Email notifications disabled"
+          : "Preferences not configured";
+
       console.log(
         `📭 Email preferences changed, marking as cancelled for user ${userId}
-   → Reason: ${!preferences?.is_active ? "Preferences not active" : "Email daily brief disabled"}`,
+   → Reason: ${reason}`,
       );
 
       // Update email status to cancelled
@@ -176,7 +208,9 @@ export async function processEmailBriefJob(
     );
 
     if (!webhookResponse.ok) {
-      const errorText = await webhookResponse.text().catch(() => "Unknown error");
+      const errorText = await webhookResponse
+        .text()
+        .catch(() => "Unknown error");
       throw new Error(
         `Webhook email send failed: ${webhookResponse.status} - ${errorText}`,
       );

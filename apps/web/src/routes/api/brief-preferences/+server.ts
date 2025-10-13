@@ -3,13 +3,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // Default preferences
+// NOTE: Brief preferences control WHEN briefs are generated.
+// For notification delivery preferences (email/SMS), see user_notification_preferences.
 const DEFAULT_PREFERENCES = {
 	frequency: 'daily',
 	day_of_week: 1, // Monday
 	time_of_day: '09:00:00',
 	timezone: 'UTC',
-	is_active: true,
-	email_daily_brief: false
+	is_active: true
 };
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
@@ -62,8 +63,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	try {
 		const body = await request.json();
-		const { frequency, day_of_week, time_of_day, timezone, is_active, email_daily_brief } =
-			body;
+		const { frequency, day_of_week, time_of_day, timezone, is_active } = body;
 
 		// Validate input
 		if (!frequency || !['daily', 'weekly'].includes(frequency)) {
@@ -111,10 +111,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					time_of_day,
 					timezone,
 					is_active: is_active !== undefined ? is_active : true,
-					email_daily_brief:
-						email_daily_brief !== undefined
-							? email_daily_brief
-							: existingPreferences.email_daily_brief,
 					updated_at: new Date().toISOString()
 				})
 				.eq('user_id', user.id)
@@ -133,8 +129,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					day_of_week: frequency === 'weekly' ? day_of_week : null,
 					time_of_day,
 					timezone,
-					is_active: is_active !== undefined ? is_active : true,
-					email_daily_brief: email_daily_brief !== undefined ? email_daily_brief : false
+					is_active: is_active !== undefined ? is_active : true
 				})
 				.select()
 				.single();

@@ -93,14 +93,34 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       job.id, // Pass the job ID
     );
 
-    // Phase 2 REVISED: Create email record and queue email job (non-blocking)
+    // Check user notification preferences for daily brief delivery
+    const { data: notificationPrefs, error: notificationPrefsError } =
+      await supabase
+        .from("user_notification_preferences")
+        .select("should_email_daily_brief, should_sms_daily_brief")
+        .eq("user_id", job.data.userId)
+        .eq("event_type", "user") // User-level daily brief preferences
+        .single();
+
+    if (notificationPrefsError && notificationPrefsError.code !== "PGRST116") {
+      console.warn(
+        `Failed to fetch notification preferences for user ${job.data.userId}: ${notificationPrefsError.message}`,
+      );
+    }
+
+    const shouldEmailBrief =
+      notificationPrefs?.should_email_daily_brief ?? false;
+    const shouldSmsBrief = notificationPrefs?.should_sms_daily_brief ?? false;
+
+    console.log(`📬 Notification preferences for user ${job.data.userId}:
+   → should_email_daily_brief: ${shouldEmailBrief}
+   → should_sms_daily_brief: ${shouldSmsBrief}`);
+
+    // Handle email notifications
     let emailRecordId: string | null = null;
     let emailQueuedSuccessfully = false;
-    try {
-      const emailSender = new DailyBriefEmailSender(supabase);
-      const shouldSend = await emailSender.shouldSendEmail(job.data.userId);
-
-      if (shouldSend) {
+    if (shouldEmailBrief) {
+      try {
         console.log(
           `📧 User ${job.data.userId} is eligible for email, proceeding with email creation...`,
         );
@@ -261,37 +281,83 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
             }
           }
         }
-      } else {
-        console.log(
-          `📭 Email not enabled for user ${job.data.userId}, skipping email`,
+      } catch (emailError) {
+        // Log error but don't fail the brief job
+        const errorMessage =
+          emailError instanceof Error ? emailError.message : "Unknown error";
+        console.error(`Failed to create/queue email: ${errorMessage}`);
+
+        // Track email creation failure in error_logs
+        const { error: errorLogError } = await supabase
+          .from("error_logs")
+          .insert({
+            user_id: job.data.userId,
+            error_type: "email_creation_failure",
+            error_message: errorMessage,
+            endpoint: "/worker/brief/email-create",
+            operation_type: "create_email_record",
+            record_id: brief.id,
+            metadata: {
+              brief_id: brief.id,
+              brief_date: briefDate,
+              job_id: job.id,
+            },
+          });
+
+        if (errorLogError) {
+          console.error("Failed to log error:", errorLogError);
+        }
+      }
+    } else {
+      console.log(
+        `📭 Email notifications not enabled for user ${job.data.userId}, skipping email`,
+      );
+    }
+
+    // Handle SMS notifications via notification system
+    if (shouldSmsBrief) {
+      try {
+        console.log(`📱 Checking SMS eligibility for user ${job.data.userId}`);
+
+        // Check SMS preferences (phone verification required)
+        const { data: smsPrefs, error: smsPrefsError } = await supabase
+          .from("user_sms_preferences")
+          .select("phone_number, phone_verified, opted_out")
+          .eq("user_id", job.data.userId)
+          .single();
+
+        if (smsPrefsError && smsPrefsError.code !== "PGRST116") {
+          console.warn(
+            `Failed to fetch SMS preferences: ${smsPrefsError.message}`,
+          );
+        }
+
+        if (!smsPrefs?.phone_number) {
+          console.warn(
+            `⚠️  User ${job.data.userId} wants SMS but has no phone number`,
+          );
+        } else if (!smsPrefs?.phone_verified) {
+          console.warn(
+            `⚠️  User ${job.data.userId} wants SMS but phone not verified`,
+          );
+        } else if (smsPrefs?.opted_out) {
+          console.warn(`⚠️  User ${job.data.userId} has opted out of SMS`);
+        } else {
+          console.log(
+            `✅ Phone verified for user ${job.data.userId}, SMS will be sent via notification system`,
+          );
+          // SMS will be sent via emit_notification_event below
+          // The notification system will check should_sms_daily_brief preference
+        }
+      } catch (smsError) {
+        console.error(
+          `Failed to check SMS eligibility: ${smsError instanceof Error ? smsError.message : "Unknown error"}`,
         );
       }
-    } catch (emailError) {
-      // Log error but don't fail the brief job
-      const errorMessage =
-        emailError instanceof Error ? emailError.message : "Unknown error";
-      console.error(`Failed to create/queue email: ${errorMessage}`);
-
-      // Track email creation failure in error_logs
-      const { error: errorLogError } = await supabase
-        .from("error_logs")
-        .insert({
-          user_id: job.data.userId,
-          error_type: "email_creation_failure",
-          error_message: errorMessage,
-          endpoint: "/worker/brief/email-create",
-          operation_type: "create_email_record",
-          record_id: brief.id,
-          metadata: {
-            brief_id: brief.id,
-            brief_date: briefDate,
-            job_id: job.id,
-          },
-        });
-
-      if (errorLogError) {
-        console.error("Failed to log error:", errorLogError);
-      }
+    } else {
+      console.log(
+        `📭 SMS notifications not enabled for user ${job.data.userId}, skipping SMS`,
+      );
     }
 
     await updateJobStatus(job.id, "completed", "brief");
