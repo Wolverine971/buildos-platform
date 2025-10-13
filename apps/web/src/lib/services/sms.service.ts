@@ -80,7 +80,20 @@ export class SMSService extends ApiService {
 		}
 	}
 
+	/**
+	 * @deprecated This feature (task reminders via SMS) is deprecated and no longer supported.
+	 * Use event reminders or morning/evening briefings instead.
+	 * Will be removed in a future version.
+	 */
 	async sendTaskReminder(taskId: string): Promise<ServiceResponse<{ messageId: string }>> {
+		// Feature deprecated - task_reminders field removed from schema
+		return {
+			success: false,
+			errors: ['Task reminders via SMS are no longer supported. Please use event reminders or daily briefings instead.']
+		};
+
+		// Legacy implementation below (kept for reference, never executed)
+		/*
 		try {
 			// Get task details
 			const { data: task } = await supabase
@@ -103,7 +116,7 @@ export class SMSService extends ApiService {
 				.eq('user_id', task.user_id)
 				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
 
-			if (!prefs?.phone_number || !prefs.task_reminders) {
+			if (!prefs?.phone_number) {
 				return {
 					success: false,
 					errors: ['Task reminders are disabled or phone not configured']
@@ -134,6 +147,7 @@ export class SMSService extends ApiService {
 				errors: [error.message || 'Failed to send task reminder']
 			};
 		}
+		*/
 	}
 
 	async verifyPhoneNumber(
@@ -240,8 +254,6 @@ export class SMSService extends ApiService {
 		userId: string,
 		preferences: Partial<{
 			phone_number: string;
-			task_reminders: boolean;
-			daily_brief_sms: boolean;
 			urgent_alerts: boolean;
 			quiet_hours_start: string;
 			quiet_hours_end: string;

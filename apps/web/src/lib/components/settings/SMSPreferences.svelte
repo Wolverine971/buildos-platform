@@ -32,12 +32,9 @@
 	// Preference settings
 	let eventRemindersEnabled = $state(false);
 	let eventReminderLeadTime = $state(15);
-	let nextUpEnabled = $state(false);
 	let morningKickoffEnabled = $state(false);
 	let morningKickoffTime = $state('08:00');
 	let eveningRecapEnabled = $state(false);
-	let taskReminders = $state(false);
-	let dailyBriefSms = $state(false);
 	let urgentAlerts = $state(true);
 	let quietHoursStart = $state('22:00');
 	let quietHoursEnd = $state('08:00');
@@ -57,12 +54,9 @@
 			// Update state with loaded preferences
 			eventRemindersEnabled = preferences.event_reminders_enabled || false;
 			eventReminderLeadTime = preferences.event_reminder_lead_time_minutes || 15;
-			nextUpEnabled = preferences.next_up_enabled || false;
 			morningKickoffEnabled = preferences.morning_kickoff_enabled || false;
 			morningKickoffTime = preferences.morning_kickoff_time || '08:00';
 			eveningRecapEnabled = preferences.evening_recap_enabled || false;
-			taskReminders = preferences.task_reminders || false;
-			dailyBriefSms = preferences.daily_brief_sms || false;
 			urgentAlerts = preferences.urgent_alerts !== false; // Default to true
 			quietHoursStart = preferences.quiet_hours_start || '22:00';
 			quietHoursEnd = preferences.quiet_hours_end || '08:00';
@@ -78,12 +72,9 @@
 		const result = await smsService.updateSMSPreferences(userId, {
 			event_reminders_enabled: eventRemindersEnabled,
 			event_reminder_lead_time_minutes: eventReminderLeadTime,
-			next_up_enabled: nextUpEnabled,
 			morning_kickoff_enabled: morningKickoffEnabled,
 			morning_kickoff_time: morningKickoffTime,
 			evening_recap_enabled: eveningRecapEnabled,
-			task_reminders: taskReminders,
-			daily_brief_sms: dailyBriefSms,
 			urgent_alerts: urgentAlerts,
 			quiet_hours_start: quietHoursStart,
 			quiet_hours_end: quietHoursEnd,
@@ -280,40 +271,6 @@
 						{/if}
 					</div>
 
-					<!-- Next Up -->
-					<div
-						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-					>
-						<div class="flex items-start gap-3">
-							<MessageSquare
-								class="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5"
-							/>
-							<div>
-								<label
-									for="next-up"
-									class="font-medium text-gray-900 dark:text-white cursor-pointer"
-								>
-									Next Up Alerts
-								</label>
-								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									Get a heads up text before your next upcoming event
-								</p>
-							</div>
-						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input
-								type="checkbox"
-								id="next-up"
-								class="sr-only peer"
-								bind:checked={nextUpEnabled}
-								disabled={isOptedOut}
-							/>
-							<div
-								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
-							></div>
-						</label>
-					</div>
-
 					<!-- Morning Kickoff -->
 					<div class="space-y-3">
 						<div
@@ -388,72 +345,6 @@
 							/>
 							<div
 								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
-							></div>
-						</label>
-					</div>
-
-					<!-- Task Reminders -->
-					<div
-						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-					>
-						<div class="flex items-start gap-3">
-							<MessageSquare
-								class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5"
-							/>
-							<div>
-								<label
-									for="task-reminders"
-									class="font-medium text-gray-900 dark:text-white cursor-pointer"
-								>
-									Task Reminders
-								</label>
-								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									Get SMS reminders for upcoming tasks
-								</p>
-							</div>
-						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input
-								type="checkbox"
-								id="task-reminders"
-								class="sr-only peer"
-								bind:checked={taskReminders}
-								disabled={isOptedOut}
-							/>
-							<div
-								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
-							></div>
-						</label>
-					</div>
-
-					<!-- Daily Brief -->
-					<div
-						class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-					>
-						<div class="flex items-start gap-3">
-							<Sun class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-							<div>
-								<label
-									for="daily-brief"
-									class="font-medium text-gray-900 dark:text-white cursor-pointer"
-								>
-									Daily Brief Notifications
-								</label>
-								<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-									Get notified when your daily brief is ready
-								</p>
-							</div>
-						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input
-								type="checkbox"
-								id="daily-brief"
-								class="sr-only peer"
-								bind:checked={dailyBriefSms}
-								disabled={isOptedOut}
-							/>
-							<div
-								class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 							></div>
 						</label>
 					</div>

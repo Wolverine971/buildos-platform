@@ -1,5 +1,5 @@
 // apps/worker/src/lib/briefBackoffCalculator.ts
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 export interface BackoffDecision {
   shouldSend: boolean;
@@ -50,15 +50,15 @@ export class BriefBackoffCalculator {
         shouldSend: true,
         isReengagement: false,
         daysSinceLastLogin: 0,
-        reason: "No last visit recorded",
+        reason: 'No last visit recorded',
       };
     }
 
     const daysSinceLastLogin = this.calculateDaysSince(userData.last_visit);
     const daysSinceLastBrief = lastBrief
       ? this.calculateDaysSince(
-          lastBrief.generation_completed_at || lastBrief.brief_date,
-        )
+        lastBrief.generation_completed_at || lastBrief.brief_date,
+      )
       : 999; // If no brief ever sent, treat as very old
 
     // Apply backoff logic
@@ -75,9 +75,9 @@ export class BriefBackoffCalculator {
     userId: string,
   ): Promise<UserLastVisit | null> {
     const { data, error } = await supabase
-      .from("users")
-      .select("last_visit")
-      .eq("id", userId)
+      .from('users')
+      .select('last_visit')
+      .eq('id', userId)
       .single();
 
     if (error) {
@@ -98,16 +98,16 @@ export class BriefBackoffCalculator {
     userId: string,
   ): Promise<LastBriefSent | null> {
     const { data, error } = await supabase
-      .from("daily_briefs")
-      .select("brief_date, generation_completed_at")
-      .eq("user_id", userId)
-      .order("brief_date", { ascending: false })
+      .from('daily_briefs')
+      .select('brief_date, generation_completed_at')
+      .eq('user_id', userId)
+      .order('brief_date', { ascending: false })
       .limit(1)
       .single();
 
     if (error) {
       // No briefs found is not an error, just means first brief
-      if (error.code === "PGRST116") {
+      if (error.code === 'PGRST116') {
         return null;
       }
       console.error(
@@ -142,7 +142,7 @@ export class BriefBackoffCalculator {
         shouldSend: true,
         isReengagement: false,
         daysSinceLastLogin,
-        reason: "User is active (logged in within 2 days)",
+        reason: 'User is active (logged in within 2 days)',
       };
     }
 
@@ -152,7 +152,7 @@ export class BriefBackoffCalculator {
         shouldSend: false,
         isReengagement: false,
         daysSinceLastLogin,
-        reason: "Cooling off period (3 days inactive)",
+        reason: 'Cooling off period (3 days inactive)',
       };
     }
 
@@ -162,7 +162,7 @@ export class BriefBackoffCalculator {
         shouldSend: true,
         isReengagement: true,
         daysSinceLastLogin,
-        reason: "4-day re-engagement email",
+        reason: '4-day re-engagement email',
       };
     }
 
@@ -172,7 +172,7 @@ export class BriefBackoffCalculator {
         shouldSend: false,
         isReengagement: false,
         daysSinceLastLogin,
-        reason: "First backoff period (5-9 days)",
+        reason: 'First backoff period (5-9 days)',
       };
     }
 
@@ -182,7 +182,7 @@ export class BriefBackoffCalculator {
         shouldSend: true,
         isReengagement: true,
         daysSinceLastLogin,
-        reason: "10-day re-engagement email",
+        reason: '10-day re-engagement email',
       };
     }
 
@@ -192,7 +192,7 @@ export class BriefBackoffCalculator {
         shouldSend: false,
         isReengagement: false,
         daysSinceLastLogin,
-        reason: "Second backoff period (11-30 days)",
+        reason: 'Second backoff period (11-30 days)',
       };
     }
 
@@ -215,13 +215,13 @@ export class BriefBackoffCalculator {
       };
     }
 
-    console.log("daysSinceLastLogin", daysSinceLastLogin);
+    console.log('daysSinceLastLogin', daysSinceLastLogin);
     // Fallback (shouldn't reach here)
     return {
       shouldSend: false,
       isReengagement: false,
       daysSinceLastLogin,
-      reason: "Default: no email",
+      reason: 'Default: no email',
     };
   }
 }

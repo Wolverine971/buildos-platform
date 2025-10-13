@@ -12,6 +12,7 @@ import { createServiceClient } from "@buildos/supabase-client";
 import type { NotificationDelivery, Json } from "@buildos/shared-types";
 import type { Logger } from "@buildos/shared-utils";
 import { checkUserPreferences } from "./preferenceChecker.js";
+import { performSMSSafetyChecks } from "../../lib/utils/smsPreferenceChecks.js";
 
 const supabase = createServiceClient();
 
@@ -430,6 +431,91 @@ export async function sendSMSNotification(
     }
 
     const phoneNumber = delivery.channel_identifier;
+
+    // 🚨 CRITICAL: SAFETY CHECKS (Phase 1 Bug Fix)
+    // Check quiet hours, rate limits, and phone verification
+    // This ensures daily brief SMS follows the same safety rules as calendar SMS
+    smsLogger.info("Performing SMS safety checks", {
+      userId: delivery.recipient_user_id,
+      eventType,
+    });
+
+    const safetyCheck = await performSMSSafetyChecks(
+      delivery.recipient_user_id,
+      supabase,
+      {
+        sendTime: new Date(), // Check if we can send right now
+      },
+    );
+
+    smsLogger.debug("SMS safety check results", {
+      allowed: safetyCheck.allowed,
+      reason: safetyCheck.reason,
+      phoneVerification: safetyCheck.checks.phoneVerification,
+      inQuietHours: safetyCheck.checks.quietHours.inQuietHours,
+      rateLimitAllowed: safetyCheck.checks.rateLimit.allowed,
+      rateLimitCount: safetyCheck.checks.rateLimit.currentCount,
+      rateLimitMax: safetyCheck.checks.rateLimit.limit,
+    });
+
+    if (!safetyCheck.allowed) {
+      // Handle different failure reasons
+      if (safetyCheck.checks.quietHours.inQuietHours) {
+        // Reschedule to end of quiet hours
+        const rescheduleTime = safetyCheck.rescheduleTime;
+        if (rescheduleTime) {
+          smsLogger.info("SMS in quiet hours - rescheduling delivery", {
+            notificationDeliveryId: delivery.id,
+            originalTime: new Date().toISOString(),
+            rescheduleTime: rescheduleTime.toISOString(),
+          });
+
+          // Update notification delivery to reschedule
+          await supabase
+            .from("notification_deliveries")
+            .update({
+              status: "scheduled",
+              sent_at: null, // Clear sent_at if it was set
+              scheduled_for: rescheduleTime.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", delivery.id);
+
+          return {
+            success: false,
+            error: `Rescheduled due to quiet hours: ${safetyCheck.reason}`,
+          };
+        }
+      }
+
+      // Rate limit reached or phone not verified - mark as failed
+      smsLogger.warn("SMS safety check failed", {
+        notificationDeliveryId: delivery.id,
+        reason: safetyCheck.reason,
+      });
+
+      // Update delivery status to failed
+      await supabase
+        .from("notification_deliveries")
+        .update({
+          status: "failed",
+          failed_at: new Date().toISOString(),
+          last_error: safetyCheck.reason || "Safety check failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id);
+
+      return {
+        success: false,
+        error: `Safety check failed: ${safetyCheck.reason}`,
+      };
+    }
+
+    smsLogger.info("SMS safety checks passed - proceeding with send", {
+      userId: delivery.recipient_user_id,
+      rateLimitCount: safetyCheck.checks.rateLimit.currentCount,
+      rateLimitMax: safetyCheck.checks.rateLimit.limit,
+    });
 
     // Format SMS message from notification payload (now async with template support)
     let messageContent = await formatSMSMessage(delivery, smsLogger);

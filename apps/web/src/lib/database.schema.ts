@@ -1149,7 +1149,6 @@ export type DatabaseSchema = {
 	};
 	user_sms_preferences: {
 		created_at: string | null;
-		daily_brief_sms: boolean | null;
 		daily_count_reset_at: string | null;
 		daily_sms_count: number | null;
 		daily_sms_limit: number | null;
@@ -1159,7 +1158,6 @@ export type DatabaseSchema = {
 		id: string;
 		morning_kickoff_enabled: boolean | null;
 		morning_kickoff_time: string | null;
-		next_up_enabled: boolean | null;
 		opt_out_reason: string | null;
 		opted_out: boolean | null;
 		opted_out_at: string | null;
@@ -1168,7 +1166,6 @@ export type DatabaseSchema = {
 		phone_verified_at: string | null;
 		quiet_hours_end: string | null;
 		quiet_hours_start: string | null;
-		task_reminders: boolean | null;
 		timezone: string | null;
 		updated_at: string | null;
 		urgent_alerts: boolean | null;

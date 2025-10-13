@@ -21,7 +21,6 @@
 		phoneVerified: false,
 		phoneNumber: '',
 		eventReminders: false,
-		nextUpNotifications: false,
 		morningKickoff: false,
 		eveningRecap: false
 	});
@@ -69,7 +68,6 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						event_reminders_enabled: smsPreferences.eventReminders,
-						next_up_enabled: smsPreferences.nextUpNotifications,
 						morning_kickoff_enabled: smsPreferences.morningKickoff,
 						evening_recap_enabled: smsPreferences.eveningRecap
 					})
@@ -82,7 +80,6 @@
 				// Also enable SMS for brief.completed notification if any SMS options are enabled
 				if (
 					smsPreferences.eventReminders ||
-					smsPreferences.nextUpNotifications ||
 					smsPreferences.morningKickoff ||
 					smsPreferences.eveningRecap
 				) {
@@ -139,7 +136,6 @@
 	// Icon mapping for notification types
 	const iconMap = {
 		event_reminders: Bell,
-		next_up: Smartphone,
 		morning_kickoff: Sun,
 		evening_recap: Moon
 	};
@@ -223,26 +219,6 @@
 						</div>
 					</label>
 
-					<!-- Next Up Notifications -->
-					<label class="flex items-start gap-3 cursor-pointer group">
-						<input
-							type="checkbox"
-							bind:checked={smsPreferences.nextUpNotifications}
-							class="mt-1 w-5 h-5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-0"
-						/>
-						<div class="flex-1">
-							<div
-								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-							>
-								<Smartphone class="w-4 h-4" />
-								Next Up Notifications
-							</div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								See what's next on your schedule
-							</p>
-						</div>
-					</label>
-
 					<!-- Morning Kickoff -->
 					<label class="flex items-start gap-3 cursor-pointer group">
 						<input
@@ -284,19 +260,17 @@
 					</label>
 				</div>
 
-				{#if smsPreferences.eventReminders || smsPreferences.nextUpNotifications || smsPreferences.morningKickoff || smsPreferences.eveningRecap}
+				{#if smsPreferences.eventReminders || smsPreferences.morningKickoff || smsPreferences.eveningRecap}
 					<div
 						class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
 					>
 						<p class="text-sm text-blue-700 dark:text-blue-300">
 							✓ {[
 								smsPreferences.eventReminders,
-								smsPreferences.nextUpNotifications,
 								smsPreferences.morningKickoff,
 								smsPreferences.eveningRecap
 							].filter(Boolean).length} notification type{[
 								smsPreferences.eventReminders,
-								smsPreferences.nextUpNotifications,
 								smsPreferences.morningKickoff,
 								smsPreferences.eveningRecap
 							].filter(Boolean).length !== 1

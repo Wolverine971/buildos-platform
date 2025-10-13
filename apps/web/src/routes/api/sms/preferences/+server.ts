@@ -8,12 +8,9 @@ const DEFAULT_PREFERENCES = {
 	phone_verified: false,
 	event_reminders_enabled: false,
 	event_reminder_lead_time_minutes: 15,
-	next_up_enabled: false,
 	morning_kickoff_enabled: false,
 	morning_kickoff_time: '08:00:00',
 	evening_recap_enabled: false,
-	task_reminders: false,
-	daily_brief_sms: false,
 	urgent_alerts: false,
 	quiet_hours_start: '22:00:00',
 	quiet_hours_end: '08:00:00',
@@ -89,12 +86,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		const {
 			event_reminders_enabled,
 			event_reminder_lead_time_minutes,
-			next_up_enabled,
 			morning_kickoff_enabled,
 			evening_recap_enabled,
 			morning_kickoff_time,
-			task_reminders,
-			daily_brief_sms,
 			urgent_alerts,
 			quiet_hours_start,
 			quiet_hours_end,
@@ -113,9 +107,6 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		if (event_reminder_lead_time_minutes !== undefined) {
 			updateData.event_reminder_lead_time_minutes = event_reminder_lead_time_minutes;
 		}
-		if (next_up_enabled !== undefined) {
-			updateData.next_up_enabled = next_up_enabled;
-		}
 		if (morning_kickoff_enabled !== undefined) {
 			updateData.morning_kickoff_enabled = morning_kickoff_enabled;
 		}
@@ -124,12 +115,6 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		}
 		if (morning_kickoff_time !== undefined) {
 			updateData.morning_kickoff_time = morning_kickoff_time;
-		}
-		if (task_reminders !== undefined) {
-			updateData.task_reminders = task_reminders;
-		}
-		if (daily_brief_sms !== undefined) {
-			updateData.daily_brief_sms = daily_brief_sms;
 		}
 		if (urgent_alerts !== undefined) {
 			updateData.urgent_alerts = urgent_alerts;

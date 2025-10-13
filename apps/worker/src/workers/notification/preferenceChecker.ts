@@ -123,7 +123,7 @@ export async function checkUserPreferences(
     if (channel === "sms") {
       const { data: smsPrefs, error: smsError } = await supabase
         .from("user_sms_preferences")
-        .select("opted_out, phone_verified, phone_number, daily_brief_sms")
+        .select("opted_out, phone_verified, phone_number")
         .eq("user_id", userId)
         .single();
 
@@ -170,20 +170,6 @@ export async function checkUserPreferences(
           reason: "No phone number on file",
           preferences: prefs,
         };
-      }
-
-      // Special check for brief.completed SMS
-      if (eventType === "brief.completed") {
-        if (!smsPrefs.daily_brief_sms) {
-          prefLogger.info("SMS not allowed - daily brief SMS disabled", {
-            userId,
-          });
-          return {
-            allowed: false,
-            reason: "Daily brief SMS notifications disabled",
-            preferences: prefs,
-          };
-        }
       }
     }
 

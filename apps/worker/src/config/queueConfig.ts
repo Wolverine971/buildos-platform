@@ -2,7 +2,7 @@
 // Queue configuration management with environment variable support
 // This addresses Moderate Issue #6 in QUEUE_FIXES_DESIGN.md
 
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
@@ -56,8 +56,8 @@ function parseEnvBool(envVar: string, defaultValue: boolean): boolean {
   if (!value) return defaultValue;
 
   const normalizedValue = value.toLowerCase();
-  if (normalizedValue === "true" || normalizedValue === "1") return true;
-  if (normalizedValue === "false" || normalizedValue === "0") return false;
+  if (normalizedValue === 'true' || normalizedValue === '1') return true;
+  if (normalizedValue === 'false' || normalizedValue === '0') return false;
 
   console.warn(
     `⚠️ Invalid boolean value for ${envVar}: "${value}", using default: ${defaultValue}`,
@@ -92,29 +92,29 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 function loadQueueConfig(): QueueConfiguration {
   const config: QueueConfiguration = {
     // Core settings
-    pollInterval: parseEnvInt("QUEUE_POLL_INTERVAL", 5000),
-    batchSize: parseEnvInt("QUEUE_BATCH_SIZE", 5),
-    stalledTimeout: parseEnvInt("QUEUE_STALLED_TIMEOUT", 300000),
+    pollInterval: parseEnvInt('QUEUE_POLL_INTERVAL', 5000),
+    batchSize: parseEnvInt('QUEUE_BATCH_SIZE', 5),
+    stalledTimeout: parseEnvInt('QUEUE_STALLED_TIMEOUT', 300000),
 
     // Retry settings
-    maxRetries: parseEnvInt("QUEUE_MAX_RETRIES", 3),
-    retryBackoffBase: parseEnvInt("QUEUE_RETRY_BACKOFF_BASE", 1000),
+    maxRetries: parseEnvInt('QUEUE_MAX_RETRIES', 3),
+    retryBackoffBase: parseEnvInt('QUEUE_RETRY_BACKOFF_BASE', 1000),
 
     // Progress tracking
     enableProgressTracking: parseEnvBool(
-      "QUEUE_ENABLE_PROGRESS_TRACKING",
+      'QUEUE_ENABLE_PROGRESS_TRACKING',
       true,
     ),
-    progressUpdateRetries: parseEnvInt("QUEUE_PROGRESS_UPDATE_RETRIES", 3),
+    progressUpdateRetries: parseEnvInt('QUEUE_PROGRESS_UPDATE_RETRIES', 3),
 
     // Health and monitoring
-    statsUpdateInterval: parseEnvInt("QUEUE_STATS_UPDATE_INTERVAL", 60000),
-    enableHealthChecks: parseEnvBool("QUEUE_ENABLE_HEALTH_CHECKS", true),
+    statsUpdateInterval: parseEnvInt('QUEUE_STATS_UPDATE_INTERVAL', 60000),
+    enableHealthChecks: parseEnvBool('QUEUE_ENABLE_HEALTH_CHECKS', true),
 
     // Performance tuning
-    workerTimeout: parseEnvInt("QUEUE_WORKER_TIMEOUT", 600000), // 10 minutes default
+    workerTimeout: parseEnvInt('QUEUE_WORKER_TIMEOUT', 600000), // 10 minutes default
     enableConcurrentProcessing: parseEnvBool(
-      "QUEUE_ENABLE_CONCURRENT_PROCESSING",
+      'QUEUE_ENABLE_CONCURRENT_PROCESSING',
       true,
     ),
   };
@@ -150,22 +150,22 @@ export const productionConfig: Partial<QueueConfiguration> = {
  */
 export function getEnvironmentConfig(): QueueConfiguration {
   const baseConfig = loadQueueConfig();
-  const env = process.env.NODE_ENV || "development";
+  const env = process.env.NODE_ENV || 'development';
 
   let profileConfig: Partial<QueueConfiguration> = {};
 
   switch (env.toLowerCase()) {
-    case "production":
+    case 'production':
       profileConfig = productionConfig;
-      console.log("🏭 Using production queue configuration profile");
+      console.log('🏭 Using production queue configuration profile');
       break;
-    case "development":
-    case "dev":
+    case 'development':
+    case 'dev':
       profileConfig = developmentConfig;
-      console.log("🔧 Using development queue configuration profile");
+      console.log('🔧 Using development queue configuration profile');
       break;
     default:
-      console.log("⚙️ Using default queue configuration");
+      console.log('⚙️ Using default queue configuration');
       break;
   }
 
@@ -173,14 +173,14 @@ export function getEnvironmentConfig(): QueueConfiguration {
   const mergedConfig = { ...baseConfig, ...profileConfig };
 
   // Log the final configuration (without sensitive data)
-  console.log("📋 Queue Configuration:");
+  console.log('📋 Queue Configuration:');
   console.log(`   - Poll interval: ${mergedConfig.pollInterval}ms`);
   console.log(`   - Batch size: ${mergedConfig.batchSize}`);
   console.log(`   - Stalled timeout: ${mergedConfig.stalledTimeout}ms`);
   console.log(`   - Max retries: ${mergedConfig.maxRetries}`);
   console.log(`   - Worker timeout: ${mergedConfig.workerTimeout}ms`);
   console.log(
-    `   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? "enabled" : "disabled"}`,
+    `   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? 'enabled' : 'disabled'}`,
   );
 
   return validateConfig(mergedConfig);
@@ -193,7 +193,7 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Check required environment variables
-  const requiredVars = ["PUBLIC_SUPABASE_URL", "PRIVATE_SUPABASE_SERVICE_KEY"];
+  const requiredVars = ['PUBLIC_SUPABASE_URL', 'PRIVATE_SUPABASE_SERVICE_KEY'];
 
   for (const varName of requiredVars) {
     if (!process.env[varName]) {
@@ -202,18 +202,18 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   }
 
   // Check for common configuration mistakes
-  const pollInterval = parseEnvInt("QUEUE_POLL_INTERVAL", 5000);
-  const batchSize = parseEnvInt("QUEUE_BATCH_SIZE", 5);
+  const pollInterval = parseEnvInt('QUEUE_POLL_INTERVAL', 5000);
+  const batchSize = parseEnvInt('QUEUE_BATCH_SIZE', 5);
 
   if (pollInterval < 1000) {
     errors.push(
-      "QUEUE_POLL_INTERVAL should be at least 1000ms to avoid overwhelming the database",
+      'QUEUE_POLL_INTERVAL should be at least 1000ms to avoid overwhelming the database',
     );
   }
 
   if (batchSize > 20) {
     errors.push(
-      "QUEUE_BATCH_SIZE should be 20 or less to prevent resource exhaustion",
+      'QUEUE_BATCH_SIZE should be 20 or less to prevent resource exhaustion',
     );
   }
 

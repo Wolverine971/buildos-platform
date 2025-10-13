@@ -46,7 +46,6 @@ Onboarding V2 is a 6-step guided flow that helps new users:
 - Phone verification via Twilio Verify
 - Notification types:
     - 📅 Event Reminders
-    - ⏰ Next Up Notifications
     - 🌅 Morning Kickoff (8 AM)
     - 🌙 Evening Recap (8 PM)
 
@@ -148,7 +147,6 @@ onboarding_v2_skipped_sms BOOLEAN DEFAULT false
 user_sms_preferences:
   - morning_kickoff_enabled BOOLEAN
   - morning_kickoff_time TIME
-  - next_up_enabled BOOLEAN
   - event_reminders_enabled BOOLEAN
   - evening_recap_enabled BOOLEAN
 ```
