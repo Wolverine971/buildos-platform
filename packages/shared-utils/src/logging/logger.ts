@@ -1,3 +1,4 @@
+// packages/shared-utils/src/logging/logger.ts
 /**
  * Shared Logger for BuildOS Platform
  *

@@ -53,6 +53,27 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       message: "Fetching user preferences and calendar events",
     });
 
+    // ALWAYS fetch user's timezone from users table (centralized source of truth)
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("timezone")
+      .eq("id", userId)
+      .single();
+
+    if (userError) {
+      console.warn(
+        `Failed to fetch user timezone: ${userError.message}, using fallback`,
+      );
+    }
+
+    // Use timezone from users table (centralized), fallback to job data, then UTC
+    // Type assertion: timezone column exists but types haven't been regenerated yet
+    const userTimezone = (user as any)?.timezone || timezone || "UTC";
+
+    console.log(
+      `🕐 [DailySMS] Using timezone: ${userTimezone} (from: ${(user as any)?.timezone ? "users.timezone" : timezone ? "job.data" : "UTC default"})`,
+    );
+
     // Get user SMS preferences
     const { data: smsPrefs, error: prefsError } = await supabase
       .from("user_sms_preferences")
@@ -109,11 +130,11 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     // Calculate date range for calendar events
     const userDate = parseISO(`${date}T00:00:00`);
-    const startOfUserDay = utcToZonedTime(startOfDay(userDate), timezone);
-    const endOfUserDay = utcToZonedTime(endOfDay(userDate), timezone);
+    const startOfUserDay = utcToZonedTime(startOfDay(userDate), userTimezone);
+    const endOfUserDay = utcToZonedTime(endOfDay(userDate), userTimezone);
 
-    const startUTC = zonedTimeToUtc(startOfUserDay, timezone);
-    const endUTC = zonedTimeToUtc(endOfUserDay, timezone);
+    const startUTC = zonedTimeToUtc(startOfUserDay, userTimezone);
+    const endUTC = zonedTimeToUtc(endOfUserDay, userTimezone);
 
     console.log(
       `📅 [DailySMS] Fetching events from ${startUTC.toISOString()} to ${endUTC.toISOString()}`,
@@ -198,7 +219,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
       // Check quiet hours
       if (smsPrefs.quiet_hours_start && smsPrefs.quiet_hours_end) {
-        const reminderTimeInUserTz = utcToZonedTime(reminderTime, timezone);
+        const reminderTimeInUserTz = utcToZonedTime(reminderTime, userTimezone);
         const reminderHour = reminderTimeInUserTz.getHours();
         const reminderMinute = reminderTimeInUserTz.getMinutes();
 
@@ -242,7 +263,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         endTime: eventEnd,
         link: event.event_link || undefined,
         isAllDay: false, // We already filtered out all-day events
-        userTimezone: timezone,
+        userTimezone: userTimezone,
         // Note: description, location, attendees not available in task_calendar_events
         // Will be enhanced in future when we fetch full event details
       };
@@ -288,7 +309,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         event_end: event.event_end,
         event_details: null, // Future: Will store location, description, attendees from Google Calendar API
         scheduled_for: reminderTime.toISOString(),
-        timezone,
+        timezone: userTimezone,
         status: "scheduled",
         generated_via: generatedMessage.generatedVia, // 'llm' or 'template'
         llm_model: generatedMessage.model, // e.g., "deepseek/deepseek-chat"

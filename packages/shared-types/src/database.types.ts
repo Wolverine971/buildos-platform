@@ -4558,6 +4558,7 @@ export type Database = {
           stripe_customer_id: string | null;
           subscription_plan_id: string | null;
           subscription_status: string | null;
+          timezone: string;
           trial_ends_at: string | null;
           updated_at: string;
           usage_archetype: string | null;
@@ -4581,6 +4582,7 @@ export type Database = {
           stripe_customer_id?: string | null;
           subscription_plan_id?: string | null;
           subscription_status?: string | null;
+          timezone?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
           usage_archetype?: string | null;
@@ -4604,6 +4606,7 @@ export type Database = {
           stripe_customer_id?: string | null;
           subscription_plan_id?: string | null;
           subscription_status?: string | null;
+          timezone?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
           usage_archetype?: string | null;

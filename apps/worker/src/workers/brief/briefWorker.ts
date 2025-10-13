@@ -35,21 +35,22 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
   try {
     await updateJobStatus(job.id, "processing", "brief");
 
-    // ALWAYS fetch user's timezone from preferences to ensure consistency
-    const { data: preferences, error: prefError } = await supabase
-      .from("user_brief_preferences")
+    // ALWAYS fetch user's timezone from users table (centralized source of truth)
+    const { data: user, error: userError } = await supabase
+      .from("users")
       .select("timezone")
-      .eq("user_id", job.data.userId)
+      .eq("id", job.data.userId)
       .single();
 
-    if (prefError) {
+    if (userError) {
       console.warn(
-        `Failed to fetch user preferences: ${prefError.message}, using UTC`,
+        `Failed to fetch user timezone: ${userError.message}, using UTC`,
       );
     }
 
-    // Use timezone from preferences, fallback to job data, then UTC
-    let timezone = preferences?.timezone || job.data.timezone || "UTC";
+    // Use timezone from users table (centralized), fallback to job data, then UTC
+    // Type assertion: timezone column exists but types haven't been regenerated yet
+    let timezone = (user as any)?.timezone || job.data.timezone || "UTC";
 
     // Validate the timezone and fallback to UTC if invalid
     if (!isValidTimezone(timezone)) {
@@ -149,6 +150,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
           const trackingId = crypto.randomUUID();
 
           // Prepare email content (reuse existing formatBriefForEmail method)
+          const emailSender = new DailyBriefEmailSender(supabase);
           const { htmlContent, plainText } = emailSender.formatBriefForEmail(
             brief,
             briefDate,

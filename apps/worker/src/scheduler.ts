@@ -52,14 +52,15 @@ async function queueBriefGeneration(
   },
   notificationScheduledFor?: Date,
 ): Promise<any> {
-  // Fetch the latest timezone from user preferences
-  const { data: preferences } = await supabase
-    .from("user_brief_preferences")
+  // Fetch the latest timezone from users table (centralized source of truth)
+  const { data: user } = await supabase
+    .from("users")
     .select("timezone")
-    .eq("user_id", userId)
+    .eq("id", userId)
     .single();
 
-  const userTimezone = preferences?.timezone || timezone || "UTC";
+  // Type assertion: timezone column exists but types haven't been regenerated yet
+  const userTimezone = (user as any)?.timezone || timezone || "UTC";
 
   // Calculate the brief date based on the scheduled time in the user's timezone
   const zonedDate = utcToZonedTime(scheduledFor, userTimezone);
@@ -189,6 +190,22 @@ async function checkAndScheduleBriefs() {
 
     console.log(`📋 Found ${preferences.length} active preference(s)`);
 
+    // PHASE 0: Batch fetch user timezones (centralized source of truth)
+    const userIds = preferences.map((p) => p.user_id).filter(Boolean);
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, timezone")
+      .in("id", userIds);
+
+    // Create timezone lookup map
+    // Type assertion: timezone column exists but types haven't been regenerated yet
+    const userTimezoneMap = new Map<string, string>();
+    (users as any)?.forEach((user: any) => {
+      if (user.id && user.timezone) {
+        userTimezoneMap.set(user.id, user.timezone);
+      }
+    });
+
     // PHASE 1: Batch fetch engagement data for all users (if enabled)
     const engagementDataMap = new Map<
       string,
@@ -299,13 +316,13 @@ async function checkAndScheduleBriefs() {
     console.log(
       `🔍 Checking for existing jobs for ${usersToSchedule.length} user(s)...`,
     );
-    const userIds = usersToSchedule.map((u) => u.preference.user_id);
+    const userIdsToCheck = usersToSchedule.map((u) => u.preference.user_id);
     const timeWindow = 30 * 60 * 1000; // 30 minutes tolerance
 
     const { data: existingJobs } = await supabase
       .from("queue_jobs")
       .select("user_id, scheduled_for")
-      .in("user_id", userIds)
+      .in("user_id", userIdsToCheck)
       .eq("job_type", "generate_daily_brief")
       .in("status", ["pending", "processing"]);
 
@@ -366,7 +383,7 @@ async function checkAndScheduleBriefs() {
             preference.user_id,
             generationStartTime, // Start generating early
             undefined,
-            preference.timezone || "UTC",
+            userTimezoneMap.get(preference.user_id) || "UTC", // Use centralized timezone from users table
             engagementMetadata,
             nextRunTime, // Send notification at user's scheduled time
           );
@@ -642,13 +659,29 @@ async function checkAndScheduleDailySMS() {
       `📋 [SMS Scheduler] Found ${smsPreferences.length} user(s) with SMS enabled`,
     );
 
+    // Batch fetch user timezones (centralized source of truth)
+    const smsUserIds = smsPreferences.map((p) => p.user_id).filter(Boolean);
+    const { data: smsUsers } = await supabase
+      .from("users")
+      .select("id, timezone")
+      .in("id", smsUserIds);
+
+    // Create timezone lookup map
+    // Type assertion: timezone column exists but types haven't been regenerated yet
+    const smsUserTimezoneMap = new Map<string, string>();
+    (smsUsers as any)?.forEach((user: any) => {
+      if (user.id && user.timezone) {
+        smsUserTimezoneMap.set(user.id, user.timezone);
+      }
+    });
+
     // Queue a job for each user to process their daily SMS
     let queuedCount = 0;
     let skippedCount = 0;
 
     for (const pref of smsPreferences) {
       try {
-        const userTimezone = pref.timezone || "UTC";
+        const userTimezone = smsUserTimezoneMap.get(pref.user_id) || "UTC";
         const now = new Date();
 
         // Calculate today's date in user's timezone

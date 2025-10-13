@@ -1,3 +1,4 @@
+// packages/shared-utils/src/logging/correlation.ts
 /**
  * Correlation ID utilities for tracking requests across services
  *

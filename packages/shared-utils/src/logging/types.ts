@@ -1,3 +1,4 @@
+// packages/shared-utils/src/logging/types.ts
 /**
  * Shared logging types for BuildOS platform
  * Used across web and worker applications

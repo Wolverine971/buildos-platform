@@ -395,13 +395,12 @@ describe('notificationPreferencesStore', () => {
 
 		it('should clear error', async () => {
 			// Set up error state
-			(global.fetch as any).mockResolvedValueOnce({
-				ok: false,
-				status: 500
-			});
+			(global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
 			await notificationPreferencesStore.load();
-			expect(get(notificationPreferencesStore).error).toBeTruthy();
+
+			const errorState = get(notificationPreferencesStore);
+			expect(errorState.error).toBeTruthy();
 
 			// Clear error
 			notificationPreferencesStore.clearError();
@@ -422,7 +421,8 @@ describe('notificationPreferencesStore', () => {
 			});
 
 			await notificationPreferencesStore.load();
-			expect(get(notificationPreferencesStore).preferences).toBeTruthy();
+			const loadedState = get(notificationPreferencesStore);
+			expect(loadedState.preferences?.should_email_daily_brief).toBe(true);
 
 			// Reset
 			notificationPreferencesStore.reset();

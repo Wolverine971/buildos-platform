@@ -74,10 +74,17 @@ export class TaskTimeSlotFinder {
 			console.log('no calendar preferences');
 		}
 
+		// Get user's timezone from users table (centralized source of truth)
+		const { data: user } = await this.supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', userId)
+			.single();
+
 		const preferences = userCalendarPreferences || {
 			user_id: userId,
 			id: '',
-			timezone: params.timeZone || 'UTC',
+			timezone: user?.timezone || params.timeZone || 'UTC',
 			work_start_time: '09:00:00',
 			work_end_time: '17:00:00',
 			working_days: [1, 2, 3, 4, 5],
@@ -91,7 +98,8 @@ export class TaskTimeSlotFinder {
 			updated_at: new Date().toISOString()
 		};
 
-		const timezone = preferences.timezone || params.timeZone || 'UTC';
+		// Use timezone: users.timezone > calendar_prefs.timezone > params.timeZone > UTC
+		const timezone = user?.timezone || preferences.timezone || params.timeZone || 'UTC';
 		const defaultDuration = preferences.default_task_duration_minutes || 60;
 		const effectiveDuration = durationMinutes || defaultDuration;
 
@@ -174,11 +182,18 @@ export class TaskTimeSlotFinder {
 			console.log('no calendar preferences');
 		}
 
+		// Get user's timezone from users table (centralized source of truth)
+		const { data: user } = await this.supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', userId)
+			.single();
+
 		// Provide default preferences if none exist (don't auto-create in DB)
 		const preferences = userCalendarPreferences || {
 			user_id: userId,
 			id: '',
-			timezone: 'America/New_York',
+			timezone: user?.timezone || 'America/New_York',
 			work_start_time: '09:00:00',
 			work_end_time: '17:00:00',
 			working_days: [1, 2, 3, 4, 5],
@@ -197,6 +212,11 @@ export class TaskTimeSlotFinder {
 				userId,
 				errorCode: userCalendarPreferencesError.code
 			});
+		}
+
+		// Override timezone with users.timezone if available (centralized source of truth)
+		if (user?.timezone && preferences.timezone !== user.timezone) {
+			preferences.timezone = user.timezone;
 		}
 
 		// Filter out recurring tasks (they shouldn't be adjusted)

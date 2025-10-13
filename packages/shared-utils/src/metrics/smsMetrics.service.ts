@@ -1,4 +1,4 @@
-// packages/sms-metrics/src/smsMetrics.service.ts
+// packages/shared-utils/src/metrics/smsMetrics.service.ts
 /**
  * SMS Metrics Service
  *

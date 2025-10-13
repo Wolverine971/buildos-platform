@@ -20,6 +20,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
+		// Fetch timezone from users table (centralized source of truth)
+		const { data: userData } = await supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', user.id)
+			.single();
+
 		const { data: preferences, error } = await supabase
 			.from('user_brief_preferences')
 			.select('*')
@@ -36,7 +43,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				.from('user_brief_preferences')
 				.insert({
 					user_id: user.id,
-					...DEFAULT_PREFERENCES
+					...DEFAULT_PREFERENCES,
+					timezone: userData?.timezone || DEFAULT_PREFERENCES.timezone
 				})
 				.select()
 				.single();
@@ -45,10 +53,21 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				throw createError;
 			}
 
-			return json({ preferences: newPreferences });
+			return json({
+				preferences: {
+					...newPreferences,
+					timezone: userData?.timezone || newPreferences.timezone
+				}
+			});
 		}
 
-		return json({ preferences });
+		// Merge timezone from users table (overrides preference table)
+		return json({
+			preferences: {
+				...preferences,
+				timezone: userData?.timezone || preferences.timezone
+			}
+		});
 	} catch (error) {
 		console.error('Error fetching brief preferences:', error);
 		return json({ error: 'Failed to fetch preferences' }, { status: 500 });
@@ -102,7 +121,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		let error;
 
 		if (existingPreferences) {
-			// Update existing preferences
+			// Update timezone in users table (centralized source of truth)
+			if (timezone) {
+				await supabase.from('users').update({ timezone }).eq('id', user.id);
+			}
+
+			// Update existing preferences (keep timezone for backward compatibility)
 			const { data, error: updateError } = await supabase
 				.from('user_brief_preferences')
 				.update({
@@ -120,7 +144,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			preferences = data;
 			error = updateError;
 		} else {
-			// Create new preferences
+			// Update timezone in users table (centralized source of truth)
+			if (timezone) {
+				await supabase.from('users').update({ timezone }).eq('id', user.id);
+			}
+
+			// Create new preferences (keep timezone for backward compatibility)
 			const { data, error: createError } = await supabase
 				.from('user_brief_preferences')
 				.insert({

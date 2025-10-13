@@ -52,18 +52,31 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// User explicitly provided a date, use it as-is
 		targetDate = briefDate;
 	} else {
-		// Calculate today's date in user's timezone to avoid midnight edge cases
-		const { data: preferences } = await supabase
-			.from('user_brief_preferences')
+		// Fetch timezone from users table (centralized source of truth)
+		// Fallback to user_brief_preferences for backward compatibility
+		const { data: user } = await supabase
+			.from('users')
 			.select('timezone')
-			.eq('user_id', userId)
+			.eq('id', userId)
 			.single();
 
-		const userTimezone = getSafeTimezone(preferences?.timezone, userId);
+		let userTimezone = user?.timezone;
+
+		// Fallback to preferences table if users.timezone is not set
+		if (!userTimezone) {
+			const { data: preferences } = await supabase
+				.from('user_brief_preferences')
+				.select('timezone')
+				.eq('user_id', userId)
+				.single();
+			userTimezone = preferences?.timezone;
+		}
+
+		userTimezone = getSafeTimezone(userTimezone, userId);
 		targetDate = getCurrentDateInTimezone(userTimezone);
 
 		console.log(
-			`[Brief Generation] Calculated target date for user ${userId}: ${targetDate} (timezone: ${userTimezone})`
+			`[Brief Generation] Calculated target date for user ${userId}: ${targetDate} (timezone: ${userTimezone}, from: ${user?.timezone ? 'users.timezone' : 'brief_preferences fallback'})`
 		);
 	}
 
@@ -144,17 +157,31 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	if (briefDateParam) {
 		briefDate = briefDateParam;
 	} else {
-		const { data: preferences } = await supabase
-			.from('user_brief_preferences')
+		// Fetch timezone from users table (centralized source of truth)
+		// Fallback to user_brief_preferences for backward compatibility
+		const { data: user } = await supabase
+			.from('users')
 			.select('timezone')
-			.eq('user_id', userId)
+			.eq('id', userId)
 			.single();
 
-		const userTimezone = getSafeTimezone(preferences?.timezone, userId);
+		let userTimezone = user?.timezone;
+
+		// Fallback to preferences table if users.timezone is not set
+		if (!userTimezone) {
+			const { data: preferences } = await supabase
+				.from('user_brief_preferences')
+				.select('timezone')
+				.eq('user_id', userId)
+				.single();
+			userTimezone = preferences?.timezone;
+		}
+
+		userTimezone = getSafeTimezone(userTimezone, userId);
 		briefDate = getCurrentDateInTimezone(userTimezone);
 
 		console.log(
-			`[Brief Generation SSE] Calculated target date for user ${userId}: ${briefDate} (timezone: ${userTimezone})`
+			`[Brief Generation SSE] Calculated target date for user ${userId}: ${briefDate} (timezone: ${userTimezone}, from: ${user?.timezone ? 'users.timezone' : 'brief_preferences fallback'})`
 		);
 	}
 

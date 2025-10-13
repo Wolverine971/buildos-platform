@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-13T20:55:07.958Z
+// Generated on: 2025-10-13T21:22:45.883Z
 
 export type Json =
   | string
@@ -1199,6 +1199,7 @@ export type DatabaseSchema = {
     stripe_customer_id: string | null;
     subscription_plan_id: string | null;
     subscription_status: string | null;
+    timezone: string;
     trial_ends_at: string | null;
     updated_at: string;
     usage_archetype: string | null;

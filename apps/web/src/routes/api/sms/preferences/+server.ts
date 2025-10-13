@@ -32,6 +32,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
+		// Fetch timezone from users table (centralized source of truth)
+		const { data: userData } = await supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', user.id)
+			.single();
+
 		const { data: preferences, error } = await supabase
 			.from('user_sms_preferences')
 			.select('*')
@@ -43,17 +50,24 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			throw error;
 		}
 
-		// If no preferences exist, return defaults
+		// If no preferences exist, return defaults with timezone from users table
 		if (!preferences) {
 			return json({
 				preferences: {
 					user_id: user.id,
-					...DEFAULT_PREFERENCES
+					...DEFAULT_PREFERENCES,
+					timezone: userData?.timezone || DEFAULT_PREFERENCES.timezone
 				}
 			});
 		}
 
-		return json({ preferences });
+		// Return preferences with timezone from users table (overrides preference table)
+		return json({
+			preferences: {
+				...preferences,
+				timezone: userData?.timezone || preferences.timezone
+			}
+		});
 	} catch (error) {
 		console.error('Error fetching SMS preferences:', error);
 		return json({ error: 'Failed to fetch SMS preferences' }, { status: 500 });
@@ -128,6 +142,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		}
 		if (timezone !== undefined) {
 			updateData.timezone = timezone;
+
+			// Also update users table (centralized source of truth)
+			await supabase.from('users').update({ timezone }).eq('id', user.id);
 		}
 
 		// Use UPSERT to atomically insert or update - prevents race conditions

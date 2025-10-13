@@ -1,4 +1,4 @@
-// packages/sms-metrics/src/smsAlerts.service.ts
+// packages/shared-utils/src/metrics/smsAlerts.service.ts
 /**
  * SMS Alerts Service
  *

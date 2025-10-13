@@ -9,6 +9,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
+		// Fetch timezone from users table (centralized source of truth)
+		const { data: userData } = await supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', user.id)
+			.single();
+
 		const { data: preferences, error } = await supabase
 			.from('user_calendar_preferences')
 			.select('*')
@@ -21,20 +28,28 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: 'Failed to fetch preferences' }, { status: 500 });
 		}
 
-		// Return preferences or defaults
+		// Default preferences with timezone from users table
+		const defaultPreferences = {
+			work_start_time: '09:00',
+			work_end_time: '17:00',
+			working_days: [1, 2, 3, 4, 5],
+			default_task_duration_minutes: 60,
+			min_task_duration_minutes: 30,
+			max_task_duration_minutes: 240,
+			exclude_holidays: true,
+			holiday_country_code: 'US',
+			timezone: userData?.timezone || 'America/New_York',
+			prefer_morning_for_important_tasks: false
+		};
+
+		// Return preferences with timezone from users table (overrides preference table)
 		return json(
-			preferences || {
-				work_start_time: '09:00',
-				work_end_time: '17:00',
-				working_days: [1, 2, 3, 4, 5],
-				default_task_duration_minutes: 60,
-				min_task_duration_minutes: 30,
-				max_task_duration_minutes: 240,
-				exclude_holidays: true,
-				holiday_country_code: 'US',
-				timezone: 'America/New_York',
-				prefer_morning_for_important_tasks: false
-			}
+			preferences
+				? {
+						...preferences,
+						timezone: userData?.timezone || preferences.timezone
+					}
+				: defaultPreferences
 		);
 	} catch (error) {
 		console.error('Error in calendar preferences GET:', error);
@@ -79,7 +94,12 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			return json({ error: 'Maximum task duration cannot exceed 8 hours' }, { status: 400 });
 		}
 
-		// Upsert preferences
+		// If timezone is being updated, also update users table (centralized source of truth)
+		if (updates.timezone) {
+			await supabase.from('users').update({ timezone: updates.timezone }).eq('id', user.id);
+		}
+
+		// Upsert preferences (keep timezone for backward compatibility)
 		const { data, error } = await supabase
 			.from('user_calendar_preferences')
 			.upsert({

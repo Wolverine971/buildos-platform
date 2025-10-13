@@ -70,14 +70,27 @@ export class ProjectCalendarService {
 				project.description ||
 				`Tasks and events for ${project.name}`;
 
-			// Get user's timezone preference
-			const { data: userPrefs } = await this.supabase
-				.from('user_calendar_preferences')
+			// Get user's timezone from users table (centralized source of truth)
+			// Fallback to calendar preferences for backward compatibility
+			const { data: user } = await this.supabase
+				.from('users')
 				.select('timezone')
-				.eq('user_id', options.userId)
+				.eq('id', options.userId)
 				.single();
 
-			const timeZone = options.timeZone || userPrefs?.timezone || 'America/New_York';
+			let userTimezone = user?.timezone;
+
+			// Fallback to calendar preferences if users.timezone is not set
+			if (!userTimezone) {
+				const { data: userPrefs } = await this.supabase
+					.from('user_calendar_preferences')
+					.select('timezone')
+					.eq('user_id', options.userId)
+					.single();
+				userTimezone = userPrefs?.timezone;
+			}
+
+			const timeZone = options.timeZone || userTimezone || 'America/New_York';
 
 			// Create the Google Calendar
 			const createResult = await this.calendarService.createProjectCalendar(options.userId, {
