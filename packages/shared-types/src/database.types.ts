@@ -4025,7 +4025,6 @@ export type Database = {
           id: string;
           is_active: boolean | null;
           time_of_day: string | null;
-          timezone: string | null;
           updated_at: string;
           user_id: string;
         };
@@ -4037,7 +4036,6 @@ export type Database = {
           id?: string;
           is_active?: boolean | null;
           time_of_day?: string | null;
-          timezone?: string | null;
           updated_at?: string;
           user_id: string;
         };
@@ -4049,7 +4047,6 @@ export type Database = {
           id?: string;
           is_active?: boolean | null;
           time_of_day?: string | null;
-          timezone?: string | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -4065,7 +4062,6 @@ export type Database = {
           max_task_duration_minutes: number | null;
           min_task_duration_minutes: number | null;
           prefer_morning_for_important_tasks: boolean | null;
-          timezone: string | null;
           updated_at: string;
           user_id: string;
           work_end_time: string | null;
@@ -4081,7 +4077,6 @@ export type Database = {
           max_task_duration_minutes?: number | null;
           min_task_duration_minutes?: number | null;
           prefer_morning_for_important_tasks?: boolean | null;
-          timezone?: string | null;
           updated_at?: string;
           user_id: string;
           work_end_time?: string | null;
@@ -4097,7 +4092,6 @@ export type Database = {
           max_task_duration_minutes?: number | null;
           min_task_duration_minutes?: number | null;
           prefer_morning_for_important_tasks?: boolean | null;
-          timezone?: string | null;
           updated_at?: string;
           user_id?: string;
           work_end_time?: string | null;
@@ -4338,7 +4332,6 @@ export type Database = {
           should_email_daily_brief: boolean | null;
           should_sms_daily_brief: boolean | null;
           sms_enabled: boolean | null;
-          timezone: string | null;
           updated_at: string | null;
           user_id: string;
         };
@@ -4360,7 +4353,6 @@ export type Database = {
           should_email_daily_brief?: boolean | null;
           should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
-          timezone?: string | null;
           updated_at?: string | null;
           user_id: string;
         };
@@ -4382,7 +4374,6 @@ export type Database = {
           should_email_daily_brief?: boolean | null;
           should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
-          timezone?: string | null;
           updated_at?: string | null;
           user_id?: string;
         };
@@ -4469,7 +4460,6 @@ export type Database = {
           quiet_hours_end: string | null;
           quiet_hours_start: string | null;
           task_reminders: boolean | null;
-          timezone: string | null;
           updated_at: string | null;
           urgent_alerts: boolean | null;
           user_id: string;
@@ -4496,7 +4486,6 @@ export type Database = {
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
           task_reminders?: boolean | null;
-          timezone?: string | null;
           updated_at?: string | null;
           urgent_alerts?: boolean | null;
           user_id: string;
@@ -4523,7 +4512,6 @@ export type Database = {
           quiet_hours_end?: string | null;
           quiet_hours_start?: string | null;
           task_reminders?: boolean | null;
-          timezone?: string | null;
           updated_at?: string | null;
           urgent_alerts?: boolean | null;
           user_id?: string;

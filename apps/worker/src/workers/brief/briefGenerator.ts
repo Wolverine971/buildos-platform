@@ -71,16 +71,16 @@ export async function generateDailyBrief(
   timezone: string,
   jobId?: string,
 ): Promise<any> {
-  // Fetch user's timezone if not provided
+  // Fetch user's timezone if not provided (from centralized users table)
   let userTimezone = timezone;
   if (!userTimezone) {
-    const { data: preferences } = await supabase
-      .from("user_brief_preferences")
+    const { data: user } = await supabase
+      .from("users")
       .select("timezone")
       .eq("user_id", userId)
       .single();
 
-    userTimezone = preferences?.timezone || "UTC";
+    userTimezone = user?.timezone || "UTC";
   }
 
   console.log(

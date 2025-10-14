@@ -813,6 +813,7 @@ You have **three overlapping preference systems** that evolved independently:
 #### What Was Fixed
 
 ✅ **Priority 1: Email Consolidation (COMPLETED)**
+
 - Migrated to user-level preferences (`event_type='user'`)
 - Added `should_email_daily_brief` to `user_notification_preferences`
 - Removed `email_daily_brief` from `user_brief_preferences` (marked deprecated)
@@ -826,45 +827,51 @@ See: `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-ref
 ⚠️ **Priority 2: SMS Simplification (IN PROGRESS)**
 
 **Issues Identified**:
+
 1. 🚨 **CRITICAL**: Daily brief SMS bypasses quiet hours (users could get SMS during sleep)
 2. 🚨 **CRITICAL**: Daily brief SMS bypasses rate limiting (unlimited SMS possible)
 3. ⚠️ **UX ISSUE**: Duplicate SMS checks - `daily_brief_sms` AND `should_sms_daily_brief` both required
 
 **Fields to Remove**:
+
 - `daily_brief_sms` - Now redundant with `should_sms_daily_brief` (event_type='user')
 - `task_reminders` - Never implemented, no worker code
 - `next_up_enabled` - Never implemented, no worker code
 
 **Fields to Keep**:
+
 - `event_reminders_enabled` ✅ (Fully working calendar SMS feature)
 - `morning_kickoff_enabled`, `evening_recap_enabled` ⏳ (Future features - UI ready, no worker)
 - `quiet_hours_*`, `daily_sms_limit`, phone verification fields ✅ (Essential)
 
 #### SMS Flow Status
 
-| Flow | Implementation Status | Action Needed |
-|------|----------------------|---------------|
-| Calendar Event Reminders | ✅ **WORKING** | Keep as-is |
-| Morning Kickoff | ❌ UI only, no worker | Keep for future OR remove |
-| Evening Recap | ❌ UI only, no worker | Keep for future OR remove |
-| Next Up Notifications | ❌ UI only, no worker | Remove completely |
-| Task Reminders | ❌ Field exists, never used | Remove completely |
-| Daily Brief SMS | ⚠️ Duplicate checks | Simplify to single check |
+| Flow                     | Implementation Status       | Action Needed             |
+| ------------------------ | --------------------------- | ------------------------- |
+| Calendar Event Reminders | ✅ **WORKING**              | Keep as-is                |
+| Morning Kickoff          | ❌ UI only, no worker       | Keep for future OR remove |
+| Evening Recap            | ❌ UI only, no worker       | Keep for future OR remove |
+| Next Up Notifications    | ❌ UI only, no worker       | Remove completely         |
+| Task Reminders           | ❌ Field exists, never used | Remove completely         |
+| Daily Brief SMS          | ⚠️ Duplicate checks         | Simplify to single check  |
 
 #### Detailed Migration Plan
 
 See: `/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md`
 
 **Phase 1: Fix Critical Bugs** (Deploy ASAP)
+
 - Add quiet hours check to notification SMS
 - Add rate limit check to notification SMS
 - Remove redundant `daily_brief_sms` check
 
 **Phase 2: Remove Deprecated Fields** (Deploy after Phase 1)
+
 - Remove `task_reminders`, `next_up_enabled`, `daily_brief_sms` from code
 - Update UI, API endpoints, service layer
 
 **Phase 3: Database Cleanup** (Deploy last)
+
 - Mark columns as deprecated
 - Drop columns after 2 weeks
 - Regenerate TypeScript schemas
@@ -872,6 +879,7 @@ See: `/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migrati
 #### Updated Architecture After Refactor
 
 **User-Level Daily Brief Preferences** (`event_type='user'`):
+
 ```typescript
 user_notification_preferences {
   should_email_daily_brief: boolean;  // Controls email ✅
@@ -880,6 +888,7 @@ user_notification_preferences {
 ```
 
 **SMS-Specific Settings** (Global for ALL SMS types):
+
 ```typescript
 user_sms_preferences {
   // Phone Verification (KEEP)
@@ -910,16 +919,13 @@ user_sms_preferences {
 #### Summary of Remaining Work
 
 **Critical (Fix ASAP)**:
+
 1. Add quiet hours enforcement to daily brief SMS
 2. Add rate limiting enforcement to daily brief SMS
 3. Remove dual-check requirement for daily brief SMS
 
-**Medium Priority**:
-4. Remove unused fields from codebase (`task_reminders`, `next_up_enabled`, `daily_brief_sms`)
-5. Update UI to remove deprecated toggles
+**Medium Priority**: 4. Remove unused fields from codebase (`task_reminders`, `next_up_enabled`, `daily_brief_sms`) 5. Update UI to remove deprecated toggles
 
-**Low Priority**:
-6. Drop deprecated columns from database
-7. Decide on future features (implement or remove completely)
+**Low Priority**: 6. Drop deprecated columns from database 7. Decide on future features (implement or remove completely)
 
 **Risk Assessment**: HIGH - Current bugs allow SMS to bypass user safety preferences

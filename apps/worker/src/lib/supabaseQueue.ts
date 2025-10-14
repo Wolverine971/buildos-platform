@@ -5,11 +5,11 @@ import type {
   QueueJobStatus,
   QueueJobType,
   QueueJob as SharedQueueJob,
-} from '@buildos/shared-types';
-import { updateJobProgress } from './progressTracker';
-import { supabase } from './supabase';
+} from "@buildos/shared-types";
+import { updateJobProgress } from "./progressTracker";
+import { supabase } from "./supabase";
 
-type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
+type QueueJob = Database["public"]["Tables"]["queue_jobs"]["Row"];
 type JobStatus = QueueJobStatus;
 type JobType = QueueJobType;
 
@@ -73,7 +73,7 @@ export class SupabaseQueue {
       `${jobType}-${userId}-${options?.scheduledFor?.toISOString() ?? Date.now()}`;
 
     // Use the database function for atomic insert with deduplication
-    const { data: jobId, error } = await supabase.rpc('add_queue_job', {
+    const { data: jobId, error } = await supabase.rpc("add_queue_job", {
       p_user_id: userId,
       p_job_type: jobType,
       p_metadata: data,
@@ -89,9 +89,9 @@ export class SupabaseQueue {
 
     // Fetch the created job
     const { data: job, error: fetchError } = await supabase
-      .from('queue_jobs')
-      .select('*')
-      .eq('id', jobId)
+      .from("queue_jobs")
+      .select("*")
+      .eq("id", jobId)
       .single();
 
     if (fetchError || !job) {
@@ -117,16 +117,16 @@ export class SupabaseQueue {
    */
   async start(): Promise<void> {
     if (this.processingInterval) {
-      console.warn('⚠️ Queue already started');
+      console.warn("⚠️ Queue already started");
       return;
     }
 
-    console.log('🚀 Starting Supabase queue processor');
+    console.log("🚀 Starting Supabase queue processor");
     console.log(`   - Poll interval: ${this.pollInterval}ms`);
     console.log(`   - Batch size: ${this.batchSize}`);
     console.log(`   - Stalled timeout: ${this.stalledTimeout}ms`);
     console.log(
-      `   - Job types: ${Array.from(this.processors.keys()).join(', ')}`,
+      `   - Job types: ${Array.from(this.processors.keys()).join(", ")}`,
     );
 
     // Process immediately on start
@@ -144,7 +144,7 @@ export class SupabaseQueue {
       await this.recoverStalledJobs();
     }, 60000);
 
-    console.log('✅ Queue processor started');
+    console.log("✅ Queue processor started");
   }
 
   /**
@@ -159,7 +159,7 @@ export class SupabaseQueue {
       clearInterval(this.stalledJobInterval);
       this.stalledJobInterval = null;
     }
-    console.log('🛑 Queue processor stopped');
+    console.log("🛑 Queue processor stopped");
   }
 
   /**
@@ -173,13 +173,13 @@ export class SupabaseQueue {
       // Claim jobs atomically using the database function
       const jobTypes = Array.from(this.processors.keys());
 
-      const { data: jobs, error } = await supabase.rpc('claim_pending_jobs', {
+      const { data: jobs, error } = await supabase.rpc("claim_pending_jobs", {
         p_job_types: jobTypes,
         p_batch_size: this.batchSize,
       });
 
       if (error) {
-        console.error('❌ Error claiming jobs:', error);
+        console.error("❌ Error claiming jobs:", error);
         return;
       }
 
@@ -197,7 +197,7 @@ export class SupabaseQueue {
       // Log any failed job results for monitoring
       const failedJobs = results
         .map((result, index) => ({ result, index }))
-        .filter(({ result }) => result.status === 'rejected')
+        .filter(({ result }) => result.status === "rejected")
         .map(({ result, index }) => ({
           jobId: jobs[index].queue_job_id,
           reason: (result as PromiseRejectedResult).reason,
@@ -213,13 +213,13 @@ export class SupabaseQueue {
       }
 
       const successfulJobs = results.filter(
-        (result) => result.status === 'fulfilled',
+        (result) => result.status === "fulfilled",
       ).length;
       if (successfulJobs > 0) {
         console.log(`✅ Successfully processed ${successfulJobs} job(s)`);
       }
     } catch (error) {
-      console.error('❌ Error in job processing loop:', error);
+      console.error("❌ Error in job processing loop:", error);
     } finally {
       this.isProcessing = false;
     }
@@ -260,7 +260,7 @@ export class SupabaseQueue {
         // Attempt to mark the job as failed, but don't let this error crash the system
         await this.failJob(
           job.id,
-          `Unexpected processing error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Unexpected processing error: ${error instanceof Error ? error.message : "Unknown error"}`,
           false,
         );
       } catch (failError) {
@@ -307,7 +307,7 @@ export class SupabaseQueue {
       const result = await processor(processingJob);
 
       // Mark as completed
-      const { error } = await (supabase as any).rpc('complete_queue_job', {
+      const { error } = await (supabase as any).rpc("complete_queue_job", {
         p_job_id: job.id,
         p_result: result,
       });
@@ -325,7 +325,7 @@ export class SupabaseQueue {
 
       // Determine if we should retry
       const shouldRetry = (job.attempts || 0) < (job.max_attempts || 3);
-      await this.failJob(job.id, error.message || 'Unknown error', shouldRetry);
+      await this.failJob(job.id, error.message || "Unknown error", shouldRetry);
     }
   }
 
@@ -337,7 +337,7 @@ export class SupabaseQueue {
     errorMessage: string,
     retry: boolean,
   ): Promise<void> {
-    const { error } = await supabase.rpc('fail_queue_job', {
+    const { error } = await supabase.rpc("fail_queue_job", {
       p_job_id: jobId,
       p_error_message: errorMessage,
       p_retry: retry,
@@ -353,12 +353,12 @@ export class SupabaseQueue {
    */
   private async recoverStalledJobs(): Promise<void> {
     try {
-      const { data: count, error } = await supabase.rpc('reset_stalled_jobs', {
+      const { data: count, error } = await supabase.rpc("reset_stalled_jobs", {
         p_stall_timeout: `${this.stalledTimeout / 1000} seconds`,
       });
 
       if (error) {
-        console.error('❌ Error recovering stalled jobs:', error);
+        console.error("❌ Error recovering stalled jobs:", error);
         return;
       }
 
@@ -366,7 +366,7 @@ export class SupabaseQueue {
         console.log(`🔄 Recovered ${count} stalled job(s)`);
       }
     } catch (error) {
-      console.error('❌ Error in stalled job recovery:', error);
+      console.error("❌ Error in stalled job recovery:", error);
     }
   }
 
@@ -374,10 +374,10 @@ export class SupabaseQueue {
    * Get queue statistics
    */
   async getStats(): Promise<any> {
-    const { data, error } = await supabase.from('queue_jobs_stats').select('*');
+    const { data, error } = await supabase.from("queue_jobs_stats").select("*");
 
     if (error) {
-      console.error('❌ Error fetching queue stats:', error);
+      console.error("❌ Error fetching queue stats:", error);
       return null;
     }
 
@@ -389,13 +389,13 @@ export class SupabaseQueue {
    */
   async cancelJob(jobId: string): Promise<boolean> {
     const { error } = await supabase
-      .from('queue_jobs')
+      .from("queue_jobs")
       .update({
-        status: 'cancelled',
+        status: "cancelled",
         updated_at: new Date().toISOString(),
       })
-      .eq('queue_job_id', jobId)
-      .in('status', ['pending', 'processing']);
+      .eq("queue_job_id", jobId)
+      .in("status", ["pending", "processing"]);
 
     if (error) {
       console.error(`❌ Error cancelling job ${jobId}:`, error);
@@ -413,11 +413,11 @@ export class SupabaseQueue {
     userId: string,
     jobType: JobType,
     metadataFilter?: any,
-    allowedStatuses: string[] = ['pending', 'processing'],
+    allowedStatuses: string[] = ["pending", "processing"],
   ): Promise<{ count: number; cancelledJobs: any[] }> {
     try {
       const { data: cancelledJobs, error } = await (supabase as any).rpc(
-        'cancel_jobs_atomic',
+        "cancel_jobs_atomic",
         {
           p_user_id: userId,
           p_job_type: jobType,
@@ -427,7 +427,7 @@ export class SupabaseQueue {
       );
 
       if (error) {
-        console.error('❌ Error in atomic job cancellation:', error);
+        console.error("❌ Error in atomic job cancellation:", error);
         return { count: 0, cancelledJobs: [] };
       }
 
@@ -440,7 +440,7 @@ export class SupabaseQueue {
 
       return { count, cancelledJobs: (cancelledJobs as any[]) || [] };
     } catch (error) {
-      console.error('❌ Error in cancelJobsAtomic:', error);
+      console.error("❌ Error in cancelJobsAtomic:", error);
       return { count: 0, cancelledJobs: [] };
     }
   }
@@ -455,7 +455,7 @@ export class SupabaseQueue {
   ): Promise<{ count: number; cancelledJobIds: string[] }> {
     try {
       const { data, error } = await (supabase as any).rpc(
-        'cancel_brief_jobs_for_date',
+        "cancel_brief_jobs_for_date",
         {
           p_user_id: userId,
           p_brief_date: briefDate,
@@ -464,7 +464,7 @@ export class SupabaseQueue {
       );
 
       if (error) {
-        console.error('❌ Error cancelling brief jobs:', error);
+        console.error("❌ Error cancelling brief jobs:", error);
         return { count: 0, cancelledJobIds: [] };
       }
 
@@ -477,7 +477,7 @@ export class SupabaseQueue {
 
       return { count, cancelledJobIds };
     } catch (error) {
-      console.error('❌ Error in cancelBriefJobsForDate:', error);
+      console.error("❌ Error in cancelBriefJobsForDate:", error);
       return { count: 0, cancelledJobIds: [] };
     }
   }
@@ -492,7 +492,7 @@ export class SupabaseQueue {
   ): Promise<boolean> {
     try {
       const { data: success, error } = await (supabase as any).rpc(
-        'cancel_job_with_reason',
+        "cancel_job_with_reason",
         {
           p_job_id: jobId,
           p_reason: reason,
@@ -512,7 +512,7 @@ export class SupabaseQueue {
 
       return result || false;
     } catch (error) {
-      console.error('❌ Error in cancelJobWithReason:', error);
+      console.error("❌ Error in cancelJobWithReason:", error);
       return false;
     }
   }
@@ -522,9 +522,9 @@ export class SupabaseQueue {
    */
   async getJob(jobId: string): Promise<QueueJob | null> {
     const { data, error } = await supabase
-      .from('queue_jobs')
-      .select('*')
-      .eq('queue_job_id', jobId)
+      .from("queue_jobs")
+      .select("*")
+      .eq("queue_job_id", jobId)
       .single();
 
     if (error) {
@@ -547,16 +547,16 @@ export class SupabaseQueue {
     },
   ): Promise<QueueJob[]> {
     let query = supabase
-      .from('queue_jobs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .from("queue_jobs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
     if (options?.jobType) {
-      query = query.eq('job_type', options.jobType);
+      query = query.eq("job_type", options.jobType);
     }
     if (options?.status) {
-      query = query.eq('status', options.status);
+      query = query.eq("status", options.status);
     }
     if (options?.limit) {
       query = query.limit(options.limit);
@@ -565,7 +565,7 @@ export class SupabaseQueue {
     const { data, error } = await query;
 
     if (error) {
-      console.error('❌ Error fetching user jobs:', error);
+      console.error("❌ Error fetching user jobs:", error);
       return [];
     }
 

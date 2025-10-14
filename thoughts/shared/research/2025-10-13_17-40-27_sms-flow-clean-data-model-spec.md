@@ -5,7 +5,15 @@ git_commit: 6e0f4fcff7e4b19f003d75ccb8634f8f2b78b41a
 branch: main
 repository: buildos-platform
 topic: "Clean SMS Flow Data Model Specification - Post-Refactor Architecture"
-tags: [specification, sms, notifications, data-model, architecture, user_sms_preferences]
+tags:
+  [
+    specification,
+    sms,
+    notifications,
+    data-model,
+    architecture,
+    user_sms_preferences,
+  ]
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude Code
@@ -29,6 +37,7 @@ This document specifies the CLEAN, FINAL SMS flow data model after completing th
 **Goal**: Define a clear, maintainable SMS architecture with no redundancy or confusion.
 
 **Principles**:
+
 1. **Single Source of Truth**: Each setting has ONE location
 2. **Separation of Concerns**: User preferences vs SMS-specific settings vs safety controls
 3. **Consistency**: All SMS types follow the same safety rules
@@ -80,6 +89,7 @@ This document specifies the CLEAN, FINAL SMS flow data model after completing th
 **Purpose**: User-level notification delivery preferences
 
 **Schema**:
+
 ```sql
 CREATE TABLE user_notification_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -107,15 +117,16 @@ CREATE TABLE user_notification_preferences (
 
 **Key Fields**:
 
-| Field | Type | Purpose | Used For |
-|-------|------|---------|----------|
-| `event_type` | TEXT | Distinguishes user-level from event-based prefs | `'user'` for daily brief, `'brief.completed'` for event notifications |
-| `should_email_daily_brief` | BOOLEAN | Enable email when daily brief completes | event_type='user' only |
-| `should_sms_daily_brief` | BOOLEAN | Enable SMS when daily brief completes | event_type='user' only |
-| `email_enabled` | BOOLEAN | Enable email for specific events | event_type='brief.completed', etc. |
-| `sms_enabled` | BOOLEAN | Enable SMS for specific events | event_type='task.reminder', etc. |
+| Field                      | Type    | Purpose                                         | Used For                                                              |
+| -------------------------- | ------- | ----------------------------------------------- | --------------------------------------------------------------------- |
+| `event_type`               | TEXT    | Distinguishes user-level from event-based prefs | `'user'` for daily brief, `'brief.completed'` for event notifications |
+| `should_email_daily_brief` | BOOLEAN | Enable email when daily brief completes         | event_type='user' only                                                |
+| `should_sms_daily_brief`   | BOOLEAN | Enable SMS when daily brief completes           | event_type='user' only                                                |
+| `email_enabled`            | BOOLEAN | Enable email for specific events                | event_type='brief.completed', etc.                                    |
+| `sms_enabled`              | BOOLEAN | Enable SMS for specific events                  | event_type='task.reminder', etc.                                      |
 
 **Design Decisions**:
+
 - ✅ `event_type='user'` stores user-level daily brief preferences
 - ✅ Other event types store event-based notification preferences
 - ✅ Composite PK `(user_id, event_type)` prevents duplicate rows
@@ -127,6 +138,7 @@ CREATE TABLE user_notification_preferences (
 **Purpose**: SMS-specific settings and safety controls
 
 **Schema**:
+
 ```sql
 CREATE TABLE user_sms_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -164,16 +176,17 @@ CREATE TABLE user_sms_preferences (
 
 #### 1. Phone Verification (REQUIRED for ALL SMS)
 
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| `phone_number` | TEXT | NULL | User's phone number (E.164 format) |
-| `phone_verified` | BOOLEAN | false | Phone verified via SMS code |
-| `phone_verified_at` | TIMESTAMPTZ | NULL | When verification occurred |
-| `opted_out` | BOOLEAN | false | User opted out of ALL SMS |
-| `opted_out_at` | TIMESTAMPTZ | NULL | When user opted out |
-| `opt_out_reason` | TEXT | NULL | Why user opted out (optional) |
+| Field               | Type        | Default | Purpose                            |
+| ------------------- | ----------- | ------- | ---------------------------------- |
+| `phone_number`      | TEXT        | NULL    | User's phone number (E.164 format) |
+| `phone_verified`    | BOOLEAN     | false   | Phone verified via SMS code        |
+| `phone_verified_at` | TIMESTAMPTZ | NULL    | When verification occurred         |
+| `opted_out`         | BOOLEAN     | false   | User opted out of ALL SMS          |
+| `opted_out_at`      | TIMESTAMPTZ | NULL    | When user opted out                |
+| `opt_out_reason`    | TEXT        | NULL    | Why user opted out (optional)      |
 
 **Validation Rules**:
+
 - ✅ SMS can ONLY be sent if `phone_verified = true`
 - ✅ SMS MUST be blocked if `opted_out = true`
 - ✅ `phone_number` must exist and be valid E.164 format
@@ -182,15 +195,16 @@ CREATE TABLE user_sms_preferences (
 
 #### 2. SMS Feature Toggles
 
-| Field | Type | Default | Purpose | Status |
-|-------|------|---------|---------|--------|
-| `event_reminders_enabled` | BOOLEAN | false | Enable calendar event reminders | ✅ **WORKING** |
-| `event_reminder_lead_time_minutes` | INTEGER | 15 | Minutes before event to send | ✅ **WORKING** |
-| `morning_kickoff_enabled` | BOOLEAN | false | Enable morning summary SMS | ⏳ **FUTURE** |
-| `morning_kickoff_time` | TIME | 08:00:00 | When to send morning SMS | ⏳ **FUTURE** |
-| `evening_recap_enabled` | BOOLEAN | false | Enable evening recap SMS | ⏳ **FUTURE** |
+| Field                              | Type    | Default  | Purpose                         | Status         |
+| ---------------------------------- | ------- | -------- | ------------------------------- | -------------- |
+| `event_reminders_enabled`          | BOOLEAN | false    | Enable calendar event reminders | ✅ **WORKING** |
+| `event_reminder_lead_time_minutes` | INTEGER | 15       | Minutes before event to send    | ✅ **WORKING** |
+| `morning_kickoff_enabled`          | BOOLEAN | false    | Enable morning summary SMS      | ⏳ **FUTURE**  |
+| `morning_kickoff_time`             | TIME    | 08:00:00 | When to send morning SMS        | ⏳ **FUTURE**  |
+| `evening_recap_enabled`            | BOOLEAN | false    | Enable evening recap SMS        | ⏳ **FUTURE**  |
 
 **Design Decisions**:
+
 - ✅ Each SMS feature has its own toggle
 - ✅ Daily brief SMS controlled by `user_notification_preferences.should_sms_daily_brief`
 - ✅ Clear separation: Feature toggles vs User preferences
@@ -199,15 +213,16 @@ CREATE TABLE user_sms_preferences (
 
 #### 3. Safety Controls (Applied to ALL SMS)
 
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| `quiet_hours_start` | TIME | NULL | Start of quiet hours (user's timezone) |
-| `quiet_hours_end` | TIME | NULL | End of quiet hours (user's timezone) |
-| `daily_sms_limit` | INTEGER | 10 | Max SMS per day (prevents spam) |
-| `daily_sms_count` | INTEGER | 0 | Current SMS sent today |
-| `daily_count_reset_at` | TIMESTAMPTZ | NULL | Last time count was reset |
+| Field                  | Type        | Default | Purpose                                |
+| ---------------------- | ----------- | ------- | -------------------------------------- |
+| `quiet_hours_start`    | TIME        | NULL    | Start of quiet hours (user's timezone) |
+| `quiet_hours_end`      | TIME        | NULL    | End of quiet hours (user's timezone)   |
+| `daily_sms_limit`      | INTEGER     | 10      | Max SMS per day (prevents spam)        |
+| `daily_sms_count`      | INTEGER     | 0       | Current SMS sent today                 |
+| `daily_count_reset_at` | TIMESTAMPTZ | NULL    | Last time count was reset              |
 
 **Enforcement Rules**:
+
 - ✅ **MUST** check quiet hours for ALL SMS types
 - ✅ **MUST** check rate limits for ALL SMS types
 - ✅ **MUST** respect timezone (from `users.timezone`)
@@ -297,6 +312,7 @@ CREATE TABLE user_sms_preferences (
 **User Control**: `user_notification_preferences.should_sms_daily_brief` (event_type='user')
 
 **Flow**:
+
 ```typescript
 // apps/worker/src/workers/brief/briefWorker.ts
 
@@ -318,6 +334,7 @@ if (notificationPrefs?.should_sms_daily_brief) {
 ```
 
 **Safety Checks**:
+
 - ✅ Phone verification
 - ✅ Rate limiting
 - ✅ Quiet hours
@@ -331,6 +348,7 @@ if (notificationPrefs?.should_sms_daily_brief) {
 **User Control**: `user_sms_preferences.event_reminders_enabled`
 
 **Flow**:
+
 ```typescript
 // apps/worker/src/scheduler.ts
 
@@ -348,6 +366,7 @@ WHERE event_reminders_enabled = true
 ```
 
 **Safety Checks**:
+
 - ✅ Phone verification (checked before scheduling)
 - ✅ Rate limiting (checked at schedule time and send time)
 - ✅ Quiet hours (checked at send time, reschedule if needed)
@@ -361,6 +380,7 @@ WHERE event_reminders_enabled = true
 **User Control**: `user_sms_preferences.morning_kickoff_enabled`
 
 **Flow** (Not Yet Implemented):
+
 ```typescript
 // apps/worker/src/scheduler.ts (future)
 
@@ -380,6 +400,7 @@ WHERE morning_kickoff_enabled = true
 ```
 
 **Implementation Status**: ❌ NOT IMPLEMENTED
+
 - UI exists and saves preferences to database
 - NO worker code to generate or send messages
 - See migration plan for implementation guidance
@@ -393,6 +414,7 @@ WHERE morning_kickoff_enabled = true
 **User Control**: `user_sms_preferences.evening_recap_enabled`
 
 **Flow** (Not Yet Implemented):
+
 ```typescript
 // apps/worker/src/scheduler.ts (future)
 
@@ -412,6 +434,7 @@ WHERE evening_recap_enabled = true
 ```
 
 **Implementation Status**: ❌ NOT IMPLEMENTED
+
 - UI exists and saves preferences to database
 - NO worker code to generate or send messages
 - See migration plan for implementation guidance
@@ -425,25 +448,29 @@ WHERE evening_recap_enabled = true
 **Purpose**: Prevent SMS during user's sleep hours
 
 **Implementation**:
+
 ```typescript
 // apps/worker/src/lib/utils/quietHoursChecker.ts
 
-import { utcToZonedTime } from 'date-fns-tz';
+import { utcToZonedTime } from "date-fns-tz";
 
 export function isInQuietHours(
   smsPrefs: UserSMSPreferences,
-  sendTime: Date = new Date()
+  sendTime: Date = new Date(),
 ): boolean {
   if (!smsPrefs.quiet_hours_start || !smsPrefs.quiet_hours_end) {
     return false; // No quiet hours set
   }
 
-  const timezone = smsPrefs.timezone || 'UTC';
+  const timezone = smsPrefs.timezone || "UTC";
   const timeInUserTz = utcToZonedTime(sendTime, timezone);
-  const currentMinutes = timeInUserTz.getHours() * 60 + timeInUserTz.getMinutes();
+  const currentMinutes =
+    timeInUserTz.getHours() * 60 + timeInUserTz.getMinutes();
 
-  const [startHour, startMin] = smsPrefs.quiet_hours_start.split(':').map(Number);
-  const [endHour, endMin] = smsPrefs.quiet_hours_end.split(':').map(Number);
+  const [startHour, startMin] = smsPrefs.quiet_hours_start
+    .split(":")
+    .map(Number);
+  const [endHour, endMin] = smsPrefs.quiet_hours_end.split(":").map(Number);
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
 
@@ -457,9 +484,9 @@ export function isInQuietHours(
 
 export function calculateQuietHoursEnd(
   quietHoursEnd: string,
-  timezone: string
+  timezone: string,
 ): Date {
-  const [endHour, endMin] = quietHoursEnd.split(':').map(Number);
+  const [endHour, endMin] = quietHoursEnd.split(":").map(Number);
   const now = new Date();
   const endTime = utcToZonedTime(now, timezone);
 
@@ -475,11 +502,13 @@ export function calculateQuietHoursEnd(
 ```
 
 **Where to Apply**:
+
 - ✅ Calendar event reminders: Already implemented in `dailySmsWorker.ts:220-251`
 - 🚨 Daily brief SMS: **MISSING** - must add to `smsAdapter.ts`
 - ⏳ Future features: Must include when implementing
 
 **Behavior**:
+
 - If SMS scheduled during quiet hours → Reschedule to `quiet_hours_end`
 - Log reschedule event for debugging
 
@@ -490,29 +519,30 @@ export function calculateQuietHoursEnd(
 **Purpose**: Prevent SMS spam, control Twilio costs
 
 **Implementation**:
+
 ```typescript
 // apps/worker/src/lib/utils/rateLimitChecker.ts
 
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from "date-fns";
 
 export async function checkAndIncrementSMSCount(
   userId: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
 ): Promise<{ allowed: boolean; reason?: string }> {
   const { data: smsPrefs, error } = await supabase
-    .from('user_sms_preferences')
-    .select('daily_sms_count, daily_sms_limit, daily_count_reset_at')
-    .eq('user_id', userId)
+    .from("user_sms_preferences")
+    .select("daily_sms_count, daily_sms_limit, daily_count_reset_at")
+    .eq("user_id", userId)
     .single();
 
   if (error || !smsPrefs) {
-    return { allowed: false, reason: 'SMS preferences not found' };
+    return { allowed: false, reason: "SMS preferences not found" };
   }
 
   // Check if count needs reset
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(new Date(), "yyyy-MM-dd");
   const lastReset = smsPrefs.daily_count_reset_at
-    ? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd')
+    ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd")
     : null;
 
   let currentCount = smsPrefs.daily_sms_count || 0;
@@ -522,37 +552,39 @@ export async function checkAndIncrementSMSCount(
     // Reset count for new day
     currentCount = 0;
     await supabase
-      .from('user_sms_preferences')
+      .from("user_sms_preferences")
       .update({
         daily_sms_count: 0,
-        daily_count_reset_at: new Date().toISOString()
+        daily_count_reset_at: new Date().toISOString(),
       })
-      .eq('user_id', userId);
+      .eq("user_id", userId);
   }
 
   if (currentCount >= limit) {
     return {
       allowed: false,
-      reason: `Daily SMS limit reached (${currentCount}/${limit})`
+      reason: `Daily SMS limit reached (${currentCount}/${limit})`,
     };
   }
 
   // Increment count BEFORE sending (prevents race conditions)
   await supabase
-    .from('user_sms_preferences')
+    .from("user_sms_preferences")
     .update({ daily_sms_count: currentCount + 1 })
-    .eq('user_id', userId);
+    .eq("user_id", userId);
 
   return { allowed: true };
 }
 ```
 
 **Where to Apply**:
+
 - ✅ Calendar event reminders: Already implemented in `dailySmsWorker.ts:104-129` and `smsWorker.ts:173-197`
 - 🚨 Daily brief SMS: **MISSING** - must add to `smsAdapter.ts`
 - ⏳ Future features: Must include when implementing
 
 **Behavior**:
+
 - Check count before sending
 - Increment count BEFORE sending (prevents race conditions)
 - Reset count at midnight in user's timezone
@@ -587,7 +619,7 @@ export interface UserNotificationPreferences {
 
 export type DailyBriefNotificationPrefs = Pick<
   UserNotificationPreferences,
-  'should_email_daily_brief' | 'should_sms_daily_brief'
+  "should_email_daily_brief" | "should_sms_daily_brief"
 >;
 ```
 
@@ -619,7 +651,7 @@ export interface UserSMSPreferences {
 
   // Safety Controls
   quiet_hours_start: string | null; // TIME format
-  quiet_hours_end: string | null;   // TIME format
+  quiet_hours_end: string | null; // TIME format
   daily_sms_limit: number;
   daily_sms_count: number;
   daily_count_reset_at: string | null;
@@ -632,13 +664,16 @@ export interface UserSMSPreferences {
 // Helper type for phone verification check
 export type PhoneVerificationStatus = Pick<
   UserSMSPreferences,
-  'phone_number' | 'phone_verified' | 'opted_out'
+  "phone_number" | "phone_verified" | "opted_out"
 >;
 
 // Helper type for safety controls
 export type SMSSafetyControls = Pick<
   UserSMSPreferences,
-  'quiet_hours_start' | 'quiet_hours_end' | 'daily_sms_limit' | 'daily_sms_count'
+  | "quiet_hours_start"
+  | "quiet_hours_end"
+  | "daily_sms_limit"
+  | "daily_sms_count"
 >;
 ```
 
@@ -648,23 +683,23 @@ export type SMSSafetyControls = Pick<
 
 ### Deprecated Fields (TO BE REMOVED)
 
-| Field | Current Location | Replacement | Action |
-|-------|------------------|-------------|--------|
-| `daily_brief_sms` | `user_sms_preferences` | `should_sms_daily_brief` (event_type='user') | Remove from code, mark deprecated, drop column |
-| `task_reminders` | `user_sms_preferences` | N/A (never implemented) | Remove completely |
-| `next_up_enabled` | `user_sms_preferences` | N/A (never implemented) | Remove completely |
-| `email_daily_brief` | `user_brief_preferences` | `should_email_daily_brief` (event_type='user') | Already marked deprecated |
+| Field               | Current Location         | Replacement                                    | Action                                         |
+| ------------------- | ------------------------ | ---------------------------------------------- | ---------------------------------------------- |
+| `daily_brief_sms`   | `user_sms_preferences`   | `should_sms_daily_brief` (event_type='user')   | Remove from code, mark deprecated, drop column |
+| `task_reminders`    | `user_sms_preferences`   | N/A (never implemented)                        | Remove completely                              |
+| `next_up_enabled`   | `user_sms_preferences`   | N/A (never implemented)                        | Remove completely                              |
+| `email_daily_brief` | `user_brief_preferences` | `should_email_daily_brief` (event_type='user') | Already marked deprecated                      |
 
 ### Fields to Keep
 
-| Field | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| `event_reminders_enabled` | `user_sms_preferences` | Calendar event SMS | ✅ Production |
-| `morning_kickoff_enabled` | `user_sms_preferences` | Morning summary SMS | ⏳ Future |
-| `evening_recap_enabled` | `user_sms_preferences` | Evening recap SMS | ⏳ Future |
-| `quiet_hours_*` | `user_sms_preferences` | Sleep protection | ✅ Keep |
-| `daily_sms_limit` | `user_sms_preferences` | Spam prevention | ✅ Keep |
-| Phone verification fields | `user_sms_preferences` | SMS auth | ✅ Keep |
+| Field                     | Location               | Purpose             | Status        |
+| ------------------------- | ---------------------- | ------------------- | ------------- |
+| `event_reminders_enabled` | `user_sms_preferences` | Calendar event SMS  | ✅ Production |
+| `morning_kickoff_enabled` | `user_sms_preferences` | Morning summary SMS | ⏳ Future     |
+| `evening_recap_enabled`   | `user_sms_preferences` | Evening recap SMS   | ⏳ Future     |
+| `quiet_hours_*`           | `user_sms_preferences` | Sleep protection    | ✅ Keep       |
+| `daily_sms_limit`         | `user_sms_preferences` | Spam prevention     | ✅ Keep       |
+| Phone verification fields | `user_sms_preferences` | SMS auth            | ✅ Keep       |
 
 ---
 
@@ -708,10 +743,9 @@ Response:
 ### Get SMS Feature Preferences
 
 ```typescript
-GET /api/sms/preferences
+GET / api / sms / preferences;
 
-Response:
-{
+Response: {
   // Phone Verification
   phone_number: string | null;
   phone_verified: boolean;
@@ -765,10 +799,12 @@ Response:
 **Location**: Settings → Notifications → Daily Brief Notifications
 
 **Controls**:
+
 - [ ] Email Daily Brief (toggle)
 - [ ] SMS Daily Brief (toggle with phone verification check)
 
 **Logic**:
+
 ```typescript
 // If user enables SMS but phone not verified:
 if (should_sms_daily_brief && !phone_verified) {
@@ -801,6 +837,7 @@ if (should_sms_daily_brief && !phone_verified) {
    - Current SMS count / limit display
 
 **Design Notes**:
+
 - Disable SMS feature toggles if phone not verified
 - Show "Coming Soon" badge for unimplemented features
 - Explain what each feature does with helpful descriptions
@@ -890,15 +927,18 @@ HAVING COUNT(*) > daily_sms_limit;
 ### Clean Architecture After Migration
 
 **User Preferences**:
+
 - `should_email_daily_brief` (event_type='user')
 - `should_sms_daily_brief` (event_type='user')
 
 **SMS Features**:
+
 - `event_reminders_enabled` ✅
 - `morning_kickoff_enabled` ⏳
 - `evening_recap_enabled` ⏳
 
 **Safety Controls** (Applied to ALL SMS):
+
 - Phone verification ✅
 - Quiet hours ✅
 - Rate limiting ✅

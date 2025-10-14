@@ -149,10 +149,10 @@ app.post("/queue/brief", async (req, res) => {
       return res.status(400).json({ error: "userId is required" });
     }
 
-    // Validate user exists
+    // Validate user exists and get timezone from centralized location
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, timezone")
       .eq("id", userId)
       .single();
 
@@ -160,16 +160,8 @@ app.post("/queue/brief", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Get user's timezone preference early (before force regenerate calculation)
-    // This ensures consistent timezone resolution throughout the request
-    const { data: preferences } = await supabase
-      .from("user_brief_preferences")
-      .select("timezone")
-      .eq("user_id", userId)
-      .single();
-
     // Resolve and validate timezone (fallback to UTC if invalid)
-    const rawTimezone = requestedTimezone || preferences?.timezone || "UTC";
+    const rawTimezone = requestedTimezone || user.timezone || "UTC";
     const timezone = getSafeTimezone(rawTimezone, userId);
 
     // Handle force regenerate

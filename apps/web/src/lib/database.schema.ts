@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-13T21:22:45.883Z
+// Generated on: 2025-10-13T23:22:23.573Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1037,7 +1037,6 @@ export type DatabaseSchema = {
 		id: string;
 		is_active: boolean | null;
 		time_of_day: string | null;
-		timezone: string | null;
 		updated_at: string;
 		user_id: string;
 	};
@@ -1050,7 +1049,6 @@ export type DatabaseSchema = {
 		max_task_duration_minutes: number | null;
 		min_task_duration_minutes: number | null;
 		prefer_morning_for_important_tasks: boolean | null;
-		timezone: string | null;
 		updated_at: string;
 		user_id: string;
 		work_end_time: string | null;
@@ -1130,7 +1128,6 @@ export type DatabaseSchema = {
 		should_email_daily_brief: boolean | null;
 		should_sms_daily_brief: boolean | null;
 		sms_enabled: boolean | null;
-		timezone: string | null;
 		updated_at: string | null;
 		user_id: string;
 	};
@@ -1149,6 +1146,7 @@ export type DatabaseSchema = {
 	};
 	user_sms_preferences: {
 		created_at: string | null;
+		daily_brief_sms: boolean | null;
 		daily_count_reset_at: string | null;
 		daily_sms_count: number | null;
 		daily_sms_limit: number | null;
@@ -1158,6 +1156,7 @@ export type DatabaseSchema = {
 		id: string;
 		morning_kickoff_enabled: boolean | null;
 		morning_kickoff_time: string | null;
+		next_up_enabled: boolean | null;
 		opt_out_reason: string | null;
 		opted_out: boolean | null;
 		opted_out_at: string | null;
@@ -1166,7 +1165,7 @@ export type DatabaseSchema = {
 		phone_verified_at: string | null;
 		quiet_hours_end: string | null;
 		quiet_hours_start: string | null;
-		timezone: string | null;
+		task_reminders: boolean | null;
 		updated_at: string | null;
 		urgent_alerts: boolean | null;
 		user_id: string;

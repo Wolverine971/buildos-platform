@@ -1,6 +1,6 @@
 # Prompt Audit: new-project-dual-tasks
 
-**Generated at:** 2025-10-13T20:37:51.027Z
+**Generated at:** 2025-10-13T23:04:24.969Z
 **Environment:** Development
 
 ## Metadata
@@ -11,7 +11,7 @@
 	"brainDumpLength": 21,
 	"existingTasksCount": 0,
 	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-13T20:37:51.027Z"
+	"timestamp": "2025-10-13T23:04:24.969Z"
 }
 ```
 
@@ -21,7 +21,7 @@
 A user just brain dumped information about a project and you are a task extraction engine.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-13T20:37:51.027Z
+Current date and time: 2025-10-13T23:04:24.969Z
 
 ## Your Job:
 Create all tasks that are specified in the braindump but DO NOT proactively create preparatory, setup, or follow-up tasks unless the user explicitly instructs you to in the brain dump (e.g., "create setup tasks for X", "add follow-up tasks")

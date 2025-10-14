@@ -320,8 +320,7 @@ export async function performSMSSafetyChecks(
       .eq("id", userId)
       .single();
 
-    const timezone =
-      (user as any)?.timezone || smsPrefs.timezone || "UTC";
+    const timezone = (user as any)?.timezone || smsPrefs.timezone || "UTC";
 
     const quietHoursResult = checkQuietHours(
       sendTime,

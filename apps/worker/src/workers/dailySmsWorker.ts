@@ -10,9 +10,9 @@
  * - Queues send_sms jobs for scheduled times
  */
 
-import { supabase } from '../lib/supabase';
-import type { LegacyJob } from './shared/jobAdapter';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { supabase } from "../lib/supabase";
+import type { LegacyJob } from "./shared/jobAdapter";
+import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import {
   addMinutes,
   endOfDay,
@@ -20,13 +20,13 @@ import {
   isBefore,
   parseISO,
   startOfDay,
-} from 'date-fns';
-import { queue } from '../worker';
+} from "date-fns";
+import { queue } from "../worker";
 import {
   type EventContext,
   SMSMessageGenerator,
-} from '../lib/services/smsMessageGenerator';
-import { smsMetricsService } from '@buildos/shared-utils';
+} from "../lib/services/smsMessageGenerator";
+import { smsMetricsService } from "@buildos/shared-utils";
 
 interface DailySMSJobData {
   userId: string;
@@ -50,14 +50,14 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     await job.updateProgress({
       current: 1,
       total: 5,
-      message: 'Fetching user preferences and calendar events',
+      message: "Fetching user preferences and calendar events",
     });
 
     // ALWAYS fetch user's timezone from users table (centralized source of truth)
     const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('timezone')
-      .eq('id', userId)
+      .from("users")
+      .select("timezone")
+      .eq("id", userId)
       .single();
 
     if (userError) {
@@ -68,24 +68,24 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     // Use timezone from users table (centralized), fallback to job data, then UTC
     // Type assertion: timezone column exists but types haven't been regenerated yet
-    const userTimezone = (user as any)?.timezone || timezone || 'UTC';
+    const userTimezone = (user as any)?.timezone || timezone || "UTC";
 
     console.log(
-      `🕐 [DailySMS] Using timezone: ${userTimezone} (from: ${(user as any)?.timezone ? 'users.timezone' : timezone ? 'job.data' : 'UTC default'})`,
+      `🕐 [DailySMS] Using timezone: ${userTimezone} (from: ${(user as any)?.timezone ? "users.timezone" : timezone ? "job.data" : "UTC default"})`,
     );
 
     // Get user SMS preferences
     const { data: smsPrefs, error: prefsError } = await supabase
-      .from('user_sms_preferences')
-      .select('*')
-      .eq('user_id', userId)
+      .from("user_sms_preferences")
+      .select("*")
+      .eq("user_id", userId)
       .single();
 
     if (prefsError || !smsPrefs) {
       console.error(
         `❌ [DailySMS] No SMS preferences found for user ${userId}`,
       );
-      throw new Error('SMS preferences not found');
+      throw new Error("SMS preferences not found");
     }
 
     // Verify user is still opted in and phone verified
@@ -98,24 +98,24 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       console.log(
         `⏭️ [DailySMS] User ${userId} not eligible for SMS (phone_verified: ${smsPrefs.phone_verified}, phone_number: ${!!smsPrefs.phone_number}, opted_out: ${smsPrefs.opted_out}, event_reminders_enabled: ${smsPrefs.event_reminders_enabled})`,
       );
-      return { success: true, message: 'User not eligible for SMS reminders' };
+      return { success: true, message: "User not eligible for SMS reminders" };
     }
 
     // Check daily SMS limit
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = format(new Date(), "yyyy-MM-dd");
     const needsReset = smsPrefs.daily_count_reset_at
-      ? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd') !== today
+      ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd") !== today
       : true;
 
     if (needsReset) {
       // Reset daily count
       await supabase
-        .from('user_sms_preferences')
+        .from("user_sms_preferences")
         .update({
           daily_sms_count: 0,
           daily_count_reset_at: new Date().toISOString(),
         })
-        .eq('user_id', userId);
+        .eq("user_id", userId);
     }
 
     const currentCount = needsReset ? 0 : smsPrefs.daily_sms_count || 0;
@@ -125,7 +125,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       console.log(
         `⏭️ [DailySMS] User ${userId} has reached daily SMS limit (${currentCount}/${limit})`,
       );
-      return { success: true, message: 'Daily SMS limit reached' };
+      return { success: true, message: "Daily SMS limit reached" };
     }
 
     // Calculate date range for calendar events
@@ -144,22 +144,22 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     await job.updateProgress({
       current: 2,
       total: 5,
-      message: 'Fetching calendar events',
+      message: "Fetching calendar events",
     });
 
     // Fetch calendar events for the day
     const { data: calendarEvents, error: eventsError } = await supabase
-      .from('task_calendar_events')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('event_start', startUTC.toISOString())
-      .lte('event_start', endUTC.toISOString())
-      .eq('sync_status', 'synced')
-      .order('event_start', { ascending: true });
+      .from("task_calendar_events")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("event_start", startUTC.toISOString())
+      .lte("event_start", endUTC.toISOString())
+      .eq("sync_status", "synced")
+      .order("event_start", { ascending: true });
 
     if (eventsError) {
       console.error(
-        '❌ [DailySMS] Error fetching calendar events:',
+        "❌ [DailySMS] Error fetching calendar events:",
         eventsError,
       );
       throw eventsError;
@@ -169,7 +169,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       console.log(
         `📝 [DailySMS] No calendar events found for user ${userId} on ${date}`,
       );
-      return { success: true, message: 'No calendar events found' };
+      return { success: true, message: "No calendar events found" };
     }
 
     console.log(
@@ -194,7 +194,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     for (const event of calendarEvents) {
       // Skip if event_start is null
       if (!event.event_start) {
-        console.log('⏭️ [DailySMS] Skipping event with null start time');
+        console.log("⏭️ [DailySMS] Skipping event with null start time");
         continue;
       }
 
@@ -204,15 +204,15 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       // Skip if reminder time is in the past
       if (isBefore(reminderTime, now)) {
         console.log(
-          `⏭️ [DailySMS] Skipping event "${event.event_title || 'Untitled'}" - reminder time is in the past`,
+          `⏭️ [DailySMS] Skipping event "${event.event_title || "Untitled"}" - reminder time is in the past`,
         );
         continue;
       }
 
       // Skip all-day events for now (Phase 2 enhancement)
-      if (!event.event_start.includes('T')) {
+      if (!event.event_start.includes("T")) {
         console.log(
-          `⏭️ [DailySMS] Skipping all-day event "${event.event_title || 'Untitled'}"`,
+          `⏭️ [DailySMS] Skipping all-day event "${event.event_title || "Untitled"}"`,
         );
         continue;
       }
@@ -224,10 +224,10 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         const reminderMinute = reminderTimeInUserTz.getMinutes();
 
         const [quietStartHour, quietStartMinute] = smsPrefs.quiet_hours_start
-          .split(':')
+          .split(":")
           .map(Number);
         const [quietEndHour, quietEndMinute] = smsPrefs.quiet_hours_end
-          .split(':')
+          .split(":")
           .map(Number);
 
         const reminderMinutes = reminderHour * 60 + reminderMinute;
@@ -251,7 +251,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       }
 
       // Generate message using LLM (with template fallback)
-      const eventTitle = event.event_title || 'Untitled Event';
+      const eventTitle = event.event_title || "Untitled Event";
       const eventStart = parseISO(event.event_start);
       const eventEnd = event.event_end ? parseISO(event.event_end) : eventStart;
 
@@ -296,13 +296,13 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
           generatedMessage.metadata?.generationTimeMs,
         )
         .catch((err: unknown) =>
-          console.error('[DailySMS] Error tracking LLM metrics:', err),
+          console.error("[DailySMS] Error tracking LLM metrics:", err),
         );
 
       scheduledMessages.push({
         user_id: userId,
         message_content: message,
-        message_type: 'event_reminder',
+        message_type: "event_reminder",
         calendar_event_id: event.calendar_event_id,
         event_title: eventTitle,
         event_start: event.event_start,
@@ -310,20 +310,20 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         event_details: null, // Future: Will store location, description, attendees from Google Calendar API
         scheduled_for: reminderTime.toISOString(),
         timezone: userTimezone,
-        status: 'scheduled',
+        status: "scheduled",
         generated_via: generatedMessage.generatedVia, // 'llm' or 'template'
         llm_model: generatedMessage.model, // e.g., "deepseek/deepseek-chat"
         generation_cost_usd: generatedMessage.costUsd || null,
       });
 
       console.log(
-        `✅ [DailySMS] Created ${generatedMessage.generatedVia} reminder for "${event.event_title}" at ${format(reminderTime, 'yyyy-MM-dd HH:mm:ss')} (${message.length} chars)`,
+        `✅ [DailySMS] Created ${generatedMessage.generatedVia} reminder for "${event.event_title}" at ${format(reminderTime, "yyyy-MM-dd HH:mm:ss")} (${message.length} chars)`,
       );
     }
 
     if (scheduledMessages.length === 0) {
-      console.log('📝 [DailySMS] No eligible events for SMS reminders');
-      return { success: true, message: 'No eligible events for reminders' };
+      console.log("📝 [DailySMS] No eligible events for SMS reminders");
+      return { success: true, message: "No eligible events for reminders" };
     }
 
     // Track quiet hours skips (non-blocking)
@@ -331,7 +331,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordQuietHoursSkip(userId, quietHoursSkipCount)
         .catch((err: unknown) =>
-          console.error('[DailySMS] Error tracking quiet hours skips:', err),
+          console.error("[DailySMS] Error tracking quiet hours skips:", err),
         );
     }
 
@@ -346,7 +346,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordDailyLimitHit(userId)
         .catch((err: unknown) =>
-          console.error('[DailySMS] Error tracking daily limit hit:', err),
+          console.error("[DailySMS] Error tracking daily limit hit:", err),
         );
 
       scheduledMessages.splice(remainingQuota);
@@ -361,13 +361,13 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     // Insert scheduled messages
     const { data: insertedMessages, error: insertError } = await supabase
-      .from('scheduled_sms_messages')
+      .from("scheduled_sms_messages")
       .insert(scheduledMessages)
       .select();
 
     if (insertError) {
       console.error(
-        '❌ [DailySMS] Error inserting scheduled messages:',
+        "❌ [DailySMS] Error inserting scheduled messages:",
         insertError,
       );
       throw insertError;
@@ -382,7 +382,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       smsMetricsService
         .recordScheduled(userId, insertedMessages.length)
         .catch((err: unknown) =>
-          console.error('[DailySMS] Error tracking scheduled count:', err),
+          console.error("[DailySMS] Error tracking scheduled count:", err),
         );
     }
 
@@ -390,13 +390,13 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     for (const msg of insertedMessages || []) {
       // Create sms_messages record
       const { data: smsMessage, error: smsError } = await supabase
-        .from('sms_messages')
+        .from("sms_messages")
         .insert({
           user_id: userId,
           phone_number: smsPrefs.phone_number,
           message_content: msg.message_content,
-          status: 'scheduled',
-          priority: 'normal',
+          status: "scheduled",
+          priority: "normal",
           scheduled_for: msg.scheduled_for,
           metadata: {
             scheduled_sms_id: msg.id,
@@ -408,19 +408,19 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
         .single();
 
       if (smsError || !smsMessage) {
-        console.error('❌ [DailySMS] Error creating sms_message:', smsError);
+        console.error("❌ [DailySMS] Error creating sms_message:", smsError);
         continue; // Skip this message but continue with others
       }
 
       // Link sms_message_id back to scheduled SMS
       await supabase
-        .from('scheduled_sms_messages')
+        .from("scheduled_sms_messages")
         .update({ sms_message_id: smsMessage.id })
-        .eq('id', msg.id);
+        .eq("id", msg.id);
 
       // Queue send_sms job with both IDs
       await queue.add(
-        'send_sms',
+        "send_sms",
         userId,
         {
           message_id: smsMessage.id, // sms_messages.id
@@ -443,17 +443,17 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
     // Update daily SMS count
     await supabase
-      .from('user_sms_preferences')
+      .from("user_sms_preferences")
       .update({
         daily_sms_count: currentCount + (insertedMessages?.length || 0),
       })
-      .eq('user_id', userId);
+      .eq("user_id", userId);
 
     // Update progress
     await job.updateProgress({
       current: 5,
       total: 5,
-      message: 'Completed',
+      message: "Completed",
     });
 
     return {

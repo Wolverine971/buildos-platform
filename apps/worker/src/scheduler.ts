@@ -282,7 +282,11 @@ async function checkAndScheduleBriefs() {
         );
       }
 
-      const nextRunTime = calculateNextRunTime(preference, now);
+      const nextRunTime = calculateNextRunTime(
+        preference,
+        now,
+        userTimezoneMap.get(preference.user_id) || "UTC",
+      );
 
       if (!nextRunTime) {
         console.warn(
@@ -423,9 +427,10 @@ async function checkAndScheduleBriefs() {
 export function calculateNextRunTime(
   preference: UserBriefPreference,
   now: Date,
+  userTimezone?: string,
 ): Date | null {
   try {
-    const timezone = preference.timezone || "UTC";
+    const timezone = userTimezone || "UTC";
     const timeOfDay = preference.time_of_day || "09:00:00";
     const frequency = preference.frequency || "daily";
 
@@ -634,7 +639,7 @@ async function checkAndScheduleDailySMS() {
     const { data: smsPreferences, error } = await supabase
       .from("user_sms_preferences")
       .select(
-        "user_id, timezone, event_reminders_enabled, event_reminder_lead_time_minutes",
+        "user_id, event_reminders_enabled, event_reminder_lead_time_minutes",
       )
       .eq("event_reminders_enabled", true)
       .eq("phone_verified", true)
@@ -667,9 +672,8 @@ async function checkAndScheduleDailySMS() {
       .in("id", smsUserIds);
 
     // Create timezone lookup map
-    // Type assertion: timezone column exists but types haven't been regenerated yet
     const smsUserTimezoneMap = new Map<string, string>();
-    (smsUsers as any)?.forEach((user: any) => {
+    smsUsers?.forEach((user) => {
       if (user.id && user.timezone) {
         smsUserTimezoneMap.set(user.id, user.timezone);
       }

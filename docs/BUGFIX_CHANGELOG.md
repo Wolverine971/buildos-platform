@@ -63,6 +63,72 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-13] Bug: Incomplete timezone centralization migration causing TypeScript errors
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Worker Service - Scheduler & Brief Generation
+
+**Symptoms**:
+
+- Worker service fails TypeScript typecheck with 11 errors
+- All errors related to accessing `timezone` property on `user_brief_preferences` and `user_sms_preferences` tables
+- Error message: `Property 'timezone' does not exist on type 'SelectQueryError<"column 'timezone' does not exist on 'user_*_preferences'.">'.`
+- Worker cannot build or deploy to Railway
+
+**Root Cause**:
+The timezone centralization migration (documented as "100% COMPLETE" in `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md`) was actually incomplete. While the database schema was successfully updated to use `users.timezone` as the single source of truth and TypeScript types were regenerated correctly, several code locations in the worker service were missed during the migration and still referenced the deprecated `preference.timezone` fields:
+
+1. `scheduler.ts:428` - `calculateNextRunTime()` read from `preference.timezone`
+2. `scheduler.ts:641` - SELECT query included non-existent `timezone` column from `user_sms_preferences`
+3. `index.ts:172` - `/queue/brief` endpoint read from `user_brief_preferences.timezone`
+4. `briefGenerator.ts:83` - `generateDailyBrief()` read from `user_brief_preferences.timezone`
+
+**Fix Applied**:
+Updated all remaining code to consistently fetch timezone from `users.timezone` table:
+
+1. Modified `calculateNextRunTime()` to accept optional `userTimezone` parameter instead of reading from preference object
+2. Removed `timezone` from SELECT query on `user_sms_preferences` table
+3. Updated `/queue/brief` endpoint to fetch timezone from `users` table (combined with existing user validation query)
+4. Updated `generateDailyBrief()` to fetch timezone from `users` table instead of `user_brief_preferences`
+5. Removed outdated type assertion comments that claimed types hadn't been regenerated
+
+**Files Changed**:
+
+- `apps/worker/src/scheduler.ts:428-433` - Added `userTimezone` parameter to `calculateNextRunTime()`
+- `apps/worker/src/scheduler.ts:285-289` - Pass timezone from map when calling `calculateNextRunTime()`
+- `apps/worker/src/scheduler.ts:641` - Removed `timezone` from SELECT query
+- `apps/worker/src/scheduler.ts:675-680` - Removed type assertion comments
+- `apps/worker/src/index.ts:153-165` - Combined user validation and timezone fetch into single query
+- `apps/worker/src/workers/brief/briefGenerator.ts:77-83` - Fetch timezone from `users` table
+
+**Manual Verification**:
+
+1. Run `cd apps/worker && pnpm typecheck` - should pass without timezone-related errors
+2. Test brief scheduling: Update user timezone via UI, verify brief scheduled at correct time in user's timezone
+3. Test SMS reminders: Verify SMS scheduled using correct timezone from users table
+4. Check worker logs: Confirm "Fetching from users.timezone" pattern in scheduler logs
+5. Verify batch fetching: Confirm scheduler uses single batch query for all user timezones (performance optimization)
+
+**Related Documentation**:
+
+- `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md` - Updated to note incomplete worker migration
+- `/apps/worker/src/scheduler.ts` - Now fully migrated to centralized timezone
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- Research: `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md` (claimed complete but was incomplete)
+- Initial analysis: `/thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md`
+- Migration: `/supabase/migrations/20251013_centralize_timezone_to_users_table.sql`
+- Schema: `/packages/shared-types/src/database.schema.ts:1198` - `users.timezone` column definition
+
+**Confidence**: High - All code paths now consistently use `users.timezone`, TypeScript validation passes, pattern matches the documented migration approach
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-13] Bug: SQL syntax error in timezone column drop migration
 
 **Status**: Fixed
@@ -70,6 +136,7 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 **Affected Component**: Database Migrations
 
 **Symptoms**:
+
 - Migration `20251013_drop_deprecated_timezone_columns.sql` fails with syntax error: `ERROR: 42601: syntax error at or near "RAISE" LINE 101`
 - Migration cannot execute, blocking cleanup of deprecated timezone columns
 - Error message indicates RAISE NOTICE statements are in invalid context
@@ -84,10 +151,12 @@ Wrapped all standalone `RAISE NOTICE` statements in `DO $$ BEGIN ... END $$` blo
 2. Final success messages (4 RAISE statements) - wrapped in single DO block
 
 **Files Changed**:
+
 - `supabase/migrations/20251013_drop_deprecated_timezone_columns.sql:101-136` - Wrapped Phase 3 RAISE NOTICE statements in DO blocks
 - `supabase/migrations/20251013_drop_deprecated_timezone_columns.sql:181-187` - Wrapped success message RAISE NOTICE statements in DO block
 
 **Manual Verification**:
+
 1. Run the migration using `pnpm supabase migration up` or Supabase CLI
 2. Verify migration executes successfully without syntax errors
 3. Check migration output shows all RAISE NOTICE messages (backup status, column drop confirmations, success messages)
@@ -95,10 +164,12 @@ Wrapped all standalone `RAISE NOTICE` statements in `DO $$ BEGIN ... END $$` blo
 5. Verify `users.timezone` column remains intact as single source of truth
 
 **Related Documentation**:
+
 - `/supabase/migrations/20251013_drop_deprecated_timezone_columns.sql` - The fixed migration file
 - `/docs/BUGFIX_CHANGELOG.md` - This entry
 
 **Cross-references**:
+
 - Research: `/thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md`
 - Related migration: `supabase/migrations/20251013_centralize_timezone_to_users_table.sql`
 - Architecture context: Part of timezone centralization effort to use `users.timezone` as single source of truth

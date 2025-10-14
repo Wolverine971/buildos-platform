@@ -1,9 +1,9 @@
 // apps/worker/src/lib/progressTracker.ts
 // This addresses Critical Issue #4 in QUEUE_FIXES_DESIGN.md
 
-import { supabase } from './supabase';
-import { JobProgress } from './supabaseQueue';
-import { queueConfig } from '../config/queueConfig';
+import { supabase } from "./supabase";
+import { JobProgress } from "./supabaseQueue";
+import { queueConfig } from "../config/queueConfig";
 
 export interface ProgressUpdate {
   jobId: string;
@@ -46,9 +46,9 @@ export class ProgressTracker {
 
       // Get current job metadata
       const { data: currentJob, error: fetchError } = await supabase
-        .from('queue_jobs')
-        .select('metadata, status')
-        .eq('id', jobId)
+        .from("queue_jobs")
+        .select("metadata, status")
+        .eq("id", jobId)
         .single();
 
       if (fetchError) {
@@ -70,7 +70,7 @@ export class ProgressTracker {
       }
 
       // Don't update progress for completed/failed/cancelled jobs
-      if (!['pending', 'processing'].includes(currentJob.status)) {
+      if (!["pending", "processing"].includes(currentJob.status)) {
         console.warn(
           `⚠️ Skipping progress update for job ${jobId} with status: ${currentJob.status}`,
         );
@@ -87,13 +87,13 @@ export class ProgressTracker {
 
       // Update the job with validated progress
       const { error: updateError } = await supabase
-        .from('queue_jobs')
+        .from("queue_jobs")
         .update({
           metadata: updatedMetadata,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', jobId)
-        .eq('status', currentJob.status); // Ensure status hasn't changed
+        .eq("id", jobId)
+        .eq("status", currentJob.status); // Ensure status hasn't changed
 
       if (updateError) {
         console.error(
@@ -137,8 +137,8 @@ export class ProgressTracker {
    * Validate and normalize progress data
    */
   private validateProgress(progress: JobProgress): JobProgress {
-    if (!progress || typeof progress !== 'object') {
-      throw new Error('Progress must be an object');
+    if (!progress || typeof progress !== "object") {
+      throw new Error("Progress must be an object");
     }
 
     const validated: JobProgress = {
@@ -148,18 +148,18 @@ export class ProgressTracker {
     };
 
     // Validate and set current
-    if (typeof progress.current === 'number' && progress.current >= 0) {
+    if (typeof progress.current === "number" && progress.current >= 0) {
       validated.current = progress.current;
     } else {
-      console.warn('Invalid progress.current, defaulting to 0');
+      console.warn("Invalid progress.current, defaulting to 0");
       validated.current = 0;
     }
 
     // Validate and set total
-    if (typeof progress.total === 'number' && progress.total > 0) {
+    if (typeof progress.total === "number" && progress.total > 0) {
       validated.total = progress.total;
     } else {
-      console.warn('Invalid progress.total, defaulting to 100');
+      console.warn("Invalid progress.total, defaulting to 100");
       validated.total = 100;
     }
 
@@ -172,7 +172,7 @@ export class ProgressTracker {
     }
 
     // Ensure message is string if provided
-    if (validated.message && typeof validated.message !== 'string') {
+    if (validated.message && typeof validated.message !== "string") {
       validated.message = String(validated.message);
     }
 
@@ -184,15 +184,15 @@ export class ProgressTracker {
    */
   private safeParseMetadata(metadata: any): Record<string, any> {
     if (!metadata) return {};
-    if (typeof metadata === 'object' && metadata !== null) return metadata;
+    if (typeof metadata === "object" && metadata !== null) return metadata;
 
     // Try to parse if it's a string
-    if (typeof metadata === 'string') {
+    if (typeof metadata === "string") {
       try {
         return JSON.parse(metadata);
       } catch {
         console.warn(
-          'Failed to parse metadata as JSON, returning empty object',
+          "Failed to parse metadata as JSON, returning empty object",
         );
         return {};
       }
@@ -249,7 +249,7 @@ export class ProgressTracker {
       );
     } catch (error) {
       // Don't fail the main operation if audit logging fails
-      console.warn('Failed to log progress update:', error);
+      console.warn("Failed to log progress update:", error);
     }
   }
 
@@ -269,7 +269,7 @@ export class ProgressTracker {
       // In production, you might want to send this to a monitoring service
       // like Sentry, DataDog, or write to a dedicated error log table
     } catch (logError) {
-      console.error('Failed to log progress update failure:', logError);
+      console.error("Failed to log progress update failure:", logError);
     }
   }
 
@@ -279,9 +279,9 @@ export class ProgressTracker {
   async getJobProgress(jobId: string): Promise<JobProgress | null> {
     try {
       const { data: job, error } = await supabase
-        .from('queue_jobs')
-        .select('metadata')
-        .eq('id', jobId)
+        .from("queue_jobs")
+        .select("metadata")
+        .eq("id", jobId)
         .single();
 
       if (error || !job) {
@@ -303,7 +303,7 @@ export const progressTracker = new ProgressTracker({
   maxRetries: queueConfig.progressUpdateRetries,
   retryDelayMs: queueConfig.retryBackoffBase,
   enableAuditLog:
-    queueConfig.enableProgressTracking && process.env.NODE_ENV !== 'production',
+    queueConfig.enableProgressTracking && process.env.NODE_ENV !== "production",
 });
 
 /**

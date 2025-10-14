@@ -89,7 +89,9 @@ export class SMSService extends ApiService {
 		// Feature deprecated - task_reminders field removed from schema
 		return {
 			success: false,
-			errors: ['Task reminders via SMS are no longer supported. Please use event reminders or daily briefings instead.']
+			errors: [
+				'Task reminders via SMS are no longer supported. Please use event reminders or daily briefings instead.'
+			]
 		};
 
 		// Legacy implementation below (kept for reference, never executed)
