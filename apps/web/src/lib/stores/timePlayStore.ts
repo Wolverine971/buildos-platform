@@ -84,7 +84,7 @@ function createTimePlayStore() {
 		subscribe,
 
 		async loadBlocks(startDate?: Date, endDate?: Date) {
-			
+
 			if (!browser) return;
 
 			const rangeStart = startDate ?? currentState.selectedDateRange.start;
@@ -123,6 +123,37 @@ function createTimePlayStore() {
 					...state,
 					isLoading: false,
 					isAllocationLoading: false,
+					error: error instanceof Error ? error.message : 'Failed to load time blocks'
+				}));
+			}
+		},
+
+		async loadBlocksOnly(startDate?: Date, endDate?: Date) {
+
+			if (!browser) return;
+
+			const rangeStart = startDate ?? currentState.selectedDateRange.start;
+			const rangeEnd = endDate ?? currentState.selectedDateRange.end;
+
+			update((state) => ({
+				...state,
+				isLoading: true,
+				error: null
+			}));
+
+			try {
+				const blocks = await requestBlocks(rangeStart, rangeEnd);
+
+				update((state) => ({
+					...state,
+					blocks,
+					isLoading: false
+				}));
+			} catch (error) {
+				console.error('[TimePlayStore] loadBlocksOnly failed:', error);
+				update((state) => ({
+					...state,
+					isLoading: false,
 					error: error instanceof Error ? error.message : 'Failed to load time blocks'
 				}));
 			}

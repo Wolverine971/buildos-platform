@@ -215,6 +215,7 @@ export interface CalendarSyncFailedEventPayload {
 export interface NotificationPayload {
   title: string;
   body: string;
+  event_type?: string; // Preserve event type for preference checking
   action_url?: string;
   icon_url?: string;
   image_url?: string;

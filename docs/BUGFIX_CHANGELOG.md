@@ -63,6 +63,69 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-14] Bug: Event type missing from notification payload causing preference check failures
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Notification System - Payload Transformation
+
+**Symptoms**:
+
+- Error logged: `Cancelled: No preferences found for event type: unknown`
+- Actual event type is `brief.completed` but preference checker receives "unknown"
+- Notifications are incorrectly cancelled even when user preferences allow them
+- Affects all notification channels (email, SMS, push, in-app)
+
+**Root Cause**:
+The `NotificationPayload` interface was missing the `event_type` field, and the `enrichDeliveryPayload` function didn't preserve it during payload transformation. When a notification event is processed:
+
+1. `enrichDeliveryPayload` fetches the event with `event.event_type` (e.g., "brief.completed")
+2. It calls `transformEventPayload(event.event_type, event.payload)` which returns a payload with `title`, `body`, etc., but NOT `event_type`
+3. The transformed payload is merged with `delivery.payload`, but neither contains `event_type`
+4. Later, adapters try to extract `delivery.payload.event_type` and default to "unknown" when not found
+5. Preference checks fail with "No preferences found for event type: unknown" instead of checking the correct event type
+
+This caused valid notifications to be cancelled incorrectly.
+
+**Fix Applied**:
+1. Added `event_type?: string` field to `NotificationPayload` interface
+2. Updated `enrichDeliveryPayload` to explicitly preserve `event_type` from the source event when merging payloads
+3. Applied fix to both success and error/fallback paths
+
+**Files Changed**:
+
+- `packages/shared-types/src/notification.types.ts:218` - Added `event_type?: string;` to `NotificationPayload` interface
+- `apps/worker/src/workers/notification/notificationWorker.ts:121` - Added `event_type: event.event_type` in payload merge (success path)
+- `apps/worker/src/workers/notification/notificationWorker.ts:136` - Added `event_type: event.event_type` in payload merge (error/fallback path)
+
+**Manual Verification**:
+
+1. Generate a daily brief to trigger a `brief.completed` notification
+2. Check worker logs - should NOT see "event type: unknown" errors
+3. Verify preference checks use correct event type ("brief.completed")
+4. Confirm notifications are sent/cancelled based on actual user preferences, not defaulting to "unknown"
+5. Test with different event types (SMS, push, email) to ensure fix works across all channels
+
+**Related Documentation**:
+
+- `/apps/worker/src/workers/notification/notificationWorker.ts` - Notification worker with payload transformation
+- `/apps/worker/src/workers/notification/preferenceChecker.ts` - Preference checking logic that consumes event_type
+- `/packages/shared-types/src/notification.types.ts` - Type definitions for notification system
+- `/packages/shared-types/src/payloadTransformer.ts` - Payload transformation functions
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- Adapters that use `event_type`: `emailAdapter.ts:145`, `smsAdapter.ts:399`, `notificationWorker.ts:428`
+- Related to notification preference system documented in `/apps/web/docs/features/notifications/`
+- Part of the extensible notification system architecture in `/docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md`
+
+**Confidence**: High - Type checks pass, root cause is clear, fix ensures event_type is always preserved from source event
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-14] Bug: SMS metrics database functions missing - PGRST202 error
 
 **Status**: Fixed

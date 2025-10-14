@@ -112,11 +112,13 @@ async function enrichDeliveryPayload(
 
     // Merge transformed payload with existing delivery payload
     // This preserves any channel-specific fields that were already set
+    // IMPORTANT: Explicitly preserve event_type for preference checking
     return {
       ...delivery,
       payload: {
         ...transformedPayload,
         ...delivery.payload, // Allow delivery payload to override if present
+        event_type: event.event_type, // Always preserve event_type from source event
       },
     };
   } catch (error: any) {
@@ -131,6 +133,7 @@ async function enrichDeliveryPayload(
       payload: {
         ...fallbackPayload,
         ...delivery.payload,
+        event_type: event.event_type, // Always preserve event_type from source event
       },
     };
   }

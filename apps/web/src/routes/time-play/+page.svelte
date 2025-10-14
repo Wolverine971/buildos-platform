@@ -79,12 +79,17 @@
 		if (savedMode === 'calendar' || savedMode === 'list') {
 			displayMode = savedMode;
 		}
+
+		// Load initial data (blocks + allocation)
+		// This ensures the allocation panel has data on first load
+		timePlayStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
 	});
 
 	// Load blocks when calendar date range changes (user navigation)
+	// Use loadBlocksOnly to avoid reloading the allocation panel unnecessarily
 	$effect(() => {
 		if (displayMode === 'calendar') {
-			timePlayStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
+			timePlayStore.loadBlocksOnly(calendarDateRange.start, calendarDateRange.end);
 		}
 	});
 
