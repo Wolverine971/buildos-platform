@@ -4,8 +4,8 @@ import type { Database } from "@buildos/shared-types";
 import dotenv from "dotenv";
 
 dotenv.config();
-const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.PRIVATE_SUPABASE_SERVICE_KEY;
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL?.trim();
+const supabaseServiceKey = process.env.PRIVATE_SUPABASE_SERVICE_KEY?.trim();
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error("Missing Supabase environment variables");

@@ -60,6 +60,7 @@ function createTimePlayStore() {
 			throw new Error(payload?.error ?? 'Failed to load time blocks');
 		}
 
+		
 		return sortBlocks(payload?.data?.blocks ?? []);
 	}
 
@@ -83,6 +84,7 @@ function createTimePlayStore() {
 		subscribe,
 
 		async loadBlocks(startDate?: Date, endDate?: Date) {
+			
 			if (!browser) return;
 
 			const rangeStart = startDate ?? currentState.selectedDateRange.start;

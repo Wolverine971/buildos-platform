@@ -26,11 +26,10 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		// Query tasks directly and join with task_calendar_events
 		const { data: tasks, error: fetchError } = await supabase
 			.from('tasks')
-			.select('id, task_calendar_events(calendar_event_id)')
+			.select('id, task_calendar_events(*)')
 			.eq('user_id', user.id)
 			.gte('start_date', timeMin)
 			.lte('start_date', timeMax)
-			.not('start_date', 'is', null);
 
 		if (fetchError) {
 			console.error('[API] Failed to fetch task calendar events:', fetchError);

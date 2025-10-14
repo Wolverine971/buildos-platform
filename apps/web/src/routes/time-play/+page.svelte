@@ -24,13 +24,67 @@
 	let selectedCalendarEvent = $state<CalendarEvent | null>(null);
 	let showCalendarEventModal = $state(false);
 
-	onMount(() => {
-		timePlayStore.loadBlocks();
+	// Calendar view state (bindable with child component)
+	let calendarSelectedDate = $state(new Date());
+	let calendarViewMode = $state<'day' | 'week' | 'month'>('week');
 
+	// Calculate date range based on calendar view settings
+	let calendarDateRange = $derived.by(() => {
+		if (calendarViewMode === 'day') {
+			const start = new Date(calendarSelectedDate);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(calendarSelectedDate);
+			end.setHours(23, 59, 59, 999);
+			return { start, end };
+		} else if (calendarViewMode === 'week') {
+			// Get start of week (Monday)
+			const start = new Date(calendarSelectedDate);
+			const day = start.getDay();
+			const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+			start.setDate(diff);
+			start.setHours(0, 0, 0, 0);
+
+			// Get end of week (Sunday)
+			const end = new Date(start);
+			end.setDate(start.getDate() + 6);
+			end.setHours(23, 59, 59, 999);
+			return { start, end };
+		} else {
+			// Month view - include full 6-week calendar grid (42 days)
+			// This matches the logic in TimePlayCalendar.getMonthCalendarGrid()
+			const year = calendarSelectedDate.getFullYear();
+			const month = calendarSelectedDate.getMonth();
+			const firstDayOfMonth = new Date(year, month, 1);
+
+			// Get the day of week for the first day (0 = Sunday)
+			const firstDayOfWeek = firstDayOfMonth.getDay();
+
+			// Calculate the start date (Sunday before or on the 1st)
+			const start = new Date(firstDayOfMonth);
+			start.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
+			start.setHours(0, 0, 0, 0);
+
+			// Calculate the end date (42 days from start = 6 weeks)
+			const end = new Date(start);
+			end.setDate(start.getDate() + 41); // 41 days after start = 42 days total
+			end.setHours(23, 59, 59, 999);
+
+			return { start, end };
+		}
+	});
+
+	onMount(() => {
 		// Load display mode preference from localStorage
 		const savedMode = localStorage.getItem('timeplay-display-mode');
 		if (savedMode === 'calendar' || savedMode === 'list') {
 			displayMode = savedMode;
+		}
+	});
+
+	// Load blocks when calendar date range changes (user navigation)
+	$effect(() => {
+		if (displayMode === 'calendar') {
+			timePlayStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
 		}
 	});
 
@@ -118,8 +172,13 @@
 </script>
 
 <div
-	class="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950"
+	class="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950 rounded-md"
 >
+	<!-- Subtle top fade-in gradient - lightens the top for smooth transition -->
+	<div
+		class="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-slate-100/80 via-slate-50/30 to-transparent dark:from-slate-800/40 dark:via-slate-850/15 dark:to-transparent"
+	></div>
+
 	<div
 		class="pointer-events-none absolute inset-0 opacity-40 blur-3xl saturate-150 dark:opacity-60"
 	>
@@ -131,7 +190,7 @@
 		></div>
 	</div>
 
-	<section class="relative mx-auto flex max-w-5xl flex-col gap-10 px-6 py-16 lg:px-12">
+	<section class="relative mx-auto flex max-w-5xl flex-col gap-10 px-4 py-12 lg:px-8">
 		<header class="space-y-4">
 			<div
 				class="inline-flex items-center gap-2 rounded-full border border-slate-200/60 bg-white/80 px-4 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
@@ -287,45 +346,49 @@
 			</div>
 		{/if}
 
-		<div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-			<div
-				class="rounded-3xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-200/60 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60 dark:shadow-black/40"
-			>
-				{#if $timePlayStore.isLoading}
-					<div
-						class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center"
-					>
-						<div
-							class="h-12 w-12 animate-spin rounded-full border-[3px] border-slate-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400"
-						></div>
-						<p class="text-sm font-medium text-slate-600 dark:text-slate-300">
-							Loading your upcoming time blocks…
-						</p>
-					</div>
-				{:else if displayMode === 'calendar'}
-					<TimePlayCalendar
-						blocks={$timePlayStore.blocks}
-						isCalendarConnected={data.isCalendarConnected}
-						onBlockCreate={handleCalendarBlockCreate}
-						onBlockClick={handleBlockClick}
-						onCalendarEventClick={handleCalendarEventClick}
-					/>
-				{:else}
-					<TimeBlockList
-						blocks={$timePlayStore.blocks}
-						regeneratingIds={$timePlayStore.regeneratingIds}
-						on:delete={(event) => handleDeleteBlock(event.detail.blockId)}
-						on:regenerate={(event) => handleRegenerateBlock(event.detail.blockId)}
-					/>
-				{/if}
-			</div>
-
+		<!-- Time Allocation Summary (moved to top for more calendar space) -->
+		<div class="rounded-2xl border border-slate-200/80 bg-white/80 shadow-lg backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60">
 			<TimeAllocationPanel
 				allocation={$timePlayStore.allocation}
 				isLoading={$timePlayStore.isAllocationLoading}
 				dateRange={$timePlayStore.selectedDateRange}
 				onDateRangeChange={(range) => timePlayStore.setDateRange(range.start, range.end)}
 			/>
+		</div>
+
+		<!-- Calendar/List View (full width) -->
+		<div
+			class="rounded-3xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-200/60 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60 dark:shadow-black/40"
+		>
+			{#if $timePlayStore.isLoading}
+				<div
+					class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center"
+				>
+					<div
+						class="h-12 w-12 animate-spin rounded-full border-[3px] border-slate-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400"
+					></div>
+					<p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+						Loading your upcoming time blocks…
+					</p>
+				</div>
+			{:else if displayMode === 'calendar'}
+				<TimePlayCalendar
+					blocks={$timePlayStore.blocks}
+					isCalendarConnected={data.isCalendarConnected}
+					bind:selectedDate={calendarSelectedDate}
+					bind:viewMode={calendarViewMode}
+					onBlockCreate={handleCalendarBlockCreate}
+					onBlockClick={handleBlockClick}
+					onCalendarEventClick={handleCalendarEventClick}
+				/>
+			{:else}
+				<TimeBlockList
+					blocks={$timePlayStore.blocks}
+					regeneratingIds={$timePlayStore.regeneratingIds}
+					on:delete={(event) => handleDeleteBlock(event.detail.blockId)}
+					on:regenerate={(event) => handleRegenerateBlock(event.detail.blockId)}
+				/>
+			{/if}
 		</div>
 	</section>
 </div>

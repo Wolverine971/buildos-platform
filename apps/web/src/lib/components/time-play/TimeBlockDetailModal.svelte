@@ -80,7 +80,7 @@
 </script>
 
 <Modal title="" isOpen={true} {onClose} size="lg">
-	<div class="space-y-7 px-1 py-2">
+	<div class="space-y-6 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 		<!-- Header Section with Color Accent -->
 		<div class="flex items-start gap-5">
 			<!-- Vibrant accent bar with glow -->
@@ -381,37 +381,39 @@
 			</div>
 		{/if}
 
-		<!-- Action Buttons -->
-		<div
-			class="flex flex-col gap-3 border-t border-slate-200/80 pt-6 sm:flex-row sm:items-center sm:justify-between dark:border-white/10"
+	</div>
+
+	<!-- Action Buttons in Footer -->
+	<div
+		class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+		slot="footer"
+	>
+		<button
+			type="button"
+			class="order-2 sm:order-1 w-full sm:w-auto group inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-red-500/10 px-5 py-3 sm:py-2.5 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-rose-500/30 transition-all hover:from-rose-500/20 hover:to-red-500/20 hover:shadow-md hover:ring-rose-500/40 dark:from-rose-400/15 dark:to-red-400/15 dark:text-rose-300 dark:ring-rose-400/40 dark:hover:from-rose-400/25 dark:hover:to-red-400/25 dark:hover:ring-rose-400/50 touch-manipulation"
+			onclick={handleDelete}
 		>
-			<button
-				type="button"
-				class="group inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-red-500/10 px-5 py-3 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-rose-500/30 transition-all hover:from-rose-500/20 hover:to-red-500/20 hover:shadow-md hover:ring-rose-500/40 dark:from-rose-400/15 dark:to-red-400/15 dark:text-rose-300 dark:ring-rose-400/40 dark:hover:from-rose-400/25 dark:hover:to-red-400/25 dark:hover:ring-rose-400/50"
-				onclick={handleDelete}
+			<svg
+				class="h-4 w-4 transition-transform group-hover:scale-110"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+				stroke-width="2"
 			>
-				<svg
-					class="h-4 w-4 transition-transform group-hover:scale-110"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-					/>
-				</svg>
-				<span>Delete Block</span>
-			</button>
-			<button
-				type="button"
-				class="inline-flex items-center justify-center rounded-xl bg-slate-100 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200/80 transition-all hover:bg-slate-200 hover:shadow-md dark:bg-slate-800/80 dark:text-white dark:ring-white/10 dark:hover:bg-slate-700/80 dark:hover:ring-white/20"
-				onclick={onClose}
-			>
-				Close
-			</button>
-		</div>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+				/>
+			</svg>
+			<span>Delete Block</span>
+		</button>
+		<button
+			type="button"
+			class="order-1 sm:order-2 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-slate-100 px-6 py-3 sm:py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200/80 transition-all hover:bg-slate-200 hover:shadow-md dark:bg-slate-800/80 dark:text-white dark:ring-white/10 dark:hover:bg-slate-700/80 dark:hover:ring-white/20 touch-manipulation"
+			onclick={onClose}
+		>
+			Close
+		</button>
 	</div>
 </Modal>

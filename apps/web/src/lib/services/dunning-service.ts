@@ -126,7 +126,7 @@ export class DunningService {
 		if (!template) return;
 
 		// Use a base URL that can be configured
-		const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+		const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 		const updatePaymentUrl = `${baseUrl}/profile?tab=billing&action=update_payment`;
 		const reactivateUrl = `${baseUrl}/pricing`;
 

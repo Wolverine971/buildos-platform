@@ -263,9 +263,6 @@ export class CalendarService {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
-
-		// Enable HTTP/2 for better performance with batch operations
-		google.options({ http2: true });
 	}
 
 	/**

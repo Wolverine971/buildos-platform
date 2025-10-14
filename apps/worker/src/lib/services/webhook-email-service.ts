@@ -20,9 +20,10 @@ export class WebhookEmailService {
   private config: WebhookEmailConfig;
 
   constructor() {
-    const webhookUrl =
+    const webhookUrl = (
       process.env.BUILDOS_WEBHOOK_URL ||
-      "https://build-os.com/webhooks/daily-brief-email";
+      "https://build-os.com/webhooks/daily-brief-email"
+    ).trim();
     const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {

@@ -1,12 +1,12 @@
 // apps/web/src/routes/profile/+page.server.ts
-import type { PageServerLoad, Actions } from './$types';
-import { redirect, fail } from '@sveltejs/kit';
+import { redirect, fail, Actions } from '@sveltejs/kit';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
+import { PageServerLoad } from '../$types';
 
 // Enhanced function to generate calendar auth URL with proper scopes
 function generateEnhancedCalendarAuthUrl(

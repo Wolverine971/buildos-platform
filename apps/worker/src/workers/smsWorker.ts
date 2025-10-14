@@ -32,8 +32,8 @@ if (
 
     console.log();
     const supabase = createClient(
-      process.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
-      process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
+      (process.env.PUBLIC_SUPABASE_URL || "").trim(),
+      (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
     );
 
     smsService = new SMSService(twilioClient, supabase);
@@ -50,8 +50,8 @@ if (
 }
 
 const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
-  process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
+  (process.env.PUBLIC_SUPABASE_URL || "").trim(),
+  (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
 );
 
 export async function processSMSJob(job: LegacyJob<any>) {
