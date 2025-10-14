@@ -227,7 +227,7 @@
 		}
 	}
 
-	// Fetch Google Calendar events
+	// Fetch Google Calendar events and filter out BuildOS-created events
 	async function fetchCalendarEvents() {
 		if (!isCalendarConnected) {
 			return;
@@ -251,16 +251,46 @@
 			const timeMax = new Date(endDate);
 			timeMax.setHours(23, 59, 59, 999);
 
-			const response = await fetch(
-				`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-			);
+			// Fetch both Google Calendar events and task calendar event IDs in parallel
+			const [calendarResponse, taskEventsResponse] = await Promise.all([
+				fetch(
+					`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+				),
+				fetch(
+					`/api/calendar/task-events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+				)
+			]);
 
-			if (!response.ok) {
+			if (!calendarResponse.ok) {
 				throw new Error('Failed to fetch calendar events');
 			}
 
-			const data = await response.json();
-			calendarEvents = data.events || [];
+			const calendarData = await calendarResponse.json();
+			const allCalendarEvents = calendarData.events || [];
+
+			// Collect BuildOS calendar event IDs (time blocks + tasks)
+			const buildOSEventIds = new Set<string>();
+
+			// Add time block calendar event IDs
+			blocks.forEach((block) => {
+				if (block.calendar_event_id) {
+					buildOSEventIds.add(block.calendar_event_id);
+				}
+			});
+
+			// Add task calendar event IDs
+			if (taskEventsResponse.ok) {
+				const taskEventsData = await taskEventsResponse.json();
+				const taskEventIds = taskEventsData.data?.calendar_event_ids || [];
+				taskEventIds.forEach((id: string) => {
+					if (id) {
+						buildOSEventIds.add(id);
+					}
+				});
+			}
+
+			// Filter out BuildOS-created events - only show external calendar events in grey
+			calendarEvents = allCalendarEvents.filter((event) => !buildOSEventIds.has(event.id));
 		} catch (error) {
 			console.error('Error fetching calendar events:', error);
 			calendarEvents = [];

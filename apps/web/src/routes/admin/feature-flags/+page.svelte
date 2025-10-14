@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 	import type { FeatureName } from '@buildos/shared-types';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	let pendingUserId = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);

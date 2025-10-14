@@ -1,10 +1,10 @@
 # Time Play - Implementation Specification
 
-**Status:** Planning
+**Status:** Phase 3 (Time Allocation Visualization) In Progress
 **Priority:** High
 **Owner:** TBD
 **Created:** 2025-10-10
-**Last Updated:** 2025-10-10
+**Last Updated:** 2025-10-14
 
 ## Table of Contents
 
@@ -82,6 +82,9 @@ Time Play embodies the principle that **protecting time is as important as plann
 - **FR1.2**: Show time blocks in different colors based on type (project blocks, build blocks, existing events)
 - **FR1.3**: Support day, week, and month views
 - **FR1.4**: Highlight available time gaps clearly
+- **FR1.5**: Display existing Google Calendar events in grey alongside time blocks ✅
+- **FR1.6**: Show connection prompt when Google Calendar not connected ✅
+- **FR1.7**: Allow users to click on calendar events to view full details ✅
 
 #### FR2: Time Block Creation
 
@@ -792,6 +795,87 @@ export interface ProjectAllocation {
 
 ---
 
+### GET /api/calendar/events
+
+**Purpose:** Fetch Google Calendar events for display alongside time blocks
+
+**Query Parameters:**
+
+- `timeMin` (optional): ISO timestamp - start of date range
+- `timeMax` (optional): ISO timestamp - end of date range
+- `calendarId` (optional): Calendar ID (defaults to 'primary')
+- `maxResults` (optional): Maximum number of events to return
+
+**Response:** `200 OK`
+
+```typescript
+{
+  event_count: number,
+  time_range: {
+    start: string,
+    end: string,
+    timeZone?: string
+  },
+  events: CalendarEvent[]
+}
+```
+
+**CalendarEvent Type:**
+
+```typescript
+interface CalendarEvent {
+	id: string;
+	summary: string;
+	description?: string;
+	location?: string;
+	start: {
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
+	end: {
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
+	attendees?: Array<{
+		email: string;
+		displayName?: string;
+		responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+	}>;
+	hangoutLink?: string;
+	htmlLink: string;
+	recurringEventId?: string;
+	status: 'confirmed' | 'tentative' | 'cancelled';
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Calendar not connected
+- `500 Internal Server Error` - Server error
+
+**Implementation:**
+
+1. Verify user authentication
+2. Check calendar connection via `CalendarService.hasValidConnection()`
+3. Call `CalendarService.getCalendarEvents()` with parameters
+4. Return full event data including description, location, attendees
+5. Handle disconnection gracefully
+
+**Usage Example:**
+
+```typescript
+// Fetch events for current week
+const response = await fetch(
+	`/api/calendar/events?timeMin=2025-10-14T00:00:00Z&timeMax=2025-10-21T00:00:00Z`
+);
+const { events } = await response.json();
+```
+
+---
+
 ## UI/UX Design
 
 ### Page Layout
@@ -980,6 +1064,8 @@ export interface ProjectAllocation {
 
 ### Phase 1: MVP Foundation (1-2 weeks)
 
+**Status:** ✅ Completed (2025-10-13)
+
 **Goal:** Basic time blocking with project blocks only
 
 **Tasks:**
@@ -1019,6 +1105,8 @@ export interface ProjectAllocation {
 
 ### Phase 2: AI Suggestions & Build Blocks (1 week)
 
+**Status:** ✅ Completed (2025-10-14)
+
 **Goal:** Add AI task suggestions and build block support
 
 **Tasks:**
@@ -1053,6 +1141,8 @@ export interface ProjectAllocation {
 
 ### Phase 3: Time Allocation Visualization (1 week)
 
+**Status:** 🚧 In progress — core analytics + visualization shipped; export tooling outstanding
+
 **Goal:** Visual breakdown of time allocation
 
 **Tasks:**
@@ -1072,7 +1162,7 @@ export interface ProjectAllocation {
     - Preset ranges (this week, next week, this month)
     - Update allocation on range change
 
-4. Export functionality
+4. Export functionality _(pending)_
     - Export allocation report as PDF or image
 
 **Success Criteria:**
@@ -1080,7 +1170,105 @@ export interface ProjectAllocation {
 - Visual chart displays time allocation
 - Updates dynamically when blocks change
 - User can filter by date range
-- Export works correctly
+- Export works correctly _(pending)_
+
+---
+
+### Phase 3.5: Google Calendar Integration (1 day)
+
+**Status:** ✅ Completed (2025-10-14)
+
+**Goal:** Display user's existing Google Calendar events alongside time blocks
+
+**Tasks:**
+
+1. ✅ Calendar connection detection
+    - Check if user has Google Calendar connected via `CalendarService.hasValidConnection()`
+    - Pass connection status to Time Play page
+
+2. ✅ Connection prompt UI
+    - Display prominent card when calendar not connected
+    - Link to profile settings to connect calendar
+    - Only show when `isCalendarConnected === false`
+
+3. ✅ Fetch calendar events
+    - Create `/api/calendar/events` endpoint using existing `CalendarService.getCalendarEvents()`
+    - Fetch events for visible date range (day/week/month)
+    - Auto-refresh when date range changes
+
+4. ✅ Display calendar events on calendar
+    - Render existing Google Calendar events in grey (`bg-slate-200/80`)
+    - Position events based on start/end times
+    - Show below time blocks (z-index: calendar events 8, time blocks 10)
+    - Display event title and start time
+
+5. ✅ Event detail modal
+    - Create `CalendarEventDetailModal.svelte` component
+    - Show full event details:
+        - Title, date/time, description
+        - Location, attendees with response status
+        - Google Meet link (if present)
+        - Recurring event indicator
+    - Link to view/edit in Google Calendar
+
+6. ✅ Make calendar events clickable
+    - Click handler to open detail modal
+    - Pass event data to modal
+
+**Implementation Details:**
+
+```typescript
+// Server-side connection check
+// /src/routes/time-play/+page.server.ts
+const calendarService = new CalendarService(supabase);
+const isCalendarConnected = await calendarService.hasValidConnection(user.id);
+
+// API endpoint for fetching events
+// /src/routes/api/calendar/events/+server.ts
+export const GET: RequestHandler = async ({ url, locals }) => {
+	const timeMin = url.searchParams.get('timeMin');
+	const timeMax = url.searchParams.get('timeMax');
+	const result = await calendarService.getCalendarEvents(user.id, {
+		timeMin,
+		timeMax
+	});
+	return json(result);
+};
+
+// Calendar component fetches events
+// /src/lib/components/time-play/TimePlayCalendar.svelte
+async function fetchCalendarEvents() {
+	if (!isCalendarConnected) return;
+
+	const response = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}`);
+	const data = await response.json();
+	calendarEvents = data.events || [];
+}
+
+// Auto-fetch when date range changes
+$effect(() => {
+	if (days.length > 0) {
+		fetchCalendarEvents();
+	}
+});
+```
+
+**UI Components:**
+
+- **Connection Card**: Amber warning card with "Connect Calendar" CTA
+- **Calendar Events**: Grey event blocks with hover states
+- **Event Detail Modal**: Full-screen modal with event details and Google Calendar link
+
+**Success Criteria:**
+
+- ✅ Connection status accurately detected
+- ✅ Connection prompt appears when calendar not connected
+- ✅ Google Calendar events fetched for visible date range
+- ✅ Events displayed in grey alongside time blocks
+- ✅ Events properly positioned by time
+- ✅ Click event opens detail modal with full information
+- ✅ Link to Google Calendar opens correct event
+- ✅ Events auto-refresh when navigating calendar dates
 
 ---
 
@@ -1801,9 +1989,10 @@ CREATE TRIGGER update_time_blocks_updated_at
 
 ## Changelog
 
-| Date       | Author                | Changes                       |
-| ---------- | --------------------- | ----------------------------- |
-| 2025-10-10 | Claude (AI Assistant) | Initial specification created |
+| Date       | Author                | Changes                                                    |
+| ---------- | --------------------- | ---------------------------------------------------------- |
+| 2025-10-14 | Claude (AI Assistant) | Added Phase 3.5: Google Calendar Integration documentation |
+| 2025-10-10 | Claude (AI Assistant) | Initial specification created                              |
 
 ---
 

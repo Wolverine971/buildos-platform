@@ -63,6 +63,53 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-14] Bug: Svelte 5 runes mode syntax error in admin feature flags page
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Admin Feature Flags Page
+
+**Symptoms**:
+
+- Build fails with error: `Cannot use export let in runes mode — use $props() instead`
+- Error location: `src/routes/admin/feature-flags/+page.svelte:6:1`
+- Web app cannot build or deploy to Vercel
+
+**Root Cause**:
+The feature flags admin page was using old Svelte syntax (`export let data: PageData`) but the project is configured to use Svelte 5 runes mode. In runes mode, component props must be declared using the `$props()` rune instead of the `export let` syntax. While the rest of the file was already using runes syntax (`$state` on lines 8-9), line 6 was still using the deprecated prop declaration syntax.
+
+**Fix Applied**:
+Converted the prop declaration from old Svelte syntax to Svelte 5 runes syntax:
+
+- Changed `export let data: PageData;` to `let { data }: { data: PageData } = $props();`
+
+**Files Changed**:
+
+- `apps/web/src/routes/admin/feature-flags/+page.svelte:6` - Converted export let to $props() rune
+
+**Manual Verification**:
+
+1. Run `pnpm build --filter=@buildos/web` - build should complete without runes mode errors
+2. Navigate to `/admin/feature-flags` page - page should load without errors
+3. Test feature flag toggle functionality - toggles should work correctly
+4. Verify no console errors related to component props
+
+**Related Documentation**:
+
+- `/apps/web/CLAUDE.md` - Documents Svelte 5 runes syntax requirements
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- BuildOS convention: All web app components must use Svelte 5 runes syntax (`$state`, `$derived`, `$effect`, `$props`)
+- See `/apps/web/CLAUDE.md` section "Important Patterns > Svelte 5 Runes"
+
+**Confidence**: High - Error is explicit, fix is straightforward, build confirms resolution
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-13] Bug: Incomplete timezone centralization migration causing TypeScript errors
 
 **Status**: Fixed

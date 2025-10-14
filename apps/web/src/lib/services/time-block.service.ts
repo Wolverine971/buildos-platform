@@ -34,6 +34,16 @@ const DEFAULT_PROJECT_COLOR = '9';
 const BUILD_BLOCK_COLOR = '7';
 const MAX_CALENDAR_SUGGESTIONS = 3;
 const FALLBACK_APP_URL = 'https://build-os.com';
+
+// Google Calendar valid color IDs (1-11)
+const VALID_CALENDAR_COLOR_IDS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']);
+
+function validateColorId(colorId: string | null | undefined): string {
+	if (colorId && VALID_CALENDAR_COLOR_IDS.has(colorId)) {
+		return colorId;
+	}
+	return DEFAULT_PROJECT_COLOR;
+}
 const APP_BASE_URL = (() => {
 	const raw =
 		typeof process !== 'undefined' &&
@@ -564,8 +574,8 @@ export class TimeBlockService {
 
 		const colorId =
 			params.blockType === 'project'
-				? (params.projectColorId ?? DEFAULT_PROJECT_COLOR)
-				: BUILD_BLOCK_COLOR;
+				? validateColorId(params.projectColorId)
+				: validateColorId(BUILD_BLOCK_COLOR);
 
 		const lines: string[] = [
 			'Time block created with BuildOS Time Play.',

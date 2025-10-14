@@ -108,7 +108,9 @@
 							Until {formatTime(event.end.dateTime)}
 						</div>
 					{:else if isAllDayEvent()}
-						<div class="mt-1 text-xs text-slate-600 dark:text-slate-400">All day event</div>
+						<div class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+							All day event
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -205,7 +207,9 @@
 									<span class="text-slate-700 dark:text-slate-300">
 										{attendee.displayName || attendee.email}
 										{#if attendee.organizer}
-											<span class="text-slate-500 dark:text-slate-400">(Organizer)</span>
+											<span class="text-slate-500 dark:text-slate-400"
+												>(Organizer)</span
+											>
 										{/if}
 									</span>
 								</div>
@@ -261,14 +265,18 @@
 						/>
 					</svg>
 					<div class="flex-1">
-						<div class="text-sm text-slate-700 dark:text-slate-300">Recurring event</div>
+						<div class="text-sm text-slate-700 dark:text-slate-300">
+							Recurring event
+						</div>
 					</div>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Actions -->
-		<div class="flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-700">
+		<div
+			class="flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-700"
+		>
 			<a
 				href={event.htmlLink}
 				target="_blank"
