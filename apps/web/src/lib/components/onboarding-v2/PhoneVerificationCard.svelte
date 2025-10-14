@@ -205,7 +205,8 @@
 				SMS Notifications
 			</h4>
 			<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-				Get text reminders for important tasks and daily summaries
+				Stay on track with text reminders before events, morning kickoffs with your
+				schedule, and evening recaps
 			</p>
 
 			{#if isLoadingExisting}
@@ -277,7 +278,6 @@
 							class="flex-1 min-w-[120px]"
 						>
 							{#if isSending}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								Sending...
 							{:else}
 								Send Code
@@ -346,7 +346,6 @@
 							class="flex-1 min-w-[120px]"
 						>
 							{#if isVerifying}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								Verifying...
 							{:else}
 								Verify

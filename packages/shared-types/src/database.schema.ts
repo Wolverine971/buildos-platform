@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-13T23:22:23.573Z
+// Generated on: 2025-10-14T04:57:47.673Z
 
 export type Json =
   | string
@@ -467,6 +467,15 @@ export type DatabaseSchema = {
     retry_count: number | null;
     subscription_id: string | null;
     updated_at: string | null;
+    user_id: string;
+  };
+  feature_flags: {
+    created_at: string;
+    enabled: boolean;
+    enabled_at: string | null;
+    feature_name: string;
+    id: string;
+    updated_at: string;
     user_id: string;
   };
   feedback: {
@@ -1019,6 +1028,26 @@ export type DatabaseSchema = {
     updated_at: string;
     user_id: string;
   };
+  time_blocks: {
+    ai_suggestions: Json | null;
+    block_type: string;
+    calendar_event_id: string | null;
+    calendar_event_link: string | null;
+    created_at: string;
+    duration_minutes: number;
+    end_time: string;
+    id: string;
+    last_synced_at: string | null;
+    project_id: string | null;
+    start_time: string;
+    suggestions_generated_at: string | null;
+    suggestions_model: string | null;
+    suggestions_summary: string | null;
+    sync_status: string;
+    timezone: string;
+    updated_at: string;
+    user_id: string;
+  };
   trial_reminders: {
     created_at: string | null;
     id: string;
@@ -1250,6 +1279,7 @@ export const tableNames = [
   "emails",
   "error_logs",
   "failed_payments",
+  "feature_flags",
   "feedback",
   "feedback_rate_limit",
   "invoices",
@@ -1285,6 +1315,7 @@ export const tableNames = [
   "system_metrics",
   "task_calendar_events",
   "tasks",
+  "time_blocks",
   "trial_reminders",
   "user_activity_logs",
   "user_brief_preferences",

@@ -6,6 +6,8 @@ export type { Database, Json } from "./database.types";
 export * from "./queue-types";
 export * from "./validation";
 export * from "./api-types";
+export * from "./feature-flags.types";
+export * from "./time-block.types";
 
 // Export notification system types
 export * from "./notification.types";

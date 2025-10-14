@@ -1717,6 +1717,44 @@ export type Database = {
           },
         ];
       };
+      feature_flags: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          enabled_at: string | null;
+          feature_name: string;
+          id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          enabled_at?: string | null;
+          feature_name: string;
+          id?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          enabled?: boolean;
+          enabled_at?: string | null;
+          feature_name?: string;
+          id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       feedback: {
         Row: {
           category: string;
@@ -3939,6 +3977,84 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      time_blocks: {
+        Row: {
+          ai_suggestions: Json | null;
+          block_type: string;
+          calendar_event_id: string | null;
+          calendar_event_link: string | null;
+          created_at: string;
+          duration_minutes: number;
+          end_time: string;
+          id: string;
+          last_synced_at: string | null;
+          project_id: string | null;
+          start_time: string;
+          suggestions_generated_at: string | null;
+          suggestions_model: string | null;
+          suggestions_summary: string | null;
+          sync_status: string;
+          timezone: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          ai_suggestions?: Json | null;
+          block_type?: string;
+          calendar_event_id?: string | null;
+          calendar_event_link?: string | null;
+          created_at?: string;
+          duration_minutes: number;
+          end_time: string;
+          id?: string;
+          last_synced_at?: string | null;
+          project_id?: string | null;
+          start_time: string;
+          suggestions_generated_at?: string | null;
+          suggestions_model?: string | null;
+          suggestions_summary?: string | null;
+          sync_status?: string;
+          timezone?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          ai_suggestions?: Json | null;
+          block_type?: string;
+          calendar_event_id?: string | null;
+          calendar_event_link?: string | null;
+          created_at?: string;
+          duration_minutes?: number;
+          end_time?: string;
+          id?: string;
+          last_synced_at?: string | null;
+          project_id?: string | null;
+          start_time?: string;
+          suggestions_generated_at?: string | null;
+          suggestions_model?: string | null;
+          suggestions_summary?: string | null;
+          sync_status?: string;
+          timezone?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "time_blocks_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "time_blocks_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";

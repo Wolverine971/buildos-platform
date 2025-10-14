@@ -192,6 +192,21 @@ export interface ScheduleTaskResponse {
 	timeZone?: string;
 }
 
+export interface CreateStandaloneEventParams {
+	summary: string;
+	description?: string;
+	start: Date;
+	end: Date;
+	timeZone?: string;
+	colorId?: string;
+	calendar_id?: string;
+}
+
+export interface CreateStandaloneEventResult {
+	eventId: string;
+	eventLink?: string;
+}
+
 export interface UpdateCalendarEventResponse {
 	success: boolean;
 	event_id?: string;
@@ -759,6 +774,58 @@ export class CalendarService {
 			}
 		} catch (error: any) {
 			console.error('Error scheduling task:', error);
+			if (error instanceof GoogleOAuthConnectionError && error.requiresReconnection) {
+				await this.handleConnectionFailure(userId, error.message);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Create a standalone calendar event (used for Time Play blocks and similar flows)
+	 */
+	async createStandaloneEvent(
+		userId: string,
+		params: CreateStandaloneEventParams
+	): Promise<CreateStandaloneEventResult> {
+		try {
+			const auth = await this.oAuthService.getAuthenticatedClient(userId);
+			const calendar = google.calendar({ version: 'v3', auth });
+
+			const calendarId = params.calendar_id ?? 'primary';
+			const startFormatted = this.formatDateTimeForCalendar(
+				params.start.toISOString(),
+				params.timeZone
+			);
+			const endFormatted = this.formatDateTimeForCalendar(
+				params.end.toISOString(),
+				params.timeZone
+			);
+
+			const event: calendar_v3.Schema$Event = {
+				summary: params.summary,
+				description: params.description,
+				start: startFormatted,
+				end: endFormatted,
+				colorId: params.colorId
+			};
+
+			const response = await calendar.events.insert({
+				calendarId,
+				requestBody: event
+			});
+
+			const eventId = response.data.id;
+			if (!eventId) {
+				throw new Error('Failed to create calendar event');
+			}
+
+			return {
+				eventId,
+				eventLink: response.data.htmlLink ?? undefined
+			};
+		} catch (error: any) {
+			console.error('Error creating standalone calendar event:', error);
 			if (error instanceof GoogleOAuthConnectionError && error.requiresReconnection) {
 				await this.handleConnectionFailure(userId, error.message);
 			}

@@ -1,11 +1,10 @@
 <!-- apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte -->
 <script lang="ts">
-	import { Bell, Mail, Smartphone, Sun, Moon, Info } from 'lucide-svelte';
+	import { Bell, Mail, Sun, Moon, Info, CheckCircle2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PhoneVerificationCard from './PhoneVerificationCard.svelte';
 	import { onboardingV2Service } from '$lib/services/onboarding-v2.service';
 	import { toastService } from '$lib/stores/toast.store';
-	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 
 	interface Props {
 		userId: string;
@@ -31,7 +30,7 @@
 	});
 
 	let isSaving = $state(false);
-	let showSMSOptions = $derived(smsPreferences.phoneVerified);
+	let wantsToEnableSMS = $state(false);
 
 	// Handle phone verification success
 	function handlePhoneVerified(phoneNumber: string) {
@@ -132,13 +131,6 @@
 			isSaving = false;
 		}
 	}
-
-	// Icon mapping for notification types
-	const iconMap = {
-		event_reminders: Bell,
-		morning_kickoff: Sun,
-		evening_recap: Moon
-	};
 </script>
 
 <div class="max-w-3xl mx-auto px-4">
@@ -148,59 +140,239 @@
 			<div
 				class="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 rounded-2xl flex items-center justify-center shadow-lg"
 			>
-				<Bell class="w-8 h-8 text-green-600 dark:text-green-400" />
+				<CheckCircle2 class="w-8 h-8 text-green-600 dark:text-green-400" />
 			</div>
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
-			Stay Accountable
+			Stay Accountable & Follow Through
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-			How do you want BuildOS to keep you on track? (This step is optional)
+		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+			The best plans fall apart without follow-through. Let BuildOS help you stay on track
+			with gentle reminders and daily check-ins that keep you moving forward.
 		</p>
 	</div>
 
-	<!-- SMS Notification Demo Placeholder -->
-	<div
-		class="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800"
-	>
-		<div class="flex items-start gap-3 mb-3">
-			<Info class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-			<h3 class="font-semibold text-gray-900 dark:text-white">
-				See SMS Notifications in Action
-			</h3>
-		</div>
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
-		>
-			<p class="text-gray-400 text-sm mb-2">
-				🎥 [Demo video: Phone receiving SMS notifications - 10 seconds]
-			</p>
-			<p class="text-xs text-gray-500">
-				Examples: Morning kickoff, task reminder, evening recap
-			</p>
-		</div>
-	</div>
-
 	<div class="space-y-6">
-		<!-- Phone Verification Card -->
-		<PhoneVerificationCard {userId} onVerified={handlePhoneVerified} onSkip={handleSkipSMS} />
+		<!-- Daily Brief Email Section -->
+		<div
+			class="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 rounded-xl border-2 border-purple-200 dark:border-purple-800 p-6 shadow-sm"
+		>
+			<div class="flex items-start gap-4 mb-4">
+				<div
+					class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 rounded-lg flex items-center justify-center"
+				>
+					<Mail class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+				</div>
 
-		<!-- SMS Options (only show if phone verified) -->
-		{#if showSMSOptions}
+				<div class="flex-1">
+					<h3 class="font-semibold text-xl mb-2 text-gray-900 dark:text-white">
+						Daily Brief Email
+					</h3>
+					<p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+						Start each morning with clarity. Get a comprehensive email digest that
+						brings everything together in one place.
+					</p>
+
+					<!-- Benefits list -->
+					<div class="space-y-2 mb-4">
+						<div
+							class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+						>
+							<CheckCircle2
+								class="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
+							/>
+							<span>All your active projects and what needs attention</span>
+						</div>
+						<div
+							class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+						>
+							<CheckCircle2
+								class="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
+							/>
+							<span>Today's tasks and upcoming deadlines</span>
+						</div>
+						<div
+							class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+						>
+							<CheckCircle2
+								class="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
+							/>
+							<span>Your calendar events with context</span>
+						</div>
+					</div>
+
+					<!-- Toggle -->
+					<label
+						class="flex items-center gap-3 cursor-pointer group p-3 bg-white dark:bg-gray-800/50 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+					>
+						<input
+							type="checkbox"
+							bind:checked={emailPreferences.dailyBrief}
+							class="w-5 h-5 text-purple-600 dark:text-purple-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:ring-offset-0"
+						/>
+						<div class="flex-1">
+							<div class="font-medium text-gray-900 dark:text-white">
+								Yes, send me the Daily Brief
+							</div>
+							<p class="text-xs text-gray-600 dark:text-gray-400">
+								Delivered to your inbox every morning
+							</p>
+						</div>
+					</label>
+				</div>
+			</div>
+		</div>
+
+		<!-- SMS Notifications Section -->
+		<div
+			class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-xl border-2 border-green-200 dark:border-green-800 p-6 shadow-sm"
+		>
+			<div class="flex items-start gap-4 mb-4">
+				<div
+					class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-lg flex items-center justify-center"
+				>
+					<Bell class="w-6 h-6 text-green-600 dark:text-green-400" />
+				</div>
+
+				<div class="flex-1">
+					<h3 class="font-semibold text-xl mb-2 text-gray-900 dark:text-white">
+						SMS Text Messages
+					</h3>
+					<p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+						Get timely nudges throughout the day to keep you on track. Choose the
+						messages that work best for you.
+					</p>
+
+					<!-- SMS Options -->
+					<div class="space-y-3">
+						<!-- Event Reminders -->
+						<div
+							class="p-4 bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+						>
+							<div class="flex items-start gap-3">
+								<Bell
+									class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
+								/>
+								<div class="flex-1">
+									<h4 class="font-semibold text-gray-900 dark:text-white mb-1">
+										Event Reminders
+									</h4>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										Never walk into a meeting unprepared. Get a heads up text 15
+										minutes before events with helpful context, attendee info,
+										and what you need to bring.
+									</p>
+									<p class="text-xs text-gray-500 dark:text-gray-500 italic">
+										"Meeting in 15 mins: Project Sync with Sarah. Agenda: Q4
+										roadmap review."
+									</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Morning Kickoff -->
+						<div
+							class="p-4 bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+						>
+							<div class="flex items-start gap-3">
+								<Sun
+									class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
+								/>
+								<div class="flex-1">
+									<h4 class="font-semibold text-gray-900 dark:text-white mb-1">
+										Morning Kickoff
+									</h4>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										Know what you're committing to today. Get a morning text (8
+										AM) with your schedule, priority tasks, and what needs your
+										attention first.
+									</p>
+									<p class="text-xs text-gray-500 dark:text-gray-500 italic">
+										"Good morning! 3 meetings today, 5 tasks due. Start with:
+										Finish proposal draft."
+									</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Evening Recap -->
+						<div
+							class="p-4 bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+						>
+							<div class="flex items-start gap-3">
+								<Moon
+									class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5 flex-shrink-0"
+								/>
+								<div class="flex-1">
+									<h4 class="font-semibold text-gray-900 dark:text-white mb-1">
+										Evening Recap
+									</h4>
+									<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										Celebrate progress and prepare for tomorrow. Get an evening
+										text (8 PM) with what you accomplished today and what's on
+										deck for tomorrow.
+									</p>
+									<p class="text-xs text-gray-500 dark:text-gray-500 italic">
+										"You completed 7 tasks today! Tomorrow: Design review at 10
+										AM, 4 tasks pending."
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Call to action for SMS -->
+					{#if !smsPreferences.phoneVerified && !wantsToEnableSMS}
+						<div class="mt-4 p-4 bg-white dark:bg-gray-800/50 rounded-lg">
+							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+								Ready to enable SMS notifications? You'll need to verify your phone
+								number first.
+							</p>
+							<Button
+								variant="primary"
+								on:click={() => (wantsToEnableSMS = true)}
+								class="w-full"
+							>
+								Enable SMS Notifications
+							</Button>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<!-- Phone Verification Card (show when user wants SMS) -->
+		{#if wantsToEnableSMS && !smsPreferences.phoneVerified}
+			<div class="animate-in fade-in slide-in-from-top-2 duration-300">
+				<PhoneVerificationCard
+					{userId}
+					onVerified={handlePhoneVerified}
+					onSkip={() => (wantsToEnableSMS = false)}
+				/>
+			</div>
+		{/if}
+
+		<!-- SMS Preference Selection (after verification) -->
+		{#if smsPreferences.phoneVerified}
 			<div
 				class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
 			>
-				<h4 class="font-semibold text-lg mb-4 text-gray-900 dark:text-white">
-					Choose Your SMS Notifications
+				<h4
+					class="font-semibold text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2"
+				>
+					<CheckCircle2 class="w-5 h-5 text-green-600 dark:text-green-400" />
+					Choose Your Text Messages
 				</h4>
 				<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 					Select which types of text messages you'd like to receive
 				</p>
 
-				<div class="space-y-4">
-					<!-- Event Reminders -->
-					<label class="flex items-start gap-3 cursor-pointer group">
+				<div class="space-y-3">
+					<!-- Event Reminders Toggle -->
+					<label
+						class="flex items-start gap-3 cursor-pointer group p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+					>
 						<input
 							type="checkbox"
 							bind:checked={smsPreferences.eventReminders}
@@ -208,64 +380,67 @@
 						/>
 						<div class="flex-1">
 							<div
-								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white"
 							>
 								<Bell class="w-4 h-4" />
 								Event Reminders
 							</div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Get notified about upcoming events and meetings
+							<p class="text-xs text-gray-600 dark:text-gray-400">
+								15 minutes before events
 							</p>
 						</div>
 					</label>
 
-					<!-- Morning Kickoff -->
-					<label class="flex items-start gap-3 cursor-pointer group">
+					<!-- Morning Kickoff Toggle -->
+					<label
+						class="flex items-start gap-3 cursor-pointer group p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+					>
 						<input
 							type="checkbox"
 							bind:checked={smsPreferences.morningKickoff}
-							class="mt-1 w-5 h-5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-0"
+							class="mt-1 w-5 h-5 text-amber-600 dark:text-amber-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:ring-offset-0"
 						/>
 						<div class="flex-1">
 							<div
-								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white"
 							>
 								<Sun class="w-4 h-4" />
 								Morning Kickoff
 							</div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Start your day with focus and priorities (8 AM daily)
-							</p>
+							<p class="text-xs text-gray-600 dark:text-gray-400">Daily at 8:00 AM</p>
 						</div>
 					</label>
 
-					<!-- Evening Recap -->
-					<label class="flex items-start gap-3 cursor-pointer group">
+					<!-- Evening Recap Toggle -->
+					<label
+						class="flex items-start gap-3 cursor-pointer group p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+					>
 						<input
 							type="checkbox"
 							bind:checked={smsPreferences.eveningRecap}
-							class="mt-1 w-5 h-5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-0"
+							class="mt-1 w-5 h-5 text-indigo-600 dark:text-indigo-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:ring-offset-0"
 						/>
 						<div class="flex-1">
 							<div
-								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+								class="font-medium flex items-center gap-2 text-gray-900 dark:text-white"
 							>
 								<Moon class="w-4 h-4" />
 								Evening Recap
 							</div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Reflect on your day and plan tomorrow (8 PM daily)
-							</p>
+							<p class="text-xs text-gray-600 dark:text-gray-400">Daily at 8:00 PM</p>
 						</div>
 					</label>
 				</div>
 
 				{#if smsPreferences.eventReminders || smsPreferences.morningKickoff || smsPreferences.eveningRecap}
 					<div
-						class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+						class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800"
 					>
-						<p class="text-sm text-blue-700 dark:text-blue-300">
-							✓ {[
+						<p
+							class="text-sm text-green-700 dark:text-green-300 flex items-center gap-2"
+						>
+							<CheckCircle2 class="w-4 h-4" />
+							{[
 								smsPreferences.eventReminders,
 								smsPreferences.morningKickoff,
 								smsPreferences.eveningRecap
@@ -282,44 +457,6 @@
 			</div>
 		{/if}
 
-		<!-- Email Preferences -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm"
-		>
-			<div class="flex items-start gap-4">
-				<div
-					class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg flex items-center justify-center"
-				>
-					<Mail class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-				</div>
-
-				<div class="flex-1">
-					<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
-						Email Notifications
-					</h4>
-
-					<label class="flex items-start gap-3 cursor-pointer mt-4 group">
-						<input
-							type="checkbox"
-							bind:checked={emailPreferences.dailyBrief}
-							class="mt-1 w-5 h-5 text-purple-600 dark:text-purple-500 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:ring-offset-0"
-						/>
-						<div class="flex-1">
-							<div
-								class="font-medium text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors"
-							>
-								Daily Brief Emails
-							</div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Morning digest with your upcoming projects, tasks, and calendar
-								events
-							</p>
-						</div>
-					</label>
-				</div>
-			</div>
-		</div>
-
 		<!-- Info Box -->
 		<div
 			class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
@@ -330,7 +467,10 @@
 					<p class="font-medium text-gray-900 dark:text-white mb-1">
 						You can change these anytime
 					</p>
-					<p>Update your notification preferences in Settings whenever you need.</p>
+					<p>
+						Update your notification preferences in Settings whenever you need. This
+						step is completely optional.
+					</p>
 				</div>
 			</div>
 		</div>

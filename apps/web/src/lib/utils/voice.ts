@@ -19,6 +19,7 @@ let mediaRecorder: MediaRecorder | null = null;
 let audioChunks: Blob[] = [];
 let currentStream: MediaStream | null = null;
 let isInitialized = false;
+let runtimeValidationDone = false;
 
 // Accumulated transcript to preserve speech across SpeechRecognition restarts (e.g., after pauses)
 let accumulatedFinalTranscript = '';
@@ -254,7 +255,9 @@ export async function startRecording(): Promise<void> {
 		});
 
 		// Runtime validation: Now that we have permissions, test if SpeechRecognition actually works
-		if (!isInitialized && capabilities.liveTranscriptSupported && recognition) {
+		if (!runtimeValidationDone && capabilities.liveTranscriptSupported && recognition) {
+			runtimeValidationDone = true; // Mark as done before testing to avoid infinite loops
+
 			try {
 				// Quick test: start and immediately stop to verify it works
 				recognition.start();
@@ -263,10 +266,8 @@ export async function startRecording(): Promise<void> {
 				console.log('[SpeechRecognition] Runtime validation successful');
 
 				// Re-initialize for actual use
-				isInitialized = false;
 				recognition = null;
 				initializeSpeechRecognition();
-				isInitialized = true;
 
 				// Notify UI that live transcript is actually available
 				if (onCapabilityUpdate) {
@@ -275,7 +276,6 @@ export async function startRecording(): Promise<void> {
 			} catch (error) {
 				console.warn('[SpeechRecognition] Runtime validation failed:', error);
 				recognition = null;
-				isInitialized = true; // Mark as initialized but failed
 
 				// Notify UI that live transcript is NOT available
 				if (onCapabilityUpdate) {
@@ -414,6 +414,7 @@ export const getRecordingStatus = () => ({
 export const forceCleanup = () => {
 	cleanupResources();
 	isInitialized = false;
+	runtimeValidationDone = false; // Reset validation state for next recording session
 	capabilitiesCache = null; // Reset cache to re-detect on next use
 };
 

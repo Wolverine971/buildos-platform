@@ -6,17 +6,31 @@
 	import Button from './Button.svelte';
 	import { portal } from '$lib/actions/portal';
 
-	export let isOpen = false;
-	export let onClose: () => void;
-	export let title = '';
-	export let size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
-	export let showCloseButton = true;
-	export let closeOnBackdrop = true;
-	export let closeOnEscape = true;
-	export let persistent = false;
-	export let customClasses = '';
-	export let ariaLabel = '';
-	export let ariaDescribedBy = '';
+	let {
+		isOpen = false,
+		onClose,
+		title = '',
+		size = 'md',
+		showCloseButton = true,
+		closeOnBackdrop = true,
+		closeOnEscape = true,
+		persistent = false,
+		customClasses = '',
+		ariaLabel = '',
+		ariaDescribedBy = ''
+	}: {
+		isOpen?: boolean;
+		onClose: () => void;
+		title?: string;
+		size?: 'sm' | 'md' | 'lg' | 'xl';
+		showCloseButton?: boolean;
+		closeOnBackdrop?: boolean;
+		closeOnEscape?: boolean;
+		persistent?: boolean;
+		customClasses?: string;
+		ariaLabel?: string;
+		ariaDescribedBy?: string;
+	} = $props();
 
 	const sizeClasses = {
 		sm: 'max-w-md',
@@ -25,10 +39,10 @@
 		xl: 'max-w-6xl'
 	};
 
-	let modalElement: HTMLDivElement;
-	let previousFocusElement: HTMLElement | null = null;
-	let focusTrapCleanup: (() => void) | null = null;
-	let modalId = `modal-${Math.random().toString(36).substr(2, 9)}`;
+	let modalElement = $state<HTMLDivElement | undefined>(undefined);
+	let previousFocusElement = $state<HTMLElement | null>(null);
+	let focusTrapCleanup = $state<(() => void) | null>(null);
+	let modalId = `modal-${Math.random().toString(36).slice(2, 11)}`;
 	let titleId = `${modalId}-title`;
 	let contentId = `${modalId}-content`;
 
@@ -113,11 +127,13 @@
 		restoreFocus();
 	}
 
-	$: if (isOpen) {
-		handleModalOpen();
-	} else {
-		handleModalClose();
-	}
+	$effect(() => {
+		if (isOpen) {
+			handleModalOpen();
+		} else {
+			handleModalClose();
+		}
+	});
 
 	onDestroy(() => {
 		if (focusTrapCleanup) {

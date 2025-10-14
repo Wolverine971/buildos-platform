@@ -435,6 +435,18 @@
 			"exports": ["TaskTimeSlotFinder"]
 		},
 		{
+			"file": "src/lib/services/time-block-suggestion.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["TimeBlockSuggestionService"]
+		},
+		{
+			"file": "src/lib/services/time-block.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["TimeBlockService"]
+		},
+		{
 			"file": "src/lib/services/visitor.service.ts",
 			"type": "service",
 			"components": [],
@@ -555,6 +567,12 @@
 			"type": "store",
 			"components": [],
 			"exports": ["searchStore", "totalResultCount"]
+		},
+		{
+			"file": "src/lib/stores/timePlayStore.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["timePlayStore"]
 		},
 		{
 			"file": "src/lib/stores/toast.store.ts",
