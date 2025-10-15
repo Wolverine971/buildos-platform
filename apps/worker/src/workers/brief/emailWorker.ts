@@ -177,7 +177,9 @@ export async function processEmailBriefJob(
     console.log(`📨 Sending email to ${user.email} via webhook to web app`);
 
     // Send via webhook to web app's email endpoint
-    const webhookUrl = (process.env.PUBLIC_APP_URL || "https://build-os.com").trim();
+    const webhookUrl = (
+      process.env.PUBLIC_APP_URL || "https://build-os.com"
+    ).trim();
     const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {

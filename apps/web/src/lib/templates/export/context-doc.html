@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{{projectName}} - Context Document</title>
+	</head>
+	<body>
+		<!-- Header (First Page Only) -->
+		<header class="document-header">
+			<div class="logo-container">
+				<img src="{{logoPath}}" alt="BuildOS" class="brand-logo" />
+			</div>
+
+			<h1 class="project-name">{{projectName}}</h1>
+
+			<div class="project-metadata">
+				{{#if hasStartDate}}
+				<span class="metadata-item">Started {{projectStartDate}}</span>
+				{{/if}} {{#if hasEndDate}}
+				<span class="metadata-item">Due {{projectEndDate}}</span>
+				{{/if}}
+			</div>
+
+			<hr class="header-divider" />
+		</header>
+
+		<!-- Main Content -->
+		<main class="document-content">
+			<article class="prose">{{{projectContext}}}</article>
+		</main>
+	</body>
+</html>

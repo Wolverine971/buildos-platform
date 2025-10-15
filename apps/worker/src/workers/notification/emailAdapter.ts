@@ -248,7 +248,9 @@ export async function sendEmailNotification(
     }
 
     // Send email immediately via webhook to web app
-    const webhookUrl = (process.env.PUBLIC_APP_URL || "https://build-os.com").trim();
+    const webhookUrl = (
+      process.env.PUBLIC_APP_URL || "https://build-os.com"
+    ).trim();
     const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {

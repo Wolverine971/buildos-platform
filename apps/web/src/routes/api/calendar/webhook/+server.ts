@@ -12,8 +12,8 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 	if (!user) {
 		return ApiResponse.unauthorized();
 	}
-	if(dev){
-		return 
+	if (dev) {
+		return;
 	}
 
 	const webhookService = new CalendarWebhookService(supabase);
@@ -36,12 +36,12 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 export const DELETE: RequestHandler = async ({ locals: { safeGetSession, supabase } }) => {
 	const { session, user } = await safeGetSession();
 	if (!user) {
-		return ApiResponse.unauthorized()
+		return ApiResponse.unauthorized();
 	}
 
 	const webhookService = new CalendarWebhookService(supabase);
 
 	await webhookService.unregisterWebhook(user.id);
 
-	return ApiResponse.success('Webhook unregistered')
+	return ApiResponse.success('Webhook unregistered');
 };

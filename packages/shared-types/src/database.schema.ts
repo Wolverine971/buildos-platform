@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-14T05:30:48.771Z
+// Generated on: 2025-10-15T03:42:58.240Z
 
 export type Json =
   | string
@@ -906,6 +906,30 @@ export type DatabaseSchema = {
     updated_at: string | null;
     user_id: string;
   };
+  sms_alert_history: {
+    alert_type: string;
+    id: string;
+    metadata: Json | null;
+    metric_value: number;
+    notification_error: string | null;
+    notification_sent: boolean;
+    resolved_at: string | null;
+    severity: string;
+    threshold_value: number;
+    triggered_at: string;
+  };
+  sms_alert_thresholds: {
+    alert_type: string;
+    cooldown_minutes: number;
+    created_at: string;
+    id: string;
+    is_enabled: boolean;
+    last_triggered_at: string | null;
+    notification_channels: string[];
+    severity: string;
+    threshold_value: number;
+    updated_at: string;
+  };
   sms_messages: {
     attempt_count: number | null;
     created_at: string | null;
@@ -931,6 +955,17 @@ export type DatabaseSchema = {
     twilio_sid: string | null;
     twilio_status: string | null;
     updated_at: string | null;
+    user_id: string;
+  };
+  sms_metrics: {
+    created_at: string;
+    id: string;
+    metadata: Json | null;
+    metric_date: string;
+    metric_hour: number | null;
+    metric_type: string;
+    metric_value: number;
+    updated_at: string;
     user_id: string;
   };
   sms_templates: {
@@ -1309,7 +1344,10 @@ export const tableNames = [
   "recurring_task_instances",
   "recurring_task_migration_log",
   "scheduled_sms_messages",
+  "sms_alert_history",
+  "sms_alert_thresholds",
   "sms_messages",
+  "sms_metrics",
   "sms_templates",
   "subscription_plans",
   "system_metrics",

@@ -1,18 +1,18 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-13T23:04:24.944Z
+**Generated at:** 2025-10-14T19:24:57.376Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"projectId": "existing-project-123",
-	"brainDumpLength": 41,
+	"userId": "550e8400-e29b-41d4-a716-446655440000",
+	"projectId": "new",
+	"brainDumpLength": 34,
 	"existingTasksCount": 0,
 	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-13T23:04:24.944Z"
+	"timestamp": "2025-10-14T19:24:57.376Z"
 }
 ```
 
@@ -21,10 +21,10 @@
 ````
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project existing-project-123
+Mode: Extract/Update for EXISTING project new
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-13T23:04:24.944Z
+Current date and time: 2025-10-14T19:24:57.376Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -66,7 +66,7 @@ Current date and time: 2025-10-13T23:04:24.944Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "existing-project-123",
+  "project_id": "new",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -162,7 +162,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "existing-project-123",
+        "project_id": "new",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -179,7 +179,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "existing-project-123",
+        "project_id": "new",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -226,15 +226,15 @@ No existing tasks
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Add authentication feature to the project
+Test brain dump for database error
 
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2125 tokens
-- **User Prompt:** ~59 tokens
-- **Total Estimate:** ~2184 tokens
+- **System Prompt:** ~2108 tokens
+- **User Prompt:** ~57 tokens
+- **Total Estimate:** ~2165 tokens
 
 
 ---

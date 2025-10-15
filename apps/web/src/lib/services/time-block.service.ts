@@ -17,8 +17,8 @@ import {
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
-const MIN_DURATION_MINUTES = 30;
-const MAX_DURATION_MINUTES = 8 * 60;
+const MIN_DURATION_MINUTES = 15;
+const MAX_DURATION_MINUTES = 10 * 60;
 
 interface CalendarSyncPayload {
 	summary: string;

@@ -2,6 +2,8 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { TimeAllocation, TimeBlockWithProject } from '@buildos/shared-types';
+import type { SlotFinderConfig } from '$lib/types/time-play';
+import { DEFAULT_SLOT_FINDER_CONFIG } from '$lib/types/time-play';
 
 interface TimePlayState {
 	blocks: TimeBlockWithProject[];
@@ -12,6 +14,7 @@ interface TimePlayState {
 	allocation: TimeAllocation | null;
 	regeneratingIds: string[];
 	error: string | null;
+	slotFinderConfig: SlotFinderConfig;
 }
 
 function sortBlocks(blocks: TimeBlockWithProject[]): TimeBlockWithProject[] {
@@ -26,6 +29,21 @@ function createDefaultDateRange(): { start: Date; end: Date } {
 	return { start, end };
 }
 
+function loadSlotFinderConfig(): SlotFinderConfig {
+	if (!browser) return DEFAULT_SLOT_FINDER_CONFIG;
+
+	try {
+		const saved = localStorage.getItem('timeplay-slot-finder-config');
+		if (saved) {
+			return { ...DEFAULT_SLOT_FINDER_CONFIG, ...JSON.parse(saved) };
+		}
+	} catch (error) {
+		console.error('[TimePlayStore] Failed to load slot finder config:', error);
+	}
+
+	return DEFAULT_SLOT_FINDER_CONFIG;
+}
+
 function createTimePlayStore() {
 	const initialState: TimePlayState = {
 		blocks: [],
@@ -35,7 +53,8 @@ function createTimePlayStore() {
 		isAllocationLoading: false,
 		allocation: null,
 		regeneratingIds: [],
-		error: null
+		error: null,
+		slotFinderConfig: loadSlotFinderConfig()
 	};
 
 	const internalStore = writable<TimePlayState>(initialState);
@@ -60,7 +79,6 @@ function createTimePlayStore() {
 			throw new Error(payload?.error ?? 'Failed to load time blocks');
 		}
 
-		
 		return sortBlocks(payload?.data?.blocks ?? []);
 	}
 
@@ -84,7 +102,6 @@ function createTimePlayStore() {
 		subscribe,
 
 		async loadBlocks(startDate?: Date, endDate?: Date) {
-
 			if (!browser) return;
 
 			const rangeStart = startDate ?? currentState.selectedDateRange.start;
@@ -129,7 +146,6 @@ function createTimePlayStore() {
 		},
 
 		async loadBlocksOnly(startDate?: Date, endDate?: Date) {
-
 			if (!browser) return;
 
 			const rangeStart = startDate ?? currentState.selectedDateRange.start;
@@ -345,10 +361,34 @@ function createTimePlayStore() {
 			this.loadBlocks(start, end);
 		},
 
+		updateSlotFinderConfig(updates: Partial<SlotFinderConfig>) {
+			update((state) => {
+				const newConfig = { ...state.slotFinderConfig, ...updates };
+
+				// Save to localStorage
+				if (browser) {
+					try {
+						localStorage.setItem(
+							'timeplay-slot-finder-config',
+							JSON.stringify(newConfig)
+						);
+					} catch (error) {
+						console.error('[TimePlayStore] Failed to save slot finder config:', error);
+					}
+				}
+
+				return {
+					...state,
+					slotFinderConfig: newConfig
+				};
+			});
+		},
+
 		reset() {
 			set({
 				...initialState,
-				selectedDateRange: createDefaultDateRange()
+				selectedDateRange: createDefaultDateRange(),
+				slotFinderConfig: loadSlotFinderConfig()
 			});
 		}
 	};

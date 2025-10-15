@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			timeMin: timeMin || undefined,
 			timeMax: timeMax || undefined,
 			calendarId,
-			maxResults: maxResults ? parseInt(maxResults) : undefined
+			maxResults: maxResults ? parseInt(maxResults) : 200
 		});
 
 		return json(result);

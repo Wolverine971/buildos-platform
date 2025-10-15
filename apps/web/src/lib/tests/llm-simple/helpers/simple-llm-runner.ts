@@ -61,7 +61,9 @@ export class SimpleLLMRunner {
  * Create test supabase client
  */
 function createTestSupabaseClient(): SupabaseClient<Database> {
-	const supabaseUrl = (process.env.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co').trim();
+	const supabaseUrl = (
+		process.env.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+	).trim();
 	const supabaseKey = (process.env.PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key').trim();
 
 	return createCustomClient(supabaseUrl, supabaseKey);

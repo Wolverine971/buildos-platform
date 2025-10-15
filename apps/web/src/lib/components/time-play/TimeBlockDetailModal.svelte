@@ -380,7 +380,6 @@
 				</p>
 			</div>
 		{/if}
-
 	</div>
 
 	<!-- Action Buttons in Footer -->

@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			.select('id, task_calendar_events(*)')
 			.eq('user_id', user.id)
 			.gte('start_date', timeMin)
-			.lte('start_date', timeMax)
+			.lte('start_date', timeMax);
 
 		if (fetchError) {
 			console.error('[API] Failed to fetch task calendar events:', fetchError);

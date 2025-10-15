@@ -61,20 +61,45 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
  * Enrich delivery payload with transformed event data if needed
  * If payload already has title and body, use it as-is
  * Otherwise, transform the event payload
+ *
+ * @param delivery - The notification delivery to enrich
+ * @param eventType - The event type from job metadata (fallback if event fetch fails)
+ * @param jobLogger - Logger instance
  */
 async function enrichDeliveryPayload(
   delivery: NotificationDelivery,
+  eventType: EventType,
   jobLogger: Logger,
 ): Promise<NotificationDelivery> {
-  // If payload already has valid title and body, use as-is
+  // If payload already has valid title and body, check if event_type exists
   if (validateNotificationPayload(delivery.payload as any)) {
+    // If event_type is already in payload, we're done
+    if (delivery.payload.event_type) {
+      jobLogger.debug(
+        "Delivery already has valid payload with event_type, skipping transformation",
+        {
+          notificationDeliveryId: delivery.id,
+          eventType: delivery.payload.event_type,
+        },
+      );
+      return delivery;
+    }
+
+    // Payload is valid but missing event_type - add it from job metadata
     jobLogger.debug(
-      "Delivery already has valid payload, skipping transformation",
+      "Delivery has valid payload but missing event_type, adding from job metadata",
       {
         notificationDeliveryId: delivery.id,
+        eventType,
       },
     );
-    return delivery;
+    return {
+      ...delivery,
+      payload: {
+        ...delivery.payload,
+        event_type: eventType,
+      },
+    };
   }
 
   // Get the event data to transform
@@ -89,12 +114,16 @@ async function enrichDeliveryPayload(
       notificationEventId: delivery.event_id,
       notificationDeliveryId: delivery.id,
       error: error?.message,
+      usingFallbackEventType: eventType,
     });
-    // Use fallback payload
-    const fallbackPayload = getFallbackPayload("brief.completed" as EventType);
+    // Use fallback payload with event type from job metadata
+    const fallbackPayload = getFallbackPayload(eventType);
     return {
       ...delivery,
-      payload: fallbackPayload,
+      payload: {
+        ...fallbackPayload,
+        event_type: eventType, // Explicitly preserve event_type in fallback
+      },
     };
   }
 
@@ -205,10 +234,18 @@ async function sendPushNotification(
     });
 
     // Update last_used_at for push subscription
-    await supabase
+    const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", pushSubscription.id);
+
+    if (updateError) {
+      pushLogger.warn("Failed to update push subscription last_used_at", {
+        subscriptionId: pushSubscription.id,
+        error: updateError.message,
+      });
+      // Don't fail the notification - it was already sent successfully
+    }
 
     pushLogger.info("Push notification sent successfully", {
       notificationDeliveryId: delivery.id,
@@ -226,10 +263,22 @@ async function sendPushNotification(
       });
 
       // Subscription expired - deactivate it
-      await supabase
+      const { error: deactivateError } = await supabase
         .from("push_subscriptions")
         .update({ is_active: false })
         .eq("id", pushSubscription.id);
+
+      if (deactivateError) {
+        pushLogger.error(
+          "Failed to deactivate expired push subscription",
+          deactivateError,
+          {
+            subscriptionId: pushSubscription.id,
+            warning: "Subscription will be retried on next notification",
+          },
+        );
+        // Return error anyway - the subscription is dead
+      }
 
       return {
         success: false,
@@ -319,15 +368,27 @@ async function sendNotification(
         };
       }
 
-      const { data: pushSub, error } = await supabase
+      const { data: pushSubs, error } = await supabase
         .from("push_subscriptions")
         .select("*")
         .eq("user_id", delivery.recipient_user_id)
         .eq("endpoint", delivery.channel_identifier)
         .eq("is_active", true)
-        .single();
+        .order("created_at", { ascending: false }); // Use most recent
 
-      if (error || !pushSub) {
+      if (error) {
+        jobLogger.warn("Error querying push subscriptions", {
+          notificationDeliveryId: delivery.id,
+          recipientUserId: delivery.recipient_user_id,
+          error: error.message,
+        });
+        return {
+          success: false,
+          error: "Error querying push subscriptions",
+        };
+      }
+
+      if (!pushSubs || pushSubs.length === 0) {
         jobLogger.warn("Push subscription not found or inactive", {
           notificationDeliveryId: delivery.id,
           recipientUserId: delivery.recipient_user_id,
@@ -336,6 +397,22 @@ async function sendNotification(
           success: false,
           error: "Push subscription not found or inactive",
         };
+      }
+
+      // Use the most recent subscription if multiple exist
+      const pushSub = pushSubs[0];
+
+      // Log warning if duplicates detected
+      if (pushSubs.length > 1) {
+        jobLogger.warn(
+          "Multiple active push subscriptions found for same endpoint",
+          {
+            count: pushSubs.length,
+            endpoint: delivery.channel_identifier,
+            subscriptionIds: pushSubs.map((s) => s.id),
+          },
+        );
+        // TODO: Deactivate older duplicates (cleanup job)
       }
 
       // Convert database type to match interface
@@ -419,13 +496,19 @@ export async function processNotification(
       );
     }
 
-    // Skip if already sent or currently being processed
-    if (
-      delivery.status === "sent" ||
-      delivery.status === "delivered" ||
-      delivery.status === "clicked"
-    ) {
-      jobLogger.info("Delivery already completed, skipping", {
+    // Define final states that should not be retried
+    const FINAL_STATES: NotificationStatus[] = [
+      "sent",
+      "delivered",
+      "clicked",
+      "opened", // User already saw it
+      "failed", // Already failed max attempts
+      "bounced", // Hard bounce, don't retry
+    ];
+
+    // Skip if already in a final state
+    if (FINAL_STATES.includes(delivery.status as NotificationStatus)) {
+      jobLogger.info("Delivery already in final state, skipping", {
         status: delivery.status,
       });
       return;
@@ -439,7 +522,7 @@ export async function processNotification(
         currentAttempts,
         maxAttempts,
       });
-      await supabase
+      const { error: maxAttemptsError } = await supabase
         .from("notification_deliveries")
         .update({
           status: "failed",
@@ -448,7 +531,35 @@ export async function processNotification(
           updated_at: new Date().toISOString(),
         })
         .eq("id", delivery_id);
+
+      if (maxAttemptsError) {
+        jobLogger.error(
+          "Failed to mark delivery as failed after max attempts",
+          maxAttemptsError,
+          {
+            notificationDeliveryId: delivery_id,
+            currentAttempts,
+            maxAttempts,
+          },
+        );
+        // Still return - we shouldn't retry after max attempts even if update fails
+      }
       return;
+    }
+
+    // Validate required fields before processing
+    if (!delivery.event_id) {
+      jobLogger.error("Delivery missing required event_id", undefined, {
+        notificationDeliveryId: delivery_id,
+        deliveryData: {
+          id: delivery.id,
+          recipient_user_id: delivery.recipient_user_id,
+          channel: delivery.channel,
+        },
+      });
+      throw new Error(
+        `Delivery ${delivery_id} missing required event_id - cannot process notification`,
+      );
     }
 
     // Send notification (status will be updated after send completes)
@@ -457,7 +568,7 @@ export async function processNotification(
       channel: delivery.channel as NotificationChannel,
       status: delivery.status as NotificationStatus,
       payload: (delivery.payload as Record<string, any>) || {},
-      event_id: delivery.event_id || "",
+      event_id: delivery.event_id, // Required field, validated above
       subscription_id: delivery.subscription_id || undefined,
       attempts: delivery.attempts || 0,
       max_attempts: delivery.max_attempts || 3,
@@ -475,7 +586,12 @@ export async function processNotification(
     };
 
     // Enrich payload with transformed event data if needed
-    typedDelivery = await enrichDeliveryPayload(typedDelivery, jobLogger);
+    // Pass event_type from job metadata as fallback
+    typedDelivery = await enrichDeliveryPayload(
+      typedDelivery,
+      job.data.event_type,
+      jobLogger,
+    );
 
     // Validate that we have a proper payload after transformation
     if (!validateNotificationPayload(typedDelivery.payload as any)) {
@@ -508,7 +624,7 @@ export async function processNotification(
       });
 
       // Mark delivery as cancelled (not failed)
-      await supabase
+      const { error: cancelError } = await supabase
         .from("notification_deliveries")
         .update({
           status: "failed", // Use 'failed' status but with specific error message
@@ -518,6 +634,14 @@ export async function processNotification(
           updated_at: new Date().toISOString(),
         })
         .eq("id", delivery_id);
+
+      if (cancelError) {
+        jobLogger.error("Failed to mark delivery as cancelled", cancelError, {
+          notificationDeliveryId: delivery_id,
+          reason: prefCheck.reason,
+        });
+        // Still return - preferences block sending even if status update fails
+      }
 
       // Job completes successfully (don't retry)
       jobLogger.debug("Marked delivery as cancelled", {
@@ -565,10 +689,16 @@ export async function processNotification(
     }
 
     // Always update status, even if there's an error
-    const { error: updateError } = await supabase
+    // Use optimistic locking to prevent race conditions
+    const currentStatus = delivery.status;
+    // Reuse currentAttempts declared earlier (line 519)
+
+    const { error: updateError, count } = await supabase
       .from("notification_deliveries")
       .update(updateData)
-      .eq("id", delivery_id);
+      .eq("id", delivery_id)
+      .eq("status", currentStatus) // Optimistic lock - ensure status hasn't changed
+      .eq("attempts", currentAttempts); // Verify attempts match
 
     if (updateError) {
       jobLogger.fatal(
@@ -583,6 +713,20 @@ export async function processNotification(
       throw new Error(
         `Failed to update delivery status: ${updateError.message}`,
       );
+    }
+
+    if (count === 0) {
+      jobLogger.warn(
+        "Optimistic lock failed - delivery state changed during processing",
+        {
+          expectedStatus: currentStatus,
+          expectedAttempts: currentAttempts,
+          warning:
+            "Another worker may have processed this delivery concurrently",
+        },
+      );
+      // Don't throw - notification may have already been sent by other worker
+      return;
     }
 
     jobLogger.debug("Updated delivery status", {
@@ -610,17 +754,26 @@ export async function processNotification(
         .eq("id", delivery_id)
         .single();
 
-      // Only mark as failed if not already in a final state
+      // Define states that should NOT be updated (successful or bounced deliveries)
+      // We DO want to update "failed" deliveries to capture latest error info
+      const CLEANUP_EXCLUDED_STATES: NotificationStatus[] = [
+        "sent",
+        "delivered",
+        "clicked",
+        "opened", // User already saw it
+        "bounced", // Hard bounce, don't update
+      ];
+
+      // Update delivery if not in an excluded state (includes "pending" and "failed")
       if (
         currentDelivery &&
-        currentDelivery.status !== "sent" &&
-        currentDelivery.status !== "delivered" &&
-        currentDelivery.status !== "clicked" &&
-        currentDelivery.status !== "failed"
+        !CLEANUP_EXCLUDED_STATES.includes(
+          currentDelivery.status as NotificationStatus,
+        )
       ) {
         const currentAttempts = currentDelivery.attempts || 0;
 
-        await supabase
+        const { error: updateError, count } = await supabase
           .from("notification_deliveries")
           .update({
             status: "failed",
@@ -632,9 +785,21 @@ export async function processNotification(
           .eq("id", delivery_id)
           .eq("status", currentDelivery.status); // Optimistic lock
 
-        jobLogger.info("Marked delivery as failed after error", {
-          attemptNumber: currentAttempts + 1,
-        });
+        if (updateError) {
+          jobLogger.error("Could not mark delivery as failed", updateError);
+        } else if (count === 0) {
+          jobLogger.warn(
+            "Optimistic lock failed in cleanup - delivery state changed",
+            {
+              deliveryId: delivery_id,
+              expectedStatus: currentDelivery.status,
+            },
+          );
+        } else {
+          jobLogger.info("Marked delivery as failed after error", {
+            attemptNumber: currentAttempts + 1,
+          });
+        }
       }
     } catch (cleanupError) {
       jobLogger.error("Could not mark delivery as failed", cleanupError);
@@ -699,6 +864,13 @@ export async function processNotificationJobs(): Promise<void> {
           await processNotification(typedJob);
 
           // Mark as completed using atomic RPC
+          // IDEMPOTENCY RISK: If notification sends successfully but both status update
+          // and job completion fail, the job will be retried and may cause duplicate sends.
+          // This is mitigated by:
+          // 1. Status check at start of processNotification (FINAL_STATES)
+          // 2. Optimistic locking on delivery status updates
+          // 3. Idempotency in channel adapters (email message-ids, SMS deduplication)
+          // 4. Short stale job timeout to minimize retry window
           const { error: completeError } = await supabase.rpc(
             "complete_queue_job",
             {
@@ -709,8 +881,12 @@ export async function processNotificationJobs(): Promise<void> {
 
           if (completeError) {
             jobBatchLogger.error(
-              "Failed to mark job as completed",
+              "CRITICAL: Failed to mark job as completed after successful send",
               completeError,
+              {
+                warning: "Job may be retried, causing duplicate notification",
+                mitigation: "Status check should prevent duplicate sends",
+              },
             );
             throw new Error(
               `Failed to mark job as completed: ${completeError.message}`,
@@ -735,9 +911,33 @@ export async function processNotificationJobs(): Promise<void> {
           });
 
           if (failError) {
-            jobBatchLogger.error("Failed to mark job as failed", failError, {
-              shouldRetry,
-            });
+            jobBatchLogger.error(
+              "Failed to mark job as failed via RPC, attempting direct update",
+              failError,
+            );
+
+            // Fallback: Direct database update
+            const { error: directUpdateError } = await supabase
+              .from("queue_jobs")
+              .update({
+                status: shouldRetry ? "pending" : "failed",
+                error: error.message,
+                attempts: currentAttempts + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", job.id);
+
+            if (directUpdateError) {
+              jobBatchLogger.fatal(
+                "CRITICAL: Could not mark job as failed via RPC or direct update",
+                directUpdateError,
+                {
+                  jobId: job.id,
+                  warning:
+                    "Job stuck in limbo - manual intervention may be required",
+                },
+              );
+            }
           }
 
           throw error;

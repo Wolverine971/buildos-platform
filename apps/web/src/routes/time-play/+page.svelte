@@ -8,9 +8,13 @@
 	import TimePlayCalendar from '$lib/components/time-play/TimePlayCalendar.svelte';
 	import TimeBlockDetailModal from '$lib/components/time-play/TimeBlockDetailModal.svelte';
 	import CalendarEventDetailModal from '$lib/components/time-play/CalendarEventDetailModal.svelte';
+	import AvailableSlotFinder from '$lib/components/time-play/AvailableSlotFinder.svelte';
+	import AvailableSlotList from '$lib/components/time-play/AvailableSlotList.svelte';
 	import type { PageData } from './$types';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
+	import type { AvailableSlot } from '$lib/types/time-play';
+	import { calculateAvailableSlots } from '$lib/utils/slot-finder';
 
 	let { data }: { data: PageData } = $props();
 
@@ -27,6 +31,9 @@
 	// Calendar view state (bindable with child component)
 	let calendarSelectedDate = $state(new Date());
 	let calendarViewMode = $state<'day' | 'week' | 'month'>('week');
+
+	// Calendar events from child component (for slot calculation)
+	let calendarEvents = $state<CalendarEvent[]>([]);
 
 	// Calculate date range based on calendar view settings
 	let calendarDateRange = $derived.by(() => {
@@ -71,6 +78,48 @@
 
 			return { start, end };
 		}
+	});
+
+	// Calculate days array for calendar
+	let calendarDays = $derived.by(() => {
+		if (calendarViewMode === 'day') {
+			return [calendarSelectedDate];
+		} else if (calendarViewMode === 'week') {
+			const start = new Date(calendarSelectedDate);
+			const day = start.getDay();
+			const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+			start.setDate(diff);
+			start.setHours(0, 0, 0, 0);
+
+			return Array.from({ length: 7 }, (_, i) => {
+				const d = new Date(start);
+				d.setDate(start.getDate() + i);
+				return d;
+			});
+		} else {
+			// Month view
+			const year = calendarSelectedDate.getFullYear();
+			const month = calendarSelectedDate.getMonth();
+			const firstDayOfMonth = new Date(year, month, 1);
+			const firstDayOfWeek = firstDayOfMonth.getDay();
+
+			const startDate = new Date(firstDayOfMonth);
+			startDate.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
+
+			return Array.from({ length: 42 }, (_, i) => {
+				return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+			});
+		}
+	});
+
+	// Calculate available slots based on blocks, events, config, and days
+	let availableSlots = $derived.by(() => {
+		return calculateAvailableSlots(
+			$timePlayStore.blocks,
+			calendarEvents,
+			$timePlayStore.slotFinderConfig,
+			calendarDays
+		);
 	});
 
 	onMount(() => {
@@ -167,6 +216,10 @@
 	function handleCalendarEventClick(event: CalendarEvent) {
 		selectedCalendarEvent = event;
 		showCalendarEventModal = true;
+	}
+
+	function handleSlotClick(slot: AvailableSlot) {
+		openCreateModal(slot.startTime, slot.endTime);
 	}
 
 	$effect(() => {
@@ -352,7 +405,9 @@
 		{/if}
 
 		<!-- Time Allocation Summary (moved to top for more calendar space) -->
-		<div class="rounded-2xl border border-slate-200/80 bg-white/80 shadow-lg backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60">
+		<div
+			class="rounded-2xl border border-slate-200/80 bg-white/80 shadow-lg backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60"
+		>
 			<TimeAllocationPanel
 				allocation={$timePlayStore.allocation}
 				isLoading={$timePlayStore.isAllocationLoading}
@@ -366,9 +421,7 @@
 			class="rounded-3xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-200/60 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60 dark:shadow-black/40"
 		>
 			{#if $timePlayStore.isLoading}
-				<div
-					class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center"
-				>
+				<div class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
 					<div
 						class="h-12 w-12 animate-spin rounded-full border-[3px] border-slate-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400"
 					></div>
@@ -380,21 +433,31 @@
 				<TimePlayCalendar
 					blocks={$timePlayStore.blocks}
 					isCalendarConnected={data.isCalendarConnected}
+					{availableSlots}
 					bind:selectedDate={calendarSelectedDate}
 					bind:viewMode={calendarViewMode}
+					bind:calendarEventsOut={calendarEvents}
 					onBlockCreate={handleCalendarBlockCreate}
 					onBlockClick={handleBlockClick}
 					onCalendarEventClick={handleCalendarEventClick}
+					onSlotClick={handleSlotClick}
 				/>
 			{:else}
-				<TimeBlockList
-					blocks={$timePlayStore.blocks}
-					regeneratingIds={$timePlayStore.regeneratingIds}
-					on:delete={(event) => handleDeleteBlock(event.detail.blockId)}
-					on:regenerate={(event) => handleRegenerateBlock(event.detail.blockId)}
-				/>
+				<!-- List View: Show Available Slots List + Time Blocks List -->
+				<div class="space-y-4 px-6 py-4">
+					<AvailableSlotList {availableSlots} onSlotClick={handleSlotClick} />
+					<TimeBlockList
+						blocks={$timePlayStore.blocks}
+						regeneratingIds={$timePlayStore.regeneratingIds}
+						on:delete={(event) => handleDeleteBlock(event.detail.blockId)}
+						on:regenerate={(event) => handleRegenerateBlock(event.detail.blockId)}
+					/>
+				</div>
 			{/if}
 		</div>
+
+		<!-- Available Slot Finder Config Panel -->
+		<AvailableSlotFinder availableSlotsCount={availableSlots.length} />
 	</section>
 </div>
 

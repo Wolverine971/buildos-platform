@@ -1,0 +1,333 @@
+<!-- apps/web/src/lib/components/time-play/AvailableSlotFinder.svelte -->
+<script lang="ts">
+	import { timePlayStore } from '$lib/stores/timePlayStore';
+	import type { SlotFinderConfig } from '$lib/types/time-play';
+
+	let {
+		availableSlotsCount = 0
+	}: {
+		availableSlotsCount?: number;
+	} = $props();
+
+	// Use derived to always read fresh config from store (for enabled and bufferTime)
+	let config = $derived($timePlayStore.slotFinderConfig);
+
+	// Initialize local state once from store for sliders
+	// These are independent and only update the store after debounce
+	let localMinDuration = $state($timePlayStore.slotFinderConfig.minDuration);
+	let localMaxDuration = $state($timePlayStore.slotFinderConfig.maxDuration);
+	let localEarliestStart = $state($timePlayStore.slotFinderConfig.earliestStart);
+	let localLatestEnd = $state($timePlayStore.slotFinderConfig.latestEnd);
+
+	// Debounce timers
+	let durationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let timeWindowDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function toggleEnabled() {
+		timePlayStore.updateSlotFinderConfig({ enabled: !config.enabled });
+	}
+
+	function updateBufferTime(bufferTime: 0 | 15 | 30 | 60) {
+		timePlayStore.updateSlotFinderConfig({ bufferTime });
+	}
+
+	function updateDurationRange() {
+		// Debounce duration updates
+		if (durationDebounceTimer) {
+			clearTimeout(durationDebounceTimer);
+		}
+
+		durationDebounceTimer = setTimeout(() => {
+			timePlayStore.updateSlotFinderConfig({
+				minDuration: localMinDuration,
+				maxDuration: localMaxDuration
+			});
+		}, 150);
+	}
+
+	function updateTimeWindow() {
+		// Debounce time window updates
+		if (timeWindowDebounceTimer) {
+			clearTimeout(timeWindowDebounceTimer);
+		}
+
+		timeWindowDebounceTimer = setTimeout(() => {
+			timePlayStore.updateSlotFinderConfig({
+				earliestStart: localEarliestStart,
+				latestEnd: localLatestEnd
+			});
+		}, 150);
+	}
+
+	function formatHour(hour: number): string {
+		const period = hour >= 12 ? 'PM' : 'AM';
+		const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+		return `${displayHour}:00 ${period}`;
+	}
+
+	function formatDuration(minutes: number): string {
+		if (minutes < 60) {
+			return `${minutes} mins`;
+		}
+		const hours = minutes / 60;
+		return hours === Math.floor(hours) ? `${hours} hrs` : `${hours.toFixed(1)} hrs`;
+	}
+</script>
+
+<div
+	class="rounded-2xl border border-slate-200/80 bg-white/80 shadow-lg backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60"
+>
+	<!-- Header with Toggle -->
+	<div
+		class="flex items-center justify-between border-b border-slate-200/60 px-6 py-4 dark:border-slate-800/60"
+	>
+		<div class="flex items-center gap-3">
+			<div
+				class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40"
+			>
+				<svg
+					class="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+					/>
+				</svg>
+			</div>
+			<div>
+				<h3 class="text-base font-semibold text-slate-900 dark:text-white">
+					Available Time Slots
+				</h3>
+				<p class="text-xs text-slate-600 dark:text-slate-400">
+					Find gaps in your schedule for new time blocks
+				</p>
+			</div>
+		</div>
+
+		<!-- Toggle Switch -->
+		<button
+			type="button"
+			role="switch"
+			aria-checked={config.enabled}
+			class={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
+				config.enabled
+					? 'bg-emerald-500 dark:bg-emerald-600'
+					: 'bg-slate-300 dark:bg-slate-700'
+			}`}
+			onclick={toggleEnabled}
+		>
+			<span
+				class={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+					config.enabled ? 'translate-x-6' : 'translate-x-0'
+				}`}
+			/>
+		</button>
+	</div>
+
+	<!-- Configuration Panel (visible when enabled) -->
+	{#if config.enabled}
+		<div class="space-y-6 px-6 py-5">
+			<!-- Buffer Time -->
+			<div class="space-y-3">
+				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+					Buffer Time
+				</label>
+				<p class="text-xs text-slate-600 dark:text-slate-400">
+					Time cushion before and after each commitment
+				</p>
+				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+					{#each [0, 15, 30, 60] as time}
+						<button
+							type="button"
+							class={`rounded-lg px-4 py-3 text-sm font-medium transition touch-manipulation ${
+								config.bufferTime === time
+									? 'bg-emerald-500 text-white shadow-md dark:bg-emerald-600'
+									: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+							}`}
+							onclick={() => updateBufferTime(time as 0 | 15 | 30 | 60)}
+						>
+							{time === 0 ? 'None' : time === 60 ? '1 hour' : `${time} min`}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Slot Duration -->
+			<div class="space-y-3">
+				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+					Slot Duration
+				</label>
+				<div
+					class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"
+				>
+					<span
+						>Min: <strong class="text-slate-900 dark:text-white"
+							>{formatDuration(localMinDuration)}</strong
+						></span
+					>
+					<span
+						>Max: <strong class="text-slate-900 dark:text-white"
+							>{formatDuration(localMaxDuration)}</strong
+						></span
+					>
+				</div>
+				<div class="space-y-2">
+					<!-- Min Duration Slider -->
+					<div class="flex items-center gap-3">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-12">Min:</span>
+						<input
+							type="range"
+							min="15"
+							max="600"
+							step="15"
+							bind:value={localMinDuration}
+							oninput={updateDurationRange}
+							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+						/>
+					</div>
+					<!-- Max Duration Slider -->
+					<div class="flex items-center gap-3">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-12">Max:</span>
+						<input
+							type="range"
+							min="30"
+							max="600"
+							step="15"
+							bind:value={localMaxDuration}
+							oninput={updateDurationRange}
+							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+						/>
+					</div>
+				</div>
+				{#if localMinDuration > localMaxDuration}
+					<p class="text-xs font-medium text-rose-600 dark:text-rose-400">
+						⚠️ Minimum duration must be less than maximum
+					</p>
+				{/if}
+			</div>
+
+			<!-- Time Window -->
+			<div class="space-y-3">
+				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+					Time Window
+				</label>
+				<div
+					class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"
+				>
+					<span
+						>Earliest: <strong class="text-slate-900 dark:text-white"
+							>{formatHour(localEarliestStart)}</strong
+						></span
+					>
+					<span
+						>Latest: <strong class="text-slate-900 dark:text-white"
+							>{formatHour(localLatestEnd)}</strong
+						></span
+					>
+				</div>
+				<div class="space-y-2">
+					<!-- Earliest Start Slider -->
+					<div class="flex items-center gap-3">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-16"
+							>Earliest:</span
+						>
+						<input
+							type="range"
+							min="0"
+							max="23"
+							step="1"
+							bind:value={localEarliestStart}
+							oninput={updateTimeWindow}
+							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+						/>
+					</div>
+					<!-- Latest End Slider -->
+					<div class="flex items-center gap-3">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-16">Latest:</span>
+						<input
+							type="range"
+							min="1"
+							max="24"
+							step="1"
+							bind:value={localLatestEnd}
+							oninput={updateTimeWindow}
+							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+						/>
+					</div>
+				</div>
+				{#if localEarliestStart >= localLatestEnd}
+					<p class="text-xs font-medium text-rose-600 dark:text-rose-400">
+						⚠️ Earliest time must be before latest time
+					</p>
+				{/if}
+			</div>
+
+			<!-- Slot Count Display -->
+			<div
+				class="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-sm dark:border-emerald-500/30 dark:bg-emerald-950/20"
+			>
+				{#if availableSlotsCount > 0}
+					<div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+							/>
+						</svg>
+						<span class="font-medium">
+							Found {availableSlotsCount} available slot{availableSlotsCount !== 1
+								? 's'
+								: ''} in current view
+						</span>
+					</div>
+				{:else}
+					<div class="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+							/>
+						</svg>
+						<span class="font-medium">No available slots match current criteria</span>
+					</div>
+					<p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+						Try reducing buffer time, expanding time window, or adjusting slot duration
+					</p>
+				{/if}
+			</div>
+		</div>
+	{/if}
+</div>

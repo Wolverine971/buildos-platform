@@ -1,7 +1,17 @@
 <!-- apps/web/src/lib/components/project/ProjectContextDocModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { Copy, FileText, Settings, Edit3, Save, X, AlertCircle } from 'lucide-svelte';
+	import {
+		Copy,
+		FileText,
+		Settings,
+		Edit3,
+		Save,
+		X,
+		AlertCircle,
+		FileDown,
+		Loader2
+	} from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
@@ -40,6 +50,8 @@
 	let contextErrors: string[] = [];
 	let savingContext = false;
 	let savingProject = false;
+	let exportingPDF = false;
+	let exportError: string | null = null;
 
 	// Form configuration for project editing (without context field)
 	const projectFormConfig: FormConfig = {
@@ -365,6 +377,54 @@
 	}
 
 	$: fullContextMarkdown = generateFullContext();
+
+	async function handleExportPDF() {
+		exportingPDF = true;
+		exportError = null;
+
+		try {
+			const response = await fetch(`/api/projects/${project.id}/export/pdf`);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(errorText || 'Failed to generate PDF');
+			}
+
+			// Download PDF
+			const blob = await response.blob();
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+
+			// Get filename from Content-Disposition header or use default
+			const disposition = response.headers.get('Content-Disposition');
+			let filename = `${project.slug || project.id}-context.pdf`;
+			if (disposition && disposition.includes('filename=')) {
+				const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+				if (filenameMatch) {
+					filename = filenameMatch[1];
+				}
+			}
+
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+
+			toastService.success('PDF exported successfully');
+		} catch (error) {
+			console.error('Export error:', error);
+			exportError = 'Failed to export PDF. Please try again.';
+			toastService.error(exportError);
+		} finally {
+			exportingPDF = false;
+		}
+	}
+
+	async function handlePreviewHTML() {
+		window.open(`/api/projects/${project.id}/export/preview`, '_blank');
+	}
 </script>
 
 <Modal
@@ -389,18 +449,38 @@
 				</p>
 			</div>
 		</div>
-		<Button
-			type="button"
-			on:click={copyFullContext}
-			disabled={copySuccess}
-			variant={copySuccess ? 'primary' : 'outline'}
-			size="sm"
-			class={copySuccess ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600' : ''}
-		>
-			<Copy class="w-3 h-3 mr-1.5" />
-			<span class="hidden sm:inline">{copyButtonText}</span>
-			<span class="sm:hidden">Copy</span>
-		</Button>
+		<div class="flex items-center gap-2">
+			<Button
+				type="button"
+				on:click={copyFullContext}
+				disabled={copySuccess}
+				variant={copySuccess ? 'primary' : 'outline'}
+				size="sm"
+				class={copySuccess ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600' : ''}
+			>
+				<Copy class="w-3 h-3 mr-1.5" />
+				<span class="hidden sm:inline">{copyButtonText}</span>
+				<span class="sm:hidden">Copy</span>
+			</Button>
+
+			<Button
+				type="button"
+				on:click={handleExportPDF}
+				disabled={exportingPDF}
+				variant="primary"
+				size="sm"
+			>
+				{#if exportingPDF}
+					<Loader2 class="w-3 h-3 mr-1.5 animate-spin" />
+					<span class="hidden sm:inline">Generating...</span>
+					<span class="sm:hidden">...</span>
+				{:else}
+					<FileDown class="w-3 h-3 mr-1.5" />
+					<span class="hidden sm:inline">Export PDF</span>
+					<span class="sm:hidden">PDF</span>
+				{/if}
+			</Button>
+		</div>
 	</div>
 
 	<!-- Modal Body -->

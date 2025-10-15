@@ -16,7 +16,11 @@ import { supabase } from "./lib/supabase";
 import { queue } from "./worker";
 import type { Database } from "@buildos/shared-types";
 import { BriefBackoffCalculator } from "./lib/briefBackoffCalculator";
-import { smsAlertsService, smsMetricsService } from "@buildos/shared-utils";
+import {
+  smsAlertsService,
+  smsMetricsService,
+  type Alert,
+} from "@buildos/shared-utils";
 
 export type UserBriefPreference =
   Database["public"]["Tables"]["user_brief_preferences"]["Row"];
@@ -755,20 +759,13 @@ async function checkSMSAlerts() {
       console.log(
         `🚨 [SMS Alerts] ${triggeredAlerts.length} alert(s) triggered:`,
       );
-      triggeredAlerts.forEach(
-        (alert: {
-          severity: string;
-          alert_type: string;
-          message: string;
-          notification_channel: string;
-        }) => {
-          console.log(
-            `   - ${alert.severity.toUpperCase()}: ${alert.alert_type}`,
-          );
-          console.log(`     Message: ${alert.message}`);
-          console.log(`     Channel: ${alert.notification_channel}`);
-        },
-      );
+      triggeredAlerts.forEach((alert: Alert) => {
+        console.log(
+          `   - ${alert.severity.toUpperCase()}: ${alert.alert_type}`,
+        );
+        console.log(`     Message: ${alert.message}`);
+        console.log(`     Channels: ${alert.notification_channels.join(", ")}`);
+      });
     }
 
     console.log("✅ [SMS Alerts] Alert check completed successfully");

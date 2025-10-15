@@ -20,12 +20,13 @@ export interface AlertThreshold {
   id: string;
   alert_type: string;
   threshold_value: number;
-  comparison_operator: "<" | ">" | "<=" | ">=" | "=";
   severity: "critical" | "warning" | "info";
-  notification_channel: "pagerduty" | "slack" | "email";
-  enabled: boolean;
+  notification_channels: string[]; // Array of channels: 'pagerduty' | 'slack' | 'email'
+  is_enabled: boolean;
   cooldown_minutes: number;
   last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Alert {
@@ -34,7 +35,7 @@ export interface Alert {
   metric_value: number;
   threshold_value: number;
   message: string;
-  notification_channel: string;
+  notification_channels: string[]; // Array of channels to notify
 }
 
 export class SMSAlertsService {
@@ -117,13 +118,8 @@ export class SMSAlertsService {
     switch (threshold.alert_type) {
       case "delivery_rate_critical":
         metricValue = metrics.delivery_rate_percent || 0;
-        if (
-          this.compareValues(
-            metricValue,
-            threshold.threshold_value,
-            threshold.comparison_operator,
-          )
-        ) {
+        // Delivery rate BELOW threshold is critical (rate dropping)
+        if (metricValue < threshold.threshold_value) {
           message = `SMS delivery rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
         }
         break;
@@ -137,13 +133,8 @@ export class SMSAlertsService {
             ? ((metrics.template_fallback_count || 0) / llmTotal) * 100
             : 0;
         metricValue = llmFailureRate;
-        if (
-          this.compareValues(
-            metricValue,
-            threshold.threshold_value,
-            threshold.comparison_operator,
-          )
-        ) {
+        // Failure rate ABOVE threshold is critical (failures increasing)
+        if (metricValue > threshold.threshold_value) {
           message = `LLM failure rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
         }
         break;
@@ -154,13 +145,8 @@ export class SMSAlertsService {
           (metrics.llm_cost_usd || 0) / (metrics.active_users || 1);
         const costMultiplier = avgCost > 0 ? todayCost / avgCost : 0;
         metricValue = costMultiplier;
-        if (
-          this.compareValues(
-            metricValue,
-            threshold.threshold_value,
-            threshold.comparison_operator,
-          )
-        ) {
+        // Cost multiplier ABOVE threshold is a warning (cost spike)
+        if (metricValue > threshold.threshold_value) {
           message = `LLM cost is ${costMultiplier.toFixed(2)}x the 30-day average (today: $${todayCost.toFixed(4)}, avg: $${avgCost.toFixed(4)})`;
         }
         break;
@@ -171,13 +157,8 @@ export class SMSAlertsService {
             ? ((metrics.opt_out_count || 0) / metrics.active_users) * 100
             : 0;
         metricValue = optOutRate;
-        if (
-          this.compareValues(
-            metricValue,
-            threshold.threshold_value,
-            threshold.comparison_operator,
-          )
-        ) {
+        // Opt-out rate ABOVE threshold is a warning (too many opt-outs)
+        if (metricValue > threshold.threshold_value) {
           message = `Opt-out rate is ${metricValue.toFixed(1)}% (${metrics.opt_out_count} of ${metrics.active_users} users)`;
         }
         break;
@@ -189,13 +170,8 @@ export class SMSAlertsService {
               100
             : 0;
         metricValue = limitHitRate;
-        if (
-          this.compareValues(
-            metricValue,
-            threshold.threshold_value,
-            threshold.comparison_operator,
-          )
-        ) {
+        // Limit hit rate ABOVE threshold is a warning (too many users hitting limit)
+        if (metricValue > threshold.threshold_value) {
           message = `Daily limit hit rate is ${metricValue.toFixed(1)}% (${metrics.daily_limit_hit_count} of ${metrics.active_users} users)`;
         }
         break;
@@ -212,35 +188,11 @@ export class SMSAlertsService {
         metric_value: metricValue,
         threshold_value: threshold.threshold_value,
         message,
-        notification_channel: threshold.notification_channel,
+        notification_channels: threshold.notification_channels,
       };
     }
 
     return null;
-  }
-
-  /**
-   * Compare metric value against threshold
-   */
-  private compareValues(
-    metricValue: number,
-    thresholdValue: number,
-    operator: string,
-  ): boolean {
-    switch (operator) {
-      case "<":
-        return metricValue < thresholdValue;
-      case ">":
-        return metricValue > thresholdValue;
-      case "<=":
-        return metricValue <= thresholdValue;
-      case ">=":
-        return metricValue >= thresholdValue;
-      case "=":
-        return metricValue === thresholdValue;
-      default:
-        return false;
-    }
   }
 
   /**
@@ -262,15 +214,18 @@ export class SMSAlertsService {
    */
   private async getEnabledThresholds(): Promise<AlertThreshold[]> {
     try {
+      // Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
+      // After migration, regenerate types with: pnpm supabase gen types
       const { data, error } = await this.supabase
         .from("sms_alert_thresholds" as any)
         .select("*")
-        .eq("enabled", true);
+        .eq("is_enabled", true);
 
       if (error) {
         throw error;
       }
 
+      // Type assertion safe: we control the schema and interface matches migration
       return (data as unknown as AlertThreshold[]) || [];
     } catch (error) {
       console.error("[SMSAlerts] Error fetching thresholds:", error);
@@ -279,30 +234,37 @@ export class SMSAlertsService {
   }
 
   /**
-   * Send notification via appropriate channel
+   * Send notification via appropriate channels (can send to multiple channels)
    */
   private async sendNotification(alert: Alert): Promise<void> {
-    try {
-      switch (alert.notification_channel) {
-        case "slack":
-          await this.sendSlackNotification(alert);
-          break;
+    // Send to all configured channels
+    for (const channel of alert.notification_channels) {
+      try {
+        switch (channel) {
+          case "slack":
+            await this.sendSlackNotification(alert);
+            break;
 
-        case "pagerduty":
-          await this.sendPagerDutyNotification(alert);
-          break;
+          case "pagerduty":
+            await this.sendPagerDutyNotification(alert);
+            break;
 
-        case "email":
-          await this.sendEmailNotification(alert);
-          break;
+          case "email":
+            await this.sendEmailNotification(alert);
+            break;
 
-        default:
-          console.warn(
-            `[SMSAlerts] Unknown notification channel: ${alert.notification_channel}`,
-          );
+          default:
+            console.warn(
+              `[SMSAlerts] Unknown notification channel: ${channel}`,
+            );
+        }
+      } catch (error) {
+        console.error(
+          `[SMSAlerts] Error sending notification to ${channel}:`,
+          error,
+        );
+        // Continue to next channel even if one fails
       }
-    } catch (error) {
-      console.error("[SMSAlerts] Error sending notification:", error);
     }
   }
 
@@ -463,6 +425,8 @@ export class SMSAlertsService {
    */
   private async recordAlert(alert: Alert): Promise<void> {
     try {
+      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
+      // After migration, regenerate types with: pnpm supabase gen types
       const { error } = await this.supabase
         .from("sms_alert_history" as any)
         .insert({
@@ -470,10 +434,13 @@ export class SMSAlertsService {
           severity: alert.severity,
           metric_value: alert.metric_value,
           threshold_value: alert.threshold_value,
-          message: alert.message,
-          notification_channel: alert.notification_channel,
           notification_sent: true,
           triggered_at: new Date().toISOString(),
+          // Store message and notification_channels in metadata JSONB field
+          metadata: {
+            message: alert.message,
+            notification_channels: alert.notification_channels,
+          },
         });
 
       if (error) {
@@ -491,6 +458,7 @@ export class SMSAlertsService {
    */
   private async updateLastTriggered(thresholdId: string): Promise<void> {
     try {
+      // Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
       const { error } = await this.supabase
         .from("sms_alert_thresholds" as any)
         .update({ last_triggered_at: new Date().toISOString() })
@@ -509,6 +477,7 @@ export class SMSAlertsService {
    */
   async resolveAlert(alertId: string): Promise<void> {
     try {
+      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
       const { error } = await this.supabase
         .from("sms_alert_history" as any)
         .update({ resolved_at: new Date().toISOString() })
@@ -530,6 +499,7 @@ export class SMSAlertsService {
    */
   async getUnresolvedAlerts(limit: number = 50): Promise<any[]> {
     try {
+      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
       const { data, error } = await this.supabase
         .from("sms_alert_history" as any)
         .select("*")
@@ -557,6 +527,7 @@ export class SMSAlertsService {
     limit: number = 100,
   ): Promise<any[]> {
     try {
+      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
       let query = this.supabase
         .from("sms_alert_history" as any)
         .select("*")

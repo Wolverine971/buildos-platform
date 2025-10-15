@@ -471,7 +471,7 @@ export async function sendSMSNotification(
           });
 
           // Update notification delivery to reschedule
-          await supabase
+          const { error: rescheduleError } = await supabase
             .from("notification_deliveries")
             .update({
               status: "scheduled",
@@ -480,6 +480,18 @@ export async function sendSMSNotification(
               updated_at: new Date().toISOString(),
             })
             .eq("id", delivery.id);
+
+          if (rescheduleError) {
+            smsLogger.error(
+              "Failed to reschedule delivery for quiet hours",
+              rescheduleError,
+              {
+                notificationDeliveryId: delivery.id,
+                rescheduleTime: rescheduleTime.toISOString(),
+              },
+            );
+            // Still return failure - we can't send during quiet hours
+          }
 
           return {
             success: false,
@@ -495,7 +507,7 @@ export async function sendSMSNotification(
       });
 
       // Update delivery status to failed
-      await supabase
+      const { error: safetyFailError } = await supabase
         .from("notification_deliveries")
         .update({
           status: "failed",
@@ -504,6 +516,18 @@ export async function sendSMSNotification(
           updated_at: new Date().toISOString(),
         })
         .eq("id", delivery.id);
+
+      if (safetyFailError) {
+        smsLogger.error(
+          "Failed to mark delivery as failed after safety check",
+          safetyFailError,
+          {
+            notificationDeliveryId: delivery.id,
+            safetyCheckReason: safetyCheck.reason,
+          },
+        );
+        // Still return failure - safety checks block sending even if status update fails
+      }
 
       return {
         success: false,
@@ -597,10 +621,22 @@ export async function sendSMSNotification(
       });
 
       // Update SMS message status to failed
-      await supabase
+      const { error: smsStatusError } = await supabase
         .from("sms_messages")
         .update({ status: "failed" })
         .eq("id", smsMessage.id);
+
+      if (smsStatusError) {
+        smsLogger.error(
+          "Failed to update SMS message status after queue error",
+          smsStatusError,
+          {
+            smsMessageId: smsMessage.id,
+            notificationDeliveryId: delivery.id,
+          },
+        );
+        // Still return failure - SMS wasn't queued
+      }
 
       return {
         success: false,

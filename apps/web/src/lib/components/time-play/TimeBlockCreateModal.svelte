@@ -59,6 +59,9 @@
 	let startValue = $state(formatForInput(initialStart ?? defaultStart()));
 	let endValue = $state(formatForInput(initialEnd ?? defaultEnd()));
 
+	// Flag to prevent auto-adjustment during initialization
+	let isInitialized = $state(false);
+
 	$effect(() => {
 		if (blockType === 'project') {
 			if (!projects.find((project) => project.id === selectedProjectId)) {
@@ -81,6 +84,23 @@
 		}
 		if (initialEnd) {
 			endValue = formatForInput(initialEnd);
+		}
+		// Mark as initialized after processing initial values
+		isInitialized = true;
+	});
+
+	// Auto-adjust end time to be 15 minutes after start time when end becomes invalid
+	$effect(() => {
+		// Only auto-adjust after initialization and when start value changes
+		if (isInitialized && startValue && endValue) {
+			const start = parseInput(startValue);
+			const end = parseInput(endValue);
+
+			// Only adjust if end is before or equal to start (invalid state)
+			if (start && end && end <= start) {
+				const newEnd = new Date(start.getTime() + 15 * 60 * 1000); // Add 15 minutes
+				endValue = formatForInput(newEnd);
+			}
 		}
 	});
 
@@ -113,7 +133,12 @@
 </script>
 
 <Modal title="Create Focus Block" isOpen={true} onClose={() => dispatch('close')} size="md">
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+	>
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-6">
 			<div class="space-y-3">
 				<fieldset class="space-y-3">
@@ -154,8 +179,8 @@
 						</button>
 					</div>
 					<p class="text-xs text-slate-500 dark:text-slate-400">
-						Project blocks pull high-impact tasks from the selected project. Build blocks stay
-						flexible and surface suggestions across your workspace.
+						Project blocks pull high-impact tasks from the selected project. Build
+						blocks stay flexible and surface suggestions across your workspace.
 					</p>
 				</fieldset>
 			</div>

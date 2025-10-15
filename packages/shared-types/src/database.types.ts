@@ -3480,6 +3480,84 @@ export type Database = {
           },
         ];
       };
+      sms_alert_history: {
+        Row: {
+          alert_type: string;
+          id: string;
+          metadata: Json | null;
+          metric_value: number;
+          notification_error: string | null;
+          notification_sent: boolean;
+          resolved_at: string | null;
+          severity: string;
+          threshold_value: number;
+          triggered_at: string;
+        };
+        Insert: {
+          alert_type: string;
+          id?: string;
+          metadata?: Json | null;
+          metric_value: number;
+          notification_error?: string | null;
+          notification_sent?: boolean;
+          resolved_at?: string | null;
+          severity: string;
+          threshold_value: number;
+          triggered_at?: string;
+        };
+        Update: {
+          alert_type?: string;
+          id?: string;
+          metadata?: Json | null;
+          metric_value?: number;
+          notification_error?: string | null;
+          notification_sent?: boolean;
+          resolved_at?: string | null;
+          severity?: string;
+          threshold_value?: number;
+          triggered_at?: string;
+        };
+        Relationships: [];
+      };
+      sms_alert_thresholds: {
+        Row: {
+          alert_type: string;
+          cooldown_minutes: number;
+          created_at: string;
+          id: string;
+          is_enabled: boolean;
+          last_triggered_at: string | null;
+          notification_channels: string[];
+          severity: string;
+          threshold_value: number;
+          updated_at: string;
+        };
+        Insert: {
+          alert_type: string;
+          cooldown_minutes?: number;
+          created_at?: string;
+          id?: string;
+          is_enabled?: boolean;
+          last_triggered_at?: string | null;
+          notification_channels?: string[];
+          severity: string;
+          threshold_value: number;
+          updated_at?: string;
+        };
+        Update: {
+          alert_type?: string;
+          cooldown_minutes?: number;
+          created_at?: string;
+          id?: string;
+          is_enabled?: boolean;
+          last_triggered_at?: string | null;
+          notification_channels?: string[];
+          severity?: string;
+          threshold_value?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       sms_messages: {
         Row: {
           attempt_count: number | null;
@@ -3606,6 +3684,42 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      sms_metrics: {
+        Row: {
+          created_at: string;
+          id: string;
+          metadata: Json | null;
+          metric_date: string;
+          metric_hour: number | null;
+          metric_type: string;
+          metric_value: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          metric_date: string;
+          metric_hour?: number | null;
+          metric_type: string;
+          metric_value?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          metric_date?: string;
+          metric_hour?: number | null;
+          metric_type?: string;
+          metric_value?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       sms_templates: {
         Row: {
@@ -4898,6 +5012,31 @@ export type Database = {
           },
         ];
       };
+      sms_metrics_daily: {
+        Row: {
+          active_users: number | null;
+          avg_delivery_time_ms: number | null;
+          avg_generation_time_ms: number | null;
+          cancelled_count: number | null;
+          daily_limit_hit_count: number | null;
+          delivered_count: number | null;
+          delivery_rate_percent: number | null;
+          delivery_success_rate: number | null;
+          failed_count: number | null;
+          llm_cost_usd: number | null;
+          llm_success_count: number | null;
+          llm_success_rate: number | null;
+          llm_success_rate_percent: number | null;
+          metric_date: string | null;
+          opt_out_count: number | null;
+          quiet_hours_skip_count: number | null;
+          scheduled_count: number | null;
+          sent_count: number | null;
+          sms_cost_usd: number | null;
+          template_fallback_count: number | null;
+        };
+        Relationships: [];
+      };
       trial_statistics: {
         Row: {
           active_subscriptions: number | null;
@@ -5411,6 +5550,31 @@ export type Database = {
           status: string;
         }[];
       };
+      get_sms_daily_metrics: {
+        Args: { p_end_date: string; p_start_date: string };
+        Returns: {
+          active_users: number;
+          avg_delivery_time_ms: number;
+          avg_generation_time_ms: number;
+          cancelled_count: number;
+          daily_limit_hit_count: number;
+          delivered_count: number;
+          delivery_rate_percent: number;
+          delivery_success_rate: number;
+          failed_count: number;
+          llm_cost_usd: number;
+          llm_success_count: number;
+          llm_success_rate: number;
+          llm_success_rate_percent: number;
+          metric_date: string;
+          opt_out_count: number;
+          quiet_hours_skip_count: number;
+          scheduled_count: number;
+          sent_count: number;
+          sms_cost_usd: number;
+          template_fallback_count: number;
+        }[];
+      };
       get_sms_notification_stats: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -5491,6 +5655,18 @@ export type Database = {
           phone_number: string;
           phone_verified: boolean;
           phone_verified_at: string;
+        }[];
+      };
+      get_user_sms_metrics: {
+        Args: { p_days?: number; p_user_id: string };
+        Returns: {
+          delivered_count: number;
+          delivery_rate: number;
+          failed_count: number;
+          llm_cost_usd: number;
+          metric_date: string;
+          scheduled_count: number;
+          sent_count: number;
         }[];
       };
       get_user_subscription_status: {
@@ -5640,6 +5816,21 @@ export type Database = {
           p_user_id: string;
         };
         Returns: string;
+      };
+      record_sms_metric: {
+        Args: {
+          p_metadata?: Json;
+          p_metric_date: string;
+          p_metric_hour: number;
+          p_metric_type: string;
+          p_metric_value: number;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      refresh_sms_metrics_daily: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
       };
       refresh_system_metrics: {
         Args: Record<PropertyKey, never>;

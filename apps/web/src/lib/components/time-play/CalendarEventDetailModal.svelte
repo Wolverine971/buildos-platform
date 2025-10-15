@@ -252,7 +252,6 @@
 				</div>
 			{/if}
 		</div>
-
 	</div>
 
 	<!-- Actions in Footer -->

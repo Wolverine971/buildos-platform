@@ -4,23 +4,31 @@
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
+	import type { AvailableSlot } from '$lib/types/time-play';
+	import { formatSlotDuration, formatTimeRange } from '$lib/utils/slot-finder';
 
 	let {
 		blocks = [],
 		viewMode = $bindable('week'),
 		selectedDate = $bindable(new Date()),
 		isCalendarConnected = false,
+		availableSlots = [],
+		calendarEventsOut = $bindable([]),
 		onBlockCreate,
 		onBlockClick,
-		onCalendarEventClick
+		onCalendarEventClick,
+		onSlotClick
 	}: {
 		blocks?: TimeBlockWithProject[];
 		viewMode?: 'day' | 'week' | 'month';
 		selectedDate?: Date;
 		isCalendarConnected?: boolean;
+		availableSlots?: AvailableSlot[];
+		calendarEventsOut?: CalendarEvent[];
 		onBlockCreate?: (startTime: Date, endTime: Date) => void;
 		onBlockClick?: (block: TimeBlockWithProject) => void;
 		onCalendarEventClick?: (event: CalendarEvent) => void;
+		onSlotClick?: (slot: AvailableSlot) => void;
 	} = $props();
 
 	// Calendar configuration
@@ -74,9 +82,7 @@
 
 			// Generate 42 days (6 weeks) for complete calendar grid
 			return Array.from({ length: 42 }, (_, i) => {
-				const date = new Date(startDate);
-				date.setDate(startDate.getDate() + i);
-				return date;
+				return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
 			});
 		}
 	});
@@ -240,6 +246,81 @@
 		}
 	}
 
+	function handleSlotClick(slot: AvailableSlot) {
+		if (onSlotClick) {
+			onSlotClick(slot);
+		}
+	}
+
+	// Get available slots for a specific day
+	function getSlotsForDay(dayIndex: number): AvailableSlot[] {
+		const daySlots = availableSlots.filter((slot) => slot.dayIndex === dayIndex);
+
+		// DEBUG: Log Saturday slots (dayIndex 5 in week view)
+		if (dayIndex === 5 && viewMode === 'week') {
+			console.log(`[Calendar] Saturday (dayIndex ${dayIndex}) slots:`, {
+				total: availableSlots.length,
+				filteredCount: daySlots.length,
+				slots: daySlots.map((s) => ({
+					id: s.id,
+					dayIndex: s.dayIndex,
+					start: s.startTime.toLocaleString(),
+					end: s.endTime.toLocaleString(),
+					duration: s.duration
+				}))
+			});
+		}
+
+		return daySlots;
+	}
+
+	// Get slot style for positioning in calendar grid
+	function getSlotStyle(slot: AvailableSlot, dayIndex: number): string | null {
+		if (slot.dayIndex !== dayIndex) {
+			return null;
+		}
+
+		const slotStart = new Date(slot.startTime);
+		const slotEnd = new Date(slot.endTime);
+
+		const startHour = slotStart.getHours();
+		const startMinute = slotStart.getMinutes();
+		const endHour = slotEnd.getHours();
+		const endMinute = slotEnd.getMinutes();
+
+		// Calculate position
+		const top = ((startHour - HOURS_START) * 60 + startMinute) * (HOUR_HEIGHT / 60);
+		const duration = (endHour - startHour) * 60 + (endMinute - startMinute);
+		const height = duration * (HOUR_HEIGHT / 60);
+
+		// DEBUG: Log Saturday slot styling (dayIndex 5)
+		if (dayIndex === 5 && viewMode === 'week') {
+			console.log(`[Calendar] Saturday slot style calculation:`, {
+				slotId: slot.id,
+				startHour,
+				endHour,
+				HOURS_START,
+				HOURS_END,
+				willBeHidden: startHour < HOURS_START || endHour > HOURS_END,
+				calculatedStyle: `top: ${top}px; height: ${height}px;`
+			});
+		}
+
+		// Check if slot is within visible hours
+		if (startHour < HOURS_START || endHour > HOURS_END) {
+			return null;
+		}
+
+		return `top: ${top}px; height: ${height}px;`;
+	}
+
+	// Get slots for a specific date (month view)
+	function getSlotsForDate(date: Date): AvailableSlot[] {
+		return availableSlots.filter((slot) => {
+			return isSameDay(new Date(slot.dayDate), date);
+		});
+	}
+
 	// Fetch Google Calendar events and filter out BuildOS-created events
 	async function fetchCalendarEvents() {
 		if (!isCalendarConnected) {
@@ -303,7 +384,9 @@
 			}
 
 			// Filter out BuildOS-created events - only show external calendar events in grey
-			calendarEvents = allCalendarEvents.filter((event: CalendarEvent) => !buildOSEventIds.has(event.id));
+			calendarEvents = allCalendarEvents.filter(
+				(event: CalendarEvent) => !buildOSEventIds.has(event.id)
+			);
 		} catch (error) {
 			console.error('Error fetching calendar events:', error);
 			calendarEvents = [];
@@ -343,7 +426,7 @@
 
 	// Keyboard shortcuts
 	onMount(() => {
-		console.log(blocks)
+		console.log(blocks);
 		function handleKeyDown(event: KeyboardEvent) {
 			// Only handle if not in an input
 			if (
@@ -386,6 +469,11 @@
 		if (days.length > 0) {
 			fetchCalendarEvents();
 		}
+	});
+
+	// Expose calendar events to parent component
+	$effect(() => {
+		calendarEventsOut = calendarEvents;
 	});
 
 	// Function to get calendar events for a specific day
@@ -451,9 +539,7 @@
 
 		// Generate 42 days (6 weeks) for complete calendar grid
 		return Array.from({ length: 42 }, (_, i) => {
-			const date = new Date(startDate);
-			date.setDate(startDate.getDate() + i);
-			return date;
+			return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
 		});
 	}
 
@@ -475,7 +561,9 @@
 		return [...timeBlocks, ...calEvents];
 	}
 
-	function isTimeBlock(event: TimeBlockWithProject | CalendarEvent): event is TimeBlockWithProject {
+	function isTimeBlock(
+		event: TimeBlockWithProject | CalendarEvent
+	): event is TimeBlockWithProject {
 		return 'block_type' in event;
 	}
 
@@ -498,7 +586,9 @@
 
 	function getEventTitle(event: TimeBlockWithProject | CalendarEvent): string {
 		if (isTimeBlock(event)) {
-			return event.block_type === 'project' ? event.project?.name || 'Build Block' : 'Build Block';
+			return event.block_type === 'project'
+				? event.project?.name || 'Build Block'
+				: 'Build Block';
 		} else {
 			return event.summary || '(No title)';
 		}
@@ -519,21 +609,23 @@
 		<!-- Mobile Header (< 768px) -->
 		<div class="mobile-header md:hidden">
 			<div class="flex items-center justify-between gap-3">
-				<button
-					type="button"
-					class="today-btn shrink-0"
-					onclick={navigateToday}
-				>
+				<button type="button" class="today-btn shrink-0" onclick={navigateToday}>
 					Today
 				</button>
 
 				<h2 class="header-title min-w-0 flex-1 truncate text-center">
 					{#if viewMode === 'month'}
-						{selectedDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+						{selectedDate.toLocaleDateString('en-US', {
+							month: 'short',
+							year: 'numeric'
+						})}
 					{:else if viewMode === 'week' && days[0] && days[6]}
 						{days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {days[6].getDate()}
 					{:else}
-						{selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+						{selectedDate.toLocaleDateString('en-US', {
+							month: 'short',
+							day: 'numeric'
+						})}
 					{/if}
 				</h2>
 
@@ -553,12 +645,7 @@
 							/>
 						</svg>
 					</button>
-					<button
-						type="button"
-						class="nav-btn"
-						onclick={navigateNext}
-						aria-label="Next"
-					>
+					<button type="button" class="nav-btn" onclick={navigateNext} aria-label="Next">
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
@@ -600,13 +687,7 @@
 		<!-- Desktop Header (≥ 768px) -->
 		<div class="desktop-header hidden md:flex">
 			<div class="flex items-center gap-4">
-				<button
-					type="button"
-					class="today-btn"
-					onclick={navigateToday}
-				>
-					Today
-				</button>
+				<button type="button" class="today-btn" onclick={navigateToday}> Today </button>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
@@ -623,12 +704,7 @@
 							/>
 						</svg>
 					</button>
-					<button
-						type="button"
-						class="nav-btn"
-						onclick={navigateNext}
-						aria-label="Next"
-					>
+					<button type="button" class="nav-btn" onclick={navigateNext} aria-label="Next">
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
@@ -641,7 +717,10 @@
 				</div>
 				<h2 class="header-title">
 					{#if viewMode === 'month'}
-						{selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+						{selectedDate.toLocaleDateString('en-US', {
+							month: 'long',
+							year: 'numeric'
+						})}
 					{:else if viewMode === 'week' && days[0] && days[6]}
 						{days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {days[6].toLocaleDateString(
 							'en-US',
@@ -688,10 +767,7 @@
 					<div class="day-header-spacer"></div>
 					<!-- Spacer for day headers -->
 					{#each hours as hour}
-						<div
-							class="time-label"
-							style="height: {HOUR_HEIGHT}px;"
-						>
+						<div class="time-label" style="height: {HOUR_HEIGHT}px;">
 							<span class="time-label-text">{formatHour(hour)}</span>
 						</div>
 					{/each}
@@ -702,14 +778,14 @@
 					<!-- Day headers -->
 					<div class="day-headers">
 						{#each days as day, dayIndex}
-							<div
-								class={`day-header ${isToday(day) ? 'is-today' : ''}`}
-							>
+							<div class={`day-header ${isToday(day) ? 'is-today' : ''}`}>
 								<div class="day-header-content">
 									<div class="day-header-weekday">
 										{day.toLocaleDateString('en-US', { weekday: 'short' })}
 									</div>
-									<div class={`day-header-date ${isToday(day) ? 'is-today-date' : ''}`}>
+									<div
+										class={`day-header-date ${isToday(day) ? 'is-today-date' : ''}`}
+									>
 										{day.getDate()}
 									</div>
 								</div>
@@ -740,6 +816,39 @@
 												handleSlotMouseMove(dayIndex, hour, minute)}
 										></div>
 									{/each}
+								{/each}
+
+								<!-- Available Slots (shown in emerald) -->
+								{#each getSlotsForDay(dayIndex) as slot}
+									{@const slotStyle = getSlotStyle(slot, dayIndex)}
+									{#if slotStyle}
+										<button
+											type="button"
+											class="available-slot group"
+											style={slotStyle}
+											onclick={() => handleSlotClick(slot)}
+											aria-label={`Available time slot from ${formatTimeRange(slot.startTime, slot.endTime)}, duration ${formatSlotDuration(slot.duration)}`}
+										>
+											{#if slot.duration >= 60}
+												<div class="slot-duration-text">
+													{formatSlotDuration(slot.duration)}
+												</div>
+											{/if}
+											<!-- Tooltip on hover -->
+											<div class="slot-tooltip">
+												<div class="tooltip-title">Available Slot</div>
+												<div class="tooltip-time">
+													{formatTimeRange(slot.startTime, slot.endTime)}
+												</div>
+												<div class="tooltip-duration">
+													Duration: {formatSlotDuration(slot.duration)}
+												</div>
+												<div class="tooltip-action">
+													Click to create time block
+												</div>
+											</div>
+										</button>
+									{/if}
 								{/each}
 
 								<!-- Google Calendar Events (shown in grey) -->
@@ -803,10 +912,7 @@
 								{#if isDragging && dragStart?.day === dayIndex}
 									{@const previewStyle = getDragPreviewStyle()}
 									{#if previewStyle}
-										<div
-											class="drag-preview"
-											style={previewStyle}
-										></div>
+										<div class="drag-preview" style={previewStyle}></div>
 									{/if}
 								{/if}
 							</div>
@@ -832,6 +938,7 @@
 						{@const events = getEventsForDate(date)}
 						{@const isCurrentMonthDay = isCurrentMonth(date)}
 						{@const isTodayDay = isToday(date)}
+						{@const daySlots = getSlotsForDate(date)}
 						<div
 							class="month-day-cell"
 							class:other-month={!isCurrentMonthDay}
@@ -841,6 +948,18 @@
 							<div class="month-day-number">
 								{date.getDate()}
 							</div>
+
+							<!-- Available slots badge -->
+							{#if daySlots.length > 0}
+								<div
+									class="available-slots-badge"
+									title="{daySlots.length} available slot{daySlots.length !== 1
+										? 's'
+										: ''}"
+								>
+									{daySlots.length}
+								</div>
+							{/if}
 
 							<!-- Events preview (condensed) -->
 							{#if events.length > 0}
@@ -859,18 +978,28 @@
 											}}
 										>
 											<div class="month-event-content">
-												<span class="month-event-time">{formatEventTime(event)}</span>
-												<span class="month-event-title">{getEventTitle(event)}</span>
+												<span class="month-event-time"
+													>{formatEventTime(event)}</span
+												>
+												<span class="month-event-title"
+													>{getEventTitle(event)}</span
+												>
 											</div>
 											<!-- Hover expansion tooltip -->
 											<div class="month-event-hover-detail">
-												<div class="hover-detail-time">{formatEventTime(event)}</div>
-												<div class="hover-detail-title">{getEventTitle(event)}</div>
+												<div class="hover-detail-time">
+													{formatEventTime(event)}
+												</div>
+												<div class="hover-detail-title">
+													{getEventTitle(event)}
+												</div>
 											</div>
 										</button>
 									{/each}
 									{#if events.length > 3}
-										<div class="month-event-more">+{events.length - 3} more</div>
+										<div class="month-event-more">
+											+{events.length - 3} more
+										</div>
 									{/if}
 								</div>
 							{/if}
@@ -901,10 +1030,7 @@
 
 		/* Apple-style container */
 		border-radius: 16px;
-		background: linear-gradient(to bottom,
-			rgb(255 255 255 / 0.95),
-			rgb(255 255 255 / 0.85)
-		);
+		background: linear-gradient(to bottom, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.85));
 		border: 1px solid rgb(226 232 240 / 0.8);
 		box-shadow:
 			0 1px 3px rgb(0 0 0 / 0.05),
@@ -922,10 +1048,7 @@
 
 	/* Dark mode */
 	:global(.dark) .time-play-calendar {
-		background: linear-gradient(to bottom,
-			rgb(15 23 42 / 0.95),
-			rgb(15 23 42 / 0.85)
-		);
+		background: linear-gradient(to bottom, rgb(15 23 42 / 0.95), rgb(15 23 42 / 0.85));
 		border-color: rgb(51 65 85 / 0.7);
 		box-shadow:
 			0 1px 3px rgb(0 0 0 / 0.3),
@@ -1480,7 +1603,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 0.6;
 		}
 		50% {
@@ -1495,7 +1619,6 @@
 		@apply overflow-auto;
 		max-height: 600px;
 		padding: 0.75rem 0;
-		
 	}
 
 	@media (min-width: 768px) {
@@ -1567,7 +1690,6 @@
 		background: rgb(226 232 240 / 0.4);
 		border-radius: 0 0 10px 10px;
 		overflow: hidden;
-		
 	}
 
 	:global(.dark) .month-grid-days {
@@ -1885,6 +2007,139 @@
 	}
 
 	/* ========================================
+	   AVAILABLE SLOTS
+	   ======================================== */
+	.available-slot {
+		@apply absolute cursor-pointer rounded-lg border-2 border-dashed text-center transition-all duration-200;
+		left: 2px;
+		right: 2px;
+		background: rgb(209 250 229 / 0.5);
+		border-color: rgb(52 211 153);
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		animation: slot-fade-in 200ms ease-out;
+	}
+
+	@media (min-width: 768px) {
+		.available-slot {
+			left: 4px;
+			right: 4px;
+		}
+	}
+
+	.available-slot:hover {
+		background: rgb(209 250 229 / 0.7);
+		border-color: rgb(16 185 129);
+		box-shadow:
+			0 2px 4px rgb(0 0 0 / 0.1),
+			0 4px 8px rgb(16 185 129 / 0.15);
+		transform: translateY(-1px) scaleY(1.02);
+		z-index: 15;
+	}
+
+	.available-slot:active {
+		transform: translateY(0) scaleY(1);
+	}
+
+	:global(.dark) .available-slot {
+		background: rgb(6 78 59 / 0.3);
+		border-color: rgb(52 211 153);
+	}
+
+	:global(.dark) .available-slot:hover {
+		background: rgb(6 78 59 / 0.4);
+		border-color: rgb(16 185 129);
+	}
+
+	/* Slot duration text */
+	.slot-duration-text {
+		@apply font-medium;
+		font-size: 0.6875rem;
+		color: rgb(5 150 105);
+		pointer-events: none;
+	}
+
+	:global(.dark) .slot-duration-text {
+		color: rgb(167 243 208);
+	}
+
+	/* Slot tooltip (hidden by default, shown on hover) */
+	.slot-tooltip {
+		@apply absolute left-0 right-0 bottom-full mb-2 rounded-lg shadow-2xl;
+		padding: 0.625rem 0.875rem;
+		background: rgb(15 23 42 / 0.98);
+		border: 1px solid rgb(51 65 85 / 0.8);
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		opacity: 0;
+		transform: translateY(4px) scale(0.95);
+		transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+		pointer-events: none;
+		z-index: 50;
+		min-width: 180px;
+		max-width: 240px;
+	}
+
+	.available-slot:hover .slot-tooltip {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+
+	.tooltip-title {
+		@apply font-semibold mb-1;
+		font-size: 0.75rem;
+		color: rgb(167 243 208);
+	}
+
+	.tooltip-time {
+		@apply font-medium mb-0.5;
+		font-size: 0.6875rem;
+		color: rgb(203 213 225);
+	}
+
+	.tooltip-duration {
+		font-size: 0.6875rem;
+		color: rgb(148 163 184);
+		margin-bottom: 0.375rem;
+	}
+
+	.tooltip-action {
+		font-size: 0.625rem;
+		color: rgb(148 163 184);
+		font-style: italic;
+	}
+
+	/* Slot fade-in animation */
+	@keyframes slot-fade-in {
+		from {
+			opacity: 0;
+			transform: scaleY(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: scaleY(1);
+		}
+	}
+
+	/* ========================================
+	   MONTH VIEW - AVAILABLE SLOTS BADGE
+	   ======================================== */
+	.available-slots-badge {
+		@apply absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold;
+		background: rgb(16 185 129);
+		color: white;
+		box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+		z-index: 10;
+	}
+
+	:global(.dark) .available-slots-badge {
+		background: rgb(52 211 153);
+		color: rgb(6 78 59);
+	}
+
+	/* ========================================
 	   ACCESSIBILITY & ANIMATIONS
 	   ======================================== */
 	@media (prefers-reduced-motion: reduce) {
@@ -1899,14 +2154,16 @@
 	/* Focus styles for accessibility */
 	.today-btn:focus-visible,
 	.nav-btn:focus-visible,
-	.view-toggle:focus-visible {
+	.view-toggle:focus-visible,
+	.available-slot:focus-visible {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: 2px;
 	}
 
 	:global(.dark) .today-btn:focus-visible,
 	:global(.dark) .nav-btn:focus-visible,
-	:global(.dark) .view-toggle:focus-visible {
+	:global(.dark) .view-toggle:focus-visible,
+	:global(.dark) .available-slot:focus-visible {
 		outline-color: rgb(96 165 250);
 	}
 </style>
