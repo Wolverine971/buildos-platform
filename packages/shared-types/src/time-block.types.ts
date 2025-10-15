@@ -2,6 +2,7 @@
 
 export type TimeBlockType = "project" | "build";
 export type TimeBlockSyncStatus = "pending" | "synced" | "failed" | "deleted";
+export type TimeBlockSyncSource = "app" | "google";
 
 export interface TimeBlockSuggestion {
   title: string;
@@ -26,6 +27,7 @@ export interface TimeBlock {
   calendar_event_id: string | null;
   calendar_event_link: string | null;
   sync_status: TimeBlockSyncStatus;
+  sync_source: TimeBlockSyncSource;
   last_synced_at: string | null;
   ai_suggestions: TimeBlockSuggestion[] | null;
   suggestions_summary: string | null;

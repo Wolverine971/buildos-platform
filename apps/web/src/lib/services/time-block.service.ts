@@ -166,6 +166,7 @@ export class TimeBlockService {
 					: null,
 				suggestions_model: suggestionResult?.model ?? null,
 				sync_status: 'synced' as TimeBlockSyncStatus,
+				sync_source: 'app', // Track that this change came from the app
 				last_synced_at: nowIso,
 				updated_at: nowIso
 			})
@@ -240,7 +241,8 @@ export class TimeBlockService {
 				suggestions_model: suggestionResult.model ?? null,
 				last_synced_at: nowIso,
 				updated_at: nowIso,
-				sync_status: 'synced'
+				sync_status: 'synced',
+				sync_source: 'app' // Track that this change came from the app
 			})
 			.eq('id', blockId)
 			.eq('user_id', this.userId)
@@ -480,6 +482,7 @@ export class TimeBlockService {
 			.from('time_blocks')
 			.update({
 				sync_status: 'deleted',
+				sync_source: 'app', // Track that this deletion came from the app
 				updated_at: nowIso,
 				last_synced_at: nowIso
 			})

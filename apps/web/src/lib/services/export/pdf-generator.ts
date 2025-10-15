@@ -111,8 +111,10 @@ export class PDFGenerator {
 
 		if (isDev) {
 			// Development: Use full puppeteer package (includes Chromium)
+			// Use @vite-ignore to prevent Vite from bundling puppeteer in production
 			try {
-				const puppeteer = await import('puppeteer');
+				// Dynamic import with string to prevent static analysis
+				const puppeteer = await import(/* @vite-ignore */ 'puppeteer');
 				console.log('Using local Puppeteer with bundled Chromium');
 				return await puppeteer.default.launch({
 					headless: true,
@@ -125,8 +127,8 @@ export class PDFGenerator {
 			}
 		} else {
 			// Production: Use puppeteer-core + @sparticuz/chromium (Vercel-optimized)
-			const puppeteerCore = await import('puppeteer-core');
-			const chromium = await import('@sparticuz/chromium');
+			const puppeteerCore = await import(/* @vite-ignore */ 'puppeteer-core');
+			const chromium = await import(/* @vite-ignore */ '@sparticuz/chromium');
 
 			return await puppeteerCore.default.launch({
 				args: chromium.default.args,
@@ -173,7 +175,7 @@ ${html}
 			if (isDev) {
 				// Check if puppeteer is available
 				try {
-					await import('puppeteer');
+					await import(/* @vite-ignore */ 'puppeteer');
 					return true;
 				} catch {
 					console.error('Puppeteer not available in development');

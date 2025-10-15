@@ -4114,6 +4114,7 @@ export type Database = {
           suggestions_generated_at: string | null;
           suggestions_model: string | null;
           suggestions_summary: string | null;
+          sync_source: string | null;
           sync_status: string;
           timezone: string;
           updated_at: string;
@@ -4134,6 +4135,7 @@ export type Database = {
           suggestions_generated_at?: string | null;
           suggestions_model?: string | null;
           suggestions_summary?: string | null;
+          sync_source?: string | null;
           sync_status?: string;
           timezone?: string;
           updated_at?: string;
@@ -4154,6 +4156,7 @@ export type Database = {
           suggestions_generated_at?: string | null;
           suggestions_model?: string | null;
           suggestions_summary?: string | null;
+          sync_source?: string | null;
           sync_status?: string;
           timezone?: string;
           updated_at?: string;

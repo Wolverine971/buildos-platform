@@ -63,6 +63,120 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-15] Bug: Timeblock updates and deletions from Google Calendar not syncing back to BuildOS
+
+**Status**: Fixed
+**Severity**: Medium
+**Affected Component**: Time Play - Google Calendar Webhook Sync
+
+**Symptoms**:
+
+- Users create timeblocks in Time Play UI which sync to Google Calendar successfully
+- When users edit or delete timeblocks in Google Calendar, changes are not reflected in BuildOS
+- Time blocks remain unchanged in BuildOS database even after Google Calendar event is modified/deleted
+- Webhook receives notifications from Google Calendar but ignores timeblock events
+- Only task calendar events (task_calendar_events) were syncing bidirectionally, not timeblocks
+
+**Root Cause**:
+
+The `CalendarWebhookService.processBatchEventChanges()` method only queried the `task_calendar_events` table when processing Google Calendar webhook notifications (apps/web/src/lib/services/calendar-webhook-service.ts:770-774). When Google Calendar sent notifications about timeblock event changes, the webhook handler would:
+
+1. Receive notification from Google Calendar about event change
+2. Query `task_calendar_events` table for matching event
+3. Find no match (because timeblock events are in `time_blocks` table, not `task_calendar_events`)
+4. Skip processing entirely with "no task-related events found" message
+5. Never check the `time_blocks` table
+
+Additionally, the `time_blocks` table lacked a `sync_source` column to track whether changes originated from the app or Google Calendar. This was necessary for sync loop prevention (the same pattern used by `task_calendar_events.sync_source` to prevent infinite sync loops when app changes trigger webhook notifications).
+
+**Fix Applied**:
+
+**1. Database Migration** - Added sync tracking infrastructure:
+
+- Created migration `20251015_add_sync_source_to_time_blocks.sql`
+- Added `sync_source` column to `time_blocks` table (values: 'app' | 'google')
+- Added index for efficient sync loop prevention queries
+- Backfilled existing rows with `sync_source = 'app'`
+
+**2. Type System** - Updated TypeScript interfaces:
+
+- Added `TimeBlockSyncSource` type: `"app" | "google"`
+- Added `sync_source: TimeBlockSyncSource` to `TimeBlock` interface
+- Ensured type safety across entire codebase
+
+**3. TimeBlockService** - Set sync_source on app-initiated changes:
+
+- `createTimeBlock()` sets `sync_source: 'app'` when creating timeblocks (line 169)
+- `deleteTimeBlock()` sets `sync_source: 'app'` when marking deleted (line 484)
+- `regenerateSuggestions()` sets `sync_source: 'app'` when updating suggestions (line 245)
+
+**4. CalendarWebhookService** - Extended webhook processing:
+
+- Added batch query for `time_blocks` table alongside `task_calendar_events` (lines 782-786)
+- Created `timeBlockMap` for O(1) lookup of timeblock events (line 806)
+- Added timeblock processing logic with sync loop prevention (lines 843-902):
+  - Check sync_source and updated_at to skip app-initiated changes (5-minute window)
+  - Handle deletions: mark timeblock as `sync_status: 'deleted'` when event cancelled
+  - Handle updates: update `start_time`, `end_time`, `duration_minutes` when event times change
+  - Set `sync_source: 'google'` for all Google Calendar-initiated changes
+- Added batch database operations for timeblock updates and deletions (lines 1183-1221)
+
+**Files Changed**:
+
+- `apps/web/supabase/migrations/20251015_add_sync_source_to_time_blocks.sql` - **NEW FILE** - Database migration
+- `packages/shared-types/src/time-block.types.ts:5` - Added `TimeBlockSyncSource` type
+- `packages/shared-types/src/time-block.types.ts:30` - Added `sync_source` field to `TimeBlock` interface
+- `apps/web/src/lib/services/time-block.service.ts:169` - Set sync_source on create
+- `apps/web/src/lib/services/time-block.service.ts:484` - Set sync_source on delete
+- `apps/web/src/lib/services/time-block.service.ts:245` - Set sync_source on suggestion update
+- `apps/web/src/lib/services/calendar-webhook-service.ts:22-24` - Added timeblock fields to `BatchUpdates` interface
+- `apps/web/src/lib/services/calendar-webhook-service.ts:782-806` - Query and map timeblocks
+- `apps/web/src/lib/services/calendar-webhook-service.ts:843-902` - Process timeblock changes
+- `apps/web/src/lib/services/calendar-webhook-service.ts:1183-1221` - Batch update/delete timeblocks
+- `apps/web/src/lib/services/calendar-webhook-service.ts:1224` - Updated logging for both tasks and timeblocks
+
+**Manual Verification**:
+
+1. **Apply migration**: `pnpm supabase migration up` or apply SQL directly
+2. **Test timeblock creation**: Create timeblock in Time Play → verify syncs to Google Calendar with `sync_source: 'app'`
+3. **Test Google Calendar edit**: Edit timeblock event in Google Calendar (change time) → verify BuildOS updates timeblock times
+4. **Test Google Calendar delete**: Delete timeblock event in Google Calendar → verify BuildOS marks timeblock as `sync_status: 'deleted'`
+5. **Test sync loop prevention**: Create timeblock in BuildOS → verify webhook notification is skipped (sync_source check)
+6. **Check webhook logs**: Look for `[BATCH_PROCESS] Found X task-related events and Y timeblocks` messages
+7. **Verify batch operations**: Edit multiple timeblocks in Google Calendar → verify all updates processed in single batch
+
+**Related Documentation**:
+
+- `/apps/web/docs/features/time-play/README.md` - Time Play feature specification
+- `/apps/web/docs/technical/architecture/CALENDAR_WEBHOOK_FLOW.md` - Calendar webhook architecture
+- `/apps/web/src/lib/services/time-block.service.ts` - Time block service
+- `/apps/web/src/lib/services/calendar-webhook-service.ts` - Webhook service with timeblock processing
+- `/packages/shared-types/src/time-block.types.ts` - Time block type definitions
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- **Pattern source**: Same sync loop prevention pattern as `task_calendar_events` (lines 827-842)
+- **Sync window**: 5-minute sync loop prevention window documented at line 845
+- **Batch processing**: Follows same batch pattern as task events for performance
+- **Database functions**: Uses same `upsert` pattern as task updates (line 1188-1192)
+- **Webhook flow**: Part of existing Google Calendar webhook system documented in `/apps/web/docs/technical/architecture/CALENDAR_WEBHOOK_FLOW.md`
+
+**Design Improvements**:
+
+1. **Bidirectional sync**: Time blocks now sync both directions (BuildOS ↔ Google Calendar)
+2. **Sync loop prevention**: 5-minute window prevents infinite loops when app updates trigger webhooks
+3. **Batch efficiency**: Multiple timeblock changes processed in single database transaction
+4. **Consistent patterns**: Uses same patterns as task sync (sync_source, optimistic updates, soft deletes)
+5. **Type safety**: Full TypeScript coverage with no new type errors
+6. **Comprehensive logging**: Detailed logs for debugging webhook processing
+
+**Confidence**: High - Implementation follows proven task sync patterns, type checks pass, calendar webhook service has no diagnostics, migration safely adds new column with backfill
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-14] Bug: Time-play task suggestions missing task URLs in calendar event descriptions
 
 **Status**: Fixed

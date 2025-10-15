@@ -20,6 +20,8 @@ interface BatchUpdates {
 	taskEventUpdates: any[];
 	taskUpdates: any[];
 	deletions: string[];
+	timeBlockUpdates: any[];
+	timeBlockDeletions: string[];
 }
 
 interface RetryConfig {
@@ -764,7 +766,9 @@ export class CalendarWebhookService {
 				return 0;
 			}
 
-			console.log(`[BATCH_PROCESS] Batch querying ${eventIds.length} events for task links`);
+			console.log(
+				`[BATCH_PROCESS] Batch querying ${eventIds.length} events for task and timeblock links`
+			);
 
 			// Batch query all task events at once
 			const { data: taskEvents, error } = await this.supabase
@@ -778,21 +782,48 @@ export class CalendarWebhookService {
 				return 0;
 			}
 
-			if (!taskEvents || taskEvents.length === 0) {
-				console.log('[BATCH_PROCESS] No task-related events found in this batch');
+			// Also batch query time blocks
+			const { data: timeBlocks, error: timeBlockError } = await this.supabase
+				.from('time_blocks')
+				.select('*, project:projects(id, name, calendar_color_id)')
+				.in('calendar_event_id', eventIds)
+				.eq('user_id', userId);
+
+			if (timeBlockError) {
+				console.error('[BATCH_PROCESS] Error fetching time blocks:', timeBlockError);
+				// Don't return - continue with task events if we have them
+			}
+
+			const taskEventsFound = (taskEvents || []).length;
+			const timeBlocksFound = (timeBlocks || []).length;
+			const totalFound = taskEventsFound + timeBlocksFound;
+
+			if (totalFound === 0) {
+				console.log(
+					'[BATCH_PROCESS] No task-related events or timeblocks found in this batch'
+				);
 				return 0;
 			}
 
-			console.log(`[BATCH_PROCESS] Found ${taskEvents.length} task-related events`);
+			console.log(
+				`[BATCH_PROCESS] Found ${taskEventsFound} task-related events and ${timeBlocksFound} timeblocks`
+			);
 
-			// Create a map for quick lookup
-			const taskEventMap = new Map(taskEvents.map((te) => [te.calendar_event_id, te]));
+			// Create maps for quick lookup
+			const taskEventMap = new Map(
+				(taskEvents || []).map((te) => [te.calendar_event_id, te])
+			);
+			const timeBlockMap = new Map(
+				(timeBlocks || []).map((tb) => [tb.calendar_event_id, tb])
+			);
 
 			// Prepare batch updates
 			const batchUpdates: BatchUpdates = {
 				taskEventUpdates: [],
 				taskUpdates: [],
-				deletions: []
+				deletions: [],
+				timeBlockUpdates: [],
+				timeBlockDeletions: []
 			};
 
 			// Process each event and collect updates
@@ -802,9 +833,10 @@ export class CalendarWebhookService {
 				}
 
 				const taskEvent = taskEventMap.get(event.id);
+				const timeBlock = timeBlockMap.get(event.id);
 
 				// Check if this is a new recurring event (has recurrence but no task)
-				if (!taskEvent && event.recurrence && event.recurrence.length > 0) {
+				if (!taskEvent && !timeBlock && event.recurrence && event.recurrence.length > 0) {
 					// This is a new recurring event created in Google Calendar
 					// We might want to create a corresponding task
 					console.log('[BATCH_PROCESS] New recurring event detected:', {
@@ -817,8 +849,73 @@ export class CalendarWebhookService {
 					continue;
 				}
 
+				// Process timeblock changes (if this is a timeblock event)
+				if (timeBlock && !taskEvent) {
+					// Check sync loop prevention for timeblocks
+					const SYNC_LOOP_PREVENTION_WINDOW = 5 * 60 * 1000; // 5 minutes
+					if (
+						timeBlock.sync_source === 'app' &&
+						timeBlock.updated_at &&
+						new Date(timeBlock.updated_at).getTime() >
+							Date.now() - SYNC_LOOP_PREVENTION_WINDOW
+					) {
+						console.log('[BATCH_PROCESS] Skipping app-initiated timeblock change', {
+							eventId: event.id,
+							timeBlockId: timeBlock.id,
+							sync_source: timeBlock.sync_source,
+							updated_at: timeBlock.updated_at,
+							timeSinceUpdate: Date.now() - new Date(timeBlock.updated_at).getTime()
+						});
+						continue;
+					}
+
+					// Handle timeblock deletion
+					if (event.status === 'cancelled') {
+						console.log(
+							'[BATCH_PROCESS] Timeblock deleted from calendar:',
+							timeBlock.id
+						);
+						batchUpdates.timeBlockDeletions.push(timeBlock.id);
+						continue;
+					}
+
+					// Handle timeblock date/time changes
+					if (event.start && event.end) {
+						const newStart = event.start?.dateTime || event.start?.date;
+						const newEnd = event.end?.dateTime || event.end?.date;
+
+						if (newStart && newEnd) {
+							const startDate = new Date(newStart);
+							const endDate = new Date(newEnd);
+							const durationMinutes = Math.round(
+								(endDate.getTime() - startDate.getTime()) / 60000
+							);
+
+							console.log('[BATCH_PROCESS] Timeblock updated from calendar:', {
+								timeBlockId: timeBlock.id,
+								oldStart: timeBlock.start_time,
+								newStart: startDate.toISOString(),
+								oldEnd: timeBlock.end_time,
+								newEnd: endDate.toISOString()
+							});
+
+							batchUpdates.timeBlockUpdates.push({
+								id: timeBlock.id,
+								start_time: startDate.toISOString(),
+								end_time: endDate.toISOString(),
+								duration_minutes: durationMinutes,
+								sync_source: 'google',
+								sync_status: 'synced',
+								last_synced_at: new Date().toISOString(),
+								updated_at: new Date().toISOString()
+							});
+						}
+					}
+					continue;
+				}
+
 				if (!taskEvent) {
-					// Not a task-related event, skip
+					// Not a task-related event or timeblock, skip
 					continue;
 				}
 
@@ -1096,8 +1193,54 @@ export class CalendarWebhookService {
 				}
 			}
 
+			// Batch update timeblocks
+			if (batchUpdates.timeBlockUpdates.length > 0) {
+				console.log(
+					`[BATCH_PROCESS] Updating ${batchUpdates.timeBlockUpdates.length} timeblocks`
+				);
+				const { error: timeBlockUpdateError } = await this.supabase
+					.from('time_blocks')
+					.upsert(batchUpdates.timeBlockUpdates, {
+						onConflict: 'id'
+					});
+
+				if (timeBlockUpdateError) {
+					console.error(
+						'[BATCH_PROCESS] Error updating timeblocks:',
+						timeBlockUpdateError
+					);
+				} else {
+					processedCount += batchUpdates.timeBlockUpdates.length;
+				}
+			}
+
+			// Batch delete timeblocks (soft delete)
+			if (batchUpdates.timeBlockDeletions.length > 0) {
+				console.log(
+					`[BATCH_PROCESS] Soft-deleting ${batchUpdates.timeBlockDeletions.length} timeblocks`
+				);
+				const { error: timeBlockDeleteError } = await this.supabase
+					.from('time_blocks')
+					.update({
+						sync_status: 'deleted',
+						sync_source: 'google',
+						updated_at: new Date().toISOString(),
+						last_synced_at: new Date().toISOString()
+					})
+					.in('id', batchUpdates.timeBlockDeletions);
+
+				if (timeBlockDeleteError) {
+					console.error(
+						'[BATCH_PROCESS] Error deleting timeblocks:',
+						timeBlockDeleteError
+					);
+				} else {
+					processedCount += batchUpdates.timeBlockDeletions.length;
+				}
+			}
+
 			console.log(
-				`[BATCH_PROCESS] Completed: processed ${processedCount} out of ${taskEvents.length} task-related events`
+				`[BATCH_PROCESS] Completed: processed ${processedCount} out of ${totalFound} events (${taskEventsFound} tasks, ${timeBlocksFound} timeblocks)`
 			);
 
 			// Phase 3: Update scheduled SMS messages for affected events
