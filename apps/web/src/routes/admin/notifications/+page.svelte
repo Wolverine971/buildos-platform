@@ -155,7 +155,7 @@
 			</a>
 
 			<a
-				href="/admin/notifications/logs"
+				href="/admin/notifications/nlogs"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">

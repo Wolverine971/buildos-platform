@@ -83,7 +83,9 @@
 	$: isAuthenticated = !!user;
 </script>
 
-<footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-auto">
+<footer
+	class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-auto no-print"
+>
 	<div class="max-w-7xl mx-auto">
 		{#if isAuthenticated}
 			<!-- Authenticated User Footer -->

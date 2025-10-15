@@ -76,8 +76,11 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       );
     }
 
+    // At this point, briefDate is guaranteed to be a valid date string
+    const validatedBriefDate: string = briefDate;
+
     console.log(
-      `📅 Generating brief for date: ${briefDate} (timezone: ${timezone}, current time: ${new Date().toISOString()})`,
+      `📅 Generating brief for date: ${validatedBriefDate} (timezone: ${timezone}, current time: ${new Date().toISOString()})`,
     );
 
     // Log timezone conversion for debugging
@@ -88,7 +91,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
     const brief = await generateDailyBrief(
       job.data.userId,
-      briefDate,
+      validatedBriefDate,
       job.data.options,
       timezone,
       job.id, // Pass the job ID
@@ -117,10 +120,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
    → should_email_daily_brief: ${shouldEmailBrief}
    → should_sms_daily_brief: ${shouldSmsBrief}`);
 
+    // NOTE: Email notifications are now handled via the notification system (brief.completed event)
+    // The emailAdapter will fetch the full brief with LLM analysis and send it
+    // This legacy email job system is deprecated and commented out
+
     // Handle email notifications
     let emailRecordId: string | null = null;
     let emailQueuedSuccessfully = false;
-    if (shouldEmailBrief) {
+    if (false && shouldEmailBrief) {
+      // DISABLED - now handled by notification system
       try {
         console.log(
           `📧 User ${job.data.userId} is eligible for email, proceeding with email creation...`,
@@ -138,7 +146,9 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
             `❌ Error fetching user email for ${job.data.userId}:`,
             userError,
           );
-          throw new Error(`Failed to fetch user: ${userError.message}`);
+          throw new Error(
+            `Failed to fetch user: ${userError?.message || "Unknown error"}`,
+          );
         }
 
         if (!user?.email) {
@@ -153,7 +163,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
           const emailSender = new DailyBriefEmailSender(supabase);
           const { htmlContent, plainText } = emailSender.formatBriefForEmail(
             brief,
-            briefDate,
+            validatedBriefDate,
           );
 
           // Generate tracking pixel
@@ -167,11 +177,14 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
           const subject =
             customSubject ||
-            `Daily Brief - ${new Date(briefDate).toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}`;
+            `Daily Brief - ${new Date(validatedBriefDate).toLocaleDateString(
+              "en-US",
+              {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              },
+            )}`;
 
           // Generate minimal HTML for storage
           const emailHtmlForStorage = `
@@ -199,94 +212,108 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
               tracking_id: trackingId,
               template_data: {
                 brief_id: brief.id,
-                brief_date: briefDate,
+                brief_date: validatedBriefDate,
                 user_id: job.data.userId,
               },
             })
             .select()
             .single();
 
-          if (emailError) {
+          if (emailError || !emailRecord) {
             console.error("Failed to create email record:", emailError);
-          } else {
-            emailRecordId = emailRecord.id;
+            throw new Error("Failed to create email record");
+          }
 
-            // Create recipient record in existing email_recipients table
-            const { error: recipientError } = await supabase
-              .from("email_recipients")
-              .insert({
-                email_id: emailRecord.id,
-                recipient_email: user.email,
-                recipient_type: "to",
-                status: "pending",
-              });
+          // At this point, emailRecord is guaranteed to be non-null (checked above)
+          // Type assertion needed because TypeScript doesn't track the control flow from the throw
+          const validatedEmailRecord = emailRecord as NonNullable<
+            typeof emailRecord
+          >;
+          emailRecordId = validatedEmailRecord.id;
 
-            if (recipientError) {
-              console.error(
-                "Failed to create recipient record:",
-                recipientError,
-              );
-            }
+          // Create recipient record in existing email_recipients table
+          // At this point, user and user.email are guaranteed to exist (checked above)
+          if (!user?.email) {
+            throw new Error("User email unexpectedly null");
+          }
+          // Type assertion needed because TypeScript doesn't track the control flow from the throw
+          const validatedUser = user as NonNullable<typeof user>;
+          const { error: recipientError } = await supabase
+            .from("email_recipients")
+            .insert({
+              email_id: validatedEmailRecord.id,
+              recipient_email: validatedUser.email,
+              recipient_type: "to",
+              status: "pending",
+            });
 
-            // Queue email job with emailId (not briefId!)
-            const { data: emailJob, error: queueError } = await supabase.rpc(
-              "add_queue_job",
-              {
-                p_user_id: job.data.userId,
-                p_job_type: "generate_brief_email",
-                p_metadata: {
-                  emailId: emailRecord.id, // ← Just emailId!
-                },
-                p_priority: 5, // Lower priority than brief generation
-                p_scheduled_for: new Date().toISOString(), // Send immediately
-                p_dedup_key: `email-${emailRecord.id}`, // Prevent duplicate email jobs
+          if (recipientError) {
+            console.error("Failed to create recipient record:", recipientError);
+          }
+
+          // Queue email job with emailId (not briefId!)
+          const { data: emailJob, error: queueError } = await supabase.rpc(
+            "add_queue_job",
+            {
+              p_user_id: job.data.userId,
+              p_job_type: "generate_brief_email",
+              p_metadata: {
+                emailId: validatedEmailRecord.id, // ← Just emailId!
               },
+              p_priority: 5, // Lower priority than brief generation
+              p_scheduled_for:
+                job.data.notificationScheduledFor || new Date().toISOString(), // Send at user's scheduled time
+              p_dedup_key: `email-${validatedEmailRecord.id}`, // Prevent duplicate email jobs
+            },
+          );
+
+          if (queueError) {
+            console.error(
+              `❌ CRITICAL: Failed to queue email job for email ${validatedEmailRecord.id}:`,
+              queueError,
+            );
+            console.error(`   → Error code: ${queueError?.code || "unknown"}`);
+            console.error(
+              `   → Error message: ${queueError?.message || "unknown"}`,
+            );
+            console.error(
+              `   → Brief ID: ${brief.id}, User ID: ${job.data.userId}`,
             );
 
-            if (queueError) {
-              console.error(
-                `❌ CRITICAL: Failed to queue email job for email ${emailRecord.id}:`,
-                queueError,
-              );
-              console.error(`   → Error code: ${queueError.code}`);
-              console.error(`   → Error message: ${queueError.message}`);
-              console.error(
-                `   → Brief ID: ${brief.id}, User ID: ${job.data.userId}`,
-              );
-
-              // Mark email as failed since we couldn't queue it
-              await supabase
-                .from("emails")
-                .update({
-                  status: "failed",
-                  template_data: {
-                    brief_id: brief.id,
-                    brief_date: briefDate,
-                    user_id: job.data.userId,
-                    error: {
-                      message: queueError.message,
-                      code: queueError.code,
-                      timestamp: new Date().toISOString(),
-                    },
+            // Mark email as failed since we couldn't queue it
+            await supabase
+              .from("emails")
+              .update({
+                status: "failed",
+                template_data: {
+                  brief_id: brief.id,
+                  brief_date: validatedBriefDate,
+                  user_id: job.data.userId,
+                  error: {
+                    message: queueError?.message || "unknown",
+                    code: queueError?.code || "unknown",
+                    timestamp: new Date().toISOString(),
                   },
-                })
-                .eq("id", emailRecord.id);
+                },
+              })
+              .eq("id", validatedEmailRecord.id);
 
-              throw new Error(
-                `Failed to queue email job: ${queueError.message}`,
-              );
-            } else {
-              emailQueuedSuccessfully = true;
-              console.log(
-                `✅ Successfully queued email job ${emailJob} for email ${emailRecord.id} (brief ${brief.id})`,
-              );
-            }
+            throw new Error(
+              `Failed to queue email job: ${queueError?.message || "unknown error"}`,
+            );
+          } else {
+            emailQueuedSuccessfully = true;
+            console.log(
+              `✅ Successfully queued email job ${emailJob} for email ${validatedEmailRecord.id} (brief ${brief.id})`,
+            );
           }
         }
-      } catch (emailError) {
+      } catch (emailError: unknown) {
         // Log error but don't fail the brief job
         const errorMessage =
-          emailError instanceof Error ? emailError.message : "Unknown error";
+          emailError instanceof Error
+            ? (emailError as Error).message
+            : "Unknown error";
         console.error(`Failed to create/queue email: ${errorMessage}`);
 
         // Track email creation failure in error_logs
@@ -301,7 +328,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
             record_id: brief.id,
             metadata: {
               brief_id: brief.id,
-              brief_date: briefDate,
+              brief_date: validatedBriefDate,
               job_id: job.id,
             },
           });
@@ -439,7 +466,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
         p_target_user_id: job.data.userId,
         p_payload: {
           brief_id: brief.id,
-          brief_date: briefDate,
+          brief_date: validatedBriefDate,
           timezone: timezone,
           task_count: todaysTaskCount, // Keep for backward compatibility
           todays_task_count: todaysTaskCount,
@@ -466,10 +493,10 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
     console.log(`✅ Completed brief generation for user ${job.data.userId}
    → Brief ID: ${brief.id}
-   → Brief Date: ${briefDate}
+   → Brief Date: ${validatedBriefDate}
    → Timezone: ${timezone}
-   → Email Record Created: ${emailRecordId ? "YES ✅" : "NO ❌"}
-   → Email Job Queued: ${emailQueuedSuccessfully ? "YES ✅" : "NO ❌"}`);
+   → Email Preference: ${shouldEmailBrief ? "ENABLED ✅ (will be sent via notification system)" : "DISABLED ❌"}
+   → SMS Preference: ${shouldSmsBrief ? "ENABLED ✅ (will be sent via notification system)" : "DISABLED ❌"}`);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

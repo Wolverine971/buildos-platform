@@ -183,9 +183,108 @@ export async function sendEmailNotification(
       };
     }
 
-    // Format email content
-    const { html, text } = formatEmailTemplate(delivery);
-    const subject = delivery.payload.title;
+    // Format email content - special handling for brief.completed events
+    let html: string;
+    let text: string;
+    let subject: string;
+
+    if (eventType === "brief.completed" && delivery.payload.data?.brief_id) {
+      // Fetch the full brief with LLM analysis
+      const { data: brief, error: briefError } = await supabase
+        .from("daily_briefs")
+        .select("*")
+        .eq("id", delivery.payload.data.brief_id)
+        .single();
+
+      if (briefError || !brief) {
+        emailLogger.warn(
+          "Failed to fetch brief for email - falling back to notification template",
+          {
+            briefId: delivery.payload.data.brief_id,
+            error: briefError?.message,
+          },
+        );
+        const emailContent = formatEmailTemplate(delivery);
+        html = emailContent.html;
+        text = emailContent.text;
+        subject = delivery.payload.title;
+      } else {
+        // Use the full brief content (LLM analysis or summary)
+        const briefContent = brief.llm_analysis || brief.summary_content || "";
+
+        if (!briefContent) {
+          emailLogger.warn(
+            "Brief has no content - falling back to notification template",
+            {
+              briefId: delivery.payload.data.brief_id,
+            },
+          );
+          const emailContent = formatEmailTemplate(delivery);
+          html = emailContent.html;
+          text = emailContent.text;
+          subject = delivery.payload.title;
+        } else {
+          // Format the full brief email (matching webhook format)
+          const { renderMarkdown } = await import(
+            "../../lib/utils/markdown.js"
+          );
+          const contentHtml = renderMarkdown(briefContent);
+
+          const briefDate =
+            delivery.payload.data?.brief_date || new Date().toISOString();
+          const dateFormatted = new Date(briefDate).toLocaleDateString(
+            "en-US",
+            {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            },
+          );
+
+          subject = `Daily Brief - ${dateFormatted}`;
+
+          const fullContent = `
+            <h1 style="color: #111827; font-size: 24px; margin-bottom: 8px;">Your Daily Brief</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 24px;">${dateFormatted}</p>
+
+            <div style="margin: 20px 0;">
+              ${contentHtml}
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="https://build-os.com/daily-briefs/${delivery.payload.data.brief_id}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <span style="color: #d1d5db; margin: 0 8px;">|</span>
+              <a href="https://build-os.com/settings/notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+            </div>
+          `;
+
+          html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  ${fullContent}
+</body>
+</html>
+          `.trim();
+
+          text = briefContent; // Plain text version
+        }
+      }
+    } else {
+      // Use standard notification template for other events
+      const emailContent = formatEmailTemplate(delivery);
+      html = emailContent.html;
+      text = emailContent.text;
+      subject = delivery.payload.title;
+    }
 
     // Generate tracking ID
     const trackingId = crypto.randomUUID();

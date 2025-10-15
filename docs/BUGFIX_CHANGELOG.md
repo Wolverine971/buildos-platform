@@ -63,6 +63,349 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-15] Bug: Type errors in notification deliveries API endpoint
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Admin Notifications - Delivery Logs API
+
+**Symptoms**:
+
+- 19 TypeScript errors in `/apps/web/src/routes/api/admin/notifications/nlogs/deliveries/+server.ts`
+- All errors showing: "Property 'X' does not exist on type 'SelectQueryError<"column 'metadata' does not exist on 'notification_deliveries'.">"
+- TypeScript cannot infer proper types for delivery data
+- Endpoint fails type checking, preventing successful builds
+
+**Root Cause**:
+
+The Supabase SELECT query on line 45 included a `metadata` column that doesn't exist in the `notification_deliveries` table schema. When Supabase's type system encountered the non-existent column, it returned a `SelectQueryError` type instead of the actual data type. This cascaded to all subsequent uses of the query result, making TypeScript believe every property access (like `created_at`, `sent_at`, etc.) was invalid.
+
+**Fix Applied**:
+
+Removed the non-existent `metadata` column from the SELECT statement in the Supabase query. The `notification_deliveries` table schema (defined in `/packages/shared-types/src/database.schema.ts:586-608`) does not include a `metadata` field, so it should not be queried.
+
+**Files Changed**:
+
+- `/apps/web/src/routes/api/admin/notifications/nlogs/deliveries/+server.ts:45` - Removed `metadata` from the SELECT clause
+
+**Manual Verification**:
+
+1. Run `pnpm --filter=web typecheck` - should pass without errors in this file
+2. Test the admin notifications deliveries endpoint at `/api/admin/notifications/nlogs/deliveries`
+3. Verify that delivery data is returned correctly with all timestamp fields intact
+
+**Related Documentation**:
+
+- `/packages/shared-types/src/database.schema.ts` - Database schema reference
+- `/apps/web/docs/features/notifications/` - Notification system documentation
+
+**Cross-references**:
+
+- Database schema: `/packages/shared-types/src/database.schema.ts:586-608` (notification_deliveries table)
+
+**Confidence**: High - schema verification confirms `metadata` column does not exist, and typecheck confirms all errors resolved
+
+**Fixed By**: Claude
+
+---
+
+### [2025-10-15] Bug: Authenticated users unable to print pages due to layout component interference
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Project Context Export - Print Functionality
+
+**Symptoms**:
+
+- Print preview shows blank pages for authenticated users
+- Printing works perfectly when NOT logged in
+- Printing fails for ALL pages when logged in (not just context documents)
+- Screen preview looks correct, but print preview is blank or incomplete
+- Issue affects all browsers
+
+**Root Cause**:
+
+The print route at `/projects/[id]/print` inherited the root `+layout.svelte` which, when users are authenticated, conditionally renders 7+ additional UI components with fixed positioning, high z-indices, and full-viewport overlays:
+
+1. `Navigation` component
+2. `TrialBanner`
+3. `PaymentWarning`
+4. `ToastContainer` (wrapped in `<div class="fixed inset-0 ... z-50">`)
+5. `OnboardingModal`
+6. `BackgroundJobIndicator`
+7. `NotificationStackManager`
+
+Even though the layout had `@media print` CSS to hide these components with `display: none !important`, the browser's print layout engine was still calculating layout for these invisible-but-present DOM elements. The `ToastContainer` wrapper specifically created a fixed, full-viewport overlay that particularly interfered with print rendering.
+
+When NOT logged in, none of these components render, so printing worked correctly.
+
+**Fix Applied**:
+
+Created a minimal, dedicated layout for the print route that bypasses all authenticated UI components:
+
+1. **Created `/apps/web/src/routes/projects/[id]/print/+layout.svelte`** (new file)
+   - Replaces root layout for print route only
+   - Imports only base CSS (`../../../../app.css`)
+   - No navigation, modals, toasts, or overlays
+   - Just clean `<slot />` for print content
+
+2. **Cleaned up print page** (`/apps/web/src/routes/projects/[id]/print/+page.svelte`)
+   - Removed defensive CSS from `<svelte:head>` that was fighting with old layout
+   - Removed debug class addition (`document.body.classList.add('print-debug')`)
+   - Removed unnecessary `id="app"` from print container
+   - Simplified print trigger logic
+
+3. **Updated root layout** (`/apps/web/src/routes/+layout.svelte`)
+   - Removed now-unnecessary print CSS (lines 627-659)
+   - Added comment noting print routes use dedicated layout
+
+**Files Changed**:
+
+- `apps/web/src/routes/projects/[id]/print/+layout.svelte` - **NEW FILE** - Minimal layout for print routes
+- `apps/web/src/routes/projects/[id]/print/+page.svelte:59-88` - Simplified auto-print logic, removed debug code
+- `apps/web/src/routes/projects/[id]/print/+page.svelte:91-93` - Removed defensive CSS from svelte:head
+- `apps/web/src/routes/projects/[id]/print/+page.svelte:95` - Removed unnecessary id attribute
+- `apps/web/src/routes/+layout.svelte:627` - Removed print CSS, added comment
+
+**Manual Verification**:
+
+1. Log in to BuildOS
+2. Navigate to any project and open the context document
+3. Click "Export PDF" button
+4. Verify browser print dialog opens with content visible in preview
+5. Test "Save as PDF" - verify PDF contains all content correctly
+6. Test printing without logging in - verify still works
+7. Test printing other pages while logged in - verify all pages now printable
+
+**Related Documentation**:
+
+- `/apps/web/docs/features/project-export/BROWSER_PRINT_IMPLEMENTATION.md` - Print implementation documentation
+- `/apps/web/docs/features/project-export/PDF_EXPORT_MIGRATION_SESSION.md` - Migration session notes
+- `/apps/web/src/routes/+layout.svelte` - Root layout with authenticated UI components
+- `/apps/web/src/routes/projects/[id]/print/+layout.svelte` - **NEW** - Minimal print layout
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- **SvelteKit Layout Inheritance**: Print route now uses custom layout instead of inheriting root layout
+- **Browser Print Implementation**: Native browser print documented in `/apps/web/docs/features/project-export/BROWSER_PRINT_IMPLEMENTATION.md`
+- **Layout Component Issue**: `ToastContainer` wrapper at `+layout.svelte:481-488` had `fixed inset-0 z-50` causing overlay
+- **Conditional Rendering**: Authenticated components loaded via `loadAuthenticatedResources()` at `+layout.svelte:142-190`
+
+**Design Improvements**:
+
+1. **Clean separation**: Print routes completely isolated from authenticated UI
+2. **SvelteKit pattern**: Uses layout inheritance properly (print layout replaces root layout for print routes)
+3. **No CSS battles**: Print styles no longer fight with layout styles
+4. **Maintainable**: Future authenticated UI changes won't affect printing
+5. **Minimal overhead**: Print layout only loads essential CSS
+
+**Confidence**: High - Root cause clearly identified (works when logged out, fails when logged in), fix uses proper SvelteKit patterns, solution is clean and maintainable
+
+**Fixed By**: Claude
+
+---
+
+### [2025-10-15] Bug: Daily brief emails contain minimal content instead of full LLM analysis, and scheduling issues
+
+**Status**: Fixed
+**Severity**: Medium (multiple related issues combined)
+**Affected Component**: Worker - Brief Email System & Notification Preferences
+
+**Symptoms**:
+
+- Users receive minimal notification emails ("Your Daily Brief is Ready! No tasks scheduled") instead of full LLM-generated brief analysis
+- Emails sent immediately after generation (e.g., 5:00 AM) instead of at scheduled time (e.g., 9:00 AM)
+- Users with `should_email_daily_brief: false` still receive notification emails (preference not respected)
+- Two separate email systems creating duplicate/incomplete functionality
+
+**Root Cause**:
+
+There were actually TWO separate email systems running in parallel, causing confusion and incomplete functionality:
+
+1. **Legacy Email Job System** (`briefWorker.ts:120-317`):
+   - Queued separate `generate_brief_email` jobs
+   - Scheduled immediately: `p_scheduled_for: new Date().toISOString()`
+   - Created email records but never actually sent them (webhook endpoint expected briefId but got emailId)
+   - This system was broken and non-functional
+
+2. **Notification System** (`brief.completed` event → `emailAdapter.ts`):
+   - Sent minimal notification emails with just task counts
+   - Used generic notification template instead of full LLM brief analysis
+   - Didn't check `should_email_daily_brief` preference correctly
+   - Preference checker looked for `email_enabled` instead of `should_email_daily_brief` for `brief.completed` events
+
+**Specific Issues**:
+
+**Issue #1**: Preference checker didn't respect `should_email_daily_brief`
+
+- `preferenceChecker.ts:93` checked `email_enabled` for ALL events including `brief.completed`
+- But the actual user preference for daily briefs is stored in `should_email_daily_brief` field
+- Result: Users with `should_email_daily_brief: false` still received notification emails
+
+**Issue #2**: Notification emails contained minimal content
+
+- `emailAdapter.ts:186` used generic `formatEmailTemplate()` for all events
+- For `brief.completed`, this showed only "Your Daily Brief is Ready! No tasks scheduled across 0 projects"
+- Full LLM analysis from `daily_briefs.llm_analysis` was never fetched or included
+
+**Issue #3**: Timing was incorrect
+
+- Original scheduling bug was partially fixed (notification events use `notificationScheduledFor`)
+- But email job scheduling was still immediate: `p_scheduled_for: new Date().toISOString()`
+- This was in the broken legacy email system, so didn't actually affect delivered emails
+
+**Fix Applied**:
+
+**Fix #1 - Preference Checker** (`preferenceChecker.ts:60,93-107`):
+
+Updated preference checker to respect `should_email_daily_brief` and `should_sms_daily_brief` for `brief.completed` events:
+
+```typescript
+// Get notification preferences including brief-specific fields
+const { data: prefs } = await supabase
+  .from("user_notification_preferences")
+  .select("..., should_email_daily_brief, should_sms_daily_brief")
+  .eq("user_id", userId)
+  .eq("event_type", eventType)
+  .single();
+
+// Check channel-specific preference
+case "email":
+  if (eventType === "brief.completed") {
+    channelEnabled = (prefs.should_email_daily_brief ?? false); // ✅ Correct field
+  } else {
+    channelEnabled = prefs.email_enabled || false;
+  }
+  break;
+```
+
+**Fix #2 - Email Adapter** (`emailAdapter.ts:186-275`):
+
+Added special handling for `brief.completed` events to fetch and send full LLM brief analysis:
+
+```typescript
+if (eventType === "brief.completed" && delivery.payload.data?.brief_id) {
+  // Fetch the full brief with LLM analysis
+  const { data: brief } = await supabase
+    .from("daily_briefs")
+    .select("*")
+    .eq("id", delivery.payload.data.brief_id)
+    .single();
+
+  // Use the full brief content (LLM analysis or summary)
+  const briefContent = brief.llm_analysis || brief.summary_content || "";
+
+  // Format as rich email with markdown rendering (matching webhook format)
+  const { renderMarkdown } = await import("@buildos/shared-utils");
+  const contentHtml = renderMarkdown(briefContent);
+
+  html = fullBriefEmailTemplate(contentHtml, briefDate, briefId);
+  text = briefContent; // Plain text version
+  subject = `Daily Brief - ${dateFormatted}`;
+} else {
+  // Use standard notification template for other events
+  const emailContent = formatEmailTemplate(delivery);
+}
+```
+
+**Fix #3 - Disabled Legacy Email System** (`briefWorker.ts:127`):
+
+Disabled the broken legacy email job system since notification system now handles everything:
+
+```typescript
+// NOTE: Email notifications are now handled via the notification system (brief.completed event)
+// The emailAdapter will fetch the full brief with LLM analysis and send it
+// This legacy email job system is deprecated and commented out
+
+if (false && shouldEmailBrief) {
+  // DISABLED - now handled by notification system
+  // ... entire legacy email job creation code disabled ...
+}
+```
+
+**Fix #4 - Timing Fix** (`briefWorker.ts:241`):
+
+Fixed original scheduling issue (though this code is now disabled):
+
+```typescript
+p_scheduled_for: job.data.notificationScheduledFor || new Date().toISOString();
+```
+
+**Files Changed**:
+
+- `apps/worker/src/workers/notification/preferenceChecker.ts:60` - Added `should_email_daily_brief, should_sms_daily_brief` to SELECT query
+- `apps/worker/src/workers/notification/preferenceChecker.ts:93-107` - Added special handling for `brief.completed` events to check brief-specific preferences
+- `apps/worker/src/workers/notification/emailAdapter.ts:186-275` - Added special handling to fetch and send full LLM brief analysis for `brief.completed` events
+- `apps/worker/src/workers/brief/briefWorker.ts:127` - Disabled legacy email job system (now handled by notification system)
+- `apps/worker/src/workers/brief/briefWorker.ts:241` - Fixed scheduling timing (code now disabled but fixed for documentation)
+- `apps/worker/src/workers/brief/briefWorker.ts:471-476` - Updated console logs to reflect notification system handling
+
+**Manual Verification**:
+
+**Test 1: Preference Respect**
+
+1. Set `should_email_daily_brief: false` in user_notification_preferences
+2. Generate a daily brief
+3. Verify NO email is sent (not even the notification email)
+4. Set `should_email_daily_brief: true`
+5. Generate another brief
+6. Verify email IS sent with full LLM analysis
+
+**Test 2: Full Content**
+
+1. Ensure user has `should_email_daily_brief: true`
+2. Generate a daily brief
+3. Check received email contains:
+   - Full LLM-generated analysis from `DailyBriefAnalysisPrompt`
+   - Project summaries with task breakdowns
+   - Rich markdown formatting
+   - NOT just "Your Daily Brief is Ready! No tasks scheduled"
+
+**Test 3: Timing**
+
+1. Set `user_brief_preferences.time_of_day` to "09:00:00"
+2. Wait for scheduler to queue brief at ~8:58 AM
+3. Verify email arrives at 9:00 AM (user's scheduled time)
+4. Check notification_deliveries table: `scheduled_for` should match user's preferred time
+
+**Test 4: No Duplicates**
+
+1. Generate a brief with `should_email_daily_brief: true`
+2. Verify user receives ONLY ONE email (not two separate emails)
+3. Confirm the one email contains full LLM analysis
+
+**Related Documentation**:
+
+- `/thoughts/shared/research/2025-10-10_06-10-46_daily-brief-notification-timing-issue.md` - Previous investigation identified notification timing issues
+- `/apps/worker/src/workers/notification/preferenceChecker.ts` - Preference checking logic
+- `/apps/worker/src/workers/notification/emailAdapter.ts` - Email adapter with brief-specific handling
+- `/apps/worker/src/workers/brief/briefWorker.ts` - Brief worker with disabled legacy email system
+- `/apps/worker/src/workers/brief/prompts.ts` - `DailyBriefAnalysisPrompt` that generates rich content
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- **Related fix**: Oct 10, 2025 - "Daily brief notification timing issue" fixed notification events but email content was still minimal
+- **Notification system**: Complete generic notification system with multi-channel delivery
+- **Preference schema**: `user_notification_preferences` table has both general channel preferences and brief-specific preferences
+- **LLM prompt**: `DailyBriefAnalysisPrompt.getSystemPrompt()` generates comprehensive daily brief analysis
+- **Two systems consolidated**: Legacy email job system deprecated, notification system now handles all brief emails
+
+**Design Improvements**:
+
+1. **Single email system**: Consolidated two competing email systems into one unified notification system
+2. **Rich content**: Users now receive full LLM-generated brief analysis instead of minimal summaries
+3. **Preference respect**: `should_email_daily_brief: false` now properly prevents ALL emails
+4. **Correct timing**: Emails sent at user's preferred time from `user_brief_preferences.time_of_day`
+5. **Maintainable**: All brief notifications go through standard notification system, easier to maintain
+
+**Confidence**: High - Root causes clearly identified (two separate systems, wrong preferences checked, minimal content), fixes address all three issues, notification system now handles everything correctly
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-15] Bug: Timeblock updates and deletions from Google Calendar not syncing back to BuildOS
 
 **Status**: Fixed

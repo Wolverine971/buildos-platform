@@ -14,7 +14,7 @@
 		users?: {
 			id: string;
 			email: string;
-			full_name?: string;
+			name?: string;
 		};
 		delivery_count: number;
 		status_breakdown: Record<string, number>;
@@ -160,7 +160,7 @@
 								{#if event.users}
 									<div>
 										<div class="font-medium">
-											{event.users.full_name || 'N/A'}
+											{event.users.name || 'N/A'}
 										</div>
 										<div class="text-xs text-gray-500">{event.users.email}</div>
 									</div>

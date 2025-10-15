@@ -57,7 +57,9 @@ export async function checkUserPreferences(
     // Get notification preferences for this event type
     const { data: prefs, error: prefError } = await supabase
       .from("user_notification_preferences")
-      .select("push_enabled, in_app_enabled, email_enabled, sms_enabled")
+      .select(
+        "push_enabled, in_app_enabled, email_enabled, sms_enabled, should_email_daily_brief, should_sms_daily_brief",
+      )
       .eq("user_id", userId)
       .eq("event_type", eventType)
       .single();
@@ -91,10 +93,20 @@ export async function checkUserPreferences(
         channelEnabled = prefs.in_app_enabled || false;
         break;
       case "email":
-        channelEnabled = prefs.email_enabled || false;
+        // For brief.completed events, also check should_email_daily_brief
+        if (eventType === "brief.completed") {
+          channelEnabled = prefs.should_email_daily_brief ?? false;
+        } else {
+          channelEnabled = prefs.email_enabled || false;
+        }
         break;
       case "sms":
-        channelEnabled = prefs.sms_enabled || false;
+        // For brief.completed events, also check should_sms_daily_brief
+        if (eventType === "brief.completed") {
+          channelEnabled = prefs.should_sms_daily_brief ?? false;
+        } else {
+          channelEnabled = prefs.sms_enabled || false;
+        }
         break;
       default:
         prefLogger.error("Unknown notification channel", undefined, {

@@ -28,7 +28,7 @@
 		users?: {
 			id: string;
 			email: string;
-			full_name?: string;
+			name?: string;
 		};
 		timeline: {
 			created: string;
@@ -206,7 +206,7 @@
 								{#if delivery.users}
 									<div>
 										<div class="font-medium">
-											{delivery.users.full_name || 'N/A'}
+											{delivery.users.name || 'N/A'}
 										</div>
 										<div class="text-xs text-gray-500">
 											{delivery.users.email}

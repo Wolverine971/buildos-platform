@@ -93,8 +93,7 @@ export default defineConfig(({ mode }) => {
 				'@babel/parser',
 				'@babel/traverse',
 				'@babel/types',
-				'sharp', // Binary dependency
-				'puppeteer' // Dev-only dependency with Chromium binary
+				'sharp' // Binary dependency
 			],
 			// Force optimization in dev for consistency
 			force: isDev
@@ -179,9 +178,7 @@ export default defineConfig(({ mode }) => {
 		// SSR options
 		ssr: {
 			// Let SvelteKit handle SSR externals automatically
-			noExternal: [],
-			// Explicitly external packages (don't bundle these in serverless functions)
-			external: ['puppeteer']
+			noExternal: []
 		}
 	};
 });

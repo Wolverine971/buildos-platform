@@ -31,7 +31,7 @@
 		users?: {
 			id: string;
 			email: string;
-			full_name?: string;
+			name?: string;
 		} | null;
 		notification_events?: {
 			id: string;
@@ -304,9 +304,7 @@
 												<div
 													class="text-xs text-gray-600 dark:text-gray-400"
 												>
-													{log.users?.full_name ||
-														log.users?.email ||
-														'N/A'}
+													{log.users?.name || log.users?.email || 'N/A'}
 												</div>
 											</div>
 											<div>
