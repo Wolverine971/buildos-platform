@@ -63,6 +63,66 @@ When fixing a bug, add a new entry at the TOP of this file using this template:
 
 <!-- Add new bugfix entries below this line, MOST RECENT FIRST -->
 
+### [2025-10-14] Bug: Time-play task suggestions missing task URLs in calendar event descriptions
+
+**Status**: Fixed
+**Severity**: Small
+**Affected Component**: Time Play - Calendar Event Description Generation
+
+**Symptoms**:
+
+- Time-play creates time blocks with AI task suggestions in Google Calendar
+- Task suggestions appear in calendar event descriptions but lack clickable links to the tasks
+- Users cannot navigate from calendar event to the actual task in BuildOS
+- Reduces usefulness of AI suggestions since users can't easily act on them
+
+**Root Cause**:
+
+The `buildCalendarEventContent()` method in `time-block.service.ts` (lines 602-627) was building calendar event descriptions with task suggestion metadata (title, project name, duration, priority, reason) but was not including task URLs, even though the suggestions contain `task_id` and `project_id` fields that could be used to construct the URLs.
+
+The calendar service already had a pattern for building task URLs (`buildTaskUrl()` at line 340-342) and ensuring they're in descriptions (`ensureTaskLinkInDescription()` at lines 344-372), but this pattern was not being used by the time-play feature when generating calendar event descriptions for time block suggestions.
+
+**Fix Applied**:
+
+Modified `buildCalendarEventContent()` in `time-block.service.ts` to include task URLs for each suggestion:
+
+1. After adding the suggestion title and reason to the description, check if `task_id` and `project_id` are available
+2. If both are present, construct the task URL using the same format as `calendar-service.ts`: `${APP_BASE_URL}/projects/${project_id}/tasks/${task_id}`
+3. Add the URL to the description with the format: `View in BuildOS: {url}`
+
+The URL is added on a separate line after the reason text for each suggestion, making it easy to identify and click in the Google Calendar event description.
+
+**Files Changed**:
+
+- `apps/web/src/lib/services/time-block.service.ts:622-626` - Added task URL generation and inclusion in calendar event description
+
+**Manual Verification**:
+
+1. Create a time block (project or build type) in the time-play interface
+2. View the created Google Calendar event (click "Open in Google Calendar" link or check in Google Calendar directly)
+3. Check the event description - each suggested task should now have a line like: `View in BuildOS: https://build-os.com/projects/{project-id}/tasks/{task-id}`
+4. Click one of the task links to verify it navigates to the correct task detail page in BuildOS
+5. Test with both project blocks and build blocks to ensure URLs are included for suggestions from all types
+
+**Related Documentation**:
+
+- `/apps/web/docs/features/time-play/README.md` - Time Play feature specification (lines 1838-1875 show example descriptions with task links)
+- `/apps/web/src/lib/services/time-block.service.ts` - Time block service with calendar event generation
+- `/apps/web/src/lib/services/calendar-service.ts:340-372` - Pattern for building and ensuring task URLs in descriptions
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+**Cross-references**:
+
+- Example calendar event descriptions in README show task links: `/apps/web/docs/features/time-play/README.md:1842-1843` and `:1868-1869`
+- Task URL pattern matches calendar service: `/apps/web/src/lib/services/calendar-service.ts:340-342`
+- Time block suggestions type: `/apps/web/docs/features/time-play/README.md:525-534` - Shows `TaskSuggestion` interface with `task_id` and `project_id`
+
+**Confidence**: High - The fix follows the existing pattern in `calendar-service.ts`, uses the same `APP_BASE_URL` constant already available in the file, and addresses the exact issue described by the user
+
+**Fixed By**: Claude
+
+---
+
 ### [2025-10-14] Bug: Type mismatch in scheduler SMS alert forEach callback
 
 **Status**: Fixed

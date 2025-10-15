@@ -618,6 +618,12 @@ export class TimeBlockService {
 
 				lines.push(header);
 				lines.push(`   ${suggestion.reason}`);
+
+				// Add task URL if task_id and project_id are available
+				if (suggestion.task_id && suggestion.project_id) {
+					const taskUrl = `${APP_BASE_URL}/projects/${suggestion.project_id}/tasks/${suggestion.task_id}`;
+					lines.push(`   View in BuildOS: ${taskUrl}`);
+				}
 			});
 		}
 
