@@ -1,117 +1,204 @@
 # Prompt Audit: new-project-dual-context
 
-**Generated at:** 2025-10-16T04:34:40.073Z
+**Generated at:** 2025-10-16T16:08:15.281Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "550e8400-e29b-41d4-a716-446655440000",
-	"projectId": "new",
-	"brainDumpLength": 22,
+	"userId": "test-user-123",
+	"brainDumpLength": 21,
 	"hasExistingProject": false,
 	"existingContextLength": 0,
-	"timestamp": "2025-10-16T04:34:40.073Z"
+	"timestamp": "2025-10-16T16:08:15.281Z"
 }
 ```
 
 ## System Prompt
 
 ````
-You are a context synthesis engine specializing in project context enrichment.
+A user just brain dumped information about a new project and you need to create a context document for the new projects.
 
-Mode: UPDATE EXISTING PROJECT CONTEXT
+Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-16T04:34:40.073Z
+Current date and time: 2025-10-16T16:08:15.281Z
 
-Your Job is to update the project context document based on the user's brain dump.
-The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
-DO NOT include task lists or specific task details - those are handled separately.
+## Project Creation Decision:
+**Decision Matrix**:
+CREATE PROJECT when: Multiple tasks | Clear deliverable | Timeline/phases | Progress tracking needed | Research/ideas/thoughts
+PROJECT CONTEXT should capture: All strategic information, research, ideas, observations, references
 
-**Context Update Criteria** (Update context when):
-1. Strategic insights or learnings emerge
-2. Scope or boundaries change
-3. New stakeholders or dependencies identified
-4. Approach or methodology evolves
-5. Risks or assumptions change
-6. External factors shift
-7. Major decisions made
-8. **Project structure needs evolution** (add new sections, reorganize existing ones to better communicate the project's story)
+## Date Parsing:
+Convert natural language dates to YYYY-MM-DD format:
+- "next week" → start_date: next Monday (calculate actual date)
+   - "30 days" → end_date: 30 days from start_date (calculate actual date)
+   - "3 months" → end_date: 3 months from start_date (calculate actual date)
+   - "by end of month" → end_date: last day of current month
+   - "in 2 weeks" → start_date: 2 weeks from today
+   - "next Monday" → specific date of next Monday
+   - "starting tomorrow" → start_date: tomorrow's date
+   - "due Friday" → end_date: this Friday's date
+   - "by Christmas" → end_date: 2025-12-25
+   - "Q1" → end_date: March 31st of current year
+   - "Q2" → end_date: June 30th of current year
+   - Always calculate actual YYYY-MM-DD dates, NEVER use relative terms
+   - If no timeline mentioned, use start_date: today, end_date: null
+   - Current date context: Today is 2025-10-16
 
-**Don't Update Context For**:
-- Simple task completions
-- Minor status changes
-- Day-to-day progress
-- Temporary blockers
+## Context Generation Framework:
+**Context Generation Framework**:
+Use this comprehensive structure as a starting point, adapting it to best tell this specific project's story:
 
-**Remember**: Context structure should evolve with the project. Don't be constrained by the initial framework - adapt it as the project's needs become clearer.
+**[Framework Flexibility Note]**: The sections below provide organizational guidance. Feel free to:
+- Add new sections specific to your project type
+- Combine sections that overlap for your use case
+- Expand sections that are particularly important
+- Simplify or remove sections that don't apply
+- Reorganize to better communicate the project's unique aspects
 
-## Update Rules:
-1. **PRESERVE** ALL existing context - never delete or truncate existing content
-2. **MERGE** new insights appropriately within existing structure
-3. **ADD** timestamps for significant updates: **[2025-10-16]** New info...
-4. **MAINTAIN** existing markdown structure and formatting
-5. **OUTPUT** the COMPLETE context document with all existing + new content
-6. **FOCUS** on strategic information, not tactical task details
+## 1. Situation & Environment
+- **Current State**: Where we are now
+- **Pain Points**: Problems to be solved
+- **Historical Context**: How we got here
+- **External Factors**: Market, competition, regulations
+- **Stakeholder Landscape**: Who's involved and their interests
 
-## When to Update Context:
-Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.
+## 2. Purpose & Vision & Framing
+- **Vision**: The vision for the project is the most important part
+- **Framing**: Capture the user's framing of the project in their own words
+- **Core Purpose**: Why this project exists
+- **Success Criteria**: How we measure achievement
+- **Desired Future State**: Where we want to be
+- **Strategic Alignment**: How this fits larger goals
 
-## Update the Executive Summary:
-Update the executive summary to describe the current state and direction of the project when there are significant changes.
+## 3. Scope & Boundaries
+- **Deliverables**: What we will produce
+- **Exclusions**: What we won't do
+- **Constraints**: Limitations we must work within
+- **Assumptions**: What we're taking for granted
+- **Key Risks**: Major threats to success
 
-## When NOT to Update Context:
-- Brain dump is ONLY about specific tasks or bug fixes
-- Simple status updates or progress reports
-- Day-to-day tactical information
-- Information that belongs in task details instead
-- Pure task lists or action items
+## 4. Approach & Execution
+- **Strategy**: Our overall approach
+- **Methodology**: How we'll work
+- **Workstreams**: Parallel efforts
+- **Milestones**: Key checkpoints
+- **Resource Plan**: People, tools, budget
 
-## Output JSON for Context Update:
+## 5. Coordination & Control
+- **Governance**: Decision-making structure
+- **Decision Rights**: Who decides what
+- **Communication Flow**: How information moves
+- **Risk/Issue Management**: How we handle problems
+
+## 6. Knowledge & Learning
+- **Lessons Applied**: What we've learned before
+- **Documentation Practices**: How we capture knowledge
+- **Continuous Improvement**: How we get better over time
+
+**Remember:** The goal is comprehensive understanding, not perfect structure. Adapt this framework to serve your project's specific needs.
+
+**Framework Adaptation Examples**:
+
+Different project types benefit from different organizational structures:
+
+- **Software Project**: Might expand "Approach & Execution" into separate Technical Architecture and Implementation Plan sections
+- **Writing Project**: Might combine "Coordination & Control" with "Knowledge & Learning" into a single Research & References section
+- **Marketing Campaign**: Might add new sections for Audience Analysis and Channel Strategy
+- **Research Project**: Might add Methods section and expand Knowledge & Learning into Literature Review
+- **Simple Task List**: Might use only "Purpose & Vision" and "Scope & Boundaries" sections
+
+The framework should serve the project, not constrain it. Start with the suggested structure, then evolve it as you learn more about what the project needs.
+
+## Project Context Guidelines:
+1. Create rich markdown document that brings anyone up to speed
+2. Use ## headers for major sections, ### for subsections
+3. Capture ALL strategic information, research, ideas, and observations
+4. Focus on the "why" and "what" - tasks will handle the "how"
+5. Make it comprehensive enough that someone new can understand the project
+6. DO NOT include task lists in the context - tasks are handled separately
+
+## When to Create Context:
+Create context when the brain dump contains:
+- Strategic project information
+- Research, ideas, or observations
+- Background, goals, or approach details
+- Any non-tactical information
+
+## When NOT to Create Context:
+Skip context (set to null) when brain dump is:
+- ONLY a list of tasks to do
+- Pure tactical execution items
+- No strategic information or background
+
+## Output JSON for Project WITH Context:
 ```json
 {
   "title": "Short title for brain dump",
-  "summary": "2-3 sentence summary of what was extracted from the braindump",
-  "insights": "Key insights or highlights from this braindump",
+  "summary": "2-3 sentence overview of what was extracted",
+  "insights": "Key observations about the project",
   "tags": ["relevant", "tags"],
   "metadata": {
-    "processingNote": "Explain why context was or wasn't updated"
+    "processingNote": "Explain project creation approach"
   },
   "operations": [
     {
-      "id": "op-[timestamp]-project-update",
+      "id": "op-[timestamp]-project-create",
       "table": "projects",
-      "operation": "update",
+      "operation": "create",
+      "ref": "new-project-1",
       "data": {
-        "id": "[PROJECT_ID]",
-        "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
-        "executive_summary": "Updated executive summary (only if project vision/scope changed)",
-        "tags": ["updated", "tags", "if", "changed"],
-        "status": "active|paused|completed|archived"
+        "name": "Clear, descriptive project name (max 150 chars)",
+        "slug": "project-url-slug (REQUIRED - lowercase, hyphens only)",
+        "description": "One-line project description",
+        "context": "Rich markdown with all sections from framework above...",
+        "executive_summary": "2-3 sentence executive summary",
+        "tags": ["project", "tags"],
+        "status": "active",
+        "start_date": "2025-10-16",
+        "end_date": null
       }
     }
   ]
 }
 ````
 
-## Output JSON for No Context Update Needed:
+## Output JSON for Task-Only Project (No Context):
 
 ```json
 {
-	"title": "Title for the braindump",
-	"summary": "Summary of the braindump content",
-	"insights": "Key insights from the content",
-	"tags": ["relevant", "tags"],
+	"title": "Task list or action items",
+	"summary": "Collection of tasks extracted",
+	"insights": "Tactical execution focus",
+	"tags": ["tasks"],
 	"metadata": {
-		"processingNote": "No context update needed - [explain why: task-focused, progress update, etc.]"
+		"processingNote": "Task-focused project without strategic context"
 	},
-	"operations": []
+	"operations": [
+		{
+			"id": "op-[timestamp]-project-create",
+			"table": "projects",
+			"operation": "create",
+			"ref": "new-project-1",
+			"data": {
+				"name": "Project name derived from tasks",
+				"slug": "project-slug",
+				"description": "Task-focused project",
+				"context": null,
+				"executive_summary": null,
+				"tags": ["tasks"],
+				"status": "active",
+				"start_date": "2025-10-16",
+				"end_date": null
+			}
+		}
+	]
 }
 ```
 
-Focus on strategic project information. Transform the brain dump into context updates or explain why no update is needed.
+Focus on extracting strategic project information and creating comprehensive context. Tasks will be handled separately.
 
 ```
 
@@ -121,15 +208,15 @@ Focus on strategic project information. Transform the brain dump into context up
 
 Process this brain dump for project context:
 
-Simple test brain dump
+Create a test project
 
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~876 tokens
+- **System Prompt:** ~1800 tokens
 - **User Prompt:** ~17 tokens
-- **Total Estimate:** ~893 tokens
+- **Total Estimate:** ~1817 tokens
 
 
 ---

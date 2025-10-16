@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/notification-preferences/server.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET, POST } from './+server';
+import { GET, PUT } from './+server';
 import type { RequestEvent } from '@sveltejs/kit';
 
 // Mock Supabase client
@@ -57,7 +57,7 @@ const createMockRequestEvent = (
 		},
 		locals: {
 			supabase: createMockSupabase(),
-			getSession: vi.fn().mockResolvedValue({
+			safeGetSession: vi.fn().mockResolvedValue({
 				user: { id: 'test-user-id', email: 'test@example.com' }
 			})
 		}
@@ -74,89 +74,99 @@ describe('GET /api/notification-preferences', () => {
 		};
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.select()
-			.eq()
-			.eq()
-			.maybeSingle.mockResolvedValue({ data: mockData, error: null });
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: vi.fn().mockResolvedValue({ data: mockData, error: null })
+				})
+			})
+		});
 
 		const response = await GET(event);
 		const json = await response.json();
 
 		expect(supabase.from).toHaveBeenCalledWith('user_notification_preferences');
-		expect(json.should_email_daily_brief).toBe(true);
-		expect(json.should_sms_daily_brief).toBe(false);
+		expect(json.preferences.should_email_daily_brief).toBe(true);
+		expect(json.preferences.should_sms_daily_brief).toBe(false);
 	});
 
 	it('should return defaults when no daily brief preferences exist', async () => {
 		const event = createMockRequestEvent({ daily_brief: 'true' });
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.select()
-			.eq()
-			.eq()
-			.maybeSingle.mockResolvedValue({ data: null, error: null });
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+				})
+			})
+		});
 
 		const response = await GET(event);
 		const json = await response.json();
 
-		expect(json.should_email_daily_brief).toBe(false);
-		expect(json.should_sms_daily_brief).toBe(false);
+		expect(json.preferences.should_email_daily_brief).toBe(false);
+		expect(json.preferences.should_sms_daily_brief).toBe(false);
 	});
 
-	it('should fetch event-based preferences without ?daily_brief parameter', async () => {
-		const event = createMockRequestEvent({ event_type: 'brief.completed' });
+	it('should fetch global preferences without ?daily_brief parameter', async () => {
+		const event = createMockRequestEvent({});
 		const mockData = {
 			push_enabled: true,
 			in_app_enabled: true,
 			email_enabled: false,
-			sms_enabled: false
+			sms_enabled: false,
+			should_email_daily_brief: true,
+			should_sms_daily_brief: false
 		};
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.select()
-			.eq()
-			.eq()
-			.maybeSingle.mockResolvedValue({ data: mockData, error: null });
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: vi.fn().mockResolvedValue({ data: mockData, error: null })
+				})
+			})
+		});
 
 		const response = await GET(event);
 		const json = await response.json();
 
-		expect(json.push_enabled).toBe(true);
-		expect(json.in_app_enabled).toBe(true);
+		expect(json.preferences).toBeDefined();
+		expect(json.preferences.push_enabled).toBe(true);
 	});
 
 	it('should return 401 when not authenticated', async () => {
 		const event = createMockRequestEvent();
-		event.locals.getSession = vi.fn().mockResolvedValue(null);
+		event.locals.safeGetSession = vi.fn().mockResolvedValue({ user: null });
 
-		await expect(GET(event)).rejects.toThrow();
+		const response = await GET(event);
+		expect(response.status).toBe(401);
 	});
 
 	it('should handle database errors gracefully', async () => {
 		const event = createMockRequestEvent({ daily_brief: 'true' });
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.select()
-			.eq()
-			.eq()
-			.maybeSingle.mockResolvedValue({
-				data: null,
-				error: { code: 'PGRST001', message: 'Database error' }
-			});
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					eq: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: null,
+							error: { code: 'PGRST001', message: 'Database error' }
+						})
+					})
+				})
+			})
+		});
 
-		await expect(GET(event)).rejects.toThrow();
+		const response = await GET(event);
+		expect(response.status).toBe(500);
 	});
 });
 
-describe('POST /api/notification-preferences', () => {
+describe('PUT /api/notification-preferences', () => {
 	it('should update user-level daily brief preferences with ?daily_brief=true', async () => {
 		const body = {
 			should_email_daily_brief: true,
@@ -165,66 +175,14 @@ describe('POST /api/notification-preferences', () => {
 		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.upsert()
-			.select()
-			.single.mockResolvedValue({
-				data: { ...body, user_id: 'test-user-id' },
-				error: null
-			});
-
-		const response = await POST(event);
-		const json = await response.json();
-
-		expect(supabase.from).toHaveBeenCalledWith('user_notification_preferences');
-		expect(json.success).toBe(true);
-	});
-
-	it('should validate phone verification when enabling SMS', async () => {
-		const body = {
-			should_email_daily_brief: false,
-			should_sms_daily_brief: true // Trying to enable SMS
-		};
-		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
-
-		const supabase = event.locals.supabase as any;
-		// Mock phone verification check - phone not verified
-		supabase
-			.from()
-			.select()
-			.eq()
-			.single.mockResolvedValue({
-				data: { phone_number: '+15551234567', phone_verified: false },
-				error: null
-			});
-
-		const response = await POST(event);
-		const json = await response.json();
-
-		expect(response.status).toBe(400);
-		expect(json.success).toBe(false);
-		expect(json.error).toBe('phone_verification_required');
-	});
-
-	it('should allow SMS when phone is verified', async () => {
-		const body = {
-			should_email_daily_brief: false,
-			should_sms_daily_brief: true
-		};
-		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
-
-		const supabase = event.locals.supabase as any;
-		// Mock phone verification check - phone verified
-		let callCount = 0;
+		// Mock multiple table calls
 		supabase.from.mockImplementation((table: string) => {
-			callCount++;
-			if (table === 'user_sms_preferences') {
+			if (table === 'user_brief_preferences') {
 				return {
 					select: vi.fn(() => ({
 						eq: vi.fn(() => ({
 							single: vi.fn().mockResolvedValue({
-								data: { phone_number: '+15551234567', phone_verified: true },
+								data: { is_active: true },
 								error: null
 							})
 						}))
@@ -244,7 +202,94 @@ describe('POST /api/notification-preferences', () => {
 			};
 		});
 
-		const response = await POST(event);
+		const response = await PUT(event);
+		const json = await response.json();
+
+		// Check that brief preferences were checked and notification preferences were updated
+		expect(json.success).toBe(true);
+	});
+
+	it('should validate phone verification when enabling SMS', async () => {
+		const body = {
+			should_email_daily_brief: false,
+			should_sms_daily_brief: true // Trying to enable SMS
+		};
+		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
+
+		const supabase = event.locals.supabase as any;
+		// Mock multiple table calls
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'user_sms_preferences') {
+				return {
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({
+							single: vi.fn().mockResolvedValue({
+								data: { phone_number: '+15551234567', phone_verified: false },
+								error: null
+							})
+						}))
+					}))
+				};
+			}
+			return createMockSupabase().from();
+		});
+
+		const response = await PUT(event);
+		const json = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(json.requiresPhoneVerification).toBe(true);
+		expect(json.error).toContain('not verified');
+	});
+
+	it('should allow SMS when phone is verified', async () => {
+		const body = {
+			should_email_daily_brief: false,
+			should_sms_daily_brief: true
+		};
+		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
+
+		const supabase = event.locals.supabase as any;
+		// Mock multiple table calls
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'user_sms_preferences') {
+				return {
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({
+							single: vi.fn().mockResolvedValue({
+								data: { phone_number: '+15551234567', phone_verified: true },
+								error: null
+							})
+						}))
+					}))
+				};
+			}
+			if (table === 'user_brief_preferences') {
+				return {
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({
+							single: vi.fn().mockResolvedValue({
+								data: { is_active: true },
+								error: null
+							})
+						}))
+					}))
+				};
+			}
+			// For user_notification_preferences upsert
+			return {
+				upsert: vi.fn(() => ({
+					select: vi.fn(() => ({
+						single: vi.fn().mockResolvedValue({
+							data: { ...body, user_id: 'test-user-id' },
+							error: null
+						})
+					}))
+				}))
+			};
+		});
+
+		const response = await PUT(event);
 		const json = await response.json();
 
 		expect(response.status).toBe(200);
@@ -260,42 +305,51 @@ describe('POST /api/notification-preferences', () => {
 
 		const supabase = event.locals.supabase as any;
 		// Mock phone verification check - no phone number
-		supabase
-			.from()
-			.select()
-			.eq()
-			.single.mockResolvedValue({
-				data: { phone_number: null, phone_verified: false },
-				error: null
-			});
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'user_sms_preferences') {
+				return {
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({
+							single: vi.fn().mockResolvedValue({
+								data: { phone_number: null, phone_verified: false },
+								error: null
+							})
+						}))
+					}))
+				};
+			}
+			return createMockSupabase().from();
+		});
 
-		const response = await POST(event);
+		const response = await PUT(event);
 		const json = await response.json();
 
 		expect(response.status).toBe(400);
-		expect(json.success).toBe(false);
-		expect(json.error).toBe('phone_verification_required');
+		expect(json.requiresPhoneSetup).toBe(true);
+		expect(json.error).toContain('required');
 	});
 
-	it('should update event-based preferences without ?daily_brief parameter', async () => {
+	it('should update global preferences without ?daily_brief parameter', async () => {
 		const body = {
 			push_enabled: true,
 			in_app_enabled: false,
-			event_type: 'brief.completed'
+			email_enabled: true
 		};
 		const event = createMockRequestEvent({}, body);
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.upsert()
-			.select()
-			.single.mockResolvedValue({
-				data: { ...body, user_id: 'test-user-id' },
-				error: null
-			});
+		supabase.from.mockReturnValue({
+			upsert: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnValue({
+					single: vi.fn().mockResolvedValue({
+						data: { ...body, user_id: 'test-user-id' },
+						error: null
+					})
+				})
+			})
+		});
 
-		const response = await POST(event);
+		const response = await PUT(event);
 		const json = await response.json();
 
 		expect(json.success).toBe(true);
@@ -303,9 +357,10 @@ describe('POST /api/notification-preferences', () => {
 
 	it('should return 401 when not authenticated', async () => {
 		const event = createMockRequestEvent();
-		event.locals.getSession = vi.fn().mockResolvedValue(null);
+		event.locals.safeGetSession = vi.fn().mockResolvedValue({ user: null });
 
-		await expect(POST(event)).rejects.toThrow();
+		const response = await PUT(event);
+		expect(response.status).toBe(401);
 	});
 
 	it('should handle database errors during upsert', async () => {
@@ -316,64 +371,80 @@ describe('POST /api/notification-preferences', () => {
 		const event = createMockRequestEvent({ daily_brief: 'true' }, body);
 
 		const supabase = event.locals.supabase as any;
-		supabase
-			.from()
-			.upsert()
-			.select()
-			.single.mockResolvedValue({
-				data: null,
-				error: { code: 'PGRST001', message: 'Database error' }
-			});
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'user_brief_preferences') {
+				return {
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({
+							single: vi.fn().mockResolvedValue({
+								data: { is_active: true },
+								error: null
+							})
+						}))
+					}))
+				};
+			}
+			return {
+				upsert: vi.fn(() => ({
+					select: vi.fn(() => ({
+						single: vi.fn().mockResolvedValue({
+							data: null,
+							error: { code: 'PGRST001', message: 'Database error' }
+						})
+					}))
+				}))
+			};
+		});
 
-		await expect(POST(event)).rejects.toThrow();
+		const response = await PUT(event);
+		expect(response.status).toBe(500);
 	});
 });
 
-describe('Integration: event_type filtering', () => {
-	it("should ensure user-level queries use event_type='user'", async () => {
+describe('Integration: user_id filtering', () => {
+	it('should query preferences by user_id only', async () => {
 		const event = createMockRequestEvent({ daily_brief: 'true' });
 		const supabase = event.locals.supabase as any;
 
 		const eqSpy = vi.fn(() => ({
-			eq: vi.fn(() => ({
-				maybeSingle: vi.fn().mockResolvedValue({
-					data: { should_email_daily_brief: true },
-					error: null
-				})
-			}))
+			maybeSingle: vi.fn().mockResolvedValue({
+				data: { should_email_daily_brief: true },
+				error: null
+			})
 		}));
 
-		supabase
-			.from()
-			.select()
-			.eq.mockImplementation(() => ({ eq: eqSpy }));
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: eqSpy
+			})
+		});
 
 		await GET(event);
 
-		// Verify that eq was called twice: once for user_id, once for event_type
-		expect(eqSpy).toHaveBeenCalled();
+		// Verify that eq was called once for user_id (no event_type filter)
+		expect(eqSpy).toHaveBeenCalledWith('user_id', 'test-user-id');
 	});
 
-	it('should ensure event-based queries use specific event_type', async () => {
-		const event = createMockRequestEvent({ event_type: 'brief.completed' });
+	it('should use maybeSingle for global preference queries', async () => {
+		const event = createMockRequestEvent({});
 		const supabase = event.locals.supabase as any;
 
-		const eqSpy = vi.fn(() => ({
-			eq: vi.fn(() => ({
-				maybeSingle: vi.fn().mockResolvedValue({
-					data: { push_enabled: true },
-					error: null
-				})
-			}))
-		}));
+		const maybeSingleSpy = vi.fn().mockResolvedValue({
+			data: { push_enabled: true },
+			error: null
+		});
 
-		supabase
-			.from()
-			.select()
-			.eq.mockImplementation(() => ({ eq: eqSpy }));
+		supabase.from.mockReturnValue({
+			select: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: maybeSingleSpy
+				})
+			})
+		});
 
 		await GET(event);
 
-		expect(eqSpy).toHaveBeenCalled();
+		// Verify maybeSingle was called (handles case where no preferences exist)
+		expect(maybeSingleSpy).toHaveBeenCalled();
 	});
 });

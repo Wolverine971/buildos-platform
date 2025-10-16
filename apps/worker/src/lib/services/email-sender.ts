@@ -124,7 +124,6 @@ export class DailyBriefEmailSender {
           .from("user_notification_preferences")
           .select("should_email_daily_brief")
           .eq("user_id", userId)
-          .eq("event_type", "user") // User-level daily brief preferences
           .single();
 
       if (notificationError && notificationError.code !== "PGRST116") {

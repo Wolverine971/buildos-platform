@@ -398,7 +398,6 @@
 
 	// Keyboard shortcuts
 	onMount(() => {
-		console.log(blocks);
 		function handleKeyDown(event: KeyboardEvent) {
 			// Only handle if not in an input
 			if (
@@ -410,21 +409,27 @@
 
 			switch (event.key.toLowerCase()) {
 				case 'd':
+					event.preventDefault();
 					viewMode = 'day';
 					break;
 				case 'w':
+					event.preventDefault();
 					viewMode = 'week';
 					break;
 				case 'm':
+					event.preventDefault();
 					viewMode = 'month';
 					break;
 				case 'arrowleft':
+					event.preventDefault();
 					navigatePrevious();
 					break;
 				case 'arrowright':
+					event.preventDefault();
 					navigateNext();
 					break;
 				case 't':
+					event.preventDefault();
 					navigateToday();
 					break;
 			}
@@ -1018,20 +1023,20 @@
 	}
 
 	.mobile-header {
-		@apply px-4 py-3;
+		@apply px-3 py-2;
 	}
 
 	.desktop-header {
-		@apply items-center justify-between px-6 py-4;
+		@apply items-center justify-between px-4 py-2.5;
 	}
 
 	/* Header buttons */
 	.today-btn {
-		@apply rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200;
+		@apply rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150;
 		background: rgb(241 245 249 / 0.8);
 		color: rgb(51 65 85);
 		border: 1px solid rgb(226 232 240 / 0.8);
-		min-height: 44px; /* Touch-friendly on mobile */
+		min-height: 32px; /* Touch-friendly on mobile */
 	}
 
 	.today-btn:hover {
@@ -1046,8 +1051,8 @@
 
 	@media (min-width: 768px) {
 		.today-btn {
-			min-height: 36px;
-			padding: 0.5rem 0.875rem;
+			min-height: 28px;
+			padding: 0.375rem 0.625rem;
 		}
 	}
 
@@ -1063,10 +1068,10 @@
 	}
 
 	.nav-btn {
-		@apply rounded-lg p-2 transition-all duration-200;
+		@apply rounded-md p-1.5 transition-all duration-150;
 		color: rgb(100 116 139);
-		min-height: 44px; /* Touch-friendly */
-		min-width: 44px;
+		min-height: 32px; /* Touch-friendly */
+		min-width: 32px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1083,8 +1088,9 @@
 
 	@media (min-width: 768px) {
 		.nav-btn {
-			min-height: 36px;
-			min-width: 36px;
+			min-height: 28px;
+			min-width: 28px;
+			padding: 0.25rem;
 		}
 	}
 
@@ -1100,13 +1106,13 @@
 	.header-title {
 		@apply font-semibold;
 		color: rgb(15 23 42);
-		font-size: 0.9375rem;
-		line-height: 1.4;
+		font-size: 0.8125rem;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 768px) {
 		.header-title {
-			font-size: 1.0625rem;
+			font-size: 0.875rem;
 		}
 	}
 
@@ -1116,18 +1122,18 @@
 
 	/* View toggle buttons */
 	.view-toggle {
-		@apply rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200;
+		@apply rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-150;
 		background: transparent;
 		color: rgb(100 116 139);
 		flex: 1;
-		min-height: 44px; /* Touch-friendly */
+		min-height: 32px; /* Touch-friendly */
 	}
 
 	@media (min-width: 768px) {
 		.view-toggle {
 			flex: none;
-			min-height: 36px;
-			padding: 0.5rem 0.875rem;
+			min-height: 28px;
+			padding: 0.375rem 0.625rem;
 		}
 	}
 
@@ -1286,18 +1292,18 @@
 	}
 
 	.day-header-content {
-		padding: 0.625rem 0.5rem;
+		padding: 0.375rem 0.375rem;
 	}
 
 	@media (min-width: 768px) {
 		.day-header-content {
-			padding: 0.75rem 0.75rem;
+			padding: 0.5rem 0.5rem;
 		}
 	}
 
 	.day-header-weekday {
 		@apply font-medium;
-		font-size: 0.6875rem;
+		font-size: 0.5625rem;
 		color: rgb(100 116 139);
 		text-transform: uppercase;
 		letter-spacing: 0.025em;
@@ -1305,7 +1311,7 @@
 
 	@media (min-width: 768px) {
 		.day-header-weekday {
-			font-size: 0.75rem;
+			font-size: 0.625rem;
 		}
 	}
 
@@ -1314,15 +1320,15 @@
 	}
 
 	.day-header-date {
-		@apply mt-1 font-semibold;
-		font-size: 0.9375rem;
+		@apply mt-0.5 font-semibold;
+		font-size: 0.75rem;
 		color: rgb(15 23 42);
 	}
 
 	@media (min-width: 768px) {
 		.day-header-date {
-			margin-top: 0.375rem;
-			font-size: 1rem;
+			margin-top: 0.25rem;
+			font-size: 0.875rem;
 		}
 	}
 
@@ -1908,7 +1914,7 @@
 	   KEYBOARD SHORTCUTS
 	   ======================================== */
 	.shortcuts-hint {
-		@apply border-t px-4 py-2.5 text-xs;
+		@apply border-t px-3 py-1.5 text-xs;
 		background: rgb(248 250 252);
 		border-color: rgb(226 232 240);
 		color: rgb(100 116 139);
@@ -1916,7 +1922,7 @@
 
 	@media (min-width: 768px) {
 		.shortcuts-hint {
-			@apply px-6 py-3;
+			@apply px-4 py-2;
 		}
 	}
 

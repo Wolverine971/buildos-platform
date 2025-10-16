@@ -4548,12 +4548,83 @@ export type Database = {
       };
       user_notification_preferences: {
         Row: {
+          batch_enabled: boolean;
+          batch_interval_minutes: number | null;
+          created_at: string;
+          email_enabled: boolean;
+          id: string;
+          in_app_enabled: boolean;
+          max_per_day: number | null;
+          max_per_hour: number | null;
+          priority: string;
+          push_enabled: boolean;
+          quiet_hours_enabled: boolean;
+          quiet_hours_end: string | null;
+          quiet_hours_start: string | null;
+          should_email_daily_brief: boolean;
+          should_sms_daily_brief: boolean;
+          sms_enabled: boolean;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          batch_enabled?: boolean;
+          batch_interval_minutes?: number | null;
+          created_at?: string;
+          email_enabled?: boolean;
+          id?: string;
+          in_app_enabled?: boolean;
+          max_per_day?: number | null;
+          max_per_hour?: number | null;
+          priority?: string;
+          push_enabled?: boolean;
+          quiet_hours_enabled?: boolean;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          should_email_daily_brief?: boolean;
+          should_sms_daily_brief?: boolean;
+          sms_enabled?: boolean;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          batch_enabled?: boolean;
+          batch_interval_minutes?: number | null;
+          created_at?: string;
+          email_enabled?: boolean;
+          id?: string;
+          in_app_enabled?: boolean;
+          max_per_day?: number | null;
+          max_per_hour?: number | null;
+          priority?: string;
+          push_enabled?: boolean;
+          quiet_hours_enabled?: boolean;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          should_email_daily_brief?: boolean;
+          should_sms_daily_brief?: boolean;
+          sms_enabled?: boolean;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_notification_preferences_backup: {
+        Row: {
           batch_enabled: boolean | null;
           batch_interval_minutes: number | null;
           created_at: string | null;
           email_enabled: boolean | null;
-          event_type: string;
-          id: string;
+          event_type: string | null;
+          id: string | null;
           in_app_enabled: boolean | null;
           max_per_day: number | null;
           max_per_hour: number | null;
@@ -4566,15 +4637,15 @@ export type Database = {
           should_sms_daily_brief: boolean | null;
           sms_enabled: boolean | null;
           updated_at: string | null;
-          user_id: string;
+          user_id: string | null;
         };
         Insert: {
           batch_enabled?: boolean | null;
           batch_interval_minutes?: number | null;
           created_at?: string | null;
           email_enabled?: boolean | null;
-          event_type: string;
-          id?: string;
+          event_type?: string | null;
+          id?: string | null;
           in_app_enabled?: boolean | null;
           max_per_day?: number | null;
           max_per_hour?: number | null;
@@ -4587,15 +4658,15 @@ export type Database = {
           should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
           updated_at?: string | null;
-          user_id: string;
+          user_id?: string | null;
         };
         Update: {
           batch_enabled?: boolean | null;
           batch_interval_minutes?: number | null;
           created_at?: string | null;
           email_enabled?: boolean | null;
-          event_type?: string;
-          id?: string;
+          event_type?: string | null;
+          id?: string | null;
           in_app_enabled?: boolean | null;
           max_per_day?: number | null;
           max_per_hour?: number | null;
@@ -4608,23 +4679,16 @@ export type Database = {
           should_sms_daily_brief?: boolean | null;
           sms_enabled?: boolean | null;
           updated_at?: string | null;
-          user_id?: string;
+          user_id?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "user_notification_preferences_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       user_notifications: {
         Row: {
           action_url: string | null;
           created_at: string | null;
           dismissed_at: string | null;
+          event_type: string | null;
           expires_at: string | null;
           id: string;
           message: string;
@@ -4638,6 +4702,7 @@ export type Database = {
           action_url?: string | null;
           created_at?: string | null;
           dismissed_at?: string | null;
+          event_type?: string | null;
           expires_at?: string | null;
           id?: string;
           message: string;
@@ -4651,6 +4716,7 @@ export type Database = {
           action_url?: string | null;
           created_at?: string | null;
           dismissed_at?: string | null;
+          event_type?: string | null;
           expires_at?: string | null;
           id?: string;
           message?: string;

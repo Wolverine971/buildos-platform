@@ -451,6 +451,54 @@ async function sendNotification(
 
 ---
 
+### SMS Flow Deprecation Migration ✅ COMPLETED (2025-10-13 to 2025-10-29)
+
+After the daily brief notification refactor, several SMS preference fields became redundant or were never implemented. A comprehensive migration was executed to clean up the schema and improve the architecture.
+
+**Migration Status**:
+
+- ✅ **Phase 1** (Worker changes): Completed 2025-10-13
+  - Added quiet hours and rate limit checks to notification SMS
+  - Removed redundant `daily_brief_sms` check from preferenceChecker
+  - Updated SQL function to remove duplicate SMS preference checks
+  - Created shared SMS safety check utilities
+- ✅ **Phase 2** (Web app changes): Completed 2025-10-13
+  - Removed deprecated fields from API endpoints
+  - Removed deprecated fields from UI components
+  - Updated database schema types
+  - Deprecated `sendTaskReminder()` service method
+- ✅ **Phase 3a** (Mark deprecated): Ready for deployment
+  - Migration file created: `20251015_deprecate_unused_sms_fields.sql`
+  - Adds database comments marking fields as deprecated
+- ⏳ **Phase 3b** (Drop columns): Scheduled 2025-10-29
+  - Migration file created: `20251029_remove_deprecated_sms_fields.sql`
+  - Includes safety checks to prevent premature execution
+  - Will drop: `daily_brief_sms`, `task_reminders`, `next_up_enabled`
+
+**Deprecated Fields**:
+
+- `daily_brief_sms` → Replaced by `user_notification_preferences.should_sms_daily_brief`
+- `task_reminders` → Never implemented, no worker flow exists
+- `next_up_enabled` → Never implemented, no worker flow exists
+
+**Current SMS Architecture**:
+
+```
+user_notification_preferences (event_type='user')
+├── should_email_daily_brief → Controls daily brief email
+└── should_sms_daily_brief   → Controls daily brief SMS
+
+user_sms_preferences
+├── Phone Verification (phone_number, phone_verified, opted_out)
+├── Calendar Event Reminders (event_reminders_enabled - working)
+├── Future Features (morning_kickoff, evening_recap - UI ready)
+└── Safety Controls (quiet_hours, daily_sms_limit - all SMS)
+```
+
+See [SMS Deprecation Migration Plan](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for complete details.
+
+---
+
 ### Phase 3: User Onboarding & UX (Week 2) ✅ IMPLEMENTED
 
 #### Task 3.1: Subscription Flow Enhancement ✅

@@ -5,10 +5,10 @@ import type { RequestHandler } from './$types';
 /**
  * GET: Get user notification preferences
  *
+ * Returns global user preferences (one row per user)
  * Query params:
- * - ?event_type=brief.completed - Get event-based preferences for a specific event
- * - ?daily_brief=true - Get user-level daily brief preferences (should_email_daily_brief, should_sms_daily_brief)
- * - No params - Get all event-based preferences
+ * - ?daily_brief=true - Get daily brief preferences only (should_email_daily_brief, should_sms_daily_brief)
+ * - No params - Get all global preferences
  */
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -17,42 +17,28 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		const eventType = url.searchParams.get('event_type');
 		const dailyBrief = url.searchParams.get('daily_brief') === 'true';
 
-		// Special handling for daily brief preferences
-		if (dailyBrief) {
-			const { data, error } = await supabase
-				.from('user_notification_preferences')
-				.select('should_email_daily_brief, should_sms_daily_brief, updated_at')
-				.eq('user_id', user.id)
-				.eq('event_type', 'user')
-				.maybeSingle();
+		// Get user's global notification preferences
+		const { data, error } = await supabase
+			.from('user_notification_preferences')
+			.select(
+				dailyBrief ? 'should_email_daily_brief, should_sms_daily_brief, updated_at' : '*'
+			)
+			.eq('user_id', user.id)
+			.maybeSingle();
 
-			if (error) throw error;
+		if (error) throw error;
 
-			// Return defaults if no preferences set yet
+		// Return defaults if no preferences set yet
+		if (!data && dailyBrief) {
 			return json({
-				preferences: data || {
+				preferences: {
 					should_email_daily_brief: false,
 					should_sms_daily_brief: false
 				}
 			});
 		}
-
-		// Original event-based preference handling
-		let query = supabase
-			.from('user_notification_preferences')
-			.select('*')
-			.eq('user_id', user.id);
-
-		if (eventType) {
-			query = query.eq('event_type', eventType);
-		}
-
-		const { data, error } = await query;
-
-		if (error) throw error;
 
 		return json({ preferences: data });
 	} catch (error) {
@@ -64,12 +50,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 /**
  * PUT: Update or create user notification preferences
  *
- * For event-based preferences:
- * Body: { event_type: string, push_enabled?: boolean, email_enabled?: boolean, sms_enabled?: boolean, ... }
- *
- * For user-level daily brief preferences:
- * Body: { should_email_daily_brief?: boolean, should_sms_daily_brief?: boolean }
- * (automatically uses event_type='user' for storage)
+ * Body: Global notification preferences for the user
+ * Examples:
+ * - { should_email_daily_brief: true, should_sms_daily_brief: false }
+ * - { push_enabled: true, email_enabled: false, sms_enabled: true }
  */
 export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -79,50 +63,44 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 	try {
 		const body = await request.json();
-		const { event_type, should_email_daily_brief, should_sms_daily_brief, ...updates } = body;
+		const { should_email_daily_brief, should_sms_daily_brief, ...updates } = body;
 
-		// Check if this is a user-level daily brief preference update
-		const isDailyBriefUpdate =
-			(should_email_daily_brief !== undefined || should_sms_daily_brief !== undefined) &&
-			!event_type;
+		// Validate phone number if enabling SMS (either daily brief or general SMS)
+		if (should_sms_daily_brief === true || updates.sms_enabled === true) {
+			const { data: smsPrefs, error: smsError } = await supabase
+				.from('user_sms_preferences')
+				.select('phone_number, phone_verified, opted_out')
+				.eq('user_id', user.id)
+				.single();
 
-		if (isDailyBriefUpdate) {
-			// Handle user-level daily brief preferences
-			// Validate phone number if enabling SMS
-			if (should_sms_daily_brief === true) {
-				const { data: smsPrefs, error: smsError } = await supabase
-					.from('user_sms_preferences')
-					.select('phone_number, phone_verified, opted_out')
-					.eq('user_id', user.id)
-					.single();
-
-				if (smsError && smsError.code !== 'PGRST116') {
-					throw new Error(`Failed to check SMS preferences: ${smsError.message}`);
-				}
-
-				if (!smsPrefs?.phone_number) {
-					return json(
-						{ error: 'Phone number required', requiresPhoneSetup: true },
-						{ status: 400 }
-					);
-				}
-
-				if (!smsPrefs?.phone_verified) {
-					return json(
-						{ error: 'Phone number not verified', requiresPhoneVerification: true },
-						{ status: 400 }
-					);
-				}
-
-				if (smsPrefs?.opted_out) {
-					return json(
-						{ error: 'You have opted out of SMS notifications', requiresOptIn: true },
-						{ status: 400 }
-					);
-				}
+			if (smsError && smsError.code !== 'PGRST116') {
+				throw new Error(`Failed to check SMS preferences: ${smsError.message}`);
 			}
 
-			// Check if user's brief generation is active
+			if (!smsPrefs?.phone_number) {
+				return json(
+					{ error: 'Phone number required', requiresPhoneSetup: true },
+					{ status: 400 }
+				);
+			}
+
+			if (!smsPrefs?.phone_verified) {
+				return json(
+					{ error: 'Phone number not verified', requiresPhoneVerification: true },
+					{ status: 400 }
+				);
+			}
+
+			if (smsPrefs?.opted_out) {
+				return json(
+					{ error: 'You have opted out of SMS notifications', requiresOptIn: true },
+					{ status: 400 }
+				);
+			}
+		}
+
+		// Check if user's brief generation is active (for daily brief preferences)
+		if (should_email_daily_brief || should_sms_daily_brief) {
 			const { data: briefPrefs, error: briefError } = await supabase
 				.from('user_brief_preferences')
 				.select('is_active')
@@ -133,7 +111,7 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 				throw new Error(`Failed to check brief preferences: ${briefError.message}`);
 			}
 
-			if (!briefPrefs?.is_active && (should_email_daily_brief || should_sms_daily_brief)) {
+			if (!briefPrefs?.is_active) {
 				return json(
 					{
 						error: 'Daily brief generation is not active. Enable brief generation in Brief Preferences first.',
@@ -142,56 +120,29 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 					{ status: 400 }
 				);
 			}
-
-			// Store user-level preferences with event_type='user'
-			const dailyBriefUpdates: Record<string, any> = {
-				user_id: user.id,
-				event_type: 'user',
-				updated_at: new Date().toISOString()
-			};
-
-			if (should_email_daily_brief !== undefined) {
-				dailyBriefUpdates.should_email_daily_brief = should_email_daily_brief;
-			}
-
-			if (should_sms_daily_brief !== undefined) {
-				dailyBriefUpdates.should_sms_daily_brief = should_sms_daily_brief;
-			}
-
-			const { data, error } = await supabase
-				.from('user_notification_preferences')
-				.upsert(dailyBriefUpdates, {
-					onConflict: 'user_id,event_type'
-				})
-				.select()
-				.single();
-
-			if (error) throw error;
-
-			return json({ success: true, preference: data });
 		}
 
-		// Handle event-based preferences (original behavior)
-		if (!event_type) {
-			return json(
-				{ error: 'event_type is required for event-based preferences' },
-				{ status: 400 }
-			);
+		// Build update object for global preferences
+		const updateData: Record<string, any> = {
+			user_id: user.id,
+			updated_at: new Date().toISOString(),
+			...updates
+		};
+
+		if (should_email_daily_brief !== undefined) {
+			updateData.should_email_daily_brief = should_email_daily_brief;
 		}
 
+		if (should_sms_daily_brief !== undefined) {
+			updateData.should_sms_daily_brief = should_sms_daily_brief;
+		}
+
+		// Upsert global user preferences (one row per user)
 		const { data, error } = await supabase
 			.from('user_notification_preferences')
-			.upsert(
-				{
-					user_id: user.id,
-					event_type,
-					...updates,
-					updated_at: new Date().toISOString()
-				},
-				{
-					onConflict: 'user_id,event_type'
-				}
-			)
+			.upsert(updateData, {
+				onConflict: 'user_id'
+			})
 			.select()
 			.single();
 

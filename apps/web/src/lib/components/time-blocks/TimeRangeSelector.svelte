@@ -238,17 +238,17 @@
 	.time-range-selector {
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
-		padding: 1.25rem;
+		gap: 0.75rem;
+		padding: 0.875rem 1rem;
 		background: white;
-		border-radius: 0.75rem;
-		transition: all 0.3s ease;
+		border-radius: 0;
+		transition: all 0.2s ease;
 	}
 
 	@media (min-width: 768px) {
 		.time-range-selector {
-			padding: 1.5rem;
-			gap: 1.5rem;
+			padding: 1rem 1.25rem;
+			gap: 1rem;
 		}
 	}
 
@@ -262,16 +262,16 @@
 	.selector-header {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.625rem;
 	}
 
 	.header-icon {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 0.625rem;
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 0.375rem;
 		background: linear-gradient(135deg, rgb(59 130 246 / 0.1), rgb(99 102 241 / 0.1));
 		color: rgb(59 130 246);
 		flex-shrink: 0;
@@ -288,16 +288,16 @@
 	}
 
 	.header-title {
-		font-size: 1.125rem;
+		font-size: 0.8125rem;
 		font-weight: 600;
 		color: rgb(15 23 42);
 		margin: 0;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 768px) {
 		.header-title {
-			font-size: 1.25rem;
+			font-size: 0.875rem;
 		}
 	}
 
@@ -306,10 +306,10 @@
 	}
 
 	.header-subtitle {
-		font-size: 0.875rem;
+		font-size: 0.6875rem;
 		color: rgb(100 116 139);
-		margin: 0.25rem 0 0;
-		line-height: 1.5;
+		margin: 0.125rem 0 0;
+		line-height: 1.4;
 	}
 
 	:global(.dark) .header-subtitle {
@@ -322,13 +322,13 @@
 	.preset-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	@media (min-width: 640px) {
 		.preset-grid {
 			grid-template-columns: repeat(4, 1fr);
-			gap: 1rem;
+			gap: 0.625rem;
 		}
 	}
 
@@ -340,24 +340,25 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 0.375rem;
-		padding: 0.75rem 0.5rem;
-		border-radius: 0.625rem;
-		border: 1.5px solid rgb(226 232 240);
+		gap: 0.25rem;
+		padding: 0.5rem 0.375rem;
+		border-radius: 0.5rem;
+		border: 1px solid rgb(226 232 240);
 		background: rgb(248 250 252);
 		color: rgb(71 85 105);
-		font-size: 0.8125rem;
+		font-size: 0.6875rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 		position: relative;
 		overflow: hidden;
 	}
 
 	@media (min-width: 768px) {
 		.preset-button {
-			padding: 0.875rem 0.75rem;
-			gap: 0.5rem;
+			padding: 0.625rem 0.5rem;
+			gap: 0.375rem;
+			font-size: 0.75rem;
 		}
 	}
 
@@ -419,14 +420,14 @@
 	}
 
 	.preset-icon {
-		font-size: 1.25rem;
+		font-size: 1rem;
 		line-height: 1;
 		display: block;
 	}
 
 	@media (min-width: 768px) {
 		.preset-icon {
-			font-size: 1.375rem;
+			font-size: 1.125rem;
 		}
 	}
 
@@ -441,18 +442,18 @@
 	.custom-range {
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 1rem;
-		padding: 1.25rem;
-		border-radius: 0.75rem;
+		gap: 0.75rem;
+		padding: 0.875rem;
+		border-radius: 0.5rem;
 		background: linear-gradient(135deg, rgb(248 250 252), rgb(241 245 249));
 		border: 1px solid rgb(226 232 240);
-		animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	@media (min-width: 640px) {
 		.custom-range {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 1.25rem;
+			gap: 1rem;
 		}
 	}
 
@@ -478,11 +479,11 @@
 	.input-group {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.375rem;
 	}
 
 	.input-label {
-		font-size: 0.8125rem;
+		font-size: 0.6875rem;
 		font-weight: 600;
 		color: rgb(71 85 105);
 		letter-spacing: 0.01em;
@@ -493,14 +494,14 @@
 	}
 
 	.date-input {
-		padding: 0.75rem 1rem;
-		border-radius: 0.625rem;
-		border: 1.5px solid rgb(203 213 225);
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.5rem;
+		border: 1px solid rgb(203 213 225);
 		background: white;
 		color: rgb(15 23 42);
-		font-size: 0.9375rem;
+		font-size: 0.8125rem;
 		font-weight: 500;
-		transition: all 0.2s ease;
+		transition: all 0.15s ease;
 	}
 
 	.date-input:hover {

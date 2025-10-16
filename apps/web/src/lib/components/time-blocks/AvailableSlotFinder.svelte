@@ -74,19 +74,17 @@
 	}
 </script>
 
-<div
-	class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
->
+<div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
 	<!-- Header with Toggle -->
 	<div
-		class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700"
+		class="flex items-center justify-between border-b border-gray-200 px-3 py-2.5 dark:border-gray-700 sm:px-4 sm:py-3"
 	>
-		<div class="flex items-center gap-3">
+		<div class="flex items-center gap-2">
 			<div
-				class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40"
+				class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40"
 			>
 				<svg
-					class="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+					class="h-4 w-4 text-emerald-600 dark:text-emerald-400"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -99,12 +97,12 @@
 					/>
 				</svg>
 			</div>
-			<div>
-				<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-					Available Time Slots
+			<div class="min-w-0 flex-1">
+				<h3 class="text-xs font-semibold text-slate-900 dark:text-white sm:text-sm">
+					Available Slots
 				</h3>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
-					Find gaps in your schedule for new time blocks
+				<p class="hidden text-xs text-slate-600 dark:text-slate-400 sm:block">
+					Find gaps in your schedule
 				</p>
 			</div>
 		</div>
@@ -114,7 +112,7 @@
 			type="button"
 			role="switch"
 			aria-checked={config.enabled}
-			class={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
+			class={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
 				config.enabled
 					? 'bg-emerald-500 dark:bg-emerald-600'
 					: 'bg-slate-300 dark:bg-slate-700'
@@ -122,8 +120,8 @@
 			onclick={toggleEnabled}
 		>
 			<span
-				class={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-					config.enabled ? 'translate-x-6' : 'translate-x-0'
+				class={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-150 ease-in-out ${
+					config.enabled ? 'translate-x-5' : 'translate-x-0'
 				}`}
 			/>
 		</button>
@@ -131,35 +129,32 @@
 
 	<!-- Configuration Panel (visible when enabled) -->
 	{#if config.enabled}
-		<div class="space-y-6 px-6 py-5">
+		<div class="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
 			<!-- Buffer Time -->
-			<div class="space-y-3">
-				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+			<div class="space-y-1.5">
+				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Buffer Time
 				</label>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
-					Time cushion before and after each commitment
-				</p>
-				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				<div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
 					{#each [0, 15, 30, 60] as time}
 						<button
 							type="button"
-							class={`rounded-lg px-4 py-3 text-sm font-medium transition touch-manipulation ${
+							class={`rounded-md px-3 py-2 text-xs font-medium transition touch-manipulation ${
 								config.bufferTime === time
-									? 'bg-emerald-500 text-white shadow-md dark:bg-emerald-600'
+									? 'bg-emerald-500 text-white shadow-sm dark:bg-emerald-600'
 									: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
 							}`}
 							onclick={() => updateBufferTime(time as 0 | 15 | 30 | 60)}
 						>
-							{time === 0 ? 'None' : time === 60 ? '1 hour' : `${time} min`}
+							{time === 0 ? 'None' : time === 60 ? '1h' : `${time}m`}
 						</button>
 					{/each}
 				</div>
 			</div>
 
 			<!-- Slot Duration -->
-			<div class="space-y-3">
-				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+			<div class="space-y-1.5">
+				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Slot Duration
 				</label>
 				<div
@@ -176,10 +171,10 @@
 						></span
 					>
 				</div>
-				<div class="space-y-2">
+				<div class="space-y-1.5">
 					<!-- Min Duration Slider -->
-					<div class="flex items-center gap-3">
-						<span class="text-xs text-slate-600 dark:text-slate-400 w-12">Min:</span>
+					<div class="flex items-center gap-2">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-10">Min:</span>
 						<input
 							type="range"
 							min="15"
@@ -187,18 +182,18 @@
 							step="15"
 							bind:value={localMinDuration}
 							oninput={updateDurationRange}
-							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
-								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+							class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
 						/>
 					</div>
 					<!-- Max Duration Slider -->
-					<div class="flex items-center gap-3">
-						<span class="text-xs text-slate-600 dark:text-slate-400 w-12">Max:</span>
+					<div class="flex items-center gap-2">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-10">Max:</span>
 						<input
 							type="range"
 							min="30"
@@ -206,26 +201,26 @@
 							step="15"
 							bind:value={localMaxDuration}
 							oninput={updateDurationRange}
-							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
-								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+							class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
 						/>
 					</div>
 				</div>
 				{#if localMinDuration > localMaxDuration}
 					<p class="text-xs font-medium text-rose-600 dark:text-rose-400">
-						⚠️ Minimum duration must be less than maximum
+						⚠️ Min must be &lt; max
 					</p>
 				{/if}
 			</div>
 
 			<!-- Time Window -->
-			<div class="space-y-3">
-				<label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+			<div class="space-y-1.5">
+				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Time Window
 				</label>
 				<div
@@ -242,10 +237,10 @@
 						></span
 					>
 				</div>
-				<div class="space-y-2">
+				<div class="space-y-1.5">
 					<!-- Earliest Start Slider -->
-					<div class="flex items-center gap-3">
-						<span class="text-xs text-slate-600 dark:text-slate-400 w-16"
+					<div class="flex items-center gap-2">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-14"
 							>Earliest:</span
 						>
 						<input
@@ -255,18 +250,18 @@
 							step="1"
 							bind:value={localEarliestStart}
 							oninput={updateTimeWindow}
-							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
-								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+							class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
 						/>
 					</div>
 					<!-- Latest End Slider -->
-					<div class="flex items-center gap-3">
-						<span class="text-xs text-slate-600 dark:text-slate-400 w-16">Latest:</span>
+					<div class="flex items-center gap-2">
+						<span class="text-xs text-slate-600 dark:text-slate-400 w-14">Latest:</span>
 						<input
 							type="range"
 							min="1"
@@ -274,30 +269,30 @@
 							step="1"
 							bind:value={localLatestEnd}
 							oninput={updateTimeWindow}
-							class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
-								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+							class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700
+								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-								[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
 						/>
 					</div>
 				</div>
 				{#if localEarliestStart >= localLatestEnd}
 					<p class="text-xs font-medium text-rose-600 dark:text-rose-400">
-						⚠️ Earliest time must be before latest time
+						⚠️ Earliest &lt; latest
 					</p>
 				{/if}
 			</div>
 
 			<!-- Slot Count Display -->
 			<div
-				class="rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 px-4 py-3 text-sm dark:border-emerald-700 dark:from-emerald-900/10 dark:to-green-900/10"
+				class="rounded-md border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 px-3 py-2 text-xs dark:border-emerald-700 dark:from-emerald-900/10 dark:to-green-900/10"
 			>
 				{#if availableSlotsCount > 0}
-					<div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -306,26 +301,31 @@
 							/>
 						</svg>
 						<span class="font-medium">
-							Found {availableSlotsCount} available slot{availableSlotsCount !== 1
-								? 's'
-								: ''} in current view
+							{availableSlotsCount} slot{availableSlotsCount !== 1 ? 's' : ''} found
 						</span>
 					</div>
 				{:else}
-					<div class="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-							/>
-						</svg>
-						<span class="font-medium">No available slots match current criteria</span>
+					<div class="space-y-1">
+						<div class="flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+							<svg
+								class="h-4 w-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+								/>
+							</svg>
+							<span class="font-medium">No slots found</span>
+						</div>
+						<p class="text-xs text-amber-600 dark:text-amber-400">
+							Adjust buffer time, time window, or duration
+						</p>
 					</div>
-					<p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-						Try reducing buffer time, expanding time window, or adjusting slot duration
-					</p>
 				{/if}
 			</div>
 		</div>

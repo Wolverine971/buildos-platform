@@ -11,6 +11,8 @@
 
 Phase 3 implements **user-facing notifications for daily brief completion** with email delivery and full notification preferences management. This builds on Phase 1's infrastructure to deliver actionable brief notifications to users via multiple channels.
 
+**IMPORTANT UPDATE (2025-10-13):** This system underwent a significant refactor to separate brief generation timing from notification delivery. See [Daily Brief Notification Refactor](#daily-brief-notification-refactor-2025-10-13) section below for details.
+
 ### What's Implemented
 
 ✅ **Email Adapter** - Complete email delivery for notifications
@@ -19,6 +21,7 @@ Phase 3 implements **user-facing notifications for daily brief completion** with
 ✅ **Default Preferences** - Smart defaults with email enabled for briefs
 ✅ **Preferences UI** - Full settings page for managing notification channels
 ✅ **Multi-Channel Support** - Email, push, and in-app notifications
+✅ **Separated Preferences** - Generation timing vs. notification delivery (Refactor 2025-10-13)
 
 ---
 
@@ -435,6 +438,245 @@ AND NOT in_app_enabled;
 - [ ] Analytics dashboard for notification metrics
 - [ ] A/B testing for notification content
 - [ ] User notification history/archive
+
+---
+
+## Daily Brief Notification Refactor (2025-10-13)
+
+### Overview
+
+A major architectural refactor was completed on 2025-10-13 to cleanly separate **brief generation timing** (when briefs are created) from **brief notification delivery** (how users are notified). This addresses the previous conflation of concerns where `email_daily_brief` in `user_brief_preferences` controlled both generation and notification.
+
+**Implementation Plan:** `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+
+### Key Architectural Decision
+
+**User-Level Preferences with `event_type='user'`**
+
+Daily brief notifications are now stored in `user_notification_preferences` with `event_type='user'` to distinguish them from event-based notifications:
+
+- **User-level** (`event_type='user'`): Controls whether users receive email/SMS for daily briefs
+- **Event-based** (`event_type='brief.completed'`): Controls notification channels (push, in-app) for brief completion events
+
+This architecture:
+
+- Separates user-level preferences from event-based notifications
+- Maintains the composite primary key `(user_id, event_type)`
+- Future-proofs for other user-level notification preferences
+
+### Database Changes
+
+#### New Columns in `user_notification_preferences`
+
+```sql
+ALTER TABLE user_notification_preferences
+ADD COLUMN should_email_daily_brief BOOLEAN DEFAULT false,
+ADD COLUMN should_sms_daily_brief BOOLEAN DEFAULT false;
+```
+
+#### Migration
+
+- **File:** `/supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql`
+- **Data Migration:** Existing `email_daily_brief` values migrated to `should_email_daily_brief`
+- **Deprecated Field:** `user_brief_preferences.email_daily_brief` marked as deprecated (not dropped for rollback safety)
+- **Performance:** Added index on new columns
+
+### Architecture
+
+#### Before Refactor
+
+```
+user_brief_preferences.email_daily_brief
+  ↓
+Controls BOTH generation AND notification ❌
+```
+
+#### After Refactor
+
+```
+user_brief_preferences
+  ↓
+  (is_active, frequency, time_of_day, timezone)
+  ↓
+Controls WHEN briefs are generated ✅
+
+user_notification_preferences (event_type='user')
+  ↓
+  (should_email_daily_brief, should_sms_daily_brief)
+  ↓
+Controls HOW users are notified ✅
+```
+
+### Worker Updates
+
+All worker files updated to query the correct preferences table with proper `event_type` filtering:
+
+#### Brief Worker
+
+- **File:** `/apps/worker/src/workers/brief/briefWorker.ts`
+- **Change:** After brief generation, queries `user_notification_preferences` with `.eq("event_type", "user")`
+- **Logic:** Checks `should_email_daily_brief` and `should_sms_daily_brief` separately
+- **SMS:** Includes phone verification checks before sending SMS notifications
+
+#### Email Worker
+
+- **File:** `/apps/worker/src/workers/brief/emailWorker.ts`
+- **Change:** Queries both `user_notification_preferences` (for `should_email_daily_brief`) and `user_brief_preferences` (for `is_active`)
+- **Logic:** Only sends email if BOTH conditions are true
+
+#### Email Sender Service
+
+- **File:** `/apps/worker/src/lib/services/email-sender.ts`
+- **Change:** Split preference checks into two queries
+- **Logic:** Email eligibility requires `should_email_daily_brief=true` AND `is_active=true`
+
+### API Updates
+
+#### Brief Preferences Endpoint
+
+- **File:** `/apps/web/src/routes/api/brief-preferences/+server.ts`
+- **Change:** Removed `email_daily_brief` from request handling
+- **Purpose:** Now only handles generation timing preferences
+
+#### Notification Preferences Endpoint
+
+- **File:** `/apps/web/src/routes/api/notification-preferences/+server.ts`
+- **Change:** Extended with `?daily_brief=true` query parameter support
+- **GET with `?daily_brief=true`:** Returns user-level daily brief preferences (`event_type='user'`)
+- **POST with `?daily_brief=true`:** Updates user-level daily brief preferences
+- **Validation:** Checks phone verification before enabling SMS
+
+### UI Updates
+
+#### Two-Section Approach
+
+The `NotificationPreferences.svelte` component now clearly separates user-level and event-based preferences:
+
+**Section 1: Daily Brief Notifications** (User-level, `event_type='user'`)
+
+- Email toggle → `should_email_daily_brief`
+- SMS toggle → `should_sms_daily_brief`
+- Shows phone verification warnings if needed
+
+**Section 2: Additional Notification Channels** (Event-based, `event_type='brief.completed'`)
+
+- Push toggle → For future push notifications
+- In-App toggle → For future in-app notifications
+- Does NOT include email/SMS (those are user-level only)
+
+#### Components Updated
+
+- **`NotificationPreferences.svelte`**: Added Daily Brief section, removed duplicate controls
+- **`BriefsSettingsModal.svelte`**: Uses both `briefPreferencesStore` and `notificationPreferencesStore`
+- **`DailyBriefsTab.svelte`**: Loads notification preferences from new store
+
+#### New Store
+
+- **File:** `/apps/web/src/lib/stores/notificationPreferences.ts`
+- **Purpose:** Manages user-level daily brief notification preferences
+- **Interface:**
+    ```typescript
+    export interface DailyBriefNotificationPreferences {
+    	should_email_daily_brief: boolean;
+    	should_sms_daily_brief: boolean;
+    	updated_at?: string;
+    }
+    ```
+
+### Bug Fixes
+
+#### Post-Implementation Bug Fixes
+
+**Bug #1: Missing `event_type` Filter** (CRITICAL)
+
+- **Problem:** Worker queries missing `.eq("event_type", "user")`, causing `.single()` failures
+- **Impact:** Would break when users have multiple preference rows
+- **Fixed:** Added filter to all worker queries
+
+**Bug #2: Duplicate UI Controls**
+
+- **Problem:** Email/SMS toggles appeared in both Daily Brief and Advanced sections
+- **Solution:** Removed duplicates from Advanced section, renamed to "Additional Notification Channels"
+
+**Bug #3: Inconsistent State Management**
+
+- **Problem:** `savePreferences()` tried to save email/SMS to event-based preferences
+- **Solution:** Updated to only save push/in-app to event-based preferences
+
+### Type Updates
+
+#### Shared Types Package
+
+- **File:** `/packages/shared-types/src/database.schema.ts`
+- **Added:** `should_email_daily_brief: boolean | null`
+- **Added:** `should_sms_daily_brief: boolean | null`
+
+- **File:** `/packages/shared-types/src/index.ts`
+- **Added:** `DailyBriefNotificationPreferences` interface export
+
+### Testing
+
+#### Manual Test Scenarios
+
+1. **Email Notification Only:** Set `should_email_daily_brief=true`, verify email created
+2. **SMS Notification Only:** Set `should_sms_daily_brief=true` with verified phone, verify SMS queued
+3. **Both Notifications:** Enable both, verify both email and SMS created
+4. **SMS Without Verification:** Enable SMS without verified phone, verify warning logged and no SMS sent
+5. **Migration Validation:** Verify all users with `email_daily_brief=true` have `should_email_daily_brief=true`
+
+### Impact Summary
+
+#### Changed Files
+
+**Database:**
+
+- `20251013_refactor_daily_brief_notification_prefs.sql` (new migration)
+
+**Worker:**
+
+- `briefWorker.ts` (modified)
+- `emailWorker.ts` (modified)
+- `email-sender.ts` (modified)
+
+**Web API:**
+
+- `brief-preferences/+server.ts` (modified)
+- `notification-preferences/+server.ts` (extended)
+
+**Web UI:**
+
+- `notificationPreferences.ts` (new store)
+- `briefPreferences.ts` (modified)
+- `NotificationPreferences.svelte` (modified)
+- `BriefsSettingsModal.svelte` (modified)
+- `DailyBriefsTab.svelte` (modified)
+
+**Types:**
+
+- `database.schema.ts` (modified)
+- `database.types.ts` (regenerated)
+- `index.ts` (modified)
+
+#### Breaking Changes
+
+**None** - The old `email_daily_brief` column remains for rollback safety (marked deprecated).
+
+#### Migration Path
+
+1. Run migration to add new columns and migrate data
+2. Deploy worker with updated preference queries
+3. Deploy web app with new API and UI
+4. Monitor for 1-2 weeks
+5. (Optional) Drop deprecated `email_daily_brief` column
+
+### Benefits
+
+✅ **Clear Separation:** Generation timing separate from notification delivery
+✅ **Flexible Notifications:** Users can control email/SMS independently
+✅ **SMS Support:** Infrastructure ready for SMS notifications with phone verification
+✅ **Future-Proof:** Architecture supports additional user-level preferences
+✅ **No Breaking Changes:** Old column preserved for rollback
+✅ **Type-Safe:** Full TypeScript support across stack
 
 ---
 

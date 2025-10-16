@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-16T04:34:11.372Z
+// Generated on: 2025-10-16T17:17:07.893Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1176,12 +1176,32 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	user_notification_preferences: {
+		batch_enabled: boolean;
+		batch_interval_minutes: number | null;
+		created_at: string;
+		email_enabled: boolean;
+		id: string;
+		in_app_enabled: boolean;
+		max_per_day: number | null;
+		max_per_hour: number | null;
+		priority: string;
+		push_enabled: boolean;
+		quiet_hours_enabled: boolean;
+		quiet_hours_end: string | null;
+		quiet_hours_start: string | null;
+		should_email_daily_brief: boolean;
+		should_sms_daily_brief: boolean;
+		sms_enabled: boolean;
+		updated_at: string;
+		user_id: string;
+	};
+	user_notification_preferences_backup: {
 		batch_enabled: boolean | null;
 		batch_interval_minutes: number | null;
 		created_at: string | null;
 		email_enabled: boolean | null;
-		event_type: string;
-		id: string;
+		event_type: string | null;
+		id: string | null;
 		in_app_enabled: boolean | null;
 		max_per_day: number | null;
 		max_per_hour: number | null;
@@ -1194,12 +1214,13 @@ export type DatabaseSchema = {
 		should_sms_daily_brief: boolean | null;
 		sms_enabled: boolean | null;
 		updated_at: string | null;
-		user_id: string;
+		user_id: string | null;
 	};
 	user_notifications: {
 		action_url: string | null;
 		created_at: string | null;
 		dismissed_at: string | null;
+		event_type: string | null;
 		expires_at: string | null;
 		id: string;
 		message: string;
@@ -1357,6 +1378,7 @@ export const tableNames = [
 	'user_context',
 	'user_discounts',
 	'user_notification_preferences',
+	'user_notification_preferences_backup',
 	'user_notifications',
 	'user_sms_preferences',
 	'users',

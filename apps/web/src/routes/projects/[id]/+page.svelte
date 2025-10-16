@@ -1486,7 +1486,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+	<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-6">
 		{#if project}
 			<!-- Project Header -->
 			<ProjectHeader
@@ -1498,7 +1498,7 @@
 			/>
 
 			<!-- Tabs -->
-			<div class="mt-6">
+			<div class="mt-4">
 				<ProjectTabs
 					activeTab={activeTab as any}
 					{tabCounts}
@@ -1508,7 +1508,7 @@
 			</div>
 
 			<!-- Tab Content with Smart Min-Height for Zero Layout Shift -->
-			<div class="mt-6" style="min-height: {smartContainerHeight}">
+			<div class="mt-4" style="min-height: {smartContainerHeight}">
 				<!-- Use show/hide pattern instead of key to preserve component state -->
 				<div class="tab-content">
 					<!-- Overview Tab -->

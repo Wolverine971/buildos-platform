@@ -73,7 +73,7 @@ export interface NotificationSubscription {
 export interface UserNotificationPreferences {
   id?: string;
   user_id?: string;
-  event_type: EventType;
+  // event_type removed - now one preference set per user applies to all events
 
   // Channel preferences
   push_enabled: boolean;
@@ -90,11 +90,15 @@ export interface UserNotificationPreferences {
   quiet_hours_enabled: boolean;
   quiet_hours_start: string;
   quiet_hours_end: string;
-  timezone: string;
+  // timezone removed - now stored in users table
 
   // Frequency limits
   max_per_day?: number;
   max_per_hour?: number;
+
+  // Daily brief preferences (user-level)
+  should_email_daily_brief?: boolean;
+  should_sms_daily_brief?: boolean;
 
   created_at?: string;
   updated_at?: string;

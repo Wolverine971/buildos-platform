@@ -141,6 +141,8 @@ Promise<ServiceResponse<{ messageId: string }>>;
 
 #### `sendTaskReminder(taskId: string)`
 
+**DEPRECATED**: This method is deprecated. Task reminders were never fully implemented and the feature has been removed.
+
 Send a reminder for a specific task.
 
 **Parameters:**
@@ -152,6 +154,8 @@ Send a reminder for a specific task.
 ```typescript
 Promise<ServiceResponse<{ messageId: string }>>;
 ```
+
+**Note**: This method will return an error. Use calendar event reminders (`event_reminders_enabled`) for time-based SMS notifications instead.
 
 ---
 
@@ -474,12 +478,16 @@ interface SMSPreferences {
   phone_number?: string;
   phone_verified: boolean;
   phone_verified_at?: Date;
-  task_reminders: boolean;
-  daily_brief_sms: boolean;
-  urgent_alerts: boolean;
+  // Working features
+  event_reminders_enabled: boolean; // Calendar event reminders
+  event_reminder_lead_time_minutes: number;
+  // Future features (UI ready, worker not implemented)
+  morning_kickoff_enabled: boolean;
+  morning_kickoff_time?: string;
+  evening_recap_enabled: boolean;
+  // Safety controls
   quiet_hours_start?: string;
   quiet_hours_end?: string;
-  timezone: string;
   daily_sms_limit: number;
   daily_sms_count: number;
   daily_count_reset_at?: Date;
@@ -490,6 +498,15 @@ interface SMSPreferences {
   updated_at: Date;
 }
 ```
+
+**DEPRECATED FIELDS** (removed 2025-10-29):
+
+- `task_reminders` - Never implemented
+- `daily_brief_sms` - Use `user_notification_preferences.should_sms_daily_brief` instead
+- `next_up_enabled` - Never implemented
+- `timezone` - Use `users.timezone` instead
+
+See [SMS Deprecation Migration Plan](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for migration details.
 
 ## Error Codes
 

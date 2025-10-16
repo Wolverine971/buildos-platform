@@ -55,6 +55,14 @@
 			count: tabCounts.tasks
 		},
 		{
+			id: 'braindumps',
+			label: 'Brain Dumps',
+			mobileLabel: 'Dumps',
+			icon: Brain,
+			count: tabCounts.braindumps,
+			hideCount: true
+		},
+		{
 			id: 'briefs',
 			label: 'Daily Briefs',
 			mobileLabel: 'Briefs',
@@ -67,14 +75,6 @@
 			label: 'Notes',
 			icon: LayoutGrid,
 			count: tabCounts.notes
-		},
-		{
-			id: 'braindumps',
-			label: 'Brain Dumps',
-			mobileLabel: 'Dumps',
-			icon: Brain,
-			count: tabCounts.braindumps,
-			hideCount: true
 		},
 		{
 			id: 'synthesis',

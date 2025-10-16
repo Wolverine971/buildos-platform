@@ -54,10 +54,13 @@ graph TD
 
 ### 📱 Notification Types
 
-- **Task Reminders**: Automated reminders for upcoming tasks
-- **Daily Brief Notifications**: Alert when AI-generated brief is ready
-- **Urgent Alerts**: Critical notifications that bypass quiet hours
+- **Calendar Event Reminders**: Automated reminders for calendar events (working feature)
+- **Daily Brief Notifications**: Alert when AI-generated brief is ready (via notification system)
+- **Morning Kickoff**: Start your day with a summary (future feature - UI ready)
+- **Evening Recap**: End of day recap (future feature - UI ready)
 - **Custom Messages**: Support for ad-hoc SMS sending
+
+**Note**: Daily brief SMS is now managed through the unified notification system (`user_notification_preferences.should_sms_daily_brief`), not via SMS preferences.
 
 ### ⚙️ User Preferences
 
@@ -121,14 +124,29 @@ user_sms_preferences
 ├── user_id (UUID, FK, UNIQUE)
 ├── phone_number (TEXT)
 ├── phone_verified (BOOLEAN)
-├── task_reminders (BOOLEAN)
-├── daily_brief_sms (BOOLEAN)
-├── urgent_alerts (BOOLEAN)
+├── phone_verified_at (TIMESTAMP)
+├── event_reminders_enabled (BOOLEAN)        -- Calendar event reminders (working)
+├── event_reminder_lead_time_minutes (INT)
+├── morning_kickoff_enabled (BOOLEAN)        -- Future feature
+├── morning_kickoff_time (TIME)
+├── evening_recap_enabled (BOOLEAN)          -- Future feature
 ├── quiet_hours_start (TIME)
 ├── quiet_hours_end (TIME)
 ├── opted_out (BOOLEAN)
-└── daily_sms_limit (INTEGER)
+├── opted_out_at (TIMESTAMP)
+├── opt_out_reason (TEXT)
+├── daily_sms_limit (INTEGER)
+├── daily_sms_count (INTEGER)
+└── daily_count_reset_at (TIMESTAMP)
 ```
+
+**DEPRECATED FIELDS** (removed as of 2025-10-29):
+
+- `daily_brief_sms` - Replaced by `user_notification_preferences.should_sms_daily_brief`
+- `task_reminders` - Never implemented
+- `next_up_enabled` - Never implemented
+
+See [SMS Deprecation Migration](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for details.
 
 ## API Endpoints
 
@@ -216,12 +234,14 @@ const confirmResult = await smsService.confirmVerification(
 
 ```typescript
 await smsService.updateSMSPreferences(userId, {
-  task_reminders: true,
-  daily_brief_sms: false,
+  event_reminders_enabled: true,
   quiet_hours_start: "22:00",
   quiet_hours_end: "08:00",
+  daily_sms_limit: 10,
 });
 ```
+
+**Note**: Daily brief SMS is now controlled via notification preferences, not SMS preferences. Use the `/api/notification-preferences` endpoint to enable daily brief SMS.
 
 ### Backend Usage
 

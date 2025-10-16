@@ -34,7 +34,7 @@ export interface PreferenceCheckResult {
  * 2. For SMS: Also checks user_sms_preferences for opt-out and verification
  *
  * @param userId - Recipient user ID
- * @param eventType - Event type (e.g., 'brief.completed')
+ * @param eventType - Event type (e.g., 'brief.completed') - used for logging only
  * @param channel - Notification channel ('push', 'in_app', 'email', 'sms')
  * @param logger - Logger instance for tracking
  * @returns PreferenceCheckResult with allowed flag and reason
@@ -54,25 +54,24 @@ export async function checkUserPreferences(
       channel,
     });
 
-    // Get notification preferences for this event type
+    // Get global notification preferences (applies to all event types)
     const { data: prefs, error: prefError } = await supabase
       .from("user_notification_preferences")
       .select(
         "push_enabled, in_app_enabled, email_enabled, sms_enabled, should_email_daily_brief, should_sms_daily_brief",
       )
       .eq("user_id", userId)
-      .eq("event_type", eventType)
       .single();
 
     if (prefError) {
-      prefLogger.warn("No preferences found for event type", {
+      prefLogger.warn("No preferences found for user", {
         userId,
         eventType,
         error: prefError.message,
       });
       return {
         allowed: false,
-        reason: `No preferences found for event type: ${eventType}`,
+        reason: `No preferences found for user`,
       };
     }
 
@@ -126,7 +125,7 @@ export async function checkUserPreferences(
       });
       return {
         allowed: false,
-        reason: `${channel} notifications disabled for event type: ${eventType}`,
+        reason: `${channel} notifications disabled by user preferences`,
         preferences: prefs,
       };
     }

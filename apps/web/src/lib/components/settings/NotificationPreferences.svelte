@@ -82,7 +82,7 @@
 		isLoading = true;
 		loadError = null;
 		try {
-			const prefs = await notificationPreferencesService.get('brief.completed');
+			const prefs = await notificationPreferencesService.get();
 
 			if (prefs) {
 				preferences = prefs;
@@ -234,7 +234,7 @@
 	async function savePreferences() {
 		isSaving = true;
 		try {
-			await notificationPreferencesService.update('brief.completed', {
+			await notificationPreferencesService.update({
 				push_enabled: pushEnabled,
 				in_app_enabled: inAppEnabled,
 				quiet_hours_enabled: quietHoursEnabled,

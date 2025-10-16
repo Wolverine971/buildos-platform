@@ -1,5 +1,5 @@
 // apps/web/src/lib/stores/notificationPreferences.ts
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 
 export interface DailyBriefNotificationPreferences {
 	should_email_daily_brief: boolean;
@@ -28,7 +28,8 @@ const DEFAULT_PREFERENCES: DailyBriefNotificationPreferences = {
 };
 
 function createNotificationPreferencesStore() {
-	const { subscribe, set, update } = writable<NotificationPreferencesState>(initialState);
+	const store = writable<NotificationPreferencesState>(initialState);
+	const { subscribe, set, update } = store;
 
 	return {
 		subscribe,
@@ -127,38 +128,38 @@ function createNotificationPreferencesStore() {
 
 		// Toggle email notifications
 		async toggleEmail() {
-			const currentState = initialState;
-			update((state) => {
-				Object.assign(currentState, state);
-				return state;
-			});
+			let currentState = get(store);
 
+			// Load preferences if not already loaded
 			if (!currentState.preferences) {
 				await this.load();
-				return;
+				currentState = get(store); // Get updated state after load
 			}
 
-			await this.save({
-				should_email_daily_brief: !currentState.preferences.should_email_daily_brief
-			});
+			// Toggle and save
+			if (currentState.preferences) {
+				await this.save({
+					should_email_daily_brief: !currentState.preferences.should_email_daily_brief
+				});
+			}
 		},
 
 		// Toggle SMS notifications
 		async toggleSMS() {
-			const currentState = initialState;
-			update((state) => {
-				Object.assign(currentState, state);
-				return state;
-			});
+			let currentState = get(store);
 
+			// Load preferences if not already loaded
 			if (!currentState.preferences) {
 				await this.load();
-				return;
+				currentState = get(store); // Get updated state after load
 			}
 
-			await this.save({
-				should_sms_daily_brief: !currentState.preferences.should_sms_daily_brief
-			});
+			// Toggle and save
+			if (currentState.preferences) {
+				await this.save({
+					should_sms_daily_brief: !currentState.preferences.should_sms_daily_brief
+				});
+			}
 		},
 
 		// Get default preferences
@@ -173,7 +174,7 @@ function createNotificationPreferencesStore() {
 
 		// Reset store
 		reset() {
-			set(initialState);
+			set({ ...initialState });
 		}
 	};
 }

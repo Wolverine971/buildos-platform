@@ -1064,7 +1064,7 @@ if (!user) {
 {
 	created_at: string;
 	day_of_week: number | null;
-	email_daily_brief: boolean | null;
+	email_daily_brief: boolean | null; // DEPRECATED: Use user_notification_preferences.should_email_daily_brief
 	frequency: string | null;
 	id: string;
 	is_active: boolean | null;
@@ -1074,6 +1074,8 @@ if (!user) {
 	user_id: string;
 }
 ```
+
+**Note:** The `email_daily_brief` field is deprecated as of 2025-10-13. Use `user_notification_preferences` with `event_type='user'` for daily brief notification settings. See [Notification Preferences Refactor](#notification-preferences-refactor-2025-10-13) below.
 
 ### project_brief_templates
 
@@ -1188,6 +1190,246 @@ const response = await fetch('/api/brief-preferences', {
 const response = await fetch('/api/daily-briefs/search?q=meeting&limit=10');
 const { results, total } = await response.json();
 ```
+
+### user_notification_preferences
+
+```typescript
+{
+	user_id: string;
+	event_type: string; // Use 'user' for daily brief notifications
+	push_enabled: boolean | null;
+	email_enabled: boolean | null;
+	sms_enabled: boolean | null;
+	in_app_enabled: boolean | null;
+	should_email_daily_brief: boolean | null; // NEW (2025-10-13)
+	should_sms_daily_brief: boolean | null; // NEW (2025-10-13)
+	quiet_hours_enabled: boolean | null;
+	quiet_hours_start: string | null;
+	quiet_hours_end: string | null;
+	timezone: string | null;
+	priority: string | null;
+	batch_enabled: boolean | null;
+	batch_interval_minutes: number | null;
+	max_per_hour: number | null;
+	max_per_day: number | null;
+	created_at: string | null;
+	updated_at: string | null;
+}
+```
+
+**Note:** Daily brief notifications use `event_type='user'` to distinguish user-level preferences from event-based notifications. See [Notification Preferences Refactor](#notification-preferences-refactor-2025-10-13) below.
+
+---
+
+## Notification Preferences Refactor (2025-10-13)
+
+### Overview
+
+On 2025-10-13, the daily brief notification system underwent a major refactor to separate **brief generation timing** from **notification delivery**. This change addresses the conflation of concerns where a single field controlled both when briefs were generated and how users were notified.
+
+**Implementation Plan:** `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+
+### Key Changes
+
+#### 1. Separated Concerns
+
+**Before:** `user_brief_preferences.email_daily_brief` controlled both generation and notification
+
+**After:**
+
+- `user_brief_preferences` → Controls WHEN briefs are generated (frequency, timing, timezone)
+- `user_notification_preferences` (with `event_type='user'`) → Controls HOW users are notified (email, SMS)
+
+#### 2. New Fields
+
+Added to `user_notification_preferences`:
+
+- `should_email_daily_brief` → Controls email notifications for daily briefs
+- `should_sms_daily_brief` → Controls SMS notifications for daily briefs (with phone verification)
+
+#### 3. User-Level vs Event-Based Preferences
+
+**User-Level Preferences** (`event_type='user'`):
+
+- Daily brief email notifications (`should_email_daily_brief`)
+- Daily brief SMS notifications (`should_sms_daily_brief`)
+
+**Event-Based Preferences** (`event_type='brief.completed'`):
+
+- Push notifications for brief completion events
+- In-app notifications for brief completion events
+
+This architecture maintains the composite primary key `(user_id, event_type)` while allowing clear separation of user-level settings from event-driven notifications.
+
+### Migration
+
+- **Migration File:** `/supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql`
+- **Data Migration:** Automatically migrated existing `email_daily_brief` values to `should_email_daily_brief`
+- **Backward Compatibility:** Old `email_daily_brief` field preserved but marked as deprecated
+- **Index:** Performance index added on new columns
+
+### API Changes
+
+#### Brief Preferences Endpoint (`/api/brief-preferences`)
+
+**Changed:** No longer handles `email_daily_brief` field
+
+**POST Request:**
+
+```typescript
+// Before (deprecated)
+{
+  frequency: "daily",
+  time_of_day: "09:00:00",
+  timezone: "America/New_York",
+  email_daily_brief: true  // ❌ No longer accepted
+}
+
+// After (correct)
+{
+  frequency: "daily",
+  time_of_day: "09:00:00",
+  timezone: "America/New_York",
+  is_active: true
+}
+// Use notification-preferences endpoint for email/SMS settings
+```
+
+#### Notification Preferences Endpoint (`/api/notification-preferences`)
+
+**New:** Extended with `?daily_brief=true` query parameter
+
+**GET `/api/notification-preferences?daily_brief=true`**
+
+Returns user-level daily brief notification preferences:
+
+```typescript
+{
+  should_email_daily_brief: boolean,
+  should_sms_daily_brief: boolean,
+  updated_at: string
+}
+```
+
+**POST `/api/notification-preferences?daily_brief=true`**
+
+Updates user-level daily brief notification preferences:
+
+```typescript
+// Request body
+{
+  should_email_daily_brief: boolean,
+  should_sms_daily_brief: boolean
+}
+
+// Response
+{
+  success: true,
+  data: {
+    should_email_daily_brief: boolean,
+    should_sms_daily_brief: boolean,
+    updated_at: string
+  }
+}
+```
+
+**Validation:**
+
+- Enabling SMS requires verified phone number
+- Returns 400 error if phone not verified: `{ error: "phone_verification_required" }`
+
+### Usage Examples
+
+#### Updating Brief Generation Preferences
+
+```typescript
+// Update WHEN briefs are generated
+const response = await fetch('/api/brief-preferences', {
+	method: 'POST',
+	body: JSON.stringify({
+		frequency: 'daily',
+		time_of_day: '09:00:00',
+		timezone: 'America/New_York',
+		is_active: true
+		// Note: email_daily_brief removed
+	})
+});
+```
+
+#### Updating Daily Brief Notification Preferences
+
+```typescript
+// Update HOW users are notified about briefs
+const response = await fetch('/api/notification-preferences?daily_brief=true', {
+	method: 'POST',
+	body: JSON.stringify({
+		should_email_daily_brief: true,
+		should_sms_daily_brief: false
+	})
+});
+
+const result = await response.json();
+if (!result.success) {
+	// Handle phone verification requirement for SMS
+	if (result.error === 'phone_verification_required') {
+		console.log('Please verify your phone number first');
+	}
+}
+```
+
+#### Getting Daily Brief Notification Preferences
+
+```typescript
+const response = await fetch('/api/notification-preferences?daily_brief=true');
+const prefs = await response.json();
+
+console.log('Email notifications:', prefs.should_email_daily_brief);
+console.log('SMS notifications:', prefs.should_sms_daily_brief);
+```
+
+### Worker Behavior
+
+#### Brief Generation Worker
+
+After successfully generating a brief, the worker checks notification preferences:
+
+```typescript
+// Query user-level notification preferences
+const { data: notificationPrefs } = await supabase
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // IMPORTANT: Filter by event_type
+	.single();
+
+// Send email if enabled
+if (notificationPrefs?.should_email_daily_brief) {
+	// Create email record and queue job
+}
+
+// Send SMS if enabled AND phone verified
+if (notificationPrefs?.should_sms_daily_brief) {
+	// Check phone verification
+	// Queue SMS notification if verified
+}
+```
+
+**Critical:** All worker queries must include `.eq("event_type", "user")` to avoid conflicts with event-based preference rows.
+
+### Benefits
+
+- **Clear Separation:** Generation timing and notification delivery are independent
+- **Flexible Notifications:** Users can choose email, SMS, or both for daily briefs
+- **SMS Support:** Infrastructure ready for SMS notifications with phone verification
+- **No Breaking Changes:** Old column preserved for safe rollback
+- **Future-Proof:** Architecture supports additional user-level notification preferences
+- **Type-Safe:** Full TypeScript support across entire stack
+
+### Related Documentation
+
+- **Implementation Plan:** `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
+- **Phase 3 Implementation:** `/apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_IMPLEMENTATION.md`
+- **Notification Preferences API:** See [notification-preferences.md](./notification-preferences.md) (if exists)
 
 ---
 

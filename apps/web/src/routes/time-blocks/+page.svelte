@@ -166,102 +166,77 @@
 </script>
 
 <div class="relative min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900">
-	<section class="relative mx-auto flex max-w-5xl flex-col gap-10 px-4 py-12 lg:px-8">
-		<header class="space-y-4">
-			<div class="space-y-2">
-				<h1 class="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-					Block immersive focus sessions for the work that matters
-				</h1>
-				<p class="max-w-2xl text-base text-slate-600 dark:text-slate-300">
-					Select an active project, reserve a window, and BuildOS mirrors the block on
-					your calendar with premium styling and automatic clean-up when plans shift.
-				</p>
-			</div>
+	<section
+		class="relative mx-auto flex max-w-5xl flex-col gap-4 px-3 py-6 sm:px-4 sm:py-8 lg:gap-5 lg:px-6"
+	>
+		<header class="space-y-1">
+			<h1
+				class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl"
+			>
+				Time Blocks
+			</h1>
+			<p class="text-sm text-slate-600 dark:text-slate-300 sm:text-base">
+				Focus sessions synced to your calendar
+			</p>
 		</header>
 
+		<!-- Compact action bar -->
 		<div
-			class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+			class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 		>
-			<!-- Card Header with Subtle Gradient -->
+			<!-- View mode toggle - Compact segmented control -->
 			<div
-				class="border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 px-6 py-4 dark:border-gray-700 dark:from-blue-900/10 dark:to-indigo-900/10"
+				class="inline-flex rounded-md bg-gray-100 p-0.5 dark:bg-gray-800"
+				role="group"
+				aria-label="View mode"
 			>
-				<div class="space-y-2">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-						Plan a new focus block
-					</h2>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
-						{#if displayMode === 'calendar'}
-							Drag on the calendar below to create a block, or click the button to
-							schedule one.
-						{:else}
-							Pick a project and we'll create a polished calendar event with BuildOS'
-							signature aesthetic.
-						{/if}
-					</p>
-				</div>
+				<button
+					type="button"
+					class={`relative rounded px-3 py-1.5 text-xs font-medium transition-all ${
+						displayMode === 'calendar'
+							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+					}`}
+					onclick={() => displayMode === 'calendar'}
+					aria-pressed={displayMode === 'calendar'}
+				>
+					Calendar
+				</button>
+				<button
+					type="button"
+					class={`relative rounded px-3 py-1.5 text-xs font-medium transition-all ${
+						displayMode === 'list'
+							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+					}`}
+					onclick={() => (displayMode = 'list')}
+					aria-pressed={displayMode === 'list'}
+				>
+					List
+				</button>
 			</div>
 
-			<!-- Card Body -->
-			<div class="px-6 py-6 md:px-8">
-				<div
-					class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end"
+			<div class="flex items-center gap-2">
+				<Button
+					class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:shadow-md hover:from-blue-700 hover:to-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:py-2 sm:text-sm"
+					on:click={(e) => openCreateModal()}
+					disabled={data.projects.length === 0}
+					icon={Plus}
+					type="button"
+					variant="primary"
 				>
-					<!-- View mode toggle - Segmented Control -->
-					<div
-						class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800"
-						role="group"
-						aria-label="View mode"
-					>
-						<button
-							type="button"
-							class={`relative rounded-md px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-								displayMode === 'calendar'
-									? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-									: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-							}`}
-							onclick={() => (displayMode = 'calendar')}
-							aria-pressed={displayMode === 'calendar'}
-						>
-							Calendar
-						</button>
-						<button
-							type="button"
-							class={`relative rounded-md px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-								displayMode === 'list'
-									? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-									: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-							}`}
-							onclick={() => (displayMode = 'list')}
-							aria-pressed={displayMode === 'list'}
-						>
-							List
-						</button>
-					</div>
+					<span class="hidden sm:inline">Create</span> Block
+				</Button>
 
-					<Button
-						class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-						on:click={(e) => openCreateModal()}
-						disabled={data.projects.length === 0}
-						icon={Plus}
-						type="button"
-						variant="primary"
-					>
-						Create time block
-					</Button>
-
-					{#if data.projects.length === 0}
-						<p class="text-xs font-medium text-blue-600 dark:text-blue-300">
-							Add or reactivate a project to unlock Time Play.
-						</p>
-					{/if}
-				</div>
+				{#if data.projects.length === 0}
+					<p class="text-xs text-blue-600 dark:text-blue-400">Add a project first</p>
+				{/if}
 			</div>
 		</div>
 
 		<!-- Time Range Selector Card -->
 		<div
-			class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+			class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
 		>
 			<TimeRangeSelector
 				dateRange={$timeBlocksStore.selectedDateRange}
@@ -271,13 +246,13 @@
 
 		{#if $timeBlocksStore.error}
 			<div
-				class="rounded-2xl border border-rose-200/70 bg-gradient-to-r from-rose-50 to-red-50 px-6 py-4 text-sm font-medium text-rose-700 shadow-sm dark:border-rose-500/40 dark:from-rose-950/30 dark:to-red-950/30 dark:text-rose-200"
+				class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/40 dark:bg-rose-950/20 dark:text-rose-300 sm:text-sm"
 			>
 				{$timeBlocksStore.error}
 			</div>
 		{:else if feedback}
 			<div
-				class="rounded-2xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50 to-green-50 px-6 py-4 text-sm font-medium text-emerald-700 shadow-sm dark:border-emerald-500/40 dark:from-emerald-950/20 dark:to-green-950/20 dark:text-emerald-200"
+				class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/20 dark:text-emerald-300 sm:text-sm"
 			>
 				{feedback}
 			</div>
@@ -285,14 +260,12 @@
 
 		{#if !data.isCalendarConnected}
 			<div
-				class="rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50 to-yellow-50 px-6 py-5 shadow-sm dark:border-amber-500/40 dark:from-amber-950/20 dark:to-yellow-950/20"
+				class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/40 dark:bg-amber-950/20 sm:px-4 sm:py-3"
 			>
-				<div class="flex items-start gap-4">
-					<div
-						class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40"
-					>
+				<div class="flex items-center justify-between gap-3">
+					<div class="flex items-center gap-2 flex-1 min-w-0">
 						<svg
-							class="h-5 w-5 text-amber-600 dark:text-amber-400"
+							class="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -304,42 +277,27 @@
 								d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
 							/>
 						</svg>
-					</div>
-					<div class="flex-1">
-						<h3 class="mb-1 font-semibold text-amber-900 dark:text-amber-100">
-							Connect Google Calendar
-						</h3>
-						<p class="mb-3 text-sm text-amber-700 dark:text-amber-200">
-							See your existing calendar events alongside time blocks. Connect your
-							Google Calendar to view all your commitments in one place.
-						</p>
-						<a
-							href="/profile?tab=calendar"
-							class="inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
-						>
-							Connect Calendar
-							<svg
-								class="ml-2 h-4 w-4"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
+						<div class="min-w-0 flex-1">
+							<p
+								class="text-xs font-medium text-amber-900 dark:text-amber-100 sm:text-sm"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M13 7l5 5m0 0l-5 5m5-5H6"
-								/>
-							</svg>
-						</a>
+								Connect Google Calendar to see your events
+							</p>
+						</div>
 					</div>
+					<a
+						href="/profile?tab=calendar"
+						class="flex-shrink-0 inline-flex items-center rounded-md bg-amber-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 sm:px-3 sm:py-1.5"
+					>
+						Connect
+					</a>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Time Allocation Summary -->
 		<div
-			class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+			class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
 		>
 			<TimeAllocationPanel
 				allocation={$timeBlocksStore.allocation}
@@ -350,7 +308,7 @@
 
 		<!-- Calendar/List View (full width) -->
 		<div
-			class="rounded-xl border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800"
+			class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
 		>
 			{#if $timeBlocksStore.isLoading}
 				<div class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
@@ -375,7 +333,7 @@
 				/>
 			{:else}
 				<!-- List View: Show Available Slots List + Time Blocks List -->
-				<div class="space-y-4 px-6 py-4">
+				<div class="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
 					<AvailableSlotList {availableSlots} onSlotClick={handleSlotClick} />
 					<TimeBlockList
 						blocks={$timeBlocksStore.blocks}

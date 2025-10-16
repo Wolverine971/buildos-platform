@@ -7,7 +7,7 @@ import type { ParsedOperation } from '$lib/types/brain-dump';
 const mockSupabase = {
 	from: vi.fn(),
 	auth: {
-		getSession: vi.fn()
+		safeGetSession: vi.fn()
 	}
 } as any;
 

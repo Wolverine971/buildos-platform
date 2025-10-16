@@ -24,9 +24,10 @@ class NotificationPreferencesService {
 	}
 
 	/**
-	 * Get user preferences for a specific event type
+	 * Get user notification preferences (global preferences for all event types)
+	 * Returns global user preferences or defaults if not set
 	 */
-	async get(eventType: EventType): Promise<UserNotificationPreferences> {
+	async get(): Promise<UserNotificationPreferences> {
 		// Get current user ID
 		const {
 			data: { user },
@@ -41,52 +42,30 @@ class NotificationPreferencesService {
 			.from('user_notification_preferences')
 			.select('*')
 			.eq('user_id', user.id)
-			.eq('event_type', eventType)
-			.single();
-
-		if (error && error.code !== 'PGRST116') {
-			// PGRST116 = no rows returned
-			throw error;
-		}
-
-		// Return preferences or defaults
-		return data || this.getDefaults(eventType);
-	}
-
-	/**
-	 * Get all notification preferences for current user
-	 */
-	async getAll(): Promise<UserNotificationPreferences[]> {
-		// Get current user ID
-		const {
-			data: { user },
-			error: authError
-		} = await this.supabase.auth.getUser();
-
-		if (authError || !user) {
-			throw new Error('User not authenticated');
-		}
-
-		const { data, error } = await this.supabase
-			.from('user_notification_preferences')
-			.select('*')
-			.eq('user_id', user.id)
-			.order('event_type');
+			.maybeSingle();
 
 		if (error) {
 			throw error;
 		}
 
-		return data || [];
+		// Return preferences or defaults
+		return data || this.getDefaults();
 	}
 
 	/**
-	 * Update notification preferences for an event type
+	 * @deprecated Use get() instead - preferences are now global per user, not per event type
+	 * Get all notification preferences for current user (returns single row)
 	 */
-	async update(
-		eventType: EventType,
-		updates: Partial<UserNotificationPreferences>
-	): Promise<void> {
+	async getAll(): Promise<UserNotificationPreferences[]> {
+		const prefs = await this.get();
+		return [prefs];
+	}
+
+	/**
+	 * Update global notification preferences
+	 * @param updates - Partial updates to notification preferences
+	 */
+	async update(updates: Partial<UserNotificationPreferences>): Promise<void> {
 		// Get current user ID
 		const {
 			data: { user },
@@ -100,12 +79,11 @@ class NotificationPreferencesService {
 		const { error } = await this.supabase.from('user_notification_preferences').upsert(
 			{
 				user_id: user.id,
-				event_type: eventType,
 				...updates,
 				updated_at: new Date().toISOString()
 			},
 			{
-				onConflict: 'user_id,event_type'
+				onConflict: 'user_id'
 			}
 		);
 
@@ -226,98 +204,23 @@ class NotificationPreferencesService {
 	}
 
 	/**
-	 * Get default preferences for an event type
+	 * Get default global notification preferences
 	 */
-	private getDefaults(eventType: EventType): UserNotificationPreferences {
-		// Default channel preferences based on event type
-		const defaults: Record<
-			EventType,
-			Pick<
-				UserNotificationPreferences,
-				'push_enabled' | 'email_enabled' | 'sms_enabled' | 'in_app_enabled'
-			>
-		> = {
-			// Admin events - push and in-app only
-			'user.signup': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'user.trial_expired': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'payment.failed': {
-				push_enabled: true,
-				email_enabled: true,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'error.critical': {
-				push_enabled: true,
-				email_enabled: true,
-				sms_enabled: true,
-				in_app_enabled: true
-			},
-
-			// User events - multiple channels
-			'brief.completed': {
-				push_enabled: true,
-				email_enabled: true,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'brief.failed': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'brain_dump.processed': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'task.due_soon': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: true,
-				in_app_enabled: true
-			},
-			'project.phase_scheduled': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			},
-			'calendar.sync_failed': {
-				push_enabled: true,
-				email_enabled: false,
-				sms_enabled: false,
-				in_app_enabled: true
-			}
-		};
-
-		const channelDefaults = defaults[eventType] || {
-			push_enabled: true,
-			email_enabled: false,
-			sms_enabled: false,
-			in_app_enabled: true
-		};
-
+	private getDefaults(): UserNotificationPreferences {
+		// Default global channel preferences (apply to all event types)
 		return {
-			event_type: eventType,
-			...channelDefaults,
+			push_enabled: true,
+			email_enabled: true,
+			sms_enabled: false,
+			in_app_enabled: true,
 			priority: 'normal',
 			batch_enabled: false,
 			quiet_hours_enabled: false,
 			quiet_hours_start: '22:00:00',
 			quiet_hours_end: '08:00:00',
-			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			should_email_daily_brief: false,
+			should_sms_daily_brief: false
 		};
 	}
 }

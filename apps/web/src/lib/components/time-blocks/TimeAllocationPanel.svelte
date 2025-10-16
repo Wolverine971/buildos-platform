@@ -302,20 +302,21 @@
 	.time-allocation-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
-		padding: 1.25rem 1.5rem;
+		gap: 0.75rem;
+		padding: 0.875rem 1rem;
 	}
 
 	@media (min-width: 768px) {
 		.time-allocation-panel {
-			padding: 1.5rem 2rem;
+			padding: 1rem 1.25rem;
+			gap: 1rem;
 		}
 	}
 
 	.panel__header {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.5rem;
 	}
 
 	@media (min-width: 1024px) {
@@ -323,21 +324,21 @@
 			flex-direction: row;
 			align-items: center;
 			justify-content: space-between;
-			gap: 1.5rem;
+			gap: 1rem;
 		}
 	}
 
 	.panel__title h3 {
-		font-size: 1.125rem;
+		font-size: 0.9375rem;
 		font-weight: 600;
 		color: #111827;
 		margin: 0;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 768px) {
 		.panel__title h3 {
-			font-size: 1.25rem;
+			font-size: 1rem;
 		}
 	}
 
@@ -346,10 +347,10 @@
 	}
 
 	.panel__title p {
-		margin: 0.375rem 0 0;
-		font-size: 0.875rem;
+		margin: 0.25rem 0 0;
+		font-size: 0.75rem;
 		color: #6b7280;
-		line-height: 1.5;
+		line-height: 1.4;
 	}
 
 	:global(.dark) .panel__title p {
@@ -358,7 +359,7 @@
 
 	.panel__content {
 		display: grid;
-		gap: 1.25rem;
+		gap: 0.75rem;
 		grid-template-columns: 1fr;
 	}
 
@@ -366,13 +367,13 @@
 		.panel__content {
 			grid-template-columns: auto 1fr;
 			align-items: center;
-			gap: 2rem;
+			gap: 1.25rem;
 		}
 	}
 
 	@media (min-width: 1280px) {
 		.panel__content {
-			gap: 3rem;
+			gap: 1.5rem;
 		}
 	}
 
@@ -380,41 +381,41 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.875rem;
+		gap: 0.625rem;
 	}
 
 	@media (min-width: 768px) {
 		.panel__visual {
 			flex-direction: row;
-			gap: 1.25rem;
+			gap: 0.875rem;
 		}
 	}
 
 	.panel__chart-shell {
 		position: relative;
-		height: 9rem;
-		width: 9rem;
+		height: 7rem;
+		width: 7rem;
 		flex-shrink: 0;
 		border-radius: 9999px;
 		background: #f1f5f9;
 		box-shadow:
-			0 1px 3px 0 rgba(0, 0, 0, 0.1),
-			0 1px 2px 0 rgba(0, 0, 0, 0.06);
-		padding: 0.75rem;
+			0 1px 2px 0 rgba(0, 0, 0, 0.05),
+			0 1px 3px 0 rgba(0, 0, 0, 0.1);
+		padding: 0.625rem;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-shell {
-			height: 10rem;
-			width: 10rem;
+			height: 8rem;
+			width: 8rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-shell {
-			height: 11rem;
-			width: 11rem;
-			padding: 0.85rem;
+			height: 8.5rem;
+			width: 8.5rem;
+			padding: 0.75rem;
 		}
 	}
 
@@ -427,20 +428,20 @@
 
 	.panel__chart {
 		position: absolute;
-		inset: 0.75rem;
+		inset: 0.625rem;
 		border-radius: 9999px;
-		transition: background 0.4s ease;
+		transition: background 0.3s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart {
-			inset: 0.85rem;
+			inset: 0.75rem;
 		}
 	}
 
 	.panel__chart-core {
 		position: absolute;
-		inset: 2.75rem;
+		inset: 2.25rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -448,23 +449,23 @@
 		border-radius: 9999px;
 		background: #ffffff;
 		box-shadow:
-			0 1px 3px 0 rgba(0, 0, 0, 0.1),
-			0 1px 2px 0 rgba(0, 0, 0, 0.06);
+			0 1px 2px 0 rgba(0, 0, 0, 0.05),
+			0 1px 3px 0 rgba(0, 0, 0, 0.1);
 		text-align: center;
-		gap: 0.25rem;
-		padding: 0.625rem;
+		gap: 0.125rem;
+		padding: 0.5rem;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-core {
-			inset: 3rem;
+			inset: 2.5rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core {
-			inset: 3.2rem;
-			padding: 0.75rem;
+			inset: 2.625rem;
+			padding: 0.625rem;
 		}
 	}
 
@@ -472,32 +473,32 @@
 		background: #111827;
 		color: #e2e8f0;
 		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.1),
-			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			0 1px 2px 0 rgba(0, 0, 0, 0.05),
+			0 2px 4px 0 rgba(0, 0, 0, 0.1);
 	}
 
 	.panel__chart-core p {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: 1.125rem;
 		font-weight: 700;
 		color: #111827;
-		line-height: 1.2;
+		line-height: 1.1;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-core p {
-			font-size: 1.5rem;
+			font-size: 1.25rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core p {
-			font-size: 1.75rem;
+			font-size: 1.375rem;
 		}
 	}
 
 	.panel__chart-core span {
-		font-size: 0.625rem;
+		font-size: 0.5625rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: #6b7280;
@@ -506,7 +507,7 @@
 
 	@media (min-width: 1024px) {
 		.panel__chart-core span {
-			font-size: 0.6875rem;
+			font-size: 0.625rem;
 		}
 	}
 
@@ -561,31 +562,32 @@
 
 	.panel__stats-grid {
 		display: grid;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		grid-template-columns: 1fr;
 	}
 
 	@media (min-width: 640px) {
 		.panel__stats-grid {
 			grid-template-columns: repeat(2, 1fr);
+			gap: 0.625rem;
 		}
 	}
 
 	.panel__stat-card {
-		border-radius: 0.75rem;
-		padding: 1rem 1.25rem;
+		border-radius: 0.5rem;
+		padding: 0.625rem 0.875rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.625rem;
+		gap: 0.375rem;
 		position: relative;
 		overflow: hidden;
 		border: 1px solid;
-		transition: all 0.2s ease;
+		transition: all 0.15s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-card {
-			padding: 1.25rem 1.5rem;
+			padding: 0.75rem 1rem;
 		}
 	}
 
@@ -622,60 +624,60 @@
 	}
 
 	.panel__stat-label {
-		font-size: 0.75rem;
+		font-size: 0.625rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		margin: 0;
-		opacity: 0.85;
+		opacity: 0.8;
 	}
 
 	.panel__stat-values {
 		display: flex;
 		align-items: baseline;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.panel__stat-primary {
-		font-size: 1.5rem;
+		font-size: 1.125rem;
 		font-weight: 700;
-		line-height: 1.2;
+		line-height: 1.1;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-primary {
-			font-size: 1.875rem;
+			font-size: 1.375rem;
 		}
 	}
 
 	.panel__stat-secondary {
-		font-size: 0.875rem;
+		font-size: 0.75rem;
 		font-weight: 600;
-		opacity: 0.75;
+		opacity: 0.7;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-secondary {
-			font-size: 1rem;
+			font-size: 0.875rem;
 		}
 	}
 
 	.panel__stat-hint {
-		font-size: 0.75rem;
+		font-size: 0.6875rem;
 		margin: 0;
 		opacity: 0.7;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	.panel__breakdown {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown {
-			gap: 0.875rem;
+			gap: 0.625rem;
 		}
 	}
 
@@ -684,19 +686,20 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1rem 1.25rem;
-		margin: 0 -1.25rem 0.5rem -1.25rem;
+		padding: 0.625rem 1rem;
+		margin: 0 -1rem 0.25rem -1rem;
 		border: none;
 		background: transparent;
-		border-radius: 0.75rem;
+		border-radius: 0.5rem;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all 0.15s ease;
 		-webkit-tap-highlight-color: transparent;
 	}
 
 	@media (min-width: 768px) {
 		.panel__breakdown-header {
-			padding: 1rem 2rem;
+			padding: 0.75rem 1.25rem;
+			margin: 0 -1.25rem 0.25rem -1.25rem;
 		}
 	}
 
@@ -733,20 +736,20 @@
 	.panel__breakdown-title {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.panel__breakdown-header h4 {
 		margin: 0;
-		font-size: 1rem;
+		font-size: 0.8125rem;
 		font-weight: 600;
 		color: #111827;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-header h4 {
-			font-size: 1.0625rem;
+			font-size: 0.875rem;
 		}
 	}
 
@@ -758,9 +761,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 3.5rem;
-		padding: 0.25rem 0.625rem;
-		font-size: 0.6875rem;
+		min-width: 2.75rem;
+		padding: 0.125rem 0.5rem;
+		font-size: 0.625rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.025em;
@@ -772,9 +775,9 @@
 
 	@media (max-width: 640px) {
 		.panel__breakdown-count {
-			font-size: 0.625rem;
-			min-width: 3rem;
-			padding: 0.125rem 0.5rem;
+			font-size: 0.5625rem;
+			min-width: 2.5rem;
+			padding: 0.0625rem 0.375rem;
 		}
 	}
 
@@ -786,7 +789,7 @@
 	.panel__breakdown-chevron {
 		flex-shrink: 0;
 		color: #6b7280;
-		transition: transform 0.3s ease;
+		transition: transform 0.2s ease;
 	}
 
 	:global(.dark) .panel__breakdown-chevron {
@@ -799,16 +802,16 @@
 
 	.panel__breakdown-list {
 		display: grid;
-		gap: 0.625rem;
+		gap: 0.5rem;
 		list-style: none;
 		padding: 0;
 		margin: 0;
-		animation: slideDown 0.3s ease;
+		animation: slideDown 0.25s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-list {
-			gap: 0.75rem;
+			gap: 0.625rem;
 		}
 	}
 
@@ -827,35 +830,34 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		gap: 0.875rem;
-		padding: 0.75rem 0.875rem;
-		border-radius: 0.75rem;
+		gap: 0.5rem;
+		padding: 0.5rem 0.625rem;
+		border-radius: 0.5rem;
 		background: #ffffff;
 		border: 1px solid #e2e8f0;
-		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 		transition:
-			transform 0.2s ease,
-			box-shadow 0.2s ease;
+			transform 0.15s ease,
+			box-shadow 0.15s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-item {
-			padding: 0.875rem 1rem;
-			border-radius: 0.75rem;
+			padding: 0.625rem 0.75rem;
 		}
 	}
 
 	.panel__breakdown-item:hover {
 		transform: translateY(-1px);
 		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.1),
-			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			0 2px 4px 0 rgba(0, 0, 0, 0.05),
+			0 1px 2px 0 rgba(0, 0, 0, 0.03);
 	}
 
 	:global(.dark) .panel__breakdown-item {
 		background: #1f2937;
 		border-color: #374151;
-		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 	}
 
 	.panel__breakdown-item--build {
@@ -875,40 +877,40 @@
 	.panel__breakdown-meta {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		min-width: 0;
 	}
 
 	.panel__indicator {
-		height: 0.75rem;
-		width: 0.75rem;
+		height: 0.625rem;
+		width: 0.625rem;
 		flex-shrink: 0;
 		border-radius: 50%;
-		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 	}
 
 	:global(.dark) .panel__indicator {
-		box-shadow: 0 0 0 3px rgba(31, 41, 59, 0.5);
+		box-shadow: 0 0 0 2px rgba(31, 41, 59, 0.5);
 	}
 
 	@media (min-width: 1024px) {
 		.panel__indicator {
-			height: 0.8125rem;
-			width: 0.8125rem;
+			height: 0.6875rem;
+			width: 0.6875rem;
 		}
 	}
 
 	.panel__breakdown-name {
-		font-size: 0.9375rem;
+		font-size: 0.8125rem;
 		font-weight: 600;
 		color: #111827;
 		margin: 0;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-name {
-			font-size: 1rem;
+			font-size: 0.875rem;
 		}
 	}
 
@@ -917,15 +919,15 @@
 	}
 
 	.panel__breakdown-sub {
-		margin: 0.25rem 0 0;
-		font-size: 0.75rem;
+		margin: 0.125rem 0 0;
+		font-size: 0.6875rem;
 		color: #6b7280;
-		line-height: 1.4;
+		line-height: 1.3;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-sub {
-			font-size: 0.8125rem;
+			font-size: 0.75rem;
 		}
 	}
 
@@ -937,11 +939,11 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
-		gap: 0.25rem;
+		gap: 0.125rem;
 	}
 
 	.panel__breakdown-hours {
-		font-size: 1rem;
+		font-size: 0.875rem;
 		font-weight: 700;
 		color: #111827;
 		line-height: 1.2;
@@ -949,7 +951,7 @@
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-hours {
-			font-size: 1.125rem;
+			font-size: 0.9375rem;
 		}
 	}
 
@@ -958,14 +960,14 @@
 	}
 
 	.panel__breakdown-percent {
-		font-size: 0.75rem;
+		font-size: 0.6875rem;
 		color: #6b7280;
 		font-weight: 600;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-percent {
-			font-size: 0.8125rem;
+			font-size: 0.75rem;
 		}
 	}
 
@@ -975,23 +977,24 @@
 
 	@media (max-width: 640px) {
 		.time-allocation-panel {
-			padding: 1rem 1.25rem;
-			gap: 1rem;
+			padding: 0.75rem 0.875rem;
+			gap: 0.625rem;
 		}
 
 		.panel__breakdown-header {
-			margin: 0 -1rem 0.5rem -1rem;
-			padding: 0.875rem 1rem;
+			margin: 0 -0.875rem 0.25rem -0.875rem;
+			padding: 0.5rem 0.875rem;
 		}
 
 		.panel__breakdown-title {
-			gap: 0.5rem;
+			gap: 0.375rem;
 		}
 
 		.panel__breakdown-item {
 			flex-direction: column;
 			align-items: flex-start;
-			gap: 0.625rem;
+			gap: 0.375rem;
+			padding: 0.5rem 0.625rem;
 		}
 
 		.panel__breakdown-values {

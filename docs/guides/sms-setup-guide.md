@@ -240,10 +240,13 @@ Users need to:
 
 1. Verify phone number
 2. Enable desired notifications:
-   - Task reminders
-   - Daily brief notifications
-   - Urgent alerts
+   - Calendar event reminders (working feature)
+   - Daily brief SMS (via notification preferences, not SMS preferences)
+   - Morning kickoff (future feature)
+   - Evening recap (future feature)
 3. Set quiet hours (optional)
+
+**Important**: Daily brief SMS notifications are managed through the unified notification system at `/settings/notifications`, not in SMS preferences.
 
 ### 9.2 Admin Setup
 
@@ -255,18 +258,20 @@ INSERT INTO user_sms_preferences (
   user_id,
   phone_number,
   phone_verified,
-  task_reminders,
-  daily_brief_sms,
-  urgent_alerts
+  event_reminders_enabled,
+  morning_kickoff_enabled,
+  evening_recap_enabled
 ) VALUES (
   (SELECT id FROM users WHERE email = 'admin@example.com'),
   '+15551234567',
   false, -- Still needs verification
-  true,
-  true,
-  true
+  true,  -- Calendar event reminders
+  false, -- Future feature
+  false  -- Future feature
 );
 ```
+
+**Note**: Daily brief SMS is controlled via notification preferences (`user_notification_preferences.should_sms_daily_brief`), not SMS preferences.
 
 ## Step 10: Production Deployment
 

@@ -213,7 +213,7 @@
 
 {#if project}
 	<!-- Back button - outside of the collapsible header -->
-	<nav aria-label="Project navigation" class="mb-4">
+	<nav aria-label="Project navigation" class="mb-3">
 		<a
 			href="/projects"
 			class="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
@@ -468,14 +468,14 @@
 			>
 				<!-- Description -->
 				{#if project?.description}
-					<div class="max-w-none mb-4" in:fade={{ duration: 200, delay: 100 }}>
+					<div class="max-w-none mb-3" in:fade={{ duration: 200, delay: 100 }}>
 						{project.description}
 					</div>
 				{/if}
 
 				<!-- Key Metrics Grid -->
 				<div
-					class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
+					class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3"
 					in:fade={{ duration: 200, delay: 150 }}
 				>
 					<!-- Status -->
@@ -547,7 +547,7 @@
 				<!-- Tags -->
 				{#if project?.tags?.length}
 					<div
-						class="flex items-start gap-2 mb-4"
+						class="flex items-start gap-2 mb-3"
 						in:fade={{ duration: 200, delay: 200 }}
 					>
 						<Tag class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -623,7 +623,7 @@
 		transition: all var(--transition-duration) var(--timing-function);
 		overflow: visible; /* Allow dropdowns to show outside container */
 
-		margin-bottom: 1.5rem;
+		margin-bottom: 1rem;
 		border-left: none;
 
 		/* remove rounding on the left corners */
@@ -676,9 +676,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 12px 16px;
-		min-height: 56px;
-		gap: 16px;
+		padding: 10px 14px;
+		min-height: 52px;
+		gap: 12px;
 		width: 100%;
 		position: relative;
 	}
@@ -714,7 +714,7 @@
 	}
 
 	.project-title {
-		font-size: 1.75rem;
+		font-size: 1.5rem;
 		font-weight: 600;
 		color: rgb(17 24 39);
 		margin: 0;
@@ -731,12 +731,12 @@
 	.expand-toggle {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 6px 12px;
+		gap: 5px;
+		padding: 5px 10px;
 
 		background: rgba(0, 0, 0, 0.04);
 		border: 1px solid rgba(0, 0, 0, 0.06);
-		border-radius: 16px;
+		border-radius: 14px;
 
 		font-size: 0.8125rem;
 		font-weight: 500;
@@ -812,9 +812,10 @@
 		}
 
 		.expand-toggle {
-			padding: 8px;
-			min-width: 32px;
+			padding: 6px;
+			min-width: 30px;
 			justify-content: center;
+			border-radius: 12px;
 		}
 	}
 
@@ -832,7 +833,7 @@
 	}
 
 	.expandable-content {
-		padding: 0 12px 12px;
+		padding: 0 14px 10px;
 		border-top: 1px solid rgba(0, 0, 0, 0.05);
 		/* position: relative; */
 	}
@@ -845,7 +846,7 @@
 		background: rgba(249, 250, 251, 0.5);
 		border: 1px solid rgba(229, 231, 235, 0.5);
 		border-radius: 8px;
-		padding: 8px 12px;
+		padding: 6px 10px;
 	}
 
 	:global(.dark) .metric-card {
@@ -891,14 +892,14 @@
 	}
 
 	.progress-section {
-		margin-top: 1rem;
+		margin-top: 0.75rem;
 	}
 
 	.progress-bar-container {
 		width: 100%;
-		height: 6px;
+		height: 5px;
 		background: rgba(229, 231, 235, 0.5);
-		border-radius: 3px;
+		border-radius: 2.5px;
 		overflow: hidden;
 	}
 
@@ -914,8 +915,8 @@
 	}
 
 	.timeline-section {
-		margin-top: 1rem;
-		padding-top: 1rem;
+		margin-top: 0.75rem;
+		padding-top: 0.75rem;
 		border-top: 1px solid rgba(0, 0, 0, 0.05);
 	}
 
@@ -939,17 +940,14 @@
 	/* Mobile optimizations */
 	@media (max-width: 640px) {
 		.project-header-minimal {
-			border-radius: 0;
-			border-left: none;
-			border-right: none;
-			margin-left: -1rem;
-			margin-right: -1rem;
+			border-radius: 10px;
+			margin-bottom: 0.75rem;
 		}
 
 		.header-bar {
-			padding: 10px 16px;
-			min-height: 48px;
-			gap: 12px;
+			padding: 8px 12px;
+			min-height: 46px;
+			gap: 10px;
 		}
 
 		.title-section {
@@ -957,11 +955,11 @@
 		}
 
 		.expandable-content {
-			padding: 0 16px 12px;
+			padding: 0 12px 10px;
 		}
 
 		.project-title {
-			font-size: 1.125rem;
+			font-size: 1.25rem;
 		}
 	}
 
