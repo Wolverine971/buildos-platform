@@ -1,7 +1,7 @@
-<!-- apps/web/src/lib/components/time-play/AvailableSlotFinder.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/AvailableSlotFinder.svelte -->
 <script lang="ts">
-	import { timePlayStore } from '$lib/stores/timePlayStore';
-	import type { SlotFinderConfig } from '$lib/types/time-play';
+	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
+	import type { SlotFinderConfig } from '$lib/types/time-blocks';
 
 	let {
 		availableSlotsCount = 0
@@ -10,25 +10,25 @@
 	} = $props();
 
 	// Use derived to always read fresh config from store (for enabled and bufferTime)
-	let config = $derived($timePlayStore.slotFinderConfig);
+	let config = $derived($timeBlocksStore.slotFinderConfig);
 
 	// Initialize local state once from store for sliders
 	// These are independent and only update the store after debounce
-	let localMinDuration = $state($timePlayStore.slotFinderConfig.minDuration);
-	let localMaxDuration = $state($timePlayStore.slotFinderConfig.maxDuration);
-	let localEarliestStart = $state($timePlayStore.slotFinderConfig.earliestStart);
-	let localLatestEnd = $state($timePlayStore.slotFinderConfig.latestEnd);
+	let localMinDuration = $state($timeBlocksStore.slotFinderConfig.minDuration);
+	let localMaxDuration = $state($timeBlocksStore.slotFinderConfig.maxDuration);
+	let localEarliestStart = $state($timeBlocksStore.slotFinderConfig.earliestStart);
+	let localLatestEnd = $state($timeBlocksStore.slotFinderConfig.latestEnd);
 
 	// Debounce timers
 	let durationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let timeWindowDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function toggleEnabled() {
-		timePlayStore.updateSlotFinderConfig({ enabled: !config.enabled });
+		timeBlocksStore.updateSlotFinderConfig({ enabled: !config.enabled });
 	}
 
 	function updateBufferTime(bufferTime: 0 | 15 | 30 | 60) {
-		timePlayStore.updateSlotFinderConfig({ bufferTime });
+		timeBlocksStore.updateSlotFinderConfig({ bufferTime });
 	}
 
 	function updateDurationRange() {
@@ -38,7 +38,7 @@
 		}
 
 		durationDebounceTimer = setTimeout(() => {
-			timePlayStore.updateSlotFinderConfig({
+			timeBlocksStore.updateSlotFinderConfig({
 				minDuration: localMinDuration,
 				maxDuration: localMaxDuration
 			});
@@ -52,7 +52,7 @@
 		}
 
 		timeWindowDebounceTimer = setTimeout(() => {
-			timePlayStore.updateSlotFinderConfig({
+			timeBlocksStore.updateSlotFinderConfig({
 				earliestStart: localEarliestStart,
 				latestEnd: localLatestEnd
 			});
@@ -75,11 +75,11 @@
 </script>
 
 <div
-	class="rounded-2xl border border-slate-200/80 bg-white/80 shadow-lg backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-900/60"
+	class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
 >
 	<!-- Header with Toggle -->
 	<div
-		class="flex items-center justify-between border-b border-slate-200/60 px-6 py-4 dark:border-slate-800/60"
+		class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700"
 	>
 		<div class="flex items-center gap-3">
 			<div
@@ -293,7 +293,7 @@
 
 			<!-- Slot Count Display -->
 			<div
-				class="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-sm dark:border-emerald-500/30 dark:bg-emerald-950/20"
+				class="rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 px-4 py-3 text-sm dark:border-emerald-700 dark:from-emerald-900/10 dark:to-green-900/10"
 			>
 				{#if availableSlotsCount > 0}
 					<div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">

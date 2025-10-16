@@ -1,4 +1,4 @@
-<!-- apps/web/src/lib/components/time-play/TimeBlockList.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/TimeBlockList.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { TimeBlockSuggestion, TimeBlockWithProject } from '@buildos/shared-types';

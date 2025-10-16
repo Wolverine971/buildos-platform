@@ -424,6 +424,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 	<meta name="theme-color" content="#111827" />
 
+	<!-- Open Graph / Social Media -->
+	<meta property="og:site_name" content="BuildOS" />
+	<meta property="og:title" content="BuildOS - The Productivity System for the Builder" />
+	<meta property="og:description" content="AI-powered productivity platform for ADHD minds that transforms unstructured thoughts into actionable plans." />
+	<meta property="og:type" content="website" />
+
 	<!-- PERFORMANCE: Preload critical fonts -->
 	<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
 	<link rel="dns-prefetch" href="https://fonts.gstatic.com" />

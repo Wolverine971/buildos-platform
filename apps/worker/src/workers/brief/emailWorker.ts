@@ -9,6 +9,7 @@
 import { supabase } from "../../lib/supabase";
 import { notifyUser, updateJobStatus } from "../shared/queueUtils";
 import { LegacyJob } from "../shared/jobAdapter";
+import { WebhookEmailService } from "../../lib/services/webhook-email-service";
 // ⚠️ DO NOT USE: EmailService uses direct SMTP which fails on Railway
 // import { EmailService } from "../../lib/services/email-service";
 
@@ -76,7 +77,7 @@ export async function processEmailBriefJob(
 
     if (!briefId || !userId) {
       throw new Error(
-        `Invalid email template_data: missing brief_id or user_id`,
+        "Invalid email template_data: missing brief_id or user_id",
       );
     }
 
@@ -176,49 +177,28 @@ export async function processEmailBriefJob(
 
     console.log(`📨 Sending email to ${user.email} via webhook to web app`);
 
-    // Send via webhook to web app's email endpoint
-    const webhookUrl = (
-      process.env.PUBLIC_APP_URL || "https://build-os.com"
-    ).trim();
-    const webhookSecret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      throw new Error("PRIVATE_BUILDOS_WEBHOOK_SECRET not configured");
-    }
-
-    const webhookResponse = await fetch(
-      `${webhookUrl}/webhooks/daily-brief-email`,
+    // Send via webhook using WebhookEmailService (handles HMAC signature, timestamp, and source headers)
+    const webhookService = new WebhookEmailService();
+    const webhookResult = await webhookService.sendDailyBriefEmail(
+      userId,
+      briefId,
+      briefDate,
+      user.email,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Webhook-Signature": webhookSecret, // Simple auth for now
-        },
-        body: JSON.stringify({
-          userId,
-          briefId,
-          briefDate,
-          recipientEmail: user.email,
-          metadata: {
-            emailRecordId: emailId,
-            recipientRecordId: email.email_recipients?.[0]?.id,
-            trackingId: email.tracking_id,
-            subject: email.subject,
-          },
-        }),
+        emailRecordId: emailId,
+        recipientRecordId: email.email_recipients?.[0]?.id,
+        trackingId: email.tracking_id,
+        subject: email.subject,
       },
     );
 
-    if (!webhookResponse.ok) {
-      const errorText = await webhookResponse
-        .text()
-        .catch(() => "Unknown error");
+    if (!webhookResult.success) {
       throw new Error(
-        `Webhook email send failed: ${webhookResponse.status} - ${errorText}`,
+        `Webhook email send failed: ${webhookResult.error || "Unknown error"}`,
       );
     }
 
-    console.log(`✅ Email sent successfully via webhook`);
+    console.log("✅ Email sent successfully via webhook");
 
     // 4. Update email status to sent (existing emails table)
     await supabase.from("emails").update({ status: "sent" }).eq("id", emailId);

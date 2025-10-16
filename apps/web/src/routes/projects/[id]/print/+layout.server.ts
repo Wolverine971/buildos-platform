@@ -1,4 +1,4 @@
-// Minimal server layout for print route
+// apps/web/src/routes/projects/[id]/print/+layout.server.ts
 // Provides only essential session data
 import type { LayoutServerLoad } from './$types';
 

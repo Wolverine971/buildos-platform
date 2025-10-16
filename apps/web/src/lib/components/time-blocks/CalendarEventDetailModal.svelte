@@ -1,4 +1,4 @@
-<!-- apps/web/src/lib/components/time-play/CalendarEventDetailModal.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/CalendarEventDetailModal.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { CalendarEvent } from '$lib/services/calendar-service';

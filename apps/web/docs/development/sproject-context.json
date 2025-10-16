@@ -41,7 +41,13 @@
 		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
-			"components": ["BraindumpWeekView", "PhaseCalendarView", "TaskModal", "DailyBriefModal"]
+			"components": [
+				"BraindumpWeekView",
+				"PhaseCalendarView",
+				"TaskModal",
+				"DailyBriefModal",
+				"TimeBlockModal"
+			]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -569,10 +575,10 @@
 			"exports": ["searchStore", "totalResultCount"]
 		},
 		{
-			"file": "src/lib/stores/timePlayStore.ts",
+			"file": "src/lib/stores/timeBlocksStore.ts",
 			"type": "store",
 			"components": [],
-			"exports": ["timePlayStore"]
+			"exports": ["timeBlocksStore"]
 		},
 		{
 			"file": "src/lib/stores/toast.store.ts",

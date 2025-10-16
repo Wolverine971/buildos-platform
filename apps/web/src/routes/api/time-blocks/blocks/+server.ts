@@ -1,20 +1,14 @@
-// apps/web/src/routes/api/time-play/allocation/+server.ts
+// apps/web/src/routes/api/time-blocks/blocks/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import { CalendarService } from '$lib/services/calendar-service';
-import { isFeatureEnabled } from '$lib/utils/feature-flags';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
-	const hasAccess = await isFeatureEnabled(supabase, user.id, 'time_play');
-	if (!hasAccess) {
-		return json({ error: 'Time Play feature not enabled for this user' }, { status: 403 });
 	}
 
 	const startDateParam = url.searchParams.get('start_date');
@@ -38,16 +32,16 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		const calendarService = new CalendarService(supabase);
 		const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
 
-		const allocation = await timeBlockService.calculateTimeAllocation(startDate, endDate);
+		const blocks = await timeBlockService.getTimeBlocks(startDate, endDate);
 
 		return json({
 			success: true,
 			data: {
-				allocation
+				blocks
 			}
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to calculate time allocation:', error);
-		return json({ error: 'Failed to calculate time allocation' }, { status: 500 });
+		console.error('[TimePlay] Failed to fetch time blocks:', error);
+		return json({ error: 'Failed to fetch time blocks' }, { status: 500 });
 	}
 };

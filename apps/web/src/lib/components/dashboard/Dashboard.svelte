@@ -22,6 +22,7 @@
 		PrimaryCTA,
 		BottomSectionsData
 	} from '$lib/types/dashboard';
+	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import type { DashboardData } from '$lib/services/dashboardData.service';
 	import { dashboardStore } from '$lib/stores/dashboard.store';
 	import { dashboardDataService } from '$lib/services/dashboardData.service';
@@ -29,7 +30,7 @@
 
 	// Components
 	import DailyBriefCard from '$lib/components/dashboard/DailyBriefCard.svelte';
-	import TaskDetailsCard from '$lib/components/dashboard/TaskDetailsCard.svelte';
+	import TimeBlocksCard from '$lib/components/dashboard/TimeBlocksCard.svelte';
 	import MobileTaskTabs from '$lib/components/dashboard/MobileTaskTabs.svelte';
 	import WeeklyTaskCalendar from '$lib/components/dashboard/WeeklyTaskCalendar.svelte';
 	import FirstTimeBrainDumpCard from '$lib/components/dashboard/FirstTimeBrainDumpCard.svelte';
@@ -43,6 +44,7 @@
 	// Lazy-loaded modal components
 	let TaskModal = $state<any>(null);
 	let DailyBriefModal = $state<any>(null);
+	let TimeBlockModal = $state<any>(null);
 	// BrainDumpModal is imported directly, not lazy loaded
 
 	// Props with proper types
@@ -138,6 +140,13 @@
 	let selectedBrief = $state<any>(null);
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	let selectedBrainDumpProject = $state<any>(null);
+	let showTimeBlockModal = $state(false);
+	let selectedTimeBlock = $state<TimeBlockWithProject | null>(null);
+
+	// Time block states
+	let timeBlocks = $state<TimeBlockWithProject[]>([]);
+	let loadingTimeBlocks = $state(false);
+	let timeBlocksError = $state<string | null>(null);
 
 	// Lazy loading states
 	let loadingBottomSections = $state(false);
@@ -254,6 +263,9 @@
 			console.log('[Dashboard] No initial data, loading fresh with timezone:', timezone);
 			await dashboardDataService.loadDashboardData(timezone);
 		}
+
+		// Load time blocks for Today and Tomorrow
+		await loadTimeBlocks();
 
 		// Setup lazy loading for bottom sections
 		setupLazyLoading();
@@ -373,6 +385,48 @@
 			console.error('Failed to load DailyBriefModal:', error);
 		} finally {
 			loadingDailyBriefModal = false;
+		}
+	}
+
+	async function loadTimeBlockModal() {
+		if (TimeBlockModal) return;
+		try {
+			const module = await import('$lib/components/time-blocks/TimeBlockModal.svelte');
+			TimeBlockModal = module.default;
+		} catch (error) {
+			console.error('Failed to load TimeBlockModal:', error);
+		}
+	}
+
+	async function loadTimeBlocks() {
+		if (loadingTimeBlocks) return;
+
+		loadingTimeBlocks = true;
+		timeBlocksError = null;
+
+		try {
+			// Get date range for today and tomorrow
+			const now = new Date();
+			const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const endOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+
+			const response = await fetch(
+				`/api/time-blocks/blocks?start_date=${startOfToday.toISOString()}&end_date=${endOfTomorrow.toISOString()}`
+			);
+
+			if (!response.ok) {
+				throw new Error('Failed to load time blocks');
+			}
+
+			const result = await response.json();
+			if (result.success && result.data) {
+				timeBlocks = result.data.blocks || [];
+			}
+		} catch (error) {
+			console.error('[Dashboard] Failed to load time blocks:', error);
+			timeBlocksError = 'Failed to load focus sessions';
+		} finally {
+			loadingTimeBlocks = false;
 		}
 	}
 
@@ -637,6 +691,48 @@
 		// This function is no longer needed but kept for backward compatibility
 	}
 
+	// ============================================
+	// TIME BLOCK HANDLERS
+	// ============================================
+
+	async function handleTimeBlockClick(block: TimeBlockWithProject) {
+		selectedTimeBlock = block;
+		await loadTimeBlockModal();
+		showTimeBlockModal = true;
+	}
+
+	async function handleNewTimeBlock() {
+		selectedTimeBlock = null;
+		await loadTimeBlockModal();
+		showTimeBlockModal = true;
+	}
+
+	function handleTimeBlockClose() {
+		showTimeBlockModal = false;
+		selectedTimeBlock = null;
+	}
+
+	async function handleTimeBlockCreate(block: TimeBlockWithProject) {
+		// Optimistically add to local state
+		timeBlocks = [...timeBlocks, block];
+		toastService?.success?.('Focus session created');
+		handleTimeBlockClose();
+	}
+
+	async function handleTimeBlockUpdate(block: TimeBlockWithProject) {
+		// Optimistically update local state
+		timeBlocks = timeBlocks.map((tb) => (tb.id === block.id ? block : tb));
+		toastService?.success?.('Focus session updated');
+		handleTimeBlockClose();
+	}
+
+	async function handleTimeBlockDelete(blockId: string) {
+		// Optimistically remove from local state
+		timeBlocks = timeBlocks.filter((tb) => tb.id !== blockId);
+		toastService?.success?.('Focus session deleted');
+		handleTimeBlockClose();
+	}
+
 	// Display name helper
 	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
 </script>
@@ -788,7 +884,7 @@
 					class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
 				>
 					{#key pastDueTasks}
-						<TaskDetailsCard
+						<TimeBlocksCard
 							title="Past Due"
 							tasks={pastDueTasks || []}
 							{calendarStatus}
@@ -798,21 +894,27 @@
 						/>
 					{/key}
 					{#key todaysTasks}
-						<TaskDetailsCard
+						<TimeBlocksCard
 							title="Today"
 							tasks={todaysTasks || []}
+							{timeBlocks}
 							{calendarStatus}
 							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
+							onNewTimeBlock={handleNewTimeBlock}
 							emptyMessage="No tasks for today"
 							emptyIcon={CheckCircle2}
 						/>
 					{/key}
 					{#key tomorrowsTasks}
-						<TaskDetailsCard
+						<TimeBlocksCard
 							title="Tomorrow"
 							tasks={tomorrowsTasks || []}
+							{timeBlocks}
 							{calendarStatus}
 							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
+							onNewTimeBlock={handleNewTimeBlock}
 							emptyMessage="No tasks for tomorrow"
 							emptyIcon={Calendar}
 						/>
@@ -826,8 +928,10 @@
 					{#key weeklyTasksByDate}
 						<WeeklyTaskCalendar
 							tasksByDate={weeklyTasksByDate}
+							{timeBlocks}
 							{calendarStatus}
 							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
 						/>
 					{/key}
 				</section>
@@ -1022,3 +1126,16 @@
 		}
 	}}
 />
+
+{#if TimeBlockModal}
+	<svelte:component
+		this={TimeBlockModal}
+		isOpen={showTimeBlockModal}
+		block={selectedTimeBlock}
+		projects={activeProjects}
+		onClose={handleTimeBlockClose}
+		onCreate={handleTimeBlockCreate}
+		onUpdate={handleTimeBlockUpdate}
+		onDelete={handleTimeBlockDelete}
+	/>
+{/if}

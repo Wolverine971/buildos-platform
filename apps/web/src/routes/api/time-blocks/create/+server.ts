@@ -1,20 +1,14 @@
-// apps/web/src/routes/api/time-play/create/+server.ts
+// apps/web/src/routes/api/time-blocks/create/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import { CalendarService } from '$lib/services/calendar-service';
-import { isFeatureEnabled } from '$lib/utils/feature-flags';
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
-	const hasAccess = await isFeatureEnabled(supabase, user.id, 'time_play');
-	if (!hasAccess) {
-		return json({ error: 'Time Play feature not enabled for this user' }, { status: 403 });
 	}
 
 	let payload: any;

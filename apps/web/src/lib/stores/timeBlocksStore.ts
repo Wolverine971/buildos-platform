@@ -1,11 +1,11 @@
-// apps/web/src/lib/stores/timePlayStore.ts
+// apps/web/src/lib/stores/timeBlocksStore.ts
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { TimeAllocation, TimeBlockWithProject } from '@buildos/shared-types';
-import type { SlotFinderConfig } from '$lib/types/time-play';
-import { DEFAULT_SLOT_FINDER_CONFIG } from '$lib/types/time-play';
+import type { SlotFinderConfig } from '$lib/types/time-blocks';
+import { DEFAULT_SLOT_FINDER_CONFIG } from '$lib/types/time-blocks';
 
-interface TimePlayState {
+interface TimeBlocksState {
 	blocks: TimeBlockWithProject[];
 	selectedDateRange: { start: Date; end: Date };
 	isLoading: boolean;
@@ -33,19 +33,19 @@ function loadSlotFinderConfig(): SlotFinderConfig {
 	if (!browser) return DEFAULT_SLOT_FINDER_CONFIG;
 
 	try {
-		const saved = localStorage.getItem('timeplay-slot-finder-config');
+		const saved = localStorage.getItem('timeblocks-slot-finder-config');
 		if (saved) {
 			return { ...DEFAULT_SLOT_FINDER_CONFIG, ...JSON.parse(saved) };
 		}
 	} catch (error) {
-		console.error('[TimePlayStore] Failed to load slot finder config:', error);
+		console.error('[TimeBlocksStore] Failed to load slot finder config:', error);
 	}
 
 	return DEFAULT_SLOT_FINDER_CONFIG;
 }
 
-function createTimePlayStore() {
-	const initialState: TimePlayState = {
+function createTimeBlocksStore() {
+	const initialState: TimeBlocksState = {
 		blocks: [],
 		selectedDateRange: createDefaultDateRange(),
 		isLoading: false,
@@ -57,7 +57,7 @@ function createTimePlayStore() {
 		slotFinderConfig: loadSlotFinderConfig()
 	};
 
-	const internalStore = writable<TimePlayState>(initialState);
+	const internalStore = writable<TimeBlocksState>(initialState);
 	let currentState = initialState;
 
 	internalStore.subscribe((value) => {
@@ -71,7 +71,7 @@ function createTimePlayStore() {
 		rangeEnd: Date
 	): Promise<TimeBlockWithProject[]> {
 		const response = await fetch(
-			`/api/time-play/blocks?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
+			`/api/time-blocks/blocks?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
 		const payload = await response.json().catch(() => ({}));
 
@@ -87,7 +87,7 @@ function createTimePlayStore() {
 		rangeEnd: Date
 	): Promise<TimeAllocation | null> {
 		const response = await fetch(
-			`/api/time-play/allocation?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
+			`/api/time-blocks/allocation?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
 		const payload = await response.json().catch(() => ({}));
 
@@ -119,7 +119,7 @@ function createTimePlayStore() {
 					requestBlocks(rangeStart, rangeEnd),
 					requestAllocation(rangeStart, rangeEnd).catch((allocationError) => {
 						console.error(
-							'[TimePlayStore] Failed to load allocation:',
+							'[TimeBlocksStore] Failed to load allocation:',
 							allocationError
 						);
 						return null;
@@ -135,7 +135,7 @@ function createTimePlayStore() {
 					isAllocationLoading: false
 				}));
 			} catch (error) {
-				console.error('[TimePlayStore] loadBlocks failed:', error);
+				console.error('[TimeBlocksStore] loadBlocks failed:', error);
 				update((state) => ({
 					...state,
 					isLoading: false,
@@ -166,7 +166,7 @@ function createTimePlayStore() {
 					isLoading: false
 				}));
 			} catch (error) {
-				console.error('[TimePlayStore] loadBlocksOnly failed:', error);
+				console.error('[TimeBlocksStore] loadBlocksOnly failed:', error);
 				update((state) => ({
 					...state,
 					isLoading: false,
@@ -204,7 +204,7 @@ function createTimePlayStore() {
 					payload.timezone = options.timezone;
 				}
 
-				const response = await fetch('/api/time-play/create', {
+				const response = await fetch('/api/time-blocks/create', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
@@ -228,7 +228,7 @@ function createTimePlayStore() {
 
 				return newBlock;
 			} catch (error) {
-				console.error('[TimePlayStore] createBlock failed:', error);
+				console.error('[TimeBlocksStore] createBlock failed:', error);
 				update((state) => ({
 					...state,
 					isCreating: false,
@@ -252,7 +252,7 @@ function createTimePlayStore() {
 			}));
 
 			try {
-				const response = await fetch(`/api/time-play/blocks/${blockId}/suggestions`, {
+				const response = await fetch(`/api/time-blocks/blocks/${blockId}/suggestions`, {
 					method: 'POST'
 				});
 
@@ -274,7 +274,7 @@ function createTimePlayStore() {
 
 				return updatedBlock;
 			} catch (error) {
-				console.error('[TimePlayStore] regenerateSuggestions failed:', error);
+				console.error('[TimeBlocksStore] regenerateSuggestions failed:', error);
 				update((state) => ({
 					...state,
 					regeneratingIds: state.regeneratingIds.filter((id) => id !== blockId),
@@ -299,7 +299,7 @@ function createTimePlayStore() {
 			}));
 
 			try {
-				const response = await fetch(`/api/time-play/delete/${blockId}`, {
+				const response = await fetch(`/api/time-blocks/delete/${blockId}`, {
 					method: 'DELETE'
 				});
 
@@ -315,7 +315,7 @@ function createTimePlayStore() {
 
 				await this.refreshAllocation();
 			} catch (error) {
-				console.error('[TimePlayStore] deleteBlock failed:', error);
+				console.error('[TimeBlocksStore] deleteBlock failed:', error);
 				update((state) => ({
 					...state,
 					error: error instanceof Error ? error.message : 'Failed to delete time block'
@@ -345,7 +345,7 @@ function createTimePlayStore() {
 					isAllocationLoading: false
 				}));
 			} catch (error) {
-				console.error('[TimePlayStore] refreshAllocation failed:', error);
+				console.error('[TimeBlocksStore] refreshAllocation failed:', error);
 				update((state) => ({
 					...state,
 					isAllocationLoading: false
@@ -373,7 +373,10 @@ function createTimePlayStore() {
 							JSON.stringify(newConfig)
 						);
 					} catch (error) {
-						console.error('[TimePlayStore] Failed to save slot finder config:', error);
+						console.error(
+							'[TimeBlocksStore] Failed to save slot finder config:',
+							error
+						);
 					}
 				}
 
@@ -394,4 +397,4 @@ function createTimePlayStore() {
 	};
 }
 
-export const timePlayStore = createTimePlayStore();
+export const timeBlocksStore = createTimeBlocksStore();

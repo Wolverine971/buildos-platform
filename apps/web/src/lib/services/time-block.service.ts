@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
 	CreateTimeBlockParams,
+	UpdateTimeBlockParams,
 	TimeBlockWithProject,
 	TimeBlockSyncStatus,
 	TimeBlockType,
@@ -184,6 +185,202 @@ export class TimeBlockService {
 		}
 
 		return timeBlock as TimeBlockWithProject;
+	}
+
+	/**
+	 * Update an existing time block and sync changes to Google Calendar.
+	 */
+	async updateTimeBlock(
+		blockId: string,
+		params: UpdateTimeBlockParams
+	): Promise<TimeBlockWithProject> {
+		// Fetch the existing block
+		const { data: existingBlock, error: fetchError } = await this.supabase
+			.from('time_blocks')
+			.select(
+				`
+				*,
+				project:projects(id, name, calendar_color_id)
+			`
+			)
+			.eq('id', blockId)
+			.eq('user_id', this.userId)
+			.maybeSingle();
+
+		if (fetchError) {
+			throw fetchError;
+		}
+
+		if (!existingBlock) {
+			throw new Error('Time block not found');
+		}
+
+		if (existingBlock.sync_status === 'deleted') {
+			throw new Error('Cannot update deleted blocks');
+		}
+
+		// Determine new values (use existing if not provided)
+		const blockType: TimeBlockType =
+			params.block_type ?? (existingBlock.block_type as TimeBlockType);
+		const startTime = params.start_time ?? new Date(existingBlock.start_time);
+		const endTime = params.end_time ?? new Date(existingBlock.end_time);
+		const timezone = params.timezone ?? existingBlock.timezone ?? DEFAULT_TIMEZONE;
+		const projectId =
+			blockType === 'project'
+				? params.project_id !== undefined
+					? params.project_id
+					: existingBlock.project_id
+				: null;
+
+		// Validate the updated params
+		if (!(startTime instanceof Date) || isNaN(startTime.getTime())) {
+			throw new Error('Invalid start time');
+		}
+
+		if (!(endTime instanceof Date) || isNaN(endTime.getTime())) {
+			throw new Error('Invalid end time');
+		}
+
+		if (endTime <= startTime) {
+			throw new Error('End time must be after start time');
+		}
+
+		const duration = this.calculateDuration(startTime, endTime);
+		if (duration < MIN_DURATION_MINUTES) {
+			throw new Error(`Time block must be at least ${MIN_DURATION_MINUTES} minutes`);
+		}
+
+		if (duration > MAX_DURATION_MINUTES) {
+			throw new Error(`Time block cannot exceed ${MAX_DURATION_MINUTES / 60} hours`);
+		}
+
+		if (blockType === 'project' && !projectId) {
+			throw new Error('Project ID is required for project blocks');
+		}
+
+		// Check for conflicts (excluding the current block)
+		await this.checkConflictsExcludingBlock(startTime, endTime, blockId);
+
+		// Fetch project info if needed
+		let project: {
+			name: string;
+			calendar_color_id: string | null;
+		} | null = null;
+
+		if (blockType === 'project' && projectId) {
+			const { data: projectRow, error: projectError } = await this.supabase
+				.from('projects')
+				.select('name, calendar_color_id')
+				.eq('id', projectId)
+				.eq('user_id', this.userId)
+				.maybeSingle();
+
+			if (projectError) {
+				throw projectError;
+			}
+
+			if (!projectRow) {
+				throw new Error('Project not found');
+			}
+
+			project = projectRow;
+		}
+
+		const durationMinutes = this.calculateDuration(startTime, endTime);
+
+		// Determine if we should regenerate suggestions
+		const shouldRegenerateSuggestions =
+			params.regenerate_suggestions ||
+			params.block_type !== undefined ||
+			params.project_id !== undefined ||
+			params.start_time !== undefined ||
+			params.end_time !== undefined;
+
+		let suggestionResult: TimeBlockSuggestionResult | null = null;
+
+		if (shouldRegenerateSuggestions) {
+			try {
+				suggestionResult = await this.getSuggestionService().generateSuggestions({
+					blockType,
+					projectId,
+					startTime,
+					endTime,
+					durationMinutes,
+					timezone
+				});
+			} catch (error) {
+				console.error('[TimeBlockService] Failed to generate suggestions:', error);
+			}
+		}
+
+		// Build calendar content
+		const calendarContent = this.buildCalendarEventContent({
+			blockType,
+			projectName: project?.name ?? null,
+			projectColorId: project?.calendar_color_id ?? null,
+			suggestions: suggestionResult?.suggestions ?? existingBlock.ai_suggestions,
+			suggestionSummary: suggestionResult?.summary ?? existingBlock.suggestions_summary
+		});
+
+		// Update Google Calendar event
+		if (existingBlock.calendar_event_id) {
+			try {
+				await this.calendarService.updateCalendarEvent(this.userId, {
+					event_id: existingBlock.calendar_event_id,
+					summary: calendarContent.summary,
+					description: calendarContent.description,
+					start: startTime,
+					end: endTime,
+					timeZone: timezone,
+					colorId: calendarContent.colorId
+				});
+			} catch (error) {
+				console.error('[TimeBlockService] Failed to update calendar event:', error);
+				throw new Error('Failed to sync updates to Google Calendar');
+			}
+		}
+
+		const nowIso = new Date().toISOString();
+
+		// Update the database
+		const updatePayload: Record<string, any> = {
+			block_type: blockType,
+			project_id: projectId,
+			start_time: startTime.toISOString(),
+			end_time: endTime.toISOString(),
+			duration_minutes: durationMinutes,
+			timezone,
+			sync_status: 'synced' as TimeBlockSyncStatus,
+			sync_source: 'app',
+			last_synced_at: nowIso,
+			updated_at: nowIso
+		};
+
+		if (suggestionResult) {
+			updatePayload.ai_suggestions = suggestionResult.suggestions;
+			updatePayload.suggestions_summary = suggestionResult.summary ?? null;
+			updatePayload.suggestions_generated_at = suggestionResult.generatedAt.toISOString();
+			updatePayload.suggestions_model = suggestionResult.model ?? null;
+		}
+
+		const { data: updatedBlock, error: updateError } = await this.supabase
+			.from('time_blocks')
+			.update(updatePayload)
+			.eq('id', blockId)
+			.eq('user_id', this.userId)
+			.select(
+				`
+				*,
+				project:projects(id, name, calendar_color_id)
+			`
+			)
+			.single();
+
+		if (updateError) {
+			throw updateError;
+		}
+
+		return updatedBlock as TimeBlockWithProject;
 	}
 
 	/**
@@ -645,6 +842,29 @@ export class TimeBlockService {
 			.select('id')
 			.eq('user_id', this.userId)
 			.neq('sync_status', 'deleted')
+			.filter('start_time', 'lt', end.toISOString())
+			.filter('end_time', 'gt', start.toISOString());
+
+		if (error) {
+			throw error;
+		}
+
+		if ((data ?? []).length > 0) {
+			throw new Error('Time block conflicts with an existing block');
+		}
+	}
+
+	private async checkConflictsExcludingBlock(
+		start: Date,
+		end: Date,
+		excludeBlockId: string
+	): Promise<void> {
+		const { data, error } = await this.supabase
+			.from('time_blocks')
+			.select('id')
+			.eq('user_id', this.userId)
+			.neq('sync_status', 'deleted')
+			.neq('id', excludeBlockId)
 			.filter('start_time', 'lt', end.toISOString())
 			.filter('end_time', 'gt', start.toISOString());
 

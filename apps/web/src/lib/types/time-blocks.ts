@@ -1,4 +1,4 @@
-// apps/web/src/lib/types/time-play.ts
+// apps/web/src/lib/types/time-blocks.ts
 
 /**
  * Represents an available time slot detected between calendar events and time blocks

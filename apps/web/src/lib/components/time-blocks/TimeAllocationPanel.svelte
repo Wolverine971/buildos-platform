@@ -1,4 +1,4 @@
-<!-- apps/web/src/lib/components/time-play/TimeAllocationPanel.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/TimeAllocationPanel.svelte -->
 <script lang="ts">
 	import type { TimeAllocation } from '@buildos/shared-types';
 	import {
@@ -6,30 +6,17 @@
 		DEFAULT_PROJECT_COLOR_HEX,
 		resolveProjectColor
 	} from '$lib/utils/time-block-colors';
-	import {
-		startOfWeek,
-		endOfWeek,
-		startOfMonth,
-		endOfMonth,
-		addWeeks,
-		startOfDay,
-		endOfDay
-	} from 'date-fns';
 
 	interface Props {
 		allocation: TimeAllocation | null;
 		isLoading?: boolean;
 		dateRange: { start: Date; end: Date };
-		onDateRangeChange?: (range: { start: Date; end: Date }) => void;
 	}
 
-	type PresetId = 'this_week' | 'next_week' | 'this_month' | 'custom';
+	let { allocation = null, isLoading = false, dateRange }: Props = $props();
 
-	let { allocation = null, isLoading = false, dateRange, onDateRangeChange }: Props = $props();
-
-	let selectedPreset = $state<PresetId>('custom');
-	let customStart = $state('');
-	let customEnd = $state('');
+	// State for collapsible breakdown section
+	let isBreakdownExpanded = $state(true);
 
 	const hourFormatter = new Intl.NumberFormat(undefined, {
 		maximumFractionDigits: 1
@@ -44,13 +31,6 @@
 		year: 'numeric'
 	});
 
-	function toInputValue(date: Date): string {
-		const year = date.getFullYear();
-		const month = `${date.getMonth() + 1}`.padStart(2, '0');
-		const day = `${date.getDate()}`.padStart(2, '0');
-		return `${year}-${month}-${day}`;
-	}
-
 	function toSafeNumber(value: unknown, fallback = 0): number {
 		if (typeof value === 'number') {
 			return Number.isFinite(value) ? value : fallback;
@@ -62,135 +42,6 @@
 		}
 
 		return fallback;
-	}
-
-	function parseDateInput(value: string, boundary: 'start' | 'end'): Date | null {
-		if (!value) return null;
-		const [yearStr, monthStr, dayStr] = value.split('-');
-		const year = Number(yearStr);
-		const month = Number(monthStr);
-		const day = Number(dayStr);
-		if (
-			Number.isNaN(year) ||
-			Number.isNaN(month) ||
-			Number.isNaN(day) ||
-			month < 1 ||
-			month > 12 ||
-			day < 1 ||
-			day > 31
-		) {
-			return null;
-		}
-		const date =
-			boundary === 'start'
-				? new Date(year, month - 1, day, 0, 0, 0, 0)
-				: new Date(year, month - 1, day, 23, 59, 59, 999);
-
-		return Number.isNaN(date.getTime()) ? null : date;
-	}
-
-	function normalizeRange(range: { start: Date; end: Date }) {
-		return {
-			start: startOfDay(range.start),
-			end: endOfDay(range.end)
-		};
-	}
-
-	function getPresetRange(id: PresetId): { start: Date; end: Date } {
-		const now = new Date();
-		const weekOptions = { weekStartsOn: 1 as const };
-
-		if (id === 'this_week') {
-			return {
-				start: startOfWeek(now, weekOptions),
-				end: endOfWeek(now, weekOptions)
-			};
-		}
-
-		if (id === 'next_week') {
-			const currentWeekStart = startOfWeek(now, weekOptions);
-			const nextWeekStart = addWeeks(currentWeekStart, 1);
-			return {
-				start: nextWeekStart,
-				end: endOfWeek(nextWeekStart, weekOptions)
-			};
-		}
-
-		if (id === 'this_month') {
-			return {
-				start: startOfMonth(now),
-				end: endOfMonth(now)
-			};
-		}
-
-		return normalizeRange(dateRange);
-	}
-
-	function rangesMatch(a: { start: Date; end: Date }, b: { start: Date; end: Date }): boolean {
-		return (
-			startOfDay(a.start).getTime() === startOfDay(b.start).getTime() &&
-			endOfDay(a.end).getTime() === endOfDay(b.end).getTime()
-		);
-	}
-
-	function detectPreset(range: { start: Date; end: Date }): PresetId {
-		const normalized = normalizeRange(range);
-
-		if (rangesMatch(normalized, getPresetRange('this_week'))) {
-			return 'this_week';
-		}
-
-		if (rangesMatch(normalized, getPresetRange('next_week'))) {
-			return 'next_week';
-		}
-
-		if (rangesMatch(normalized, getPresetRange('this_month'))) {
-			return 'this_month';
-		}
-
-		return 'custom';
-	}
-
-	function emitRange(range: { start: Date; end: Date }) {
-		onDateRangeChange?.({
-			start: startOfDay(range.start),
-			end: endOfDay(range.end)
-		});
-	}
-
-	function selectPreset(id: PresetId) {
-		selectedPreset = id;
-
-		if (id === 'custom') {
-			return;
-		}
-
-		const range = getPresetRange(id);
-		customStart = toInputValue(range.start);
-		customEnd = toInputValue(range.end);
-		emitRange(range);
-	}
-
-	function handleCustomInput(boundary: 'start' | 'end', value: string) {
-		if (boundary === 'start') {
-			customStart = value;
-		} else {
-			customEnd = value;
-		}
-
-		if (!customStart || !customEnd) {
-			return;
-		}
-
-		const startDate = parseDateInput(customStart, 'start');
-		const endDate = parseDateInput(customEnd, 'end');
-
-		if (!startDate || !endDate || endDate.getTime() < startDate.getTime()) {
-			return;
-		}
-
-		selectedPreset = 'custom';
-		emitRange({ start: startDate, end: endDate });
 	}
 
 	function formatHours(value: number | string): string {
@@ -211,10 +62,10 @@
 		return `${rangeFormatter.format(range.start)} – ${rangeFormatter.format(range.end)}`;
 	}
 
-	const totalHours = $derived(() => toSafeNumber(allocation?.total_hours));
-	const buildBlockHours = $derived(() => toSafeNumber(allocation?.build_block_hours));
+	const totalHours = $derived(toSafeNumber(allocation?.total_hours));
+	const buildBlockHours = $derived(toSafeNumber(allocation?.build_block_hours));
 
-	const enrichedAllocations = $derived(() => {
+	const enrichedAllocations = $derived.by(() => {
 		if (!allocation) return [];
 		return allocation.project_allocations.map((project) => {
 			const hours = toSafeNumber(project.hours);
@@ -231,12 +82,12 @@
 		});
 	});
 
-	const buildBlockPercentage = $derived(() => {
+	const buildBlockPercentage = $derived.by(() => {
 		if (!allocation || totalHours <= 0) return 0;
 		return toSafeNumber((buildBlockHours / totalHours) * 100);
 	});
 
-	const chartGradient = $derived(() => {
+	const chartGradient = $derived.by(() => {
 		if (!allocation || totalHours <= 0) {
 			return 'conic-gradient(#e2e8f0 0deg, #e2e8f0 360deg)';
 		}
@@ -274,16 +125,9 @@
 	});
 
 	const hasData = $derived(
-		() =>
-			allocation !== null &&
+		allocation !== null &&
 			(totalHours > 0 || buildBlockHours > 0 || enrichedAllocations.length > 0)
 	);
-
-	$effect(() => {
-		selectedPreset = detectPreset(dateRange);
-		customStart = toInputValue(dateRange.start);
-		customEnd = toInputValue(dateRange.end);
-	});
 </script>
 
 <div class="time-allocation-panel">
@@ -292,59 +136,25 @@
 			<h3>Time allocation</h3>
 			<p>{formatRangeLabel(dateRange)}</p>
 		</div>
-
-		<div class="panel__preset-buttons">
-			{#each [{ id: 'this_week', label: 'This week' }, { id: 'next_week', label: 'Next week' }, { id: 'this_month', label: 'This month' }, { id: 'custom', label: 'Custom range' }] as preset (preset.id)}
-				<button
-					type="button"
-					class="panel__preset-button"
-					class:selected={selectedPreset === preset.id}
-					on:click={() => selectPreset(preset.id as PresetId)}
-				>
-					{preset.label}
-				</button>
-			{/each}
-		</div>
-
-		{#if selectedPreset === 'custom'}
-			<div class="panel__custom-range">
-				<label>
-					Start date
-					<input
-						type="date"
-						bind:value={customStart}
-						on:change={(event) => handleCustomInput('start', event.currentTarget.value)}
-					/>
-				</label>
-				<label>
-					End date
-					<input
-						type="date"
-						bind:value={customEnd}
-						on:change={(event) => handleCustomInput('end', event.currentTarget.value)}
-					/>
-				</label>
-			</div>
-		{/if}
 	</header>
 
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
 			<div
-				class="h-10 w-10 animate-spin rounded-full border-[3px] border-slate-300 border-t-blue-500 dark:border-slate-700 dark:border-t-blue-400"
+				class="h-10 w-10 animate-spin rounded-full border-[3px] border-gray-300 border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400"
 			></div>
-			<p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+			<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 				Calculating your time allocation…
 			</p>
 		</div>
 	{:else if !hasData}
 		<div
-			class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300/60 bg-slate-50/70 p-8 text-center dark:border-slate-700/60 dark:bg-slate-900/40"
+			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-600 dark:bg-gray-800"
 		>
-			<p class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+			<p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
 				No focus blocks scheduled in this range yet.
 			</p>
-			<p class="text-xs text-slate-500 dark:text-slate-400">
+			<p class="text-xs text-gray-600 dark:text-gray-400">
 				Add a time block to see how your projects split your focus.
 			</p>
 		</div>
@@ -397,10 +207,39 @@
 		</div>
 
 		<div class="panel__breakdown">
-			<div class="panel__breakdown-header">
-				<h4>Project breakdown</h4>
-			</div>
-			<ul class="panel__breakdown-list">
+			<button
+				type="button"
+				class="panel__breakdown-header"
+				onclick={() => (isBreakdownExpanded = !isBreakdownExpanded)}
+				aria-expanded={isBreakdownExpanded}
+			>
+				<div class="panel__breakdown-title">
+					<h4>Project breakdown</h4>
+					<span class="panel__breakdown-count">
+						{enrichedAllocations.length + (buildBlockHours > 0 ? 1 : 0)} items
+					</span>
+				</div>
+				<svg
+					class="panel__breakdown-chevron"
+					class:expanded={isBreakdownExpanded}
+					width="20"
+					height="20"
+					viewBox="0 0 20 20"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M5 7.5L10 12.5L15 7.5"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			</button>
+
+			{#if isBreakdownExpanded}
+				<ul class="panel__breakdown-list">
 				{#each enrichedAllocations as project (project.project_id)}
 					<li
 						class="panel__breakdown-item"
@@ -448,6 +287,7 @@
 					</li>
 				{/if}
 			</ul>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -469,7 +309,7 @@
 	.panel__header {
 		display: flex;
 		flex-direction: column;
-		gap: 0.875rem;
+		gap: 1rem;
 	}
 
 	@media (min-width: 1024px) {
@@ -482,106 +322,32 @@
 	}
 
 	.panel__title h3 {
-		font-size: 1rem;
+		font-size: 1.125rem;
 		font-weight: 600;
 		color: #111827;
 		margin: 0;
+		line-height: 1.4;
 	}
 
 	@media (min-width: 768px) {
 		.panel__title h3 {
-			font-size: 1.0625rem;
+			font-size: 1.25rem;
 		}
 	}
 
 	:global(.dark) .panel__title h3 {
-		color: #f8fafc;
+		color: #ffffff;
 	}
 
 	.panel__title p {
-		margin: 0.25rem 0 0;
-		font-size: 0.8125rem;
-		color: #64748b;
+		margin: 0.375rem 0 0;
+		font-size: 0.875rem;
+		color: #6b7280;
+		line-height: 1.5;
 	}
 
 	:global(.dark) .panel__title p {
-		color: rgba(226, 232, 240, 0.7);
-	}
-
-	.panel__preset-buttons {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-
-	.panel__preset-button {
-		border-radius: 9999px;
-		border: 1px solid rgba(148, 163, 184, 0.45);
-		padding: 0.45rem 1rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		line-height: 1;
-		color: #475569;
-		background: rgba(255, 255, 255, 0.9);
-		transition: all 0.2s ease;
-		cursor: pointer;
-	}
-
-	.panel__preset-button:hover {
-		border-color: rgba(59, 130, 246, 0.4);
-		color: #1d4ed8;
-		box-shadow: 0 6px 16px rgba(59, 130, 246, 0.18);
-	}
-
-	.panel__preset-button.selected {
-		background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-		border-color: transparent;
-		color: white;
-		box-shadow: 0 10px 22px rgba(99, 102, 241, 0.35);
-	}
-
-	:global(.dark) .panel__preset-button {
-		background: rgba(15, 23, 42, 0.75);
-		color: rgba(226, 232, 240, 0.85);
-		border-color: rgba(148, 163, 184, 0.3);
-	}
-
-	.panel__custom-range {
-		display: grid;
-		gap: 0.75rem;
-		padding: 0.9rem;
-		border-radius: 1.25rem;
-		background: rgba(226, 232, 240, 0.45);
-		border: 1px dashed rgba(148, 163, 184, 0.4);
-	}
-
-	.panel__custom-range label {
-		display: flex;
-		flex-direction: column;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: #475569;
-		gap: 0.4rem;
-	}
-
-	.panel__custom-range input {
-		border-radius: 0.9rem;
-		border: 1px solid rgba(148, 163, 184, 0.45);
-		padding: 0.55rem 0.9rem;
-		font-size: 0.85rem;
-		background: rgba(255, 255, 255, 0.92);
-		color: #0f172a;
-		box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08);
-	}
-
-	.panel__custom-range input:focus-visible {
-		outline: 2px solid rgba(59, 130, 246, 0.35);
-		outline-offset: 2px;
-	}
-
-	:global(.dark) .panel__custom-range {
-		background: rgba(30, 41, 59, 0.6);
-		border-color: rgba(59, 130, 246, 0.25);
+		color: #9ca3af;
 	}
 
 	.panel__content {
@@ -624,10 +390,8 @@
 		width: 9rem;
 		flex-shrink: 0;
 		border-radius: 9999px;
-		background: linear-gradient(145deg, rgba(203, 213, 225, 0.25), rgba(148, 163, 184, 0.15));
-		box-shadow:
-			inset 0 15px 28px rgba(15, 23, 42, 0.12),
-			0 12px 28px rgba(15, 23, 42, 0.16);
+		background: #f1f5f9;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 		padding: 0.75rem;
 	}
 
@@ -647,10 +411,8 @@
 	}
 
 	:global(.dark) .panel__chart-shell {
-		background: linear-gradient(145deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
-		box-shadow:
-			inset 0 18px 30px rgba(2, 6, 23, 0.55),
-			0 20px 38px rgba(2, 6, 23, 0.45);
+		background: #1f2937;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	.panel__chart {
@@ -674,8 +436,8 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.9);
-		box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+		background: #ffffff;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 		text-align: center;
 		gap: 0.25rem;
 		padding: 0.625rem;
@@ -695,62 +457,65 @@
 	}
 
 	:global(.dark) .panel__chart-core {
-		background: rgba(15, 23, 42, 0.78);
+		background: #111827;
 		color: #e2e8f0;
-		box-shadow: 0 10px 24px rgba(2, 6, 23, 0.55);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	.panel__chart-core p {
 		margin: 0;
-		font-size: 1rem;
-		font-weight: 600;
-		color: #0f172a;
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: #111827;
+		line-height: 1.2;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-core p {
-			font-size: 1.0625rem;
+			font-size: 1.5rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core p {
-			font-size: 1.125rem;
+			font-size: 1.75rem;
 		}
 	}
 
 	.panel__chart-core span {
-		font-size: 0.5625rem;
+		font-size: 0.625rem;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: rgba(71, 85, 105, 0.8);
+		letter-spacing: 0.05em;
+		color: #6b7280;
+		font-weight: 600;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core span {
-			font-size: 0.625rem;
+			font-size: 0.6875rem;
 		}
 	}
 
 	:global(.dark) .panel__chart-core p {
-		color: #f8fafc;
+		color: #ffffff;
 	}
 
 	:global(.dark) .panel__chart-core span {
-		color: rgba(148, 163, 184, 0.8);
+		color: #9ca3af;
 	}
 
 	.panel__legend {
 		display: flex;
-		gap: 1rem;
+		gap: 0.75rem;
 		flex-wrap: wrap;
 		justify-content: center;
-		font-size: 0.75rem;
-		color: rgba(71, 85, 105, 0.85);
+		font-size: 0.8125rem;
+		color: #4b5563;
+		font-weight: 500;
 	}
 
 	:global(.dark) .panel__legend {
-		color: rgba(203, 213, 225, 0.85);
+		color: #d1d5db;
 	}
 
 	.panel__legend-item {
@@ -759,21 +524,25 @@
 		gap: 0.45rem;
 		border-radius: 9999px;
 		padding: 0.35rem 0.85rem;
-		background: rgba(255, 255, 255, 0.8);
-		box-shadow: 0 6px 12px rgba(15, 23, 42, 0.08);
+		background: #ffffff;
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 	}
 
 	:global(.dark) .panel__legend-item {
-		background: rgba(15, 23, 42, 0.75);
-		box-shadow: 0 6px 16px rgba(2, 6, 23, 0.45);
+		background: #1f2937;
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 	}
 
 	.panel__legend-item span {
 		display: inline-block;
-		height: 0.6rem;
-		width: 0.6rem;
+		height: 0.625rem;
+		width: 0.625rem;
 		border-radius: 9999px;
-		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75);
+	}
+
+	:global(.dark) .panel__legend-item span {
+		box-shadow: 0 0 0 2px rgba(31, 41, 59, 0.75);
 	}
 
 	.panel__stats-grid {
@@ -789,97 +558,99 @@
 	}
 
 	.panel__stat-card {
-		border-radius: 1rem;
-		padding: 0.875rem 1rem;
+		border-radius: 0.75rem;
+		padding: 1rem 1.25rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.625rem;
 		position: relative;
 		overflow: hidden;
+		border: 1px solid;
+		transition: all 0.2s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-card {
-			padding: 1rem 1.25rem;
-			border-radius: 1.125rem;
+			padding: 1.25rem 1.5rem;
 		}
 	}
 
-	.panel__stat-card::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		border-radius: inherit;
-		opacity: 0.45;
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.65), transparent);
-		pointer-events: none;
-	}
-
 	.panel__stat-card--blue {
-		background: linear-gradient(135deg, rgba(96, 165, 250, 0.17), rgba(59, 130, 246, 0.12));
-		border: 1px solid rgba(59, 130, 246, 0.25);
-		color: #1e3a8a;
+		background: linear-gradient(to right, #eff6ff 50%, #eef2ff 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #bfdbfe;
+		color: #1e40af;
 	}
 
 	:global(.dark) .panel__stat-card--blue {
-		background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(37, 99, 235, 0.14));
-		border-color: rgba(59, 130, 246, 0.32);
-		color: rgba(191, 219, 254, 0.95);
+		background: linear-gradient(to right, #1e3a8a 50%, #312e81 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #3b82f6;
+		color: #dbeafe;
 	}
 
 	.panel__stat-card--neutral {
-		background: linear-gradient(135deg, rgba(226, 232, 240, 0.5), rgba(203, 213, 225, 0.28));
-		border: 1px solid rgba(203, 213, 225, 0.55);
-		color: #334155;
+		background: linear-gradient(to right, #f9fafb 50%, #f3f4f6 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #e5e7eb;
+		color: #374151;
 	}
 
 	:global(.dark) .panel__stat-card--neutral {
-		background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.55));
-		border-color: rgba(71, 85, 105, 0.45);
-		color: rgba(226, 232, 240, 0.9);
+		background: linear-gradient(to right, #1f2937 50%, #111827 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #4b5563;
+		color: #e5e7eb;
 	}
 
 	.panel__stat-label {
-		font-size: 0.6875rem;
+		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.05em;
 		margin: 0;
+		opacity: 0.85;
 	}
 
 	.panel__stat-values {
 		display: flex;
 		align-items: baseline;
-		gap: 0.625rem;
+		gap: 0.75rem;
 	}
 
 	.panel__stat-primary {
-		font-size: 1.125rem;
-		font-weight: 600;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.2;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-primary {
-			font-size: 1.25rem;
+			font-size: 1.875rem;
 		}
 	}
 
 	.panel__stat-secondary {
-		font-size: 0.8125rem;
+		font-size: 0.875rem;
 		font-weight: 600;
-		opacity: 0.7;
+		opacity: 0.75;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__stat-secondary {
-			font-size: 0.875rem;
+			font-size: 1rem;
 		}
 	}
 
 	.panel__stat-hint {
-		font-size: 0.6875rem;
+		font-size: 0.75rem;
 		margin: 0;
-		opacity: 0.8;
+		opacity: 0.7;
+		line-height: 1.4;
 	}
 
 	.panel__breakdown {
@@ -894,21 +665,122 @@
 		}
 	}
 
+	.panel__breakdown-header {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.25rem;
+		margin: 0 -1.25rem 0.5rem -1.25rem;
+		border: none;
+		background: transparent;
+		border-radius: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	@media (min-width: 768px) {
+		.panel__breakdown-header {
+			padding: 1rem 2rem;
+		}
+	}
+
+	.panel__breakdown-header:hover {
+		background: linear-gradient(to right, #f9fafb 50%, #f3f4f6 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+	}
+
+	:global(.dark) .panel__breakdown-header:hover {
+		background: linear-gradient(to right, #1f2937 50%, #111827 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+	}
+
+	.panel__breakdown-header:focus {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+	}
+
+	.panel__breakdown-header:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+	}
+
+	:global(.dark) .panel__breakdown-header:focus-visible {
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+	}
+
+	.panel__breakdown-header:active {
+		transform: scale(0.995);
+	}
+
+	.panel__breakdown-title {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
 	.panel__breakdown-header h4 {
 		margin: 0;
-		font-size: 0.875rem;
+		font-size: 1rem;
 		font-weight: 600;
-		color: #1f2937;
+		color: #111827;
+		line-height: 1.4;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-header h4 {
-			font-size: 0.9375rem;
+			font-size: 1.0625rem;
 		}
 	}
 
 	:global(.dark) .panel__breakdown-header h4 {
-		color: rgba(226, 232, 240, 0.95);
+		color: #ffffff;
+	}
+
+	.panel__breakdown-count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 3.5rem;
+		padding: 0.25rem 0.625rem;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+		color: #6b7280;
+		background: #f3f4f6;
+		border-radius: 9999px;
+		flex-shrink: 0;
+	}
+
+	@media (max-width: 640px) {
+		.panel__breakdown-count {
+			font-size: 0.625rem;
+			min-width: 3rem;
+			padding: 0.125rem 0.5rem;
+		}
+	}
+
+	:global(.dark) .panel__breakdown-count {
+		color: #9ca3af;
+		background: #374151;
+	}
+
+	.panel__breakdown-chevron {
+		flex-shrink: 0;
+		color: #6b7280;
+		transition: transform 0.3s ease;
+	}
+
+	:global(.dark) .panel__breakdown-chevron {
+		color: #9ca3af;
+	}
+
+	.panel__breakdown-chevron.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel__breakdown-list {
@@ -917,11 +789,23 @@
 		list-style: none;
 		padding: 0;
 		margin: 0;
+		animation: slideDown 0.3s ease;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-list {
 			gap: 0.75rem;
+		}
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 
@@ -931,10 +815,10 @@
 		align-items: center;
 		gap: 0.875rem;
 		padding: 0.75rem 0.875rem;
-		border-radius: 0.875rem;
-		background: rgba(255, 255, 255, 0.9);
-		border: 1px solid rgba(226, 232, 240, 0.7);
-		box-shadow: 0 6px 14px rgba(148, 163, 184, 0.14);
+		border-radius: 0.75rem;
+		background: #ffffff;
+		border: 1px solid #e2e8f0;
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 		transition:
 			transform 0.2s ease,
 			box-shadow 0.2s ease;
@@ -943,29 +827,33 @@
 	@media (min-width: 1024px) {
 		.panel__breakdown-item {
 			padding: 0.875rem 1rem;
-			border-radius: 1rem;
+			border-radius: 0.75rem;
 		}
 	}
 
 	.panel__breakdown-item:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 16px 28px rgba(96, 165, 250, 0.18);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	:global(.dark) .panel__breakdown-item {
-		background: rgba(15, 23, 42, 0.78);
-		border-color: rgba(71, 85, 105, 0.4);
-		box-shadow: 0 16px 28px rgba(2, 6, 23, 0.45);
+		background: #1f2937;
+		border-color: #374151;
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 	}
 
 	.panel__breakdown-item--build {
-		background: linear-gradient(135deg, rgba(253, 230, 138, 0.32), rgba(253, 186, 116, 0.22));
-		border-color: rgba(217, 119, 6, 0.4);
+		background: linear-gradient(to right, #fef3c7 50%, #fed7aa 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #d97706;
 	}
 
 	:global(.dark) .panel__breakdown-item--build {
-		background: linear-gradient(135deg, rgba(217, 119, 6, 0.35), rgba(251, 191, 36, 0.2));
-		border-color: rgba(251, 191, 36, 0.45);
+		background: linear-gradient(to right, #78350f 50%, #92400e 50%);
+		background-size: 200% 100%;
+		background-position: 100% 0;
+		border-color: #f59e0b;
 	}
 
 	.panel__breakdown-meta {
@@ -980,7 +868,11 @@
 		width: 0.75rem;
 		flex-shrink: 0;
 		border-radius: 50%;
-		box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+	}
+
+	:global(.dark) .panel__indicator {
+		box-shadow: 0 0 0 3px rgba(31, 41, 59, 0.5);
 	}
 
 	@media (min-width: 1024px) {
@@ -991,36 +883,38 @@
 	}
 
 	.panel__breakdown-name {
-		font-size: 0.875rem;
+		font-size: 0.9375rem;
 		font-weight: 600;
-		color: #1f2937;
+		color: #111827;
 		margin: 0;
+		line-height: 1.4;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-name {
-			font-size: 0.9375rem;
+			font-size: 1rem;
 		}
 	}
 
 	:global(.dark) .panel__breakdown-name {
-		color: rgba(248, 250, 252, 0.95);
+		color: #ffffff;
 	}
 
 	.panel__breakdown-sub {
-		margin: 0.1875rem 0 0;
-		font-size: 0.6875rem;
-		color: rgba(71, 85, 105, 0.75);
+		margin: 0.25rem 0 0;
+		font-size: 0.75rem;
+		color: #6b7280;
+		line-height: 1.4;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-sub {
-			font-size: 0.75rem;
+			font-size: 0.8125rem;
 		}
 	}
 
 	:global(.dark) .panel__breakdown-sub {
-		color: rgba(203, 213, 225, 0.75);
+		color: #9ca3af;
 	}
 
 	.panel__breakdown-values {
@@ -1031,41 +925,51 @@
 	}
 
 	.panel__breakdown-hours {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: #0f172a;
+		font-size: 1rem;
+		font-weight: 700;
+		color: #111827;
+		line-height: 1.2;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-hours {
-			font-size: 0.9375rem;
+			font-size: 1.125rem;
 		}
 	}
 
 	:global(.dark) .panel__breakdown-hours {
-		color: rgba(226, 232, 240, 0.95);
+		color: #ffffff;
 	}
 
 	.panel__breakdown-percent {
-		font-size: 0.6875rem;
-		color: rgba(100, 116, 139, 0.85);
+		font-size: 0.75rem;
+		color: #6b7280;
 		font-weight: 600;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__breakdown-percent {
-			font-size: 0.75rem;
+			font-size: 0.8125rem;
 		}
 	}
 
 	:global(.dark) .panel__breakdown-percent {
-		color: rgba(148, 163, 184, 0.9);
+		color: #9ca3af;
 	}
 
 	@media (max-width: 640px) {
 		.time-allocation-panel {
 			padding: 1rem 1.25rem;
 			gap: 1rem;
+		}
+
+		.panel__breakdown-header {
+			margin: 0 -1rem 0.5rem -1rem;
+			padding: 0.875rem 1rem;
+		}
+
+		.panel__breakdown-title {
+			gap: 0.5rem;
 		}
 
 		.panel__breakdown-item {
@@ -1076,10 +980,6 @@
 
 		.panel__breakdown-values {
 			align-items: flex-start;
-		}
-
-		.panel__custom-range {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>

@@ -1,6 +1,6 @@
-<!-- apps/web/src/lib/components/time-play/AvailableSlotList.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/AvailableSlotList.svelte -->
 <script lang="ts">
-	import type { AvailableSlot } from '$lib/types/time-play';
+	import type { AvailableSlot } from '$lib/types/time-blocks';
 	import { formatSlotDuration, formatTimeRange } from '$lib/utils/slot-finder';
 
 	let {

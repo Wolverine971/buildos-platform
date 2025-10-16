@@ -2,7 +2,7 @@
 
 import type { TimeBlockWithProject } from '@buildos/shared-types';
 import type { CalendarEvent } from '$lib/services/calendar-service';
-import type { AvailableSlot, SlotFinderConfig, OccupiedTimeSlot } from '$lib/types/time-play';
+import type { AvailableSlot, SlotFinderConfig, OccupiedTimeSlot } from '$lib/types/time-blocks';
 
 /**
  * Calculates available time slots based on calendar events, time blocks, and configuration
@@ -45,28 +45,12 @@ export function calculateAvailableSlots(
 			month: 'short',
 			day: 'numeric'
 		});
-		console.log(`[SlotFinder] ${dayName}:`, {
-			dayStart: dayStart.toLocaleTimeString(),
-			dayEnd: dayEnd.toLocaleTimeString(),
-			occupiedCount: occupied.length,
-			occupied: occupied.map((o) => ({
-				type: o.type,
-				start: o.start.toLocaleTimeString(),
-				end: o.end.toLocaleTimeString()
-			}))
-		});
+		
 
 		// 3. Clip occupied slots to day boundaries (buffer might extend beyond)
 		const clippedOccupied = clipSlotsToBoundaries(occupied, dayStart, dayEnd, dayName);
 
-		console.log(`[SlotFinder] ${dayName} after clipping:`, {
-			clippedCount: clippedOccupied.length,
-			clipped: clippedOccupied.map((o) => ({
-				type: o.type,
-				start: o.start.toLocaleTimeString(),
-				end: o.end.toLocaleTimeString()
-			}))
-		});
+		
 
 		// 4. Sort by start time for gap detection
 		clippedOccupied.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -74,29 +58,9 @@ export function calculateAvailableSlots(
 		// 5. Merge overlapping occupied slots
 		const mergedOccupied = mergeOverlappingSlots(clippedOccupied);
 
-		console.log(`[SlotFinder] ${dayName} after merging:`, {
-			mergedCount: mergedOccupied.length,
-			merged: mergedOccupied.map((o) => ({
-				start: o.start.toLocaleTimeString(),
-				end: o.end.toLocaleTimeString()
-			}))
-		});
-
 		// 6. Find gaps between occupied slots
 		const gaps = findGaps(mergedOccupied, dayStart, dayEnd);
-		if (dayName === 'Sat, Oct 18') {
-			console.log(dayName);
-		}
-
-		console.log(`[SlotFinder] ${dayName} gaps found:`, {
-			gapCount: gaps.length,
-			gaps: gaps.map((g) => ({
-				start: g.start.toLocaleTimeString(),
-				end: g.end.toLocaleTimeString(),
-				minutes: Math.round((g.end.getTime() - g.start.getTime()) / (1000 * 60))
-			}))
-		});
-
+		
 		// 7. Filter gaps that are at least minDuration
 		const validGaps = gaps.filter((gap) => {
 			const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);
@@ -213,9 +177,6 @@ function clipSlotsToBoundaries(
 	dayName: string
 ): OccupiedTimeSlot[] {
 	const clipped: OccupiedTimeSlot[] = [];
-	if (dayName === 'Sat, Oct 18') {
-		console.log(dayName);
-	}
 
 	for (const slot of slots) {
 		// Skip slots completely outside day boundaries

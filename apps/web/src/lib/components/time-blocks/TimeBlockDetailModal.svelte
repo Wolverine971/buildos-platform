@@ -1,4 +1,4 @@
-<!-- apps/web/src/lib/components/time-play/TimeBlockDetailModal.svelte -->
+<!-- apps/web/src/lib/components/time-blocks/TimeBlockDetailModal.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { TimeBlockWithProject, TimeBlockSuggestion } from '@buildos/shared-types';

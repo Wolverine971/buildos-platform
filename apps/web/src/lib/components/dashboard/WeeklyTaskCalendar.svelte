@@ -1,13 +1,24 @@
 <!-- apps/web/src/lib/components/dashboard/WeeklyTaskCalendar.svelte -->
 <script lang="ts">
 	import { Calendar, Clock, ChevronRight, CheckCircle } from 'lucide-svelte';
-	import { format, addDays, isSameDay, parseISO } from 'date-fns';
+	import {
+		format,
+		addDays,
+		isSameDay,
+		parseISO,
+		isWithinInterval,
+		startOfDay,
+		endOfDay
+	} from 'date-fns';
 	import { getProjectColor } from '$lib/utils/project-colors';
 	import Button from '$lib/components/ui/Button.svelte';
+	import type { TimeBlockWithProject } from '@buildos/shared-types';
 
 	export let tasksByDate: Record<string, any[]> = {};
+	export let timeBlocks: TimeBlockWithProject[] = [];
 	export let calendarStatus: any = { isConnected: false };
 	export let onTaskClick: (task: any) => void = () => {};
+	export let onTimeBlockClick: ((block: TimeBlockWithProject) => void) | undefined = undefined;
 
 	// Generate the next 7 days
 	const today = new Date();
@@ -28,6 +39,34 @@
 		return tasksByDate[dateStr] || [];
 	}
 
+	function getTimeBlocksForDate(dateStr: string): TimeBlockWithProject[] {
+		if (!timeBlocks || timeBlocks.length === 0) return [];
+
+		try {
+			const targetDate = parseISO(dateStr);
+			const dayStart = startOfDay(targetDate);
+			const dayEnd = endOfDay(targetDate);
+
+			return timeBlocks
+				.filter((block) => {
+					const blockStart = new Date(block.start_time);
+					const blockEnd = new Date(block.end_time);
+
+					// Check if block overlaps with this day
+					return (
+						isWithinInterval(blockStart, { start: dayStart, end: dayEnd }) ||
+						isWithinInterval(blockEnd, { start: dayStart, end: dayEnd }) ||
+						(blockStart <= dayStart && blockEnd >= dayEnd)
+					);
+				})
+				.sort(
+					(a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+				);
+		} catch {
+			return [];
+		}
+	}
+
 	function formatTime(dateString: string): string {
 		try {
 			return format(parseISO(dateString), 'h:mm a');
@@ -36,12 +75,114 @@
 		}
 	}
 
-	// Group tasks by time slots for better display of overlapping tasks
-	function groupTasksByTimeSlot(tasks: any[]): Map<string, any[]> {
-		const groups = new Map<string, any[]>();
+	function formatTimeBlockTime(block: TimeBlockWithProject): string {
+		try {
+			const start = format(new Date(block.start_time), 'h:mm');
+			const end = format(new Date(block.end_time), 'h:mm a');
+			return `${start}-${end}`;
+		} catch {
+			return '';
+		}
+	}
 
+	// Helper to get time block color classes for compact display
+	function getTimeBlockColorClasses(block: TimeBlockWithProject) {
+		if (block.block_type === 'build') {
+			return {
+				bg: 'bg-purple-50 dark:bg-purple-900/20',
+				border: 'border-l-purple-500',
+				text: 'text-purple-700 dark:text-purple-300',
+				hover: 'hover:bg-purple-100 dark:hover:bg-purple-900/30'
+			};
+		}
+
+		// Map calendar color IDs to Tailwind colors
+		const colorMap: Record<
+			string,
+			{ border: string; bg: string; text: string; hover: string }
+		> = {
+			'1': {
+				border: 'border-l-blue-500',
+				bg: 'bg-blue-50 dark:bg-blue-900/20',
+				text: 'text-blue-700 dark:text-blue-300',
+				hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
+			},
+			'2': {
+				border: 'border-l-green-500',
+				bg: 'bg-green-50 dark:bg-green-900/20',
+				text: 'text-green-700 dark:text-green-300',
+				hover: 'hover:bg-green-100 dark:hover:bg-green-900/30'
+			},
+			'3': {
+				border: 'border-l-purple-500',
+				bg: 'bg-purple-50 dark:bg-purple-900/20',
+				text: 'text-purple-700 dark:text-purple-300',
+				hover: 'hover:bg-purple-100 dark:hover:bg-purple-900/30'
+			},
+			'4': {
+				border: 'border-l-pink-500',
+				bg: 'bg-pink-50 dark:bg-pink-900/20',
+				text: 'text-pink-700 dark:text-pink-300',
+				hover: 'hover:bg-pink-100 dark:hover:bg-pink-900/30'
+			},
+			'5': {
+				border: 'border-l-yellow-500',
+				bg: 'bg-yellow-50 dark:bg-yellow-900/20',
+				text: 'text-yellow-700 dark:text-yellow-300',
+				hover: 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+			},
+			'6': {
+				border: 'border-l-orange-500',
+				bg: 'bg-orange-50 dark:bg-orange-900/20',
+				text: 'text-orange-700 dark:text-orange-300',
+				hover: 'hover:bg-orange-100 dark:hover:bg-orange-900/30'
+			},
+			'7': {
+				border: 'border-l-cyan-500',
+				bg: 'bg-cyan-50 dark:bg-cyan-900/20',
+				text: 'text-cyan-700 dark:text-cyan-300',
+				hover: 'hover:bg-cyan-100 dark:hover:bg-cyan-900/30'
+			},
+			'8': {
+				border: 'border-l-gray-500',
+				bg: 'bg-gray-50 dark:bg-gray-900/20',
+				text: 'text-gray-700 dark:text-gray-300',
+				hover: 'hover:bg-gray-100 dark:hover:bg-gray-900/30'
+			},
+			'9': {
+				border: 'border-l-indigo-500',
+				bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+				text: 'text-indigo-700 dark:text-indigo-300',
+				hover: 'hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+			},
+			'10': {
+				border: 'border-l-emerald-500',
+				bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+				text: 'text-emerald-700 dark:text-emerald-300',
+				hover: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+			},
+			'11': {
+				border: 'border-l-red-500',
+				bg: 'bg-red-50 dark:bg-red-900/20',
+				text: 'text-red-700 dark:text-red-300',
+				hover: 'hover:bg-red-100 dark:hover:bg-red-900/30'
+			}
+		};
+
+		const colorId = block.project?.calendar_color_id || '9';
+		return colorMap[colorId] || colorMap['9'];
+	}
+
+	// Group tasks and time blocks by time slots for chronological display
+	function groupItemsByTimeSlot(
+		tasks: any[],
+		timeBlocks: TimeBlockWithProject[]
+	): Map<string, Array<{ type: 'task' | 'timeblock'; data: any }>> {
+		const groups = new Map<string, Array<{ type: 'task' | 'timeblock'; data: any }>>();
+
+		// Add tasks to groups
 		tasks.forEach((task) => {
-			// Create a time key for grouping (using hour for simplicity)
+			// Create a time key for grouping
 			let timeKey = 'unscheduled';
 
 			if (task.start_date) {
@@ -63,7 +204,24 @@
 			if (!groups.has(timeKey)) {
 				groups.set(timeKey, []);
 			}
-			groups.get(timeKey)?.push(task);
+			groups.get(timeKey)?.push({ type: 'task', data: task });
+		});
+
+		// Add time blocks to groups
+		timeBlocks.forEach((block) => {
+			try {
+				const date = new Date(block.start_time);
+				if (!isNaN(date.getTime())) {
+					const timeKey = format(date, 'HH:mm');
+
+					if (!groups.has(timeKey)) {
+						groups.set(timeKey, []);
+					}
+					groups.get(timeKey)?.push({ type: 'timeblock', data: block });
+				}
+			} catch {
+				// Skip invalid time blocks
+			}
 		});
 
 		// Sort the map by time
@@ -238,7 +396,8 @@
 			<div class="hidden sm:grid sm:grid-cols-7 gap-3 lg:gap-4">
 				{#each weekDays as day}
 					{@const dayTasks = getTasksForDate(day.dateStr)}
-					{@const groupedTasks = groupTasksByTimeSlot(dayTasks)}
+					{@const dayTimeBlocks = getTimeBlocksForDate(day.dateStr)}
+					{@const groupedItems = groupItemsByTimeSlot(dayTasks, dayTimeBlocks)}
 					<div class="flex flex-col">
 						<!-- Day header -->
 						<div
@@ -266,12 +425,51 @@
 							{/if}
 						</div>
 
-						<!-- Tasks for this day -->
+						<!-- Tasks and Time Blocks for this day (chronologically sorted) -->
 						<div class="space-y-2 min-h-[120px] max-h-[400px] overflow-y-auto">
-							{#if dayTasks.length > 0}
-								{#each [...groupedTasks.entries()] as [timeSlot, tasksInSlot]}
-									<!-- If multiple tasks at same time, show them in a grid -->
+							{#if groupedItems.size > 0}
+								{#each [...groupedItems.entries()] as [timeSlot, itemsInSlot]}
+									<!-- Separate time blocks and tasks for this time slot -->
+									{@const timeBlocksInSlot = itemsInSlot.filter(
+										(item) => item.type === 'timeblock'
+									)}
+									{@const tasksInSlot = itemsInSlot
+										.filter((item) => item.type === 'task')
+										.map((item) => item.data)}
+
+									<!-- Render time blocks first -->
+									{#each timeBlocksInSlot as { data: block }}
+										{@const colors = getTimeBlockColorClasses(block)}
+										<button
+											on:click={() => onTimeBlockClick?.(block)}
+											class="w-full text-left p-2 rounded-lg border-l-3 transition-all hover:shadow-md hover:scale-105 {colors.bg} {colors.border} {colors.hover}"
+											disabled={!onTimeBlockClick}
+										>
+											<div class="flex items-start justify-between mb-1">
+												<div
+													class="text-[10px] font-semibold {colors.text} uppercase tracking-wide"
+												>
+													{block.block_type === 'build'
+														? 'Build'
+														: block.project?.name || 'Focus'}
+												</div>
+											</div>
+											<div
+												class="text-xs text-gray-600 dark:text-gray-300 font-medium"
+											>
+												{formatTimeBlockTime(block)}
+											</div>
+											<div
+												class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5"
+											>
+												{block.duration_minutes} min
+											</div>
+										</button>
+									{/each}
+
+									<!-- Render tasks for this time slot -->
 									{#if tasksInSlot.length > 1 && timeSlot !== 'unscheduled'}
+										<!-- Multiple tasks at same time, show in grid -->
 										<div class="space-y-1">
 											<div
 												class="text-[10px] text-gray-500 dark:text-gray-400 font-medium px-1"
@@ -319,7 +517,7 @@
 												{/each}
 											</div>
 										</div>
-									{:else}
+									{:else if tasksInSlot.length > 0}
 										<!-- Single task or unscheduled tasks -->
 										{#each tasksInSlot as task}
 											<button

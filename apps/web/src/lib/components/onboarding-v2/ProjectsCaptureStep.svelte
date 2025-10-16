@@ -477,34 +477,56 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
-			Capture Current Projects
+			Step 1: Get Clarity Through Brain Dumping
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-			Let's start by getting everything out of your head. What projects are you working on
-			right now?
+		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto mb-4">
+			Remember: to get organized and productive, you first need <strong>clarity</strong>. And
+			clarity comes from getting things out of your head and onto the screen.
+		</p>
+		<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+			BuildOS works with <strong>projects</strong> — think of them as siloed endeavors with a goal
+			or purpose. They can be work projects, personal goals, creative pursuits, fitness journeys,
+			learning objectives — anything you're working towards.
 		</p>
 	</div>
 
-	<!-- Examples section -->
+	<!-- Philosophy Reinforcement + Examples -->
 	<div
 		class="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800"
 	>
 		<h3 class="font-semibold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
 			<Sparkles class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-			Examples to inspire you:
+			What Makes a Project?
 		</h3>
+		<p class="text-sm text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+			Projects are focused endeavors with a <strong>goal</strong>, <strong>purpose</strong>,
+			or <strong>vision</strong>. When you think of what you're working on in terms of
+			projects, you can organize structure around actually <em>completing and finishing</em> them.
+			That's the power of the project framework.
+		</p>
+
+		<h4 class="font-semibold text-sm mb-2 text-gray-900 dark:text-white">
+			Here are some examples:
+		</h4>
 		<div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
 			<p>
-				🏋️ <strong class="text-purple-600 dark:text-purple-400">Fitness Project:</strong>
-				"Keep track of my workout routine, meal planning, and schedule."
+				💼 <strong class="text-purple-600 dark:text-purple-400">Work Project:</strong>
+				"Q1 Marketing Campaign — need to coordinate social posts, email sequences, and landing
+				pages before Feb 15."
 			</p>
 			<p>
-				💻 <strong class="text-purple-600 dark:text-purple-400">Side Project:</strong>
-				"I'm trying to bootstrap a small app and need to track milestones."
+				🏋️ <strong class="text-purple-600 dark:text-purple-400">Personal Goal:</strong>
+				"Get in shape for summer — track workouts, meal prep, and progress photos. Goal: lose
+				15 lbs by June."
 			</p>
 			<p>
-				📚 <strong class="text-purple-600 dark:text-purple-400">Writing a Book:</strong>
-				"Capture all my ideas, research, and outlines in one place."
+				🎨 <strong class="text-purple-600 dark:text-purple-400">Creative Pursuit:</strong>
+				"Launch my Etsy shop — design 10 products, set up store, create Instagram presence."
+			</p>
+			<p>
+				📚 <strong class="text-purple-600 dark:text-purple-400">Learning Objective:</strong>
+				"Master Spanish — practice daily with Duolingo, watch Spanish shows, find conversation
+				partner."
 			</p>
 		</div>
 

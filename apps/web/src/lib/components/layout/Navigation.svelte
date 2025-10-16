@@ -16,7 +16,8 @@
 		AlertCircle,
 		ChevronRight,
 		Loader2,
-		Zap
+		Zap,
+		Clock
 	} from 'lucide-svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -64,6 +65,7 @@
 	const NAV_ITEMS = [
 		{ href: '/', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
+		{ href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 

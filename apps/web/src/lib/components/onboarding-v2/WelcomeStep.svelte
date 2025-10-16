@@ -51,48 +51,82 @@
 		<em class="text-purple-600 dark:text-purple-400 not-italic">you</em> want.
 	</p>
 
-	<!-- Feature highlights -->
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12 max-w-3xl w-full">
+	<!-- Philosophy Section - The BuildOS Way -->
+	<div class="mb-10 max-w-2xl w-full">
 		<div
-			class="flex flex-col items-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-gray-700"
+			class="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 rounded-2xl p-8 border-2 border-purple-200 dark:border-purple-800 shadow-sm"
 		>
-			<div
-				class="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-lg flex items-center justify-center mb-3"
+			<h3
+				class="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center flex items-center justify-center gap-2"
 			>
-				<Brain class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-			</div>
-			<h3 class="font-semibold text-gray-900 dark:text-white mb-2">Brain Dump</h3>
-			<p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-				Turn thoughts into projects
-			</p>
-		</div>
+				<Sparkles class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+				The BuildOS Way
+			</h3>
 
-		<div
-			class="flex flex-col items-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-gray-700"
-		>
-			<div
-				class="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg flex items-center justify-center mb-3"
-			>
-				<Calendar class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-			</div>
-			<h3 class="font-semibold text-gray-900 dark:text-white mb-2">Calendar Sync</h3>
-			<p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-				Extract projects from events
-			</p>
-		</div>
+			<div class="space-y-5 text-left">
+				<!-- Step 1: Clarity -->
+				<div class="flex gap-4 items-start">
+					<div
+						class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+					>
+						1
+					</div>
+					<div class="flex-1">
+						<h4 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+							First, Get Clarity
+						</h4>
+						<p class="text-gray-700 dark:text-gray-300 leading-relaxed">
+							To get organized and boost productivity, you need <strong
+								>clarity</strong
+							>. And to get clarity, you need to offload what's in your head and see
+							it on the screen. That's where everything begins.
+						</p>
+					</div>
+				</div>
 
-		<div
-			class="flex flex-col items-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-gray-700"
-		>
-			<div
-				class="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-lg flex items-center justify-center mb-3"
-			>
-				<MessageSquare class="w-6 h-6 text-green-600 dark:text-green-400" />
+				<!-- Step 2: Projects -->
+				<div class="flex gap-4 items-start">
+					<div
+						class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+					>
+						2
+					</div>
+					<div class="flex-1">
+						<h4 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+							Then, Organize Into Projects
+						</h4>
+						<p class="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
+							BuildOS works with <strong>projects</strong> — whether that's a work initiative,
+							a personal goal, a creative endeavor, or a life milestone.
+						</p>
+						<p class="text-gray-700 dark:text-gray-300 leading-relaxed">
+							Think of projects as focused endeavors with a clear goal or vision. When
+							you organize around projects, you create structure that helps you
+							actually
+							<em>finish</em> things.
+						</p>
+					</div>
+				</div>
+
+				<!-- Step 3: Focus -->
+				<div class="flex gap-4 items-start">
+					<div
+						class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+					>
+						3
+					</div>
+					<div class="flex-1">
+						<h4 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+							Finally, Stay Focused
+						</h4>
+						<p class="text-gray-700 dark:text-gray-300 leading-relaxed">
+							Clarity and organization mean nothing without follow-through. BuildOS
+							helps you maintain <strong>focus</strong> with smart reminders and daily
+							check-ins.
+						</p>
+					</div>
+				</div>
 			</div>
-			<h3 class="font-semibold text-gray-900 dark:text-white mb-2">Smart Reminders</h3>
-			<p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-				Stay on track with AI
-			</p>
 		</div>
 	</div>
 

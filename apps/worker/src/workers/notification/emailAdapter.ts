@@ -103,7 +103,7 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
   <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
     <p>This is an automated notification from BuildOS</p>
     <p>
-      <a href="https://build-os.com/settings/notifications" style="color: #667eea;">Manage notification preferences</a>
+      <a href="https://build-os.com/profile?tab=notifications" style="color: #667eea;">Manage notification preferences</a>
     </p>
   </div>
 </body>
@@ -119,7 +119,7 @@ ${payload.action_url ? `View details: ${payload.action_url}` : ""}
 
 ---
 This is an automated notification from BuildOS
-Manage your notification preferences: https://build-os.com/settings/notifications
+Manage your notification preferences: https://build-os.com/profile?tab=notifications
   `.trim();
 
   return { html, text };
@@ -257,7 +257,7 @@ export async function sendEmailNotification(
             <div style="text-align: center; margin-top: 24px;">
               <a href="https://build-os.com/daily-briefs/${delivery.payload.data.brief_id}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #d1d5db; margin: 0 8px;">|</span>
-              <a href="https://build-os.com/settings/notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+              <a href="https://build-os.com/profile?tab=notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
             </div>
           `;
 

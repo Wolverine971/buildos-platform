@@ -145,12 +145,41 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
-			Stay Accountable & Follow Through
+			Step 2: Maintain Focus With Smart Reminders
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
-			The best plans fall apart without follow-through. Let BuildOS help you stay on track
-			with gentle reminders and daily check-ins that keep you moving forward.
+		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto mb-4">
+			You've got <strong>clarity</strong> from brain dumping your projects. Now you need
+			<strong>focus</strong> to actually get things done.
 		</p>
+		<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+			BuildOS helps you maintain focus through timely nudges, daily check-ins, and contextual
+			reminders that keep you moving forward on what matters most.
+		</p>
+	</div>
+
+	<!-- BuildOS Way Reminder -->
+	<div class="mb-8">
+		<div
+			class="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/30 dark:to-blue-950/30 rounded-xl border-2 border-green-200 dark:border-green-800 p-6"
+		>
+			<div class="flex items-start gap-4">
+				<div
+					class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+				>
+					2
+				</div>
+				<div class="flex-1">
+					<h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+						The BuildOS Way: Clarity → Focus → Results
+					</h3>
+					<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+						You've already taken the first step by getting <strong>clarity</strong>
+						through brain dumping your projects. Now BuildOS offers several ways to help
+						you maintain <strong>focus</strong> — choose what works best for your workflow.
+					</p>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<div class="space-y-6">

@@ -1,4 +1,4 @@
-// apps/web/src/routes/time-play/+page.server.ts
+// apps/web/src/routes/time-blocks/+page.server.ts
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
@@ -8,12 +8,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	if (!user) {
 		throw redirect(303, '/auth/login');
-	}
-
-	// const hasAccess = await isFeatureEnabled(supabase, user.id, 'time_play');
-	const hasAccess = true;
-	if (!hasAccess) {
-		throw redirect(303, '/projects?message=time_play_not_enabled');
 	}
 
 	const { data, error: projectsError } = await supabase

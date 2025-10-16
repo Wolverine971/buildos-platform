@@ -14,19 +14,26 @@ tags:
     refactoring,
     user_sms_preferences,
   ]
-status: phase1-complete
-last_updated: 2025-10-13T20:30:00-07:00
+status: phase3-migration-files-created
+last_updated: 2025-10-15T02:00:00-07:00
 last_updated_by: Claude Code
-last_updated_note: "Added Phase 1 implementation notes - all changes completed and documented"
+last_updated_note: "Phase 3 migration files created - ready for deployment after 2-week observation period"
 related_docs:
   - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
   - thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md
   - docs/architecture/decisions/ADR-001-user-level-notification-preferences.md
 implementation_files:
-  - apps/worker/src/lib/utils/smsPreferenceChecks.ts (NEW)
-  - apps/worker/src/workers/notification/smsAdapter.ts (MODIFIED)
-  - apps/worker/src/workers/notification/preferenceChecker.ts (MODIFIED)
-  - supabase/migrations/20251013_phase1_remove_daily_brief_sms_check.sql (NEW)
+  - apps/worker/src/lib/utils/smsPreferenceChecks.ts (NEW - Phase 1)
+  - apps/worker/src/workers/notification/smsAdapter.ts (MODIFIED - Phase 1)
+  - apps/worker/src/workers/notification/preferenceChecker.ts (MODIFIED - Phase 1)
+  - supabase/migrations/20251013_phase1_remove_daily_brief_sms_check.sql (NEW - Phase 1)
+  - apps/web/src/routes/api/sms/preferences/+server.ts (MODIFIED - Phase 2)
+  - apps/web/src/lib/components/settings/SMSPreferences.svelte (MODIFIED - Phase 2)
+  - apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte (MODIFIED - Phase 2)
+  - apps/web/src/lib/services/sms.service.ts (MODIFIED - Phase 2)
+  - apps/web/docs/features/onboarding-v2/README.md (MODIFIED - Phase 2)
+  - supabase/migrations/20251015_deprecate_unused_sms_fields.sql (NEW - Phase 3a)
+  - supabase/migrations/20251029_remove_deprecated_sms_fields.sql (NEW - Phase 3b)
 ---
 
 # SMS Flow Deprecation and Migration Plan
@@ -617,6 +624,147 @@ Before deploying Phase 2:
 - [ ] Daily brief SMS controlled via Notification Preferences page
 
 **Note**: Generic API documentation files (utilities.md, authentication.md) contain example notification preference structures but don't need updating as they're illustrative examples, not SMS-specific docs.
+
+---
+
+### Phase 3 Implementation Notes (2025-10-15)
+
+**Status**: ✅ MIGRATION FILES CREATED - Ready for deployment
+
+#### What Was Implemented
+
+Created two migration files following a safe two-step deployment strategy:
+
+##### 1. Phase 3a: Mark Columns as Deprecated (Non-Breaking)
+
+**File**: `/supabase/migrations/20251015_deprecate_unused_sms_fields.sql` (NEW)
+
+**Purpose**: Mark deprecated columns with database comments - safe, non-breaking change that allows 2-week observation period before actual column removal.
+
+**Key Features**:
+
+- Adds deprecation comments to all three fields:
+  - `daily_brief_sms` → Replaced by `should_sms_daily_brief`
+  - `task_reminders` → Never implemented
+  - `next_up_enabled` → Never implemented
+- Includes verification query to confirm comments were applied
+- Documents that columns will be dropped on 2025-10-29 (2 weeks from deprecation date)
+- Provides simple rollback plan (remove comments)
+
+**Deployment**: Can be deployed immediately - this is a metadata-only change with zero risk.
+
+##### 2. Phase 3b: Drop Deprecated Columns (After 2-Week Wait)
+
+**File**: `/supabase/migrations/20251029_remove_deprecated_sms_fields.sql` (NEW)
+
+**Purpose**: Drop the deprecated columns from the database after confirming no issues from Phase 2 code changes.
+
+**Key Safety Features**:
+
+1. **Date Validation**: Migration will FAIL if run before 2025-10-29
+   - Calculates days since deprecation date (2025-10-15)
+   - Raises exception if less than 14 days have passed
+   - Prevents premature execution
+
+2. **Pre-Flight Checks**:
+   - Shows current field usage statistics
+   - Reports how many users have fields enabled
+   - Warns if any users still have deprecated fields enabled (but proceeds since code doesn't check them)
+
+3. **Post-Drop Verification**:
+   - Confirms all three columns are dropped
+   - Lists all remaining columns for verification
+   - Provides next steps (regenerate TypeScript schemas)
+
+4. **Comprehensive Rollback Plan**:
+   - SQL to restore columns with default values
+   - Documents that data loss is acceptable (explained why)
+   - Notes that code no longer reads these fields
+
+**Deployment**:
+
+- ⚠️ **DO NOT DEPLOY before 2025-10-29**
+- The migration includes safety checks to prevent early execution
+- After deployment, must regenerate TypeScript schemas
+
+#### Next Steps
+
+1. **Deploy Phase 3a** (`20251015_deprecate_unused_sms_fields.sql`):
+   - ✅ Safe to deploy immediately
+   - Mark columns as deprecated in database metadata
+   - Begin 2-week observation period
+
+2. **Monitor for Issues** (2 weeks):
+   - Watch for any problems from Phase 2 code changes
+   - Verify no rollback needed
+   - Check production logs for errors
+
+3. **Deploy Phase 3b** (`20251029_remove_deprecated_sms_fields.sql`):
+   - ⏳ Wait until 2025-10-29 or later
+   - Safety checks will prevent premature execution
+   - Drop the deprecated columns
+
+4. **Regenerate TypeScript Schemas** (After Phase 3b):
+   ```bash
+   cd packages/shared-types
+   pnpm run generate:types
+   ```
+
+   - This will update `database.schema.ts` to exclude dropped fields
+   - Verify changes with `git diff`
+
+#### Implementation Strategy
+
+**Two-Migration Approach Benefits**:
+
+- **Safety**: Non-breaking deprecation first, then actual removal
+- **Observability**: 2-week window to catch any issues
+- **Rollback**: Easy to revert if problems discovered
+- **Documentation**: Database itself documents the deprecation timeline
+
+**Why Not One Migration?**
+
+- Separating deprecation from removal provides a safety net
+- If Phase 2 code changes have issues, we can rollback without data loss
+- Comments serve as documentation for other developers
+- Allows time for production monitoring before permanent changes
+
+#### Files Created
+
+1. **NEW**: `/supabase/migrations/20251015_deprecate_unused_sms_fields.sql` (79 lines)
+   - Marks columns as deprecated with detailed comments
+   - Includes verification query with informative notices
+   - Documents future removal date (2025-10-29)
+   - Provides simple rollback instructions
+
+2. **NEW**: `/supabase/migrations/20251029_remove_deprecated_sms_fields.sql` (173 lines)
+   - Drops all three deprecated columns
+   - Includes pre-flight date validation (prevents early execution)
+   - Shows current usage statistics before dropping
+   - Verifies successful drop with detailed notices
+   - Lists all remaining columns for confirmation
+   - Comprehensive rollback instructions
+
+#### Testing Checklist
+
+Before deploying Phase 3a:
+
+- [x] Migration file created with proper naming convention
+- [x] Comments include deprecation date and replacement information
+- [x] Verification query included
+- [x] Rollback plan documented
+- [ ] Test migration in development environment
+- [ ] Confirm migration runs without errors
+
+Before deploying Phase 3b (after 2025-10-29):
+
+- [ ] Verify 14+ days have passed since Phase 3a
+- [ ] Confirm no production issues from Phase 2
+- [ ] Test migration in staging environment
+- [ ] Confirm safety checks work (try running early - should fail)
+- [ ] Run migration in production
+- [ ] Regenerate TypeScript schemas
+- [ ] Verify no application errors
 
 ---
 
