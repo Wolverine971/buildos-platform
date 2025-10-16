@@ -76,7 +76,7 @@
 					throw new Error('Failed to save SMS preferences');
 				}
 
-				// Also enable SMS for brief.completed notification if any SMS options are enabled
+				// Also enable daily brief SMS if any SMS options are enabled
 				if (
 					smsPreferences.eventReminders ||
 					smsPreferences.morningKickoff ||
@@ -86,14 +86,13 @@
 						method: 'PUT',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
-							event_type: 'brief.completed',
-							sms_enabled: true
+							should_sms_daily_brief: true
 						})
 					});
 
 					if (!notifResponse.ok) {
-						console.error('Failed to enable SMS for brief.completed notifications');
-						// Don't throw - this is non-critical
+						console.error('Failed to enable daily brief SMS notifications');
+						// Don't throw - this is non-critical (might fail if brief generation not active yet)
 					}
 				}
 

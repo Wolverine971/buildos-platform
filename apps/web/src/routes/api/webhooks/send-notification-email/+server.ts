@@ -72,32 +72,42 @@ export const POST: RequestHandler = async ({ request }) => {
 		// ✅ TRIPLE-CHECK USER PREFERENCES
 		// Final safety check before sending via SMTP
 		// This ensures we respect user preferences even if they changed between queuing and sending
-		if (body.eventType) {
-			const { data: prefs, error: prefError } = await supabase
-				.from('user_notification_preferences')
-				.select('email_enabled')
-				.eq('user_id', body.recipientUserId)
-				.eq('event_type', body.eventType)
-				.single();
+		// Phase 4 (2025-10-16): Updated to use global user preferences (no event_type filter)
+		const { data: prefs, error: prefError } = await supabase
+			.from('user_notification_preferences')
+			.select('email_enabled, should_email_daily_brief')
+			.eq('user_id', body.recipientUserId)
+			.maybeSingle();
 
-			if (prefError || !prefs || !prefs.email_enabled) {
-				console.log(
-					`[NotificationEmailWebhook] ❌ Email cancelled - user preferences do not allow (delivery: ${body.deliveryId})`,
-					{
-						eventType: body.eventType,
-						userId: body.recipientUserId,
-						prefError: prefError?.message,
-						emailEnabled: prefs?.email_enabled
-					}
-				);
-				return json(
-					{
-						success: false,
-						error: 'Cancelled: User preferences do not allow email notifications for this event type'
-					},
-					{ status: 200 } // Return 200 to prevent retries
-				);
-			}
+		// Determine which preference to check based on event type
+		let emailAllowed = false;
+		if (body.eventType === 'brief.completed') {
+			// For daily briefs, check should_email_daily_brief
+			emailAllowed = prefs?.should_email_daily_brief ?? false;
+		} else {
+			// For all other events, check email_enabled
+			emailAllowed = prefs?.email_enabled ?? false;
+		}
+
+		if (prefError || !prefs || !emailAllowed) {
+			console.log(
+				`[NotificationEmailWebhook] ❌ Email cancelled - user preferences do not allow (delivery: ${body.deliveryId})`,
+				{
+					eventType: body.eventType,
+					userId: body.recipientUserId,
+					prefError: prefError?.message,
+					emailEnabled: prefs?.email_enabled,
+					shouldEmailDailyBrief: prefs?.should_email_daily_brief,
+					checkUsed: body.eventType === 'brief.completed' ? 'should_email_daily_brief' : 'email_enabled'
+				}
+			);
+			return json(
+				{
+					success: false,
+					error: 'Cancelled: User preferences do not allow email notifications'
+				},
+				{ status: 200 } // Return 200 to prevent retries
+			);
 		}
 
 		const emailService = new EmailService(supabase);

@@ -81,17 +81,18 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const emailService = new EmailGenerationService(supabase);
 		const baseContext = await emailService.getUserContext(userId);
 
-		// Get notification preferences
-		const { data: preferences, error: prefsError } = await supabase
+		// Get global notification preferences (Phase 4: one row per user, no event_type)
+		const { data: globalPrefs, error: prefsError } = await supabase
 			.from('user_notification_preferences')
-			.select('event_type, push_enabled, email_enabled, sms_enabled, in_app_enabled')
-			.eq('user_id', userId);
+			.select('push_enabled, email_enabled, sms_enabled, in_app_enabled')
+			.eq('user_id', userId)
+			.maybeSingle();
 
 		if (prefsError) {
 			console.error('Error fetching notification preferences:', prefsError);
 		}
 
-		// Get notification subscriptions to check if user is subscribed to each event
+		// Get notification subscriptions to check which events user is subscribed to
 		const { data: subscriptions, error: subsError } = await supabase
 			.from('notification_subscriptions')
 			.select('event_type, is_active')
@@ -101,15 +102,17 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			console.error('Error fetching notification subscriptions:', subsError);
 		}
 
-		// Map preferences with subscription status
-		const subscriptionMap = new Map(
-			subscriptions?.map((sub) => [sub.event_type, sub.is_active]) ?? []
-		);
-
+		// Map subscriptions to preferences format
+		// After refactor: preferences are global, so we combine with subscriptions
 		const preferencesWithSubscription =
-			preferences?.map((pref) => ({
-				...pref,
-				is_subscribed: subscriptionMap.get(pref.event_type as EventType) ?? false
+			subscriptions?.map((sub) => ({
+				event_type: sub.event_type as EventType,
+				// Global preferences apply to ALL subscribed events
+				push_enabled: globalPrefs?.push_enabled ?? true,
+				email_enabled: globalPrefs?.email_enabled ?? true,
+				sms_enabled: globalPrefs?.sms_enabled ?? false,
+				in_app_enabled: globalPrefs?.in_app_enabled ?? true,
+				is_subscribed: sub.is_active ?? false
 			})) ?? [];
 
 		// Get channel capabilities

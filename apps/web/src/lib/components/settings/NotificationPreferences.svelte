@@ -20,7 +20,7 @@
 		Moon,
 		AlertCircle
 	} from 'lucide-svelte';
-	import type { EventType, UserNotificationPreferences } from '@buildos/shared-types';
+	import type { UserNotificationPreferences } from '@buildos/shared-types';
 
 	interface Props {
 		userId: string;

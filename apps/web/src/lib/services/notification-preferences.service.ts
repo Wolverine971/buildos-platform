@@ -208,6 +208,7 @@ class NotificationPreferencesService {
 	 */
 	private getDefaults(): UserNotificationPreferences {
 		// Default global channel preferences (apply to all event types)
+		// Note: timezone removed from preferences table, now stored in users table
 		return {
 			push_enabled: true,
 			email_enabled: true,
@@ -218,7 +219,6 @@ class NotificationPreferencesService {
 			quiet_hours_enabled: false,
 			quiet_hours_start: '22:00:00',
 			quiet_hours_end: '08:00:00',
-			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			should_email_daily_brief: false,
 			should_sms_daily_brief: false
 		};
