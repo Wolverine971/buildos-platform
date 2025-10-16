@@ -45,12 +45,9 @@ export function calculateAvailableSlots(
 			month: 'short',
 			day: 'numeric'
 		});
-		
 
 		// 3. Clip occupied slots to day boundaries (buffer might extend beyond)
 		const clippedOccupied = clipSlotsToBoundaries(occupied, dayStart, dayEnd, dayName);
-
-		
 
 		// 4. Sort by start time for gap detection
 		clippedOccupied.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -60,7 +57,7 @@ export function calculateAvailableSlots(
 
 		// 6. Find gaps between occupied slots
 		const gaps = findGaps(mergedOccupied, dayStart, dayEnd);
-		
+
 		// 7. Filter gaps that are at least minDuration
 		const validGaps = gaps.filter((gap) => {
 			const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);

@@ -162,7 +162,9 @@
 	<!-- Block type selector and project selector before form fields -->
 	<div slot="before-form" class="px-6 pt-6 pb-0 space-y-5">
 		<fieldset class="space-y-3">
-			<legend class="text-sm font-semibold text-slate-700 dark:text-slate-200">Block type</legend>
+			<legend class="text-sm font-semibold text-slate-700 dark:text-slate-200"
+				>Block type</legend
+			>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<button
 					type="button"
@@ -263,8 +265,8 @@
 						/>
 					</svg>
 					<span>
-						This block will stay project-agnostic. We'll recommend the most meaningful work
-						across your active projects.
+						This block will stay project-agnostic. We'll recommend the most meaningful
+						work across your active projects.
 					</span>
 				</div>
 			</div>

@@ -705,6 +705,7 @@ Created two migration files following a safe two-step deployment strategy:
    - Drop the deprecated columns
 
 4. **Regenerate TypeScript Schemas** (After Phase 3b):
+
    ```bash
    cd packages/shared-types
    pnpm run generate:types

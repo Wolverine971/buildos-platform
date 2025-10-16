@@ -7,7 +7,7 @@
  */
 
 import { SmartLLMService } from "./smart-llm-service";
-import { formatDistance } from "date-fns";
+import { addMinutes, formatDistance } from "date-fns";
 import { utcToZonedTime } from "date-fns-tz";
 import {
   getUserPrompt,
@@ -69,10 +69,13 @@ export class SMSMessageGenerator {
     userId: string,
   ): Promise<GeneratedSMS> {
     try {
-      // Calculate time until event in user's timezone
-      const now = new Date();
+      // Calculate time until event from the actual send time (not from now)
+      // The message will be sent leadTimeMinutes before the event, so calculate
+      // the time remaining from that send time to the event start
+      const sendTime = addMinutes(event.startTime, -leadTimeMinutes);
+      const sendTimeInUserTz = utcToZonedTime(sendTime, event.userTimezone);
       const startInUserTz = utcToZonedTime(event.startTime, event.userTimezone);
-      const timeUntil = formatDistance(startInUserTz, now, {
+      const timeUntil = formatDistance(startInUserTz, sendTimeInUserTz, {
         addSuffix: false,
       });
 

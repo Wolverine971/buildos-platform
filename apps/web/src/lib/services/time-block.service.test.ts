@@ -178,7 +178,7 @@ describe('TimeBlockService', () => {
 		};
 
 		await expect(service.createTimeBlock(params)).rejects.toThrow(
-			'Time block must be at least 30 minutes'
+			'Time block must be at least 15 minutes'
 		);
 		expect(mockSupabase.from).not.toHaveBeenCalled();
 	});

@@ -240,53 +240,59 @@
 
 			{#if isBreakdownExpanded}
 				<ul class="panel__breakdown-list">
-				{#each enrichedAllocations as project (project.project_id)}
-					<li
-						class="panel__breakdown-item"
-						data-testid={`allocation-project-${project.project_id}`}
-					>
-						<div class="panel__breakdown-meta">
-							<span class="panel__indicator" style={`background: ${project.color}`}
-							></span>
-							<div>
-								<p class="panel__breakdown-name">{project.project_name}</p>
-								<p class="panel__breakdown-sub">
-									{formatBlockCount(project.block_count)}
-								</p>
+					{#each enrichedAllocations as project (project.project_id)}
+						<li
+							class="panel__breakdown-item"
+							data-testid={`allocation-project-${project.project_id}`}
+						>
+							<div class="panel__breakdown-meta">
+								<span
+									class="panel__indicator"
+									style={`background: ${project.color}`}
+								></span>
+								<div>
+									<p class="panel__breakdown-name">{project.project_name}</p>
+									<p class="panel__breakdown-sub">
+										{formatBlockCount(project.block_count)}
+									</p>
+								</div>
 							</div>
-						</div>
-						<div class="panel__breakdown-values">
-							<span class="panel__breakdown-hours">{formatHours(project.hours)}</span>
-							<span class="panel__breakdown-percent"
-								>{formatPercentage(project.percentage)}</span
-							>
-						</div>
-					</li>
-				{/each}
+							<div class="panel__breakdown-values">
+								<span class="panel__breakdown-hours"
+									>{formatHours(project.hours)}</span
+								>
+								<span class="panel__breakdown-percent"
+									>{formatPercentage(project.percentage)}</span
+								>
+							</div>
+						</li>
+					{/each}
 
-				{#if buildBlockHours > 0}
-					<li class="panel__breakdown-item panel__breakdown-item--build">
-						<div class="panel__breakdown-meta">
-							<span
-								class="panel__indicator"
-								style={`background: ${BUILD_BLOCK_COLOR_HEX}`}
-							></span>
-							<div>
-								<p class="panel__breakdown-name">Build blocks</p>
-								<p class="panel__breakdown-sub">Flexible focus across projects</p>
+					{#if buildBlockHours > 0}
+						<li class="panel__breakdown-item panel__breakdown-item--build">
+							<div class="panel__breakdown-meta">
+								<span
+									class="panel__indicator"
+									style={`background: ${BUILD_BLOCK_COLOR_HEX}`}
+								></span>
+								<div>
+									<p class="panel__breakdown-name">Build blocks</p>
+									<p class="panel__breakdown-sub">
+										Flexible focus across projects
+									</p>
+								</div>
 							</div>
-						</div>
-						<div class="panel__breakdown-values">
-							<span class="panel__breakdown-hours"
-								>{formatHours(buildBlockHours)}</span
-							>
-							<span class="panel__breakdown-percent"
-								>{formatPercentage(buildBlockPercentage)}</span
-							>
-						</div>
-					</li>
-				{/if}
-			</ul>
+							<div class="panel__breakdown-values">
+								<span class="panel__breakdown-hours"
+									>{formatHours(buildBlockHours)}</span
+								>
+								<span class="panel__breakdown-percent"
+									>{formatPercentage(buildBlockPercentage)}</span
+								>
+							</div>
+						</li>
+					{/if}
+				</ul>
 			{/if}
 		</div>
 	{/if}
@@ -391,7 +397,9 @@
 		flex-shrink: 0;
 		border-radius: 9999px;
 		background: #f1f5f9;
-		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 1px 3px 0 rgba(0, 0, 0, 0.1),
+			0 1px 2px 0 rgba(0, 0, 0, 0.06);
 		padding: 0.75rem;
 	}
 
@@ -412,7 +420,9 @@
 
 	:global(.dark) .panel__chart-shell {
 		background: #1f2937;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	.panel__chart {
@@ -437,7 +447,9 @@
 		justify-content: center;
 		border-radius: 9999px;
 		background: #ffffff;
-		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 1px 3px 0 rgba(0, 0, 0, 0.1),
+			0 1px 2px 0 rgba(0, 0, 0, 0.06);
 		text-align: center;
 		gap: 0.25rem;
 		padding: 0.625rem;
@@ -459,7 +471,9 @@
 	:global(.dark) .panel__chart-core {
 		background: #111827;
 		color: #e2e8f0;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	.panel__chart-core p {
@@ -833,7 +847,9 @@
 
 	.panel__breakdown-item:hover {
 		transform: translateY(-1px);
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	:global(.dark) .panel__breakdown-item {

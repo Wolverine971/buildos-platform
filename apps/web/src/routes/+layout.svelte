@@ -427,7 +427,10 @@
 	<!-- Open Graph / Social Media -->
 	<meta property="og:site_name" content="BuildOS" />
 	<meta property="og:title" content="BuildOS - The Productivity System for the Builder" />
-	<meta property="og:description" content="AI-powered productivity platform for ADHD minds that transforms unstructured thoughts into actionable plans." />
+	<meta
+		property="og:description"
+		content="AI-powered productivity platform for ADHD minds that transforms unstructured thoughts into actionable plans."
+	/>
 	<meta property="og:type" content="website" />
 
 	<!-- PERFORMANCE: Preload critical fonts -->
