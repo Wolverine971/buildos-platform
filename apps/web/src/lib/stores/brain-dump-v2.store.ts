@@ -7,6 +7,14 @@ import type {
 	DisplayedBrainDumpQuestion
 } from '$lib/types/brain-dump';
 
+// Import background service for cross-layer cleanup
+let backgroundBrainDumpService: any = null;
+if (browser) {
+	import('../services/braindump-background.service').then((module) => {
+		backgroundBrainDumpService = module.backgroundBrainDumpService;
+	});
+}
+
 // Version for session storage compatibility
 const STORAGE_VERSION = 2; // Incremented for multi-brain dump support
 const STORAGE_KEY = 'brain-dump-unified-state';
@@ -909,6 +917,12 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 			// Release mutex
 			actions.releaseBrainDumpMutex(id);
 
+			// CRITICAL: Clear background service jobs for this brain dump
+			// This ensures orphaned jobs don't persist across page reloads
+			if (backgroundBrainDumpService) {
+				backgroundBrainDumpService.clearJobsForBrainDump(id);
+			}
+
 			// Remove from Map (CRITICAL: Create new Map for Svelte 5 reactivity)
 			update((state) => {
 				const newMap = new Map(state.activeBrainDumps);
@@ -921,6 +935,11 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 						state.focusedBrainDumpId === id ? null : state.focusedBrainDumpId
 				};
 			});
+
+			// CRITICAL: Force immediate persistence to sessionStorage
+			// Don't wait for throttled persistence - user might reload immediately
+			const currentState = get({ subscribe });
+			persistState(currentState);
 
 			// Try to process next in queue
 			actions.processQueue();
@@ -935,6 +954,12 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 			// Release mutex
 			actions.releaseBrainDumpMutex(id);
 
+			// CRITICAL: Clear background service jobs for this brain dump
+			// This ensures orphaned jobs don't persist across page reloads
+			if (backgroundBrainDumpService) {
+				backgroundBrainDumpService.clearJobsForBrainDump(id);
+			}
+
 			// Remove from Map (CRITICAL: Create new Map for Svelte 5 reactivity)
 			update((state) => {
 				const newMap = new Map(state.activeBrainDumps);
@@ -947,6 +972,11 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 						state.focusedBrainDumpId === id ? null : state.focusedBrainDumpId
 				};
 			});
+
+			// CRITICAL: Force immediate persistence to sessionStorage
+			// Don't wait for throttled persistence - user might reload immediately
+			const currentState = get({ subscribe });
+			persistState(currentState);
 		},
 
 		/**

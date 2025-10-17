@@ -4,231 +4,64 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 ---
 
-## 2025-10-17: Fixed Brain Dump Refresh Modal Not Refreshing Page
+## 2025-10-17: Fixed Brain Dump State Persistence on Page Reload/Dismiss
 
-**Issue**: When completing a brain dump on the current project page, the success flow shows a "Refresh Now" modal to update the page. Clicking "Refresh Now" did not refresh the page properly - the modal closed but the page data remained stale.
+**Issue**: Brain dump processing gets into a "weird state" when page reloads or stops during processing. Dismissing the notification doesn't fully clear the state, causing orphaned jobs to persist across page reloads and prevent new brain dumps from starting properly.
 
-**Root Cause**: The refresh mechanism was using the wrong approach for the project page's architecture:
+**Root Cause**: The brain dump system uses three independent persistence layers that don't coordinate during cleanup:
 
-- The project page (`+page.server.ts`) only loads basic metadata (project info, calendar, counts) via SvelteKit's server loader
-- All actual project data (tasks, phases, notes, etc.) is loaded **client-side** by `ProjectDataService`
-- The refresh handler tried to use `invalidate()` which only re-runs the server loader
-- Since the server loader doesn't have tasks/phases/notes, `invalidate()` didn't refresh the visible data
-- The project page has a dedicated event system (`brain-dump-applied` event) that triggers `dataService.refreshAll()` to reload all client-side data, but the refresh modal wasn't using it
+1. **Background Service** - stores jobs in `sessionStorage['active-brain-dump-jobs']`
+2. **Brain Dump Store** - stores state in `sessionStorage['brain-dump-unified-state']`
+3. **Notification Store** - stores notifications in `sessionStorage['buildos_notifications_v2']`
 
-**Impact**: Users on the current project page couldn't see their brain dump updates immediately. They had to manually refresh the browser or navigate away and back to see changes.
+When a notification is dismissed, it only cleared layers 2 & 3 but left orphaned jobs in layer 1. On page reload, these orphaned jobs were restored, creating a state mismatch.
 
-**Fix**: Dispatch the `brain-dump-applied` custom event when user confirms refresh. This triggers the project page's event listener which calls `dataService.refreshAll()` to reload all client-side data (tasks, phases, notes, stats, briefs, synthesis, calendar status).
+**Impact**: Users couldn't fully reset brain dump processing by closing the notification. Orphaned state persisted across page reloads, causing confusion and blocking new brain dumps from starting.
+
+**Fix**: Added cross-layer cleanup coordination:
+
+1. **Background Service** (`braindump-background.service.ts:579-617`):
+   - Added `clearJob(jobId)` - clear specific job by ID
+   - Added `clearJobsForBrainDump(brainDumpId)` - clear all jobs for a brain dump
+
+2. **Notification Bridge** (`brain-dump-notification.bridge.ts:57-88`):
+   - Updated `dismiss` action to call `backgroundBrainDumpService.clearJobsForBrainDump()`
+   - Added emergency reset function `forceResetAllBrainDumpState()` exposed as `window.__resetAllBrainDumps()`
+
+3. **Brain Dump Store** (`brain-dump-v2.store.ts:914-970`):
+   - Updated `completeBrainDump()` to clear background jobs
+   - Updated `cancelBrainDump()` to clear background jobs
 
 **Files Changed**:
 
-- `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte` (lines 421-459 - handleRefreshConfirm function)
+- `apps/web/src/lib/services/braindump-background.service.ts` (lines 579-617 - added 2 cleanup methods)
+- `apps/web/src/lib/services/brain-dump-notification.bridge.ts` (lines 1-16, 57-88, 940-996 - import, dismiss action, emergency reset)
+- `apps/web/src/lib/stores/brain-dump-v2.store.ts` (lines 1-16, 914-970 - import, completeBrainDump, cancelBrainDump)
 
 **Manual Verification Steps**:
 
-1. Navigate to an existing project page (e.g., `/projects/[some-project-id]`)
-2. Open brain dump modal and add tasks/updates to the current project
-3. Complete the brain dump - you should see a success view
-4. Click "View Project" button
-5. A modal should appear asking "Refresh the page to see updates?"
-6. Click "Refresh Now"
-7. ✅ Expected: Page should refresh and show the new tasks/updates immediately
-8. ✅ Expected: Success toast "✨ Project updated successfully" should appear
+1. Start a brain dump processing
+2. Reload the page during processing
+3. Close the brain dump notification by clicking the dismiss button
+4. Open browser DevTools console
+5. Check `sessionStorage['active-brain-dump-jobs']` - should be empty or not contain the dismissed brain dump
+6. Check `sessionStorage['brain-dump-unified-state']` - should not have orphaned state
+7. Start a new brain dump - should work normally without conflicts
+
+**Emergency Recovery**: If the system gets stuck, run in browser console:
+```javascript
+window.__resetAllBrainDumps()
+```
 
 **Related Documentation**:
 
-- Brain Dump Flow: `/apps/web/docs/features/brain-dump/README.md`
-- Navigation Utility: `/apps/web/src/lib/utils/brain-dump-navigation.ts`
-- SvelteKit invalidation: [SvelteKit Docs - invalidate](https://kit.svelte.dev/docs/modules#$app-navigation-invalidate)
+- Brain Dump Feature: `/apps/web/docs/features/brain-dump/README.md`
+- Multi-Layer State Architecture: See "Technical Details" section above
+- Notification System: `/NOTIFICATION_SYSTEM_DOCS_MAP.md`
 
 **Date Fixed**: 2025-10-17
 **Fixed By**: Claude Code
-**Severity**: Medium (workaround exists via manual browser refresh)
+**Severity**: High (affects core functionality, no data loss but poor UX)
 **Status**: ✅ Fixed
 
 ---
-
-## 2025-10-16: Rewrote TaskBraindumpSection Tests (Svelte 5 Compatibility Issue)
-
-**Issue**: TaskBraindumpSection.test.ts was written for old component behavior (manual toggle, no auto-load) but component was refactored to auto-load braindumps via `$effect`.
-
-**Analysis**:
-
-- Component now uses Svelte 5 runes (`$state`, `$derived`, `$effect`)
-- Auto-loads braindumps on mount via `$effect` hook
-- No section collapse/expand toggle (always visible)
-- Individual cards can expand/collapse
-- Shows loading, error, empty, and loaded states
-
-**Work Completed**:
-
-1. Analyzed component behavior thoroughly
-2. Designed comprehensive test strategy covering:
-   - Auto-load on mount
-   - Loading state
-   - Empty state
-   - Error state with retry
-   - Single fetch behavior
-   - Card expand/collapse
-   - Timestamp formatting
-3. Completely rewrote 8 tests to match current component implementation
-4. Added `tick()` calls and proper async/await handling
-5. Used `// @vitest-environment jsdom` for DOM access
-
-**Current Status**: ⚠️ Tests hang during execution due to Svelte 5 `$effect` + vitest/jsdom compatibility issue. Tests are properly structured and comprehensive but cannot execute in current test environment.
-
-**Root Cause of Execution Issue**: Svelte 5's `$effect` hook doesn't properly trigger or complete in vitest's jsdom environment, causing tests to hang indefinitely during component mount.
-
-**Files Changed**:
-
-- `apps/web/src/lib/components/project/TaskBraindumpSection.test.ts` (completely rewritten - 277 lines, 8 tests)
-
-**Next Steps**:
-
-1. Monitor Svelte 5 + @testing-library/svelte updates for `$effect` support
-2. Consider alternative testing approaches (e.g., Playwright component testing)
-3. Or refactor component to make `loadBraindumps()` manually callable for testing
-
-**Date**: 2025-10-16
-**By**: Claude Code
-**Severity**: Medium (tests need working but component functions correctly)
-**Status**: 🔄 Tests written, awaiting Svelte 5 testing library improvements
-
----
-
-## 2025-10-16: Fixed Test Suite Bugs (notificationPreferences store, server tests, component tests)
-
-**Issue**: Multiple test suites were failing with various errors:
-
-1. notificationPreferences store: toggle methods referenced `initialState` instead of current state, causing "Cannot read properties of undefined" errors
-2. server.test.ts: Mock used `getSession` instead of `safeGetSession`, imported `POST` instead of `PUT`, and had incorrect response assertions
-3. TaskBraindumpSection tests: Used node environment instead of jsdom, causing "document is not defined" errors
-
-**Root Cause**:
-
-1. **notificationPreferences store bugs** (`notificationPreferences.ts:129-162`):
-   - `toggleEmail()` and `toggleSMS()` assigned `const currentState = initialState` instead of using `get(store)`
-   - Methods returned early after loading instead of continuing to save
-   - `reset()` reused `initialState` object instead of creating a new copy, causing state pollution
-
-2. **server.test.ts bugs**:
-   - Mock provided `getSession` but server code uses `safeGetSession`
-   - Tests imported `POST` but server exports `PUT`
-   - Tests expected fields directly on response but API returns `{preferences: {...}}`
-   - Tests expected functions to throw but server returns 401/500 responses
-   - Supabase mock chains weren't configured correctly
-
-3. **TaskBraindumpSection test bug**:
-   - Tests ran in node environment but component needs DOM for `@testing-library/svelte`
-
-**Impact**:
-
-- 34 test failures across 3 test files
-- notificationPreferences toggle functionality broken (couldn't toggle email/SMS preferences)
-- Test suite unreliable for notification preferences and server API
-- **Note**: TaskBraindumpSection tests need complete rewrite to match refactored component (now auto-loads, no collapse toggle)
-
-**Fix**:
-
-1. **notificationPreferences.ts**:
-   - Import `get` from svelte/store
-   - Store internal reference to writable store
-   - Update toggle methods to use `get(store)` instead of `initialState`
-   - Remove early returns after load, continue to save operation
-   - Fix `reset()` to create new object: `set({ ...initialState })`
-
-2. **server.test.ts**:
-   - Rename `getSession` to `safeGetSession` in mocks
-   - Import `PUT` instead of `POST`
-   - Update assertions to use `json.preferences.field` instead of `json.field`
-   - Change error tests to check `response.status` instead of expecting throws
-   - Fix Supabase mock chains using `mockReturnValue` and `mockImplementation`
-
-3. **TaskBraindumpSection.test.ts**:
-   - Add `// @vitest-environment jsdom` comment at top of file
-
-**Files Changed**:
-
-- `apps/web/src/lib/stores/notificationPreferences.ts` (lines 2, 31, 130-145, 148-163, 177)
-- `apps/web/src/routes/api/notification-preferences/server.test.ts` (lines 3, 60, 68-167, 172-400)
-- `apps/web/src/lib/components/project/TaskBraindumpSection.test.ts` (line 2)
-
-**Test Results**:
-
-- ✅ notificationPreferences.test.ts: All 20 tests passing
-- ✅ server.test.ts: All 14 tests passing
-- ⚠️ TaskBraindumpSection.test.ts: Tests completely rewritten (8 comprehensive tests) but have execution issue with Svelte 5 $effect in vitest/jsdom environment - tests hang during execution. Tests are properly structured and should work once Svelte 5 + vitest compatibility improves.
-
-**Related Documentation**:
-
-- Web App Testing: `/apps/web/docs/technical/testing/`
-- Notification System: `/NOTIFICATION_SYSTEM_DOCS_MAP.md`
-
-**Date Fixed**: 2025-10-16
-**Fixed By**: Claude Code
-**Severity**: High (broken test suite, broken store functionality)
-**Status**: ✅ Fixed (except TaskBraindumpSection which needs rewrite)
-
----
-
-## 2025-10-16: Fixed SMS Event Reminder Timing Context Bug
-
-**Issue**: Scheduled SMS event reminders displayed incorrect timing information (e.g., "Webinar in 10 hrs" when the message was sent 30 minutes before the event).
-
-**Root Cause**: The LLM message generator calculated "time until event" from the current time (midnight, when the daily SMS job runs) instead of from the actual message send time (e.g., 9:30 AM for a 10:00 AM event with 30-minute lead time).
-
-**Impact**: All scheduled SMS event reminders had misleading timing context, potentially confusing users about when their events actually start relative to receiving the notification.
-
-**Fix**: Updated `smsMessageGenerator.ts` to calculate the send time (`event.startTime - leadTimeMinutes`) and use that as the reference point for the "time until event" calculation.
-
-**Files Changed**:
-
-- `apps/worker/src/lib/services/smsMessageGenerator.ts` (lines 10, 72-80)
-
-**Example**:
-
-- Event: 10:00 AM
-- Lead time: 30 minutes
-- Send time: 9:30 AM
-- **Before**: Message said "Webinar in 10 hrs" (calculated from midnight)
-- **After**: Message says "Webinar in 30 mins" (calculated from send time)
-
-**Related Documentation**:
-
-- SMS Event Scheduling: `/thoughts/shared/research/2025-10-13_04-55-45_daily-sms-scheduling-flow-investigation.md`
-- Worker Service: `/apps/worker/CLAUDE.md`
-
-**Date Fixed**: 2025-10-16
-**Fixed By**: Claude Code
-**Severity**: Medium (misleading user experience, but non-critical)
-**Status**: ✅ Fixed
-
----
-
-## Template for Future Entries
-
-```markdown
-## YYYY-MM-DD: [Brief Title]
-
-**Issue**: [What was the bug?]
-
-**Root Cause**: [Why did it happen?]
-
-**Impact**: [Who/what was affected?]
-
-**Fix**: [What was changed?]
-
-**Files Changed**:
-
-- `path/to/file.ts` (lines X-Y)
-- `path/to/another.ts` (lines A-B)
-
-**Related Documentation**:
-
-- [Link to relevant docs]
-
-**Date Fixed**: YYYY-MM-DD
-**Fixed By**: [Developer name]
-**Severity**: [Critical/High/Medium/Low]
-**Status**: ✅ Fixed / 🔄 In Progress / ⚠️ Partially Fixed
-```

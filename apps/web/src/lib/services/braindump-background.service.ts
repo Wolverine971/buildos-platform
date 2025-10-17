@@ -576,6 +576,47 @@ class BackgroundBrainDumpService {
 		}
 	}
 
+	/**
+	 * Clear a specific job by its ID
+	 * Used when user dismisses notification to ensure all state is cleaned up
+	 */
+	clearJob(jobId: string): void {
+		const job = this.activeJobs.get(jobId);
+		if (job) {
+			console.log(`[BackgroundService] Clearing job ${jobId} (status: ${job.status})`);
+			this.activeJobs.delete(jobId);
+			this.saveToSessionStorage();
+			this.notifyListeners(job);
+		}
+	}
+
+	/**
+	 * Clear all jobs associated with a brain dump ID
+	 * Handles the case where job tracking might be by brain dump text or other identifier
+	 */
+	clearJobsForBrainDump(brainDumpId: string): void {
+		let clearedCount = 0;
+
+		// Find and remove jobs that match this brain dump ID
+		for (const [jobId, job] of this.activeJobs.entries()) {
+			// Check if this job is associated with this brain dump
+			// Jobs can be tracked by their ID or by the brain dump ID in the save result
+			const jobBrainDumpId = job.result?.saveResult?.brainDumpId;
+			if (jobId === brainDumpId || jobBrainDumpId === brainDumpId) {
+				console.log(
+					`[BackgroundService] Clearing job ${jobId} for brain dump ${brainDumpId}`
+				);
+				this.activeJobs.delete(jobId);
+				clearedCount++;
+			}
+		}
+
+		if (clearedCount > 0) {
+			console.log(`[BackgroundService] Cleared ${clearedCount} jobs for brain dump ${brainDumpId}`);
+			this.saveToSessionStorage();
+		}
+	}
+
 	// Prune old jobs when storage is too large
 	private pruneOldJobs() {
 		const now = Date.now();

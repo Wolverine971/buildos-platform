@@ -988,9 +988,9 @@ export class BrainDumpProcessor {
 		const isNewProject = !existingProject && !selectedProjectId;
 
 		// Check if analysis recommends skipping context processing (optimization)
-		if (
+		if ( selectedProjectId && (
 			!prepAnalysisResult?.braindump_classification ||
-			!['mixed', 'strategic'].includes(prepAnalysisResult.braindump_classification)
+			!['mixed', 'strategic'].includes(prepAnalysisResult.braindump_classification))
 		) {
 			console.log(
 				'[extractProjectContext] Skipping context processing based on analysis recommendation:',

@@ -12,6 +12,7 @@ import { get } from 'svelte/store';
 import { brainDumpV2Store } from '$lib/stores/brain-dump-v2.store';
 import { notificationStore } from '$lib/stores/notification.store';
 import { brainDumpService } from '$lib/services/braindump-api.service';
+import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
 import type { BrainDumpNotification } from '$lib/types/notification.types';
 import type { StreamingMessage } from '$lib/types/sse-messages';
 
@@ -64,12 +65,25 @@ function buildBrainDumpNotificationActions(brainDumpId: string): BrainDumpNotifi
 				lastProcessedTimestamps.delete(brainDumpId);
 				lastSyncedBrainDumpStates.delete(brainDumpId);
 
+				// CRITICAL: Cancel active API stream
 				cancelBrainDumpAPIStream(brainDumpId);
+
+				// CRITICAL: Clear background service jobs for this brain dump
+				// This ensures orphaned jobs don't persist across page reloads
+				backgroundBrainDumpService.clearJobsForBrainDump(brainDumpId);
+
+				// Complete brain dump in store (removes from activeBrainDumps map)
 				brainDumpV2Store.completeBrainDump(brainDumpId);
 			} else if (activeBrainDumpNotificationId) {
+				// Legacy mode
 				notificationStore.remove(activeBrainDumpNotificationId);
 				activeBrainDumpNotificationId = null;
 				lastProcessedBrainDumpId = null;
+
+				// Clear background jobs for legacy mode too
+				if (lastProcessedBrainDumpId) {
+					backgroundBrainDumpService.clearJobsForBrainDump(lastProcessedBrainDumpId);
+				}
 			}
 		}
 	};
@@ -921,4 +935,62 @@ export function cancelBrainDumpAPIStream(brainDumpId: string) {
 		controller.abort();
 		activeAPIStreams.delete(brainDumpId);
 	}
+}
+
+/**
+ * Emergency reset function to clear ALL brain dump state across all layers
+ *
+ * Use this when the system gets into a "weird state" and normal cleanup doesn't work.
+ * This clears:
+ * - All background service jobs
+ * - All brain dump store state
+ * - All active API streams
+ * - All notification bridge tracking
+ *
+ * @example
+ * // Call from browser console if stuck:
+ * // window.__resetAllBrainDumps()
+ */
+export function forceResetAllBrainDumpState(): void {
+	console.warn('[BrainDumpNotificationBridge] EMERGENCY RESET: Clearing all brain dump state');
+
+	// 1. Clear all background service jobs
+	backgroundBrainDumpService.clearFailedJobs();
+	backgroundBrainDumpService.clearCompletedJobs();
+
+	// Also clear all active jobs (processing)
+	const allJobs = backgroundBrainDumpService.getAllJobs();
+	allJobs.forEach((job) => {
+		backgroundBrainDumpService.clearJob(job.id);
+	});
+
+	// 2. Cancel all active API streams
+	for (const controller of activeAPIStreams.values()) {
+		controller.abort();
+	}
+	activeAPIStreams.clear();
+
+	// 3. Clear all notification bridge tracking
+	activeBrainDumpNotifications.clear();
+	lastProcessedTimestamps.clear();
+	lastSyncedBrainDumpStates.clear();
+
+	// 4. Reset brain dump store
+	brainDumpV2Store.reset();
+
+	// 5. Clear all brain dump notifications from notification store
+	const currentNotifications = get(notificationStore);
+	for (const [id, notification] of currentNotifications.notifications.entries()) {
+		if (notification.type === 'brain-dump') {
+			notificationStore.remove(id);
+		}
+	}
+
+	console.log('[BrainDumpNotificationBridge] Emergency reset complete - all brain dump state cleared');
+}
+
+// Export to global scope for emergency use
+if (typeof window !== 'undefined') {
+	(window as any).__resetAllBrainDumps = forceResetAllBrainDumpState;
+	console.log('[BrainDumpNotificationBridge] Emergency reset function available as window.__resetAllBrainDumps()');
 }
