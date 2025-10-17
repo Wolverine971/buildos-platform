@@ -420,16 +420,25 @@
 
 	async function handleRefreshConfirm() {
 		const projectId = pendingProjectUpdate?.projectId;
+		const projectName = pendingProjectUpdate?.projectName || 'Project';
 		dispatch('refreshConfirm', { projectId });
 		showRefreshModal = false;
 		pendingProjectUpdate = null;
 
 		try {
 			if (projectId) {
+				// Dispatch event to trigger client-side data refresh on project page
+				// The project page listens for this event and calls dataService.refreshAll()
+				window.dispatchEvent(
+					new CustomEvent('brain-dump-applied', {
+						detail: { projectId, projectName }
+					})
+				);
+
+				// Also invalidate server-side data for good measure
 				await invalidate(`projects:${projectId}`);
-				await invalidate(`/projects/${projectId}`);
 				await tick();
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				await new Promise((resolve) => setTimeout(resolve, 150));
 			}
 			brainDumpV2Store.closeNotification();
 			handleClose();
