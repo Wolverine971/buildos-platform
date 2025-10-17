@@ -1,17 +1,18 @@
 # Prompt Audit: new-project-dual-context
 
-**Generated at:** 2025-10-16T16:08:15.281Z
+**Generated at:** 2025-10-17T03:12:33.463Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"brainDumpLength": 21,
+	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+	"projectId": null,
+	"brainDumpLength": 545,
 	"hasExistingProject": false,
 	"existingContextLength": 0,
-	"timestamp": "2025-10-16T16:08:15.281Z"
+	"timestamp": "2025-10-17T03:12:33.462Z"
 }
 ```
 
@@ -23,7 +24,7 @@ A user just brain dumped information about a new project and you need to create 
 Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-16T16:08:15.281Z
+Current date and time: 2025-10-17T03:12:33.092Z
 
 ## Project Creation Decision:
 **Decision Matrix**:
@@ -45,7 +46,7 @@ Convert natural language dates to YYYY-MM-DD format:
    - "Q2" → end_date: June 30th of current year
    - Always calculate actual YYYY-MM-DD dates, NEVER use relative terms
    - If no timeline mentioned, use start_date: today, end_date: null
-   - Current date context: Today is 2025-10-16
+   - Current date context: Today is 2025-10-17
 
 ## Context Generation Framework:
 **Context Generation Framework**:
@@ -157,7 +158,7 @@ Skip context (set to null) when brain dump is:
         "executive_summary": "2-3 sentence executive summary",
         "tags": ["project", "tags"],
         "status": "active",
-        "start_date": "2025-10-16",
+        "start_date": "2025-10-17",
         "end_date": null
       }
     }
@@ -190,7 +191,7 @@ Skip context (set to null) when brain dump is:
 				"executive_summary": null,
 				"tags": ["tasks"],
 				"status": "active",
-				"start_date": "2025-10-16",
+				"start_date": "2025-10-17",
 				"end_date": null
 			}
 		}
@@ -208,15 +209,27 @@ Focus on extracting strategic project information and creating comprehensive con
 
 Process this brain dump for project context:
 
-Create a test project
+I'm starting my first fantasy novel - 'The Last Ember'.
+
+Main plot: A young blacksmith discovers she can forge magical weapons when the kingdom's last dragon dies and darkness threatens the realm.
+
+Need to:
+
+- Develop main character backstory (orphan, raised by master blacksmith)
+- Create magic system based on metal and fire
+- Map out the kingdom of Aethermoor
+- Write character profiles for the antagonist (The Shadow King)
+- Outline first three chapters
+- Research medieval blacksmithing techniques
+- Design the prophecy that drives the plot
 
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~1800 tokens
-- **User Prompt:** ~17 tokens
-- **Total Estimate:** ~1817 tokens
+- **User Prompt:** ~148 tokens
+- **Total Estimate:** ~1948 tokens
 
 
 ---

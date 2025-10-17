@@ -86,7 +86,11 @@ export async function savePromptForAudit({
 
 			// Project synthesis
 			'project-synthesis-default': 'project-synthesis/default-synthesis-prompt.md',
-			'project-synthesis-task-synthesis': 'project-synthesis/task-synthesis-modular-prompt.md'
+			'project-synthesis-task-synthesis':
+				'project-synthesis/task-synthesis-modular-prompt.md',
+
+			// Preparatory analysis
+			'preparatory-analysis': 'existing-project/preparatory-analysis/prep-analysis-prompt.md'
 		};
 
 		const filePath = scenarioMap[scenarioType];

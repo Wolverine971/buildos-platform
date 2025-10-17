@@ -140,29 +140,23 @@ export function formatProjectForPrompt(
 	const subHeadingPrefix = '#'.repeat(baseLevel + 1);
 	const sections: string[] = [];
 
-	// Project header
-	sections.push(`**Project: ${project.name || 'Untitled'}**`);
-	sections.push(`**ID:** ${project.id}`);
-	sections.push(
-		`**Status:** ${project.status || 'No status'} | **Description:** ${project.description || 'No description'}`
-	);
-	sections.push(
-		`**Timeline:** ${project.start_date || 'Not set'} → ${project.end_date || 'Not set'}`
-	);
+	let projectData = {
+		id: project.id,
+		name: project.name,
+		status: project.status,
+		description: project.description,
+		start_date: project.start_date,
+		end_date: project.end_date,
+		tags: project.tags,
+		executive_summary: project.executive_summary,
+		context: `${project.context?.slice(0, 50)}...`
+	};
 
-	if (project.tags && project.tags.length > 0) {
-		sections.push(`**Tags:** ${project.tags.join(', ')}`);
-	}
-
-	// Executive Summary
-	if (project.executive_summary) {
-		sections.push(`**Executive Summary:**`);
-		sections.push(project.executive_summary);
-	}
+	sections.push(JSON.stringify(projectData));
 
 	// Project Context (with heading normalization)
 	if (project.context) {
-		sections.push(`\n**Context:**`);
+		sections.push(`\n**Full Context:**`);
 
 		// First normalize any inflated headings from previous LLM processing
 		const normalizedContext = normalizeMarkdownHeadings(project.context, 2);

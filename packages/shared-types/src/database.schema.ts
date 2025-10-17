@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-16T17:48:37.134Z
+// Generated on: 2025-10-17T04:07:15.599Z
 
 export type Json =
   | string

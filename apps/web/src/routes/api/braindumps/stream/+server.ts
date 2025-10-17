@@ -177,11 +177,10 @@ async function processBrainDumpWithStreaming({
 						// Send analysis complete with results
 						const classification = result.braindump_classification;
 						const relevantTaskCount = result.relevant_task_ids?.length || 0;
-						const needsContext = result.needs_context_update;
 
 						const completedMessage: SSEAnalysis = {
 							type: 'analysis',
-							message: `Analysis complete: ${classification} content detected (${relevantTaskCount} relevant tasks, ${needsContext ? 'context update needed' : 'no context update'})`,
+							message: `Analysis complete: ${classification} content detected (${relevantTaskCount} relevant tasks)`,
 							data: {
 								status: 'completed',
 								result: result
@@ -191,7 +190,7 @@ async function processBrainDumpWithStreaming({
 
 						// Update status for next phase
 						const nextPhases: ('context' | 'tasks')[] = [];
-						if (needsContext && !result.processing_recommendation?.skip_context) {
+						if (['mixed', 'strategic'].includes(classification)) {
 							nextPhases.push('context');
 						}
 						if (
@@ -339,61 +338,7 @@ async function processBrainDumpWithStreaming({
 			}
 		};
 
-		// Also track retries
-		const originalProcessBrainDumpDual = processor['processBrainDumpDual'].bind(processor);
-		let currentAttempt = 0;
-
-		processor['processBrainDumpDual'] = async function (args: any) {
-			const maxRetries = args.options?.retryAttempts || 3;
-
-			// Wrap the original method to track attempts
-			const wrappedMethod = async () => {
-				currentAttempt++;
-
-				if (currentAttempt > 1) {
-					const retryMessage: SSERetry = {
-						type: 'retry',
-						message: `Retrying dual processing...`,
-						attempt: currentAttempt,
-						maxAttempts: maxRetries,
-						processName: 'dual-processing'
-					};
-					await sendSSEMessage(writer, encoder, retryMessage);
-				}
-
-				try {
-					return await originalProcessBrainDumpDual.call(processor, args);
-				} catch (error) {
-					if (currentAttempt < maxRetries) {
-						// Will retry
-						throw error;
-					} else {
-						// Final failure
-						const finalErrorMessage: SSEError = {
-							type: 'error',
-							message: 'Dual processing failed after all retries',
-							error: error.message,
-							context: 'general',
-							recoverable: false
-						};
-						await sendSSEMessage(writer, encoder, finalErrorMessage);
-						throw error;
-					}
-				}
-			};
-
-			// Replace the internal method temporarily
-			const originalMethod = processor['processBrainDumpDual'];
-			processor['processBrainDumpDual'] = originalProcessBrainDumpDual;
-
-			try {
-				return await wrappedMethod();
-			} finally {
-				processor['processBrainDumpDual'] = originalMethod;
-			}
-		};
-
-		// Execute dual processing
+		// Execute dual processing with retry callback for SSE notifications
 		const rawResult = await processor.processBrainDump({
 			brainDump: content,
 			userId,
@@ -402,7 +347,18 @@ async function processBrainDumpWithStreaming({
 			options: {
 				...options,
 				streamResults: true,
-				useDualProcessing: true
+				useDualProcessing: true,
+				// Provide onRetry callback to emit SSE retry messages
+				onRetry: async (attempt: number, maxAttempts: number) => {
+					const retryMessage: SSERetry = {
+						type: 'retry',
+						message: `Retrying dual processing...`,
+						attempt,
+						maxAttempts,
+						processName: 'dual-processing'
+					};
+					await sendSSEMessage(writer, encoder, retryMessage);
+				}
 			},
 			brainDumpId: brainDumpId as string,
 			processingDateTime

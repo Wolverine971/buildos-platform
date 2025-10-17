@@ -212,7 +212,6 @@ describe('Brain Dump Processor Integration - Simple Tests', () => {
 			// Existing projects use 3 calls: prepAnalysis + context + tasks
 			const mockPrepAnalysis = {
 				braindump_classification: 'task-focused',
-				needs_context_update: false,
 				relevant_task_ids: [],
 				processing_recommendation: { skip_context: true, skip_tasks: false }
 			};

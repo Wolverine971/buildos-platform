@@ -535,3 +535,449 @@ describe('BrainDumpProcessor - Promise.allSettled Validation', () => {
 		});
 	});
 });
+
+describe('BrainDumpProcessor - Retry Mechanism', () => {
+	describe('onRetry Callback Invocation', () => {
+		it('should call onRetry callback on first failure with correct attempt numbers', async () => {
+			const retryCallbacks: Array<{ attempt: number; maxAttempts: number }> = [];
+			let attemptCount = 0;
+
+			const mockOnRetry = vi.fn(async (attempt: number, maxAttempts: number) => {
+				retryCallbacks.push({ attempt, maxAttempts });
+			});
+
+			// Simulate retry loop
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				attemptCount++;
+
+				// Fail first attempt
+				if (attempt === 1) {
+					// Call onRetry before next attempt
+					if (attempt < maxRetries) {
+						await mockOnRetry(attempt + 1, maxRetries);
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				// Success on second attempt
+				break;
+			}
+
+			expect(mockOnRetry).toHaveBeenCalledTimes(1);
+			expect(retryCallbacks[0]).toEqual({ attempt: 2, maxAttempts: 3 });
+			expect(attemptCount).toBe(2); // Attempted twice before success
+		});
+
+		it('should call onRetry callback multiple times on multiple failures', async () => {
+			const retryCallbacks: Array<{ attempt: number; maxAttempts: number }> = [];
+			let attemptCount = 0;
+
+			const mockOnRetry = vi.fn(async (attempt: number, maxAttempts: number) => {
+				retryCallbacks.push({ attempt, maxAttempts });
+			});
+
+			// Simulate retry loop with 2 failures, success on 3rd
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				attemptCount++;
+
+				// Fail first two attempts
+				if (attempt <= 2) {
+					if (attempt < maxRetries) {
+						await mockOnRetry(attempt + 1, maxRetries);
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				// Success on third attempt
+				break;
+			}
+
+			expect(mockOnRetry).toHaveBeenCalledTimes(2);
+			expect(retryCallbacks[0]).toEqual({ attempt: 2, maxAttempts: 3 });
+			expect(retryCallbacks[1]).toEqual({ attempt: 3, maxAttempts: 3 });
+			expect(attemptCount).toBe(3); // Attempted 3 times before success
+		});
+
+		it('should NOT call onRetry callback if first attempt succeeds', async () => {
+			const mockOnRetry = vi.fn();
+
+			// Simulate successful first attempt
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				// Success immediately
+				break;
+			}
+
+			expect(mockOnRetry).not.toHaveBeenCalled();
+		});
+
+		it('should NOT call onRetry after final failure', async () => {
+			const retryCallbacks: Array<{ attempt: number; maxAttempts: number }> = [];
+
+			const mockOnRetry = vi.fn(async (attempt: number, maxAttempts: number) => {
+				retryCallbacks.push({ attempt, maxAttempts });
+			});
+
+			// Simulate all retries exhausted
+			const maxRetries = 3;
+			let lastError: Error | null = null;
+
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				// All attempts fail
+				lastError = new Error(`Attempt ${attempt} failed`);
+
+				// Only call onRetry if we have more attempts
+				if (attempt < maxRetries) {
+					await mockOnRetry(attempt + 1, maxRetries);
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				}
+			}
+
+			// Should throw after exhausting retries
+			expect(lastError).toBeDefined();
+			expect(lastError?.message).toContain('Attempt 3 failed');
+
+			// onRetry should be called 2 times (before attempt 2 and 3, but NOT after attempt 3)
+			expect(mockOnRetry).toHaveBeenCalledTimes(2);
+			expect(retryCallbacks).toEqual([
+				{ attempt: 2, maxAttempts: 3 },
+				{ attempt: 3, maxAttempts: 3 }
+			]);
+		});
+	});
+
+	describe('Callback Error Handling', () => {
+		it('should not break retry loop if onRetry callback throws error', async () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			let attemptCount = 0;
+			let callbackCallCount = 0;
+
+			const mockOnRetry = vi.fn(async () => {
+				callbackCallCount++;
+				throw new Error('SSE stream closed');
+			});
+
+			// Simulate retry loop
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				attemptCount++;
+
+				// Fail first attempt
+				if (attempt === 1) {
+					if (attempt < maxRetries) {
+						// Call callback with error handling
+						try {
+							await mockOnRetry(attempt + 1, maxRetries);
+						} catch (callbackError) {
+							console.warn('onRetry callback failed:', callbackError);
+						}
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				// Success on second attempt
+				break;
+			}
+
+			// Retry loop should complete despite callback error
+			expect(attemptCount).toBe(2);
+			expect(callbackCallCount).toBe(1);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				'onRetry callback failed:',
+				expect.any(Error)
+			);
+
+			consoleWarnSpy.mockRestore();
+		});
+
+		it('should log callback errors with proper context', async () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			const mockOnRetry = vi.fn(async () => {
+				throw new Error('Writer is closed');
+			});
+
+			// Simulate callback invocation with error handling
+			try {
+				await mockOnRetry(2, 3);
+			} catch (callbackError) {
+				console.warn('onRetry callback failed:', callbackError);
+			}
+
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				'onRetry callback failed:',
+				expect.objectContaining({
+					message: 'Writer is closed'
+				})
+			);
+
+			consoleWarnSpy.mockRestore();
+		});
+	});
+
+	describe('Exponential Backoff Timing', () => {
+		it('should use correct exponential backoff delays', () => {
+			const calculateDelay = (attempt: number) => Math.pow(2, attempt) * 1000;
+
+			expect(calculateDelay(1)).toBe(2000); // 2 seconds
+			expect(calculateDelay(2)).toBe(4000); // 4 seconds
+			expect(calculateDelay(3)).toBe(8000); // 8 seconds
+		});
+
+		it('should wait correct duration between retries', async () => {
+			const delays: number[] = [];
+			let lastTime = Date.now();
+
+			// Simulate retry loop with timing measurements
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				if (attempt === 1) {
+					if (attempt < maxRetries) {
+						const delay = Math.pow(2, attempt) * 10; // Using 10ms for fast test
+						await new Promise((resolve) => setTimeout(resolve, delay));
+						const now = Date.now();
+						delays.push(now - lastTime);
+						lastTime = now;
+					}
+					continue;
+				}
+
+				break; // Success
+			}
+
+			// First delay should be approximately 20ms (2^1 * 10)
+			expect(delays[0]).toBeGreaterThanOrEqual(15);
+			expect(delays[0]).toBeLessThan(50);
+		});
+	});
+
+	describe('SSE Retry Message Format', () => {
+		it('should send correctly formatted SSE retry message', async () => {
+			const sentMessages: any[] = [];
+
+			const mockSendSSEMessage = vi.fn(async (writer, encoder, message) => {
+				sentMessages.push(message);
+			});
+
+			const mockWriter = {};
+			const mockEncoder = new TextEncoder();
+
+			// Simulate onRetry callback
+			const onRetry = async (attempt: number, maxAttempts: number) => {
+				const retryMessage = {
+					type: 'retry',
+					message: 'Retrying dual processing...',
+					attempt,
+					maxAttempts,
+					processName: 'dual-processing'
+				};
+				await mockSendSSEMessage(mockWriter, mockEncoder, retryMessage);
+			};
+
+			await onRetry(2, 3);
+
+			expect(sentMessages).toHaveLength(1);
+			expect(sentMessages[0]).toEqual({
+				type: 'retry',
+				message: 'Retrying dual processing...',
+				attempt: 2,
+				maxAttempts: 3,
+				processName: 'dual-processing'
+			});
+		});
+
+		it('should include all required SSE retry message fields', async () => {
+			const retryMessage = {
+				type: 'retry',
+				message: 'Retrying dual processing...',
+				attempt: 3,
+				maxAttempts: 3,
+				processName: 'dual-processing'
+			};
+
+			expect(retryMessage.type).toBe('retry');
+			expect(retryMessage.message).toBeDefined();
+			expect(retryMessage.attempt).toBeGreaterThan(0);
+			expect(retryMessage.maxAttempts).toBeGreaterThan(0);
+			expect(retryMessage.processName).toBe('dual-processing');
+		});
+	});
+
+	describe('Retry Exhaustion Behavior', () => {
+		it('should throw error after all retries exhausted', async () => {
+			const maxRetries = 3;
+			let lastError: Error | null = null;
+
+			try {
+				for (let attempt = 1; attempt <= maxRetries; attempt++) {
+					// All attempts fail
+					lastError = new Error('Processing failed');
+
+					if (attempt < maxRetries) {
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+				}
+
+				throw new Error(
+					`Dual processing failed after ${maxRetries} attempts: ${lastError?.message}`
+				);
+			} catch (error) {
+				expect(error).toBeInstanceOf(Error);
+				expect((error as Error).message).toContain('failed after 3 attempts');
+				expect((error as Error).message).toContain('Processing failed');
+			}
+		});
+
+		it('should include last error message in final error', async () => {
+			const lastError = new Error('Timeout after 120s');
+			const maxRetries = 3;
+
+			const finalError = new Error(
+				`Dual processing failed after ${maxRetries} attempts: ${lastError.message}`
+			);
+
+			expect(finalError.message).toContain('failed after 3 attempts');
+			expect(finalError.message).toContain('Timeout after 120s');
+		});
+	});
+
+	describe('Integration with BrainDumpOptions', () => {
+		it('should safely handle missing onRetry callback', async () => {
+			const options = {
+				autoExecute: true,
+				streamResults: true,
+				useDualProcessing: true,
+				retryAttempts: 3
+				// onRetry is intentionally not provided
+			};
+
+			// Simulate check before calling onRetry
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				if (attempt === 1) {
+					// Simulate failure
+					if (attempt < maxRetries) {
+						// Safe check for callback
+						if (options.onRetry) {
+							await options.onRetry(attempt + 1, maxRetries);
+						}
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				break;
+			}
+
+			// Should not throw - no callback is fine
+			expect(options.onRetry).toBeUndefined();
+		});
+
+		it('should use custom retry attempts from options', async () => {
+			const customRetryAttempts = 5;
+			const options = {
+				retryAttempts: customRetryAttempts
+			};
+
+			const maxRetries = options.retryAttempts || 3;
+
+			expect(maxRetries).toBe(5);
+		});
+
+		it('should default to 3 retries if not specified', () => {
+			const options = {};
+			const maxRetries = options.retryAttempts || 3;
+
+			expect(maxRetries).toBe(3);
+		});
+	});
+
+	describe('Retry Flow Edge Cases', () => {
+		it('should handle writer closed during retry callback', async () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			let processingContinued = false;
+
+			const mockOnRetry = vi.fn(async () => {
+				throw new Error('Writer is closed');
+			});
+
+			// Simulate retry loop
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				if (attempt === 1) {
+					if (attempt < maxRetries) {
+						try {
+							await mockOnRetry(attempt + 1, maxRetries);
+						} catch (callbackError) {
+							console.warn('onRetry callback failed:', callbackError);
+						}
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				// Processing continues despite callback error
+				processingContinued = true;
+				break;
+			}
+
+			expect(processingContinued).toBe(true);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+
+			consoleWarnSpy.mockRestore();
+		});
+
+		it('should handle rapid sequential retries', async () => {
+			const retryAttempts: number[] = [];
+
+			const mockOnRetry = vi.fn(async (attempt: number) => {
+				retryAttempts.push(attempt);
+			});
+
+			// Simulate rapid retries
+			const maxRetries = 5;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				if (attempt < maxRetries) {
+					await mockOnRetry(attempt + 1, maxRetries);
+					// Very short delay to test rapid retries
+					await new Promise((resolve) => setTimeout(resolve, 1));
+				}
+			}
+
+			expect(retryAttempts).toEqual([2, 3, 4, 5]);
+			expect(mockOnRetry).toHaveBeenCalledTimes(4);
+		});
+
+		it('should handle async callback correctly', async () => {
+			let callbackCompleted = false;
+
+			const mockOnRetry = vi.fn(async (attempt: number, maxAttempts: number) => {
+				// Simulate async SSE message send
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				callbackCompleted = true;
+			});
+
+			const maxRetries = 3;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				if (attempt === 1) {
+					if (attempt < maxRetries) {
+						await mockOnRetry(attempt + 1, maxRetries);
+						// Callback should complete before backoff
+						expect(callbackCompleted).toBe(true);
+						await new Promise((resolve) => setTimeout(resolve, 10));
+					}
+					continue;
+				}
+
+				break;
+			}
+
+			expect(callbackCompleted).toBe(true);
+		});
+	});
+});

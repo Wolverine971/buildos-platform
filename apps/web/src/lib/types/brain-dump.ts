@@ -200,6 +200,7 @@ export interface BrainDumpOptions {
 	streamResults?: boolean;
 	useDualProcessing?: boolean;
 	retryAttempts?: number;
+	onRetry?: (attempt: number, maxAttempts: number) => Promise<void>;
 }
 
 /**
@@ -212,9 +213,6 @@ export interface PreparatoryAnalysisResult {
 
 	/** Classification of the braindump type */
 	braindump_classification: 'strategic' | 'tactical' | 'mixed' | 'status_update' | 'unrelated';
-
-	/** Whether the project context needs strategic updates */
-	needs_context_update: boolean;
 
 	/** List of strategic elements found that suggest context update needed */
 	context_indicators: string[];

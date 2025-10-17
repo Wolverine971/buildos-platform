@@ -98,7 +98,10 @@ export const POST: RequestHandler = async ({ request }) => {
 					prefError: prefError?.message,
 					emailEnabled: prefs?.email_enabled,
 					shouldEmailDailyBrief: prefs?.should_email_daily_brief,
-					checkUsed: body.eventType === 'brief.completed' ? 'should_email_daily_brief' : 'email_enabled'
+					checkUsed:
+						body.eventType === 'brief.completed'
+							? 'should_email_daily_brief'
+							: 'email_enabled'
 				}
 			);
 			return json(

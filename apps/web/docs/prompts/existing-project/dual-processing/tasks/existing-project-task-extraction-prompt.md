@@ -1,30 +1,32 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-16T16:08:15.226Z
+**Generated at:** 2025-10-17T04:09:22.676Z
 **Environment:** Development
+
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"projectId": "existing-project-123",
-	"brainDumpLength": 41,
-	"existingTasksCount": 0,
-	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-16T16:08:15.226Z"
+  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+  "projectId": "19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4",
+  "brainDumpLength": 805,
+  "existingTasksCount": 20,
+  "hasDisplayedQuestions": false,
+  "timestamp": "2025-10-17T04:09:22.676Z"
 }
 ```
 
+
 ## System Prompt
 
-````
+```
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project existing-project-123
+Mode: Extract/Update for EXISTING project 19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-16T16:08:15.226Z
+Current date and time: 2025-10-17T04:09:17.632Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -66,7 +68,7 @@ Current date and time: 2025-10-16T16:08:15.226Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "existing-project-123",
+  "project_id": "19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -150,8 +152,7 @@ Include these questions in your response within the main JSON structure:
         "priority": "high",
         "duration_minutes": 120,
         "start_date": "2024-03-15T14:00:00",
-        "details": "Added implementation details, research notes, observations from brain dump. Include all context...",
-        "tags": ["urgent", "backend"]
+        "details": "Added implementation details, research notes, observations from brain dump. Include all context..."
       }
     },
     {
@@ -162,13 +163,12 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "existing-project-123",
+        "project_id": "19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
         "duration_minutes": 60,
-        "start_date": "2024-03-16T10:30:00",
-        "tags": ["feature", "api"]
+        "start_date": "2024-03-16T10:30:00"
       }
     },
     {
@@ -179,15 +179,14 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "existing-project-123",
+        "project_id": "19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
         "duration_minutes": 15,
         "start_date": "2024-03-15T09:00:00",
         "recurrence_pattern": "daily",
-        "recurrence_ends": null,
-        "tags": ["meeting", "daily"]
+        "recurrence_ends": null
       }
     }
   ],
@@ -208,35 +207,57 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-````
+```
 
 Respond with valid JSON matching the complete structure above.
-
 ```
 
 ## User Prompt
 
 ```
-
 ## Current Project Data:
 
-No existing tasks
+**EXISTING TASKS (2):**
+[{"id":"483316c7-143d-40da-80be-965eb0824af4","title":"Prepare first 3 chapters as sample","status":"in_progress","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Format and finalize the first three chapters for submission to agents.","details":"Format and finalize the first three chapters for submission to agents. Ensure that the chapters are polished and represent the best of the writing."},{"id":"305558da-94ae-4d03-9b52-a6adee8b776e","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the first three chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in these chapters. Address the following issues from chapter 2: strengthen the dialogue between Elena and Master Thorne, improve pacing in the middle, and add more sensory details about the forge. For chapter 3, include Elena's first attempt at magical forging, introduce the Shadow King's herald, and foreshadow the prophecy. Fix continuity issue regarding Elena's age, which is mentioned as 16 in chapter 1 and 17 in chapter 2."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Add authentication feature to the project
+"Got feedback from my critique group on chapters 1-3. Major revision needed.
 
+Chapter 1 issues:
+
+- Opening is too slow - start with action not description
+- Elena needs stronger voice from page 1
+- Cut the 3 pages of world history - weave it in later
+
+Chapter 2 improvements needed:
+
+- Master Thorne's dialogue too modern - needs more archaic feel
+- Add scene showing Elena's daily forge work before the discovery
+- The dragon forge discovery happens too easily - add obstacles
+
+Chapter 3 restructure:
+
+- Move the prophecy reveal to chapter 5
+- Focus on Elena's emotional journey
+- Add more conflict with Kai about her destiny
+
+Also, writing style notes:
+
+- Too many adverbs - search and destroy
+- Vary sentence structure more
+- Stop using 'suddenly' as a crutch
+- Better sensory details in action scenes"
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2125 tokens
-- **User Prompt:** ~59 tokens
-- **Total Estimate:** ~2184 tokens
+- **System Prompt:** ~2113 tokens
+- **User Prompt:** ~551 tokens
+- **Total Estimate:** ~2664 tokens
 
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
-```

@@ -101,7 +101,6 @@
 						analysisResult = status.data.result;
 						console.log('[DualProcessingResults] Analysis result received:', {
 							classification: status.data.result.braindump_classification,
-							needsContext: status.data.result.needs_context_update,
 							relevantTaskCount: status.data.result.relevant_task_ids?.length || 0
 						});
 					}

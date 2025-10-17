@@ -1334,8 +1334,7 @@ Include these questions in your response within the main JSON structure:
         "priority": "high",
         "duration_minutes": 120,
         "start_date": "2024-03-15T14:00:00",
-        "details": "Added implementation details, research notes, observations from brain dump. Include all context...",
-        "tags": ["urgent", "backend"]
+        "details": "Added implementation details, research notes, observations from brain dump. Include all context..."
       }
     },
     {
@@ -1351,8 +1350,7 @@ Include these questions in your response within the main JSON structure:
         "status": "backlog",
         "task_type": "one_off",
         "duration_minutes": 60,
-        "start_date": "2024-03-16T10:30:00",
-        "tags": ["feature", "api"]
+        "start_date": "2024-03-16T10:30:00"
       }
     },
     {
@@ -1370,8 +1368,7 @@ Include these questions in your response within the main JSON structure:
         "duration_minutes": 15,
         "start_date": "2024-03-15T09:00:00",
         "recurrence_pattern": "daily",
-        "recurrence_ends": null,
-        "tags": ["meeting", "daily"]
+        "recurrence_ends": null
       }
     }
   ],
@@ -1425,11 +1422,22 @@ Respond with valid JSON matching the complete structure above.`;
 	 * Get project context system prompt WITHOUT embedded project data
 	 * Project data should be passed in the user prompt instead
 	 */
-	getProjectContextSystemPrompt(isNewProject: boolean, processingDateTime?: string): string {
-		if (isNewProject) {
-			return this.getNewProjectContextPrompt('', processingDateTime);
+	getProjectContextSystemPrompt({
+		selectedProjectId,
+		processingDateTime,
+		userId
+	}: {
+		selectedProjectId?: string;
+		processingDateTime?: string;
+		userId: string;
+	}): string {
+		if (!selectedProjectId) {
+			return this.getNewProjectContextPrompt(userId, processingDateTime);
 		} else {
-			return this.getExistingProjectContextSystemPrompt(processingDateTime);
+			return this.getExistingProjectContextSystemPrompt(
+				selectedProjectId,
+				processingDateTime
+			);
 		}
 	}
 
@@ -1437,7 +1445,10 @@ Respond with valid JSON matching the complete structure above.`;
 	 * Get existing project context system prompt WITHOUT embedded project data
 	 * This returns just the instructions - project data should be in user prompt
 	 */
-	private getExistingProjectContextSystemPrompt(processingDateTime?: string): string {
+	private getExistingProjectContextSystemPrompt(
+		selectedProjectId: string,
+		processingDateTime?: string
+	): string {
 		const currentDateTime = processingDateTime || new Date().toISOString();
 
 		return `You are a context synthesis engine specializing in project context enrichment.
@@ -1490,7 +1501,7 @@ Update the executive summary to describe the current state and direction of the 
       "table": "projects",
       "operation": "update",
       "data": {
-        "id": "[PROJECT_ID]",
+        "id": "${selectedProjectId}",
         "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
         "executive_summary": "Updated executive summary (only if project vision/scope changed)",
         "tags": ["updated", "tags", "if", "changed"],
@@ -1828,7 +1839,7 @@ Executive Summary: ${project.executive_summary || 'None'}
 ${tasks
 	.map(
 		(t) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ''}
-  Preview: ${t.description_preview}`
+  Description: ${t.description_preview}`
 	)
 	.join('\n')}
 
@@ -1881,7 +1892,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 {
   "analysis_summary": "User providing status updates on API integration and database migration tasks",
   "braindump_classification": "tactical",
-  "needs_context_update": false,
   "context_indicators": [],
   "relevant_task_ids": ["task-abc-123", "task-def-456"],
   "task_indicators": {
@@ -1903,7 +1913,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 {
   "analysis_summary": "User pivoting product strategy from B2C to B2B enterprise market",
   "braindump_classification": "strategic",
-  "needs_context_update": true,
   "context_indicators": [
     "Major strategic pivot from B2C to B2B mentioned",
     "New enterprise requirements: SSO, multi-tenancy, admin controls",
@@ -1927,7 +1936,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 {
   "analysis_summary": "User discussing architecture refactor while updating task completion status",
   "braindump_classification": "mixed",
-  "needs_context_update": true,
   "context_indicators": [
     "Architecture decision to break out authentication into microservice",
     "New microservices approach mentioned"
@@ -1951,7 +1959,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 {
   "analysis_summary": "Generic progress update with no specific details or actionable items",
   "braindump_classification": "status_update",
-  "needs_context_update": false,
   "context_indicators": [],
   "relevant_task_ids": [],
   "task_indicators": {},
@@ -1970,7 +1977,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 {
   "analysis_summary": "Content does not relate to this project's scope or objectives",
   "braindump_classification": "unrelated",
-  "needs_context_update": false,
   "context_indicators": [],
   "relevant_task_ids": [],
   "task_indicators": {},
@@ -1986,7 +1992,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 
 **CRITICAL INSTRUCTIONS:**
 - Choose the classification that BEST matches the braindump content
-- Set needs_context_update to FALSE for purely tactical updates
 - Set skip_context to TRUE when context doesn't need updating
 - Set skip_tasks to TRUE only for vague status updates with no task information
 - Arrays and objects should be EMPTY [] or {} if nothing found
@@ -1995,7 +2000,6 @@ You MUST respond with valid JSON. Here are examples showing the VARIETY of possi
 
 **Important Rules:**
 - braindump_classification: MUST be one of: "strategic", "tactical", "mixed", "status_update", "unrelated"
-- needs_context_update: MUST be true or false (boolean, not the string "true" or "false")
 - new_tasks_detected: MUST be true or false (boolean)
 - confidence_level: MUST be one of: "high", "medium", "low"
 - skip_context: MUST be true or false (boolean)

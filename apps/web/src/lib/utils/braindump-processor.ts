@@ -22,7 +22,8 @@ import type {
 	ExecutionResult,
 	BrainDumpMetadata,
 	DisplayedBrainDumpQuestion,
-	PreparatoryAnalysisResult
+	PreparatoryAnalysisResult,
+	BrainDumpOptions
 } from '$lib/types/brain-dump';
 
 import type { ProjectWithRelations, Task } from '$lib/types/project';
@@ -32,17 +33,6 @@ import { selectModelsForPromptComplexity } from './llm-utils';
 import { savePromptForAudit, determineScenarioType } from './prompt-audit';
 import { validateSynthesisResult } from '$lib/services/prompts/core/validations';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-
-// ==========================================
-// TYPE DEFINITIONS
-// ==========================================
-
-export interface BrainDumpOptions {
-	autoExecute?: boolean;
-	streamResults?: boolean;
-	useDualProcessing?: boolean;
-	retryAttempts?: number;
-}
 
 // ==========================================
 // MAIN CLASS
@@ -216,6 +206,22 @@ export class BrainDumpProcessor {
 			console.log('[PrepAnalysis] Task count:', lightTasks.length);
 			console.log('[PrepAnalysis] Braindump length:', brainDump.length);
 
+			// Save prompt for auditing in development mode
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType: 'preparatory-analysis',
+				metadata: {
+					userId,
+					projectId: project.id,
+					brainDumpLength: brainDump.length,
+					taskCount: lightTasks.length,
+					hasExistingContext: !!project.context,
+					existingContextLength: project.context?.length || 0,
+					timestamp: new Date().toISOString()
+				}
+			});
+
 			// Call LLM with fast profile for speed and cost optimization
 			const response = await this.llmService.getJSONResponse({
 				systemPrompt,
@@ -249,10 +255,7 @@ export class BrainDumpProcessor {
 			const validatedResult: PreparatoryAnalysisResult = {
 				analysis_summary: analysisResult.analysis_summary || 'Analysis completed',
 				braindump_classification: analysisResult.braindump_classification,
-				needs_context_update:
-					analysisResult.needs_context_update !== undefined
-						? analysisResult.needs_context_update
-						: true,
+
 				context_indicators: analysisResult.context_indicators || [],
 				relevant_task_ids: analysisResult.relevant_task_ids || [],
 				task_indicators: analysisResult.task_indicators || {},
@@ -270,7 +273,6 @@ export class BrainDumpProcessor {
 
 			console.log('[PrepAnalysis] Complete:', {
 				classification: validatedResult.braindump_classification,
-				needsContext: validatedResult.needs_context_update,
 				relevantTasks: validatedResult.relevant_task_ids.length,
 				newTasks: validatedResult.new_tasks_detected,
 				confidence: validatedResult.confidence_level
@@ -280,7 +282,6 @@ export class BrainDumpProcessor {
 			await this.activityLogger.logActivity(userId, 'brain_dump_analysis_completed', {
 				project_id: project.id,
 				classification: validatedResult.braindump_classification,
-				needs_context_update: validatedResult.needs_context_update,
 				relevant_task_count: validatedResult.relevant_task_ids.length,
 				new_tasks_detected: validatedResult.new_tasks_detected,
 				confidence_level: validatedResult.confidence_level,
@@ -359,7 +360,6 @@ export class BrainDumpProcessor {
 			if (prepAnalysisResult) {
 				console.log('[BrainDumpProcessor] Analysis complete:', {
 					classification: prepAnalysisResult.braindump_classification,
-					needsContext: prepAnalysisResult.needs_context_update,
 					relevantTasks: prepAnalysisResult.relevant_task_ids.length,
 					recommendations: prepAnalysisResult.processing_recommendation
 				});
@@ -947,6 +947,16 @@ export class BrainDumpProcessor {
 
 				// Exponential backoff
 				if (attempt < maxRetries) {
+					// Call retry callback if provided (for SSE retry messages)
+					if (options.onRetry) {
+						try {
+							await options.onRetry(attempt + 1, maxRetries);
+						} catch (callbackError) {
+							// Don't let callback errors break the retry loop
+							console.warn('onRetry callback failed:', callbackError);
+						}
+					}
+
 					await new Promise((resolve) =>
 						setTimeout(resolve, Math.pow(2, attempt) * 1000)
 					);
@@ -978,17 +988,20 @@ export class BrainDumpProcessor {
 		const isNewProject = !existingProject && !selectedProjectId;
 
 		// Check if analysis recommends skipping context processing (optimization)
-		if (prepAnalysisResult?.processing_recommendation?.skip_context) {
+		if (
+			!prepAnalysisResult?.braindump_classification ||
+			!['mixed', 'strategic'].includes(prepAnalysisResult.braindump_classification)
+		) {
 			console.log(
 				'[extractProjectContext] Skipping context processing based on analysis recommendation:',
-				prepAnalysisResult.processing_recommendation.reason
+				prepAnalysisResult?.processing_recommendation.reason
 			);
 
 			// Return minimal result indicating no context update needed
 			return {
 				title: 'Context Processing Skipped',
-				summary: `Analysis determined context update not needed: ${prepAnalysisResult.processing_recommendation.reason}`,
-				insights: prepAnalysisResult.analysis_summary,
+				summary: `Analysis determined context update not needed: ${prepAnalysisResult?.processing_recommendation.reason}`,
+				insights: prepAnalysisResult?.analysis_summary || 'No insight',
 				tags: [],
 				operations: [], // No operations = no context update
 				metadata: {
@@ -996,7 +1009,7 @@ export class BrainDumpProcessor {
 					tableBreakdown: {},
 					processingTime: 0,
 					timestamp: new Date().toISOString(),
-					processingNote: `Skipped based on analysis: ${prepAnalysisResult.braindump_classification}`
+					processingNote: `Skipped based on analysis: ${prepAnalysisResult?.braindump_classification || 'No classification'}`
 				}
 			};
 		}
@@ -1005,18 +1018,21 @@ export class BrainDumpProcessor {
 		// Questions are ONLY generated in task extraction to avoid duplication
 
 		// Get system prompt without embedded project data
-		const systemPrompt = this.promptTemplateService.getProjectContextSystemPrompt(
-			isNewProject,
-			processingDateTime
-		);
+		const systemPrompt = this.promptTemplateService.getProjectContextSystemPrompt({
+			selectedProjectId,
+			processingDateTime,
+			userId
+		});
 
 		// Format existing project data for user prompt (not system prompt)
-		const projectDataSection = existingProject
-			? formatProjectData({
-					user_id: userId,
-					fullProjectWithRelations: existingProject,
-					timestamp: new Date().toDateString()
-				})
+		const projectDataSection = selectedProjectId
+			? formatProjectData(
+					await this.projectDataFetcher.getFullProjectData({
+						userId,
+						projectId: selectedProjectId,
+						options: { includeTasks: false, includePhases: false }
+					})
+				)
 			: 'No existing project data';
 
 		// Build user prompt with project data

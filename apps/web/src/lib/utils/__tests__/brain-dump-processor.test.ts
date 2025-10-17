@@ -168,7 +168,6 @@ describe('BrainDumpProcessor', () => {
 			// 1. Preparatory analysis
 			const mockPrepAnalysis = {
 				braindump_classification: 'task-focused',
-				needs_context_update: false,
 				relevant_task_ids: [],
 				processing_recommendation: { skip_context: true, skip_tasks: false }
 			};
