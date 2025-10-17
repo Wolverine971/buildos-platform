@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
+	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import type { BriefPreferences } from '$lib/stores/briefPreferences';
 	import {
 		Bell,
@@ -36,9 +37,7 @@
 		frequency: 'daily',
 		day_of_week: 1,
 		time_of_day: '09:00:00',
-		timezone: 'UTC',
-		is_active: true,
-		email_daily_brief: false
+		is_active: true
 	};
 	let refreshingJobs = false;
 
@@ -88,11 +87,13 @@
 		return timeHHMMSS;
 	}
 
-	// Store subscription
+	// Store subscriptions
 	$: briefPreferencesState = $briefPreferencesStore;
+	$: notificationPreferencesState = $notificationPreferencesStore;
 	$: if (briefPreferencesState.preferences) {
 		briefPreferences = briefPreferencesState.preferences;
 	}
+	$: hasEmailOptIn = notificationPreferencesState.preferences?.should_email_daily_brief || false;
 
 	// Handle store errors
 	$: if (briefPreferencesState.error) {
@@ -138,6 +139,10 @@
 	// Initialize on component load
 	onMount(() => {
 		loadBriefPreferences();
+		// Also load notification preferences to show email opt-in status
+		if (!notificationPreferencesState?.preferences) {
+			notificationPreferencesStore.load();
+		}
 	});
 
 	// Brief preferences functions
@@ -366,18 +371,6 @@
 						</div>
 					</div>
 
-					<div>
-						<label
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-						>
-							Timezone
-						</label>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
-								?.label || briefPreferences?.timezone}
-						</div>
-					</div>
-
 					<div class="sm:col-span-2">
 						<label
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
@@ -401,11 +394,11 @@
 									</span>
 								{/if}
 							</div>
-							{#if briefPreferences.is_active && briefPreferences.email_daily_brief}
+							{#if briefPreferences.is_active && hasEmailOptIn}
 								<div class="flex items-center space-x-2">
 									<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400" />
 									<span class="text-sm text-gray-600 dark:text-gray-400">
-										Email notifications enabled
+										Email delivery enabled
 									</span>
 								</div>
 							{/if}
@@ -452,19 +445,6 @@
 							/>
 						</FormField>
 
-						<FormField label="Timezone" labelFor="briefTimezone" size="md">
-							<Select
-								id="briefTimezone"
-								bind:value={briefPreferencesForm.timezone}
-								on:change={(e) => (briefPreferencesForm.timezone = e.detail)}
-								size="md"
-							>
-								{#each TIMEZONE_OPTIONS as tz}
-									<option value={tz.value}>{tz.label}</option>
-								{/each}
-							</Select>
-						</FormField>
-
 						<div class="sm:col-span-2 space-y-3">
 							<label class="flex items-start sm:items-center gap-2">
 								<input
@@ -473,23 +453,24 @@
 									class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600 flex-shrink-0"
 								/>
 								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-									Enable daily briefs
+									Enable daily brief generation
 								</span>
 							</label>
 
 							{#if briefPreferencesForm.is_active}
-								<label class="flex items-start sm:items-center gap-2 ml-6">
-									<input
-										type="checkbox"
-										bind:checked={briefPreferencesForm.email_daily_brief}
-										class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600 flex-shrink-0"
-									/>
-									<span
-										class="text-sm font-medium text-gray-700 dark:text-gray-300"
-									>
-										Email me my daily briefs
-									</span>
-								</label>
+								<div
+									class="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+								>
+									<p class="text-xs text-gray-600 dark:text-gray-400">
+										<strong>Note:</strong> To receive briefs via email or SMS,
+										visit the
+										<a
+											href="/settings?tab=notifications"
+											class="text-blue-600 dark:text-blue-400 hover:underline"
+											>Notifications</a
+										> tab.
+									</p>
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -508,10 +489,7 @@
 												(d) => d.value === briefPreferencesForm.day_of_week
 											)?.label} at {convertTimeToHHMM(
 										briefPreferencesForm.time_of_day
-									)}
-									({TIMEZONE_OPTIONS.find(
-										(tz) => tz.value === briefPreferencesForm.timezone
-									)?.label})
+									)} (in your timezone)
 								</p>
 							</div>
 						</div>

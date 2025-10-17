@@ -102,18 +102,20 @@
 				}
 			}
 
-			// Save email preferences
-			const emailResponse = await fetch('/api/brief-preferences', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					email_daily_brief: emailPreferences.dailyBrief
-				})
-			});
+			// Save email preferences for daily brief
+			if (emailPreferences.dailyBrief) {
+				const emailResponse = await fetch('/api/notification-preferences', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						should_email_daily_brief: true
+					})
+				});
 
-			if (!emailResponse.ok) {
-				console.error('Failed to save email preferences');
-				// Don't throw - this is non-critical
+				if (!emailResponse.ok) {
+					console.error('Failed to save email preferences');
+					// Don't throw - this is non-critical (might fail if brief generation not active yet)
+				}
 			}
 
 			// Notify parent

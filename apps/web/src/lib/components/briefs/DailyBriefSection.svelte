@@ -27,7 +27,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getContext } from 'svelte';
-	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
+	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 
 	export let user: { id: string; email: string; is_admin: boolean } | null = null;
 
@@ -48,8 +48,8 @@
 	let emailOptInLoading = false;
 
 	// Email opt-in state
-	$: briefPreferences = $briefPreferencesStore.preferences;
-	$: hasEmailOptIn = briefPreferences?.email_daily_brief || false;
+	$: notificationPreferences = $notificationPreferencesStore.preferences;
+	$: hasEmailOptIn = notificationPreferences?.should_email_daily_brief || false;
 
 	// Reactive streaming data
 	let currentStreamingStatus: StreamingStatus;
@@ -186,11 +186,9 @@
 	async function enableEmailNotifications() {
 		emailOptInLoading = true;
 		try {
-			const updatedPreferences = {
-				...briefPreferences,
-				email_daily_brief: true
-			};
-			await briefPreferencesStore.save(updatedPreferences);
+			await notificationPreferencesStore.save({
+				should_email_daily_brief: true
+			});
 			toastService.success(
 				"Email notifications enabled! You'll receive your daily briefs in your inbox."
 			);
@@ -228,9 +226,9 @@
 			currentDate = getTodayInTimezone(userTimezone);
 			fetchTodaysBrief();
 
-			// Load brief preferences for email opt-in
-			if (!briefPreferences) {
-				briefPreferencesStore.load();
+			// Load notification preferences for email opt-in
+			if (!notificationPreferences) {
+				notificationPreferencesStore.load();
 			}
 		}
 	});
@@ -346,7 +344,7 @@
 					</div>
 					<div class="card-actions">
 						<!-- Email opt-in button - always show if not opted in -->
-						{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+						{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 							<Button
 								type="button"
 								on:click={enableEmailNotifications}
@@ -423,7 +421,7 @@
 					</div>
 
 					<!-- Email opt-in banner when collapsed -->
-					{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+					{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 						<div class="email-cta-banner">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
 								<Mail
@@ -478,7 +476,7 @@
 						{/if}
 
 						<!-- Email opt-in banner in expanded view -->
-						{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+						{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 							<div class="email-cta-banner-expanded">
 								<div class="flex items-center gap-3 flex-1 min-w-0">
 									<div class="email-cta-icon">

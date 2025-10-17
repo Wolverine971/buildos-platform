@@ -8,18 +8,21 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 **Issue**: When completing a brain dump on the current project page, the success flow shows a "Refresh Now" modal to update the page. Clicking "Refresh Now" did not refresh the page properly - the modal closed but the page data remained stale.
 
-**Root Cause**: Dependency key mismatch between the page loader and the invalidation call:
-- Project page registers dependency as `projects:${projectId}` (plural) in `+page.server.ts:44`
-- Refresh handler tried to invalidate `project:${projectId}` (singular) in `BrainDumpModalContent.svelte:429`
-- SvelteKit's `invalidate()` requires exact key match, so no data was invalidated and page didn't refresh
+**Root Cause**: The refresh mechanism was using the wrong approach for the project page's architecture:
+
+- The project page (`+page.server.ts`) only loads basic metadata (project info, calendar, counts) via SvelteKit's server loader
+- All actual project data (tasks, phases, notes, etc.) is loaded **client-side** by `ProjectDataService`
+- The refresh handler tried to use `invalidate()` which only re-runs the server loader
+- Since the server loader doesn't have tasks/phases/notes, `invalidate()` didn't refresh the visible data
+- The project page has a dedicated event system (`brain-dump-applied` event) that triggers `dataService.refreshAll()` to reload all client-side data, but the refresh modal wasn't using it
 
 **Impact**: Users on the current project page couldn't see their brain dump updates immediately. They had to manually refresh the browser or navigate away and back to see changes.
 
-**Fix**: Changed the invalidate call from `project:${projectId}` to `projects:${projectId}` to match the dependency key registered in the page loader.
+**Fix**: Dispatch the `brain-dump-applied` custom event when user confirms refresh. This triggers the project page's event listener which calls `dataService.refreshAll()` to reload all client-side data (tasks, phases, notes, stats, briefs, synthesis, calendar status).
 
 **Files Changed**:
 
-- `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte` (line 429)
+- `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte` (lines 421-459 - handleRefreshConfirm function)
 
 **Manual Verification Steps**:
 

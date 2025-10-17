@@ -84,7 +84,7 @@ export class TaskTimeSlotFinder {
 		const preferences = userCalendarPreferences || {
 			user_id: userId,
 			id: '',
-			timezone: user?.timezone || params.timeZone || 'UTC',
+			// timezone removed - now stored in users table
 			work_start_time: '09:00:00',
 			work_end_time: '17:00:00',
 			working_days: [1, 2, 3, 4, 5],
@@ -98,8 +98,8 @@ export class TaskTimeSlotFinder {
 			updated_at: new Date().toISOString()
 		};
 
-		// Use timezone: users.timezone > calendar_prefs.timezone > params.timeZone > UTC
-		const timezone = user?.timezone || preferences.timezone || params.timeZone || 'UTC';
+		// Use timezone from users table (centralized source of truth)
+		const timezone = user?.timezone || params.timeZone || 'UTC';
 		const defaultDuration = preferences.default_task_duration_minutes || 60;
 		const effectiveDuration = durationMinutes || defaultDuration;
 
@@ -193,7 +193,7 @@ export class TaskTimeSlotFinder {
 		const preferences = userCalendarPreferences || {
 			user_id: userId,
 			id: '',
-			timezone: user?.timezone || 'America/New_York',
+			// timezone removed - now stored in users table
 			work_start_time: '09:00:00',
 			work_end_time: '17:00:00',
 			working_days: [1, 2, 3, 4, 5],
@@ -214,10 +214,8 @@ export class TaskTimeSlotFinder {
 			});
 		}
 
-		// Override timezone with users.timezone if available (centralized source of truth)
-		if (user?.timezone && preferences.timezone !== user.timezone) {
-			preferences.timezone = user.timezone;
-		}
+		// Get timezone from users table (centralized source of truth)
+		const timezone = user?.timezone || 'America/New_York';
 
 		// Filter out recurring tasks (they shouldn't be adjusted)
 		const recurringTasks = tasksToSchedule.filter((task) => task.recurrence_pattern !== null);
@@ -226,7 +224,7 @@ export class TaskTimeSlotFinder {
 		);
 
 		// Group tasks by their start date (day only)
-		const tasksByDay = this.groupTasksByDay(nonRecurringTasks, preferences.timezone || 'UTC');
+		const tasksByDay = this.groupTasksByDay(nonRecurringTasks, timezone);
 
 		const scheduledTasks: Task[] = [];
 		const bumpedTasks: TaskWithOriginalTime[] = [];
@@ -240,7 +238,7 @@ export class TaskTimeSlotFinder {
 		const existingTasksByDay = await this.getExistingTasksForDateRange(
 			workingDays,
 			userId,
-			preferences.timezone || 'UTC'
+			timezone
 		);
 
 		// Process each day's tasks
@@ -267,7 +265,8 @@ export class TaskTimeSlotFinder {
 				dayTasks,
 				existingTasks,
 				dayDate,
-				preferences
+				preferences,
+				timezone
 			);
 
 			scheduledTasks.push(...scheduled);
@@ -275,7 +274,7 @@ export class TaskTimeSlotFinder {
 		}
 
 		// Process bumped tasks
-		const rescheduledTasks = await this.processBumpedTasks(bumpedTasks, preferences);
+		const rescheduledTasks = await this.processBumpedTasks(bumpedTasks, preferences, timezone);
 
 		// Combine all tasks: recurring (unchanged) + scheduled + rescheduled
 		return [...recurringTasks, ...scheduledTasks, ...rescheduledTasks];
@@ -421,12 +420,11 @@ export class TaskTimeSlotFinder {
 		tasksToSchedule: Task[],
 		existingTasks: Task[],
 		dayDate: Date,
-		preferences: UserCalendarPreferences
+		preferences: UserCalendarPreferences,
+		timezone: string = 'UTC'
 	): { scheduled: Task[]; bumped: TaskWithOriginalTime[] } {
 		const scheduled: Task[] = [];
 		const bumped: TaskWithOriginalTime[] = [];
-
-		const timezone = preferences.timezone || 'UTC';
 		const workStartTime = preferences.work_start_time || '09:00:00';
 		const workEndTime = preferences.work_end_time || '17:00:00';
 		const defaultDuration = preferences.default_task_duration_minutes || 60;
@@ -549,10 +547,10 @@ export class TaskTimeSlotFinder {
 	 */
 	private async processBumpedTasks(
 		bumpedTasks: TaskWithOriginalTime[],
-		preferences: UserCalendarPreferences
+		preferences: UserCalendarPreferences,
+		timezone: string
 	): Promise<Task[]> {
 		const rescheduled: Task[] = [];
-		const timezone = preferences.timezone || 'UTC';
 
 		for (const task of bumpedTasks) {
 			let scheduled = false;
@@ -589,7 +587,8 @@ export class TaskTimeSlotFinder {
 					[task],
 					existingPlusRescheduled,
 					targetDate,
-					preferences
+					preferences,
+					timezone
 				);
 
 				if (dayScheduled.length > 0) {

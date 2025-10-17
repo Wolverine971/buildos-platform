@@ -16,7 +16,7 @@
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatFullDate, formatTimeOnly } from '$lib/utils/date-utils';
 	import { toastService } from '$lib/stores/toast.store';
-	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
+	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 
 	export let isOpen = false;
 	export let brief: DailyBrief | null = null;
@@ -25,16 +25,16 @@
 	let copiedToClipboard = false;
 	let emailOptInLoading = false;
 
-	// Subscribe to brief preferences store
-	$: briefPreferences = $briefPreferencesStore.preferences;
-	$: hasEmailOptIn = briefPreferences?.email_daily_brief || false;
+	// Subscribe to notification preferences store
+	$: notificationPreferences = $notificationPreferencesStore.preferences;
+	$: hasEmailOptIn = notificationPreferences?.should_email_daily_brief || false;
 
 	console.log('hasEmailOptIn', hasEmailOptIn);
 
 	// Load preferences when modal opens
 	onMount(() => {
-		if (!briefPreferences) {
-			briefPreferencesStore.load();
+		if (!notificationPreferences) {
+			notificationPreferencesStore.load();
 		}
 	});
 
@@ -69,11 +69,9 @@
 	async function enableEmailNotifications() {
 		emailOptInLoading = true;
 		try {
-			const updatedPreferences = {
-				...briefPreferences,
-				email_daily_brief: true
-			};
-			await briefPreferencesStore.save(updatedPreferences);
+			await notificationPreferencesStore.save({
+				should_email_daily_brief: true
+			});
 			toastService.success(
 				"Email notifications enabled! You'll receive your daily briefs in your inbox."
 			);
@@ -86,7 +84,7 @@
 
 	function getPriorityCount(content: string): number {
 		const priorityMatch = content.match(/### 🎯 Top Priorities Today\s*\n((?:- .+\n?)+)/);
-		if (priorityMatch) {
+		if (priorityMatch && priorityMatch[1]) {
 			return priorityMatch[1].split('\n').filter((line) => line.trim().startsWith('-'))
 				.length;
 		}
@@ -95,7 +93,7 @@
 
 	function getTaskCount(content: string): number {
 		const taskMatch = content.match(/(\d+)\s+task/i);
-		return taskMatch ? parseInt(taskMatch[1]) : 0;
+		return taskMatch && taskMatch[1] ? parseInt(taskMatch[1]) : 0;
 	}
 
 	$: priorityCount = brief ? getPriorityCount(brief.summary_content) : 0;
@@ -163,7 +161,7 @@
 		class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
 	>
 		<!-- Email opt-in banner if not opted in -->
-		{#if !hasEmailOptIn && !$briefPreferencesStore.isLoading}
+		{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 			<div
 				class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
 			>

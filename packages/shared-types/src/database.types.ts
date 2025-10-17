@@ -4253,7 +4253,6 @@ export type Database = {
         Row: {
           created_at: string;
           day_of_week: number | null;
-          email_daily_brief: boolean | null;
           frequency: string | null;
           id: string;
           is_active: boolean | null;
@@ -4264,7 +4263,6 @@ export type Database = {
         Insert: {
           created_at?: string;
           day_of_week?: number | null;
-          email_daily_brief?: boolean | null;
           frequency?: string | null;
           id?: string;
           is_active?: boolean | null;
@@ -4275,7 +4273,6 @@ export type Database = {
         Update: {
           created_at?: string;
           day_of_week?: number | null;
-          email_daily_brief?: boolean | null;
           frequency?: string | null;
           id?: string;
           is_active?: boolean | null;

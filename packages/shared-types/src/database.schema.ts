@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-17T04:07:15.599Z
+// Generated on: 2025-10-17T16:39:19.953Z
 
 export type Json =
   | string
@@ -1103,7 +1103,6 @@ export type DatabaseSchema = {
   user_brief_preferences: {
     created_at: string;
     day_of_week: number | null;
-    email_daily_brief: boolean | null;
     frequency: string | null;
     id: string;
     is_active: boolean | null;

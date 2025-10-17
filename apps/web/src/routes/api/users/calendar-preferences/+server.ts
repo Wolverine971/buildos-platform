@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: 'Failed to fetch preferences' }, { status: 500 });
 		}
 
-		// Default preferences with timezone from users table
+		// Default preferences with timezone from users table (centralized source of truth)
 		const defaultPreferences = {
 			work_start_time: '09:00',
 			work_end_time: '17:00',
@@ -42,12 +42,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			prefer_morning_for_important_tasks: false
 		};
 
-		// Return preferences with timezone from users table (overrides preference table)
+		// Return preferences with timezone from users table (centralized source of truth)
 		return json(
 			preferences
 				? {
 						...preferences,
-						timezone: userData?.timezone || preferences.timezone
+						timezone: userData?.timezone || 'America/New_York'
 					}
 				: defaultPreferences
 		);
@@ -94,12 +94,14 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			return json({ error: 'Maximum task duration cannot exceed 8 hours' }, { status: 400 });
 		}
 
-		// If timezone is being updated, also update users table (centralized source of truth)
+		// If timezone is being updated, update users table (centralized source of truth)
 		if (updates.timezone) {
 			await supabase.from('users').update({ timezone: updates.timezone }).eq('id', user.id);
+			// Remove timezone from updates since it's not stored in user_calendar_preferences
+			delete updates.timezone;
 		}
 
-		// Upsert preferences (keep timezone for backward compatibility)
+		// Upsert preferences (timezone now stored in users table only)
 		const { data, error } = await supabase
 			.from('user_calendar_preferences')
 			.upsert({

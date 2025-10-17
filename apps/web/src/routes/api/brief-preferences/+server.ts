@@ -5,11 +5,11 @@ import type { RequestHandler } from './$types';
 // Default preferences
 // NOTE: Brief preferences control WHEN briefs are generated.
 // For notification delivery preferences (email/SMS), see user_notification_preferences.
+// Timezone is now stored in users table, not here.
 const DEFAULT_PREFERENCES = {
 	frequency: 'daily',
 	day_of_week: 1, // Monday
 	time_of_day: '09:00:00',
-	timezone: 'UTC',
 	is_active: true
 };
 
@@ -43,8 +43,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				.from('user_brief_preferences')
 				.insert({
 					user_id: user.id,
-					...DEFAULT_PREFERENCES,
-					timezone: userData?.timezone || DEFAULT_PREFERENCES.timezone
+					...DEFAULT_PREFERENCES
 				})
 				.select()
 				.single();
@@ -56,16 +55,16 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({
 				preferences: {
 					...newPreferences,
-					timezone: userData?.timezone || newPreferences.timezone
+					timezone: userData?.timezone || 'UTC'
 				}
 			});
 		}
 
-		// Merge timezone from users table (overrides preference table)
+		// Merge timezone from users table (centralized source of truth)
 		return json({
 			preferences: {
 				...preferences,
-				timezone: userData?.timezone || preferences.timezone
+				timezone: userData?.timezone || 'UTC'
 			}
 		});
 	} catch (error) {
@@ -126,14 +125,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				await supabase.from('users').update({ timezone }).eq('id', user.id);
 			}
 
-			// Update existing preferences (keep timezone for backward compatibility)
+			// Update existing preferences (timezone now stored in users table only)
 			const { data, error: updateError } = await supabase
 				.from('user_brief_preferences')
 				.update({
 					frequency,
 					day_of_week: frequency === 'weekly' ? day_of_week : null,
 					time_of_day,
-					timezone,
 					is_active: is_active !== undefined ? is_active : true,
 					updated_at: new Date().toISOString()
 				})
@@ -149,7 +147,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				await supabase.from('users').update({ timezone }).eq('id', user.id);
 			}
 
-			// Create new preferences (keep timezone for backward compatibility)
+			// Create new preferences (timezone now stored in users table only)
 			const { data, error: createError } = await supabase
 				.from('user_brief_preferences')
 				.insert({
@@ -157,7 +155,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					frequency,
 					day_of_week: frequency === 'weekly' ? day_of_week : null,
 					time_of_day,
-					timezone,
 					is_active: is_active !== undefined ? is_active : true
 				})
 				.select()

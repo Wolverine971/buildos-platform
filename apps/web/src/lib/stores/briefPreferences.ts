@@ -1,6 +1,5 @@
 // apps/web/src/lib/stores/briefPreferences.ts
 import { writable } from 'svelte/store';
-import { browser } from '$app/environment';
 
 export interface BriefPreferences {
 	id?: string;
@@ -8,7 +7,7 @@ export interface BriefPreferences {
 	frequency: 'daily' | 'weekly';
 	day_of_week: number | null;
 	time_of_day: string;
-	timezone: string;
+	// timezone removed - now stored in users table
 	is_active: boolean;
 	created_at?: string;
 	updated_at?: string;
@@ -46,29 +45,17 @@ const initialState: BriefPreferencesState = {
 // Default preferences
 // NOTE: Brief preferences control WHEN briefs are generated.
 // For notification delivery preferences (email/SMS), see notificationPreferences store.
+// Timezone is now stored in users table, not here.
 const DEFAULT_PREFERENCES: Omit<BriefPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'> =
 	{
 		frequency: 'daily',
 		day_of_week: 1, // Monday
 		time_of_day: '09:00:00',
-		timezone: 'UTC',
 		is_active: true
 	};
 
 function createBriefPreferencesStore() {
 	const { subscribe, set, update } = writable<BriefPreferencesState>(initialState);
-
-	// Auto-detect timezone
-	function getDefaultTimezone(): string {
-		if (browser) {
-			try {
-				return Intl.DateTimeFormat().resolvedOptions().timeZone;
-			} catch (e: any) {
-				console.error('Could not detect timezone, using UTC:', e);
-			}
-		}
-		return 'UTC';
-	}
 
 	// Calculate next scheduled brief
 	function calculateNextScheduledBrief(preferences: BriefPreferences): Date | null {
@@ -76,7 +63,10 @@ function createBriefPreferencesStore() {
 
 		try {
 			const now = new Date();
-			const [hours, minutes, seconds = 0] = preferences.time_of_day.split(':').map(Number);
+			const timeParts = preferences.time_of_day.split(':').map(Number);
+			const hours = timeParts[0] ?? 9;
+			const minutes = timeParts[1] ?? 0;
+			const seconds = timeParts[2] ?? 0;
 
 			// This is a simplified calculation - you might want to use the same logic as your scheduler
 			const today = new Date();
@@ -239,19 +229,13 @@ function createBriefPreferencesStore() {
 
 		// Reset to defaults
 		async resetToDefaults() {
-			const defaultsWithTimezone = {
-				...DEFAULT_PREFERENCES,
-				timezone: getDefaultTimezone()
-			};
-
-			await this.save(defaultsWithTimezone);
+			await this.save(DEFAULT_PREFERENCES);
 		},
 
 		// Get default preferences
 		getDefaults(): BriefPreferences {
 			return {
-				...DEFAULT_PREFERENCES,
-				timezone: getDefaultTimezone()
+				...DEFAULT_PREFERENCES
 			};
 		},
 

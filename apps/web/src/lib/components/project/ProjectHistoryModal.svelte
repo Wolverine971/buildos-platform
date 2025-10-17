@@ -230,7 +230,9 @@
 					<div
 						class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-4"
 					></div>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">Loading project history...</p>
+					<p class="text-gray-600 dark:text-gray-400 text-sm">
+						Loading project history...
+					</p>
 				</div>
 			</div>
 		{:else if error}
@@ -332,13 +334,14 @@
 			<div class="flex-1 overflow-y-auto">
 				<div class="flex flex-col lg:flex-row min-h-full">
 					<!-- Diff Content - Scrolls independently -->
-					<div class="flex-1 lg:w-2/3 p-6 lg:border-r border-gray-200/50 dark:border-gray-700/50">
+					<div
+						class="flex-1 lg:w-2/3 p-6 lg:border-r border-gray-200/50 dark:border-gray-700/50"
+					>
 						<DiffView
 							diffs={currentComparison.diffs}
 							fromVersionLabel="Version {currentComparison.fromVersion
 								.version_number}"
-							toVersionLabel="Version {currentComparison.toVersion
-								.version_number}"
+							toVersionLabel="Version {currentComparison.toVersion.version_number}"
 							showFieldPriority={true}
 						/>
 					</div>
@@ -359,7 +362,9 @@
 							>
 								<!-- Braindump Header -->
 								<div class="p-4 border-b border-gray-100 dark:border-gray-700/50">
-									<h4 class="font-semibold text-gray-900 dark:text-white mb-2.5 text-sm">
+									<h4
+										class="font-semibold text-gray-900 dark:text-white mb-2.5 text-sm"
+									>
 										{currentBraindump.title || 'Untitled Braindump'}
 									</h4>
 									<div
@@ -384,7 +389,9 @@
 								<!-- Braindump Content -->
 								<div class="p-4">
 									{#if currentBraindump.preview}
-										<div class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+										<div
+											class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+										>
 											{#if expandedBraindump}
 												<p class="whitespace-pre-wrap">
 													{currentBraindump.content || ''}
