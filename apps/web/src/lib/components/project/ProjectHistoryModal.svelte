@@ -13,7 +13,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DiffView from '$lib/components/ui/DiffView.svelte';
-	import { type FieldDiff, type DiffLine, createLineDiff } from '$lib/utils/diff';
+	import { type FieldDiff, createLineDiff } from '$lib/utils/diff';
 	import { onMount } from 'svelte';
 
 	export let isOpen = false;
@@ -223,232 +223,213 @@
 </script>
 
 <Modal {isOpen} size="xl" onClose={handleClose} title="Project History">
-	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col h-full max-h-[75vh]">
-		<div class="flex-1 overflow-hidden">
-			{#if loading}
-				<div class="flex items-center justify-center h-full">
-					<div class="text-center">
-						<div
-							class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"
-						></div>
-						<p class="text-gray-600 dark:text-gray-400">Loading project history...</p>
+	<div class="flex flex-col h-[80vh]">
+		{#if loading}
+			<div class="flex items-center justify-center h-full">
+				<div class="text-center">
+					<div
+						class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-4"
+					></div>
+					<p class="text-gray-600 dark:text-gray-400 text-sm">Loading project history...</p>
+				</div>
+			</div>
+		{:else if error}
+			<div class="flex items-center justify-center h-full">
+				<div class="text-center max-w-md px-6">
+					<AlertCircle class="w-12 h-12 text-rose-500 mx-auto mb-4 opacity-80" />
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						{error === 'No changes found between versions'
+							? 'No Changes Found'
+							: 'Error Loading History'}
+					</h3>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						{error === 'No changes found between versions'
+							? "This project hasn't been modified since it was created."
+							: error}
+					</p>
+				</div>
+			</div>
+		{:else if comparisons.length === 0}
+			<div class="flex items-center justify-center h-full">
+				<div class="text-center max-w-md px-6">
+					<Clock class="w-12 h-12 text-gray-400 mx-auto mb-4 opacity-60" />
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						No History Available
+					</h3>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						This project doesn't have any recorded changes yet.
+					</p>
+				</div>
+			</div>
+		{:else}
+			<!-- Navigation Header - Sticky at top -->
+			<div
+				class="sticky top-0 z-10 px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50"
+			>
+				<div class="space-y-3">
+					<!-- Version info and controls -->
+					<div class="flex items-center justify-between gap-4">
+						<div>
+							<div class="text-sm font-semibold text-gray-900 dark:text-white">
+								Version {currentComparison.fromVersion.version_number} → Version
+								{currentComparison.toVersion.version_number}
+							</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+								{comparisons.length} total comparison{comparisons.length !== 1
+									? 's'
+									: ''}
+							</div>
+						</div>
+
+						<!-- Navigation Controls -->
+						<div class="flex items-center space-x-3">
+							<span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+								{currentComparisonIndex + 1} of {comparisons.length}
+							</span>
+							<div class="flex items-center space-x-2">
+								<Button
+									onclick={previousComparison}
+									disabled={currentComparisonIndex === 0}
+									variant="outline"
+									size="md"
+									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+									aria-label="Previous comparison"
+								>
+									<ChevronLeft class="w-4 h-4" />
+								</Button>
+								<Button
+									onclick={nextComparison}
+									disabled={currentComparisonIndex === comparisons.length - 1}
+									variant="outline"
+									size="md"
+									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+									aria-label="Next comparison"
+								>
+									<ChevronRight class="w-4 h-4" />
+								</Button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Date info -->
+					<div
+						class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium"
+					>
+						<div class="flex items-center space-x-1.5">
+							<Clock class="w-3.5 h-3.5 opacity-60" />
+							<span>{formatDate(currentComparison.fromVersion.created_at)}</span>
+						</div>
+						<div class="text-gray-300 dark:text-gray-600">→</div>
+						<div class="flex items-center space-x-1.5">
+							<Clock class="w-3.5 h-3.5 opacity-60" />
+							<span>{formatDate(currentComparison.toVersion.created_at)}</span>
+						</div>
 					</div>
 				</div>
-			{:else if error}
-				<div class="flex items-center justify-center h-full">
-					<div class="text-center max-w-md">
-						<AlertCircle class="w-12 h-12 text-rose-500 mx-auto mb-4" />
-						<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							{error === 'No changes found between versions'
-								? 'No Changes Found'
-								: 'Error Loading History'}
+			</div>
+
+			<!-- Scrollable Content Area -->
+			<div class="flex-1 overflow-y-auto">
+				<div class="flex flex-col lg:flex-row min-h-full">
+					<!-- Diff Content - Scrolls independently -->
+					<div class="flex-1 lg:w-2/3 p-6 lg:border-r border-gray-200/50 dark:border-gray-700/50">
+						<DiffView
+							diffs={currentComparison.diffs}
+							fromVersionLabel="Version {currentComparison.fromVersion
+								.version_number}"
+							toVersionLabel="Version {currentComparison.toVersion
+								.version_number}"
+							showFieldPriority={true}
+						/>
+					</div>
+
+					<!-- Braindump Section - Scrolls with content -->
+					<div
+						class="w-full lg:w-1/3 p-6 bg-gray-50/50 dark:bg-gray-900/30 border-t lg:border-t-0 border-gray-200/50 dark:border-gray-700/50"
+					>
+						<h3
+							class="text-base font-semibold text-gray-900 dark:text-white mb-4 tracking-tight"
+						>
+							Related Braindump
 						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
-							{error === 'No changes found between versions'
-								? "This project hasn't been modified since it was created."
-								: error}
-						</p>
-					</div>
-				</div>
-			{:else if comparisons.length === 0}
-				<div class="flex items-center justify-center h-full">
-					<div class="text-center max-w-md">
-						<Clock class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-						<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							No History Available
-						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
-							This project doesn't have any recorded changes yet.
-						</p>
-					</div>
-				</div>
-			{:else}
-				<!-- Navigation Header -->
-				<div
-					class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-				>
-					<!-- Mobile: Stack everything vertically, Desktop: Two rows -->
-					<div class="space-y-3">
-						<!-- Main version info and navigation -->
-						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-						>
-							<div class="text-center sm:text-left">
-								<div class="text-sm font-medium text-gray-900 dark:text-white">
-									Version {currentComparison.fromVersion.version_number} → Version
-									{currentComparison.toVersion.version_number}
-								</div>
-								<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-									{comparisons.length} total comparison{comparisons.length !== 1
-										? 's'
-										: ''}
-								</div>
-							</div>
 
-							<!-- Navigation Controls -->
-							<div class="flex items-center justify-center sm:justify-end space-x-3">
-								<span class="text-xs text-gray-500 dark:text-gray-400">
-									{currentComparisonIndex + 1} of {comparisons.length}
-								</span>
-								<div class="flex items-center space-x-1">
-									<Button
-										onclick={previousComparison}
-										disabled={currentComparisonIndex === 0}
-										variant="outline"
-										size="md"
-										class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center"
-										aria-label="Previous comparison"
-									>
-										<ChevronLeft class="w-4 h-4" />
-									</Button>
-									<Button
-										onclick={nextComparison}
-										disabled={currentComparisonIndex === comparisons.length - 1}
-										variant="outline"
-										size="md"
-										class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center"
-										aria-label="Next comparison"
-									>
-										<ChevronRight class="w-4 h-4" />
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						<!-- Date info - simplified for mobile -->
-						<div
-							class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs text-gray-500 dark:text-gray-400"
-						>
-							<div class="flex items-center space-x-1">
-								<Clock class="w-3 h-3" />
-								<span>{formatDate(currentComparison.fromVersion.created_at)}</span>
-							</div>
-							<div class="hidden sm:block text-gray-300 dark:text-gray-600">→</div>
-							<div class="flex items-center space-x-1">
-								<Clock class="w-3 h-3" />
-								<span>{formatDate(currentComparison.toVersion.created_at)}</span>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Content Layout -->
-				<div class="flex-1 overflow-auto">
-					<div class="flex flex-col lg:flex-row h-full">
-						<!-- Diff Content - Takes up 2/3 on desktop -->
-						<div
-							class="flex-1 lg:w-2/3 p-4 lg:border-r border-gray-200 dark:border-gray-700"
-						>
-							<DiffView
-								diffs={currentComparison.diffs}
-								fromVersionLabel="Version {currentComparison.fromVersion
-									.version_number}"
-								toVersionLabel="Version {currentComparison.toVersion
-									.version_number}"
-								showFieldPriority={true}
-							/>
-						</div>
-
-						<!-- Braindump Section - Takes up 1/3 on desktop -->
-						<div
-							class="w-full lg:w-1/3 p-4 bg-gray-50 dark:bg-gray-900/50 border-t lg:border-t-0 border-gray-200 dark:border-gray-700"
-						>
-							<div class="sticky top-0">
-								<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-									Related Braindump
-								</h3>
-
-								{#if currentBraindump}
+						{#if currentBraindump}
+							<div
+								class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden shadow-sm"
+							>
+								<!-- Braindump Header -->
+								<div class="p-4 border-b border-gray-100 dark:border-gray-700/50">
+									<h4 class="font-semibold text-gray-900 dark:text-white mb-2.5 text-sm">
+										{currentBraindump.title || 'Untitled Braindump'}
+									</h4>
 									<div
-										class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+										class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
 									>
-										<!-- Braindump Header -->
-										<div
-											class="p-4 border-b border-gray-200 dark:border-gray-700"
-										>
-											<h4
-												class="font-medium text-gray-900 dark:text-white mb-2"
-											>
-												{currentBraindump.title || 'Untitled Braindump'}
-											</h4>
-											<div
-												class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
-											>
-												<div class="flex items-center space-x-1">
-													<Clock class="w-3 h-3" />
-													<span
-														>{formatDate(
-															currentBraindump.updated_at
-														)}</span
-													>
-												</div>
-												<a
-													href="/history?braindump={currentBraindump.id}"
-													target="_blank"
-													rel="noopener noreferrer"
-													class="flex items-center space-x-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
-												>
-													<span>View</span>
-													<ExternalLink class="w-3 h-3" />
-												</a>
-											</div>
+										<div class="flex items-center space-x-1.5">
+											<Clock class="w-3 h-3 opacity-60" />
+											<span>{formatDate(currentBraindump.updated_at)}</span>
 										</div>
+										<a
+											href="/history?braindump={currentBraindump.id}"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="flex items-center space-x-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors font-medium"
+										>
+											<span>View</span>
+											<ExternalLink class="w-3 h-3" />
+										</a>
+									</div>
+								</div>
 
-										<!-- Braindump Content -->
-										<div class="p-4">
-											{#if currentBraindump.preview}
-												<div
-													class="text-sm text-gray-700 dark:text-gray-300"
-												>
-													{#if expandedBraindump}
-														<p class="whitespace-pre-wrap">
-															{currentBraindump.content || ''}
-														</p>
-														<Button
-															onclick={toggleBraindumpExpansion}
-															variant="ghost"
-															size="sm"
-															class="mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 text-xs min-h-[44px]"
-														>
-															<ChevronUp class="w-3 h-3 mr-1" />
-															Show less
-														</Button>
-													{:else}
-														<p>{currentBraindump.preview}</p>
-														{#if currentBraindump.content && currentBraindump.content.length > 100}
-															<Button
-																onclick={toggleBraindumpExpansion}
-																variant="ghost"
-																size="sm"
-																class="mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 text-xs min-h-[44px]"
-															>
-																<ChevronDown class="w-3 h-3 mr-1" />
-																Read more
-															</Button>
-														{/if}
-													{/if}
-												</div>
-											{:else}
-												<p
-													class="text-sm text-gray-500 dark:text-gray-400 italic"
-												>
-													No content preview available.
+								<!-- Braindump Content -->
+								<div class="p-4">
+									{#if currentBraindump.preview}
+										<div class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+											{#if expandedBraindump}
+												<p class="whitespace-pre-wrap">
+													{currentBraindump.content || ''}
 												</p>
+												<Button
+													onclick={toggleBraindumpExpansion}
+													variant="ghost"
+													size="sm"
+													class="mt-3 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-xs min-h-[36px] font-medium"
+												>
+													<ChevronUp class="w-3.5 h-3.5 mr-1" />
+													Show less
+												</Button>
+											{:else}
+												<p>{currentBraindump.preview}</p>
+												{#if currentBraindump.content && currentBraindump.content.length > 100}
+													<Button
+														onclick={toggleBraindumpExpansion}
+														variant="ghost"
+														size="sm"
+														class="mt-3 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-xs min-h-[36px] font-medium"
+													>
+														<ChevronDown class="w-3.5 h-3.5 mr-1" />
+														Read more
+													</Button>
+												{/if}
 											{/if}
 										</div>
-									</div>
-								{:else}
-									<div class="text-center py-8">
-										<p class="text-gray-500 dark:text-gray-400 text-sm">
-											No braindump found for this version.
+									{:else}
+										<p class="text-sm text-gray-500 dark:text-gray-400 italic">
+											No content preview available.
 										</p>
-									</div>
-								{/if}
+									{/if}
+								</div>
 							</div>
-						</div>
+						{:else}
+							<div class="text-center py-12">
+								<p class="text-gray-500 dark:text-gray-400 text-sm">
+									No braindump found for this version.
+								</p>
+							</div>
+						{/if}
 					</div>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</div>
 </Modal>

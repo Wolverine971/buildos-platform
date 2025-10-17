@@ -4,6 +4,47 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 ---
 
+## 2025-10-17: Fixed Brain Dump Refresh Modal Not Refreshing Page
+
+**Issue**: When completing a brain dump on the current project page, the success flow shows a "Refresh Now" modal to update the page. Clicking "Refresh Now" did not refresh the page properly - the modal closed but the page data remained stale.
+
+**Root Cause**: Dependency key mismatch between the page loader and the invalidation call:
+- Project page registers dependency as `projects:${projectId}` (plural) in `+page.server.ts:44`
+- Refresh handler tried to invalidate `project:${projectId}` (singular) in `BrainDumpModalContent.svelte:429`
+- SvelteKit's `invalidate()` requires exact key match, so no data was invalidated and page didn't refresh
+
+**Impact**: Users on the current project page couldn't see their brain dump updates immediately. They had to manually refresh the browser or navigate away and back to see changes.
+
+**Fix**: Changed the invalidate call from `project:${projectId}` to `projects:${projectId}` to match the dependency key registered in the page loader.
+
+**Files Changed**:
+
+- `apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte` (line 429)
+
+**Manual Verification Steps**:
+
+1. Navigate to an existing project page (e.g., `/projects/[some-project-id]`)
+2. Open brain dump modal and add tasks/updates to the current project
+3. Complete the brain dump - you should see a success view
+4. Click "View Project" button
+5. A modal should appear asking "Refresh the page to see updates?"
+6. Click "Refresh Now"
+7. ✅ Expected: Page should refresh and show the new tasks/updates immediately
+8. ✅ Expected: Success toast "✨ Project updated successfully" should appear
+
+**Related Documentation**:
+
+- Brain Dump Flow: `/apps/web/docs/features/brain-dump/README.md`
+- Navigation Utility: `/apps/web/src/lib/utils/brain-dump-navigation.ts`
+- SvelteKit invalidation: [SvelteKit Docs - invalidate](https://kit.svelte.dev/docs/modules#$app-navigation-invalidate)
+
+**Date Fixed**: 2025-10-17
+**Fixed By**: Claude Code
+**Severity**: Medium (workaround exists via manual browser refresh)
+**Status**: ✅ Fixed
+
+---
+
 ## 2025-10-16: Rewrote TaskBraindumpSection Tests (Svelte 5 Compatibility Issue)
 
 **Issue**: TaskBraindumpSection.test.ts was written for old component behavior (manual toggle, no auto-load) but component was refactored to auto-load braindumps via `$effect`.

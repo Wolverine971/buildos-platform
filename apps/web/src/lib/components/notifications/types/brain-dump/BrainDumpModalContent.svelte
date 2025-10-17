@@ -426,7 +426,7 @@
 
 		try {
 			if (projectId) {
-				await invalidate(`project:${projectId}`);
+				await invalidate(`projects:${projectId}`);
 				await invalidate(`/projects/${projectId}`);
 				await tick();
 				await new Promise((resolve) => setTimeout(resolve, 100));
