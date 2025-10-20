@@ -5,26 +5,30 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import OperationErrorsDisplay from './OperationErrorsDisplay.svelte';
 
-	export let successData: {
-		brainDumpId?: string;
-		brainDumpType?: string;
-		projectId?: string;
-		projectName?: string;
-		isNewProject?: boolean;
-		operationsCount?: number;
-		failedOperations?: number;
-		operationErrors?: Array<{
-			operationId?: string;
-			table: string;
-			operation: string;
-			error: string;
-			timestamp?: string;
-		}>;
-	} = {};
-
-	// New props for modal context
-	export let showNavigationOnSuccess = true;
-	export let inModal = false;
+	let {
+		successData = {},
+		showNavigationOnSuccess = true,
+		inModal = false
+	} = $props<{
+		successData?: {
+			brainDumpId?: string;
+			brainDumpType?: string;
+			projectId?: string;
+			projectName?: string;
+			isNewProject?: boolean;
+			operationsCount?: number;
+			failedOperations?: number;
+			operationErrors?: Array<{
+				operationId: string;
+				table: string;
+				operation: string;
+				error: string;
+				timestamp?: string;
+			}>;
+		};
+		showNavigationOnSuccess?: boolean;
+		inModal?: boolean;
+	}>();
 
 	const dispatch = createEventDispatcher();
 

@@ -1,83 +1,95 @@
 # Prompt Audit: existing-project-dual-context
 
-**Generated at:** 2025-10-17T03:58:14.180Z
+**Generated at:** 2025-10-20T20:28:53.188Z
 **Environment:** Development
+
 
 ## Metadata
 
 ```json
 {
-	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-	"projectId": "19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4",
-	"brainDumpLength": 792,
-	"hasExistingProject": true,
-	"existingContextLength": 3079,
-	"timestamp": "2025-10-17T03:58:14.180Z"
+  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+  "projectId": "b7140785-6e02-4649-9c61-4ef42383b733",
+  "brainDumpLength": 791,
+  "hasExistingProject": true,
+  "existingContextLength": 5321,
+  "timestamp": "2025-10-20T20:28:53.188Z"
 }
 ```
 
+
 ## System Prompt
 
-````
+```
 You are a context synthesis engine specializing in project context enrichment.
 
 Mode: UPDATE EXISTING PROJECT CONTEXT
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-17T03:58:02.159Z
+Current date and time: 2025-10-20T20:28:35.555Z
 
-Your Job is to update the project context document based on the user's brain dump.
-The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
-DO NOT include task lists or specific task details - those are handled separately.
+Your Job is to update the project context document and core dimensions based on the user's brain dump.
 
-**Context Update Criteria** (Update context when):
-1. Strategic insights or learnings emerge
-2. Scope or boundaries change
-3. New stakeholders or dependencies identified
-4. Approach or methodology evolves
-5. Risks or assumptions change
-6. External factors shift
-7. Major decisions made
-8. **Project structure needs evolution** (add new sections, reorganize existing ones to better communicate the project's story)
+**Update Criteria for Context & Core Dimensions**
 
-**Don't Update Context For**:
-- Simple task completions
-- Minor status changes
-- Day-to-day progress
-- Temporary blockers
+**Update Context (narrative) when:**
+- Key decisions or pivots occur
+- Understanding of the project evolves
+- Significant insights or learnings emerge
+- New connections or relationships form
+- Major events or milestones happen
+- The story needs to continue
 
-**Remember**: Context structure should evolve with the project. Don't be constrained by the initial framework - adapt it as the project's needs become clearer.
+**Update Core Dimensions when braindump touches:**
+1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
+2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
+3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
+4. **Meaning & Identity** ("core_meaning_identity") — Purpose, differentiation, brand/mission coherence.
+5. **Reality & Understanding** ("core_reality_understanding") — Current state, data, diagnosis/model.
+6. **Trust & Safeguards** ("core_trust_safeguards") — Risks, mitigations, contingencies, reliability.
+7. **Opportunity & Freedom** ("core_opportunity_freedom") — Options, experiments, pivots, optionality.
+8. **Power & Resources** ("core_power_resources") — Budget, headcount, tools, infra, permissions.
+9. **Harmony & Integration** ("core_harmony_integration") — Feedback loops, integration points, iteration.
+
+**Don't Update For:**
+- Simple task completions or status updates
+- Minor progress reports
+- Day-to-day execution details
+- Temporary blockers or issues
+- Information that belongs in task details
+
+**Remember**: 
+- Context is a living narrative - update it to continue the story
+- Core dimensions are replaced entirely when updated (not appended)
+- Both can be updated in the same braindump
+- Not every braindump requires updates
 
 ## Update Rules:
-1. **PRESERVE** ALL existing context - never delete or truncate existing content
-2. **MERGE** new insights appropriately within existing structure
-3. **ADD** timestamps for significant updates: **[2025-10-17]** New info...
-4. **MAINTAIN** existing markdown structure and formatting
-5. **OUTPUT** the COMPLETE context document with all existing + new content
-6. **FOCUS** on strategic information, not tactical task details
+1. **CONTEXT FIELD**: 
+   - PRESERVE all existing context
+   - MERGE new insights organically
+   - ADD timestamps for significant updates
+   - Let structure evolve naturally
 
-## When to Update Context:
-Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.
+2. **CORE DIMENSIONS**:
+   - REPLACE entire dimension content when updating
+   - Include ALL relevant information holistically
+   - Use user's direct phrasing where possible
+   - Write full paragraphs, not bullets
+   - Only include in output if dimension is touched
 
-## Update the Executive Summary:
-Update the executive summary to describe the current state and direction of the project when there are significant changes.
+3. **Only update what's mentioned in the braindump**
 
-## When NOT to Update Context:
-- Brain dump is ONLY about specific tasks or bug fixes
-- Simple status updates or progress reports
-- Day-to-day tactical information
-- Information that belongs in task details instead
-- Pure task lists or action items
-
-## Output JSON for Context Update:
+## Output JSON for Updates:
 ```json
 {
   "title": "Short title for brain dump",
-  "summary": "2-3 sentence summary of what was extracted from the braindump",
-  "insights": "Key insights or highlights from this braindump",
+  "summary": "2-3 sentence summary of what was extracted",
+  "insights": "Key insights from this braindump",
   "tags": ["relevant", "tags"],
   "metadata": {
-    "processingNote": "Explain why context was or wasn't updated"
+    "processingNote": "Explain what was updated and why",
+    "dimensions_updated": ["list of core dimensions that were updated"]
   },
   "operations": [
     {
@@ -85,91 +97,120 @@ Update the executive summary to describe the current state and direction of the 
       "table": "projects",
       "operation": "update",
       "data": {
-        "id": "[PROJECT_ID]",
-        "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
-        "executive_summary": "Updated executive summary (only if project vision/scope changed)",
-        "tags": ["updated", "tags", "if", "changed"],
-        "status": "active|paused|completed|archived"
+        "id": "project-id-here",
+        "context": "COMPLETE markdown with ALL existing + new content...",
+        "executive_summary": "Updated if vision/scope changed",
+        "tags": ["updated", "tags"],
+        "status": "active|paused|completed|archived",
+        "core_integrity_ideals": "Complete updated paragraph or omit if not touched",
+		"core_people_bonds": "Complete updated paragraph or omit if not touched",
+		"core_goals_momentum": "Complete updated paragraph or omit if not touched",
+		"core_meaning_identity": "Complete updated paragraph or omit if not touched",
+		"core_reality_understanding": "Complete updated paragraph or omit if not touched",
+		"core_trust_safeguards": "Complete updated paragraph or omit if not touched",
+		"core_opportunity_freedom": "Complete updated paragraph or omit if not touched",
+		"core_power_resources": "Complete updated paragraph or omit if not touched",
+		"core_harmony_integration": "Complete updated paragraph or omit if not touched"
       }
     }
   ]
 }
-````
+```
 
-## Output JSON for No Context Update Needed:
+**Note**: Only include core dimension fields in the data object if they need updating. Omit unchanged dimensions entirely from the update operation.
 
+## Output JSON for No Update Needed:
 ```json
 {
-	"title": "Title for the braindump",
-	"summary": "Summary of the braindump content",
-	"insights": "Key insights from the content",
-	"tags": ["relevant", "tags"],
-	"metadata": {
-		"processingNote": "No context update needed - [explain why: task-focused, progress update, etc.]"
-	},
-	"operations": []
+  "title": "Title for the braindump",
+  "summary": "Summary of the braindump content",
+  "insights": "Key insights from the content",
+  "tags": ["relevant", "tags"],
+  "metadata": {
+    "processingNote": "No updates needed - tactical/task-focused content",
+    "dimensions_updated": []
+  },
+  "operations": []
 }
 ```
 
-Focus on strategic project information. Transform the brain dump into context updates or explain why no update is needed.
-
+Focus on strategic information. Update core dimensions holistically when touched. Only include dimensions in output that need updating.
 ```
 
 ## User Prompt
 
 ```
-
 ## Current Project Data:
 
-{"id":"19ddbf78-2e62-4bdf-bcb1-7e1a9626d5b4","name":"The Last Ember","status":"active","description":"A fantasy novel about a young blacksmith who forges magical weapons to combat darkness in her kingdom.","start_date":"2025-10-17","end_date":null,"tags":["fantasy","novel","world-building","character development"],"executive_summary":"This project aims to develop a fantasy novel centered around a young blacksmith who discovers her magical abilities in a kingdom facing darkness. Key elements include character backstories, a unique magic system, and a detailed world.","context":"## 1. Situation & Environment\n- **Current State**:..."}
+{"id":"b7140785-6e02-4649-9c61-4ef42383b733","name":"The Last Ember","status":"active","description":"A fantasy novel about a young blacksmith who discovers her magical abilities after the death of the kingdom's last dragon.","start_date":"2025-10-17","end_date":null,"tags":["fantasy","novel","writing","magic system","world-building"],"executive_summary":"The Last Ember is a fantasy novel that follows a young blacksmith as she uncovers her magical abilities and confronts the darkness threatening her kingdom. The project emphasizes character development, a unique magic system influenced by emotions, and a richly detailed world.","context":"## 1. Situation & Environment\n- **Current State**:..."}
 
 **Full Context:**
-
 ##### 1. Situation & Environment
-
-- **Current State**: The project is in the initial stages of development, focusing on character and world-building.
-- **Pain Points**: Need to establish a coherent magic system and character backstories.
-- **Historical Context**: The story begins with the death of the last dragon, which serves as a catalyst for the protagonist's journey.
-- **External Factors**: The fantasy genre is competitive, with a demand for unique magic systems and strong character arcs.
-- **Stakeholder Landscape**: The primary stakeholder is the author, with potential feedback from beta readers and editors.
+- **Current State**: The project is in the initial stages of development, focusing on character and world-building. The magic system is evolving with emotional influences on weapon properties. Recent work has centered on character relationships and backstories, particularly for the protagonist Elena and her mentor Master Thorne.
+- **Pain Points**: Need to establish a compelling backstory and a unique magic system.
+- **Historical Context**: The story begins with the death of the last dragon, setting off a chain of events that threaten the realm.
+- **External Factors**: The fantasy genre's competition and reader expectations for rich world-building and character depth.
+- **Stakeholder Landscape**: Primarily the author, with potential feedback from beta readers and writing groups.
 
 ##### 2. Purpose & Vision & Framing
-
-- **Vision**: To create an engaging fantasy narrative that explores themes of resilience, identity, and the struggle against darkness.
-- **Framing**: "A young blacksmith discovers her true potential in a world where magic and darkness collide."
-- **Core Purpose**: To tell a compelling story that captivates readers and immerses them in the world of Aethermoor.
+- **Vision**: To create an engaging fantasy narrative that explores themes of identity, power, and resilience.
+- **Framing**: "A young blacksmith discovers her destiny as a weapon for good in a world overshadowed by darkness."
+- **Core Purpose**: To tell a story of self-discovery and the fight against evil through the lens of a unique protagonist.
 - **Success Criteria**: Completion of the manuscript, positive feedback from beta readers, and eventual publication.
-- **Desired Future State**: A completed novel that resonates with readers and establishes a fanbase.
-- **Strategic Alignment**: Aligns with the growing interest in fantasy literature and the author's personal goals as a writer.
+- **Desired Future State**: A published novel that resonates with readers and contributes to the fantasy genre.
+- **Strategic Alignment**: Aligns with the author's goal of establishing a career in writing fantasy literature.
 
 ##### 3. Scope & Boundaries
-
-- **Deliverables**: Completed character profiles, magic system, kingdom map, chapter outlines, and research documentation.
+- **Deliverables**: Completed character backstories, magic system, kingdom map, character profiles, chapter outlines, and research documentation.
 - **Exclusions**: No illustrations or marketing materials at this stage.
-- **Constraints**: Limited by the author's writing schedule and research availability.
-- **Assumptions**: Assumes familiarity with fantasy tropes and storytelling techniques.
-- **Key Risks**: Potential for writer's block or lack of clarity in the magic system.
+- **Constraints**: Limited by the author's current knowledge of medieval blacksmithing and fantasy tropes.
+- **Assumptions**: The audience will appreciate a blend of traditional fantasy elements with innovative twists.
+- **Key Risks**: Potential for writer's block or loss of direction in the plot development.
 
 ##### 4. Approach & Execution
-
-- **Strategy**: Focus on iterative writing and world-building, with regular reviews of character and plot development.
-- **Methodology**: Use of outlines and character profiles to guide the writing process.
-- **Workstreams**: Parallel development of character backstories, magic system, and plot outlines.
+- **Strategy**: Focus on iterative development of characters and world-building, followed by outlining the plot.
+- **Methodology**: Use of brainstorming sessions and writing sprints to generate content.
+- **Workstreams**: Parallel efforts on character development, magic system creation, and chapter outlining.
 - **Milestones**: Completion of character profiles, magic system, and first draft of the first three chapters.
-- **Resource Plan**: Author's time, writing tools, and research materials.
+- **Resource Plan**: Utilize writing software, research materials, and feedback from writing groups.
 
 ##### 5. Coordination & Control
-
-- **Governance**: The author will make all creative decisions, with input from trusted readers.
-- **Decision Rights**: The author retains full creative control over the project.
+- **Governance**: The author will make all creative decisions, with input from trusted peers.
+- **Decision Rights**: The author retains full control over plot and character development.
 - **Communication Flow**: Regular updates to beta readers and writing groups for feedback.
-- **Risk/Issue Management**: Address creative blocks through brainstorming sessions and research.
+- **Risk/Issue Management**: Establish a routine for addressing creative blocks and seeking external feedback.
 
 ##### 6. Knowledge & Learning
+- **Lessons Applied**: Previous writing experiences and feedback will inform character and plot development.
+- **Documentation Practices**: Maintain a writing journal to capture ideas and progress.
+- **Continuous Improvement**: Regularly review and revise based on feedback and self-assessment.
 
-- **Lessons Applied**: Previous writing experiences and feedback will inform character development and plot structure.
-- **Documentation Practices**: Maintain a writing journal for notes and ideas.
-- **Continuous Improvement**: Regularly seek feedback and adjust the writing process as needed.
+##### 7. Magic System
+- **Emotional Influence**: The magic system will incorporate emotional influences on weapon properties, inspired by Japanese sword-making traditions. For example, anger will produce fire damage, sorrow will create ice or frost effects, joy will yield healing properties, and fear will generate defensive shields.
+- **Research Elements**: Incorporating Damascus steel patterns for visual descriptions, Celtic mythology about smith gods like Goibniu, and exploring various types of medieval weapons beyond swords.
+
+##### 8. World-Building Additions
+- **The Forge Temples**: Ancient sites where dragon fire still burns, integral to the magic system.
+- **Smith's Guild**: A hierarchy and traditions that govern the craft of blacksmithing in the realm.
+- **The Quenching Ritual**: A ceremonial process for completing magical weapons, adding depth to the crafting process.
+- **Regional Techniques**: Highlighting differences in forging techniques across Aethermoor.
+
+##### Character Relationships and Backstories
+- **Elena (protagonist)**: Lost parents in a dragon attack at age 5, raised by Master Thorne who found her in ruins. She has recurring nightmares about fire and a secret: she's actually descended from the original Dragon Smiths.
+- **Master Thorne**: Former royal blacksmith, exiled for refusing to make weapons for an unjust war. He knows Elena's true heritage but keeps it secret, and is dying from lung disease from years at the forge.
+- **The Shadow King**: Was once a hero who saved the kingdom 500 years ago but was corrupted by the very magic he used to save everyone. He seeks Elena because only Dragon Smith weapons can free him from his curse.
+- **Supporting cast**: Kai, Elena's childhood friend and now city guard, who is a potential love interest; Lady Morgana, the court wizard who suspects Elena's powers; and The Herald, the Shadow King's servant, who is formerly Elena's thought-dead mother.
+
+---
+
+## Preparatory Analysis Insights:
+
+The following core dimensions were identified in preliminary analysis and may need updating:
+- core_goals_momentum
+- core_power_resources
+- core_meaning_identity
+
+Use these insights to focus your extraction, but re-analyze the full braindump to ensure completeness.
 
 ---
 
@@ -203,17 +244,15 @@ Also want to:
 
 - Start building author platform on social media
 - Write short stories in same universe for magazines
-- Create series bible if this becomes Book 1"
-
+- Create series bible if this becomes Book 1
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~876 tokens
-- **User Prompt:** ~1157 tokens
-- **Total Estimate:** ~2033 tokens
+- **System Prompt:** ~1176 tokens
+- **User Prompt:** ~1812 tokens
+- **Total Estimate:** ~2988 tokens
 
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
-```

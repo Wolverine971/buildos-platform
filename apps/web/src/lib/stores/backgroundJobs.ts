@@ -9,15 +9,16 @@ import {
 function createBackgroundJobsStore() {
 	const { subscribe, set, update } = writable<BackgroundJob[]>([]);
 
-	// Store cleanup interval ID to prevent memory leak
+	// Store cleanup interval ID and unsubscribe function to prevent memory leak
 	let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+	let unsubscribeFromService: (() => void) | null = null;
 
 	// Initialize from service
 	if (browser) {
 		set(backgroundBrainDumpService.getAllJobs());
 
-		// Subscribe to service updates
-		backgroundBrainDumpService.subscribe((job) => {
+		// Subscribe to service updates and store unsubscribe function
+		unsubscribeFromService = backgroundBrainDumpService.subscribe((job) => {
 			update((jobs) => {
 				const index = jobs.findIndex((j) => j.id === job.id);
 				if (index >= 0) {
@@ -47,6 +48,10 @@ function createBackgroundJobsStore() {
 			if (cleanupInterval) {
 				clearInterval(cleanupInterval);
 				cleanupInterval = null;
+			}
+			if (unsubscribeFromService) {
+				unsubscribeFromService();
+				unsubscribeFromService = null;
 			}
 		}
 	};

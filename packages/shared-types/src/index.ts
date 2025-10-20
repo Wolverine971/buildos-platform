@@ -13,6 +13,9 @@ export * from "./time-block.types";
 export * from "./notification.types";
 export * from "./payloadTransformer";
 
+// Export brief types
+export * from "./brief.types";
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
   id: string;

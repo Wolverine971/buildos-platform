@@ -15,7 +15,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -23,7 +23,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(9);
@@ -38,7 +38,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -46,7 +46,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(9);
@@ -60,15 +60,13 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00", // 9 AM local time
-        timezone: "America/New_York",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "America/New_York");
 
       expect(result).not.toBeNull();
       // 9 AM EDT = 1 PM UTC (EDT is UTC-4)
@@ -82,15 +80,13 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "Asia/Tokyo",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "Asia/Tokyo");
 
       expect(result).not.toBeNull();
       // 9 AM JST = 12 AM UTC (JST is UTC+9)
@@ -105,15 +101,13 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "America/New_York",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "America/New_York");
 
       expect(result).not.toBeNull();
       // date-fns-tz should handle DST automatically
@@ -127,7 +121,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -135,7 +129,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCMilliseconds()).toBe(0);
@@ -150,7 +144,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "weekly",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
@@ -158,7 +152,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDay()).toBe(1); // Monday
@@ -173,7 +167,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "weekly",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
@@ -181,7 +175,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDate()).toBe(6); // Same day (today)
@@ -195,7 +189,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "weekly",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
@@ -203,7 +197,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDay()).toBe(1); // Monday
@@ -220,7 +214,7 @@ describe("Scheduler - calculateNextRunTime", () => {
           user_id: "user-1",
           frequency: "weekly",
           time_of_day: "09:00:00",
-          timezone: "UTC",
+  
           is_active: true,
           // email_daily_brief removed - now in user_notification_preferences
           day_of_week: day,
@@ -228,7 +222,7 @@ describe("Scheduler - calculateNextRunTime", () => {
           updated_at: "2025-01-01T00:00:00Z",
         };
 
-        const result = calculateNextRunTime(preference, now);
+        const result = calculateNextRunTime(preference, now, "UTC");
         expect(result).not.toBeNull();
         expect(result?.getUTCDay()).toBe(day);
       }
@@ -243,7 +237,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "custom",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -251,7 +245,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(9);
@@ -267,7 +261,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "invalid-time",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -275,7 +269,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).toBeNull();
     });
@@ -287,7 +281,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "25:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -295,7 +289,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).toBeNull();
     });
@@ -307,7 +301,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:75:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -315,7 +309,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).toBeNull();
     });
@@ -327,7 +321,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "-01:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -335,7 +329,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).toBeNull();
     });
@@ -347,7 +341,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "unknown" as any,
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -355,7 +349,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).toBeNull();
     });
@@ -369,7 +363,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "00:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -377,7 +371,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(0);
@@ -391,7 +385,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "23:59:59",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -399,7 +393,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(23);
@@ -415,7 +409,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -423,7 +417,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDate()).toBe(1); // Nov 1
@@ -437,7 +431,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -445,7 +439,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDate()).toBe(1); // Jan 1
@@ -468,7 +462,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(9);
@@ -481,7 +475,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: null,
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -489,7 +483,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       // Should use default 09:00:00
@@ -503,7 +497,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         user_id: "user-1",
         frequency: null,
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
@@ -511,7 +505,7 @@ describe("Scheduler - calculateNextRunTime", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCHours()).toBe(9);
@@ -524,7 +518,7 @@ describe("Scheduler - validateUserPreference", () => {
     const preference: Partial<UserBriefPreference> = {
       frequency: "daily",
       time_of_day: "09:00:00",
-      timezone: "UTC",
+
     };
 
     const errors = validateUserPreference(preference);
@@ -536,7 +530,7 @@ describe("Scheduler - validateUserPreference", () => {
     const preference: Partial<UserBriefPreference> = {
       frequency: "weekly",
       time_of_day: "09:00:00",
-      timezone: "UTC",
+
       day_of_week: 1,
     };
 
@@ -675,15 +669,13 @@ describe("Scheduler - Integration Tests", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00", // 9 AM NZDT (UTC+13)
-        timezone: "Pacific/Auckland",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "Pacific/Auckland");
 
       expect(result).not.toBeNull();
       // 9 AM NZDT = 8 PM previous day UTC (during DST)
@@ -697,15 +689,13 @@ describe("Scheduler - Integration Tests", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00", // 9 AM PDT (UTC-7)
-        timezone: "America/Los_Angeles",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "America/Los_Angeles");
 
       expect(result).not.toBeNull();
       // 9 AM PDT = 4 PM UTC
@@ -721,15 +711,13 @@ describe("Scheduler - Integration Tests", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "America/New_York",
         is_active: true,
-        // email_daily_brief removed - now in user_notification_preferences
         day_of_week: null,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "America/New_York");
 
       expect(result).not.toBeNull();
       // Should schedule for today at 9 AM local (1 PM UTC)
@@ -744,7 +732,7 @@ describe("Scheduler - Integration Tests", () => {
         user_id: "user-1",
         frequency: "weekly",
         time_of_day: "09:00:00",
-        timezone: "UTC",
+
         is_active: true,
         // email_daily_brief removed - now in user_notification_preferences
         day_of_week: 1, // Monday
@@ -752,7 +740,7 @@ describe("Scheduler - Integration Tests", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now);
+      const result = calculateNextRunTime(preference, now, "UTC");
 
       expect(result).not.toBeNull();
       expect(result?.getUTCDay()).toBe(1); // Monday

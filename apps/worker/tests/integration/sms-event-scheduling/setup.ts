@@ -7,6 +7,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { addDays, format } from "date-fns";
+import { afterEach } from "vitest";
 
 export interface TestUser {
   id: string;
@@ -41,11 +42,22 @@ export class TestSetup {
 
   constructor() {
     // Use test database (configure in .env.test)
-    this.supabase = createClient(
-      process.env.TEST_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
+    const supabaseUrl =
+      process.env.TEST_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+    const supabaseKey =
       process.env.TEST_SUPABASE_SERVICE_KEY ||
-        process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
-    );
+      process.env.PRIVATE_SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error(
+        "Missing Supabase credentials for integration tests. " +
+          "Please set TEST_SUPABASE_URL and TEST_SUPABASE_SERVICE_KEY " +
+          "(or PUBLIC_SUPABASE_URL and PRIVATE_SUPABASE_SERVICE_KEY) " +
+          "environment variables.",
+      );
+    }
+
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   /**

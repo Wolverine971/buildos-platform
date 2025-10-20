@@ -6,6 +6,7 @@ import type {
   QueueJobType,
   QueueJob as SharedQueueJob,
 } from "@buildos/shared-types";
+import { queueConfig } from "../config/queueConfig";
 import { updateJobProgress } from "./progressTracker";
 import { supabase } from "./supabase";
 
@@ -48,6 +49,8 @@ export class SupabaseQueue {
   private pollInterval: number;
   private batchSize: number;
   private stalledTimeout: number;
+  private stalledJobRetryCount = 0;
+  private readonly MAX_STALLED_RETRIES = 3;
 
   constructor(options?: {
     pollInterval?: number;
@@ -323,8 +326,9 @@ export class SupabaseQueue {
     } catch (error: any) {
       console.error(`❌ Job ${job.queue_job_id} failed:`, error);
 
-      // Determine if we should retry
-      const shouldRetry = (job.attempts || 0) < (job.max_attempts || 3);
+      // Determine if we should retry - use configuration instead of hardcoded value
+      const maxRetries = job.max_attempts || queueConfig.maxRetries;
+      const shouldRetry = (job.attempts || 0) < maxRetries;
       await this.failJob(job.id, error.message || "Unknown error", shouldRetry);
     }
   }
@@ -349,7 +353,7 @@ export class SupabaseQueue {
   }
 
   /**
-   * Recover stalled jobs
+   * Recover stalled jobs with retry logic
    */
   private async recoverStalledJobs(): Promise<void> {
     try {
@@ -358,15 +362,40 @@ export class SupabaseQueue {
       });
 
       if (error) {
-        console.error("❌ Error recovering stalled jobs:", error);
+        this.stalledJobRetryCount++;
+
+        if (this.stalledJobRetryCount >= this.MAX_STALLED_RETRIES) {
+          console.error(
+            `❌ CRITICAL: Stalled job recovery failed ${this.MAX_STALLED_RETRIES} times:`,
+            error,
+          );
+          // In production, alert ops team here
+          this.stalledJobRetryCount = 0; // Reset for next attempt
+        } else {
+          console.warn(
+            `⚠️ Stalled job recovery failed (attempt ${this.stalledJobRetryCount}/${this.MAX_STALLED_RETRIES}):`,
+            error.message,
+          );
+        }
         return;
       }
+
+      // Reset on success
+      this.stalledJobRetryCount = 0;
 
       if (count && count > 0) {
         console.log(`🔄 Recovered ${count} stalled job(s)`);
       }
     } catch (error) {
-      console.error("❌ Error in stalled job recovery:", error);
+      console.error("❌ Unexpected error in stalled job recovery:", error);
+      this.stalledJobRetryCount++;
+
+      if (this.stalledJobRetryCount >= this.MAX_STALLED_RETRIES) {
+        console.error(
+          `❌ CRITICAL: Stalled job recovery crashes repeatedly - check database connection`,
+        );
+        this.stalledJobRetryCount = 0;
+      }
     }
   }
 

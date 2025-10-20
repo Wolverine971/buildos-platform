@@ -11,24 +11,30 @@
 		Clock
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { createEventDispatcher } from 'svelte';
 
 	// Define ExtendedTabType locally
 	type ExtendedTabType = 'overview' | 'tasks' | 'notes' | 'briefs' | 'synthesis' | 'braindumps';
 
-	export let activeTab: ExtendedTabType = 'overview';
-	export let tabCounts: {
-		tasks: number;
-		notes: number;
-		deletedTasks: number;
-		doneTasks: number;
-		phases: number;
-		scheduled: number;
-		briefs: number;
-		braindumps: number;
-	};
-	export let isMobile: boolean = false;
+	let {
+		activeTab = 'overview' as ExtendedTabType,
+		tabCounts,
+		isMobile = false
+	} = $props<{
+		activeTab?: ExtendedTabType;
+		tabCounts: {
+			tasks: number;
+			notes: number;
+			deletedTasks: number;
+			doneTasks: number;
+			phases: number;
+			scheduled: number;
+			briefs: number;
+			braindumps: number;
+		};
+		isMobile?: boolean;
+	}>();
 
-	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher<{ change: ExtendedTabType }>();
 
 	interface Tab {
@@ -41,21 +47,21 @@
 		mobileLabel?: string;
 	}
 
-	$: tabs = [
+	let tabs = $derived([
 		{
-			id: 'overview',
+			id: 'overview' as const,
 			label: 'Overview',
 			icon: Layers,
 			hideCount: true
 		},
 		{
-			id: 'tasks',
+			id: 'tasks' as const,
 			label: 'Tasks',
 			icon: CheckSquare,
 			count: tabCounts.tasks
 		},
 		{
-			id: 'braindumps',
+			id: 'braindumps' as const,
 			label: 'Brain Dumps',
 			mobileLabel: 'Dumps',
 			icon: Brain,
@@ -63,7 +69,7 @@
 			hideCount: true
 		},
 		{
-			id: 'briefs',
+			id: 'briefs' as const,
 			label: 'Daily Briefs',
 			mobileLabel: 'Briefs',
 			icon: FileText,
@@ -71,21 +77,21 @@
 			count: tabCounts.briefs
 		},
 		{
-			id: 'notes',
+			id: 'notes' as const,
 			label: 'Notes',
 			icon: LayoutGrid,
 			count: tabCounts.notes
 		},
 		{
-			id: 'synthesis',
+			id: 'synthesis' as const,
 			label: 'AI Summary',
 			mobileLabel: 'AI',
 			icon: AlertCircle,
 			hideCount: true
 		}
-	];
+	]);
 
-	$: visibleTabs = isMobile ? tabs.filter((tab) => !tab.hideOnMobile) : tabs;
+	let visibleTabs = $derived(isMobile ? tabs.filter((tab) => !tab.hideOnMobile) : tabs);
 </script>
 
 <div class="border-b border-gray-200 dark:border-gray-700">

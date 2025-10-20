@@ -2,7 +2,12 @@
 import type { LegacyJob } from "./shared/jobAdapter";
 import { SMSService, TwilioClient } from "@buildos/twilio-service";
 import { createClient } from "@supabase/supabase-js";
-import { notifyUser, updateJobStatus } from "./shared/queueUtils";
+import {
+  notifyUser,
+  updateJobStatus,
+  type SMSJobData,
+  validateSMSJobData,
+} from "./shared/queueUtils";
 import { smsMetricsService } from "@buildos/shared-utils";
 
 // Conditional Twilio initialization
@@ -54,7 +59,10 @@ const supabase = createClient(
   (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
 );
 
-export async function processSMSJob(job: LegacyJob<any>) {
+export async function processSMSJob(job: LegacyJob<SMSJobData>) {
+  // Validate job data immediately to catch errors early
+  const validatedData = validateSMSJobData(job.data);
+
   // Check if SMS service is available
   if (!twilioClient || !smsService) {
     const errorMessage =
@@ -63,8 +71,15 @@ export async function processSMSJob(job: LegacyJob<any>) {
     await updateJobStatus(job.id, "failed", "send_sms", errorMessage);
     throw new Error(errorMessage);
   }
-  const { message_id, phone_number, message, priority, scheduled_sms_id } =
-    job.data;
+
+  const {
+    message_id,
+    phone_number,
+    message,
+    priority,
+    scheduled_sms_id,
+    user_id,
+  } = validatedData;
 
   try {
     await updateJobStatus(job.id, "processing", "send_sms");
@@ -103,7 +118,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
         // Track cancelled metrics (non-blocking)
         smsMetricsService
-          .recordCancelled(job.data.user_id, scheduled_sms_id, "User cancelled")
+          .recordCancelled(user_id, scheduled_sms_id, "User cancelled")
           .catch((err: unknown) =>
             console.error(
               "[SMS Worker] Error tracking cancelled metrics:",
@@ -153,9 +168,9 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
           // Re-queue job
           await supabase.rpc("add_queue_job", {
-            p_user_id: job.data.user_id,
+            p_user_id: user_id,
             p_job_type: "send_sms",
-            p_metadata: job.data,
+            p_metadata: validatedData,
             p_scheduled_for: rescheduleTime.toISOString(),
             p_priority: priority === "urgent" ? 1 : 10,
           });
@@ -261,7 +276,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
       body: message,
       metadata: {
         message_id,
-        user_id: job.data.user_id,
+        user_id,
         scheduled_sms_id: scheduled_sms_id || undefined,
       },
     });
@@ -315,7 +330,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
       // Increment daily SMS count
       await supabase.rpc("increment_daily_sms_count", {
-        p_user_id: job.data.user_id,
+        p_user_id: user_id,
       });
 
       console.log(
@@ -325,7 +340,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
     // Track sent metrics (non-blocking)
     smsMetricsService
-      .recordSent(job.data.user_id, message_id, twilioMessage.sid)
+      .recordSent(user_id, message_id, twilioMessage.sid)
       .catch((err: unknown) =>
         console.error("[SMS Worker] Error tracking sent metrics:", err),
       );
@@ -339,7 +354,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
     await updateJobStatus(job.id, "completed", "send_sms");
 
     // Notify user of successful send (optional)
-    await notifyUser(job.data.user_id, "sms_sent", {
+    await notifyUser(user_id, "sms_sent", {
       message_id,
       phone_number,
       scheduled_sms_id,
@@ -395,7 +410,7 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
     // Track failed metrics (non-blocking)
     smsMetricsService
-      .recordFailed(job.data.user_id, message_id, error.message)
+      .recordFailed(user_id, message_id, error.message)
       .catch((err: unknown) =>
         console.error("[SMS Worker] Error tracking failed metrics:", err),
       );
@@ -444,9 +459,9 @@ export async function processSMSJob(job: LegacyJob<any>) {
       const delay = Math.pow(2, attemptCount) * 60; // minutes
 
       await supabase.rpc("add_queue_job", {
-        p_user_id: job.data.user_id,
+        p_user_id: user_id,
         p_job_type: "send_sms",
-        p_metadata: job.data,
+        p_metadata: validatedData,
         p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
         p_priority: priority === "urgent" ? 1 : 10,
       });

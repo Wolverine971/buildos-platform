@@ -986,11 +986,15 @@ export function forceResetAllBrainDumpState(): void {
 		}
 	}
 
-	console.log('[BrainDumpNotificationBridge] Emergency reset complete - all brain dump state cleared');
+	console.log(
+		'[BrainDumpNotificationBridge] Emergency reset complete - all brain dump state cleared'
+	);
 }
 
 // Export to global scope for emergency use
 if (typeof window !== 'undefined') {
 	(window as any).__resetAllBrainDumps = forceResetAllBrainDumpState;
-	console.log('[BrainDumpNotificationBridge] Emergency reset function available as window.__resetAllBrainDumps()');
+	console.log(
+		'[BrainDumpNotificationBridge] Emergency reset function available as window.__resetAllBrainDumps()'
+	);
 }

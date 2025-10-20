@@ -9,6 +9,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
+	import CoreDimensionsField from '$lib/components/project/CoreDimensionsField.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { Copy, Calendar, Tag, FileText, Sparkles, Clock, X, FileDown } from 'lucide-svelte';
 	import type { Project } from '$lib/types/project';
@@ -35,6 +36,17 @@
 	let executiveSummaryValue = '';
 	let contextValue = '';
 
+	// Core dimensions
+	let coreIntegrityIdeals: string | null = null;
+	let corePeopleBonds: string | null = null;
+	let coreGoalsMomentum: string | null = null;
+	let coreMeaningIdentity: string | null = null;
+	let coreRealityUnderstanding: string | null = null;
+	let coreTrustSafeguards: string | null = null;
+	let coreOpportunityFreedom: string | null = null;
+	let corePowerResources: string | null = null;
+	let coreHarmonyIntegration: string | null = null;
+
 	// Tag input
 	let tagInput = '';
 
@@ -56,6 +68,18 @@
 		tagsValue = project.tags || [];
 		executiveSummaryValue = project.executive_summary || '';
 		contextValue = project.context || '';
+
+		// Initialize core dimensions
+		coreIntegrityIdeals = (project as any).core_integrity_ideals || null;
+		corePeopleBonds = (project as any).core_people_bonds || null;
+		coreGoalsMomentum = (project as any).core_goals_momentum || null;
+		coreMeaningIdentity = (project as any).core_meaning_identity || null;
+		coreRealityUnderstanding = (project as any).core_reality_understanding || null;
+		coreTrustSafeguards = (project as any).core_trust_safeguards || null;
+		coreOpportunityFreedom = (project as any).core_opportunity_freedom || null;
+		corePowerResources = (project as any).core_power_resources || null;
+		coreHarmonyIntegration = (project as any).core_harmony_integration || null;
+
 		errors = [];
 	}
 
@@ -147,6 +171,39 @@
 		tagsValue = tagsValue.filter((tag) => tag !== tagToRemove);
 	}
 
+	// Handle core dimension updates
+	function handleCoreDimensionUpdate(dimensionKey: string, value: string | null) {
+		switch (dimensionKey) {
+			case 'core_integrity_ideals':
+				coreIntegrityIdeals = value;
+				break;
+			case 'core_people_bonds':
+				corePeopleBonds = value;
+				break;
+			case 'core_goals_momentum':
+				coreGoalsMomentum = value;
+				break;
+			case 'core_meaning_identity':
+				coreMeaningIdentity = value;
+				break;
+			case 'core_reality_understanding':
+				coreRealityUnderstanding = value;
+				break;
+			case 'core_trust_safeguards':
+				coreTrustSafeguards = value;
+				break;
+			case 'core_opportunity_freedom':
+				coreOpportunityFreedom = value;
+				break;
+			case 'core_power_resources':
+				corePowerResources = value;
+				break;
+			case 'core_harmony_integration':
+				coreHarmonyIntegration = value;
+				break;
+		}
+	}
+
 	// Handle form submission (compatible with FormModal)
 	async function handleSubmit(formData: Record<string, any>): Promise<void> {
 		if (!project?.id) {
@@ -168,7 +225,17 @@
 				end_date: parseDateFromInput(endDateValue),
 				tags: tagsValue,
 				executive_summary: executiveSummaryValue.trim(),
-				context: contextValue.trim()
+				context: contextValue.trim(),
+				// Include core dimensions
+				core_integrity_ideals: coreIntegrityIdeals?.trim() || null,
+				core_people_bonds: corePeopleBonds?.trim() || null,
+				core_goals_momentum: coreGoalsMomentum?.trim() || null,
+				core_meaning_identity: coreMeaningIdentity?.trim() || null,
+				core_reality_understanding: coreRealityUnderstanding?.trim() || null,
+				core_trust_safeguards: coreTrustSafeguards?.trim() || null,
+				core_opportunity_freedom: coreOpportunityFreedom?.trim() || null,
+				core_power_resources: corePowerResources?.trim() || null,
+				core_harmony_integration: coreHarmonyIntegration?.trim() || null
 			};
 
 			// Update project
@@ -413,6 +480,22 @@
 								class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
 							/>
 						</div>
+					</div>
+
+					<!-- Core Dimensions - Strategic Insights -->
+					<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+						<CoreDimensionsField
+							core_integrity_ideals={coreIntegrityIdeals}
+							core_people_bonds={corePeopleBonds}
+							core_goals_momentum={coreGoalsMomentum}
+							core_meaning_identity={coreMeaningIdentity}
+							core_reality_understanding={coreRealityUnderstanding}
+							core_trust_safeguards={coreTrustSafeguards}
+							core_opportunity_freedom={coreOpportunityFreedom}
+							core_power_resources={corePowerResources}
+							core_harmony_integration={coreHarmonyIntegration}
+							onUpdate={handleCoreDimensionUpdate}
+						/>
 					</div>
 
 					<!-- Character Counts -->

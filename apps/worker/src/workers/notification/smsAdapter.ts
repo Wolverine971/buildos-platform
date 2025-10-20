@@ -9,7 +9,8 @@
  */
 
 import { createServiceClient } from "@buildos/supabase-client";
-import type { NotificationDelivery, Json } from "@buildos/shared-types";
+import type { Json, NotificationDelivery } from "@buildos/shared-types";
+import { getTaskCount } from "@buildos/shared-types";
 import type { Logger } from "@buildos/shared-utils";
 import { checkUserPreferences } from "./preferenceChecker.js";
 import { performSMSSafetyChecks } from "../../lib/utils/smsPreferenceChecks.js";
@@ -140,6 +141,7 @@ function extractTemplateVars(
       vars.todays_task_count = flatPayload.todays_task_count || 0;
       vars.overdue_task_count = flatPayload.overdue_task_count || 0;
       vars.upcoming_task_count = flatPayload.upcoming_task_count || 0;
+      vars.project_count = flatPayload.project_count || 0;
       vars.brief_date = flatPayload.brief_date || "today";
       break;
 
@@ -161,6 +163,95 @@ function extractTemplateVars(
   }
 
   return vars;
+}
+
+/**
+ * Fetch fresh task and project counts from database
+ * Used when payload data appears incorrect or is missing
+ */
+async function fetchFreshBriefCounts(
+  userId: string,
+  briefDate: string,
+  smsLogger: Logger,
+): Promise<{
+  projectCount: number;
+  todaysTaskCount: number;
+  overdueTaskCount: number;
+  upcomingTaskCount: number;
+} | null> {
+  try {
+    smsLogger.info("Fetching fresh brief counts from database", {
+      userId,
+      briefDate,
+    });
+
+    // Get project briefs for this user and date
+    const { data: projectBriefs, error } = await supabase
+      .from("project_daily_briefs")
+      .select("id, metadata")
+      .eq("user_id", userId)
+      .eq("brief_date", briefDate);
+
+    if (error) {
+      smsLogger.error("Failed to fetch project briefs", error, {
+        userId,
+        briefDate,
+      });
+      return null;
+    }
+
+    if (!projectBriefs || projectBriefs.length === 0) {
+      smsLogger.warn("No project briefs found for user and date", {
+        userId,
+        briefDate,
+      });
+      return {
+        projectCount: 0,
+        todaysTaskCount: 0,
+        overdueTaskCount: 0,
+        upcomingTaskCount: 0,
+      };
+    }
+
+    const projectCount = projectBriefs.length;
+
+    // Calculate task counts from project brief metadata
+    // Using type-safe helper function to extract task counts
+    const todaysTaskCount =
+      projectBriefs.reduce((sum, pb) => {
+        return sum + getTaskCount(pb.metadata, "todays_task_count");
+      }, 0) || 0;
+
+    const overdueTaskCount =
+      projectBriefs.reduce((sum, pb) => {
+        return sum + getTaskCount(pb.metadata, "overdue_task_count");
+      }, 0) || 0;
+
+    const upcomingTaskCount =
+      projectBriefs.reduce((sum, pb) => {
+        return sum + getTaskCount(pb.metadata, "upcoming_task_count");
+      }, 0) || 0;
+
+    smsLogger.info("Fetched fresh brief counts", {
+      projectCount,
+      todaysTaskCount,
+      overdueTaskCount,
+      upcomingTaskCount,
+    });
+
+    return {
+      projectCount,
+      todaysTaskCount,
+      overdueTaskCount,
+      upcomingTaskCount,
+    };
+  } catch (error: any) {
+    smsLogger.error("Error fetching fresh brief counts", error, {
+      userId,
+      briefDate,
+    });
+    return null;
+  }
 }
 
 /**
@@ -190,7 +281,57 @@ async function formatSMSMessage(
   if (templateKey) {
     const template = await getTemplate(templateKey, smsLogger);
     if (template) {
-      const variables = extractTemplateVars(payload, eventType);
+      let variables = extractTemplateVars(payload, eventType);
+
+      // 🔍 BUGFIX: For brief.completed templates, validate counts and fetch fresh data if needed
+      if (eventType === "brief.completed") {
+        const hasSuspiciousZeros =
+          variables.project_count === 0 ||
+          (variables.todays_task_count === 0 &&
+            variables.overdue_task_count === 0 &&
+            variables.upcoming_task_count === 0);
+
+        if (hasSuspiciousZeros) {
+          smsLogger.warn(
+            "Detected suspicious zeros in template variables, fetching fresh data",
+            {
+              templateKey,
+              projectCount: variables.project_count,
+              todaysTaskCount: variables.todays_task_count,
+              overdueTaskCount: variables.overdue_task_count,
+              upcomingTaskCount: variables.upcoming_task_count,
+            },
+          );
+
+          const briefDate = payload.brief_date || payload.data?.brief_date;
+          const userId = delivery.recipient_user_id;
+
+          if (briefDate && userId) {
+            const freshCounts = await fetchFreshBriefCounts(
+              userId,
+              briefDate,
+              smsLogger,
+            );
+
+            if (freshCounts) {
+              // Update variables with fresh data
+              variables.todays_task_count = freshCounts.todaysTaskCount;
+              variables.overdue_task_count = freshCounts.overdueTaskCount;
+              variables.upcoming_task_count = freshCounts.upcomingTaskCount;
+              variables.project_count = freshCounts.projectCount;
+              variables.task_count = freshCounts.todaysTaskCount; // For backward compatibility
+
+              smsLogger.info("Updated template variables with fresh counts", {
+                todaysTaskCount: freshCounts.todaysTaskCount,
+                overdueTaskCount: freshCounts.overdueTaskCount,
+                upcomingTaskCount: freshCounts.upcomingTaskCount,
+                projectCount: freshCounts.projectCount,
+              });
+            }
+          }
+        }
+      }
+
       const rendered = renderTemplate(
         template.message_template,
         variables,
@@ -227,13 +368,71 @@ async function formatSMSMessage(
     case "user.signup":
       return `BuildOS: New user ${payload.user_email || payload.data?.user_email || "unknown"} signed up via ${payload.signup_method || payload.data?.signup_method || "web"}`;
 
-    case "brief.completed":
-      const todaysCount =
+    case "brief.completed": {
+      let todaysCount =
         payload.todays_task_count || payload.data?.todays_task_count || 0;
-      const overdueCount =
+      let overdueCount =
         payload.overdue_task_count || payload.data?.overdue_task_count || 0;
-      const upcomingCount =
+      let upcomingCount =
         payload.upcoming_task_count || payload.data?.upcoming_task_count || 0;
+      let projectCount =
+        payload.project_count || payload.data?.project_count || 0;
+
+      // 🔍 BUGFIX: If we detect suspicious zeros (no projects or all zeros),
+      // fetch fresh data from database to ensure accuracy
+      const hasSuspiciousZeros =
+        projectCount === 0 ||
+        (todaysCount === 0 && overdueCount === 0 && upcomingCount === 0);
+
+      if (hasSuspiciousZeros) {
+        smsLogger.warn(
+          "Detected suspicious zeros in brief payload, fetching fresh data",
+          {
+            payloadProjectCount: projectCount,
+            payloadTodaysCount: todaysCount,
+            payloadOverdueCount: overdueCount,
+            payloadUpcomingCount: upcomingCount,
+          },
+        );
+
+        const briefDate = payload.brief_date || payload.data?.brief_date;
+        const userId = delivery.recipient_user_id;
+
+        if (briefDate && userId) {
+          const freshCounts = await fetchFreshBriefCounts(
+            userId,
+            briefDate,
+            smsLogger,
+          );
+
+          if (freshCounts) {
+            // Use fresh data
+            todaysCount = freshCounts.todaysTaskCount;
+            overdueCount = freshCounts.overdueTaskCount;
+            upcomingCount = freshCounts.upcomingTaskCount;
+            projectCount = freshCounts.projectCount;
+
+            smsLogger.info("Using fresh counts from database", {
+              todaysCount,
+              overdueCount,
+              upcomingCount,
+              projectCount,
+            });
+          } else {
+            smsLogger.warn(
+              "Failed to fetch fresh counts, using payload data as fallback",
+            );
+          }
+        } else {
+          smsLogger.warn(
+            "Missing briefDate or userId, cannot fetch fresh counts",
+            {
+              briefDate,
+              userId,
+            },
+          );
+        }
+      }
 
       // Build task breakdown for SMS
       const taskParts: string[] = [];
@@ -242,19 +441,25 @@ async function formatSMSMessage(
       if (upcomingCount > 0) taskParts.push(`Upcoming: ${upcomingCount}`);
 
       const taskSummary =
-        taskParts.length > 0 ? taskParts.join(" | ") : "No tasks scheduled";
+        taskParts.length > 0
+          ? taskParts.join(" | ")
+          : projectCount > 0
+            ? `No tasks scheduled across ${projectCount} project${projectCount > 1 ? "s" : ""}`
+            : "No tasks scheduled";
 
       return `Your BuildOS brief is ready! ${taskSummary}. Open app to view.`;
+    }
 
     case "brief.failed":
       return "Your daily brief failed to generate. Please check the app or contact support.";
 
-    case "task.due_soon":
+    case "task.due_soon": {
       const taskName = payload.task_name || payload.data?.task_name || "Task";
       const dueTime = payload.due_time || payload.data?.due_time || "soon";
       return `⏰ ${taskName} is due ${dueTime}`;
+    }
 
-    default:
+    default: {
       // Generic fallback - truncate to fit SMS limit
       // Note: payload is guaranteed to have title and body by enrichDeliveryPayload
       const title = payload.title;
@@ -263,6 +468,7 @@ async function formatSMSMessage(
 
       // Truncate to 155 chars to leave room for opt-out info if needed
       return message.length > 155 ? message.substring(0, 152) + "..." : message;
+    }
   }
 }
 

@@ -55,6 +55,15 @@ export interface EmailBriefJobData {
   emailId: string; // ID from emails table
 }
 
+export interface SMSJobData {
+  message_id: string; // ID from sms_messages table
+  phone_number: string; // E.164 formatted phone number
+  message: string; // SMS message body
+  user_id: string; // User ID for tracking and preferences
+  priority?: "normal" | "urgent"; // Priority level for queue processing
+  scheduled_sms_id?: string; // Optional ID from scheduled_sms_messages table
+}
+
 // Update job status in database
 export async function updateJobStatus(
   queueJobId: string,
@@ -130,4 +139,106 @@ export async function notifyUser(
   } catch (error) {
     console.error("Failed to send notification:", error);
   }
+}
+
+/**
+ * Validate BriefJobData and throw if invalid
+ * Ensures data integrity before job processing
+ */
+export function validateBriefJobData(data: any): BriefJobData {
+  // Check userId
+  if (!data.userId || typeof data.userId !== "string") {
+    throw new Error("Invalid job data: userId is required and must be string");
+  }
+
+  // Validate briefDate if provided
+  if (data.briefDate) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(data.briefDate)) {
+      throw new Error(
+        `Invalid job data: briefDate must be YYYY-MM-DD format, got "${data.briefDate}"`,
+      );
+    }
+
+    // Validate date is reasonable (not in future by more than 30 days)
+    const jobDate = new Date(data.briefDate);
+    const maxFuture = new Date();
+    maxFuture.setDate(maxFuture.getDate() + 30);
+
+    if (jobDate > maxFuture) {
+      throw new Error(`Invalid job data: briefDate too far in future`);
+    }
+  }
+
+  // Validate timezone if provided
+  if (data.timezone) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: data.timezone });
+    } catch (e) {
+      throw new Error(
+        `Invalid job data: timezone "${data.timezone}" is not valid`,
+      );
+    }
+  }
+
+  return data as BriefJobData;
+}
+
+/**
+ * Validate SMSJobData and throw if invalid
+ * Ensures data integrity before SMS job processing
+ */
+export function validateSMSJobData(data: any): SMSJobData {
+  // Check required fields
+  if (!data.message_id || typeof data.message_id !== "string") {
+    throw new Error(
+      "Invalid SMS job data: message_id is required and must be string",
+    );
+  }
+
+  if (!data.phone_number || typeof data.phone_number !== "string") {
+    throw new Error(
+      "Invalid SMS job data: phone_number is required and must be string",
+    );
+  }
+
+  if (!data.message || typeof data.message !== "string") {
+    throw new Error(
+      "Invalid SMS job data: message is required and must be string",
+    );
+  }
+
+  if (!data.user_id || typeof data.user_id !== "string") {
+    throw new Error(
+      "Invalid SMS job data: user_id is required and must be string",
+    );
+  }
+
+  // Validate phone number format (E.164)
+  const e164Regex = /^\+[1-9]\d{1,14}$/;
+  if (!e164Regex.test(data.phone_number)) {
+    throw new Error(
+      `Invalid SMS job data: phone_number must be in E.164 format (+1234567890), got "${data.phone_number}"`,
+    );
+  }
+
+  // Validate message length (Twilio SMS limit is 1600 characters for concatenated messages)
+  if (data.message.length > 1600) {
+    throw new Error(
+      `Invalid SMS job data: message exceeds maximum length of 1600 characters (got ${data.message.length})`,
+    );
+  }
+
+  // Validate priority if provided
+  if (
+    data.priority &&
+    data.priority !== "normal" &&
+    data.priority !== "urgent"
+  ) {
+    throw new Error(
+      `Invalid SMS job data: priority must be "normal" or "urgent", got "${data.priority}"`,
+    );
+  }
+
+  return data as SMSJobData;
 }

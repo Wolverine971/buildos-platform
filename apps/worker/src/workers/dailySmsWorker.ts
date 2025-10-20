@@ -60,18 +60,18 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
       .eq("id", userId)
       .single();
 
-    if (userError) {
+    if (userError || !user) {
       console.warn(
-        `Failed to fetch user timezone: ${userError.message}, using fallback`,
+        `Failed to fetch user timezone: ${userError?.message || "User not found"}, using fallback`,
       );
     }
 
     // Use timezone from users table (centralized), fallback to job data, then UTC
-    // Type assertion: timezone column exists but types haven't been regenerated yet
-    const userTimezone = (user as any)?.timezone || timezone || "UTC";
+    // No type assertion needed - properly handle null cases
+    const userTimezone = user?.timezone || timezone || "UTC";
 
     console.log(
-      `🕐 [DailySMS] Using timezone: ${userTimezone} (from: ${(user as any)?.timezone ? "users.timezone" : timezone ? "job.data" : "UTC default"})`,
+      `🕐 [DailySMS] Using timezone: ${userTimezone} (from: ${user?.timezone ? "users.timezone" : timezone ? "job.data" : "UTC default"})`,
     );
 
     // Get user SMS preferences
@@ -89,11 +89,12 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
     }
 
     // Verify user is still opted in and phone verified
+    // Explicit null checks for boolean fields - null/false/undefined all mean "not enabled"
     if (
-      !smsPrefs.phone_verified ||
+      smsPrefs.phone_verified !== true ||
       !smsPrefs.phone_number ||
-      smsPrefs.opted_out ||
-      !smsPrefs.event_reminders_enabled
+      smsPrefs.opted_out === true ||
+      smsPrefs.event_reminders_enabled !== true
     ) {
       console.log(
         `⏭️ [DailySMS] User ${userId} not eligible for SMS (phone_verified: ${smsPrefs.phone_verified}, phone_number: ${!!smsPrefs.phone_number}, opted_out: ${smsPrefs.opted_out}, event_reminders_enabled: ${smsPrefs.event_reminders_enabled})`,

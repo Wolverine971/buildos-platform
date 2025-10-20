@@ -467,6 +467,34 @@ app.post("/queue/cleanup", async (req, res) => {
 // Start the server
 async function start() {
   try {
+    // Add global error handlers FIRST to prevent process crashes
+    process.on("uncaughtException", (error) => {
+      console.error("🚨 CRITICAL: Uncaught Exception", error);
+      console.error("Stack:", error.stack);
+      // Gracefully shutdown queue
+      try {
+        queue.stop();
+      } catch (e) {
+        console.error("Failed to stop queue:", e);
+      }
+      // Exit to allow restart
+      process.exit(1);
+    });
+
+    process.on("unhandledRejection", (reason, promise) => {
+      console.error("🚨 CRITICAL: Unhandled Rejection");
+      console.error("Promise:", promise);
+      console.error("Reason:", reason);
+      // Gracefully shutdown queue
+      try {
+        queue.stop();
+      } catch (e) {
+        console.error("Failed to stop queue:", e);
+      }
+      // Exit to allow restart
+      process.exit(1);
+    });
+
     // Start the worker
     await startWorker();
 

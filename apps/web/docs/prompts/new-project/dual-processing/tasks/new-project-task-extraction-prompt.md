@@ -1,17 +1,18 @@
 # Prompt Audit: new-project-dual-tasks
 
-**Generated at:** 2025-10-17T16:34:08.499Z
+**Generated at:** 2025-10-17T20:39:55.265Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"brainDumpLength": 21,
+	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+	"projectId": null,
+	"brainDumpLength": 545,
 	"existingTasksCount": 0,
 	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-17T16:34:08.499Z"
+	"timestamp": "2025-10-17T20:39:55.265Z"
 }
 ```
 
@@ -21,7 +22,7 @@
 A user just brain dumped information about a project and you are a task extraction engine.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-17T16:34:08.499Z
+Current date and time: 2025-10-17T20:39:47.296Z
 
 ## Your Job:
 Create all tasks that are specified in the braindump but DO NOT proactively create preparatory, setup, or follow-up tasks unless the user explicitly instructs you to in the brain dump (e.g., "create setup tasks for X", "add follow-up tasks")
@@ -163,15 +164,27 @@ Respond with valid JSON matching the complete structure above.
 
 Extract tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Create a test project
+I'm starting my first fantasy novel - 'The Last Ember'.
+
+Main plot: A young blacksmith discovers she can forge magical weapons when the kingdom's last dragon dies and darkness threatens the realm.
+
+Need to:
+
+- Develop main character backstory (orphan, raised by master blacksmith)
+- Create magic system based on metal and fire
+- Map out the kingdom of Aethermoor
+- Write character profiles for the antagonist (The Shadow King)
+- Outline first three chapters
+- Research medieval blacksmithing techniques
+- Design the prophecy that drives the plot
 
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~1516 tokens
-- **User Prompt:** ~39 tokens
-- **Total Estimate:** ~1554 tokens
+- **User Prompt:** ~170 tokens
+- **Total Estimate:** ~1685 tokens
 
 
 ---

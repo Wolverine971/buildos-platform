@@ -200,7 +200,28 @@ export class BrainDumpProcessor {
 				lightProject,
 				lightTasks
 			);
-			const userPrompt = `Analyze this braindump:\n\n${brainDump}`;
+			const userPrompt = `
+
+## Current Project Overview:
+Project: "${lightProject.name}"
+Description: ${lightProject.description || 'No description'}
+Status: ${lightProject.status}
+Tags: ${lightProject.tags?.join(', ') || 'None'}
+Start Date: ${lightProject.start_date || 'Not set'}
+End Date: ${lightProject.end_date || 'Not set'}
+Has Context: ${lightProject.context ? 'Yes (existing strategic document)' : 'No'}
+Executive Summary: ${lightProject.executive_summary || 'None'}
+
+## Existing Tasks (${lightTasks.length} total):
+${lightTasks
+	.map(
+		(t) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ''}
+  Description: ${t.description_preview}`
+	)
+	.join('\n')}
+
+			
+			Analyze this braindump:\n\n${brainDump}`;
 
 			console.log('[PrepAnalysis] Starting analysis for project:', project.id);
 			console.log('[PrepAnalysis] Task count:', lightTasks.length);
@@ -257,6 +278,7 @@ export class BrainDumpProcessor {
 				braindump_classification: analysisResult.braindump_classification,
 
 				context_indicators: analysisResult.context_indicators || [],
+				core_dimensions_touched: analysisResult.core_dimensions_touched || undefined,
 				relevant_task_ids: analysisResult.relevant_task_ids || [],
 				task_indicators: analysisResult.task_indicators || {},
 				new_tasks_detected:
@@ -264,10 +286,12 @@ export class BrainDumpProcessor {
 						? analysisResult.new_tasks_detected
 						: false,
 				confidence_level: analysisResult.confidence_level || 'medium',
-				processing_recommendation: analysisResult.processing_recommendation || {
-					skip_context: false,
-					skip_tasks: false,
-					reason: 'Default processing'
+				processing_recommendation: {
+					skip_context: analysisResult.processing_recommendation?.skip_context ?? false,
+					skip_core_dimensions:
+						analysisResult.processing_recommendation?.skip_core_dimensions ?? false,
+					skip_tasks: analysisResult.processing_recommendation?.skip_tasks ?? false,
+					reason: analysisResult.processing_recommendation?.reason || 'Default processing'
 				}
 			};
 
@@ -275,7 +299,11 @@ export class BrainDumpProcessor {
 				classification: validatedResult.braindump_classification,
 				relevantTasks: validatedResult.relevant_task_ids.length,
 				newTasks: validatedResult.new_tasks_detected,
-				confidence: validatedResult.confidence_level
+				confidence: validatedResult.confidence_level,
+				coreDimensionsTouched: validatedResult.core_dimensions_touched
+					? Object.keys(validatedResult.core_dimensions_touched).length
+					: 0,
+				skipCoreDimensions: validatedResult.processing_recommendation.skip_core_dimensions
 			});
 
 			// Log activity for monitoring
@@ -987,10 +1015,19 @@ export class BrainDumpProcessor {
 		// Determine if this is a new or existing project
 		const isNewProject = !existingProject && !selectedProjectId;
 
+		// Check if any core dimensions need updating
+		const hasCoreDimensionUpdates =
+			prepAnalysisResult?.core_dimensions_touched &&
+			Object.keys(prepAnalysisResult.core_dimensions_touched).length > 0;
+
 		// Check if analysis recommends skipping context processing (optimization)
-		if ( selectedProjectId && (
-			!prepAnalysisResult?.braindump_classification ||
-			!['mixed', 'strategic'].includes(prepAnalysisResult.braindump_classification))
+		// CRITICAL: Never skip if core dimensions need updating!
+		if (
+			selectedProjectId &&
+			prepAnalysisResult &&
+			!hasCoreDimensionUpdates && // NEW: Don't skip if core dimensions need updating
+			(!prepAnalysisResult.braindump_classification ||
+				!['mixed', 'strategic'].includes(prepAnalysisResult.braindump_classification))
 		) {
 			console.log(
 				'[extractProjectContext] Skipping context processing based on analysis recommendation:',
@@ -1014,6 +1051,14 @@ export class BrainDumpProcessor {
 			};
 		}
 
+		// Log if we're processing due to core dimension updates
+		if (hasCoreDimensionUpdates) {
+			const touchedDimensions = Object.keys(prepAnalysisResult!.core_dimensions_touched!);
+			console.log(
+				`[extractProjectContext] Processing context due to core dimension updates: ${touchedDimensions.join(', ')}`
+			);
+		}
+
 		// NEVER add question generation to context processing
 		// Questions are ONLY generated in task extraction to avoid duplication
 
@@ -1035,20 +1080,46 @@ export class BrainDumpProcessor {
 				)
 			: 'No existing project data';
 
-		// Build user prompt with project data
-		const userPrompt = existingProject
-			? `## Current Project Data:
+		// Build user prompt with project data and prep analysis hints
+		let userPrompt = '';
+
+		if (existingProject) {
+			userPrompt = `## Current Project Data:
 
 ${projectDataSection}
 
 ---
+`;
 
+			// Add core dimensions hints from preparatory analysis if available
+			if (
+				prepAnalysisResult?.core_dimensions_touched &&
+				!prepAnalysisResult.processing_recommendation.skip_core_dimensions
+			) {
+				const dimensionKeys = Object.keys(prepAnalysisResult.core_dimensions_touched);
+				if (dimensionKeys.length > 0) {
+					userPrompt += `
+## Preparatory Analysis Insights:
+
+The following core dimensions were identified in preliminary analysis and may need updating:
+${dimensionKeys.map((key) => `- ${key}`).join('\n')}
+
+Use these insights to focus your extraction, but re-analyze the full braindump to ensure completeness.
+
+---
+`;
+				}
+			}
+
+			userPrompt += `
 Process this brain dump for project context:
 
-${brainDump}`
-			: `Process this brain dump for project context:
+${brainDump}`;
+		} else {
+			userPrompt = `Process this brain dump for project context:
 
 ${brainDump}`;
+		}
 
 		// Save prompt for auditing in development mode
 		await savePromptForAudit({

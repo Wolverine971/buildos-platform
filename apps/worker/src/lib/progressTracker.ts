@@ -202,7 +202,8 @@ export class ProgressTracker {
   }
 
   /**
-   * Handle progress update errors with retry logic
+   * Handle progress update errors with smart retry logic
+   * Only retries on temporary errors with smaller backoff to avoid delaying jobs
    */
   private async handleProgressUpdateError(
     jobId: string,
@@ -210,21 +211,35 @@ export class ProgressTracker {
     retryCount: number,
     error: any,
   ): Promise<boolean> {
-    if (retryCount >= this.maxRetries) {
-      console.error(
-        `❌ Progress update failed for job ${jobId} after ${this.maxRetries} retries:`,
-        error,
-      );
+    // Check if this is a temporary error worth retrying
+    const isTemporaryError = this.isTemporaryError(error);
 
-      // Log the failure for monitoring
+    if (!isTemporaryError || retryCount >= this.maxRetries) {
+      if (!isTemporaryError) {
+        console.warn(
+          `⚠️ Progress update failed permanently for job ${jobId} (non-temporary error):`,
+          error.message || error,
+        );
+      } else {
+        console.error(
+          `❌ Progress update failed for job ${jobId} after ${this.maxRetries} retries:`,
+          error,
+        );
+      }
+
+      // Log the failure for monitoring (non-blocking)
       await this.logProgressUpdateFailure(jobId, progress, error);
+      // Don't block job execution for progress tracking failure
       return false;
     }
 
-    // Calculate exponential backoff delay
-    const delay = this.retryDelayMs * Math.pow(2, retryCount);
+    // Use smaller backoff for progress tracking (50ms, 100ms, 200ms)
+    // This avoids significantly delaying job execution
+    const delay = 50 * Math.pow(2, retryCount);
+
     console.warn(
-      `⚠️ Progress update failed for job ${jobId}, retrying in ${delay}ms (attempt ${retryCount + 1}/${this.maxRetries})`,
+      `⚠️ Progress update temporary failure, retrying in ${delay}ms (${retryCount + 1}/${this.maxRetries}):`,
+      error.message || error,
     );
 
     // Wait before retry
@@ -232,6 +247,23 @@ export class ProgressTracker {
 
     // Retry the update
     return await this.updateProgress(jobId, progress, retryCount + 1);
+  }
+
+  /**
+   * Determine if an error is temporary and worth retrying
+   */
+  private isTemporaryError(error: any): boolean {
+    const errorMessage = error.message || error.toString();
+
+    return (
+      errorMessage.includes("connection") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("429") || // Rate limit
+      errorMessage.includes("ETIMEDOUT") ||
+      errorMessage.includes("ECONNREFUSED") ||
+      errorMessage.includes("ECONNRESET") ||
+      errorMessage.includes("network")
+    );
   }
 
   /**

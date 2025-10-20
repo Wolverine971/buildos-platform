@@ -170,7 +170,7 @@ async function processBrainDumpWithStreaming({
 				await sendSSEMessage(writer, encoder, analysisStartMessage);
 
 				try {
-					const result = await originalRunPreparatoryAnalysis(...args);
+				const result = await originalRunPreparatoryAnalysis(...(args as any));
 					analysisProgress = { status: 'completed', data: result };
 
 					if (result) {
@@ -259,7 +259,7 @@ async function processBrainDumpWithStreaming({
 			await sendSSEMessage(writer, encoder, processingMessage);
 
 			try {
-				const result = await originalExtractProjectContext(...args);
+				const result = await originalExtractProjectContext(...(args as any));
 				contextProgress = { status: 'completed', data: result };
 
 				// Convert to ProjectContextResult format for preview
@@ -303,7 +303,7 @@ async function processBrainDumpWithStreaming({
 			await sendSSEMessage(writer, encoder, processingMessage);
 
 			try {
-				const result = await originalExtractTasks(...args);
+				const result = await originalExtractTasks(...(args as any));
 				tasksProgress = { status: 'completed', data: result };
 
 				// Convert to TaskNoteExtractionResult format for preview
@@ -408,7 +408,7 @@ async function processBrainDumpWithStreaming({
 				});
 
 				// Get project info for the success view
-				let projectInfo = null;
+			let projectInfo: { id: string; name: string; isNew: boolean; slug?: string | null } | undefined = undefined;
 
 				// Check if a new project was created
 				const createdProject = executionResult.results?.find(

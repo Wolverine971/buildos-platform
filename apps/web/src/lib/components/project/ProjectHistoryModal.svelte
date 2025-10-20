@@ -16,8 +16,7 @@
 	import { type FieldDiff, createLineDiff } from '$lib/utils/diff';
 	import { onMount } from 'svelte';
 
-	export let isOpen = false;
-	export let projectId: string;
+	let { isOpen = false, projectId } = $props<{ isOpen?: boolean; projectId: string }>();
 
 	const dispatch = createEventDispatcher();
 
@@ -54,7 +53,7 @@
 	let expandedBraindump = false;
 
 	// Field configuration for display
-	const fieldConfig = {
+	const fieldConfig: Record<string, { label: string; priority: number }> = {
 		name: { label: 'Project Name', priority: 1 },
 		description: { label: 'Description', priority: 2 },
 		context: { label: 'Project Context', priority: 0 }, // Highest priority
@@ -71,8 +70,8 @@
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	});
 
-	$: currentComparison = comparisons[currentComparisonIndex];
-	$: currentBraindump = currentComparison?.toVersion?.braindump;
+	let currentComparison = $derived(comparisons[currentComparisonIndex]);
+	let currentBraindump = $derived(currentComparison?.toVersion?.braindump);
 
 	// Create diff for a specific field
 	function createFieldDiff(field: string, oldValue: any, newValue: any): FieldDiff {

@@ -221,24 +221,56 @@ async function checkAndScheduleBriefs() {
       }
     >();
 
-    if (ENGAGEMENT_BACKOFF_ENABLED) {
+    if (ENGAGEMENT_BACKOFF_ENABLED && preferences.length > 0) {
       console.log("🔍 Batch checking engagement status for all users...");
-      const engagementChecks = await Promise.allSettled(
-        preferences.map(async (preference) => {
-          if (!preference.user_id) return null;
-          const decision = await backoffCalculator.shouldSendDailyBrief(
-            preference.user_id,
-          );
-          return { userId: preference.user_id, decision };
-        }),
-      );
 
-      engagementChecks.forEach((result) => {
-        if (result.status === "fulfilled" && result.value) {
-          const { userId, decision } = result.value;
-          engagementDataMap.set(userId, decision);
+      // IMPORTANT: Limit concurrent queries to prevent connection exhaustion
+      const MAX_CONCURRENT_CHECKS = 20; // Conservative limit to avoid overwhelming DB
+      const failedChecks: string[] = [];
+
+      for (let i = 0; i < preferences.length; i += MAX_CONCURRENT_CHECKS) {
+        const batch = preferences.slice(i, i + MAX_CONCURRENT_CHECKS);
+
+        const engagementChecks = await Promise.allSettled(
+          batch.map(async (preference) => {
+            if (!preference.user_id) return null;
+            try {
+              const decision = await backoffCalculator.shouldSendDailyBrief(
+                preference.user_id,
+              );
+              return { userId: preference.user_id, decision };
+            } catch (error) {
+              failedChecks.push(preference.user_id);
+              console.error(
+                `Failed to check engagement for user ${preference.user_id}:`,
+                error,
+              );
+              return null;
+            }
+          }),
+        );
+
+        // Process results
+        engagementChecks.forEach((result) => {
+          if (result.status === "fulfilled" && result.value) {
+            const { userId, decision } = result.value;
+            engagementDataMap.set(userId, decision);
+          }
+        });
+
+        // Log batch progress
+        if (i + MAX_CONCURRENT_CHECKS < preferences.length) {
+          console.log(
+            `Processed ${Math.min(i + MAX_CONCURRENT_CHECKS, preferences.length)}/${preferences.length} users`,
+          );
         }
-      });
+      }
+
+      if (failedChecks.length > 0) {
+        console.warn(
+          `⚠️ Failed to check engagement for ${failedChecks.length} users`,
+        );
+      }
     }
 
     // PHASE 2: Calculate next run times and filter users needing briefs
@@ -434,6 +466,8 @@ export function calculateNextRunTime(
   userTimezone?: string,
 ): Date | null {
   try {
+    // Note: timezone is not in user_brief_preferences table, it's in users table
+    // userTimezone should be passed in from the caller
     const timezone = userTimezone || "UTC";
     const timeOfDay = preference.time_of_day || "09:00:00";
     const frequency = preference.frequency || "daily";

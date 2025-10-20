@@ -142,7 +142,8 @@
 				"completeBrainDumpNotification",
 				"getActiveBrainDumpNotificationId",
 				"clearActiveBrainDumpNotification",
-				"cancelBrainDumpAPIStream"
+				"cancelBrainDumpAPIStream",
+				"forceResetAllBrainDumpState"
 			]
 		},
 		{

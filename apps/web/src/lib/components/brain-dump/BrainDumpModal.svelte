@@ -1216,6 +1216,20 @@
 
 			brainDumpActions.setModalView('success');
 
+			// Clean up the draft so it doesn't reload when reopening the modal
+			if (currentBrainDumpId) {
+				try {
+					await brainDumpService.deleteDraft(currentBrainDumpId);
+					console.log('[BrainDumpModal] Draft cleaned up after successful save');
+				} catch (deleteError) {
+					console.warn(
+						'[BrainDumpModal] Failed to delete draft after save:',
+						deleteError
+					);
+					// Non-fatal - the backend should have marked it as 'saved' anyway
+				}
+			}
+
 			// Skip global invalidation - project data will be refreshed when navigating
 			// or updated via real-time subscriptions if staying on the same page
 			// invalidateAll();  // REMOVED: Causes performance issues

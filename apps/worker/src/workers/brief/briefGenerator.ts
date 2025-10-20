@@ -74,11 +74,15 @@ export async function generateDailyBrief(
   // Fetch user's timezone if not provided (from centralized users table)
   let userTimezone = timezone;
   if (!userTimezone) {
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("timezone")
       .eq("user_id", userId)
       .single();
+
+    if (userError) {
+      console.warn(`Failed to fetch user timezone: ${userError.message}`);
+    }
 
     userTimezone = user?.timezone || "UTC";
   }
@@ -99,12 +103,19 @@ export async function generateDailyBrief(
   };
 
   // First, try to get existing brief metadata to preserve it
-  const { data: existingBrief } = await supabase
+  const { data: existingBrief, error: existingBriefError } = await supabase
     .from("daily_briefs")
     .select("metadata")
     .eq("user_id", userId)
     .eq("brief_date", briefDateInUserTz)
     .single();
+
+  if (existingBriefError && existingBriefError.code !== "PGRST116") {
+    // PGRST116 = not found, which is expected for new briefs
+    console.warn(
+      `Failed to fetch existing brief metadata: ${existingBriefError.message}`,
+    );
+  }
 
   // Merge existing metadata with new metadata
   const mergedMetadata = {
@@ -250,11 +261,17 @@ export async function generateDailyBrief(
           );
 
           // Fetch user's last visit for context
-          const { data: userData } = await supabase
+          const { data: userData, error: userDataError } = await supabase
             .from("users")
             .select("last_visit")
             .eq("id", userId)
             .single();
+
+          if (userDataError) {
+            console.warn(
+              `Failed to fetch user last_visit: ${userDataError.message}`,
+            );
+          }
 
           // Calculate engagement statistics
           const allTasks = projects.flatMap((p) => p.tasks);
@@ -423,11 +440,19 @@ async function getUserProjectsWithData(
 
   const projectIds = projects.map((p) => p.id);
 
+  // First, fetch phases to get phase IDs for filtering phase_tasks
+  const { data: phases } = await supabase
+    .from("phases")
+    .select("*")
+    .in("project_id", projectIds)
+    .order("order", { ascending: true });
+
+  const phaseIds = (phases || []).map((p) => p.id);
+
   // Get all related data in parallel (including task_calendar_events)
   const [
     tasksResponse,
     notesResponse,
-    phasesResponse,
     phaseTasksResponse,
     calendarEventsResponse,
   ] = await Promise.all([
@@ -435,7 +460,8 @@ async function getUserProjectsWithData(
       .from("tasks")
       .select("*")
       .in("project_id", projectIds)
-      .eq("outdated", false)
+      .neq("outdated", true)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false }),
 
     supabase
@@ -444,20 +470,16 @@ async function getUserProjectsWithData(
       .in("project_id", projectIds)
       .order("updated_at", { ascending: false }),
 
-    supabase
-      .from("phases")
-      .select("*")
-      .in("project_id", projectIds)
-      .order("order", { ascending: true }),
-
-    supabase.from("phase_tasks").select("*"),
+    // Only fetch phase_tasks for the phases we actually need
+    phaseIds.length > 0
+      ? supabase.from("phase_tasks").select("*").in("phase_id", phaseIds)
+      : Promise.resolve({ data: [] }),
 
     supabase.from("task_calendar_events").select("*").eq("user_id", userId),
   ]);
 
   const tasks = tasksResponse.data || [];
   const notes = notesResponse.data || [];
-  const phases = phasesResponse.data || [];
   const phaseTasks = phaseTasksResponse.data || [];
   const calendarEvents = calendarEventsResponse.data || [];
 
@@ -472,13 +494,14 @@ async function getUserProjectsWithData(
   );
 
   // Organize data by project
+  const phasesArray = phases || [];
   return projects.map((project) => ({
     ...project,
     tasks: tasksWithCalendarEvents.filter((t) => t.project_id === project.id),
     notes: notes.filter((n) => n.project_id === project.id),
-    phases: phases.filter((p) => p.project_id === project.id),
+    phases: phasesArray.filter((p) => p.project_id === project.id),
     phaseTasks: phaseTasks.filter((pt) =>
-      phases.some(
+      phasesArray.some(
         (phase) => phase.id === pt.phase_id && phase.project_id === project.id,
       ),
     ),
@@ -1288,11 +1311,17 @@ async function updateProgress(
 
   // Also update job metadata if job ID is provided
   if (jobId) {
-    const { data: currentJob } = await supabase
+    const { data: currentJob, error: jobError } = await supabase
       .from("queue_jobs")
       .select("metadata")
       .eq("queue_job_id", jobId)
       .single();
+
+    if (jobError) {
+      console.warn(
+        `Failed to fetch job metadata for progress update: ${jobError.message}`,
+      );
+    }
 
     const metaData: any = currentJob?.metadata ? currentJob?.metadata : {};
     const updatedMetadata = {

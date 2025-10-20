@@ -150,7 +150,8 @@ export async function checkUserPreferences(
         };
       }
 
-      if (smsPrefs.opted_out) {
+      // Explicit null checks - opted_out === true means user explicitly opted out
+      if (smsPrefs.opted_out === true) {
         prefLogger.info("SMS not allowed - user opted out", {
           userId,
         });
@@ -161,7 +162,8 @@ export async function checkUserPreferences(
         };
       }
 
-      if (!smsPrefs.phone_verified) {
+      // Explicit check - phone_verified must be explicitly true
+      if (smsPrefs.phone_verified !== true) {
         prefLogger.info("SMS not allowed - phone not verified", {
           userId,
         });

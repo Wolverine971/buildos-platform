@@ -63,6 +63,15 @@ export async function processEmailBriefJob(
       throw new Error("Email record not found: Email does not exist");
     }
 
+    // Validate that the nested relation was properly expanded
+    if (!Array.isArray(email.email_recipients)) {
+      console.warn(
+        `⚠️ Email recipients relation not properly expanded for email ${emailId}`,
+      );
+      // Set to empty array as fallback to allow processing to continue
+      email.email_recipients = [];
+    }
+
     console.log(`✅ Email record found:
    → Status: ${email.status}
    → Subject: ${email.subject}

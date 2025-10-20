@@ -268,8 +268,9 @@ export async function performSMSSafetyChecks(
       };
     }
 
-    // Check 1: Phone verification
-    if (!smsPrefs.phone_number || !smsPrefs.phone_verified) {
+    // Check 1: Phone verification - explicit null checks
+    // phone_verified must be explicitly true
+    if (!smsPrefs.phone_number || smsPrefs.phone_verified !== true) {
       return {
         allowed: false,
         reason: "Phone not verified",
@@ -281,7 +282,8 @@ export async function performSMSSafetyChecks(
       };
     }
 
-    if (smsPrefs.opted_out) {
+    // opted_out === true means user explicitly opted out
+    if (smsPrefs.opted_out === true) {
       return {
         allowed: false,
         reason: "User opted out of SMS",

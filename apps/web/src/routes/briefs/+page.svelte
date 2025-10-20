@@ -49,7 +49,7 @@
 	import BriefsSettingsModal from '$lib/components/briefs/BriefsSettingsModal.svelte';
 	import { Settings } from 'lucide-svelte';
 
-	export let data: PageData;
+	let { data } = $props<{ data: PageData }>();
 
 	// Get supabase client from context (set by layout)
 	// Note: getContext must be called during component initialization
@@ -71,13 +71,13 @@
 	let dailyBrief: DailyBrief | null = null;
 	let projectBriefs: any[] = [];
 	let briefHistory: DailyBrief[] = [];
-	let isToday = false;
+	let isToday = $state(false);
 
 	// Component state
-	let isInitialLoading = true;
-	let isLoading = false;
+	let isInitialLoading = $state(true);
+	let isLoading = $state(false);
 	let error: string | null = null;
-	let showMobileMenu = false;
+	let showMobileMenu = $state(false);
 	let isRefreshing = false;
 
 	// Search and filter state
@@ -94,8 +94,8 @@
 	let showSettingsModal = false;
 
 	// Reactive streaming data
-	let currentStreamingStatus: StreamingStatus;
-	let currentStreamingData: StreamingBriefData;
+	let currentStreamingStatus: StreamingStatus | null = $state(null);
+	let currentStreamingData: StreamingBriefData | null = $state(null);
 	let wasGenerating = false;
 
 	let checkingExistingGeneration = false;
@@ -292,12 +292,6 @@
 		isRefreshing = true;
 
 		try {
-			// Clear streaming data to force showing the loading state briefly
-			streamingBriefData.set({
-				projectBriefs: [],
-				mainBrief: undefined
-			});
-
 			// Add a delay to ensure database writes are complete
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -316,9 +310,11 @@
 	}
 
 	// Reactive statements for filtering
-	$: if (briefHistory.length > 0) {
-		filterBriefs();
-	}
+	$effect(() => {
+		if (briefHistory.length > 0) {
+			filterBriefs();
+		}
+	});
 
 	// Initialize on mount
 	onMount(async () => {
@@ -557,24 +553,24 @@
 	}
 
 	// Calculate overall progress percentage
-	$: overallProgress = currentStreamingStatus
+	let overallProgress = $derived(currentStreamingStatus
 		? Math.round(
 				(currentStreamingStatus.progress.projects.completed /
 					Math.max(1, currentStreamingStatus.progress.projects.total)) *
 					100
 			)
-		: 0;
+		: 0);
 
 	// View configurations
 	const viewConfigs = [
-		{ id: 'single', label: 'Today', icon: FileText },
-		{ id: 'list', label: 'History', icon: Calendar },
-		{ id: 'analytics', label: 'Analytics', icon: TrendingUp }
+		{ id: 'single' as const, label: 'Today', icon: FileText },
+		{ id: 'list' as const, label: 'History', icon: Calendar },
+		{ id: 'analytics' as const, label: 'Analytics', icon: TrendingUp }
 	];
 
 	// Show generated brief from streaming data ONLY while actively generating
-	$: displayDailyBrief =
-		isToday && currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating
+	let displayDailyBrief = $derived(
+		isToday && currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating && dailyBrief
 			? {
 					...dailyBrief,
 					id: currentStreamingData.mainBrief.id,
@@ -582,15 +578,17 @@
 					priority_actions: currentStreamingData.mainBrief.priority_actions,
 					generation_completed_at: new Date().toISOString()
 				}
-			: dailyBrief;
+			: dailyBrief
+	);
 
 	// Show project briefs from streaming data ONLY while actively generating
-	$: displayProjectBriefs =
+	let displayProjectBriefs = $derived(
 		isToday &&
 		currentStreamingData?.projectBriefs?.length > 0 &&
 		currentStreamingStatus?.isGenerating
 			? currentStreamingData.projectBriefs
-			: projectBriefs;
+			: projectBriefs
+	);
 </script>
 
 <SEOHead

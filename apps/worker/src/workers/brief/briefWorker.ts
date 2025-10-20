@@ -8,11 +8,12 @@ import {
   BriefJobData,
   notifyUser,
   updateJobStatus,
+  validateBriefJobData,
 } from "../shared/queueUtils";
 import { LegacyJob } from "../shared/jobAdapter";
 import { generateDailyBrief } from "./briefGenerator";
-import { DailyBriefEmailSender } from "../../lib/services/email-sender";
 import { generateCorrelationId } from "@buildos/shared-utils";
+import { getTaskCount } from "@buildos/shared-types";
 
 /**
  * Validates if a timezone string is valid
@@ -33,6 +34,9 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
   console.log(`🏃 Processing brief job ${job.id} for user ${job.data.userId}`);
 
   try {
+    // Validate job data immediately to catch errors early
+    const validatedData = validateBriefJobData(job.data);
+
     await updateJobStatus(job.id, "processing", "brief");
 
     // ALWAYS fetch user's timezone from users table (centralized source of truth)
@@ -42,15 +46,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       .eq("id", job.data.userId)
       .single();
 
-    if (userError) {
+    if (userError || !user) {
       console.warn(
-        `Failed to fetch user timezone: ${userError.message}, using UTC`,
+        `Failed to fetch user timezone: ${userError?.message || "User not found"}, using fallback`,
       );
     }
 
     // Use timezone from users table (centralized), fallback to job data, then UTC
-    // Type assertion: timezone column exists but types haven't been regenerated yet
-    let timezone = (user as any)?.timezone || job.data.timezone || "UTC";
+    // No type assertion needed - properly handle null cases
+    let timezone = user?.timezone || job.data.timezone || "UTC";
 
     // Validate the timezone and fallback to UTC if invalid
     if (!isValidTimezone(timezone)) {
@@ -119,228 +123,11 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
    → should_email_daily_brief: ${shouldEmailBrief}
    → should_sms_daily_brief: ${shouldSmsBrief}`);
 
-    // NOTE: Email notifications are now handled via the notification system (brief.completed event)
-    // The emailAdapter will fetch the full brief with LLM analysis and send it
-    // This legacy email job system is deprecated and commented out
-
-    // Handle email notifications
-    let emailRecordId: string | null = null;
-    let emailQueuedSuccessfully = false;
-    if (false && shouldEmailBrief) {
-      // DISABLED - now handled by notification system
-      try {
-        console.log(
-          `📧 User ${job.data.userId} is eligible for email, proceeding with email creation...`,
-        );
-
-        // Get user email
-        const { data: user, error: userError } = await supabase
-          .from("users")
-          .select("email")
-          .eq("id", job.data.userId)
-          .single();
-
-        if (userError) {
-          console.error(
-            `❌ Error fetching user email for ${job.data.userId}:`,
-            userError,
-          );
-          throw new Error(
-            `Failed to fetch user: ${userError?.message || "Unknown error"}`,
-          );
-        }
-
-        if (!user?.email) {
-          console.warn(
-            `⚠️  No email address found for user ${job.data.userId}, cannot send email`,
-          );
-        } else {
-          // Generate tracking ID
-          const trackingId = crypto.randomUUID();
-
-          // Prepare email content (reuse existing formatBriefForEmail method)
-          const emailSender = new DailyBriefEmailSender(supabase);
-          const { htmlContent, plainText } = emailSender.formatBriefForEmail(
-            brief,
-            validatedBriefDate,
-          );
-
-          // Generate tracking pixel
-          const trackingPixel = `<img src="https://build-os.com/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
-
-          // Use custom subject from metadata (for re-engagement emails) or default
-          const customSubject =
-            brief.metadata && typeof brief.metadata === "object"
-              ? brief.metadata.email_subject
-              : undefined;
-
-          const subject =
-            customSubject ||
-            `Daily Brief - ${new Date(validatedBriefDate).toLocaleDateString(
-              "en-US",
-              {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              },
-            )}`;
-
-          // Generate minimal HTML for storage
-          const emailHtmlForStorage = `
-<!DOCTYPE html>
-<html>
-<head><title>${subject}</title></head>
-<body>
-  ${htmlContent}
-  ${trackingPixel}
-</body>
-</html>`;
-
-          // Create email record in existing emails table (status='scheduled')
-          const { data: emailRecord, error: emailError } = await supabase
-            .from("emails")
-            .insert({
-              created_by: job.data.userId,
-              from_email: "noreply@build-os.com",
-              from_name: "BuildOS",
-              subject: subject,
-              content: emailHtmlForStorage,
-              category: "daily_brief",
-              status: "scheduled", // ← Not sent yet!
-              tracking_enabled: true,
-              tracking_id: trackingId,
-              template_data: {
-                brief_id: brief.id,
-                brief_date: validatedBriefDate,
-                user_id: job.data.userId,
-              },
-            })
-            .select()
-            .single();
-
-          if (emailError || !emailRecord) {
-            console.error("Failed to create email record:", emailError);
-            throw new Error("Failed to create email record");
-          }
-
-          // At this point, emailRecord is guaranteed to be non-null (checked above)
-          // Type assertion needed because TypeScript doesn't track the control flow from the throw
-          const validatedEmailRecord = emailRecord as NonNullable<
-            typeof emailRecord
-          >;
-          emailRecordId = validatedEmailRecord.id;
-
-          // Create recipient record in existing email_recipients table
-          // At this point, user and user.email are guaranteed to exist (checked above)
-          if (!user?.email) {
-            throw new Error("User email unexpectedly null");
-          }
-          // Type assertion needed because TypeScript doesn't track the control flow from the throw
-          const validatedUser = user as NonNullable<typeof user>;
-          const { error: recipientError } = await supabase
-            .from("email_recipients")
-            .insert({
-              email_id: validatedEmailRecord.id,
-              recipient_email: validatedUser.email,
-              recipient_type: "to",
-              status: "pending",
-            });
-
-          if (recipientError) {
-            console.error("Failed to create recipient record:", recipientError);
-          }
-
-          // Queue email job with emailId (not briefId!)
-          const { data: emailJob, error: queueError } = await supabase.rpc(
-            "add_queue_job",
-            {
-              p_user_id: job.data.userId,
-              p_job_type: "generate_brief_email",
-              p_metadata: {
-                emailId: validatedEmailRecord.id, // ← Just emailId!
-              },
-              p_priority: 5, // Lower priority than brief generation
-              p_scheduled_for:
-                job.data.notificationScheduledFor || new Date().toISOString(), // Send at user's scheduled time
-              p_dedup_key: `email-${validatedEmailRecord.id}`, // Prevent duplicate email jobs
-            },
-          );
-
-          if (queueError) {
-            console.error(
-              `❌ CRITICAL: Failed to queue email job for email ${validatedEmailRecord.id}:`,
-              queueError,
-            );
-            console.error(`   → Error code: ${queueError?.code || "unknown"}`);
-            console.error(
-              `   → Error message: ${queueError?.message || "unknown"}`,
-            );
-            console.error(
-              `   → Brief ID: ${brief.id}, User ID: ${job.data.userId}`,
-            );
-
-            // Mark email as failed since we couldn't queue it
-            await supabase
-              .from("emails")
-              .update({
-                status: "failed",
-                template_data: {
-                  brief_id: brief.id,
-                  brief_date: validatedBriefDate,
-                  user_id: job.data.userId,
-                  error: {
-                    message: queueError?.message || "unknown",
-                    code: queueError?.code || "unknown",
-                    timestamp: new Date().toISOString(),
-                  },
-                },
-              })
-              .eq("id", validatedEmailRecord.id);
-
-            throw new Error(
-              `Failed to queue email job: ${queueError?.message || "unknown error"}`,
-            );
-          } else {
-            emailQueuedSuccessfully = true;
-            console.log(
-              `✅ Successfully queued email job ${emailJob} for email ${validatedEmailRecord.id} (brief ${brief.id})`,
-            );
-          }
-        }
-      } catch (emailError: unknown) {
-        // Log error but don't fail the brief job
-        const errorMessage =
-          emailError instanceof Error
-            ? (emailError as Error).message
-            : "Unknown error";
-        console.error(`Failed to create/queue email: ${errorMessage}`);
-
-        // Track email creation failure in error_logs
-        const { error: errorLogError } = await supabase
-          .from("error_logs")
-          .insert({
-            user_id: job.data.userId,
-            error_type: "email_creation_failure",
-            error_message: errorMessage,
-            endpoint: "/worker/brief/email-create",
-            operation_type: "create_email_record",
-            record_id: brief.id,
-            metadata: {
-              brief_id: brief.id,
-              brief_date: validatedBriefDate,
-              job_id: job.id,
-            },
-          });
-
-        if (errorLogError) {
-          console.error("Failed to log error:", errorLogError);
-        }
-      }
-    } else {
-      console.log(
-        `📭 Email notifications not enabled for user ${job.data.userId}, skipping email`,
-      );
-    }
+    // NOTE: Email and SMS notifications are now handled via the notification system (brief.completed event)
+    // The emailAdapter and smsAdapter will fetch the full brief with LLM analysis and send it
+    console.log(
+      `📧 Email will be sent via notification system (should_email_daily_brief: ${shouldEmailBrief})`,
+    );
 
     // Handle SMS notifications via notification system
     if (shouldSmsBrief) {
@@ -364,11 +151,13 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
           console.warn(
             `⚠️  User ${job.data.userId} wants SMS but has no phone number`,
           );
-        } else if (!smsPrefs?.phone_verified) {
+        } else if (smsPrefs?.phone_verified !== true) {
+          // Explicitly check for true - null/false/undefined all mean not verified
           console.warn(
             `⚠️  User ${job.data.userId} wants SMS but phone not verified`,
           );
-        } else if (smsPrefs?.opted_out) {
+        } else if (smsPrefs?.opted_out === true) {
+          // Explicitly check for true - null/false/undefined mean not opted out
           console.warn(`⚠️  User ${job.data.userId} has opted out of SMS`);
         } else {
           console.log(
@@ -398,39 +187,36 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
       const { data: projectBriefs } = await supabase
         .from("project_daily_briefs")
         .select("id, metadata")
-        .eq("daily_brief_id", brief.id);
+        .eq("user_id", job.data.userId)
+        .eq("brief_date", validatedBriefDate);
 
       const projectCount = projectBriefs?.length || 0;
 
       // Calculate all task counts from project briefs for comprehensive notification
+      // Using type-safe helper function to extract task counts from metadata
       const todaysTaskCount =
         projectBriefs?.reduce((sum, pb) => {
-          const metadata = pb.metadata as any;
-          return sum + (metadata?.todays_task_count || 0);
+          return sum + getTaskCount(pb.metadata, "todays_task_count");
         }, 0) || 0;
 
       const overdueTaskCount =
         projectBriefs?.reduce((sum, pb) => {
-          const metadata = pb.metadata as any;
-          return sum + (metadata?.overdue_task_count || 0);
+          return sum + getTaskCount(pb.metadata, "overdue_task_count");
         }, 0) || 0;
 
       const upcomingTaskCount =
         projectBriefs?.reduce((sum, pb) => {
-          const metadata = pb.metadata as any;
-          return sum + (metadata?.upcoming_task_count || 0);
+          return sum + getTaskCount(pb.metadata, "upcoming_task_count");
         }, 0) || 0;
 
       const nextSevenDaysTaskCount =
         projectBriefs?.reduce((sum, pb) => {
-          const metadata = pb.metadata as any;
-          return sum + (metadata?.next_seven_days_task_count || 0);
+          return sum + getTaskCount(pb.metadata, "next_seven_days_task_count");
         }, 0) || 0;
 
       const recentlyCompletedCount =
         projectBriefs?.reduce((sum, pb) => {
-          const metadata = pb.metadata as any;
-          return sum + (metadata?.recently_completed_count || 0);
+          return sum + getTaskCount(pb.metadata, "recently_completed_count");
         }, 0) || 0;
 
       // Get notification scheduled time from job data (if provided)

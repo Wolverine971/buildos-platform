@@ -7,30 +7,34 @@
 	import FormField from '../ui/FormField.svelte';
 	import Button from '../ui/Button.svelte';
 
-	export let isOpen: boolean = false;
-	export let selectedRecipients: any[] = [];
+	interface Props {
+		isOpen?: boolean;
+		selectedRecipients?: any[];
+	}
+
+	let { isOpen = false, selectedRecipients = [] }: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
-	let activeTab: 'beta_users' | 'beta_members' | 'custom' = 'beta_users';
-	let isLoading = false;
-	let error: string | null = null;
-	let searchQuery = '';
+	let activeTab = $state<'beta_users' | 'beta_members' | 'custom'>('beta_users');
+	let isLoading = $state(false);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
 
 	// Recipients data
-	let betaUsers: any[] = [];
-	let betaMembers: any[] = [];
-	let customRecipients: any[] = [];
+	let betaUsers = $state<any[]>([]);
+	let betaMembers = $state<any[]>([]);
+	let customRecipients = $state<any[]>([]);
 
 	// Selection state
-	let selectedUserIds = new Set<string>();
-	let selectedMemberIds = new Set<string>();
-	let selectedCustomIds = new Set<string>();
+	let selectedUserIds = $state(new Set<string>());
+	let selectedMemberIds = $state(new Set<string>());
+	let selectedCustomIds = $state(new Set<string>());
 
 	// Custom recipient form
-	let customName = '';
-	let customEmail = '';
-	let showCustomForm = false;
+	let customName = $state('');
+	let customEmail = $state('');
+	let showCustomForm = $state(false);
 
 	onMount(() => {
 		if (isOpen) {
@@ -40,10 +44,12 @@
 	});
 
 	// Watch for open state changes
-	$: if (isOpen) {
-		loadRecipients();
-		initializeSelection();
-	}
+	$effect(() => {
+		if (isOpen) {
+			loadRecipients();
+			initializeSelection();
+		}
+	});
 
 	function initializeSelection() {
 		// Initialize selection sets based on existing recipients
@@ -149,9 +155,18 @@
 		selectedUserIds = new Set();
 	}
 
-	$: allBetaUsersSelected =
+	let filteredBetaUsers = $derived(filterUsers(betaUsers, searchQuery));
+	let filteredBetaMembers = $derived(filterUsers(betaMembers, searchQuery));
+	let filteredCustomRecipients = $derived(filterUsers(customRecipients, searchQuery));
+
+	let allBetaUsersSelected = $derived(
 		filteredBetaUsers.length > 0 &&
-		filteredBetaUsers.every((user) => selectedUserIds.has(user.id));
+			filteredBetaUsers.every((user) => selectedUserIds.has(user.id))
+	);
+
+	let totalSelected = $derived(
+		selectedUserIds.size + selectedMemberIds.size + selectedCustomIds.size
+	);
 
 	function addCustomRecipient() {
 		if (!customName.trim() || !customEmail.trim()) {
@@ -267,12 +282,6 @@
 				(user.company && user.company.toLowerCase().includes(query.toLowerCase()))
 		);
 	}
-
-	$: filteredBetaUsers = filterUsers(betaUsers, searchQuery);
-	$: filteredBetaMembers = filterUsers(betaMembers, searchQuery);
-	$: filteredCustomRecipients = filterUsers(customRecipients, searchQuery);
-
-	$: totalSelected = selectedUserIds.size + selectedMemberIds.size + selectedCustomIds.size;
 </script>
 
 <Modal {isOpen} onClose={close} title="Select Recipients" size="xl">

@@ -53,7 +53,7 @@
 	let showMobileMenu = $state(false);
 	let loggingOut = $state(false);
 	let loadingLink = $state('');
-	let logoutAttempts = $state(0);
+	let lastLogoutAttempt = $state(0);
 	let previousPath = $state('');
 
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
@@ -86,11 +86,11 @@
 		if (loggingOut || !browser) return;
 
 		const now = Date.now();
-		if (logoutAttempts > 0 && now - logoutAttempts < 2000) {
+		if (lastLogoutAttempt > 0 && now - lastLogoutAttempt < 2000) {
 			return;
 		}
 
-		logoutAttempts = now;
+		lastLogoutAttempt = now;
 		loggingOut = true;
 		closeAllMenus();
 
@@ -120,7 +120,7 @@
 			loggingOut = false;
 		} finally {
 			setTimeout(() => {
-				logoutAttempts = 0;
+				lastLogoutAttempt = 0;
 			}, 1000);
 		}
 	}
@@ -297,29 +297,29 @@
 				<ThemeToggle />
 
 				{#if user}
-					<!-- Onboarding CTA -->
+					<!-- Onboarding CTA with enhanced gradient styling -->
 					{#if needsOnboarding}
 						<div class="hidden md:block">
 							<a
 								href="/onboarding"
 								data-onboarding-link
 								on:click={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-1.5 md:px-2 lg:px-2.5 xl:px-3 py-1 md:py-1.5 lg:py-2 text-xs md:text-xs lg:text-sm font-medium rounded-lg shadow-sm transition-all duration-200 transform hover:scale-105 whitespace-nowrap
+								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 whitespace-nowrap
 								{onboardingUrgent
-									? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white animate-pulse'
-									: 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'}
+									? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
+									: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white border-none'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? 'pulse' : ''}"
 							>
 								{#if onboardingUrgent}
 									<AlertCircle
-										class="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 lg:mr-1.5 flex-shrink-0"
+										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-pulse"
 									/>
 									<span class="hidden lg:inline">Complete Setup</span>
 									<span class="lg:hidden">Setup</span>
 								{:else}
 									<Sparkles
-										class="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 lg:mr-1.5 flex-shrink-0"
+										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0"
 									/>
 									<span class="hidden xl:inline"
 										>Personalize ({onboardingProgress}%)</span
@@ -330,7 +330,7 @@
 									<span class="lg:hidden">Setup</span>
 								{/if}
 								<ChevronRight
-									class="w-2.5 md:w-3 h-2.5 md:h-3 ml-0.5 md:ml-0.5 lg:ml-1 flex-shrink-0"
+									class="w-3 md:w-3.5 h-3 md:h-3.5 ml-1 md:ml-1.5 lg:ml-2 flex-shrink-0"
 								/>
 							</a>
 						</div>
@@ -414,11 +414,20 @@
 										<a
 											href="/onboarding"
 											on:click={() => handleMenuItemClick('/onboarding')}
-											class="flex items-center w-full px-4 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors
+											class="flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-lg mx-2 mb-2 transition-all duration-200
+												{onboardingUrgent
+												? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white shadow-md'
+												: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white shadow-md'}
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
-											<Sparkles class="w-4 h-4 mr-3" />
-											Complete Setup
+											{#if onboardingUrgent}
+												<AlertCircle class="w-4 h-4 mr-3" />
+												Complete Setup
+											{:else}
+												<Sparkles class="w-4 h-4 mr-3" />
+												Complete Setup
+											{/if}
+											<ChevronRight class="w-3.5 h-3.5 ml-auto" />
 										</a>
 									{/if}
 
@@ -549,20 +558,21 @@
 						<a
 							href="/onboarding"
 							on:click={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2 text-base font-medium text-white rounded-md transition-colors
+							class="flex items-center px-4 py-3 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
 							{onboardingUrgent
-								? 'bg-gradient-to-r from-amber-500 to-orange-500 animate-pulse'
-								: 'bg-gradient-to-r from-blue-600 to-purple-600'}
+								? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
+								: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? 'pulse-mobile' : ''}"
 						>
 							{#if onboardingUrgent}
-								<AlertCircle class="w-5 h-5 mr-3" />
+								<AlertCircle class="w-5 h-5 mr-3 animate-pulse" />
 								Complete Setup ({onboardingProgress}%)
 							{:else}
 								<Sparkles class="w-5 h-5 mr-3" />
 								Personalize BuildOS ({onboardingProgress}%)
 							{/if}
+							<ChevronRight class="w-4 h-4 ml-auto" />
 						</a>
 					{/if}
 

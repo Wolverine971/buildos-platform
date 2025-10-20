@@ -51,76 +51,143 @@ export function generateRecurringTaskRules(): string {
  */
 export function generateProjectContextFramework(mode: 'full' | 'condensed' = 'condensed'): string {
 	if (mode === 'condensed') {
-		return `**Context Generation (for projects)**:
-Create comprehensive markdown that brings anyone up to speed. The following framework provides organizational guidance that should be adapted to best serve each project's unique needs:
+		return `**Context Generation (Living Project Narrative):**
 
-**[Note: This is a flexible guide, not a rigid template. Adapt sections, combine categories, or add new dimensions as appropriate for the project]**
+The context field is a flexible, evolving narrative that captures the project's story in the user's own voice. 
 
-1. **Situation & Environment** – Current state, pain points, relevant history, external factors, stakeholder landscape
-2. **Purpose & Vision & Framing** – The vision is the most important part. The framing should draw from the words of the user
-Core purpose, success criteria, desired future state, strategic alignment
-3. **Scope & Boundaries** – Deliverables, exclusions, constraints, assumptions, key risks
-4. **Approach & Execution** – Strategy, methodology, workstreams, milestones, resource plan
-5. **Coordination & Control** – Governance, decision rights, communication flow, risk/issue management
-6. **Knowledge & Learning** – Lessons applied, documentation practices, continuous improvement approach
+**What the context field is:**
+- A living document that grows with each braindump
+- The project's ongoing story, told naturally
+- A hub for insights, decisions, learnings, and evolution
+- Completely flexible - no required structure
 
-**Remember:** This framework is a guide to help organize thoughts. Prioritize clear communication and project-specific organization over rigid adherence to this structure. Add, combine, or reorganize sections as needed.
+**The 9 Core Dimensions (extracted into separate fields):**
+1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
+2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
+3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
+4. **Meaning & Identity** ("core_meaning_identity") — Purpose, differentiation, brand/mission coherence.
+5. **Reality & Understanding** ("core_reality_understanding") — Current state, data, diagnosis/model.
+6. **Trust & Safeguards** ("core_trust_safeguards") — Risks, mitigations, contingencies, reliability.
+7. **Opportunity & Freedom** ("core_opportunity_freedom") — Options, experiments, pivots, optionality.
+8. **Power & Resources** ("core_power_resources") — Budget, headcount, tools, infra, permissions.
+9. **Harmony & Integration** ("core_harmony_integration") — Feedback loops, integration points, iteration.
 
-**Rule:** Include in context only if the update affects these dimensions. Progress updates or short-term tasks go in \`tasks\` or status fields instead.`;
+
+**Context writing principles:**
+- Start with the user's own words and framing
+- Let structure emerge naturally from the project's needs
+- Add timestamps for significant updates: **[2025-10-17]**
+- Preserve the narrative arc - how the project unfolds over time
+- Include insights, pivots, decisions, and "aha" moments
+- Don't force categorization - let ideas flow naturally
+
+**Remember:** Core dimensions are systematically extracted when present. The context tells the human story.`;
 	}
 
-	// Full version for more detailed contexts
-	return `**Context Generation Framework**:
-Use this comprehensive structure as a starting point, adapting it to best tell this specific project's story:
+	// Full version
+	return `**Context Field: Living Project Narrative**
 
-**[Framework Flexibility Note]**: The sections below provide organizational guidance. Feel free to:
-- Add new sections specific to your project type
-- Combine sections that overlap for your use case
-- Expand sections that are particularly important
-- Simplify or remove sections that don't apply
-- Reorganize to better communicate the project's unique aspects
+## Philosophy
+The context field is your project's living story - a flexible, evolving document that captures how you think about and describe your project. Unlike the 9 core dimensions (which are systematically extracted), the context has no required structure.
 
-## 1. Situation & Environment
-- **Current State**: Where we are now
-- **Pain Points**: Problems to be solved
-- **Historical Context**: How we got here
-- **External Factors**: Market, competition, regulations
-- **Stakeholder Landscape**: Who's involved and their interests
+## The 9 Core Dimensions (Extracted Automatically)
 
-## 2. Purpose & Vision & Framing
-- **Vision**: The vision for the project is the most important part
-- **Framing**: Capture the user's framing of the project in their own words
-- **Core Purpose**: Why this project exists
-- **Success Criteria**: How we measure achievement
-- **Desired Future State**: Where we want to be
-- **Strategic Alignment**: How this fits larger goals
+These dimensions are extracted into dedicated fields when present in braindumps. Use **short, factual summaries**; avoid duplicating the full braindump.
 
-## 3. Scope & Boundaries
-- **Deliverables**: What we will produce
-- **Exclusions**: What we won't do
-- **Constraints**: Limitations we must work within
-- **Assumptions**: What we're taking for granted
-- **Key Risks**: Major threats to success
+### 1) Integrity & Ideals (**column:** "core_integrity_ideals")
 
-## 4. Approach & Execution
-- **Strategy**: Our overall approach
-- **Methodology**: How we'll work
-- **Workstreams**: Parallel efforts
-- **Milestones**: Key checkpoints
-- **Resource Plan**: People, tools, budget
+* **Capture:** The ideal end-state, quality bars, non-negotiables, definitions of “done/right.”
+* **Look for:** Goals, acceptance criteria, standards, constraints of acceptability.
+* **Phrases:** “Success looks like…”, “Quality means…”, “Must meet…”, “Non-negotiable…”
+* **Why:** Sets the north star and judgment criteria.
 
-## 5. Coordination & Control
-- **Governance**: Decision-making structure
-- **Decision Rights**: Who decides what
-- **Communication Flow**: How information moves
-- **Risk/Issue Management**: How we handle problems
+### 2) People & Bonds (**column:** "core_people_bonds")
 
-## 6. Knowledge & Learning
-- **Lessons Applied**: What we've learned before
-- **Documentation Practices**: How we capture knowledge
-- **Continuous Improvement**: How we get better over time
+* **Capture:** Who’s involved, roles/authority, dynamics, empathy needs, comms patterns.
+* **Look for:** Team/client/user lists, reporting lines, consensus needs, partner dependencies.
+* **Phrases:** “Working with…”, “The team includes…”, “Users need…”, “Decision maker is…”
+* **Why:** Execution rides on relationships and power structures.
 
-**Remember:** The goal is comprehensive understanding, not perfect structure. Adapt this framework to serve your project's specific needs.`;
+### 3) Goals & Momentum (**column:** "core_goals_momentum")
+
+* **Capture:** Milestones, deliverables, metrics, cadence, execution plan.
+* **Look for:** Dates/deadlines, KPIs/OKRs, phases, critical path, operating rhythm.
+* **Phrases:** “By <date>…”, “We’ll deliver…”, “Metric is…”, “Cadence is…”
+* **Why:** Converts intent into velocity and measurables.
+
+### 4) Meaning & Identity (**column:** "core_meaning_identity")
+
+* **Capture:** Why this matters, differentiation, mission, brand/identity coherence.
+* **Look for:** Purpose, value propositions, impact statements, narrative/positioning.
+* **Phrases:** “This matters because…”, “Unique because…”, “Enables…”, “We stand for…”
+* **Why:** Sustains motivation and strategic coherence.
+
+### 5) Reality & Understanding (**column:** "core_reality_understanding")
+
+* **Capture:** Current state, constraints, observations, data, diagnosis/model.
+* **Look for:** “Currently…”, problems/root causes, baselines, environment/market context.
+* **Phrases:** “The situation is…”, “We’re seeing…”, “Baseline is…”, “Root cause…”
+* **Why:** Ground truth prevents fantasy planning.
+
+### 6) Trust & Safeguards (**column:** "core_trust_safeguards")
+
+* **Capture:** Risks, uncertainties, mitigations, contingencies, reliability and trust.
+* **Look for:** “Risk of…”, failure modes, SLAs/uptime, backups, legal/security concerns.
+* **Phrases:** “Could fail if…”, “Mitigate by…”, “Backup plan…”, “We need a fallback…”
+* **Why:** Preserves continuity under uncertainty.
+
+### 7) Opportunity & Freedom (**column:** "core_opportunity_freedom")
+
+* **Capture:** Options, pivots, experiments, explorations, optionality levers.
+* **Look for:** Alternative approaches, trials/pilots, “we could also…”, innovation threads.
+* **Phrases:** “Another option…”, “Might explore…”, “Opportunity to…”, “A/B test…”
+* **Why:** Maintains adaptability and upside.
+
+### 8) Power & Resources (**column:** "core_power_resources")
+
+* **Capture:** Budget, headcount, tools, infrastructure, permissions, constraints.
+* **Look for:** “Budget is…”, “We have access to…”, “Using tools like…”, “Authority to…”
+* **Phrases:** “Capacity…”, “Runway…”, “Licenses…”, “Vendors…”, “Scope limits…”
+* **Why:** Determines feasibility and speed.
+
+### 9) Harmony & Integration (**column:** "core_harmony_integration")
+
+* **Capture:** Feedback loops, review cadence, cross-system integration, change incorporation.
+* **Look for:** User feedback, QA/retros, integration points, learning/adaptation mechanisms.
+* **Phrases:** “Feedback from…”, “Integrates with…”, “We learned…”, “Next iteration…”
+* **Why:** Ensures the system evolves and coheres as a whole.
+
+**General extraction rules:**
+
+* Prefer **specifics over platitudes**; summarize in 1–4 tight sentences per dimension found.
+* If a dimension isn’t present, **leave its field null** (don’t infer).
+* Quote briefly when helpful (≤1 short clause), otherwise paraphrase.
+* De-duplicate across dimensions; place content in the **single best-fit** field.
+
+---
+---
+
+Want me to also:
+
+* generate **TypeScript types** for the updated columns,
+* add **pgvector embedding** triggers for these nine fields,
+* or create a **Svelte form** snippet that binds to the new names?
+
+
+## Writing Good Context
+
+**Core Principle:** The context is a living narrative that captures your project's journey in your own voice. Let structure emerge naturally - some projects flow chronologically, others cluster around themes, some follow problem→solution arcs.
+
+**What to Include:**
+Capture the origin story, key decisions and their reasoning, pivots and breakthroughs, research insights, open questions, and the evolving understanding of the project. Include timestamps for major shifts: **[2025-10-17]** Major pivot...
+
+**How It Works with Dimensions:**
+The context field tells the human story - capturing nuance, emotion, and narrative flow. The 9 dimensions provide systematic analysis. Together they create complete understanding: the story and the structure, the journey and the data.
+
+**Evolution Tips:**
+Start with the user's initial framing and let it develop. When updating, weave new information into the narrative rather than just appending. Show how thinking has evolved. A good context reads like a coherent story where someone new can quickly understand not just what you're doing, but why it matters and how you got here.
+
+**Remember:** The context is the living story. The dimensions are the extracted insights. Both are essential for complete project understanding.`;
 }
 
 /**
@@ -324,23 +391,39 @@ PROJECT CONTEXT should capture: All strategic information, research, ideas, obse
 }
 
 export function getDecisionMatrixUpdateCriteria(): string {
-	return `**Context Update Criteria** (Update context when):
-1. Strategic insights or learnings emerge
-2. Scope or boundaries change
-3. New stakeholders or dependencies identified
-4. Approach or methodology evolves
-5. Risks or assumptions change
-6. External factors shift
-7. Major decisions made
-8. **Project structure needs evolution** (add new sections, reorganize existing ones to better communicate the project's story)
+	return `**Update Criteria for Context & Core Dimensions**
 
-**Don't Update Context For**:
-- Simple task completions
-- Minor status changes
-- Day-to-day progress
-- Temporary blockers
+**Update Context (narrative) when:**
+- Key decisions or pivots occur
+- Understanding of the project evolves
+- Significant insights or learnings emerge
+- New connections or relationships form
+- Major events or milestones happen
+- The story needs to continue
 
-**Remember**: Context structure should evolve with the project. Don't be constrained by the initial framework - adapt it as the project's needs become clearer.`;
+**Update Core Dimensions when braindump touches:**
+1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
+2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
+3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
+4. **Meaning & Identity** ("core_meaning_identity") — Purpose, differentiation, brand/mission coherence.
+5. **Reality & Understanding** ("core_reality_understanding") — Current state, data, diagnosis/model.
+6. **Trust & Safeguards** ("core_trust_safeguards") — Risks, mitigations, contingencies, reliability.
+7. **Opportunity & Freedom** ("core_opportunity_freedom") — Options, experiments, pivots, optionality.
+8. **Power & Resources** ("core_power_resources") — Budget, headcount, tools, infra, permissions.
+9. **Harmony & Integration** ("core_harmony_integration") — Feedback loops, integration points, iteration.
+
+**Don't Update For:**
+- Simple task completions or status updates
+- Minor progress reports
+- Day-to-day execution details
+- Temporary blockers or issues
+- Information that belongs in task details
+
+**Remember**: 
+- Context is a living narrative - update it to continue the story
+- Core dimensions are replaced entirely when updated (not appended)
+- Both can be updated in the same braindump
+- Not every braindump requires updates`;
 }
 
 /**

@@ -612,7 +612,9 @@ class BackgroundBrainDumpService {
 		}
 
 		if (clearedCount > 0) {
-			console.log(`[BackgroundService] Cleared ${clearedCount} jobs for brain dump ${brainDumpId}`);
+			console.log(
+				`[BackgroundService] Cleared ${clearedCount} jobs for brain dump ${brainDumpId}`
+			);
 			this.saveToSessionStorage();
 		}
 	}

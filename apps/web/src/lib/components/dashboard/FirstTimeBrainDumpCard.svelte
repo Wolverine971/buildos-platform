@@ -21,85 +21,120 @@
 </script>
 
 {#if !isCompact}
-	<!-- Full first-time user card -->
+	<!-- Full first-time user card with brain-bolt animation -->
 	<div
-		class="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50
-		dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20
-		rounded-2xl p-6 sm:p-8 lg:p-10 border border-blue-200/50 dark:border-blue-800/50
-		shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl"
+		class="relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-indigo-50/80 to-purple-50/80
+		dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-purple-900/30
+		rounded-2xl p-6 sm:p-8 lg:p-10 border border-purple-200/60 dark:border-purple-700/40
+		shadow-xl backdrop-blur-sm transition-all duration-300 hover:shadow-2xl"
 	>
-		<!-- Decorative background elements -->
-		<div class="absolute top-0 right-0 -mt-4 -mr-4 opacity-10">
-			<Brain class="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 text-purple-600" />
+		<!-- Decorative animated glow in background -->
+		<div
+			class="absolute top-0 right-0 -mt-8 -mr-8 opacity-10 dark:opacity-5 pointer-events-none"
+		>
+			<div
+				class="w-48 h-48 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full blur-3xl animate-pulse"
+				style="animation-duration: 4s;"
+			></div>
 		</div>
 
 		<div class="relative z-10 max-w-2xl mx-auto text-center">
-			<!-- Icon and Title -->
-			<div class="flex justify-center mb-4">
+			<!-- Brain-bolt video animation -->
+			<div class="flex justify-center mb-6">
 				<div class="relative">
+					<!-- Glow effect behind video -->
 					<div
-						class="absolute inset-0 animate-pulse bg-purple-400/20 rounded-full blur-xl"
+						class="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-blue-600/30 dark:from-purple-400/20 dark:to-blue-500/20 rounded-2xl blur-2xl animate-pulse"
+						style="animation-duration: 3s;"
 					></div>
-					<div class="relative p-4 bg-white dark:bg-gray-800 rounded-full shadow-md">
-						<Brain
-							class="w-8 h-8 sm:w-10 sm:h-10 text-purple-600 dark:text-purple-400"
-						/>
+					<!-- Video container -->
+					<div
+						class="relative rounded-2xl bg-gradient-to-br from-white/50 to-gray-50/50 dark:from-gray-800/50 dark:to-gray-900/50 p-3 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-xl"
+					>
+						<video
+							autoplay
+							loop
+							muted
+							playsinline
+							class="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain rounded-xl"
+							aria-label="BuildOS brain animation"
+						>
+							<source
+								src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
+								type="video/mp4"
+							/>
+							<!-- Fallback for browsers that don't support video -->
+							<div
+								class="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-6 shadow-xl flex items-center justify-center"
+							>
+								<Brain class="w-12 h-12 text-white" />
+							</div>
+						</video>
 					</div>
 				</div>
 			</div>
 
 			<h2
-				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+				class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 dark:from-purple-400 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent leading-tight tracking-tight"
 			>
 				Start with a Brain Dump
 			</h2>
 
-			<p class="text-base sm:text-lg text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-				Tell BuildOS about <span class="font-semibold">one project</span> you're working on.
-				We'll help you organize everything into actionable tasks and milestones.
+			<p
+				class="text-base sm:text-lg lg:text-xl text-gray-700 dark:text-gray-300 mb-8 leading-relaxed"
+			>
+				Tell BuildOS about <span class="font-semibold text-gray-900 dark:text-white"
+					>one project</span
+				> you're working on. We'll help you organize everything into actionable tasks and milestones.
 			</p>
 
-			<!-- Framework guidance section -->
+			<!-- Framework guidance section with enhanced styling -->
 			<div
-				class="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4 sm:p-5 mb-6 backdrop-blur-sm"
+				class="bg-white/60 dark:bg-gray-800/60 rounded-xl p-5 sm:p-6 mb-8 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-sm"
 			>
-				<p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+				<p class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-5">
 					Think about your project holistically. Consider sharing:
 				</p>
 
-				<div class="space-y-3 text-left max-w-md mx-auto">
+				<div class="space-y-4 text-left max-w-md mx-auto">
 					{#each frameworkHints as hint}
-						<div class="flex items-start gap-3">
-							<div class="flex-shrink-0 mt-0.5">
+						<div class="flex items-start gap-3 group">
+							<div
+								class="flex-shrink-0 mt-0.5 p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover:scale-105 transition-transform duration-200"
+							>
 								<svelte:component
 									this={hint.icon}
-									class="w-5 h-5 text-purple-600 dark:text-purple-400"
+									class="w-4 h-4 text-purple-600 dark:text-purple-400"
 								/>
 							</div>
-							<span class="text-sm text-gray-600 dark:text-gray-400">
+							<span class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
 								{hint.text}
 							</span>
 						</div>
 					{/each}
 				</div>
 
-				<div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-					<p class="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-						<strong>Pro tip:</strong> Focus on one project at a time. The more context you
-						provide, the better BuildOS can help you plan and execute.
+				<div
+					class="mt-5 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-200/50 dark:border-blue-700/50"
+				>
+					<p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+						<strong class="font-semibold">Pro tip:</strong> Focus on one project at a time.
+						The more context you provide, the better BuildOS can help you plan and execute.
 					</p>
 				</div>
 			</div>
 
-			<!-- Examples to inspire -->
-			<div class="mb-6">
-				<p class="text-xs text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+			<!-- Examples to inspire with enhanced styling -->
+			<div class="mb-8">
+				<p
+					class="text-xs text-gray-600 dark:text-gray-400 mb-3 uppercase tracking-wider font-semibold"
+				>
 					Example projects
 				</p>
 				<div class="flex flex-wrap justify-center gap-2">
 					{#each ['Launch a product', 'Write a book', 'Learn a skill', 'Plan an event', 'Start a business'] as example}
 						<span
-							class="px-3 py-1 bg-white/70 dark:bg-gray-700/70 rounded-full text-xs text-gray-600 dark:text-gray-300"
+							class="px-3 py-1.5 bg-white/80 dark:bg-gray-700/80 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-white dark:hover:bg-gray-700 transition-colors duration-200"
 						>
 							{example}
 						</span>
@@ -107,49 +142,81 @@
 				</div>
 			</div>
 
-			<!-- CTA Button -->
+			<!-- CTA Button with enhanced gradient -->
 			<Button
 				on:click={handleStartBrainDump}
 				variant="primary"
 				size="lg"
-				class="w-full sm:w-auto min-w-[200px] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+				class="w-full sm:w-auto min-w-[240px] px-8 py-4 text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 border-none"
 			>
 				<Brain class="w-5 h-5 mr-2" />
 				Start Your First Brain Dump
 				<ArrowRight class="w-5 h-5 ml-2" />
 			</Button>
 
-			<!-- Additional help text -->
-			<p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-				Takes about 2-3 minutes • Voice or text input • AI-powered organization
-			</p>
+			<!-- Additional help text with improved spacing -->
+			<div
+				class="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 dark:text-gray-400"
+			>
+				<span class="flex items-center gap-1.5">
+					<span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+					2-3 minutes
+				</span>
+				<span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+				<span class="flex items-center gap-1.5">
+					<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+					Voice or text input
+				</span>
+				<span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+				<span class="flex items-center gap-1.5">
+					<span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+					AI-powered
+				</span>
+			</div>
 		</div>
 	</div>
 {:else}
-	<!-- Compact version for users with some data -->
+	<!-- Compact version with brain-bolt animation -->
 	<div
-		class="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10
-		rounded-xl p-4 sm:p-5 border border-purple-200/50 dark:border-purple-800/50
-		shadow-sm hover:shadow-md transition-all duration-200"
+		class="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 dark:from-purple-900/20 dark:to-indigo-900/20
+		rounded-xl p-4 sm:p-5 border border-purple-200/60 dark:border-purple-700/40
+		shadow-md hover:shadow-lg transition-all duration-300 backdrop-blur-sm"
 	>
 		<div class="flex items-start gap-4">
 			<div class="flex-shrink-0">
-				<div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-					<Brain class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+				<!-- Small brain-bolt video for compact version -->
+				<div
+					class="rounded-xl bg-gradient-to-br from-white/50 to-gray-50/50 dark:from-gray-800/50 dark:to-gray-900/50 p-2 border border-purple-200/50 dark:border-purple-700/50"
+				>
+					<video
+						autoplay
+						loop
+						muted
+						playsinline
+						class="w-10 h-10 object-contain rounded-lg"
+						aria-label="BuildOS brain animation"
+					>
+						<source
+							src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
+							type="video/mp4"
+						/>
+						<!-- Fallback -->
+						<Brain class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					</video>
 				</div>
 			</div>
 			<div class="flex-1">
-				<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-1">
+				<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">
 					Quick Capture
 				</h3>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+				<p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
 					Have another project in mind? Brain dump it to get started.
 				</p>
 				<Button
 					on:click={handleStartBrainDump}
 					variant="outline"
 					size="sm"
-					class="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+					class="hover:bg-purple-50 dark:hover:bg-purple-900/30 border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 font-medium transition-all duration-200"
 				>
 					<Brain class="w-4 h-4 mr-1.5" />
 					New Brain Dump

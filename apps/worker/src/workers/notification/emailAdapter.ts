@@ -44,7 +44,7 @@ function rewriteLinksForTracking(html: string, trackingId: string): string {
 
 /**
  * Format notification payload as email HTML
- * Note: payload is guaranteed to have title and body by enrichDeliveryPayload
+ * Note: payload should have title and body from enrichDeliveryPayload, but we validate for safety
  */
 function formatEmailTemplate(delivery: NotificationDelivery): {
   html: string;
@@ -52,29 +52,35 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 } {
   const { payload } = delivery;
 
+  // Defensive validation - ensure required fields exist
+  const title = payload.title || "Notification";
+  const body = payload.body || "";
+  const actionUrl = payload.action_url || null;
+  const imageUrl = payload.image_url || null;
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${payload.title}</title>
+  <title>${title}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">${payload.title}</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${title}</h1>
   </div>
 
   <div style="background: #fff; padding: 30px; border: 1px solid #e1e8ed; border-top: none; border-radius: 0 0 10px 10px;">
     <div style="font-size: 16px; color: #555; margin-bottom: 20px;">
-      ${payload.body}
+      ${body}
     </div>
 
     ${
-      payload.action_url
+      actionUrl
         ? `
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${payload.action_url}"
+        <a href="${actionUrl}"
            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                   color: white;
                   padding: 12px 30px;
@@ -90,10 +96,10 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
     }
 
     ${
-      payload.image_url
+      imageUrl
         ? `
       <div style="margin: 20px 0;">
-        <img src="${payload.image_url}" alt="" style="max-width: 100%; height: auto; border-radius: 6px;">
+        <img src="${imageUrl}" alt="" style="max-width: 100%; height: auto; border-radius: 6px;">
       </div>
     `
         : ""
@@ -111,11 +117,11 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
   `.trim();
 
   const text = `
-${payload.title}
+${title}
 
-${payload.body}
+${body}
 
-${payload.action_url ? `View details: ${payload.action_url}` : ""}
+${actionUrl ? `View details: ${actionUrl}` : ""}
 
 ---
 This is an automated notification from BuildOS
@@ -193,14 +199,14 @@ export async function sendEmailNotification(
       const { data: brief, error: briefError } = await supabase
         .from("daily_briefs")
         .select("*")
-        .eq("id", delivery.payload.data.brief_id)
+        .eq("id", delivery.payload.data?.brief_id)
         .single();
 
       if (briefError || !brief) {
         emailLogger.warn(
           "Failed to fetch brief for email - falling back to notification template",
           {
-            briefId: delivery.payload.data.brief_id,
+            briefId: delivery.payload.data?.brief_id,
             error: briefError?.message,
           },
         );
@@ -216,7 +222,7 @@ export async function sendEmailNotification(
           emailLogger.warn(
             "Brief has no content - falling back to notification template",
             {
-              briefId: delivery.payload.data.brief_id,
+              briefId: delivery.payload.data?.brief_id,
             },
           );
           const emailContent = formatEmailTemplate(delivery);
@@ -255,7 +261,7 @@ export async function sendEmailNotification(
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
             <div style="text-align: center; margin-top: 24px;">
-              <a href="https://build-os.com/daily-briefs/${delivery.payload.data.brief_id}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <a href="https://build-os.com/daily-briefs/${delivery.payload.data?.brief_id || ""}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #d1d5db; margin: 0 8px;">|</span>
               <a href="https://build-os.com/profile?tab=notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
             </div>

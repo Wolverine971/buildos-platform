@@ -1833,7 +1833,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 				if (multiEnabled && data?.brainDumpId) {
 					const brainDump = state.activeBrainDumps.get(data.brainDumpId);
 					if (brainDump) {
-						const updatedBrainDump = {
+						const updatedBrainDump: SingleBrainDumpState = {
 							...brainDump,
 							results: {
 								...brainDump.results,
@@ -1841,7 +1841,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 							},
 							processing: {
 								...brainDump.processing,
-								phase: 'idle',
+								phase: 'idle' as const,
 								mutex: false
 							}
 						};

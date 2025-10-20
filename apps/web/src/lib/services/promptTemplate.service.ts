@@ -1394,30 +1394,6 @@ Include these questions in your response within the main JSON structure:
 Respond with valid JSON matching the complete structure above.`;
 	}
 
-	// Formatting methods have been moved to DataFormatterService
-	// Use DataFormatterService.truncateContent() and DataFormatterService.formatExistingTasksForPrompt() directly
-
-	getProjectContextPrompt(
-		existingProject: ProjectWithRelations | null,
-		userId: string,
-		isNewProject?: boolean,
-		processingDateTime?: string
-	): string {
-		// Determine if this is a new or existing project
-		// If isNewProject is explicitly provided, use that; otherwise check existingProject
-		const isNew = isNewProject !== undefined ? isNewProject : !existingProject;
-
-		if (isNew) {
-			return this.getNewProjectContextPrompt(userId, processingDateTime);
-		} else {
-			return this.getExistingProjectContextPrompt(
-				existingProject!,
-				userId,
-				processingDateTime
-			);
-		}
-	}
-
 	/**
 	 * Get project context system prompt WITHOUT embedded project data
 	 * Project data should be passed in the user prompt instead
@@ -1458,42 +1434,36 @@ Mode: UPDATE EXISTING PROJECT CONTEXT
 **IMPORTANT CONTEXT:**
 Current date and time: ${currentDateTime}
 
-Your Job is to update the project context document based on the user's brain dump.
-The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
-DO NOT include task lists or specific task details - those are handled separately.
+Your Job is to update the project context document and core dimensions based on the user's brain dump.
 
 ${getDecisionMatrixUpdateCriteria()}
 
 ## Update Rules:
-1. **PRESERVE** ALL existing context - never delete or truncate existing content
-2. **MERGE** new insights appropriately within existing structure
-3. **ADD** timestamps for significant updates: **[${currentDateTime.split('T')[0]}]** New info...
-4. **MAINTAIN** existing markdown structure and formatting
-5. **OUTPUT** the COMPLETE context document with all existing + new content
-6. **FOCUS** on strategic information, not tactical task details
+1. **CONTEXT FIELD**: 
+   - PRESERVE all existing context
+   - MERGE new insights organically
+   - ADD timestamps for significant updates
+   - Let structure evolve naturally
 
-## When to Update Context:
-Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.
+2. **CORE DIMENSIONS**:
+   - REPLACE entire dimension content when updating
+   - Include ALL relevant information holistically
+   - Use user's direct phrasing where possible
+   - Write full paragraphs, not bullets
+   - Only include in output if dimension is touched
 
-## Update the Executive Summary:
-Update the executive summary to describe the current state and direction of the project when there are significant changes.
+3. **Only update what's mentioned in the braindump**
 
-## When NOT to Update Context:
-- Brain dump is ONLY about specific tasks or bug fixes
-- Simple status updates or progress reports
-- Day-to-day tactical information
-- Information that belongs in task details instead
-- Pure task lists or action items
-
-## Output JSON for Context Update:
+## Output JSON for Updates:
 \`\`\`json
 {
   "title": "Short title for brain dump",
-  "summary": "2-3 sentence summary of what was extracted from the braindump",
-  "insights": "Key insights or highlights from this braindump",
+  "summary": "2-3 sentence summary of what was extracted",
+  "insights": "Key insights from this braindump",
   "tags": ["relevant", "tags"],
   "metadata": {
-    "processingNote": "Explain why context was or wasn't updated"
+    "processingNote": "Explain what was updated and why",
+    "dimensions_updated": ["list of core dimensions that were updated"]
   },
   "operations": [
     {
@@ -1501,18 +1471,29 @@ Update the executive summary to describe the current state and direction of the 
       "table": "projects",
       "operation": "update",
       "data": {
-        "id": "${selectedProjectId}",
-        "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
-        "executive_summary": "Updated executive summary (only if project vision/scope changed)",
-        "tags": ["updated", "tags", "if", "changed"],
-        "status": "active|paused|completed|archived"
+        "id": "project-id-here",
+        "context": "COMPLETE markdown with ALL existing + new content...",
+        "executive_summary": "Updated if vision/scope changed",
+        "tags": ["updated", "tags"],
+        "status": "active|paused|completed|archived",
+        "core_integrity_ideals": "Complete updated paragraph or omit if not touched",
+		"core_people_bonds": "Complete updated paragraph or omit if not touched",
+		"core_goals_momentum": "Complete updated paragraph or omit if not touched",
+		"core_meaning_identity": "Complete updated paragraph or omit if not touched",
+		"core_reality_understanding": "Complete updated paragraph or omit if not touched",
+		"core_trust_safeguards": "Complete updated paragraph or omit if not touched",
+		"core_opportunity_freedom": "Complete updated paragraph or omit if not touched",
+		"core_power_resources": "Complete updated paragraph or omit if not touched",
+		"core_harmony_integration": "Complete updated paragraph or omit if not touched"
       }
     }
   ]
 }
 \`\`\`
 
-## Output JSON for No Context Update Needed:
+**Note**: Only include core dimension fields in the data object if they need updating. Omit unchanged dimensions entirely from the update operation.
+
+## Output JSON for No Update Needed:
 \`\`\`json
 {
   "title": "Title for the braindump",
@@ -1520,13 +1501,14 @@ Update the executive summary to describe the current state and direction of the 
   "insights": "Key insights from the content",
   "tags": ["relevant", "tags"],
   "metadata": {
-    "processingNote": "No context update needed - [explain why: task-focused, progress update, etc.]"
+    "processingNote": "No updates needed - tactical/task-focused content",
+    "dimensions_updated": []
   },
   "operations": []
 }
 \`\`\`
 
-Focus on strategic project information. Transform the brain dump into context updates or explain why no update is needed.`;
+Focus on strategic information. Update core dimensions holistically when touched. Only include dimensions in output that need updating.`;
 	}
 
 	private getNewProjectContextPrompt(userId: string, processingDateTime?: string): string {
@@ -1543,35 +1525,24 @@ Current date and time: ${currentDateTime}
 ## Project Creation Decision:
 ${generateDecisionMatrix()}
 
-## Date Parsing:
-Convert natural language dates to YYYY-MM-DD format:
-${generateDateParsing(today)}
 
 ## Context Generation Framework:
 ${generateProjectContextFramework('full')}
 
-${generateFrameworkAdaptationExamples()}
+The main context field should be an organic representation of how the user describes their project, without forced structure. Let the user's natural framing guide the organization.
 
-## Project Context Guidelines:
-1. Create rich markdown document that brings anyone up to speed
-2. Use ## headers for major sections, ### for subsections
-3. Capture ALL strategic information, research, ideas, and observations
-4. Focus on the "why" and "what" - tasks will handle the "how"
-5. Make it comprehensive enough that someone new can understand the project
-6. DO NOT include task lists in the context - tasks are handled separately
+**Context Principles:**
+- Capture the user's voice and framing
+- Don't impose rigid structure
+- Allow natural organization to emerge
+- Include all strategic information, research, ideas
+- Make it comprehensive for newcomers
+- Adapt structure to the project's unique needs
 
-## When to Create Context:
-Create context when the brain dump contains:
-- Strategic project information
-- Research, ideas, or observations
-- Background, goals, or approach details
-- Any non-tactical information
 
-## When NOT to Create Context:
-Skip context (set to null) when brain dump is:
-- ONLY a list of tasks to do
-- Pure tactical execution items
-- No strategic information or background
+## Date Parsing:
+Convert natural language dates to YYYY-MM-DD format:
+${generateDateParsing(today)}
 
 ## Output JSON for Project WITH Context:
 \`\`\`json
@@ -1581,7 +1552,7 @@ Skip context (set to null) when brain dump is:
   "insights": "Key observations about the project",
   "tags": ["relevant", "tags"],
   "metadata": {
-    "processingNote": "Explain project creation approach"
+    "processingNote": "Explain project creation approach and which dimensions were extracted"
   },
   "operations": [
     {
@@ -1593,146 +1564,28 @@ Skip context (set to null) when brain dump is:
         "name": "Clear, descriptive project name (max 150 chars)",
         "slug": "project-url-slug (REQUIRED - lowercase, hyphens only)",
         "description": "One-line project description",
-        "context": "Rich markdown with all sections from framework above...",
+        "context": "Rich organic markdown capturing user's framing...",
         "executive_summary": "2-3 sentence executive summary",
         "tags": ["project", "tags"],
         "status": "active",
         "start_date": "${today}",
-        "end_date": null
+        "end_date": null,
+        "core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
+		"core_people_bonds": "Complete updated paragraph or omit if not mentioned",
+		"core_goals_momentum": "Complete updated paragraph or omit if not mentioned",
+		"core_meaning_identity": "Complete updated paragraph or omit if not mentioned",
+		"core_reality_understanding": "Complete updated paragraph or omit if not mentioned",
+		"core_trust_safeguards": "Complete updated paragraph or omit if not mentioned",
+		"core_opportunity_freedom": "Complete updated paragraph or omit if not mentioned",
+		"core_power_resources": "Complete updated paragraph or omit if not mentioned",
+		"core_harmony_integration": "Complete updated paragraph or omit if not mentioned"
       }
     }
   ]
 }
 \`\`\`
 
-## Output JSON for Task-Only Project (No Context):
-\`\`\`json
-{
-  "title": "Task list or action items",
-  "summary": "Collection of tasks extracted",
-  "insights": "Tactical execution focus",
-  "tags": ["tasks"],
-  "metadata": {
-    "processingNote": "Task-focused project without strategic context"
-  },
-  "operations": [
-    {
-      "id": "op-[timestamp]-project-create",
-      "table": "projects",
-      "operation": "create",
-      "ref": "new-project-1",
-      "data": {
-        "name": "Project name derived from tasks",
-        "slug": "project-slug",
-        "description": "Task-focused project",
-        "context": null,
-        "executive_summary": null,
-        "tags": ["tasks"],
-        "status": "active",
-        "start_date": "${today}",
-        "end_date": null
-      }
-    }
-  ]
-}
-\`\`\`
-
-Focus on extracting strategic project information and creating comprehensive context. Tasks will be handled separately.`;
-	}
-
-	private getExistingProjectContextPrompt(
-		existingProject: ProjectWithRelations,
-		userId: string,
-		processingDateTime?: string
-	): string {
-		const currentDateTime = processingDateTime || new Date().toISOString();
-		const today = currentDateTime.split('T')[0];
-
-		return `You are a context synthesis engine specializing in project context enrichment.
-
-Mode: UPDATE EXISTING PROJECT CONTEXT
-
-**IMPORTANT CONTEXT:**
-Current date and time: ${currentDateTime}
-
-Your Job is to update the project context document based on the user's brain dump. 
-The project context document is a comprehensive markdown doc that brings anyone up to speed on the project.
-DO NOT include task lists or specific task details - those are handled separately.
-
-## Current Project Data:
-${formatProjectData({
-	user_id: userId,
-	fullProjectWithRelations: existingProject,
-	timestamp: new Date().toDateString()
-})}
-
-------
-
-${getDecisionMatrixUpdateCriteria()}
-
-## Update Rules:
-1. **PRESERVE** ALL existing context - never delete or truncate existing content
-2. **MERGE** new insights appropriately within existing structure
-3. **ADD** timestamps for significant updates: **[${today}]** New info...
-4. **MAINTAIN** existing markdown structure and formatting
-5. **OUTPUT** the COMPLETE context document with all existing + new content
-6. **FOCUS** on strategic information, not tactical task details
-
-## When to Update Context:
-Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.
-
-## Update the Executive Summary:
-Update the executive summary to describe the current state and direction of the project when there are significant changes.
-
-## When NOT to Update Context:
-- Brain dump is ONLY about specific tasks or bug fixes
-- Simple status updates or progress reports
-- Day-to-day tactical information
-- Information that belongs in task details instead
-- Pure task lists or action items
-
-## Output JSON for Context Update:
-\`\`\`json
-{
-  "title": "Short title for brain dump",
-  "summary": "2-3 sentence summary of what was extracted from the braindump",
-  "insights": "Key insights or highlights from this braindump",
-  "tags": ["relevant", "tags"],
-  "metadata": {
-    "processingNote": "Explain why context was or wasn't updated"
-  },
-  "operations": [
-    {
-      "id": "op-[timestamp]-project-update",
-      "table": "projects",
-      "operation": "update",
-      "data": {
-        "id": "${existingProject.id}",
-        "context": "COMPLETE markdown with ALL existing content PLUS new updates...",
-        "executive_summary": "Updated executive summary (only if project vision/scope changed)",
-        "tags": ["updated", "tags", "if", "changed"],
-        "status": "active|paused|completed|archived"
-      }
-    }
-  ]
-}
-\`\`\`
-
-## Output JSON for No Context Update Needed:
-\`\`\`json
-{
-  "title": "Title for the braindump",
-  "summary": "Summary of the braindump content",
-  "insights": "Key insights from the content",
-  "tags": ["relevant", "tags"],
-  "metadata": {
-    "processingNote": "No context update needed - [explain why: task-focused, progress update, etc.]"
-  },
-  "operations": []
-}
-\`\`\`
-
-Focus on strategic project information. Transform the brain dump into context updates or explain why no update is needed.`;
+Focus on extracting strategic project information and creating comprehensive context. Only populate core dimensions when information is present.`;
 	}
 
 	/**
@@ -1822,26 +1675,49 @@ Respond with valid JSON.`;
 ## Your Task:
 Analyze the braindump to identify:
 1. Whether the project context needs strategic updates
-2. Which existing tasks are referenced or need updating
-3. The nature of the braindump content
+2. Whether any of the 9 core project dimensions need updating
+3. Which existing tasks are referenced or need updating
+4. The nature of the braindump content
 
-## Current Project Overview:
-Project: "${project.name}"
-Description: ${project.description || 'No description'}
-Status: ${project.status}
-Tags: ${project.tags?.join(', ') || 'None'}
-Start Date: ${project.start_date || 'Not set'}
-End Date: ${project.end_date || 'Not set'}
-Has Context: ${project.context ? 'Yes (existing strategic document)' : 'No'}
-Executive Summary: ${project.executive_summary || 'None'}
+## Core Project Dimensions to Monitor:
 
-## Existing Tasks (${tasks.length} total):
-${tasks
-	.map(
-		(t) => `- [${t.status}] ${t.title} (ID: ${t.id})${t.start_date ? ` - ${t.start_date}` : ''}
-  Description: ${t.description_preview}`
-	)
-	.join('\n')}
+**1. Integrity & Ideals ("core_integrity_ideals")**
+* **Capture:** Goals, standards, definitions of “done/right,” quality bars, non-negotiables.
+* **Update if:** New goals or benchmarks are stated, quality expectations shift, or definitions of success are redefined.
+
+**2. People & Bonds ("core_people_bonds")**
+* **Capture:** People, teams, roles, relationships, power dynamics, communication flows.
+* **Update if:** New individuals or groups are involved, roles change, communication or trust patterns evolve.
+
+**3. Goals & Momentum ("core_goals_momentum")**
+* **Capture:** Milestones, deliverables, metrics, progress indicators, execution rhythm.
+* **Update if:** Deadlines change, new milestones are added, metrics or strategy are re-scoped.
+
+**4. Meaning & Identity ("core_meaning_identity")**
+* **Capture:** Purpose, deeper meaning, value proposition, story, identity alignment.
+* **Update if:** The mission evolves, significance changes, or new motivational framing appears.
+
+**5. Reality & Understanding ("core_reality_understanding")**
+* **Capture:** Current state, observations, environment, data, factual grounding.
+* **Update if:** The situation shifts, new data emerges, or analysis/diagnosis is revised.
+
+**6. Trust & Safeguards ("core_trust_safeguards")**
+* **Capture:** Risks, uncertainties, contingencies, protection measures, reliability.
+* **Update if:** New risks are spotted, safeguards adjusted, or confidence levels change.
+
+**7. Opportunity & Freedom ("core_opportunity_freedom")**
+* **Capture:** Options, experiments, creative paths, new possibilities, pivots.
+* **Update if:** Fresh opportunities appear, directions expand, or experiments redefine scope.
+
+**8. Power & Resources ("core_power_resources")**
+* **Capture:** Budget, tools, assets, authority, constraints, available leverage.
+* **Update if:** Resources are added or lost, tools change, authority shifts, or constraints are updated.
+
+**9. Harmony & Integration ("core_harmony_integration")**
+* **Capture:** Feedback loops, learning systems, integration points, systemic balance.
+* **Update if:** New feedback is introduced, integration flows change, or adaptation mechanisms evolve.
+
+---
 
 ## Analysis Criteria:
 
@@ -1856,6 +1732,7 @@ ${tasks
 - Long-term planning updates
 - Resource or budget discussions
 - Architectural decisions
+- **Any information touching the 9 core dimensions**
 
 ### Task-Related Indicators (Tactical):
 - Specific task mentions by name or description
@@ -1868,142 +1745,43 @@ ${tasks
 - Daily/weekly activities
 - Task dependencies or blockers
 
-## Classification Rules:
-- **strategic**: Primarily about project vision, direction, approach, or long-term planning
-- **tactical**: Primarily about specific tasks, implementation, or short-term execution
-- **mixed**: Contains both strategic and tactical elements
-- **status_update**: Simple progress reports or status updates
-- **unrelated**: Content doesn't relate to this project
-
-## Task Matching:
-Identify tasks that are likely referenced by looking for:
-- Direct title matches or very similar titles
-- Date references matching task dates
-- Description keywords that align with task content
-- Status changes mentioned for specific work
-- Dependencies or relationships between tasks
-
 ## Output JSON Structure:
-
-You MUST respond with valid JSON. Here are examples showing the VARIETY of possible outputs based on different braindump types:
-
-**Example 1: Tactical Update (task-focused, skip context)**
 \`\`\`json
 {
-  "analysis_summary": "User providing status updates on API integration and database migration tasks",
-  "braindump_classification": "tactical",
-  "context_indicators": [],
+  "analysis_summary": "Overall assessment of the braindump content",
+  "braindump_classification": "strategic|tactical|mixed|status_update|unrelated",
+  "context_indicators": ["List of strategic changes detected"],
+  "core_dimensions_touched": {
+    "core_integrity_ideals": "Complete updated paragraph or omit if not touched",
+	"core_people_bonds": "Complete updated paragraph or omit if not touched",
+	"core_goals_momentum": "Complete updated paragraph or omit if not touched",
+	"core_meaning_identity": "Complete updated paragraph or omit if not touched",
+	"core_reality_understanding": "Complete updated paragraph or omit if not touched",
+	"core_trust_safeguards": "Complete updated paragraph or omit if not touched",
+	"core_opportunity_freedom": "Complete updated paragraph or omit if not touched",
+	"core_power_resources": "Complete updated paragraph or omit if not touched",
+	"core_harmony_integration": "Complete updated paragraph or omit if not touched"
+  },
   "relevant_task_ids": ["task-abc-123", "task-def-456"],
   "task_indicators": {
-    "task-abc-123": "Mentioned completing API integration",
-    "task-def-456": "Referenced database migration in progress"
+    "task-abc-123": "How this task was referenced"
   },
   "new_tasks_detected": false,
-  "confidence_level": "high",
-  "processing_recommendation": {
-    "skip_context": true,
-    "skip_tasks": false,
-    "reason": "Only task updates, no strategic changes detected"
-  }
-}
-\`\`\`
-
-**Example 2: Strategic Update (context-focused, update context)**
-\`\`\`json
-{
-  "analysis_summary": "User pivoting product strategy from B2C to B2B enterprise market",
-  "braindump_classification": "strategic",
-  "context_indicators": [
-    "Major strategic pivot from B2C to B2B mentioned",
-    "New enterprise requirements: SSO, multi-tenancy, admin controls",
-    "Timeline extension by 2 months",
-    "Scope change to focus on enterprise features"
-  ],
-  "relevant_task_ids": [],
-  "task_indicators": {},
-  "new_tasks_detected": true,
-  "confidence_level": "high",
+  "confidence_level": "high|medium|low",
   "processing_recommendation": {
     "skip_context": false,
+    "skip_core_dimensions": false,
     "skip_tasks": false,
-    "reason": "Strategic pivot requires context update and new task creation"
-  }
-}
-\`\`\`
-
-**Example 3: Mixed Update (both strategic and tactical)**
-\`\`\`json
-{
-  "analysis_summary": "User discussing architecture refactor while updating task completion status",
-  "braindump_classification": "mixed",
-  "context_indicators": [
-    "Architecture decision to break out authentication into microservice",
-    "New microservices approach mentioned"
-  ],
-  "relevant_task_ids": ["task-xyz-789"],
-  "task_indicators": {
-    "task-xyz-789": "Database optimization task marked complete"
-  },
-  "new_tasks_detected": true,
-  "confidence_level": "medium",
-  "processing_recommendation": {
-    "skip_context": false,
-    "skip_tasks": false,
-    "reason": "Contains both strategic architecture change and task updates"
-  }
-}
-\`\`\`
-
-**Example 4: Simple Status Update (skip both)**
-\`\`\`json
-{
-  "analysis_summary": "Generic progress update with no specific details or actionable items",
-  "braindump_classification": "status_update",
-  "context_indicators": [],
-  "relevant_task_ids": [],
-  "task_indicators": {},
-  "new_tasks_detected": false,
-  "confidence_level": "medium",
-  "processing_recommendation": {
-    "skip_context": true,
-    "skip_tasks": true,
-    "reason": "Vague status update with no actionable information"
-  }
-}
-\`\`\`
-
-**Example 5: Unrelated Content (skip all)**
-\`\`\`json
-{
-  "analysis_summary": "Content does not relate to this project's scope or objectives",
-  "braindump_classification": "unrelated",
-  "context_indicators": [],
-  "relevant_task_ids": [],
-  "task_indicators": {},
-  "new_tasks_detected": false,
-  "confidence_level": "high",
-  "processing_recommendation": {
-    "skip_context": true,
-    "skip_tasks": true,
-    "reason": "Content is not related to this project"
+    "reason": "Explanation of processing decision"
   }
 }
 \`\`\`
 
 **CRITICAL INSTRUCTIONS:**
-- Choose the classification that BEST matches the braindump content
-- Set skip_context to TRUE when context doesn't need updating
-- Set skip_tasks to TRUE only for vague status updates with no task information
-- Arrays and objects should be EMPTY [] or {} if nothing found
-- Be CONSERVATIVE: when uncertain, process rather than skip
-- The examples show the VARIETY of outputs - your response should match the actual content
-
-**Important Rules:**
-- braindump_classification: MUST be one of: "strategic", "tactical", "mixed", "status_update", "unrelated"
-- new_tasks_detected: MUST be true or false (boolean)
-- confidence_level: MUST be one of: "high", "medium", "low"
-- skip_context: MUST be true or false (boolean)
-- skip_tasks: MUST be true or false (boolean)
+- Check if braindump touches ANY of the 9 core dimensions
+- Set skip_core_dimensions to FALSE if any dimension is touched
+- Only mark dimensions in core_dimensions_touched if they have substantive updates
+- Be thorough in detecting indirect references to dimensions
 
 Analyze the braindump and respond with ONLY the JSON, no other text.`;
 	}

@@ -217,6 +217,28 @@ export interface PreparatoryAnalysisResult {
 	/** List of strategic elements found that suggest context update needed */
 	context_indicators: string[];
 
+	/** Core project dimensions extracted from the braindump */
+	core_dimensions_touched?: {
+		/** Goals, standards, definitions of "done/right," quality bars, non-negotiables */
+		core_integrity_ideals?: string;
+		/** People, teams, roles, relationships, power dynamics, communication flows */
+		core_people_bonds?: string;
+		/** Milestones, deliverables, metrics, progress indicators, execution rhythm */
+		core_goals_momentum?: string;
+		/** Purpose, deeper meaning, value proposition, story, identity alignment */
+		core_meaning_identity?: string;
+		/** Current state, observations, environment, data, factual grounding */
+		core_reality_understanding?: string;
+		/** Risks, uncertainties, contingencies, protection measures, reliability */
+		core_trust_safeguards?: string;
+		/** Options, experiments, creative paths, new possibilities, pivots */
+		core_opportunity_freedom?: string;
+		/** Budget, tools, assets, authority, constraints, available leverage */
+		core_power_resources?: string;
+		/** Feedback loops, learning systems, integration points, systemic balance */
+		core_harmony_integration?: string;
+	};
+
 	/** Array of task IDs that are referenced or need updating */
 	relevant_task_ids: string[];
 
@@ -233,6 +255,8 @@ export interface PreparatoryAnalysisResult {
 	processing_recommendation: {
 		/** Whether to skip context processing */
 		skip_context: boolean;
+		/** Whether to skip core dimensions processing */
+		skip_core_dimensions: boolean;
 		/** Whether to skip task processing */
 		skip_tasks: boolean;
 		/** Explanation for any skip recommendations */

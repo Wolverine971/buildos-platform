@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-17T16:39:19.953Z
+// Generated on: 2025-10-20T20:12:32.842Z
 
 export type Json =
   | string
@@ -774,6 +774,16 @@ export type DatabaseSchema = {
     calendar_settings: Json | null;
     calendar_sync_enabled: boolean | null;
     context: string | null;
+    core_context_descriptions: Json | null;
+    core_goals_momentum: string | null;
+    core_harmony_integration: string | null;
+    core_integrity_ideals: string | null;
+    core_meaning_identity: string | null;
+    core_opportunity_freedom: string | null;
+    core_people_bonds: string | null;
+    core_power_resources: string | null;
+    core_reality_understanding: string | null;
+    core_trust_safeguards: string | null;
     created_at: string;
     description: string | null;
     end_date: string | null;

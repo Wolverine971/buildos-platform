@@ -31,50 +31,84 @@
 >
 	<svelte:fragment slot="icon">
 		<div class="relative">
-			<div class="absolute inset-0 bg-primary-500 rounded-full blur-xl opacity-30"></div>
-			<div class="relative bg-gradient-to-br from-primary-500 to-violet-500 rounded-full p-4">
-				<Sparkles class="w-8 h-8 text-white" />
+			<!-- Animated glow effect -->
+			<div
+				class="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-blue-600/30 rounded-2xl blur-2xl opacity-60 animate-pulse"
+				style="animation-duration: 3s;"
+			></div>
+			<!-- Brain-bolt video with glass effect -->
+			<div
+				class="relative rounded-2xl bg-gradient-to-br from-white/40 to-gray-50/40 dark:from-gray-800/40 dark:to-gray-900/40 p-3 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-xl"
+			>
+				<video
+					autoplay
+					loop
+					muted
+					playsinline
+					class="w-20 h-20 object-contain rounded-xl"
+					aria-label="BuildOS brain animation"
+				>
+					<source
+						src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
+						type="video/mp4"
+					/>
+					<!-- Fallback -->
+					<div
+						class="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-4 flex items-center justify-center"
+					>
+						<Sparkles class="w-10 h-10 text-white" />
+					</div>
+				</video>
 			</div>
 		</div>
 	</svelte:fragment>
 
 	<svelte:fragment slot="description">
-		<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+		<p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
 			Let's personalize your experience. Share a bit about yourself, your goals, and how you
-			work to unlock AI-powered insights tailored just for you.
+			work to unlock <span class="font-semibold text-gray-900 dark:text-white"
+				>AI-powered insights</span
+			> tailored just for you.
 		</p>
 	</svelte:fragment>
 
 	<svelte:fragment slot="features">
-		<div class="space-y-3 mb-8">
-			<div class="flex items-start space-x-3">
+		<div class="space-y-4 mb-8">
+			<div class="flex items-start space-x-3 group">
 				<div
-					class="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mt-0.5"
+					class="flex-shrink-0 w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
 				>
-					<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+					<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
 				</div>
-				<p class="text-sm text-gray-600 dark:text-gray-300">
-					Get personalized daily briefs aligned with your goals
+				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+					Get <span class="font-semibold text-gray-900 dark:text-white"
+						>personalized daily briefs</span
+					> aligned with your goals
 				</p>
 			</div>
-			<div class="flex items-start space-x-3">
+			<div class="flex items-start space-x-3 group">
 				<div
-					class="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mt-0.5"
+					class="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
 				>
-					<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+					<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
 				</div>
-				<p class="text-sm text-gray-600 dark:text-gray-300">
-					AI understands your work style and preferences
+				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+					AI understands your <span class="font-semibold text-gray-900 dark:text-white"
+						>work style</span
+					> and preferences
 				</p>
 			</div>
-			<div class="flex items-start space-x-3">
+			<div class="flex items-start space-x-3 group">
 				<div
-					class="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mt-0.5"
+					class="flex-shrink-0 w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
 				>
-					<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+					<div class="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
 				</div>
-				<p class="text-sm text-gray-600 dark:text-gray-300">
-					Smart task suggestions based on your context
+				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+					<span class="font-semibold text-gray-900 dark:text-white"
+						>Smart task suggestions</span
+					>
+					based on your context
 				</p>
 			</div>
 		</div>
@@ -88,7 +122,7 @@
 			fullWidth
 			icon={User}
 			iconPosition="left"
-			class="bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+			class="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-none font-semibold"
 		>
 			Start Personalization
 			<ChevronRight class="w-4 h-4 ml-1" />
@@ -99,7 +133,7 @@
 			variant="ghost"
 			size="lg"
 			fullWidth
-			class="text-gray-600 dark:text-gray-400"
+			class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200"
 		>
 			I'll do this later
 		</Button>

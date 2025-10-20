@@ -11,33 +11,45 @@
 		isInGracePeriod
 	} from '$lib/config/trial';
 
-	export let user: {
-		trial_ends_at?: string | null;
-		subscription_status?: string;
-	};
+	interface Props {
+		user: {
+			trial_ends_at?: string | null;
+			subscription_status?: string;
+		};
+	}
+
+	let { user }: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
-	let dismissed = false;
+	// Check if previously dismissed this session
+	let dismissed = $state(
+		typeof window !== 'undefined'
+			? sessionStorage.getItem('trial_banner_dismissed') === 'true'
+			: false
+	);
 
-	$: trialEndDate = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-	$: daysLeft = trialEndDate ? getDaysUntilTrialEnd(trialEndDate) : 0;
-	$: inTrial = isInTrial(user);
-	$: inGracePeriod = isInGracePeriod(user);
-	$: showBanner =
-		!dismissed && (inTrial || inGracePeriod) && user.subscription_status !== 'active';
+	let trialEndDate = $derived(user.trial_ends_at ? new Date(user.trial_ends_at) : null);
+	let daysLeft = $derived(trialEndDate ? getDaysUntilTrialEnd(trialEndDate) : 0);
+	let inTrial = $derived(isInTrial(user));
+	let inGracePeriod = $derived(isInGracePeriod(user));
+	let showBanner = $derived(
+		!dismissed && (inTrial || inGracePeriod) && user.subscription_status !== 'active'
+	);
 
-	$: bannerClass = {
+	let bannerClass = $derived({
 		warning: daysLeft <= 3 || inGracePeriod,
 		info: daysLeft > 3 && daysLeft <= 7,
 		normal: daysLeft > 7
-	};
+	});
 
-	$: message = inGracePeriod
-		? TRIAL_CONFIG.MESSAGES.gracePeriod(daysLeft)
-		: daysLeft <= 3
-			? TRIAL_CONFIG.MESSAGES.trialExpiringSoon(daysLeft)
-			: TRIAL_CONFIG.MESSAGES.trialActive(daysLeft);
+	let message = $derived(
+		inGracePeriod
+			? TRIAL_CONFIG.MESSAGES.gracePeriod(daysLeft)
+			: daysLeft <= 3
+				? TRIAL_CONFIG.MESSAGES.trialExpiringSoon(daysLeft)
+				: TRIAL_CONFIG.MESSAGES.trialActive(daysLeft)
+	);
 
 	function handleSubscribe() {
 		goto('/pricing');
@@ -49,11 +61,6 @@
 		if (typeof window !== 'undefined') {
 			sessionStorage.setItem('trial_banner_dismissed', 'true');
 		}
-	}
-
-	// Check if previously dismissed this session
-	if (typeof window !== 'undefined') {
-		dismissed = sessionStorage.getItem('trial_banner_dismissed') === 'true';
 	}
 </script>
 

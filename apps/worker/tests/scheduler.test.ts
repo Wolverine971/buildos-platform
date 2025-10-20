@@ -32,13 +32,13 @@ describe("Brief Scheduler", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
         is_active: true,
       };
 
       const nextRun = calculateNextRunTime(
         preference as UserBriefPreference,
         now,
+        "UTC",
       );
 
       // Should schedule for tomorrow at 09:00 since 09:00 today has passed
@@ -51,13 +51,13 @@ describe("Brief Scheduler", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
         is_active: true,
       };
 
       const nextRun = calculateNextRunTime(
         preference as UserBriefPreference,
         now,
+        "UTC",
       );
 
       // Should schedule for today at 09:00 since it hasn't passed yet
@@ -70,13 +70,13 @@ describe("Brief Scheduler", () => {
         user_id: "user-1",
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "America/New_York",
         is_active: true,
       };
 
       const nextRun = calculateNextRunTime(
         preference as UserBriefPreference,
         now,
+        "America/New_York",
       );
 
       // Should schedule for today at 09:00 EST (14:00 UTC)
@@ -90,13 +90,13 @@ describe("Brief Scheduler", () => {
         frequency: "weekly",
         day_of_week: 1, // Monday
         time_of_day: "09:00:00",
-        timezone: "UTC",
         is_active: true,
       };
 
       const nextRun = calculateNextRunTime(
         preference as UserBriefPreference,
         now,
+        "UTC",
       );
 
       // Should schedule for next Monday since 09:00 today has passed
@@ -109,13 +109,13 @@ describe("Brief Scheduler", () => {
         user_id: "user-1",
         frequency: null,
         time_of_day: null,
-        timezone: null,
         is_active: true,
       };
 
       const nextRun = calculateNextRunTime(
         preference as UserBriefPreference,
         now,
+        "UTC",
       );
 
       // Should use defaults: daily frequency, 09:00:00 time, UTC timezone
@@ -128,7 +128,6 @@ describe("Brief Scheduler", () => {
       const preference = {
         frequency: "daily",
         time_of_day: "09:00:00",
-        timezone: "UTC",
         day_of_week: 1,
       };
 
@@ -202,14 +201,10 @@ export async function testSchedulerIntegration() {
   );
 
   // Test 2: Verify timezone handling
-  const easternPreference = {
-    ...preference,
-    timezone: "America/New_York",
-  };
-
   const easternNextRun = calculateNextRunTime(
-    easternPreference as UserBriefPreference,
+    preference as UserBriefPreference,
     mockNow,
+    "America/New_York",
   );
   console.log("Eastern timezone next run:", easternNextRun);
 

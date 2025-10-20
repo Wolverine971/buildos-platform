@@ -60,7 +60,8 @@ function createTimeBlocksStore() {
 	const internalStore = writable<TimeBlocksState>(initialState);
 	let currentState = initialState;
 
-	internalStore.subscribe((value) => {
+	// Store unsubscribe function to prevent memory leak
+	const unsubscribe = internalStore.subscribe((value) => {
 		currentState = value;
 	});
 
@@ -393,6 +394,12 @@ function createTimeBlocksStore() {
 				selectedDateRange: createDefaultDateRange(),
 				slotFinderConfig: loadSlotFinderConfig()
 			});
+		},
+
+		destroy() {
+			if (unsubscribe) {
+				unsubscribe();
+			}
 		}
 	};
 }
