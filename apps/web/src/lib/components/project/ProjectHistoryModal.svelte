@@ -54,6 +54,7 @@
 
 	// Field configuration for display
 	const fieldConfig: Record<string, { label: string; priority: number }> = {
+		// Core project fields
 		name: { label: 'Project Name', priority: 1 },
 		description: { label: 'Description', priority: 2 },
 		context: { label: 'Project Context', priority: 0 }, // Highest priority
@@ -61,7 +62,27 @@
 		status: { label: 'Status', priority: 2 },
 		start_date: { label: 'Start Date', priority: 3 },
 		end_date: { label: 'End Date', priority: 3 },
-		tags: { label: 'Tags', priority: 3 }
+		tags: { label: 'Tags', priority: 3 },
+
+		// Core dimension fields (extracted from brain dumps via preparatory analysis)
+		core_integrity_ideals: { label: 'Integrity & Ideals', priority: 4 },
+		core_people_bonds: { label: 'People & Bonds', priority: 4 },
+		core_goals_momentum: { label: 'Goals & Momentum', priority: 4 },
+		core_meaning_identity: { label: 'Meaning & Identity', priority: 4 },
+		core_reality_understanding: { label: 'Reality & Understanding', priority: 4 },
+		core_trust_safeguards: { label: 'Trust & Safeguards', priority: 4 },
+		core_opportunity_freedom: { label: 'Opportunity & Freedom', priority: 4 },
+		core_power_resources: { label: 'Power & Resources', priority: 4 },
+		core_harmony_integration: { label: 'Harmony & Integration', priority: 4 },
+
+		// Calendar fields
+		calendar_color_id: { label: 'Calendar Color', priority: 5 },
+		calendar_settings: { label: 'Calendar Settings', priority: 5 },
+		calendar_sync_enabled: { label: 'Calendar Sync', priority: 5 },
+
+		// Metadata fields
+		source: { label: 'Source', priority: 5 },
+		source_metadata: { label: 'Source Metadata', priority: 5 }
 	};
 
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;

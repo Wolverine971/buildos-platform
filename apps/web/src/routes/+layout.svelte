@@ -57,30 +57,37 @@
 		initProjectSynthesisNotificationBridge,
 		cleanupProjectSynthesisNotificationBridge
 	} from '$lib/services/project-synthesis-notification.bridge';
+	import { backgroundJobs } from '$lib/stores/backgroundJobs';
+	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
 
-	export let data: LayoutData;
+	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
+	let { data }: { data: LayoutData } = $props();
 
-	// Pre-load components that are commonly used
-	let OnboardingModal: any = null;
-	let ToastContainer: any = null;
-	let toastService: any = null;
-	let PaymentWarning: any = null;
-	let TrialBanner: any = null;
-	let BackgroundJobIndicator: any = null;
+	// Pre-load components that are commonly used - wrapped in $state for reactivity
+	let OnboardingModal = $state<any>(null);
+	let ToastContainer = $state<any>(null);
+	let toastService = $state<any>(null);
+	let PaymentWarning = $state<any>(null);
+	let TrialBanner = $state<any>(null);
+	let BackgroundJobIndicator = $state<any>(null);
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
-	let currentRouteId = '';
-	let routeBasedState = {
+	let currentRouteId = $state('');
+	let routeBasedState = $state({
 		showNavigation: true,
 		showFooter: true,
 		needsOnboarding: false,
 		showOnboardingModal: false
-	};
+	});
 
-	// Simplified state management
-	let navigationElement: HTMLElement | null = null;
-	let modalElement: HTMLElement | null = null;
-	let animatingDismiss = false;
+	// Simplified state management - wrapped in $state for reactivity
+	let navigationElement = $state<HTMLElement | null>(null);
+	let modalElement = $state<HTMLElement | null>(null);
+	let animatingDismiss = $state(false);
+
+	// FIXED: Store cleanup functions to prevent memory leaks
+	let pwaCleanup = $state<(() => void) | void>(null);
+	let installPromptCleanup = $state<(() => void) | void>(null);
 
 	// Create supabase client once and memoize
 	const supabase = browser ? createSupabaseBrowser() : null;
@@ -88,64 +95,72 @@
 		setContext('supabase', supabase);
 	}
 
-	// PERFORMANCE: Reactive data with memoization
-	$: user = data.user;
-	$: completedOnboarding = data.completedOnboarding;
-	$: onboardingProgress = data.onboardingProgress;
-	$: paymentWarnings = data.paymentWarnings || [];
-	$: trialStatus = data.trialStatus;
-	$: isReadOnly = data.isReadOnly || false;
+	// PERFORMANCE: Reactive data with memoization - converted to $derived runes
+	let user = $derived(data.user);
+	let completedOnboarding = $derived(data.completedOnboarding);
+	let onboardingProgress = $derived(data.onboardingProgress);
+	let paymentWarnings = $derived(data.paymentWarnings || []);
+	let trialStatus = $derived(data.trialStatus);
+	let isReadOnly = $derived(data.isReadOnly || false);
 
-	// PERFORMANCE: Only recalculate route-dependent values when route actually changes
-	$: if ($page.route?.id !== currentRouteId && browser) {
-		currentRouteId = $page.route?.id || '';
+	// PERFORMANCE: Only recalculate route-dependent values when route actually changes - converted to $effect
+	$effect(() => {
+		if ($page.route?.id !== currentRouteId && browser) {
+			currentRouteId = $page.route?.id || '';
 
-		const newShowNavigation = !currentRouteId.startsWith('/auth');
-		const newShowFooter = !currentRouteId.startsWith('/auth');
-		const newNeedsOnboarding = Boolean(user && !completedOnboarding);
+			const newShowNavigation = !currentRouteId.startsWith('/auth');
+			const newShowFooter = !currentRouteId.startsWith('/auth');
+			const newNeedsOnboarding = Boolean(user && !completedOnboarding);
 
-		// Calculate onboarding modal state
-		const isHomePage = $page?.url?.pathname === '/';
-		const forceOnboarding = $page?.url?.searchParams.get('onboarding') === 'true';
-		const newShowOnboardingModal =
-			newNeedsOnboarding &&
-			isHomePage &&
-			(forceOnboarding || (onboardingProgress < 25 && !checkModalDismissed())) &&
-			!animatingDismiss;
+			// Calculate onboarding modal state
+			const isHomePage = $page?.url?.pathname === '/';
+			const forceOnboarding = $page?.url?.searchParams.get('onboarding') === 'true';
+			const newShowOnboardingModal =
+				newNeedsOnboarding &&
+				isHomePage &&
+				(forceOnboarding || (onboardingProgress < 25 && !checkModalDismissed())) &&
+				!animatingDismiss;
 
-		// Only update state if something actually changed
-		if (
-			routeBasedState.showNavigation !== newShowNavigation ||
-			routeBasedState.showFooter !== newShowFooter ||
-			routeBasedState.needsOnboarding !== newNeedsOnboarding ||
-			routeBasedState.showOnboardingModal !== newShowOnboardingModal
-		) {
-			routeBasedState = {
-				showNavigation: newShowNavigation,
-				showFooter: newShowFooter,
-				needsOnboarding: newNeedsOnboarding,
-				showOnboardingModal: newShowOnboardingModal
-			};
+			// Only update state if something actually changed
+			if (
+				routeBasedState.showNavigation !== newShowNavigation ||
+				routeBasedState.showFooter !== newShowFooter ||
+				routeBasedState.needsOnboarding !== newNeedsOnboarding ||
+				routeBasedState.showOnboardingModal !== newShowOnboardingModal
+			) {
+				routeBasedState = {
+					showNavigation: newShowNavigation,
+					showFooter: newShowFooter,
+					needsOnboarding: newNeedsOnboarding,
+					showOnboardingModal: newShowOnboardingModal
+				};
+			}
+
+			// Clean up onboarding URL parameter after handling
+			if (forceOnboarding && browser) {
+				const url = new URL($page.url);
+				url.searchParams.delete('onboarding');
+				replaceState(url.toString(), {});
+			}
 		}
+	});
 
-		// Clean up onboarding URL parameter after handling
-		if (forceOnboarding && browser) {
-			const url = new URL($page.url);
-			url.searchParams.delete('onboarding');
-			replaceState(url.toString(), {});
-		}
-	}
-
-	// Destructure for template use
-	$: ({ showNavigation, showFooter, needsOnboarding, showOnboardingModal } = routeBasedState);
+	// Destructure for template use - these variables are derived from routeBasedState
+	let showNavigation = $derived(routeBasedState.showNavigation);
+	let showFooter = $derived(routeBasedState.showFooter);
+	let needsOnboarding = $derived(routeBasedState.needsOnboarding);
+	let showOnboardingModal = $derived(routeBasedState.showOnboardingModal);
 
 	// PERFORMANCE: Load authenticated resources with better caching
-	let resourcesLoadPromise: Promise<void> | null = null;
-	let resourcesLoaded = false;
+	let resourcesLoadPromise = $state<Promise<void> | null>(null);
+	let resourcesLoaded = $state(false);
 
-	$: if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
-		resourcesLoadPromise = loadAuthenticatedResources();
-	}
+	// Convert to $effect - load resources when user becomes available
+	$effect(() => {
+		if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
+			resourcesLoadPromise = loadAuthenticatedResources();
+		}
+	});
 
 	async function loadAuthenticatedResources(): Promise<void> {
 		if (resourcesLoaded) return;
@@ -199,8 +214,8 @@
 	}
 
 	// PERFORMANCE: Debounced event handlers to prevent rapid fire
-	let briefCompleteTimeout: number | null = null;
-	let briefNotificationTimeout: number | null = null;
+	let briefCompleteTimeout = $state<number | null>(null);
+	let briefNotificationTimeout = $state<number | null>(null);
 
 	function handleBriefComplete() {
 		if (briefCompleteTimeout) return;
@@ -269,7 +284,7 @@
 	}
 
 	// PERFORMANCE: Initialize visitor tracking with better error handling and timing
-	let visitorTrackingInitialized = false;
+	let visitorTrackingInitialized = $state(false);
 
 	function initializeVisitorTracking() {
 		if (visitorTrackingInitialized || !browser) return;
@@ -297,9 +312,9 @@
 	onMount(() => {
 		if (!browser) return;
 
-		// Initialize PWA enhancements
-		initializePWAEnhancements();
-		setupInstallPrompt();
+		// FIXED: Store cleanup functions to prevent memory leaks
+		pwaCleanup = initializePWAEnhancements();
+		installPromptCleanup = setupInstallPrompt();
 
 		// Initialize notification bridges
 		initBrainDumpNotificationBridge();
@@ -363,12 +378,20 @@
 			);
 			// Cleanup navigation store subscription
 			unsubscribeNav();
+
+			// FIXED: Call PWA cleanup functions
+			if (typeof pwaCleanup === 'function') pwaCleanup();
+			if (typeof installPromptCleanup === 'function') installPromptCleanup();
 		};
 	});
 
 	onDestroy(() => {
 		// FIXED: Comprehensive cleanup to prevent memory leaks
 		if (browser) {
+			// FIXED: Destroy stores to prevent subscription leaks
+			backgroundJobs.destroy();
+			timeBlocksStore.destroy?.();
+
 			// Cleanup notification bridges
 			cleanupBrainDumpNotificationBridge();
 			cleanupPhaseGenerationNotificationBridge();
@@ -392,13 +415,13 @@
 		}
 	});
 
-	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders
-	$: navigationProps = { user, completedOnboarding, onboardingProgress };
-	$: footerProps = { user };
-	$: onboardingModalProps = {
+	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders - converted to $derived.by()
+	let navigationProps = $derived.by(() => ({ user, completedOnboarding, onboardingProgress }));
+	let footerProps = $derived.by(() => ({ user }));
+	let onboardingModalProps = $derived.by(() => ({
 		isOpen: showOnboardingModal || animatingDismiss,
 		onDismiss: handleModalDismiss
-	};
+	}));
 
 	// Handle payment warning dismissal
 	async function handlePaymentWarningDismiss(event: CustomEvent) {

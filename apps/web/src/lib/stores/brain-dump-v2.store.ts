@@ -78,6 +78,9 @@ export interface SingleBrainDumpState {
 		jobId: string | null;
 		autoAcceptEnabled: boolean;
 		streaming: {
+			analysisStatus?: 'processing' | 'completed' | 'error' | 'not_needed';
+			analysisProgress?: string;
+			analysisResult?: any;
 			contextStatus: 'pending' | 'processing' | 'completed' | 'error';
 			tasksStatus: 'pending' | 'processing' | 'completed' | 'error';
 			contextResult: any;
@@ -221,6 +224,9 @@ export interface UnifiedBrainDumpState {
 
 		// Dual processing specific
 		streaming: {
+			analysisStatus?: 'processing' | 'completed' | 'error' | 'not_needed';
+			analysisProgress?: string;
+			analysisResult?: any;
 			contextStatus: 'pending' | 'processing' | 'completed' | 'error';
 			tasksStatus: 'pending' | 'processing' | 'completed' | 'error';
 			contextResult: any;
@@ -1143,6 +1149,17 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					processing: {
 						...brainDump.processing,
 						streaming: {
+							analysisStatus:
+								streaming.analysisStatus ??
+								brainDump.processing.streaming?.analysisStatus ??
+								'not_needed',
+							analysisProgress:
+								streaming.analysisProgress ??
+								brainDump.processing.streaming?.analysisProgress ??
+								'',
+							analysisResult:
+								streaming.analysisResult ??
+								brainDump.processing.streaming?.analysisResult,
 							contextStatus:
 								streaming.contextStatus ??
 								brainDump.processing.streaming?.contextStatus ??
@@ -1746,6 +1763,16 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 				processing: {
 					...state.processing,
 					streaming: {
+						analysisStatus:
+							streaming.analysisStatus ??
+							state.processing.streaming?.analysisStatus ??
+							'not_needed',
+						analysisProgress:
+							streaming.analysisProgress ??
+							state.processing.streaming?.analysisProgress ??
+							'',
+						analysisResult:
+							streaming.analysisResult ?? state.processing.streaming?.analysisResult,
 						contextStatus:
 							streaming.contextStatus ??
 							state.processing.streaming?.contextStatus ??
@@ -1776,6 +1803,9 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 				processing: {
 					...state.processing,
 					streaming: {
+						analysisStatus: 'not_needed',
+						analysisProgress: '',
+						analysisResult: null,
 						contextStatus: 'pending',
 						tasksStatus: 'pending',
 						contextResult: null,

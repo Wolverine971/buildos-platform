@@ -1679,7 +1679,7 @@ Analyze the braindump to identify:
 3. Which existing tasks are referenced or need updating
 4. The nature of the braindump content
 
-## Core Project Dimensions to Monitor:
+## Core Project Meta Dimensions to Monitor:
 
 **1. Integrity & Ideals ("core_integrity_ideals")**
 * **Capture:** Goals, standards, definitions of “done/right,” quality bars, non-negotiables.
@@ -1732,7 +1732,7 @@ Analyze the braindump to identify:
 - Long-term planning updates
 - Resource or budget discussions
 - Architectural decisions
-- **Any information touching the 9 core dimensions**
+- **Any information touching the 9 core meta dimensions**
 
 ### Task-Related Indicators (Tactical):
 - Specific task mentions by name or description
@@ -1778,10 +1778,14 @@ Analyze the braindump to identify:
 \`\`\`
 
 **CRITICAL INSTRUCTIONS:**
-- Check if braindump touches ANY of the 9 core dimensions
+- Check if braindump touches ANY of the 9 core meta dimensions
 - Set skip_core_dimensions to FALSE if any dimension is touched
-- Only mark dimensions in core_dimensions_touched if they have substantive updates
+- Only mark dimensions in core_dimensions_touched if they have SUBSTANTIVE STRATEGIC updates
 - Be thorough in detecting indirect references to dimensions
+- **FILTER FOR STRATEGY**: Only capture strategic-level information, not execution details
+  - Include: "Shifting focus to weak areas due to timeline pressure and diagnostic results"
+  - Exclude: "Study weak areas 1 hour daily", "Review all 12 labs", "Take practice tests Saturday"
+- Task-level execution details belong in tasks table, not in core dimensions
 
 Analyze the braindump and respond with ONLY the JSON, no other text.`;
 	}

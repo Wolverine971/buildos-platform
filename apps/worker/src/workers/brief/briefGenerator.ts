@@ -5,6 +5,7 @@ import { BriefJobData } from "../shared/queueUtils";
 import { format, parseISO } from "date-fns";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import type { Database } from "@buildos/shared-types";
+import type { TimeBlock, TimeBlockSuggestion } from "@buildos/shared-types";
 import { getHoliday } from "../../lib/utils/holiday-finder";
 import { SmartLLMService } from "../../lib/services/smart-llm-service";
 import {
@@ -31,6 +32,19 @@ export interface ProjectWithRelations extends Project {
   notes: Note[];
   phases: Phase[];
   phaseTasks: PhaseTask[];
+}
+
+// Time block integration types
+export interface NormalizedTimeBlockSuggestion extends TimeBlockSuggestion {
+  sourceTimeBlockId: string;
+  sourceTimeBlockDuration: number;
+  confidence: number;
+}
+
+export interface TimeBlockData {
+  projectTimeBlocks: Map<string, TimeBlock[]>;
+  unscheduledBlocks: TimeBlock[];
+  totalMinutesAllocated: number;
 }
 
 // Helper function to get the start and end of a day in a specific timezone
@@ -62,6 +76,178 @@ function getDateInTimezone(timestamp: string | Date, timezone: string): string {
   const date = typeof timestamp === "string" ? parseISO(timestamp) : timestamp;
   const zonedDate = utcToZonedTime(date, timezone);
   return format(zonedDate, "yyyy-MM-dd");
+}
+
+// Layer 1: Fetch and organize timeblocks for the brief date
+async function getUserTimeBlocksForDate(
+  userId: string,
+  briefDate: string,
+  timezone: string,
+): Promise<TimeBlockData> {
+  // Get start/end of day in user's timezone
+  const { start: dayStart, end: dayEnd } = getDayBoundsInTimezone(
+    briefDate,
+    timezone,
+  );
+
+  // Fetch timeblocks for the day (only synced blocks)
+  const { data: timeBlocks, error } = await supabase
+    .from("time_blocks")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("sync_status", "synced")
+    .gte("start_time", dayStart.toISOString())
+    .lte("end_time", dayEnd.toISOString());
+
+  if (error) {
+    console.warn(
+      `Failed to fetch timeblocks for user ${userId}: ${error.message}`,
+    );
+    // Return empty result instead of throwing - timeblocks are optional
+    return {
+      projectTimeBlocks: new Map(),
+      unscheduledBlocks: [],
+      totalMinutesAllocated: 0,
+    };
+  }
+
+  if (!timeBlocks || timeBlocks.length === 0) {
+    return {
+      projectTimeBlocks: new Map(),
+      unscheduledBlocks: [],
+      totalMinutesAllocated: 0,
+    };
+  }
+
+  // Organize by project vs. unscheduled
+  const projectTimeBlocks = new Map<string, TimeBlock[]>();
+  const unscheduledBlocks: TimeBlock[] = [];
+
+  for (const block of timeBlocks as TimeBlock[]) {
+    if (block.block_type === "build" || !block.project_id) {
+      unscheduledBlocks.push(block);
+    } else {
+      if (!projectTimeBlocks.has(block.project_id)) {
+        projectTimeBlocks.set(block.project_id, []);
+      }
+      projectTimeBlocks.get(block.project_id)!.push(block);
+    }
+  }
+
+  // Calculate total allocated time
+  const totalMinutesAllocated = timeBlocks.reduce(
+    (sum, block) => sum + (block.duration_minutes || 0),
+    0,
+  );
+
+  return {
+    projectTimeBlocks,
+    unscheduledBlocks,
+    totalMinutesAllocated,
+  };
+}
+
+// Layer 2: Capacity Analysis
+interface ProjectCapacityAnalysis {
+  projectId: string;
+  totalTimeBlocksMinutes: number;
+  blockCount: number;
+  tasksForToday: TaskWithCalendarEvent[];
+  capacityStatus: "aligned" | "underallocated" | "overallocated";
+  capacityRatio: number;
+  timeBlocksWithSuggestions: TimeBlock[];
+  averageBlockDuration: number;
+}
+
+function buildProjectCapacityAnalysis(
+  projectId: string,
+  tasksForToday: TaskWithCalendarEvent[],
+  timeBlocksForProject: TimeBlock[],
+): ProjectCapacityAnalysis {
+  const totalMinutes = timeBlocksForProject.reduce(
+    (sum, block) => sum + (block.duration_minutes || 0),
+    0,
+  );
+
+  const blockCount = timeBlocksForProject.length;
+  const avgBlockDuration = blockCount > 0 ? totalMinutes / blockCount : 0;
+
+  // Simple capacity heuristic: 1 task ≈ 60 minutes average effort
+  const taskEffortMinutes = tasksForToday.length * 60;
+  const capacityRatio =
+    taskEffortMinutes > 0 ? totalMinutes / taskEffortMinutes : 1;
+
+  // Determine status
+  let capacityStatus: "aligned" | "underallocated" | "overallocated" =
+    "aligned";
+  if (capacityRatio < 0.7) capacityStatus = "underallocated"; // Only 70% of time needed
+  if (capacityRatio > 1.3) capacityStatus = "overallocated"; // 130%+ time available
+
+  const timeBlocksWithSuggestions = timeBlocksForProject.filter(
+    (block) => block.ai_suggestions && block.ai_suggestions.length > 0,
+  );
+
+  return {
+    projectId,
+    totalTimeBlocksMinutes: totalMinutes,
+    blockCount,
+    tasksForToday,
+    capacityStatus,
+    capacityRatio,
+    timeBlocksWithSuggestions,
+    averageBlockDuration: avgBlockDuration,
+  };
+}
+
+interface UnscheduledBlockAnalysis {
+  totalMinutes: number;
+  blockCount: number;
+  averageBlockDuration: number;
+  suggestedTasks: NormalizedTimeBlockSuggestion[];
+}
+
+function analyzeUnscheduledBlocks(
+  unscheduledBlocks: TimeBlock[],
+): UnscheduledBlockAnalysis {
+  const totalMinutes = unscheduledBlocks.reduce(
+    (sum, block) => sum + (block.duration_minutes || 0),
+    0,
+  );
+
+  const suggestedTasks = normalizeTimeBlockSuggestions(unscheduledBlocks);
+
+  return {
+    totalMinutes,
+    blockCount: unscheduledBlocks.length,
+    averageBlockDuration:
+      unscheduledBlocks.length > 0
+        ? totalMinutes / unscheduledBlocks.length
+        : 0,
+    suggestedTasks,
+  };
+}
+
+// Layer 3: Suggestion Normalization
+function normalizeTimeBlockSuggestions(
+  timeBlocks: TimeBlock[],
+): NormalizedTimeBlockSuggestion[] {
+  const suggestions: NormalizedTimeBlockSuggestion[] = [];
+
+  for (const block of timeBlocks) {
+    if (!block.ai_suggestions || block.ai_suggestions.length === 0) continue;
+
+    for (const suggestion of block.ai_suggestions) {
+      suggestions.push({
+        ...suggestion,
+        sourceTimeBlockId: block.id,
+        sourceTimeBlockDuration: block.duration_minutes || 0,
+        confidence: suggestion.confidence ?? 0.8,
+      });
+    }
+  }
+
+  // Sort by confidence (highest first)
+  return suggestions.sort((a, b) => b.confidence - a.confidence);
 }
 
 export async function generateDailyBrief(
@@ -172,6 +358,19 @@ export async function generateDailyBrief(
 
     console.log(`📊 Found ${projects.length} projects for user ${userId}`);
 
+    // 1.5. Fetch timeblocks for the date (optional - gracefully handles if no timeblocks exist)
+    const timeBlockData = await getUserTimeBlocksForDate(
+      userId,
+      briefDateInUserTz,
+      userTimezone,
+    );
+
+    if (timeBlockData.totalMinutesAllocated > 0) {
+      console.log(
+        `⏱️  Found ${timeBlockData.projectTimeBlocks.size} projects with timeblocks, ${timeBlockData.unscheduledBlocks.length} unscheduled blocks`,
+      );
+    }
+
     // 2. Generate briefs for each project
     await updateProgress(
       dailyBrief.id,
@@ -197,6 +396,7 @@ export async function generateDailyBrief(
           project,
           briefDateInUserTz,
           userTimezone,
+          timeBlockData,
         );
         console.log(`📄 Generated brief for project: ${project.name}`);
         return projectBrief;
@@ -230,6 +430,8 @@ export async function generateDailyBrief(
       projectBriefs,
       briefDateInUserTz,
       userTimezone,
+      timeBlockData,
+      projects,
     );
     const priorityActions = extractPriorityActions(mainBriefContent);
 
@@ -250,7 +452,7 @@ export async function generateDailyBrief(
 
       try {
         const llmService = new SmartLLMService({
-          httpReferer: "https://build-os.com",
+          httpReferer: process.env.PUBLIC_APP_URL || "https://build-os.com",
           appName: "BuildOS Daily Brief Worker",
         });
 
@@ -327,13 +529,72 @@ export async function generateDailyBrief(
               ReengagementBriefPrompt.getSystemPrompt(daysSinceLastLogin),
           });
         } else {
-          // Standard analysis
+          // Standard analysis - with optional timeblock context
+          const hasTimeblocks = timeBlockData.totalMinutesAllocated > 0;
+
+          // Build time allocation context for LLM if timeblocks exist
+          let timeAllocationContext: any = undefined;
+          if (hasTimeblocks) {
+            timeAllocationContext = {
+              totalAllocatedMinutes: timeBlockData.totalMinutesAllocated,
+              projectAllocations: Array.from(
+                timeBlockData.projectTimeBlocks.entries(),
+              ).map(([projectId, blocks]) => ({
+                projectId,
+                projectName:
+                  projects.find((p) => p.id === projectId)?.name || "Unknown",
+                allocatedMinutes: blocks.reduce(
+                  (sum, b) => sum + (b.duration_minutes || 0),
+                  0,
+                ),
+                taskCount:
+                  projectBriefs.find((b) => b.project_id === projectId)
+                    ?.metadata?.todays_task_count || 0,
+                capacityStatus:
+                  projectBriefs.find((b) => b.project_id === projectId)
+                    ?.metadata?.capacity_analysis?.status || "aligned",
+                suggestionsFromBlocks: normalizeTimeBlockSuggestions(blocks)
+                  .slice(0, 2)
+                  .map((s) => ({
+                    title: s.title,
+                    reason: s.reason,
+                    project_id: s.project_id,
+                    project_name: s.project_name,
+                    priority: s.priority,
+                    estimated_minutes: s.estimated_minutes,
+                    confidence: s.confidence,
+                  })),
+              })),
+              unscheduledTimeAnalysis: {
+                totalMinutes: timeBlockData.unscheduledBlocks.reduce(
+                  (sum, b) => sum + (b.duration_minutes || 0),
+                  0,
+                ),
+                blockCount: timeBlockData.unscheduledBlocks.length,
+                suggestedTasks: normalizeTimeBlockSuggestions(
+                  timeBlockData.unscheduledBlocks,
+                )
+                  .slice(0, 3)
+                  .map((s) => ({
+                    title: s.title,
+                    reason: s.reason,
+                    project_id: s.project_id,
+                    project_name: s.project_name,
+                    priority: s.priority,
+                    estimated_minutes: s.estimated_minutes,
+                    confidence: s.confidence,
+                  })),
+              },
+            };
+          }
+
           const analysisPrompt = DailyBriefAnalysisPrompt.buildUserPrompt({
             date: briefDateInUserTz,
             timezone: userTimezone,
             mainBriefMarkdown: trimMarkdownForPrompt(mainBriefContent),
             projects: analysisProjects,
             priorityActions,
+            timeAllocationContext,
           });
 
           llmAnalysis = await llmService.generateText({
@@ -342,7 +603,8 @@ export async function generateDailyBrief(
             profile: "quality",
             temperature: 0.4,
             maxTokens: 2200,
-            systemPrompt: DailyBriefAnalysisPrompt.getSystemPrompt(),
+            systemPrompt:
+              DailyBriefAnalysisPrompt.getSystemPrompt(hasTimeblocks),
           });
         }
       } catch (analysisError) {
@@ -512,6 +774,7 @@ async function generateProjectBrief(
   project: ProjectWithRelations,
   briefDate: string,
   timezone: string,
+  timeBlockData?: TimeBlockData,
 ) {
   // Get the bounds of "today" in the user's timezone
   const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
@@ -570,6 +833,14 @@ async function generateProjectBrief(
     ? getCurrentPhaseTasks(project.tasks, project.phaseTasks, currentPhase.id)
     : [];
 
+  // Build capacity analysis if timeblocks exist
+  const projectTimeBlocks =
+    timeBlockData?.projectTimeBlocks?.get(project.id) || [];
+  const capacityAnalysis =
+    projectTimeBlocks.length > 0
+      ? buildProjectCapacityAnalysis(project.id, todaysTasks, projectTimeBlocks)
+      : null;
+
   // Generate the brief content
   const briefContent = formatProjectBrief({
     project,
@@ -605,6 +876,15 @@ async function generateProjectBrief(
           next_seven_days_task_count: nextSevenDaysTasks.length,
           recently_completed_count: recentlyCompletedTasks.length,
           recent_notes_count: recentNotes.length,
+          // Time block capacity data
+          capacity_analysis: capacityAnalysis
+            ? {
+                status: capacityAnalysis.capacityStatus,
+                allocatedMinutes: capacityAnalysis.totalTimeBlocksMinutes,
+                blockCount: capacityAnalysis.blockCount,
+                ratio: capacityAnalysis.capacityRatio,
+              }
+            : null,
         },
       },
       {
@@ -1102,10 +1382,100 @@ function mapNoteForAnalysis(note: Note, projectId: string, timezone: string) {
   };
 }
 
+// Layer 5: Presentation - Build time allocation section
+function buildTimeAllocationSection(
+  timeBlockData: TimeBlockData,
+  projectBriefs: any[],
+  projects: Project[],
+): string {
+  if (!timeBlockData || timeBlockData.totalMinutesAllocated === 0) {
+    return ""; // No timeblocks, skip section
+  }
+
+  const totalAllocated = timeBlockData.totalMinutesAllocated;
+  const totalHours = (totalAllocated / 60).toFixed(1);
+
+  let section = `## ⏱️ Time Allocation & Capacity\n\n`;
+  section += `**Total scheduled time today**: ${totalHours}h\n\n`;
+
+  // Project-specific allocations
+  section += `### By Project\n`;
+  for (const [projectId, blocks] of timeBlockData.projectTimeBlocks) {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) continue;
+
+    const projectBrief = projectBriefs.find((b) => b.project_id === projectId);
+    const allocatedMinutes = blocks.reduce(
+      (sum, b) => sum + (b.duration_minutes || 0),
+      0,
+    );
+    const allocatedHours = (allocatedMinutes / 60).toFixed(1);
+    const taskCount = projectBrief?.metadata?.todays_task_count || 0;
+
+    section += `\n**${project.name}** (${allocatedHours}h allocated)\n`;
+    section += `- Tasks for today: ${taskCount}\n`;
+
+    // Capacity indicator
+    const capacityRatio =
+      taskCount > 0 ? allocatedMinutes / (taskCount * 60) : 1;
+    if (capacityRatio < 0.7) {
+      section += `- ⚠️ **Underallocated**: Only ${(capacityRatio * 100).toFixed(0)}% of needed time\n`;
+    } else if (capacityRatio > 1.3) {
+      section += `- ✅ **Overallocated**: ${(capacityRatio * 100).toFixed(0)}% more time than needed\n`;
+    } else {
+      section += `- ✅ **Well-aligned**: Time matches workload\n`;
+    }
+
+    // Timeblock suggestions summary
+    const blocksWithSuggestions = blocks.filter(
+      (b) => b.ai_suggestions && b.ai_suggestions.length > 0,
+    );
+    if (blocksWithSuggestions.length > 0) {
+      const topSuggestions = blocksWithSuggestions
+        .flatMap((b) => b.ai_suggestions || [])
+        .slice(0, 2);
+
+      if (topSuggestions.length > 0) {
+        section += `- 💡 Suggested work: ${topSuggestions.map((s) => s.title).join(", ")}\n`;
+      }
+    }
+  }
+
+  // Unscheduled blocks
+  if (timeBlockData.unscheduledBlocks.length > 0) {
+    const unscheduledMinutes = timeBlockData.unscheduledBlocks.reduce(
+      (sum, b) => sum + (b.duration_minutes || 0),
+      0,
+    );
+    const unscheduledHours = (unscheduledMinutes / 60).toFixed(1);
+
+    section += `\n### Unscheduled Time\n`;
+    section += `- **${timeBlockData.unscheduledBlocks.length} blocks** (${unscheduledHours}h total)\n`;
+
+    const unscheduledSuggestions = normalizeTimeBlockSuggestions(
+      timeBlockData.unscheduledBlocks,
+    ).slice(0, 3);
+
+    if (unscheduledSuggestions.length > 0) {
+      section += `- **Suggested work**:\n`;
+      for (const suggestion of unscheduledSuggestions) {
+        section += `  - ${suggestion.title} (${suggestion.project_name || "general"})\n`;
+      }
+    } else {
+      section += `- This time could be allocated to projects that need more scheduled time\n`;
+    }
+  }
+
+  section += `\n`;
+  return section;
+}
+
 function generateMainBrief(
   projectBriefs: any[],
   briefDate: string,
   timezone: string,
+  timeBlockData?: TimeBlockData,
+  projects?: Project[],
 ) {
   const formattedDate = formatDate(briefDate);
 
@@ -1160,6 +1530,15 @@ function generateMainBrief(
     mainBrief += ` and **${totalRecentlyCompleted} tasks** were completed in the last 24 hours`;
   }
   mainBrief += `.\n\n`;
+
+  // Time Allocation Section (Layer 5)
+  if (timeBlockData && projects) {
+    mainBrief += buildTimeAllocationSection(
+      timeBlockData,
+      projectBriefs,
+      projects,
+    );
+  }
 
   // Overdue Alert (if any)
   if (totalOverdueTasks > 0) {

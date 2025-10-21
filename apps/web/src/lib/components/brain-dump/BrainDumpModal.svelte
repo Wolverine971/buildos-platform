@@ -44,6 +44,10 @@
 
 	const MULTI_BRAINDUMP_ENABLED = true;
 
+	// View transitions are disabled in multi-braindump mode to prevent
+	// "Unexpected duplicate view-transition-name" errors when multiple modals exist
+	const enableViewTransitions = !MULTI_BRAINDUMP_ENABLED;
+
 	// Store actions are accessed via brainDumpV2Store methods
 	const brainDumpActions = brainDumpV2Store;
 
@@ -1371,14 +1375,18 @@
 	>
 		<div
 			class="header-content"
-			data-brain-dump-header={isOpen ? true : undefined}
-			style={isOpen ? '--brain-dump-header-name: brain-dump-header' : ''}
+			data-brain-dump-header={enableViewTransitions && isOpen ? true : undefined}
+			style={enableViewTransitions && isOpen
+				? '--brain-dump-header-name: brain-dump-header'
+				: ''}
 		>
 			<div class="flex items-center">
 				<div
 					class="p-1.5 bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded-xl mr-3 overflow-hidden"
-					data-brain-dump-indicator={isOpen ? true : undefined}
-					style={isOpen ? '--brain-dump-indicator-name: brain-dump-indicator' : ''}
+					data-brain-dump-indicator={enableViewTransitions && isOpen ? true : undefined}
+					style={enableViewTransitions && isOpen
+						? '--brain-dump-indicator-name: brain-dump-indicator'
+						: ''}
 				>
 					<!-- brain-bolt animation video -->
 					{#if isOpen}

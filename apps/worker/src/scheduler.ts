@@ -63,8 +63,8 @@ async function queueBriefGeneration(
     .eq("id", userId)
     .single();
 
-  // Type assertion: timezone column exists but types haven't been regenerated yet
-  const userTimezone = (user as any)?.timezone || timezone || "UTC";
+  // Use user's timezone from database, with fallback to provided timezone, then UTC
+  const userTimezone = user?.timezone || timezone || "UTC";
 
   // Calculate the brief date based on the scheduled time in the user's timezone
   const zonedDate = utcToZonedTime(scheduledFor, userTimezone);

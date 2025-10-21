@@ -110,13 +110,17 @@ Different project types benefit from different organizational structures:
 
 The framework should serve the project, not constrain it. Start with the suggested structure, then evolve it as you learn more about what the project needs.
 
-## Project Context Guidelines:
-1. Create rich markdown document that brings anyone up to speed
-2. Use ## headers for major sections, ### for subsections
-3. Capture ALL strategic information, research, ideas, and observations
-4. Focus on the "why" and "what" - tasks will handle the "how"
-5. Make it comprehensive enough that someone new can understand the project
-6. DO NOT include task lists in the context - tasks are handled separately
+## Project Context Guidelines - Strategic Overview Only:
+1. Create rich markdown document that brings anyone up to speed on the project's STRATEGY
+2. Capture strategic information: why the project matters, what we're doing, how we're approaching it
+3. Focus on the "why", "what", and "how we think about it" - tasks will handle specific execution
+4. Make it comprehensive enough that someone new can understand the full picture
+5. DO NOT include task lists, step-by-step actions, or execution details - those go in tasks
+6. DO NOT dump every detail from the braindump - filter for strategic relevance
+7. Format as markdown (not plain text) - let the structure emerge naturally
+8. The formatting will evolve and become richer as more information is added over time
+
+**Key Filter**: If a detail is about HOW TO DO something specific (a task/action), it doesn't belong here. If it's about the strategy, approach, understanding, and challenges, it does.
 
 ## When to Create Context:
 Create context when the brain dump contains:

@@ -64,6 +64,20 @@
 	let storeState = $derived($brainDumpV2Store);
 	let autoAcceptEnabled = $derived(storeState.processing?.autoAcceptEnabled ?? false);
 
+	// Get the current brain dump from the store (for real-time streaming updates)
+	let brainDumpId = $derived(notification.data.brainDumpId);
+	let brainDumpFromStore = $derived.by(() => {
+		if (brainDumpId && storeState.activeBrainDumps) {
+			return storeState.activeBrainDumps.get(brainDumpId);
+		}
+		return null;
+	});
+
+	// Derive streaming state from store (real-time updates) with fallback to notification
+	let realtimeStreamingState = $derived(
+		brainDumpFromStore?.processing?.streaming || notification.data.streamingState
+	);
+
 	// Determine current view
 	function resolveCurrentView() {
 		const status = notification.status;
@@ -689,15 +703,19 @@
 			{/if}
 		{:else if currentView === 'processing'}
 			<!-- Processing View -->
-			{#if DualProcessingResults && notification.data.streamingState}
+			{#if DualProcessingResults && realtimeStreamingState}
 				<DualProcessingResults
 					bind:this={dualProcessingComponent}
-					contextStatus={notification.data.streamingState.contextStatus}
-					tasksStatus={notification.data.streamingState.tasksStatus}
-					contextResult={notification.data.streamingState.contextResult}
-					tasksResult={notification.data.streamingState.tasksResult}
+					analysisStatus={realtimeStreamingState.analysisStatus ?? 'not_needed'}
+					contextStatus={realtimeStreamingState.contextStatus}
+					tasksStatus={realtimeStreamingState.tasksStatus}
+					analysisResult={realtimeStreamingState.analysisResult}
+					contextResult={realtimeStreamingState.contextResult}
+					tasksResult={realtimeStreamingState.tasksResult}
 					isShortBraindump={notification.data.processingType === 'short'}
 					showContextPanel={notification.data.processingType === 'dual'}
+					showAnalysisPanel={!!notification.data.selectedProject?.id &&
+						notification.data.selectedProject.id !== 'new'}
 					isProcessing={true}
 				/>
 			{:else}

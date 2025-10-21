@@ -214,7 +214,7 @@ describe("Scheduler - calculateNextRunTime", () => {
           user_id: "user-1",
           frequency: "weekly",
           time_of_day: "09:00:00",
-  
+
           is_active: true,
           // email_daily_brief removed - now in user_notification_preferences
           day_of_week: day,
@@ -518,7 +518,6 @@ describe("Scheduler - validateUserPreference", () => {
     const preference: Partial<UserBriefPreference> = {
       frequency: "daily",
       time_of_day: "09:00:00",
-
     };
 
     const errors = validateUserPreference(preference);
@@ -695,7 +694,11 @@ describe("Scheduler - Integration Tests", () => {
         updated_at: "2025-01-01T00:00:00Z",
       };
 
-      const result = calculateNextRunTime(preference, now, "America/Los_Angeles");
+      const result = calculateNextRunTime(
+        preference,
+        now,
+        "America/Los_Angeles",
+      );
 
       expect(result).not.toBeNull();
       // 9 AM PDT = 4 PM UTC

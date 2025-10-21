@@ -71,40 +71,53 @@ export class WebhookEmailService {
     const signature = this.generateSignature(jsonPayload);
 
     try {
+      let hasTimedOut = false;
       const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        this.config.timeout!,
-      );
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        controller.abort();
+      }, this.config.timeout!);
 
-      const response = await fetch(this.config.webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Webhook-Signature": signature,
-          "X-Webhook-Timestamp": payload.timestamp,
-          "X-Source": "daily-brief-worker",
-        },
-        body: jsonPayload,
-        signal: controller.signal,
-      });
+      try {
+        const response = await fetch(this.config.webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Webhook-Signature": signature,
+            "X-Webhook-Timestamp": payload.timestamp,
+            "X-Source": "daily-brief-worker",
+          },
+          body: jsonPayload,
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "Unknown error");
-        console.error(
-          `❌ Webhook email failed: ${response.status} - ${errorText}`,
-        );
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${errorText}`,
-        };
+        // Check if timeout occurred even though fetch completed
+        if (hasTimedOut) {
+          return {
+            success: false,
+            error: "Request timed out",
+          };
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "Unknown error");
+          console.error(
+            `❌ Webhook email failed: ${response.status} - ${errorText}`,
+          );
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${errorText}`,
+          };
+        }
+
+        const result = await response.json();
+        console.log("✅ Email sent via BuildOS webhook:", result);
+        return { success: true };
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const result = await response.json();
-      console.log("✅ Email sent via BuildOS webhook:", result);
-      return { success: true };
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === "AbortError") {

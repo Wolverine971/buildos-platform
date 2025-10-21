@@ -36,7 +36,7 @@
 		expandedSection = expandedSection === key ? null : key;
 	}
 
-	// Core dimensions configuration
+	// Core dimensions configuration (static metadata only)
 	const dimensions = [
 		{
 			key: 'core_integrity_ideals',
@@ -44,78 +44,90 @@
 			icon: '🎯',
 			description: 'Goals, standards, quality bars, definitions of "done/right"',
 			placeholder:
-				'What are the success criteria? Quality standards? Non-negotiables for this project?',
-			value: $derived(core_integrity_ideals)
+				'What are the success criteria? Quality standards? Non-negotiables for this project?'
 		},
 		{
 			key: 'core_people_bonds',
 			label: 'People & Bonds',
 			icon: '👥',
 			description: 'People, teams, roles, relationships, communication flows',
-			placeholder: 'Who is involved? What are the key relationships and dynamics?',
-			value: $derived(core_people_bonds)
+			placeholder: 'Who is involved? What are the key relationships and dynamics?'
 		},
 		{
 			key: 'core_goals_momentum',
 			label: 'Goals & Momentum',
 			icon: '🚀',
 			description: 'Milestones, deliverables, metrics, progress indicators',
-			placeholder: 'What are the key milestones and delivery targets?',
-			value: $derived(core_goals_momentum)
+			placeholder: 'What are the key milestones and delivery targets?'
 		},
 		{
 			key: 'core_meaning_identity',
 			label: 'Meaning & Identity',
 			icon: '✨',
 			description: 'Purpose, deeper meaning, value proposition, story',
-			placeholder: 'Why does this project matter? What makes it unique?',
-			value: $derived(core_meaning_identity)
+			placeholder: 'Why does this project matter? What makes it unique?'
 		},
 		{
 			key: 'core_reality_understanding',
 			label: 'Reality & Understanding',
 			icon: '📊',
 			description: 'Current state, observations, environment, data',
-			placeholder: 'What is the current situation? What data informs this project?',
-			value: $derived(core_reality_understanding)
+			placeholder: 'What is the current situation? What data informs this project?'
 		},
 		{
 			key: 'core_trust_safeguards',
 			label: 'Trust & Safeguards',
 			icon: '🛡️',
 			description: 'Risks, uncertainties, contingencies, protection measures',
-			placeholder: 'What are the risks? Mitigation strategies? Contingency plans?',
-			value: $derived(core_trust_safeguards)
+			placeholder: 'What are the risks? Mitigation strategies? Contingency plans?'
 		},
 		{
 			key: 'core_opportunity_freedom',
 			label: 'Opportunity & Freedom',
 			icon: '💡',
 			description: 'Options, experiments, creative paths, new possibilities',
-			placeholder: 'What opportunities exist? Alternative approaches being considered?',
-			value: $derived(core_opportunity_freedom)
+			placeholder: 'What opportunities exist? Alternative approaches being considered?'
 		},
 		{
 			key: 'core_power_resources',
 			label: 'Power & Resources',
 			icon: '⚡',
 			description: 'Budget, tools, assets, authority, constraints',
-			placeholder: 'What resources are available? Budget constraints? Tools being used?',
-			value: $derived(core_power_resources)
+			placeholder: 'What resources are available? Budget constraints? Tools being used?'
 		},
 		{
 			key: 'core_harmony_integration',
 			label: 'Harmony & Integration',
 			icon: '🔄',
 			description: 'Feedback loops, learning systems, integration points',
-			placeholder: 'How does this integrate with other systems? Feedback mechanisms?',
-			value: $derived(core_harmony_integration)
+			placeholder: 'How does this integrate with other systems? Feedback mechanisms?'
 		}
 	];
 
+	// Map dimension keys to their current values using $derived
+	const dimensionValues = $derived({
+		core_integrity_ideals,
+		core_people_bonds,
+		core_goals_momentum,
+		core_meaning_identity,
+		core_reality_understanding,
+		core_trust_safeguards,
+		core_opportunity_freedom,
+		core_power_resources,
+		core_harmony_integration
+	});
+
+	// Helper to get value for a dimension
+	function getDimensionValue(key: string): string | null {
+		return dimensionValues[key as keyof typeof dimensionValues] ?? null;
+	}
+
 	// Count populated dimensions
 	const populatedCount = $derived(
-		dimensions.filter((d) => d.value && d.value.trim().length > 0).length
+		dimensions.filter((d) => {
+			const value = getDimensionValue(d.key);
+			return value && value.trim().length > 0;
+		}).length
 	);
 </script>
 
@@ -161,7 +173,7 @@
 								class="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-2"
 							>
 								{dimension.label}
-								{#if dimension.value && dimension.value.trim().length > 0}
+								{#if getDimensionValue(dimension.key) && getDimensionValue(dimension.key).trim().length > 0}
 									<span class="w-2 h-2 bg-green-500 rounded-full"></span>
 								{/if}
 							</div>
@@ -185,15 +197,15 @@
 						class="px-4 py-3 bg-white dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700"
 					>
 						<Textarea
-							value={dimension.value || ''}
+							value={getDimensionValue(dimension.key) || ''}
 							on:input={(e) => onUpdate(dimension.key, e.currentTarget.value || null)}
 							placeholder={dimension.placeholder}
 							rows={4}
 							class="w-full text-sm bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
 						/>
-						{#if dimension.value && dimension.value.trim().length > 0}
+						{#if getDimensionValue(dimension.key) && getDimensionValue(dimension.key).trim().length > 0}
 							<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-								{dimension.value.length} characters
+								{getDimensionValue(dimension.key).length} characters
 							</div>
 						{/if}
 					</div>

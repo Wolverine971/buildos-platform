@@ -16,6 +16,7 @@ This document tracks the completion status of issues identified in the worker se
 ## Critical Fixes ✅ COMPLETED
 
 ### 1. Global Exception Handlers
+
 **Issue**: Missing `uncaughtException` and `unhandledRejection` handlers
 **Impact**: Worker crashes without cleanup
 **Status**: ✅ Fixed
@@ -23,20 +24,21 @@ This document tracks the completion status of issues identified in the worker se
 **Solution**: Added process-level error handlers that gracefully shutdown queue before exit
 
 ```typescript
-process.on('uncaughtException', (error) => {
-  console.error('🚨 CRITICAL: Uncaught Exception', error);
+process.on("uncaughtException", (error) => {
+  console.error("🚨 CRITICAL: Uncaught Exception", error);
   queue.stop();
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('🚨 CRITICAL: Unhandled Rejection');
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("🚨 CRITICAL: Unhandled Rejection");
   queue.stop();
   process.exit(1);
 });
 ```
 
 ### 2. Race Condition in Job Claiming
+
 **Issue**: `isProcessing` flag check happens before async operation
 **Impact**: Multiple intervals can enter processJobs() simultaneously
 **Status**: ✅ Already Fixed (Verified)
@@ -44,6 +46,7 @@ process.on('unhandledRejection', (reason, promise) => {
 **Solution**: `finally` block already present to reset flag
 
 ### 3. Stalled Job Recovery Retry Logic
+
 **Issue**: No retry logic when stalled job recovery fails
 **Impact**: Jobs stuck forever if recovery RPC fails once
 **Status**: ✅ Fixed
@@ -56,6 +59,7 @@ private readonly MAX_STALLED_RETRIES = 3;
 ```
 
 ### 4. Hardcoded Retry Defaults
+
 **Issue**: Hardcoded `3` instead of using `queueConfig.maxRetries`
 **Impact**: Configuration not respected
 **Status**: ✅ Fixed
@@ -65,10 +69,12 @@ private readonly MAX_STALLED_RETRIES = 3;
 ## High Priority Type Safety Fixes ✅ COMPLETED
 
 ### 5. Unsafe Timezone Type Assertions
+
 **Issue**: `(user as any)?.timezone` bypasses type safety
 **Impact**: Runtime errors if user fetch fails
 **Status**: ✅ Fixed
 **Files Modified**:
+
 - `apps/worker/src/workers/brief/briefWorker.ts` (line 52)
 - `apps/worker/src/workers/dailySmsWorker.ts` (line 71)
 
@@ -78,16 +84,20 @@ private readonly MAX_STALLED_RETRIES = 3;
 // Before: (user as any)?.timezone
 // After:
 if (userError || !user) {
-  console.warn(`Failed to fetch user timezone: ${userError?.message || "User not found"}`);
+  console.warn(
+    `Failed to fetch user timezone: ${userError?.message || "User not found"}`,
+  );
 }
 const timezone = user?.timezone || job.data.timezone || "UTC";
 ```
 
 ### 6. Metadata 'as any' Type Casts
+
 **Issue**: Multiple `as any` casts on metadata fields
 **Impact**: Loss of type safety, potential undefined access
 **Status**: ✅ Fixed
 **Files Modified**:
+
 - `packages/shared-types/src/brief.types.ts` (NEW FILE - 100 lines)
 - `packages/shared-types/src/index.ts` (added export)
 - `apps/worker/src/workers/brief/briefWorker.ts` (lines 191-214)
@@ -107,7 +117,10 @@ export interface ProjectBriefMetadata {
 }
 
 // Type-safe helper function
-export function getTaskCount(metadata: unknown, field: keyof ProjectBriefMetadata): number {
+export function getTaskCount(
+  metadata: unknown,
+  field: keyof ProjectBriefMetadata,
+): number {
   // Validates and safely extracts task counts
 }
 
@@ -118,6 +131,7 @@ const todaysTaskCount = projectBriefs.reduce((sum, pb) => {
 ```
 
 ### 7. Payload Field Access in emailAdapter
+
 **Issue**: Inconsistent optional chaining on `delivery.payload.data?.brief_id`
 **Impact**: Undefined access in template strings
 **Status**: ✅ Fixed
@@ -131,10 +145,12 @@ const body = payload.body || "";
 const actionUrl = payload.action_url || null;
 
 // Fixed template string access
-href="https://build-os.com/daily-briefs/${delivery.payload.data?.brief_id || ''}"
+href =
+  "https://build-os.com/daily-briefs/${delivery.payload.data?.brief_id || ''}";
 ```
 
 ### 8. Job Data Validation
+
 **Issue**: No validation before job processing
 **Impact**: Invalid data causes runtime errors deep in processing
 **Status**: ✅ Fixed
@@ -152,6 +168,7 @@ const validatedData = validateBriefJobData(job.data);
 ```
 
 ### 9. Progress Update Retry Logic
+
 **Issue**: Exponential backoff (1s, 2s, 4s) delays jobs
 **Impact**: 7+ second delay per progress update failure
 **Status**: ✅ Fixed
@@ -171,6 +188,7 @@ const delay = 50 * Math.pow(2, retryCount);
 ```
 
 ### 10. DB Connection Monitoring in Scheduler
+
 **Issue**: Unlimited concurrent engagement checks can exhaust connections
 **Impact**: 1000 users = 1000 concurrent DB queries
 **Status**: ✅ Fixed
@@ -186,6 +204,7 @@ for (let i = 0; i < preferences.length; i += MAX_CONCURRENT_CHECKS) {
 ```
 
 ### 11. Unsafe Nested Relation Selects
+
 **Issue**: `.select("*, email_recipients(*)")` doesn't validate expansion
 **Impact**: Undefined array access if relation fails to expand
 **Status**: ✅ Fixed
@@ -200,6 +219,7 @@ if (!Array.isArray(email.email_recipients)) {
 ```
 
 ### 12. Error Checks After .single() Queries
+
 **Issue**: Missing error logging for non-critical .single() queries
 **Impact**: Silent failures, poor observability
 **Status**: ✅ Fixed
@@ -221,10 +241,12 @@ if (userError) {
 ## Medium Priority Fixes ✅ COMPLETED
 
 ### 13. SMS Worker Untyped Job Data
+
 **Issue**: `processSMSJob(job: LegacyJob<any>)` - untyped job data
 **Impact**: Loss of type safety, invalid data not caught early
 **Status**: ✅ Fixed
 **Files Modified**:
+
 - `apps/worker/src/workers/shared/queueUtils.ts` (added SMSJobData interface + validation)
 - `apps/worker/src/workers/smsWorker.ts` (changed from `any` to `SMSJobData`, added validation)
 
@@ -258,10 +280,12 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 **Bonus Fix**: Fixed `scheduler.ts:469` - removed non-existent `preference.timezone` field access
 
 ### 14. Optional Boolean Field Null Checks
+
 **Issue**: Nullable boolean fields (`phone_verified`, `opted_out`, `event_reminders_enabled`) checked with `!` operator
 **Impact**: Implicit null coercion - `!null` = `true` which is confusing
 **Status**: ✅ Fixed
 **Files Modified**:
+
 - `apps/worker/src/workers/brief/briefWorker.ts` (lines 154, 159)
 - `apps/worker/src/workers/dailySmsWorker.ts` (lines 94, 96, 97)
 - `apps/worker/src/workers/notification/preferenceChecker.ts` (lines 154, 166)
@@ -286,18 +310,21 @@ if (smsPrefs?.opted_out === true) {
 ```
 
 **Rationale**:
+
 - `phone_verified !== true` → Treats `null`/`false`/`undefined` as "not verified" (safe default)
 - `opted_out === true` → Only treats explicit `true` as "opted out" (respects user choice)
 
 ## Testing & Validation
 
 ### Type Safety Validation
+
 ```bash
 pnpm --filter=worker typecheck
 # ✅ All type checks pass
 ```
 
 ### Build Validation
+
 ```bash
 pnpm --filter=@buildos/shared-types build
 # ✅ Successfully built new types
@@ -305,23 +332,25 @@ pnpm --filter=@buildos/shared-types build
 
 ## Impact Assessment
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Type Safety Issues | 15+ | 0 | 100% |
-| Hardcoded Values | 4 | 0 | 100% |
-| Race Conditions | 1 | 0 | 100% |
-| Missing Error Handlers | 2 | 0 | 100% |
-| Unsafe Type Casts | 11 | 0 | 100% |
-| DB Connection Risk | High | Low | 95% |
-| Progress Update Delay | 7s | 350ms | 95% |
+| Metric                 | Before | After | Improvement |
+| ---------------------- | ------ | ----- | ----------- |
+| Type Safety Issues     | 15+    | 0     | 100%        |
+| Hardcoded Values       | 4      | 0     | 100%        |
+| Race Conditions        | 1      | 0     | 100%        |
+| Missing Error Handlers | 2      | 0     | 100%        |
+| Unsafe Type Casts      | 11     | 0     | 100%        |
+| DB Connection Risk     | High   | Low   | 95%         |
+| Progress Update Delay  | 7s     | 350ms | 95%         |
 
 ## Files Modified Summary
 
 ### New Files Created
+
 1. `packages/shared-types/src/brief.types.ts` (100 lines) - Type-safe metadata interfaces
 2. `docs/audits/WORKER_FIXES_COMPLETED.md` (this file)
 
 ### Files Modified (16 total)
+
 1. `apps/worker/src/index.ts` - Global exception handlers
 2. `apps/worker/src/lib/supabaseQueue.ts` - Retry logic, config usage
 3. `apps/worker/src/lib/progressTracker.ts` - Smart retry with smaller backoff

@@ -193,12 +193,62 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Check required environment variables
-  const requiredVars = ["PUBLIC_SUPABASE_URL", "PRIVATE_SUPABASE_SERVICE_KEY"];
+  const requiredVars = [
+    "PUBLIC_SUPABASE_URL",
+    "PRIVATE_SUPABASE_SERVICE_KEY",
+    "PRIVATE_OPENROUTER_API_KEY", // Required for LLM analysis in briefs
+  ];
 
   for (const varName of requiredVars) {
     if (!process.env[varName]) {
       errors.push(`Missing required environment variable: ${varName}`);
     }
+  }
+
+  // Validate PUBLIC_APP_URL (used for email/SMS tracking links)
+  const appUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
+  try {
+    new URL(appUrl);
+  } catch {
+    errors.push(
+      `PUBLIC_APP_URL is invalid: "${appUrl}". Must be a valid URL (defaults to https://build-os.com)`,
+    );
+  }
+
+  // Conditional validation: if webhook email is enabled, webhook secret is required
+  if (process.env.USE_WEBHOOK_EMAIL === "true") {
+    if (!process.env.BUILDOS_WEBHOOK_URL) {
+      errors.push(
+        "BUILDOS_WEBHOOK_URL is required when USE_WEBHOOK_EMAIL=true",
+      );
+    }
+    if (!process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET) {
+      errors.push(
+        "PRIVATE_BUILDOS_WEBHOOK_SECRET is required when USE_WEBHOOK_EMAIL=true",
+      );
+    }
+  }
+
+  // Conditional validation: Twilio credentials must be all-or-nothing
+  const twilioVars = [
+    "PRIVATE_TWILIO_ACCOUNT_SID",
+    "PRIVATE_TWILIO_AUTH_TOKEN",
+    "PRIVATE_TWILIO_MESSAGING_SERVICE_SID",
+  ];
+  const twilioConfigured = twilioVars.filter((v) => process.env[v]).length;
+  if (twilioConfigured > 0 && twilioConfigured < 3) {
+    errors.push(
+      `Partial Twilio configuration: ${twilioConfigured}/3 credentials set. All three are required (ACCOUNT_SID, AUTH_TOKEN, MESSAGING_SERVICE_SID)`,
+    );
+  }
+
+  // Conditional validation: VAPID keys for push notifications (warn if both not set)
+  const vapidPublic = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+  if ((vapidPublic && !vapidPrivate) || (!vapidPublic && vapidPrivate)) {
+    errors.push(
+      "Both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together for push notifications",
+    );
   }
 
   // Check for common configuration mistakes

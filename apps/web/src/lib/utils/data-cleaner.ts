@@ -154,9 +154,28 @@ const tableSchemas = {
 		start_date: { type: 'date' },
 		end_date: { type: 'date' },
 		tags: { type: 'array' },
+
+		// Core dimension fields (extracted from brain dumps via preparatory analysis)
+		core_context_descriptions: { type: 'json' },
+		core_goals_momentum: { type: 'string' },
+		core_harmony_integration: { type: 'string' },
+		core_integrity_ideals: { type: 'string' },
+		core_meaning_identity: { type: 'string' },
+		core_opportunity_freedom: { type: 'string' },
+		core_people_bonds: { type: 'string' },
+		core_power_resources: { type: 'string' },
+		core_reality_understanding: { type: 'string' },
+		core_trust_safeguards: { type: 'string' },
+
+		// Calendar-related fields
 		calendar_color_id: { type: 'string' },
 		calendar_settings: { type: 'json' },
 		calendar_sync_enabled: { type: 'boolean' },
+
+		// Metadata fields
+		source: { type: 'string' },
+		source_metadata: { type: 'json' },
+
 		created_at: { type: 'timestamp' },
 		updated_at: { type: 'timestamp' }
 	},
@@ -362,7 +381,24 @@ export function cleanDataForEmbedding(data: any, table: string): string | null {
 	if (!data || !table) return null;
 
 	const embeddingFields = {
-		projects: ['name', 'description', 'status', 'tags', 'context', 'executive_summary'],
+		projects: [
+			'name',
+			'description',
+			'status',
+			'tags',
+			'context',
+			'executive_summary',
+			// Include core dimensions for semantic search
+			'core_integrity_ideals',
+			'core_people_bonds',
+			'core_goals_momentum',
+			'core_meaning_identity',
+			'core_reality_understanding',
+			'core_trust_safeguards',
+			'core_opportunity_freedom',
+			'core_power_resources',
+			'core_harmony_integration'
+		],
 		tasks: ['title', 'description', 'priority', 'status', 'task_type', 'details'],
 		notes: ['title', 'content', 'category', 'tags'],
 		brain_dumps: ['title', 'content', 'ai_summary'],

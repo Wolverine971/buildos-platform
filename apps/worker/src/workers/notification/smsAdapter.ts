@@ -91,6 +91,17 @@ async function getTemplate(
 }
 
 /**
+ * Validate phone number format (E.164 format: +[country code][number])
+ * E.164 format allows phone numbers to be dialed internationally
+ */
+function isValidE164PhoneNumber(phoneNumber: string): boolean {
+  // E.164 format: + followed by 1-15 digits
+  // Example: +12125552368
+  const e164Regex = /^\+?[1-9]\d{1,14}$/;
+  return e164Regex.test(phoneNumber.replace(/\s/g, ""));
+}
+
+/**
  * Render template with variables
  * Supports {{variable}} syntax
  */
@@ -284,16 +295,18 @@ async function formatSMSMessage(
       let variables = extractTemplateVars(payload, eventType);
 
       // 🔍 BUGFIX: For brief.completed templates, validate counts and fetch fresh data if needed
+      // Only re-check if user has projects but somehow all task counts are zero
+      // This indicates potential data staleness, not a legitimate zero-task scenario
       if (eventType === "brief.completed") {
-        const hasSuspiciousZeros =
-          variables.project_count === 0 ||
-          (variables.todays_task_count === 0 &&
-            variables.overdue_task_count === 0 &&
-            variables.upcoming_task_count === 0);
+        const hasProjectsButNoTasks =
+          variables.project_count > 0 &&
+          variables.todays_task_count === 0 &&
+          variables.overdue_task_count === 0 &&
+          variables.upcoming_task_count === 0;
 
-        if (hasSuspiciousZeros) {
-          smsLogger.warn(
-            "Detected suspicious zeros in template variables, fetching fresh data",
+        if (hasProjectsButNoTasks) {
+          smsLogger.info(
+            "Detected user with projects but no tasks in any category - verifying data freshness",
             {
               templateKey,
               projectCount: variables.project_count,
@@ -544,8 +557,8 @@ async function shortenUrlsInMessage(
         }
 
         // Replace URL with shortened version
-        // Assumes BASE_URL is https://build-os.com (update if different)
-        const shortUrl = `https://build-os.com/l/${shortCode}`;
+        const baseUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
+        const shortUrl = `${baseUrl}/l/${shortCode}`;
         result = result.replace(url, shortUrl);
         shortenedCount++;
 
@@ -637,6 +650,21 @@ export async function sendSMSNotification(
     }
 
     const phoneNumber = delivery.channel_identifier;
+
+    // Validate phone number format (E.164)
+    if (!isValidE164PhoneNumber(phoneNumber)) {
+      smsLogger.warn("Invalid phone number format", {
+        notificationDeliveryId: delivery.id,
+        recipientUserId: delivery.recipient_user_id,
+        phoneNumber:
+          phoneNumber.substring(0, 3) + "*" + phoneNumber.substring(-2), // Log safely (masked)
+      });
+      return {
+        success: false,
+        error:
+          "Invalid phone number format - must be E.164 format (e.g., +12125552368)",
+      };
+    }
 
     // 🚨 CRITICAL: SAFETY CHECKS (Phase 1 Bug Fix)
     // Check quiet hours, rate limits, and phone verification

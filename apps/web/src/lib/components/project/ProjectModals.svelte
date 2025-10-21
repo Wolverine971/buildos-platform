@@ -123,11 +123,9 @@
 		const modalNames = Object.keys(MODAL_COMPONENTS);
 		modalNames.forEach((modalName) => {
 			if (!modals?.[modalName]?.isOpen && transitionStates[modalName]) {
-				console.log(`Cleaning up stuck transition state for: ${modalName}`);
 				// Reset transition state if modal is closed but transition state is still true
 				setTimeout(() => {
 					transitionStates[modalName] = false;
-					console.log(`Transition state cleaned up for: ${modalName}`);
 				}, 300);
 			}
 		});
@@ -186,11 +184,8 @@
 
 	// Enhanced close handler with smooth transitions
 	async function handleCloseModal(modalName: string) {
-		console.log(`handleCloseModal called for: ${modalName}`);
-
 		// If already transitioning, just close immediately to avoid stuck state
 		if (transitionStates[modalName]) {
-			console.log(`Modal ${modalName} already transitioning, closing immediately`);
 			modalStore.close(modalName);
 			transitionStates[modalName] = false;
 			return;
@@ -208,7 +203,6 @@
 		await tick();
 		await new Promise((resolve) => setTimeout(resolve, 50));
 		transitionStates[modalName] = false;
-		console.log(`Modal ${modalName} closed and transition state reset`);
 	}
 
 	// Task modal handlers - Note: TaskModal handles its own close

@@ -129,6 +129,19 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			}
 		}
 
+		// 4.5. Delete time blocks associated with the project
+		const { data: timeBlocks, error: timeBlocksGetError } = await supabase
+			.from('time_blocks')
+			.select('id, calendar_event_id')
+			.eq('project_id', projectId)
+			.eq('user_id', userId);
+
+		if (timeBlocks && timeBlocks.length > 0 && !timeBlocksGetError) {
+			const timeBlockResults = await handleTimeBlockDeletion(timeBlocks, userId, supabase);
+			warnings.push(...timeBlockResults.warnings);
+			errors.push(...timeBlockResults.errors);
+		}
+
 		// 5. Delete tasks
 		const { error: tasksError } = await supabase
 			.from('tasks')
@@ -292,6 +305,86 @@ async function handleCalendarEventDeletion(
 		errors.push('Failed to remove any calendar events. Check your calendar connection.');
 	} else if (successCount > 0) {
 		warnings.push(`${successCount} calendar event(s) removed from your calendar.`);
+	}
+
+	return { warnings, errors };
+}
+
+/**
+ * Handle time block deletion with Google Calendar sync
+ * Soft-deletes time blocks (sets sync_status to 'deleted') after removing from calendar
+ */
+async function handleTimeBlockDeletion(
+	timeBlocks: any[],
+	userId: string,
+	supabase: any
+): Promise<{ warnings: string[]; errors: string[] }> {
+	const calendarService = new CalendarService(supabase);
+	const warnings: string[] = [];
+	const errors: string[] = [];
+	let successCount = 0;
+	let failCount = 0;
+
+	for (const block of timeBlocks) {
+		try {
+			// Delete from Google Calendar if event exists
+			if (block.calendar_event_id) {
+				try {
+					await calendarService.deleteCalendarEvent(userId, {
+						event_id: block.calendar_event_id
+					});
+				} catch (calendarError: any) {
+					console.error('Error deleting time block calendar event:', calendarError);
+					if (!(calendarError instanceof CalendarConnectionError)) {
+						// Log but don't fail - we'll still soft-delete the time block
+						warnings.push(
+							`Failed to remove time block calendar event: ${calendarError?.message || 'Unknown error'}`
+						);
+					} else {
+						// Calendar connection error - still attempt soft delete
+						warnings.push(
+							'Calendar connection issue when removing time block event from Google Calendar.'
+						);
+					}
+				}
+			}
+
+			// Soft-delete the time block in database
+			const nowIso = new Date().toISOString();
+			const { error: updateError } = await supabase
+				.from('time_blocks')
+				.update({
+					sync_status: 'deleted',
+					sync_source: 'app',
+					updated_at: nowIso,
+					last_synced_at: nowIso
+				})
+				.eq('id', block.id)
+				.eq('user_id', userId);
+
+			if (updateError) {
+				console.error('Error soft-deleting time block:', updateError);
+				failCount++;
+				warnings.push(
+					`Failed to delete time block from database: ${updateError.message || 'Unknown error'}`
+				);
+			} else {
+				successCount++;
+			}
+		} catch (error: any) {
+			console.error('Error deleting time block:', error);
+			failCount++;
+			warnings.push(`Failed to delete time block: ${error?.message || 'Unknown error'}`);
+		}
+	}
+
+	// Add summary messages
+	if (successCount > 0 && failCount > 0) {
+		warnings.push(`${successCount} time block(s) deleted successfully, ${failCount} failed.`);
+	} else if (failCount > 0 && successCount === 0) {
+		errors.push('Failed to delete any time blocks.');
+	} else if (successCount > 0) {
+		warnings.push(`${successCount} time block(s) deleted successfully.`);
 	}
 
 	return { warnings, errors };

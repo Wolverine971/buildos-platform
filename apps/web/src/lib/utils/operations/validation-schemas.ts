@@ -32,6 +32,18 @@ export const tableSchemas: Record<string, Record<string, FieldValidation>> = {
 		executive_summary: { type: 'string' },
 		tags: { type: 'array', arrayType: 'string' },
 
+		// Core dimension fields (extracted from brain dumps via preparatory analysis)
+		core_context_descriptions: { type: 'jsonb' },
+		core_goals_momentum: { type: 'string' },
+		core_harmony_integration: { type: 'string' },
+		core_integrity_ideals: { type: 'string' },
+		core_meaning_identity: { type: 'string' },
+		core_opportunity_freedom: { type: 'string' },
+		core_people_bonds: { type: 'string' },
+		core_power_resources: { type: 'string' },
+		core_reality_understanding: { type: 'string' },
+		core_trust_safeguards: { type: 'string' },
+
 		// Calendar-related fields
 		calendar_color_id: { type: 'string' },
 		calendar_settings: { type: 'jsonb' },

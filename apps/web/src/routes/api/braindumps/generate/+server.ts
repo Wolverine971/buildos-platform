@@ -437,7 +437,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 								name: project.name,
 								isNew: true
 							};
-							console.log('Created new project info:', projectInfo);
 						} else {
 							console.warn('Failed to fetch created project details:', error);
 						}
@@ -471,7 +470,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				// Update the existing brain dump status to 'saved' instead of creating a new one
 				try {
 					const projectIdForSave = projectInfo?.id || selectedProjectId;
-					console.log('Updating brain dump status to saved:', brainDumpId);
 
 					// Update the existing brain dump with status 'saved' and additional metadata
 					const { error: updateError } = await supabase

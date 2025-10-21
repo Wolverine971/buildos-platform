@@ -149,13 +149,21 @@ Differences in forging techniques across Aethermoor.
 
 **Remember**: Context structure should evolve with the project. Don't be constrained by the initial framework - adapt it as the project's needs become clearer.
 
-## Update Rules:
+## Update Rules - Strategic Focus:
 1. **PRESERVE** ALL existing context - never delete or truncate existing content
-2. **MERGE** new insights appropriately within existing structure
-3. **ADD** timestamps for significant updates: **[2025-09-26]** New info...
-4. **MAINTAIN** existing markdown structure and formatting
-5. **OUTPUT** the COMPLETE context document with all existing + new content
-6. **FOCUS** on strategic information, not tactical task details
+2. **MERGE** new strategic insights appropriately within existing structure
+3. **FILTER** for strategic relevance - only add information about strategy, approach, challenges, and evolution
+4. **EXCLUDE** task-level details, step-by-step actions, and execution specifics (those go in tasks)
+5. **ADD** timestamps for significant updates: **[2025-09-26]** New strategic insight...
+6. **MAINTAIN** existing markdown structure and formatting
+7. **FORMAT** everything as markdown (not plain text)
+8. **OUTPUT** the COMPLETE context document with all existing + new strategic content
+9. Let the markdown structure evolve naturally as the project grows
+
+**Key Distinction**:
+- **Include in Context**: "We've shifted focus to weak areas in preparation strategy based on recent diagnostics"
+- **Exclude from Context**: "Study weak areas 1 hour daily", "Take practice tests every Saturday", "Review all 12 labs"
+- **Those belong in**: Tasks table as specific execution items
 
 ## When to Update Context:
 Update context ONLY when the brain dump contains strategic project information that affects the dimensions in the decision matrix above.

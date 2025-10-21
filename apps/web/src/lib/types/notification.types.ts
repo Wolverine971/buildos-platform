@@ -161,10 +161,13 @@ export interface BrainDumpNotification extends BaseNotification {
 		};
 		processingType: 'dual' | 'background';
 		streamingState?: {
+			analysisStatus?: 'processing' | 'completed' | 'error' | 'not_needed';
 			contextStatus?: 'processing' | 'completed' | 'error';
 			tasksStatus?: 'processing' | 'completed' | 'error';
+			analysisProgress?: string;
 			contextProgress?: string;
 			tasksProgress?: string;
+			analysisResult?: any;
 			contextResult?: any;
 			tasksResult?: any;
 		};

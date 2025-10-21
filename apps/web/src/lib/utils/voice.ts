@@ -365,8 +365,14 @@ export function stopRecording(): Promise<Blob | null> {
 			let audioBlob: Blob | null = null;
 
 			if (audioChunks.length > 0) {
-				const mimeType =
-					audioChunks[0].type || capabilitiesCache?.supportedMimeType || 'audio/webm';
+				// FIXED: Defensive coding with optional chaining for null pointer safety
+				let mimeType = 'audio/webm'; // Default
+				if (audioChunks[0]?.type) {
+					mimeType = audioChunks[0].type;
+				} else if (capabilitiesCache?.supportedMimeType) {
+					mimeType = capabilitiesCache.supportedMimeType;
+				}
+
 				audioBlob = new Blob(audioChunks, { type: mimeType });
 
 				// console.log(`[MediaRecorder] Stopped. Blob: ${audioBlob.size} bytes, Type: ${audioBlob.type}`);

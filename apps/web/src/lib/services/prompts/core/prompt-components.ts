@@ -53,15 +53,31 @@ export function generateProjectContextFramework(mode: 'full' | 'condensed' = 'co
 	if (mode === 'condensed') {
 		return `**Context Generation (Living Project Narrative):**
 
-The context field is a flexible, evolving narrative that captures the project's story in the user's own voice. 
+The context field is a flexible, evolving narrative that captures the project's story in the user's own voice.
 
-**What the context field is:**
-- A living document that grows with each braindump
-- The project's ongoing story, told naturally
-- A hub for insights, decisions, learnings, and evolution
-- Completely flexible - no required structure
+**MARKDOWN FORMATTING REQUIREMENT**
+The context field AND all 9 core dimensions MUST be formatted as markdown (not plain text). Let the structure evolve naturally based on the content and as the project grows.
 
-**The 9 Core Dimensions (extracted into separate fields):**
+**What the context field IS (Strategic Overview)**:
+- A living document that brings anyone up to speed on the project
+- The project's ongoing story in markdown format - high-level view
+- Captures WHY the project matters, WHAT we're doing, and HOW we're approaching it
+- Flexible structure that evolves naturally from the project's direction
+- A master context doc: someone unfamiliar with the project can read it and understand the full picture
+
+**What the context field is NOT (Execution Details)**:
+- NOT a task list or execution log
+- NOT specific step-by-step actions (those are tasks)
+- NOT individual assignment details or implementation specifics
+- NOT a braindump transcript or comprehensive information dump
+- Tasks table handles execution details; context handles strategy
+
+**Key Distinction**:
+- **Context**: "We're preparing for AP exams in 6 weeks, with weak areas in Calc BC series convergence and Bio lab practicals. Timeline is tight and focus is on weak areas."
+- **NOT Context**: "Study series convergence 1 hour daily", "Review all 12 required Bio labs", "Take SAT practice test Saturday"
+- **Those belong in**: Tasks table with specific execution details
+
+**The 9 Core Meta Dimensions of a Project (extracted into separate fields - all formatted as markdown):**
 1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
 2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
 3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
@@ -87,12 +103,34 @@ The context field is a flexible, evolving narrative that captures the project's 
 	// Full version
 	return `**Context Field: Living Project Narrative**
 
-## Philosophy
-The context field is your project's living story - a flexible, evolving document that captures how you think about and describe your project. Unlike the 9 core dimensions (which are systematically extracted), the context has no required structure.
+## MARKDOWN FORMATTING FOR ALL FIELDS
 
-## The 9 Core Dimensions (Extracted Automatically)
+Both the context field AND all 9 core dimensions MUST be formatted as markdown, not plain text. Let the structure evolve naturally as the project grows and more information is added.
 
-These dimensions are extracted into dedicated fields when present in braindumps. Use **short, factual summaries**; avoid duplicating the full braindump.
+## Philosophy: Context as Strategic Master Document
+
+The context field is a **strategic overview** that brings anyone unfamiliar with the project up to speed. It captures:
+- **Why** the project matters and what the vision is
+- **What** we're doing and what success looks like
+- **How** we're approaching the project
+- **Evolution** of thinking, key decisions, pivots, learnings
+- **Current state** and key constraints/challenges
+
+The context is NOT:
+- A task list or execution log
+- Specific step-by-step actions (those go in tasks)
+- A braindump transcript
+- A comprehensive information dump
+
+**Key Rule**: Task-level execution details belong in the tasks table. Strategic information, high-level approach, and understanding belong in context.
+
+Example of what belongs:
+- "Preparing for AP exams in 6 weeks with focus on weak areas in Calc BC and Bio lab practicals"
+- NOT: "Study Calc BC series convergence 1 hour daily", "Review all 12 required labs"
+
+## The 9 Core Meta Dimensions of a Project (Extracted Automatically - All as Markdown)
+
+These dimensions are extracted into dedicated fields when present in braindumps. Format each as markdown. Each dimension captures strategic-level information, not execution details. The structure will become richer over time as the project evolves.
 
 ### 1) Integrity & Ideals (**column:** "core_integrity_ideals")
 
@@ -160,9 +198,13 @@ These dimensions are extracted into dedicated fields when present in braindumps.
 **General extraction rules:**
 
 * Prefer **specifics over platitudes**; summarize in 1–4 tight sentences per dimension found.
-* If a dimension isn’t present, **leave its field null** (don’t infer).
+* If a dimension isn't present, **leave its field null** (don't infer).
 * Quote briefly when helpful (≤1 short clause), otherwise paraphrase.
 * De-duplicate across dimensions; place content in the **single best-fit** field.
+
+**FORMATTING REQUIREMENT - MARKDOWN:**
+ALL fields (context AND all 9 core dimensions) MUST be formatted as markdown, not plain text.
+Let the markdown structure evolve naturally based on the content. Use headers, bullets, emphasis, lists, and formatting as the information naturally calls for it. The formatting will become richer as the project grows.
 
 ---
 ---
@@ -188,6 +230,85 @@ The context field tells the human story - capturing nuance, emotion, and narrati
 Start with the user's initial framing and let it develop. When updating, weave new information into the narrative rather than just appending. Show how thinking has evolved. A good context reads like a coherent story where someone new can quickly understand not just what you're doing, but why it matters and how you got here.
 
 **Remember:** The context is the living story. The dimensions are the extracted insights. Both are essential for complete project understanding.`;
+}
+
+/**
+ * Generates markdown formatting guidance for core dimensions
+ */
+export function generateCoreDimensionsMarkdownInstructions(): string {
+	return `## Core Dimensions: Strategic Level Information as Markdown
+
+Each core dimension field MUST be formatted as markdown, not plain text. Capture STRATEGIC information only - not execution details.
+
+**What belongs in dimensions** (Strategic):
+- High-level approach and thinking
+- Key challenges, constraints, timeline
+- Evolution of understanding
+- Why things matter
+- Key decisions and pivots
+
+**What does NOT belong** (Execution):
+- Specific task steps or actions
+- Implementation details
+- Individual assignment specifics
+- Day-to-day execution plans
+
+Let the structure emerge naturally based on the content:
+- Use formatting as information naturally calls for it
+- Structure evolves as project grows
+- First braindump: 1-2 sentences; as it matures: richer structure
+
+**Examples of STRATEGIC evolution** (NOT execution details):
+
+**Early stage** (simple strategy):
+\`\`\`
+Goal is to prepare for AP exams in 6 weeks. Key challenge: weak areas in Calc BC series and Bio lab practicals. Approach: daily focused practice on weak areas.
+\`\`\`
+
+**Mid-stage** (strategy with structure):
+\`\`\`
+## Exam Preparation Strategy
+
+### Timeline
+6 weeks until AP exams (May)
+
+### Key Challenge Areas
+- Calc BC: Series convergence tests, polar coordinates
+- Bio: Lab practicals (12 required labs), Krebs cycle
+
+### Approach
+- Daily focused practice on weak areas
+- Study groups (Bio team: Jake and Sarah)
+- SAT prep runs in parallel
+\`\`\`
+
+**Mature** (rich strategic context):
+\`\`\`
+## Exam Preparation - Strategic Overview
+
+### Timeline & Pressure Points
+- AP exams: 6 weeks away (May)
+- SAT: March (less urgent)
+- Current status: Weak in foundational areas, strong in derivatives/integrals
+
+### Key Challenges
+- **Calc BC**: Series convergence and polar coordinate concepts not solidifying
+- **Bio**: Lab practicals require hands-on review of all 12 required labs
+- **Time pressure**: Balancing multiple exam preps simultaneously
+
+### Strategic Approach
+- Prioritize weak areas over strong areas for efficiency
+- Leverage study groups for accountability (Bio team meeting Sundays)
+- SAT prep using Khan Academy to maintain consistency
+\`\`\`
+
+**Execution details that do NOT belong here**:
+- "Study series convergence 1 hour daily" → Task
+- "Review all 12 required Bio labs" → Task
+- "Take SAT practice test Saturday morning" → Task
+- "Make flashcards for vocabulary" → Task
+
+The best markdown captures strategic thinking. Let it grow naturally.`;
 }
 
 /**

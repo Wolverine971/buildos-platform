@@ -201,6 +201,10 @@ export interface BrainDumpOptions {
 	useDualProcessing?: boolean;
 	retryAttempts?: number;
 	onRetry?: (attempt: number, maxAttempts: number) => Promise<void>;
+	onAnalysisProgress?: (
+		phase: 'start' | 'complete',
+		result?: PreparatoryAnalysisResult
+	) => Promise<void>;
 }
 
 /**

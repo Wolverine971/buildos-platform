@@ -39,10 +39,6 @@ class PerformanceMonitor {
 			dev ||
 			(typeof window !== 'undefined' &&
 				window.localStorage?.getItem('performance-monitor') === 'true');
-
-		if (this.isEnabled) {
-			console.log('[PerformanceMonitor] Initialized');
-		}
 	}
 
 	/**
@@ -66,7 +62,6 @@ class PerformanceMonitor {
 
 		const metric = this.metrics.get(name);
 		if (!metric) {
-			console.warn(`[PerformanceMonitor] Timer "${name}" was not started`);
 			return null;
 		}
 

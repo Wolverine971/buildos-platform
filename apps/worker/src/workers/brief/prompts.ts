@@ -1,5 +1,37 @@
 // apps/worker/src/workers/brief/prompts.ts
 
+// Layer 4: LLM Enhancement - Timeblock-aware types
+export interface TimeBlockContextSuggestion {
+  title: string;
+  reason?: string;
+  project_id?: string | null;
+  project_name?: string | null;
+  priority?: string;
+  estimated_minutes?: number | null;
+  confidence?: number;
+}
+
+export interface ProjectAllocationContext {
+  projectId: string;
+  projectName: string;
+  allocatedMinutes: number;
+  taskCount: number;
+  capacityStatus: "aligned" | "underallocated" | "overallocated";
+  suggestionsFromBlocks: TimeBlockContextSuggestion[];
+}
+
+export interface UnscheduledTimeContext {
+  totalMinutes: number;
+  blockCount: number;
+  suggestedTasks: TimeBlockContextSuggestion[];
+}
+
+export interface TimeAllocationContext {
+  totalAllocatedMinutes: number;
+  projectAllocations: ProjectAllocationContext[];
+  unscheduledTimeAnalysis: UnscheduledTimeContext;
+}
+
 export interface DailyBriefAnalysisTask {
   id: string;
   title: string;
@@ -51,47 +83,126 @@ export interface DailyBriefAnalysisPromptInput {
   mainBriefMarkdown: string;
   projects: DailyBriefAnalysisProject[];
   priorityActions?: string[];
+  timeAllocationContext?: TimeAllocationContext;
+}
+
+function formatMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${mins}m`;
 }
 
 export class DailyBriefAnalysisPrompt {
-  static getSystemPrompt(): string {
-    return `You are a BuildOS productivity strategist who writes insightful, actionable daily brief analyses.
+  static getSystemPrompt(includeTimeblocks: boolean = false): string {
+    const basePrompt = `You are a BuildOS productivity strategist who writes insightful, actionable daily brief analyses.
 
 Your goals:
 - Explain what the user should focus on today based on their current workload.
 - Highlight blockers, overdue work, and meaningful recent progress.
-- Summarize each active project with counts and linked task bullets so the user can dive in quickly.
+- Summarize each active project with counts and linked task bullets so the user can dive in quickly.`;
+
+    const timeblockGoals = includeTimeblocks
+      ? `
+- Consider scheduled timeblocks when assessing capacity and prioritization.
+- Highlight when a project's scheduled time aligns with its workload, or when there's a gap.
+- Reference timeblock ai_suggestions as contextual work recommendations.
+- Suggest reallocating unscheduled time to projects that need it.`
+      : "";
+
+    const toneAndFormat = `
 
 Tone & format:
 - Confident, encouraging, and pragmatic.
 - Use Markdown with clear hierarchy and short paragraphs.
 - Always include task/project links that are provided in the data. Never invent URLs.
-- Keep the writing tight—avoid filler language.
+- Keep the writing tight—avoid filler language.`;
+
+    const structure = `
 
 Structure your response as:
 1. A top-level heading for the analysis (e.g. "# Daily Brief Analysis - <Date>").
-2. A section summarizing today's outlook and priorities.
+2. A section summarizing today's outlook and priorities.${includeTimeblocks ? "\n3. If timeblocks are included: briefly assess time allocation and capacity across projects." : ""}
 3. A section called "## Active Projects" with one sub-section per project (ordered by workload or urgency).
 4. Within each project, show quick stats plus bullets for "Tasks Today" and "Next 7 Days". Include counts, status cues, and links. If a list is empty, note that explicitly.
-5. Mention overdue or recently completed work when it shapes today's focus.
+5. Mention overdue or recently completed work when it shapes today's focus.${includeTimeblocks ? "\n6. If significant unscheduled time exists, suggest how the user could allocate it." : ""}
 
 Never output JSON—deliver polished Markdown only.`;
+
+    return basePrompt + timeblockGoals + toneAndFormat + structure;
   }
 
   static buildUserPrompt(input: DailyBriefAnalysisPromptInput): string {
-    const { date, timezone, mainBriefMarkdown, projects, priorityActions } =
-      input;
+    const {
+      date,
+      timezone,
+      mainBriefMarkdown,
+      projects,
+      priorityActions,
+      timeAllocationContext,
+    } = input;
     const safeProjects = JSON.stringify(projects, null, 2);
     const safePriorityActions =
       priorityActions && priorityActions.length > 0
         ? priorityActions.join(", ")
         : "None provided";
 
-    return `Date: ${date}
+    let prompt = `Date: ${date}
 Timezone: ${timezone}
 
 Priority actions detected: ${safePriorityActions}
+`;
 
+    // Add timeblock context if available
+    if (timeAllocationContext) {
+      prompt += `
+## Time Allocation Context
+
+**Total scheduled**: ${formatMinutes(timeAllocationContext.totalAllocatedMinutes)}
+
+### Projects & Time Allocation:
+`;
+
+      for (const proj of timeAllocationContext.projectAllocations) {
+        prompt += `\n- **${proj.projectName}**: ${formatMinutes(proj.allocatedMinutes)} allocated, ${proj.taskCount} task(s) today
+  - Capacity status: ${proj.capacityStatus}`;
+
+        if (
+          proj.suggestionsFromBlocks &&
+          proj.suggestionsFromBlocks.length > 0
+        ) {
+          prompt += `\n  - Timeblock suggestions: ${proj.suggestionsFromBlocks
+            .slice(0, 2)
+            .map((s) => s.title)
+            .join(", ")}`;
+        }
+        prompt += `\n`;
+      }
+
+      // Unscheduled time
+      if (
+        timeAllocationContext.unscheduledTimeAnalysis &&
+        timeAllocationContext.unscheduledTimeAnalysis.totalMinutes > 0
+      ) {
+        prompt += `\n### Unscheduled Time:
+- **${timeAllocationContext.unscheduledTimeAnalysis.blockCount} blocks** (${formatMinutes(timeAllocationContext.unscheduledTimeAnalysis.totalMinutes)} total)`;
+
+        if (
+          timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks &&
+          timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks.length >
+            0
+        ) {
+          prompt += `\n- Suggested tasks: ${timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks
+            .slice(0, 3)
+            .map((s) => s.title)
+            .join(", ")}`;
+        }
+        prompt += `\n`;
+      }
+    }
+
+    prompt += `
 Project data:
 \`\`\`json
 ${safeProjects}
@@ -103,6 +214,8 @@ ${mainBriefMarkdown}
 \`\`\`
 
 Write the analysis following the system instructions.`;
+
+    return prompt;
   }
 }
 

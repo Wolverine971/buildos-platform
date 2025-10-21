@@ -379,6 +379,17 @@ ${lightTasks
 		let prepAnalysisResult: PreparatoryAnalysisResult | null = null;
 		if (existingProject && selectedProjectId) {
 			console.log('[BrainDumpProcessor] Running preparatory analysis for existing project');
+
+			// Notify caller that analysis is starting
+			try {
+				await options.onAnalysisProgress?.('start');
+			} catch (err) {
+				console.warn(
+					'[BrainDumpProcessor] Error in onAnalysisProgress start callback:',
+					err
+				);
+			}
+
 			prepAnalysisResult = await this.runPreparatoryAnalysis(
 				brainDump,
 				existingProject,
@@ -391,6 +402,16 @@ ${lightTasks
 					relevantTasks: prepAnalysisResult.relevant_task_ids.length,
 					recommendations: prepAnalysisResult.processing_recommendation
 				});
+
+				// Notify caller that analysis is complete with results
+				try {
+					await options.onAnalysisProgress?.('complete', prepAnalysisResult);
+				} catch (err) {
+					console.warn(
+						'[BrainDumpProcessor] Error in onAnalysisProgress complete callback:',
+						err
+					);
+				}
 			} else {
 				console.log(
 					'[BrainDumpProcessor] Analysis failed or returned null - will use full processing'

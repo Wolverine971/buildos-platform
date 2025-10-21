@@ -42,20 +42,38 @@ const validateAndSanitizeCrudOperations = (
 	return operations.map((operation) => {
 		const data = { ...operation.data };
 
-		// Normalize markdown headings (keep existing logic)
+		// Normalize markdown headings in project context
+		// ALWAYS normalize to prevent heading inflation across multiple brain dump processing cycles
 		if (operation.table === 'projects' && data.context) {
-			if (hasInflatedHeadings(data.context, 4)) {
-				data.context = normalizeMarkdownHeadings(data.context, 2);
+			const hadInflatedHeadings = hasInflatedHeadings(data.context, 2);
+			data.context = normalizeMarkdownHeadings(data.context, 2);
+			if (hadInflatedHeadings) {
+				console.warn(
+					'[validations] Normalized inflated headings in project context. Heading levels were beyond expected depth.'
+				);
 			}
 		}
 
 		// Also normalize headings in task descriptions and details
+		// ALWAYS normalize for consistency across all task content
 		if (operation.table === 'tasks') {
-			if (data.description && hasInflatedHeadings(data.description, 3)) {
+			if (data.description) {
+				const hadInflatedDesc = hasInflatedHeadings(data.description, 1);
 				data.description = normalizeMarkdownHeadings(data.description, 1);
+				if (hadInflatedDesc) {
+					console.warn(
+						'[validations] Normalized inflated headings in task description. Heading levels were beyond expected depth.'
+					);
+				}
 			}
-			if (data.details && hasInflatedHeadings(data.details, 3)) {
+			if (data.details) {
+				const hadInflatedDetails = hasInflatedHeadings(data.details, 1);
 				data.details = normalizeMarkdownHeadings(data.details, 1);
+				if (hadInflatedDetails) {
+					console.warn(
+						'[validations] Normalized inflated headings in task details. Heading levels were beyond expected depth.'
+					);
+				}
 			}
 			if (selectedProjectId) {
 				operation.data = { ...operation.data, project_id: selectedProjectId };

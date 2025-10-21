@@ -21,6 +21,12 @@ const twilioConfig = {
   statusCallbackUrl: process.env.PRIVATE_TWILIO_STATUS_CALLBACK_URL,
 };
 
+// Initialize Supabase client (used for SMS service and job processing)
+const supabase = createClient(
+  (process.env.PUBLIC_SUPABASE_URL || "").trim(),
+  (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
+);
+
 // Only initialize if all required Twilio credentials are present
 if (
   twilioConfig.accountSid &&
@@ -35,29 +41,18 @@ if (
       statusCallbackUrl: twilioConfig.statusCallbackUrl,
     });
 
-    console.log();
-    const supabase = createClient(
-      (process.env.PUBLIC_SUPABASE_URL || "").trim(),
-      (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
-    );
-
     smsService = new SMSService(twilioClient, supabase);
-    console.log("Twilio SMS service initialized successfully");
+    console.log("✅ Twilio SMS service initialized successfully");
   } catch (error) {
-    console.error("Failed to initialize Twilio client:", error);
+    console.error("❌ Failed to initialize Twilio client:", error);
     twilioClient = null;
     smsService = null;
   }
 } else {
   console.warn(
-    "Twilio credentials not configured - SMS functionality disabled",
+    "⚠️ Twilio credentials not configured - SMS functionality disabled",
   );
 }
-
-const supabase = createClient(
-  (process.env.PUBLIC_SUPABASE_URL || "").trim(),
-  (process.env.PRIVATE_SUPABASE_SERVICE_KEY || "").trim(),
-);
 
 export async function processSMSJob(job: LegacyJob<SMSJobData>) {
   // Validate job data immediately to catch errors early

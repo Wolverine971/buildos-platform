@@ -4,6 +4,367 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 ---
 
+## 2025-10-20: Fixed Prep Analysis UI Not Updating in DualProcessingResults Component
+
+**Issue**: When preparatory analysis was running for existing projects, the UI in the DualProcessingResults component was not updating with analysis progress, status, or results. Users saw no indication that the analysis phase was occurring.
+
+**Root Cause**: The brain-dump-v2.store's `updateBrainDumpStreamingState()` method was missing three critical fields:
+- `analysisStatus` - The current state of the analysis (processing, completed, failed, etc.)
+- `analysisProgress` - Progress message from the analysis phase
+- `analysisResult` - The preparatory analysis result data containing classification, relevant tasks, etc.
+
+When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(brainDumpId, { analysisStatus: 'processing', ... })`, the store was silently dropping these analysis fields because it only handled context and tasks fields.
+
+**Impact**:
+- Analysis phase UI was completely hidden (no progress indicator, status, or results shown)
+- Users had no feedback during the analysis phase of brain dump processing
+- DualProcessingResults component received undefined analysis fields even though store methods were called with proper data
+- Existing project updates showed no analysis information in the notification UI
+
+**Fix**: Updated three streaming state methods in `/apps/web/src/lib/stores/brain-dump-v2.store.ts` to include analysis fields:
+
+**Changed Methods**:
+
+1. **`updateBrainDumpStreamingState()` (line 1134-1187)** - Per-brain-dump update method
+   - Added `analysisStatus` field (defaults to 'not_needed')
+   - Added `analysisProgress` field (defaults to '')
+   - Added `analysisResult` field (defaults to undefined)
+   - Properly merges analysis state across updates
+
+2. **`updateStreamingState()` (line 1758-1798)** - Legacy single brain dump update method
+   - Same three analysis fields added
+   - Maintains backward compatibility for non-multi-brain-dump mode
+
+3. **`resetStreamingState()` (line 1800-1817)** - Streaming state reset method
+   - Initializes `analysisStatus` to 'not_needed'
+   - Initializes `analysisProgress` to ''
+   - Initializes `analysisResult` to null
+
+**How It Works**:
+1. API endpoint sends analysis SSE messages: `{ type: 'analysis', data: { status: 'processing', ... } }`
+2. brain-dump-notification.bridge receives the message and calls: `updateBrainDumpStreamingState(id, { analysisStatus: 'processing', ... })`
+3. Store now persists these analysis fields in the streaming state object
+4. BrainDumpModalContent.svelte derives `realtimeStreamingState` from store
+5. DualProcessingResults component receives analysis fields via props and renders the analysis UI
+
+**Type Definitions Already Support This**:
+- The type definitions at lines 80-90 (SingleBrainDumpState) and 226-236 (UnifiedBrainDumpState) already included the optional analysis fields
+- The fix was just adding them to the actual state objects being created/updated
+
+**Related Files**:
+- `/apps/web/src/lib/components/brain-dump/DualProcessingResults.svelte:129-148` - Analysis UI rendering
+- `/apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte:77-79` - Streaming state derivation
+- `/apps/web/src/lib/services/brain-dump-notification.bridge.ts:592-673` - Stream update handling
+- `/apps/web/src/routes/api/braindumps/stream/+server.ts:159-247` - SSE analysis message sending
+
+**Manual Verification Steps**:
+1. Create a new brain dump with an existing project selected
+2. Observe the DualProcessingResults component during processing
+3. Should see "Analyzing Your Braindump" card appear while analysis is running
+4. Should see analysis progress and results once analysis completes
+5. Analysis classification badge should display (e.g., "strategic", "tactical", "mixed")
+6. Relevant task count should show in analysis results
+7. Context and tasks panels should still process normally after analysis completes
+
+**Testing Notes**:
+- Analysis should run only for existing projects (not new projects)
+- Analysis should be the first phase of dual processing before context/tasks
+- After analysis completes successfully, context and tasks phases should proceed
+- If analysis fails, system should fall back to full processing without crashing
+
+---
+
+## 2025-10-20: Fixed Markdown Heading Inflation in Project Context and Task Descriptions
+
+**Issue**: Project context and task descriptions were experiencing heading level inflation over successive brain dump processing cycles. Headings would gradually deepen (e.g., H2 → H4 → H6) causing markdown structure to become malformed and headings to exceed valid markdown limits.
+
+**Root Cause**: The validation logic in `validateAndSanitizeCrudOperations()` was using conditional normalization based on a high threshold (expected max depth > 4 for projects, > 3 for tasks). This meant:
+- Headings at levels 1-4 were left unchanged for projects
+- Headings at levels 1-3 were left unchanged for tasks
+- Over time, as normalized context was re-embedded in subsequent brain dump prompts and re-processed by the LLM, heading levels would drift deeper
+- The conditional check meant normalization was OPTIONAL, allowing inflate to persist
+
+**Impact**:
+- Project context accumulated inconsistent heading levels (H1-H6) over multiple updates
+- Task descriptions/details had unstable heading structures
+- Context readability degraded with each brain dump cycle
+- Markdown output became malformed when headings exceeded H6 limit
+
+**Fix**: Implemented proactive, unconditional heading normalization:
+
+**Changed Files**:
+
+1. **`/apps/web/src/lib/services/prompts/core/validations.ts:38-81`**:
+   - **Project Context** (line 47-55): ALWAYS normalize to H2 base level (remove conditional check)
+   - **Task Descriptions** (line 60-67): ALWAYS normalize to H1 base level (remove conditional check)
+   - **Task Details** (line 69-76): ALWAYS normalize to H1 base level (remove conditional check)
+   - Added console.warn logging to track when normalization occurs
+
+**Key Changes**:
+- Removed `if (hasInflatedHeadings(data.context, 4))` conditional - now ALWAYS applies normalization
+- Removed `if (hasInflatedHeadings(data.description, 3))` conditional - now ALWAYS applies normalization
+- Removed `if (hasInflatedHeadings(data.details, 3))` conditional - now ALWAYS applies normalization
+- Added warning logs to identify when content arrives with inflated headings
+
+**Why This Works**:
+- Ensures consistent heading levels on every validation pass
+- Prevents heading drift across multiple brain dump cycles
+- Maintains structural integrity of markdown content
+- Uses existing `normalizeMarkdownHeadings()` utility from `/apps/web/src/lib/utils/markdown-nesting.ts`
+
+**Related Utilities** (already available, now fully utilized):
+- `normalizeMarkdownHeadings()`: Reduces heading levels back to target level
+- `hasInflatedHeadings()`: Detects when headings exceed expected depth
+- `adjustMarkdownHeadingLevels()`: Adjusts relative heading structure
+
+**Testing Recommendations**:
+1. Create new project with brain dump containing multi-level markdown in context
+2. Verify project.context has headings starting at H2
+3. Update project with new brain dump content
+4. Verify context headings still start at H2 (not inflated to H4+)
+5. Repeat update cycle 3-4 times and verify no heading drift
+6. Check browser console for `[validations]` warning logs during normalization
+7. Verify task descriptions/details maintain H1 base level across updates
+
+**Cross-References**:
+- See `/apps/web/src/lib/utils/markdown-nesting.ts` for heading utility functions
+- Related context extraction: `/apps/web/src/lib/utils/braindump-processor.ts:1021-1183` (extractProjectContext)
+- Related: Project schema `/packages/shared-types/src/database.schema.ts` (projects.context field)
+
+---
+
+## 2025-10-20: Updated LLM Prompts - Strategic Focus and Markdown Format
+
+**Issue**:
+1. Context and core dimensions were being generated as unformatted text instead of markdown
+2. Context field was being polluted with task-level execution details instead of focusing on strategy
+
+**Root Cause**:
+- LLM prompts did not require markdown formatting
+- No clear guidance distinguishing between strategic information (context) and execution details (tasks)
+- All braindump details were being dumped into context without filtering
+
+**Impact**:
+- Context fields displayed as long paragraphs without structure, mixing strategy with task details
+- Core dimensions lacked markdown formatting
+- Context mixed strategy with execution details (task lists, step-by-step actions)
+- Unclear separation between what belongs in context vs tasks table
+- Someone unfamiliar with project couldn't quickly understand it from context alone
+
+**Fix**: Updated prompts with TWO key changes:
+
+**Change 1: Strategic vs Execution Distinction**
+
+Context and core dimensions should capture STRATEGY only, not execution details:
+- **Context IS**: Strategic overview, why project matters, key challenges, approach, evolution
+- **Context is NOT**: Task lists, step-by-step actions, execution details
+- **Include**: "Preparing for AP exams in 6 weeks with weak areas in Calc BC series and Bio labs"
+- **Exclude**: "Study series convergence 1 hour daily", "Review 12 labs", "Take practice test Saturday"
+
+**Change 2: Markdown Formatting with Natural Evolution**
+
+Context and dimensions must use markdown, allowing structure to evolve naturally:
+- Early: 1-2 sentences of strategy
+- Mature: Rich markdown with headers, bullets, emphasis
+- No prescriptive rules - LLM decides structure based on content
+
+**Updated Files**:
+
+1. `/apps/web/src/lib/services/prompts/core/prompt-components.ts`:
+   - Added "What context IS/IS NOT" with clear examples
+   - Updated core dimensions guidance for strategic focus only
+   - Enhanced `generateCoreDimensionsMarkdownInstructions()` with strategic/execution examples
+
+2. `/apps/web/src/lib/services/promptTemplate.service.ts` (prep-analysis):
+   - Added filter: "Only capture strategic-level information, not execution details"
+   - Added examples (include vs exclude)
+   - Emphasized task-level details belong in tasks table
+
+3. `/apps/web/docs/prompts/brain-dump/new-project/dual-processing/context/new-project-context-prompt.md`:
+   - Updated guidelines with strategic focus emphasis
+   - Added "DO NOT include task lists, step-by-step actions, or execution details"
+
+4. `/apps/web/docs/prompts/brain-dump/existing-project/dual-processing/context/existing-project-context-prompt.md`:
+   - Updated Update Rules with strategic focus
+   - Added filter for strategic relevance
+   - Added explicit "EXCLUDE task-level details" rule
+
+**Key Philosophy**:
+- Markdown IS required (not plain text)
+- Context = Strategic Master Document (brings unfamiliar person up to speed on strategy)
+- Tasks = Execution Details (specific actions, implementation)
+- Structure evolves naturally as project matures
+- Filter all braindump details: if it's about HOW TO DO something, it's a task, not context
+
+**Testing Recommendations**:
+1. Create project with brain dump containing strategy AND task details
+2. Verify context captures only strategy, not task lists
+3. Verify task details are extracted as separate tasks
+4. Verify core dimensions contain strategic info, not execution specifics
+5. Verify someone unfamiliar with project can understand it from context alone
+
+**Cross-References**:
+- See `/apps/web/src/lib/types/brain-dump.ts` for `PreparatoryAnalysisResult` interface
+- See `/apps/web/docs/prompts/` for all prompt templates
+- Related: Core Dimensions fields in `/packages/shared-types/src/database.schema.ts` (projects table)
+
+---
+
+## 2025-10-20: Fixed Missing Timeblock Cascade Deletion When Deleting Projects
+
+**Issue**: When a project with timeblocks was deleted, the timeblocks and their associated Google Calendar events were NOT deleted, leaving orphaned data in both the database and Google Calendar.
+
+**Root Cause**: The project deletion endpoint (`/api/projects/[id]/delete/+server.ts`) handled deletion of tasks and their calendar events but did not include logic to delete timeblocks. The system had the individual timeblock deletion logic (`TimeBlockService.deleteTimeBlock()`), but this wasn't being called during project cascade deletion.
+
+**Impact**:
+
+- Orphaned timeblocks remained in the database with deleted projects
+- Google Calendar events for deleted project timeblocks persisted (data pollution)
+- UI would show timeblocks for non-existent projects
+- Inconsistent state between database and Google Calendar
+- Potential confusion for users who deleted and recreated projects with timeblocks
+
+**Fix**: Added cascade deletion for timeblocks in the project deletion endpoint:
+
+1. **Step 4.5** (new): After deleting task calendar events, fetch all timeblocks linked to the project
+2. **For each timeblock**:
+   - If it has a `calendar_event_id`, attempt to delete from Google Calendar via `CalendarService`
+   - Catch calendar deletion errors (log warnings but don't fail the entire operation)
+   - Soft-delete the timeblock in database (set `sync_status = 'deleted'` to maintain audit trail)
+3. **Return summary** with counts of successful/failed deletions
+
+**Files Changed**:
+
+- `/apps/web/src/routes/api/projects/[id]/delete/+server.ts` (lines 132-147, 317-397)
+
+**Code Changes**:
+
+```typescript
+// New logic in DELETE handler (lines 132-147):
+// 4.5. Delete time blocks associated with the project
+const { data: timeBlocks, error: timeBlocksGetError } = await supabase
+  .from("time_blocks")
+  .select("id, calendar_event_id")
+  .eq("project_id", projectId)
+  .eq("user_id", userId);
+
+if (timeBlocks && timeBlocks.length > 0 && !timeBlocksGetError) {
+  const timeBlockResults = await handleTimeBlockDeletion(
+    timeBlocks,
+    userId,
+    supabase,
+  );
+  warnings.push(...timeBlockResults.warnings);
+  errors.push(...timeBlockResults.errors);
+}
+
+// New helper function (lines 317-397):
+async function handleTimeBlockDeletion(
+  timeBlocks: any[],
+  userId: string,
+  supabase: any,
+): Promise<{ warnings: string[]; errors: string[] }> {
+  const calendarService = new CalendarService(supabase);
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const block of timeBlocks) {
+    try {
+      // Delete from Google Calendar if event exists
+      if (block.calendar_event_id) {
+        try {
+          await calendarService.deleteCalendarEvent(userId, {
+            event_id: block.calendar_event_id,
+          });
+        } catch (calendarError: any) {
+          // Log but continue - we'll still soft-delete the timeblock
+          warnings.push(
+            `Failed to remove time block calendar event: ${calendarError?.message || "Unknown error"}`,
+          );
+        }
+      }
+
+      // Soft-delete the time block in database
+      const nowIso = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from("time_blocks")
+        .update({
+          sync_status: "deleted",
+          sync_source: "app",
+          updated_at: nowIso,
+          last_synced_at: nowIso,
+        })
+        .eq("id", block.id)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        failCount++;
+        warnings.push(
+          `Failed to delete time block from database: ${updateError.message || "Unknown error"}`,
+        );
+      } else {
+        successCount++;
+      }
+    } catch (error: any) {
+      failCount++;
+      warnings.push(
+        `Failed to delete time block: ${error?.message || "Unknown error"}`,
+      );
+    }
+  }
+
+  // Add summary messages
+  if (successCount > 0) {
+    warnings.push(`${successCount} time block(s) deleted successfully.`);
+  }
+  if (failCount > 0) {
+    errors.push(`${failCount} time block(s) failed to delete.`);
+  }
+
+  return { warnings, errors };
+}
+```
+
+**Design Decisions**:
+
+1. **Soft-delete vs Hard-delete**: Used soft-delete (setting `sync_status = 'deleted'`) to match the existing `TimeBlockService.deleteTimeBlock()` pattern. This maintains audit trails and allows recovery if needed.
+
+2. **Error Handling**: Calendar deletion failures are logged as warnings but don't block the operation. Database deletions failures are logged but don't prevent the project deletion from completing. This follows the same pattern as task calendar event deletion.
+
+3. **Sequence**: Timeblock deletion happens AFTER task/calendar event deletion and BEFORE final project deletion in the cascade sequence.
+
+**Breaking Changes**: NONE
+
+- Soft-deleted timeblocks are already filtered out by existing queries (`.neq('sync_status', 'deleted')`)
+- All timeblock fetch operations already use this filter pattern
+- Deleted timeblocks won't appear in the UI or API responses
+- No existing code changes required
+
+**Manual Verification Steps**:
+
+1. Create a project with 2-3 timeblocks scheduled on Google Calendar
+2. Verify timeblocks appear in the web UI and Google Calendar
+3. Delete the project via the web UI
+4. Verify in web UI: Timeblocks no longer appear in time blocks list
+5. Verify in Google Calendar: Events have been removed
+6. Verify in database (optional): `SELECT * FROM time_blocks WHERE project_id = '<deleted_project_id>'` shows `sync_status = 'deleted'`
+
+**Related Documentation**:
+
+- Time Blocks Feature: `/apps/web/docs/features/time-blocks/` (if exists)
+- TimeBlockService: `/apps/web/src/lib/services/time-block.service.ts:650-692` (deleteTimeBlock method)
+- CalendarService: `/apps/web/src/lib/services/calendar-service.ts`
+- Database Schema: `/packages/shared-types/src/database.schema.ts:1076-1096` (time_blocks table)
+
+**Date Fixed**: 2025-10-20
+**Fixed By**: Claude Code
+**Severity**: Medium (data consistency issue, no user data loss)
+**Status**: ✅ Fixed
+
+---
+
 ## 2025-10-20: Fixed Svelte 5 Critical Issues (Memory Leaks, Non-Reactive State, Logic Bugs)
 
 **Context**: Following comprehensive audit documented in `/docs/SVELTE5_AUDIT_FINDINGS.md`, Phase 1 critical fixes were implemented to address memory leaks, non-reactive state variables, and logic bugs.

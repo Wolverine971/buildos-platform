@@ -12,7 +12,9 @@
 		Edit3,
 		Sparkles,
 		Trash2,
-		AlertCircle
+		AlertCircle,
+		Info,
+		RefreshCw
 	} from 'lucide-svelte';
 	import { invalidate, goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -34,6 +36,7 @@
 		convertUTCToDatetimeLocal,
 		convertUTCToDateOnly
 	} from '$lib/utils/date-utils';
+	import { format } from 'date-fns';
 
 	export let data: PageData;
 
@@ -66,18 +69,16 @@
 	let durationMinutesValue = 60;
 	let recurrencePatternValue = '';
 	let recurrenceEndsValue = '';
-	let dependenciesValue: string[] = [];
-	let parentTaskIdValue = '';
+	let recurrenceEndOption = 'never';
 	let taskStepsValue = '';
-	// Removed outdatedValue - using soft delete pattern
+	let recurrenceEndMessage: string | null = null;
 
-	// Editing state
-	let editingField: string | null = null;
+	// UI state
 	let savingField: string | null = null;
 	let isDeleting = false;
 
 	// Tab configuration
-	$: tabConfig = [
+	const tabConfig = [
 		{
 			id: 'info' as TabType,
 			label: 'Task Details',
@@ -88,8 +89,7 @@
 			id: 'steps' as TabType,
 			label: 'Task Steps',
 			icon: Sparkles,
-			count: null,
-			badge: { text: 'Coming Soon', color: 'purple' }
+			count: null
 		}
 	];
 
@@ -115,13 +115,20 @@
 	const recurrenceOptions = [
 		{ value: '', label: 'No recurrence' },
 		{ value: 'daily', label: 'Daily' },
+		{ value: 'weekdays', label: 'Weekdays (Mon-Fri)' },
 		{ value: 'weekly', label: 'Weekly' },
-		{ value: 'biweekly', label: 'Bi-Weekly' },
+		{ value: 'biweekly', label: 'Every 2 weeks' },
 		{ value: 'monthly', label: 'Monthly' },
-		{ value: 'yearly', label: 'Yearly' }
+		{ value: 'quarterly', label: 'Every 3 months' },
+		{ value: 'yearly', label: 'Yearly' },
+		{ value: 'custom', label: 'Custom...' }
 	];
 
-	// No longer need local date conversion helpers - using centralized utilities
+	const recurrenceEndOptions = [
+		{ value: 'never', label: 'Never' },
+		{ value: 'date', label: 'On date' },
+		{ value: 'count', label: 'After occurrences' }
+	];
 
 	// Initialize values when task changes
 	$: if (task) {
@@ -135,10 +142,9 @@
 		durationMinutesValue = task.duration_minutes || 60;
 		recurrencePatternValue = task.recurrence_pattern || '';
 		recurrenceEndsValue = convertUTCToDateOnly(task.recurrence_ends || '');
-		dependenciesValue = task.dependencies || [];
-		parentTaskIdValue = task.parent_task_id || '';
+		// Determine recurrence end option from existing data
+		recurrenceEndOption = task.recurrence_ends ? 'date' : 'never';
 		taskStepsValue = task.task_steps || '';
-		// Removed outdatedValue assignment - using soft delete pattern
 	}
 
 	// Granular invalidation
@@ -236,6 +242,22 @@
 		(event) => event.sync_status !== ('deleted' as any)
 	);
 	$: isTaskScheduled = calendarEvents.length > 0;
+
+	// Compute recurrence end date message
+	$: recurrenceEndMessage = (() => {
+		if (taskTypeValue !== 'recurring') return null;
+
+		if (recurrenceEndsValue) {
+			return null; // User specified end date
+		}
+
+		if (project?.end_date) {
+			const endDate = new Date(project.end_date);
+			return `This task will recur until the project ends on ${format(endDate, 'MMM d, yyyy')}`;
+		}
+
+		return 'This task will recur indefinitely as the project has no end date';
+	})();
 
 	// Use centralized date formatter for calendar events
 	function formatEventDate(dateString: string) {
@@ -684,6 +706,96 @@
 							{/if}
 						</FormField>
 
+						<!-- Recurrence Pattern (only for recurring tasks with start date) -->
+						{#if taskTypeValue === 'recurring' && startDateValue}
+							<FormField label="Recurrence Pattern" labelFor="recurrence-pattern">
+								<Select
+									id="recurrence-pattern"
+									bind:value={recurrencePatternValue}
+									on:change={(e) => {
+										if (!isDeleted) {
+											recurrencePatternValue = e.detail;
+											quickUpdateField('recurrence_pattern', recurrencePatternValue);
+										}
+									}}
+									size="sm"
+									disabled={isDeleted}
+								>
+									{#each recurrenceOptions as option}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</Select>
+								{#if savingField === 'recurrence_pattern'}
+									<div
+										class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
+									>
+										<Save class="w-3 h-3 mr-1 animate-pulse" />
+										Saving...
+									</div>
+								{/if}
+							</FormField>
+
+							<!-- Recurrence End Options -->
+							<FormField label="Recurrence Ends" labelFor="recurrence-end-option">
+								<Select
+									id="recurrence-end-option"
+									bind:value={recurrenceEndOption}
+									on:change={(e) => {
+										if (!isDeleted) {
+											recurrenceEndOption = e.detail;
+										}
+									}}
+									size="sm"
+									disabled={isDeleted}
+								>
+									{#each recurrenceEndOptions as option}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</Select>
+							</FormField>
+
+							<!-- End Date Input (if "On date" selected) -->
+							{#if recurrenceEndOption === 'date'}
+								<FormField label="End Date" labelFor="recurrence-end-date">
+									<TextInput
+										id="recurrence-end-date"
+										type="date"
+										bind:value={recurrenceEndsValue}
+										on:change={() =>
+											!isDeleted &&
+											quickUpdateField(
+												'recurrence_ends',
+												recurrenceEndsValue ? new Date(recurrenceEndsValue + 'T00:00:00').toISOString() : null
+											)}
+										size="sm"
+										disabled={isDeleted}
+									/>
+									{#if savingField === 'recurrence_ends'}
+										<div
+											class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
+										>
+											<Save class="w-3 h-3 mr-1 animate-pulse" />
+											Saving...
+										</div>
+									{/if}
+								</FormField>
+							{/if}
+
+							<!-- Recurrence End Message -->
+							{#if recurrenceEndMessage}
+								<div
+									class="mt-3 flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+								>
+									<Info
+										class="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
+									/>
+									<span class="text-sm text-blue-900 dark:text-blue-100">
+										{recurrenceEndMessage}
+									</span>
+								</div>
+							{/if}
+						{/if}
+
 						<!-- Calendar Events -->
 						{#if calendarEvents.length > 0}
 							<div>
@@ -785,28 +897,121 @@
 				</div>
 			</div>
 		{:else if activeTab === 'steps'}
-			<!-- Task Steps Coming Soon Placeholder -->
-			<div
-				class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 min-h-[calc(100vh-16rem)] flex items-center justify-center"
-			>
-				<div class="text-center p-12">
+			<!-- Task Steps Tab -->
+			<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+				<div class="lg:col-span-3">
 					<div
-						class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full flex items-center justify-center"
+						class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
 					>
-						<Sparkles class="w-12 h-12 text-white" />
+						<div class="mb-4">
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+								Step-by-Step Instructions
+							</h3>
+							<p class="text-sm text-gray-600 dark:text-gray-400">
+								Document the steps needed to complete this task
+							</p>
+						</div>
+
+						<FormField labelFor="task-steps" class="flex-1 flex flex-col">
+							<Textarea
+								id="task-steps"
+								bind:value={taskStepsValue}
+								on:blur={() =>
+									!isDeleted && quickUpdateField('task_steps', taskStepsValue)}
+								on:input={(e) => !isDeleted && autoResize(e.currentTarget)}
+								placeholder="1. First step&#10;2. Second step&#10;3. Third step&#10;..."
+								rows={16}
+								size="lg"
+								class="w-full leading-relaxed {isDeleted ? 'opacity-60' : ''}"
+								disabled={isDeleted}
+								readonly={isDeleted}
+							/>
+							{#if savingField === 'task_steps'}
+								<div
+									class="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center"
+								>
+									<Save class="w-4 h-4 mr-1 animate-pulse" />
+									Saving...
+								</div>
+							{/if}
+							<div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+								{taskStepsValue.length} characters
+							</div>
+						</FormField>
 					</div>
-					<h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-						Task Steps Coming Soon
-					</h3>
-					<p class="text-lg text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
-						We're working on an intelligent task breakdown feature that will
-						automatically generate step-by-step instructions for your tasks.
-					</p>
+				</div>
+
+				<!-- Steps Sidebar -->
+				<div class="lg:col-span-1">
 					<div
-						class="inline-flex items-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-sm font-medium"
+						class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sticky top-24"
 					>
-						<Sparkles class="w-4 h-4 mr-2" />
-						AI-Powered Task Planning
+						<h3
+							class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide mb-4"
+						>
+							Task Information
+						</h3>
+
+						<!-- Task Type Badge -->
+						<div class="mb-4">
+							<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+								Type
+							</p>
+							<span
+								class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {taskTypeValue === 'recurring'
+									? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+									: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}"
+							>
+								{taskTypeValue === 'recurring' ? 'Recurring' : 'One-off'}
+							</span>
+						</div>
+
+						<!-- Priority Badge -->
+						{#if priorityDisplay}
+							<div class="mb-4">
+								<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+									Priority
+								</p>
+								<span
+									class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {priorityDisplay.color}"
+								>
+									{priorityDisplay.label}
+								</span>
+							</div>
+						{/if}
+
+						<!-- Status Badge -->
+						{#if statusDisplay}
+							<div class="mb-4">
+								<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+									Status
+								</p>
+								<span
+									class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {statusDisplay.color}"
+								>
+									<svelte:component this={statusDisplay.icon} class="w-4 h-4 mr-1.5" />
+									{statusDisplay.label}
+								</span>
+							</div>
+						{/if}
+
+						<hr class="border-gray-200 dark:border-gray-700 my-4" />
+
+						<!-- Metadata -->
+						<div class="space-y-3 text-xs text-gray-600 dark:text-gray-400">
+							{#if task?.created_at}
+								<div>
+									<span class="font-medium block text-gray-700 dark:text-gray-300">Created</span>
+									<span class="text-gray-600 dark:text-gray-400">{formatDateForDisplay(task.created_at)}</span>
+								</div>
+							{/if}
+							{#if task?.updated_at}
+								<div>
+									<span class="font-medium block text-gray-700 dark:text-gray-300">Updated</span>
+									<span class="text-gray-600 dark:text-gray-400">{formatDateForDisplay(task.updated_at)}</span>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</div>

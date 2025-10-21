@@ -170,7 +170,7 @@ async function processBrainDumpWithStreaming({
 				await sendSSEMessage(writer, encoder, analysisStartMessage);
 
 				try {
-				const result = await originalRunPreparatoryAnalysis(...(args as any));
+					const result = await originalRunPreparatoryAnalysis(...(args as any));
 					analysisProgress = { status: 'completed', data: result };
 
 					if (result) {
@@ -358,6 +358,29 @@ async function processBrainDumpWithStreaming({
 						processName: 'dual-processing'
 					};
 					await sendSSEMessage(writer, encoder, retryMessage);
+				},
+				// Provide onAnalysisProgress callback to emit SSE analysis messages
+				onAnalysisProgress: async (phase: 'start' | 'complete', result?: any) => {
+					if (phase === 'start') {
+						const analysisStartMessage: SSEAnalysis = {
+							type: 'analysis',
+							message: 'Analyzing braindump content to optimize processing...',
+							data: { status: 'processing' }
+						};
+						await sendSSEMessage(writer, encoder, analysisStartMessage);
+					} else if (phase === 'complete' && result) {
+						const classification = result.braindump_classification;
+						const relevantTaskCount = result.relevant_task_ids?.length || 0;
+						const completedMessage: SSEAnalysis = {
+							type: 'analysis',
+							message: `Analysis complete: ${classification} (${relevantTaskCount} relevant tasks)`,
+							data: {
+								status: 'completed',
+								result: result
+							}
+						};
+						await sendSSEMessage(writer, encoder, completedMessage);
+					}
 				}
 			},
 			brainDumpId: brainDumpId as string,
@@ -408,7 +431,9 @@ async function processBrainDumpWithStreaming({
 				});
 
 				// Get project info for the success view
-			let projectInfo: { id: string; name: string; isNew: boolean; slug?: string | null } | undefined = undefined;
+				let projectInfo:
+					| { id: string; name: string; isNew: boolean; slug?: string | null }
+					| undefined = undefined;
 
 				// Check if a new project was created
 				const createdProject = executionResult.results?.find(

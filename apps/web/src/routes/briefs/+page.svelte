@@ -553,13 +553,15 @@
 	}
 
 	// Calculate overall progress percentage
-	let overallProgress = $derived(currentStreamingStatus
-		? Math.round(
-				(currentStreamingStatus.progress.projects.completed /
-					Math.max(1, currentStreamingStatus.progress.projects.total)) *
-					100
-			)
-		: 0);
+	let overallProgress = $derived(
+		currentStreamingStatus
+			? Math.round(
+					(currentStreamingStatus.progress.projects.completed /
+						Math.max(1, currentStreamingStatus.progress.projects.total)) *
+						100
+				)
+			: 0
+	);
 
 	// View configurations
 	const viewConfigs = [
@@ -570,7 +572,10 @@
 
 	// Show generated brief from streaming data ONLY while actively generating
 	let displayDailyBrief = $derived(
-		isToday && currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating && dailyBrief
+		isToday &&
+			currentStreamingData?.mainBrief &&
+			currentStreamingStatus?.isGenerating &&
+			dailyBrief
 			? {
 					...dailyBrief,
 					id: currentStreamingData.mainBrief.id,
@@ -584,8 +589,8 @@
 	// Show project briefs from streaming data ONLY while actively generating
 	let displayProjectBriefs = $derived(
 		isToday &&
-		currentStreamingData?.projectBriefs?.length > 0 &&
-		currentStreamingStatus?.isGenerating
+			currentStreamingData?.projectBriefs?.length > 0 &&
+			currentStreamingStatus?.isGenerating
 			? currentStreamingData.projectBriefs
 			: projectBriefs
 	);

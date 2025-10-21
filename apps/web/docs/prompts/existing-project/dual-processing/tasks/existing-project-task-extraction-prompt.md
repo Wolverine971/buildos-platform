@@ -1,6 +1,6 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-20T20:28:53.015Z
+**Generated at:** 2025-10-21T00:23:00.310Z
 **Environment:** Development
 
 
@@ -9,11 +9,11 @@
 ```json
 {
   "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-  "projectId": "b7140785-6e02-4649-9c61-4ef42383b733",
-  "brainDumpLength": 791,
-  "existingTasksCount": 16,
+  "projectId": "1fe72b66-d560-4ca7-abe3-9258ee2934ae",
+  "brainDumpLength": 674,
+  "existingTasksCount": 7,
   "hasDisplayedQuestions": false,
-  "timestamp": "2025-10-20T20:28:53.015Z"
+  "timestamp": "2025-10-21T00:23:00.309Z"
 }
 ```
 
@@ -23,10 +23,10 @@
 ```
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project b7140785-6e02-4649-9c61-4ef42383b733
+Mode: Extract/Update for EXISTING project 1fe72b66-d560-4ca7-abe3-9258ee2934ae
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-20T20:28:35.555Z
+Current date and time: 2025-10-21T00:22:47.935Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -68,7 +68,7 @@ Current date and time: 2025-10-20T20:28:35.555Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "b7140785-6e02-4649-9c61-4ef42383b733",
+  "project_id": "1fe72b66-d560-4ca7-abe3-9258ee2934ae",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -163,7 +163,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "b7140785-6e02-4649-9c61-4ef42383b733",
+        "project_id": "1fe72b66-d560-4ca7-abe3-9258ee2934ae",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -179,7 +179,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "b7140785-6e02-4649-9c61-4ef42383b733",
+        "project_id": "1fe72b66-d560-4ca7-abe3-9258ee2934ae",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -217,49 +217,40 @@ Respond with valid JSON matching the complete structure above.
 ```
 ## Current Project Data:
 
-**EXISTING TASKS (1):**
-[{"id":"618cc763-cdfa-4354-bf64-693d42ee9f29","title":"Submit chapter 1 to beta readers","status":"backlog","priority":"high","task_type":"one_off","start_date":"2025-10-20T00:00:00+00:00","duration_minutes":60,"description":"Send chapter 1 to beta readers by January 15th.","details":"This is crucial for receiving feedback early in the writing process."}]
+**EXISTING TASKS (7):**
+[{"id":"af17b854-3845-4f71-a9a1-0a402ecacfcc","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":90,"description":"Create a prophecy that drives the plot.","details":"The prophecy should be integral to the story, influencing character decisions and the overall narrative arc."},{"id":"c77457bb-fbb8-4a48-b4f6-6b67f736d9f4","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Gather information on historical blacksmithing methods.","details":"Focus on techniques relevant to the story's setting and how they can influence the main character's abilities and the magic system."},{"id":"a877b282-bd23-46fe-b9d6-bb2f3bfaa384","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the initial chapters of the novel.","details":"Detail the main events, character introductions, and plot developments that will occur in the first three chapters."},{"id":"93e4fd74-7b0d-4172-8d8d-112bcf57309e","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Develop detailed profiles for the antagonist.","details":"The antagonist is The Shadow King. Explore his motivations, background, and how he opposes the main character."},{"id":"b85d6a03-1018-42fb-b384-4fe411361547","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":240,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"ac6e2de0-fd04-443c-88b1-fe48f9b3b9d4","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Develop a unique magic system for the novel.","details":"The magic system should be based on metal and fire, detailing how it works, its limitations, and its impact on the world and characters. Found interesting parallels with Japanese sword-making traditions - the idea of the smith's spirit entering the blade. Could adapt this: Elena's emotions during forging affect the weapon's properties. Anger = fire damage, Sorrow = ice/frost, Joy = healing properties, Fear = defensive shields. Also researching Damascus steel patterns for visual descriptions, Celtic mythology about smith gods (Goibniu), and types of medieval weapons beyond swords. World-building additions include The Forge Temples: ancient sites where dragon fire still burns, Smith's Guild hierarchy and traditions, The Quenching Ritual: how magical weapons are completed, and regional differences in forging techniques across Aethermoor."},{"id":"f6fab763-c0b7-427b-9de5-76a4a6536d36","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create a detailed backstory for the main character.","details":"The main character is an orphan raised by a master blacksmith. Explore her childhood, motivations, and how her upbringing influences her abilities and personality."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Starting to think about publication options for The Last Ember.
+Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
 
-Traditional publishing route:
+Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
 
-- Need to write query letter
-- Create 1-page synopsis
-- Research fantasy literary agents (looking at agents who rep Brandon Sanderson, Robin Hobb)
-- Prepare first 3 chapters as sample
+Weekly tasks:
 
-Self-publishing considerations:
+- Saturday mornings: Chapter revision and editing
+- Sunday afternoons: Plot planning for next week
 
-- Budget $3000 for professional editing
-- Find cover artist specializing in fantasy
-- Plan pre-launch marketing campaign
-- Set up author website and newsletter
+Monthly milestones:
 
-Timeline:
+- January: Complete chapters 1-10 (30,000 words)
+- February: Complete chapters 11-20 (30,000 words)
+- March: Complete chapters 21-30 and epilogue (35,000 words)
 
-- Finish first draft: March 31
-- Self-edit: April
-- Beta readers: May
-- Professional edit: June-July
-- Query agents or launch self-pub: August
+Also need to:
 
-Also want to:
-
-- Start building author platform on social media
-- Write short stories in same universe for magazines
-- Create series bible if this becomes Book 1
+- Join local writers' critique group (meets 1st Tuesday of month)
+- Submit chapter 1 to beta readers by January 15th
+- Research literary agents for fantasy genre
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~2113 tokens
-- **User Prompt:** ~338 tokens
-- **Total Estimate:** ~2450 tokens
+- **User Prompt:** ~1048 tokens
+- **Total Estimate:** ~3160 tokens
 
 
 ---

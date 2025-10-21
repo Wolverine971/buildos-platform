@@ -598,7 +598,29 @@ function handleBrainDumpStreamUpdateForId(brainDumpId: string, status: Streaming
 	});
 
 	// Route streaming updates to the correct brain dump
-	if (status.type === 'contextProgress' && 'data' in status) {
+	if (status.type === 'analysis' && 'data' in status) {
+		// Handle preparatory analysis phase
+		if (status.data.status === 'completed' && status.data.result) {
+			console.log('[BrainDumpNotificationBridge] Analysis completed for:', brainDumpId);
+			brainDumpV2Store.updateBrainDumpStreamingState(brainDumpId, {
+				analysisStatus: 'completed',
+				analysisProgress: status.message,
+				analysisResult: status.data.result
+			});
+		} else if (status.data.status === 'processing') {
+			console.log('[BrainDumpNotificationBridge] Analysis processing for:', brainDumpId);
+			brainDumpV2Store.updateBrainDumpStreamingState(brainDumpId, {
+				analysisStatus: 'processing',
+				analysisProgress: status.message
+			});
+		} else if (status.data.status === 'failed') {
+			console.log('[BrainDumpNotificationBridge] Analysis failed for:', brainDumpId);
+			brainDumpV2Store.updateBrainDumpStreamingState(brainDumpId, {
+				analysisStatus: 'error',
+				analysisProgress: status.message
+			});
+		}
+	} else if (status.type === 'contextProgress' && 'data' in status) {
 		if (status.data.status === 'completed' && status.data.preview) {
 			console.log(
 				'[BrainDumpNotificationBridge] Context completed with preview for:',
@@ -662,7 +684,29 @@ export function handleBrainDumpStreamUpdate(status: StreamingMessage) {
 
 	// CRITICAL: Update the store's streaming state (not just the notification message!)
 	// This is what the old BrainDumpProcessingNotification component did
-	if (status.type === 'contextProgress' && 'data' in status) {
+	if (status.type === 'analysis' && 'data' in status) {
+		// Handle preparatory analysis phase
+		if (status.data.status === 'completed' && status.data.result) {
+			console.log('[BrainDumpNotificationBridge] Analysis completed');
+			brainDumpV2Store.updateStreamingState({
+				analysisStatus: 'completed',
+				analysisProgress: status.message,
+				analysisResult: status.data.result
+			});
+		} else if (status.data.status === 'processing') {
+			console.log('[BrainDumpNotificationBridge] Analysis processing:', status.message);
+			brainDumpV2Store.updateStreamingState({
+				analysisStatus: 'processing',
+				analysisProgress: status.message
+			});
+		} else if (status.data.status === 'failed') {
+			console.log('[BrainDumpNotificationBridge] Analysis failed:', status.message);
+			brainDumpV2Store.updateStreamingState({
+				analysisStatus: 'error',
+				analysisProgress: status.message
+			});
+		}
+	} else if (status.type === 'contextProgress' && 'data' in status) {
 		// Check if this is a completion event with preview data
 		if (status.data.status === 'completed' && status.data.preview) {
 			console.log('[BrainDumpNotificationBridge] Context completed with preview');
