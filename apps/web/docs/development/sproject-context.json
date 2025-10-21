@@ -22,6 +22,7 @@
 			"components": [
 				"NewProjectModal",
 				"ProjectBriefModal",
+				"DailyBriefModal",
 				"BrainDumpModal",
 				"QuickProjectModal"
 			]

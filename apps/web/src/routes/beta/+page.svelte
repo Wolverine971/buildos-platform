@@ -20,6 +20,7 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
 	// Form state
 	let email = '';
@@ -40,6 +41,7 @@
 	let isSubmitting = false;
 	let submitError = '';
 	let existingSignupStatus = '';
+	let emailError = '';
 
 	// Check if user already signed up
 	onMount(async () => {
@@ -114,6 +116,19 @@
 		}
 	}
 
+	// Validate email on blur for instant feedback
+	function validateEmail() {
+		emailError = '';
+		if (!email.trim()) {
+			return;
+		}
+
+		const validation = validateEmailClient(email.trim());
+		if (!validation.valid) {
+			emailError = validation.error || 'Invalid email address';
+		}
+	}
+
 	function validateForm(): string | null {
 		if (honeypot.trim() !== '') return 'Spam detected';
 		if (!email.trim()) return 'Email is required';
@@ -125,8 +140,12 @@
 			return "Please provide more detail about why you're interested (minimum 20 characters)";
 		if (biggestChallenge.length < 10) return 'Please describe your challenge in more detail';
 
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(email)) return 'Please provide a valid email address';
+		// Email validation (enhanced security)
+		const emailValidation = validateEmailClient(email.trim());
+		if (!emailValidation.valid) {
+			emailError = emailValidation.error || 'Invalid email address';
+			return emailValidation.error || 'Please provide a valid email address';
+		}
 
 		return null;
 	}
@@ -354,7 +373,13 @@
 									required
 									aria-required="true"
 									size="md"
+									on:blur={validateEmail}
 								/>
+								{#if emailError}
+									<p class="mt-1 text-sm text-red-600 dark:text-red-400">
+										{emailError}
+									</p>
+								{/if}
 							</FormField>
 							<FormField label="Full Name" name="fullName" required size="md">
 								<TextInput

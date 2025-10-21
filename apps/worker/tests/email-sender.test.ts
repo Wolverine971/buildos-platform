@@ -435,11 +435,11 @@ describe("DailyBriefEmailSender", () => {
       const result = emailSender.formatBriefForEmail(brief, "2025-10-13");
 
       expect(result.htmlContent).toContain(
-        "https://build-os.com/briefs/brief-123",
+        "https://build-os.com/projects?briefDate=2025-10-13",
       );
       expect(result.htmlContent).toContain("https://build-os.com/settings");
       expect(result.plainText).toContain(
-        "https://build-os.com/briefs/brief-123",
+        "https://build-os.com/projects?briefDate=2025-10-13",
       );
       expect(result.plainText).toContain("https://build-os.com/settings");
     });

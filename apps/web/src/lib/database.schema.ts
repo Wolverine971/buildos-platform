@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-21T04:26:29.597Z
+// Generated on: 2025-10-21T19:59:53.369Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -910,6 +910,19 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	security_logs: {
+		content: string;
+		created_at: string;
+		event_type: string;
+		id: string;
+		ip_address: string | null;
+		llm_validation: Json | null;
+		metadata: Json | null;
+		regex_patterns: Json | null;
+		user_agent: string | null;
+		user_id: string;
+		was_blocked: boolean;
+	};
 	sms_alert_history: {
 		alert_type: string;
 		id: string;
@@ -1369,6 +1382,7 @@ export const tableNames = [
 	'recurring_task_instances',
 	'recurring_task_migration_log',
 	'scheduled_sms_messages',
+	'security_logs',
 	'sms_alert_history',
 	'sms_alert_thresholds',
 	'sms_messages',

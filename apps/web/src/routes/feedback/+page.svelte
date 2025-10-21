@@ -19,6 +19,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { validateOptionalEmailClient } from '$lib/utils/client-email-validation';
 
 	let selectedCategory = '';
 	let rating = 0;
@@ -28,6 +29,7 @@
 	let isSubmitting = false;
 	let submitSuccess = false;
 	let submitError = '';
+	let emailError = '';
 
 	const feedbackCategories = [
 		{ id: 'feature', label: 'Feature Request', icon: Lightbulb, color: 'blue' },
@@ -38,6 +40,19 @@
 
 	function setRating(value: number) {
 		rating = value;
+	}
+
+	// Validate email on blur for instant feedback (optional field)
+	function validateEmail() {
+		emailError = '';
+		if (!userEmail.trim()) {
+			return; // Empty is valid for optional field
+		}
+
+		const validation = validateOptionalEmailClient(userEmail.trim());
+		if (!validation.valid) {
+			emailError = validation.error || 'Invalid email address';
+		}
 	}
 
 	function validateForm(): string | null {
@@ -64,9 +79,13 @@
 			return 'Please select a feedback category';
 		}
 
-		// Validate email format if provided
-		if (userEmail.trim() && !isValidEmail(userEmail)) {
-			return 'Please provide a valid email address';
+		// Validate email format if provided (enhanced security)
+		if (userEmail.trim()) {
+			const emailValidation = validateOptionalEmailClient(userEmail.trim());
+			if (!emailValidation.valid) {
+				emailError = emailValidation.error || 'Invalid email address';
+				return emailValidation.error || 'Please provide a valid email address';
+			}
 		}
 
 		// Check for spam patterns
@@ -83,11 +102,6 @@
 		}
 
 		return null;
-	}
-
-	function isValidEmail(email: string): boolean {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
 	}
 
 	async function handleSubmit(e: Event) {
@@ -358,7 +372,13 @@
 								bind:value={userEmail}
 								placeholder="your@email.com"
 								size="md"
+								on:blur={validateEmail}
 							/>
+							{#if emailError}
+								<p class="mt-1 text-sm text-red-600 dark:text-red-400">
+									{emailError}
+								</p>
+							{/if}
 						</FormField>
 
 						<!-- Submit Button -->

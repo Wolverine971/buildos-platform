@@ -45,7 +45,14 @@
 	import BriefsSettingsModal from '$lib/components/briefs/BriefsSettingsModal.svelte';
 	import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 
-	export let user: { id: string; email: string; is_admin: boolean } | null = null;
+	// Props using Svelte 5 runes syntax
+	let {
+		user = null,
+		onViewBrief
+	}: {
+		user?: { id: string; email: string; is_admin: boolean } | null;
+		onViewBrief?: (data: { briefId: string | null; briefDate: string }) => void;
+	} = $props();
 
 	// Get supabase client from context
 	let supabaseClient: any = null;
@@ -55,41 +62,41 @@
 		console.warn('Supabase context not available');
 	}
 
-	// Initialize with minimal data
-	let currentDate = '';
-	let selectedView: 'single' | 'list' | 'analytics' = 'single';
-	let userTimezone = '';
+	// Initialize with minimal data (Svelte 5 $state for reactivity)
+	let currentDate = $state('');
+	let selectedView = $state<'single' | 'list' | 'analytics'>('single');
+	let userTimezone = $state('');
 
-	// Brief data
-	let dailyBrief: DailyBrief | null = null;
-	let projectBriefs: any[] = [];
-	let briefHistory: DailyBrief[] = [];
-	let isToday = false;
+	// Brief data (Svelte 5 $state for reactivity)
+	let dailyBrief = $state<DailyBrief | null>(null);
+	let projectBriefs = $state<any[]>([]);
+	let briefHistory = $state<DailyBrief[]>([]);
+	let isToday = $state(false);
 
-	// Component state
-	let isLoading = false;
-	let error: string | null = null;
-	let isRefreshing = false;
+	// Component state (Svelte 5 $state for reactivity)
+	let isLoading = $state(false);
+	let error = $state<string | null>(null);
+	let isRefreshing = $state(false);
 
-	// Search and filter state
-	let searchQuery = '';
-	let selectedDateRange: 'today' | 'week' | 'month' | 'custom' = 'today';
-	let customStartDate = '';
-	let customEndDate = '';
-	let showFilters = false;
-	let filteredBriefs: DailyBrief[] = [];
+	// Search and filter state (Svelte 5 $state for reactivity)
+	let searchQuery = $state('');
+	let selectedDateRange = $state<'today' | 'week' | 'month' | 'custom'>('today');
+	let customStartDate = $state('');
+	let customEndDate = $state('');
+	let showFilters = $state(false);
+	let filteredBriefs = $state<DailyBrief[]>([]);
 
-	// Modal state
-	let showDeleteConfirmation = false;
-	let briefToDelete: DailyBrief | null = null;
-	let showSettingsModal = false;
+	// Modal state (Svelte 5 $state for reactivity)
+	let showDeleteConfirmation = $state(false);
+	let briefToDelete = $state<DailyBrief | null>(null);
+	let showSettingsModal = $state(false);
 
-	// Reactive streaming data
-	let currentStreamingStatus: StreamingStatus;
-	let currentStreamingData: StreamingBriefData;
-	let unifiedGenerationState: any;
-	let checkingExistingGeneration = false;
-	let railwayWorkerAvailable = false;
+	// Reactive streaming data (Svelte 5 $state for reactivity)
+	let currentStreamingStatus = $state<StreamingStatus | null>(null);
+	let currentStreamingData = $state<StreamingBriefData | null>(null);
+	let unifiedGenerationState = $state<any>(null);
+	let checkingExistingGeneration = $state(false);
+	let railwayWorkerAvailable = $state(false);
 
 	// Subscribe to stores
 	const unsubscribeStatus = streamingStatus.subscribe((value) => {
@@ -288,9 +295,13 @@
 	}
 
 	function selectBriefDate(briefDate: string) {
-		currentDate = briefDate;
-		selectedView = 'single';
-		fetchBriefData(briefDate, 'single');
+		// Call callback to open modal in parent component
+		if (onViewBrief) {
+			onViewBrief({
+				briefId: null, // We don't have brief ID in list view
+				briefDate: briefDate
+			});
+		}
 	}
 
 	async function exportBrief(brief: DailyBrief) {
@@ -355,16 +366,17 @@
 		return date.toLocaleString('en-US', options);
 	}
 
-	// Calculate overall progress percentage - use smoothed progress from unified store
-	$: overallProgress =
+	// Calculate overall progress percentage - use smoothed progress from unified store (Svelte 5 $derived)
+	let overallProgress = $derived(
 		unifiedGenerationState?.progress?.smoothedPercentage ||
-		(currentStreamingStatus
-			? Math.round(
-					(currentStreamingStatus.progress.projects.completed /
-						Math.max(1, currentStreamingStatus.progress.projects.total)) *
-						100
-				)
-			: 0);
+			(currentStreamingStatus
+				? Math.round(
+						(currentStreamingStatus.progress.projects.completed /
+							Math.max(1, currentStreamingStatus.progress.projects.total)) *
+							100
+					)
+				: 0)
+	);
 
 	// View configurations
 	const viewConfigs = [
@@ -373,8 +385,8 @@
 		{ id: 'analytics', label: 'Analytics', icon: TrendingUp }
 	];
 
-	// Show generated brief from streaming data ONLY while actively generating
-	$: displayDailyBrief =
+	// Show generated brief from streaming data ONLY while actively generating (Svelte 5 $derived)
+	let displayDailyBrief = $derived(
 		isToday && currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating
 			? {
 					...dailyBrief,
@@ -383,20 +395,24 @@
 					priority_actions: currentStreamingData.mainBrief.priority_actions,
 					generation_completed_at: new Date().toISOString()
 				}
-			: dailyBrief;
+			: dailyBrief
+	);
 
-	// Show project briefs from streaming data ONLY while actively generating
-	$: displayProjectBriefs =
+	// Show project briefs from streaming data ONLY while actively generating (Svelte 5 $derived)
+	let displayProjectBriefs = $derived(
 		isToday &&
-		currentStreamingData?.projectBriefs?.length > 0 &&
-		currentStreamingStatus?.isGenerating
+			currentStreamingData?.projectBriefs?.length > 0 &&
+			currentStreamingStatus?.isGenerating
 			? currentStreamingData.projectBriefs
-			: projectBriefs;
+			: projectBriefs
+	);
 
-	// Watch for search query and date range changes
-	$: if (selectedView === 'list') {
-		filterBriefs();
-	}
+	// Watch for search query and date range changes (Svelte 5 $effect)
+	$effect(() => {
+		if (selectedView === 'list') {
+			filterBriefs();
+		}
+	});
 
 	onMount(async () => {
 		if (browser) {

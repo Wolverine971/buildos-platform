@@ -2,6 +2,7 @@
 import { PromptTemplateService } from '$lib/services/promptTemplate.service';
 import { BrainDumpStatusService } from '$lib/services/braindump-status.service';
 import type { ProjectInfo } from '$lib/services/braindump-status.service';
+import { PromptInjectionDetector } from './prompt-injection-detector';
 
 import { TaskExtractionPromptService } from '$lib/services/prompts/core/task-extraction';
 import { ProjectDataFetcher } from '$lib/services/prompts/core/project-data-fetcher';
@@ -373,6 +374,106 @@ ${lightTasks
 				options: { includeTasks: true, includePhases: true }
 			});
 			existingProject = fullProjectData.fullProjectWithRelations;
+		}
+
+		// ==========================================
+		// SECURITY: Prompt Injection Detection
+		// ==========================================
+		console.log('[Security] Checking brain dump for prompt injection patterns');
+
+		const injectionDetector = new PromptInjectionDetector(this.supabase, this.llmService);
+
+		// Check rate limiting first
+		const rateLimitResult = await injectionDetector.checkRateLimit(userId);
+		if (!rateLimitResult.isAllowed) {
+			console.error(
+				`[Security] User ${userId} exceeded rate limit with ${rateLimitResult.attemptsInWindow} flagged attempts`
+			);
+
+			// Log rate limit exceeded event
+			await injectionDetector.logRateLimitExceeded(userId, rateLimitResult.attemptsInWindow, {
+				brainDumpId,
+				selectedProjectId
+			});
+
+			throw new Error(
+				'You have exceeded the security rate limit. Please try again later or contact support if you believe this is an error.'
+			);
+		}
+
+		// Stage 1: Check for suspicious patterns
+		const suspiciousPatterns = injectionDetector.checkForSuspiciousPatterns(brainDump);
+
+		if (suspiciousPatterns.length > 0) {
+			console.log(
+				`[Security] Found ${suspiciousPatterns.length} suspicious patterns in brain dump:`,
+				suspiciousPatterns.map((p) => `${p.severity}:${p.category}`)
+			);
+
+			// Determine if LLM validation is needed (high severity OR multiple medium severity)
+			const needsLLMValidation = injectionDetector.shouldValidateWithLLM(suspiciousPatterns);
+
+			if (needsLLMValidation) {
+				console.log('[Security] Suspicious patterns warrant LLM validation');
+
+				// Stage 2: Validate with LLM
+				const validationResult = await injectionDetector.validateWithLLM(
+					brainDump,
+					suspiciousPatterns
+				);
+
+				// Log the attempt
+				await injectionDetector.logFlaggedContent(
+					userId,
+					brainDump,
+					suspiciousPatterns,
+					validationResult,
+					validationResult.shouldBlock,
+					{
+						brainDumpId,
+						selectedProjectId,
+						validationNeeded: true
+					}
+				);
+
+				// Block if malicious
+				if (validationResult.shouldBlock) {
+					console.error(
+						`[Security] Blocked malicious brain dump from user ${userId}:`,
+						validationResult.reason
+					);
+
+					// Decision 3: Minimal user feedback (don't educate attackers)
+					throw new Error(
+						'Your brain dump could not be processed. Please rephrase and try again.'
+					);
+				}
+
+				// If not malicious, log false positive and continue
+				console.log(
+					`[Security] Brain dump flagged but validated as benign - processing normally:`,
+					validationResult.reason
+				);
+			} else {
+				// Low severity or single medium severity - log but continue
+				console.log('[Security] Patterns detected but below threshold for LLM validation');
+
+				await injectionDetector.logFlaggedContent(
+					userId,
+					brainDump,
+					suspiciousPatterns,
+					null,
+					false,
+					{
+						brainDumpId,
+						selectedProjectId,
+						validationNeeded: false,
+						reason: 'Below threshold for LLM validation'
+					}
+				);
+			}
+		} else {
+			console.log('[Security] No suspicious patterns detected - processing normally');
 		}
 
 		// Run preparatory analysis for existing projects (optimization step)

@@ -15,6 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * User SMS preferences interface (subset needed for checks)
+ * Note: timezone removed - now centralized in users table (ADR-002-timezone-centralization)
  */
 export interface SMSPreferences {
   user_id: string;
@@ -23,7 +24,6 @@ export interface SMSPreferences {
   daily_sms_limit: number | null;
   daily_sms_count: number | null;
   daily_count_reset_at: string | null;
-  timezone?: string | null; // Deprecated, use users.timezone instead
 }
 
 /**
@@ -248,10 +248,11 @@ export async function performSMSSafetyChecks(
 
   try {
     // Fetch SMS preferences
+    // Note: timezone removed - now centralized in users table (ADR-002-timezone-centralization)
     const { data: smsPrefs, error: prefsError } = await supabase
       .from("user_sms_preferences")
       .select(
-        "user_id, phone_number, phone_verified, opted_out, quiet_hours_start, quiet_hours_end, daily_sms_limit, daily_sms_count, daily_count_reset_at, timezone",
+        "user_id, phone_number, phone_verified, opted_out, quiet_hours_start, quiet_hours_end, daily_sms_limit, daily_sms_count, daily_count_reset_at",
       )
       .eq("user_id", userId)
       .single();
@@ -315,14 +316,14 @@ export async function performSMSSafetyChecks(
     }
 
     // Check 3: Quiet hours
-    // Try to use timezone from users table first, fallback to SMS prefs
+    // Fetch timezone from users table (centralized source of truth - ADR-002)
     const { data: user } = await supabase
       .from("users")
       .select("timezone")
       .eq("id", userId)
       .single();
 
-    const timezone = (user as any)?.timezone || smsPrefs.timezone || "UTC";
+    const timezone = (user as any)?.timezone || "UTC";
 
     const quietHoursResult = checkQuietHours(
       sendTime,

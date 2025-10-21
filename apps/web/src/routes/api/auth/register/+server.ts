@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/auth/register/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { validateEmail } from '$lib/utils/email-validation';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { email, password, name } = await request.json();
@@ -11,10 +12,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ error: 'Email and password are required' }, { status: 400 });
 	}
 
-	// Email format validation
-	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-	if (!emailRegex.test(email)) {
-		return json({ error: 'Please enter a valid email address' }, { status: 400 });
+	// Email format validation (enhanced security)
+	const emailValidation = validateEmail(email);
+	if (!emailValidation.success) {
+		return json(
+			{ error: emailValidation.error || 'Please enter a valid email address' },
+			{ status: 400 }
+		);
 	}
 
 	// Password validation
@@ -37,13 +41,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	try {
-		// Create the user
+		// Create the user (use validated/normalized email)
+		const validatedEmail = emailValidation.email!;
 		const { data, error: signUpError } = await supabase.auth.signUp({
-			email: email.trim(),
+			email: validatedEmail,
 			password,
 			options: {
 				data: {
-					name: name || email.split('@')[0]
+					name: name || validatedEmail.split('@')[0]
 				}
 			}
 		});

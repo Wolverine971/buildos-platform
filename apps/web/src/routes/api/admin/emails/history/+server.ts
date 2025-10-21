@@ -4,10 +4,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async ({
-	url,
-	locals: { supabase, safeGetSession }
-}) => {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {

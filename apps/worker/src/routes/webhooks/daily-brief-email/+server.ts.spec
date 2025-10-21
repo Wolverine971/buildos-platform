@@ -273,7 +273,7 @@ function generateEmailTemplate(data: {
             ${data.content}
           </div>
           <div class="footer">
-            <a href="https://build-os.com/briefs/${data.briefId}">View in BuildOS</a>
+            <a href="https://build-os.com/projects?briefDate=${data.briefDate}">View in BuildOS</a>
             <a href="https://build-os.com/settings">Manage Preferences</a>
           </div>
           ${data.trackingId ? `<img src="https://build-os.com/api/email-tracking/${data.trackingId}" width="1" height="1" />` : ''}

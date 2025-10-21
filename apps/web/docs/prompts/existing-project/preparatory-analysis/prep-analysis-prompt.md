@@ -1,19 +1,19 @@
 # Prompt Audit: preparatory-analysis
 
-**Generated at:** 2025-10-21T00:22:48.457Z
+**Generated at:** 2025-10-21T19:04:59.553Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-	"projectId": "1fe72b66-d560-4ca7-abe3-9258ee2934ae",
-	"brainDumpLength": 674,
-	"taskCount": 7,
-	"hasExistingContext": true,
-	"existingContextLength": 1501,
-	"timestamp": "2025-10-21T00:22:48.457Z"
+	"userId": "550e8400-e29b-41d4-a716-446655440000",
+	"projectId": "test-brain-dump-id-3",
+	"brainDumpLength": 34,
+	"taskCount": 0,
+	"hasExistingContext": false,
+	"existingContextLength": 0,
+	"timestamp": "2025-10-21T19:04:59.553Z"
 }
 ```
 
@@ -148,62 +148,28 @@ Analyze the braindump and respond with ONLY the JSON, no other text.
 
 ## Current Project Overview:
 
-Project: "The Last Ember"
-Description: A fantasy novel about a young blacksmith who forges magical weapons to combat darkness.
-Status: active
-Tags: fantasy, novel, writing, Aethermoor
-Start Date: 2025-10-20
+Project: "undefined"
+Description: No description
+Status: undefined
+Tags: None
+Start Date: Not set
 End Date: Not set
-Has Context: Yes (existing strategic document)
-Executive Summary: The Last Ember is a fantasy novel project focusing on a young blacksmith's journey to harness her magical abilities in a kingdom facing darkness.
+Has Context: No
+Executive Summary: None
 
-## Existing Tasks (7 total):
+## Existing Tasks (0 total):
 
-- [backlog] Design the prophecy (ID: af17b854-3845-4f71-a9a1-0a402ecacfcc)
-  Description: Create a prophecy that drives the plot.
-- [backlog] Research medieval blacksmithing techniques (ID: c77457bb-fbb8-4a48-b4f6-6b67f736d9f4)
-  Description: Gather information on historical blacksmithing methods.
-- [backlog] Outline first three chapters (ID: a877b282-bd23-46fe-b9d6-bb2f3bfaa384)
-  Description: Create an outline for the initial chapters of the novel.
-- [backlog] Write character profiles for the antagonist (ID: 93e4fd74-7b0d-4172-8d8d-112bcf57309e)
-  Description: Develop detailed profiles for the antagonist.
-- [backlog] Map out the kingdom of Aethermoor (ID: b85d6a03-1018-42fb-b384-4fe411361547)
-  Description: Create a detailed map of the kingdom.
-- [backlog] Create magic system (ID: ac6e2de0-fd04-443c-88b1-fe48f9b3b9d4)
-  Description: Develop a unique magic system for the novel.
-- [backlog] Develop main character backstory (ID: f6fab763-c0b7-427b-9de5-76a4a6536d36)
-  Description: Create a detailed backstory for the main character.
+    		Analyze this braindump:
 
-        	Analyze this braindump:
-
-Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st.
-
-Daily writing goal: 1,000 words minimum, Monday through Friday. Writing time: 5am-7am before work.
-
-Weekly tasks:
-
-- Saturday mornings: Chapter revision and editing
-- Sunday afternoons: Plot planning for next week
-
-Monthly milestones:
-
-- January: Complete chapters 1-10 (30,000 words)
-- February: Complete chapters 11-20 (30,000 words)
-- March: Complete chapters 21-30 and epilogue (35,000 words)
-
-Also need to:
-
-- Join local writers' critique group (meets 1st Tuesday of month)
-- Submit chapter 1 to beta readers by January 15th
-- Research literary agents for fantasy genre
+Test brain dump for database error
 
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~1370 tokens
-- **User Prompt:** ~563 tokens
-- **Total Estimate:** ~1933 tokens
+- **User Prompt:** ~71 tokens
+- **Total Estimate:** ~1441 tokens
 
 
 ---

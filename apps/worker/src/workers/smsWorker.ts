@@ -9,6 +9,7 @@ import {
   validateSMSJobData,
 } from "./shared/queueUtils";
 import { smsMetricsService } from "@buildos/shared-utils";
+import { checkQuietHours } from "../lib/utils/smsPreferenceChecks";
 
 // Conditional Twilio initialization
 let twilioClient: TwilioClient | null = null;
@@ -130,54 +131,55 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
         return { success: false, reason: "cancelled" };
       }
 
-      // Check quiet hours
+      // Check quiet hours using correct function that handles minutes
       const now = new Date();
       const userPrefs = scheduledSms.user_sms_preferences;
 
-      if (userPrefs.quiet_hours_start && userPrefs.quiet_hours_end) {
-        const quietStart = parseInt(userPrefs.quiet_hours_start);
-        const quietEnd = parseInt(userPrefs.quiet_hours_end);
-        const currentHour = now.getHours();
+      // Get user timezone from users table
+      const { data: userData } = await supabase
+        .from("users")
+        .select("timezone")
+        .eq("id", user_id)
+        .single();
 
-        const isQuietHours =
-          quietStart < quietEnd
-            ? currentHour >= quietStart && currentHour < quietEnd
-            : currentHour >= quietStart || currentHour < quietEnd;
+      const userTimezone = userData?.timezone || "UTC";
 
-        if (isQuietHours) {
-          console.log(
-            `[SMS Worker] Currently in quiet hours (${quietStart}-${quietEnd}), rescheduling`,
-          );
+      const quietHoursResult = checkQuietHours(
+        now,
+        userPrefs.quiet_hours_start,
+        userPrefs.quiet_hours_end,
+        userTimezone,
+      );
 
-          // Reschedule to end of quiet hours
-          const rescheduleTime = new Date(now);
-          rescheduleTime.setHours(quietEnd, 0, 0, 0);
+      if (quietHoursResult.inQuietHours && quietHoursResult.rescheduleTime) {
+        console.log(
+          `[SMS Worker] ${quietHoursResult.reason}, rescheduling to ${quietHoursResult.rescheduleTime.toISOString()}`,
+        );
 
-          await supabase
-            .from("scheduled_sms_messages")
-            .update({
-              scheduled_for: rescheduleTime.toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", scheduled_sms_id);
+        await supabase
+          .from("scheduled_sms_messages")
+          .update({
+            scheduled_for: quietHoursResult.rescheduleTime.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", scheduled_sms_id);
 
-          // Re-queue job
-          await supabase.rpc("add_queue_job", {
-            p_user_id: user_id,
-            p_job_type: "send_sms",
-            p_metadata: validatedData,
-            p_scheduled_for: rescheduleTime.toISOString(),
-            p_priority: priority === "urgent" ? 1 : 10,
-          });
+        // Re-queue job
+        await supabase.rpc("add_queue_job", {
+          p_user_id: user_id,
+          p_job_type: "send_sms",
+          p_metadata: validatedData,
+          p_scheduled_for: quietHoursResult.rescheduleTime.toISOString(),
+          p_priority: priority === "urgent" ? 1 : 10,
+        });
 
-          await updateJobStatus(
-            job.id,
-            "completed",
-            "send_sms",
-            "Rescheduled due to quiet hours",
-          );
-          return { success: false, reason: "quiet_hours" };
-        }
+        await updateJobStatus(
+          job.id,
+          "completed",
+          "send_sms",
+          "Rescheduled due to quiet hours",
+        );
+        return { success: false, reason: "quiet_hours" };
       }
 
       // Check daily limit

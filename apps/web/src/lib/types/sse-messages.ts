@@ -93,7 +93,7 @@ export interface SSEError extends BaseSSEMessage {
 	type: 'error';
 	message: string;
 	error: string;
-	context?: 'context' | 'tasks' | 'general';
+	context?: 'context' | 'tasks' | 'general' | 'security';
 	recoverable?: boolean;
 }
 

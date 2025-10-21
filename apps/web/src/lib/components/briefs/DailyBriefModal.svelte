@@ -7,7 +7,9 @@
 		Download,
 		ExternalLink,
 		CheckCircle,
-		Mail
+		Mail,
+		Loader2,
+		AlertCircle
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -17,19 +19,78 @@
 	import { formatFullDate, formatTimeOnly } from '$lib/utils/date-utils';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
+	import { browser } from '$app/environment';
 
-	export let isOpen = false;
-	export let brief: DailyBrief | null = null;
-	export let onClose: () => void;
+	// Props using Svelte 5 runes syntax
+	let {
+		isOpen = false,
+		brief = null,
+		briefDate = null,
+		onClose
+	}: {
+		isOpen?: boolean;
+		brief?: DailyBrief | null;
+		briefDate?: string | null;
+		onClose: () => void;
+	} = $props();
 
-	let copiedToClipboard = false;
-	let emailOptInLoading = false;
+	// Internal state for fetched brief
+	let fetchedBrief = $state<DailyBrief | null>(null);
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+
+	// Use provided brief or fetched brief
+	let displayBrief = $derived(brief || fetchedBrief);
+
+	let copiedToClipboard = $state(false);
+	let emailOptInLoading = $state(false);
 
 	// Subscribe to notification preferences store
-	$: notificationPreferences = $notificationPreferencesStore.preferences;
-	$: hasEmailOptIn = notificationPreferences?.should_email_daily_brief || false;
+	let notificationPreferences = $derived($notificationPreferencesStore.preferences);
+	let hasEmailOptIn = $derived(notificationPreferences?.should_email_daily_brief || false);
 
-	console.log('hasEmailOptIn', hasEmailOptIn);
+	// Fetch brief when briefDate changes
+	$effect(() => {
+		if (isOpen && briefDate && !brief) {
+			loadBriefByDate(briefDate);
+		}
+	});
+
+	async function loadBriefByDate(date: string) {
+		if (!browser) return;
+
+		loading = true;
+		error = null;
+		fetchedBrief = null;
+
+		try {
+			const response = await fetch(`/api/daily-briefs?date=${date}`);
+			if (!response.ok) {
+				throw new Error('Failed to load brief');
+			}
+
+			const result = await response.json();
+			// API returns { brief: DailyBrief } when found, { brief: null, message: string } when not found
+			if (result.brief) {
+				fetchedBrief = result.brief;
+				error = null;
+			} else if (result.message) {
+				error = result.message;
+				fetchedBrief = null;
+			} else if (result.error) {
+				throw new Error(result.error);
+			} else {
+				error = 'No brief found for this date';
+				fetchedBrief = null;
+			}
+		} catch (err: any) {
+			console.error('Error loading brief:', err);
+			error = err.message || 'Failed to load brief';
+			fetchedBrief = null;
+		} finally {
+			loading = false;
+		}
+	}
 
 	// Load preferences when modal opens
 	onMount(() => {
@@ -39,10 +100,10 @@
 	});
 
 	async function copyToClipboard() {
-		if (!brief) return;
+		if (!displayBrief) return;
 
 		try {
-			await navigator.clipboard.writeText(brief.summary_content);
+			await navigator.clipboard.writeText(displayBrief.summary_content);
 			copiedToClipboard = true;
 			toastService.success('Brief copied to clipboard');
 			setTimeout(() => {
@@ -54,13 +115,13 @@
 	}
 
 	async function downloadBrief() {
-		if (!brief) return;
+		if (!displayBrief) return;
 
-		const blob = new Blob([brief.summary_content], { type: 'text/markdown' });
+		const blob = new Blob([displayBrief.summary_content], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `daily-brief-${brief.brief_date}.md`;
+		a.download = `daily-brief-${displayBrief.brief_date}.md`;
 		a.click();
 		URL.revokeObjectURL(url);
 		toastService.success('Brief downloaded');
@@ -96,45 +157,33 @@
 		return taskMatch && taskMatch[1] ? parseInt(taskMatch[1]) : 0;
 	}
 
-	$: priorityCount = brief ? getPriorityCount(brief.summary_content) : 0;
-	$: taskCount = brief ? getTaskCount(brief.summary_content) : 0;
+	let priorityCount = $derived(displayBrief ? getPriorityCount(displayBrief.summary_content) : 0);
+	let taskCount = $derived(displayBrief ? getTaskCount(displayBrief.summary_content) : 0);
 </script>
 
 <Modal {isOpen} {onClose} title="Daily Brief" size="lg" closeOnBackdrop={true} closeOnEscape={true}>
-	{#if brief}
-		<!-- Header Info -->
-		<div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center space-x-4">
-					<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-						<Calendar class="mr-1.5 h-4 w-4" />
-						{formatFullDate(brief.brief_date)}
-					</div>
-					<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-						<Clock class="mr-1.5 h-4 w-4" />
-						{formatTimeOnly(brief.created_at)}
-					</div>
-				</div>
-
-				<!-- Quick Stats -->
-				<div class="flex items-center gap-3">
-					{#if priorityCount > 0}
-						<span
-							class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-						>
-							{priorityCount} priorities
-						</span>
-					{/if}
-					{#if taskCount > 0}
-						<span
-							class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-						>
-							{taskCount} tasks
-						</span>
-					{/if}
-				</div>
-			</div>
+	{#if loading}
+		<!-- Loading state -->
+		<div class="flex flex-col items-center justify-center py-12 px-6">
+			<Loader2 class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+			<p class="text-gray-600 dark:text-gray-400">Loading brief...</p>
 		</div>
+	{:else if error}
+		<!-- Error state -->
+		<div class="flex flex-col items-center justify-center py-12 px-6">
+			<AlertCircle class="h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
+			<p class="text-gray-900 dark:text-white font-medium mb-2">Failed to load brief</p>
+			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{error}</p>
+			<Button
+				on:click={() => briefDate && loadBriefByDate(briefDate)}
+				variant="primary"
+				size="sm"
+			>
+				Retry
+			</Button>
+		</div>
+	{:else if displayBrief}
+		<!-- Header Info -->
 
 		<!-- Brief Content -->
 		<div class="px-4 sm:px-6 py-6 max-h-[60vh] overflow-y-auto">
@@ -150,8 +199,13 @@
 				prose-code:text-gray-800 dark:prose-code:text-gray-200
 				prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800"
 			>
-				{@html renderMarkdown(brief.summary_content)}
+				{@html renderMarkdown(displayBrief.summary_content)}
 			</div>
+		</div>
+	{:else}
+		<!-- No brief available -->
+		<div class="flex flex-col items-center justify-center py-12 px-6">
+			<p class="text-gray-600 dark:text-gray-400">No brief available</p>
 		</div>
 	{/if}
 
@@ -185,27 +239,29 @@
 			</div>
 		{/if}
 
-		<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
-			<div class="flex flex-col sm:flex-row gap-2">
-				<Button
-					on:click={copyToClipboard}
-					variant="outline"
-					size="sm"
-					icon={copiedToClipboard ? CheckCircle : Copy}
-					class="w-full sm:w-auto"
-				>
-					{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}
-				</Button>
-				<Button
-					on:click={downloadBrief}
-					variant="outline"
-					size="sm"
-					icon={Download}
-					class="w-full sm:w-auto"
-				>
-					Download
-				</Button>
+		{#if displayBrief}
+			<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
+				<div class="flex flex-col sm:flex-row gap-2">
+					<Button
+						on:click={copyToClipboard}
+						variant="outline"
+						size="sm"
+						icon={copiedToClipboard ? CheckCircle : Copy}
+						class="w-full sm:w-auto"
+					>
+						{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}
+					</Button>
+					<Button
+						on:click={downloadBrief}
+						variant="outline"
+						size="sm"
+						icon={Download}
+						class="w-full sm:w-auto"
+					>
+						Download
+					</Button>
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 </Modal>

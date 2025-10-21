@@ -4,6 +4,7 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender, EMAIL_SENDERS } from '$lib/utils/email-config';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { emailColors, emailStyles, styleToString } from '$lib/utils/email-styles';
+import { validateOptionalEmail } from '$lib/utils/email-validation';
 
 interface FeedbackRequest {
 	category: string;
@@ -44,11 +45,11 @@ function validateFeedbackData(data: FeedbackRequest): string | null {
 		return 'Invalid rating (must be 1-5)';
 	}
 
-	// Validate email format if provided
+	// Validate email format if provided (enhanced security)
 	if (data.user_email) {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(data.user_email)) {
-			return 'Invalid email format';
+		const emailValidation = validateOptionalEmail(data.user_email);
+		if (!emailValidation.success) {
+			return emailValidation.error || 'Invalid email format';
 		}
 	}
 
@@ -294,6 +295,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			return ApiResponse.badRequest(validationError);
 		}
 
+		// Normalize email if provided
+		const emailValidation = validateOptionalEmail(data.user_email);
+		const normalizedEmail = emailValidation.email;
+
 		// Get client IP for rate limiting
 		const clientIP = getClientIP(request);
 
@@ -310,14 +315,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Get user agent
 		const userAgent = request.headers.get('user-agent') || 'unknown';
 
-		// Insert feedback into database
+		// Insert feedback into database (use normalized email)
 		const { data: insertData, error: insertError } = await supabase
 			.from('feedback')
 			.insert({
 				category: data.category,
 				rating: data.rating || null,
 				feedback_text: data.feedback_text.trim(),
-				user_email: data.user_email?.trim() || null,
+				user_email: normalizedEmail,
 				user_ip: clientIP !== 'unknown' ? clientIP : null,
 				user_agent: userAgent
 			})

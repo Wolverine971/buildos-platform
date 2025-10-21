@@ -584,11 +584,29 @@ async function processBrainDumpWithStreaming({
 	} catch (error) {
 		console.error('Error in brain dump streaming:', error);
 
+		// Check if this is a security-related error
+		let errorContext: 'general' | 'security' = 'general';
+		let errorMsg = 'Processing failed';
+
+		if (error instanceof Error) {
+			// Security errors (prompt injection, rate limit)
+			if (
+				error.message.includes('could not be processed') ||
+				error.message.includes('security rate limit') ||
+				error.message.includes('rephrase and try again')
+			) {
+				errorContext = 'security';
+				errorMsg = error.message;
+			} else {
+				errorMsg = error.message;
+			}
+		}
+
 		const errorMessage: SSEError = {
 			type: 'error',
-			message: 'Processing failed',
+			message: errorMsg,
 			error: error instanceof Error ? error.message : 'Unknown error',
-			context: 'general'
+			context: errorContext
 		};
 		await sendSSEMessage(writer, encoder, errorMessage);
 	} finally {

@@ -5,10 +5,26 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
 	export let form: ActionData;
 
 	let loading = false;
+	let email = form?.email ?? '';
+	let emailError = '';
+
+	// Validate email on blur for instant feedback
+	function validateEmail() {
+		emailError = '';
+		if (!email.trim()) {
+			return;
+		}
+
+		const validation = validateEmailClient(email.trim());
+		if (!validation.valid) {
+			emailError = validation.error || 'Invalid email address';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -72,10 +88,14 @@
 							type="email"
 							autocomplete="email"
 							required
-							value={form?.email ?? ''}
+							bind:value={email}
 							placeholder="Enter your email"
 							size="lg"
+							on:blur={validateEmail}
 						/>
+						{#if emailError}
+							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
+						{/if}
 					</FormField>
 				</div>
 

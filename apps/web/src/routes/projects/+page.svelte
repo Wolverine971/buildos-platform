@@ -29,6 +29,7 @@
 	// Modal components - loaded dynamically
 	let NewProjectModal = $state<any>(null);
 	let ProjectBriefModal = $state<any>(null);
+	let DailyBriefModal = $state<any>(null);
 	let BrainDumpModal = $state<any>(null);
 	let QuickProjectModal = $state<any>(null);
 
@@ -69,6 +70,33 @@
 			}
 		}
 	});
+
+	// Check URL params for brief modal on load
+	$effect(() => {
+		if (!browser) return;
+
+		const urlParams = new URLSearchParams($page.url.search);
+		const briefDateParam = urlParams.get('briefDate');
+
+		// Open modal if briefDate in URL and modal not already open
+		if (briefDateParam && !briefModalOpen) {
+			// Validate date format (YYYY-MM-DD)
+			if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
+				// Use IIFE for async operation in effect (Svelte 5 pattern)
+				(async () => {
+					await loadDailyBriefModal();
+					selectedBriefDate = briefDateParam;
+					briefModalOpen = true;
+				})();
+			}
+		}
+
+		// Close modal if briefDate removed from URL
+		if (!briefDateParam && briefModalOpen) {
+			briefModalOpen = false;
+			selectedBriefDate = null;
+		}
+	});
 	const filters = $state<ProjectsFilterState>({
 		projectFilter: 'all',
 		briefDateRange: 'week',
@@ -85,6 +113,8 @@
 	// Modal state
 	let selectedBrief = $state<any>(null);
 	let showBriefModal = $state(false);
+	let briefModalOpen = $state(false); // Daily brief modal
+	let selectedBriefDate = $state<string | null>(null); // Date for daily brief modal
 	let showNewProjectModal = $state(false);
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	let showQuickProjectModal = $state(false);
@@ -112,6 +142,14 @@
 				.default;
 		}
 		return ProjectBriefModal;
+	}
+
+	async function loadDailyBriefModal() {
+		if (!DailyBriefModal) {
+			DailyBriefModal = (await import('$lib/components/briefs/DailyBriefModal.svelte'))
+				.default;
+		}
+		return DailyBriefModal;
 	}
 
 	async function loadBrainDumpModal() {
@@ -394,6 +432,36 @@
 		showBriefModal = true;
 	}
 
+	// Daily brief modal handlers
+	async function handleViewBrief(data: { briefId: string | null; briefDate: string }) {
+		const { briefDate } = data;
+		await loadDailyBriefModal();
+		selectedBriefDate = briefDate;
+		briefModalOpen = true;
+		updateBriefUrl(briefDate);
+	}
+
+	function closeDailyBriefModal() {
+		briefModalOpen = false;
+		selectedBriefDate = null;
+		updateBriefUrl(null);
+	}
+
+	function updateBriefUrl(briefDate: string | null) {
+		if (!browser) return;
+
+		const url = new URL(window.location.href);
+
+		if (briefDate) {
+			url.searchParams.set('briefDate', briefDate);
+		} else {
+			url.searchParams.delete('briefDate');
+		}
+
+		// Use goto() instead of pushState to trigger Svelte reactivity
+		goto(url.pathname + url.search, { replaceState: false, noScroll: true, keepFocus: true });
+	}
+
 	function handleBrainDumpClose() {
 		brainDumpV2Store.closeModal();
 		selectedBrainDumpProject = null;
@@ -455,6 +523,33 @@
 			// Load projects normally
 			loadProjects();
 		}
+
+		// Handle browser back/forward buttons for brief modal
+		async function handlePopState() {
+			if (!browser) return;
+
+			const urlParams = new URLSearchParams(window.location.search);
+			const briefDateParam = urlParams.get('briefDate');
+
+			if (briefDateParam && !briefModalOpen) {
+				// Open modal when navigating forward to a URL with briefDate
+				if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
+					await loadDailyBriefModal();
+					selectedBriefDate = briefDateParam;
+					briefModalOpen = true;
+				}
+			} else if (!briefDateParam && briefModalOpen) {
+				// Close modal when navigating back to a URL without briefDate
+				briefModalOpen = false;
+				selectedBriefDate = null;
+			}
+		}
+
+		window.addEventListener('popstate', handlePopState);
+
+		return () => {
+			window.removeEventListener('popstate', handlePopState);
+		};
 	});
 
 	onDestroy(() => {
@@ -596,7 +691,7 @@
 
 		<!-- Daily Brief Section (only for projects tab) -->
 		{#if activeTab === 'projects' && filteredProjects?.length}
-			<DailyBriefSection user={data.user} />
+			<DailyBriefSection user={data.user} onViewBrief={handleViewBrief} />
 		{/if}
 
 		<!-- Tab Content with smooth transitions -->
@@ -639,7 +734,7 @@
 			{:else}
 				<!-- Briefs Tab Content - Full briefs functionality -->
 				<div class="content-transition fade-in">
-					<DailyBriefsTab user={data.user} />
+					<DailyBriefsTab user={data.user} onViewBrief={handleViewBrief} />
 				</div>
 			{/if}
 		</div>
@@ -680,6 +775,15 @@
 			showBriefModal = false;
 			selectedBrief = null;
 		}}
+	/>
+{/if}
+
+{#if DailyBriefModal}
+	<svelte:component
+		this={DailyBriefModal}
+		isOpen={briefModalOpen}
+		briefDate={selectedBriefDate}
+		onClose={closeDailyBriefModal}
 	/>
 {/if}
 

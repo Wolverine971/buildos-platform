@@ -38,32 +38,21 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Process projects to get counts using optimized queries
-		const processedProjects = await Promise.all(
-			(projects || []).map(async (project) => {
-				// Get all task stats in one query (not separate queries for count and completed)
-				const { data: taskStats } = await supabase
-					.from('tasks')
-					.select('id, status, completed_at', { count: 'exact' })
-					.eq('project_id', project.id);
+		// Get all tasks (needed for both activity timeline AND project stats aggregation)
+		// Filter out soft-deleted tasks to get accurate counts
+		const { data: tasks } = await supabase
+			.from('tasks')
+			.select('*, projects(name), completed_at')
+			.eq('user_id', userId)
+			.is('deleted_at', null)
+			.order('created_at', { ascending: false });
 
-				const taskCount = taskStats?.length || 0;
-				const completedTaskCount = taskStats?.filter((t) => t.status === 'done').length || 0;
-
-				// Get notes count in one query
-				const { count: notesCount } = await supabase
-					.from('notes')
-					.select('*', { count: 'exact', head: true })
-					.eq('project_id', project.id);
-
-				return {
-					...project,
-					task_count: taskCount,
-					completed_task_count: completedTaskCount,
-					notes_count: notesCount || 0
-				};
-			})
-		);
+		// Get all notes (needed for both activity timeline AND project stats aggregation)
+		const { data: notes } = await supabase
+			.from('notes')
+			.select('*, projects(name)')
+			.eq('user_id', userId)
+			.order('created_at', { ascending: false });
 
 		// Get brain dumps
 		const { data: brainDumps } = await supabase
@@ -79,19 +68,36 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Get tasks with project names and completion info
-		const { data: tasks } = await supabase
-			.from('tasks')
-			.select('*, projects(name), completed_at')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		// Aggregate task counts by project_id (in-memory, eliminates N+1 query pattern)
+		const taskCountsByProject: Record<string, { total: number; completed: number }> = {};
+		(tasks || []).forEach((task) => {
+			if (task.project_id) {
+				if (!taskCountsByProject[task.project_id]) {
+					taskCountsByProject[task.project_id] = { total: 0, completed: 0 };
+				}
+				taskCountsByProject[task.project_id].total++;
+				if (task.status === 'done') {
+					taskCountsByProject[task.project_id].completed++;
+				}
+			}
+		});
 
-		// Get notes with project names
-		const { data: notes } = await supabase
-			.from('notes')
-			.select('*, projects(name)')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		// Aggregate notes counts by project_id (in-memory, eliminates N+1 query pattern)
+		const notesCountsByProject: Record<string, number> = {};
+		(notes || []).forEach((note) => {
+			if (note.project_id) {
+				notesCountsByProject[note.project_id] =
+					(notesCountsByProject[note.project_id] || 0) + 1;
+			}
+		});
+
+		// Build processed projects with aggregated stats (no async queries needed!)
+		const processedProjects = (projects || []).map((project) => ({
+			...project,
+			task_count: taskCountsByProject[project.id]?.total || 0,
+			completed_task_count: taskCountsByProject[project.id]?.completed || 0,
+			notes_count: notesCountsByProject[project.id] || 0
+		}));
 
 		// Get scheduled briefs (task calendar events)
 		const { data: scheduledBriefs } = await supabase
@@ -118,7 +124,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		// Add task activities - use completed_at for task_completed, not created_at
 		tasks?.forEach((task) => {
 			const isCompleted = task.status === 'done';
-			const timestamp = isCompleted && task.completed_at ? task.completed_at : task.created_at;
+			const timestamp =
+				isCompleted && task.completed_at ? task.completed_at : task.created_at;
 
 			activities.push({
 				activity_type: isCompleted ? 'task_completed' : 'task_created',
@@ -188,7 +195,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const activityStats = {
 			total_projects: processedProjects.length,
 			total_tasks: tasks?.length || 0,
-			completed_tasks: tasks?.filter((t) => t.status === 'completed').length || 0,
+			completed_tasks: tasks?.filter((t) => t.status === 'done').length || 0,
 			total_notes: notes?.length || 0,
 			total_briefs: dailyBriefs?.length || 0,
 			total_brain_dumps: brainDumps?.length || 0,

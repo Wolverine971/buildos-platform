@@ -191,7 +191,7 @@ onMount(() => {
       .on("broadcast", { event: "brief_completed" }, (payload) => {
         // Show success notification
         showNotification("Your daily brief is ready!", {
-          action: () => goto(`/briefs/${payload.briefId}`),
+          action: () => goto(`/projects?briefDate=${payload.briefDate}`),
         });
       })
       .on("broadcast", { event: "brief_failed" }, (payload) => {

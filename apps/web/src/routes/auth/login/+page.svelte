@@ -9,12 +9,27 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
 	let loading = false;
 	let googleLoading = false;
 	let email = '';
 	let password = '';
 	let error = '';
+	let emailError = '';
+
+	// Validate email on blur for instant feedback
+	function validateEmail() {
+		emailError = '';
+		if (!email.trim()) {
+			return;
+		}
+
+		const validation = validateEmailClient(email.trim());
+		if (!validation.valid) {
+			emailError = validation.error || 'Invalid email address';
+		}
+	}
 
 	async function handleLogin() {
 		if (loading || googleLoading) return;
@@ -25,8 +40,17 @@
 			return;
 		}
 
+		// Email format validation (helps catch typos)
+		const emailValidation = validateEmailClient(email.trim());
+		if (!emailValidation.valid) {
+			emailError = emailValidation.error || 'Invalid email address';
+			error = 'Please check your email address';
+			return;
+		}
+
 		loading = true;
 		error = '';
+		emailError = '';
 
 		try {
 			const response = await fetch('/api/auth/login', {
@@ -224,7 +248,11 @@
 							disabled={loading || googleLoading}
 							placeholder="Enter your email"
 							size="lg"
+							on:blur={validateEmail}
 						/>
+						{#if emailError}
+							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
+						{/if}
 					</FormField>
 
 					<FormField label="Password" labelFor="password" required={true}>

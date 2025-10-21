@@ -9,6 +9,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
 	let loading = false;
 	let googleLoading = false;
@@ -19,6 +20,7 @@
 	let error = '';
 	let success = false;
 	let successMessage = '';
+	let emailError = '';
 
 	// Show any URL messages as toasts
 	onMount(() => {
@@ -70,9 +72,23 @@
 		window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 	}
 
-	// Client-side validation only
+	// Validate email on blur for instant feedback
+	function validateEmail() {
+		emailError = '';
+		if (!email.trim()) {
+			return;
+		}
+
+		const validation = validateEmailClient(email.trim());
+		if (!validation.valid) {
+			emailError = validation.error || 'Invalid email address';
+		}
+	}
+
+	// Client-side validation before submission
 	function validateForm() {
 		error = '';
+		emailError = '';
 
 		// Trim inputs
 		email = email.trim();
@@ -81,6 +97,14 @@
 		// Basic validation
 		if (!email || !password || !confirmPassword) {
 			error = 'Email, password, and confirm password are required';
+			return false;
+		}
+
+		// Email validation (enhanced security)
+		const emailValidation = validateEmailClient(email);
+		if (!emailValidation.valid) {
+			emailError = emailValidation.error || 'Invalid email address';
+			error = emailValidation.error || 'Invalid email address';
 			return false;
 		}
 
@@ -317,7 +341,13 @@
 								disabled={loading || googleLoading}
 								placeholder="Enter your email"
 								size="lg"
+								on:blur={validateEmail}
 							/>
+							{#if emailError}
+								<p class="mt-1 text-sm text-red-600 dark:text-red-400">
+									{emailError}
+								</p>
+							{/if}
 						</FormField>
 
 						<FormField label="Password" labelFor="password" required={true}>

@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // Default preferences structure
+// Note: timezone removed - now centralized in users table (ADR-002-timezone-centralization)
 const DEFAULT_PREFERENCES = {
 	phone_number: null,
 	phone_verified: false,
@@ -14,7 +15,6 @@ const DEFAULT_PREFERENCES = {
 	urgent_alerts: false,
 	quiet_hours_start: '22:00:00',
 	quiet_hours_end: '08:00:00',
-	timezone: null,
 	opted_out: false
 };
 
@@ -38,7 +38,9 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		const { data: preferences, error } = await supabase
 			.from('user_sms_preferences')
-			.select('*')
+			.select(
+				'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, task_reminders, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, next_up_enabled, daily_brief_sms, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
+			)
 			.eq('user_id', user.id)
 			.maybeSingle();
 
@@ -53,16 +55,16 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				preferences: {
 					user_id: user.id,
 					...DEFAULT_PREFERENCES,
-					timezone: userData?.timezone || DEFAULT_PREFERENCES.timezone
+					timezone: userData?.timezone || 'UTC'
 				}
 			});
 		}
 
-		// Return preferences with timezone from users table (overrides preference table)
+		// Return preferences with timezone from users table (centralized source of truth)
 		return json({
 			preferences: {
 				...preferences,
-				timezone: userData?.timezone || preferences.timezone
+				timezone: userData?.timezone || 'UTC'
 			}
 		});
 	} catch (error) {
@@ -91,8 +93,8 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			morning_kickoff_time,
 			urgent_alerts,
 			quiet_hours_start,
-			quiet_hours_end,
-			timezone
+			quiet_hours_end
+			// Note: timezone removed - managed through user settings, not SMS preferences
 		} = body;
 
 		// Build update object with only provided fields
@@ -125,12 +127,7 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		if (quiet_hours_end !== undefined) {
 			updateData.quiet_hours_end = quiet_hours_end;
 		}
-		if (timezone !== undefined) {
-			updateData.timezone = timezone;
-
-			// Also update users table (centralized source of truth)
-			await supabase.from('users').update({ timezone }).eq('id', user.id);
-		}
+		// Note: timezone updates removed - managed through /api/users/timezone endpoint
 
 		// Use UPSERT to atomically insert or update - prevents race conditions
 		// This handles the case where multiple requests try to create preferences simultaneously

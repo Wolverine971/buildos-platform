@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+// apps/web/migrate-to-runes.js
 
 /**
  * Svelte 4 to Svelte 5 Runes Migration Script

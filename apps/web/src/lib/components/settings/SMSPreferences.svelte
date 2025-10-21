@@ -77,8 +77,8 @@
 			evening_recap_enabled: eveningRecapEnabled,
 			urgent_alerts: urgentAlerts,
 			quiet_hours_start: quietHoursStart,
-			quiet_hours_end: quietHoursEnd,
-			timezone
+			quiet_hours_end: quietHoursEnd
+			// Note: timezone removed - managed through user settings (ADR-002-timezone-centralization)
 		});
 
 		if (result.success) {

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { EmailGenerationService } from '$lib/services/email-generation-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EmailGenerationContext } from '$lib/services/email-generation-service';
+import { validateEmail } from '$lib/utils/email-validation';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -19,6 +20,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Validate required fields
 		if (!userId || !instructions || !userInfo) {
 			return ApiResponse.error('Missing required fields');
+		}
+
+		// Validate email address in userInfo
+		if (userInfo?.basic?.email) {
+			const emailValidation = validateEmail(userInfo.basic.email);
+			if (!emailValidation.success) {
+				return ApiResponse.badRequest(`Invalid email address: ${emailValidation.error}`);
+			}
+			// Normalize the email in userInfo
+			userInfo.basic.email = emailValidation.email;
 		}
 
 		// Validate instruction length

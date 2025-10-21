@@ -2,19 +2,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import {
-		Plus,
-		ChevronDown,
-		ChevronUp,
-		Loader2,
-		Clock,
-		RefreshCw,
-		Download,
-		Copy,
-		Sparkles,
-		ArrowRight,
-		Mail
-	} from 'lucide-svelte';
+	import { Plus, Loader2, Clock, Sparkles, ArrowRight, Mail, ChevronRight } from 'lucide-svelte';
 	import {
 		BriefClientService,
 		streamingStatus,
@@ -29,7 +17,14 @@
 	import { getContext } from 'svelte';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 
-	export let user: { id: string; email: string; is_admin: boolean } | null = null;
+	// Props using Svelte 5 runes syntax
+	let {
+		user = null,
+		onViewBrief
+	}: {
+		user?: { id: string; email: string; is_admin: boolean } | null;
+		onViewBrief?: (data: { briefId: string; briefDate: string }) => void;
+	} = $props();
 
 	// Get supabase client from context
 	let supabaseClient: any = null;
@@ -39,21 +34,20 @@
 		console.warn('Supabase context not available');
 	}
 
-	// Component state
-	let isExpanded = false;
-	let dailyBrief: DailyBrief | null = null;
-	let isLoading = true;
-	let currentDate = '';
-	let userTimezone = '';
-	let emailOptInLoading = false;
+	// Component state (Svelte 5 $state for reactivity)
+	let dailyBrief = $state<DailyBrief | null>(null);
+	let isLoading = $state(true);
+	let currentDate = $state('');
+	let userTimezone = $state('');
+	let emailOptInLoading = $state(false);
 
-	// Email opt-in state
-	$: notificationPreferences = $notificationPreferencesStore.preferences;
-	$: hasEmailOptIn = notificationPreferences?.should_email_daily_brief || false;
+	// Email opt-in state (using Svelte 5 $derived)
+	let notificationPreferences = $derived($notificationPreferencesStore.preferences);
+	let hasEmailOptIn = $derived(notificationPreferences?.should_email_daily_brief || false);
 
-	// Reactive streaming data
-	let currentStreamingStatus: StreamingStatus;
-	let currentStreamingData: StreamingBriefData;
+	// Reactive streaming data (Svelte 5 $state for reactivity)
+	let currentStreamingStatus = $state<StreamingStatus | null>(null);
+	let currentStreamingData = $state<StreamingBriefData | null>(null);
 
 	// Subscribe to stores
 	const unsubscribeStatus = streamingStatus.subscribe((value) => {
@@ -142,27 +136,13 @@
 		BriefClientService.cancelGeneration();
 	}
 
-	// Export brief
-	async function exportBrief() {
-		if (!dailyBrief) return;
-		try {
-			await BriefClientService.exportBrief(dailyBrief);
-			toastService.success('Brief exported successfully');
-		} catch (err) {
-			console.error('Error exporting brief:', err);
-			toastService.error('Failed to export brief');
-		}
-	}
-
-	// Copy brief
-	async function copyBrief() {
-		if (!dailyBrief) return;
-		try {
-			await BriefClientService.copyBrief(dailyBrief);
-			toastService.success('Brief copied to clipboard');
-		} catch (err) {
-			console.error('Error copying brief:', err);
-			toastService.error('Failed to copy brief');
+	// Handle click on brief card - call callback to open modal
+	function handleViewBrief() {
+		if (displayDailyBrief?.id && displayDailyBrief?.brief_date && onViewBrief) {
+			onViewBrief({
+				briefId: displayDailyBrief.id,
+				briefDate: displayDailyBrief.brief_date
+			});
 		}
 	}
 
@@ -199,17 +179,19 @@
 		}
 	}
 
-	// Calculate overall progress
-	$: overallProgress = currentStreamingStatus
-		? Math.round(
-				(currentStreamingStatus.progress.projects.completed /
-					Math.max(1, currentStreamingStatus.progress.projects.total)) *
-					100
-			)
-		: 0;
+	// Calculate overall progress (using Svelte 5 $derived)
+	let overallProgress = $derived(
+		currentStreamingStatus
+			? Math.round(
+					(currentStreamingStatus.progress.projects.completed /
+						Math.max(1, currentStreamingStatus.progress.projects.total)) *
+						100
+				)
+			: 0
+	);
 
-	// Show generated brief from streaming data while actively generating
-	$: displayDailyBrief =
+	// Show generated brief from streaming data while actively generating (using Svelte 5 $derived)
+	let displayDailyBrief = $derived(
 		currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating
 			? {
 					...dailyBrief,
@@ -218,7 +200,8 @@
 					priority_actions: currentStreamingData.mainBrief.priority_actions,
 					generation_completed_at: new Date().toISOString()
 				}
-			: dailyBrief;
+			: dailyBrief
+	);
 
 	onMount(() => {
 		if (browser) {
@@ -321,15 +304,20 @@
 				{/if}
 			</div>
 		{:else if displayDailyBrief}
-			<!-- Daily brief display (collapsed/expanded) -->
-			<div class="daily-brief-card display-state">
-				<!-- Header (always visible) -->
+			<!-- Daily brief display - clickable card -->
+			<button
+				type="button"
+				class="daily-brief-card display-state clickable-card"
+				on:click={handleViewBrief}
+				aria-label="View full daily brief"
+			>
+				<!-- Header -->
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
 							<Sparkles class="w-4 h-4 text-blue-600 dark:text-blue-400" />
 						</span>
-						<div class="min-w-0">
+						<div class="min-w-0 flex-1">
 							<h3 class="card-heading">Today's Daily Brief</h3>
 							{#if displayDailyBrief.generation_completed_at}
 								<div class="card-meta">
@@ -342,67 +330,13 @@
 							{/if}
 						</div>
 					</div>
-					<div class="card-actions">
-						<!-- Email opt-in button - always show if not opted in -->
-						{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-							<Button
-								type="button"
-								on:click={enableEmailNotifications}
-								variant="primary"
-								size="sm"
-								loading={emailOptInLoading}
-								class="email-button"
-								title="Get daily briefs in your inbox"
-							>
-								<Mail class="w-4 h-4 mr-1.5" />
-								Email Me This
-							</Button>
-						{/if}
-
-						{#if isExpanded}
-							<Button
-								type="button"
-								on:click={exportBrief}
-								variant="ghost"
-								size="sm"
-								class="card-action"
-								title="Export"
-								icon={Download}
-							></Button>
-							<Button
-								type="button"
-								on:click={copyBrief}
-								variant="ghost"
-								size="sm"
-								class="card-action"
-								title="Copy"
-								icon={Copy}
-							></Button>
-							<Button
-								type="button"
-								on:click={() => generateDailyBrief(true)}
-								disabled={currentStreamingStatus?.isGenerating}
-								variant="ghost"
-								size="sm"
-								class="card-action"
-								title="Regenerate"
-								icon={RefreshCw}
-							></Button>
-						{/if}
-						<Button
-							type="button"
-							on:click={() => (isExpanded = !isExpanded)}
-							variant="ghost"
-							size="sm"
-							class="toggle-button"
-							title={isExpanded ? 'Collapse' : 'Expand'}
-							icon={isExpanded ? ChevronUp : ChevronDown}
-						></Button>
+					<div class="card-view-indicator">
+						<ChevronRight class="w-5 h-5 text-gray-400 dark:text-gray-500" />
 					</div>
 				</div>
 
-				{#if !isExpanded && displayDailyBrief.summary_content}
-					<!-- Collapsed preview - SINGLE LINE ONLY -->
+				<!-- Preview content -->
+				{#if displayDailyBrief.summary_content}
 					<div class="collapsed-preview">
 						<p class="preview-text">
 							{displayDailyBrief.summary_content
@@ -419,97 +353,33 @@
 							</span>
 						{/if}
 					</div>
-
-					<!-- Email opt-in banner when collapsed -->
-					{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-						<div class="email-cta-banner">
-							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<Mail
-									class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"
-								/>
-								<p class="text-sm text-gray-700 dark:text-gray-300 truncate">
-									Want this delivered to your inbox each morning?
-								</p>
-							</div>
-							<Button
-								type="button"
-								on:click={enableEmailNotifications}
-								variant="primary"
-								size="sm"
-								loading={emailOptInLoading}
-								class="flex-shrink-0"
-							>
-								Enable Emails
-							</Button>
-						</div>
-					{/if}
 				{/if}
+			</button>
 
-				{#if isExpanded}
-					<!-- Expanded content -->
-					<div class="expanded-body">
-						<div
-							class="brief-markdown prose prose-gray dark:prose-invert max-w-none prose-sm
-						prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
-						prose-strong:text-gray-900 prose-a:text-blue-600
-						dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
-						dark:prose-strong:text-white dark:prose-a:text-blue-400"
-						>
-							{@html renderMarkdown(displayDailyBrief.summary_content)}
-						</div>
-
-						{#if displayDailyBrief.priority_actions?.length}
-							<div class="priority-card">
-								<h4 class="priority-heading">
-									<ArrowRight class="w-4 h-4" />
-									Priority Actions
-								</h4>
-								<ul class="priority-list">
-									{#each displayDailyBrief.priority_actions as action}
-										<li class="priority-item">
-											<ArrowRight class="w-3 h-3" />
-											<span>{action}</span>
-										</li>
-									{/each}
-								</ul>
-							</div>
-						{/if}
-
-						<!-- Email opt-in banner in expanded view -->
-						{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-							<div class="email-cta-banner-expanded">
-								<div class="flex items-center gap-3 flex-1 min-w-0">
-									<div class="email-cta-icon">
-										<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-									</div>
-									<div class="flex-1 min-w-0">
-										<p
-											class="text-sm font-medium text-gray-900 dark:text-white"
-										>
-											Get your daily brief delivered to your inbox
-										</p>
-										<p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-											Never miss your priorities — receive this automatically
-											each morning
-										</p>
-									</div>
-								</div>
-								<Button
-									type="button"
-									on:click={enableEmailNotifications}
-									variant="primary"
-									size="md"
-									loading={emailOptInLoading}
-									class="flex-shrink-0"
-									icon={Mail}
-								>
-									Enable Email Delivery
-								</Button>
-							</div>
-						{/if}
+			<!-- Email opt-in banner (outside clickable card) -->
+			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
+				<div class="email-cta-banner mt-3">
+					<div class="flex items-center gap-2 flex-1 min-w-0">
+						<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+						<p class="text-sm text-gray-700 dark:text-gray-300 truncate">
+							Want this delivered to your inbox each morning?
+						</p>
 					</div>
-				{/if}
-			</div>
+					<Button
+						type="button"
+						on:click={(e) => {
+							e.stopPropagation();
+							enableEmailNotifications();
+						}}
+						variant="primary"
+						size="sm"
+						loading={emailOptInLoading}
+						class="flex-shrink-0"
+					>
+						Enable Emails
+					</Button>
+				</div>
+			{/if}
 		{:else}
 			<!-- No brief - show generate button -->
 			<div class="daily-brief-card no-brief-state">
@@ -978,6 +848,48 @@
 
 	:global(.dark) .priority-item {
 		color: #dbeafe;
+	}
+
+	/* Clickable card styles */
+	.clickable-card {
+		cursor: pointer;
+		transition: all 0.2s ease;
+		text-align: left;
+		width: 100%;
+	}
+
+	.clickable-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 12px 30px -14px rgb(30 41 59 / 0.35);
+		border-color: #bfdbfe;
+	}
+
+	:global(.dark) .clickable-card:hover {
+		border-color: #1e3a8a;
+		box-shadow: 0 12px 30px -14px rgba(59, 130, 246, 0.3);
+	}
+
+	.clickable-card:focus-visible {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+	}
+
+	.card-view-indicator {
+		display: flex;
+		align-items: center;
+		transition: transform 0.2s ease;
+	}
+
+	.clickable-card:hover .card-view-indicator {
+		transform: translateX(4px);
+	}
+
+	.clickable-card:hover .card-view-indicator :global(svg) {
+		color: #3b82f6;
+	}
+
+	:global(.dark) .clickable-card:hover .card-view-indicator :global(svg) {
+		color: #60a5fa;
 	}
 
 	/* Fade-in animation for state changes */

@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
+import { validateEmail } from '$lib/utils/email-validation';
 
 interface BetaSignupRequest {
 	email: string;
@@ -30,10 +31,10 @@ function validateSignupData(data: BetaSignupRequest): string | null {
 		return 'Please fill in all required fields';
 	}
 
-	// Validate email format
-	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-	if (!emailRegex.test(data.email)) {
-		return 'Please provide a valid email address';
+	// Validate email format (enhanced security)
+	const emailValidation = validateEmail(data.email);
+	if (!emailValidation.success) {
+		return emailValidation.error || 'Please provide a valid email address';
 	}
 
 	// Validate field lengths
@@ -266,6 +267,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			return json({ error: validationError }, { status: 400 });
 		}
 
+		// Normalize email (validation already passed, so this should always succeed)
+		const emailValidation = validateEmail(data.email);
+		const normalizedEmail = emailValidation.email!;
+
 		// Get client info
 		const clientIP = getClientIP(request);
 		const userAgent = request.headers.get('user-agent') || 'unknown';
@@ -274,7 +279,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		const { data: existingSignup, error: checkError } = await supabase
 			.from('beta_signups')
 			.select('id, signup_status')
-			.eq('email', data.email.toLowerCase().trim())
+			.eq('email', normalizedEmail)
 			.single();
 
 		if (checkError && checkError.code !== 'PGRST116') {
@@ -293,11 +298,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			);
 		}
 
-		// Insert beta signup
+		// Insert beta signup (use normalized email)
 		const { data: insertData, error: insertError } = await supabase
 			.from('beta_signups')
 			.insert({
-				email: data.email.toLowerCase().trim(),
+				email: normalizedEmail,
 				full_name: data.full_name.trim(),
 				job_title: data.job_title?.trim() || null,
 				company_name: data.company_name?.trim() || null,
@@ -348,11 +353,17 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 		return json({ error: 'Email parameter required' }, { status: 400 });
 	}
 
+	// Validate and normalize email
+	const emailValidation = validateEmail(email);
+	if (!emailValidation.success) {
+		return json({ error: 'Invalid email address' }, { status: 400 });
+	}
+
 	try {
 		const { data: signup, error } = await supabase
 			.from('beta_signups')
 			.select('signup_status, created_at')
-			.eq('email', email.toLowerCase().trim())
+			.eq('email', emailValidation.email!)
 			.single();
 
 		if (error) {

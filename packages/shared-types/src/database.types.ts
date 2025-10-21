@@ -3510,6 +3510,56 @@ export type Database = {
           },
         ];
       };
+      security_logs: {
+        Row: {
+          content: string;
+          created_at: string;
+          event_type: string;
+          id: string;
+          ip_address: string | null;
+          llm_validation: Json | null;
+          metadata: Json | null;
+          regex_patterns: Json | null;
+          user_agent: string | null;
+          user_id: string;
+          was_blocked: boolean;
+        };
+        Insert: {
+          content: string;
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          ip_address?: string | null;
+          llm_validation?: Json | null;
+          metadata?: Json | null;
+          regex_patterns?: Json | null;
+          user_agent?: string | null;
+          user_id: string;
+          was_blocked?: boolean;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          ip_address?: string | null;
+          llm_validation?: Json | null;
+          metadata?: Json | null;
+          regex_patterns?: Json | null;
+          user_agent?: string | null;
+          user_id?: string;
+          was_blocked?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "security_logs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sms_alert_history: {
         Row: {
           alert_type: string;
