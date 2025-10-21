@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/EmailHistoryViewer.svelte -->
 <script lang="ts">
-	import { X, Mail, Calendar, User, FileText } from 'lucide-svelte';
+	import { X, Mail, Calendar, User } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	export let email: {
@@ -29,13 +29,13 @@
 			minute: '2-digit'
 		});
 	}
-
-	$: displayContent = email?.html || email?.body || '';
 </script>
 
 {#if isOpen && email}
 	<div class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+		<div
+			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+		>
 			<!-- Header -->
 			<div
 				class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
@@ -47,7 +47,9 @@
 							{email.subject || 'Email'}
 						</h2>
 						{#if email.to}
-							<p class="text-sm text-gray-600 dark:text-gray-400 truncate">{email.to}</p>
+							<p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+								{email.to}
+							</p>
 						{/if}
 					</div>
 				</div>
@@ -60,7 +62,9 @@
 			</div>
 
 			<!-- Email Info -->
-			<div class="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+			<div
+				class="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"
+			>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
 					{#if email.to}
 						<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
@@ -81,9 +85,7 @@
 			</div>
 
 			<!-- Email Content (scrollable) -->
-			<div
-				class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 px-4 sm:px-6 py-6"
-			>
+			<div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 px-4 sm:px-6 py-6">
 				<div
 					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
 				>
@@ -98,13 +100,17 @@
 							{email.body}
 						</div>
 					{:else}
-						<div class="text-gray-500 dark:text-gray-400 italic">No email content available</div>
+						<div class="text-gray-500 dark:text-gray-400 italic">
+							No email content available
+						</div>
 					{/if}
 				</div>
 			</div>
 
 			<!-- Footer -->
-			<div class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+			<div
+				class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
+			>
 				<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">
 					Close
 				</Button>
@@ -113,7 +119,7 @@
 	</div>
 {/if}
 
-<style global>
+<style>
 	/* Safe HTML email styles */
 	:global(.prose) {
 		@apply text-gray-900 dark:text-gray-100;
@@ -123,7 +129,12 @@
 		@apply mb-4;
 	}
 
-	:global(.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6) {
+	:global(.prose h1),
+	:global(.prose h2),
+	:global(.prose h3),
+	:global(.prose h4),
+	:global(.prose h5),
+	:global(.prose h6) {
 		@apply font-semibold mt-6 mb-3;
 	}
 
@@ -139,7 +150,8 @@
 		@apply w-full border-collapse border border-gray-300 dark:border-gray-600 mt-4 mb-4;
 	}
 
-	:global(.prose table td, .prose table th) {
+	:global(.prose table td),
+	:global(.prose table th) {
 		@apply border border-gray-300 dark:border-gray-600 p-2;
 	}
 

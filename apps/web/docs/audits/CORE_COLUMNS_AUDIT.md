@@ -32,89 +32,82 @@ core_trust_safeguards: string | null;
 ### ✅ PROPERLY IMPLEMENTED
 
 1. **Database Schema** ✓
-   - File: `apps/web/src/lib/database.schema.ts:766-795`
-   - All 9 core columns properly defined
+    - File: `apps/web/src/lib/database.schema.ts:766-795`
+    - All 9 core columns properly defined
 
 2. **Validation Schemas** ✓
-   - File: `apps/web/src/lib/utils/operations/validation-schemas.ts:35-45`
-   - All 9 core columns in tableSchemas
+    - File: `apps/web/src/lib/utils/operations/validation-schemas.ts:35-45`
+    - All 9 core columns in tableSchemas
 
 3. **UI Component** ✓
-   - File: `apps/web/src/lib/components/project/CoreDimensionsField.svelte`
-   - All 9 dimensions with proper UI and metadata
+    - File: `apps/web/src/lib/components/project/CoreDimensionsField.svelte`
+    - All 9 dimensions with proper UI and metadata
 
 4. **API GET Endpoint** ✓
-   - File: `apps/web/src/routes/api/projects/[id]/+server.ts`
-   - Uses `select('*')` so fetches all columns
+    - File: `apps/web/src/routes/api/projects/[id]/+server.ts`
+    - Uses `select('*')` so fetches all columns
 
 5. **Prompt Templates** ✓
-   - File: `apps/web/src/lib/services/promptTemplate.service.ts`
-   - Includes all core dimensions in AI prompts
+    - File: `apps/web/src/lib/services/promptTemplate.service.ts`
+    - Includes all core dimensions in AI prompts
 
 ### ❌ CRITICAL GAPS
 
 1. **Data Cleaner Missing Core Columns** 🔴
-   - File: `apps/web/src/lib/utils/data-cleaner.ts:144-162`
-   - **Issue**: Projects schema doesn't include any of the 9 core columns
-   - **Impact**: When projects are updated via API, core columns are NOT cleaned/validated
-   - **Impact**: Core columns are stripped during the cleanDataForTable() call in PUT endpoint
-   - **Impact**: Embedding preparation doesn't include core columns
+    - File: `apps/web/src/lib/utils/data-cleaner.ts:144-162`
+    - **Issue**: Projects schema doesn't include any of the 9 core columns
+    - **Impact**: When projects are updated via API, core columns are NOT cleaned/validated
+    - **Impact**: Core columns are stripped during the cleanDataForTable() call in PUT endpoint
+    - **Impact**: Embedding preparation doesn't include core columns
 
-   **Current Schema (INCOMPLETE):**
+    **Current Schema (INCOMPLETE):**
 
-   ```typescript
-   projects: {
-       id: { type: 'uuid' },
-       user_id: { type: 'uuid', required: true },
-       name: { type: 'string', maxLength: 255, required: true },
-       slug: { type: 'slug', maxLength: 255 },
-       description: { type: 'string' },
-       context: { type: 'string' },
-       executive_summary: { type: 'string' },
-       status: { type: 'enum', values: ['active', 'paused', 'completed', 'archived'] },
-       start_date: { type: 'date' },
-       end_date: { type: 'date' },
-       tags: { type: 'array' },
-       calendar_color_id: { type: 'string' },
-       calendar_settings: { type: 'json' },
-       calendar_sync_enabled: { type: 'boolean' },
-       created_at: { type: 'timestamp' },
-       updated_at: { type: 'timestamp' }
-       // ❌ MISSING: all 9 core_* columns
-   }
-   ```
+    ```typescript
+    projects: {
+        id: { type: 'uuid' },
+        user_id: { type: 'uuid', required: true },
+        name: { type: 'string', maxLength: 255, required: true },
+        slug: { type: 'slug', maxLength: 255 },
+        description: { type: 'string' },
+        context: { type: 'string' },
+        executive_summary: { type: 'string' },
+        status: { type: 'enum', values: ['active', 'paused', 'completed', 'archived'] },
+        start_date: { type: 'date' },
+        end_date: { type: 'date' },
+        tags: { type: 'array' },
+        calendar_color_id: { type: 'string' },
+        calendar_settings: { type: 'json' },
+        calendar_sync_enabled: { type: 'boolean' },
+        created_at: { type: 'timestamp' },
+        updated_at: { type: 'timestamp' }
+        // ❌ MISSING: all 9 core_* columns
+    }
+    ```
 
 2. **ProjectHistoryModal Missing Core Columns** 🔴
-   - File: `apps/web/src/lib/components/project/ProjectHistoryModal.svelte:56-65`
-   - **Issue**: fieldConfig only includes 8 fields
-   - **Impact**: History modal won't show changes to any core dimensions
-   - **Impact**: User can't see how core dimensions have evolved
+    - File: `apps/web/src/lib/components/project/ProjectHistoryModal.svelte:56-65`
+    - **Issue**: fieldConfig only includes 8 fields
+    - **Impact**: History modal won't show changes to any core dimensions
+    - **Impact**: User can't see how core dimensions have evolved
 
-   **Current Fields:**
+    **Current Fields:**
 
-   ```typescript
-   (name,
-     description,
-     context,
-     executive_summary,
-     status,
-     start_date,
-     end_date,
-     tags);
-   // ❌ MISSING: all 9 core_* columns
-   ```
+    ```typescript
+    (name, description, context, executive_summary, status, start_date, end_date, tags);
+    // ❌ MISSING: all 9 core_* columns
+    ```
 
 3. **Embedding Preparation Missing Core Columns** 🟡
-   - File: `apps/web/src/lib/utils/data-cleaner.ts:361-388`
-   - **Issue**: cleanDataForEmbedding for projects only uses 6 fields
-   - **Impact**: Embeddings won't include core dimension content for semantic search
+    - File: `apps/web/src/lib/utils/data-cleaner.ts:361-388`
+    - **Issue**: cleanDataForEmbedding for projects only uses 6 fields
+    - **Impact**: Embeddings won't include core dimension content for semantic search
 
-   **Current Fields:**
+    **Current Fields:**
 
-   ```typescript
-   ["name", "description", "status", "tags", "context", "executive_summary"];
-   // ❌ MISSING: all 9 core_* columns
-   ```
+    ```typescript
+    ['name', 'description', 'status', 'tags', 'context', 'executive_summary'];
+    // ❌ MISSING: all 9 core_* columns
+    ```
 
 ## Data Flow Analysis
 

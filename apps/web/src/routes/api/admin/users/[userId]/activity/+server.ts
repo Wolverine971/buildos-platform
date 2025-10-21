@@ -31,35 +31,26 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.single();
 
-		// Get projects with task and note counts
+		// Get projects
 		const { data: projects } = await supabase
 			.from('projects')
-			.select(
-				`
-				*,
-				tasks!inner(count),
-				notes!inner(count)
-			`
-			)
+			.select('*')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Process projects to get counts
+		// Process projects to get counts using optimized queries
 		const processedProjects = await Promise.all(
 			(projects || []).map(async (project) => {
-				// Get task counts
-				const { count: taskCount } = await supabase
+				// Get all task stats in one query (not separate queries for count and completed)
+				const { data: taskStats } = await supabase
 					.from('tasks')
-					.select('*', { count: 'exact', head: true })
+					.select('id, status, completed_at', { count: 'exact' })
 					.eq('project_id', project.id);
 
-				const { count: completedTaskCount } = await supabase
-					.from('tasks')
-					.select('*', { count: 'exact', head: true })
-					.eq('project_id', project.id)
-					.eq('status', 'completed');
+				const taskCount = taskStats?.length || 0;
+				const completedTaskCount = taskStats?.filter((t) => t.status === 'done').length || 0;
 
-				// Get notes count
+				// Get notes count in one query
 				const { count: notesCount } = await supabase
 					.from('notes')
 					.select('*', { count: 'exact', head: true })
@@ -67,8 +58,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 				return {
 					...project,
-					task_count: taskCount || 0,
-					completed_task_count: completedTaskCount || 0,
+					task_count: taskCount,
+					completed_task_count: completedTaskCount,
 					notes_count: notesCount || 0
 				};
 			})
@@ -88,14 +79,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Get tasks
+		// Get tasks with project names and completion info
 		const { data: tasks } = await supabase
 			.from('tasks')
-			.select('*, projects(name)')
+			.select('*, projects(name), completed_at')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Get notes
+		// Get notes with project names
 		const { data: notes } = await supabase
 			.from('notes')
 			.select('*, projects(name)')
@@ -109,7 +100,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 
-		// Build recent activity timeline
+		// Build recent activity timeline with proper timestamps
 		const activities: any[] = [];
 
 		// Add project activities
@@ -119,18 +110,24 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				created_at: project.created_at,
 				object_name: project.name,
 				project_name: project.name,
-				details: project.description
+				details: project.description || 'No description',
+				icon_color: 'purple'
 			});
 		});
 
-		// Add task activities
+		// Add task activities - use completed_at for task_completed, not created_at
 		tasks?.forEach((task) => {
+			const isCompleted = task.status === 'done';
+			const timestamp = isCompleted && task.completed_at ? task.completed_at : task.created_at;
+
 			activities.push({
-				activity_type: task.status === 'completed' ? 'task_completed' : 'task_created',
-				created_at: task.created_at,
+				activity_type: isCompleted ? 'task_completed' : 'task_created',
+				created_at: timestamp,
 				object_name: task.title,
-				project_name: task.projects?.name,
-				details: task.description
+				project_name: task.projects?.name || 'Unassigned',
+				details: task.description || 'No description',
+				status: task.status,
+				icon_color: isCompleted ? 'green' : 'orange'
 			});
 		});
 
@@ -139,9 +136,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			activities.push({
 				activity_type: 'note_created',
 				created_at: note.created_at,
-				object_name: note.title,
-				project_name: note.projects?.name,
-				details: note.content?.substring(0, 100)
+				object_name: note.title || 'Untitled Note',
+				project_name: note.projects?.name || 'Unassigned',
+				details: note.content ? note.content.substring(0, 150) : 'No content',
+				icon_color: 'emerald'
 			});
 		});
 
@@ -150,8 +148,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			activities.push({
 				activity_type: 'brain_dump_created',
 				created_at: dump.created_at,
-				object_name: dump.title,
-				details: dump.content?.substring(0, 100)
+				object_name: dump.title || 'Brain Dump',
+				details: dump.content ? dump.content.substring(0, 150) : 'No content',
+				icon_color: 'indigo'
 			});
 		});
 
@@ -160,8 +159,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			activities.push({
 				activity_type: 'brief_generated',
 				created_at: brief.created_at,
-				object_name: `Daily Brief`,
-				details: brief.content?.substring(0, 100)
+				object_name: 'Daily Brief',
+				details: brief.brief_date ? `Generated for ${brief.brief_date}` : 'Daily brief',
+				icon_color: 'blue'
 			});
 		});
 
@@ -170,12 +170,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			activities.push({
 				activity_type: 'brief_scheduled',
 				created_at: scheduled.created_at,
-				object_name: scheduled.event_title,
-				details: `Scheduled for ${scheduled.event_start}`
+				object_name: scheduled.event_title || 'Scheduled Brief',
+				details: scheduled.event_start
+					? `Scheduled for ${new Date(scheduled.event_start).toLocaleDateString()}`
+					: 'Scheduled brief',
+				event_start: scheduled.event_start,
+				icon_color: 'teal'
 			});
 		});
 
-		// Sort activities by date
+		// Sort activities by date (most recent first)
 		activities.sort(
 			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 		);
@@ -197,7 +201,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			user_context: userContext,
 			projects: processedProjects,
 			brain_dumps: brainDumps || [],
-			recent_activity: activities.slice(0, 50), // Last 50 activities
+			recent_activity: activities.slice(0, 50), // Last 50 activities sorted by date
 			activity_stats: activityStats,
 			tasks: tasks || [],
 			notes: notes || [],

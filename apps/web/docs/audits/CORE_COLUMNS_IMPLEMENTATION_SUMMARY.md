@@ -23,16 +23,16 @@ Implemented proper support for 9 new core dimension columns across the web appli
 **What was fixed:**
 
 - Added all 9 core\_\* columns to projects schema with correct types:
-  - `core_context_descriptions`: `{ type: 'json' }`
-  - `core_goals_momentum`: `{ type: 'string' }`
-  - `core_harmony_integration`: `{ type: 'string' }`
-  - `core_integrity_ideals`: `{ type: 'string' }`
-  - `core_meaning_identity`: `{ type: 'string' }`
-  - `core_opportunity_freedom`: `{ type: 'string' }`
-  - `core_people_bonds`: `{ type: 'string' }`
-  - `core_power_resources`: `{ type: 'string' }`
-  - `core_reality_understanding`: `{ type: 'string' }`
-  - `core_trust_safeguards`: `{ type: 'string' }`
+    - `core_context_descriptions`: `{ type: 'json' }`
+    - `core_goals_momentum`: `{ type: 'string' }`
+    - `core_harmony_integration`: `{ type: 'string' }`
+    - `core_integrity_ideals`: `{ type: 'string' }`
+    - `core_meaning_identity`: `{ type: 'string' }`
+    - `core_opportunity_freedom`: `{ type: 'string' }`
+    - `core_people_bonds`: `{ type: 'string' }`
+    - `core_power_resources`: `{ type: 'string' }`
+    - `core_reality_understanding`: `{ type: 'string' }`
+    - `core_trust_safeguards`: `{ type: 'string' }`
 - Also added `source` and `source_metadata` fields (were also missing)
 
 **Data Flow (AFTER FIX):**
@@ -63,15 +63,15 @@ Project saved with core dimensions ✓
 **What was fixed:**
 
 - Added all 9 core dimension fields to embedding preparation:
-  - `core_integrity_ideals`
-  - `core_people_bonds`
-  - `core_goals_momentum`
-  - `core_meaning_identity`
-  - `core_reality_understanding`
-  - `core_trust_safeguards`
-  - `core_opportunity_freedom`
-  - `core_power_resources`
-  - `core_harmony_integration`
+    - `core_integrity_ideals`
+    - `core_people_bonds`
+    - `core_goals_momentum`
+    - `core_meaning_identity`
+    - `core_reality_understanding`
+    - `core_trust_safeguards`
+    - `core_opportunity_freedom`
+    - `core_power_resources`
+    - `core_harmony_integration`
 - Embeddings now include ~800 characters of additional context per project
 
 ### 3. ✅ Fixed: ProjectHistoryModal.svelte (HIGH)
@@ -89,8 +89,8 @@ Project saved with core dimensions ✓
 **What was fixed:**
 
 - Added all 9 core dimension fields to fieldConfig with:
-  - Human-readable labels (e.g., "Integrity & Ideals")
-  - Priority level 4 (after basic fields, before calendar fields)
+    - Human-readable labels (e.g., "Integrity & Ideals")
+    - Priority level 4 (after basic fields, before calendar fields)
 - Added calendar and source metadata fields for completeness
 - Now 26 trackable fields instead of 8
 
@@ -98,31 +98,31 @@ Project saved with core dimensions ✓
 
 ```typescript
 {
-  // Core project fields (priority 0-3)
-  (name,
-    description,
-    context,
-    executive_summary,
-    status,
-    start_date,
-    end_date,
-    tags,
-    // Core dimensions (priority 4) ← NEW
-    core_integrity_ideals,
-    core_people_bonds,
-    core_goals_momentum,
-    core_meaning_identity,
-    core_reality_understanding,
-    core_trust_safeguards,
-    core_opportunity_freedom,
-    core_power_resources,
-    core_harmony_integration,
-    // Calendar/metadata fields (priority 5)
-    calendar_color_id,
-    calendar_settings,
-    calendar_sync_enabled,
-    source,
-    source_metadata);
+	// Core project fields (priority 0-3)
+	(name,
+		description,
+		context,
+		executive_summary,
+		status,
+		start_date,
+		end_date,
+		tags,
+		// Core dimensions (priority 4) ← NEW
+		core_integrity_ideals,
+		core_people_bonds,
+		core_goals_momentum,
+		core_meaning_identity,
+		core_reality_understanding,
+		core_trust_safeguards,
+		core_opportunity_freedom,
+		core_power_resources,
+		core_harmony_integration,
+		// Calendar/metadata fields (priority 5)
+		calendar_color_id,
+		calendar_settings,
+		calendar_sync_enabled,
+		source,
+		source_metadata);
 }
 ```
 
@@ -214,24 +214,24 @@ Projects Table:
 ### Data Validation Points (AFTER FIX)
 
 1. **Operations Validator** ✓
-   - File: `operations/validation-schemas.ts:35-45`
-   - Status: Already had all core columns
-   - Used by: Brain dump processing operations
+    - File: `operations/validation-schemas.ts:35-45`
+    - Status: Already had all core columns
+    - Used by: Brain dump processing operations
 
 2. **Data Cleaner** ✓ (NOW FIXED)
-   - File: `data-cleaner.ts:158-168`
-   - Status: NOW includes all core columns
-   - Used by: API PUT endpoints, general data cleaning
+    - File: `data-cleaner.ts:158-168`
+    - Status: NOW includes all core columns
+    - Used by: API PUT endpoints, general data cleaning
 
 3. **Component UI** ✓
-   - File: `CoreDimensionsField.svelte`
-   - Status: Already properly configured
-   - Shows all 9 dimensions with descriptions
+    - File: `CoreDimensionsField.svelte`
+    - Status: Already properly configured
+    - Shows all 9 dimensions with descriptions
 
 4. **History Tracking** ✓ (NOW FIXED)
-   - File: `ProjectHistoryModal.svelte:68-76`
-   - Status: NOW tracks all core columns
-   - Shows diffs between versions
+    - File: `ProjectHistoryModal.svelte:68-76`
+    - Status: NOW tracks all core columns
+    - Shows diffs between versions
 
 ## API Endpoint Verification
 
@@ -257,35 +257,35 @@ Projects Table:
 ### Manual Testing Steps
 
 1. **Edit Core Dimension**
-   - [ ] Navigate to project detail page
-   - [ ] Scroll to "Core Project Dimensions" section
-   - [ ] Edit one dimension (e.g., "Integrity & Ideals")
-   - [ ] Click save
+    - [ ] Navigate to project detail page
+    - [ ] Scroll to "Core Project Dimensions" section
+    - [ ] Edit one dimension (e.g., "Integrity & Ideals")
+    - [ ] Click save
 
 2. **Verify Persistence**
-   - [ ] Navigate away from project
-   - [ ] Return to project detail page
-   - [ ] Core dimension value should be preserved
+    - [ ] Navigate away from project
+    - [ ] Return to project detail page
+    - [ ] Core dimension value should be preserved
 
 3. **Verify History Tracking**
-   - [ ] Click "View History" button
-   - [ ] Select the comparison showing the edit
-   - [ ] Core dimension should appear in the diff
-   - [ ] Old value → new value should be visible
+    - [ ] Click "View History" button
+    - [ ] Select the comparison showing the edit
+    - [ ] Core dimension should appear in the diff
+    - [ ] Old value → new value should be visible
 
 4. **Verify API Response**
-   - [ ] Open browser DevTools Network tab
-   - [ ] Edit a core dimension
-   - [ ] Check PUT request payload
-   - [ ] Core dimension field should be included
-   - [ ] Check PUT response
-   - [ ] Core dimension should be in response
+    - [ ] Open browser DevTools Network tab
+    - [ ] Edit a core dimension
+    - [ ] Check PUT request payload
+    - [ ] Core dimension field should be included
+    - [ ] Check PUT response
+    - [ ] Core dimension should be in response
 
 5. **Verify Brain Dump Integration**
-   - [ ] Create new project from brain dump
-   - [ ] Verify core dimensions are auto-populated
-   - [ ] Edit brain dump with new content
-   - [ ] Verify core dimensions update
+    - [ ] Create new project from brain dump
+    - [ ] Verify core dimensions are auto-populated
+    - [ ] Edit brain dump with new content
+    - [ ] Verify core dimensions update
 
 ### Automated Testing
 

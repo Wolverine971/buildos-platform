@@ -5,6 +5,7 @@
 This automated migration script successfully converts Svelte 4 reactive syntax (`$:`) to Svelte 5 runes syntax (`$derived` and `$effect`) across the entire BuildOS web application.
 
 **Migration Coverage:**
+
 - ✅ **435 instances** found and converted
 - ✅ **120 files** modified
 - ✅ **100% detection** rate (all reactive statements found)
@@ -39,12 +40,12 @@ pnpm run dev
 
 The script intelligently analyzes each `$:` reactive statement and converts it to the appropriate runes syntax:
 
-| Pattern | Detection | Conversion |
-|---------|-----------|------------|
-| `$: x = computed()` | Computed value | `let x = $derived(computed());` |
-| `$: if (condition) {...}` | Side effect | `$effect(() => { if (condition) {...} });` |
-| `$: { statements; }` | Side effect block | `$effect(() => { statements; });` |
-| `$: obj = { multi-line }` | Computed object | `let obj = $derived({ multi-line });` |
+| Pattern                   | Detection         | Conversion                                 |
+| ------------------------- | ----------------- | ------------------------------------------ |
+| `$: x = computed()`       | Computed value    | `let x = $derived(computed());`            |
+| `$: if (condition) {...}` | Side effect       | `$effect(() => { if (condition) {...} });` |
+| `$: { statements; }`      | Side effect block | `$effect(() => { statements; });`          |
+| `$: obj = { multi-line }` | Computed object   | `let obj = $derived({ multi-line });`      |
 
 ### Smart Features
 
@@ -61,24 +62,24 @@ The script intelligently analyzes each `$:` reactive statement and converts it t
 ### Key Functions
 
 1. **`extractReactiveStatements(content)`**
-   - Parses file content line by line
-   - Identifies reactive statement boundaries using bracket depth tracking
-   - Returns array of statement objects with line numbers and indentation
+    - Parses file content line by line
+    - Identifies reactive statement boundaries using bracket depth tracking
+    - Returns array of statement objects with line numbers and indentation
 
 2. **`isSideEffect(statement)`**
-   - Analyzes statement to determine if it's a side effect or computed value
-   - Checks for: function calls, if statements, assignments with mutations
-   - Returns boolean: true for `$effect`, false for `$derived`
+    - Analyzes statement to determine if it's a side effect or computed value
+    - Checks for: function calls, if statements, assignments with mutations
+    - Returns boolean: true for `$effect`, false for `$derived`
 
 3. **`convertReactiveStatement(fullMatch, indentation, statement)`**
-   - Converts a single reactive statement to runes syntax
-   - Handles multi-line expressions
-   - Preserves formatting and indentation
+    - Converts a single reactive statement to runes syntax
+    - Handles multi-line expressions
+    - Preserves formatting and indentation
 
 4. **`processFile(filePath)`**
-   - Main file processing function
-   - Extracts statements, converts them, applies replacements
-   - Tracks statistics and handles errors
+    - Main file processing function
+    - Extracts statements, converts them, applies replacements
+    - Tracks statistics and handles errors
 
 ### Statistics Tracked
 
@@ -109,14 +110,10 @@ Total conversions:   435
 
 ```svelte
 <!-- Before -->
-$: project = data.project;
-$: tasks = data.tasks;
-$: taskCount = tasks.length;
+$: project = data.project; $: tasks = data.tasks; $: taskCount = tasks.length;
 
 <!-- After -->
-let project = $derived(data.project);
-let tasks = $derived(data.tasks);
-let taskCount = $derived(tasks.length);
+let project = $derived(data.project); let tasks = $derived(data.tasks); let taskCount = $derived(tasks.length);
 ```
 
 ### Example 2: Complex Objects
@@ -225,12 +222,12 @@ The script will modify 120 files across these directories:
 
 - `/src/routes/` - Route pages and layouts
 - `/src/lib/components/` - Svelte components
-  - `/ui/` - UI components
-  - `/admin/` - Admin components
-  - `/projects/` - Project components
-  - `/calendar/` - Calendar components
-  - `/notifications/` - Notification components
-  - And more...
+    - `/ui/` - UI components
+    - `/admin/` - Admin components
+    - `/projects/` - Project components
+    - `/calendar/` - Calendar components
+    - `/notifications/` - Notification components
+    - And more...
 
 ## Recommended Migration Process
 
@@ -349,6 +346,7 @@ These limitations are intentional to ensure safe, conservative conversions.
 ## Dependencies
 
 The script requires:
+
 - Node.js 20+
 - `fast-glob` package (already in package.json)
 

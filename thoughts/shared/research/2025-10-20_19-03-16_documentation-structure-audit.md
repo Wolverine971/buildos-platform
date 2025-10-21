@@ -1,7 +1,9 @@
 # BuildOS Platform Documentation Structure - Complete Audit
+
 **Date:** 2025-10-20
 
 ## Quick Stats
+
 - **Total Markdown Files:** ~654 files
 - **Monorepo-level docs:** 312 files
 - **Web app docs:** 180 files
@@ -27,6 +29,7 @@
 ## Monorepo-Level Documentation: `/docs` (312 files)
 
 ### Root Level (16 files)
+
 ```
 /docs/
 ├── README.md                          [INDEX]
@@ -48,6 +51,7 @@
 ```
 
 ### `/architecture` (12 files)
+
 ```
 /docs/architecture/
 ├── README.md                                    [INDEX]
@@ -69,6 +73,7 @@
 ```
 
 ### `/business` (21 files)
+
 ```
 /docs/business/
 ├── README.md                          [INDEX]
@@ -96,6 +101,7 @@
 ```
 
 ### `/marketing` (77 files) - ⚠ VERY LARGE, BUSINESS-FOCUSED
+
 ```
 /docs/marketing/
 ├── INDEX.md
@@ -149,6 +155,7 @@
 ```
 
 ### `/features` (18 files)
+
 ```
 /docs/features/
 └── /sms-event-scheduling/ (18 files)
@@ -174,6 +181,7 @@
 ```
 
 ### `/testing` (5 files)
+
 ```
 /docs/testing/
 ├── README.md                          [INDEX]
@@ -184,6 +192,7 @@
 ```
 
 ### `/user-guide` (8 files)
+
 ```
 /docs/user-guide/
 ├── README.md                          [INDEX]
@@ -197,7 +206,8 @@
     └── projects.md
 ```
 
-### `/integrations` 
+### `/integrations`
+
 ```
 /docs/integrations/
 ├── /twilio/
@@ -207,6 +217,7 @@
 ```
 
 ### `/operations`
+
 ```
 /docs/operations/
 ├── /environment/
@@ -216,6 +227,7 @@
 ```
 
 ### `/archive` (11 files)
+
 ```
 /docs/archive/
 ├── README.md
@@ -234,11 +246,12 @@
 ```
 
 ### Other directories
+
 ```
 /docs/
 ├── /blogs/ (4 files) - Blog post content
 ├── /audits/ (3 files) - Worker audits
-├── /guides/ (2 files) - SMS guides  
+├── /guides/ (2 files) - SMS guides
 ├── /philosophy/ (2 files) - Product philosophy
 ├── /api/ (1 file)
 └── /writing/ (1 file)
@@ -249,6 +262,7 @@
 ## Web App Documentation: `/apps/web/docs` (180 files)
 
 ### Root Level (6 files)
+
 ```
 /apps/web/docs/
 ├── README.md                          [INDEX & START HERE]
@@ -260,6 +274,7 @@
 ```
 
 ### `/design` (11 files)
+
 ```
 /apps/web/docs/design/
 ├── design-principles-checklist.md
@@ -277,6 +292,7 @@
 ```
 
 ### `/development` (11 files)
+
 ```
 /apps/web/docs/development/
 ├── README.md                          [INDEX]
@@ -300,6 +316,7 @@
 ### `/features` (60+ files) - MAJOR FEATURE DOCUMENTATION
 
 #### Brain Dump (13 files)
+
 ```
 /apps/web/docs/features/brain-dump/
 ├── README.md                          [INDEX]
@@ -318,6 +335,7 @@
 ```
 
 #### Calendar Integration (8 files)
+
 ```
 /apps/web/docs/features/calendar-integration/
 ├── README.md                          [INDEX]
@@ -331,6 +349,7 @@
 ```
 
 #### Notifications (14 files)
+
 ```
 /apps/web/docs/features/notifications/
 ├── README.md                          [INDEX]
@@ -351,6 +370,7 @@
 ```
 
 #### Onboarding (5 files)
+
 ```
 /apps/web/docs/features/onboarding/
 ├── README.md                          [INDEX]
@@ -363,6 +383,7 @@
 ```
 
 #### Other Features
+
 ```
 /apps/web/docs/features/
 ├── /admin-dashboard/
@@ -380,6 +401,7 @@
 ### `/prompts` (60+ files) - COMPLEX LLM PROMPT LIBRARY
 
 #### Structure
+
 ```
 /apps/web/docs/prompts/
 ├── README.md                          [INDEX]
@@ -455,6 +477,7 @@
 ### `/technical` (87 files) - COMPREHENSIVE TECHNICAL DOCS
 
 #### API Reference (17 files)
+
 ```
 /apps/web/docs/technical/api/
 ├── README.md                          [INDEX]
@@ -478,6 +501,7 @@
 ```
 
 #### Architecture (11 files)
+
 ```
 /apps/web/docs/technical/architecture/
 ├── README.md                          [INDEX]
@@ -494,6 +518,7 @@
 ```
 
 #### Deployment & Operations (15 files)
+
 ```
 /apps/web/docs/technical/deployment/
 ├── BUILD.md
@@ -512,6 +537,7 @@
 ```
 
 #### Database (3 files)
+
 ```
 /apps/web/docs/technical/database/
 ├── schema.md
@@ -520,6 +546,7 @@
 ```
 
 #### Services (7 files)
+
 ```
 /apps/web/docs/technical/services/
 ├── README.md                          [INDEX]
@@ -532,6 +559,7 @@
 ```
 
 #### Development (10 files)
+
 ```
 /apps/web/docs/technical/development/
 ├── DEVELOPMENT_PROCESS.md
@@ -547,6 +575,7 @@
 ```
 
 #### Other Technical Sections
+
 ```
 /apps/web/docs/technical/
 ├── /components/ (5 files)
@@ -563,6 +592,7 @@
 ```
 
 ### `/integrations` (5 files)
+
 ```
 /apps/web/docs/integrations/
 ├── STRIPE_IMPLEMENTATION_SUMMARY.md
@@ -573,6 +603,7 @@
 ```
 
 ### `/operations`
+
 ```
 /apps/web/docs/operations/
 └── /deployment/ (3 files)
@@ -586,6 +617,7 @@
 ## Research & Thoughts Directory: `/thoughts` (156 files)
 
 ### Ideas (4 files)
+
 ```
 /thoughts/shared/ideas/
 ├── new-project-context-fields.md
@@ -595,7 +627,9 @@
 ```
 
 ### Research (152 timestamped files)
+
 Latest entries (2025-10-20):
+
 ```
 /thoughts/shared/research/
 ├── 2025-10-20_16-45-00_timeblock-integration-implementation-complete.md
@@ -608,6 +642,7 @@ Latest entries (2025-10-20):
 ```
 
 Key research topics covered:
+
 - Brain dump flows and API architecture
 - Notification system implementation and tracking
 - Calendar analysis and integration
@@ -622,6 +657,7 @@ Key research topics covered:
 ## Directory Index: README.md Coverage
 
 ### Has README.md (36 directories - 30% of total)
+
 - /docs/ ✓
 - /docs/architecture/diagrams/ ✓
 - /docs/archive/ ✓
@@ -647,6 +683,7 @@ Key research topics covered:
 - /apps/web/docs/prompts/ ✓
 
 ### Missing README.md (45+ directories - 70% of total)
+
 - /docs/api/
 - /docs/guides/
 - /docs/operations/environment/
@@ -670,6 +707,7 @@ Key research topics covered:
 ## Critical Issues & Recommendations
 
 ### Priority 1 - URGENT
+
 1. **Scattered Root-Level Files:**
    - CORE_COLUMNS_AUDIT.md → Move to `/apps/web/docs/features/`
    - CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md → Move
@@ -682,12 +720,14 @@ Key research topics covered:
    - Consolidate or clearly document the difference
 
 ### Priority 2 - HIGH
+
 1. **Add Missing README.md files** to 45+ directories
 2. **Archive outdated content** in `/docs/archive/`
 3. **Review business content** in `/docs/marketing/` (77 files) and `/docs/business/` (21 files)
    - Should these be in separate biz-dev repository?
 
 ### Priority 3 - MEDIUM
+
 1. **Empty directories cleanup:**
    - `/docs/integrations/stripe/` (related to `/apps/web/docs/integrations/`)
    - `/docs/integrations/supabase/`
@@ -702,17 +742,17 @@ Key research topics covered:
 
 ## Summary Table
 
-| Location | Files | Has Index | Key Content |
-|----------|-------|-----------|------------|
-| /docs | 312 | ✓ | Monorepo architecture, business, marketing |
-| /docs/marketing | 77 | ✗ | Investor profiles, social media strategies |
-| /docs/business | 21 | ✓ | Pitch decks, communications |
-| /apps/web/docs | 180 | ✓ | Web features, technical docs, API |
-| /apps/web/docs/technical | 87 | ✓ | API, architecture, deployment |
-| /apps/web/docs/prompts | 60+ | ✓ | LLM prompt library |
-| /apps/web/docs/features | 60+ | ✓ | Brain dump, notifications, calendar |
-| /thoughts/research | 152 | ✗ | Timestamped research investigations |
-| Root scattered | 6 | ✗ | Needs organization |
+| Location                 | Files | Has Index | Key Content                                |
+| ------------------------ | ----- | --------- | ------------------------------------------ |
+| /docs                    | 312   | ✓         | Monorepo architecture, business, marketing |
+| /docs/marketing          | 77    | ✗         | Investor profiles, social media strategies |
+| /docs/business           | 21    | ✓         | Pitch decks, communications                |
+| /apps/web/docs           | 180   | ✓         | Web features, technical docs, API          |
+| /apps/web/docs/technical | 87    | ✓         | API, architecture, deployment              |
+| /apps/web/docs/prompts   | 60+   | ✓         | LLM prompt library                         |
+| /apps/web/docs/features  | 60+   | ✓         | Brain dump, notifications, calendar        |
+| /thoughts/research       | 152   | ✗         | Timestamped research investigations        |
+| Root scattered           | 6     | ✗         | Needs organization                         |
 
 ---
 

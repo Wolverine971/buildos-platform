@@ -249,34 +249,34 @@ COMMIT;
 
 1. **Error Rate**
 
-   ```sql
-   SELECT COUNT(*)
-   FROM error_logs
-   WHERE error_message LIKE '%user_notification_preferences%'
-     AND created_at > NOW() - INTERVAL '1 hour';
-   ```
+    ```sql
+    SELECT COUNT(*)
+    FROM error_logs
+    WHERE error_message LIKE '%user_notification_preferences%'
+      AND created_at > NOW() - INTERVAL '1 hour';
+    ```
 
 2. **Notification Delivery Rate**
 
-   ```sql
-   SELECT
-     DATE_TRUNC('hour', created_at) as hour,
-     COUNT(*) as total,
-     SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
-     ROUND(AVG(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) * 100, 2) as delivery_rate
-   FROM notification_deliveries
-   WHERE created_at > NOW() - INTERVAL '24 hours'
-   GROUP BY hour
-   ORDER BY hour DESC;
-   ```
+    ```sql
+    SELECT
+      DATE_TRUNC('hour', created_at) as hour,
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+      ROUND(AVG(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) * 100, 2) as delivery_rate
+    FROM notification_deliveries
+    WHERE created_at > NOW() - INTERVAL '24 hours'
+    GROUP BY hour
+    ORDER BY hour DESC;
+    ```
 
 3. **Duplicate Check** (Should always be 0)
-   ```sql
-   SELECT user_id, COUNT(*)
-   FROM user_notification_preferences
-   GROUP BY user_id
-   HAVING COUNT(*) > 1;
-   ```
+    ```sql
+    SELECT user_id, COUNT(*)
+    FROM user_notification_preferences
+    GROUP BY user_id
+    HAVING COUNT(*) > 1;
+    ```
 
 ### Alert Thresholds
 

@@ -109,33 +109,33 @@ The notification logging system with end-to-end correlation ID tracking is **100
 
 1. **Extracts Correlation ID**:
 
-   ```sql
-   v_correlation_id := COALESCE(
-     (p_metadata->>'correlationId')::UUID,  -- From metadata
-     (p_payload->>'correlationId')::UUID,   -- From payload
-     gen_random_uuid()                       -- Generate new if missing
-   );
-   ```
+    ```sql
+    v_correlation_id := COALESCE(
+      (p_metadata->>'correlationId')::UUID,  -- From metadata
+      (p_payload->>'correlationId')::UUID,   -- From payload
+      gen_random_uuid()                       -- Generate new if missing
+    );
+    ```
 
 2. **Stores in Event Metadata**:
 
-   ```sql
-   INSERT INTO notification_events (..., metadata)
-   VALUES (..., v_enriched_metadata);  -- Contains correlationId
-   ```
+    ```sql
+    INSERT INTO notification_events (..., metadata)
+    VALUES (..., v_enriched_metadata);  -- Contains correlationId
+    ```
 
 3. **Passes to Queue Jobs**:
 
-   ```sql
-   INSERT INTO queue_jobs (metadata)
-   VALUES (
-     jsonb_build_object(
-       'event_id', v_event_id,
-       'delivery_id', v_delivery_id,
-       'correlationId', v_correlation_id  -- Worker can extract this
-     )
-   );
-   ```
+    ```sql
+    INSERT INTO queue_jobs (metadata)
+    VALUES (
+      jsonb_build_object(
+        'event_id', v_event_id,
+        'delivery_id', v_delivery_id,
+        'correlationId', v_correlation_id  -- Worker can extract this
+      )
+    );
+    ```
 
 4. **Supports All Channels**: push, email, sms, in_app
 
@@ -213,34 +213,34 @@ WHERE routine_name = 'emit_notification_event';
 ### Step 2: Test End-to-End Flow (30 minutes)
 
 1. **Send Test Notification**:
-   - Go to `/admin/notifications/test`
-   - Send a test push notification
-   - Note the correlation ID in browser console
+    - Go to `/admin/notifications/test`
+    - Send a test push notification
+    - Note the correlation ID in browser console
 
 2. **Verify Worker Processing**:
-   - Check Railway worker logs
-   - Look for correlation ID: `🔗 Generated correlation ID: ...`
-   - Verify worker logs include correlation ID in all operations
+    - Check Railway worker logs
+    - Look for correlation ID: `🔗 Generated correlation ID: ...`
+    - Verify worker logs include correlation ID in all operations
 
 3. **Check Admin UI**:
-   - Go to `/admin/notifications/logs`
-   - Switch to "System Logs" tab
-   - Search for the correlation ID
-   - Click the correlation ID to see full trace
+    - Go to `/admin/notifications/logs`
+    - Switch to "System Logs" tab
+    - Search for the correlation ID
+    - Click the correlation ID to see full trace
 
 4. **Verify Database**:
 
-   ```sql
-   -- Check logs were persisted
-   SELECT * FROM notification_logs
-   WHERE correlation_id = 'YOUR_CORRELATION_ID'
-   ORDER BY created_at;
+    ```sql
+    -- Check logs were persisted
+    SELECT * FROM notification_logs
+    WHERE correlation_id = 'YOUR_CORRELATION_ID'
+    ORDER BY created_at;
 
-   -- Verify event has correlation ID
-   SELECT metadata->>'correlationId' as correlation_id
-   FROM notification_events
-   ORDER BY created_at DESC LIMIT 10;
-   ```
+    -- Verify event has correlation ID
+    SELECT metadata->>'correlationId' as correlation_id
+    FROM notification_events
+    ORDER BY created_at DESC LIMIT 10;
+    ```
 
 ---
 
@@ -277,34 +277,34 @@ WHERE routine_name = 'emit_notification_event';
 Once migrations are applied, you'll have:
 
 1. **Full Request Tracing**:
-   - Click any correlation ID in admin UI
-   - See entire notification lifecycle:
-     - API request received
-     - Event created
-     - Deliveries queued
-     - Worker processing
-     - External service calls
-     - Webhook status updates
-     - Final delivery state
+    - Click any correlation ID in admin UI
+    - See entire notification lifecycle:
+        - API request received
+        - Event created
+        - Deliveries queued
+        - Worker processing
+        - External service calls
+        - Webhook status updates
+        - Final delivery state
 
 2. **Debugging Superpowers**:
-   - User reports notification not received?
-   - Search by user ID or email
-   - Find correlation ID
-   - See exactly where it failed
-   - View full error stack traces
+    - User reports notification not received?
+    - Search by user ID or email
+    - Find correlation ID
+    - See exactly where it failed
+    - View full error stack traces
 
 3. **Production Monitoring**:
-   - Real-time visibility into notification health
-   - Track delivery rates by channel
-   - Identify patterns in failures
-   - SLA compliance monitoring
+    - Real-time visibility into notification health
+    - Track delivery rates by channel
+    - Identify patterns in failures
+    - SLA compliance monitoring
 
 4. **Analytics**:
-   - Accurate open/click rates
-   - Delivery time distributions
-   - Channel performance comparison
-   - User engagement metrics
+    - Accurate open/click rates
+    - Delivery time distributions
+    - Channel performance comparison
+    - User engagement metrics
 
 ---
 
@@ -382,23 +382,23 @@ Before going to production:
 ## 📞 Next Steps
 
 1. **Apply Migrations** (5 minutes)
-   - Via Supabase Dashboard or CLI
-   - Verify all tables created
+    - Via Supabase Dashboard or CLI
+    - Verify all tables created
 
 2. **Test** (30 minutes)
-   - Send test notifications
-   - Verify correlation tracking works
-   - Check admin UI displays logs correctly
+    - Send test notifications
+    - Verify correlation tracking works
+    - Check admin UI displays logs correctly
 
 3. **Monitor** (first week)
-   - Watch log volume
-   - Check for any missing correlation IDs
-   - Verify no performance issues
+    - Watch log volume
+    - Check for any missing correlation IDs
+    - Verify no performance issues
 
 4. **Iterate** (ongoing)
-   - Add more log points as needed
-   - Set up alerting based on patterns
-   - Export logs for long-term analysis
+    - Add more log points as needed
+    - Set up alerting based on patterns
+    - Export logs for long-term analysis
 
 ---
 
@@ -441,11 +441,11 @@ CREATE INDEX idx_notification_deliveries_correlation_id ON notification_deliveri
 
 - Created `log_notification_event()` helper function
 - Updated `emit_notification_event()` to log at 6 key points:
-  1. Event creation start
-  2. Event created
-  3. Each subscription match
-  4. Each delivery created (per channel)
-  5. Processing complete summary
+    1. Event creation start
+    2. Event created
+    3. Each subscription match
+    4. Each delivery created (per channel)
+    5. Processing complete summary
 
 ### 3. **SMS Link Tracking with Structured Logging** (`apps/web/src/routes/l/[short_code]/+server.ts`)
 

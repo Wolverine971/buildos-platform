@@ -715,7 +715,10 @@
 									on:change={(e) => {
 										if (!isDeleted) {
 											recurrencePatternValue = e.detail;
-											quickUpdateField('recurrence_pattern', recurrencePatternValue);
+											quickUpdateField(
+												'recurrence_pattern',
+												recurrencePatternValue
+											);
 										}
 									}}
 									size="sm"
@@ -765,7 +768,11 @@
 											!isDeleted &&
 											quickUpdateField(
 												'recurrence_ends',
-												recurrenceEndsValue ? new Date(recurrenceEndsValue + 'T00:00:00').toISOString() : null
+												recurrenceEndsValue
+													? new Date(
+															recurrenceEndsValue + 'T00:00:00'
+														).toISOString()
+													: null
 											)}
 										size="sm"
 										disabled={isDeleted}
@@ -954,11 +961,14 @@
 
 						<!-- Task Type Badge -->
 						<div class="mb-4">
-							<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+							<p
+								class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+							>
 								Type
 							</p>
 							<span
-								class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {taskTypeValue === 'recurring'
+								class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {taskTypeValue ===
+								'recurring'
 									? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
 									: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}"
 							>
@@ -969,7 +979,9 @@
 						<!-- Priority Badge -->
 						{#if priorityDisplay}
 							<div class="mb-4">
-								<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+								<p
+									class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+								>
 									Priority
 								</p>
 								<span
@@ -983,13 +995,18 @@
 						<!-- Status Badge -->
 						{#if statusDisplay}
 							<div class="mb-4">
-								<p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">
+								<p
+									class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+								>
 									Status
 								</p>
 								<span
 									class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {statusDisplay.color}"
 								>
-									<svelte:component this={statusDisplay.icon} class="w-4 h-4 mr-1.5" />
+									<svelte:component
+										this={statusDisplay.icon}
+										class="w-4 h-4 mr-1.5"
+									/>
 									{statusDisplay.label}
 								</span>
 							</div>
@@ -1001,14 +1018,22 @@
 						<div class="space-y-3 text-xs text-gray-600 dark:text-gray-400">
 							{#if task?.created_at}
 								<div>
-									<span class="font-medium block text-gray-700 dark:text-gray-300">Created</span>
-									<span class="text-gray-600 dark:text-gray-400">{formatDateForDisplay(task.created_at)}</span>
+									<span class="font-medium block text-gray-700 dark:text-gray-300"
+										>Created</span
+									>
+									<span class="text-gray-600 dark:text-gray-400"
+										>{formatDateForDisplay(task.created_at)}</span
+									>
 								</div>
 							{/if}
 							{#if task?.updated_at}
 								<div>
-									<span class="font-medium block text-gray-700 dark:text-gray-300">Updated</span>
-									<span class="text-gray-600 dark:text-gray-400">{formatDateForDisplay(task.updated_at)}</span>
+									<span class="font-medium block text-gray-700 dark:text-gray-300"
+										>Updated</span
+									>
+									<span class="text-gray-600 dark:text-gray-400"
+										>{formatDateForDisplay(task.updated_at)}</span
+									>
 								</div>
 							{/if}
 						</div>

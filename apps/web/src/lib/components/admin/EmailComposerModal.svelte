@@ -160,7 +160,9 @@ Guidelines:
 	async function loadEmailHistory() {
 		emailHistoryLoading = true;
 		try {
-			const response = await fetch(`/api/admin/emails/history?email=${encodeURIComponent(userEmail)}`);
+			const response = await fetch(
+				`/api/admin/emails/history?email=${encodeURIComponent(userEmail)}`
+			);
 			if (!response.ok) throw new Error('Failed to load email history');
 			const data = await response.json();
 			emailHistory = data.data || [];
@@ -391,13 +393,21 @@ Guidelines:
 								class="w-full text-left p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors text-xs sm:text-sm"
 							>
 								<div class="flex items-start gap-2">
-									<Eye class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+									<Eye
+										class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
+									/>
 									<div class="min-w-0 flex-1">
-										<p class="font-medium text-gray-900 dark:text-white truncate">
+										<p
+											class="font-medium text-gray-900 dark:text-white truncate"
+										>
 											{email.subject || 'No subject'}
 										</p>
-										<p class="text-xs text-gray-600 dark:text-gray-400 truncate">
-											{new Date(email.created_at || email.sent_at).toLocaleDateString()}
+										<p
+											class="text-xs text-gray-600 dark:text-gray-400 truncate"
+										>
+											{new Date(
+												email.created_at || email.sent_at
+											).toLocaleDateString()}
 										</p>
 									</div>
 								</div>
@@ -408,7 +418,9 @@ Guidelines:
 			{/if}
 
 			<!-- Edit Mode Toggle - Horizontal Scrollable on Mobile -->
-			<div class="flex gap-2 pb-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+			<div
+				class="flex gap-2 pb-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto"
+			>
 				<Button
 					variant={editMode === 'manual' ? 'primary' : 'outline'}
 					size="sm"
@@ -453,7 +465,9 @@ Guidelines:
 						on:click={() => (contextPanelExpanded = !contextPanelExpanded)}
 						class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
-						<span class="text-sm font-medium text-gray-900 dark:text-white">User Context</span>
+						<span class="text-sm font-medium text-gray-900 dark:text-white"
+							>User Context</span
+						>
 						{#if contextPanelExpanded}
 							<ChevronUp class="w-4 h-4 text-gray-600 dark:text-gray-400" />
 						{:else}
@@ -630,7 +644,9 @@ Guidelines:
 				<div class="space-y-2 sm:space-y-3">
 					{#if editMode === 'split'}
 						<!-- Copy buttons in split mode -->
-						<div class="flex flex-col sm:flex-row gap-2 justify-center sm:justify-start">
+						<div
+							class="flex flex-col sm:flex-row gap-2 justify-center sm:justify-start"
+						>
 							<Button
 								variant="ghost"
 								size="sm"
@@ -657,13 +673,17 @@ Guidelines:
 					{/if}
 
 					<div
-						class={editMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3' : ''}
+						class={editMode === 'split'
+							? 'grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3'
+							: ''}
 					>
 						<!-- Manual Editor -->
 						{#if editMode === 'manual' || editMode === 'split'}
 							<div class="space-y-1">
 								<div class="flex items-center gap-2">
-									<PenTool class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400" />
+									<PenTool
+										class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400"
+									/>
 									<label
 										for="manual-email"
 										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -689,7 +709,9 @@ Guidelines:
 						{#if editMode === 'ai' || editMode === 'split'}
 							<div class="space-y-1">
 								<div class="flex items-center gap-2">
-									<Bot class="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />
+									<Bot
+										class="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400"
+									/>
 									<label
 										for="generated-email"
 										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -724,20 +746,12 @@ Guidelines:
 
 				{#if generatedEmail || manualEmail}
 					<div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-						<Button
-							variant="outline"
-							on:click={copyToClipboard}
-							class="text-sm"
-						>
+						<Button variant="outline" on:click={copyToClipboard} class="text-sm">
 							<Copy class="w-4 h-4 mr-2" />
 							<span class="hidden sm:inline">Copy to Clipboard</span>
 							<span class="sm:hidden">Copy</span>
 						</Button>
-						<Button
-							on:click={sendEmail}
-							disabled={isSending}
-							class="text-sm"
-						>
+						<Button on:click={sendEmail} disabled={isSending} class="text-sm">
 							{#if isSending}
 								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								Sending...

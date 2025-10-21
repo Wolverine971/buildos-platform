@@ -138,11 +138,15 @@
 						<p class="text-xs font-medium text-blue-600 dark:text-blue-400 truncate">
 							Last Visit
 						</p>
-						<p class="text-sm sm:text-lg font-bold text-blue-900 dark:text-blue-100 line-clamp-1">
+						<p
+							class="text-sm sm:text-lg font-bold text-blue-900 dark:text-blue-100 line-clamp-1"
+						>
 							{formatLastVisit(user.last_visit)}
 						</p>
 					</div>
-					<Clock class="h-5 w-5 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+					<Clock
+						class="h-5 w-5 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400 flex-shrink-0"
+					/>
 				</div>
 			</div>
 
@@ -160,9 +164,13 @@
 						</p>
 					</div>
 					{#if user.completed_onboarding}
-						<CheckCircle class="h-5 w-5 sm:h-8 sm:w-8 text-green-600 dark:text-green-400 flex-shrink-0" />
+						<CheckCircle
+							class="h-5 w-5 sm:h-8 sm:w-8 text-green-600 dark:text-green-400 flex-shrink-0"
+						/>
 					{:else}
-						<XCircle class="h-5 w-5 sm:h-8 sm:w-8 text-red-600 dark:text-red-400 flex-shrink-0" />
+						<XCircle
+							class="h-5 w-5 sm:h-8 sm:w-8 text-red-600 dark:text-red-400 flex-shrink-0"
+						/>
 					{/if}
 				</div>
 			</div>
@@ -173,14 +181,20 @@
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
-						<p class="text-xs font-medium text-purple-600 dark:text-purple-400 truncate">
+						<p
+							class="text-xs font-medium text-purple-600 dark:text-purple-400 truncate"
+						>
 							Projects
 						</p>
-						<p class="text-sm sm:text-lg font-bold text-purple-900 dark:text-purple-100">
+						<p
+							class="text-sm sm:text-lg font-bold text-purple-900 dark:text-purple-100"
+						>
 							{activityStats.total_projects || 0}
 						</p>
 					</div>
-					<FolderOpen class="h-5 w-5 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+					<FolderOpen
+						class="h-5 w-5 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400 flex-shrink-0"
+					/>
 				</div>
 			</div>
 
@@ -190,19 +204,25 @@
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
-						<p class="text-xs font-medium text-orange-600 dark:text-orange-400 truncate">
+						<p
+							class="text-xs font-medium text-orange-600 dark:text-orange-400 truncate"
+						>
 							Tasks
 						</p>
-						<p class="text-sm sm:text-lg font-bold text-orange-900 dark:text-orange-100">
+						<p
+							class="text-sm sm:text-lg font-bold text-orange-900 dark:text-orange-100"
+						>
 							{activityStats.total_tasks || 0}
 						</p>
 					</div>
-					<CheckSquare class="h-5 w-5 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+					<CheckSquare
+						class="h-5 w-5 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400 flex-shrink-0"
+					/>
 				</div>
 			</div>
 		</div>
 
-			<!-- Activity Stats Grid - Compact on Mobile -->
+		<!-- Activity Stats Grid - Compact on Mobile -->
 		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
 			<div
 				class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
@@ -306,7 +326,8 @@
 					>
 						<div class="flex items-center justify-center mb-1">
 							<Calendar
-								class="h-4 sm:h-5 w-4 sm:w-5 text-{userContext.activity.calendar_connected
+								class="h-4 sm:h-5 w-4 sm:w-5 text-{userContext.activity
+									.calendar_connected
 									? 'green'
 									: 'gray'}-600"
 							/>
@@ -359,7 +380,7 @@
 			<UserContextPanel {userContext} expanded={true} />
 		{/if}
 
-			<!-- Charts Section -->
+		<!-- Charts Section -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
 			<!-- Project Activity Chart -->
 			<div
@@ -392,7 +413,9 @@
 		<div
 			class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
 		>
-			<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+			<h3
+				class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+			>
 				<Activity class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-green-600 flex-shrink-0" />
 				Recent Activity Timeline
 			</h3>
@@ -446,7 +469,9 @@
 
 					{#if userContext.focus_areas}
 						<div>
-							<h4 class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate">
+							<h4
+								class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+							>
 								Focus Areas
 							</h4>
 							<p
@@ -459,7 +484,9 @@
 
 					{#if userContext.active_projects}
 						<div>
-							<h4 class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate">
+							<h4
+								class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+							>
 								Active Projects
 							</h4>
 							<p
@@ -472,7 +499,9 @@
 
 					{#if userContext.productivity_challenges}
 						<div>
-							<h4 class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate">
+							<h4
+								class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+							>
 								Challenges
 							</h4>
 							<p
@@ -485,7 +514,9 @@
 
 					{#if userContext.preferred_work_hours}
 						<div>
-							<h4 class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate">
+							<h4
+								class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+							>
 								Work Hours
 							</h4>
 							<p
@@ -510,7 +541,7 @@
 			</div>
 		{/if}
 
-			<!-- Projects Summary -->
+		<!-- Projects Summary -->
 		{#if projects.length > 0}
 			<div
 				class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
@@ -524,11 +555,17 @@
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
 					{#each projects.slice(0, 6) as project}
-						<div class="border border-gray-200 dark:border-gray-600 rounded-lg p-2 sm:p-3">
-							<h4 class="font-medium text-gray-900 dark:text-white mb-1 text-sm truncate">
+						<div
+							class="border border-gray-200 dark:border-gray-600 rounded-lg p-2 sm:p-3"
+						>
+							<h4
+								class="font-medium text-gray-900 dark:text-white mb-1 text-sm truncate"
+							>
 								{project.name || 'Untitled'}
 							</h4>
-							<div class="space-y-0.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+							<div
+								class="space-y-0.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+							>
 								<p class="truncate">
 									<span class="font-medium">{project.status || 'Unknown'}</span>
 								</p>
@@ -554,8 +591,12 @@
 	</div>
 
 	<svelte:fragment slot="footer">
-		<div class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700">
-			<Button on:click={handleClose} variant="secondary" size="sm" class="text-sm">Close</Button>
+		<div
+			class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
+		>
+			<Button on:click={handleClose} variant="secondary" size="sm" class="text-sm"
+				>Close</Button
+			>
 		</div>
 	</svelte:fragment>
 </Modal>

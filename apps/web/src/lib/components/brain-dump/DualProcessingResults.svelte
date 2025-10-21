@@ -326,10 +326,13 @@
 											r="20"
 											fill="none"
 											stroke-width="2"
-											style="stroke-dasharray: 125.6; stroke-dashoffset: {125.6 - (125.6 * $analysisProgress) / 100}"
+											style="stroke-dasharray: 125.6; stroke-dashoffset: {125.6 -
+												(125.6 * $analysisProgress) / 100}"
 										/>
 									</svg>
-									<span class="progress-text">{Math.round($analysisProgress)}%</span>
+									<span class="progress-text"
+										>{Math.round($analysisProgress)}%</span
+									>
 								</div>
 								<p class="progress-hint">Optimizing for your project...</p>
 							</div>
@@ -361,7 +364,9 @@
 								{/if}
 							</div>
 							<h3 class="analysis-compact-title">
-								{analysisStatus === 'completed' ? 'Analysis Complete' : 'Analysis Failed'}
+								{analysisStatus === 'completed'
+									? 'Analysis Complete'
+									: 'Analysis Failed'}
 							</h3>
 						</div>
 
@@ -382,10 +387,14 @@
 										</span>
 									{/if}
 									{#if analysisResult.new_tasks_detected}
-										<span class="analysis-stat analysis-stat-compact">New tasks</span>
+										<span class="analysis-stat analysis-stat-compact"
+											>New tasks</span
+										>
 									{/if}
 								</div>
-								<p class="analysis-compact-summary">{analysisResult.analysis_summary}</p>
+								<p class="analysis-compact-summary">
+									{analysisResult.analysis_summary}
+								</p>
 							</div>
 						{:else if analysisStatus === 'failed'}
 							<p class="analysis-compact-message">
@@ -402,7 +411,9 @@
 	<div
 		class="flex flex-col gap-4 {showContextPanel
 			? 'sm:grid sm:grid-cols-2'
-			: 'max-w-2xl mx-auto'} {inModal ? '' : 'min-h-[400px]'} md:gap-6 transition-all duration-500 ease-out"
+			: 'max-w-2xl mx-auto'} {inModal
+			? ''
+			: 'min-h-[400px]'} md:gap-6 transition-all duration-500 ease-out"
 	>
 		<!-- Left side: Project Context (only shown when needed) -->
 		{#if showContextPanel}

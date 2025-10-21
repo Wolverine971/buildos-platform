@@ -9,6 +9,7 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 **Issue**: When preparatory analysis was running for existing projects, the UI in the DualProcessingResults component was not updating with analysis progress, status, or results. Users saw no indication that the analysis phase was occurring.
 
 **Root Cause**: The brain-dump-v2.store's `updateBrainDumpStreamingState()` method was missing three critical fields:
+
 - `analysisStatus` - The current state of the analysis (processing, completed, failed, etc.)
 - `analysisProgress` - Progress message from the analysis phase
 - `analysisResult` - The preparatory analysis result data containing classification, relevant tasks, etc.
@@ -16,6 +17,7 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(brainDumpId, { analysisStatus: 'processing', ... })`, the store was silently dropping these analysis fields because it only handled context and tasks fields.
 
 **Impact**:
+
 - Analysis phase UI was completely hidden (no progress indicator, status, or results shown)
 - Users had no feedback during the analysis phase of brain dump processing
 - DualProcessingResults component received undefined analysis fields even though store methods were called with proper data
@@ -41,6 +43,7 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
    - Initializes `analysisResult` to null
 
 **How It Works**:
+
 1. API endpoint sends analysis SSE messages: `{ type: 'analysis', data: { status: 'processing', ... } }`
 2. brain-dump-notification.bridge receives the message and calls: `updateBrainDumpStreamingState(id, { analysisStatus: 'processing', ... })`
 3. Store now persists these analysis fields in the streaming state object
@@ -48,16 +51,19 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 5. DualProcessingResults component receives analysis fields via props and renders the analysis UI
 
 **Type Definitions Already Support This**:
+
 - The type definitions at lines 80-90 (SingleBrainDumpState) and 226-236 (UnifiedBrainDumpState) already included the optional analysis fields
 - The fix was just adding them to the actual state objects being created/updated
 
 **Related Files**:
+
 - `/apps/web/src/lib/components/brain-dump/DualProcessingResults.svelte:129-148` - Analysis UI rendering
 - `/apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte:77-79` - Streaming state derivation
 - `/apps/web/src/lib/services/brain-dump-notification.bridge.ts:592-673` - Stream update handling
 - `/apps/web/src/routes/api/braindumps/stream/+server.ts:159-247` - SSE analysis message sending
 
 **Manual Verification Steps**:
+
 1. Create a new brain dump with an existing project selected
 2. Observe the DualProcessingResults component during processing
 3. Should see "Analyzing Your Braindump" card appear while analysis is running
@@ -67,6 +73,7 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 7. Context and tasks panels should still process normally after analysis completes
 
 **Testing Notes**:
+
 - Analysis should run only for existing projects (not new projects)
 - Analysis should be the first phase of dual processing before context/tasks
 - After analysis completes successfully, context and tasks phases should proceed
@@ -79,12 +86,14 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 **Issue**: Project context and task descriptions were experiencing heading level inflation over successive brain dump processing cycles. Headings would gradually deepen (e.g., H2 → H4 → H6) causing markdown structure to become malformed and headings to exceed valid markdown limits.
 
 **Root Cause**: The validation logic in `validateAndSanitizeCrudOperations()` was using conditional normalization based on a high threshold (expected max depth > 4 for projects, > 3 for tasks). This meant:
+
 - Headings at levels 1-4 were left unchanged for projects
 - Headings at levels 1-3 were left unchanged for tasks
 - Over time, as normalized context was re-embedded in subsequent brain dump prompts and re-processed by the LLM, heading levels would drift deeper
 - The conditional check meant normalization was OPTIONAL, allowing inflate to persist
 
 **Impact**:
+
 - Project context accumulated inconsistent heading levels (H1-H6) over multiple updates
 - Task descriptions/details had unstable heading structures
 - Context readability degraded with each brain dump cycle
@@ -101,23 +110,27 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
    - Added console.warn logging to track when normalization occurs
 
 **Key Changes**:
+
 - Removed `if (hasInflatedHeadings(data.context, 4))` conditional - now ALWAYS applies normalization
 - Removed `if (hasInflatedHeadings(data.description, 3))` conditional - now ALWAYS applies normalization
 - Removed `if (hasInflatedHeadings(data.details, 3))` conditional - now ALWAYS applies normalization
 - Added warning logs to identify when content arrives with inflated headings
 
 **Why This Works**:
+
 - Ensures consistent heading levels on every validation pass
 - Prevents heading drift across multiple brain dump cycles
 - Maintains structural integrity of markdown content
 - Uses existing `normalizeMarkdownHeadings()` utility from `/apps/web/src/lib/utils/markdown-nesting.ts`
 
 **Related Utilities** (already available, now fully utilized):
+
 - `normalizeMarkdownHeadings()`: Reduces heading levels back to target level
 - `hasInflatedHeadings()`: Detects when headings exceed expected depth
 - `adjustMarkdownHeadingLevels()`: Adjusts relative heading structure
 
 **Testing Recommendations**:
+
 1. Create new project with brain dump containing multi-level markdown in context
 2. Verify project.context has headings starting at H2
 3. Update project with new brain dump content
@@ -127,6 +140,7 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 7. Verify task descriptions/details maintain H1 base level across updates
 
 **Cross-References**:
+
 - See `/apps/web/src/lib/utils/markdown-nesting.ts` for heading utility functions
 - Related context extraction: `/apps/web/src/lib/utils/braindump-processor.ts:1021-1183` (extractProjectContext)
 - Related: Project schema `/packages/shared-types/src/database.schema.ts` (projects.context field)
@@ -136,15 +150,18 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 ## 2025-10-20: Updated LLM Prompts - Strategic Focus and Markdown Format
 
 **Issue**:
+
 1. Context and core dimensions were being generated as unformatted text instead of markdown
 2. Context field was being polluted with task-level execution details instead of focusing on strategy
 
 **Root Cause**:
+
 - LLM prompts did not require markdown formatting
 - No clear guidance distinguishing between strategic information (context) and execution details (tasks)
 - All braindump details were being dumped into context without filtering
 
 **Impact**:
+
 - Context fields displayed as long paragraphs without structure, mixing strategy with task details
 - Core dimensions lacked markdown formatting
 - Context mixed strategy with execution details (task lists, step-by-step actions)
@@ -156,6 +173,7 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 **Change 1: Strategic vs Execution Distinction**
 
 Context and core dimensions should capture STRATEGY only, not execution details:
+
 - **Context IS**: Strategic overview, why project matters, key challenges, approach, evolution
 - **Context is NOT**: Task lists, step-by-step actions, execution details
 - **Include**: "Preparing for AP exams in 6 weeks with weak areas in Calc BC series and Bio labs"
@@ -164,6 +182,7 @@ Context and core dimensions should capture STRATEGY only, not execution details:
 **Change 2: Markdown Formatting with Natural Evolution**
 
 Context and dimensions must use markdown, allowing structure to evolve naturally:
+
 - Early: 1-2 sentences of strategy
 - Mature: Rich markdown with headers, bullets, emphasis
 - No prescriptive rules - LLM decides structure based on content
@@ -190,6 +209,7 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
    - Added explicit "EXCLUDE task-level details" rule
 
 **Key Philosophy**:
+
 - Markdown IS required (not plain text)
 - Context = Strategic Master Document (brings unfamiliar person up to speed on strategy)
 - Tasks = Execution Details (specific actions, implementation)
@@ -197,6 +217,7 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
 - Filter all braindump details: if it's about HOW TO DO something, it's a task, not context
 
 **Testing Recommendations**:
+
 1. Create project with brain dump containing strategy AND task details
 2. Verify context captures only strategy, not task lists
 3. Verify task details are extracted as separate tasks
@@ -204,6 +225,7 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
 5. Verify someone unfamiliar with project can understand it from context alone
 
 **Cross-References**:
+
 - See `/apps/web/src/lib/types/brain-dump.ts` for `PreparatoryAnalysisResult` interface
 - See `/apps/web/docs/prompts/` for all prompt templates
 - Related: Core Dimensions fields in `/packages/shared-types/src/database.schema.ts` (projects table)

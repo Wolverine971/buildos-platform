@@ -57,11 +57,11 @@ pnpm run dev
 
 ## Command Line Options
 
-| Option | Description |
-|--------|-------------|
-| `--dry-run` | Show changes without modifying files |
-| `--file <path>` | Process only a specific file |
-| `--verbose` | Show detailed conversion information |
+| Option          | Description                          |
+| --------------- | ------------------------------------ |
+| `--dry-run`     | Show changes without modifying files |
+| `--file <path>` | Process only a specific file         |
+| `--verbose`     | Show detailed conversion information |
 
 ## Conversion Rules
 
@@ -73,14 +73,11 @@ Reactive statements that assign computed values are converted to `$derived`:
 
 ```svelte
 <!-- Before -->
-$: count = items.length;
-$: doubled = count * 2;
-$: filtered = items.filter(i => i.active);
+$: count = items.length; $: doubled = count * 2; $: filtered = items.filter(i => i.active);
 
 <!-- After -->
-let count = $derived(items.length);
-let doubled = $derived(count * 2);
-let filtered = $derived(items.filter(i => i.active));
+let count = $derived(items.length); let doubled = $derived(count * 2); let filtered = $derived(items.filter(i
+=> i.active));
 ```
 
 ### 2. Multi-line Objects/Arrays → `$derived`
@@ -144,6 +141,7 @@ $effect(() => {
 ## What the Script Handles
 
 ✅ **Automatically Converted:**
+
 - Simple assignments (`$: x = y`)
 - Multi-line object/array assignments
 - If statements (`$: if (x) { ... }`)
@@ -153,6 +151,7 @@ $effect(() => {
 - Chained array access (`[status]`, `[key]`)
 
 ✅ **Preserved:**
+
 - Indentation and formatting
 - Comments between statements
 - Multi-line expressions
@@ -160,6 +159,7 @@ $effect(() => {
 ## What Requires Manual Review
 
 ⚠️ **May Need Manual Review:**
+
 - Complex nested logic
 - Statements mixing computed values and side effects
 - Edge cases with unusual syntax
@@ -171,27 +171,21 @@ $effect(() => {
 
 ```svelte
 <!-- Before -->
-$: project = data.project;
-$: tasks = data.tasks;
-$: isLoading = data.isLoading;
+$: project = data.project; $: tasks = data.tasks; $: isLoading = data.isLoading;
 
 <!-- After -->
-let project = $derived(data.project);
-let tasks = $derived(data.tasks);
-let isLoading = $derived(data.isLoading);
+let project = $derived(data.project); let tasks = $derived(data.tasks); let isLoading = $derived(data.isLoading);
 ```
 
 ### Example 2: Computed Values
 
 ```svelte
 <!-- Before -->
-$: filteredTasks = tasks.filter(t => t.status === selectedStatus);
-$: taskCount = filteredTasks.length;
+$: filteredTasks = tasks.filter(t => t.status === selectedStatus); $: taskCount = filteredTasks.length;
 $: hasActiveTasks = taskCount > 0;
 
 <!-- After -->
-let filteredTasks = $derived(tasks.filter(t => t.status === selectedStatus));
-let taskCount = $derived(filteredTasks.length);
+let filteredTasks = $derived(tasks.filter(t => t.status === selectedStatus)); let taskCount = $derived(filteredTasks.length);
 let hasActiveTasks = $derived(taskCount > 0);
 ```
 
@@ -236,11 +230,12 @@ let errorConfig = $derived({
 ### Phase 1: Test Migration (15-30 minutes)
 
 1. Run dry-run on a sample of files:
-   ```bash
-   node migrate-to-runes.js --dry-run --verbose --file 'src/routes/+error.svelte'
-   node migrate-to-runes.js --dry-run --verbose --file 'src/routes/admin/+page.svelte'
-   node migrate-to-runes.js --dry-run --verbose --file 'src/routes/projects/[id]/notes/+page.svelte'
-   ```
+
+    ```bash
+    node migrate-to-runes.js --dry-run --verbose --file 'src/routes/+error.svelte'
+    node migrate-to-runes.js --dry-run --verbose --file 'src/routes/admin/+page.svelte'
+    node migrate-to-runes.js --dry-run --verbose --file 'src/routes/projects/[id]/notes/+page.svelte'
+    ```
 
 2. Review the output to ensure conversions look correct
 
@@ -263,33 +258,37 @@ find src/routes -name "+page.svelte" -exec node migrate-to-runes.js --file {} \;
 ### Phase 3: Verify and Fix (1-2 hours)
 
 1. Run type checking:
-   ```bash
-   pnpm run check
-   ```
+
+    ```bash
+    pnpm run check
+    ```
 
 2. Fix any TypeScript errors manually
 
 3. Run tests:
-   ```bash
-   pnpm run test
-   ```
+
+    ```bash
+    pnpm run test
+    ```
 
 4. Spot-check in browser:
-   ```bash
-   pnpm run dev
-   ```
+    ```bash
+    pnpm run dev
+    ```
 
 ## Troubleshooting
 
 ### Issue: Script reports errors
 
 **Solution:** Check the error message. Common issues:
+
 - File path doesn't exist (use quotes around paths with `[brackets]`)
 - Syntax errors in original file
 
 ### Issue: Conversion looks wrong
 
 **Solution:**
+
 - Check the verbose output to see the before/after
 - File an issue or manually fix specific cases
 - The script is conservative - it may skip ambiguous cases
@@ -297,15 +296,17 @@ find src/routes -name "+page.svelte" -exec node migrate-to-runes.js --file {} \;
 ### Issue: Build fails after migration
 
 **Solution:**
+
 1. Run `pnpm run check` to see specific errors
 2. Look for cases where:
-   - `$derived` should have been `$effect` (or vice versa)
-   - Multi-line statements have syntax issues
+    - `$derived` should have been `$effect` (or vice versa)
+    - Multi-line statements have syntax issues
 3. Manually fix and test
 
 ## Statistics Tracking
 
 The script tracks and reports:
+
 - Files processed
 - Files modified
 - Total conversions
@@ -351,9 +352,9 @@ Based on testing:
 - **Automation Rate:** ~85-90%
 - **Manual Review Needed:** ~10-15% of conversions
 - **Common Manual Fixes:**
-  - Complex nested effects
-  - Edge cases with unusual syntax
-  - Statements mixing computation and side effects
+    - Complex nested effects
+    - Edge cases with unusual syntax
+    - Statements mixing computation and side effects
 
 ## Post-Migration Checklist
 
