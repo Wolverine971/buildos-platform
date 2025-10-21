@@ -237,9 +237,11 @@
 	}
 
 	// Load history when modal opens
-	$: if (isOpen && projectId) {
-		loadHistory();
-	}
+	$effect(() => {
+		if (isOpen && projectId) {
+			loadHistory();
+		}
+	});
 </script>
 
 <Modal {isOpen} size="xl" onClose={handleClose} title="Project History">
