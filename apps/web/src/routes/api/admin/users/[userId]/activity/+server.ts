@@ -1,4 +1,17 @@
 // apps/web/src/routes/api/admin/users/[userId]/activity/+server.ts
+//
+// Admin endpoint: Retrieve comprehensive user activity data
+//
+// PERFORMANCE NOTE (2025-10-21):
+// This endpoint uses an optimized query pattern to avoid N+1 queries.
+// Previously made 1 + 2N queries (201 for 100 projects), now makes constant 9 queries.
+//
+// Pattern: Fetch all tasks and notes once, then aggregate in-memory by project_id.
+// This reuses data already needed for the activity timeline, eliminating redundant queries.
+//
+// DO NOT revert to per-project queries - this would recreate the N+1 anti-pattern.
+// See: /docs/audits/BUGFIX_CHANGELOG.md (2025-10-21 N+1 Query Fix)
+
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 

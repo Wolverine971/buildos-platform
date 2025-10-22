@@ -9,6 +9,7 @@ This directory contains comprehensive documentation for all BuildOS web applicat
 **Entry Point**: [/brain-dump/README.md](brain-dump/README.md)
 
 AI-powered stream-of-consciousness input processing:
+
 - Long-form brain dumps with dual processing
 - Short quick-capture updates
 - Preparatory analysis for token savings
@@ -16,6 +17,7 @@ AI-powered stream-of-consciousness input processing:
 - Phase-based task organization
 
 **Key Docs**:
+
 - Implementation phases
 - Preparatory analysis integration
 - Multi-brain-dump system
@@ -28,6 +30,7 @@ AI-powered stream-of-consciousness input processing:
 **Entry Point**: [/calendar-integration/README.md](calendar-integration/README.md)
 
 Google Calendar synchronization and project-specific calendars:
+
 - OAuth integration
 - Bidirectional event sync
 - LLM-powered project detection
@@ -36,6 +39,7 @@ Google Calendar synchronization and project-specific calendars:
 - Per-project calendar management
 
 **Key Docs**:
+
 - Integration planning and implementation
 - Bug fixes and improvements
 - Calendar analysis and ingestion
@@ -47,6 +51,7 @@ Google Calendar synchronization and project-specific calendars:
 **Entry Point**: [/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐
 
 Generic stackable notification system:
+
 - Multiple concurrent notifications
 - Minimized and expanded views
 - Modal coordination
@@ -54,6 +59,7 @@ Generic stackable notification system:
 - Real-time updates
 
 **Key Docs**:
+
 - Complete system map and navigation
 - Technical specification (1,729 lines)
 - Implementation and API reference
@@ -66,6 +72,7 @@ Generic stackable notification system:
 **Entry Point**: [/admin-dashboard/README.md](admin-dashboard/README.md)
 
 LLM usage tracking and analytics:
+
 - Real-time usage metrics
 - Cost analytics
 - Model/operation breakdowns
@@ -77,10 +84,12 @@ LLM usage tracking and analytics:
 ### 🚀 Onboarding & Onboarding V2 (4 docs total)
 
 **Entry Points**:
+
 - V1: [/onboarding/README.md](onboarding/README.md)
 - V2: [/onboarding-v2/README.md](onboarding-v2/README.md)
 
 User onboarding flows:
+
 - V1: Complete onboarding experience design
 - V2: 6-step guided flow with auto-accept
 
@@ -91,6 +100,7 @@ User onboarding flows:
 **Entry Point**: [/project-export/](project-export/)
 
 Project export and printing:
+
 - PDF export migration
 - Browser print implementation
 
@@ -101,6 +111,7 @@ Project export and printing:
 **Entry Point**: [/phase-generation/](phase-generation/)
 
 Intelligent task phase organization:
+
 - Procedural phase generation
 - Calendar-aware scheduling
 
@@ -116,16 +127,16 @@ Time block scheduling system.
 
 ## 🎯 Quick Navigation
 
-| Feature | Status | Docs | Entry Point |
-| ------- | ------ | ---- | ----------- |
-| Brain Dump | ✅ Complete | 10 | [README](brain-dump/README.md) |
-| Calendar | ✅ Complete | 7 | [README](calendar-integration/README.md) |
-| Notifications | ✅ Complete | 6 | [MAP](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐ |
-| Admin Dashboard | ✅ Complete | 1 | [README](admin-dashboard/README.md) |
-| Onboarding | ✅ Complete | 4 | [V1](onboarding/README.md) [V2](onboarding-v2/README.md) |
-| Project Export | ✅ Complete | 2 | [DIR](project-export/) |
-| Phase Generation | ✅ Complete | 1 | [DIR](phase-generation/) |
-| Time Blocks | ✅ Complete | 1 | [README](time-blocks/README.md) |
+| Feature          | Status      | Docs | Entry Point                                              |
+| ---------------- | ----------- | ---- | -------------------------------------------------------- |
+| Brain Dump       | ✅ Complete | 10   | [README](brain-dump/README.md)                           |
+| Calendar         | ✅ Complete | 7    | [README](calendar-integration/README.md)                 |
+| Notifications    | ✅ Complete | 6    | [MAP](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐  |
+| Admin Dashboard  | ✅ Complete | 1    | [README](admin-dashboard/README.md)                      |
+| Onboarding       | ✅ Complete | 4    | [V1](onboarding/README.md) [V2](onboarding-v2/README.md) |
+| Project Export   | ✅ Complete | 2    | [DIR](project-export/)                                   |
+| Phase Generation | ✅ Complete | 1    | [DIR](phase-generation/)                                 |
+| Time Blocks      | ✅ Complete | 1    | [README](time-blocks/README.md)                          |
 
 ## 📂 Directory Structure
 
@@ -146,18 +157,21 @@ Time block scheduling system.
 ## 🔍 How to Use This Directory
 
 ### Understanding a Feature
+
 1. Find the feature in the table above
 2. Go to entry point (usually README.md in that directory)
 3. Follow cross-references to related docs
 4. Check `/apps/web/docs/technical/` for implementation details
 
 ### Finding Implementation Details
+
 1. Read feature spec here
 2. Check `/apps/web/docs/technical/api/endpoints/[feature].md` for API docs
 3. Check `/apps/web/docs/technical/architecture/` for architecture
 4. Look in `/src/lib/components/` for component code
 
 ### Testing a Feature
+
 1. Find feature docs here
 2. Check for testing guides or QA checklists
 3. See `/apps/web/docs/development/TESTING_CHECKLIST.md` for general procedures
@@ -179,6 +193,7 @@ Time block scheduling system.
 ## ⚠️ Known Issues
 
 See `/apps/web/docs/audits/` for:
+
 - Core Columns: ⚠️ Critical gaps in integration
 - Other implementation issues and findings
 

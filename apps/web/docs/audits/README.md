@@ -7,19 +7,19 @@ This directory contains comprehensive audits and implementation status reviews f
 ### Core Columns (Project Context Dimensions)
 
 - **[CORE_COLUMNS_AUDIT.md](CORE_COLUMNS_AUDIT.md)** - Implementation audit of 9 new core dimension columns
-  - Status: ⚠️ **CRITICAL GAPS IDENTIFIED**
-  - Issues: Data cleaner, project history modal, embedding preparation not fully integrated
+    - Status: ⚠️ **CRITICAL GAPS IDENTIFIED**
+    - Issues: Data cleaner, project history modal, embedding preparation not fully integrated
 
 - **[CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md](CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md)** - Summary of implementation status
 
 ### Notification System
 
 - **[NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md](NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md)** - Notification logging with correlation tracking
-  - Status: ✅ **100% Code Complete**
-  - Next Steps: Database migration via Supabase
+    - Status: ✅ **100% Code Complete**
+    - Next Steps: Database migration via Supabase
 
 - **[NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md](NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md)** - Notification preferences system refactor
-  - Status: ✅ **Complete**
+    - Status: ✅ **Complete**
 
 ## 🎯 How to Use This Directory
 
@@ -32,11 +32,11 @@ This directory contains comprehensive audits and implementation status reviews f
 
 ### Finding Specific Issues
 
-| Feature | Status | Issues | Document |
-| ------- | ------ | ------ | -------- |
-| Core Columns | ⚠️ Partial | Multiple gaps | CORE_COLUMNS_AUDIT.md |
-| Notifications Logging | ✅ Complete | None | NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md |
-| Notification Preferences | ✅ Complete | None | NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md |
+| Feature                  | Status      | Issues        | Document                                        |
+| ------------------------ | ----------- | ------------- | ----------------------------------------------- |
+| Core Columns             | ⚠️ Partial  | Multiple gaps | CORE_COLUMNS_AUDIT.md                           |
+| Notifications Logging    | ✅ Complete | None          | NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md |
+| Notification Preferences | ✅ Complete | None          | NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md   |
 
 ## 📊 Key Metrics
 

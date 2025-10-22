@@ -32,11 +32,13 @@ Two related issues in modal components:
 ### Fix Description
 
 **Null Error Fix**:
+
 - Added null checks to `handleMinimize()` and `handleDismiss()` functions
 - Added console warnings for debugging when handlers are called without valid notification
 - Pattern: `if (!notification?.id) { console.warn(...); return; }`
 
 **Click-Outside Fix**:
+
 - Changed `closeOnBackdrop={false}` to `closeOnBackdrop={true}` in 7 modal components
 - Changed `persistent={!showCancelButton}` to `persistent={false}` in ProcessingModal
 - Changed `closeOnEscape={showCancelButton}` to `closeOnEscape={true}` in ProcessingModal
@@ -87,6 +89,7 @@ Two related issues in modal components:
 **Design Pattern**:
 
 All modals now follow consistent behavior:
+
 - `closeOnBackdrop={true}` (default) - Close on outside click
 - `closeOnEscape={true}` (default) - Close on Escape key
 - `persistent={false}` (default) - Allow closing via backdrop/escape

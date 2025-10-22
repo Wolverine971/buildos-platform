@@ -12,20 +12,20 @@ node migrate-to-runes.js
 
 ## Command Options
 
-| Command | Description |
-|---------|-------------|
-| `node migrate-to-runes.js` | Migrate all files |
-| `node migrate-to-runes.js --dry-run` | Test without modifying |
-| `node migrate-to-runes.js --verbose` | Show detailed output |
-| `node migrate-to-runes.js --file 'path/to/file.svelte'` | Single file |
+| Command                                                 | Description            |
+| ------------------------------------------------------- | ---------------------- |
+| `node migrate-to-runes.js`                              | Migrate all files      |
+| `node migrate-to-runes.js --dry-run`                    | Test without modifying |
+| `node migrate-to-runes.js --verbose`                    | Show detailed output   |
+| `node migrate-to-runes.js --file 'path/to/file.svelte'` | Single file            |
 
 ## Conversion Rules
 
-| Before | After |
-|--------|-------|
-| `$: x = value` | `let x = $derived(value);` |
+| Before                 | After                                   |
+| ---------------------- | --------------------------------------- |
+| `$: x = value`         | `let x = $derived(value);`              |
 | `$: if (cond) { ... }` | `$effect(() => { if (cond) { ... } });` |
-| `$: { code }` | `$effect(() => { code });` |
+| `$: { code }`          | `$effect(() => { code });`              |
 
 ## Expected Results
 

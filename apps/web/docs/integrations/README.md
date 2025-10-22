@@ -9,6 +9,7 @@ This directory contains documentation for third-party service integrations with 
 **Status**: 4 of 8 features complete
 
 Payment processing and subscription management:
+
 - [stripe-integration-overview.md](stripe-integration-overview.md) - Business overview
 - [stripe-setup.md](stripe-setup.md) - Developer setup guide
 - [stripe-testing-plan.md](stripe-testing-plan.md) - Testing procedures
@@ -16,6 +17,7 @@ Payment processing and subscription management:
 - [STRIPE_IMPLEMENTATION_SUMMARY.md](STRIPE_IMPLEMENTATION_SUMMARY.md) - Status summary
 
 **Key Features Implemented**:
+
 - Customer creation and management
 - Subscription creation and updates
 - Webhook handling
@@ -30,21 +32,25 @@ Payment processing and subscription management:
 The following integrations are implemented but **lack comprehensive documentation**:
 
 ### 🔗 Google Calendar
+
 - **Status**: Implemented in code
 - **Docs Needed**: Setup guide, configuration, webhook details
 - **See Instead**: `/apps/web/docs/features/calendar-integration/`
 
 ### 🔑 Google OAuth
+
 - **Status**: Implemented in code
 - **Docs Needed**: Configuration guide, scopes reference
 - **See Instead**: Technical OAuth implementation in codebase
 
 ### 🤖 OpenAI API
+
 - **Status**: Implemented in code
 - **Docs Needed**: API usage patterns, prompt engineering guide
 - **See Instead**: `/apps/web/docs/prompts/` for prompt templates
 
 ### 📱 Twilio / SMS
+
 - **Status**: Implemented in code
 - **Docs Needed**: Setup guide, SMS service configuration
 - **See Instead**: `/packages/twilio-service/` for package-level docs
@@ -81,13 +87,13 @@ The following integrations are implemented but **lack comprehensive documentatio
 
 ## 📋 Integration Checklist
 
-| Integration | Setup Doc | Testing | Status | Urgency |
-| ----------- | --------- | ------- | ------ | ------- |
-| Stripe | ✅ | ✅ | 50% | Medium |
-| Google OAuth | ❌ | ❌ | 100% | Low |
-| Google Calendar | ❌ | ❌ | 100% | Medium |
-| OpenAI API | ❌ | ❌ | 100% | Low |
-| Twilio SMS | ❌ | ❌ | 100% | Low |
+| Integration     | Setup Doc | Testing | Status | Urgency |
+| --------------- | --------- | ------- | ------ | ------- |
+| Stripe          | ✅        | ✅      | 50%    | Medium  |
+| Google OAuth    | ❌        | ❌      | 100%   | Low     |
+| Google Calendar | ❌        | ❌      | 100%   | Medium  |
+| OpenAI API      | ❌        | ❌      | 100%   | Low     |
+| Twilio SMS      | ❌        | ❌      | 100%   | Low     |
 
 ## 🚀 High Priority: Documentation Gaps
 

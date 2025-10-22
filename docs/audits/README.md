@@ -43,11 +43,11 @@ This directory contains comprehensive audits, findings, and fix verification doc
 ## 📊 Audit Status Overview
 
 | Audit                | Status | Severity | Document Count |
-| -------------------- | ------ | -------- | --------------- |
-| Svelte 5 Migration   | Active | High     | 4 docs          |
-| Worker Queue System  | Active | High     | 4 docs          |
-| Type Safety (Worker) | Active | Medium   | 2 docs          |
-| Bug Fixes            | Active | Ongoing  | 1 doc           |
+| -------------------- | ------ | -------- | -------------- |
+| Svelte 5 Migration   | Active | High     | 4 docs         |
+| Worker Queue System  | Active | High     | 4 docs         |
+| Type Safety (Worker) | Active | Medium   | 2 docs         |
+| Bug Fixes            | Active | Ongoing  | 1 doc          |
 
 ## 🔍 Quick Facts
 

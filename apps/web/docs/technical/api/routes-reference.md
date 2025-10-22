@@ -900,7 +900,11 @@ No parameters
 
 **File:** `src/routes/api/admin/users/[userId]/activity/+server.ts`
 
-🔒 **Authentication Required**
+🔒 **Authentication Required** (Admin only)
+
+**Purpose:** Retrieve comprehensive user activity including projects, tasks, notes, brain dumps, daily briefs, and recent activity timeline.
+
+**Performance:** Optimized query pattern using in-memory aggregation. Constant query count (9 queries) regardless of user's project count. See [N+1 Query Fix (2025-10-21)](/docs/audits/BUGFIX_CHANGELOG.md#2025-10-21-fixed-n1-query-pattern-in-admin-user-activity-endpoint-high-severity-performance-fix) for details.
 
 ### Parameters
 
@@ -914,7 +918,20 @@ No parameters
 | ------ | --------------------- | ---------------- |
 | 200    | Success response      | application/json |
 | 401    | Unauthorized          | application/json |
+| 403    | Forbidden (not admin) | application/json |
 | 500    | Internal server error | application/json |
+
+### Response Schema
+
+Returns comprehensive user data including:
+- User profile and context
+- All projects with task/note counts (aggregated efficiently)
+- All brain dumps
+- All daily briefs
+- All tasks with project names
+- All notes with project names
+- Recent activity timeline (sorted by date, last 50 items)
+- Activity statistics summary
 
 ---
 

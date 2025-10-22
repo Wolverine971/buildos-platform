@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const { data: preferences, error } = await supabase
 			.from('user_sms_preferences')
 			.select(
-				'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, task_reminders, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, next_up_enabled, daily_brief_sms, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
+				'*'
 			)
 			.eq('user_id', user.id)
 			.maybeSingle();

@@ -34,7 +34,7 @@ export class SMSService extends ApiService {
 			const { data: prefs } = await supabase
 				.from('user_sms_preferences')
 				.select(
-					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, task_reminders, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, next_up_enabled, daily_brief_sms, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
+					'*'
 				)
 				.eq('user_id', params.userId)
 				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
@@ -117,7 +117,7 @@ export class SMSService extends ApiService {
 			const { data: prefs } = await supabase
 				.from('user_sms_preferences')
 				.select(
-					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, task_reminders, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, next_up_enabled, daily_brief_sms, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
+					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
 				)
 				.eq('user_id', task.user_id)
 				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
@@ -238,7 +238,7 @@ export class SMSService extends ApiService {
 			const { data: prefs, error } = await supabase
 				.from('user_sms_preferences')
 				.select(
-					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, task_reminders, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, next_up_enabled, daily_brief_sms, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
+					'*'
 				)
 				.eq('user_id', userId)
 				.maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 when no rows

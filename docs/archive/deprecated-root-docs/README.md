@@ -7,14 +7,17 @@ This folder contains documentation that was previously at the `/docs/` root leve
 ## 📚 Contents
 
 ### 1. **DEPLOYMENT_OLD.md** (Previously: DEPLOYMENT.md)
+
 - **Reason Deprecated**: Superseded by `DEPLOYMENT_TOPOLOGY.md` and `/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 - **Use Instead**: See `/docs/DEPLOYMENT_TOPOLOGY.md`
 
 ### 2. **ENVIRONMENT_VARIABLES_OLD.md** (Previously: ENVIRONMENT_VARIABLES.md)
+
 - **Reason Deprecated**: Superseded by `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 - **Use Instead**: See `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
 
 ### 3. **MONOREPO_MIGRATION_PLAN_COMPLETED.md** (Previously: MIGRATION_PLAN.md)
+
 - **Reason Deprecated**: Historical artifact from monorepo unification (Sep 2025)
 - **Status**: ✅ Completed - both projects have been successfully unified
 - **Context**: Documents the plan to unify build_os and daily-brief-worker into a Turborepo monorepo
@@ -35,6 +38,7 @@ Use the "Use Instead" links above to find the current, maintained version of the
 ## 📝 Archive Policy
 
 Files are moved here when:
+
 - They document completed migrations or one-time events
 - They have been superseded by more current documentation
 - They are no longer needed for active development

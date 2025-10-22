@@ -34,11 +34,12 @@ This is **web app-specific** documentation (`/apps/web`).
 | `/development/`  | Dev guides and conventions         | Yes    | testing, patterns, setup, migration tracking                     |
 | `/operations/`   | Deployment and ops                 | ⭐ Yes | Vercel config, runbooks, monitoring                              |
 | `/migrations/`   | Migration tracking                 | ⭐ Yes | active migrations (Phase 2.2, Phase 3, type updates)             |
-| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)  |
+| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)   |
 | `/prompts/`      | LLM prompt templates               | Yes    | brain dump prompts, AI processing                                |
 | `/technical/`    | Technical documentation (detailed) | No     | architecture, API, database, services, deployment                |
 
 **Note:**
+
 - ⭐ **NEW directories with README.md files** for easy navigation
 - Some documentation exists in both `/features/` and `/technical/` for comprehensive coverage
 - `/audits/` contains feature-specific implementation reviews (NEW as of Oct 20, 2025)

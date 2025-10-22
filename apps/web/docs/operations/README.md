@@ -26,20 +26,20 @@ This directory contains deployment procedures, operational guides, and runbooks 
 ### Before Deploying
 
 1. **Verify Readiness**: Follow [READY_TO_DEPLOY.md](deployment/READY_TO_DEPLOY.md)
-   - All tests passing
-   - No type errors
-   - Code reviewed
-   - Performance acceptable
+    - All tests passing
+    - No type errors
+    - Code reviewed
+    - Performance acceptable
 
 2. **Review Configuration**: Check [VERCEL_CONFIGURATION_GUIDE.md](deployment/VERCEL_CONFIGURATION_GUIDE.md)
-   - Environment variables set
-   - Build settings correct
-   - Deployment target verified
+    - Environment variables set
+    - Build settings correct
+    - Deployment target verified
 
 3. **Prepare Deployment**:
-   - Create deployment branch
-   - Tag release
-   - Notify team
+    - Create deployment branch
+    - Tag release
+    - Notify team
 
 ### Deploying
 
@@ -105,11 +105,11 @@ If deployment fails:
 
 The following files control Vercel deployment:
 
-| File | Location | Purpose |
-| ---- | -------- | ------- |
-| `vercel.json` | Project root | Vercel build configuration |
-| `.env.example` | Project root | Environment variable template |
-| `pnpm-workspace.yaml` | Project root | Monorepo configuration |
+| File                  | Location     | Purpose                       |
+| --------------------- | ------------ | ----------------------------- |
+| `vercel.json`         | Project root | Vercel build configuration    |
+| `.env.example`        | Project root | Environment variable template |
+| `pnpm-workspace.yaml` | Project root | Monorepo configuration        |
 
 ## 📝 Notes
 

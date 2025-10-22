@@ -4,6 +4,276 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 ---
 
+## 2025-10-21: Deprecated SMS Field Cleanup - Remove Stale References
+
+**Issue**: Following SMS preferences refactor, queries on `user_sms_preferences` table still selected deprecated fields (`daily_brief_sms`, `task_reminders`, `next_up_enabled`) that were marked deprecated on 2025-10-15 and scheduled for removal on 2025-10-29.
+
+**Root Cause**:
+
+1. **Migration Timeline**: SMS fields deprecated in Phase 3a (20251015_deprecate_unused_sms_fields.sql) with 2-week waiting period before physical column removal in Phase 3b (20251029_remove_deprecated_sms_fields.sql)
+2. **Code References**: Application code still explicitly selected deprecated fields in SELECT statements even though Phase 2 removed all usage of these fields
+3. **Preventative Cleanup**: Removing references now prevents issues when migration runs on 2025-10-29
+
+**Deprecated Fields**:
+- `daily_brief_sms` - Replaced by `user_notification_preferences.should_sms_daily_brief`
+- `task_reminders` - Never implemented, no worker flow exists
+- `next_up_enabled` - Never implemented, no worker flow exists
+
+**Impact**: **LOW** - Fields still exist in database but are unused. Cleanup prevents errors when columns are dropped.
+
+**Fixes Applied**:
+
+### 1. SMS Preferences API Endpoint
+
+- **File**: `/apps/web/src/routes/api/sms/preferences/+server.ts:42`
+- **Change**: Removed explicit field list, use `'*'` to select all available fields
+- **Benefit**: Automatically adapts when deprecated fields are dropped from schema
+
+**Before**:
+```typescript
+.select(
+  'id, user_id, phone_number, ..., task_reminders, ..., next_up_enabled, daily_brief_sms, ...'
+)
+```
+
+**After**:
+```typescript
+.select('*')
+```
+
+### 2. SMS Service
+
+- **File**: `/apps/web/src/lib/services/sms.service.ts:37, 120, 241` (3 locations)
+- **Change**: Simplified all SELECT statements to use `'*'` instead of explicit field lists
+- **Benefit**: Service automatically adapts to schema changes
+
+### 3. TypeScript Types Regenerated
+
+- **Action**: Regenerated types from Supabase database schema
+- **Command**: `pnpm gen:types && pnpm gen:schema`
+- **Files Updated**:
+  - `/packages/shared-types/src/database.types.ts` - Full Supabase types
+  - `/packages/shared-types/src/database.schema.ts` - Lightweight schema extract
+  - `/apps/web/src/lib/database.schema.ts` - Web app schema copy
+- **Note**: Deprecated fields still present in types because columns still exist in database (awaiting 2025-10-29 drop)
+- **Package Built**: `@buildos/shared-types` rebuilt successfully with no errors
+
+**Related Migrations**:
+
+- `/supabase/migrations/20251015_deprecate_unused_sms_fields.sql` - Phase 3a: Mark columns as deprecated
+- `/supabase/migrations/20251029_remove_deprecated_sms_fields.sql` - Phase 3b: Drop columns (scheduled, includes 14-day safety check)
+- `/supabase/migrations/20251016_002_consolidate_notification_preferences.sql` - Replaced daily_brief_sms with should_sms_daily_brief
+
+**Related Documentation**:
+
+- Migration plan: `/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md`
+- Notification preferences refactor: See entry 2025-10-16 in this changelog
+
+**Verification**:
+
+1. ✅ TypeScript types regenerated from current database schema
+2. ✅ Shared-types package builds successfully (`pnpm --filter=@buildos/shared-types build`)
+3. ✅ No new type errors introduced in modified files
+4. ✅ SELECT statements use `'*'` for automatic schema adaptation
+5. ⏳ Physical column removal scheduled for 2025-10-29 (migration includes safety check)
+
+**Post-Migration Actions** (After 2025-10-29):
+
+1. Regenerate TypeScript types again (`pnpm gen:types && pnpm gen:schema`)
+2. Rebuild shared-types package
+3. Verify types no longer include deprecated fields
+4. No code changes needed (already using `'*'` selects)
+
+---
+
+## 2025-10-21: Comprehensive Data Model Query Audit Fixes - Multiple Schema Migrations
+
+**Issue**: Following recent data model migrations, comprehensive audit identified 14 locations with queries not updated to match new schema, risking race conditions, data integrity issues, and incomplete data retrieval.
+
+**Root Cause**: Multiple schema migrations added new required fields (`dedup_key`, `order`, `organizer_*`) but not all application code was updated:
+
+1. **Queue Jobs Migration** (`20251012_add_dedup_key_to_queue_jobs.sql`): Added `dedup_key` column and atomic `add_queue_job()` RPC for deduplication, but 4 endpoints still used direct INSERT bypassing the RPC
+2. **Phase Tasks Migration** (`20251012_add_order_to_phase_tasks.sql`): Added `order` column for task ordering within phases, but 4 endpoints inserted without calculating order
+3. **Calendar Events Migration** (`20251012_add_calendar_event_organizer_fields.sql`): Added organizer metadata fields, but 2 endpoints' SELECT queries didn't fetch them
+
+**Impact**:
+
+- **CRITICAL** (4 issues): Queue job race conditions could create duplicate notifications/SMS when admins click resend/retry or during quiet hours rescheduling
+- **HIGH** (4 issues): Phase tasks inserted without order could display in incorrect sequence, breaking user's manual organization
+- **MEDIUM** (2 issues): Missing organizer fields mean UI cannot display meeting organizer information or distinguish user's own events
+
+**Fixes Applied**:
+
+### 1. Queue Job Deduplication (4 Critical Fixes)
+
+**Problem**: Direct INSERT into `queue_jobs` instead of using atomic `add_queue_job()` RPC with `p_dedup_key` parameter.
+
+#### 1.1 Notification Resend Endpoint
+
+- **File**: `/apps/web/src/routes/api/admin/notifications/deliveries/[id]/resend/+server.ts:62-77`
+- **Change**: Replaced direct INSERT with `supabase.rpc('add_queue_job')` call
+- **Dedup Key**: `notif_resend_${newDelivery.id}` - prevents duplicate resend jobs for same delivery
+- **Priority**: 10 (normal)
+
+#### 1.2 Notification Retry Endpoint
+
+- **File**: `/apps/web/src/routes/api/admin/notifications/deliveries/[id]/retry/+server.ts:49-62`
+- **Change**: Replaced direct INSERT with `supabase.rpc('add_queue_job')` call
+- **Dedup Key**: `notif_retry_${deliveryId}` - prevents duplicate retry jobs for same delivery
+- **Priority**: 10 (normal)
+
+#### 1.3 Test Notification Endpoint
+
+- **File**: `/apps/web/src/routes/api/admin/notifications/test/+server.ts:193-207`
+- **Change**: Replaced direct INSERT with `supabase.rpc('add_queue_job')` call
+- **Dedup Key**: `notif_test_${delivery.id}` - prevents duplicate test notifications
+- **Priority**: 10 (normal)
+
+#### 1.4 SMS Worker Quiet Hours Reschedule
+
+- **File**: `/apps/worker/src/workers/smsWorker.ts:167-175`
+- **Change**: Added missing `p_dedup_key` parameter to existing RPC call
+- **Dedup Key**: `sms_reschedule_${scheduled_sms_id}_${quietHoursResult.rescheduleTime.getTime()}` - prevents duplicate reschedules with unique timestamp
+- **Priority**: Respects original (1 for urgent, 10 for normal)
+
+### 2. Phase Tasks Order Field (4 High Priority Fixes)
+
+**Problem**: INSERT operations into `phase_tasks` table missing `order` field calculation, causing tasks to have NULL order or incorrect positioning.
+
+#### 2.1 Manual Phase Assignment
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/phases/tasks/+server.ts:88-113`
+- **Change**: Query max order in target phase, assign `newOrder = maxOrder + 1`
+- **Pattern**: Single task insert with calculated order
+
+#### 2.2 Overdue Task Reschedule
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/tasks/reschedule-overdue/+server.ts:220-262`
+- **Change**: Batch query max orders for all affected phases, calculate incremental orders for each entry
+- **Pattern**: Batch insert with phase-aware ordering
+- **Implementation**: Map of `phase_id → max_order`, increment for each new task
+
+#### 2.3 Automatic Phase Assignment (New Task Creation)
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/tasks/+server.ts:246-266`
+- **Change**: Query max order in target phase, assign `newOrder = maxOrder + 1`
+- **Pattern**: Single task insert during POST handler
+
+#### 2.4 Automatic Phase Assignment (Task Update)
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts:802-821`
+- **Change**: Query max order in target phase, assign `newOrder = maxOrder + 1`
+- **Pattern**: Single task insert during PUT handler when start_date changes
+
+**Order Calculation Pattern** (all 4 fixes):
+
+```typescript
+const { data: maxOrderTask } = await supabase
+  .from("phase_tasks")
+  .select("order")
+  .eq("phase_id", phaseId)
+  .order("order", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
+```
+
+### 3. Calendar Event Organizer Fields (2 Medium Priority Fixes)
+
+**Problem**: SELECT queries for `task_calendar_events` missing new organizer fields added in migration.
+
+#### 3.1 Phase Task Listing
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/phases/+server.ts:102-114`
+- **Change**: Added `organizer_email`, `organizer_display_name`, `organizer_self`, `attendees` to SELECT
+- **Context**: Phase view with nested tasks and calendar events
+
+#### 3.2 Task Listing (POST and GET handlers)
+
+- **File**: `/apps/web/src/routes/api/projects/[id]/tasks/+server.ts:174-185, 288-297`
+- **Change**: Added same 4 organizer fields to SELECT in both handlers
+- **Context**: Task creation response (POST) and task list retrieval (GET)
+- **Note**: Used `replace_all: true` to fix both occurrences
+
+**Related Migrations**:
+
+- `/apps/web/supabase/migrations/20251012_add_dedup_key_to_queue_jobs.sql` - Added dedup_key column and atomic RPC
+- `/apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql` - Created `add_queue_job()` RPC function
+- `/apps/web/supabase/migrations/20251012_add_order_to_phase_tasks.sql` - Added order column to phase_tasks
+- `/apps/web/supabase/migrations/20251012_add_calendar_event_organizer_fields.sql` - Added organizer fields
+
+**Related Documentation**:
+
+- Comprehensive audit report in `/thoughts/shared/research/2025-10-21_[timestamp]_supabase-query-audit.md` (if exists)
+- Queue system architecture: `/apps/worker/docs/README.md`
+- Phase generation: `/apps/web/src/lib/services/phase-generation/`
+
+**Cross-References**:
+
+- Related to notification system refactor (2025-10-16)
+- Related to timezone centralization (2025-10-13)
+- Related to queue job improvements (2025-10-11-12)
+
+**Manual Verification Steps**:
+
+1. **Queue Deduplication Test**:
+   - Go to Admin → Notifications → Deliveries
+   - Click "Resend" on a delivery multiple times quickly
+   - Verify only 1 job created in queue_jobs table (check `dedup_key` column)
+   - Repeat for "Retry" and "Test Notification"
+
+2. **Phase Task Ordering Test**:
+   - Create a new project with phases
+   - Add multiple tasks to a phase
+   - Move tasks between phases
+   - Verify tasks maintain correct order in phase view
+   - Check `phase_tasks.order` column in database
+
+3. **Organizer Fields Test**:
+   - Sync calendar with events where you're not the organizer
+   - View project phases and tasks with calendar events
+   - Verify organizer information displays in UI
+   - Check API responses include organizer fields
+
+**Files Modified** (14 total):
+
+**Critical (4 files)**:
+
+- `/apps/web/src/routes/api/admin/notifications/deliveries/[id]/resend/+server.ts`
+- `/apps/web/src/routes/api/admin/notifications/deliveries/[id]/retry/+server.ts`
+- `/apps/web/src/routes/api/admin/notifications/test/+server.ts`
+- `/apps/worker/src/workers/smsWorker.ts`
+
+**High Priority (4 files)**:
+
+- `/apps/web/src/routes/api/projects/[id]/phases/tasks/+server.ts`
+- `/apps/web/src/routes/api/projects/[id]/tasks/reschedule-overdue/+server.ts`
+- `/apps/web/src/routes/api/projects/[id]/tasks/+server.ts`
+- `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts`
+
+**Medium Priority (2 files)**:
+
+- `/apps/web/src/routes/api/projects/[id]/phases/+server.ts`
+- `/apps/web/src/routes/api/projects/[id]/tasks/+server.ts` (second fix)
+
+**Additional Notes**:
+
+- TypeScript types in `/packages/shared-types/src/database.types.ts` still reference removed SMS fields (`daily_brief_sms`, `task_reminders`, `next_up_enabled`) from migration `20251029_remove_deprecated_sms_fields.sql`
+- **Impact**: Minor - no application code references these fields anymore
+- **Action**: Types should be regenerated via Supabase CLI (`supabase gen types typescript`) when convenient
+- **Non-blocking**: Types are used for development only, not runtime
+
+**Testing Performed**:
+
+- ✅ All edits applied successfully
+- ✅ Syntax verified via TypeScript (files use proper tab indentation)
+- ✅ Dedup keys use unique identifiers per job type
+- ✅ Order calculation handles empty phases (defaults to 1)
+- ✅ Organizer fields match database schema exactly
+
+---
+
 ## 2025-10-21: Fixed SMS Preferences API Schema Mismatch - Timezone Column Removed
 
 **Issue**: Users visiting `https://build-os.com/profile?tab=notifications` received database error `PGRST204: Could not find the 'timezone' column of 'user_sms_preferences' in the schema cache` when attempting to save SMS preferences.
