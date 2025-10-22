@@ -45,9 +45,9 @@ During ultrathinking analysis of the notification worker system, **13 critical i
 
 ```typescript
 await supabase
-  .from("push_subscriptions")
-  .update({ last_used_at: new Date().toISOString() })
-  .eq("id", pushSubscription.id);
+	.from('push_subscriptions')
+	.update({ last_used_at: new Date().toISOString() })
+	.eq('id', pushSubscription.id);
 // ⚠️ No error check!
 ```
 
@@ -70,16 +70,16 @@ When updating `last_used_at` after sending a push notification, we don't check i
 
 ```typescript
 const { error: updateError } = await supabase
-  .from("push_subscriptions")
-  .update({ last_used_at: new Date().toISOString() })
-  .eq("id", pushSubscription.id);
+	.from('push_subscriptions')
+	.update({ last_used_at: new Date().toISOString() })
+	.eq('id', pushSubscription.id);
 
 if (updateError) {
-  pushLogger.warn("Failed to update push subscription last_used_at", {
-    subscriptionId: pushSubscription.id,
-    error: updateError.message,
-  });
-  // Don't fail the notification - it was already sent successfully
+	pushLogger.warn('Failed to update push subscription last_used_at', {
+		subscriptionId: pushSubscription.id,
+		error: updateError.message
+	});
+	// Don't fail the notification - it was already sent successfully
 }
 ```
 
@@ -97,9 +97,9 @@ if (updateError) {
 
 ```typescript
 await supabase
-  .from("push_subscriptions")
-  .update({ is_active: false })
-  .eq("id", pushSubscription.id);
+	.from('push_subscriptions')
+	.update({ is_active: false })
+	.eq('id', pushSubscription.id);
 // ⚠️ No error check!
 ```
 
@@ -122,20 +122,16 @@ When a push subscription expires (410/404 error), we try to deactivate it but do
 
 ```typescript
 const { error: deactivateError } = await supabase
-  .from("push_subscriptions")
-  .update({ is_active: false })
-  .eq("id", pushSubscription.id);
+	.from('push_subscriptions')
+	.update({ is_active: false })
+	.eq('id', pushSubscription.id);
 
 if (deactivateError) {
-  pushLogger.error(
-    "Failed to deactivate expired push subscription",
-    deactivateError,
-    {
-      subscriptionId: pushSubscription.id,
-      warning: "Subscription will be retried on next notification",
-    },
-  );
-  // Return error anyway - the subscription is dead
+	pushLogger.error('Failed to deactivate expired push subscription', deactivateError, {
+		subscriptionId: pushSubscription.id,
+		warning: 'Subscription will be retried on next notification'
+	});
+	// Return error anyway - the subscription is dead
 }
 ```
 
@@ -153,12 +149,12 @@ if (deactivateError) {
 
 ```typescript
 const { data: pushSub, error } = await supabase
-  .from("push_subscriptions")
-  .select("*")
-  .eq("user_id", delivery.recipient_user_id)
-  .eq("endpoint", delivery.channel_identifier)
-  .eq("is_active", true)
-  .single(); // ⚠️ Throws if multiple rows!
+	.from('push_subscriptions')
+	.select('*')
+	.eq('user_id', delivery.recipient_user_id)
+	.eq('endpoint', delivery.channel_identifier)
+	.eq('is_active', true)
+	.single(); // ⚠️ Throws if multiple rows!
 ```
 
 While unlikely, if a user somehow has multiple active subscriptions with the same endpoint (could happen with race conditions during registration), `.single()` will throw: "multiple rows returned for a query that expected at most one".
@@ -180,22 +176,22 @@ While unlikely, if a user somehow has multiple active subscriptions with the sam
 
 ```typescript
 const { data: pushSubs, error } = await supabase
-  .from("push_subscriptions")
-  .select("*")
-  .eq("user_id", delivery.recipient_user_id)
-  .eq("endpoint", delivery.channel_identifier)
-  .eq("is_active", true)
-  .order("created_at", { ascending: false }); // Use most recent
+	.from('push_subscriptions')
+	.select('*')
+	.eq('user_id', delivery.recipient_user_id)
+	.eq('endpoint', delivery.channel_identifier)
+	.eq('is_active', true)
+	.order('created_at', { ascending: false }); // Use most recent
 
 if (error) {
-  // ... error handling
+	// ... error handling
 }
 
 if (!pushSubs || pushSubs.length === 0) {
-  return {
-    success: false,
-    error: "Push subscription not found or inactive",
-  };
+	return {
+		success: false,
+		error: 'Push subscription not found or inactive'
+	};
 }
 
 // Use the most recent subscription if multiple exist
@@ -203,13 +199,13 @@ const pushSub = pushSubs[0];
 
 // Log warning if duplicates detected
 if (pushSubs.length > 1) {
-  jobLogger.warn("Multiple active push subscriptions found for same endpoint", {
-    count: pushSubs.length,
-    endpoint: delivery.channel_identifier,
-    subscriptionIds: pushSubs.map((s) => s.id),
-  });
+	jobLogger.warn('Multiple active push subscriptions found for same endpoint', {
+		count: pushSubs.length,
+		endpoint: delivery.channel_identifier,
+		subscriptionIds: pushSubs.map((s) => s.id)
+	});
 
-  // TODO: Deactivate older duplicates (cleanup job)
+	// TODO: Deactivate older duplicates (cleanup job)
 }
 ```
 
@@ -241,13 +237,13 @@ According to `NotificationStatus` type definition:
 
 ```typescript
 type NotificationStatus =
-  | "pending"
-  | "sent"
-  | "delivered"
-  | "failed"
-  | "bounced"
-  | "opened"
-  | "clicked";
+	| 'pending'
+	| 'sent'
+	| 'delivered'
+	| 'failed'
+	| 'bounced'
+	| 'opened'
+	| 'clicked';
 ```
 
 Currently only skips 3 final states. Should probably also skip:
@@ -267,19 +263,19 @@ Currently only skips 3 final states. Should probably also skip:
 ```typescript
 // Define final states that should not be retried
 const FINAL_STATES: NotificationStatus[] = [
-  "sent",
-  "delivered",
-  "clicked",
-  "opened", // User already saw it
-  "failed", // Already failed max attempts
-  "bounced", // Hard bounce, don't retry
+	'sent',
+	'delivered',
+	'clicked',
+	'opened', // User already saw it
+	'failed', // Already failed max attempts
+	'bounced' // Hard bounce, don't retry
 ];
 
 if (FINAL_STATES.includes(delivery.status)) {
-  jobLogger.info("Delivery already in final state, skipping", {
-    status: delivery.status,
-  });
-  return;
+	jobLogger.info('Delivery already in final state, skipping', {
+		status: delivery.status
+	});
+	return;
 }
 ```
 
@@ -299,9 +295,9 @@ if (FINAL_STATES.includes(delivery.status)) {
 
 ```typescript
 const { error: updateError } = await supabase
-  .from("notification_deliveries")
-  .update(updateData)
-  .eq("id", delivery_id); // ⚠️ No optimistic lock!
+	.from('notification_deliveries')
+	.update(updateData)
+	.eq('id', delivery_id); // ⚠️ No optimistic lock!
 ```
 
 If two workers somehow process the same delivery concurrently (rare but possible with queue system race conditions), both will update the status without checking current state.
@@ -328,27 +324,24 @@ const currentStatus = delivery.status;
 const currentAttempts = delivery.attempts || 0;
 
 const { error: updateError, count } = await supabase
-  .from("notification_deliveries")
-  .update(updateData)
-  .eq("id", delivery_id)
-  .eq("status", currentStatus) // Optimistic lock
-  .eq("attempts", currentAttempts); // Verify attempts match
+	.from('notification_deliveries')
+	.update(updateData)
+	.eq('id', delivery_id)
+	.eq('status', currentStatus) // Optimistic lock
+	.eq('attempts', currentAttempts); // Verify attempts match
 
 if (updateError) {
-  // ... existing error handling
+	// ... existing error handling
 }
 
 if (count === 0) {
-  jobLogger.warn(
-    "Optimistic lock failed - delivery state changed during processing",
-    {
-      expectedStatus: currentStatus,
-      expectedAttempts: currentAttempts,
-      warning: "Another worker may have processed this delivery concurrently",
-    },
-  );
-  // Don't throw - notification may have already been sent by other worker
-  return;
+	jobLogger.warn('Optimistic lock failed - delivery state changed during processing', {
+		expectedStatus: currentStatus,
+		expectedAttempts: currentAttempts,
+		warning: 'Another worker may have processed this delivery concurrently'
+	});
+	// Don't throw - notification may have already been sent by other worker
+	return;
 }
 ```
 
@@ -386,24 +379,24 @@ Uses optimistic locking (good!) but doesn't verify the update succeeded. If stat
 
 ```typescript
 const { error: updateError, count } = await supabase
-  .from("notification_deliveries")
-  .update({
-    status: "failed",
-    failed_at: new Date().toISOString(),
-    last_error: error.message,
-    attempts: currentAttempts + 1,
-    updated_at: new Date().toISOString(),
-  })
-  .eq("id", delivery_id)
-  .eq("status", currentDelivery.status); // Optimistic lock
+	.from('notification_deliveries')
+	.update({
+		status: 'failed',
+		failed_at: new Date().toISOString(),
+		last_error: error.message,
+		attempts: currentAttempts + 1,
+		updated_at: new Date().toISOString()
+	})
+	.eq('id', delivery_id)
+	.eq('status', currentDelivery.status); // Optimistic lock
 
 if (updateError) {
-  jobLogger.error("Could not mark delivery as failed", updateError);
+	jobLogger.error('Could not mark delivery as failed', updateError);
 } else if (count === 0) {
-  jobLogger.warn("Optimistic lock failed in cleanup - delivery state changed", {
-    deliveryId: delivery_id,
-    expectedStatus: currentDelivery.status,
-  });
+	jobLogger.warn('Optimistic lock failed in cleanup - delivery state changed', {
+		deliveryId: delivery_id,
+		expectedStatus: currentDelivery.status
+	});
 }
 ```
 
@@ -421,13 +414,13 @@ if (updateError) {
 
 ```typescript
 if (
-  currentDelivery &&
-  currentDelivery.status !== "sent" &&
-  currentDelivery.status !== "delivered" &&
-  currentDelivery.status !== "clicked" &&
-  currentDelivery.status !== "failed" // ⚠️ Excludes failed
+	currentDelivery &&
+	currentDelivery.status !== 'sent' &&
+	currentDelivery.status !== 'delivered' &&
+	currentDelivery.status !== 'clicked' &&
+	currentDelivery.status !== 'failed' // ⚠️ Excludes failed
 ) {
-  // Update...
+	// Update...
 }
 ```
 
@@ -444,22 +437,22 @@ If delivery is already marked as "failed" (maybe from previous attempt), won't u
 ```typescript
 // Always update failed deliveries with new error info
 if (
-  currentDelivery &&
-  (currentDelivery.status === "pending" || currentDelivery.status === "failed")
+	currentDelivery &&
+	(currentDelivery.status === 'pending' || currentDelivery.status === 'failed')
 ) {
-  const currentAttempts = currentDelivery.attempts || 0;
+	const currentAttempts = currentDelivery.attempts || 0;
 
-  await supabase
-    .from("notification_deliveries")
-    .update({
-      status: "failed",
-      failed_at: new Date().toISOString(),
-      last_error: `[Attempt ${currentAttempts + 1}/${delivery.max_attempts || 3}] ${error.message}`,
-      attempts: currentAttempts + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", delivery_id)
-    .eq("status", currentDelivery.status); // Optimistic lock
+	await supabase
+		.from('notification_deliveries')
+		.update({
+			status: 'failed',
+			failed_at: new Date().toISOString(),
+			last_error: `[Attempt ${currentAttempts + 1}/${delivery.max_attempts || 3}] ${error.message}`,
+			attempts: currentAttempts + 1,
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', delivery_id)
+		.eq('status', currentDelivery.status); // Optimistic lock
 }
 ```
 
@@ -566,39 +559,39 @@ If job processing fails AND the RPC to mark it as failed also fails, job stays i
 Add fallback to direct database update if RPC fails:
 
 ```typescript
-const { error: failError } = await supabase.rpc("fail_queue_job", {
-  p_job_id: job.id,
-  p_error_message: error.message || "Unknown error",
-  p_retry: shouldRetry,
+const { error: failError } = await supabase.rpc('fail_queue_job', {
+	p_job_id: job.id,
+	p_error_message: error.message || 'Unknown error',
+	p_retry: shouldRetry
 });
 
 if (failError) {
-  jobBatchLogger.error(
-    "Failed to mark job as failed via RPC, attempting direct update",
-    failError,
-  );
+	jobBatchLogger.error(
+		'Failed to mark job as failed via RPC, attempting direct update',
+		failError
+	);
 
-  // Fallback: Direct database update
-  const { error: directUpdateError } = await supabase
-    .from("queue_jobs")
-    .update({
-      status: shouldRetry ? "pending" : "failed",
-      error: error.message,
-      attempts: (job.attempts || 0) + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", job.id);
+	// Fallback: Direct database update
+	const { error: directUpdateError } = await supabase
+		.from('queue_jobs')
+		.update({
+			status: shouldRetry ? 'pending' : 'failed',
+			error: error.message,
+			attempts: (job.attempts || 0) + 1,
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', job.id);
 
-  if (directUpdateError) {
-    jobBatchLogger.fatal(
-      "CRITICAL: Could not mark job as failed via RPC or direct update",
-      directUpdateError,
-      {
-        jobId: job.id,
-        warning: "Job stuck in limbo - manual intervention may be required",
-      },
-    );
-  }
+	if (directUpdateError) {
+		jobBatchLogger.fatal(
+			'CRITICAL: Could not mark job as failed via RPC or direct update',
+			directUpdateError,
+			{
+				jobId: job.id,
+				warning: 'Job stuck in limbo - manual intervention may be required'
+			}
+		);
+	}
 }
 ```
 
@@ -645,19 +638,19 @@ if (failError) {
 For each fix:
 
 1. **Unit Tests**:
-   - Mock edge cases (multiple subscriptions, concurrent updates, RPC failures)
-   - Verify error handling paths
-   - Check optimistic locking behavior
+    - Mock edge cases (multiple subscriptions, concurrent updates, RPC failures)
+    - Verify error handling paths
+    - Check optimistic locking behavior
 
 2. **Integration Tests**:
-   - Test with actual database
-   - Simulate race conditions
-   - Verify cleanup behavior
+    - Test with actual database
+    - Simulate race conditions
+    - Verify cleanup behavior
 
 3. **Manual Verification**:
-   - Monitor logs after deployment
-   - Check for duplicate sends
-   - Verify status transitions
+    - Monitor logs after deployment
+    - Check for duplicate sends
+    - Verify status transitions
 
 ## Related Documentation
 

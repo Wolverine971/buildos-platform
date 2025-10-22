@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Google Calendar OAuth Scopes - Verification Explanation"
+topic: 'Google Calendar OAuth Scopes - Verification Explanation'
 tags: [research, google-calendar, oauth, verification, scopes]
 status: complete
 last_updated: 2025-10-06
@@ -402,34 +402,34 @@ async listUserCalendars(userId: string): Promise<{
 **Primary Use Cases:**
 
 1. **Project-Specific Calendar Creation & Management**
-   - BuildOS creates dedicated Google Calendars for each user project (up to 250 per account)
-   - Each calendar has a custom name, color, and description matching the project
-   - Calendars are updated when projects are renamed or settings changed
-   - Calendars are deleted when projects are archived
-   - **API Methods:** `calendar.calendars.insert`, `calendar.calendars.patch`, `calendar.calendars.delete`
+    - BuildOS creates dedicated Google Calendars for each user project (up to 250 per account)
+    - Each calendar has a custom name, color, and description matching the project
+    - Calendars are updated when projects are renamed or settings changed
+    - Calendars are deleted when projects are archived
+    - **API Methods:** `calendar.calendars.insert`, `calendar.calendars.patch`, `calendar.calendars.delete`
 
 2. **Team Collaboration via Calendar Sharing**
-   - Project calendars can be shared with team members with appropriate permissions (reader/writer/owner)
-   - Users can grant and revoke access as team membership changes
-   - **API Methods:** `calendar.acl.insert`, `calendar.acl.list`, `calendar.acl.delete`
+    - Project calendars can be shared with team members with appropriate permissions (reader/writer/owner)
+    - Users can grant and revoke access as team membership changes
+    - **API Methods:** `calendar.acl.insert`, `calendar.acl.list`, `calendar.acl.delete`
 
 3. **Two-Way Real-Time Synchronization**
-   - BuildOS registers webhooks to receive real-time notifications when calendar events change
-   - Changes in Google Calendar automatically update BuildOS tasks
-   - Changes in BuildOS automatically update Google Calendar events
-   - **API Methods:** `calendar.events.watch`, `calendar.channels.stop`, `calendar.events.list` with sync tokens
+    - BuildOS registers webhooks to receive real-time notifications when calendar events change
+    - Changes in Google Calendar automatically update BuildOS tasks
+    - Changes in BuildOS automatically update Google Calendar events
+    - **API Methods:** `calendar.events.watch`, `calendar.channels.stop`, `calendar.events.list` with sync tokens
 
 4. **Task Scheduling & Event Management**
-   - Users schedule BuildOS tasks to their Google Calendars
-   - System creates, updates, and deletes calendar events based on task changes
-   - Supports recurring tasks with complex recurrence patterns (RRULE)
-   - **API Methods:** `calendar.events.insert`, `calendar.events.update`, `calendar.events.delete`
+    - Users schedule BuildOS tasks to their Google Calendars
+    - System creates, updates, and deletes calendar events based on task changes
+    - Supports recurring tasks with complex recurrence patterns (RRULE)
+    - **API Methods:** `calendar.events.insert`, `calendar.events.update`, `calendar.events.delete`
 
 5. **AI-Powered Calendar Intelligence**
-   - Analyzes user's existing calendar events to detect project patterns
-   - Requires reading events across multiple calendars
-   - Suggests new projects based on recurring meetings and commitments
-   - **API Methods:** `calendar.events.list`, `calendar.calendarList.list`
+    - Analyzes user's existing calendar events to detect project patterns
+    - Requires reading events across multiple calendars
+    - Suggests new projects based on recurring meetings and commitments
+    - **API Methods:** `calendar.events.list`, `calendar.calendarList.list`
 
 ### Why More Limited Scopes Are Insufficient
 

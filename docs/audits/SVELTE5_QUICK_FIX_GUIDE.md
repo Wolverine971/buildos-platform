@@ -119,7 +119,7 @@ onDestroy(() => {
 Check if these imports exist at the top:
 
 ```typescript
-import { backgroundJobs } from "$lib/stores/backgroundJobs";
+import { backgroundJobs } from '$lib/stores/backgroundJobs';
 ```
 
 If not, add it with the other imports.
@@ -237,7 +237,7 @@ Impact: Improves app stability, especially on mobile after extended use
 **Solution**: Make sure you have the proper imports:
 
 ```typescript
-import { backgroundJobs } from "$lib/stores/backgroundJobs";
+import { backgroundJobs } from '$lib/stores/backgroundJobs';
 ```
 
 ### Issue: Function Not Found

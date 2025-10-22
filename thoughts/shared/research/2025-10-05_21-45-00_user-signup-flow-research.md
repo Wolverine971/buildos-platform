@@ -79,13 +79,13 @@ const { data, error } = await supabase.auth.signUp({
 ```typescript
 // If email confirmation required
 if (data.user && !data.session) {
-  return { requiresEmailConfirmation: true };
+	return { requiresEmailConfirmation: true };
 }
 
 // If auto-login successful (session created)
 if (data.session) {
-  // Navigate to home with onboarding flag
-  await goto("/?onboarding=true", { invalidateAll: true });
+	// Navigate to home with onboarding flag
+	await goto('/?onboarding=true', { invalidateAll: true });
 }
 ```
 
@@ -104,12 +104,12 @@ if (data.session) {
 ```typescript
 const redirectUri = `${origin}/auth/google/register-callback`;
 const params = {
-  client_id: PUBLIC_GOOGLE_CLIENT_ID,
-  redirect_uri: redirectUri,
-  response_type: "code",
-  scope: "email profile openid",
-  access_type: "offline",
-  prompt: "consent",
+	client_id: PUBLIC_GOOGLE_CLIENT_ID,
+	redirect_uri: redirectUri,
+	response_type: 'code',
+	scope: 'email profile openid',
+	access_type: 'offline',
+	prompt: 'consent'
 };
 
 window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -120,9 +120,9 @@ window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 ```typescript
 const handler = new GoogleOAuthHandler(locals.supabase, locals);
 return handler.handleCallback(url, {
-  redirectPath: "/auth/register",
-  successPath: "/",
-  isRegistration: true, // Important flag!
+	redirectPath: '/auth/register',
+	successPath: '/',
+	isRegistration: true // Important flag!
 });
 ```
 
@@ -140,9 +140,9 @@ const tokens = await this.exchangeCodeForTokens(code, redirectUri);
 ```typescript
 // Sign in with Google ID token
 const { data } = await this.supabase.auth.signInWithIdToken({
-  provider: "google",
-  token: tokens.id_token!,
-  access_token: tokens.access_token,
+	provider: 'google',
+	token: tokens.id_token!,
+	access_token: tokens.access_token
 });
 
 // Verify session is stored
@@ -150,35 +150,35 @@ const { data: sessionData } = await this.supabase.auth.getSession();
 
 // Check if user exists in public.users table
 const { data: userData, error: fetchError } = await this.supabase
-  .from("users")
-  .select("id, completed_onboarding, email, name, is_admin")
-  .eq("id", data.user.id)
-  .single();
+	.from('users')
+	.select('id, completed_onboarding, email, name, is_admin')
+	.eq('id', data.user.id)
+	.single();
 ```
 
 **3c. Create user if new** (lines 192-220)
 
 ```typescript
-if (fetchError && fetchError.code === "PGRST116") {
-  // User doesn't exist in public.users
-  isNewUser = true;
-  const profile = await this.getUserProfile(tokens.access_token);
+if (fetchError && fetchError.code === 'PGRST116') {
+	// User doesn't exist in public.users
+	isNewUser = true;
+	const profile = await this.getUserProfile(tokens.access_token);
 
-  const newUser = {
-    id: data.user.id,
-    email: data.user.email as string,
-    name: profile.name || data.user.user_metadata?.name || "User",
-    is_admin: false,
-    completed_onboarding: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+	const newUser = {
+		id: data.user.id,
+		email: data.user.email as string,
+		name: profile.name || data.user.user_metadata?.name || 'User',
+		is_admin: false,
+		completed_onboarding: false,
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
+	};
 
-  const { data: insertedUser } = await this.supabase
-    .from("users")
-    .insert(newUser)
-    .select()
-    .single();
+	const { data: insertedUser } = await this.supabase
+		.from('users')
+		.insert(newUser)
+		.select()
+		.single();
 }
 ```
 
@@ -187,25 +187,25 @@ if (fetchError && fetchError.code === "PGRST116") {
 ```typescript
 // CRITICAL: Update server-side locals for immediate auth recognition
 if (this.locals) {
-  this.locals.session = data.session;
-  this.locals.user = dbUser;
+	this.locals.session = data.session;
+	this.locals.user = dbUser;
 }
 ```
 
 **Step 4: Build redirect URL** (lines 327-349)
 
 ```typescript
-const redirectUrl = new URL("/", url.origin);
-redirectUrl.searchParams.set("auth_success", "true");
-redirectUrl.searchParams.set("auth_time", Date.now().toString());
-redirectUrl.searchParams.set("auth_key", randomKey);
+const redirectUrl = new URL('/', url.origin);
+redirectUrl.searchParams.set('auth_success', 'true');
+redirectUrl.searchParams.set('auth_time', Date.now().toString());
+redirectUrl.searchParams.set('auth_key', randomKey);
 
 if (isNewUser || isRegistration) {
-  redirectUrl.searchParams.set("new_user", "true");
-  if (isRegistration) {
-    redirectUrl.searchParams.set("onboarding", "true");
-    redirectUrl.searchParams.set("message", "Welcome to BuildOS!");
-  }
+	redirectUrl.searchParams.set('new_user', 'true');
+	if (isRegistration) {
+		redirectUrl.searchParams.set('onboarding', 'true');
+		redirectUrl.searchParams.set('message', 'Welcome to BuildOS!');
+	}
 }
 
 throw redirect(303, redirectUrl.pathname + redirectUrl.search);
@@ -228,16 +228,16 @@ throw redirect(303, redirectUrl.pathname + redirectUrl.search);
 
 ```typescript
 users: {
-  id: string; // UUID from auth.users
-  email: string;
-  name: string;
-  is_admin: boolean;
-  completed_onboarding: boolean;
-  subscription_status: string; // Set by trigger
-  trial_ends_at: string; // Set by trigger
-  is_beta_user: boolean; // Set by trigger
-  created_at: string;
-  updated_at: string;
+	id: string; // UUID from auth.users
+	email: string;
+	name: string;
+	is_admin: boolean;
+	completed_onboarding: boolean;
+	subscription_status: string; // Set by trigger
+	trial_ends_at: string; // Set by trigger
+	is_beta_user: boolean; // Set by trigger
+	created_at: string;
+	updated_at: string;
 }
 ```
 
@@ -298,21 +298,21 @@ CREATE TRIGGER on_auth_user_created_trial
 
 ```typescript
 // URL parameter triggers onboarding modal
-const forceOnboarding = $page?.url?.searchParams.get("onboarding") === "true";
+const forceOnboarding = $page?.url?.searchParams.get('onboarding') === 'true';
 
 // Show modal if:
 const showOnboardingModal =
-  needsOnboarding && // !user.completed_onboarding
-  isHomePage && // pathname === '/'
-  (forceOnboarding || // ?onboarding=true OR
-    (onboardingProgress < 25 && // Progress < 25% AND
-      !checkModalDismissed())); // Not previously dismissed
+	needsOnboarding && // !user.completed_onboarding
+	isHomePage && // pathname === '/'
+	(forceOnboarding || // ?onboarding=true OR
+		(onboardingProgress < 25 && // Progress < 25% AND
+			!checkModalDismissed())); // Not previously dismissed
 
 // Clean up URL parameter after handling
 if (forceOnboarding && browser) {
-  const url = new URL($page.url);
-  url.searchParams.delete("onboarding");
-  replaceState(url.toString(), {});
+	const url = new URL($page.url);
+	url.searchParams.delete('onboarding');
+	replaceState(url.toString(), {});
 }
 ```
 
@@ -327,9 +327,9 @@ if (forceOnboarding && browser) {
 - **Route**: `/apps/web/src/routes/onboarding/+page.server.ts`
 - **Purpose**: Full onboarding experience
 - **Data Loaded**:
-  - User context from `user_context` table
-  - Progress calculation (4 input fields)
-  - Recommended next step
+    - User context from `user_context` table
+    - Progress calculation (4 input fields)
+    - Recommended next step
 
 ---
 
@@ -340,9 +340,9 @@ if (forceOnboarding && browser) {
 **Current Triggers on `users` Table:**
 
 1. ✅ `on_auth_user_created_trial` - Sets trial status (BEFORE INSERT)
-   - Checks beta membership
-   - Sets subscription_status to 'trialing'
-   - Sets trial_ends_at (14 days)
+    - Checks beta membership
+    - Sets subscription_status to 'trialing'
+    - Sets trial_ends_at (14 days)
 
 **No other user creation triggers found**
 
@@ -366,24 +366,24 @@ if (forceOnboarding && browser) {
 
 ```typescript
 event.locals.safeGetSession = async () => {
-  // 1. Get session (doesn't validate JWT)
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+	// 1. Get session (doesn't validate JWT)
+	const {
+		data: { session }
+	} = await supabase.auth.getSession();
 
-  // 2. Validate JWT by calling getUser
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+	// 2. Validate JWT by calling getUser
+	const {
+		data: { user: authUser }
+	} = await supabase.auth.getUser();
 
-  // 3. Get user data from public.users table
-  const { data: userData } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", authUser.id)
-    .single();
+	// 3. Get user data from public.users table
+	const { data: userData } = await supabase
+		.from('users')
+		.select('*')
+		.eq('id', authUser.id)
+		.single();
 
-  return { session, user: userData };
+	return { session, user: userData };
 };
 ```
 
@@ -391,7 +391,7 @@ event.locals.safeGetSession = async () => {
 
 ```typescript
 const supabase = createSupabaseBrowser();
-setContext("supabase", supabase);
+setContext('supabase', supabase);
 ```
 
 ### 5.2 Auth State Updates
@@ -401,12 +401,9 @@ setContext("supabase", supabase);
 ```typescript
 // CRITICAL for immediate auth recognition
 if (this.locals) {
-  this.locals.session = data.session;
-  this.locals.user = dbUser;
-  console.log(
-    "Updated server locals with authenticated user:",
-    this.locals.user.id,
-  );
+	this.locals.session = data.session;
+	this.locals.user = dbUser;
+	console.log('Updated server locals with authenticated user:', this.locals.user.id);
 }
 ```
 
@@ -629,20 +626,20 @@ RETURN NEW;
 
 ```typescript
 if (insertError) {
-  console.error("Error creating user record:", insertError);
-  dbUser = newUser;
+	console.error('Error creating user record:', insertError);
+	dbUser = newUser;
 } else {
-  dbUser = insertedUser;
+	dbUser = insertedUser;
 
-  // Insert welcome notification
-  await this.supabase.from("user_notifications").insert({
-    user_id: insertedUser.id,
-    type: "welcome",
-    title: "Welcome to BuildOS!",
-    message: "Get started by completing your onboarding...",
-    priority: "high",
-    action_url: "/onboarding",
-  });
+	// Insert welcome notification
+	await this.supabase.from('user_notifications').insert({
+		user_id: insertedUser.id,
+		type: 'welcome',
+		title: 'Welcome to BuildOS!',
+		message: 'Get started by completing your onboarding...',
+		priority: 'high',
+		action_url: '/onboarding'
+	});
 }
 ```
 
@@ -682,13 +679,13 @@ if (insertError) {
 
 ```typescript
 // In both GoogleOAuthHandler and /api/auth/register
-await supabase.from("queue_jobs").insert({
-  job_type: "send_welcome_notification",
-  user_id: newUser.id,
-  metadata: {
-    user_email: newUser.email,
-    user_name: newUser.name,
-  },
+await supabase.from('queue_jobs').insert({
+	job_type: 'send_welcome_notification',
+	user_id: newUser.id,
+	metadata: {
+		user_email: newUser.email,
+		user_name: newUser.name
+	}
 });
 ```
 
@@ -757,11 +754,11 @@ Current layout already displays `user_notifications` (lines 452-462):
 ```typescript
 // +layout.server.ts loads notifications
 const { data: notifications } = await supabase
-  .from("user_notifications")
-  .select("*")
-  .eq("user_id", user.id)
-  .eq("type", "payment_warning") // 🎯 Add 'welcome' type
-  .is("read_at", null);
+	.from('user_notifications')
+	.select('*')
+	.eq('user_id', user.id)
+	.eq('type', 'payment_warning') // 🎯 Add 'welcome' type
+	.is('read_at', null);
 ```
 
 **Step 3: Create Welcome Notification Component**
@@ -769,22 +766,22 @@ const { data: notifications } = await supabase
 ```svelte
 <!-- $lib/components/notifications/WelcomeNotification.svelte -->
 <script lang="ts">
-  export let notification: UserNotification
+	export let notification: UserNotification;
 
-  function handleDismiss() {
-    // Mark as read
-  }
+	function handleDismiss() {
+		// Mark as read
+	}
 
-  function handleAction() {
-    goto(notification.action_url)
-  }
+	function handleAction() {
+		goto(notification.action_url);
+	}
 </script>
 
 <div class="welcome-notification">
-  <h3>{notification.title}</h3>
-  <p>{notification.message}</p>
-  <button on:click={handleAction}>Get Started</button>
-  <button on:click={handleDismiss}>Dismiss</button>
+	<h3>{notification.title}</h3>
+	<p>{notification.message}</p>
+	<button on:click={handleAction}>Get Started</button>
+	<button on:click={handleDismiss}>Dismiss</button>
 </div>
 ```
 
@@ -818,8 +815,8 @@ const { data: notifications } = await supabase
 - **Class**: GoogleOAuthHandler
 - **Method**: handleCallback(url, config)
 - **Creates User**:
-  1. signInWithIdToken() → auth.users
-  2. Manual INSERT → public.users (if not exists)
+    1. signInWithIdToken() → auth.users
+    2. Manual INSERT → public.users (if not exists)
 - **Session**: Set via signInWithIdToken()
 - **Redirect**: Server-side via redirect(303, '/?onboarding=true')
 
@@ -852,25 +849,16 @@ localStorage.setItem('onboarding_modal_dismissed', 'true')
 
 ```typescript
 // Loads user context
-const { data } = await supabase
-  .from("user_context")
-  .select("*")
-  .eq("user_id", user.id)
-  .single();
+const { data } = await supabase.from('user_context').select('*').eq('user_id', user.id).single();
 
 // Calculates progress
-const inputFields = [
-  "input_projects",
-  "input_work_style",
-  "input_challenges",
-  "input_help_focus",
-];
+const inputFields = ['input_projects', 'input_work_style', 'input_challenges', 'input_help_focus'];
 
 const progress = (completedFields.length / inputFields.length) * 100;
 
 // Redirects if complete
 if (progress === 100 && onboarding_completed_at) {
-  throw redirect(303, "/");
+	throw redirect(303, '/');
 }
 ```
 
@@ -887,16 +875,16 @@ if (progress === 100 && onboarding_completed_at) {
 ### Database Events
 
 - ✅ `on_auth_user_created_trial` trigger (BEFORE INSERT on users)
-  - Sets trial status
-  - Checks beta membership
-  - **🎯 IDEAL place to add notification**
+    - Sets trial status
+    - Checks beta membership
+    - **🎯 IDEAL place to add notification**
 
 ### Background Jobs
 
 - ✅ Trial reminder cron (`/api/cron/trial-reminders`)
-  - Sends reminders at 7, 3, 1 days before trial end
-  - Uses `trial_reminders` table to track sent reminders
-  - **Could be model for welcome notification**
+    - Sends reminders at 7, 3, 1 days before trial end
+    - Uses `trial_reminders` table to track sent reminders
+    - **Could be model for welcome notification**
 
 ---
 
@@ -905,18 +893,18 @@ if (progress === 100 && onboarding_completed_at) {
 **Best Implementation Path:**
 
 1. **Database Trigger** (handles all signup paths)
-   - Modify `handle_new_user_trial()` in migration
-   - Insert welcome notification to `user_notifications` table
+    - Modify `handle_new_user_trial()` in migration
+    - Insert welcome notification to `user_notifications` table
 
 2. **Layout Component** (displays notification)
-   - Update `+layout.server.ts` to load welcome notifications
-   - Create `WelcomeNotification.svelte` component
-   - Add to layout with dismiss/action handlers
+    - Update `+layout.server.ts` to load welcome notifications
+    - Create `WelcomeNotification.svelte` component
+    - Add to layout with dismiss/action handlers
 
 3. **Optional: Queue Job** (for email welcome)
-   - Create `send_welcome_email` job type
-   - Trigger from same database trigger
-   - Handle via Railway worker
+    - Create `send_welcome_email` job type
+    - Trigger from same database trigger
+    - Handle via Railway worker
 
 This approach:
 

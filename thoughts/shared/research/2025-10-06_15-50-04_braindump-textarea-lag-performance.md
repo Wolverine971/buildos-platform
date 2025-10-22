@@ -4,9 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Brain Dump Textarea Performance - Input Lag Investigation"
-tags:
-  [research, codebase, performance, brain-dump, textarea, svelte5, reactivity]
+topic: 'Brain Dump Textarea Performance - Input Lag Investigation'
+tags: [research, codebase, performance, brain-dump, textarea, svelte5, reactivity]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (claude-sonnet-4-5)
@@ -64,14 +63,14 @@ All $effect blocks re-run → SessionStorage check
 
 ```javascript
 function handleTextInput() {
-  dispatch("textChange", inputText); // ← NO THROTTLING!
+	dispatch('textChange', inputText); // ← NO THROTTLING!
 
-  // Throttle auto-save for very large inputs to prevent performance issues
-  if (inputText.length > 10000) {
-    debouncedAutoSave(5000);
-  } else {
-    debouncedAutoSave();
-  }
+	// Throttle auto-save for very large inputs to prevent performance issues
+	if (inputText.length > 10000) {
+		debouncedAutoSave(5000);
+	} else {
+		debouncedAutoSave();
+	}
 }
 ```
 
@@ -103,14 +102,12 @@ function handleTextChange(event: CustomEvent) {
 // This reduces overhead by ~50% - single reactive source instead of 20+ subscriptions
 let storeState = $derived($brainDumpV2Store);
 let modalIsOpenFromStore = $derived(storeState?.ui?.modal?.isOpen ?? false);
-let currentView = $derived(
-  storeState?.ui?.modal?.currentView ?? "project-selection",
-);
+let currentView = $derived(storeState?.ui?.modal?.currentView ?? 'project-selection');
 let selectedProject = $derived(storeState?.core?.selectedProject ?? null);
-let inputText = $derived(storeState?.core?.inputText ?? ""); // ← Re-derives on every keystroke!
-let currentPhase = $derived(storeState?.processing?.phase ?? "idle");
+let inputText = $derived(storeState?.core?.inputText ?? ''); // ← Re-derives on every keystroke!
+let currentPhase = $derived(storeState?.processing?.phase ?? 'idle');
 let isProcessing = $derived(storeState?.processing?.mutex ?? false);
-let isSaving = $derived(storeState?.processing?.phase === "saving");
+let isSaving = $derived(storeState?.processing?.phase === 'saving');
 // ... 15+ more $derived values
 ```
 
@@ -127,44 +124,44 @@ let isSaving = $derived(storeState?.processing?.phase === "saving");
 ```javascript
 // Watch for view changes and load appropriate components
 $effect(() => {
-  if (currentView && browser && currentView !== previousView) {
-    previousView = currentView;
-    loadComponentsForView(currentView);
-  }
+	if (currentView && browser && currentView !== previousView) {
+		previousView = currentView;
+		loadComponentsForView(currentView);
+	}
 });
 
 // Initialize modal when opened
 $effect(() => {
-  if (isOpen && browser && !previousIsOpen && !isInitializing) {
-    previousIsOpen = true;
-    isInitializing = true;
-    initializeModal().finally(() => {
-      isInitializing = false;
-    });
-  } else if (!isOpen) {
-    previousIsOpen = false;
-  }
+	if (isOpen && browser && !previousIsOpen && !isInitializing) {
+		previousIsOpen = true;
+		isInitializing = true;
+		initializeModal().finally(() => {
+			isInitializing = false;
+		});
+	} else if (!isOpen) {
+		previousIsOpen = false;
+	}
 });
 
 // Clean up when modal closes
 $effect(() => {
-  if (!isOpen && browser && previousIsOpen && !isClosing) {
-    isClosing = true;
-    setTimeout(() => {
-      handleModalClose().finally(() => {
-        isClosing = false;
-      });
-    }, 50);
-  }
+	if (!isOpen && browser && previousIsOpen && !isClosing) {
+		isClosing = true;
+		setTimeout(() => {
+			handleModalClose().finally(() => {
+				isClosing = false;
+			});
+		}, 50);
+	}
 });
 
 // Sync modal state with store
 $effect(() => {
-  if (isOpen && !previousIsOpen && browser && !isClosing) {
-    if (!modalIsOpenFromStore) {
-      brainDumpActions.openModal();
-    }
-  }
+	if (isOpen && !previousIsOpen && browser && !isClosing) {
+		if (!modalIsOpenFromStore) {
+			brainDumpActions.openModal();
+		}
+	}
 });
 ```
 
@@ -178,19 +175,19 @@ $effect(() => {
 
 ```javascript
 if (browser) {
-  subscribe((state) => {
-    // Persist state changes with debouncing
-    if (state.persistence.shouldPersist) {
-      const now = Date.now();
-      if (
-        !state.persistence.lastPersistedAt ||
-        now - state.persistence.lastPersistedAt > 1000
-      ) {
-        persistState(state);
-        state.persistence.lastPersistedAt = now;
-      }
-    }
-  });
+	subscribe((state) => {
+		// Persist state changes with debouncing
+		if (state.persistence.shouldPersist) {
+			const now = Date.now();
+			if (
+				!state.persistence.lastPersistedAt ||
+				now - state.persistence.lastPersistedAt > 1000
+			) {
+				persistState(state);
+				state.persistence.lastPersistedAt = now;
+			}
+		}
+	});
 }
 ```
 
@@ -204,18 +201,18 @@ if (browser) {
 
 ```javascript
 $: placeholderText = (() => {
-  if (isNewProject) {
-    return "What's on your mind? Share your thoughts, ideas, and tasks...";
-  }
+	if (isNewProject) {
+		return "What's on your mind? Share your thoughts, ideas, and tasks...";
+	}
 
-  if (displayedQuestions && displayedQuestions.length > 0) {
-    const questionsText = displayedQuestions
-      .map((q, i) => `${i + 1}. ${q.question}`)
-      .join("\n");
-    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-  }
+	if (displayedQuestions && displayedQuestions.length > 0) {
+		const questionsText = displayedQuestions
+			.map((q, i) => `${i + 1}. ${q.question}`)
+			.join('\n');
+		return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+	}
 
-  return `What's happening with ${selectedProjectName}?`;
+	return `What's happening with ${selectedProjectName}?`;
 })();
 ```
 
@@ -260,13 +257,13 @@ At 60fps, each frame should take ~16.67ms. The current implementation can approa
 The codebase has excellent examples of performance optimization:
 
 1. **AbortController for canceling in-flight saves** (`BrainDumpModal.svelte:723-751`)
-   - 90% reduction in wasted save preparations
+    - 90% reduction in wasted save preparations
 
 2. **Adaptive debouncing based on input size** (`RecordingView.svelte:108-113`)
-   - 2000ms for normal text, 5000ms for >10k characters
+    - 2000ms for normal text, 5000ms for >10k characters
 
 3. **Single $derived chain** instead of 20+ individual store subscriptions
-   - 50% overhead reduction (per comment on line 49)
+    - 50% overhead reduction (per comment on line 49)
 
 ### Svelte 5 Performance Patterns Found in Codebase
 
@@ -294,13 +291,13 @@ $effect(() => {
 
 ```typescript
 search: async (query: string, userId: string) => {
-  // Set loading state immediately
-  update((state) => ({ ...state, query, isLoading: true, error: null }));
+	// Set loading state immediately
+	update((state) => ({ ...state, query, isLoading: true, error: null }));
 
-  // Debounce the actual API call
-  searchTimeout = setTimeout(async () => {
-    // ... fetch implementation
-  }, 300);
+	// Debounce the actual API call
+	searchTimeout = setTimeout(async () => {
+		// ... fetch implementation
+	}, 300);
 };
 ```
 
@@ -310,17 +307,17 @@ search: async (query: string, userId: string) => {
 
 ```typescript
 export function throttle<T extends (...args: any[]) => any>(
-  func: T,
-  limit: number,
+	func: T,
+	limit: number
 ): (...args: Parameters<T>) => void {
-  let inThrottle: boolean;
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      func(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
+	let inThrottle: boolean;
+	return (...args: Parameters<T>) => {
+		if (!inThrottle) {
+			func(...args);
+			inThrottle = true;
+			setTimeout(() => (inThrottle = false), limit);
+		}
+	};
 }
 ```
 
@@ -381,36 +378,36 @@ function handleTextChange(event: CustomEvent) {
 ```javascript
 // In BrainDumpModal.svelte
 
-import { untrack } from "svelte";
+import { untrack } from 'svelte';
 
 $effect(() => {
-  // Only track currentView, not entire store
-  const view = currentView;
+	// Only track currentView, not entire store
+	const view = currentView;
 
-  untrack(() => {
-    // This code won't re-run on other store changes (like inputText)
-    if (view && browser && view !== previousView) {
-      previousView = view;
-      loadComponentsForView(view);
-    }
-  });
+	untrack(() => {
+		// This code won't re-run on other store changes (like inputText)
+		if (view && browser && view !== previousView) {
+			previousView = view;
+			loadComponentsForView(view);
+		}
+	});
 });
 
 $effect(() => {
-  // Only track isOpen
-  const open = isOpen;
+	// Only track isOpen
+	const open = isOpen;
 
-  untrack(() => {
-    if (open && browser && !previousIsOpen && !isInitializing) {
-      previousIsOpen = true;
-      isInitializing = true;
-      initializeModal().finally(() => {
-        isInitializing = false;
-      });
-    } else if (!open) {
-      previousIsOpen = false;
-    }
-  });
+	untrack(() => {
+		if (open && browser && !previousIsOpen && !isInitializing) {
+			previousIsOpen = true;
+			isInitializing = true;
+			initializeModal().finally(() => {
+				isInitializing = false;
+			});
+		} else if (!open) {
+			previousIsOpen = false;
+		}
+	});
 });
 ```
 
@@ -429,29 +426,29 @@ $effect(() => {
 
 // Core input state (changes frequently)
 let inputState = $derived.by(() => ({
-  text: $brainDumpV2Store?.core?.inputText ?? "",
-  lastSaved: $brainDumpV2Store?.core?.lastSavedContent ?? "",
-  hasUnsaved:
-    ($brainDumpV2Store?.core?.inputText ?? "") !==
-    ($brainDumpV2Store?.core?.lastSavedContent ?? ""),
+	text: $brainDumpV2Store?.core?.inputText ?? '',
+	lastSaved: $brainDumpV2Store?.core?.lastSavedContent ?? '',
+	hasUnsaved:
+		($brainDumpV2Store?.core?.inputText ?? '') !==
+		($brainDumpV2Store?.core?.lastSavedContent ?? '')
 }));
 
 // UI state (changes rarely)
 let uiState = $derived.by(() => ({
-  modalOpen: $brainDumpV2Store?.ui?.modal?.isOpen ?? false,
-  currentView: $brainDumpV2Store?.ui?.modal?.currentView ?? "project-selection",
+	modalOpen: $brainDumpV2Store?.ui?.modal?.isOpen ?? false,
+	currentView: $brainDumpV2Store?.ui?.modal?.currentView ?? 'project-selection'
 }));
 
 // Processing state (changes rarely)
 let processingState = $derived.by(() => ({
-  phase: $brainDumpV2Store?.processing?.phase ?? "idle",
-  mutex: $brainDumpV2Store?.processing?.mutex ?? false,
-  isSaving: ($brainDumpV2Store?.processing?.phase ?? "idle") === "saving",
+	phase: $brainDumpV2Store?.processing?.phase ?? 'idle',
+	mutex: $brainDumpV2Store?.processing?.mutex ?? false,
+	isSaving: ($brainDumpV2Store?.processing?.phase ?? 'idle') === 'saving'
 }));
 
 // Project state (changes rarely)
 let projectState = $derived.by(() => ({
-  selected: $brainDumpV2Store?.core?.selectedProject ?? null,
+	selected: $brainDumpV2Store?.core?.selectedProject ?? null
 }));
 ```
 
@@ -469,18 +466,18 @@ let projectState = $derived.by(() => ({
 // In RecordingView.svelte
 
 let placeholderText = $derived.by(() => {
-  if (isNewProject) {
-    return "What's on your mind? Share your thoughts, ideas, and tasks...";
-  }
+	if (isNewProject) {
+		return "What's on your mind? Share your thoughts, ideas, and tasks...";
+	}
 
-  if (displayedQuestions && displayedQuestions.length > 0) {
-    const questionsText = displayedQuestions
-      .map((q, i) => `${i + 1}. ${q.question}`)
-      .join("\n");
-    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-  }
+	if (displayedQuestions && displayedQuestions.length > 0) {
+		const questionsText = displayedQuestions
+			.map((q, i) => `${i + 1}. ${q.question}`)
+			.join('\n');
+		return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+	}
 
-  return `What's happening with ${selectedProjectName}?`;
+	return `What's happening with ${selectedProjectName}?`;
 });
 ```
 
@@ -498,20 +495,20 @@ let placeholderText = $derived.by(() => {
 // In brain-dump-v2.store.ts
 
 if (browser) {
-  let persistTimeout: NodeJS.Timeout;
+	let persistTimeout: NodeJS.Timeout;
 
-  subscribe((state) => {
-    if (!state.persistence.shouldPersist) return;
+	subscribe((state) => {
+		if (!state.persistence.shouldPersist) return;
 
-    // Throttle persistence to max once per second
-    clearTimeout(persistTimeout);
-    persistTimeout = setTimeout(() => {
-      requestIdleCallback(() => {
-        persistState(state);
-        state.persistence.lastPersistedAt = Date.now();
-      });
-    }, 1000);
-  });
+		// Throttle persistence to max once per second
+		clearTimeout(persistTimeout);
+		persistTimeout = setTimeout(() => {
+			requestIdleCallback(() => {
+				persistState(state);
+				state.persistence.lastPersistedAt = Date.now();
+			});
+		}, 1000);
+	});
 }
 ```
 

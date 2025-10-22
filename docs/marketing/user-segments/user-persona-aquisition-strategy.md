@@ -31,10 +31,10 @@
 
 - **Content**: "Pre-mortem your startup" blog series
 - **Channels**:
-  - Indie Hackers community posts
-  - Y Combinator forum discussions
-  - Twitter threads about startup failures
-  - Guest posts on FirstRound Review
+    - Indie Hackers community posts
+    - Y Combinator forum discussions
+    - Twitter threads about startup failures
+    - Guest posts on FirstRound Review
 - **Hooks**: "What killed your startup? (A thread)"
 - **Influencers**: Partner with Lenny Rachitsky, Gergely Orosz
 
@@ -69,10 +69,10 @@
 
 - **Content**: "PM scenario planning" video series
 - **Channels**:
-  - ProductHunt launch
-  - Product Manager HQ community
-  - Mind the Product newsletter
-  - LinkedIn PM groups
+    - ProductHunt launch
+    - Product Manager HQ community
+    - Mind the Product newsletter
+    - LinkedIn PM groups
 - **Hooks**: "The hidden scenarios every PM should run"
 - **Influencers**: Jackie Bavaro, Shreyas Doshi partnerships
 
@@ -107,10 +107,10 @@
 
 - **Content**: "Agency crisis playbook" resources
 - **Channels**:
-  - Agency Management Institute
-  - Bureau of Digital community
-  - AgencyAnalytics integration
-  - Operations-focused newsletters
+    - Agency Management Institute
+    - Bureau of Digital community
+    - AgencyAnalytics integration
+    - Operations-focused newsletters
 - **Hooks**: "Why we war game every client project"
 - **Influencers**: Agency operations consultants
 
@@ -145,10 +145,10 @@
 
 - **Content**: "Solo founder decision trees" templates
 - **Channels**:
-  - Indie Hackers milestones
-  - /r/entrepreneur discussions
-  - MicroConf community
-  - Gumroad creator network
+    - Indie Hackers milestones
+    - /r/entrepreneur discussions
+    - MicroConf community
+    - Gumroad creator network
 - **Hooks**: "How I 10x'd by killing the right project"
 - **Influencers**: Pieter Levels, Arvid Kahl collaborations
 
@@ -183,10 +183,10 @@
 
 - **Content**: "Enterprise scenario planning" whitepapers
 - **Channels**:
-  - LinkedIn thought leadership
-  - HBR.org guest articles
-  - Innovation conference talks
-  - Executive peer groups
+    - LinkedIn thought leadership
+    - HBR.org guest articles
+    - Innovation conference talks
+    - Executive peer groups
 - **Hooks**: "Digital transformation scenario planning"
 - **Influencers**: Rita McGrath, Clayton Christensen disciples
 
@@ -224,10 +224,10 @@
 
 - **Content**: "ADHD project completion strategies" series
 - **Channels**:
-  - r/ADHD, r/ADHD_Programmers communities
-  - ADHD TikTok/Instagram creators partnerships
-  - How to ADHD YouTube channel collaboration
-  - Productivity tools with ADHD focus
+    - r/ADHD, r/ADHD_Programmers communities
+    - ADHD TikTok/Instagram creators partnerships
+    - How to ADHD YouTube channel collaboration
+    - Productivity tools with ADHD focus
 - **Hooks**: "Why I finish 10% of what I start (and how war gaming helps)"
 - **Messaging**: "Plan for your brain's patterns, not against them"
 
@@ -271,11 +271,11 @@
 
 - **Content**: "Plot scenario testing for writers" workshops
 - **Channels**:
-  - NaNoWriMo partnership
-  - Writing subreddits (r/writing, r/worldbuilding)
-  - Author newsletter sponsorships
-  - Writing conference presentations
-  - Scrivener integration potential
+    - NaNoWriMo partnership
+    - Writing subreddits (r/writing, r/worldbuilding)
+    - Author newsletter sponsorships
+    - Writing conference presentations
+    - Scrivener integration potential
 - **Hooks**: "I ran my plot through 100 scenarios. Here's what broke."
 - **Messaging**: "Your book's thought partner that never sleeps"
 
@@ -319,11 +319,11 @@
 
 - **Content**: "Life path scenario planning" guides
 - **Channels**:
-  - College counselor partnerships
-  - Student Discord servers
-  - College admission YouTube channels
-  - Career services integrations
-  - StudentLifeTips-style content
+    - College counselor partnerships
+    - Student Discord servers
+    - College admission YouTube channels
+    - Career services integrations
+    - StudentLifeTips-style content
 - **Hooks**: "I simulated 10 different majors. Here's what I learned."
 - **Messaging**: "Test drive your future before you commit"
 

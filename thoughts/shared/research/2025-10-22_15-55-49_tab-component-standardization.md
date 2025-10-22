@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: e9623c8d363b562a37de3f5e22e75ac2f69b00d0
 branch: main
 repository: buildos-platform
-topic: "Tab Component Standardization Across /profile, /projects, and /projects/[id]"
+topic: 'Tab Component Standardization Across /profile, /projects, and /projects/[id]'
 tags: [research, components, ui, tabs, standardization, design-system]
 status: complete
 last_updated: 2025-10-22
@@ -73,12 +73,12 @@ border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300
 
 ```svelte
 <TabNav
-    tabs={profileTabs}
-    {activeTab}
-    on:change={(event) => switchTab(event.detail)}
-    containerClass="mb-0 border-0"
-    navClass="mx-0 px-3 sm:px-6"
-    ariaLabel="Profile sections"
+	tabs={profileTabs}
+	{activeTab}
+	on:change={(event) => switchTab(event.detail)}
+	containerClass="mb-0 border-0"
+	navClass="mx-0 px-3 sm:px-6"
+	ariaLabel="Profile sections"
 />
 ```
 
@@ -263,10 +263,10 @@ However, **TabNav does everything better**:
 
 ```svelte
 <TabNav
-    tabs={projectTabs}
-    activeTab={activeTab}
-    on:change={(e) => handleTabChange(e.detail)}
-    ariaLabel="Project sections"
+	tabs={projectTabs}
+	{activeTab}
+	on:change={(e) => handleTabChange(e.detail)}
+	ariaLabel="Project sections"
 />
 ```
 
@@ -282,47 +282,47 @@ However, **TabNav does everything better**:
 **Required TabNav format**:
 
 ```typescript
-import type { Tab } from "$lib/components/ui/TabNav.svelte";
+import type { Tab } from '$lib/components/ui/TabNav.svelte';
 
 const projectTabs: Tab[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: Layers,
-    hideCount: true,
-  },
-  {
-    id: "tasks",
-    label: "Tasks",
-    icon: CheckSquare,
-    count: tabCounts.tasks,
-  },
-  {
-    id: "notes",
-    label: "Notes",
-    icon: LayoutGrid,
-    count: tabCounts.notes,
-  },
-  {
-    id: "briefs",
-    label: "Daily Briefs",
-    icon: FileText,
-    count: tabCounts.briefs,
-    hideCount: tabCounts?.briefs ? false : true,
-  },
-  {
-    id: "synthesis",
-    label: "AI Summary",
-    icon: AlertCircle,
-    hideCount: true,
-  },
-  {
-    id: "braindumps",
-    label: "Brain Dumps",
-    icon: Brain,
-    count: tabCounts.braindumps,
-    hideCount: true,
-  },
+	{
+		id: 'overview',
+		label: 'Overview',
+		icon: Layers,
+		hideCount: true
+	},
+	{
+		id: 'tasks',
+		label: 'Tasks',
+		icon: CheckSquare,
+		count: tabCounts.tasks
+	},
+	{
+		id: 'notes',
+		label: 'Notes',
+		icon: LayoutGrid,
+		count: tabCounts.notes
+	},
+	{
+		id: 'briefs',
+		label: 'Daily Briefs',
+		icon: FileText,
+		count: tabCounts.briefs,
+		hideCount: tabCounts?.briefs ? false : true
+	},
+	{
+		id: 'synthesis',
+		label: 'AI Summary',
+		icon: AlertCircle,
+		hideCount: true
+	},
+	{
+		id: 'braindumps',
+		label: 'Brain Dumps',
+		icon: Brain,
+		count: tabCounts.braindumps,
+		hideCount: true
+	}
 ];
 ```
 
@@ -337,16 +337,16 @@ const projectTabs: Tab[] = [
 ## Open Questions
 
 1. **Should ProjectTabs.svelte be deprecated?**
-   - Yes, after migration to TabNav is complete
-   - Move to `/archive/` or delete entirely
+    - Yes, after migration to TabNav is complete
+    - Move to `/archive/` or delete entirely
 
 2. **Are there other pages using ProjectTabs?**
-   - Research shows only `/projects/[id]` uses it
-   - Safe to migrate and deprecate
+    - Research shows only `/projects/[id]` uses it
+    - Safe to migrate and deprecate
 
 3. **Should we add mobile-specific labels to TabNav?**
-   - Current TabNav doesn't have `mobileLabel` prop like ProjectTabs
-   - Could be added if needed, but responsive sizing might be sufficient
+    - Current TabNav doesn't have `mobileLabel` prop like ProjectTabs
+    - Could be added if needed, but responsive sizing might be sufficient
 
 ## Testing Checklist
 

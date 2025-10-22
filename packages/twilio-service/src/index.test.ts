@@ -1,9 +1,9 @@
 // packages/twilio-service/src/index.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest';
 
-describe("twilio-service", () => {
-  it("should export service", () => {
-    // Placeholder test - actual tests should be added as needed
-    expect(true).toBe(true);
-  });
+describe('twilio-service', () => {
+	it('should export service', () => {
+		// Placeholder test - actual tests should be added as needed
+		expect(true).toBe(true);
+	});
 });

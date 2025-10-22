@@ -125,49 +125,49 @@ const queueResults = await Promise.allSettled(
 **Tests**:
 
 - ✅ `should process multiple projects in parallel`
-  - Verifies concurrent execution (300ms vs 500ms)
-  - Checks execution order (all start simultaneously)
+    - Verifies concurrent execution (300ms vs 500ms)
+    - Checks execution order (all start simultaneously)
 
 - ✅ `should handle project failures gracefully without blocking others`
-  - 3 projects, 1 fails
-  - 2 successful projects still complete
+    - 3 projects, 1 fails
+    - 2 successful projects still complete
 
 - ✅ `should complete all projects even if all fail`
-  - Returns empty array without throwing
+    - Returns empty array without throwing
 
 - ✅ `should process 10+ projects efficiently`
-  - 15 projects in <200ms (vs 750ms sequential)
+    - 15 projects in <200ms (vs 750ms sequential)
 
 - ✅ `should demonstrate speedup vs sequential processing`
-  - 5 projects: 500ms → 100ms (5x speedup)
+    - 5 projects: 500ms → 100ms (5x speedup)
 
 #### 2. `tests/scheduler-parallel.test.ts` (10 tests)
 
 **Tests**:
 
 - ✅ `should check engagement status for all users in parallel`
-  - 10 users in <150ms (vs 500ms sequential)
-  - Verifies calls start within 20ms of each other
+    - 10 users in <150ms (vs 500ms sequential)
+    - Verifies calls start within 20ms of each other
 
 - ✅ `should handle engagement check failures without blocking other users`
-  - 1 failure out of 3 users
-  - Other users unaffected
+    - 1 failure out of 3 users
+    - Other users unaffected
 
 - ✅ `should check for existing jobs with single query for all users`
-  - 100 users = 1 query (not 100 queries)
+    - 100 users = 1 query (not 100 queries)
 
 - ✅ `should efficiently filter users with existing jobs`
-  - Map-based lookup for O(1) checking
+    - Map-based lookup for O(1) checking
 
 - ✅ `should queue multiple jobs in parallel`
-  - 50 users in <100ms (vs 1000ms sequential)
+    - 50 users in <100ms (vs 1000ms sequential)
 
 - ✅ `should report successes and failures separately`
-  - 4 jobs: 2 succeed, 2 fail
-  - Detailed failure tracking
+    - 4 jobs: 2 succeed, 2 fail
+    - Detailed failure tracking
 
 - ✅ `should demonstrate 10x speedup vs sequential processing`
-  - 100 users: 9000ms → 90ms (50x+ speedup)
+    - 100 users: 9000ms → 90ms (50x+ speedup)
 
 - ✅ Edge cases: empty list, single user, 1000+ users
 
@@ -277,10 +277,10 @@ SELECT * FROM queue_jobs WHERE user_id IN ('user-1', 'user-2', ...) AND ...
 ```typescript
 const existingJobsMap = new Map<string, Date[]>();
 existingJobs.forEach((job) => {
-  if (!existingJobsMap.has(job.user_id)) {
-    existingJobsMap.set(job.user_id, []);
-  }
-  existingJobsMap.get(job.user_id)!.push(new Date(job.scheduled_for));
+	if (!existingJobsMap.has(job.user_id)) {
+		existingJobsMap.set(job.user_id, []);
+	}
+	existingJobsMap.get(job.user_id)!.push(new Date(job.scheduled_for));
 });
 ```
 
@@ -291,9 +291,7 @@ existingJobs.forEach((job) => {
 ```typescript
 console.log(`📋 Found ${preferences.length} active preference(s)`);
 console.log(`🔍 Batch checking engagement status for all users...`);
-console.log(
-  `🔍 Checking for existing jobs for ${usersToSchedule.length} user(s)...`,
-);
+console.log(`🔍 Checking for existing jobs for ${usersToSchedule.length} user(s)...`);
 console.log(`📨 Queueing ${usersToQueue.length} brief(s) in parallel...`);
 console.log(`✅ Successfully queued ${successCount} brief(s)`);
 ```
@@ -319,9 +317,9 @@ If issues arise, rollback is straightforward:
 
 1. **Revert commits**:
 
-   ```bash
-   git revert <commit-hash>
-   ```
+    ```bash
+    git revert <commit-hash>
+    ```
 
 2. **No database changes**, so no migration rollback needed
 
@@ -336,19 +334,19 @@ If issues arise, rollback is straightforward:
 ### Metrics to Track
 
 1. **Brief Generation Time** (p50, p95, p99)
-   - Target: <5s for p95
+    - Target: <5s for p95
 
 2. **Scheduler Job Queuing Time** (p50, p95, p99)
-   - Target: <10s for 100 users
+    - Target: <10s for 100 users
 
 3. **Database Connection Usage**
-   - Watch for connection pool exhaustion
+    - Watch for connection pool exhaustion
 
 4. **Job Failure Rate**
-   - Should remain stable or improve
+    - Should remain stable or improve
 
 5. **Memory Usage**
-   - Parallel processing may use slightly more memory
+    - Parallel processing may use slightly more memory
 
 ### Alerts to Set
 

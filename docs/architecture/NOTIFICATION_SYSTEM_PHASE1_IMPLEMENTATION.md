@@ -45,47 +45,47 @@ graph LR
 ### Migration Files
 
 - `/apps/web/supabase/migrations/20251006_notification_system_phase1.sql`
-  - Creates all notification tables
-  - Adds `send_notification` to queue_type enum
-  - Creates `emit_notification_event` RPC function
-  - Sets up RLS policies
-  - Seeds admin subscriptions
-  - Updates `handle_new_user_trial` trigger
+    - Creates all notification tables
+    - Adds `send_notification` to queue_type enum
+    - Creates `emit_notification_event` RPC function
+    - Sets up RLS policies
+    - Seeds admin subscriptions
+    - Updates `handle_new_user_trial` trigger
 
 ### Shared Types
 
 - `/packages/shared-types/src/notification.types.ts`
-  - Event types and payloads
-  - Channel and delivery interfaces
-  - Job metadata types
-  - Analytics types
+    - Event types and payloads
+    - Channel and delivery interfaces
+    - Job metadata types
+    - Analytics types
 
 ### Worker
 
 - `/apps/worker/src/workers/notification/notificationWorker.ts`
-  - Main notification processor
-  - Browser push adapter
-  - In-app notification adapter
-  - Delivery tracking
+    - Main notification processor
+    - Browser push adapter
+    - In-app notification adapter
+    - Delivery tracking
 
 ### Web Services
 
 - `/apps/web/src/lib/services/notification-preferences.service.ts`
-  - Preference management
-  - Subscription management
-  - Default preferences
+    - Preference management
+    - Subscription management
+    - Default preferences
 
 - `/apps/web/src/lib/services/browser-push.service.ts`
-  - Push subscription management
-  - Permission handling
-  - Service worker integration
+    - Push subscription management
+    - Permission handling
+    - Service worker integration
 
 ### Static Assets
 
 - `/apps/web/static/sw.js`
-  - Service worker for push notifications
-  - Handles push events
-  - Tracks clicks and dismissals
+    - Service worker for push notifications
+    - Handles push events
+    - Tracks clicks and dismissals
 
 ---
 
@@ -107,12 +107,12 @@ Immutable log of all notification-worthy events.
 
 ```json
 {
-  "event_type": "user.signup",
-  "actor_user_id": "uuid-of-new-user",
-  "payload": {
-    "user_email": "user@example.com",
-    "signup_method": "google_oauth"
-  }
+	"event_type": "user.signup",
+	"actor_user_id": "uuid-of-new-user",
+	"payload": {
+		"user_email": "user@example.com",
+		"signup_method": "google_oauth"
+	}
 }
 ```
 
@@ -275,7 +275,7 @@ pnpm dev
 1. **Enable Push Notifications:**
 
 ```typescript
-import { browserPushService } from "$lib/services/browser-push.service";
+import { browserPushService } from '$lib/services/browser-push.service';
 
 // Request permission and subscribe
 await browserPushService.subscribe();
@@ -284,15 +284,15 @@ await browserPushService.subscribe();
 2. **Manage Preferences:**
 
 ```typescript
-import { notificationPreferencesService } from "$lib/services/notification-preferences.service";
+import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
 
 // Get preferences for user.signup events
-const prefs = await notificationPreferencesService.get("user.signup");
+const prefs = await notificationPreferencesService.get('user.signup');
 
 // Update preferences
-await notificationPreferencesService.update("user.signup", {
-  push_enabled: true,
-  in_app_enabled: true,
+await notificationPreferencesService.update('user.signup', {
+	push_enabled: true,
+	in_app_enabled: true
 });
 ```
 
@@ -302,18 +302,18 @@ await notificationPreferencesService.update("user.signup", {
 
 ```typescript
 // From API or worker
-import { createServiceClient } from "@buildos/supabase-client";
+import { createServiceClient } from '@buildos/supabase-client';
 
 const supabase = createServiceClient();
 
-const { data: eventId } = await supabase.rpc("emit_notification_event", {
-  p_event_type: "user.signup",
-  p_event_source: "api_action",
-  p_actor_user_id: userId,
-  p_payload: {
-    user_email: email,
-    signup_method: "google_oauth",
-  },
+const { data: eventId } = await supabase.rpc('emit_notification_event', {
+	p_event_type: 'user.signup',
+	p_event_source: 'api_action',
+	p_actor_user_id: userId,
+	p_payload: {
+		user_email: email,
+		signup_method: 'google_oauth'
+	}
 });
 ```
 
@@ -368,9 +368,9 @@ ORDER BY created_at DESC;
 ```typescript
 // In browser console
 const subscription = await navigator.serviceWorker.ready.then((reg) =>
-  reg.pushManager.getSubscription(),
+	reg.pushManager.getSubscription()
 );
-console.log("Subscribed:", subscription !== null);
+console.log('Subscribed:', subscription !== null);
 ```
 
 ### 3. Test Worker Processing
@@ -487,7 +487,7 @@ AND status = 'pending';
 
 ```javascript
 navigator.serviceWorker.getRegistrations().then((registrations) => {
-  registrations.forEach((reg) => reg.unregister());
+	registrations.forEach((reg) => reg.unregister());
 });
 // Reload page
 ```
@@ -496,7 +496,7 @@ navigator.serviceWorker.getRegistrations().then((registrations) => {
 
 ```javascript
 navigator.serviceWorker.ready.then((reg) => {
-  console.log("Service Worker ready:", reg);
+	console.log('Service Worker ready:', reg);
 });
 ```
 

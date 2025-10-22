@@ -48,11 +48,11 @@ This document details the test coverage created for the daily brief notification
 ```typescript
 // Verifies event_type filter is applied
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // ✅ Critical filter
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // ✅ Critical filter
+	.single();
 ```
 
 ### 2. API Notification Preferences Tests
@@ -90,7 +90,7 @@ const { data: notificationPrefs } = await supabase
 
 ```typescript
 // GET with ?daily_brief=true
-const response = await fetch("/api/notification-preferences?daily_brief=true");
+const response = await fetch('/api/notification-preferences?daily_brief=true');
 const json = await response.json();
 
 // Verifies returned structure

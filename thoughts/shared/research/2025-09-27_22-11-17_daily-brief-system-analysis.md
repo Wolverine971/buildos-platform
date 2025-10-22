@@ -4,17 +4,8 @@ researcher: Claude Code
 git_commit: c0755659a8faf6330edb2ba5c70ac6783af78696
 branch: main
 repository: buildos-platform
-topic: "Daily Brief System Architecture and Type Safety Analysis"
-tags:
-  [
-    research,
-    codebase,
-    daily-briefs,
-    worker-service,
-    type-safety,
-    bugs,
-    queue-system,
-  ]
+topic: 'Daily Brief System Architecture and Type Safety Analysis'
+tags: [research, codebase, daily-briefs, worker-service, type-safety, bugs, queue-system]
 status: complete
 last_updated: 2025-09-27
 last_updated_by: Claude Code
@@ -87,46 +78,46 @@ The daily brief system operates through two primary paths:
 #### 🔴 High Priority Bugs
 
 1. **Type Import Error** (`apps/web/src/lib/services/dailyBrief/streamHandler.ts:2`)
-   - `StreamEvent` imported from wrong location
-   - Will cause TypeScript compilation failures
+    - `StreamEvent` imported from wrong location
+    - Will cause TypeScript compilation failures
 
 2. **Unsafe Force Unwrap** (`apps/web/src/lib/services/dailyBrief/repository.ts:88`)
 
-   ```typescript
-   userContext: userContext!; // Force unwrap without null check
-   ```
+    ```typescript
+    userContext: userContext!; // Force unwrap without null check
+    ```
 
-   - Runtime crashes when user context is null
+    - Runtime crashes when user context is null
 
 3. **Race Condition in Brief Creation** (`apps/web/src/lib/services/dailyBrief/repository.ts:106-136`)
-   - 10-minute stale job window allows duplicate generation
-   - No atomic check-and-create operation
+    - 10-minute stale job window allows duplicate generation
+    - No atomic check-and-create operation
 
 4. **Memory Leak in Stream Handler** (`apps/web/src/lib/services/dailyBrief/streamHandler.ts:6-7`)
-   - `activeStreams` Map never cleaned up
-   - Accumulates abandoned AbortControllers
+    - `activeStreams` Map never cleaned up
+    - Accumulates abandoned AbortControllers
 
 5. **Missing Database Transactions** (`apps/worker/src/workers/brief/briefGenerator.ts:89-146`)
-   - Check-then-create pattern without transactions
-   - Can create duplicate briefs under load
+    - Check-then-create pattern without transactions
+    - Can create duplicate briefs under load
 
 #### 🟠 Medium Priority Issues
 
 6. **Invalid Progress States** (`apps/web/src/lib/stores/unifiedBriefGeneration.store.ts:125-134`)
-   - No validation that `completed <= total`
-   - Progress bar can show > 100%
+    - No validation that `completed <= total`
+    - Progress bar can show > 100%
 
 7. **Timezone Validation Missing** (`apps/worker/src/workers/brief/briefWorker.ts:34-35`)
-   - Invalid timezone strings crash date-fns-tz
-   - No fallback for malformed timezones
+    - Invalid timezone strings crash date-fns-tz
+    - No fallback for malformed timezones
 
 8. **Unbounded Animation Loop** (`apps/web/src/lib/stores/unifiedBriefGeneration.store.ts:167-193`)
-   - No safeguards against infinite loops
-   - High CPU usage if target never converges
+    - No safeguards against infinite loops
+    - High CPU usage if target never converges
 
 9. **Silent Email Failures** (`apps/worker/src/workers/brief/briefWorker.ts:83-88`)
-   - Users unaware when email preferences fail
-   - No error tracking or notifications
+    - Users unaware when email preferences fail
+    - No error tracking or notifications
 
 ### Type Safety Analysis
 
@@ -162,56 +153,53 @@ status: "pending" | "processing" | "completed" | "failed"  // Missing "retrying"
 
 ```typescript
 // Import database enums as single source of truth
-import type { Database } from "./database.types";
+import type { Database } from './database.types';
 
 // Re-export database enums with consistent naming
-export type QueueJobType = Database["public"]["Enums"]["queue_type"];
-export type QueueJobStatus = Database["public"]["Enums"]["queue_status"];
+export type QueueJobType = Database['public']['Enums']['queue_type'];
+export type QueueJobStatus = Database['public']['Enums']['queue_status'];
 
 // Define application-specific enums
 export const BriefGenerationStep = {
-  IDLE: "idle",
-  INITIALIZING: "initializing",
-  STARTING: "starting",
-  QUEUED: "queued",
-  GATHERING_DATA: "gathering_data",
-  DATA_GATHERED: "data_gathered",
-  FETCHING_PROJECTS: "fetching_projects",
-  GENERATING_PROJECT_BRIEFS: "generating_project_briefs",
-  CONSOLIDATING_BRIEFS: "consolidating_briefs",
-  GENERATING_MAIN_BRIEF: "generating_main_brief",
-  FINALIZING: "finalizing",
-  COMPLETED: "completed",
-  ERROR: "error",
+	IDLE: 'idle',
+	INITIALIZING: 'initializing',
+	STARTING: 'starting',
+	QUEUED: 'queued',
+	GATHERING_DATA: 'gathering_data',
+	DATA_GATHERED: 'data_gathered',
+	FETCHING_PROJECTS: 'fetching_projects',
+	GENERATING_PROJECT_BRIEFS: 'generating_project_briefs',
+	CONSOLIDATING_BRIEFS: 'consolidating_briefs',
+	GENERATING_MAIN_BRIEF: 'generating_main_brief',
+	FINALIZING: 'finalizing',
+	COMPLETED: 'completed',
+	ERROR: 'error'
 } as const;
 
-export type BriefGenerationStep =
-  (typeof BriefGenerationStep)[keyof typeof BriefGenerationStep];
+export type BriefGenerationStep = (typeof BriefGenerationStep)[keyof typeof BriefGenerationStep];
 
 export const BriefFrequency = {
-  DAILY: "daily",
-  WEEKLY: "weekly",
-  CUSTOM: "custom",
+	DAILY: 'daily',
+	WEEKLY: 'weekly',
+	CUSTOM: 'custom'
 } as const;
 
-export type BriefFrequency =
-  (typeof BriefFrequency)[keyof typeof BriefFrequency];
+export type BriefFrequency = (typeof BriefFrequency)[keyof typeof BriefFrequency];
 
 export const GenerationMethod = {
-  RAILWAY: "railway",
-  SSE: "sse",
-  BACKGROUND: "background",
-  NONE: "none",
+	RAILWAY: 'railway',
+	SSE: 'sse',
+	BACKGROUND: 'background',
+	NONE: 'none'
 } as const;
 
-export type GenerationMethod =
-  (typeof GenerationMethod)[keyof typeof GenerationMethod];
+export type GenerationMethod = (typeof GenerationMethod)[keyof typeof GenerationMethod];
 
 export const UpdateSource = {
-  RAILWAY: "railway",
-  SSE: "sse",
-  REALTIME: "realtime",
-  MANUAL: "manual",
+	RAILWAY: 'railway',
+	SSE: 'sse',
+	REALTIME: 'realtime',
+	MANUAL: 'manual'
 } as const;
 
 export type UpdateSource = (typeof UpdateSource)[keyof typeof UpdateSource];
@@ -223,65 +211,63 @@ export type UpdateSource = (typeof UpdateSource)[keyof typeof UpdateSource];
 // In packages/shared-types/src/job-metadata.ts
 
 export interface BriefJobMetadata {
-  briefDate: string; // YYYY-MM-DD format
-  timezone: string; // IANA timezone
-  forceRegenerate?: boolean;
-  includeProjects?: string[];
-  excludeProjects?: string[];
-  customTemplate?: string;
-  generation_progress?: BriefGenerationProgress;
+	briefDate: string; // YYYY-MM-DD format
+	timezone: string; // IANA timezone
+	forceRegenerate?: boolean;
+	includeProjects?: string[];
+	excludeProjects?: string[];
+	customTemplate?: string;
+	generation_progress?: BriefGenerationProgress;
 }
 
 export interface BriefGenerationProgress {
-  step: BriefGenerationStep;
-  progress: number; // 0-100
-  message?: string;
-  projects?: {
-    completed: number;
-    total: number;
-    failed: number;
-  };
-  timestamp: string; // ISO timestamp
+	step: BriefGenerationStep;
+	progress: number; // 0-100
+	message?: string;
+	projects?: {
+		completed: number;
+		total: number;
+		failed: number;
+	};
+	timestamp: string; // ISO timestamp
 }
 
 export interface PhaseJobMetadata {
-  projectId: string;
-  regenerate?: boolean;
-  template?: string;
-  includeExistingTasks?: boolean;
+	projectId: string;
+	regenerate?: boolean;
+	template?: string;
+	includeExistingTasks?: boolean;
 }
 
 export interface OnboardingJobMetadata {
-  userId: string;
-  step: "initial" | "preferences" | "complete";
-  responses?: Record<string, unknown>;
+	userId: string;
+	step: 'initial' | 'preferences' | 'complete';
+	responses?: Record<string, unknown>;
 }
 
 // Type guard functions
 export function isBriefJobMetadata(obj: unknown): obj is BriefJobMetadata {
-  if (!obj || typeof obj !== "object") return false;
-  const meta = obj as Record<string, unknown>;
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
 
-  return (
-    typeof meta.briefDate === "string" &&
-    typeof meta.timezone === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(meta.briefDate as string)
-  );
+	return (
+		typeof meta.briefDate === 'string' &&
+		typeof meta.timezone === 'string' &&
+		/^\d{4}-\d{2}-\d{2}$/.test(meta.briefDate as string)
+	);
 }
 
-export function isValidGenerationProgress(
-  obj: unknown,
-): obj is BriefGenerationProgress {
-  if (!obj || typeof obj !== "object") return false;
-  const prog = obj as Record<string, unknown>;
+export function isValidGenerationProgress(obj: unknown): obj is BriefGenerationProgress {
+	if (!obj || typeof obj !== 'object') return false;
+	const prog = obj as Record<string, unknown>;
 
-  return (
-    typeof prog.step === "string" &&
-    typeof prog.progress === "number" &&
-    prog.progress >= 0 &&
-    prog.progress <= 100 &&
-    typeof prog.timestamp === "string"
-  );
+	return (
+		typeof prog.step === 'string' &&
+		typeof prog.progress === 'number' &&
+		prog.progress >= 0 &&
+		prog.progress <= 100 &&
+		typeof prog.timestamp === 'string'
+	);
 }
 ```
 
@@ -290,52 +276,46 @@ export function isValidGenerationProgress(
 ```typescript
 // In packages/shared-types/src/queue.ts
 
-import type { Database } from "./database.types";
-import type {
-  BriefJobMetadata,
-  PhaseJobMetadata,
-  OnboardingJobMetadata,
-} from "./job-metadata";
+import type { Database } from './database.types';
+import type { BriefJobMetadata, PhaseJobMetadata, OnboardingJobMetadata } from './job-metadata';
 
 // Map job types to their metadata
 export interface JobMetadataMap {
-  generate_daily_brief: BriefJobMetadata;
-  generate_phases: PhaseJobMetadata;
-  onboarding_analysis: OnboardingJobMetadata;
-  sync_calendar: Record<string, unknown>;
-  process_brain_dump: Record<string, unknown>;
-  send_email: Record<string, unknown>;
-  update_recurring_tasks: Record<string, unknown>;
-  cleanup_old_data: Record<string, unknown>;
-  other: Record<string, unknown>;
+	generate_daily_brief: BriefJobMetadata;
+	generate_phases: PhaseJobMetadata;
+	onboarding_analysis: OnboardingJobMetadata;
+	sync_calendar: Record<string, unknown>;
+	process_brain_dump: Record<string, unknown>;
+	send_email: Record<string, unknown>;
+	update_recurring_tasks: Record<string, unknown>;
+	cleanup_old_data: Record<string, unknown>;
+	other: Record<string, unknown>;
 }
 
 // Generic queue job with type-safe metadata
-export interface QueueJob<
-  T extends keyof JobMetadataMap = keyof JobMetadataMap,
-> {
-  id: string;
-  queue_job_id: string;
-  user_id: string;
-  job_type: T;
-  status: Database["public"]["Enums"]["queue_status"];
-  scheduled_for: string;
-  metadata: JobMetadataMap[T] | null;
-  attempts: number;
-  max_attempts: number;
-  priority: number | null;
-  created_at: string;
-  updated_at: string | null;
-  started_at: string | null;
-  processed_at: string | null;
-  completed_at: string | null;
-  error_message: string | null;
-  result: unknown | null; // Job-specific result type
+export interface QueueJob<T extends keyof JobMetadataMap = keyof JobMetadataMap> {
+	id: string;
+	queue_job_id: string;
+	user_id: string;
+	job_type: T;
+	status: Database['public']['Enums']['queue_status'];
+	scheduled_for: string;
+	metadata: JobMetadataMap[T] | null;
+	attempts: number;
+	max_attempts: number;
+	priority: number | null;
+	created_at: string;
+	updated_at: string | null;
+	started_at: string | null;
+	processed_at: string | null;
+	completed_at: string | null;
+	error_message: string | null;
+	result: unknown | null; // Job-specific result type
 }
 
 // Helper type for brief jobs specifically
-export type BriefQueueJob = QueueJob<"generate_daily_brief">;
-export type PhaseQueueJob = QueueJob<"generate_phases">;
+export type BriefQueueJob = QueueJob<'generate_daily_brief'>;
+export type PhaseQueueJob = QueueJob<'generate_phases'>;
 ```
 
 #### 4. API Response Types
@@ -344,51 +324,51 @@ export type PhaseQueueJob = QueueJob<"generate_phases">;
 // In packages/shared-types/src/api-responses.ts
 
 export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-  timestamp: string;
+	success: boolean;
+	data?: T;
+	error?: ApiError;
+	timestamp: string;
 }
 
 export interface ApiError {
-  code: ErrorCode;
-  message: string;
-  details?: unknown;
-  status: number;
+	code: ErrorCode;
+	message: string;
+	details?: unknown;
+	status: number;
 }
 
 export const ErrorCode = {
-  // Authentication
-  UNAUTHORIZED: "UNAUTHORIZED",
-  FORBIDDEN: "FORBIDDEN",
-  SESSION_EXPIRED: "SESSION_EXPIRED",
+	// Authentication
+	UNAUTHORIZED: 'UNAUTHORIZED',
+	FORBIDDEN: 'FORBIDDEN',
+	SESSION_EXPIRED: 'SESSION_EXPIRED',
 
-  // Validation
-  INVALID_REQUEST: "INVALID_REQUEST",
-  VALIDATION_FAILED: "VALIDATION_FAILED",
-  INVALID_DATE_FORMAT: "INVALID_DATE_FORMAT",
-  INVALID_TIMEZONE: "INVALID_TIMEZONE",
+	// Validation
+	INVALID_REQUEST: 'INVALID_REQUEST',
+	VALIDATION_FAILED: 'VALIDATION_FAILED',
+	INVALID_DATE_FORMAT: 'INVALID_DATE_FORMAT',
+	INVALID_TIMEZONE: 'INVALID_TIMEZONE',
 
-  // Resources
-  NOT_FOUND: "NOT_FOUND",
-  ALREADY_EXISTS: "ALREADY_EXISTS",
-  CONFLICT: "CONFLICT",
+	// Resources
+	NOT_FOUND: 'NOT_FOUND',
+	ALREADY_EXISTS: 'ALREADY_EXISTS',
+	CONFLICT: 'CONFLICT',
 
-  // Operations
-  OPERATION_FAILED: "OPERATION_FAILED",
-  DATABASE_ERROR: "DATABASE_ERROR",
-  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
-  TIMEOUT: "TIMEOUT",
+	// Operations
+	OPERATION_FAILED: 'OPERATION_FAILED',
+	DATABASE_ERROR: 'DATABASE_ERROR',
+	SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+	TIMEOUT: 'TIMEOUT',
 
-  // Brief-specific
-  BRIEF_ALREADY_GENERATING: "BRIEF_ALREADY_GENERATING",
-  BRIEF_GENERATION_FAILED: "BRIEF_GENERATION_FAILED",
-  INVALID_BRIEF_DATE: "INVALID_BRIEF_DATE",
+	// Brief-specific
+	BRIEF_ALREADY_GENERATING: 'BRIEF_ALREADY_GENERATING',
+	BRIEF_GENERATION_FAILED: 'BRIEF_GENERATION_FAILED',
+	INVALID_BRIEF_DATE: 'INVALID_BRIEF_DATE',
 
-  // Worker-specific
-  WORKER_UNAVAILABLE: "WORKER_UNAVAILABLE",
-  JOB_NOT_FOUND: "JOB_NOT_FOUND",
-  JOB_ALREADY_PROCESSED: "JOB_ALREADY_PROCESSED",
+	// Worker-specific
+	WORKER_UNAVAILABLE: 'WORKER_UNAVAILABLE',
+	JOB_NOT_FOUND: 'JOB_NOT_FOUND',
+	JOB_ALREADY_PROCESSED: 'JOB_ALREADY_PROCESSED'
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

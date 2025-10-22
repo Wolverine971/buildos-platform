@@ -12,285 +12,272 @@
  * Phase: 6.2 (Monitoring & Metrics)
  */
 
-import { createServiceClient } from "@buildos/supabase-client";
-import { SMSMetricsService } from "./smsMetrics.service";
-import { format } from "date-fns";
+import { createServiceClient } from '@buildos/supabase-client';
+import { SMSMetricsService } from './smsMetrics.service';
+import { format } from 'date-fns';
 
 export interface AlertThreshold {
-  id: string;
-  alert_type: string;
-  threshold_value: number;
-  severity: "critical" | "warning" | "info";
-  notification_channels: string[]; // Array of channels: 'pagerduty' | 'slack' | 'email'
-  is_enabled: boolean;
-  cooldown_minutes: number;
-  last_triggered_at: string | null;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	alert_type: string;
+	threshold_value: number;
+	severity: 'critical' | 'warning' | 'info';
+	notification_channels: string[]; // Array of channels: 'pagerduty' | 'slack' | 'email'
+	is_enabled: boolean;
+	cooldown_minutes: number;
+	last_triggered_at: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
 export interface Alert {
-  alert_type: string;
-  severity: string;
-  metric_value: number;
-  threshold_value: number;
-  message: string;
-  notification_channels: string[]; // Array of channels to notify
+	alert_type: string;
+	severity: string;
+	metric_value: number;
+	threshold_value: number;
+	message: string;
+	notification_channels: string[]; // Array of channels to notify
 }
 
 export class SMSAlertsService {
-  private supabase = createServiceClient();
-  private metricsService: SMSMetricsService;
+	private supabase = createServiceClient();
+	private metricsService: SMSMetricsService;
 
-  constructor() {
-    this.metricsService = new SMSMetricsService();
-  }
+	constructor() {
+		this.metricsService = new SMSMetricsService();
+	}
 
-  /**
-   * Check all enabled alerts and trigger notifications if thresholds are exceeded
-   */
-  async checkAlerts(): Promise<Alert[]> {
-    console.log("[SMSAlerts] Starting alert check...");
+	/**
+	 * Check all enabled alerts and trigger notifications if thresholds are exceeded
+	 */
+	async checkAlerts(): Promise<Alert[]> {
+		console.log('[SMSAlerts] Starting alert check...');
 
-    try {
-      // Get today's metrics
-      const todayMetrics = await this.metricsService.getTodayMetrics();
+		try {
+			// Get today's metrics
+			const todayMetrics = await this.metricsService.getTodayMetrics();
 
-      if (!todayMetrics) {
-        console.log("[SMSAlerts] No metrics available for today");
-        return [];
-      }
+			if (!todayMetrics) {
+				console.log('[SMSAlerts] No metrics available for today');
+				return [];
+			}
 
-      // Get all enabled alert thresholds
-      const thresholds = await this.getEnabledThresholds();
+			// Get all enabled alert thresholds
+			const thresholds = await this.getEnabledThresholds();
 
-      const triggeredAlerts: Alert[] = [];
+			const triggeredAlerts: Alert[] = [];
 
-      for (const threshold of thresholds) {
-        // Check if alert is in cooldown
-        if (this.isInCooldown(threshold)) {
-          console.log(
-            `[SMSAlerts] Alert ${threshold.alert_type} is in cooldown, skipping`,
-          );
-          continue;
-        }
+			for (const threshold of thresholds) {
+				// Check if alert is in cooldown
+				if (this.isInCooldown(threshold)) {
+					console.log(
+						`[SMSAlerts] Alert ${threshold.alert_type} is in cooldown, skipping`
+					);
+					continue;
+				}
 
-        // Check if threshold is exceeded
-        const alert = await this.checkThreshold(threshold, todayMetrics);
+				// Check if threshold is exceeded
+				const alert = await this.checkThreshold(threshold, todayMetrics);
 
-        if (alert) {
-          triggeredAlerts.push(alert);
+				if (alert) {
+					triggeredAlerts.push(alert);
 
-          // Send notification
-          await this.sendNotification(alert);
+					// Send notification
+					await this.sendNotification(alert);
 
-          // Record alert in history
-          await this.recordAlert(alert);
+					// Record alert in history
+					await this.recordAlert(alert);
 
-          // Update last_triggered_at
-          await this.updateLastTriggered(threshold.id);
-        }
-      }
+					// Update last_triggered_at
+					await this.updateLastTriggered(threshold.id);
+				}
+			}
 
-      if (triggeredAlerts.length > 0) {
-        console.log(`[SMSAlerts] ${triggeredAlerts.length} alert(s) triggered`);
-      } else {
-        console.log("[SMSAlerts] No alerts triggered");
-      }
+			if (triggeredAlerts.length > 0) {
+				console.log(`[SMSAlerts] ${triggeredAlerts.length} alert(s) triggered`);
+			} else {
+				console.log('[SMSAlerts] No alerts triggered');
+			}
 
-      return triggeredAlerts;
-    } catch (error) {
-      console.error("[SMSAlerts] Error checking alerts:", error);
-      return [];
-    }
-  }
+			return triggeredAlerts;
+		} catch (error) {
+			console.error('[SMSAlerts] Error checking alerts:', error);
+			return [];
+		}
+	}
 
-  /**
-   * Check a specific threshold against current metrics
-   */
-  private async checkThreshold(
-    threshold: AlertThreshold,
-    metrics: any,
-  ): Promise<Alert | null> {
-    let metricValue: number = 0;
-    let message: string = "";
+	/**
+	 * Check a specific threshold against current metrics
+	 */
+	private async checkThreshold(threshold: AlertThreshold, metrics: any): Promise<Alert | null> {
+		let metricValue: number = 0;
+		let message: string = '';
 
-    switch (threshold.alert_type) {
-      case "delivery_rate_critical":
-        metricValue = metrics.delivery_rate_percent || 0;
-        // Delivery rate BELOW threshold is critical (rate dropping)
-        if (metricValue < threshold.threshold_value) {
-          message = `SMS delivery rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
-        }
-        break;
+		switch (threshold.alert_type) {
+			case 'delivery_rate_critical':
+				metricValue = metrics.delivery_rate_percent || 0;
+				// Delivery rate BELOW threshold is critical (rate dropping)
+				if (metricValue < threshold.threshold_value) {
+					message = `SMS delivery rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
+				}
+				break;
 
-      case "llm_failure_critical":
-        const llmTotal =
-          (metrics.llm_success_count || 0) +
-          (metrics.template_fallback_count || 0);
-        const llmFailureRate =
-          llmTotal > 0
-            ? ((metrics.template_fallback_count || 0) / llmTotal) * 100
-            : 0;
-        metricValue = llmFailureRate;
-        // Failure rate ABOVE threshold is critical (failures increasing)
-        if (metricValue > threshold.threshold_value) {
-          message = `LLM failure rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
-        }
-        break;
+			case 'llm_failure_critical':
+				const llmTotal =
+					(metrics.llm_success_count || 0) + (metrics.template_fallback_count || 0);
+				const llmFailureRate =
+					llmTotal > 0 ? ((metrics.template_fallback_count || 0) / llmTotal) * 100 : 0;
+				metricValue = llmFailureRate;
+				// Failure rate ABOVE threshold is critical (failures increasing)
+				if (metricValue > threshold.threshold_value) {
+					message = `LLM failure rate is ${metricValue.toFixed(1)}% (threshold: ${threshold.threshold_value}%)`;
+				}
+				break;
 
-      case "llm_cost_spike_warning":
-        const avgCost = await this.metricsService.getAvgLLMCostPerUser(30);
-        const todayCost =
-          (metrics.llm_cost_usd || 0) / (metrics.active_users || 1);
-        const costMultiplier = avgCost > 0 ? todayCost / avgCost : 0;
-        metricValue = costMultiplier;
-        // Cost multiplier ABOVE threshold is a warning (cost spike)
-        if (metricValue > threshold.threshold_value) {
-          message = `LLM cost is ${costMultiplier.toFixed(2)}x the 30-day average (today: $${todayCost.toFixed(4)}, avg: $${avgCost.toFixed(4)})`;
-        }
-        break;
+			case 'llm_cost_spike_warning':
+				const avgCost = await this.metricsService.getAvgLLMCostPerUser(30);
+				const todayCost = (metrics.llm_cost_usd || 0) / (metrics.active_users || 1);
+				const costMultiplier = avgCost > 0 ? todayCost / avgCost : 0;
+				metricValue = costMultiplier;
+				// Cost multiplier ABOVE threshold is a warning (cost spike)
+				if (metricValue > threshold.threshold_value) {
+					message = `LLM cost is ${costMultiplier.toFixed(2)}x the 30-day average (today: $${todayCost.toFixed(4)}, avg: $${avgCost.toFixed(4)})`;
+				}
+				break;
 
-      case "opt_out_rate_warning":
-        const optOutRate =
-          metrics.active_users > 0
-            ? ((metrics.opt_out_count || 0) / metrics.active_users) * 100
-            : 0;
-        metricValue = optOutRate;
-        // Opt-out rate ABOVE threshold is a warning (too many opt-outs)
-        if (metricValue > threshold.threshold_value) {
-          message = `Opt-out rate is ${metricValue.toFixed(1)}% (${metrics.opt_out_count} of ${metrics.active_users} users)`;
-        }
-        break;
+			case 'opt_out_rate_warning':
+				const optOutRate =
+					metrics.active_users > 0
+						? ((metrics.opt_out_count || 0) / metrics.active_users) * 100
+						: 0;
+				metricValue = optOutRate;
+				// Opt-out rate ABOVE threshold is a warning (too many opt-outs)
+				if (metricValue > threshold.threshold_value) {
+					message = `Opt-out rate is ${metricValue.toFixed(1)}% (${metrics.opt_out_count} of ${metrics.active_users} users)`;
+				}
+				break;
 
-      case "daily_limit_hit_warning":
-        const limitHitRate =
-          metrics.active_users > 0
-            ? ((metrics.daily_limit_hit_count || 0) / metrics.active_users) *
-              100
-            : 0;
-        metricValue = limitHitRate;
-        // Limit hit rate ABOVE threshold is a warning (too many users hitting limit)
-        if (metricValue > threshold.threshold_value) {
-          message = `Daily limit hit rate is ${metricValue.toFixed(1)}% (${metrics.daily_limit_hit_count} of ${metrics.active_users} users)`;
-        }
-        break;
+			case 'daily_limit_hit_warning':
+				const limitHitRate =
+					metrics.active_users > 0
+						? ((metrics.daily_limit_hit_count || 0) / metrics.active_users) * 100
+						: 0;
+				metricValue = limitHitRate;
+				// Limit hit rate ABOVE threshold is a warning (too many users hitting limit)
+				if (metricValue > threshold.threshold_value) {
+					message = `Daily limit hit rate is ${metricValue.toFixed(1)}% (${metrics.daily_limit_hit_count} of ${metrics.active_users} users)`;
+				}
+				break;
 
-      default:
-        console.warn(`[SMSAlerts] Unknown alert type: ${threshold.alert_type}`);
-        return null;
-    }
+			default:
+				console.warn(`[SMSAlerts] Unknown alert type: ${threshold.alert_type}`);
+				return null;
+		}
 
-    if (message) {
-      return {
-        alert_type: threshold.alert_type,
-        severity: threshold.severity,
-        metric_value: metricValue,
-        threshold_value: threshold.threshold_value,
-        message,
-        notification_channels: threshold.notification_channels,
-      };
-    }
+		if (message) {
+			return {
+				alert_type: threshold.alert_type,
+				severity: threshold.severity,
+				metric_value: metricValue,
+				threshold_value: threshold.threshold_value,
+				message,
+				notification_channels: threshold.notification_channels
+			};
+		}
 
-    return null;
-  }
+		return null;
+	}
 
-  /**
-   * Check if alert is in cooldown period
-   */
-  private isInCooldown(threshold: AlertThreshold): boolean {
-    if (!threshold.last_triggered_at) return false;
+	/**
+	 * Check if alert is in cooldown period
+	 */
+	private isInCooldown(threshold: AlertThreshold): boolean {
+		if (!threshold.last_triggered_at) return false;
 
-    const lastTriggered = new Date(threshold.last_triggered_at);
-    const cooldownEnd = new Date(
-      lastTriggered.getTime() + threshold.cooldown_minutes * 60 * 1000,
-    );
+		const lastTriggered = new Date(threshold.last_triggered_at);
+		const cooldownEnd = new Date(
+			lastTriggered.getTime() + threshold.cooldown_minutes * 60 * 1000
+		);
 
-    return new Date() < cooldownEnd;
-  }
+		return new Date() < cooldownEnd;
+	}
 
-  /**
-   * Get all enabled alert thresholds
-   */
-  private async getEnabledThresholds(): Promise<AlertThreshold[]> {
-    try {
-      // Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
-      // After migration, regenerate types with: pnpm supabase gen types
-      const { data, error } = await this.supabase
-        .from("sms_alert_thresholds" as any)
-        .select("*")
-        .eq("is_enabled", true);
+	/**
+	 * Get all enabled alert thresholds
+	 */
+	private async getEnabledThresholds(): Promise<AlertThreshold[]> {
+		try {
+			// Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
+			// After migration, regenerate types with: pnpm supabase gen types
+			const { data, error } = await this.supabase
+				.from('sms_alert_thresholds' as any)
+				.select('*')
+				.eq('is_enabled', true);
 
-      if (error) {
-        throw error;
-      }
+			if (error) {
+				throw error;
+			}
 
-      // Type assertion safe: we control the schema and interface matches migration
-      return (data as unknown as AlertThreshold[]) || [];
-    } catch (error) {
-      console.error("[SMSAlerts] Error fetching thresholds:", error);
-      return [];
-    }
-  }
+			// Type assertion safe: we control the schema and interface matches migration
+			return (data as unknown as AlertThreshold[]) || [];
+		} catch (error) {
+			console.error('[SMSAlerts] Error fetching thresholds:', error);
+			return [];
+		}
+	}
 
-  /**
-   * Send notification via appropriate channels (can send to multiple channels)
-   */
-  private async sendNotification(alert: Alert): Promise<void> {
-    // Send to all configured channels
-    for (const channel of alert.notification_channels) {
-      try {
-        switch (channel) {
-          case "slack":
-            await this.sendSlackNotification(alert);
-            break;
+	/**
+	 * Send notification via appropriate channels (can send to multiple channels)
+	 */
+	private async sendNotification(alert: Alert): Promise<void> {
+		// Send to all configured channels
+		for (const channel of alert.notification_channels) {
+			try {
+				switch (channel) {
+					case 'slack':
+						await this.sendSlackNotification(alert);
+						break;
 
-          case "pagerduty":
-            await this.sendPagerDutyNotification(alert);
-            break;
+					case 'pagerduty':
+						await this.sendPagerDutyNotification(alert);
+						break;
 
-          case "email":
-            await this.sendEmailNotification(alert);
-            break;
+					case 'email':
+						await this.sendEmailNotification(alert);
+						break;
 
-          default:
-            console.warn(
-              `[SMSAlerts] Unknown notification channel: ${channel}`,
-            );
-        }
-      } catch (error) {
-        console.error(
-          `[SMSAlerts] Error sending notification to ${channel}:`,
-          error,
-        );
-        // Continue to next channel even if one fails
-      }
-    }
-  }
+					default:
+						console.warn(`[SMSAlerts] Unknown notification channel: ${channel}`);
+				}
+			} catch (error) {
+				console.error(`[SMSAlerts] Error sending notification to ${channel}:`, error);
+				// Continue to next channel even if one fails
+			}
+		}
+	}
 
-  /**
-   * Send Slack notification
-   *
-   * NOTE: Currently commented out - configure SLACK_WEBHOOK_URL to enable
-   */
-  private async sendSlackNotification(alert: Alert): Promise<void> {
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+	/**
+	 * Send Slack notification
+	 *
+	 * NOTE: Currently commented out - configure SLACK_WEBHOOK_URL to enable
+	 */
+	private async sendSlackNotification(alert: Alert): Promise<void> {
+		const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
-    if (!webhookUrl) {
-      console.log(
-        "[SMSAlerts] SLACK_WEBHOOK_URL not configured, skipping Slack notification",
-      );
-      console.log("[SMSAlerts] Would have sent Slack alert:", {
-        type: alert.alert_type,
-        severity: alert.severity,
-        message: alert.message,
-      });
-      return;
-    }
+		if (!webhookUrl) {
+			console.log(
+				'[SMSAlerts] SLACK_WEBHOOK_URL not configured, skipping Slack notification'
+			);
+			console.log('[SMSAlerts] Would have sent Slack alert:', {
+				type: alert.alert_type,
+				severity: alert.severity,
+				message: alert.message
+			});
+			return;
+		}
 
-    // COMMENTED OUT: Slack integration
-    // Uncomment when SLACK_WEBHOOK_URL is configured
-    /*
+		// COMMENTED OUT: Slack integration
+		// Uncomment when SLACK_WEBHOOK_URL is configured
+		/*
     try {
       const emoji = alert.severity === 'critical' ? '🚨' : '⚠️';
       const color = alert.severity === 'critical' ? '#ff0000' : '#ffa500';
@@ -346,34 +333,32 @@ export class SMSAlertsService {
     }
     */
 
-    console.log(
-      "[SMSAlerts] Slack notification skipped (integration commented out)",
-    );
-  }
+		console.log('[SMSAlerts] Slack notification skipped (integration commented out)');
+	}
 
-  /**
-   * Send PagerDuty notification
-   *
-   * NOTE: Currently commented out - configure PAGERDUTY_INTEGRATION_KEY to enable
-   */
-  private async sendPagerDutyNotification(alert: Alert): Promise<void> {
-    const integrationKey = process.env.PAGERDUTY_INTEGRATION_KEY;
+	/**
+	 * Send PagerDuty notification
+	 *
+	 * NOTE: Currently commented out - configure PAGERDUTY_INTEGRATION_KEY to enable
+	 */
+	private async sendPagerDutyNotification(alert: Alert): Promise<void> {
+		const integrationKey = process.env.PAGERDUTY_INTEGRATION_KEY;
 
-    if (!integrationKey) {
-      console.log(
-        "[SMSAlerts] PAGERDUTY_INTEGRATION_KEY not configured, skipping PagerDuty notification",
-      );
-      console.log("[SMSAlerts] Would have sent PagerDuty alert:", {
-        type: alert.alert_type,
-        severity: alert.severity,
-        message: alert.message,
-      });
-      return;
-    }
+		if (!integrationKey) {
+			console.log(
+				'[SMSAlerts] PAGERDUTY_INTEGRATION_KEY not configured, skipping PagerDuty notification'
+			);
+			console.log('[SMSAlerts] Would have sent PagerDuty alert:', {
+				type: alert.alert_type,
+				severity: alert.severity,
+				message: alert.message
+			});
+			return;
+		}
 
-    // COMMENTED OUT: PagerDuty integration
-    // Uncomment when PAGERDUTY_INTEGRATION_KEY is configured
-    /*
+		// COMMENTED OUT: PagerDuty integration
+		// Uncomment when PAGERDUTY_INTEGRATION_KEY is configured
+		/*
     try {
       const payload = {
         routing_key: integrationKey,
@@ -407,170 +392,165 @@ export class SMSAlertsService {
     }
     */
 
-    console.log(
-      "[SMSAlerts] PagerDuty notification skipped (integration commented out)",
-    );
-  }
+		console.log('[SMSAlerts] PagerDuty notification skipped (integration commented out)');
+	}
 
-  /**
-   * Send email notification
-   */
-  private async sendEmailNotification(alert: Alert): Promise<void> {
-    // TODO: Implement email notification via existing email service
-    console.log("[SMSAlerts] Email notification not yet implemented");
-  }
+	/**
+	 * Send email notification
+	 */
+	private async sendEmailNotification(alert: Alert): Promise<void> {
+		// TODO: Implement email notification via existing email service
+		console.log('[SMSAlerts] Email notification not yet implemented');
+	}
 
-  /**
-   * Record alert in history
-   */
-  private async recordAlert(alert: Alert): Promise<void> {
-    try {
-      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
-      // After migration, regenerate types with: pnpm supabase gen types
-      const { error } = await this.supabase
-        .from("sms_alert_history" as any)
-        .insert({
-          alert_type: alert.alert_type,
-          severity: alert.severity,
-          metric_value: alert.metric_value,
-          threshold_value: alert.threshold_value,
-          notification_sent: true,
-          triggered_at: new Date().toISOString(),
-          // Store message and notification_channels in metadata JSONB field
-          metadata: {
-            message: alert.message,
-            notification_channels: alert.notification_channels,
-          },
-        });
+	/**
+	 * Record alert in history
+	 */
+	private async recordAlert(alert: Alert): Promise<void> {
+		try {
+			// Note: Using 'as any' because sms_alert_history may not be in generated types yet
+			// After migration, regenerate types with: pnpm supabase gen types
+			const { error } = await this.supabase.from('sms_alert_history' as any).insert({
+				alert_type: alert.alert_type,
+				severity: alert.severity,
+				metric_value: alert.metric_value,
+				threshold_value: alert.threshold_value,
+				notification_sent: true,
+				triggered_at: new Date().toISOString(),
+				// Store message and notification_channels in metadata JSONB field
+				metadata: {
+					message: alert.message,
+					notification_channels: alert.notification_channels
+				}
+			});
 
-      if (error) {
-        throw error;
-      }
+			if (error) {
+				throw error;
+			}
 
-      console.log(`[SMSAlerts] Alert recorded in history: ${alert.alert_type}`);
-    } catch (error) {
-      console.error("[SMSAlerts] Error recording alert:", error);
-    }
-  }
+			console.log(`[SMSAlerts] Alert recorded in history: ${alert.alert_type}`);
+		} catch (error) {
+			console.error('[SMSAlerts] Error recording alert:', error);
+		}
+	}
 
-  /**
-   * Update last_triggered_at timestamp
-   */
-  private async updateLastTriggered(thresholdId: string): Promise<void> {
-    try {
-      // Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
-      const { error } = await this.supabase
-        .from("sms_alert_thresholds" as any)
-        .update({ last_triggered_at: new Date().toISOString() })
-        .eq("id", thresholdId);
+	/**
+	 * Update last_triggered_at timestamp
+	 */
+	private async updateLastTriggered(thresholdId: string): Promise<void> {
+		try {
+			// Note: Using 'as any' because sms_alert_thresholds may not be in generated types yet
+			const { error } = await this.supabase
+				.from('sms_alert_thresholds' as any)
+				.update({ last_triggered_at: new Date().toISOString() })
+				.eq('id', thresholdId);
 
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      console.error("[SMSAlerts] Error updating last_triggered_at:", error);
-    }
-  }
+			if (error) {
+				throw error;
+			}
+		} catch (error) {
+			console.error('[SMSAlerts] Error updating last_triggered_at:', error);
+		}
+	}
 
-  /**
-   * Resolve an alert (mark as resolved in history)
-   */
-  async resolveAlert(alertId: string): Promise<void> {
-    try {
-      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
-      const { error } = await this.supabase
-        .from("sms_alert_history" as any)
-        .update({ resolved_at: new Date().toISOString() })
-        .eq("id", alertId)
-        .is("resolved_at", null);
+	/**
+	 * Resolve an alert (mark as resolved in history)
+	 */
+	async resolveAlert(alertId: string): Promise<void> {
+		try {
+			// Note: Using 'as any' because sms_alert_history may not be in generated types yet
+			const { error } = await this.supabase
+				.from('sms_alert_history' as any)
+				.update({ resolved_at: new Date().toISOString() })
+				.eq('id', alertId)
+				.is('resolved_at', null);
 
-      if (error) {
-        throw error;
-      }
+			if (error) {
+				throw error;
+			}
 
-      console.log(`[SMSAlerts] Alert ${alertId} resolved`);
-    } catch (error) {
-      console.error("[SMSAlerts] Error resolving alert:", error);
-    }
-  }
+			console.log(`[SMSAlerts] Alert ${alertId} resolved`);
+		} catch (error) {
+			console.error('[SMSAlerts] Error resolving alert:', error);
+		}
+	}
 
-  /**
-   * Get recent unresolved alerts
-   */
-  async getUnresolvedAlerts(limit: number = 50): Promise<any[]> {
-    try {
-      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
-      const { data, error } = await this.supabase
-        .from("sms_alert_history" as any)
-        .select("*")
-        .is("resolved_at", null)
-        .order("triggered_at", { ascending: false })
-        .limit(limit);
+	/**
+	 * Get recent unresolved alerts
+	 */
+	async getUnresolvedAlerts(limit: number = 50): Promise<any[]> {
+		try {
+			// Note: Using 'as any' because sms_alert_history may not be in generated types yet
+			const { data, error } = await this.supabase
+				.from('sms_alert_history' as any)
+				.select('*')
+				.is('resolved_at', null)
+				.order('triggered_at', { ascending: false })
+				.limit(limit);
 
-      if (error) {
-        throw error;
-      }
+			if (error) {
+				throw error;
+			}
 
-      return data || [];
-    } catch (error) {
-      console.error("[SMSAlerts] Error fetching unresolved alerts:", error);
-      return [];
-    }
-  }
+			return data || [];
+		} catch (error) {
+			console.error('[SMSAlerts] Error fetching unresolved alerts:', error);
+			return [];
+		}
+	}
 
-  /**
-   * Get alert history for a date range
-   */
-  async getAlertHistory(
-    startDate: string,
-    endDate?: string,
-    limit: number = 100,
-  ): Promise<any[]> {
-    try {
-      // Note: Using 'as any' because sms_alert_history may not be in generated types yet
-      let query = this.supabase
-        .from("sms_alert_history" as any)
-        .select("*")
-        .gte("triggered_at", startDate);
+	/**
+	 * Get alert history for a date range
+	 */
+	async getAlertHistory(
+		startDate: string,
+		endDate?: string,
+		limit: number = 100
+	): Promise<any[]> {
+		try {
+			// Note: Using 'as any' because sms_alert_history may not be in generated types yet
+			let query = this.supabase
+				.from('sms_alert_history' as any)
+				.select('*')
+				.gte('triggered_at', startDate);
 
-      if (endDate) {
-        query = query.lte("triggered_at", endDate);
-      }
+			if (endDate) {
+				query = query.lte('triggered_at', endDate);
+			}
 
-      const { data, error } = await query
-        .order("triggered_at", { ascending: false })
-        .limit(limit);
+			const { data, error } = await query
+				.order('triggered_at', { ascending: false })
+				.limit(limit);
 
-      if (error) {
-        throw error;
-      }
+			if (error) {
+				throw error;
+			}
 
-      return data || [];
-    } catch (error) {
-      console.error("[SMSAlerts] Error fetching alert history:", error);
-      return [];
-    }
-  }
+			return data || [];
+		} catch (error) {
+			console.error('[SMSAlerts] Error fetching alert history:', error);
+			return [];
+		}
+	}
 }
 
 // Lazy singleton instance (created on first access)
 let smsAlertsServiceInstance: SMSAlertsService | null = null;
 
 export const smsAlertsService = {
-  get instance(): SMSAlertsService {
-    if (!smsAlertsServiceInstance) {
-      smsAlertsServiceInstance = new SMSAlertsService();
-    }
-    return smsAlertsServiceInstance;
-  },
-  // Proxy all methods for backward compatibility
-  checkAlerts: (...args: Parameters<SMSAlertsService["checkAlerts"]>) =>
-    smsAlertsService.instance.checkAlerts(...args),
-  resolveAlert: (...args: Parameters<SMSAlertsService["resolveAlert"]>) =>
-    smsAlertsService.instance.resolveAlert(...args),
-  getUnresolvedAlerts: (
-    ...args: Parameters<SMSAlertsService["getUnresolvedAlerts"]>
-  ) => smsAlertsService.instance.getUnresolvedAlerts(...args),
-  getAlertHistory: (...args: Parameters<SMSAlertsService["getAlertHistory"]>) =>
-    smsAlertsService.instance.getAlertHistory(...args),
+	get instance(): SMSAlertsService {
+		if (!smsAlertsServiceInstance) {
+			smsAlertsServiceInstance = new SMSAlertsService();
+		}
+		return smsAlertsServiceInstance;
+	},
+	// Proxy all methods for backward compatibility
+	checkAlerts: (...args: Parameters<SMSAlertsService['checkAlerts']>) =>
+		smsAlertsService.instance.checkAlerts(...args),
+	resolveAlert: (...args: Parameters<SMSAlertsService['resolveAlert']>) =>
+		smsAlertsService.instance.resolveAlert(...args),
+	getUnresolvedAlerts: (...args: Parameters<SMSAlertsService['getUnresolvedAlerts']>) =>
+		smsAlertsService.instance.getUnresolvedAlerts(...args),
+	getAlertHistory: (...args: Parameters<SMSAlertsService['getAlertHistory']>) =>
+		smsAlertsService.instance.getAlertHistory(...args)
 };

@@ -39,11 +39,11 @@ The worker scheduler required **N individual queries** to fetch user timezones:
 ```typescript
 // BAD: One query per user
 for (const pref of preferences) {
-  const { data: userPref } = await supabase
-    .from("user_brief_preferences")
-    .select("timezone")
-    .eq("user_id", pref.user_id)
-    .single();
+	const { data: userPref } = await supabase
+		.from('user_brief_preferences')
+		.select('timezone')
+		.eq('user_id', pref.user_id)
+		.single();
 }
 ```
 
@@ -63,11 +63,7 @@ Any timezone-related change required updating **4 different locations**:
 Code needed complex fallback chains:
 
 ```typescript
-const timezone =
-  briefPrefs?.timezone ||
-  smsPrefs?.timezone ||
-  calendarPrefs?.timezone ||
-  "UTC";
+const timezone = briefPrefs?.timezone || smsPrefs?.timezone || calendarPrefs?.timezone || 'UTC';
 ```
 
 This was error-prone and led to subtle bugs.
@@ -128,16 +124,13 @@ Update all code to read from `users.timezone` while maintaining fallbacks:
 
 ```typescript
 // Batch fetch pattern (scheduler) - 10-100x faster
-const { data: users } = await supabase
-  .from("users")
-  .select("id, timezone")
-  .in("id", userIds);
+const { data: users } = await supabase.from('users').select('id, timezone').in('id', userIds);
 
 const userTimezoneMap = new Map<string, string>();
 users?.forEach((user) => {
-  if (user.id && user.timezone) {
-    userTimezoneMap.set(user.id, user.timezone);
-  }
+	if (user.id && user.timezone) {
+		userTimezoneMap.set(user.id, user.timezone);
+	}
 });
 ```
 
@@ -164,11 +157,7 @@ await supabase.from('user_*_preferences').update({ timezone, ... });
 
 ```typescript
 // Fetch with fallback chain
-const { data: user } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
+const { data: user } = await supabase.from('users').select('timezone').eq('id', userId).single();
 
 const timezone = user?.timezone || prefs?.timezone || defaultTimezone;
 ```
@@ -281,73 +270,73 @@ ALTER TABLE user_notification_preferences DROP COLUMN timezone;
 ### Positive
 
 1. **Single Source of Truth**
-   - ONE authoritative timezone value per user
-   - Guaranteed consistency across all features
-   - Zero risk of timezone mismatches
+    - ONE authoritative timezone value per user
+    - Guaranteed consistency across all features
+    - Zero risk of timezone mismatches
 
 2. **Dramatic Performance Improvement**
-   - **Before**: N queries for timezone (one per user)
-   - **After**: 1 batch query for all user timezones
-   - **Result**: 10-100x faster scheduler performance
+    - **Before**: N queries for timezone (one per user)
+    - **After**: 1 batch query for all user timezones
+    - **Result**: 10-100x faster scheduler performance
 
 3. **Simplified Maintenance**
-   - Update timezone in ONE location
-   - Simpler code paths (no fallback chains)
-   - Easier to reason about timezone behavior
+    - Update timezone in ONE location
+    - Simpler code paths (no fallback chains)
+    - Easier to reason about timezone behavior
 
 4. **Better User Experience**
-   - Timezone updates affect ALL features instantly
-   - No confusion about multiple timezone settings
-   - Consistent behavior across platform
+    - Timezone updates affect ALL features instantly
+    - No confusion about multiple timezone settings
+    - Consistent behavior across platform
 
 5. **Zero Downtime Deployment**
-   - Incremental migration strategy
-   - Backward compatibility maintained
-   - Safe rollback path at every stage
+    - Incremental migration strategy
+    - Backward compatibility maintained
+    - Safe rollback path at every stage
 
 6. **Database Performance**
-   - Index `idx_users_timezone` speeds up lookups
-   - Simpler query plans (no JOINs for timezone)
-   - Better query caching
+    - Index `idx_users_timezone` speeds up lookups
+    - Simpler query plans (no JOINs for timezone)
+    - Better query caching
 
 ### Negative
 
 1. **Additional Query in Some Paths**
-   - Services need separate `users` table query
-   - Impact: ~5-10ms per request (negligible)
-   - Mitigation: Can JOIN users table in future optimization
+    - Services need separate `users` table query
+    - Impact: ~5-10ms per request (negligible)
+    - Mitigation: Can JOIN users table in future optimization
 
 2. **Temporary Dual-Write Overhead**
-   - API endpoints write to 2 locations during transition
-   - Impact: ~2-5ms per write (temporary)
-   - Resolution: Removed after cleanup migration
+    - API endpoints write to 2 locations during transition
+    - Impact: ~2-5ms per write (temporary)
+    - Resolution: Removed after cleanup migration
 
 3. **Migration Complexity**
-   - Two-phase migration (add column, then cleanup)
-   - Requires monitoring period before cleanup
-   - Mitigation: Comprehensive safety checks and rollback plan
+    - Two-phase migration (add column, then cleanup)
+    - Requires monitoring period before cleanup
+    - Mitigation: Comprehensive safety checks and rollback plan
 
 ### Mitigation Strategies
 
 1. **Performance Monitoring**
-   - Track scheduler execution time
-   - Monitor database query performance
-   - Alert on any timezone lookup failures
+    - Track scheduler execution time
+    - Monitor database query performance
+    - Alert on any timezone lookup failures
 
 2. **Data Consistency Checks**
-   - SQL queries to detect mismatches (during transition)
-   - Automated tests for timezone behavior
-   - Manual testing across all features
+    - SQL queries to detect mismatches (during transition)
+    - Automated tests for timezone behavior
+    - Manual testing across all features
 
 3. **Comprehensive Testing**
-   - Unit tests for all modified code paths
-   - Integration tests for timezone functionality
-   - Manual QA of timezone updates across features
+    - Unit tests for all modified code paths
+    - Integration tests for timezone functionality
+    - Manual QA of timezone updates across features
 
 4. **Safe Rollback Plan**
-   - Old columns preserved during transition
-   - Code can revert to old behavior
-   - No data loss at any stage
+    - Old columns preserved during transition
+    - Code can revert to old behavior
+    - No data loss at any stage
 
 ### Breaking Changes
 

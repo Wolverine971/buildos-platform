@@ -32,27 +32,27 @@ The daily brief emails now include comprehensive tracking capabilities to monito
 
 1. **Generate Tracking ID**: 32-character hex string using crypto.randomBytes
 2. **Create Email Record**: Insert into `emails` table with:
-   - `tracking_id`: Unique identifier
-   - `tracking_enabled`: Boolean flag
-   - `status`: 'pending' -> 'sent'
-   - `category`: 'daily_brief'
+    - `tracking_id`: Unique identifier
+    - `tracking_enabled`: Boolean flag
+    - `status`: 'pending' -> 'sent'
+    - `category`: 'daily_brief'
 
 3. **Create Recipient Record**: Insert into `email_recipients` table:
-   - Links to email record
-   - Stores recipient email
-   - Tracks delivery and open metrics
+    - Links to email record
+    - Stores recipient email
+    - Tracks delivery and open metrics
 
 4. **Embed Tracking Pixel**: Add to email HTML:
 
-   ```html
-   <img
-     src="https://build-os.com/api/email-tracking/{trackingId}"
-     width="1"
-     height="1"
-     style="display:none;"
-     alt=""
-   />
-   ```
+    ```html
+    <img
+    	src="https://build-os.com/api/email-tracking/{trackingId}"
+    	width="1"
+    	height="1"
+    	style="display:none;"
+    	alt=""
+    />
+    ```
 
 5. **Send Email**: Via Gmail SMTP with tracking metadata
 

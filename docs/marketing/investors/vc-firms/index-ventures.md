@@ -35,16 +35,16 @@ Index Ventures focuses on passionate, committed teams with technical DNA (80% of
 ### Most Relevant for BuildOS:
 
 - **Nina Achadjian** - Partner (San Francisco-based)
-  - Focus: AI, robotics, enterprise software, vertical SaaS
-  - Philosophy: "Excited by companies that build solutions to automate 'forgotten' functions and industries"
-  - Portfolio: ServiceTitan, Gong, Intercom, Persona, Motive
-  - Recognition: Forbes Midas Brink List 2022
+    - Focus: AI, robotics, enterprise software, vertical SaaS
+    - Philosophy: "Excited by companies that build solutions to automate 'forgotten' functions and industries"
+    - Portfolio: ServiceTitan, Gong, Intercom, Persona, Motive
+    - Recognition: Forbes Midas Brink List 2022
 
 - **Martin Mignot** - Partner (Europe/New York-based)
-  - Focus: Healthcare, AI, financial services
-  - Philosophy: "Products that leverage AI and automation to improve with each user"
-  - Track Record: Early investor in Revolut, led Algolia, Swile, Trainline
-  - Role: Helped establish Index's New York office in 2022
+    - Focus: Healthcare, AI, financial services
+    - Philosophy: "Products that leverage AI and automation to improve with each user"
+    - Track Record: Early investor in Revolut, led Algolia, Swile, Trainline
+    - Role: Helped establish Index's New York office in 2022
 
 ### Partner Expertise:
 

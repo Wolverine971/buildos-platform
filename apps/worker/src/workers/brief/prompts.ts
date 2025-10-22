@@ -2,116 +2,116 @@
 
 // Layer 4: LLM Enhancement - Timeblock-aware types
 export interface TimeBlockContextSuggestion {
-  title: string;
-  reason?: string;
-  project_id?: string | null;
-  project_name?: string | null;
-  priority?: string;
-  estimated_minutes?: number | null;
-  confidence?: number;
+	title: string;
+	reason?: string;
+	project_id?: string | null;
+	project_name?: string | null;
+	priority?: string;
+	estimated_minutes?: number | null;
+	confidence?: number;
 }
 
 export interface ProjectAllocationContext {
-  projectId: string;
-  projectName: string;
-  allocatedMinutes: number;
-  taskCount: number;
-  capacityStatus: "aligned" | "underallocated" | "overallocated";
-  suggestionsFromBlocks: TimeBlockContextSuggestion[];
+	projectId: string;
+	projectName: string;
+	allocatedMinutes: number;
+	taskCount: number;
+	capacityStatus: 'aligned' | 'underallocated' | 'overallocated';
+	suggestionsFromBlocks: TimeBlockContextSuggestion[];
 }
 
 export interface UnscheduledTimeContext {
-  totalMinutes: number;
-  blockCount: number;
-  suggestedTasks: TimeBlockContextSuggestion[];
+	totalMinutes: number;
+	blockCount: number;
+	suggestedTasks: TimeBlockContextSuggestion[];
 }
 
 export interface TimeAllocationContext {
-  totalAllocatedMinutes: number;
-  projectAllocations: ProjectAllocationContext[];
-  unscheduledTimeAnalysis: UnscheduledTimeContext;
+	totalAllocatedMinutes: number;
+	projectAllocations: ProjectAllocationContext[];
+	unscheduledTimeAnalysis: UnscheduledTimeContext;
 }
 
 export interface DailyBriefAnalysisTask {
-  id: string;
-  title: string;
-  status: string;
-  priority: string | null;
-  start_date: string | null;
-  start_date_formatted: string | null;
-  completed_at: string | null;
-  completed_at_formatted: string | null;
-  link: string;
-  has_calendar_event: boolean;
+	id: string;
+	title: string;
+	status: string;
+	priority: string | null;
+	start_date: string | null;
+	start_date_formatted: string | null;
+	completed_at: string | null;
+	completed_at_formatted: string | null;
+	link: string;
+	has_calendar_event: boolean;
 }
 
 export interface DailyBriefAnalysisNote {
-  id: string;
-  title: string;
-  updated_at: string;
-  updated_at_formatted: string;
-  link: string;
+	id: string;
+	title: string;
+	updated_at: string;
+	updated_at_formatted: string;
+	link: string;
 }
 
 export interface DailyBriefAnalysisProject {
-  project_id: string;
-  project_name: string;
-  project_link: string;
-  description?: string | null;
-  current_phase?: {
-    id: string;
-    name: string;
-    start_date: string;
-    end_date: string;
-  } | null;
-  stats: {
-    todays_task_count: number;
-    next_seven_days_task_count: number;
-    overdue_task_count: number;
-    recently_completed_count: number;
-  };
-  tasks_today: DailyBriefAnalysisTask[];
-  tasks_next_seven_days: DailyBriefAnalysisTask[];
-  overdue_tasks: DailyBriefAnalysisTask[];
-  recently_completed_tasks: DailyBriefAnalysisTask[];
-  recent_notes: DailyBriefAnalysisNote[];
+	project_id: string;
+	project_name: string;
+	project_link: string;
+	description?: string | null;
+	current_phase?: {
+		id: string;
+		name: string;
+		start_date: string;
+		end_date: string;
+	} | null;
+	stats: {
+		todays_task_count: number;
+		next_seven_days_task_count: number;
+		overdue_task_count: number;
+		recently_completed_count: number;
+	};
+	tasks_today: DailyBriefAnalysisTask[];
+	tasks_next_seven_days: DailyBriefAnalysisTask[];
+	overdue_tasks: DailyBriefAnalysisTask[];
+	recently_completed_tasks: DailyBriefAnalysisTask[];
+	recent_notes: DailyBriefAnalysisNote[];
 }
 
 export interface DailyBriefAnalysisPromptInput {
-  date: string;
-  timezone: string;
-  mainBriefMarkdown: string;
-  projects: DailyBriefAnalysisProject[];
-  priorityActions?: string[];
-  timeAllocationContext?: TimeAllocationContext;
+	date: string;
+	timezone: string;
+	mainBriefMarkdown: string;
+	projects: DailyBriefAnalysisProject[];
+	priorityActions?: string[];
+	timeAllocationContext?: TimeAllocationContext;
 }
 
 function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
-  if (hours > 0) return `${hours}h`;
-  return `${mins}m`;
+	const hours = Math.floor(minutes / 60);
+	const mins = minutes % 60;
+	if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+	if (hours > 0) return `${hours}h`;
+	return `${mins}m`;
 }
 
 export class DailyBriefAnalysisPrompt {
-  static getSystemPrompt(includeTimeblocks: boolean = false): string {
-    const basePrompt = `You are a BuildOS productivity strategist who writes insightful, actionable daily brief analyses.
+	static getSystemPrompt(includeTimeblocks: boolean = false): string {
+		const basePrompt = `You are a BuildOS productivity strategist who writes insightful, actionable daily brief analyses.
 
 Your goals:
 - Explain what the user should focus on today based on their current workload.
 - Highlight blockers, overdue work, and meaningful recent progress.
 - Summarize each active project with counts and linked task bullets so the user can dive in quickly.`;
 
-    const timeblockGoals = includeTimeblocks
-      ? `
+		const timeblockGoals = includeTimeblocks
+			? `
 - Consider scheduled timeblocks when assessing capacity and prioritization.
 - Highlight when a project's scheduled time aligns with its workload, or when there's a gap.
 - Reference timeblock ai_suggestions as contextual work recommendations.
 - Suggest reallocating unscheduled time to projects that need it.`
-      : "";
+			: '';
 
-    const toneAndFormat = `
+		const toneAndFormat = `
 
 Tone & format:
 - Confident, encouraging, and pragmatic.
@@ -119,44 +119,44 @@ Tone & format:
 - Always include task/project links that are provided in the data. Never invent URLs.
 - Keep the writing tight—avoid filler language.`;
 
-    const structure = `
+		const structure = `
 
 Structure your response as:
 1. A top-level heading for the analysis (e.g. "# Daily Brief Analysis - <Date>").
-2. A section summarizing today's outlook and priorities.${includeTimeblocks ? "\n3. If timeblocks are included: briefly assess time allocation and capacity across projects." : ""}
+2. A section summarizing today's outlook and priorities.${includeTimeblocks ? '\n3. If timeblocks are included: briefly assess time allocation and capacity across projects.' : ''}
 3. A section called "## Active Projects" with one sub-section per project (ordered by workload or urgency).
 4. Within each project, show quick stats plus bullets for "Tasks Today" and "Next 7 Days". Include counts, status cues, and links. If a list is empty, note that explicitly.
-5. Mention overdue or recently completed work when it shapes today's focus.${includeTimeblocks ? "\n6. If significant unscheduled time exists, suggest how the user could allocate it." : ""}
+5. Mention overdue or recently completed work when it shapes today's focus.${includeTimeblocks ? '\n6. If significant unscheduled time exists, suggest how the user could allocate it.' : ''}
 
 Never output JSON—deliver polished Markdown only.`;
 
-    return basePrompt + timeblockGoals + toneAndFormat + structure;
-  }
+		return basePrompt + timeblockGoals + toneAndFormat + structure;
+	}
 
-  static buildUserPrompt(input: DailyBriefAnalysisPromptInput): string {
-    const {
-      date,
-      timezone,
-      mainBriefMarkdown,
-      projects,
-      priorityActions,
-      timeAllocationContext,
-    } = input;
-    const safeProjects = JSON.stringify(projects, null, 2);
-    const safePriorityActions =
-      priorityActions && priorityActions.length > 0
-        ? priorityActions.join(", ")
-        : "None provided";
+	static buildUserPrompt(input: DailyBriefAnalysisPromptInput): string {
+		const {
+			date,
+			timezone,
+			mainBriefMarkdown,
+			projects,
+			priorityActions,
+			timeAllocationContext
+		} = input;
+		const safeProjects = JSON.stringify(projects, null, 2);
+		const safePriorityActions =
+			priorityActions && priorityActions.length > 0
+				? priorityActions.join(', ')
+				: 'None provided';
 
-    let prompt = `Date: ${date}
+		let prompt = `Date: ${date}
 Timezone: ${timezone}
 
 Priority actions detected: ${safePriorityActions}
 `;
 
-    // Add timeblock context if available
-    if (timeAllocationContext) {
-      prompt += `
+		// Add timeblock context if available
+		if (timeAllocationContext) {
+			prompt += `
 ## Time Allocation Context
 
 **Total scheduled**: ${formatMinutes(timeAllocationContext.totalAllocatedMinutes)}
@@ -164,45 +164,41 @@ Priority actions detected: ${safePriorityActions}
 ### Projects & Time Allocation:
 `;
 
-      for (const proj of timeAllocationContext.projectAllocations) {
-        prompt += `\n- **${proj.projectName}**: ${formatMinutes(proj.allocatedMinutes)} allocated, ${proj.taskCount} task(s) today
+			for (const proj of timeAllocationContext.projectAllocations) {
+				prompt += `\n- **${proj.projectName}**: ${formatMinutes(proj.allocatedMinutes)} allocated, ${proj.taskCount} task(s) today
   - Capacity status: ${proj.capacityStatus}`;
 
-        if (
-          proj.suggestionsFromBlocks &&
-          proj.suggestionsFromBlocks.length > 0
-        ) {
-          prompt += `\n  - Timeblock suggestions: ${proj.suggestionsFromBlocks
-            .slice(0, 2)
-            .map((s) => s.title)
-            .join(", ")}`;
-        }
-        prompt += `\n`;
-      }
+				if (proj.suggestionsFromBlocks && proj.suggestionsFromBlocks.length > 0) {
+					prompt += `\n  - Timeblock suggestions: ${proj.suggestionsFromBlocks
+						.slice(0, 2)
+						.map((s) => s.title)
+						.join(', ')}`;
+				}
+				prompt += `\n`;
+			}
 
-      // Unscheduled time
-      if (
-        timeAllocationContext.unscheduledTimeAnalysis &&
-        timeAllocationContext.unscheduledTimeAnalysis.totalMinutes > 0
-      ) {
-        prompt += `\n### Unscheduled Time:
+			// Unscheduled time
+			if (
+				timeAllocationContext.unscheduledTimeAnalysis &&
+				timeAllocationContext.unscheduledTimeAnalysis.totalMinutes > 0
+			) {
+				prompt += `\n### Unscheduled Time:
 - **${timeAllocationContext.unscheduledTimeAnalysis.blockCount} blocks** (${formatMinutes(timeAllocationContext.unscheduledTimeAnalysis.totalMinutes)} total)`;
 
-        if (
-          timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks &&
-          timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks.length >
-            0
-        ) {
-          prompt += `\n- Suggested tasks: ${timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks
-            .slice(0, 3)
-            .map((s) => s.title)
-            .join(", ")}`;
-        }
-        prompt += `\n`;
-      }
-    }
+				if (
+					timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks &&
+					timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks.length > 0
+				) {
+					prompt += `\n- Suggested tasks: ${timeAllocationContext.unscheduledTimeAnalysis.suggestedTasks
+						.slice(0, 3)
+						.map((s) => s.title)
+						.join(', ')}`;
+				}
+				prompt += `\n`;
+			}
+		}
 
-    prompt += `
+		prompt += `
 Project data:
 \`\`\`json
 ${safeProjects}
@@ -215,8 +211,8 @@ ${mainBriefMarkdown}
 
 Write the analysis following the system instructions.`;
 
-    return prompt;
-  }
+		return prompt;
+	}
 }
 
 /**
@@ -224,23 +220,23 @@ Write the analysis following the system instructions.`;
  */
 
 export interface ReengagementPromptInput {
-  date: string;
-  timezone: string;
-  daysSinceLastLogin: number;
-  lastLoginDate: string;
-  pendingTasksCount: number;
-  overdueTasksCount: number;
-  activeProjectsCount: number;
-  topPriorityTasks: Array<{ title: string; project: string }>;
-  recentCompletions: Array<{ title: string; completedAt: string }>;
-  mainBriefMarkdown: string;
+	date: string;
+	timezone: string;
+	daysSinceLastLogin: number;
+	lastLoginDate: string;
+	pendingTasksCount: number;
+	overdueTasksCount: number;
+	activeProjectsCount: number;
+	topPriorityTasks: Array<{ title: string; project: string }>;
+	recentCompletions: Array<{ title: string; completedAt: string }>;
+	mainBriefMarkdown: string;
 }
 
 export class ReengagementBriefPrompt {
-  static getSystemPrompt(daysSinceLastLogin: number): string {
-    const tone = this.getToneForInactivityLevel(daysSinceLastLogin);
+	static getSystemPrompt(daysSinceLastLogin: number): string {
+		const tone = this.getToneForInactivityLevel(daysSinceLastLogin);
 
-    return `You are a BuildOS productivity coach writing a re-engagement email to a user who hasn't logged in for ${daysSinceLastLogin} days.
+		return `You are a BuildOS productivity coach writing a re-engagement email to a user who hasn't logged in for ${daysSinceLastLogin} days.
 
 Your tone should be ${tone}. Focus on:
 1. Acknowledging their absence without guilt or shame
@@ -263,76 +259,76 @@ Key guidelines:
 - Focus on the positive ("Your projects are ready for you")
 - Highlight progress they made before leaving if available
 - Make it easy to jump back in (clear next steps)`;
-  }
+	}
 
-  static getToneForInactivityLevel(daysSinceLastLogin: number): string {
-    if (daysSinceLastLogin <= 4) {
-      return "gentle and encouraging";
-    } else if (daysSinceLastLogin <= 10) {
-      return "motivating and action-oriented";
-    } else {
-      return "warm but direct with a clear value proposition";
-    }
-  }
+	static getToneForInactivityLevel(daysSinceLastLogin: number): string {
+		if (daysSinceLastLogin <= 4) {
+			return 'gentle and encouraging';
+		} else if (daysSinceLastLogin <= 10) {
+			return 'motivating and action-oriented';
+		} else {
+			return 'warm but direct with a clear value proposition';
+		}
+	}
 
-  static getSubjectLine(daysSinceLastLogin: number): string {
-    if (daysSinceLastLogin <= 4) {
-      return "Your BuildOS tasks are waiting for you";
-    } else if (daysSinceLastLogin <= 10) {
-      return "You've made progress - don't let it slip away";
-    } else {
-      return "We miss you at BuildOS - here's what's waiting";
-    }
-  }
+	static getSubjectLine(daysSinceLastLogin: number): string {
+		if (daysSinceLastLogin <= 4) {
+			return 'Your BuildOS tasks are waiting for you';
+		} else if (daysSinceLastLogin <= 10) {
+			return "You've made progress - don't let it slip away";
+		} else {
+			return "We miss you at BuildOS - here's what's waiting";
+		}
+	}
 
-  static buildUserPrompt(input: ReengagementPromptInput): string {
-    const {
-      date,
-      timezone,
-      daysSinceLastLogin,
-      lastLoginDate,
-      pendingTasksCount,
-      overdueTasksCount,
-      activeProjectsCount,
-      topPriorityTasks,
-      recentCompletions,
-      mainBriefMarkdown,
-    } = input;
+	static buildUserPrompt(input: ReengagementPromptInput): string {
+		const {
+			date,
+			timezone,
+			daysSinceLastLogin,
+			lastLoginDate,
+			pendingTasksCount,
+			overdueTasksCount,
+			activeProjectsCount,
+			topPriorityTasks,
+			recentCompletions,
+			mainBriefMarkdown
+		} = input;
 
-    let prompt = `Generate a re-engagement email for a user with the following context:
+		let prompt = `Generate a re-engagement email for a user with the following context:
 
 Date: ${date}
 Timezone: ${timezone}
 Days since last login: ${daysSinceLastLogin}
 Last login: ${lastLoginDate}
-Pending tasks: ${pendingTasksCount}${overdueTasksCount > 0 ? ` (${overdueTasksCount} overdue)` : ""}
+Pending tasks: ${pendingTasksCount}${overdueTasksCount > 0 ? ` (${overdueTasksCount} overdue)` : ''}
 Active projects: ${activeProjectsCount}
 
 `;
 
-    if (topPriorityTasks.length > 0) {
-      prompt += `Top priority tasks:\n`;
-      topPriorityTasks.forEach((task) => {
-        prompt += `  - ${task.title} (${task.project})\n`;
-      });
-      prompt += `\n`;
-    }
+		if (topPriorityTasks.length > 0) {
+			prompt += `Top priority tasks:\n`;
+			topPriorityTasks.forEach((task) => {
+				prompt += `  - ${task.title} (${task.project})\n`;
+			});
+			prompt += `\n`;
+		}
 
-    if (recentCompletions.length > 0) {
-      prompt += `Recent completions before leaving:\n`;
-      recentCompletions.forEach((task) => {
-        prompt += `  - ${task.title}\n`;
-      });
-      prompt += `\n`;
-    }
+		if (recentCompletions.length > 0) {
+			prompt += `Recent completions before leaving:\n`;
+			recentCompletions.forEach((task) => {
+				prompt += `  - ${task.title}\n`;
+			});
+			prompt += `\n`;
+		}
 
-    prompt += `Current brief content for reference:
+		prompt += `Current brief content for reference:
 \`\`\`markdown
 ${mainBriefMarkdown}
 \`\`\`
 
 Create a personalized re-engagement message that encourages them to return and continue their productivity journey.`;
 
-    return prompt;
-  }
+		return prompt;
+	}
 }

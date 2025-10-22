@@ -4,18 +4,8 @@ researcher: Claude Code
 git_commit: 70d706ca45acc7315c1979a134953bb634fb5f57
 branch: main
 repository: buildos-platform
-topic: "Comprehensive Bug Analysis: Services, APIs, TypeScript Types, and Error Handling"
-tags:
-  [
-    research,
-    codebase,
-    bugs,
-    security,
-    typescript,
-    error-handling,
-    services,
-    api-endpoints,
-  ]
+topic: 'Comprehensive Bug Analysis: Services, APIs, TypeScript Types, and Error Handling'
+tags: [research, codebase, bugs, security, typescript, error-handling, services, api-endpoints]
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude Code
@@ -129,8 +119,8 @@ try {
 
 ```typescript
 setTimeout(() => {
-  const priority2 = this.getPriority2Data(tab);
-  Promise.all(priority2).catch(console.error); // SILENT FAILURE
+	const priority2 = this.getPriority2Data(tab);
+	Promise.all(priority2).catch(console.error); // SILENT FAILURE
 }, 100);
 ```
 
@@ -154,8 +144,8 @@ setTimeout(() => {
 
 ```typescript
 if (newRecord?.id && this.state.recentLocalUpdates.has(newRecord.id)) {
-  console.log("[RealtimeService] Skipping - recent local update");
-  return; // Race condition: update might arrive before tracking
+	console.log('[RealtimeService] Skipping - recent local update');
+	return; // Race condition: update might arrive before tracking
 }
 ```
 
@@ -222,7 +212,7 @@ if (newRecord?.id && this.state.recentLocalUpdates.has(newRecord.id)) {
 
 ```typescript
 if (search) {
-  query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+	query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
 }
 ```
 
@@ -231,8 +221,8 @@ if (search) {
 
 ```typescript
 if (search) {
-  const sanitized = search.replace(/[%_]/g, "\\$&");
-  query = query.or(`email.ilike.%${sanitized}%,name.ilike.%${sanitized}%`);
+	const sanitized = search.replace(/[%_]/g, '\\$&');
+	query = query.or(`email.ilike.%${sanitized}%,name.ilike.%${sanitized}%`);
 }
 ```
 
@@ -245,17 +235,17 @@ if (search) {
 ```typescript
 const { userId, updates } = await request.json();
 // No field validation
-await supabase.from("users").update(updates).eq("id", userId);
+await supabase.from('users').update(updates).eq('id', userId);
 ```
 
 **Risk**: Admin can grant themselves elevated privileges
 **Suggested Fix**: Whitelist allowed fields
 
 ```typescript
-const ALLOWED_UPDATES = ["name", "bio", "is_admin", "completed_onboarding"];
+const ALLOWED_UPDATES = ['name', 'bio', 'is_admin', 'completed_onboarding'];
 const sanitizedUpdates = Object.keys(updates)
-  .filter((key) => ALLOWED_UPDATES.includes(key))
-  .reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
+	.filter((key) => ALLOWED_UPDATES.includes(key))
+	.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
 ```
 
 #### 2.3: Mass Assignment Vulnerability in Project Updates
@@ -279,7 +269,7 @@ const sanitizedUpdates = Object.keys(updates)
 
 ```typescript
 if (!authHeader || authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
-  return json({ error: "Unauthorized" }, { status: 401 });
+	return json({ error: 'Unauthorized' }, { status: 401 });
 }
 ```
 
@@ -308,9 +298,7 @@ if (!authHeader || authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
 ```typescript
 const MAX_CONTENT_LENGTH = 50000;
 if (content.length > MAX_CONTENT_LENGTH) {
-  return SSEResponse.badRequest(
-    `Content too long. Max ${MAX_CONTENT_LENGTH} characters.`,
-  );
+	return SSEResponse.badRequest(`Content too long. Max ${MAX_CONTENT_LENGTH} characters.`);
 }
 ```
 
@@ -334,10 +322,10 @@ if (content.length > MAX_CONTENT_LENGTH) {
 
 ```typescript
 if (!Array.isArray(updates) || updates.length === 0) {
-  return ApiResponse.badRequest("No updates provided");
+	return ApiResponse.badRequest('No updates provided');
 }
 if (updates.length > 100) {
-  return ApiResponse.badRequest("Too many updates. Max 100 per request.");
+	return ApiResponse.badRequest('Too many updates. Max 100 per request.');
 }
 ```
 
@@ -350,7 +338,7 @@ if (updates.length > 100) {
 **Example**: `apps/web/src/routes/api/daily-briefs/[id]/+server.ts:25`
 
 ```typescript
-return json({ error: "Brief not found" }, { status: 404 });
+return json({ error: 'Brief not found' }, { status: 404 });
 ```
 
 **Impact**: Difficult debugging, poor user experience
@@ -395,9 +383,9 @@ return json({ error: "Brief not found" }, { status: 404 });
 
 ```typescript
 export interface AvailableSlot {
-  start: any; // ❌ CRITICAL
-  end: any; // ❌ CRITICAL
-  duration_minutes: number;
+	start: any; // ❌ CRITICAL
+	end: any; // ❌ CRITICAL
+	duration_minutes: number;
 }
 ```
 
@@ -406,9 +394,9 @@ export interface AvailableSlot {
 
 ```typescript
 export interface AvailableSlot {
-  start: Date | string; // ISO 8601 string or Date object
-  end: Date | string;
-  duration_minutes: number;
+	start: Date | string; // ISO 8601 string or Date object
+	end: Date | string;
+	duration_minutes: number;
 }
 ```
 
@@ -440,13 +428,13 @@ private extractErrorInfo(error: ErrorLike): { message: string; stack?: string; c
 
 ```typescript
 export interface ParsedOperation {
-  data: {
-    project_id?: string;
-    project_ref?: string;
-    [key: string]: any; // ❌ Allows any field
-  };
-  conditions?: Record<string, any>; // ❌
-  result?: Record<string, any>; // ❌
+	data: {
+		project_id?: string;
+		project_ref?: string;
+		[key: string]: any; // ❌ Allows any field
+	};
+	conditions?: Record<string, any>; // ❌
+	result?: Record<string, any>; // ❌
 }
 ```
 
@@ -457,10 +445,10 @@ export interface ParsedOperation {
 type OperationData = ProjectData | TaskData | NoteData | PhaseData;
 
 interface ProjectData {
-  name: string;
-  slug: string;
-  description?: string;
-  // ... all valid project fields
+	name: string;
+	slug: string;
+	description?: string;
+	// ... all valid project fields
 }
 ```
 
@@ -610,9 +598,9 @@ RealtimeProjectService.trackLocalUpdate(result.id);
 
 ```typescript
 if (!taskProjectId) {
-  console.error(`Cannot update task ${taskId}: project_id not found`);
-  // Keeps optimistic update even though API call can't proceed!
-  return { success: false };
+	console.error(`Cannot update task ${taskId}: project_id not found`);
+	// Keeps optimistic update even though API call can't proceed!
+	return { success: false };
 }
 ```
 
@@ -687,13 +675,13 @@ return await this.mergeDualProcessingResultsForExistingProject(contextResult, ta
 
 ```typescript
 for (const operation of operationsToExecute) {
-  try {
-    const result = await this.executeOperation(operation);
-    successful.push(result);
-  } catch (error) {
-    failed.push({ ...operation, error });
-    // Continues WITHOUT rolling back previous operations
-  }
+	try {
+		const result = await this.executeOperation(operation);
+		successful.push(result);
+	} catch (error) {
+		failed.push({ ...operation, error });
+		// Continues WITHOUT rolling back previous operations
+	}
 }
 ```
 
@@ -720,8 +708,8 @@ for (const operation of operationsToExecute) {
 
 ```typescript
 Object.keys(state.weeklyTasksByDate).forEach((date) => {
-  const tasks = state.weeklyTasksByDate[date];
-  // No check if tasks is array before operations
+	const tasks = state.weeklyTasksByDate[date];
+	// No check if tasks is array before operations
 });
 ```
 
@@ -763,77 +751,77 @@ Object.keys(state.weeklyTasksByDate).forEach((date) => {
 **Top Issues by Service:**
 
 1. **SmartLLMService** (`smart-llm-service.ts`)
-   - Infinite retry loop potential (Line 345-366)
-   - Missing error type checks (Line 535-538)
-   - 12 typing issues with `any` types
+    - Infinite retry loop potential (Line 345-366)
+    - Missing error type checks (Line 535-538)
+    - 12 typing issues with `any` types
 
 2. **DashboardDataService** (`dashboardData.service.ts`)
-   - Race condition in optimistic updates (Line 190-229)
-   - Missing null data handling (Line 221)
-   - Potential memory leak (Line 39-45)
+    - Race condition in optimistic updates (Line 190-229)
+    - Missing null data handling (Line 221)
+    - Potential memory leak (Line 39-45)
 
 3. **RealtimeProjectService** (`realtimeProject.service.ts`)
-   - Race condition in duplicate detection (Line 176-179)
-   - Static state not properly reset (Line 469-485)
-   - Memory leak in timeout tracking (Line 154-156)
+    - Race condition in duplicate detection (Line 176-179)
+    - Static state not properly reset (Line 469-485)
+    - Memory leak in timeout tracking (Line 154-156)
 
 4. **CalendarService** (`calendar-service.ts`)
-   - Missing try-catch around API calls (Line 370-400)
-   - 17 typing issues with `any` types
-   - Timezone validation missing (Line 206-233)
+    - Missing try-catch around API calls (Line 370-400)
+    - 17 typing issues with `any` types
+    - Timezone validation missing (Line 206-233)
 
 5. **ProjectDataService** (`projectData.service.ts`)
-   - Uncaught promise rejections (Line 43-52)
-   - Request queue memory leak (Line 113-135)
-   - Synthesis loading state race (Line 246-252)
+    - Uncaught promise rejections (Line 43-52)
+    - Request queue memory leak (Line 113-135)
+    - Synthesis loading state race (Line 246-252)
 
 ### API Endpoints Analysis
 
 **Top Vulnerable Endpoints:**
 
 1. **Admin User Endpoints** (`api/admin/users/`)
-   - SQL injection via search parameters
-   - Privilege escalation vulnerability
-   - N+1 query performance issues
+    - SQL injection via search parameters
+    - Privilege escalation vulnerability
+    - N+1 query performance issues
 
 2. **Brain Dump Endpoints** (`api/braindumps/`)
-   - Missing input length validation
-   - No rate limiting on expensive LLM operations
-   - Inconsistent error handling
+    - Missing input length validation
+    - No rate limiting on expensive LLM operations
+    - Inconsistent error handling
 
 3. **Project Delete Endpoint** (`api/projects/[id]/delete/`)
-   - No transaction support
-   - 10+ sequential operations without rollback
-   - Calendar deletion errors swallowed
+    - No transaction support
+    - 10+ sequential operations without rollback
+    - Calendar deletion errors swallowed
 
 4. **Webhook Endpoints** (`api/webhooks/`)
-   - Timing attack vulnerabilities in auth
-   - Missing CSRF protection
-   - No signature validation on some webhooks
+    - Timing attack vulnerabilities in auth
+    - Missing CSRF protection
+    - No signature validation on some webhooks
 
 5. **Task Update Endpoints** (`api/projects/[id]/tasks/`)
-   - Race conditions between task and calendar updates
-   - Batch operations lack rate limiting
-   - Missing input validation
+    - Race conditions between task and calendar updates
+    - Batch operations lack rate limiting
+    - Missing input validation
 
 ### Component Integration Analysis
 
 **Critical Integration Points:**
 
 1. **Project Page Component** → **ProjectDataService** → **RealtimeProjectService**
-   - Memory leak in cleanup (1055-1265)
-   - Race condition between tabs and data loading
-   - Incomplete service destruction
+    - Memory leak in cleanup (1055-1265)
+    - Race condition between tabs and data loading
+    - Incomplete service destruction
 
 2. **Dashboard Component** → **DashboardDataService** → **DashboardStore**
-   - Optimistic update rollback issues
-   - Stale task references when moving between lists
-   - Cache temporarily disabled causing performance issues
+    - Optimistic update rollback issues
+    - Stale task references when moving between lists
+    - Cache temporarily disabled causing performance issues
 
 3. **BrainDumpModal** → **BrainDumpProcessor** → **OperationsExecutor**
-   - SSE connection not cleaned up properly
-   - No transaction support in operations
-   - Dual processing validation gaps
+    - SSE connection not cleaned up properly
+    - No transaction support in operations
+    - Dual processing validation gaps
 
 ---
 
@@ -874,29 +862,29 @@ Object.keys(state.weeklyTasksByDate).forEach((date) => {
 ### Pattern Observations
 
 1. **Service Layer Architecture**
-   - Singleton pattern used extensively but not always correctly implemented
-   - Many services lack proper cleanup/destroy methods
-   - Cache management inconsistent across services
+    - Singleton pattern used extensively but not always correctly implemented
+    - Many services lack proper cleanup/destroy methods
+    - Cache management inconsistent across services
 
 2. **Store Management**
-   - Optimistic updates pattern is solid but implementation has race conditions
-   - Stores don't always validate data before mutations
-   - No transaction/rollback pattern for complex state changes
+    - Optimistic updates pattern is solid but implementation has race conditions
+    - Stores don't always validate data before mutations
+    - No transaction/rollback pattern for complex state changes
 
 3. **API Design**
-   - Inconsistent use of ApiResponse utility
-   - Authentication patterns vary (safeGetSession vs requireAuth)
-   - Error handling not standardized
+    - Inconsistent use of ApiResponse utility
+    - Authentication patterns vary (safeGetSession vs requireAuth)
+    - Error handling not standardized
 
 4. **Type Safety**
-   - Good architectural foundation but too many `any` escape hatches
-   - Missing return type annotations on many functions
-   - Type guards not used consistently
+    - Good architectural foundation but too many `any` escape hatches
+    - Missing return type annotations on many functions
+    - Type guards not used consistently
 
 5. **Error Handling**
-   - ErrorLoggerService exists but inconsistently used
-   - Try-catch blocks missing in many async functions
-   - Silent failures common in background operations
+    - ErrorLoggerService exists but inconsistently used
+    - Try-catch blocks missing in many async functions
+    - Silent failures common in background operations
 
 ### Positive Patterns Found
 
@@ -913,62 +901,62 @@ Object.keys(state.weeklyTasksByDate).forEach((date) => {
 ### Immediate Actions (Critical - Week 1)
 
 1. **Security Fixes**
-   - [ ] Fix SQL injection in admin user search (`api/admin/users/+server.ts:42`)
-   - [ ] Add field whitelisting for admin user updates (`api/admin/users/+server.ts:172`)
-   - [ ] Implement constant-time comparison for webhook auth
-   - [ ] Fix Stripe webhook signature validation
+    - [ ] Fix SQL injection in admin user search (`api/admin/users/+server.ts:42`)
+    - [ ] Add field whitelisting for admin user updates (`api/admin/users/+server.ts:172`)
+    - [ ] Implement constant-time comparison for webhook auth
+    - [ ] Fix Stripe webhook signature validation
 
 2. **Data Integrity**
-   - [ ] Add transaction support to OperationsExecutor
-   - [ ] Fix optimistic update race condition in DashboardDataService
-   - [ ] Add rollback mechanism for failed operations
-   - [ ] Implement optimistic locking for concurrent updates
+    - [ ] Add transaction support to OperationsExecutor
+    - [ ] Fix optimistic update race condition in DashboardDataService
+    - [ ] Add rollback mechanism for failed operations
+    - [ ] Implement optimistic locking for concurrent updates
 
 3. **Runtime Safety**
-   - [ ] Fix infinite retry loop in SmartLLMService
-   - [ ] Add try-catch to calendar service API calls
-   - [ ] Fix memory leak in project page component cleanup
-   - [ ] Add SSE connection cleanup in brain dump modal
+    - [ ] Fix infinite retry loop in SmartLLMService
+    - [ ] Add try-catch to calendar service API calls
+    - [ ] Fix memory leak in project page component cleanup
+    - [ ] Add SSE connection cleanup in brain dump modal
 
 ### Short-term Actions (High Priority - Weeks 2-4)
 
 4. **Type Safety**
-   - [ ] Replace `any` types in AvailableSlot interface
-   - [ ] Type ParsedOperation.data with union types
-   - [ ] Add return type annotations to all public methods
-   - [ ] Fix unsafe type assertions in operations-executor
+    - [ ] Replace `any` types in AvailableSlot interface
+    - [ ] Type ParsedOperation.data with union types
+    - [ ] Add return type annotations to all public methods
+    - [ ] Fix unsafe type assertions in operations-executor
 
 5. **Error Handling**
-   - [ ] Standardize ErrorLogger usage across all services
-   - [ ] Add try-catch to all async functions
-   - [ ] Validate Promise.allSettled results before processing
-   - [ ] Implement retry logic for LLM API calls
+    - [ ] Standardize ErrorLogger usage across all services
+    - [ ] Add try-catch to all async functions
+    - [ ] Validate Promise.allSettled results before processing
+    - [ ] Implement retry logic for LLM API calls
 
 6. **Input Validation**
-   - [ ] Add max length validation to brain dump endpoint
-   - [ ] Implement timezone validation whitelist
-   - [ ] Add field validation to all API endpoints
-   - [ ] Implement rate limiting on expensive operations
+    - [ ] Add max length validation to brain dump endpoint
+    - [ ] Implement timezone validation whitelist
+    - [ ] Add field validation to all API endpoints
+    - [ ] Implement rate limiting on expensive operations
 
 ### Medium-term Actions (Medium Priority - Months 2-3)
 
 7. **Code Quality**
-   - [ ] Enable `strict: true` in tsconfig.json
-   - [ ] Add `noImplicitAny: true`
-   - [ ] Implement ErrorBoundary components in Svelte
-   - [ ] Standardize authentication pattern across endpoints
+    - [ ] Enable `strict: true` in tsconfig.json
+    - [ ] Add `noImplicitAny: true`
+    - [ ] Implement ErrorBoundary components in Svelte
+    - [ ] Standardize authentication pattern across endpoints
 
 8. **Performance**
-   - [ ] Fix N+1 queries in admin user endpoint
-   - [ ] Optimize dashboard cache strategy
-   - [ ] Implement request cancellation for tab switching
-   - [ ] Add proper cleanup for request queues
+    - [ ] Fix N+1 queries in admin user endpoint
+    - [ ] Optimize dashboard cache strategy
+    - [ ] Implement request cancellation for tab switching
+    - [ ] Add proper cleanup for request queues
 
 9. **Testing**
-   - [ ] Add integration tests for race conditions
-   - [ ] Test error handling edge cases
-   - [ ] Add E2E tests for critical flows
-   - [ ] Test timezone handling edge cases
+    - [ ] Add integration tests for race conditions
+    - [ ] Test error handling edge cases
+    - [ ] Add E2E tests for critical flows
+    - [ ] Test timezone handling edge cases
 
 ### Long-term Actions (Low Priority - Ongoing)
 
@@ -1028,34 +1016,34 @@ Object.keys(state.weeklyTasksByDate).forEach((date) => {
 ### Recommended Test Coverage
 
 1. **Security Tests**
-   - SQL injection attempts on search endpoints
-   - Privilege escalation attempts on admin endpoints
-   - Webhook signature validation
-   - CSRF token validation
+    - SQL injection attempts on search endpoints
+    - Privilege escalation attempts on admin endpoints
+    - Webhook signature validation
+    - CSRF token validation
 
 2. **Integration Tests**
-   - Race condition scenarios (real-time + optimistic updates)
-   - Concurrent update conflicts
-   - Transaction rollback scenarios
-   - Memory leak detection (component mount/unmount cycles)
+    - Race condition scenarios (real-time + optimistic updates)
+    - Concurrent update conflicts
+    - Transaction rollback scenarios
+    - Memory leak detection (component mount/unmount cycles)
 
 3. **Error Handling Tests**
-   - Network failure scenarios
-   - LLM API timeout/rate limit handling
-   - Calendar API token expiry
-   - Partial operation failures
+    - Network failure scenarios
+    - LLM API timeout/rate limit handling
+    - Calendar API token expiry
+    - Partial operation failures
 
 4. **Edge Case Tests**
-   - Timezone edge cases (DST transitions)
-   - Calendar sync during token expiry
-   - Empty/malformed input handling
-   - Extremely long input handling
+    - Timezone edge cases (DST transitions)
+    - Calendar sync during token expiry
+    - Empty/malformed input handling
+    - Extremely long input handling
 
 5. **Performance Tests**
-   - N+1 query detection
-   - Rate limiting validation
-   - Cache effectiveness
-   - Memory usage monitoring
+    - N+1 query detection
+    - Rate limiting validation
+    - Cache effectiveness
+    - Memory usage monitoring
 
 ---
 
@@ -1133,17 +1121,15 @@ All critical and high-priority security and data integrity issues have been syst
 ```typescript
 // BEFORE (Vulnerable)
 if (search) {
-  query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+	query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
 }
 
 // AFTER (Fixed)
 if (search) {
-  // Sanitize search input to prevent SQL injection
-  // Escape special characters: %, _, \
-  const sanitizedSearch = search.replace(/[\\%_]/g, "\\$&");
-  query = query.or(
-    `email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`,
-  );
+	// Sanitize search input to prevent SQL injection
+	// Escape special characters: %, _, \
+	const sanitizedSearch = search.replace(/[\\%_]/g, '\\$&');
+	query = query.or(`email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`);
 }
 ```
 
@@ -1164,26 +1150,23 @@ if (search) {
 ```typescript
 // BEFORE (Vulnerable)
 const { error } = await supabase
-  .from("users")
-  .update(updates) // No field filtering
-  .eq("id", userId);
+	.from('users')
+	.update(updates) // No field filtering
+	.eq('id', userId);
 
 // AFTER (Fixed)
 // Whitelist allowed fields to prevent privilege escalation
-const ALLOWED_FIELDS = ["name", "bio", "is_admin", "completed_onboarding"];
+const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'completed_onboarding'];
 const sanitizedUpdates = Object.keys(updates)
-  .filter((key) => ALLOWED_FIELDS.includes(key))
-  .reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
+	.filter((key) => ALLOWED_FIELDS.includes(key))
+	.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
 
 // Ensure we have at least one field to update
 if (Object.keys(sanitizedUpdates).length === 0) {
-  return ApiResponse.badRequest("No valid fields to update");
+	return ApiResponse.badRequest('No valid fields to update');
 }
 
-const { error } = await supabase
-  .from("users")
-  .update(sanitizedUpdates)
-  .eq("id", userId);
+const { error } = await supabase.from('users').update(sanitizedUpdates).eq('id', userId);
 ```
 
 **Test Coverage**: `apps/web/src/routes/api/admin/users/server.test.ts` (Lines 83-186)
@@ -1214,34 +1197,34 @@ const { error } = await supabase
 ```typescript
 // BEFORE (Vulnerable)
 if (authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
-  return json({ error: "Unauthorized" }, { status: 401 });
+	return json({ error: 'Unauthorized' }, { status: 401 });
 }
 
 // AFTER (Fixed)
-import { timingSafeEqual } from "crypto";
+import { timingSafeEqual } from 'crypto';
 
 /**
  * Constant-time string comparison to prevent timing attacks
  */
 function constantTimeCompare(a: string, b: string): boolean {
-  try {
-    if (a.length !== b.length) {
-      return false;
-    }
-    return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
-  } catch {
-    return false;
-  }
+	try {
+		if (a.length !== b.length) {
+			return false;
+		}
+		return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
+	} catch {
+		return false;
+	}
 }
 
 export const GET: RequestHandler = async ({ request }) => {
-  const authHeader = request.headers.get("authorization");
-  const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
+	const authHeader = request.headers.get('authorization');
+	const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
 
-  if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // ...
+	if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+	// ...
 };
 ```
 
@@ -1258,17 +1241,15 @@ export const GET: RequestHandler = async ({ request }) => {
 ```typescript
 // BEFORE (Insecure)
 if (STRIPE_WEBHOOK_SECRET) {
-  // Verify signature if secret is configured
-  // ...
+	// Verify signature if secret is configured
+	// ...
 }
 // Continue processing even if secret not configured
 
 // AFTER (Fixed)
 if (!STRIPE_WEBHOOK_SECRET) {
-  console.error(
-    "CRITICAL: Stripe webhook secret not configured - rejecting all webhooks",
-  );
-  return json({ error: "Unauthorized" }, { status: 401 });
+	console.error('CRITICAL: Stripe webhook secret not configured - rejecting all webhooks');
+	return json({ error: 'Unauthorized' }, { status: 401 });
 }
 // Always verify signature - fail closed
 ```
@@ -1362,8 +1343,8 @@ const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
 // Find task to get project_id
 const task = this.findTaskInAllLists(currentState, taskId);
 if (!taskProjectId) {
-  // BUG: Optimistic update already applied but not rolled back
-  return { success: false };
+	// BUG: Optimistic update already applied but not rolled back
+	return { success: false };
 }
 
 // AFTER (Fixed)
@@ -1375,15 +1356,12 @@ const task = this.findTaskInAllLists(currentState, taskId);
 const taskProjectId = projectId || task?.project_id;
 
 if (!taskProjectId) {
-  console.error(
-    `[DashboardDataService] Cannot update task ${taskId}: project_id not found`,
-  );
-  // Don't apply optimistic update if we can't make the API call
-  return {
-    success: false,
-    message:
-      "Task project information not available. Please refresh the dashboard.",
-  };
+	console.error(`[DashboardDataService] Cannot update task ${taskId}: project_id not found`);
+	// Don't apply optimistic update if we can't make the API call
+	return {
+		success: false,
+		message: 'Task project information not available. Please refresh the dashboard.'
+	};
 }
 
 // NOW apply optimistic update after we have project_id
@@ -1409,10 +1387,10 @@ const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
 ```typescript
 // BEFORE (Race condition)
 try {
-  const result = await apiCall();
-  RealtimeProjectService.trackLocalUpdate(result.id); // Track AFTER
+	const result = await apiCall();
+	RealtimeProjectService.trackLocalUpdate(result.id); // Track AFTER
 } catch (error) {
-  // ...
+	// ...
 }
 
 // AFTER (Fixed - Create)
@@ -1423,14 +1401,14 @@ this.updateStats();
 RealtimeProjectService.trackLocalUpdate(tempId);
 
 try {
-  const result = await apiCall();
+	const result = await apiCall();
 
-  // Track the real ID as well after we get it
-  if (result?.id && result.id !== tempId) {
-    RealtimeProjectService.trackLocalUpdate(result.id);
-  }
+	// Track the real ID as well after we get it
+	if (result?.id && result.id !== tempId) {
+		RealtimeProjectService.trackLocalUpdate(result.id);
+	}
 } catch (error) {
-  // ...
+	// ...
 }
 
 // AFTER (Fixed - Update)
@@ -1440,10 +1418,10 @@ this.updateStats();
 RealtimeProjectService.trackLocalUpdate(taskId);
 
 try {
-  const result = await apiCall();
-  // Result tracking already done above - no need to duplicate
+	const result = await apiCall();
+	// Result tracking already done above - no need to duplicate
 } catch (error) {
-  // ...
+	// ...
 }
 ```
 
@@ -1466,61 +1444,61 @@ try {
 ```typescript
 // BEFORE (Memory leak)
 try {
-  dataService = new ProjectDataService(projectId);
-  synthesisService = new ProjectSynthesisService(projectId);
+	dataService = new ProjectDataService(projectId);
+	synthesisService = new ProjectSynthesisService(projectId);
 
-  // Async initialization that could fail
-  await dataService.initialize();
+	// Async initialization that could fail
+	await dataService.initialize();
 
-  // BUG: If initialize() throws, cleanup never registered
+	// BUG: If initialize() throws, cleanup never registered
 } catch (error) {
-  console.error("Initialization failed:", error);
+	console.error('Initialization failed:', error);
 }
 
 // AFTER (Fixed)
 // Helper function to create cleanup closure with captured references
 function createCleanupFunction(
-  projectId: string,
-  registeredDataService: any,
-  registeredSynthesisService: any,
-  registeredProjectService: any,
+	projectId: string,
+	registeredDataService: any,
+	registeredSynthesisService: any,
+	registeredProjectService: any
 ) {
-  return () => {
-    console.log("[Page] Cleaning up project:", projectId);
+	return () => {
+		console.log('[Page] Cleaning up project:', projectId);
 
-    // Cleanup services - use registered references to ensure cleanup even if error during init
-    if (registeredDataService) {
-      try {
-        registeredDataService.destroy();
-      } catch (error) {
-        console.error("[Page] DataService cleanup error:", error);
-      }
-    }
+		// Cleanup services - use registered references to ensure cleanup even if error during init
+		if (registeredDataService) {
+			try {
+				registeredDataService.destroy();
+			} catch (error) {
+				console.error('[Page] DataService cleanup error:', error);
+			}
+		}
 
-    // ... rest of cleanup
-  };
+		// ... rest of cleanup
+	};
 }
 
 try {
-  // Initialize services
-  dataService = new ProjectDataService(projectId);
-  registeredDataService = dataService;
+	// Initialize services
+	dataService = new ProjectDataService(projectId);
+	registeredDataService = dataService;
 
-  synthesisService = new ProjectSynthesisService(projectId);
-  registeredSynthesisService = synthesisService;
+	synthesisService = new ProjectSynthesisService(projectId);
+	registeredSynthesisService = synthesisService;
 
-  // Register cleanup IMMEDIATELY after all services created but BEFORE async work
-  effectCleanup = createCleanupFunction(
-    projectId,
-    registeredDataService,
-    registeredSynthesisService,
-    registeredProjectService,
-  );
+	// Register cleanup IMMEDIATELY after all services created but BEFORE async work
+	effectCleanup = createCleanupFunction(
+		projectId,
+		registeredDataService,
+		registeredSynthesisService,
+		registeredProjectService
+	);
 
-  // NOW do async initialization
-  await dataService.initialize();
+	// NOW do async initialization
+	await dataService.initialize();
 } catch (error) {
-  // Cleanup still registered and will run
+	// Cleanup still registered and will run
 }
 ```
 
@@ -1540,9 +1518,9 @@ try {
 // NEW: Add input length validation to prevent DoS attacks
 const MAX_CONTENT_LENGTH = 50000; // 50KB
 if (content.length > MAX_CONTENT_LENGTH) {
-  return SSEResponse.badRequest(
-    `Content too long. Maximum ${MAX_CONTENT_LENGTH} characters allowed.`,
-  );
+	return SSEResponse.badRequest(
+		`Content too long. Maximum ${MAX_CONTENT_LENGTH} characters allowed.`
+	);
 }
 ```
 
@@ -1673,20 +1651,20 @@ if (options.validation?.retryOnParseError && retryCount < maxRetries) {
 
 ```typescript
 function cleanup() {
-  console.log("[BrainDumpModal] Starting comprehensive cleanup");
+	console.log('[BrainDumpModal] Starting comprehensive cleanup');
 
-  // 0. Abort any active SSE/streaming connections
-  if (abortController) {
-    try {
-      console.log("[Cleanup] Aborting active streaming connection");
-      abortController.abort();
-    } catch (e) {
-      console.warn("[Cleanup] Error aborting streaming connection:", e);
-    }
-    abortController = null;
-  }
+	// 0. Abort any active SSE/streaming connections
+	if (abortController) {
+		try {
+			console.log('[Cleanup] Aborting active streaming connection');
+			abortController.abort();
+		} catch (e) {
+			console.warn('[Cleanup] Error aborting streaming connection:', e);
+		}
+		abortController = null;
+	}
 
-  // ... rest of cleanup
+	// ... rest of cleanup
 }
 ```
 
@@ -1703,17 +1681,17 @@ function cleanup() {
 ```typescript
 // BEFORE
 export interface AvailableSlot {
-  start: any; // Could be anything
-  end: any;
-  duration_minutes: number;
+	start: any; // Could be anything
+	end: any;
+	duration_minutes: number;
 }
 
 // AFTER
 export interface AvailableSlot {
-  start: string | Date; // ISO 8601 string or Date object
-  end: string | Date; // ISO 8601 string or Date object
-  duration_minutes: number;
-  timeZone?: string;
+	start: string | Date; // ISO 8601 string or Date object
+	end: string | Date; // ISO 8601 string or Date object
+	duration_minutes: number;
+	timeZone?: string;
 }
 ```
 
@@ -1726,39 +1704,39 @@ export interface AvailableSlot {
 #### Test Files Created
 
 1. **`apps/web/src/routes/api/admin/users/server.test.ts`** (253 lines)
-   - SQL injection prevention (3 tests)
-   - Privilege escalation prevention (4 tests)
-   - Admin users table sync (3 tests)
+    - SQL injection prevention (3 tests)
+    - Privilege escalation prevention (4 tests)
+    - Admin users table sync (3 tests)
 
 2. **`apps/web/src/lib/services/dashboardData.service.test.ts`** (210 lines)
-   - Optimistic update race condition prevention (8 tests)
-   - Validation before optimistic update (2 tests)
+    - Optimistic update race condition prevention (8 tests)
+    - Validation before optimistic update (2 tests)
 
 3. **`apps/web/src/lib/utils/operations/operations-executor.test.ts`** (487 lines added)
-   - Rollback stack management (3 tests)
-   - Rollback operation types (3 tests)
-   - Rollback security (1 test)
-   - Rollback error handling (1 test)
+    - Rollback stack management (3 tests)
+    - Rollback operation types (3 tests)
+    - Rollback security (1 test)
+    - Rollback error handling (1 test)
 
 4. **`apps/web/src/lib/stores/project.store.test.ts`** (320 lines)
-   - Real-time sync race condition prevention (4 tests)
-   - Real-time update filtering (3 tests)
-   - Cleanup after tracking (2 tests)
+    - Real-time sync race condition prevention (4 tests)
+    - Real-time update filtering (3 tests)
+    - Cleanup after tracking (2 tests)
 
 5. **`apps/web/src/routes/api/braindumps/stream/server.test.ts`** (287 lines)
-   - DoS prevention via content length validation (4 tests)
-   - Input sanitization (3 tests)
-   - Authentication validation (2 tests)
-   - Rate limiting considerations (2 tests)
-   - Error response format (2 tests)
-   - Content validation edge cases (3 tests)
+    - DoS prevention via content length validation (4 tests)
+    - Input sanitization (3 tests)
+    - Authentication validation (2 tests)
+    - Rate limiting considerations (2 tests)
+    - Error response format (2 tests)
+    - Content validation edge cases (3 tests)
 
 6. **`apps/web/src/lib/utils/braindump-processor.test.ts`** (429 lines)
-   - Dual processing result validation (4 tests)
-   - Error logging for failed promises (2 tests)
-   - Partial success handling (3 tests)
-   - Return value validation (3 tests)
-   - Edge cases (3 tests)
+    - Dual processing result validation (4 tests)
+    - Error logging for failed promises (2 tests)
+    - Partial success handling (3 tests)
+    - Return value validation (3 tests)
+    - Edge cases (3 tests)
 
 **Total Test Coverage**: ~1,986 lines of test code covering 50+ test cases
 

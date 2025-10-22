@@ -4,15 +4,15 @@ date: 2025-10-05T16:00:00
 type: research
 status: completed
 tags:
-  - brain-dump
-  - api
-  - architecture
-  - streaming
-  - validation
+    - brain-dump
+    - api
+    - architecture
+    - streaming
+    - validation
 related_docs:
-  - /apps/web/docs/features/brain-dump/README.md
-  - /apps/web/docs/technical/architecture/brain-dump-flow.md
-  - /apps/web/CLAUDE.md
+    - /apps/web/docs/features/brain-dump/README.md
+    - /apps/web/docs/technical/architecture/brain-dump-flow.md
+    - /apps/web/CLAUDE.md
 ---
 
 # Brain Dump API Architecture Research
@@ -172,89 +172,89 @@ POST /api/braindumps/stream
 
 1. **`status`** - Initial processing state
 
-   ```typescript
-   {
-     type: 'status',
-     message: 'Starting dual processing...',
-     data: {
-       processes: ['context', 'tasks'],
-       contentLength: number,
-       isDualProcessing: true
-     }
-   }
-   ```
+    ```typescript
+    {
+      type: 'status',
+      message: 'Starting dual processing...',
+      data: {
+        processes: ['context', 'tasks'],
+        contentLength: number,
+        isDualProcessing: true
+      }
+    }
+    ```
 
 2. **`analysis`** - Preparatory analysis (existing projects only)
 
-   ```typescript
-   {
-     type: 'analysis',
-     message: string,
-     data: {
-       status: 'processing' | 'completed' | 'failed',
-       result?: PreparatoryAnalysisResult
-     }
-   }
-   ```
+    ```typescript
+    {
+      type: 'analysis',
+      message: string,
+      data: {
+        status: 'processing' | 'completed' | 'failed',
+        result?: PreparatoryAnalysisResult
+      }
+    }
+    ```
 
 3. **`contextProgress`** - Project context extraction
 
-   ```typescript
-   {
-     type: 'contextProgress',
-     message: 'Processing project context...',
-     data: {
-       status: 'processing' | 'completed' | 'failed',
-       preview?: ProjectContextResult
-     }
-   }
-   ```
+    ```typescript
+    {
+      type: 'contextProgress',
+      message: 'Processing project context...',
+      data: {
+        status: 'processing' | 'completed' | 'failed',
+        preview?: ProjectContextResult
+      }
+    }
+    ```
 
 4. **`tasksProgress`** - Task/note extraction
 
-   ```typescript
-   {
-     type: 'tasksProgress',
-     message: 'Extracting tasks and notes...',
-     data: {
-       status: 'processing' | 'completed' | 'failed',
-       preview?: TaskNoteExtractionResult
-     }
-   }
-   ```
+    ```typescript
+    {
+      type: 'tasksProgress',
+      message: 'Extracting tasks and notes...',
+      data: {
+        status: 'processing' | 'completed' | 'failed',
+        preview?: TaskNoteExtractionResult
+      }
+    }
+    ```
 
 5. **`retry`** - Retry attempt notification
 
-   ```typescript
-   {
-     type: 'retry',
-     message: 'Retrying dual processing...',
-     attempt: number,
-     maxAttempts: number,
-     processName: string
-   }
-   ```
+    ```typescript
+    {
+      type: 'retry',
+      message: 'Retrying dual processing...',
+      attempt: number,
+      maxAttempts: number,
+      processName: string
+    }
+    ```
 
 6. **`complete`** - Final result
 
-   ```typescript
-   {
-     type: 'complete',
-     message: 'Processing complete',
-     result: BrainDumpParseResult
-   }
-   ```
+    ```typescript
+    {
+      type: 'complete',
+      message: 'Processing complete',
+      result: BrainDumpParseResult
+    }
+    ```
 
 7. **`error`** - Error notification
-   ```typescript
-   {
-     type: 'error',
-     message: string,
-     error: string,
-     context?: 'context' | 'tasks' | 'general',
-     recoverable?: boolean
-   }
-   ```
+    ```typescript
+    {
+      type: 'error',
+      message: string,
+      error: string,
+      context?: 'context' | 'tasks' | 'general',
+      recoverable?: boolean
+    }
+    ```
 
 **Processing Flow**:
 
@@ -308,12 +308,7 @@ When `autoAccept=true`:
 **Allowed Tables** (whitelist):
 
 ```typescript
-const validTables: TableName[] = [
-  "projects",
-  "tasks",
-  "notes",
-  "project_questions",
-];
+const validTables: TableName[] = ['projects', 'tasks', 'notes', 'project_questions'];
 ```
 
 **Validation Flow**:
@@ -421,8 +416,8 @@ const { response, writer, encoder } = SSEResponse.createStream();
 
 // Send messages
 await SSEResponse.sendMessage(writer, encoder, {
-  type: "status",
-  message: "Processing...",
+	type: 'status',
+	message: 'Processing...'
 });
 
 // Close stream
@@ -726,39 +721,34 @@ User accepts → Execute immediately
 
 1. **Session Validation**
 
-   ```typescript
-   const { user } = await safeGetSession();
-   if (!user) {
-     return SSEResponse.unauthorized();
-   }
-   ```
+    ```typescript
+    const { user } = await safeGetSession();
+    if (!user) {
+    	return SSEResponse.unauthorized();
+    }
+    ```
 
 2. **User Ownership**
-   - All queries filter by `user_id`
-   - RLS policies enforce row-level security
-   - Operations executor always sets `user_id`
+    - All queries filter by `user_id`
+    - RLS policies enforce row-level security
+    - Operations executor always sets `user_id`
 
 3. **Table Whitelist**
 
-   ```typescript
-   const validTables: TableName[] = [
-     "projects",
-     "tasks",
-     "notes",
-     "project_questions",
-   ];
-   ```
+    ```typescript
+    const validTables: TableName[] = ['projects', 'tasks', 'notes', 'project_questions'];
+    ```
 
 4. **Field Validation**
-   - Only schema-defined fields allowed
-   - Unknown fields silently removed
-   - Type checking and sanitization
+    - Only schema-defined fields allowed
+    - Unknown fields silently removed
+    - Type checking and sanitization
 
 5. **Input Sanitization**
-   - XSS prevention via string sanitization
-   - Max length enforcement
-   - UUID format validation
-   - Date normalization
+    - XSS prevention via string sanitization
+    - Max length enforcement
+    - UUID format validation
+    - Date normalization
 
 ### Rate Limiting
 
@@ -841,41 +831,41 @@ User accepts → Execute immediately
 ### Missing Features
 
 1. **Stream-Short Route**
-   - Directory exists but no implementation
-   - May need dedicated short processing endpoint
-   - Could optimize for quick task additions
+    - Directory exists but no implementation
+    - May need dedicated short processing endpoint
+    - Could optimize for quick task additions
 
 2. **Question Answering Flow**
-   - Questions displayed to user
-   - Questions updated when answered
-   - Integration with dual processing
+    - Questions displayed to user
+    - Questions updated when answered
+    - Integration with dual processing
 
 3. **Background Processing**
-   - Currently synchronous in SSE stream
-   - Could move to background job queue
-   - Would require polling or WebSocket for status
+    - Currently synchronous in SSE stream
+    - Could move to background job queue
+    - Would require polling or WebSocket for status
 
 ### Potential Optimizations
 
 1. **Caching**
-   - Cache recent projects/tasks
-   - Reduce database calls
-   - Invalidate on updates
+    - Cache recent projects/tasks
+    - Reduce database calls
+    - Invalidate on updates
 
 2. **Batch Processing**
-   - Queue multiple brain dumps
-   - Process in batches for efficiency
-   - Lower LLM costs
+    - Queue multiple brain dumps
+    - Process in batches for efficiency
+    - Lower LLM costs
 
 3. **Incremental Updates**
-   - Stream operations as they're generated
-   - Don't wait for full synthesis
-   - Even faster perceived performance
+    - Stream operations as they're generated
+    - Don't wait for full synthesis
+    - Even faster perceived performance
 
 4. **Smart Defaults**
-   - Learn from user patterns
-   - Pre-populate common fields
-   - Reduce required AI extraction
+    - Learn from user patterns
+    - Pre-populate common fields
+    - Reduce required AI extraction
 
 ## Related Documentation
 

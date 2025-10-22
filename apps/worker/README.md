@@ -106,8 +106,8 @@ curl http://localhost:3001/health
 3. Click "New Project" → "Deploy from GitHub repo"
 4. Select your repository
 5. Add environment variables in Railway dashboard:
-   - `SUPABASE_URL`
-   - `PRIVATE_SUPABASE_SERVICE_KEY`
+    - `SUPABASE_URL`
+    - `PRIVATE_SUPABASE_SERVICE_KEY`
 
 #### Option B: Railway CLI
 
@@ -136,20 +136,20 @@ Add these API routes to your SvelteKit app:
 ```typescript
 // src/routes/api/briefs/generate/+server.ts
 export async function POST({ request, locals }) {
-  const { immediate = false, forceRegenerate = false } = await request.json();
-  const userId = locals.user.id;
+	const { immediate = false, forceRegenerate = false } = await request.json();
+	const userId = locals.user.id;
 
-  const response = await fetch(`${WORKER_SERVICE_URL}/queue/brief`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId,
-      forceImmediate: immediate,
-      forceRegenerate,
-    }),
-  });
+	const response = await fetch(`${WORKER_SERVICE_URL}/queue/brief`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			userId,
+			forceImmediate: immediate,
+			forceRegenerate
+		})
+	});
 
-  return response;
+	return response;
 }
 ```
 
@@ -158,19 +158,19 @@ export async function POST({ request, locals }) {
 ```typescript
 // src/routes/api/briefs/preferences/+server.ts
 export async function POST({ request, locals }) {
-  const { frequency, dayOfWeek, timeOfDay, timezone } = await request.json();
-  const userId = locals.user.id;
+	const { frequency, dayOfWeek, timeOfDay, timezone } = await request.json();
+	const userId = locals.user.id;
 
-  await supabase.from("user_brief_preferences").upsert({
-    user_id: userId,
-    frequency,
-    day_of_week: dayOfWeek,
-    time_of_day: timeOfDay,
-    timezone,
-    is_active: true,
-  });
+	await supabase.from('user_brief_preferences').upsert({
+		user_id: userId,
+		frequency,
+		day_of_week: dayOfWeek,
+		time_of_day: timeOfDay,
+		timezone,
+		is_active: true
+	});
 
-  return json({ success: true });
+	return json({ success: true });
 }
 ```
 
@@ -180,31 +180,31 @@ Add to your SvelteKit layout:
 
 ```typescript
 // src/app.html or +layout.svelte
-import { supabase } from "$lib/supabase";
-import { onMount } from "svelte";
+import { supabase } from '$lib/supabase';
+import { onMount } from 'svelte';
 
 onMount(() => {
-  if ($user) {
-    const channel = supabase.channel(`user:${$user.id}`);
+	if ($user) {
+		const channel = supabase.channel(`user:${$user.id}`);
 
-    channel
-      .on("broadcast", { event: "brief_completed" }, (payload) => {
-        // Show success notification
-        showNotification("Your daily brief is ready!", {
-          action: () => goto(`/projects?briefDate=${payload.briefDate}`),
-        });
-      })
-      .on("broadcast", { event: "brief_failed" }, (payload) => {
-        // Show error notification
-        showNotification("Brief generation failed. Click to retry.", {
-          type: "error",
-          action: () => retryBrief(payload.jobId),
-        });
-      })
-      .subscribe();
+		channel
+			.on('broadcast', { event: 'brief_completed' }, (payload) => {
+				// Show success notification
+				showNotification('Your daily brief is ready!', {
+					action: () => goto(`/projects?briefDate=${payload.briefDate}`)
+				});
+			})
+			.on('broadcast', { event: 'brief_failed' }, (payload) => {
+				// Show error notification
+				showNotification('Brief generation failed. Click to retry.', {
+					type: 'error',
+					action: () => retryBrief(payload.jobId)
+				});
+			})
+			.subscribe();
 
-    return () => channel.unsubscribe();
-  }
+		return () => channel.unsubscribe();
+	}
 });
 ```
 
@@ -273,11 +273,11 @@ POST /queue/brief
 
 ```typescript
 interface UserBriefPreference {
-  frequency: "daily" | "weekly" | "custom";
-  day_of_week?: number; // 0-6, for weekly briefs
-  time_of_day: string; // HH:MM:SS format
-  timezone: string; // IANA timezone
-  is_active: boolean;
+	frequency: 'daily' | 'weekly' | 'custom';
+	day_of_week?: number; // 0-6, for weekly briefs
+	time_of_day: string; // HH:MM:SS format
+	timezone: string; // IANA timezone
+	is_active: boolean;
 }
 ```
 
@@ -285,15 +285,15 @@ interface UserBriefPreference {
 
 ```typescript
 interface BriefJobData {
-  userId: string;
-  briefDate?: string; // Date in YYYY-MM-DD format
-  timezone?: string; // User's timezone
-  options?: {
-    includeProjects?: string[];
-    excludeProjects?: string[];
-    customTemplate?: string;
-    forceRegenerate?: boolean;
-  };
+	userId: string;
+	briefDate?: string; // Date in YYYY-MM-DD format
+	timezone?: string; // User's timezone
+	options?: {
+		includeProjects?: string[];
+		excludeProjects?: string[];
+		customTemplate?: string;
+		forceRegenerate?: boolean;
+	};
 }
 ```
 
@@ -336,19 +336,19 @@ LIMIT 10;
 ### Common Issues
 
 1. **"structure of query does not match function result type"**
-   - Run migration `003_fix_claim_jobs_return_type.sql`
+    - Run migration `003_fix_claim_jobs_return_type.sql`
 
 2. **Jobs stuck in 'pending'**
-   - Check worker is running: `curl /health`
-   - Check for errors in logs
+    - Check worker is running: `curl /health`
+    - Check for errors in logs
 
 3. **Jobs not being claimed**
-   - Verify database migrations applied
-   - Check Supabase service role key is correct
+    - Verify database migrations applied
+    - Check Supabase service role key is correct
 
 4. **Notification Issues**
-   - Verify Supabase Realtime is enabled
-   - Check channel subscription in frontend
+    - Verify Supabase Realtime is enabled
+    - Check channel subscription in frontend
 
 ### Performance Tuning
 

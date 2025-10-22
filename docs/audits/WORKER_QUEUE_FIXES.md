@@ -17,42 +17,42 @@ Add this to the `start()` function BEFORE starting the server:
 
 ```typescript
 async function start() {
-  try {
-    // Add global error handlers FIRST
-    process.on("uncaughtException", (error) => {
-      console.error("🚨 CRITICAL: Uncaught Exception", error);
-      console.error("Stack:", error.stack);
-      // Gracefully shutdown queue
-      try {
-        queue.stop();
-      } catch (e) {
-        console.error("Failed to stop queue:", e);
-      }
-      // Exit to allow restart
-      process.exit(1);
-    });
+	try {
+		// Add global error handlers FIRST
+		process.on('uncaughtException', (error) => {
+			console.error('🚨 CRITICAL: Uncaught Exception', error);
+			console.error('Stack:', error.stack);
+			// Gracefully shutdown queue
+			try {
+				queue.stop();
+			} catch (e) {
+				console.error('Failed to stop queue:', e);
+			}
+			// Exit to allow restart
+			process.exit(1);
+		});
 
-    process.on("unhandledRejection", (reason, promise) => {
-      console.error("🚨 CRITICAL: Unhandled Rejection");
-      console.error("Promise:", promise);
-      console.error("Reason:", reason);
-      // Gracefully shutdown queue
-      try {
-        queue.stop();
-      } catch (e) {
-        console.error("Failed to stop queue:", e);
-      }
-      // Exit to allow restart
-      process.exit(1);
-    });
+		process.on('unhandledRejection', (reason, promise) => {
+			console.error('🚨 CRITICAL: Unhandled Rejection');
+			console.error('Promise:', promise);
+			console.error('Reason:', reason);
+			// Gracefully shutdown queue
+			try {
+				queue.stop();
+			} catch (e) {
+				console.error('Failed to stop queue:', e);
+			}
+			// Exit to allow restart
+			process.exit(1);
+		});
 
-    // Start the worker
-    await startWorker();
-    // ... rest of startup
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
+		// Start the worker
+		await startWorker();
+		// ... rest of startup
+	} catch (error) {
+		console.error('Failed to start server:', error);
+		process.exit(1);
+	}
 }
 ```
 
@@ -216,7 +216,7 @@ const shouldRetry = (job.attempts || 0) < (job.max_attempts || 3);
 Import config at top:
 
 ```typescript
-import { queueConfig } from "../config/queueConfig";
+import { queueConfig } from '../config/queueConfig';
 ```
 
 Then in executeJobProcessor:
@@ -254,42 +254,40 @@ private async executeJobProcessor(
  * Validate BriefJobData and throw if invalid
  */
 export function validateBriefJobData(data: any): BriefJobData {
-  // Check userId
-  if (!data.userId || typeof data.userId !== "string") {
-    throw new Error("Invalid job data: userId is required and must be string");
-  }
+	// Check userId
+	if (!data.userId || typeof data.userId !== 'string') {
+		throw new Error('Invalid job data: userId is required and must be string');
+	}
 
-  // Validate briefDate if provided
-  if (data.briefDate) {
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(data.briefDate)) {
-      throw new Error(
-        `Invalid job data: briefDate must be YYYY-MM-DD format, got "${data.briefDate}"`,
-      );
-    }
+	// Validate briefDate if provided
+	if (data.briefDate) {
+		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+		if (!dateRegex.test(data.briefDate)) {
+			throw new Error(
+				`Invalid job data: briefDate must be YYYY-MM-DD format, got "${data.briefDate}"`
+			);
+		}
 
-    // Validate date is reasonable (not in future by more than 30 days)
-    const jobDate = new Date(data.briefDate);
-    const maxFuture = new Date();
-    maxFuture.setDate(maxFuture.getDate() + 30);
+		// Validate date is reasonable (not in future by more than 30 days)
+		const jobDate = new Date(data.briefDate);
+		const maxFuture = new Date();
+		maxFuture.setDate(maxFuture.getDate() + 30);
 
-    if (jobDate > maxFuture) {
-      throw new Error(`Invalid job data: briefDate too far in future`);
-    }
-  }
+		if (jobDate > maxFuture) {
+			throw new Error(`Invalid job data: briefDate too far in future`);
+		}
+	}
 
-  // Validate timezone if provided
-  if (data.timezone) {
-    try {
-      new Intl.DateTimeFormat("en-US", { timeZone: data.timezone });
-    } catch (e) {
-      throw new Error(
-        `Invalid job data: timezone "${data.timezone}" is not valid`,
-      );
-    }
-  }
+	// Validate timezone if provided
+	if (data.timezone) {
+		try {
+			new Intl.DateTimeFormat('en-US', { timeZone: data.timezone });
+		} catch (e) {
+			throw new Error(`Invalid job data: timezone "${data.timezone}" is not valid`);
+		}
+	}
 
-  return data as BriefJobData;
+	return data as BriefJobData;
 }
 ```
 

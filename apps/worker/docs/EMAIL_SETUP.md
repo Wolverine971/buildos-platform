@@ -51,22 +51,22 @@ To send emails from a custom address like `noreply@build-os.com`:
 #### Option A: Using Gmail's "Send mail as" Feature
 
 1. **In Gmail Settings:**
-   - Go to Settings → Accounts → "Send mail as"
-   - Click "Add another email address"
-   - Enter your alias (e.g., `noreply@build-os.com`)
-   - Uncheck "Treat as an alias" if you want replies to go to the alias
-   - Click "Next Step"
+    - Go to Settings → Accounts → "Send mail as"
+    - Click "Add another email address"
+    - Enter your alias (e.g., `noreply@build-os.com`)
+    - Uncheck "Treat as an alias" if you want replies to go to the alias
+    - Click "Next Step"
 
 2. **Verify the Address:**
-   - Gmail will attempt to send a verification email
-   - You'll need access to receive emails at this address
-   - Enter the verification code or click the link in the email
+    - Gmail will attempt to send a verification email
+    - You'll need access to receive emails at this address
+    - Enter the verification code or click the link in the email
 
 3. **Configure SMTP (if required):**
-   - SMTP Server: `smtp.gmail.com`
-   - Port: `587` (TLS) or `465` (SSL)
-   - Username: Your Gmail address
-   - Password: Your app password
+    - SMTP Server: `smtp.gmail.com`
+    - Port: `587` (TLS) or `465` (SSL)
+    - Username: Your Gmail address
+    - Password: Your app password
 
 #### Option B: Using Google Workspace
 

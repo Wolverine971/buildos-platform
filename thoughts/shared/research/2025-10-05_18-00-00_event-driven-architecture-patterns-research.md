@@ -5,16 +5,16 @@ type: research
 status: complete
 context: Read-only research of event-driven patterns for notification event system design
 related_docs:
-  - /apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md
-  - /NOTIFICATION_SYSTEM_IMPLEMENTATION.md
-  - /apps/worker/CLAUDE.md
+    - /apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md
+    - /NOTIFICATION_SYSTEM_IMPLEMENTATION.md
+    - /apps/worker/CLAUDE.md
 tags:
-  - architecture
-  - events
-  - webhooks
-  - queue
-  - realtime
-  - notifications
+    - architecture
+    - events
+    - webhooks
+    - queue
+    - realtime
+    - notifications
 ---
 
 # Event-Driven Architecture Patterns in BuildOS
@@ -43,21 +43,21 @@ This document catalogs all event-driven architecture patterns currently used in 
 ```typescript
 // Brain dump applied event
 window.dispatchEvent(
-  new CustomEvent("brain-dump-applied", {
-    detail: { projectId, taskIds },
-  }),
+	new CustomEvent('brain-dump-applied', {
+		detail: { projectId, taskIds }
+	})
 );
 
 // Brain dump updates available event
 window.dispatchEvent(
-  new CustomEvent("brain-dump-updates-available", {
-    detail: { brainDumpId, updates },
-  }),
+	new CustomEvent('brain-dump-updates-available', {
+		detail: { brainDumpId, updates }
+	})
 );
 
 // PWA install events
-document.dispatchEvent(new CustomEvent("pwa-install-available"));
-document.dispatchEvent(new CustomEvent("pwa-installed"));
+document.dispatchEvent(new CustomEvent('pwa-install-available'));
+document.dispatchEvent(new CustomEvent('pwa-installed'));
 ```
 
 **Files**:
@@ -87,13 +87,13 @@ document.dispatchEvent(new CustomEvent("pwa-installed"));
 ```typescript
 // Example pattern (not implemented in BuildOS)
 class NotificationEventEmitter extends EventTarget {
-  emitCompleted(notificationId: string) {
-    this.dispatchEvent(
-      new CustomEvent("completed", {
-        detail: { notificationId },
-      }),
-    );
-  }
+	emitCompleted(notificationId: string) {
+		this.dispatchEvent(
+			new CustomEvent('completed', {
+				detail: { notificationId }
+			})
+		);
+	}
 }
 ```
 
@@ -117,33 +117,33 @@ channel = supabaseClient.channel(`user-brief-notifications:${userId}`);
 
 // Subscribe to table changes
 channel.on(
-  "postgres_changes",
-  {
-    event: "*", // INSERT, UPDATE, DELETE
-    schema: "public",
-    table: "queue_jobs",
-    filter: `user_id=eq.${userId}`,
-  },
-  (payload) => this.handleJobUpdate(payload),
+	'postgres_changes',
+	{
+		event: '*', // INSERT, UPDATE, DELETE
+		schema: 'public',
+		table: 'queue_jobs',
+		filter: `user_id=eq.${userId}`
+	},
+	(payload) => this.handleJobUpdate(payload)
 );
 
 // Subscribe to another table
 channel.on(
-  "postgres_changes",
-  {
-    event: "*",
-    schema: "public",
-    table: "daily_briefs",
-    filter: `user_id=eq.${userId}`,
-  },
-  (payload) => this.handleBriefUpdate(payload),
+	'postgres_changes',
+	{
+		event: '*',
+		schema: 'public',
+		table: 'daily_briefs',
+		filter: `user_id=eq.${userId}`
+	},
+	(payload) => this.handleBriefUpdate(payload)
 );
 
 // Activate subscription
 await channel.subscribe((status) => {
-  if (status === "SUBSCRIBED") {
-    console.log("Real-time connected");
-  }
+	if (status === 'SUBSCRIBED') {
+		console.log('Real-time connected');
+	}
 });
 ```
 
@@ -222,15 +222,15 @@ static async cleanup(): Promise<void> {
 
 ```typescript
 // Example pattern (configured but not actively used in BuildOS)
-channel.on("broadcast", { event: "brief_completed" }, (payload) => {
-  this.handleBriefCompleted(payload);
+channel.on('broadcast', { event: 'brief_completed' }, (payload) => {
+	this.handleBriefCompleted(payload);
 });
 
 // Send broadcast
 await channel.send({
-  type: "broadcast",
-  event: "brief_completed",
-  payload: { briefId, userId },
+	type: 'broadcast',
+	event: 'brief_completed',
+	payload: { briefId, userId }
 });
 ```
 
@@ -250,14 +250,14 @@ await channel.send({
 
 ```typescript
 interface ProcessingJob<T = any> {
-  id: string;
-  userId: string;
-  data: T;
-  attempts: number;
+	id: string;
+	userId: string;
+	data: T;
+	attempts: number;
 
-  // Job control methods (event-like callbacks)
-  updateProgress: (progress: JobProgress) => Promise<void>;
-  log: (message: string) => Promise<void>;
+	// Job control methods (event-like callbacks)
+	updateProgress: (progress: JobProgress) => Promise<void>;
+	log: (message: string) => Promise<void>;
 }
 
 type JobProcessor<T = any> = (job: ProcessingJob<T>) => Promise<any>;
@@ -268,52 +268,52 @@ type JobProcessor<T = any> = (job: ProcessingJob<T>) => Promise<any>;
 1. **Add Job** (with deduplication):
 
 ```typescript
-const { data: jobId } = await supabase.rpc("add_queue_job", {
-  p_user_id: userId,
-  p_job_type: "generate_daily_brief",
-  p_metadata: { briefDate, options },
-  p_priority: 10,
-  p_scheduled_for: new Date().toISOString(),
-  p_dedup_key: `brief-${userId}-${briefDate}`, // Prevent duplicates
+const { data: jobId } = await supabase.rpc('add_queue_job', {
+	p_user_id: userId,
+	p_job_type: 'generate_daily_brief',
+	p_metadata: { briefDate, options },
+	p_priority: 10,
+	p_scheduled_for: new Date().toISOString(),
+	p_dedup_key: `brief-${userId}-${briefDate}` // Prevent duplicates
 });
 ```
 
 2. **Claim Jobs** (atomic batch claiming):
 
 ```typescript
-const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-  p_job_types: ["generate_daily_brief", "generate_brief_email"],
-  p_batch_size: 5,
+const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+	p_job_types: ['generate_daily_brief', 'generate_brief_email'],
+	p_batch_size: 5
 });
 ```
 
 3. **Complete Job**:
 
 ```typescript
-await supabase.rpc("complete_queue_job", {
-  p_job_id: jobId,
-  p_result: { briefId, emailSent: true },
+await supabase.rpc('complete_queue_job', {
+	p_job_id: jobId,
+	p_result: { briefId, emailSent: true }
 });
 ```
 
 4. **Fail Job** (with retry logic):
 
 ```typescript
-await supabase.rpc("fail_queue_job", {
-  p_job_id: jobId,
-  p_error_message: error.message,
-  p_retry: shouldRetry, // Automatic retry scheduling
+await supabase.rpc('fail_queue_job', {
+	p_job_id: jobId,
+	p_error_message: error.message,
+	p_retry: shouldRetry // Automatic retry scheduling
 });
 ```
 
 5. **Cancel Jobs** (atomic cancellation):
 
 ```typescript
-const { data: cancelledJobs } = await supabase.rpc("cancel_jobs_atomic", {
-  p_user_id: userId,
-  p_job_type: "generate_daily_brief",
-  p_metadata_filter: { briefDate: "2025-10-05" },
-  p_allowed_statuses: ["pending", "processing"],
+const { data: cancelledJobs } = await supabase.rpc('cancel_jobs_atomic', {
+	p_user_id: userId,
+	p_job_type: 'generate_daily_brief',
+	p_metadata_filter: { briefDate: '2025-10-05' },
+	p_allowed_statuses: ['pending', 'processing']
 });
 ```
 
@@ -330,22 +330,22 @@ pending → processing → completed
 ```typescript
 // Worker updates progress (stored in job metadata)
 await job.updateProgress({
-  current: 3,
-  total: 10,
-  message: "Processing project 3 of 10...",
+	current: 3,
+	total: 10,
+	message: 'Processing project 3 of 10...'
 });
 
 // Web app subscribes to queue_jobs table changes
 channel.on(
-  "postgres_changes",
-  {
-    table: "queue_jobs",
-    filter: `user_id=eq.${userId}`,
-  },
-  (payload) => {
-    const progress = payload.new.metadata?.progress;
-    updateNotificationProgress(progress);
-  },
+	'postgres_changes',
+	{
+		table: 'queue_jobs',
+		filter: `user_id=eq.${userId}`
+	},
+	(payload) => {
+		const progress = payload.new.metadata?.progress;
+		updateNotificationProgress(progress);
+	}
 );
 ```
 
@@ -368,12 +368,12 @@ channel.on(
 const queue = new SupabaseQueue();
 
 // Register processor (like event handler)
-queue.process("generate_daily_brief", async (job) => {
-  await processBriefJob(job);
+queue.process('generate_daily_brief', async (job) => {
+	await processBriefJob(job);
 });
 
-queue.process("generate_brief_email", async (job) => {
-  await processEmailJob(job);
+queue.process('generate_brief_email', async (job) => {
+	await processEmailJob(job);
 });
 
 await queue.start(); // Begin polling
@@ -425,15 +425,9 @@ private async processJob(job: QueueJob): Promise<void> {
 
 ```typescript
 // 1. Verify HMAC signature
-function verifyWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string,
-): boolean {
-  const expectedSignature = createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-  return signature === expectedSignature; // Timing-safe comparison
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+	const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
+	return signature === expectedSignature; // Timing-safe comparison
 }
 
 // 2. Verify timestamp freshness (prevent replay attacks)
@@ -442,12 +436,12 @@ const now = Date.now();
 const MAX_AGE = 5 * 60 * 1000; // 5 minutes
 
 if (Math.abs(now - requestTime) > MAX_AGE) {
-  throw error(401, "Webhook timestamp too old");
+	throw error(401, 'Webhook timestamp too old');
 }
 
 // 3. Verify source header
-if (source !== "daily-brief-worker") {
-  throw error(401, "Invalid webhook source");
+if (source !== 'daily-brief-worker') {
+	throw error(401, 'Invalid webhook source');
 }
 ```
 
@@ -455,17 +449,17 @@ if (source !== "daily-brief-worker") {
 
 ```typescript
 interface WebhookPayload {
-  userId: string;
-  briefId: string;
-  briefDate: string;
-  recipientEmail: string;
-  timestamp: string;
-  metadata?: {
-    emailRecordId?: string;
-    recipientRecordId?: string;
-    trackingId?: string;
-    subject?: string;
-  };
+	userId: string;
+	briefId: string;
+	briefDate: string;
+	recipientEmail: string;
+	timestamp: string;
+	metadata?: {
+		emailRecordId?: string;
+		recipientRecordId?: string;
+		trackingId?: string;
+		subject?: string;
+	};
 }
 ```
 
@@ -479,22 +473,22 @@ interface WebhookPayload {
 
 ```typescript
 export const POST: RequestHandler = async ({ request }) => {
-  // 1. Validate headers
-  const signature = request.headers.get("x-webhook-signature");
-  const timestamp = request.headers.get("x-webhook-timestamp");
+	// 1. Validate headers
+	const signature = request.headers.get('x-webhook-signature');
+	const timestamp = request.headers.get('x-webhook-timestamp');
 
-  // 2. Parse and verify payload
-  const rawBody = await request.text();
-  if (!verifyWebhookSignature(rawBody, signature, secret)) {
-    throw error(401, "Invalid signature");
-  }
+	// 2. Parse and verify payload
+	const rawBody = await request.text();
+	if (!verifyWebhookSignature(rawBody, signature, secret)) {
+		throw error(401, 'Invalid signature');
+	}
 
-  // 3. Process webhook
-  const payload: WebhookPayload = JSON.parse(rawBody);
-  await processEmail(payload);
+	// 3. Process webhook
+	const payload: WebhookPayload = JSON.parse(rawBody);
+	await processEmail(payload);
 
-  // 4. Return success
-  return json({ success: true, messageId });
+	// 4. Return success
+	return json({ success: true, messageId });
 };
 ```
 
@@ -555,26 +549,26 @@ async registerWebhook(userId: string, webhookUrl: string): Promise<void> {
 ```typescript
 // apps/web/src/routes/webhooks/calendar-events/+server.ts
 export const POST: RequestHandler = async ({ request }) => {
-  // 1. Validate Google webhook headers
-  const channelId = request.headers.get("x-goog-channel-id");
-  const resourceId = request.headers.get("x-goog-resource-id");
-  const resourceState = request.headers.get("x-goog-resource-state");
+	// 1. Validate Google webhook headers
+	const channelId = request.headers.get('x-goog-channel-id');
+	const resourceId = request.headers.get('x-goog-resource-id');
+	const resourceState = request.headers.get('x-goog-resource-state');
 
-  // 2. Look up webhook in database
-  const webhook = await getWebhook(channelId, resourceId);
+	// 2. Look up webhook in database
+	const webhook = await getWebhook(channelId, resourceId);
 
-  // 3. Verify token (optional security layer)
-  const token = request.headers.get("x-goog-channel-token");
-  if (token !== webhook.webhook_token) {
-    throw error(401, "Invalid token");
-  }
+	// 3. Verify token (optional security layer)
+	const token = request.headers.get('x-goog-channel-token');
+	if (token !== webhook.webhook_token) {
+		throw error(401, 'Invalid token');
+	}
 
-  // 4. Sync calendar events
-  if (resourceState === "exists") {
-    await syncCalendarEvents(webhook.user_id);
-  }
+	// 4. Sync calendar events
+	if (resourceState === 'exists') {
+		await syncCalendarEvents(webhook.user_id);
+	}
 
-  return json({ success: true });
+	return json({ success: true });
 };
 ```
 
@@ -768,45 +762,45 @@ $$ LANGUAGE plpgsql;
 ```typescript
 // 1. Subscribe to domain store
 brainDumpStoreUnsubscribe = brainDumpV2Store.subscribe((state) => {
-  for (const [brainDumpId, brainDump] of state.activeBrainDumps) {
-    syncBrainDumpToNotification(brainDump);
-  }
+	for (const [brainDumpId, brainDump] of state.activeBrainDumps) {
+		syncBrainDumpToNotification(brainDump);
+	}
 });
 
 // 2. Create notification when processing starts
 function syncBrainDumpToNotification(brainDump: any) {
-  const isProcessing = brainDump.processing.phase === "parsing";
+	const isProcessing = brainDump.processing.phase === 'parsing';
 
-  if (isProcessing && !activeBrainDumpNotifications.has(brainDumpId)) {
-    const notificationId = createBrainDumpNotification(brainDump);
-    activeBrainDumpNotifications.set(brainDumpId, notificationId);
+	if (isProcessing && !activeBrainDumpNotifications.has(brainDumpId)) {
+		const notificationId = createBrainDumpNotification(brainDump);
+		activeBrainDumpNotifications.set(brainDumpId, notificationId);
 
-    // CRITICAL: Trigger API call
-    startProcessingAPICall(brainDump);
-  }
+		// CRITICAL: Trigger API call
+		startProcessingAPICall(brainDump);
+	}
 }
 
 // 3. Update notification as processing progresses
 function updateBrainDumpNotification(notificationId: string, state: any) {
-  notificationStore.update(notificationId, {
-    status: determineStatus(state),
-    data: extractData(state),
-    progress: {
-      type: "streaming",
-      message: getProgressMessage(state),
-    },
-  });
+	notificationStore.update(notificationId, {
+		status: determineStatus(state),
+		data: extractData(state),
+		progress: {
+			type: 'streaming',
+			message: getProgressMessage(state)
+		}
+	});
 }
 
 // 4. Handle streaming updates
 export function handleBrainDumpStreamUpdate(status: StreamingMessage) {
-  if (status.type === "contextProgress") {
-    brainDumpV2Store.updateStreamingState({
-      contextStatus: "processing",
-      contextProgress: status.message,
-    });
-  }
-  // Bridge subscription auto-updates notification
+	if (status.type === 'contextProgress') {
+		brainDumpV2Store.updateStreamingState({
+			contextStatus: 'processing',
+			contextProgress: status.message
+		});
+	}
+	// Bridge subscription auto-updates notification
 }
 ```
 
@@ -826,21 +820,21 @@ NotificationStackManager.svelte
 
 ```typescript
 function buildBrainDumpNotificationActions(brainDumpId: string) {
-  return {
-    view: () => {
-      const notifId = activeBrainDumpNotifications.get(brainDumpId);
-      if (notifId) notificationStore.expand(notifId);
-    },
-    dismiss: () => {
-      const notifId = activeBrainDumpNotifications.get(brainDumpId);
-      if (notifId) {
-        notificationStore.remove(notifId);
-        activeBrainDumpNotifications.delete(brainDumpId);
-        cancelBrainDumpAPIStream(brainDumpId);
-        brainDumpV2Store.completeBrainDump(brainDumpId);
-      }
-    },
-  };
+	return {
+		view: () => {
+			const notifId = activeBrainDumpNotifications.get(brainDumpId);
+			if (notifId) notificationStore.expand(notifId);
+		},
+		dismiss: () => {
+			const notifId = activeBrainDumpNotifications.get(brainDumpId);
+			if (notifId) {
+				notificationStore.remove(notifId);
+				activeBrainDumpNotifications.delete(brainDumpId);
+				cancelBrainDumpAPIStream(brainDumpId);
+				brainDumpV2Store.completeBrainDump(brainDumpId);
+			}
+		}
+	};
 }
 ```
 
@@ -858,14 +852,14 @@ const activeAPIStreams = new Map<string, AbortController>();
 
 // Cleanup
 function cleanupCompletedNotifications(state: any) {
-  const activeBrainDumpIds = new Set(state.activeBrainDumps.keys());
+	const activeBrainDumpIds = new Set(state.activeBrainDumps.keys());
 
-  for (const [brainDumpId, notificationId] of activeBrainDumpNotifications) {
-    if (!activeBrainDumpIds.has(brainDumpId)) {
-      activeBrainDumpNotifications.delete(brainDumpId);
-      lastProcessedTimestamps.delete(brainDumpId);
-    }
-  }
+	for (const [brainDumpId, notificationId] of activeBrainDumpNotifications) {
+		if (!activeBrainDumpIds.has(brainDumpId)) {
+			activeBrainDumpNotifications.delete(brainDumpId);
+			lastProcessedTimestamps.delete(brainDumpId);
+		}
+	}
 }
 ```
 
@@ -910,24 +904,24 @@ All follow the same architectural pattern:
 ```typescript
 // ❌ WRONG - Map mutation doesn't trigger reactivity
 function updateNotification(id: string, updates: any) {
-  update((state) => {
-    const notification = state.notifications.get(id);
-    state.notifications.set(id, { ...notification, ...updates });
-    return state; // ❌ Same Map reference, no reactivity
-  });
+	update((state) => {
+		const notification = state.notifications.get(id);
+		state.notifications.set(id, { ...notification, ...updates });
+		return state; // ❌ Same Map reference, no reactivity
+	});
 }
 
 // ✅ CORRECT - Create new Map for reactivity
 function updateNotification(id: string, updates: any) {
-  update((state) => {
-    const notification = state.notifications.get(id);
-    const newNotifications = new Map(state.notifications); // ✅ New Map
-    newNotifications.set(id, { ...notification, ...updates });
-    return {
-      ...state,
-      notifications: newNotifications, // ✅ Triggers reactivity
-    };
-  });
+	update((state) => {
+		const notification = state.notifications.get(id);
+		const newNotifications = new Map(state.notifications); // ✅ New Map
+		newNotifications.set(id, { ...notification, ...updates });
+		return {
+			...state,
+			notifications: newNotifications // ✅ Triggers reactivity
+		};
+	});
 }
 ```
 
@@ -940,37 +934,37 @@ function updateNotification(id: string, updates: any) {
 const actionRegistry = new Map<string, NotificationActionHandler>();
 
 function prepareActions(id: string, actions: Actions): Actions {
-  const prepared: Actions = {};
-  const keyMap: Record<string, string> = {};
+	const prepared: Actions = {};
+	const keyMap: Record<string, string> = {};
 
-  for (const [name, handler] of Object.entries(actions)) {
-    const key = `${id}:${name}`;
+	for (const [name, handler] of Object.entries(actions)) {
+		const key = `${id}:${name}`;
 
-    // Register handler
-    registerNotificationAction(key, handler);
+		// Register handler
+		registerNotificationAction(key, handler);
 
-    // Create invoker (can be serialized as key)
-    prepared[name] = createActionInvoker(key, { notificationId: id, name });
-    keyMap[name] = key;
-  }
+		// Create invoker (can be serialized as key)
+		prepared[name] = createActionInvoker(key, { notificationId: id, name });
+		keyMap[name] = key;
+	}
 
-  recordActionKeys(id, keyMap);
-  return prepared;
+	recordActionKeys(id, keyMap);
+	return prepared;
 }
 
 function createActionInvoker(actionKey: string, context: any) {
-  const invoker = () => {
-    const handler = actionRegistry.get(actionKey);
-    if (handler) handler();
-  };
+	const invoker = () => {
+		const handler = actionRegistry.get(actionKey);
+		if (handler) handler();
+	};
 
-  // Store key as non-enumerable property
-  Object.defineProperty(invoker, ACTION_KEY_SYMBOL, {
-    value: actionKey,
-    enumerable: false,
-  });
+	// Store key as non-enumerable property
+	Object.defineProperty(invoker, ACTION_KEY_SYMBOL, {
+		value: actionKey,
+		enumerable: false
+	});
 
-  return invoker;
+	return invoker;
 }
 ```
 
@@ -979,53 +973,50 @@ function createActionInvoker(actionKey: string, context: any) {
 ```typescript
 // 1. Serialize (strip functions, keep metadata)
 function serializeNotificationEntry(notification: Notification) {
-  const { actions, ...notificationWithoutActions } = notification;
-  const actionMetadata = getActionMetadataFromHandlers(
-    notification.id,
-    actions,
-  );
+	const { actions, ...notificationWithoutActions } = notification;
+	const actionMetadata = getActionMetadataFromHandlers(notification.id, actions);
 
-  return {
-    id: notification.id,
-    notification: notificationWithoutActions,
-    actions: actionMetadata, // [{ name: 'view', key: 'notif_123:view' }]
-  };
+	return {
+		id: notification.id,
+		notification: notificationWithoutActions,
+		actions: actionMetadata // [{ name: 'view', key: 'notif_123:view' }]
+	};
 }
 
 // 2. Persist to sessionStorage
 function persist() {
-  const state = get({ subscribe });
-  sessionStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      version: STORAGE_VERSION,
-      timestamp: Date.now(),
-      notifications: serializeNotificationMap(state.notifications),
-      stack: state.stack,
-      expandedId: state.expandedId,
-    }),
-  );
+	const state = get({ subscribe });
+	sessionStorage.setItem(
+		STORAGE_KEY,
+		JSON.stringify({
+			version: STORAGE_VERSION,
+			timestamp: Date.now(),
+			notifications: serializeNotificationMap(state.notifications),
+			stack: state.stack,
+			expandedId: state.expandedId
+		})
+	);
 }
 
 // 3. Hydrate (restore functions)
 function hydrateStoredNotification(entry: StoredNotificationEntry) {
-  const hydratedActions: Actions = {};
-  const keyMap: Record<string, string> = {};
+	const hydratedActions: Actions = {};
+	const keyMap: Record<string, string> = {};
 
-  for (const { name, key } of entry.actions) {
-    keyMap[name] = key;
-    hydratedActions[name] = createActionInvoker(key, {
-      notificationId: entry.id,
-      name,
-    });
-  }
+	for (const { name, key } of entry.actions) {
+		keyMap[name] = key;
+		hydratedActions[name] = createActionInvoker(key, {
+			notificationId: entry.id,
+			name
+		});
+	}
 
-  recordActionKeys(entry.id, keyMap);
+	recordActionKeys(entry.id, keyMap);
 
-  return {
-    ...entry.notification,
-    actions: hydratedActions,
-  };
+	return {
+		...entry.notification,
+		actions: hydratedActions
+	};
 }
 ```
 
@@ -1074,25 +1065,25 @@ function hydrateStoredNotification(entry: StoredNotificationEntry) {
 ```typescript
 // 1. Create notification event types
 type NotificationEvent =
-  | { type: "created"; notificationId: string; data: any }
-  | { type: "updated"; notificationId: string; updates: any }
-  | { type: "completed"; notificationId: string; result: any }
-  | { type: "dismissed"; notificationId: string }
-  | { type: "expanded"; notificationId: string }
-  | { type: "minimized"; notificationId: string };
+	| { type: 'created'; notificationId: string; data: any }
+	| { type: 'updated'; notificationId: string; updates: any }
+	| { type: 'completed'; notificationId: string; result: any }
+	| { type: 'dismissed'; notificationId: string }
+	| { type: 'expanded'; notificationId: string }
+	| { type: 'minimized'; notificationId: string };
 
 // 2. Subscribe to notification store changes
 notificationStore.subscribe((state) => {
-  // Detect changes and emit events
-  const changes = detectStateChanges(previousState, state);
-  for (const change of changes) {
-    emitNotificationEvent(change);
-  }
+	// Detect changes and emit events
+	const changes = detectStateChanges(previousState, state);
+	for (const change of changes) {
+		emitNotificationEvent(change);
+	}
 });
 
 // 3. External systems can listen
 function onNotificationEvent(callback: (event: NotificationEvent) => void) {
-  // Add to listeners
+	// Add to listeners
 }
 ```
 
@@ -1112,18 +1103,18 @@ function onNotificationEvent(callback: (event: NotificationEvent) => void) {
 ```typescript
 // Subscribe to notification-related table changes
 channel.on(
-  "postgres_changes",
-  {
-    event: "*",
-    schema: "public",
-    table: "operation_status", // Or similar tracking table
-    filter: `user_id=eq.${userId}`,
-  },
-  (payload) => {
-    if (payload.eventType === "UPDATE" && payload.new.status === "completed") {
-      notificationStore.setStatus(payload.new.notification_id, "success");
-    }
-  },
+	'postgres_changes',
+	{
+		event: '*',
+		schema: 'public',
+		table: 'operation_status', // Or similar tracking table
+		filter: `user_id=eq.${userId}`
+	},
+	(payload) => {
+		if (payload.eventType === 'UPDATE' && payload.new.status === 'completed') {
+			notificationStore.setStatus(payload.new.notification_id, 'success');
+		}
+	}
 );
 ```
 
@@ -1142,17 +1133,17 @@ channel.on(
 ```typescript
 // Emit telemetry events
 function trackNotificationEvent(eventName: string, properties: any) {
-  window.dispatchEvent(
-    new CustomEvent("notification-telemetry", {
-      detail: { eventName, properties, timestamp: Date.now() },
-    }),
-  );
+	window.dispatchEvent(
+		new CustomEvent('notification-telemetry', {
+			detail: { eventName, properties, timestamp: Date.now() }
+		})
+	);
 }
 
 // Aggregate and send
-window.addEventListener("notification-telemetry", (event) => {
-  const { eventName, properties } = event.detail;
-  analytics.track(eventName, properties);
+window.addEventListener('notification-telemetry', (event) => {
+	const { eventName, properties } = event.detail;
+	analytics.track(eventName, properties);
 });
 ```
 
@@ -1165,14 +1156,14 @@ window.addEventListener("notification-telemetry", (event) => {
 ```typescript
 // ❌ WRONG - Breaks Svelte 5 reactivity
 update((state) => {
-  state.notifications.set(id, updated);
-  return state;
+	state.notifications.set(id, updated);
+	return state;
 });
 
 // ✅ CORRECT - Create new Map
 update((state) => ({
-  ...state,
-  notifications: new Map(state.notifications).set(id, updated),
+	...state,
+	notifications: new Map(state.notifications).set(id, updated)
 }));
 ```
 
@@ -1181,18 +1172,18 @@ update((state) => ({
 ```typescript
 // ❌ WRONG - Memory leak
 function initBridge() {
-  storeUnsubscribe = store.subscribe(handler);
-  // Never calls storeUnsubscribe()
+	storeUnsubscribe = store.subscribe(handler);
+	// Never calls storeUnsubscribe()
 }
 
 // ✅ CORRECT - Proper cleanup
 export function cleanupBridge() {
-  if (storeUnsubscribe) {
-    storeUnsubscribe();
-    storeUnsubscribe = null;
-  }
-  activeNotifications.clear();
-  actionRegistry.clear();
+	if (storeUnsubscribe) {
+		storeUnsubscribe();
+		storeUnsubscribe = null;
+	}
+	activeNotifications.clear();
+	actionRegistry.clear();
 }
 ```
 
@@ -1201,25 +1192,25 @@ export function cleanupBridge() {
 ```typescript
 // ❌ WRONG - No timestamp validation
 export const POST = async ({ request }) => {
-  const payload = await request.json();
-  await processWebhook(payload);
+	const payload = await request.json();
+	await processWebhook(payload);
 };
 
 // ✅ CORRECT - Timestamp validation
 export const POST = async ({ request }) => {
-  const timestamp = request.headers.get("x-webhook-timestamp");
-  const age = Date.now() - new Date(timestamp).getTime();
+	const timestamp = request.headers.get('x-webhook-timestamp');
+	const age = Date.now() - new Date(timestamp).getTime();
 
-  if (age > MAX_AGE) {
-    throw error(401, "Webhook timestamp too old");
-  }
+	if (age > MAX_AGE) {
+		throw error(401, 'Webhook timestamp too old');
+	}
 
-  const rawBody = await request.text();
-  if (!verifySignature(rawBody, signature, secret)) {
-    throw error(401, "Invalid signature");
-  }
+	const rawBody = await request.text();
+	if (!verifySignature(rawBody, signature, secret)) {
+		throw error(401, 'Invalid signature');
+	}
 
-  await processWebhook(JSON.parse(rawBody));
+	await processWebhook(JSON.parse(rawBody));
 };
 ```
 
@@ -1293,38 +1284,38 @@ channel.on('postgres_changes', { table: 'queue_jobs' }, (payload) => {
 ### Phase 1: Event Emission (Recommended)
 
 1. **Extend Bridge Pattern**:
-   - Add event emission to notification store operations
-   - Create typed event system (`NotificationEvent` union type)
-   - Implement event listener registration
+    - Add event emission to notification store operations
+    - Create typed event system (`NotificationEvent` union type)
+    - Implement event listener registration
 
 2. **Supabase Realtime Integration**:
-   - Subscribe to notification-related table changes
-   - Propagate database updates to notification store
-   - Handle cross-tab synchronization
+    - Subscribe to notification-related table changes
+    - Propagate database updates to notification store
+    - Handle cross-tab synchronization
 
 ### Phase 2: Event Consumers
 
 1. **Analytics Integration**:
-   - CustomEvent → Analytics pipeline
-   - Track user interactions (expand, dismiss, action clicks)
-   - Aggregate before sending to reduce API calls
+    - CustomEvent → Analytics pipeline
+    - Track user interactions (expand, dismiss, action clicks)
+    - Aggregate before sending to reduce API calls
 
 2. **External System Integration**:
-   - Webhook endpoints for notification events
-   - Queue jobs for async notification processing
-   - Email/SMS notifications for critical events
+    - Webhook endpoints for notification events
+    - Queue jobs for async notification processing
+    - Email/SMS notifications for critical events
 
 ### Phase 3: Advanced Features
 
 1. **Event Filtering**:
-   - Filter by notification type
-   - Filter by status
-   - Filter by user preferences
+    - Filter by notification type
+    - Filter by status
+    - Filter by user preferences
 
 2. **Event Replay**:
-   - Store events in database
-   - Replay for debugging
-   - Audit trail
+    - Store events in database
+    - Replay for debugging
+    - Audit trail
 
 ---
 

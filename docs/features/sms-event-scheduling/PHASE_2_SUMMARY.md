@@ -13,27 +13,27 @@ Phase 2 adds **intelligent, context-aware LLM message generation** to the SMS ev
 ### Key Features
 
 1. **LLM-Powered Message Generation**
-   - Uses DeepSeek Chat V3 via SmartLLMService
-   - Balanced profile for cost-effective quality
-   - Temperature: 0.6 for creative but focused messages
-   - Max tokens: 100 to stay within SMS limits
+    - Uses DeepSeek Chat V3 via SmartLLMService
+    - Balanced profile for cost-effective quality
+    - Temperature: 0.6 for creative but focused messages
+    - Max tokens: 100 to stay within SMS limits
 
 2. **Event-Type Intelligence**
-   - Automatically detects meeting vs deadline vs all-day events
-   - Uses specialized prompts for each type
-   - Includes relevant context (time, links, location)
+    - Automatically detects meeting vs deadline vs all-day events
+    - Uses specialized prompts for each type
+    - Includes relevant context (time, links, location)
 
 3. **Reliability**
-   - 100% fallback to templates if LLM fails
-   - All messages guaranteed under 160 characters
-   - Automatic emoji and markdown removal
-   - Comprehensive error handling
+    - 100% fallback to templates if LLM fails
+    - All messages guaranteed under 160 characters
+    - Automatic emoji and markdown removal
+    - Comprehensive error handling
 
 4. **Cost Optimization**
-   - DeepSeek Chat V3: $0.14/1M input tokens
-   - ~95% cheaper than Claude or GPT-4
-   - Tracks generation costs per message
-   - Records which messages used LLM vs templates
+    - DeepSeek Chat V3: $0.14/1M input tokens
+    - ~95% cheaper than Claude or GPT-4
+    - Tracks generation costs per message
+    - Records which messages used LLM vs templates
 
 ---
 
@@ -207,12 +207,12 @@ generation_cost_usd DECIMAL(10, 6)  -- Track LLM generation cost
 
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "message_content": "Project Sync in 15 mins. Join via meet.google.com/abc",
-  "generated_via": "llm",
-  "llm_model": "deepseek/deepseek-chat",
-  "generation_cost_usd": 0.000012,
-  "status": "scheduled"
+	"id": "550e8400-e29b-41d4-a716-446655440000",
+	"message_content": "Project Sync in 15 mins. Join via meet.google.com/abc",
+	"generated_via": "llm",
+	"llm_model": "deepseek/deepseek-chat",
+	"generation_cost_usd": 0.000012,
+	"status": "scheduled"
 }
 ```
 
@@ -293,38 +293,38 @@ generation_cost_usd DECIMAL(10, 6)  -- Track LLM generation cost
 ### Phase 3 Priorities
 
 1. **Calendar Event Change Handling**
-   - Update scheduled SMS when events are rescheduled
-   - Cancel SMS when events are cancelled
-   - Regenerate messages when event details change
+    - Update scheduled SMS when events are rescheduled
+    - Cancel SMS when events are cancelled
+    - Regenerate messages when event details change
 
 2. **Enhanced Event Context**
-   - Fetch full event details from Google Calendar API
-   - Include attendees in message context
-   - Add location and description to prompts
+    - Fetch full event details from Google Calendar API
+    - Include attendees in message context
+    - Add location and description to prompts
 
 3. **Message Optimization**
-   - A/B test different prompt variations
-   - Fine-tune temperature and max_tokens
-   - Add user preference for message style
+    - A/B test different prompt variations
+    - Fine-tune temperature and max_tokens
+    - Add user preference for message style
 
 ---
 
 ## 📝 Known Limitations
 
 1. **Event Details**
-   - Description, location, attendees not yet available from database
-   - Only using event title, start time, end time, and link
-   - Will be enhanced when Google Calendar API integration is added
+    - Description, location, attendees not yet available from database
+    - Only using event title, start time, end time, and link
+    - Will be enhanced when Google Calendar API integration is added
 
 2. **Cost Tracking**
-   - SmartLLMService doesn't return token usage yet
-   - Generation cost not calculated in real-time
-   - May need to enhance SmartLLMService to return usage stats
+    - SmartLLMService doesn't return token usage yet
+    - Generation cost not calculated in real-time
+    - May need to enhance SmartLLMService to return usage stats
 
 3. **Testing**
-   - LLM tests require real API key (costs money)
-   - Integration tests not yet written
-   - Production monitoring not set up
+    - LLM tests require real API key (costs money)
+    - Integration tests not yet written
+    - Production monitoring not set up
 
 ---
 

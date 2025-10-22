@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 03550792d395145857a2943a8757139ccee74fd1
 branch: main
 repository: buildos-platform
-topic: "Timezone Centralization Implementation Progress"
+topic: 'Timezone Centralization Implementation Progress'
 tags: [implementation, timezone, migration, database, in-progress]
 status: in_progress
 last_updated: 2025-10-13
@@ -65,9 +65,9 @@ Implementation of timezone centralization from 4 scattered preference tables to 
 
 1. Adds `users.timezone` column (TEXT, NOT NULL, DEFAULT 'UTC')
 2. Migrates existing data in priority order:
-   - Priority 1: `user_brief_preferences.timezone` (most reliable - actively set by users)
-   - Priority 2: `user_sms_preferences.timezone` (auto-detected from browser)
-   - Priority 3: `user_calendar_preferences.timezone` (set during calendar integration)
+    - Priority 1: `user_brief_preferences.timezone` (most reliable - actively set by users)
+    - Priority 2: `user_sms_preferences.timezone` (auto-detected from browser)
+    - Priority 3: `user_calendar_preferences.timezone` (set during calendar integration)
 3. Creates performance index: `idx_users_timezone`
 4. Adds validation constraint: `timezone_not_empty`
 5. Marks old columns as deprecated via COMMENT statements
@@ -101,24 +101,24 @@ NOTICE:  Mismatches with user_brief_preferences: 0 (expected: 0 for non-UTC)
 
 1. `/packages/shared-types/src/database.schema.ts:1202`
 
-   ```typescript
-   users: {
-     // ... existing fields ...
-     timezone: string; // NEW FIELD
-     trial_ends_at: string | null;
-     // ... existing fields ...
-   }
-   ```
+    ```typescript
+    users: {
+    	// ... existing fields ...
+    	timezone: string; // NEW FIELD
+    	trial_ends_at: string | null;
+    	// ... existing fields ...
+    }
+    ```
 
 2. `/apps/web/src/lib/database.schema.ts:1196`
-   ```typescript
-   users: {
-     // ... existing fields ...
-     timezone: string; // NEW FIELD
-     trial_ends_at: string | null;
-     // ... existing fields ...
-   }
-   ```
+    ```typescript
+    users: {
+    	// ... existing fields ...
+    	timezone: string; // NEW FIELD
+    	trial_ends_at: string | null;
+    	// ... existing fields ...
+    }
+    ```
 
 **Impact**: All TypeScript code now recognizes `users.timezone` as a valid field.
 
@@ -135,19 +135,15 @@ NOTICE:  Mismatches with user_brief_preferences: 0 (expected: 0 for non-UTC)
 ```typescript
 // BEFORE:
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("timezone")
-  .eq("user_id", userId)
-  .single();
-const userTimezone = preferences?.timezone || timezone || "UTC";
+	.from('user_brief_preferences')
+	.select('timezone')
+	.eq('user_id', userId)
+	.single();
+const userTimezone = preferences?.timezone || timezone || 'UTC';
 
 // AFTER:
-const { data: user } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
-const userTimezone = user?.timezone || timezone || "UTC";
+const { data: user } = await supabase.from('users').select('timezone').eq('id', userId).single();
+const userTimezone = user?.timezone || timezone || 'UTC';
 ```
 
 **Location 2: `checkAndScheduleBriefs()` (Lines 192-205, 384)**
@@ -155,27 +151,24 @@ const userTimezone = user?.timezone || timezone || "UTC";
 ```typescript
 // ADDED: Batch fetch user timezones (PHASE 0)
 const userIds = preferences.map((p) => p.user_id).filter(Boolean);
-const { data: users } = await supabase
-  .from("users")
-  .select("id, timezone")
-  .in("id", userIds);
+const { data: users } = await supabase.from('users').select('id, timezone').in('id', userIds);
 
 // Create timezone lookup map
 const userTimezoneMap = new Map<string, string>();
 users?.forEach((user) => {
-  if (user.id && user.timezone) {
-    userTimezoneMap.set(user.id, user.timezone);
-  }
+	if (user.id && user.timezone) {
+		userTimezoneMap.set(user.id, user.timezone);
+	}
 });
 
 // CHANGED: Use map lookup instead of preference.timezone
 await queueBriefGeneration(
-  preference.user_id,
-  generationStartTime,
-  undefined,
-  userTimezoneMap.get(preference.user_id) || "UTC", // ← UPDATED
-  engagementMetadata,
-  nextRunTime,
+	preference.user_id,
+	generationStartTime,
+	undefined,
+	userTimezoneMap.get(preference.user_id) || 'UTC', // ← UPDATED
+	engagementMetadata,
+	nextRunTime
 );
 ```
 
@@ -184,21 +177,18 @@ await queueBriefGeneration(
 ```typescript
 // ADDED: Batch fetch user timezones for SMS
 const smsUserIds = smsPreferences.map((p) => p.user_id).filter(Boolean);
-const { data: smsUsers } = await supabase
-  .from("users")
-  .select("id, timezone")
-  .in("id", smsUserIds);
+const { data: smsUsers } = await supabase.from('users').select('id, timezone').in('id', smsUserIds);
 
 // Create timezone lookup map
 const smsUserTimezoneMap = new Map<string, string>();
 smsUsers?.forEach((user) => {
-  if (user.id && user.timezone) {
-    smsUserTimezoneMap.set(user.id, user.timezone);
-  }
+	if (user.id && user.timezone) {
+		smsUserTimezoneMap.set(user.id, user.timezone);
+	}
 });
 
 // CHANGED: Use map lookup instead of pref.timezone
-const userTimezone = smsUserTimezoneMap.get(pref.user_id) || "UTC";
+const userTimezone = smsUserTimezoneMap.get(pref.user_id) || 'UTC';
 ```
 
 **Performance Optimization**: Batch fetching timezones for all users upfront (single query) instead of individual queries per user.
@@ -210,19 +200,19 @@ const userTimezone = smsUserTimezoneMap.get(pref.user_id) || "UTC";
 ```typescript
 // BEFORE:
 const { data: preferences, error: prefError } = await supabase
-  .from("user_brief_preferences")
-  .select("timezone")
-  .eq("user_id", job.data.userId)
-  .single();
-let timezone = preferences?.timezone || job.data.timezone || "UTC";
+	.from('user_brief_preferences')
+	.select('timezone')
+	.eq('user_id', job.data.userId)
+	.single();
+let timezone = preferences?.timezone || job.data.timezone || 'UTC';
 
 // AFTER:
 const { data: user, error: userError } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", job.data.userId)
-  .single();
-let timezone = user?.timezone || job.data.timezone || "UTC";
+	.from('users')
+	.select('timezone')
+	.eq('id', job.data.userId)
+	.single();
+let timezone = user?.timezone || job.data.timezone || 'UTC';
 ```
 
 **Impact**: Brief generation now uses centralized timezone from users table. Maintains same fallback logic for safety.
@@ -237,10 +227,10 @@ let timezone = user?.timezone || job.data.timezone || "UTC";
 
 ```typescript
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .single();
+	.from('user_sms_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.single();
 ```
 
 **Needs Update** (Lines 206):
@@ -261,50 +251,50 @@ const { data: smsPrefs } = await supabase
 **Files to Update**:
 
 1. **`/apps/web/src/routes/api/brief-preferences/+server.ts`** (Lines 23-27, 66, 90-92, 112)
-   - GET: Return timezone from users table (not brief preferences)
-   - POST: Update users.timezone instead of user_brief_preferences.timezone
-   - Validate timezone is required
+    - GET: Return timezone from users table (not brief preferences)
+    - POST: Update users.timezone instead of user_brief_preferences.timezone
+    - Validate timezone is required
 
 2. **`/apps/web/src/routes/api/users/calendar-preferences/+server.ts`** (Lines 12-16, 35, 83-91)
-   - GET: Read timezone from users table
-   - PUT: Update users.timezone
+    - GET: Read timezone from users table
+    - PUT: Update users.timezone
 
 3. **`/apps/web/src/routes/api/sms/preferences/+server.ts`** (Lines 20, 87, 129-130)
-   - GET: Read timezone from users table
-   - PUT: Update users.timezone
+    - GET: Read timezone from users table
+    - PUT: Update users.timezone
 
 4. **`/apps/web/src/routes/api/daily-briefs/generate/+server.ts`** (Lines 62, 153)
-   - Update `getSafeTimezone` to fetch from users table
+    - Update `getSafeTimezone` to fetch from users table
 
 **Pattern to Follow**:
 
 ```typescript
 // OLD PATTERN (brief preferences example):
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("*") // includes timezone
-  .eq("user_id", user.id)
-  .single();
+	.from('user_brief_preferences')
+	.select('*') // includes timezone
+	.eq('user_id', user.id)
+	.single();
 
 // NEW PATTERN:
 // 1. Fetch preferences (without timezone)
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("*")
-  .eq("user_id", user.id)
-  .single();
+	.from('user_brief_preferences')
+	.select('*')
+	.eq('user_id', user.id)
+	.single();
 
 // 2. Fetch user data (with timezone)
 const { data: userData } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", user.id)
-  .single();
+	.from('users')
+	.select('timezone')
+	.eq('id', user.id)
+	.single();
 
 // 3. Merge for response
 return json({
-  ...preferences,
-  timezone: userData?.timezone || "UTC",
+	...preferences,
+	timezone: userData?.timezone || 'UTC'
 });
 ```
 
@@ -313,40 +303,36 @@ return json({
 **Files to Update**:
 
 1. **`/apps/web/src/lib/services/task-time-slot-finder.ts`** (Lines 65-94, 120, 134, 320, 446)
-   - Replace `user_calendar_preferences.timezone` with `users.timezone`
-   - Update default preferences to use user.timezone
+    - Replace `user_calendar_preferences.timezone` with `users.timezone`
+    - Update default preferences to use user.timezone
 
 2. **`/apps/web/src/lib/services/project-calendar.service.ts`** (Lines 74-78)
-   - Replace `user_calendar_preferences.timezone` with `users.timezone`
+    - Replace `user_calendar_preferences.timezone` with `users.timezone`
 
 #### 5.3: UI Components (3 files) - TODO
 
 **Files to Update**:
 
 1. **`/apps/web/src/lib/components/briefs/BriefsSettingsModal.svelte`** (Lines 318-324, 425-436)
-   - Display mode: Show timezone from users table
-   - Edit mode: Update users.timezone (not user_brief_preferences.timezone)
-   - Keep same timezone dropdown options
+    - Display mode: Show timezone from users table
+    - Edit mode: Update users.timezone (not user_brief_preferences.timezone)
+    - Keep same timezone dropdown options
 
 2. **`/apps/web/src/lib/components/profile/CalendarTab.svelte`** (Lines 678-680)
-   - Update form binding to edit users.timezone
+    - Update form binding to edit users.timezone
 
 3. **`/apps/web/src/lib/components/settings/SMSPreferences.svelte`** (Lines 44, 69, 90)
-   - Read timezone from users table
-   - Update users.timezone (not user_sms_preferences.timezone)
+    - Read timezone from users table
+    - Update users.timezone (not user_sms_preferences.timezone)
 
 **UI Pattern**:
 
 ```typescript
 // Load timezone from users table
-const { data: user } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
+const { data: user } = await supabase.from('users').select('timezone').eq('id', userId).single();
 
 // Save timezone to users table
-await supabase.from("users").update({ timezone: newTimezone }).eq("id", userId);
+await supabase.from('users').update({ timezone: newTimezone }).eq('id', userId);
 ```
 
 ---
@@ -386,24 +372,24 @@ pnpm test
 **Manual Test Plan**:
 
 1. **Brief Scheduling**:
-   - Update user timezone via UI
-   - Verify brief scheduled at correct time in user's timezone
-   - Check logs show correct timezone being used
+    - Update user timezone via UI
+    - Verify brief scheduled at correct time in user's timezone
+    - Check logs show correct timezone being used
 
 2. **SMS Scheduling**:
-   - Update user timezone via UI
-   - Verify SMS reminders sent at correct time
-   - Verify quiet hours respected in correct timezone
+    - Update user timezone via UI
+    - Verify SMS reminders sent at correct time
+    - Verify quiet hours respected in correct timezone
 
 3. **Calendar Integration**:
-   - Update user timezone
-   - Verify tasks scheduled in correct timezone
-   - Verify calendar events use correct timezone
+    - Update user timezone
+    - Verify tasks scheduled in correct timezone
+    - Verify calendar events use correct timezone
 
 4. **Data Consistency**:
-   - Update timezone in one location
-   - Verify all features use updated timezone
-   - Check database shows timezone only in users table
+    - Update timezone in one location
+    - Verify all features use updated timezone
+    - Check database shows timezone only in users table
 
 ---
 
@@ -561,39 +547,39 @@ supabase db push --env production
 - **Issue**: Code reads `users.timezone` but some users have NULL
 - **Impact**: Users default to UTC (safe fallback)
 - **Action**:
-  ```sql
-  -- Set UTC as default for any NULL timezones
-  UPDATE users SET timezone = 'UTC' WHERE timezone IS NULL OR timezone = '';
-  ```
+    ```sql
+    -- Set UTC as default for any NULL timezones
+    UPDATE users SET timezone = 'UTC' WHERE timezone IS NULL OR timezone = '';
+    ```
 
 **Scenario 3: Need to revert code changes**
 
 - **Issue**: Bugs in new code, need to rollback
 - **Action**:
-  1. Revert git commits
-  2. Redeploy old code
-  3. Old code will use old columns (still exist)
-  4. No data loss (both old and new columns populated)
+    1. Revert git commits
+    2. Redeploy old code
+    3. Old code will use old columns (still exist)
+    4. No data loss (both old and new columns populated)
 
 **Scenario 4: Need to rollback migration** (extreme case)
 
 - **Issue**: Critical database issue
 - **Action**:
 
-  ```sql
-  BEGIN;
+    ```sql
+    BEGIN;
 
-  -- Remove users.timezone column
-  ALTER TABLE users DROP COLUMN timezone;
+    -- Remove users.timezone column
+    ALTER TABLE users DROP COLUMN timezone;
 
-  -- Remove index
-  DROP INDEX IF EXISTS idx_users_timezone;
+    -- Remove index
+    DROP INDEX IF EXISTS idx_users_timezone;
 
-  -- Remove constraint
-  ALTER TABLE users DROP CONSTRAINT IF EXISTS timezone_not_empty;
+    -- Remove constraint
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS timezone_not_empty;
 
-  COMMIT;
-  ```
+    COMMIT;
+    ```
 
 - **Data Loss**: None (old columns untouched)
 
@@ -684,8 +670,8 @@ supabase db push --env production
 ### High Risk 🔴
 
 - Cleanup migration (drops columns - irreversible)
-  - **Mitigation**: Only run after 1-2 weeks of monitoring
-  - **Mitigation**: Take database backup before running
+    - **Mitigation**: Only run after 1-2 weeks of monitoring
+    - **Mitigation**: Take database backup before running
 
 ### Critical Success Factors
 
@@ -708,21 +694,19 @@ supabase db push --env production
 ### Potential Issues ⚠️
 
 1. **Additional Query**: Some code paths now query users table separately
-   - **Mitigation**: Consider JOINing users table in existing queries
-   - **Example**:
+    - **Mitigation**: Consider JOINing users table in existing queries
+    - **Example**:
 
-     ```typescript
-     // Instead of:
-     const { data: prefs } = await supabase
-       .from("user_brief_preferences")
-       .select("*");
-     const { data: user } = await supabase.from("users").select("timezone");
+        ```typescript
+        // Instead of:
+        const { data: prefs } = await supabase.from('user_brief_preferences').select('*');
+        const { data: user } = await supabase.from('users').select('timezone');
 
-     // Consider:
-     const { data: prefs } = await supabase
-       .from("user_brief_preferences")
-       .select("*, users!inner(timezone)");
-     ```
+        // Consider:
+        const { data: prefs } = await supabase
+        	.from('user_brief_preferences')
+        	.select('*, users!inner(timezone)');
+        ```
 
 ---
 

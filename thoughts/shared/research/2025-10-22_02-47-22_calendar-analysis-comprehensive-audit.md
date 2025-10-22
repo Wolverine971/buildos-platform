@@ -4,17 +4,8 @@ researcher: Claude
 git_commit: e9623c8d363b562a37de3f5e22e75ac2f69b00d0
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Flow - Comprehensive Audit"
-tags:
-  [
-    research,
-    calendar-analysis,
-    audit,
-    llm-prompts,
-    deduplication,
-    ux,
-    error-handling,
-  ]
+topic: 'Calendar Analysis Flow - Comprehensive Audit'
+tags: [research, calendar-analysis, audit, llm-prompts, deduplication, ux, error-handling]
 status: complete
 last_updated: 2025-10-22
 last_updated_by: Claude
@@ -103,10 +94,10 @@ When Google Calendar provides recurring events:
 
 ```json
 {
-  "id": "event-123",
-  "summary": "Sprint Planning",
-  "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20251231T235959Z"],
-  "recurringEventId": "master-event-id"
+	"id": "event-123",
+	"summary": "Sprint Planning",
+	"recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20251231T235959Z"],
+	"recurringEventId": "master-event-id"
 }
 ```
 
@@ -137,9 +128,9 @@ Meaning: Every Tuesday and Thursday until Dec 15, 2025
 
 ```json
 {
-  "task_type": "recurring",
-  "recurrence_pattern": "weekly",
-  "recurrence_ends": null
+	"task_type": "recurring",
+	"recurrence_pattern": "weekly",
+	"recurrence_ends": null
 }
 ```
 
@@ -154,22 +145,22 @@ Meaning: Every Tuesday and Thursday until Dec 15, 2025
 ```javascript
 // In createProjectsFromGroups, when building event details:
 const groupUpcomingEvents = groupEvents
-  .filter((e) => {
-    const eventDate = new Date(e.start?.dateTime || e.start?.date || "");
-    return eventDate >= now;
-  })
-  .map((e) => ({
-    id: e.id,
-    title: e.summary,
-    start: e.start?.dateTime || e.start?.date,
-    end: e.end?.dateTime || e.end?.date,
-    attendees: e.attendees?.map((a) => a.email),
-    location: e.location,
-    hangoutLink: e.hangoutLink,
-    // ✅ ADD THIS:
-    recurrence: e.recurrence, // Array of RRULE strings
-    is_recurring: !!e.recurringEventId || !!e.recurrence,
-  }));
+	.filter((e) => {
+		const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
+		return eventDate >= now;
+	})
+	.map((e) => ({
+		id: e.id,
+		title: e.summary,
+		start: e.start?.dateTime || e.start?.date,
+		end: e.end?.dateTime || e.end?.date,
+		attendees: e.attendees?.map((a) => a.email),
+		location: e.location,
+		hangoutLink: e.hangoutLink,
+		// ✅ ADD THIS:
+		recurrence: e.recurrence, // Array of RRULE strings
+		is_recurring: !!e.recurringEventId || !!e.recurrence
+	}));
 ```
 
 **2. Update task schema in prompt** (line 738):
@@ -206,12 +197,12 @@ Example:
 
 ```json
 {
-  "title": "Sprint Planning",
-  "task_type": "recurring",
-  "recurrence_pattern": "weekly", // From FREQ=WEEKLY
-  "recurrence_ends": "2025-12-15", // From UNTIL=20251215T235959Z
-  "recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z", // EXACT COPY
-  "event_id": "event-123"
+	"title": "Sprint Planning",
+	"task_type": "recurring",
+	"recurrence_pattern": "weekly", // From FREQ=WEEKLY
+	"recurrence_ends": "2025-12-15", // From UNTIL=20251215T235959Z
+	"recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z", // EXACT COPY
+	"event_id": "event-123"
 }
 ```
 ````
@@ -248,10 +239,10 @@ return {
 
 ```typescript
 // In validateProjectSuggestions (add after line 873):
-if (task.task_type === "recurring" && task.event_id && !task.recurrence_rrule) {
-  console.warn(
-    `[Calendar Analysis] WARNING: Recurring task "${task.title}" is missing recurrence_rrule from event`,
-  );
+if (task.task_type === 'recurring' && task.event_id && !task.recurrence_rrule) {
+	console.warn(
+		`[Calendar Analysis] WARNING: Recurring task "${task.title}" is missing recurrence_rrule from event`
+	);
 }
 ```
 
@@ -349,14 +340,14 @@ DO NOT group these types of events:
 ## Deduplication Rules (Apply in Order)
 
 1. **Strong Match (≥75% confidence)**:
-   - Set add_to_existing: true
-   - Set existing_project_id: "uuid"
-   - Provide clear reasoning
+    - Set add_to_existing: true
+    - Set existing_project_id: "uuid"
+    - Provide clear reasoning
 
 2. **Weak/No Match (<75%)**:
-   - Set add_to_existing: false
-   - Set existing_project_id: null
-   - Create new project
+    - Set add_to_existing: false
+    - Set existing_project_id: null
+    - Create new project
 
 ALWAYS provide deduplication_reasoning explaining your decision.
 
@@ -468,12 +459,12 @@ ${projectsContext || 'No existing projects found.'}
 ```typescript
 // Current: Trusts LLM completely
 if (addToExisting && existingProjectId) {
-  // Directly uses existingProjectId without checking
-  operations.push(
-    ...tasks.map((task) => ({
-      project_id: existingProjectId, // What if this doesn't exist?
-    })),
-  );
+	// Directly uses existingProjectId without checking
+	operations.push(
+		...tasks.map((task) => ({
+			project_id: existingProjectId // What if this doesn't exist?
+		}))
+	);
 }
 ```
 
@@ -481,21 +472,21 @@ if (addToExisting && existingProjectId) {
 
 ```typescript
 if (addToExisting && existingProjectId) {
-  // Verify project exists and belongs to user
-  const { data: project } = await this.supabase
-    .from("projects")
-    .select("id, status, user_id")
-    .eq("id", existingProjectId)
-    .eq("user_id", userId)
-    .single();
+	// Verify project exists and belongs to user
+	const { data: project } = await this.supabase
+		.from('projects')
+		.select('id, status, user_id')
+		.eq('id', existingProjectId)
+		.eq('user_id', userId)
+		.single();
 
-  if (!project) {
-    throw new Error("Referenced project does not exist or access denied");
-  }
+	if (!project) {
+		throw new Error('Referenced project does not exist or access denied');
+	}
 
-  if (project.status === "archived" || project.status === "deleted") {
-    throw new Error("Cannot add tasks to archived/deleted project");
-  }
+	if (project.status === 'archived' || project.status === 'deleted') {
+		throw new Error('Cannot add tasks to archived/deleted project');
+	}
 }
 ```
 
@@ -508,8 +499,8 @@ if (addToExisting && existingProjectId) {
 ```typescript
 // Current: Only warns
 if (suggestion.add_to_existing && !suggestion.existing_project_id) {
-  console.warn("WARNING: has add_to_existing=true but no existing_project_id");
-  // Still continues to storage and UI!
+	console.warn('WARNING: has add_to_existing=true but no existing_project_id');
+	// Still continues to storage and UI!
 }
 ```
 
@@ -526,16 +517,16 @@ if (suggestion.add_to_existing && !suggestion.existing_project_id) {
 ### Edge Cases Not Handled
 
 1. **Project deleted between analysis and acceptance**
-   - Current: Would fail during task creation
-   - Fix: Validate project still exists
+    - Current: Would fail during task creation
+    - Fix: Validate project still exists
 
 2. **LLM hallucinates UUID**
-   - Current: Tasks fail to create silently
-   - Fix: Validate against provided project IDs
+    - Current: Tasks fail to create silently
+    - Fix: Validate against provided project IDs
 
 3. **Multiple matching projects**
-   - Current: LLM chooses arbitrarily
-   - Fix: Return multiple matches, let user decide
+    - Current: LLM chooses arbitrarily
+    - Fix: Return multiple matches, let user decide
 
 ### Recommendations
 
@@ -604,40 +595,40 @@ Family Logistics (20+ events):
 
 ```typescript
 const personalKeywords = [
-  // Current (7 keywords)
-  "birthday",
-  "anniversary",
-  "vacation",
-  "holiday",
-  "pto",
-  "out of office",
-  "ooo",
+	// Current (7 keywords)
+	'birthday',
+	'anniversary',
+	'vacation',
+	'holiday',
+	'pto',
+	'out of office',
+	'ooo',
 
-  // Medical/Health (add 7 more)
-  "therapy",
-  "dentist",
-  "doctor",
-  "appointment",
-  "checkup",
-  "physical",
-  "medical",
+	// Medical/Health (add 7 more)
+	'therapy',
+	'dentist',
+	'doctor',
+	'appointment',
+	'checkup',
+	'physical',
+	'medical',
 
-  // Family/Kids (add 5 more)
-  "kindergarten",
-  "school",
-  "dismissal",
-  "co-op",
-  "daycare",
+	// Family/Kids (add 5 more)
+	'kindergarten',
+	'school',
+	'dismissal',
+	'co-op',
+	'daycare',
 
-  // Personal Chores (add 3 more)
-  "trash",
-  "curb",
-  "mop",
+	// Personal Chores (add 3 more)
+	'trash',
+	'curb',
+	'mop',
 
-  // Social (add 3 more)
-  "housewarming",
-  "couples",
-  "visit",
+	// Social (add 3 more)
+	'housewarming',
+	'couples',
+	'visit'
 ];
 // Total: 25 keywords (4x increase)
 ```
@@ -645,16 +636,16 @@ const personalKeywords = [
 ### Additional Filters Needed
 
 1. **Attendee-based filtering**
-   - Filter events with ≤2 attendees where user is not organizer
-   - Exception: Keep if title contains work keywords
+    - Filter events with ≤2 attendees where user is not organizer
+    - Exception: Keep if title contains work keywords
 
 2. **Title pattern detection**
-   - Filter titles starting with times (e.g., "7pm", "3:30pm")
-   - Filter titles with personal names in certain patterns
+    - Filter titles starting with times (e.g., "7pm", "3:30pm")
+    - Filter titles with personal names in certain patterns
 
 3. **BuildOS event preservation**
-   - Keep events with "[Build OS Task #...]" in description
-   - Keep events created by BuildOS
+    - Keep events with "[Build OS Task #...]" in description
+    - Keep events created by BuildOS
 
 ### Recommendations
 
@@ -687,8 +678,8 @@ const personalKeywords = [
 ```typescript
 const taskCount = suggestion.suggested_tasks?.length || 0;
 if (taskCount < 2) {
-  console.warn(`WARNING: only ${taskCount} task(s). Minimum 2 expected.`);
-  // Only a warning - system accepts 0-1 tasks
+	console.warn(`WARNING: only ${taskCount} task(s). Minimum 2 expected.`);
+	// Only a warning - system accepts 0-1 tasks
 }
 ```
 
@@ -802,16 +793,14 @@ event_conversion_details: {
 ```typescript
 // At start of analyzeUserCalendar()
 const inProgress = await this.supabase
-  .from("calendar_analyses")
-  .select("id")
-  .eq("user_id", userId)
-  .eq("status", "processing")
-  .maybeSingle();
+	.from('calendar_analyses')
+	.select('id')
+	.eq('user_id', userId)
+	.eq('status', 'processing')
+	.maybeSingle();
 
 if (inProgress.data) {
-  throw new Error(
-    "Analysis already in progress. Please wait for it to complete.",
-  );
+	throw new Error('Analysis already in progress. Please wait for it to complete.');
 }
 ```
 
@@ -877,28 +866,28 @@ if (inProgress.data) {
 ### ✅ Strengths
 
 1. **Excellent progress feedback**
-   - Minimizable notification
-   - Auto-expand on completion
-   - Clear loading states
-   - Toast notifications
+    - Minimizable notification
+    - Auto-expand on completion
+    - Clear loading states
+    - Toast notifications
 
 2. **Transparent AI reasoning**
-   - Expandable "Why suggested"
-   - Confidence scores (color-coded)
-   - Event metadata visible
-   - Executive summaries
+    - Expandable "Why suggested"
+    - Confidence scores (color-coded)
+    - Event metadata visible
+    - Executive summaries
 
 3. **Robust editing**
-   - Project name/description editable
-   - Task-level editing
-   - Selective acceptance (checkboxes)
-   - Field preservation
+    - Project name/description editable
+    - Task-level editing
+    - Selective acceptance (checkboxes)
+    - Field preservation
 
 4. **Rich task display**
-   - Comprehensive metadata
-   - Visual status indicators
-   - Recurrence support
-   - Calendar linking
+    - Comprehensive metadata
+    - Visual status indicators
+    - Recurrence support
+    - Calendar linking
 
 ### ⚠️ Critical UX Gaps
 
@@ -994,53 +983,53 @@ You're about to create:
 ### 🎯 Top 5 Priorities (Fix This Week)
 
 1. **Add personal event filter to Part 1 prompt** ⏱️ 15 minutes
-   - Lines 381-436 in calendar-analysis.service.ts
-   - Add exclusion criteria before grouping instructions
-   - **Impact**: 60-70% reduction in false positives
+    - Lines 381-436 in calendar-analysis.service.ts
+    - Add exclusion criteria before grouping instructions
+    - **Impact**: 60-70% reduction in false positives
 
 2. **Expand event filtering keywords** ⏱️ 5 minutes
-   - Lines 321-328 in calendar-analysis.service.ts
-   - Add 18 more keywords (medical, school, chores, social)
-   - **Impact**: 60-70% reduction in false positives
+    - Lines 321-328 in calendar-analysis.service.ts
+    - Add 18 more keywords (medical, school, chores, social)
+    - **Impact**: 60-70% reduction in false positives
 
 3. **Add database validation for existing_project_id** ⏱️ 1-2 hours
-   - Lines 1316-1420 in calendar-analysis.service.ts
-   - Verify project exists and belongs to user
-   - **Impact**: Prevents creation failures, security improvement
+    - Lines 1316-1420 in calendar-analysis.service.ts
+    - Verify project exists and belongs to user
+    - **Impact**: Prevents creation failures, security improvement
 
 4. **Add concurrent analysis prevention** ⏱️ 30 minutes
-   - Lines 162-169 in calendar-analysis.service.ts
-   - Check for in-progress analysis before starting
-   - **Impact**: Prevents corruption, wasted API calls
+    - Lines 162-169 in calendar-analysis.service.ts
+    - Check for in-progress analysis before starting
+    - **Impact**: Prevents corruption, wasted API calls
 
 5. **Scale task count with event count** ⏱️ 15 minutes
-   - Lines 734-759 in calendar-analysis.service.ts
-   - Change "minimum 2 tasks" to "30-50% of upcoming events"
-   - **Impact**: 3-5x more tasks, better calendar representation
+    - Lines 734-759 in calendar-analysis.service.ts
+    - Change "minimum 2 tasks" to "30-50% of upcoming events"
+    - **Impact**: 3-5x more tasks, better calendar representation
 
 ### 🚀 Quick Wins (High Impact, Low Effort)
 
 6. **Simplify deduplication rules** ⏱️ 10 minutes
-   - Lines 669-685 in calendar-analysis.service.ts
-   - Replace 3-tier system with simple 75% threshold
-   - Add 2 examples
+    - Lines 669-685 in calendar-analysis.service.ts
+    - Replace 3-tier system with simple 75% threshold
+    - Add 2 examples
 
 7. **Enforce metadata in tasks** ⏱️ 15 minutes
-   - Lines 738-746 in calendar-analysis.service.ts
-   - Add required format for task details with meeting info
-   - **Impact**: Tasks become self-contained
+    - Lines 738-746 in calendar-analysis.service.ts
+    - Add required format for task details with meeting info
+    - **Impact**: Tasks become self-contained
 
 8. **Improve error messages** ⏱️ 1 hour
-   - Multiple locations
-   - Make errors actionable and specific
-   - **Impact**: Better user support, fewer support tickets
+    - Multiple locations
+    - Make errors actionable and specific
+    - **Impact**: Better user support, fewer support tickets
 
 ### 📈 Medium-Term Improvements (Next Sprint)
 
 9. **Add re-analysis capability** ⏱️ 4-6 hours
-   - New UI component + API endpoint updates
-   - Allow date range modification
-   - **Impact**: Unblocks power users, increases feature stickiness
+    - New UI component + API endpoint updates
+    - Allow date range modification
+    - **Impact**: Unblocks power users, increases feature stickiness
 
 10. **Build deduplication UI** ⏱️ 4-6 hours
     - Show matches, allow merge or create new
@@ -1063,62 +1052,62 @@ You're about to create:
 ### What's Working Well ✅
 
 1. **Two-part LLM strategy**
-   - Separates pattern detection from project creation
-   - Allows focused prompts
-   - Good token efficiency
+    - Separates pattern detection from project creation
+    - Allows focused prompts
+    - Good token efficiency
 
 2. **Past/future event separation**
-   - Past events for context only
-   - Future events for task generation
-   - Prevents past-dated tasks
+    - Past events for context only
+    - Future events for task generation
+    - Prevents past-dated tasks
 
 3. **Notification-based architecture**
-   - Non-blocking UI
-   - Minimizable progress
-   - Good UX for long operations
+    - Non-blocking UI
+    - Minimizable progress
+    - Good UX for long operations
 
 4. **Operations executor pattern**
-   - Consistent project/task creation
-   - Transaction-like behavior
-   - Good error handling
+    - Consistent project/task creation
+    - Transaction-like behavior
+    - Good error handling
 
 ### Technical Debt 🔴
 
 1. **Deduplication infrastructure exists but had gaps**
-   - ✅ Now implemented (fetches existing projects)
-   - ⚠️ Still needs better validation
-   - ⚠️ UI doesn't show deduplication decisions
+    - ✅ Now implemented (fetches existing projects)
+    - ⚠️ Still needs better validation
+    - ⚠️ UI doesn't show deduplication decisions
 
 2. **No incremental analysis**
-   - Must re-run full analysis each time
-   - Can't add just "next 3 months"
-   - No diffing between analyses
+    - Must re-run full analysis each time
+    - Can't add just "next 3 months"
+    - No diffing between analyses
 
 3. **No state management for re-analysis**
-   - Date range selector hidden after first run
-   - Must disconnect/reconnect to change parameters
+    - Date range selector hidden after first run
+    - Must disconnect/reconnect to change parameters
 
 4. **Token optimization opportunities**
-   - Context framework too verbose (~1,800 tokens waste)
-   - Could reduce prompt size by 25%
-   - Would save ~$0.005 per analysis
+    - Context framework too verbose (~1,800 tokens waste)
+    - Could reduce prompt size by 25%
+    - Would save ~$0.005 per analysis
 
 ### Future Enhancements
 
 1. **ML-based personal event detection**
-   - Train classifier on labeled personal vs. work events
-   - Could replace keyword matching
-   - Higher accuracy
+    - Train classifier on labeled personal vs. work events
+    - Could replace keyword matching
+    - Higher accuracy
 
 2. **Incremental analysis**
-   - Store event fingerprints
-   - Only analyze new/changed events
-   - Faster, cheaper
+    - Store event fingerprints
+    - Only analyze new/changed events
+    - Faster, cheaper
 
 3. **User feedback loop**
-   - Track which suggestions accepted/rejected
-   - Fine-tune prompts based on patterns
-   - Improve over time
+    - Track which suggestions accepted/rejected
+    - Fine-tune prompts based on patterns
+    - Improve over time
 
 ---
 
@@ -1203,19 +1192,19 @@ Most critical issues are **prompt changes** (low effort, high impact):
 
 ```json
 {
-  "suggestions": [
-    {
-      "name": "School Schedule Coordination",
-      "confidence": 0.9,
-      "event_ids": [
-        /* 38 school events */
-      ],
-      "suggested_tasks": [
-        { "title": "Attend School", "start_date": "2025-10-22T08:00:00" },
-        { "title": "Coordinate Schedule", "start_date": "2025-10-23T09:00:00" }
-      ]
-    }
-  ]
+	"suggestions": [
+		{
+			"name": "School Schedule Coordination",
+			"confidence": 0.9,
+			"event_ids": [
+				/* 38 school events */
+			],
+			"suggested_tasks": [
+				{ "title": "Attend School", "start_date": "2025-10-22T08:00:00" },
+				{ "title": "Coordinate Schedule", "start_date": "2025-10-23T09:00:00" }
+			]
+		}
+	]
 }
 ```
 
@@ -1225,9 +1214,9 @@ Most critical issues are **prompt changes** (low effort, high impact):
 
 ```json
 {
-  "suggestions": [
-    /* Personal school events filtered out in Part 1 */
-  ]
+	"suggestions": [
+		/* Personal school events filtered out in Part 1 */
+	]
 }
 ```
 

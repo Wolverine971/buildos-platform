@@ -35,19 +35,19 @@ Greylock focuses on AI-first companies with emphasis on "copilots for everybody"
 ### Most Relevant for BuildOS:
 
 - **Reid Hoffman** - Co-founder of LinkedIn, Partner
-  - Focus: AI investing, network effects, professional productivity tools
-  - Background: 37+ AI company investments, understands professional workflows
-  - Philosophy: "AI to benefit humanity"
+    - Focus: AI investing, network effects, professional productivity tools
+    - Background: 37+ AI company investments, understands professional workflows
+    - Philosophy: "AI to benefit humanity"
 
 - **Mustafa Suleyman** - Venture Partner (AI Specialist)
-  - Background: Co-founded DeepMind, Inflection AI ($1.3B raised), Microsoft AI Executive VP
-  - Focus: AI technical depth and productivity applications
-  - Recent: Deep AI product and technical experience
+    - Background: Co-founded DeepMind, Inflection AI ($1.3B raised), Microsoft AI Executive VP
+    - Focus: AI technical depth and productivity applications
+    - Recent: Deep AI product and technical experience
 
 - **David Sze** - Partner (Consumer/Enterprise Platforms)
-  - Portfolio: Facebook, LinkedIn, Pandora, Roblox
-  - Focus: Platforms connecting millions of professionals
-  - Relevance: Understanding of professional networking and productivity
+    - Portfolio: Facebook, LinkedIn, Pandora, Roblox
+    - Focus: Platforms connecting millions of professionals
+    - Relevance: Understanding of professional networking and productivity
 
 ### Partner Expertise:
 
@@ -147,16 +147,16 @@ Greylock focuses on AI-first companies with emphasis on "copilots for everybody"
 ### Application Pathways:
 
 1. **Warm Introductions** - Strongly preferred approach
-   - Target: Reid Hoffman (LinkedIn network) or Mustafa Suleyman (AI expertise)
-   - Sources: Portfolio company founders, mutual connections
+    - Target: Reid Hoffman (LinkedIn network) or Mustafa Suleyman (AI expertise)
+    - Sources: Portfolio company founders, mutual connections
 
 2. **Direct Submission** - businessplans@greylock.com
-   - Requirements: Brief deck with team profiles, network connections
-   - Include: LinkedIn, AngelList, GitHub profiles
+    - Requirements: Brief deck with team profiles, network connections
+    - Include: LinkedIn, AngelList, GitHub profiles
 
 3. **Greylock Edge Program** - 3-month company-building program
-   - Stage: Pre-idea to product-market fit
-   - Support: Flexible financing and dedicated partnership
+    - Stage: Pre-idea to product-market fit
+    - Support: Flexible financing and dedicated partnership
 
 ### Evaluation Criteria:
 

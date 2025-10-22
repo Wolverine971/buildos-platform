@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 34d8bf7145f90038e7fa18b45ac7e7b7be423a39
 branch: main
 repository: buildos-platform
-topic: "Onboarding V2 Update - Research for New Flow Structure"
+topic: 'Onboarding V2 Update - Research for New Flow Structure'
 tags: [research, onboarding, ui/ux, user-experience, features]
 status: complete
 last_updated: 2025-10-21
@@ -27,9 +27,9 @@ How can we restructure the onboarding v2 flow to better showcase BuildOS's flexi
 
 1. Update first 3 steps to "Clarity", "Focus", and "Flexibility"
 2. Add new "Flexibility" step showing:
-   - Braindump flexibility (updating tasks, rescheduling)
-   - Flexible organization with project phases
-   - Flexibility in scheduling with Google Calendar
+    - Braindump flexibility (updating tasks, rescheduling)
+    - Flexible organization with project phases
+    - Flexibility in scheduling with Google Calendar
 3. Add "Admin" step showing profile page, history, project history (with "feel free to skip")
 4. Combine usage profile + productivity challenges into one step
 
@@ -115,9 +115,9 @@ The research provided comprehensive details on all features needed for the flexi
 - Two types: 'project' (specific project) and 'build' (personal work)
 - **AI-powered suggestions:** Automatically suggests what to work on during block
 - **UI Components:**
-  - `TimeBlockCreateModal.svelte` - Creation form
-  - `TimePlayCalendar.svelte` - Calendar view
-  - `TimeBlockList.svelte` - List display
+    - `TimeBlockCreateModal.svelte` - Creation form
+    - `TimePlayCalendar.svelte` - Calendar view
+    - `TimeBlockList.svelte` - List display
 
 **Calendar Analysis:**
 
@@ -135,29 +135,29 @@ The research provided comprehensive details on all features needed for the flexi
 **Six Tabs:**
 
 1. **Work Profile** (`about`) - Onboarding responses organized by AI
-   - Current Projects & Initiatives
-   - Work Style & Preferences
-   - Current Challenges & Blockers
-   - BuildOS Focus Areas
+    - Current Projects & Initiatives
+    - Work Style & Preferences
+    - Current Challenges & Blockers
+    - BuildOS Focus Areas
 
 2. **Brief Settings** (`briefs`) - Daily brief preferences
-   - `BriefsTab.svelte`
-   - Frequency, time, timezone, email opt-in
+    - `BriefsTab.svelte`
+    - Frequency, time, timezone, email opt-in
 
 3. **Calendar** (`calendar`) - Google Calendar integration
-   - `CalendarTab.svelte`
-   - Connection, preferences, analysis, scheduling
+    - `CalendarTab.svelte`
+    - Connection, preferences, analysis, scheduling
 
 4. **Notifications** (`notifications`) - Email/SMS preferences
-   - `NotificationsTab.svelte`
-   - Notification types, scheduled SMS list
+    - `NotificationsTab.svelte`
+    - Notification types, scheduled SMS list
 
 5. **Account** (`account`) - Account management
-   - `AccountTab.svelte`
-   - Account settings
+    - `AccountTab.svelte`
+    - Account settings
 
 6. **Billing** (`billing`) - Subscription management (if Stripe enabled)
-   - Payment history, invoices
+    - Payment history, invoices
 
 ### History Page Features
 
@@ -223,10 +223,10 @@ The research provided comprehensive details on all features needed for the flexi
 
 1. **New Project Mode** - Creates new project with tasks
 2. **Existing Project Mode** - Updates project context and tasks
-   - Preparatory analysis (fast classification)
-   - Core dimension updates
-   - Task filtering (only relevant tasks)
-   - 20-30% token savings
+    - Preparatory analysis (fast classification)
+    - Core dimension updates
+    - Task filtering (only relevant tasks)
+    - 20-30% token savings
 
 **Short Braindump Mode:**
 
@@ -360,23 +360,23 @@ Operations Execution → Database Save → UI Update
 ### New Component Structure
 
 1. **FlexibilityStep.svelte** (NEW)
-   - Three sections: Braindump, Phases, Calendar
-   - Tab navigation between sections
-   - Use screenshots or interactive demos
-   - Showcase flexibility without requiring user action
+    - Three sections: Braindump, Phases, Calendar
+    - Tab navigation between sections
+    - Use screenshots or interactive demos
+    - Showcase flexibility without requiring user action
 
 2. **CombinedProfileStep.svelte** (NEW)
-   - Merge ArchetypeStep and ChallengesStep
-   - Two-section layout (vertical stack on mobile)
-   - Archetype selection (required)
-   - Challenges selection (optional but recommended)
-   - Single save action
+    - Merge ArchetypeStep and ChallengesStep
+    - Two-section layout (vertical stack on mobile)
+    - Archetype selection (required)
+    - Challenges selection (optional but recommended)
+    - Single save action
 
 3. **AdminTourStep.svelte** (NEW)
-   - Three sections: Profile, History, Project History
-   - Prominent "Skip Tour" button
-   - Screenshots with CTAs to actual pages
-   - Completely optional
+    - Three sections: Profile, History, Project History
+    - Prominent "Skip Tour" button
+    - Screenshots with CTAs to actual pages
+    - Completely optional
 
 ### Configuration Updates
 
@@ -415,25 +415,25 @@ steps: {
 ### Testing Plan
 
 1. **Unit Tests:**
-   - FlexibilityStep component rendering
-   - CombinedProfileStep validation logic
-   - AdminTourStep skip functionality
+    - FlexibilityStep component rendering
+    - CombinedProfileStep validation logic
+    - AdminTourStep skip functionality
 
 2. **Integration Tests:**
-   - Complete flow navigation
-   - Data persistence across steps
-   - Step skipping behavior
+    - Complete flow navigation
+    - Data persistence across steps
+    - Step skipping behavior
 
 3. **E2E Tests:**
-   - Full onboarding completion
-   - Skip optional steps path
-   - Mobile responsiveness
+    - Full onboarding completion
+    - Skip optional steps path
+    - Mobile responsiveness
 
 4. **Manual QA:**
-   - Desktop browsers (Chrome, Firefox, Safari)
-   - Mobile browsers (iOS Safari, Chrome)
-   - Tablet layouts
-   - Dark mode
+    - Desktop browsers (Chrome, Firefox, Safari)
+    - Mobile browsers (iOS Safari, Chrome)
+    - Tablet layouts
+    - Dark mode
 
 ## Related Research
 
@@ -447,23 +447,23 @@ This research builds upon:
 ## Open Questions
 
 1. **Should FlexibilityStep be interactive or purely informational?**
-   - Recommendation: Start informational, add interactivity in v2.1
-   - Rationale: Simpler to implement, faster to complete
+    - Recommendation: Start informational, add interactivity in v2.1
+    - Rationale: Simpler to implement, faster to complete
 
 2. **Should AdminTourStep be completely optional?**
-   - Recommendation: Yes, prominent skip button
-   - Rationale: Not core to getting started, reduces friction
+    - Recommendation: Yes, prominent skip button
+    - Rationale: Not core to getting started, reduces friction
 
 3. **What's the priority order for screenshots?**
-   - Recommendation:
-     1. Phase generation modal (most important)
-     2. Timeblock with suggestions (most visually compelling)
-     3. Profile page overview (easiest to capture)
-     4. Others can use placeholders initially
+    - Recommendation:
+        1. Phase generation modal (most important)
+        2. Timeblock with suggestions (most visually compelling)
+        3. Profile page overview (easiest to capture)
+        4. Others can use placeholders initially
 
 4. **Should we track analytics on step completion rates?**
-   - Recommendation: Yes
-   - Metrics: Completion rate per step, skip rate, time to complete, drop-off points
+    - Recommendation: Yes
+    - Metrics: Completion rate per step, skip rate, time to complete, drop-off points
 
 ## Next Steps
 

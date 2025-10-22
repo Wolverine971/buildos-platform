@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 01bfe2f60ddc74297548e174b0c61a8824562059
 branch: main
 repository: buildos-platform
-topic: "Daily Brief Email Creation Failing with Status Constraint Violation"
+topic: 'Daily Brief Email Creation Failing with Status Constraint Violation'
 tags: [research, codebase, email, daily-brief, database, constraint, bug]
 status: complete
 last_updated: 2025-10-07
@@ -56,25 +56,25 @@ The daily brief worker creates email records with `status: 'pending'`:
 
 ```typescript
 const { data: emailRecord, error: emailError } = await supabase
-  .from("emails")
-  .insert({
-    created_by: job.data.userId,
-    from_email: "noreply@build-os.com",
-    from_name: "BuildOS",
-    subject: subject,
-    content: emailHtmlForStorage,
-    category: "daily_brief",
-    status: "pending", // ← This is being rejected by the constraint!
-    tracking_enabled: true,
-    tracking_id: trackingId,
-    template_data: {
-      brief_id: brief.id,
-      brief_date: briefDate,
-      user_id: job.data.userId,
-    },
-  })
-  .select()
-  .single();
+	.from('emails')
+	.insert({
+		created_by: job.data.userId,
+		from_email: 'noreply@build-os.com',
+		from_name: 'BuildOS',
+		subject: subject,
+		content: emailHtmlForStorage,
+		category: 'daily_brief',
+		status: 'pending', // ← This is being rejected by the constraint!
+		tracking_enabled: true,
+		tracking_id: trackingId,
+		template_data: {
+			brief_id: brief.id,
+			brief_date: briefDate,
+			user_id: job.data.userId
+		}
+	})
+	.select()
+	.single();
 ```
 
 **Valid Status Values Expected by Code**:
@@ -309,9 +309,9 @@ SELECT EXISTS(
 
 1. **When was the constraint added?** - No migration file exists for the `emails` table creation or constraint addition
 2. **How did this error not appear before?** - Possible that:
-   - Daily briefs weren't being generated recently
-   - The constraint was recently added manually
-   - The worker service was recently redeployed with updated code
+    - Daily briefs weren't being generated recently
+    - The constraint was recently added manually
+    - The worker service was recently redeployed with updated code
 3. **Are there existing email records with `status = 'pending'`?** - If so, the constraint might not exist in production, only in a specific environment
 
 ## Next Steps

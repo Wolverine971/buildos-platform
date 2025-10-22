@@ -4,16 +4,8 @@ researcher: Claude Code
 git_commit: 6f9c8dc2b31bed0d2dd4f601c0bb7999f134c2c7
 branch: main
 repository: buildos-platform
-topic: "SMS Phone Verification Integration in Profile/Notifications Page"
-tags:
-  [
-    research,
-    sms,
-    phone-verification,
-    notifications,
-    profile,
-    implementation-spec,
-  ]
+topic: 'SMS Phone Verification Integration in Profile/Notifications Page'
+tags: [research, sms, phone-verification, notifications, profile, implementation-spec]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude Code
@@ -36,55 +28,55 @@ This specification documents the complete SMS phone verification flow integratio
 ### ✅ Completed Components
 
 1. **Database Schema** (`/apps/web/supabase/migrations/`)
-   - `user_sms_preferences` table with all required fields
-   - `sms_messages` table for tracking SMS deliveries
-   - `sms_templates` for reusable message templates
-   - RLS policies for security
-   - Helper functions: `queue_sms_message()`, `get_user_sms_channel_info()`
+    - `user_sms_preferences` table with all required fields
+    - `sms_messages` table for tracking SMS deliveries
+    - `sms_templates` for reusable message templates
+    - RLS policies for security
+    - Helper functions: `queue_sms_message()`, `get_user_sms_channel_info()`
 
 2. **API Endpoints** (`/apps/web/src/routes/api/sms/`)
-   - `POST /api/sms/verify` - Initiates phone verification
-   - `POST /api/sms/verify/confirm` - Confirms verification code
-   - Both endpoints properly integrated with Twilio Verify Service
+    - `POST /api/sms/verify` - Initiates phone verification
+    - `POST /api/sms/verify/confirm` - Confirms verification code
+    - Both endpoints properly integrated with Twilio Verify Service
 
 3. **Services** (`/apps/web/src/lib/services/`)
-   - `sms.service.ts` - Complete SMS operations (verify, confirm, preferences, opt-out)
-   - `notification-preferences.service.ts` - Handles notification channel preferences
+    - `sms.service.ts` - Complete SMS operations (verify, confirm, preferences, opt-out)
+    - `notification-preferences.service.ts` - Handles notification channel preferences
 
 4. **UI Components** (`/apps/web/src/lib/components/`)
-   - `PhoneVerification.svelte` - Phone input and code confirmation
-   - `PhoneVerificationModal.svelte` - Modal wrapper for verification
-   - `SMSPreferences.svelte` - Full SMS preferences management
-   - `NotificationPreferences.svelte` - Multi-channel notification settings
-   - `NotificationsTab.svelte` - Profile page notifications tab
+    - `PhoneVerification.svelte` - Phone input and code confirmation
+    - `PhoneVerificationModal.svelte` - Modal wrapper for verification
+    - `SMSPreferences.svelte` - Full SMS preferences management
+    - `NotificationPreferences.svelte` - Multi-channel notification settings
+    - `NotificationsTab.svelte` - Profile page notifications tab
 
 ### ❌ Issues & Bugs Found
 
 1. **PhoneVerification.svelte Line 93-97**
 
-   ```svelte
-   $effect(() => {
-     if (phoneNumber) {
-       phoneNumber = formatPhoneInput(phoneNumber);
-     }
-   });
-   ```
+    ```svelte
+    $effect(() => {
+      if (phoneNumber) {
+        phoneNumber = formatPhoneInput(phoneNumber);
+      }
+    });
+    ```
 
-   **Problem**: This creates an infinite loop. The effect watches `phoneNumber`, then modifies it, triggering the effect again.
+    **Problem**: This creates an infinite loop. The effect watches `phoneNumber`, then modifies it, triggering the effect again.
 
-   **Solution**: Remove the effect and format on input event instead.
+    **Solution**: Remove the effect and format on input event instead.
 
 2. **Missing Reload After Verification**
-   - When phone is verified in modal, the parent component needs to refresh SMS preferences
-   - Current callback exists but may not be properly reloading phone verification status
+    - When phone is verified in modal, the parent component needs to refresh SMS preferences
+    - Current callback exists but may not be properly reloading phone verification status
 
 3. **Inconsistent Phone Number Format**
-   - Formatting happens client-side but API expects E.164 format
-   - Need to ensure clean conversion before API calls
+    - Formatting happens client-side but API expects E.164 format
+    - Need to ensure clean conversion before API calls
 
 4. **No Visual Feedback on Verification Status**
-   - After closing the modal, user doesn't immediately see verified status
-   - Should show success state in NotificationPreferences
+    - After closing the modal, user doesn't immediately see verified status
+    - Should show success state in NotificationPreferences
 
 ## System Architecture
 
@@ -242,7 +234,7 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "phoneNumber": "+15551234567" // E.164 format or US format
+	"phoneNumber": "+15551234567" // E.164 format or US format
 }
 ```
 
@@ -250,11 +242,11 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "success": true,
-  "data": {
-    "verificationSent": true,
-    "verificationSid": "VA..."
-  }
+	"success": true,
+	"data": {
+		"verificationSent": true,
+		"verificationSid": "VA..."
+	}
 }
 ```
 
@@ -262,8 +254,8 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "success": false,
-  "errors": ["This phone number is already verified by another user"]
+	"success": false,
+	"errors": ["This phone number is already verified by another user"]
 }
 ```
 
@@ -271,9 +263,9 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "success": false,
-  "errors": ["Too many verification attempts. Please try again later."],
-  "code": "RATE_LIMITED"
+	"success": false,
+	"errors": ["Too many verification attempts. Please try again later."],
+	"code": "RATE_LIMITED"
 }
 ```
 
@@ -287,9 +279,9 @@ CREATE TABLE user_sms_preferences (
 **Database Side Effects**:
 
 - Creates or updates `user_sms_preferences` with:
-  - `phone_number` = provided number
-  - `phone_verified` = `false`
-  - `updated_at` = NOW()
+    - `phone_number` = provided number
+    - `phone_verified` = `false`
+    - `updated_at` = NOW()
 
 ### `POST /api/sms/verify/confirm`
 
@@ -299,8 +291,8 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "phoneNumber": "+15551234567",
-  "code": "123456"
+	"phoneNumber": "+15551234567",
+	"code": "123456"
 }
 ```
 
@@ -308,11 +300,11 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "success": true,
-  "data": {
-    "verified": true
-  },
-  "message": "Phone number verified successfully"
+	"success": true,
+	"data": {
+		"verified": true
+	},
+	"message": "Phone number verified successfully"
 }
 ```
 
@@ -320,8 +312,8 @@ CREATE TABLE user_sms_preferences (
 
 ```json
 {
-  "success": false,
-  "errors": ["Invalid verification code"]
+	"success": false,
+	"errors": ["Invalid verification code"]
 }
 ```
 
@@ -333,12 +325,12 @@ CREATE TABLE user_sms_preferences (
 **Database Side Effects**:
 
 - Updates `user_sms_preferences`:
-  - `phone_verified` = `true`
-  - `phone_verified_at` = NOW()
-  - `updated_at` = NOW()
+    - `phone_verified` = `true`
+    - `phone_verified_at` = NOW()
+    - `updated_at` = NOW()
 - Queues welcome SMS message (non-blocking):
-  - Template: `welcome_sms`
-  - Message: "Welcome to BuildOS! We'll help you stay on track. Reply HELP for commands or STOP to opt out."
+    - Template: `welcome_sms`
+    - Message: "Welcome to BuildOS! We'll help you stay on track. Reply HELP for commands or STOP to opt out."
 
 ## Component Specifications
 
@@ -350,7 +342,7 @@ CREATE TABLE user_sms_preferences (
 
 ```typescript
 interface Props {
-  onVerified?: () => void;
+	onVerified?: () => void;
 }
 ```
 
@@ -366,31 +358,31 @@ interface Props {
 
 ```typescript
 async function sendVerification() {
-  // 1. Validate phone number
-  // 2. Call smsService.verifyPhoneNumber(phoneNumber)
-  // 3. On success: verificationSent = true
-  // 4. Show success toast
+	// 1. Validate phone number
+	// 2. Call smsService.verifyPhoneNumber(phoneNumber)
+	// 3. On success: verificationSent = true
+	// 4. Show success toast
 }
 
 async function confirmVerification() {
-  // 1. Validate code (6 digits)
-  // 2. Call smsService.confirmVerification(phoneNumber, code)
-  // 3. On success:
-  //    - Call onVerified() callback
-  //    - Or reload page as fallback
-  // 4. Show success toast
+	// 1. Validate code (6 digits)
+	// 2. Call smsService.confirmVerification(phoneNumber, code)
+	// 3. On success:
+	//    - Call onVerified() callback
+	//    - Or reload page as fallback
+	// 4. Show success toast
 }
 
 function formatPhoneInput(value: string): string {
-  // Clean: Remove all non-numeric
-  // Format: (555) 123-4567 for display
-  // Return formatted string
+	// Clean: Remove all non-numeric
+	// Format: (555) 123-4567 for display
+	// Return formatted string
 }
 
 function resetVerification() {
-  // Return to Step 1
-  verificationSent = false;
-  verificationCode = "";
+	// Return to Step 1
+	verificationSent = false;
+	verificationCode = '';
 }
 ```
 
@@ -411,11 +403,11 @@ Format on input event:
 
 ```svelte
 <TextInput
-  type="tel"
-  bind:value={phoneNumber}
-  on:input={(e) => {
-    phoneNumber = formatPhoneInput(e.currentTarget.value);
-  }}
+	type="tel"
+	bind:value={phoneNumber}
+	on:input={(e) => {
+		phoneNumber = formatPhoneInput(e.currentTarget.value);
+	}}
 />
 ```
 
@@ -427,9 +419,9 @@ Format on input event:
 
 ```typescript
 interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onVerified?: () => void;
+	isOpen: boolean;
+	onClose: () => void;
+	onVerified?: () => void;
 }
 ```
 
@@ -438,8 +430,8 @@ interface Props {
 - Opens when `isOpen` = true
 - Renders `PhoneVerification` component
 - On verification success:
-  1. Closes modal (`isOpen = false`)
-  2. Calls `onVerified()` callback to parent
+    1. Closes modal (`isOpen = false`)
+    2. Calls `onVerified()` callback to parent
 
 ### `NotificationPreferences.svelte`
 
@@ -456,25 +448,25 @@ interface Props {
 
 ```typescript
 async function handleSMSToggle(enabled: boolean) {
-  if (enabled && !phoneVerified) {
-    // Open verification modal
-    showPhoneVerificationModal = true;
-    // Revert toggle (stays off until verified)
-    smsEnabled = false;
-    return;
-  }
+	if (enabled && !phoneVerified) {
+		// Open verification modal
+		showPhoneVerificationModal = true;
+		// Revert toggle (stays off until verified)
+		smsEnabled = false;
+		return;
+	}
 
-  // If disabled or already verified, update immediately
-  smsEnabled = enabled;
+	// If disabled or already verified, update immediately
+	smsEnabled = enabled;
 }
 
 async function handlePhoneVerified() {
-  // 1. Reload SMS preferences to get updated phone_verified status
-  await loadPreferences();
-  // 2. Auto-enable SMS toggle
-  smsEnabled = true;
-  // 3. Show success toast
-  toastService.success("Phone verified! SMS notifications enabled.");
+	// 1. Reload SMS preferences to get updated phone_verified status
+	await loadPreferences();
+	// 2. Auto-enable SMS toggle
+	smsEnabled = true;
+	// 3. Show success toast
+	toastService.success('Phone verified! SMS notifications enabled.');
 }
 ```
 
@@ -495,15 +487,15 @@ async function handlePhoneVerified() {
 
 ```svelte
 <div class="space-y-6">
-  <div class="flex items-start gap-3">
-    <Bell class="w-6 h-6 text-purple-600" />
-    <div>
-      <h2 class="text-2xl font-bold">Notification Settings</h2>
-      <p class="text-gray-600">Manage how you receive notifications</p>
-    </div>
-  </div>
+	<div class="flex items-start gap-3">
+		<Bell class="w-6 h-6 text-purple-600" />
+		<div>
+			<h2 class="text-2xl font-bold">Notification Settings</h2>
+			<p class="text-gray-600">Manage how you receive notifications</p>
+		</div>
+	</div>
 
-  <NotificationPreferences {userId} />
+	<NotificationPreferences {userId} />
 </div>
 ```
 
@@ -524,64 +516,64 @@ async function handlePhoneVerified() {
 **Changes**:
 
 ```svelte
+<!-- ADD helper to convert to E.164 -->
+<script>
+	function toE164(formattedPhone: string): string {
+		const cleaned = formattedPhone.replace(/\D/g, '');
+		if (cleaned.length === 10) {
+			return `+1${cleaned}`;
+		}
+		if (cleaned.length === 11 && cleaned.startsWith('1')) {
+			return `+${cleaned}`;
+		}
+		return formattedPhone; // Return as-is if invalid
+	}
+
+	async function sendVerification() {
+		if (!phoneNumber) {
+			toastService.error('Please enter a phone number');
+			return;
+		}
+
+		isLoading = true;
+		const e164Phone = toE164(phoneNumber); // Convert to E.164
+		const result = await smsService.verifyPhoneNumber(e164Phone);
+
+		// ... rest of function
+	}
+
+	async function confirmVerification() {
+		if (!verificationCode) {
+			toastService.error('Please enter the verification code');
+			return;
+		}
+
+		isVerifying = true;
+		const e164Phone = toE164(phoneNumber); // Convert to E.164
+		const result = await smsService.confirmVerification(e164Phone, verificationCode);
+
+		// ... rest of function
+	}
+</script>
+
 <!-- REMOVE the $effect block -->
 
 <!-- UPDATE TextInput to format on input -->
 <TextInput
-  type="tel"
-  id="phone"
-  value={phoneNumber}
-  on:input={(e) => {
-    const formatted = formatPhoneInput(e.currentTarget.value);
-    phoneNumber = formatted;
-  }}
-  placeholder="(555) 123-4567"
-  disabled={isLoading}
-  class="flex-1"
-  autocomplete="tel"
-  icon={Phone}
-  iconPosition="left"
+	type="tel"
+	id="phone"
+	value={phoneNumber}
+	on:input={(e) => {
+		const formatted = formatPhoneInput(e.currentTarget.value);
+		phoneNumber = formatted;
+	}}
+	placeholder="(555) 123-4567"
+	disabled={isLoading}
+	class="flex-1"
+	autocomplete="tel"
+	icon={Phone}
+	iconPosition="left"
 />
-
-<!-- ADD helper to convert to E.164 -->
-<script>
-function toE164(formattedPhone: string): string {
-  const cleaned = formattedPhone.replace(/\D/g, '');
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`;
-  }
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`;
-  }
-  return formattedPhone; // Return as-is if invalid
-}
-
-async function sendVerification() {
-  if (!phoneNumber) {
-    toastService.error('Please enter a phone number');
-    return;
-  }
-
-  isLoading = true;
-  const e164Phone = toE164(phoneNumber); // Convert to E.164
-  const result = await smsService.verifyPhoneNumber(e164Phone);
-
-  // ... rest of function
-}
-
-async function confirmVerification() {
-  if (!verificationCode) {
-    toastService.error('Please enter the verification code');
-    return;
-  }
-
-  isVerifying = true;
-  const e164Phone = toE164(phoneNumber); // Convert to E.164
-  const result = await smsService.confirmVerification(e164Phone, verificationCode);
-
-  // ... rest of function
-}
-</script>
 ```
 
 ### Phase 2: Integration Verification ✅
@@ -599,56 +591,56 @@ async function confirmVerification() {
 **Test Scenarios**:
 
 1. **Happy Path - First Time Verification**
-   - [ ] Navigate to /profile > Notifications
-   - [ ] Click SMS toggle (currently OFF, phone not verified)
-   - [ ] Modal opens with phone input
-   - [ ] Enter phone number: (555) 123-4567
-   - [ ] Click "Send Code"
-   - [ ] Verify SMS received
-   - [ ] Enter 6-digit code
-   - [ ] Click "Verify"
-   - [ ] Modal closes
-   - [ ] SMS toggle auto-enables
-   - [ ] Shows "Verified: +1 (555) 123-4567"
-   - [ ] Click "Save Preferences"
-   - [ ] Verify preferences saved
+    - [ ] Navigate to /profile > Notifications
+    - [ ] Click SMS toggle (currently OFF, phone not verified)
+    - [ ] Modal opens with phone input
+    - [ ] Enter phone number: (555) 123-4567
+    - [ ] Click "Send Code"
+    - [ ] Verify SMS received
+    - [ ] Enter 6-digit code
+    - [ ] Click "Verify"
+    - [ ] Modal closes
+    - [ ] SMS toggle auto-enables
+    - [ ] Shows "Verified: +1 (555) 123-4567"
+    - [ ] Click "Save Preferences"
+    - [ ] Verify preferences saved
 
 2. **Already Verified - Toggle On/Off**
-   - [ ] Navigate to /profile > Notifications
-   - [ ] See "Verified: +1 (555) 123-4567" under SMS toggle
-   - [ ] Toggle SMS ON (no modal opens)
-   - [ ] Toggle SMS OFF
-   - [ ] Click "Save Preferences"
-   - [ ] Reload page
-   - [ ] Verify SMS toggle state persists
+    - [ ] Navigate to /profile > Notifications
+    - [ ] See "Verified: +1 (555) 123-4567" under SMS toggle
+    - [ ] Toggle SMS ON (no modal opens)
+    - [ ] Toggle SMS OFF
+    - [ ] Click "Save Preferences"
+    - [ ] Reload page
+    - [ ] Verify SMS toggle state persists
 
 3. **Error Handling - Invalid Code**
-   - [ ] Start verification flow
-   - [ ] Enter phone number
-   - [ ] Receive code
-   - [ ] Enter incorrect code
-   - [ ] See error toast: "Invalid verification code"
-   - [ ] Verify can retry
+    - [ ] Start verification flow
+    - [ ] Enter phone number
+    - [ ] Receive code
+    - [ ] Enter incorrect code
+    - [ ] See error toast: "Invalid verification code"
+    - [ ] Verify can retry
 
 4. **Error Handling - Rate Limiting**
-   - [ ] Attempt verification 6+ times quickly
-   - [ ] See error: "Too many verification attempts. Please try again later."
+    - [ ] Attempt verification 6+ times quickly
+    - [ ] See error: "Too many verification attempts. Please try again later."
 
 5. **Error Handling - Duplicate Phone**
-   - [ ] User A verifies phone number
-   - [ ] User B tries to verify same phone number
-   - [ ] See error: "This phone number is already verified by another user"
+    - [ ] User A verifies phone number
+    - [ ] User B tries to verify same phone number
+    - [ ] See error: "This phone number is already verified by another user"
 
 6. **Change Phone Number**
-   - [ ] Click "Use a different number" during code entry
-   - [ ] Return to Step 1
-   - [ ] Enter new phone number
-   - [ ] Complete verification
+    - [ ] Click "Use a different number" during code entry
+    - [ ] Return to Step 1
+    - [ ] Enter new phone number
+    - [ ] Complete verification
 
 7. **Opt Out Flow**
-   - [ ] Navigate to separate SMS preferences page (if exists)
-   - [ ] OR verify opt-out disables SMS in notification preferences
-   - [ ] Verify opted-out users cannot enable SMS
+    - [ ] Navigate to separate SMS preferences page (if exists)
+    - [ ] OR verify opt-out disables SMS in notification preferences
+    - [ ] Verify opted-out users cannot enable SMS
 
 ## Security Considerations
 
@@ -657,12 +649,12 @@ async function confirmVerification() {
 - **Constraint**: One phone number per user account
 - **Enforcement**: API checks `user_sms_preferences` before sending verification
 - **SQL Query**:
-  ```sql
-  SELECT user_id FROM user_sms_preferences
-  WHERE phone_number = $1
-    AND phone_verified = true
-    AND user_id != $2
-  ```
+    ```sql
+    SELECT user_id FROM user_sms_preferences
+    WHERE phone_number = $1
+      AND phone_verified = true
+      AND user_id != $2
+    ```
 
 ### Rate Limiting
 

@@ -77,19 +77,19 @@ LIMIT 5;
 ## Files Generated
 
 1. **SCHEDULER_ANALYSIS_AND_BUGS.md** - Complete 600-line analysis with:
-   - System flow diagrams
-   - Detailed bug reports with code examples
-   - Data model validation
-   - Configuration recommendations
-   - Debugging SQL queries
+    - System flow diagrams
+    - Detailed bug reports with code examples
+    - Data model validation
+    - Configuration recommendations
+    - Debugging SQL queries
 
 2. **scheduler.comprehensive.test.ts** - 38 test cases covering:
-   - Daily/weekly/custom frequency scheduling
-   - Timezone conversions (10+ timezones tested)
-   - DST transitions
-   - Edge cases (midnight, month/year boundaries)
-   - Invalid input validation
-   - All 38 tests passing ✅
+    - Daily/weekly/custom frequency scheduling
+    - Timezone conversions (10+ timezones tested)
+    - DST transitions
+    - Edge cases (midnight, month/year boundaries)
+    - Invalid input validation
+    - All 38 tests passing ✅
 
 ---
 

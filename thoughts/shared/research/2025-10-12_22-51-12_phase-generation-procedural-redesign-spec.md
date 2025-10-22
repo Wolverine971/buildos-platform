@@ -4,16 +4,9 @@ researcher: Claude (Sonnet 4.5)
 git_commit: f5b54469642aba8e58d5f5031e78fc8d5426baf5
 branch: main
 repository: buildos-platform
-topic: "Phase Generation Procedural Redesign - Formal Specification"
+topic: 'Phase Generation Procedural Redesign - Formal Specification'
 tags:
-  [
-    research,
-    specification,
-    phase-generation,
-    calendar-events,
-    database-schema,
-    procedural-design,
-  ]
+    [research, specification, phase-generation, calendar-events, database-schema, procedural-design]
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude (Sonnet 4.5)
@@ -97,30 +90,30 @@ This specification defines a complete redesign of the BuildOS phase generation p
 **Problems with Current System**:
 
 1. **Strategy Pattern Over-Engineering**:
-   - 3 strategies (`phases-only`, `schedule-in-phases`, `calendar-optimized`)
-   - Complex inheritance hierarchy
-   - Difficult to trace execution flow
+    - 3 strategies (`phases-only`, `schedule-in-phases`, `calendar-optimized`)
+    - Complex inheritance hierarchy
+    - Difficult to trace execution flow
 
 2. **Single LLM Call**:
-   - One call generates phases AND orders tasks
-   - Too much complexity for one LLM prompt
-   - Lower accuracy for task ordering
+    - One call generates phases AND orders tasks
+    - Too much complexity for one LLM prompt
+    - Lower accuracy for task ordering
 
 3. **No Explicit Task Order**:
-   - No `order` column in `phase_tasks`
-   - Tasks sorted by `start_date` in UI
-   - No way to express "tasks can run in parallel"
+    - No `order` column in `phase_tasks`
+    - Tasks sorted by `start_date` in UI
+    - No way to express "tasks can run in parallel"
 
 4. **Limited Calendar Event Tracking**:
-   - No organizer information stored
-   - No attendee information stored
-   - Cannot determine if user "owns" the event
-   - Cannot check if rescheduling will affect others
+    - No organizer information stored
+    - No attendee information stored
+    - Cannot determine if user "owns" the event
+    - Cannot check if rescheduling will affect others
 
 5. **Unclear Edge Case Handling**:
-   - Recurring tasks with calendar events
-   - External calendar events (not created by BuildOS)
-   - Events with multiple attendees
+    - Recurring tasks with calendar events
+    - External calendar events (not created by BuildOS)
+    - Events with multiple attendees
 
 ---
 
@@ -150,13 +143,13 @@ COMMENT ON COLUMN phase_tasks."order" IS
 
 ```typescript
 phase_tasks: {
-  assignment_reason: string | null;
-  created_at: string;
-  id: string;
-  phase_id: string;
-  suggested_start_date: string | null;
-  task_id: string;
-  order: number; // NEW: Task execution order
+	assignment_reason: string | null;
+	created_at: string;
+	id: string;
+	phase_id: string;
+	suggested_start_date: string | null;
+	task_id: string;
+	order: number; // NEW: Task execution order
 }
 ```
 
@@ -205,19 +198,19 @@ COMMENT ON COLUMN task_calendar_events.attendees IS
 
 ```typescript
 task_calendar_events: {
-  // ... existing fields ...
-  organizer_email: string | null;
-  organizer_display_name: string | null;
-  organizer_self: boolean | null;
-  attendees: Array<{
-    email: string;
-    displayName?: string;
-    organizer?: boolean;
-    self?: boolean;
-    responseStatus: "accepted" | "declined" | "tentative" | "needsAction";
-    comment?: string;
-    additionalGuests?: number;
-  }> | null;
+	// ... existing fields ...
+	organizer_email: string | null;
+	organizer_display_name: string | null;
+	organizer_self: boolean | null;
+	attendees: Array<{
+		email: string;
+		displayName?: string;
+		organizer?: boolean;
+		self?: boolean;
+		responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+		comment?: string;
+		additionalGuests?: number;
+	}> | null;
 }
 ```
 
@@ -225,14 +218,14 @@ task_calendar_events: {
 
 ```json
 [
-  {
-    "email": "attendee@example.com",
-    "displayName": "John Doe",
-    "organizer": false,
-    "self": false,
-    "responseStatus": "accepted",
-    "additionalGuests": 0
-  }
+	{
+		"email": "attendee@example.com",
+		"displayName": "John Doe",
+		"organizer": false,
+		"self": false,
+		"responseStatus": "accepted",
+		"additionalGuests": 0
+	}
 ]
 ```
 
@@ -284,75 +277,71 @@ The new phase generation process follows a clear, linear flow:
 
 ```typescript
 export async function generatePhasesProcedural(
-  config: PhaseGenerationConfig,
-  supabase: SupabaseClient,
+	config: PhaseGenerationConfig,
+	supabase: SupabaseClient
 ): Promise<PhaseGenerationResult> {
-  // Step 1: Validate input
-  const validationResult = await validatePhaseGenerationConfig(config);
-  if (!validationResult.valid) {
-    throw new Error(`Invalid config: ${validationResult.errors.join(", ")}`);
-  }
+	// Step 1: Validate input
+	const validationResult = await validatePhaseGenerationConfig(config);
+	if (!validationResult.valid) {
+		throw new Error(`Invalid config: ${validationResult.errors.join(', ')}`);
+	}
 
-  // Step 2: Load project data
-  const projectData = await loadProjectData(config.projectId, supabase);
+	// Step 2: Load project data
+	const projectData = await loadProjectData(config.projectId, supabase);
 
-  // Step 3: Check regeneration mode
-  const isRegeneration = await checkIfRegeneration(config.projectId, supabase);
+	// Step 3: Check regeneration mode
+	const isRegeneration = await checkIfRegeneration(config.projectId, supabase);
 
-  // Step 4: Pre-planning - Handle historical phases
-  const historicalPhases = isRegeneration
-    ? await handleHistoricalPhases(config, projectData, supabase)
-    : [];
+	// Step 4: Pre-planning - Handle historical phases
+	const historicalPhases = isRegeneration
+		? await handleHistoricalPhases(config, projectData, supabase)
+		: [];
 
-  // Step 5: Pre-planning - Reset unfinished tasks
-  const tasksToSchedule = await resetUnfinishedTasks(
-    config,
-    projectData,
-    isRegeneration,
-    supabase,
-  );
+	// Step 5: Pre-planning - Reset unfinished tasks
+	const tasksToSchedule = await resetUnfinishedTasks(
+		config,
+		projectData,
+		isRegeneration,
+		supabase
+	);
 
-  // Step 6: LLM Call 1 - Generate phases with rough grouping
-  const phasesWithRoughGrouping = await llmCall1_GeneratePhases(
-    config,
-    projectData,
-    tasksToSchedule,
-    historicalPhases,
-  );
+	// Step 6: LLM Call 1 - Generate phases with rough grouping
+	const phasesWithRoughGrouping = await llmCall1_GeneratePhases(
+		config,
+		projectData,
+		tasksToSchedule,
+		historicalPhases
+	);
 
-  // Step 7: LLM Call 2 - Order tasks within phases
-  const phasesWithOrderedTasks =
-    config.schedulingMethod === "phases_only"
-      ? phasesWithRoughGrouping // Skip if phases_only
-      : await llmCall2_OrderTasks(
-          config,
-          phasesWithRoughGrouping,
-          tasksToSchedule,
-        );
+	// Step 7: LLM Call 2 - Order tasks within phases
+	const phasesWithOrderedTasks =
+		config.schedulingMethod === 'phases_only'
+			? phasesWithRoughGrouping // Skip if phases_only
+			: await llmCall2_OrderTasks(config, phasesWithRoughGrouping, tasksToSchedule);
 
-  // Step 8: Persist phases to database
-  const persistedPhases = await persistPhasesToDatabase(
-    phasesWithOrderedTasks,
-    config.projectId,
-    config.userId,
-    supabase,
-  );
+	// Step 8: Persist phases to database
+	const persistedPhases = await persistPhasesToDatabase(
+		phasesWithOrderedTasks,
+		config.projectId,
+		config.userId,
+		supabase
+	);
 
-  // Step 9: Schedule tasks (if calendar_optimized)
-  if (config.schedulingMethod === "calendar_optimized") {
-    await scheduleTasksWithTimeSlotFinder(persistedPhases, config, supabase);
-  }
+	// Step 9: Schedule tasks (if calendar_optimized)
+	if (config.schedulingMethod === 'calendar_optimized') {
+		await scheduleTasksWithTimeSlotFinder(persistedPhases, config, supabase);
+	}
 
-  // Step 10: Handle calendar events
-  await handleCalendarEvents(persistedPhases, config, isRegeneration, supabase);
+	// Step 10: Handle calendar events
+	await handleCalendarEvents(persistedPhases, config, isRegeneration, supabase);
 
-  // Step 11: Return results
-  return {
-    success: true,
-    phases: persistedPhases,
-    historicalPhases,
-    tasksScheduled: tasksToSchedule.length,
-  };
+	// Step 11: Return results
+	return {
+		success: true,
+		phases: persistedPhases,
+		historicalPhases,
+		tasksScheduled: tasksToSchedule.length
+	};
 }
 ```
 
@@ -366,35 +355,31 @@ export async function generatePhasesProcedural(
 
 ```typescript
 async function validatePhaseGenerationConfig(
-  config: PhaseGenerationConfig,
+	config: PhaseGenerationConfig
 ): Promise<{ valid: boolean; errors: string[] }> {
-  const errors: string[] = [];
+	const errors: string[] = [];
 
-  // Required fields
-  if (!config.projectId) errors.push("projectId is required");
-  if (!config.userId) errors.push("userId is required");
-  if (!config.schedulingMethod) errors.push("schedulingMethod is required");
+	// Required fields
+	if (!config.projectId) errors.push('projectId is required');
+	if (!config.userId) errors.push('userId is required');
+	if (!config.schedulingMethod) errors.push('schedulingMethod is required');
 
-  // Validate scheduling method
-  const validMethods = [
-    "phases_only",
-    "schedule_in_phases",
-    "calendar_optimized",
-  ];
-  if (!validMethods.includes(config.schedulingMethod)) {
-    errors.push(`Invalid schedulingMethod: ${config.schedulingMethod}`);
-  }
+	// Validate scheduling method
+	const validMethods = ['phases_only', 'schedule_in_phases', 'calendar_optimized'];
+	if (!validMethods.includes(config.schedulingMethod)) {
+		errors.push(`Invalid schedulingMethod: ${config.schedulingMethod}`);
+	}
 
-  // Date validation
-  if (config.projectStartDate && config.projectEndDate) {
-    const start = new Date(config.projectStartDate);
-    const end = new Date(config.projectEndDate);
-    if (start >= end) {
-      errors.push("projectStartDate must be before projectEndDate");
-    }
-  }
+	// Date validation
+	if (config.projectStartDate && config.projectEndDate) {
+		const start = new Date(config.projectStartDate);
+		const end = new Date(config.projectEndDate);
+		if (start >= end) {
+			errors.push('projectStartDate must be before projectEndDate');
+		}
+	}
 
-  return { valid: errors.length === 0, errors };
+	return { valid: errors.length === 0, errors };
 }
 ```
 
@@ -409,14 +394,11 @@ async function validatePhaseGenerationConfig(
 **Purpose**: Fetch all project-related data in ONE query.
 
 ```typescript
-async function loadProjectData(
-  projectId: string,
-  supabase: SupabaseClient,
-): Promise<ProjectData> {
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select(
-      `
+async function loadProjectData(projectId: string, supabase: SupabaseClient): Promise<ProjectData> {
+	const { data: project, error } = await supabase
+		.from('projects')
+		.select(
+			`
       *,
       tasks (
         *,
@@ -430,20 +412,20 @@ async function loadProjectData(
           *
         )
       )
-    `,
-    )
-    .eq("id", projectId)
-    .single();
+    `
+		)
+		.eq('id', projectId)
+		.single();
 
-  if (error || !project) {
-    throw new Error(`Project not found: ${projectId}`);
-  }
+	if (error || !project) {
+		throw new Error(`Project not found: ${projectId}`);
+	}
 
-  return {
-    project,
-    tasks: project.tasks || [],
-    existingPhases: project.phases || [],
-  };
+	return {
+		project,
+		tasks: project.tasks || [],
+		existingPhases: project.phases || []
+	};
 }
 ```
 
@@ -460,16 +442,13 @@ async function loadProjectData(
 **Purpose**: Determine if this is first-time generation or regeneration.
 
 ```typescript
-async function checkIfRegeneration(
-  projectId: string,
-  supabase: SupabaseClient,
-): Promise<boolean> {
-  const { count } = await supabase
-    .from("phases")
-    .select("id", { count: "exact", head: true })
-    .eq("project_id", projectId);
+async function checkIfRegeneration(projectId: string, supabase: SupabaseClient): Promise<boolean> {
+	const { count } = await supabase
+		.from('phases')
+		.select('id', { count: 'exact', head: true })
+		.eq('project_id', projectId);
 
-  return (count || 0) > 0;
+	return (count || 0) > 0;
 }
 ```
 
@@ -485,58 +464,54 @@ async function checkIfRegeneration(
 
 ```typescript
 async function handleHistoricalPhases(
-  config: PhaseGenerationConfig,
-  projectData: ProjectData,
-  supabase: SupabaseClient,
+	config: PhaseGenerationConfig,
+	projectData: ProjectData,
+	supabase: SupabaseClient
 ): Promise<Phase[]> {
-  if (!config.preserveHistoricalPhases) {
-    // User wants to wipe everything - delete all phases
-    await supabase.from("phases").delete().eq("project_id", config.projectId);
-    return [];
-  }
+	if (!config.preserveHistoricalPhases) {
+		// User wants to wipe everything - delete all phases
+		await supabase.from('phases').delete().eq('project_id', config.projectId);
+		return [];
+	}
 
-  const now = new Date();
-  const { existingPhases } = projectData;
+	const now = new Date();
+	const { existingPhases } = projectData;
 
-  // Categorize phases
-  const completedPhases = existingPhases.filter(
-    (p) => new Date(p.end_date) < now,
-  );
-  const currentPhase = existingPhases.find(
-    (p) => new Date(p.start_date) <= now && new Date(p.end_date) >= now,
-  );
-  const futurePhases = existingPhases.filter(
-    (p) => new Date(p.start_date) > now,
-  );
+	// Categorize phases
+	const completedPhases = existingPhases.filter((p) => new Date(p.end_date) < now);
+	const currentPhase = existingPhases.find(
+		(p) => new Date(p.start_date) <= now && new Date(p.end_date) >= now
+	);
+	const futurePhases = existingPhases.filter((p) => new Date(p.start_date) > now);
 
-  // Keep completed phases as-is
-  const phasesToKeep = [...completedPhases];
+	// Keep completed phases as-is
+	const phasesToKeep = [...completedPhases];
 
-  // If there's a current phase, "cutoff" at current date
-  if (currentPhase) {
-    await supabase
-      .from("phases")
-      .update({ end_date: now.toISOString().split("T")[0] })
-      .eq("id", currentPhase.id);
+	// If there's a current phase, "cutoff" at current date
+	if (currentPhase) {
+		await supabase
+			.from('phases')
+			.update({ end_date: now.toISOString().split('T')[0] })
+			.eq('id', currentPhase.id);
 
-    phasesToKeep.push({
-      ...currentPhase,
-      end_date: now.toISOString().split("T")[0],
-    });
-  }
+		phasesToKeep.push({
+			...currentPhase,
+			end_date: now.toISOString().split('T')[0]
+		});
+	}
 
-  // Delete all future phases
-  if (futurePhases.length > 0) {
-    await supabase
-      .from("phases")
-      .delete()
-      .in(
-        "id",
-        futurePhases.map((p) => p.id),
-      );
-  }
+	// Delete all future phases
+	if (futurePhases.length > 0) {
+		await supabase
+			.from('phases')
+			.delete()
+			.in(
+				'id',
+				futurePhases.map((p) => p.id)
+			);
+	}
 
-  return phasesToKeep;
+	return phasesToKeep;
 }
 ```
 
@@ -565,54 +540,52 @@ async function handleHistoricalPhases(
 
 ```typescript
 async function resetUnfinishedTasks(
-  config: PhaseGenerationConfig,
-  projectData: ProjectData,
-  isRegeneration: boolean,
-  supabase: SupabaseClient,
+	config: PhaseGenerationConfig,
+	projectData: ProjectData,
+	isRegeneration: boolean,
+	supabase: SupabaseClient
 ): Promise<Task[]> {
-  const { tasks } = projectData;
+	const { tasks } = projectData;
 
-  if (!isRegeneration) {
-    // First-time generation - return all tasks that match selected statuses
-    return tasks.filter(
-      (t) => config.selectedStatuses.includes(t.status) && !t.deleted_at,
-    );
-  }
+	if (!isRegeneration) {
+		// First-time generation - return all tasks that match selected statuses
+		return tasks.filter((t) => config.selectedStatuses.includes(t.status) && !t.deleted_at);
+	}
 
-  // Regeneration mode - reset ALL unfinished tasks
-  const completedOrDeletedStatuses = ["done"];
-  const now = new Date();
+	// Regeneration mode - reset ALL unfinished tasks
+	const completedOrDeletedStatuses = ['done'];
+	const now = new Date();
 
-  // Find tasks in current/future phases that are NOT completed/deleted
-  const tasksToReset = tasks.filter((t) => {
-    const isCompletedOrDeleted = t.status === "done" || t.deleted_at;
+	// Find tasks in current/future phases that are NOT completed/deleted
+	const tasksToReset = tasks.filter((t) => {
+		const isCompletedOrDeleted = t.status === 'done' || t.deleted_at;
 
-    // Special case: If task has calendar event with attendees AND is recurring
-    // → Never reschedule (too disruptive)
-    if (t.task_calendar_events && t.task_calendar_events.length > 0) {
-      const hasAttendees = t.task_calendar_events.some(
-        (e) => e.attendees && e.attendees.length > 0,
-      );
-      if (hasAttendees && t.task_type === "recurring") {
-        return false; // Skip this task - don't reset
-      }
-    }
+		// Special case: If task has calendar event with attendees AND is recurring
+		// → Never reschedule (too disruptive)
+		if (t.task_calendar_events && t.task_calendar_events.length > 0) {
+			const hasAttendees = t.task_calendar_events.some(
+				(e) => e.attendees && e.attendees.length > 0
+			);
+			if (hasAttendees && t.task_type === 'recurring') {
+				return false; // Skip this task - don't reset
+			}
+		}
 
-    return !isCompletedOrDeleted;
-  });
+		return !isCompletedOrDeleted;
+	});
 
-  // Batch operations
-  const taskIds = tasksToReset.map((t) => t.id);
+	// Batch operations
+	const taskIds = tasksToReset.map((t) => t.id);
 
-  if (taskIds.length > 0) {
-    // 1. Remove phase_tasks associations
-    await supabase.from("phase_tasks").delete().in("task_id", taskIds);
+	if (taskIds.length > 0) {
+		// 1. Remove phase_tasks associations
+		await supabase.from('phase_tasks').delete().in('task_id', taskIds);
 
-    // 2. Clear start_date for tasks (they'll be rescheduled)
-    await supabase.from("tasks").update({ start_date: null }).in("id", taskIds);
-  }
+		// 2. Clear start_date for tasks (they'll be rescheduled)
+		await supabase.from('tasks').update({ start_date: null }).in('id', taskIds);
+	}
 
-  return tasksToReset;
+	return tasksToReset;
 }
 ```
 
@@ -620,10 +593,10 @@ async function resetUnfinishedTasks(
 
 1. **First-time generation**: Return tasks matching `config.selectedStatuses`
 2. **Regeneration**:
-   - Find all unfinished tasks (not 'done', not deleted)
-   - **EXCEPTION**: Skip recurring tasks with attendees (too disruptive to reschedule)
-   - Delete `phase_tasks` associations
-   - Clear `start_date` on tasks
+    - Find all unfinished tasks (not 'done', not deleted)
+    - **EXCEPTION**: Skip recurring tasks with attendees (too disruptive to reschedule)
+    - Delete `phase_tasks` associations
+    - Clear `start_date` on tasks
 
 **Returns**: Array of tasks to be scheduled.
 
@@ -643,44 +616,44 @@ async function resetUnfinishedTasks(
 
 ```typescript
 async function llmCall1_GeneratePhases(
-  config: PhaseGenerationConfig,
-  projectData: ProjectData,
-  tasksToSchedule: Task[],
-  historicalPhases: Phase[],
+	config: PhaseGenerationConfig,
+	projectData: ProjectData,
+	tasksToSchedule: Task[],
+	historicalPhases: Phase[]
 ): Promise<PhaseWithRoughGrouping[]> {
-  const systemPrompt = buildPhaseGenerationSystemPrompt_Call1(config);
-  const userPrompt = buildPhaseGenerationUserPrompt_Call1(
-    projectData,
-    tasksToSchedule,
-    historicalPhases,
-    config,
-  );
+	const systemPrompt = buildPhaseGenerationSystemPrompt_Call1(config);
+	const userPrompt = buildPhaseGenerationUserPrompt_Call1(
+		projectData,
+		tasksToSchedule,
+		historicalPhases,
+		config
+	);
 
-  const llmService = new SmartLLMService();
-  const response = await llmService.generateStructuredOutput({
-    systemPrompt,
-    userPrompt,
-    schema: {
-      type: "object",
-      properties: {
-        phases: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              description: { type: "string" },
-              start_date: { type: "string" },
-              end_date: { type: "string" },
-              task_ids: { type: "array", items: { type: "string" } },
-            },
-          },
-        },
-      },
-    },
-  });
+	const llmService = new SmartLLMService();
+	const response = await llmService.generateStructuredOutput({
+		systemPrompt,
+		userPrompt,
+		schema: {
+			type: 'object',
+			properties: {
+				phases: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							name: { type: 'string' },
+							description: { type: 'string' },
+							start_date: { type: 'string' },
+							end_date: { type: 'string' },
+							task_ids: { type: 'array', items: { type: 'string' } }
+						}
+					}
+				}
+			}
+		}
+	});
 
-  return response.phases;
+	return response.phases;
 }
 ```
 
@@ -688,22 +661,22 @@ async function llmCall1_GeneratePhases(
 
 ```json
 {
-  "phases": [
-    {
-      "name": "Phase 1: Foundation",
-      "description": "Set up project infrastructure",
-      "start_date": "2025-10-15",
-      "end_date": "2025-10-22",
-      "task_ids": ["task-1", "task-2", "task-3"]
-    },
-    {
-      "name": "Phase 2: Development",
-      "description": "Build core features",
-      "start_date": "2025-10-23",
-      "end_date": "2025-11-05",
-      "task_ids": ["task-4", "task-5"]
-    }
-  ]
+	"phases": [
+		{
+			"name": "Phase 1: Foundation",
+			"description": "Set up project infrastructure",
+			"start_date": "2025-10-15",
+			"end_date": "2025-10-22",
+			"task_ids": ["task-1", "task-2", "task-3"]
+		},
+		{
+			"name": "Phase 2: Development",
+			"description": "Build core features",
+			"start_date": "2025-10-23",
+			"end_date": "2025-11-05",
+			"task_ids": ["task-4", "task-5"]
+		}
+	]
 }
 ```
 
@@ -730,54 +703,51 @@ async function llmCall1_GeneratePhases(
 
 ```typescript
 async function llmCall2_OrderTasks(
-  config: PhaseGenerationConfig,
-  phasesWithRoughGrouping: PhaseWithRoughGrouping[],
-  tasksToSchedule: Task[],
+	config: PhaseGenerationConfig,
+	phasesWithRoughGrouping: PhaseWithRoughGrouping[],
+	tasksToSchedule: Task[]
 ): Promise<PhaseWithOrderedTasks[]> {
-  const systemPrompt = buildTaskOrderingSystemPrompt_Call2(config);
-  const userPrompt = buildTaskOrderingUserPrompt_Call2(
-    phasesWithRoughGrouping,
-    tasksToSchedule,
-  );
+	const systemPrompt = buildTaskOrderingSystemPrompt_Call2(config);
+	const userPrompt = buildTaskOrderingUserPrompt_Call2(phasesWithRoughGrouping, tasksToSchedule);
 
-  const llmService = new SmartLLMService();
-  const response = await llmService.generateStructuredOutput({
-    systemPrompt,
-    userPrompt,
-    schema: {
-      type: "object",
-      properties: {
-        phases: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              phase_id: { type: "number" }, // Index in phasesWithRoughGrouping
-              tasks: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    task_id: { type: "string" },
-                    order: { type: "number" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+	const llmService = new SmartLLMService();
+	const response = await llmService.generateStructuredOutput({
+		systemPrompt,
+		userPrompt,
+		schema: {
+			type: 'object',
+			properties: {
+				phases: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							phase_id: { type: 'number' }, // Index in phasesWithRoughGrouping
+							tasks: {
+								type: 'array',
+								items: {
+									type: 'object',
+									properties: {
+										task_id: { type: 'string' },
+										order: { type: 'number' }
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
 
-  // Merge ordering into phases
-  return phasesWithRoughGrouping.map((phase, idx) => {
-    const orderedTasks = response.phases[idx].tasks;
-    return {
-      ...phase,
-      tasks: orderedTasks,
-    };
-  });
+	// Merge ordering into phases
+	return phasesWithRoughGrouping.map((phase, idx) => {
+		const orderedTasks = response.phases[idx].tasks;
+		return {
+			...phase,
+			tasks: orderedTasks
+		};
+	});
 }
 ```
 
@@ -785,23 +755,23 @@ async function llmCall2_OrderTasks(
 
 ```json
 {
-  "phases": [
-    {
-      "phase_id": 0,
-      "tasks": [
-        { "task_id": "task-1", "order": 0 },
-        { "task_id": "task-2", "order": 1 },
-        { "task_id": "task-3", "order": 1 }
-      ]
-    },
-    {
-      "phase_id": 1,
-      "tasks": [
-        { "task_id": "task-4", "order": 0 },
-        { "task_id": "task-5", "order": 1 }
-      ]
-    }
-  ]
+	"phases": [
+		{
+			"phase_id": 0,
+			"tasks": [
+				{ "task_id": "task-1", "order": 0 },
+				{ "task_id": "task-2", "order": 1 },
+				{ "task_id": "task-3", "order": 1 }
+			]
+		},
+		{
+			"phase_id": 1,
+			"tasks": [
+				{ "task_id": "task-4", "order": 0 },
+				{ "task_id": "task-5", "order": 1 }
+			]
+		}
+	]
 }
 ```
 
@@ -827,61 +797,59 @@ async function llmCall2_OrderTasks(
 
 ```typescript
 async function persistPhasesToDatabase(
-  phasesWithOrderedTasks: PhaseWithOrderedTasks[],
-  projectId: string,
-  userId: string,
-  supabase: SupabaseClient,
+	phasesWithOrderedTasks: PhaseWithOrderedTasks[],
+	projectId: string,
+	userId: string,
+	supabase: SupabaseClient
 ): Promise<Phase[]> {
-  const persistedPhases: Phase[] = [];
+	const persistedPhases: Phase[] = [];
 
-  for (let i = 0; i < phasesWithOrderedTasks.length; i++) {
-    const phaseData = phasesWithOrderedTasks[i];
+	for (let i = 0; i < phasesWithOrderedTasks.length; i++) {
+		const phaseData = phasesWithOrderedTasks[i];
 
-    // Insert phase
-    const { data: phase, error: phaseError } = await supabase
-      .from("phases")
-      .insert({
-        project_id: projectId,
-        user_id: userId,
-        name: phaseData.name,
-        description: phaseData.description,
-        start_date: phaseData.start_date,
-        end_date: phaseData.end_date,
-        order: i,
-        scheduling_method: config.schedulingMethod,
-      })
-      .select()
-      .single();
+		// Insert phase
+		const { data: phase, error: phaseError } = await supabase
+			.from('phases')
+			.insert({
+				project_id: projectId,
+				user_id: userId,
+				name: phaseData.name,
+				description: phaseData.description,
+				start_date: phaseData.start_date,
+				end_date: phaseData.end_date,
+				order: i,
+				scheduling_method: config.schedulingMethod
+			})
+			.select()
+			.single();
 
-    if (phaseError || !phase) {
-      throw new Error(`Failed to create phase: ${phaseError?.message}`);
-    }
+		if (phaseError || !phase) {
+			throw new Error(`Failed to create phase: ${phaseError?.message}`);
+		}
 
-    // Insert phase_tasks with order
-    if (phaseData.tasks && phaseData.tasks.length > 0) {
-      const phaseTasksInserts = phaseData.tasks.map((t) => ({
-        phase_id: phase.id,
-        task_id: t.task_id,
-        order: t.order,
-        suggested_start_date: phaseData.start_date, // Phase start as default
-        assignment_reason: `Assigned to ${phaseData.name}`,
-      }));
+		// Insert phase_tasks with order
+		if (phaseData.tasks && phaseData.tasks.length > 0) {
+			const phaseTasksInserts = phaseData.tasks.map((t) => ({
+				phase_id: phase.id,
+				task_id: t.task_id,
+				order: t.order,
+				suggested_start_date: phaseData.start_date, // Phase start as default
+				assignment_reason: `Assigned to ${phaseData.name}`
+			}));
 
-      const { error: phasTaskError } = await supabase
-        .from("phase_tasks")
-        .insert(phaseTasksInserts);
+			const { error: phasTaskError } = await supabase
+				.from('phase_tasks')
+				.insert(phaseTasksInserts);
 
-      if (phasTaskError) {
-        throw new Error(
-          `Failed to create phase_tasks: ${phasTaskError.message}`,
-        );
-      }
-    }
+			if (phasTaskError) {
+				throw new Error(`Failed to create phase_tasks: ${phasTaskError.message}`);
+			}
+		}
 
-    persistedPhases.push(phase);
-  }
+		persistedPhases.push(phase);
+	}
 
-  return persistedPhases;
+	return persistedPhases;
 }
 ```
 
@@ -901,58 +869,55 @@ async function persistPhasesToDatabase(
 
 ```typescript
 async function scheduleTasksWithTimeSlotFinder(
-  persistedPhases: Phase[],
-  config: PhaseGenerationConfig,
-  supabase: SupabaseClient,
+	persistedPhases: Phase[],
+	config: PhaseGenerationConfig,
+	supabase: SupabaseClient
 ): Promise<void> {
-  const timeSlotFinder = new TaskTimeSlotFinder(supabase);
+	const timeSlotFinder = new TaskTimeSlotFinder(supabase);
 
-  for (const phase of persistedPhases) {
-    // Get tasks for this phase, ordered by the `order` column
-    const { data: phaseTasks } = await supabase
-      .from("phase_tasks")
-      .select(
-        `
+	for (const phase of persistedPhases) {
+		// Get tasks for this phase, ordered by the `order` column
+		const { data: phaseTasks } = await supabase
+			.from('phase_tasks')
+			.select(
+				`
         *,
         tasks (*)
-      `,
-      )
-      .eq("phase_id", phase.id)
-      .order("order", { ascending: true });
+      `
+			)
+			.eq('phase_id', phase.id)
+			.order('order', { ascending: true });
 
-    if (!phaseTasks || phaseTasks.length === 0) continue;
+		if (!phaseTasks || phaseTasks.length === 0) continue;
 
-    // Find time slots for each task
-    for (const phaseTask of phaseTasks) {
-      const task = phaseTask.tasks;
+		// Find time slots for each task
+		for (const phaseTask of phaseTasks) {
+			const task = phaseTask.tasks;
 
-      // Skip if task already has calendar event
-      if (task.task_calendar_events && task.task_calendar_events.length > 0) {
-        continue;
-      }
+			// Skip if task already has calendar event
+			if (task.task_calendar_events && task.task_calendar_events.length > 0) {
+				continue;
+			}
 
-      const slot = await timeSlotFinder.findNextAvailableSlot({
-        userId: config.userId,
-        durationMinutes: task.duration_minutes || 60,
-        startAfter: new Date(phase.start_date),
-        endBefore: new Date(phase.end_date),
-      });
+			const slot = await timeSlotFinder.findNextAvailableSlot({
+				userId: config.userId,
+				durationMinutes: task.duration_minutes || 60,
+				startAfter: new Date(phase.start_date),
+				endBefore: new Date(phase.end_date)
+			});
 
-      if (slot) {
-        // Update task start_date
-        await supabase
-          .from("tasks")
-          .update({ start_date: slot.start })
-          .eq("id", task.id);
+			if (slot) {
+				// Update task start_date
+				await supabase.from('tasks').update({ start_date: slot.start }).eq('id', task.id);
 
-        // Update phase_tasks suggested_start_date
-        await supabase
-          .from("phase_tasks")
-          .update({ suggested_start_date: slot.start })
-          .eq("id", phaseTask.id);
-      }
-    }
-  }
+				// Update phase_tasks suggested_start_date
+				await supabase
+					.from('phase_tasks')
+					.update({ suggested_start_date: slot.start })
+					.eq('id', phaseTask.id);
+			}
+		}
+	}
 }
 ```
 
@@ -972,63 +937,51 @@ async function scheduleTasksWithTimeSlotFinder(
 
 ```typescript
 async function handleCalendarEvents(
-  persistedPhases: Phase[],
-  config: PhaseGenerationConfig,
-  isRegeneration: boolean,
-  supabase: SupabaseClient,
+	persistedPhases: Phase[],
+	config: PhaseGenerationConfig,
+	isRegeneration: boolean,
+	supabase: SupabaseClient
 ): Promise<void> {
-  const calendarService = new CalendarService(supabase);
+	const calendarService = new CalendarService(supabase);
 
-  // Get all tasks with start_dates across all phases
-  const allTaskIds = persistedPhases.flatMap(
-    (p) => p.phase_tasks?.map((pt) => pt.task_id) || [],
-  );
+	// Get all tasks with start_dates across all phases
+	const allTaskIds = persistedPhases.flatMap((p) => p.phase_tasks?.map((pt) => pt.task_id) || []);
 
-  const { data: tasksWithDates } = await supabase
-    .from("tasks")
-    .select(
-      `
+	const { data: tasksWithDates } = await supabase
+		.from('tasks')
+		.select(
+			`
       *,
       task_calendar_events (*)
-    `,
-    )
-    .in("id", allTaskIds)
-    .not("start_date", "is", null);
+    `
+		)
+		.in('id', allTaskIds)
+		.not('start_date', 'is', null);
 
-  if (!tasksWithDates || tasksWithDates.length === 0) return;
+	if (!tasksWithDates || tasksWithDates.length === 0) return;
 
-  // Handle based on calendar_handling config
-  switch (config.calendar_handling) {
-    case "update":
-      await updateExistingCalendarEvents(
-        tasksWithDates,
-        config,
-        calendarService,
-        supabase,
-      );
-      break;
+	// Handle based on calendar_handling config
+	switch (config.calendar_handling) {
+		case 'update':
+			await updateExistingCalendarEvents(tasksWithDates, config, calendarService, supabase);
+			break;
 
-    case "clear_and_reschedule":
-      await clearAndRescheduleCalendarEvents(
-        tasksWithDates,
-        config,
-        calendarService,
-        supabase,
-      );
-      break;
+		case 'clear_and_reschedule':
+			await clearAndRescheduleCalendarEvents(
+				tasksWithDates,
+				config,
+				calendarService,
+				supabase
+			);
+			break;
 
-    case "preserve":
-      // Do nothing - keep existing calendar events as-is
-      break;
+		case 'preserve':
+			// Do nothing - keep existing calendar events as-is
+			break;
 
-    default:
-      await updateExistingCalendarEvents(
-        tasksWithDates,
-        config,
-        calendarService,
-        supabase,
-      );
-  }
+		default:
+			await updateExistingCalendarEvents(tasksWithDates, config, calendarService, supabase);
+	}
 }
 ```
 
@@ -1038,61 +991,60 @@ async function handleCalendarEvents(
 
 ```typescript
 async function updateExistingCalendarEvents(
-  tasks: Task[],
-  config: PhaseGenerationConfig,
-  calendarService: CalendarService,
-  supabase: SupabaseClient,
+	tasks: Task[],
+	config: PhaseGenerationConfig,
+	calendarService: CalendarService,
+	supabase: SupabaseClient
 ): Promise<void> {
-  for (const task of tasks) {
-    if (!task.task_calendar_events || task.task_calendar_events.length === 0) {
-      // No calendar event exists - create one
-      await calendarService.scheduleTask(config.userId, {
-        task_id: task.id,
-        start_time: task.start_date!,
-        duration_minutes: task.duration_minutes || 60,
-      });
-      continue;
-    }
+	for (const task of tasks) {
+		if (!task.task_calendar_events || task.task_calendar_events.length === 0) {
+			// No calendar event exists - create one
+			await calendarService.scheduleTask(config.userId, {
+				task_id: task.id,
+				start_time: task.start_date!,
+				duration_minutes: task.duration_minutes || 60
+			});
+			continue;
+		}
 
-    // Calendar event exists - check if we can update it
-    for (const calEvent of task.task_calendar_events) {
-      // Check ownership
-      if (calEvent.organizer_self === false) {
-        // User doesn't own the event - cannot update
-        console.warn(
-          `Cannot update event ${calEvent.calendar_event_id} - not owned by user`,
-        );
-        continue;
-      }
+		// Calendar event exists - check if we can update it
+		for (const calEvent of task.task_calendar_events) {
+			// Check ownership
+			if (calEvent.organizer_self === false) {
+				// User doesn't own the event - cannot update
+				console.warn(
+					`Cannot update event ${calEvent.calendar_event_id} - not owned by user`
+				);
+				continue;
+			}
 
-      // Check if recurring with attendees
-      if (
-        task.task_type === "recurring" &&
-        calEvent.attendees &&
-        calEvent.attendees.length > 0
-      ) {
-        // Too disruptive - don't update
-        console.warn(
-          `Cannot update recurring event ${calEvent.calendar_event_id} - has attendees`,
-        );
-        continue;
-      }
+			// Check if recurring with attendees
+			if (
+				task.task_type === 'recurring' &&
+				calEvent.attendees &&
+				calEvent.attendees.length > 0
+			) {
+				// Too disruptive - don't update
+				console.warn(
+					`Cannot update recurring event ${calEvent.calendar_event_id} - has attendees`
+				);
+				continue;
+			}
 
-      // Safe to update
-      const hasAttendees = calEvent.attendees && calEvent.attendees.length > 0;
+			// Safe to update
+			const hasAttendees = calEvent.attendees && calEvent.attendees.length > 0;
 
-      await calendarService.updateCalendarEvent(config.userId, {
-        event_id: calEvent.calendar_event_id,
-        calendar_id: calEvent.calendar_id,
-        start_time: task.start_date!,
-        end_time: new Date(
-          new Date(task.start_date!).getTime() +
-            (task.duration_minutes || 60) * 60 * 1000,
-        ).toISOString(),
-        sendUpdates: hasAttendees ? "all" : "none", // NEW: Notify attendees if any
-      });
-    }
-  }
+			await calendarService.updateCalendarEvent(config.userId, {
+				event_id: calEvent.calendar_event_id,
+				calendar_id: calEvent.calendar_id,
+				start_time: task.start_date!,
+				end_time: new Date(
+					new Date(task.start_date!).getTime() + (task.duration_minutes || 60) * 60 * 1000
+				).toISOString(),
+				sendUpdates: hasAttendees ? 'all' : 'none' // NEW: Notify attendees if any
+			});
+		}
+	}
 }
 ```
 
@@ -1100,59 +1052,55 @@ async function updateExistingCalendarEvents(
 
 1. If no calendar event → Create one
 2. If event exists:
-   - Check `organizer_self` → If false, skip (user doesn't own it)
-   - Check recurring + attendees → Skip (too disruptive)
-   - Otherwise → Update with `sendUpdates` based on attendees
+    - Check `organizer_self` → If false, skip (user doesn't own it)
+    - Check recurring + attendees → Skip (too disruptive)
+    - Otherwise → Update with `sendUpdates` based on attendees
 
 #### `clearAndRescheduleCalendarEvents`
 
 ```typescript
 async function clearAndRescheduleCalendarEvents(
-  tasks: Task[],
-  config: PhaseGenerationConfig,
-  calendarService: CalendarService,
-  supabase: SupabaseClient,
+	tasks: Task[],
+	config: PhaseGenerationConfig,
+	calendarService: CalendarService,
+	supabase: SupabaseClient
 ): Promise<void> {
-  // Collect all calendar events to delete
-  const eventsToDelete: BulkDeleteEventParams[] = [];
+	// Collect all calendar events to delete
+	const eventsToDelete: BulkDeleteEventParams[] = [];
 
-  for (const task of tasks) {
-    if (task.task_calendar_events && task.task_calendar_events.length > 0) {
-      for (const calEvent of task.task_calendar_events) {
-        // Only delete if user owns the event
-        if (calEvent.organizer_self !== false) {
-          eventsToDelete.push({
-            id: calEvent.id,
-            calendar_event_id: calEvent.calendar_event_id,
-            calendar_id: calEvent.calendar_id,
-          });
-        }
-      }
-    }
-  }
+	for (const task of tasks) {
+		if (task.task_calendar_events && task.task_calendar_events.length > 0) {
+			for (const calEvent of task.task_calendar_events) {
+				// Only delete if user owns the event
+				if (calEvent.organizer_self !== false) {
+					eventsToDelete.push({
+						id: calEvent.id,
+						calendar_event_id: calEvent.calendar_event_id,
+						calendar_id: calEvent.calendar_id
+					});
+				}
+			}
+		}
+	}
 
-  // Bulk delete
-  if (eventsToDelete.length > 0) {
-    await calendarService.bulkDeleteCalendarEvents(
-      config.userId,
-      eventsToDelete,
-      { reason: "phase_regeneration" },
-    );
-  }
+	// Bulk delete
+	if (eventsToDelete.length > 0) {
+		await calendarService.bulkDeleteCalendarEvents(config.userId, eventsToDelete, {
+			reason: 'phase_regeneration'
+		});
+	}
 
-  // Create new events for all tasks with start_dates
-  const tasksToSchedule = tasks.filter(
-    (t) => t.start_date && t.status !== "done",
-  );
+	// Create new events for all tasks with start_dates
+	const tasksToSchedule = tasks.filter((t) => t.start_date && t.status !== 'done');
 
-  await calendarService.bulkScheduleTasks(
-    config.userId,
-    tasksToSchedule.map((t) => ({
-      task_id: t.id,
-      start_time: t.start_date!,
-      duration_minutes: t.duration_minutes || 60,
-    })),
-  );
+	await calendarService.bulkScheduleTasks(
+		config.userId,
+		tasksToSchedule.map((t) => ({
+			task_id: t.id,
+			start_time: t.start_date!,
+			duration_minutes: t.duration_minutes || 60
+		}))
+	);
 }
 ```
 
@@ -1170,15 +1118,15 @@ async function clearAndRescheduleCalendarEvents(
 
 ```typescript
 return {
-  success: true,
-  phases: persistedPhases,
-  historicalPhases,
-  tasksScheduled: tasksToSchedule.length,
-  metadata: {
-    isRegeneration,
-    schedulingMethod: config.schedulingMethod,
-    preservedHistoricalPhases: historicalPhases.length,
-  },
+	success: true,
+	phases: persistedPhases,
+	historicalPhases,
+	tasksScheduled: tasksToSchedule.length,
+	metadata: {
+		isRegeneration,
+		schedulingMethod: config.schedulingMethod,
+		preservedHistoricalPhases: historicalPhases.length
+	}
 };
 ```
 
@@ -1266,15 +1214,15 @@ Generate phases with rough task grouping.
 
 ```json
 {
-  "phases": [
-    {
-      "name": "Phase 1: Foundation",
-      "description": "Set up infrastructure and tooling",
-      "start_date": "2025-10-15",
-      "end_date": "2025-10-22",
-      "task_ids": ["task-1", "task-2", "task-3"]
-    }
-  ]
+	"phases": [
+		{
+			"name": "Phase 1: Foundation",
+			"description": "Set up infrastructure and tooling",
+			"start_date": "2025-10-15",
+			"end_date": "2025-10-22",
+			"task_ids": ["task-1", "task-2", "task-3"]
+		}
+	]
 }
 ```
 
@@ -1339,16 +1287,16 @@ Determine the precise order for tasks within each phase.
 
 ```json
 {
-  "phases": [
-    {
-      "phase_id": 0,
-      "tasks": [
-        { "task_id": "task-1", "order": 0 },
-        { "task_id": "task-2", "order": 1 },
-        { "task_id": "task-3", "order": 1 }
-      ]
-    }
-  ]
+	"phases": [
+		{
+			"phase_id": 0,
+			"tasks": [
+				{ "task_id": "task-1", "order": 0 },
+				{ "task_id": "task-2", "order": 1 },
+				{ "task_id": "task-3", "order": 1 }
+			]
+		}
+	]
 }
 ```
 
@@ -1369,31 +1317,31 @@ Determine the precise order for tasks within each phase.
 ```typescript
 // After creating the event, fetch full event details to get organizer
 const fullEvent = await calendar.events.get({
-  calendarId: calendar_id,
-  eventId: response.data.id!,
+	calendarId: calendar_id,
+	eventId: response.data.id!
 });
 
-await this.supabase.from("task_calendar_events").upsert({
-  user_id: userId,
-  task_id: task_id,
-  calendar_event_id: response.data.id!,
-  calendar_id: calendar_id,
-  event_link: response.data.htmlLink,
-  event_start: startDate.toISOString(),
-  event_end: endDate.toISOString(),
-  event_title: task.title,
-  is_master_event: isRecurring,
-  recurrence_rule: isRecurring && recurrence.length > 0 ? recurrence[0] : null,
-  // NEW: Store organizer info
-  organizer_email: fullEvent.data.organizer?.email,
-  organizer_display_name: fullEvent.data.organizer?.displayName,
-  organizer_self: fullEvent.data.organizer?.self,
-  // NEW: Store attendees
-  attendees: fullEvent.data.attendees || [],
-  last_synced_at: new Date().toISOString(),
-  sync_status: "synced",
-  sync_source: "app",
-  updated_at: new Date().toISOString(),
+await this.supabase.from('task_calendar_events').upsert({
+	user_id: userId,
+	task_id: task_id,
+	calendar_event_id: response.data.id!,
+	calendar_id: calendar_id,
+	event_link: response.data.htmlLink,
+	event_start: startDate.toISOString(),
+	event_end: endDate.toISOString(),
+	event_title: task.title,
+	is_master_event: isRecurring,
+	recurrence_rule: isRecurring && recurrence.length > 0 ? recurrence[0] : null,
+	// NEW: Store organizer info
+	organizer_email: fullEvent.data.organizer?.email,
+	organizer_display_name: fullEvent.data.organizer?.displayName,
+	organizer_self: fullEvent.data.organizer?.self,
+	// NEW: Store attendees
+	attendees: fullEvent.data.attendees || [],
+	last_synced_at: new Date().toISOString(),
+	sync_status: 'synced',
+	sync_source: 'app',
+	updated_at: new Date().toISOString()
 });
 ```
 
@@ -1419,16 +1367,16 @@ await this.supabase.from("task_calendar_events").upsert({
 ```typescript
 // Add sendUpdates parameter
 export interface UpdateCalendarEventParams {
-  // ... existing fields ...
-  sendUpdates?: "all" | "externalOnly" | "none";
+	// ... existing fields ...
+	sendUpdates?: 'all' | 'externalOnly' | 'none';
 }
 
 // In updateCalendarEvent() method
 const response = await calendar.events.update({
-  calendarId: calendar_id,
-  eventId: effectiveEventId,
-  requestBody: updatePayload,
-  sendUpdates: params.sendUpdates || "none", // NEW: Add sendUpdates
+	calendarId: calendar_id,
+	eventId: effectiveEventId,
+	requestBody: updatePayload,
+	sendUpdates: params.sendUpdates || 'none' // NEW: Add sendUpdates
 });
 ```
 
@@ -1440,11 +1388,11 @@ const hasAttendees = calEvent.attendees && calEvent.attendees.length > 0;
 const isOrganizer = calEvent.organizer_self !== false;
 
 await calendarService.updateCalendarEvent(config.userId, {
-  event_id: calEvent.calendar_event_id,
-  calendar_id: calEvent.calendar_id,
-  start_time: task.start_date!,
-  end_time: endTime,
-  sendUpdates: hasAttendees && isOrganizer ? "all" : "none",
+	event_id: calEvent.calendar_event_id,
+	calendar_id: calEvent.calendar_id,
+	start_time: task.start_date!,
+	end_time: endTime,
+	sendUpdates: hasAttendees && isOrganizer ? 'all' : 'none'
 });
 ```
 
@@ -1463,12 +1411,10 @@ await calendarService.updateCalendarEvent(config.userId, {
 ```typescript
 // In resetUnfinishedTasks()
 if (t.task_calendar_events && t.task_calendar_events.length > 0) {
-  const hasAttendees = t.task_calendar_events.some(
-    (e) => e.attendees && e.attendees.length > 0,
-  );
-  if (hasAttendees && t.task_type === "recurring") {
-    return false; // Skip this task - don't reset
-  }
+	const hasAttendees = t.task_calendar_events.some((e) => e.attendees && e.attendees.length > 0);
+	if (hasAttendees && t.task_type === 'recurring') {
+		return false; // Skip this task - don't reset
+	}
 }
 ```
 
@@ -1487,10 +1433,8 @@ if (t.task_calendar_events && t.task_calendar_events.length > 0) {
 ```typescript
 // In updateExistingCalendarEvents()
 if (calEvent.organizer_self === false) {
-  console.warn(
-    `Cannot update event ${calEvent.calendar_event_id} - not owned by user`,
-  );
-  continue; // Skip update
+	console.warn(`Cannot update event ${calEvent.calendar_event_id} - not owned by user`);
+	continue; // Skip update
 }
 ```
 
@@ -1515,26 +1459,23 @@ If task B depends on task A, task A MUST have a lower order number than task B.
 **Validation** (optional):
 
 ```typescript
-function validateTaskOrder(
-  phases: PhaseWithOrderedTasks[],
-  tasks: Task[],
-): void {
-  for (const phase of phases) {
-    for (const task of phase.tasks) {
-      const taskData = tasks.find((t) => t.id === task.task_id);
-      if (!taskData || !taskData.dependencies) continue;
+function validateTaskOrder(phases: PhaseWithOrderedTasks[], tasks: Task[]): void {
+	for (const phase of phases) {
+		for (const task of phase.tasks) {
+			const taskData = tasks.find((t) => t.id === task.task_id);
+			if (!taskData || !taskData.dependencies) continue;
 
-      for (const depId of taskData.dependencies) {
-        const depTask = phase.tasks.find((t) => t.task_id === depId);
-        if (depTask && depTask.order >= task.order) {
-          console.warn(
-            `Dependency violation: Task ${task.task_id} (order ${task.order}) ` +
-              `depends on ${depId} (order ${depTask.order})`,
-          );
-        }
-      }
-    }
-  }
+			for (const depId of taskData.dependencies) {
+				const depTask = phase.tasks.find((t) => t.task_id === depId);
+				if (depTask && depTask.order >= task.order) {
+					console.warn(
+						`Dependency violation: Task ${task.task_id} (order ${task.order}) ` +
+							`depends on ${depId} (order ${depTask.order})`
+					);
+				}
+			}
+		}
+	}
 }
 ```
 
@@ -1564,10 +1505,10 @@ function validateTaskOrder(
 ```typescript
 // In handleCalendarEvents()
 const { data: tasksWithDates } = await supabase
-  .from("tasks")
-  .select(`*`)
-  .in("id", allTaskIds)
-  .not("start_date", "is", null); // Only tasks with dates
+	.from('tasks')
+	.select(`*`)
+	.in('id', allTaskIds)
+	.not('start_date', 'is', null); // Only tasks with dates
 ```
 
 ---
@@ -1580,36 +1521,36 @@ const { data: tasksWithDates } = await supabase
 
 ```typescript
 export interface PhaseGenerationConfig {
-  // Project identification
-  projectId: string;
-  userId: string;
+	// Project identification
+	projectId: string;
+	userId: string;
 
-  // Task selection
-  selectedStatuses: TaskStatus[];
+	// Task selection
+	selectedStatuses: TaskStatus[];
 
-  // Scheduling method
-  schedulingMethod: "phases_only" | "schedule_in_phases" | "calendar_optimized";
+	// Scheduling method
+	schedulingMethod: 'phases_only' | 'schedule_in_phases' | 'calendar_optimized';
 
-  // Timeline
-  projectStartDate?: string;
-  projectEndDate?: string;
-  projectDatesChanged?: boolean;
+	// Timeline
+	projectStartDate?: string;
+	projectEndDate?: string;
+	projectDatesChanged?: boolean;
 
-  // Historical preservation
-  preserveHistoricalPhases: boolean; // Default: true
+	// Historical preservation
+	preserveHistoricalPhases: boolean; // Default: true
 
-  // User guidance
-  userInstructions?: string;
+	// User guidance
+	userInstructions?: string;
 
-  // Calendar handling
-  calendar_handling?: "update" | "clear_and_reschedule" | "preserve";
+	// Calendar handling
+	calendar_handling?: 'update' | 'clear_and_reschedule' | 'preserve';
 
-  // DEPRECATED - Remove these:
-  // - include_recurring_tasks (always include unless edge case)
-  // - allow_recurring_reschedule (handle via calendar event logic)
-  // - preserve_existing_dates (handled by calendar_handling)
-  // - preserve_recurring_events (handled by calendar event logic)
-  // - calendar_cleanup_batch_size (internal detail)
+	// DEPRECATED - Remove these:
+	// - include_recurring_tasks (always include unless edge case)
+	// - allow_recurring_reschedule (handle via calendar event logic)
+	// - preserve_existing_dates (handled by calendar_handling)
+	// - preserve_recurring_events (handled by calendar event logic)
+	// - calendar_cleanup_batch_size (internal detail)
 }
 ```
 
@@ -1630,42 +1571,42 @@ export interface PhaseGenerationConfig {
 Each procedural function should have unit tests:
 
 1. **`validatePhaseGenerationConfig()`**
-   - Test all validation rules
-   - Test valid and invalid inputs
+    - Test all validation rules
+    - Test valid and invalid inputs
 
 2. **`loadProjectData()`**
-   - Mock Supabase client
-   - Test with various project structures
+    - Mock Supabase client
+    - Test with various project structures
 
 3. **`checkIfRegeneration()`**
-   - Test with no phases
-   - Test with existing phases
+    - Test with no phases
+    - Test with existing phases
 
 4. **`handleHistoricalPhases()`**
-   - Test with no phases
-   - Test with completed phases
-   - Test with current phase (verify cutoff)
-   - Test with future phases (verify deletion)
+    - Test with no phases
+    - Test with completed phases
+    - Test with current phase (verify cutoff)
+    - Test with future phases (verify deletion)
 
 5. **`resetUnfinishedTasks()`**
-   - Test first-time generation
-   - Test regeneration with various statuses
-   - Test recurring + attendees edge case
+    - Test first-time generation
+    - Test regeneration with various statuses
+    - Test recurring + attendees edge case
 
 6. **`persistPhasesToDatabase()`**
-   - Test phase insertion
-   - Test phase_tasks insertion with order
+    - Test phase insertion
+    - Test phase_tasks insertion with order
 
 7. **`scheduleTasksWithTimeSlotFinder()`**
-   - Mock TaskTimeSlotFinder
-   - Test with various task counts
+    - Mock TaskTimeSlotFinder
+    - Test with various task counts
 
 8. **`handleCalendarEvents()`**
-   - Test with 'update' mode
-   - Test with 'clear_and_reschedule' mode
-   - Test with 'preserve' mode
-   - Test owned vs non-owned events
-   - Test recurring + attendees
+    - Test with 'update' mode
+    - Test with 'clear_and_reschedule' mode
+    - Test with 'preserve' mode
+    - Test owned vs non-owned events
+    - Test recurring + attendees
 
 ### Integration Tests
 
@@ -1779,12 +1720,12 @@ Test prompt quality with `pnpm run test:llm`:
 ### Database Migration Order
 
 1. **Add `order` column to `phase_tasks`**
-   - Default value: 0
-   - Backfill existing records with sequential order
+    - Default value: 0
+    - Backfill existing records with sequential order
 
 2. **Add organizer/attendees columns to `task_calendar_events`**
-   - Nullable columns
-   - Backfill: Run script to fetch organizer/attendees from Google Calendar for existing events
+    - Nullable columns
+    - Backfill: Run script to fetch organizer/attendees from Google Calendar for existing events
 
 ### Code Migration Strategy
 
@@ -1856,14 +1797,14 @@ Test prompt quality with `pnpm run test:llm`:
 2. **Load Project Data** → Fetch project, tasks, phases
 3. **Check Regeneration** → `true` (phases exist)
 4. **Handle Historical Phases**:
-   - Keep Phase 1 as-is (completed)
-   - "Cutoff" Phase 2 at current date (set end_date = now)
-   - Delete Phase 3 (future)
+    - Keep Phase 1 as-is (completed)
+    - "Cutoff" Phase 2 at current date (set end_date = now)
+    - Delete Phase 3 (future)
 5. **Reset Unfinished Tasks**:
-   - Keep 3 completed tasks in Phase 1/2
-   - Move 7 unfinished tasks to backlog (2 in-progress, 5 backlog)
-   - Add 5 new tasks
-   - Total: 12 tasks to schedule
+    - Keep 3 completed tasks in Phase 1/2
+    - Move 7 unfinished tasks to backlog (2 in-progress, 5 backlog)
+    - Add 5 new tasks
+    - Total: 12 tasks to schedule
 6. **LLM Call 1** → Generate 3 new phases with rough grouping
 7. **LLM Call 2** → Order tasks within each phase
 8. **Persist to Database** → Insert 3 new phases with `phase_tasks` (order included)
@@ -1944,29 +1885,29 @@ Generate phases with rough task grouping.
 
 ```json
 {
-  "phases": [
-    {
-      "name": "Phase 2: Design",
-      "description": "Create wireframes and mockups for all pages",
-      "start_date": "2025-10-15",
-      "end_date": "2025-10-25",
-      "task_ids": ["task-1", "task-2", "task-3"]
-    },
-    {
-      "name": "Phase 3: Development",
-      "description": "Implement pages and set up CMS",
-      "start_date": "2025-10-26",
-      "end_date": "2025-11-15",
-      "task_ids": ["task-6", "task-4", "task-5"]
-    },
-    {
-      "name": "Phase 4: Content & Launch",
-      "description": "Write blog posts and prepare for launch",
-      "start_date": "2025-11-16",
-      "end_date": "2025-11-30",
-      "task_ids": ["task-7"]
-    }
-  ]
+	"phases": [
+		{
+			"name": "Phase 2: Design",
+			"description": "Create wireframes and mockups for all pages",
+			"start_date": "2025-10-15",
+			"end_date": "2025-10-25",
+			"task_ids": ["task-1", "task-2", "task-3"]
+		},
+		{
+			"name": "Phase 3: Development",
+			"description": "Implement pages and set up CMS",
+			"start_date": "2025-10-26",
+			"end_date": "2025-11-15",
+			"task_ids": ["task-6", "task-4", "task-5"]
+		},
+		{
+			"name": "Phase 4: Content & Launch",
+			"description": "Write blog posts and prepare for launch",
+			"start_date": "2025-11-16",
+			"end_date": "2025-11-30",
+			"task_ids": ["task-7"]
+		}
+	]
 }
 ```
 
@@ -2017,28 +1958,28 @@ Determine the precise order for tasks within each phase.
 
 ```json
 {
-  "phases": [
-    {
-      "phase_id": 0,
-      "tasks": [
-        { "task_id": "task-1", "order": 0 },
-        { "task_id": "task-2", "order": 1 },
-        { "task_id": "task-3", "order": 1 }
-      ]
-    },
-    {
-      "phase_id": 1,
-      "tasks": [
-        { "task_id": "task-6", "order": 0 },
-        { "task_id": "task-4", "order": 1 },
-        { "task_id": "task-5", "order": 1 }
-      ]
-    },
-    {
-      "phase_id": 2,
-      "tasks": [{ "task_id": "task-7", "order": 0 }]
-    }
-  ]
+	"phases": [
+		{
+			"phase_id": 0,
+			"tasks": [
+				{ "task_id": "task-1", "order": 0 },
+				{ "task_id": "task-2", "order": 1 },
+				{ "task_id": "task-3", "order": 1 }
+			]
+		},
+		{
+			"phase_id": 1,
+			"tasks": [
+				{ "task_id": "task-6", "order": 0 },
+				{ "task_id": "task-4", "order": 1 },
+				{ "task_id": "task-5", "order": 1 }
+			]
+		},
+		{
+			"phase_id": 2,
+			"tasks": [{ "task_id": "task-7", "order": 0 }]
+		}
+	]
 }
 ```
 
@@ -2070,14 +2011,14 @@ Determine the precise order for tasks within each phase.
 
 ```typescript
 await calendar.events.update({
-  calendarId: "primary",
-  eventId: "event123",
-  requestBody: {
-    summary: "Updated Event Title",
-    start: { dateTime: "2025-10-15T10:00:00Z" },
-    end: { dateTime: "2025-10-15T11:00:00Z" },
-  },
-  sendUpdates: "all", // Notify all attendees
+	calendarId: 'primary',
+	eventId: 'event123',
+	requestBody: {
+		summary: 'Updated Event Title',
+		start: { dateTime: '2025-10-15T10:00:00Z' },
+		end: { dateTime: '2025-10-15T11:00:00Z' }
+	},
+	sendUpdates: 'all' // Notify all attendees
 });
 ```
 
@@ -2133,15 +2074,15 @@ The database schema changes (Phase 1) and calendar service updates (Phase 2) hav
 **Files Created:**
 
 - `/supabase/migrations/20251012_add_order_to_phase_tasks.sql`
-  - Added `order` INTEGER column with smart backfill logic
-  - Uses `suggested_start_date`, `created_at`, and `id` for initial ordering
-  - Created composite index `idx_phase_tasks_phase_order` on `(phase_id, "order")`
+    - Added `order` INTEGER column with smart backfill logic
+    - Uses `suggested_start_date`, `created_at`, and `id` for initial ordering
+    - Created composite index `idx_phase_tasks_phase_order` on `(phase_id, "order")`
 
 - `/supabase/migrations/20251012_add_calendar_event_organizer_fields.sql`
-  - Added `organizer_email`, `organizer_display_name`, `organizer_self` columns
-  - Added `attendees` JSONB column with default empty array
-  - Created GIN index on `attendees` for efficient queries
-  - Created index on `organizer_self` for ownership checks
+    - Added `organizer_email`, `organizer_display_name`, `organizer_self` columns
+    - Added `attendees` JSONB column with default empty array
+    - Created GIN index on `attendees` for efficient queries
+    - Created index on `organizer_self` for ownership checks
 
 **TypeScript Types:** All types updated in `/packages/shared-types/src/database.types.ts` and `/packages/shared-types/src/database.schema.ts`
 
@@ -2152,29 +2093,29 @@ The database schema changes (Phase 1) and calendar service updates (Phase 2) hav
 **New Helper Methods:**
 
 1. `extractOrganizerMetadata()` (lines 362-375)
-   - Extracts and normalizes organizer information from Google Calendar API responses
-   - Handles boolean type coercion for `organizer.self` field
+    - Extracts and normalizes organizer information from Google Calendar API responses
+    - Handles boolean type coercion for `organizer.self` field
 
 2. `normalizeAttendees()` (lines 377-404)
-   - Converts Google Calendar attendee arrays to typed database format
-   - Filters out invalid attendees (missing email)
-   - Normalizes response status to enum values
+    - Converts Google Calendar attendee arrays to typed database format
+    - Filters out invalid attendees (missing email)
+    - Normalizes response status to enum values
 
 3. `normalizeAttendeeResponseStatus()` (lines 406-419)
-   - Type-safe conversion of response status strings
-   - Defaults to 'needsAction' for unknown values
+    - Type-safe conversion of response status strings
+    - Defaults to 'needsAction' for unknown values
 
 **Updated Methods:**
 
 - `scheduleTask()` (lines 356-383)
-  - Now extracts and stores organizer metadata immediately after event creation
-  - Stores normalized attendee array in database
-  - No additional API calls required - data comes from creation response
+    - Now extracts and stores organizer metadata immediately after event creation
+    - Stores normalized attendee array in database
+    - No additional API calls required - data comes from creation response
 
 - `updateCalendarEvent()` (lines 527-532)
-  - Added `sendUpdates` parameter to method signature
-  - Passes through to Google Calendar API for attendee notifications
-  - Type: `'all' | 'externalOnly' | 'none'`
+    - Added `sendUpdates` parameter to method signature
+    - Passes through to Google Calendar API for attendee notifications
+    - Type: `'all' | 'externalOnly' | 'none'`
 
 **New Type Export:**
 
@@ -2185,32 +2126,32 @@ The database schema changes (Phase 1) and calendar service updates (Phase 2) hav
 **Technical Documentation Created:**
 
 - `/apps/web/docs/technical/calendar/CALENDAR_EVENT_TRACKING.md` (700+ lines)
-  - Complete implementation guide
-  - Database schema documentation
-  - Usage examples for ownership checks and attendee queries
-  - Google Calendar API `sendUpdates` parameter reference
-  - Phase generation integration patterns
-  - Testing, troubleshooting, and performance considerations
+    - Complete implementation guide
+    - Database schema documentation
+    - Usage examples for ownership checks and attendee queries
+    - Google Calendar API `sendUpdates` parameter reference
+    - Phase generation integration patterns
+    - Testing, troubleshooting, and performance considerations
 
 #### Implementation Differences from Spec
 
 1. **No Additional API Call for Organizer/Attendees**
-   - Spec suggested calling `calendar.events.get()` after creation (lines 1370-1374)
-   - **Actual Implementation**: Data extracted directly from `events.insert()` response
-   - **Reason**: More efficient - avoids extra API call
-   - **Result**: Same data, better performance
+    - Spec suggested calling `calendar.events.get()` after creation (lines 1370-1374)
+    - **Actual Implementation**: Data extracted directly from `events.insert()` response
+    - **Reason**: More efficient - avoids extra API call
+    - **Result**: Same data, better performance
 
 2. **Organizer Self Boolean Handling**
-   - Spec didn't specify boolean coercion complexity
-   - **Actual Implementation**: Added explicit type checking (line 373)
-   - **Reason**: Google API sometimes returns undefined, null, or boolean
-   - **Result**: Type-safe storage
+    - Spec didn't specify boolean coercion complexity
+    - **Actual Implementation**: Added explicit type checking (line 373)
+    - **Reason**: Google API sometimes returns undefined, null, or boolean
+    - **Result**: Type-safe storage
 
 3. **Response Status Normalization**
-   - Spec mentioned enum values but no normalization function
-   - **Actual Implementation**: Added `normalizeAttendeeResponseStatus()` helper
-   - **Reason**: Ensure only valid enum values stored
-   - **Result**: Database integrity guaranteed
+    - Spec mentioned enum values but no normalization function
+    - **Actual Implementation**: Added `normalizeAttendeeResponseStatus()` helper
+    - **Reason**: Ensure only valid enum values stored
+    - **Result**: Database integrity guaranteed
 
 #### Bug Review Results
 
@@ -2218,11 +2159,11 @@ The database schema changes (Phase 1) and calendar service updates (Phase 2) hav
 
 - **Location**: Line 373 of `calendar-service.ts`
 - **Issue**: Overly verbose boolean check
-  ```typescript
-  organizer_self: typeof organizer?.self === "boolean"
-    ? organizer.self
-    : (organizer?.self ?? null);
-  ```
+    ```typescript
+    organizer_self: typeof organizer?.self === 'boolean'
+    	? organizer.self
+    	: (organizer?.self ?? null);
+    ```
 - **Status**: Marked for potential simplification in future refactor
 - **Impact**: None - code works correctly
 
@@ -2243,24 +2184,24 @@ See the Implementation Checklist section above for the complete roadmap.
 ## Questions for Future Consideration
 
 1. **Should we add UI for manual task reordering?**
-   - Drag-and-drop within phases
-   - Would override LLM-generated order
+    - Drag-and-drop within phases
+    - Would override LLM-generated order
 
 2. **Should we track "why" a task can't be rescheduled?**
-   - Add `reschedule_blocked_reason` field to tasks
-   - Values: "recurring_with_attendees", "external_event", etc.
+    - Add `reschedule_blocked_reason` field to tasks
+    - Values: "recurring_with_attendees", "external_event", etc.
 
 3. **Should we notify users when tasks can't be rescheduled?**
-   - Toast notification during phase generation
-   - List of skipped tasks in results
+    - Toast notification during phase generation
+    - List of skipped tasks in results
 
 4. **Should we support partial phase regeneration?**
-   - "Regenerate only Phase 3 and beyond"
-   - Keep Phase 1 and 2 exactly as-is
+    - "Regenerate only Phase 3 and beyond"
+    - Keep Phase 1 and 2 exactly as-is
 
 5. **Should we add "confidence score" for LLM-generated order?**
-   - LLM returns confidence for each order decision
-   - Low confidence → suggest manual review
+    - LLM returns confidence for each order decision
+    - Low confidence → suggest manual review
 
 ---
 

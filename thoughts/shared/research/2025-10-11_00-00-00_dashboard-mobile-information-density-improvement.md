@@ -1,17 +1,17 @@
 ---
-title: "Dashboard Mobile Information Density Improvement Spec"
+title: 'Dashboard Mobile Information Density Improvement Spec'
 date: 2025-10-11
 type: research
 status: specification
 tags: [dashboard, mobile, ux, information-density, layout]
 related_files:
-  - /apps/web/src/routes/+page.svelte
-  - /apps/web/src/lib/components/dashboard/Dashboard.svelte
-  - /apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte
-  - /apps/web/src/lib/components/dashboard/TaskDetailsCard.svelte
-  - /apps/web/src/lib/components/dashboard/WeeklyTaskCalendar.svelte
-  - /apps/web/src/lib/components/dashboard/BraindumpWeekView.svelte
-  - /apps/web/src/lib/components/dashboard/PhaseCalendarView.svelte
+    - /apps/web/src/routes/+page.svelte
+    - /apps/web/src/lib/components/dashboard/Dashboard.svelte
+    - /apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte
+    - /apps/web/src/lib/components/dashboard/TaskDetailsCard.svelte
+    - /apps/web/src/lib/components/dashboard/WeeklyTaskCalendar.svelte
+    - /apps/web/src/lib/components/dashboard/BraindumpWeekView.svelte
+    - /apps/web/src/lib/components/dashboard/PhaseCalendarView.svelte
 ---
 
 # Dashboard Mobile Information Density Improvement Specification
@@ -25,36 +25,36 @@ This specification addresses layout and information density issues on the BuildO
 ### Current Issues Identified
 
 1. **Excessive Top Margin on Welcome Message**
-   - Location: `Dashboard.svelte:649`
-   - Current: `mb-8 sm:mb-10` on header section
-   - Issue: Too much whitespace above the welcome message wastes valuable screen real estate
+    - Location: `Dashboard.svelte:649`
+    - Current: `mb-8 sm:mb-10` on header section
+    - Issue: Too much whitespace above the welcome message wastes valuable screen real estate
 
 2. **Missing Task Counts in Tabs**
-   - Location: `MobileTaskTabs.svelte:94-108`
-   - Current: Tabs show only labels (Past Due, Today, Tomorrow)
-   - Issue: Users cannot see at a glance how many tasks are in each tab without switching
+    - Location: `MobileTaskTabs.svelte:94-108`
+    - Current: Tabs show only labels (Past Due, Today, Tomorrow)
+    - Issue: Users cannot see at a glance how many tasks are in each tab without switching
 
 3. **Inconsistent Card Padding Across Sections**
-   - Mobile padding varies significantly between components:
-     - MobileTaskTabs container: `p-5` (20px)
-     - TaskDetailsCard: `p-4 sm:p-5` (16px → 20px)
-     - WeeklyTaskCalendar header: `p-4 sm:p-6` (16px → 24px)
-     - BraindumpWeekView header: `p-4 sm:p-6` (16px → 24px)
-     - PhaseCalendarView header: `p-6 sm:p-8` (24px → 32px) ⚠️ **Largest**
-   - Issue: Lack of visual cohesion; some sections feel cramped, others wasteful
+    - Mobile padding varies significantly between components:
+        - MobileTaskTabs container: `p-5` (20px)
+        - TaskDetailsCard: `p-4 sm:p-5` (16px → 20px)
+        - WeeklyTaskCalendar header: `p-4 sm:p-6` (16px → 24px)
+        - BraindumpWeekView header: `p-4 sm:p-6` (16px → 24px)
+        - PhaseCalendarView header: `p-6 sm:p-8` (24px → 32px) ⚠️ **Largest**
+    - Issue: Lack of visual cohesion; some sections feel cramped, others wasteful
 
 4. **Excessive Tab Container Padding**
-   - Location: `MobileTaskTabs.svelte:91`
-   - Current: `p-5` (20px all around)
-   - Issue: Takes up unnecessary space on mobile screens
+    - Location: `MobileTaskTabs.svelte:91`
+    - Current: `p-5` (20px all around)
+    - Issue: Takes up unnecessary space on mobile screens
 
 5. **Individual Task Item Padding Variations**
-   - Task items across different components use different padding:
-     - MobileTaskTabs tasks: `p-4` (16px)
-     - TaskDetailsCard tasks: `p-2 sm:p-2.5 md:p-3` (8px → 10px → 12px)
-     - WeeklyTaskCalendar tasks (mobile): `p-3` (12px)
-     - BraindumpWeekView items (mobile): `p-3` (12px)
-     - PhaseCalendarView items (mobile): `p-5` (20px) ⚠️ **Largest**
+    - Task items across different components use different padding:
+        - MobileTaskTabs tasks: `p-4` (16px)
+        - TaskDetailsCard tasks: `p-2 sm:p-2.5 md:p-3` (8px → 10px → 12px)
+        - WeeklyTaskCalendar tasks (mobile): `p-3` (12px)
+        - BraindumpWeekView items (mobile): `p-3` (12px)
+        - PhaseCalendarView items (mobile): `p-5` (20px) ⚠️ **Largest**
 
 ## Current Spacing Audit
 
@@ -148,19 +148,21 @@ Mobile list items: p-5 rounded-2xl min-h-[88px] ⚠️ (Larger than others)
 ```svelte
 <!-- Current: MobileTaskTabs.svelte:96-107 -->
 <Button ...>
-  <span>{tab.label}</span>
+	<span>{tab.label}</span>
 </Button>
 
 <!-- Proposed -->
 <Button ...>
-  <span class="flex items-center gap-1.5">
-    <span>{tab.label}</span>
-    {#if tab.count > 0}
-      <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-        {tab.count}
-      </span>
-    {/if}
-  </span>
+	<span class="flex items-center gap-1.5">
+		<span>{tab.label}</span>
+		{#if tab.count > 0}
+			<span
+				class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+			>
+				{tab.count}
+			</span>
+		{/if}
+	</span>
 </Button>
 ```
 
@@ -296,37 +298,37 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```css
 /* Card Container */
 .dashboard-card {
-  @apply rounded-xl shadow-sm border;
-  @apply bg-white dark:bg-gray-800;
-  @apply border-gray-200 dark:border-gray-700;
+	@apply rounded-xl shadow-sm border;
+	@apply bg-white dark:bg-gray-800;
+	@apply border-gray-200 dark:border-gray-700;
 }
 
 /* Card Header */
 .dashboard-card-header {
-  @apply p-4;
-  @apply border-b border-gray-200 dark:border-gray-700;
+	@apply p-4;
+	@apply border-b border-gray-200 dark:border-gray-700;
 }
 
 /* Card Content */
 .dashboard-card-content {
-  @apply p-4;
+	@apply p-4;
 }
 
 /* List Items (tasks, braindumps, phases) */
 .dashboard-list-item {
-  @apply p-3;
-  @apply rounded-lg;
-  @apply border;
+	@apply p-3;
+	@apply rounded-lg;
+	@apply border;
 }
 
 /* Item Spacing */
 .dashboard-list {
-  @apply space-y-2.5;
+	@apply space-y-2.5;
 }
 
 /* Section Spacing */
 .dashboard-section {
-  @apply mb-4;
+	@apply mb-4;
 }
 ```
 
@@ -335,15 +337,15 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ```css
 /* Desktop keeps slightly more breathing room */
 .dashboard-card-header {
-  @apply sm:p-5; /* Only 4px more than mobile */
+	@apply sm:p-5; /* Only 4px more than mobile */
 }
 
 .dashboard-card-content {
-  @apply sm:p-5; /* Only 4px more than mobile */
+	@apply sm:p-5; /* Only 4px more than mobile */
 }
 
 .dashboard-section {
-  @apply sm:mb-6; /* Only 8px more than mobile */
+	@apply sm:mb-6; /* Only 8px more than mobile */
 }
 ```
 
@@ -431,21 +433,21 @@ Item Spacing:        space-y-2.5 (10px) - Between items in lists
 ## Files to Modify
 
 1. `/apps/web/src/lib/components/dashboard/Dashboard.svelte`
-   - Line 649: Reduce header margin
-   - Lines 688, 698, 706, 825, 838, 953, 959: Reduce section spacing
+    - Line 649: Reduce header margin
+    - Lines 688, 698, 706, 825, 838, 953, 959: Reduce section spacing
 
 2. `/apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte`
-   - Lines 91, 94, 140: Reduce padding
-   - Lines 96-107: Add count badges to tabs
+    - Lines 91, 94, 140: Reduce padding
+    - Lines 96-107: Add count badges to tabs
 
 3. `/apps/web/src/lib/components/dashboard/WeeklyTaskCalendar.svelte`
-   - Lines 99, 119: Standardize padding to p-4
+    - Lines 99, 119: Standardize padding to p-4
 
 4. `/apps/web/src/lib/components/dashboard/BraindumpWeekView.svelte`
-   - Lines 77, 98: Standardize padding to p-4
+    - Lines 77, 98: Standardize padding to p-4
 
 5. `/apps/web/src/lib/components/dashboard/PhaseCalendarView.svelte`
-   - Lines 260, 350, 378: Reduce padding significantly
+    - Lines 260, 350, 378: Reduce padding significantly
 
 ## Success Metrics
 

@@ -256,18 +256,18 @@ Created 11 new README.md files providing navigation, quick references, and overv
 ### High Priority (From Audits)
 
 1. **Core Columns Integration** (⚠️ CRITICAL)
-   - Location: `/apps/web/docs/audits/CORE_COLUMNS_AUDIT.md`
-   - Issues: 3 critical gaps in data cleaner, project history, embeddings
+    - Location: `/apps/web/docs/audits/CORE_COLUMNS_AUDIT.md`
+    - Issues: 3 critical gaps in data cleaner, project history, embeddings
 
 2. **Database Documentation** (⚠️ PLACEHOLDERS)
-   - Location: `/apps/web/docs/technical/database/`
-   - Status: Only placeholder files exist
-   - Workaround: Read `database.schema.ts` directly
+    - Location: `/apps/web/docs/technical/database/`
+    - Status: Only placeholder files exist
+    - Workaround: Read `database.schema.ts` directly
 
 3. **Integration Documentation** (⚠️ 80% MISSING)
-   - Location: `/apps/web/docs/integrations/README.md`
-   - Documented: Stripe (50%)
-   - Missing: Google OAuth, Google Calendar, Twilio, OpenAI
+    - Location: `/apps/web/docs/integrations/README.md`
+    - Documented: Stripe (50%)
+    - Missing: Google OAuth, Google Calendar, Twilio, OpenAI
 
 ---
 

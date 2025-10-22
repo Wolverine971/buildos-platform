@@ -709,30 +709,30 @@ Key research topics covered:
 ### Priority 1 - URGENT
 
 1. **Scattered Root-Level Files:**
-   - CORE_COLUMNS_AUDIT.md → Move to `/apps/web/docs/features/`
-   - CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md → Move
-   - NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md → Move to notifications/
-   - NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md → Move to notifications/
+    - CORE_COLUMNS_AUDIT.md → Move to `/apps/web/docs/features/`
+    - CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md → Move
+    - NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md → Move to notifications/
+    - NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md → Move to notifications/
 
 2. **Duplicate Prompt Structures:**
-   - Audit `/apps/web/docs/prompts/brain-dump/` vs `/apps/web/docs/prompts/existing-project/`
-   - Determine if true duplicates or intentional variants
-   - Consolidate or clearly document the difference
+    - Audit `/apps/web/docs/prompts/brain-dump/` vs `/apps/web/docs/prompts/existing-project/`
+    - Determine if true duplicates or intentional variants
+    - Consolidate or clearly document the difference
 
 ### Priority 2 - HIGH
 
 1. **Add Missing README.md files** to 45+ directories
 2. **Archive outdated content** in `/docs/archive/`
 3. **Review business content** in `/docs/marketing/` (77 files) and `/docs/business/` (21 files)
-   - Should these be in separate biz-dev repository?
+    - Should these be in separate biz-dev repository?
 
 ### Priority 3 - MEDIUM
 
 1. **Empty directories cleanup:**
-   - `/docs/integrations/stripe/` (related to `/apps/web/docs/integrations/`)
-   - `/docs/integrations/supabase/`
-   - `/docs/operations/ci-cd/`
-   - `/docs/operations/monitoring/`
+    - `/docs/integrations/stripe/` (related to `/apps/web/docs/integrations/`)
+    - `/docs/integrations/supabase/`
+    - `/docs/operations/ci-cd/`
+    - `/docs/operations/monitoring/`
 
 2. **Create navigation cross-linking** between related docs
 

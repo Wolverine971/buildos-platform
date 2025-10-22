@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 44cdd992233e05654f6b5fbd241d1ba655bf62b9
 branch: main
 repository: buildos-platform
-topic: "Available Time Slot Finder - Feature Specification"
+topic: 'Available Time Slot Finder - Feature Specification'
 tags: [research, specification, time-play, calendar, feature-design]
 status: draft
 last_updated: 2025-10-14
@@ -94,12 +94,12 @@ For each day in the visible date range:
 - Scale slightly (1.02)
 - Show enhanced shadow
 - Display tooltip with exact times:
-  ```
-  Available Slot
-  9:30 AM - 11:00 AM
-  Duration: 90 minutes
-  Click to create time block
-  ```
+    ```
+    Available Slot
+    9:30 AM - 11:00 AM
+    Duration: 90 minutes
+    Click to create time block
+    ```
 
 **States:**
 
@@ -140,37 +140,37 @@ Location: Below calendar grid and list view (always visible when in Time Play pa
 **Controls:**
 
 1. **Main Toggle** (Top Right)
-   - Switch component (iOS-style toggle)
-   - Persists to localStorage: `timeplay-show-available-slots`
-   - Immediately shows/hides slots on calendar
+    - Switch component (iOS-style toggle)
+    - Persists to localStorage: `timeplay-show-available-slots`
+    - Immediately shows/hides slots on calendar
 
 2. **Buffer Time** (Radio Buttons)
-   - Options: 0 min, 15 min, 30 min, 1 hour
-   - Default: 30 min
-   - Visual: Horizontal radio group with clear labels
-   - Hint text: "Time cushion before and after each commitment"
+    - Options: 0 min, 15 min, 30 min, 1 hour
+    - Default: 30 min
+    - Visual: Horizontal radio group with clear labels
+    - Hint text: "Time cushion before and after each commitment"
 
 3. **Slot Duration** (Dual Range Slider)
-   - Min: 15-600 minutes (step: 15 min)
-   - Max: 30-600 minutes (step: 15 min)
-   - Default: Min 30, Max 600
-   - Visual: Dual-handle slider with values displayed above handles
-   - Validation: Max must be >= Min + 15
-   - Live value display: "30 mins - 10 hrs"
+    - Min: 15-600 minutes (step: 15 min)
+    - Max: 30-600 minutes (step: 15 min)
+    - Default: Min 30, Max 600
+    - Visual: Dual-handle slider with values displayed above handles
+    - Validation: Max must be >= Min + 15
+    - Live value display: "30 mins - 10 hrs"
 
 4. **Time Window** (Dual Time Picker)
-   - Earliest Start: 0-23 (hours)
-   - Latest End: 1-24 (hours)
-   - Default: 8 AM - 8 PM
-   - Visual: Dual-handle slider with time labels
-   - Validation: Latest must be > Earliest
-   - 24-hour display with AM/PM conversion
+    - Earliest Start: 0-23 (hours)
+    - Latest End: 1-24 (hours)
+    - Default: 8 AM - 8 PM
+    - Visual: Dual-handle slider with time labels
+    - Validation: Latest must be > Earliest
+    - 24-hour display with AM/PM conversion
 
 5. **Slot Count Display** (Bottom)
-   - Real-time count of available slots
-   - Format: "📊 Found X available slots in current view"
-   - If 0 slots: "⚠️ No available slots match current criteria"
-   - Animated counter (count up/down on change)
+    - Real-time count of available slots
+    - Format: "📊 Found X available slots in current view"
+    - If 0 slots: "⚠️ No available slots match current criteria"
+    - Animated counter (count up/down on change)
 
 **Interaction & Responsiveness:**
 
@@ -221,14 +221,14 @@ Option A: **Indicator Badges** (Recommended)
 - Badge color: emerald-500
 - Click badge → tooltip with slot details:
 
-  ```
-  Available Slots - Oct 14
-  • 9:00 AM - 10:30 AM (90 min)
-  • 2:00 PM - 4:00 PM (2 hrs)
-  • 6:30 PM - 8:00 PM (90 min)
+    ```
+    Available Slots - Oct 14
+    • 9:00 AM - 10:30 AM (90 min)
+    • 2:00 PM - 4:00 PM (2 hrs)
+    • 6:30 PM - 8:00 PM (90 min)
 
-  [Create Time Block]
-  ```
+    [Create Time Block]
+    ```
 
 - Click "Create Time Block" → modal with day pre-selected
 
@@ -279,9 +279,9 @@ Features:
 
 1. User clicks available slot (calendar or list)
 2. Open `TimeBlockCreateModal` with pre-filled data:
-   - `initialStart`: Slot start time
-   - `initialEnd`: Slot end time
-   - Focus on project selection (skip time selection)
+    - `initialStart`: Slot start time
+    - `initialEnd`: Slot end time
+    - Focus on project selection (skip time selection)
 3. User can still adjust times if needed
 4. Create block as normal
 
@@ -304,9 +304,9 @@ Features:
 ```typescript
 // Recalculate only when dependencies change
 const availableSlots = $derived.by(() => {
-  const { blocks, calendarEvents, config, days } = getCurrentState();
+	const { blocks, calendarEvents, config, days } = getCurrentState();
 
-  return calculateAvailableSlots(blocks, calendarEvents, config, days);
+	return calculateAvailableSlots(blocks, calendarEvents, config, days);
 });
 ```
 
@@ -339,28 +339,28 @@ const availableSlots = $derived.by(() => {
 // apps/web/src/lib/types/time-play.ts
 
 export interface AvailableSlot {
-  id: string; // Unique ID (e.g., "slot-2025-10-14-0900-1030")
-  startTime: Date; // Slot start
-  endTime: Date; // Slot end
-  duration: number; // Duration in minutes
-  dayIndex: number; // Index in days array (for positioning)
-  dayDate: Date; // The day this slot belongs to
+	id: string; // Unique ID (e.g., "slot-2025-10-14-0900-1030")
+	startTime: Date; // Slot start
+	endTime: Date; // Slot end
+	duration: number; // Duration in minutes
+	dayIndex: number; // Index in days array (for positioning)
+	dayDate: Date; // The day this slot belongs to
 }
 
 export interface SlotFinderConfig {
-  enabled: boolean; // Show/hide slots
-  bufferTime: 0 | 15 | 30 | 60; // Minutes before/after events
-  minDuration: number; // Minimum slot size (minutes)
-  maxDuration: number; // Maximum slot size (minutes)
-  earliestStart: number; // Hour (0-23)
-  latestEnd: number; // Hour (0-23)
+	enabled: boolean; // Show/hide slots
+	bufferTime: 0 | 15 | 30 | 60; // Minutes before/after events
+	minDuration: number; // Minimum slot size (minutes)
+	maxDuration: number; // Maximum slot size (minutes)
+	earliestStart: number; // Hour (0-23)
+	latestEnd: number; // Hour (0-23)
 }
 
 export interface OccupiedTimeSlot {
-  start: Date;
-  end: Date;
-  type: "event" | "block";
-  id: string;
+	start: Date;
+	end: Date;
+	type: 'event' | 'block';
+	id: string;
 }
 ```
 
@@ -370,138 +370,131 @@ export interface OccupiedTimeSlot {
 // apps/web/src/lib/utils/slot-finder.ts
 
 export function calculateAvailableSlots(
-  blocks: TimeBlockWithProject[],
-  calendarEvents: CalendarEvent[],
-  config: SlotFinderConfig,
-  days: Date[],
+	blocks: TimeBlockWithProject[],
+	calendarEvents: CalendarEvent[],
+	config: SlotFinderConfig,
+	days: Date[]
 ): AvailableSlot[] {
-  const slots: AvailableSlot[] = [];
+	const slots: AvailableSlot[] = [];
 
-  for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
-    const dayDate = days[dayIndex];
+	for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+		const dayDate = days[dayIndex];
 
-    // 1. Get all occupied slots for this day
-    const occupied = getOccupiedSlotsForDay(
-      dayDate,
-      blocks,
-      calendarEvents,
-      config.bufferTime,
-    );
+		// 1. Get all occupied slots for this day
+		const occupied = getOccupiedSlotsForDay(dayDate, blocks, calendarEvents, config.bufferTime);
 
-    // 2. Sort by start time
-    occupied.sort((a, b) => a.start.getTime() - b.start.getTime());
+		// 2. Sort by start time
+		occupied.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    // 3. Define day boundaries
-    const dayStart = new Date(dayDate);
-    dayStart.setHours(config.earliestStart, 0, 0, 0);
+		// 3. Define day boundaries
+		const dayStart = new Date(dayDate);
+		dayStart.setHours(config.earliestStart, 0, 0, 0);
 
-    const dayEnd = new Date(dayDate);
-    dayEnd.setHours(config.latestEnd, 0, 0, 0);
+		const dayEnd = new Date(dayDate);
+		dayEnd.setHours(config.latestEnd, 0, 0, 0);
 
-    // 4. Find gaps
-    const gaps = findGaps(occupied, dayStart, dayEnd);
+		// 4. Find gaps
+		const gaps = findGaps(occupied, dayStart, dayEnd);
 
-    // 5. Filter by duration
-    const validSlots = gaps.filter((gap) => {
-      const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);
-      return duration >= config.minDuration && duration <= config.maxDuration;
-    });
+		// 5. Filter by duration
+		const validSlots = gaps.filter((gap) => {
+			const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);
+			return duration >= config.minDuration && duration <= config.maxDuration;
+		});
 
-    // 6. Convert to AvailableSlot objects
-    validSlots.forEach((gap, index) => {
-      const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);
-      slots.push({
-        id: `slot-${dayDate.toISOString().split("T")[0]}-${index}`,
-        startTime: gap.start,
-        endTime: gap.end,
-        duration,
-        dayIndex,
-        dayDate,
-      });
-    });
-  }
+		// 6. Convert to AvailableSlot objects
+		validSlots.forEach((gap, index) => {
+			const duration = (gap.end.getTime() - gap.start.getTime()) / (1000 * 60);
+			slots.push({
+				id: `slot-${dayDate.toISOString().split('T')[0]}-${index}`,
+				startTime: gap.start,
+				endTime: gap.end,
+				duration,
+				dayIndex,
+				dayDate
+			});
+		});
+	}
 
-  return slots;
+	return slots;
 }
 
 function getOccupiedSlotsForDay(
-  dayDate: Date,
-  blocks: TimeBlockWithProject[],
-  calendarEvents: CalendarEvent[],
-  bufferTime: number,
+	dayDate: Date,
+	blocks: TimeBlockWithProject[],
+	calendarEvents: CalendarEvent[],
+	bufferTime: number
 ): OccupiedTimeSlot[] {
-  const occupied: OccupiedTimeSlot[] = [];
+	const occupied: OccupiedTimeSlot[] = [];
 
-  // Add time blocks
-  blocks.forEach((block) => {
-    const blockStart = new Date(block.start_time);
-    if (isSameDay(blockStart, dayDate)) {
-      const start = new Date(blockStart.getTime() - bufferTime * 60 * 1000);
-      const end = new Date(
-        new Date(block.end_time).getTime() + bufferTime * 60 * 1000,
-      );
-      occupied.push({ start, end, type: "block", id: block.id });
-    }
-  });
+	// Add time blocks
+	blocks.forEach((block) => {
+		const blockStart = new Date(block.start_time);
+		if (isSameDay(blockStart, dayDate)) {
+			const start = new Date(blockStart.getTime() - bufferTime * 60 * 1000);
+			const end = new Date(new Date(block.end_time).getTime() + bufferTime * 60 * 1000);
+			occupied.push({ start, end, type: 'block', id: block.id });
+		}
+	});
 
-  // Add calendar events
-  calendarEvents.forEach((event) => {
-    const eventStart = new Date(event.start.dateTime || event.start.date || "");
-    if (isSameDay(eventStart, dayDate)) {
-      const start = new Date(eventStart.getTime() - bufferTime * 60 * 1000);
-      const end = new Date(
-        new Date(event.end.dateTime || event.end.date || "").getTime() +
-          bufferTime * 60 * 1000,
-      );
-      occupied.push({ start, end, type: "event", id: event.id });
-    }
-  });
+	// Add calendar events
+	calendarEvents.forEach((event) => {
+		const eventStart = new Date(event.start.dateTime || event.start.date || '');
+		if (isSameDay(eventStart, dayDate)) {
+			const start = new Date(eventStart.getTime() - bufferTime * 60 * 1000);
+			const end = new Date(
+				new Date(event.end.dateTime || event.end.date || '').getTime() +
+					bufferTime * 60 * 1000
+			);
+			occupied.push({ start, end, type: 'event', id: event.id });
+		}
+	});
 
-  return occupied;
+	return occupied;
 }
 
 function findGaps(
-  occupied: OccupiedTimeSlot[],
-  dayStart: Date,
-  dayEnd: Date,
+	occupied: OccupiedTimeSlot[],
+	dayStart: Date,
+	dayEnd: Date
 ): Array<{ start: Date; end: Date }> {
-  const gaps: Array<{ start: Date; end: Date }> = [];
+	const gaps: Array<{ start: Date; end: Date }> = [];
 
-  if (occupied.length === 0) {
-    // Entire day is available
-    return [{ start: dayStart, end: dayEnd }];
-  }
+	if (occupied.length === 0) {
+		// Entire day is available
+		return [{ start: dayStart, end: dayEnd }];
+	}
 
-  // Gap before first event
-  if (occupied[0].start > dayStart) {
-    gaps.push({ start: dayStart, end: occupied[0].start });
-  }
+	// Gap before first event
+	if (occupied[0].start > dayStart) {
+		gaps.push({ start: dayStart, end: occupied[0].start });
+	}
 
-  // Gaps between events
-  for (let i = 0; i < occupied.length - 1; i++) {
-    const currentEnd = occupied[i].end;
-    const nextStart = occupied[i + 1].start;
+	// Gaps between events
+	for (let i = 0; i < occupied.length - 1; i++) {
+		const currentEnd = occupied[i].end;
+		const nextStart = occupied[i + 1].start;
 
-    if (currentEnd < nextStart) {
-      gaps.push({ start: currentEnd, end: nextStart });
-    }
-  }
+		if (currentEnd < nextStart) {
+			gaps.push({ start: currentEnd, end: nextStart });
+		}
+	}
 
-  // Gap after last event
-  const lastEnd = occupied[occupied.length - 1].end;
-  if (lastEnd < dayEnd) {
-    gaps.push({ start: lastEnd, end: dayEnd });
-  }
+	// Gap after last event
+	const lastEnd = occupied[occupied.length - 1].end;
+	if (lastEnd < dayEnd) {
+		gaps.push({ start: lastEnd, end: dayEnd });
+	}
 
-  return gaps;
+	return gaps;
 }
 
 function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
+	return (
+		date1.getFullYear() === date2.getFullYear() &&
+		date1.getMonth() === date2.getMonth() &&
+		date1.getDate() === date2.getDate()
+	);
 }
 ```
 
@@ -512,55 +505,52 @@ function isSameDay(date1: Date, date2: Date): boolean {
 
 // Add to TimePlayState interface
 interface TimePlayState {
-  // ... existing fields
-  slotFinderConfig: SlotFinderConfig;
-  availableSlots: AvailableSlot[];
+	// ... existing fields
+	slotFinderConfig: SlotFinderConfig;
+	availableSlots: AvailableSlot[];
 }
 
 // Add to store methods
 function createTimePlayStore() {
-  // ... existing code
+	// ... existing code
 
-  return {
-    // ... existing methods
+	return {
+		// ... existing methods
 
-    updateSlotFinderConfig(updates: Partial<SlotFinderConfig>) {
-      update((state) => {
-        const newConfig = { ...state.slotFinderConfig, ...updates };
+		updateSlotFinderConfig(updates: Partial<SlotFinderConfig>) {
+			update((state) => {
+				const newConfig = { ...state.slotFinderConfig, ...updates };
 
-        // Save to localStorage
-        if (browser) {
-          localStorage.setItem(
-            "timeplay-slot-finder-config",
-            JSON.stringify(newConfig),
-          );
-        }
+				// Save to localStorage
+				if (browser) {
+					localStorage.setItem('timeplay-slot-finder-config', JSON.stringify(newConfig));
+				}
 
-        return {
-          ...state,
-          slotFinderConfig: newConfig,
-        };
-      });
-    },
+				return {
+					...state,
+					slotFinderConfig: newConfig
+				};
+			});
+		},
 
-    // Triggered automatically via $effect in component
-    recalculateSlots() {
-      update((state) => {
-        if (!state.slotFinderConfig.enabled) {
-          return { ...state, availableSlots: [] };
-        }
+		// Triggered automatically via $effect in component
+		recalculateSlots() {
+			update((state) => {
+				if (!state.slotFinderConfig.enabled) {
+					return { ...state, availableSlots: [] };
+				}
 
-        const slots = calculateAvailableSlots(
-          state.blocks,
-          calendarEvents, // from component
-          state.slotFinderConfig,
-          days, // from component
-        );
+				const slots = calculateAvailableSlots(
+					state.blocks,
+					calendarEvents, // from component
+					state.slotFinderConfig,
+					days // from component
+				);
 
-        return { ...state, availableSlots: slots };
-      });
-    },
-  };
+				return { ...state, availableSlots: slots };
+			});
+		}
+	};
 }
 ```
 
@@ -628,9 +618,9 @@ apps/web/src/lib/stores/
 
 - **Display**: "⚠️ No available slots match current criteria"
 - **Suggestions**:
-  - "Try reducing buffer time"
-  - "Expand time window"
-  - "Reduce minimum duration"
+    - "Try reducing buffer time"
+    - "Expand time window"
+    - "Reduce minimum duration"
 
 ### Overlapping Events
 
@@ -699,38 +689,38 @@ apps/web/src/lib/stores/
 **Slot Detection Algorithm** (`slot-finder.test.ts`)
 
 ```typescript
-describe("calculateAvailableSlots", () => {
-  it("should find gap between two events", () => {
-    // Event 1: 9am-10am, Event 2: 11am-12pm
-    // Expected slot: 10am-11am
-  });
+describe('calculateAvailableSlots', () => {
+	it('should find gap between two events', () => {
+		// Event 1: 9am-10am, Event 2: 11am-12pm
+		// Expected slot: 10am-11am
+	});
 
-  it("should apply buffer time correctly", () => {
-    // Event: 9am-10am, Buffer: 30min
-    // Occupied: 8:30am-10:30am
-  });
+	it('should apply buffer time correctly', () => {
+		// Event: 9am-10am, Buffer: 30min
+		// Occupied: 8:30am-10:30am
+	});
 
-  it("should filter by min/max duration", () => {
-    // Gaps: 20min, 45min, 90min, 5hrs
-    // Min: 30min, Max: 2hrs
-    // Expected: 45min, 90min
-  });
+	it('should filter by min/max duration', () => {
+		// Gaps: 20min, 45min, 90min, 5hrs
+		// Min: 30min, Max: 2hrs
+		// Expected: 45min, 90min
+	});
 
-  it("should respect time window boundaries", () => {
-    // Gaps: 7am-9am, 2pm-4pm, 9pm-11pm
-    // Window: 8am-8pm
-    // Expected: 8am-9am, 2pm-4pm
-  });
+	it('should respect time window boundaries', () => {
+		// Gaps: 7am-9am, 2pm-4pm, 9pm-11pm
+		// Window: 8am-8pm
+		// Expected: 8am-9am, 2pm-4pm
+	});
 
-  it("should handle overlapping events", () => {
-    // Event 1: 9am-11am, Event 2: 10am-12pm
-    // Merged: 9am-12pm
-  });
+	it('should handle overlapping events', () => {
+		// Event 1: 9am-11am, Event 2: 10am-12pm
+		// Merged: 9am-12pm
+	});
 
-  it("should handle all-day events", () => {
-    // All-day event on Oct 14
-    // Expected: No slots on Oct 14
-  });
+	it('should handle all-day events', () => {
+		// All-day event on Oct 14
+		// Expected: No slots on Oct 14
+	});
 });
 ```
 
@@ -822,18 +812,18 @@ describe("calculateAvailableSlots", () => {
 
 ```css
 @keyframes slot-fade-in {
-  from {
-    opacity: 0;
-    transform: scaleY(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scaleY(1);
-  }
+	from {
+		opacity: 0;
+		transform: scaleY(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scaleY(1);
+	}
 }
 
 .available-slot {
-  animation: slot-fade-in 200ms ease-out;
+	animation: slot-fade-in 200ms ease-out;
 }
 ```
 
@@ -841,11 +831,11 @@ describe("calculateAvailableSlots", () => {
 
 ```css
 .available-slot {
-  transition: all 150ms ease;
+	transition: all 150ms ease;
 }
 
 .available-slot:hover {
-  transform: translateY(-1px) scaleY(1.02);
+	transform: translateY(-1px) scaleY(1.02);
 }
 ```
 
@@ -853,14 +843,14 @@ describe("calculateAvailableSlots", () => {
 
 ```css
 @keyframes count-up {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 ```
 
@@ -871,46 +861,46 @@ describe("calculateAvailableSlots", () => {
 ### Phase 2 (Post-MVP)
 
 1. **Smart Slot Recommendations**
-   - Highlight "optimal" slots based on:
-     - Duration match (e.g., 90-min slots for deep work)
-     - Time of day (morning for creative work)
-     - Historical patterns (when user is most productive)
+    - Highlight "optimal" slots based on:
+        - Duration match (e.g., 90-min slots for deep work)
+        - Time of day (morning for creative work)
+        - Historical patterns (when user is most productive)
 
 2. **Slot Templates**
-   - Save common configurations as presets:
-     - "Deep Work" (90-120 min slots, 8-11 AM)
-     - "Quick Tasks" (30-45 min slots, any time)
-     - "Meetings" (60 min slots, 2-5 PM)
+    - Save common configurations as presets:
+        - "Deep Work" (90-120 min slots, 8-11 AM)
+        - "Quick Tasks" (30-45 min slots, any time)
+        - "Meetings" (60 min slots, 2-5 PM)
 
 3. **Multi-Day Slot Finder**
-   - Find slots spanning multiple days
-   - "Find next 3 available 2-hour slots this week"
+    - Find slots spanning multiple days
+    - "Find next 3 available 2-hour slots this week"
 
 4. **Calendar Heatmap**
-   - Visual density map showing availability across weeks
-   - Darker = more available time
+    - Visual density map showing availability across weeks
+    - Darker = more available time
 
 5. **Recurring Slot Blocking**
-   - Block recurring slots (e.g., "every Monday 9-11 AM")
-   - Auto-create time blocks for recurring slots
+    - Block recurring slots (e.g., "every Monday 9-11 AM")
+    - Auto-create time blocks for recurring slots
 
 6. **AI-Powered Suggestions**
-   - "Based on your schedule, tomorrow afternoon has 3 hours free"
-   - "Your calendar is packed this week - consider declining X meeting"
+    - "Based on your schedule, tomorrow afternoon has 3 hours free"
+    - "Your calendar is packed this week - consider declining X meeting"
 
 ### Phase 3 (Advanced)
 
 1. **Team Availability**
-   - Find common available slots across team calendars
-   - Suggest optimal meeting times
+    - Find common available slots across team calendars
+    - Suggest optimal meeting times
 
 2. **Integration with Tasks**
-   - Auto-suggest slots based on task duration estimates
-   - "Task X needs 90 min - here are 4 available slots"
+    - Auto-suggest slots based on task duration estimates
+    - "Task X needs 90 min - here are 4 available slots"
 
 3. **Focus Time Protection**
-   - Auto-block slots meeting criteria
-   - Integration with Do Not Disturb / Slack status
+    - Auto-block slots meeting criteria
+    - Integration with Do Not Disturb / Slack status
 
 ---
 
@@ -987,29 +977,29 @@ describe("calculateAvailableSlots", () => {
 ## Open Questions
 
 1. **Should we persist the toggle state globally or per-view?**
-   - Global: Same state across day/week/month views
-   - Per-view: Different state per view (e.g., always on in week, off in month)
-   - **Recommendation**: Global (simpler UX)
+    - Global: Same state across day/week/month views
+    - Per-view: Different state per view (e.g., always on in week, off in month)
+    - **Recommendation**: Global (simpler UX)
 
 2. **Should buffer time be applied to all-day events?**
-   - Option A: No buffer (all-day already occupies full day)
-   - Option B: Apply buffer (may block previous/next day)
-   - **Recommendation**: Option A
+    - Option A: No buffer (all-day already occupies full day)
+    - Option B: Apply buffer (may block previous/next day)
+    - **Recommendation**: Option A
 
 3. **How to handle slots that span lunch hours (12-1 PM)?**
-   - User mentioned NOT to exclude lunch hours
-   - Should we still show a visual indicator that it's lunch time?
-   - **Recommendation**: Show all slots, no special lunch treatment
+    - User mentioned NOT to exclude lunch hours
+    - Should we still show a visual indicator that it's lunch time?
+    - **Recommendation**: Show all slots, no special lunch treatment
 
 4. **Should we limit the number of visible slots to prevent clutter?**
-   - Option A: No limit (user can adjust config if cluttered)
-   - Option B: Limit to top 10 slots (e.g., largest or earliest)
-   - **Recommendation**: Option A (no limit) - user has full control via config
+    - Option A: No limit (user can adjust config if cluttered)
+    - Option B: Limit to top 10 slots (e.g., largest or earliest)
+    - **Recommendation**: Option A (no limit) - user has full control via config
 
 5. **Should the feature be enabled by default for new users?**
-   - Option A: Enabled (discoverable, helpful)
-   - Option B: Disabled (avoid overwhelming new users)
-   - **Recommendation**: Disabled (let users discover and opt-in)
+    - Option A: Enabled (discoverable, helpful)
+    - Option B: Disabled (avoid overwhelming new users)
+    - **Recommendation**: Disabled (let users discover and opt-in)
 
 ---
 
@@ -1036,13 +1026,13 @@ describe("calculateAvailableSlots", () => {
 
 - Day: Oct 14, 2025
 - Events:
-  - Meeting 1: 9:00 AM - 10:00 AM
-  - Meeting 2: 2:00 PM - 3:00 PM
+    - Meeting 1: 9:00 AM - 10:00 AM
+    - Meeting 2: 2:00 PM - 3:00 PM
 - Config:
-  - Buffer: 30 min
-  - Min: 30 min
-  - Max: 10 hrs
-  - Window: 8 AM - 8 PM
+    - Buffer: 30 min
+    - Min: 30 min
+    - Max: 10 hrs
+    - Window: 8 AM - 8 PM
 
 **Occupied Slots (with buffer):**
 
@@ -1063,17 +1053,17 @@ describe("calculateAvailableSlots", () => {
 
 - Day: Oct 15, 2025
 - Events:
-  - 8:00 AM - 9:00 AM
-  - 9:30 AM - 11:00 AM
-  - 11:00 AM - 12:00 PM
-  - 1:00 PM - 2:30 PM
-  - 3:00 PM - 5:00 PM
-  - 6:00 PM - 7:30 PM
+    - 8:00 AM - 9:00 AM
+    - 9:30 AM - 11:00 AM
+    - 11:00 AM - 12:00 PM
+    - 1:00 PM - 2:30 PM
+    - 3:00 PM - 5:00 PM
+    - 6:00 PM - 7:30 PM
 - Config:
-  - Buffer: 15 min
-  - Min: 45 min
-  - Max: 10 hrs
-  - Window: 8 AM - 8 PM
+    - Buffer: 15 min
+    - Min: 45 min
+    - Max: 10 hrs
+    - Window: 8 AM - 8 PM
 
 **Occupied Slots (with buffer):**
 
@@ -1096,12 +1086,12 @@ describe("calculateAvailableSlots", () => {
 
 - Day: Oct 18, 2025 (Saturday)
 - Events:
-  - Brunch: 11:00 AM - 12:30 PM
+    - Brunch: 11:00 AM - 12:30 PM
 - Config:
-  - Buffer: 30 min
-  - Min: 60 min
-  - Max: 10 hrs
-  - Window: 8 AM - 8 PM
+    - Buffer: 30 min
+    - Min: 60 min
+    - Max: 10 hrs
+    - Window: 8 AM - 8 PM
 
 **Occupied Slots:**
 

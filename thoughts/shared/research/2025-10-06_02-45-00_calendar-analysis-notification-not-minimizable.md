@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: ac3926bfd8b265462ed239421d7cd1573b489972
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Notification Not Minimizable - Integration Bug"
+topic: 'Calendar Analysis Notification Not Minimizable - Integration Bug'
 tags: [research, codebase, notifications, calendar-analysis, bug, integration]
 status: complete
 last_updated: 2025-10-06
@@ -41,7 +41,7 @@ User reported: "I have stackable notifications. But one of the types of stackabl
 
 ```typescript
 function handleMinimize() {
-  notification?.actions?.minimize?.(); // ❌ BROKEN: This action doesn't exist
+	notification?.actions?.minimize?.(); // ❌ BROKEN: This action doesn't exist
 }
 ```
 
@@ -65,20 +65,20 @@ function handleMinimize() {
 
 ```typescript
 function attachActions(controller: CalendarAnalysisController): void {
-  notificationStore.update(controller.notificationId, {
-    actions: {
-      viewResults: () => notificationStore.expand(controller.notificationId),
-      retry: () => {
-        if (controller.status === "processing") return;
-        executeAnalysis(controller, { reason: "retry" }).catch((error) => {
-          console.error("[CalendarAnalysisBridge] Retry failed", error);
-          notificationStore.setError(controller.notificationId, "Retry failed");
-        });
-      },
-      dismiss: () => notificationStore.remove(controller.notificationId),
-      // ❌ NO minimize action provided!
-    },
-  });
+	notificationStore.update(controller.notificationId, {
+		actions: {
+			viewResults: () => notificationStore.expand(controller.notificationId),
+			retry: () => {
+				if (controller.status === 'processing') return;
+				executeAnalysis(controller, { reason: 'retry' }).catch((error) => {
+					console.error('[CalendarAnalysisBridge] Retry failed', error);
+					notificationStore.setError(controller.notificationId, 'Retry failed');
+				});
+			},
+			dismiss: () => notificationStore.remove(controller.notificationId)
+			// ❌ NO minimize action provided!
+		}
+	});
 }
 ```
 
@@ -99,7 +99,7 @@ Example from `PhaseGenerationModalContent.svelte:75-77`:
 
 ```typescript
 function handleMinimize() {
-  dispatch("minimize"); // ✅ Dispatch event to parent
+	dispatch('minimize'); // ✅ Dispatch event to parent
 }
 ```
 
@@ -123,7 +123,7 @@ function handleMinimize() {
 
 ```typescript
 function handleMinimize() {
-  notificationStore.minimize(notification.id); // ✅ Direct store call
+	notificationStore.minimize(notification.id); // ✅ Direct store call
 }
 ```
 
@@ -185,19 +185,19 @@ cleanupProjectSynthesisNotificationBridge();
 The stackable notification system uses a **two-layer architecture** for minimize functionality:
 
 1. **Type-specific modal components** (e.g., CalendarAnalysisModalContent.svelte)
-   - Handle UI interactions
-   - Dispatch events to parent using `createEventDispatcher()`
-   - Do NOT call store methods directly
-   - Do NOT expect bridge to provide minimize action
+    - Handle UI interactions
+    - Dispatch events to parent using `createEventDispatcher()`
+    - Do NOT call store methods directly
+    - Do NOT expect bridge to provide minimize action
 
 2. **Generic parent modal** (NotificationModal.svelte)
-   - Listens for `'minimize'` events from type-specific components
-   - Calls `notificationStore.minimize(notification.id)` directly
-   - Provides centralized minimize logic
+    - Listens for `'minimize'` events from type-specific components
+    - Calls `notificationStore.minimize(notification.id)` directly
+    - Provides centralized minimize logic
 
 3. **Notification bridges** (\*-notification.bridge.ts)
-   - Provide type-specific actions: `view`, `retry`, `dismiss`
-   - Do NOT provide `minimize` action (handled by parent)
+    - Provide type-specific actions: `view`, `retry`, `dismiss`
+    - Do NOT provide `minimize` action (handled by parent)
 
 ### Why CalendarAnalysis Broke the Pattern
 
@@ -310,26 +310,26 @@ After applying the fix:
 ## Open Questions
 
 1. **Why was CalendarAnalysis implemented differently?**
-   - Was it based on an older pattern that has since been deprecated?
-   - Was it implemented before the event-dispatch pattern was standardized?
+    - Was it based on an older pattern that has since been deprecated?
+    - Was it implemented before the event-dispatch pattern was standardized?
 
 2. **Should we add pattern enforcement?**
-   - TypeScript types to require event dispatchers in modal components?
-   - ESLint rule to catch `notification.actions.minimize()` calls?
+    - TypeScript types to require event dispatchers in modal components?
+    - ESLint rule to catch `notification.actions.minimize()` calls?
 
 3. **Should minimize be documented more clearly?**
-   - Add comment in bridge files explaining why minimize is NOT provided?
-   - Update notification system docs to clarify the event-dispatch pattern?
+    - Add comment in bridge files explaining why minimize is NOT provided?
+    - Update notification system docs to clarify the event-dispatch pattern?
 
 ## Recommendations
 
 1. **Immediate**: Apply the fix to CalendarAnalysisModalContent.svelte (3-line change)
 
 2. **Short-term**:
-   - Add JSDoc comments to NotificationModal.svelte explaining the minimize event pattern
-   - Add comment in bridge attachActions functions: `// Note: minimize handled by parent NotificationModal`
+    - Add JSDoc comments to NotificationModal.svelte explaining the minimize event pattern
+    - Add comment in bridge attachActions functions: `// Note: minimize handled by parent NotificationModal`
 
 3. **Long-term**:
-   - Create a shared base type for modal components with required event signatures
-   - Add integration tests for notification minimize/expand behavior
-   - Document the notification architecture in the codebase documentation
+    - Create a shared base type for modal components with required event signatures
+    - Add integration tests for notification minimize/expand behavior
+    - Document the notification architecture in the codebase documentation

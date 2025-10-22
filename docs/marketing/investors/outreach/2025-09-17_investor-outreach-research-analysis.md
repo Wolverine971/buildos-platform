@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 32f305191ac38bcbe95ddd4d18e96a8358cb3f35
 branch: main
 repository: build_os
-topic: "Investor Outreach Strategy for BuildOS: Military Background Founder Targeting VCs"
+topic: 'Investor Outreach Strategy for BuildOS: Military Background Founder Targeting VCs'
 tags: [research, investors, outreach, military-founder, vc-analysis, buildos]
 status: complete
 last_updated: 2025-09-17

@@ -38,14 +38,14 @@ You fixed **approximately 70%** of the critical issues, but **8+ significant iss
 
 ```typescript
 // Still hardcoded - needs environment variable
-const baseUrl = "https://build-os.com";
+const baseUrl = 'https://build-os.com';
 ```
 
 **What's Needed**:
 
 ```typescript
 // Should be:
-const baseUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
+const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
 ```
 
 **Action Items**:
@@ -81,27 +81,25 @@ const baseUrl = process.env.PUBLIC_APP_URL || "https://build-os.com";
 ```typescript
 // In validateEnvironment():
 // Add conditional validation based on features
-if (process.env.USE_WEBHOOK_EMAIL === "true") {
-  if (!process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET) {
-    errors.push(
-      "PRIVATE_BUILDOS_WEBHOOK_SECRET required when USE_WEBHOOK_EMAIL=true",
-    );
-  }
+if (process.env.USE_WEBHOOK_EMAIL === 'true') {
+	if (!process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET) {
+		errors.push('PRIVATE_BUILDOS_WEBHOOK_SECRET required when USE_WEBHOOK_EMAIL=true');
+	}
 }
 
 if (!process.env.PRIVATE_OPENROUTER_API_KEY) {
-  errors.push("PRIVATE_OPENROUTER_API_KEY required for LLM analysis");
+	errors.push('PRIVATE_OPENROUTER_API_KEY required for LLM analysis');
 }
 
 // Check if any Twilio credentials are set (partial config is invalid)
 const twilioVars = [
-  process.env.PRIVATE_TWILIO_ACCOUNT_SID,
-  process.env.PRIVATE_TWILIO_AUTH_TOKEN,
-  process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
+	process.env.PRIVATE_TWILIO_ACCOUNT_SID,
+	process.env.PRIVATE_TWILIO_AUTH_TOKEN,
+	process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID
 ];
 const twilioConfigured = twilioVars.filter(Boolean).length;
 if (twilioConfigured > 0 && twilioConfigured < 3) {
-  errors.push("All PRIVATE_TWILIO_* variables must be set together");
+	errors.push('All PRIVATE_TWILIO_* variables must be set together');
 }
 ```
 
@@ -175,23 +173,23 @@ const phoneNumber = delivery.channel_identifier;  // NO VALIDATION!
 **What's Needed**: Add E.164 format validation
 
 ```typescript
-import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 function validatePhoneNumber(phone: string): boolean {
-  try {
-    const parsed = parsePhoneNumberFromString(phone);
-    return parsed?.isValid() ?? false;
-  } catch {
-    return false;
-  }
+	try {
+		const parsed = parsePhoneNumberFromString(phone);
+		return parsed?.isValid() ?? false;
+	} catch {
+		return false;
+	}
 }
 
 // Then use it:
 if (!validatePhoneNumber(delivery.channel_identifier)) {
-  smsLogger.warn("Invalid phone number format", {
-    phone: delivery.channel_identifier,
-  });
-  return { success: false, error: "Invalid phone number format" };
+	smsLogger.warn('Invalid phone number format', {
+		phone: delivery.channel_identifier
+	});
+	return { success: false, error: 'Invalid phone number format' };
 }
 ```
 
@@ -207,13 +205,13 @@ if (!validatePhoneNumber(delivery.channel_identifier)) {
 
 ```typescript
 // Still using type assertion bypass
-const userTimezone = (user as any)?.timezone || timezone || "UTC";
+const userTimezone = (user as any)?.timezone || timezone || 'UTC';
 ```
 
 **What's Needed**: Proper null coalescing without type assertion
 
 ```typescript
-const userTimezone = user?.timezone || timezone || "UTC";
+const userTimezone = user?.timezone || timezone || 'UTC';
 ```
 
 This works because the query fetches `timezone` column, so TypeScript should know about it. The `as any` is a workaround for outdated types.
@@ -249,8 +247,7 @@ if (hasSuspiciousZeros) {
 
 ```typescript
 // Option 1: Check if this is a real user state (with project existence)
-const isRealZero =
-  variables.project_count > 0 && variables.todays_task_count === 0;
+const isRealZero = variables.project_count > 0 && variables.todays_task_count === 0;
 
 // Option 2: Only re-fetch if data is stale (older than 5 minutes)
 // Option 3: Trust the template system and remove this logic entirely
@@ -309,16 +306,16 @@ try {
 Great work! Now catches both:
 
 ```typescript
-process.on("uncaughtException", (error) => {
-  console.error("🚨 CRITICAL: Uncaught Exception", error);
-  queue.stop();
-  process.exit(1);
+process.on('uncaughtException', (error) => {
+	console.error('🚨 CRITICAL: Uncaught Exception', error);
+	queue.stop();
+	process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("🚨 CRITICAL: Unhandled Rejection", reason);
-  queue.stop();
-  process.exit(1);
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('🚨 CRITICAL: Unhandled Rejection', reason);
+	queue.stop();
+	process.exit(1);
 });
 ```
 
@@ -401,9 +398,7 @@ Now throws error if missing:
 
 ```typescript
 if (!webhookSecret) {
-  throw new Error(
-    "PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable is required",
-  );
+	throw new Error('PRIVATE_BUILDOS_WEBHOOK_SECRET environment variable is required');
 }
 ```
 
@@ -420,7 +415,7 @@ Now validates key exists:
 
 ```typescript
 if (!this.apiKey) {
-  throw new Error("Missing PRIVATE_OPENROUTER_API_KEY for SmartLLMService");
+	throw new Error('Missing PRIVATE_OPENROUTER_API_KEY for SmartLLMService');
 }
 ```
 
@@ -438,11 +433,11 @@ No more unsafe type assertions:
 ```typescript
 // OLD: (user as any)?.timezone
 // NEW: Proper optional chaining with validation
-let timezone = user?.timezone || job.data.timezone || "UTC";
+let timezone = user?.timezone || job.data.timezone || 'UTC';
 
 if (!isValidTimezone(timezone)) {
-  console.warn(`Invalid timezone "${timezone}", falling back to UTC`);
-  timezone = "UTC";
+	console.warn(`Invalid timezone "${timezone}", falling back to UTC`);
+	timezone = 'UTC';
 }
 ```
 
@@ -457,12 +452,12 @@ if (!isValidTimezone(timezone)) {
 
 ```typescript
 function isValidTimezone(timezone: string): boolean {
-  try {
-    getTimezoneOffset(timezone, new Date());
-    return true;
-  } catch (error) {
-    return false;
-  }
+	try {
+		getTimezoneOffset(timezone, new Date());
+		return true;
+	} catch (error) {
+		return false;
+	}
 }
 ```
 
@@ -479,23 +474,20 @@ Added centralized timezone validation:
 
 ```typescript
 function isValidTimezone(timezone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
-    return true;
-  } catch {
-    return false;
-  }
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+		return true;
+	} catch {
+		return false;
+	}
 }
 
-function getSafeTimezone(
-  timezone: string | null | undefined,
-  userId: string,
-): string {
-  if (!timezone) return "UTC";
-  if (isValidTimezone(timezone)) return timezone;
+function getSafeTimezone(timezone: string | null | undefined, userId: string): string {
+	if (!timezone) return 'UTC';
+	if (isValidTimezone(timezone)) return timezone;
 
-  console.warn(`Invalid timezone for user ${userId}, falling back to UTC`);
-  return "UTC";
+	console.warn(`Invalid timezone for user ${userId}, falling back to UTC`);
+	return 'UTC';
 }
 ```
 
@@ -530,19 +522,19 @@ function getSafeTimezone(
 ### 🔴 URGENT - Fix immediately:
 
 1. **Move hardcoded URLs to environment variables**
-   - Impact: Staging/dev deployments will fail
-   - Time: ~1-2 hours
-   - Files affected: 10 files
+    - Impact: Staging/dev deployments will fail
+    - Time: ~1-2 hours
+    - Files affected: 10 files
 
 2. **Complete environment variable validation**
-   - Impact: Missing config caught at startup, not runtime
-   - Time: ~30 minutes
-   - Files: queueConfig.ts
+    - Impact: Missing config caught at startup, not runtime
+    - Time: ~30 minutes
+    - Files: queueConfig.ts
 
 3. **Add phone number validation**
-   - Impact: SMS delivery failures harder to debug
-   - Time: ~45 minutes
-   - Files: smsAdapter.ts
+    - Impact: SMS delivery failures harder to debug
+    - Time: ~45 minutes
+    - Files: smsAdapter.ts
 
 ### 🟡 HIGH - Fix this sprint:
 

@@ -52,23 +52,23 @@ SMS Workers → Metrics Service → Database → Materialized View
 ### Components
 
 1. **SMSMetricsService** (`apps/worker/src/lib/services/smsMetrics.service.ts`)
-   - Records metrics to `sms_metrics` table
-   - Aggregates data via materialized views
-   - Provides query methods for dashboard
+    - Records metrics to `sms_metrics` table
+    - Aggregates data via materialized views
+    - Provides query methods for dashboard
 
 2. **SMSAlertsService** (`apps/worker/src/lib/services/smsAlerts.service.ts`)
-   - Checks thresholds against current metrics
-   - Sends notifications via Slack/PagerDuty/Email
-   - Manages alert history and resolution
+    - Checks thresholds against current metrics
+    - Sends notifications via Slack/PagerDuty/Email
+    - Manages alert history and resolution
 
 3. **Scheduler** (`apps/worker/src/scheduler.ts`)
-   - Runs hourly alert checks
-   - Refreshes materialized views
-   - Logs results for audit trail
+    - Runs hourly alert checks
+    - Refreshes materialized views
+    - Logs results for audit trail
 
 4. **API Endpoints** (`apps/web/src/routes/api/sms/metrics/`)
-   - Exposes metrics to frontend
-   - Provides alert management interface
+    - Exposes metrics to frontend
+    - Provides alert management interface
 
 ---
 
@@ -295,25 +295,25 @@ curl "https://build-os.com/api/sms/metrics/daily?start_date=2025-10-01&end_date=
 
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "metric_date": "2025-10-08",
-      "scheduled_count": 150,
-      "sent_count": 145,
-      "delivered_count": 138,
-      "failed_count": 7,
-      "delivery_rate_percent": 95.17,
-      "llm_success_count": 120,
-      "template_fallback_count": 25,
-      "llm_success_rate_percent": 82.76,
-      "active_users": 42
-    }
-  ],
-  "date_range": {
-    "start": "2025-10-01",
-    "end": "2025-10-08"
-  }
+	"success": true,
+	"data": [
+		{
+			"metric_date": "2025-10-08",
+			"scheduled_count": 150,
+			"sent_count": 145,
+			"delivered_count": 138,
+			"failed_count": 7,
+			"delivery_rate_percent": 95.17,
+			"llm_success_count": 120,
+			"template_fallback_count": 25,
+			"llm_success_rate_percent": 82.76,
+			"active_users": 42
+		}
+	],
+	"date_range": {
+		"start": "2025-10-01",
+		"end": "2025-10-08"
+	}
 }
 ```
 
@@ -337,22 +337,22 @@ curl "https://build-os.com/api/sms/metrics/user?days=7" \
 
 ```json
 {
-  "success": true,
-  "data": {
-    "metrics": [
-      /* daily metrics */
-    ],
-    "summary": {
-      "total_scheduled": 25,
-      "total_sent": 24,
-      "total_delivered": 23,
-      "total_failed": 1,
-      "delivery_rate_percent": 95.83,
-      "total_llm_cost_usd": "0.0012",
-      "days": 7
-    }
-  },
-  "user_id": "user-uuid"
+	"success": true,
+	"data": {
+		"metrics": [
+			/* daily metrics */
+		],
+		"summary": {
+			"total_scheduled": 25,
+			"total_sent": 24,
+			"total_delivered": 23,
+			"total_failed": 1,
+			"delivery_rate_percent": 95.83,
+			"total_llm_cost_usd": "0.0012",
+			"days": 7
+		}
+	},
+	"user_id": "user-uuid"
 }
 ```
 
@@ -371,21 +371,21 @@ curl "https://build-os.com/api/sms/metrics/today" \
 
 ```json
 {
-  "success": true,
-  "data": {
-    "metric_date": "2025-10-08",
-    "scheduled_count": 150,
-    "sent_count": 145,
-    "delivered_count": 138,
-    "delivery_rate_percent": 95.17,
-    "llm_success_rate_percent": 82.76,
-    "active_users": 42,
-    "health": {
-      "delivery_healthy": true,
-      "llm_healthy": true,
-      "overall_healthy": true
-    }
-  }
+	"success": true,
+	"data": {
+		"metric_date": "2025-10-08",
+		"scheduled_count": 150,
+		"sent_count": 145,
+		"delivered_count": 138,
+		"delivery_rate_percent": 95.17,
+		"llm_success_rate_percent": 82.76,
+		"active_users": 42,
+		"health": {
+			"delivery_healthy": true,
+			"llm_healthy": true,
+			"overall_healthy": true
+		}
+	}
 }
 ```
 
@@ -404,37 +404,37 @@ curl "https://build-os.com/api/sms/metrics/summary" \
 
 ```json
 {
-  "success": true,
-  "data": {
-    "today": {
-      /* today's metrics */
-    },
-    "week": {
-      "totals": {
-        "scheduled": 1050,
-        "sent": 1020,
-        "delivered": 975,
-        "failed": 45,
-        "llmCost": 0.0084
-      },
-      "delivery_rate_percent": 95.59,
-      "llm_success_rate_percent": 81.25,
-      "avg_daily_cost_usd": "0.0012"
-    },
-    "alerts": {
-      "unresolved_count": 0,
-      "has_critical": false,
-      "recent": []
-    },
-    "health": {
-      "delivery_healthy": true,
-      "llm_healthy": true,
-      "alerts_healthy": true,
-      "overall_healthy": true,
-      "status": "healthy"
-    }
-  },
-  "timestamp": "2025-10-08T15:30:00.000Z"
+	"success": true,
+	"data": {
+		"today": {
+			/* today's metrics */
+		},
+		"week": {
+			"totals": {
+				"scheduled": 1050,
+				"sent": 1020,
+				"delivered": 975,
+				"failed": 45,
+				"llmCost": 0.0084
+			},
+			"delivery_rate_percent": 95.59,
+			"llm_success_rate_percent": 81.25,
+			"avg_daily_cost_usd": "0.0012"
+		},
+		"alerts": {
+			"unresolved_count": 0,
+			"has_critical": false,
+			"recent": []
+		},
+		"health": {
+			"delivery_healthy": true,
+			"llm_healthy": true,
+			"alerts_healthy": true,
+			"overall_healthy": true,
+			"status": "healthy"
+		}
+	},
+	"timestamp": "2025-10-08T15:30:00.000Z"
 }
 ```
 
@@ -469,7 +469,7 @@ Resolve an alert.
 
 ```json
 {
-  "alert_id": "alert-uuid"
+	"alert_id": "alert-uuid"
 }
 ```
 
@@ -627,19 +627,19 @@ ORDER BY hour DESC;
 ### Monitoring Strategy
 
 1. **Dashboard Review (Daily)**
-   - Check `/summary` endpoint for overall health
-   - Review 7-day trends for anomalies
-   - Investigate any unresolved alerts
+    - Check `/summary` endpoint for overall health
+    - Review 7-day trends for anomalies
+    - Investigate any unresolved alerts
 
 2. **Deep Dive (Weekly)**
-   - Review delivery rate trends
-   - Analyze LLM success rate and costs
-   - Check user engagement metrics (opt-outs, quiet hours)
+    - Review delivery rate trends
+    - Analyze LLM success rate and costs
+    - Check user engagement metrics (opt-outs, quiet hours)
 
 3. **Optimization (Monthly)**
-   - Tune alert thresholds based on historical data
-   - Review materialized view refresh timing
-   - Optimize metrics collection performance
+    - Tune alert thresholds based on historical data
+    - Review materialized view refresh timing
+    - Optimize metrics collection performance
 
 ### Alert Tuning
 
@@ -651,26 +651,26 @@ ORDER BY hour DESC;
 ### Performance Optimization
 
 1. **Materialized View Refresh**
-   - Runs hourly via scheduler
-   - Use `CONCURRENTLY` to avoid table locks
-   - Monitor refresh time: `SELECT last_refreshed FROM sms_metrics_daily`
+    - Runs hourly via scheduler
+    - Use `CONCURRENTLY` to avoid table locks
+    - Monitor refresh time: `SELECT last_refreshed FROM sms_metrics_daily`
 
 2. **Metrics Retention**
 
-   ```sql
-   -- Archive old metrics (older than 90 days)
-   DELETE FROM sms_metrics
-   WHERE metric_date < CURRENT_DATE - 90;
-   ```
+    ```sql
+    -- Archive old metrics (older than 90 days)
+    DELETE FROM sms_metrics
+    WHERE metric_date < CURRENT_DATE - 90;
+    ```
 
 3. **Index Optimization**
-   ```sql
-   -- Check index usage
-   SELECT schemaname, tablename, indexname, idx_scan
-   FROM pg_stat_user_indexes
-   WHERE tablename = 'sms_metrics'
-   ORDER BY idx_scan;
-   ```
+    ```sql
+    -- Check index usage
+    SELECT schemaname, tablename, indexname, idx_scan
+    FROM pg_stat_user_indexes
+    WHERE tablename = 'sms_metrics'
+    ORDER BY idx_scan;
+    ```
 
 ### Security Considerations
 

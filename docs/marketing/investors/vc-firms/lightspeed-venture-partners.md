@@ -35,15 +35,15 @@ Lightspeed has developed a comprehensive SaaS 4.0 thesis perfectly aligned with 
 ### Most Relevant for BuildOS:
 
 - **Ravi Mhatre** - Partner & Co-Founder
-  - Focus: Enterprise, Growth, 25+ years building enterprise practice
-  - Background: Former Silicon Graphics, software engineering expertise
-  - Recognition: Multiple Forbes VC Midas List member
-  - Relevance: Deep enterprise software expertise and co-founder experience
+    - Focus: Enterprise, Growth, 25+ years building enterprise practice
+    - Background: Former Silicon Graphics, software engineering expertise
+    - Recognition: Multiple Forbes VC Midas List member
+    - Relevance: Deep enterprise software expertise and co-founder experience
 
 - **Alex Taussig** - Partner
-  - Focus: Global investing with enterprise focus
-  - Background: International expansion and enterprise investments
-  - Relevance: Global enterprise software perspective
+    - Focus: Global investing with enterprise focus
+    - Background: International expansion and enterprise investments
+    - Relevance: Global enterprise software perspective
 
 ### Partner Expertise:
 

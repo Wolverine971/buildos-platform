@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: abc4783fc2026f1d4c1faf8e18641307da2d3f9b
 branch: main
 repository: buildos-platform
-topic: "Native iOS App Conversion Options for BuildOS"
+topic: 'Native iOS App Conversion Options for BuildOS'
 tags: [research, mobile, ios, native-app, architecture, deployment]
 status: complete
 last_updated: 2025-10-07
@@ -125,26 +125,26 @@ This creates `/apps/web/ios/` with a native Xcode project.
 Update `capacitor.config.ts`:
 
 ```typescript
-import { CapacitorConfig } from "@capacitor/cli";
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: "com.buildos.app",
-  appName: "BuildOS",
-  webDir: "build", // SvelteKit build output
-  server: {
-    androidScheme: "https",
-    iosScheme: "capacitor", // Use capacitor:// scheme
-  },
-  plugins: {
-    SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: "#1F2937",
-      showSpinner: false,
-    },
-    PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
-    },
-  },
+	appId: 'com.buildos.app',
+	appName: 'BuildOS',
+	webDir: 'build', // SvelteKit build output
+	server: {
+		androidScheme: 'https',
+		iosScheme: 'capacitor' // Use capacitor:// scheme
+	},
+	plugins: {
+		SplashScreen: {
+			launchShowDuration: 2000,
+			backgroundColor: '#1F2937',
+			showSpinner: false
+		},
+		PushNotifications: {
+			presentationOptions: ['badge', 'sound', 'alert']
+		}
+	}
 };
 
 export default config;
@@ -154,18 +154,18 @@ Update `svelte.config.js` to handle Capacitor builds:
 
 ```javascript
 const config = {
-  kit: {
-    adapter: adapter({
-      // Generate static build for Capacitor
-      fallback: "index.html",
-      strict: false,
-    }),
-    paths: {
-      // Use relative paths for Capacitor
-      base: process.env.CAPACITOR ? "" : undefined,
-      relative: true,
-    },
-  },
+	kit: {
+		adapter: adapter({
+			// Generate static build for Capacitor
+			fallback: 'index.html',
+			strict: false
+		}),
+		paths: {
+			// Use relative paths for Capacitor
+			base: process.env.CAPACITOR ? '' : undefined,
+			relative: true
+		}
+	}
 };
 ```
 
@@ -200,24 +200,24 @@ pnpm add @capacitor-community/calendar  # Calendar access (EventKit)
 
 ```typescript
 // /apps/web/src/lib/utils/capacitor-auth.ts
-import { Browser } from "@capacitor/browser";
-import { App } from "@capacitor/app";
+import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
 
 export async function handleGoogleOAuth() {
-  const authUrl = `${PUBLIC_GOOGLE_OAUTH_URL}?redirect_uri=buildos://callback`;
+	const authUrl = `${PUBLIC_GOOGLE_OAUTH_URL}?redirect_uri=buildos://callback`;
 
-  // Open OAuth in system browser (required by Google)
-  await Browser.open({ url: authUrl });
+	// Open OAuth in system browser (required by Google)
+	await Browser.open({ url: authUrl });
 
-  // Listen for deep link callback
-  const listener = await App.addListener("appUrlOpen", (data) => {
-    const code = new URL(data.url).searchParams.get("code");
-    if (code) {
-      // Exchange code for token via existing API
-      exchangeCodeForToken(code);
-      Browser.close();
-    }
-  });
+	// Listen for deep link callback
+	const listener = await App.addListener('appUrlOpen', (data) => {
+		const code = new URL(data.url).searchParams.get('code');
+		if (code) {
+			// Exchange code for token via existing API
+			exchangeCodeForToken(code);
+			Browser.close();
+		}
+	});
 }
 ```
 
@@ -225,28 +225,28 @@ export async function handleGoogleOAuth() {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-calendar.service.ts
-import { Calendar } from "@capacitor-community/calendar";
+import { Calendar } from '@capacitor-community/calendar';
 
 export class CapacitorCalendarService {
-  async requestPermissions() {
-    const result = await Calendar.requestPermissions();
-    return result.granted;
-  }
+	async requestPermissions() {
+		const result = await Calendar.requestPermissions();
+		return result.granted;
+	}
 
-  async syncTaskToCalendar(task) {
-    await Calendar.createEvent({
-      title: task.title,
-      startDate: task.start_date,
-      endDate: task.due_date,
-      location: task.location,
-      notes: task.description,
-    });
-  }
+	async syncTaskToCalendar(task) {
+		await Calendar.createEvent({
+			title: task.title,
+			startDate: task.start_date,
+			endDate: task.due_date,
+			location: task.location,
+			notes: task.description
+		});
+	}
 
-  // Still use Google Calendar API for cross-platform sync
-  async syncWithGoogle() {
-    // Keep existing calendar-service.ts logic
-  }
+	// Still use Google Calendar API for cross-platform sync
+	async syncWithGoogle() {
+		// Keep existing calendar-service.ts logic
+	}
 }
 ```
 
@@ -254,40 +254,34 @@ export class CapacitorCalendarService {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-push.service.ts
-import { PushNotifications } from "@capacitor/push-notifications";
+import { PushNotifications } from '@capacitor/push-notifications';
 
 export class CapacitorPushService {
-  async initialize() {
-    // Request permissions
-    let permStatus = await PushNotifications.requestPermissions();
-    if (permStatus.receive === "granted") {
-      await PushNotifications.register();
-    }
+	async initialize() {
+		// Request permissions
+		let permStatus = await PushNotifications.requestPermissions();
+		if (permStatus.receive === 'granted') {
+			await PushNotifications.register();
+		}
 
-    // Get device token for APNs
-    await PushNotifications.addListener("registration", (token) => {
-      // Send token to backend for targeting
-      this.registerDeviceToken(token.value);
-    });
+		// Get device token for APNs
+		await PushNotifications.addListener('registration', (token) => {
+			// Send token to backend for targeting
+			this.registerDeviceToken(token.value);
+		});
 
-    // Handle received notifications
-    await PushNotifications.addListener(
-      "pushNotificationReceived",
-      (notification) => {
-        // Show in-app notification
-        this.showInAppNotification(notification);
-      },
-    );
+		// Handle received notifications
+		await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+			// Show in-app notification
+			this.showInAppNotification(notification);
+		});
 
-    // Handle notification tap
-    await PushNotifications.addListener(
-      "pushNotificationActionPerformed",
-      (action) => {
-        // Navigate to relevant screen
-        this.handleNotificationTap(action.notification.data);
-      },
-    );
-  }
+		// Handle notification tap
+		await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+			// Navigate to relevant screen
+			this.handleNotificationTap(action.notification.data);
+		});
+	}
 }
 ```
 
@@ -295,30 +289,30 @@ export class CapacitorPushService {
 
 ```typescript
 // /apps/web/src/lib/services/capacitor-voice.service.ts
-import { Filesystem } from "@capacitor/filesystem";
+import { Filesystem } from '@capacitor/filesystem';
 
 export class CapacitorVoiceService {
-  async recordAudio() {
-    // Use Web Audio API (works in WKWebView)
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
+	async recordAudio() {
+		// Use Web Audio API (works in WKWebView)
+		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const mediaRecorder = new MediaRecorder(stream);
 
-    // Or use native plugin for better quality
-    // pnpm add @capacitor-community/audio-recorder
-  }
+		// Or use native plugin for better quality
+		// pnpm add @capacitor-community/audio-recorder
+	}
 
-  async transcribe(audioBlob) {
-    // Send to existing /api/transcribe endpoint
-    const formData = new FormData();
-    formData.append("audio", audioBlob);
+	async transcribe(audioBlob) {
+		// Send to existing /api/transcribe endpoint
+		const formData = new FormData();
+		formData.append('audio', audioBlob);
 
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData,
-    });
+		const response = await fetch('/api/transcribe', {
+			method: 'POST',
+			body: formData
+		});
 
-    return response.json();
-  }
+		return response.json();
+	}
 }
 ```
 
@@ -326,51 +320,51 @@ export class CapacitorVoiceService {
 
 ```typescript
 // /apps/web/src/lib/services/offline-queue.service.ts
-import { Preferences } from "@capacitor/preferences";
-import { Network } from "@capacitor/network";
+import { Preferences } from '@capacitor/preferences';
+import { Network } from '@capacitor/network';
 
 export class OfflineQueueService {
-  private queue: QueuedOperation[] = [];
+	private queue: QueuedOperation[] = [];
 
-  async initialize() {
-    // Load queue from storage
-    const { value } = await Preferences.get({ key: "offline_queue" });
-    this.queue = value ? JSON.parse(value) : [];
+	async initialize() {
+		// Load queue from storage
+		const { value } = await Preferences.get({ key: 'offline_queue' });
+		this.queue = value ? JSON.parse(value) : [];
 
-    // Listen for network status
-    Network.addListener("networkStatusChange", (status) => {
-      if (status.connected) {
-        this.processQueue();
-      }
-    });
-  }
+		// Listen for network status
+		Network.addListener('networkStatusChange', (status) => {
+			if (status.connected) {
+				this.processQueue();
+			}
+		});
+	}
 
-  async queueOperation(operation: QueuedOperation) {
-    this.queue.push(operation);
-    await this.saveQueue();
+	async queueOperation(operation: QueuedOperation) {
+		this.queue.push(operation);
+		await this.saveQueue();
 
-    const status = await Network.getStatus();
-    if (status.connected) {
-      await this.processQueue();
-    }
-  }
+		const status = await Network.getStatus();
+		if (status.connected) {
+			await this.processQueue();
+		}
+	}
 
-  private async processQueue() {
-    while (this.queue.length > 0) {
-      const operation = this.queue[0];
-      try {
-        await this.executeOperation(operation);
-        this.queue.shift();
-      } catch (error) {
-        if (this.isNetworkError(error)) {
-          break; // Stop processing, wait for connection
-        } else {
-          this.queue.shift(); // Remove failed operation
-        }
-      }
-    }
-    await this.saveQueue();
-  }
+	private async processQueue() {
+		while (this.queue.length > 0) {
+			const operation = this.queue[0];
+			try {
+				await this.executeOperation(operation);
+				this.queue.shift();
+			} catch (error) {
+				if (this.isNetworkError(error)) {
+					break; // Stop processing, wait for connection
+				} else {
+					this.queue.shift(); // Remove failed operation
+				}
+			}
+		}
+		await this.saveQueue();
+	}
 }
 ```
 
@@ -470,42 +464,42 @@ pnpm add -D vite-plugin-pwa
 Configure in `vite.config.ts`:
 
 ```typescript
-import { sveltekit } from "@sveltejs/kit/vite";
-import { VitePWA } from "vite-plugin-pwa";
+import { sveltekit } from '@sveltejs/kit/vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  plugins: [
-    sveltekit(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: {
-        // Already exists in static/site.webmanifest
-      },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 5 * 60, // 5 minutes
-              },
-            },
-          },
-          {
-            urlPattern: /\/api\/.*/,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-            },
-          },
-        ],
-      },
-    }),
-  ],
+	plugins: [
+		sveltekit(),
+		VitePWA({
+			registerType: 'autoUpdate',
+			manifest: {
+				// Already exists in static/site.webmanifest
+			},
+			workbox: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+				runtimeCaching: [
+					{
+						urlPattern: /^https:\/\/.*\.supabase\.co\/.*/,
+						handler: 'NetworkFirst',
+						options: {
+							cacheName: 'supabase-cache',
+							expiration: {
+								maxEntries: 50,
+								maxAgeSeconds: 5 * 60 // 5 minutes
+							}
+						}
+					},
+					{
+						urlPattern: /\/api\/.*/,
+						handler: 'NetworkFirst',
+						options: {
+							cacheName: 'api-cache'
+						}
+					}
+				]
+			}
+		})
+	]
 });
 ```
 
@@ -514,27 +508,25 @@ export default defineConfig({
 ```svelte
 <!-- /apps/web/src/lib/components/OfflineIndicator.svelte -->
 <script lang="ts">
-  let online = $state(navigator.onLine);
+	let online = $state(navigator.onLine);
 
-  $effect(() => {
-    const updateOnlineStatus = () => {
-      online = navigator.onLine;
-    };
+	$effect(() => {
+		const updateOnlineStatus = () => {
+			online = navigator.onLine;
+		};
 
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
+		window.addEventListener('online', updateOnlineStatus);
+		window.addEventListener('offline', updateOnlineStatus);
 
-    return () => {
-      window.removeEventListener('online', updateOnlineStatus);
-      window.removeEventListener('offline', updateOnlineStatus);
-    };
-  });
+		return () => {
+			window.removeEventListener('online', updateOnlineStatus);
+			window.removeEventListener('offline', updateOnlineStatus);
+		};
+	});
 </script>
 
 {#if !online}
-  <div class="offline-banner">
-    You're offline. Some features may be limited.
-  </div>
+	<div class="offline-banner">You're offline. Some features may be limited.</div>
 {/if}
 ```
 
@@ -545,10 +537,7 @@ Add to `<head>` in `app.html`:
 ```html
 <!-- iOS status bar -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta
-  name="apple-mobile-web-app-status-bar-style"
-  content="black-translucent"
-/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 <!-- iOS splash screens (already present) -->
 <!-- See /apps/web/src/lib/components/layout/IOSSplashScreens.svelte -->
@@ -1070,30 +1059,30 @@ class BrainDumpViewModel: ObservableObject {
 #### Why Capacitor is Optimal
 
 1. **Architecture Fit**: BuildOS already has:
-   - ✅ 159 REST APIs (ready for mobile consumption)
-   - ✅ Supabase backend (official mobile SDK)
-   - ✅ PKCE OAuth (mobile-compatible)
-   - ✅ PWA foundation (easy Capacitor integration)
-   - ✅ Component-based UI (reusable in WebView)
+    - ✅ 159 REST APIs (ready for mobile consumption)
+    - ✅ Supabase backend (official mobile SDK)
+    - ✅ PKCE OAuth (mobile-compatible)
+    - ✅ PWA foundation (easy Capacitor integration)
+    - ✅ Component-based UI (reusable in WebView)
 
 2. **Time to Market**: 3-4 weeks vs 4-6 months
-   - Critical for startup velocity
-   - Validate iOS demand quickly
-   - Iterate based on user feedback
+    - Critical for startup velocity
+    - Validate iOS demand quickly
+    - Iterate based on user feedback
 
 3. **Team Efficiency**: No iOS expertise required
-   - Existing team can ship iOS app
-   - Single codebase for web/iOS/Android
-   - Shared components and logic
+    - Existing team can ship iOS app
+    - Single codebase for web/iOS/Android
+    - Shared components and logic
 
 4. **Feature Parity**: Web and mobile stay in sync
-   - New features ship simultaneously
-   - No platform-specific bugs
-   - Consistent UX across platforms
+    - New features ship simultaneously
+    - No platform-specific bugs
+    - Consistent UX across platforms
 
 5. **Cost Effective**: ~$10k vs ~$100k+
-   - 3-4 weeks @ $50-75/hr = $10k
-   - 4-6 months native = $100-150k
+    - 3-4 weeks @ $50-75/hr = $10k
+    - 4-6 months native = $100-150k
 
 #### Migration Path
 
@@ -1240,27 +1229,27 @@ User clicks "Sign in with Google"
 
 ```typescript
 // /apps/web/src/lib/utils/auth.ts
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 export async function signInWithGoogle() {
-  const isNative = Capacitor.isNativePlatform();
+	const isNative = Capacitor.isNativePlatform();
 
-  if (isNative) {
-    // Mobile OAuth flow
-    const authUrl = generateGoogleOAuthURL({
-      redirectUri: "buildos://auth/google/callback",
-    });
+	if (isNative) {
+		// Mobile OAuth flow
+		const authUrl = generateGoogleOAuthURL({
+			redirectUri: 'buildos://auth/google/callback'
+		});
 
-    await Browser.open({ url: authUrl });
+		await Browser.open({ url: authUrl });
 
-    // App.addListener('appUrlOpen') handles deep link callback
-  } else {
-    // Web OAuth flow (existing)
-    window.location.href = generateGoogleOAuthURL({
-      redirectUri: window.location.origin + "/auth/google/callback",
-    });
-  }
+		// App.addListener('appUrlOpen') handles deep link callback
+	} else {
+		// Web OAuth flow (existing)
+		window.location.href = generateGoogleOAuthURL({
+			redirectUri: window.location.origin + '/auth/google/callback'
+		});
+	}
 }
 ```
 
@@ -1281,49 +1270,49 @@ export async function signInWithGoogle() {
 
 ```typescript
 // /apps/web/src/lib/stores/sync.store.ts
-import { Preferences } from "@capacitor/preferences";
-import { Network } from "@capacitor/network";
+import { Preferences } from '@capacitor/preferences';
+import { Network } from '@capacitor/network';
 
 class SyncManager {
-  private queue: QueuedOperation[] = [];
+	private queue: QueuedOperation[] = [];
 
-  async queueMutation(operation: QueuedOperation) {
-    // Add to queue
-    this.queue.push(operation);
-    await Preferences.set({
-      key: "sync_queue",
-      value: JSON.stringify(this.queue),
-    });
+	async queueMutation(operation: QueuedOperation) {
+		// Add to queue
+		this.queue.push(operation);
+		await Preferences.set({
+			key: 'sync_queue',
+			value: JSON.stringify(this.queue)
+		});
 
-    // Try to sync immediately
-    const status = await Network.getStatus();
-    if (status.connected) {
-      await this.processQueue();
-    }
-  }
+		// Try to sync immediately
+		const status = await Network.getStatus();
+		if (status.connected) {
+			await this.processQueue();
+		}
+	}
 
-  async processQueue() {
-    while (this.queue.length > 0) {
-      const operation = this.queue[0];
+	async processQueue() {
+		while (this.queue.length > 0) {
+			const operation = this.queue[0];
 
-      try {
-        await this.executeOperation(operation);
-        this.queue.shift(); // Remove from queue
-      } catch (error) {
-        if (error.message.includes("network")) {
-          break; // Stop processing, wait for connection
-        } else {
-          this.queue.shift(); // Remove failed operation
-          console.error("Sync failed:", operation, error);
-        }
-      }
-    }
+			try {
+				await this.executeOperation(operation);
+				this.queue.shift(); // Remove from queue
+			} catch (error) {
+				if (error.message.includes('network')) {
+					break; // Stop processing, wait for connection
+				} else {
+					this.queue.shift(); // Remove failed operation
+					console.error('Sync failed:', operation, error);
+				}
+			}
+		}
 
-    await Preferences.set({
-      key: "sync_queue",
-      value: JSON.stringify(this.queue),
-    });
-  }
+		await Preferences.set({
+			key: 'sync_queue',
+			value: JSON.stringify(this.queue)
+		});
+	}
 }
 ```
 
@@ -1487,26 +1476,26 @@ class SyncManager {
 ### Next Steps
 
 1. **Validate iOS demand** (1 week)
-   - Run user survey
-   - Check analytics for mobile web usage
-   - Estimate conversion rate
+    - Run user survey
+    - Check analytics for mobile web usage
+    - Estimate conversion rate
 
 2. **Proof of concept** (1 week)
-   - Setup Capacitor
-   - Build minimal iOS app
-   - Test on device
-   - Evaluate performance
+    - Setup Capacitor
+    - Build minimal iOS app
+    - Test on device
+    - Evaluate performance
 
 3. **Decision point**
-   - If POC successful → Proceed with Capacitor
-   - If performance issues → Consider native or PWA
-   - If low iOS demand → Stick with PWA
+    - If POC successful → Proceed with Capacitor
+    - If performance issues → Consider native or PWA
+    - If low iOS demand → Stick with PWA
 
 4. **Full implementation** (3-4 weeks)
-   - Follow roadmap above
-   - Launch MVP to TestFlight
-   - Gather feedback
-   - Submit to App Store
+    - Follow roadmap above
+    - Launch MVP to TestFlight
+    - Gather feedback
+    - Submit to App Store
 
 ### Long-term Vision
 
@@ -1571,33 +1560,33 @@ class SyncManager {
 ## Open Questions
 
 1. **What percentage of current users access BuildOS on mobile devices?**
-   - Check analytics for mobile web usage
-   - This will help prioritize native app development
+    - Check analytics for mobile web usage
+    - This will help prioritize native app development
 
 2. **Is there budget for Apple Developer Program ($99/year)?**
-   - Required for App Store distribution
-   - Also needed for push notification certificates
+    - Required for App Store distribution
+    - Also needed for push notification certificates
 
 3. **What is the target timeline for iOS launch?**
-   - <1 month: PWA only option
-   - 1-2 months: Capacitor recommended
-   - 3-6 months: Native Swift viable
+    - <1 month: PWA only option
+    - 1-2 months: Capacitor recommended
+    - 3-6 months: Native Swift viable
 
 4. **Are there specific iOS features that are critical?**
-   - Push notifications: Capacitor or Native (not PWA)
-   - Widgets: Native only
-   - Siri shortcuts: Native only
-   - Background sync: Native or Capacitor
+    - Push notifications: Capacitor or Native (not PWA)
+    - Widgets: Native only
+    - Siri shortcuts: Native only
+    - Background sync: Native or Capacitor
 
 5. **Is Android support also needed?**
-   - If yes: Capacitor covers both with single codebase
-   - If no: Native Swift is viable
+    - If yes: Capacitor covers both with single codebase
+    - If no: Native Swift is viable
 
 6. **What is acceptable bundle size for iOS app?**
-   - <10MB: Native Swift
-   - <50MB: Capacitor (typical: 30-40MB)
-   - No limit: Any option
+    - <10MB: Native Swift
+    - <50MB: Capacitor (typical: 30-40MB)
+    - No limit: Any option
 
 7. **Is Sign in with Apple already implemented?**
-   - Required by Apple if offering Google OAuth
-   - Easy to add, just need to confirm if needed
+    - Required by Apple if offering Google OAuth
+    - Easy to add, just need to confirm if needed

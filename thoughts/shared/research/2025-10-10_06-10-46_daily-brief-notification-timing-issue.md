@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 27b0cb62a982e6a98364bf465c89048c874fa6c3
 branch: main
 repository: buildos-platform
-topic: "Daily Brief Notification Timing Issue - Why Notifications Are Sent on Completion Instead of Scheduled Time"
+topic: 'Daily Brief Notification Timing Issue - Why Notifications Are Sent on Completion Instead of Scheduled Time'
 tags: [research, codebase, daily-briefs, notifications, worker, timing, bug]
 status: complete
 last_updated: 2025-10-10
@@ -63,17 +63,17 @@ Brief completes: ~8:00:45 AM
 
 ```typescript
 // Immediately after updating job status to "completed" (line 296)
-await serviceClient.rpc("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_event_source: "worker_job",
-  p_target_user_id: job.data.userId,
-  p_payload: {
-    brief_id: brief.id,
-    brief_date: briefDate,
-    timezone: timezone,
-    task_count: taskCount,
-    project_count: projectCount,
-  },
+await serviceClient.rpc('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: job.data.userId,
+	p_payload: {
+		brief_id: brief.id,
+		brief_date: briefDate,
+		timezone: timezone,
+		task_count: taskCount,
+		project_count: projectCount
+	}
 });
 ```
 
@@ -110,34 +110,34 @@ Notification scheduled for: 8:00:00 AM (user's preferred time)
 **Trigger Chain** (Step-by-step):
 
 1. **Scheduler** (`apps/worker/src/scheduler.ts:122-125`)
-   - Runs hourly: `cron.schedule("0 * * * *")`
-   - Checks `user_brief_preferences` table
-   - Queues jobs for users whose `time_of_day` falls within next hour
+    - Runs hourly: `cron.schedule("0 * * * *")`
+    - Checks `user_brief_preferences` table
+    - Queues jobs for users whose `time_of_day` falls within next hour
 
 2. **Worker** (`apps/worker/src/worker.ts:47-53`)
-   - Polls queue every 5 seconds
-   - Claims up to 5 jobs concurrently
-   - Processes via `processBriefJob()` function
+    - Polls queue every 5 seconds
+    - Claims up to 5 jobs concurrently
+    - Processes via `processBriefJob()` function
 
 3. **Brief Generation** (`apps/worker/src/workers/brief/briefWorker.ts:31-296`)
-   - Fetches user data (projects, tasks, calendar events)
-   - Generates AI analysis with DeepSeek Chat V3
-   - Saves to `daily_briefs` table
-   - Updates job status to "completed"
+    - Fetches user data (projects, tasks, calendar events)
+    - Generates AI analysis with DeepSeek Chat V3
+    - Saves to `daily_briefs` table
+    - Updates job status to "completed"
 
 4. **Notification Emission** (`briefWorker.ts:298-348`)
-   - **IMMEDIATELY** calls `emit_notification_event` RPC
-   - No delay, no scheduling logic
+    - **IMMEDIATELY** calls `emit_notification_event` RPC
+    - No delay, no scheduling logic
 
 5. **Notification Processing** (`apps/web/supabase/migrations/20251006_notification_system_phase1.sql:264-413`)
-   - RPC creates event in `notification_events` table
-   - Finds subscribers from `notification_subscriptions`
-   - Creates delivery records in `notification_deliveries`
-   - Queues `send_notification` jobs with `scheduled_for: NOW()`
+    - RPC creates event in `notification_events` table
+    - Finds subscribers from `notification_subscriptions`
+    - Creates delivery records in `notification_deliveries`
+    - Queues `send_notification` jobs with `scheduled_for: NOW()`
 
 6. **Notification Delivery** (`apps/worker/src/workers/notification/notificationWorker.ts`)
-   - Processes `send_notification` jobs
-   - Sends via push, in-app, email, or SMS adapters
+    - Processes `send_notification` jobs
+    - Sends via push, in-app, email, or SMS adapters
 
 ### 4. User Preferences and Timing Configuration
 
@@ -159,27 +159,27 @@ Notification scheduled for: 8:00:00 AM (user's preferred time)
 
 ```typescript
 function calculateDailyRunTime(
-  now: Date,
-  hours: number,
-  minutes: number,
-  seconds: number,
-  timezone: string,
+	now: Date,
+	hours: number,
+	minutes: number,
+	seconds: number,
+	timezone: string
 ): Date {
-  // Convert current time to user's timezone
-  const nowInUserTz = utcToZonedTime(now, timezone);
+	// Convert current time to user's timezone
+	const nowInUserTz = utcToZonedTime(now, timezone);
 
-  // Set target time for today
-  let targetInUserTz = setHours(nowInUserTz, hours);
-  targetInUserTz = setMinutes(targetInUserTz, minutes);
-  targetInUserTz = setSeconds(targetInUserTz, seconds);
+	// Set target time for today
+	let targetInUserTz = setHours(nowInUserTz, hours);
+	targetInUserTz = setMinutes(targetInUserTz, minutes);
+	targetInUserTz = setSeconds(targetInUserTz, seconds);
 
-  // If time has passed, schedule for tomorrow
-  if (isBefore(targetInUserTz, nowInUserTz)) {
-    targetInUserTz = addDays(targetInUserTz, 1);
-  }
+	// If time has passed, schedule for tomorrow
+	if (isBefore(targetInUserTz, nowInUserTz)) {
+		targetInUserTz = addDays(targetInUserTz, 1);
+	}
 
-  // Convert back to UTC for storage
-  return zonedTimeToUtc(targetInUserTz, timezone);
+	// Convert back to UTC for storage
+	return zonedTimeToUtc(targetInUserTz, timezone);
 }
 ```
 
@@ -210,9 +210,9 @@ This calculates the **job scheduling time**, not the notification time.
 
 ```typescript
 // Runs at midnight to schedule daily SMS reminders
-cron.schedule("0 0 * * *", async () => {
-  console.log("📱 Checking for daily SMS reminders...");
-  await checkAndScheduleDailySMS();
+cron.schedule('0 0 * * *', async () => {
+	console.log('📱 Checking for daily SMS reminders...');
+	await checkAndScheduleDailySMS();
 });
 ```
 
@@ -353,52 +353,52 @@ The current implementation prioritizes **immediate feedback**:
 
 1. **Modify** `apps/worker/src/workers/brief/briefWorker.ts` (Line 319)
 
-   **Before**:
+    **Before**:
 
-   ```typescript
-   await serviceClient.rpc("emit_notification_event", {
-     p_event_type: "brief.completed",
-     // ... payload
-   });
-   ```
+    ```typescript
+    await serviceClient.rpc('emit_notification_event', {
+    	p_event_type: 'brief.completed'
+    	// ... payload
+    });
+    ```
 
-   **After**:
+    **After**:
 
-   ```typescript
-   // Calculate notification time based on user's preference
-   const notificationTime = await calculateNotificationTime(
-     job.data.userId,
-     job.data.scheduledFor, // Original scheduled time
-     timezone,
-   );
+    ```typescript
+    // Calculate notification time based on user's preference
+    const notificationTime = await calculateNotificationTime(
+    	job.data.userId,
+    	job.data.scheduledFor, // Original scheduled time
+    	timezone
+    );
 
-   await serviceClient.rpc("emit_notification_event", {
-     p_event_type: "brief.completed",
-     p_scheduled_for: notificationTime, // NEW: Schedule for user's time
-     // ... payload
-   });
-   ```
+    await serviceClient.rpc('emit_notification_event', {
+    	p_event_type: 'brief.completed',
+    	p_scheduled_for: notificationTime // NEW: Schedule for user's time
+    	// ... payload
+    });
+    ```
 
 2. **Update** `apps/web/supabase/migrations/20251006_notification_system_phase1.sql`
-   - Add `p_scheduled_for` parameter to `emit_notification_event` RPC
-   - Pass through to job creation (line 349-356)
+    - Add `p_scheduled_for` parameter to `emit_notification_event` RPC
+    - Pass through to job creation (line 349-356)
 
-   **Current**:
+    **Current**:
 
-   ```sql
-   scheduled_for: NOW()
-   ```
+    ```sql
+    scheduled_for: NOW()
+    ```
 
-   **New**:
+    **New**:
 
-   ```sql
-   scheduled_for: COALESCE(p_scheduled_for, NOW())
-   ```
+    ```sql
+    scheduled_for: COALESCE(p_scheduled_for, NOW())
+    ```
 
 3. **Add User Preference** (Optional)
-   - Add `notification_delay_minutes` to `user_notification_preferences` table
-   - Default: 0 (notify at scheduled time)
-   - Allow users to customize (e.g., notify 5 minutes after)
+    - Add `notification_delay_minutes` to `user_notification_preferences` table
+    - Default: 0 (notify at scheduled time)
+    - Allow users to customize (e.g., notify 5 minutes after)
 
 **Pros**:
 
@@ -419,53 +419,51 @@ The current implementation prioritizes **immediate feedback**:
 
 1. **Modify** `apps/worker/src/scheduler.ts` (Line 260)
 
-   **Before**:
+    **Before**:
 
-   ```typescript
-   if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
-     usersToSchedule.push({ preference, nextRunTime });
-   }
-   ```
+    ```typescript
+    if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
+    	usersToSchedule.push({ preference, nextRunTime });
+    }
+    ```
 
-   **After**:
+    **After**:
 
-   ```typescript
-   // Start generation 2 minutes early to ensure completion by scheduled time
-   const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
-   const generationStartTime = new Date(
-     nextRunTime.getTime() - GENERATION_BUFFER_MS,
-   );
+    ```typescript
+    // Start generation 2 minutes early to ensure completion by scheduled time
+    const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
+    const generationStartTime = new Date(nextRunTime.getTime() - GENERATION_BUFFER_MS);
 
-   if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
-     usersToSchedule.push({
-       preference,
-       nextRunTime,
-       generationStartTime,
-       notificationTime: nextRunTime, // Notify at scheduled time
-     });
-   }
-   ```
+    if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
+    	usersToSchedule.push({
+    		preference,
+    		nextRunTime,
+    		generationStartTime,
+    		notificationTime: nextRunTime // Notify at scheduled time
+    	});
+    }
+    ```
 
 2. **Store Notification Time in Job Metadata**
 
-   ```typescript
-   const jobData = {
-     userId,
-     briefDate,
-     timezone,
-     notificationScheduledFor: nextRunTime, // NEW: When to notify user
-     options: { ... }
-   };
-   ```
+    ```typescript
+    const jobData = {
+      userId,
+      briefDate,
+      timezone,
+      notificationScheduledFor: nextRunTime, // NEW: When to notify user
+      options: { ... }
+    };
+    ```
 
 3. **Update Brief Worker** to use stored notification time
-   ```typescript
-   const notificationTime = job.data.notificationScheduledFor || new Date();
-   await serviceClient.rpc("emit_notification_event", {
-     p_scheduled_for: notificationTime,
-     // ...
-   });
-   ```
+    ```typescript
+    const notificationTime = job.data.notificationScheduledFor || new Date();
+    await serviceClient.rpc('emit_notification_event', {
+    	p_scheduled_for: notificationTime
+    	// ...
+    });
+    ```
 
 **Pros**:
 
@@ -487,36 +485,33 @@ The current implementation prioritizes **immediate feedback**:
 
 1. **Add Column** to `user_notification_preferences` table:
 
-   ```sql
-   ALTER TABLE user_notification_preferences
-   ADD COLUMN notification_timing VARCHAR(20) DEFAULT 'immediate';
-   -- Options: 'immediate', 'scheduled', 'custom'
+    ```sql
+    ALTER TABLE user_notification_preferences
+    ADD COLUMN notification_timing VARCHAR(20) DEFAULT 'immediate';
+    -- Options: 'immediate', 'scheduled', 'custom'
 
-   ALTER TABLE user_notification_preferences
-   ADD COLUMN notification_delay_minutes INTEGER DEFAULT 0;
-   ```
+    ALTER TABLE user_notification_preferences
+    ADD COLUMN notification_delay_minutes INTEGER DEFAULT 0;
+    ```
 
 2. **Update UI** (`apps/web/src/lib/components/profile/BriefsTab.svelte`)
-   - Add notification timing selector
-   - Show preview: "Brief generates at 8:00 AM, notification at 8:00 AM"
+    - Add notification timing selector
+    - Show preview: "Brief generates at 8:00 AM, notification at 8:00 AM"
 
 3. **Update Worker** to respect preference
 
-   ```typescript
-   const preference = await fetchNotificationPreference(userId);
+    ```typescript
+    const preference = await fetchNotificationPreference(userId);
 
-   let notificationTime;
-   if (preference.notification_timing === "scheduled") {
-     notificationTime = job.data.scheduledFor;
-   } else if (preference.notification_timing === "custom") {
-     notificationTime = addMinutes(
-       new Date(),
-       preference.notification_delay_minutes,
-     );
-   } else {
-     notificationTime = new Date(); // immediate (current behavior)
-   }
-   ```
+    let notificationTime;
+    if (preference.notification_timing === 'scheduled') {
+    	notificationTime = job.data.scheduledFor;
+    } else if (preference.notification_timing === 'custom') {
+    	notificationTime = addMinutes(new Date(), preference.notification_delay_minutes);
+    } else {
+    	notificationTime = new Date(); // immediate (current behavior)
+    }
+    ```
 
 **Pros**:
 
@@ -538,34 +533,34 @@ The current implementation prioritizes **immediate feedback**:
 
 1. **Add Centralized Payload Transformer** at event emission time
 
-   **File**: `apps/worker/src/workers/brief/briefWorker.ts`
+    **File**: `apps/worker/src/workers/brief/briefWorker.ts`
 
-   ```typescript
-   import { transformNotificationPayload } from "@buildos/shared-types/payloadTransformer";
+    ```typescript
+    import { transformNotificationPayload } from '@buildos/shared-types/payloadTransformer';
 
-   const notificationPayload = transformNotificationPayload({
-     event_type: "brief.completed",
-     payload: {
-       brief_id: brief.id,
-       brief_date: briefDate,
-       task_count: taskCount,
-       project_count: projectCount,
-     },
-   });
+    const notificationPayload = transformNotificationPayload({
+    	event_type: 'brief.completed',
+    	payload: {
+    		brief_id: brief.id,
+    		brief_date: briefDate,
+    		task_count: taskCount,
+    		project_count: projectCount
+    	}
+    });
 
-   await serviceClient.rpc("emit_notification_event", {
-     p_event_type: "brief.completed",
-     p_payload: notificationPayload, // Now includes title/body
-   });
-   ```
+    await serviceClient.rpc('emit_notification_event', {
+    	p_event_type: 'brief.completed',
+    	p_payload: notificationPayload // Now includes title/body
+    });
+    ```
 
 2. **Update** `emit_notification_event` RPC to validate payload
-   ```sql
-   -- Validate that payload has required fields
-   IF p_payload->>'title' IS NULL OR p_payload->>'body' IS NULL THEN
-     RAISE WARNING 'Notification payload missing title/body for event %', p_event_type;
-   END IF;
-   ```
+    ```sql
+    -- Validate that payload has required fields
+    IF p_payload->>'title' IS NULL OR p_payload->>'body' IS NULL THEN
+      RAISE WARNING 'Notification payload missing title/body for event %', p_event_type;
+    END IF;
+    ```
 
 **Pros**:
 
@@ -613,24 +608,24 @@ The current implementation prioritizes **immediate feedback**:
 ## Open Questions
 
 1. **Should we notify users if brief generation fails?**
-   - Current: No notification if generation fails
-   - Proposed: Send error notification with retry option
+    - Current: No notification if generation fails
+    - Proposed: Send error notification with retry option
 
 2. **What's the optimal pre-generation buffer time?**
-   - Need metrics on average generation time
-   - Consider P95/P99 latency to set buffer
+    - Need metrics on average generation time
+    - Consider P95/P99 latency to set buffer
 
 3. **Should notification timing be per-event or global preference?**
-   - Per-event: More granular control (brief vs task vs project)
-   - Global: Simpler UX
+    - Per-event: More granular control (brief vs task vs project)
+    - Global: Simpler UX
 
 4. **How to handle slow brief generation?**
-   - If generation takes > 2 minutes, notification may arrive before completion
-   - Should we skip notification or send anyway?
+    - If generation takes > 2 minutes, notification may arrive before completion
+    - Should we skip notification or send anyway?
 
 5. **Should we migrate existing user preferences?**
-   - Add default notification timing for existing users
-   - Or let them opt-in to new behavior?
+    - Add default notification timing for existing users
+    - Or let them opt-in to new behavior?
 
 ## Next Steps
 

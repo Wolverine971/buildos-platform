@@ -22,20 +22,20 @@ The BuildOS notification tracking system provides unified analytics across all n
 #### ✅ Implemented (2025-10-06)
 
 1. **Email Open Tracking**
-   - Existing tracking pixel connected to `notification_deliveries`
-   - Opens update both `email_recipients` AND `notification_deliveries`
-   - Status set to 'opened'
+    - Existing tracking pixel connected to `notification_deliveries`
+    - Opens update both `email_recipients` AND `notification_deliveries`
+    - Status set to 'opened'
 
 2. **Email Click Tracking**
-   - New click redirect endpoint created
-   - All email links automatically rewritten
-   - Clicks update both systems
-   - Click implies open logic
-   - Status set to 'clicked'
+    - New click redirect endpoint created
+    - All email links automatically rewritten
+    - Clicks update both systems
+    - Click implies open logic
+    - Status set to 'clicked'
 
 3. **TypeScript Fixes**
-   - SMS adapter type errors resolved
-   - Full compilation verification
+    - SMS adapter type errors resolved
+    - Full compilation verification
 
 #### ⏳ Pending
 
@@ -247,135 +247,132 @@ email_tracking_events
 
 1. **Email Generation** (emailAdapter.ts or email-service.ts):
 
-   ```typescript
-   const trackingId = crypto.randomUUID();
-   const trackingPixel = `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" />`;
+    ```typescript
+    const trackingId = crypto.randomUUID();
+    const trackingPixel = `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" />`;
 
-   // Store delivery_id in template_data
-   template_data: {
-     delivery_id: delivery.id,  // Links to notification_deliveries
-     event_id: delivery.event_id,
-     event_type: delivery.payload.event_type,
-   }
-   ```
+    // Store delivery_id in template_data
+    template_data: {
+      delivery_id: delivery.id,  // Links to notification_deliveries
+      event_id: delivery.event_id,
+      event_type: delivery.payload.event_type,
+    }
+    ```
 
 2. **User Opens Email** → Email client loads tracking pixel
 
 3. **Tracking Endpoint** (`/api/email-tracking/[tracking_id]/+server.ts`):
 
-   ```typescript
-   // Find email by tracking_id
-   const { data: email } = await supabase
-     .from("emails")
-     .select("id, template_data, email_recipients(*)")
-     .eq("tracking_id", tracking_id)
-     .single();
+    ```typescript
+    // Find email by tracking_id
+    const { data: email } = await supabase
+    	.from('emails')
+    	.select('id, template_data, email_recipients(*)')
+    	.eq('tracking_id', tracking_id)
+    	.single();
 
-   // Update email_recipients
-   await supabase
-     .from("email_recipients")
-     .update({
-       opened_at: recipient.opened_at || now,
-       open_count: (recipient.open_count || 0) + 1,
-       last_opened_at: now,
-     })
-     .eq("id", recipient.id);
+    // Update email_recipients
+    await supabase
+    	.from('email_recipients')
+    	.update({
+    		opened_at: recipient.opened_at || now,
+    		open_count: (recipient.open_count || 0) + 1,
+    		last_opened_at: now
+    	})
+    	.eq('id', recipient.id);
 
-   // ✅ NEW: Update notification_deliveries
-   const deliveryId = email.template_data?.delivery_id;
-   if (deliveryId) {
-     await supabase
-       .from("notification_deliveries")
-       .update({
-         opened_at: now,
-         status: "opened",
-       })
-       .eq("id", deliveryId)
-       .is("opened_at", null); // Only first open
-   }
+    // ✅ NEW: Update notification_deliveries
+    const deliveryId = email.template_data?.delivery_id;
+    if (deliveryId) {
+    	await supabase
+    		.from('notification_deliveries')
+    		.update({
+    			opened_at: now,
+    			status: 'opened'
+    		})
+    		.eq('id', deliveryId)
+    		.is('opened_at', null); // Only first open
+    }
 
-   // Return tracking pixel
-   return new Response(transparentPixelBuffer, {
-     headers: { "Content-Type": "image/png" },
-   });
-   ```
+    // Return tracking pixel
+    return new Response(transparentPixelBuffer, {
+    	headers: { 'Content-Type': 'image/png' }
+    });
+    ```
 
 ### Click Tracking Flow
 
 1. **Link Rewriting** (email-service.ts / emailAdapter.ts):
 
-   ```typescript
-   function rewriteLinksForTracking(html: string, trackingId: string): string {
-     return html.replace(
-       /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
-       (match, before, url, after) => {
-         // Skip already-tracked or anchor links
-         if (url.startsWith("#") || url.includes("/api/email-tracking/")) {
-           return match;
-         }
+    ```typescript
+    function rewriteLinksForTracking(html: string, trackingId: string): string {
+    	return html.replace(
+    		/<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
+    		(match, before, url, after) => {
+    			// Skip already-tracked or anchor links
+    			if (url.startsWith('#') || url.includes('/api/email-tracking/')) {
+    				return match;
+    			}
 
-         const encodedUrl = encodeURIComponent(url);
-         const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
-         return `<a ${before}href="${trackingUrl}"${after}>`;
-       },
-     );
-   }
-   ```
+    			const encodedUrl = encodeURIComponent(url);
+    			const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
+    			return `<a ${before}href="${trackingUrl}"${after}>`;
+    		}
+    	);
+    }
+    ```
 
 2. **User Clicks Link** → Browser requests tracking URL
 
 3. **Click Tracking Endpoint** (`/api/email-tracking/[tracking_id]/click/+server.ts`):
 
-   ```typescript
-   const tracking_id = params.tracking_id;
-   const destination = url.searchParams.get("url");
+    ```typescript
+    const tracking_id = params.tracking_id;
+    const destination = url.searchParams.get('url');
 
-   // Find email
-   const { data: email } = await supabase
-     .from("emails")
-     .select("id, template_data, email_recipients(*)")
-     .eq("tracking_id", tracking_id)
-     .single();
+    // Find email
+    const { data: email } = await supabase
+    	.from('emails')
+    	.select('id, template_data, email_recipients(*)')
+    	.eq('tracking_id', tracking_id)
+    	.single();
 
-   // Update email_recipients.clicked_at
-   for (const recipient of email.email_recipients) {
-     await supabase
-       .from("email_recipients")
-       .update({ clicked_at: recipient.clicked_at || now })
-       .eq("id", recipient.id);
+    // Update email_recipients.clicked_at
+    for (const recipient of email.email_recipients) {
+    	await supabase
+    		.from('email_recipients')
+    		.update({ clicked_at: recipient.clicked_at || now })
+    		.eq('id', recipient.id);
 
-     // Log tracking event
-     await supabase.from("email_tracking_events").insert({
-       email_id: email.id,
-       recipient_id: recipient.id,
-       event_type: "clicked",
-       event_data: { is_first_click: !recipient.clicked_at },
-       clicked_url: destination,
-     });
-   }
+    	// Log tracking event
+    	await supabase.from('email_tracking_events').insert({
+    		email_id: email.id,
+    		recipient_id: recipient.id,
+    		event_type: 'clicked',
+    		event_data: { is_first_click: !recipient.clicked_at },
+    		clicked_url: destination
+    	});
+    }
 
-   // ✅ Update notification_deliveries
-   const deliveryId = email.template_data?.delivery_id;
-   if (deliveryId) {
-     const { data: delivery } = await supabase
-       .from("notification_deliveries")
-       .select("clicked_at, opened_at")
-       .eq("id", deliveryId)
-       .single();
+    // ✅ Update notification_deliveries
+    const deliveryId = email.template_data?.delivery_id;
+    if (deliveryId) {
+    	const { data: delivery } = await supabase
+    		.from('notification_deliveries')
+    		.select('clicked_at, opened_at')
+    		.eq('id', deliveryId)
+    		.single();
 
-     const updates: any = { status: "clicked" };
-     if (!delivery.clicked_at) updates.clicked_at = now;
-     if (!delivery.opened_at) updates.opened_at = now; // Click implies open
+    	const updates: any = { status: 'clicked' };
+    	if (!delivery.clicked_at) updates.clicked_at = now;
+    	if (!delivery.opened_at) updates.opened_at = now; // Click implies open
 
-     await supabase
-       .from("notification_deliveries")
-       .update(updates)
-       .eq("id", deliveryId);
-   }
+    	await supabase.from('notification_deliveries').update(updates).eq('id', deliveryId);
+    }
 
-   // Redirect to destination
-   throw redirect(302, destination);
-   ```
+    // Redirect to destination
+    throw redirect(302, destination);
+    ```
 
 ## Analytics Integration
 
@@ -514,14 +511,14 @@ ORDER BY channel, status;
 **Web App**:
 
 - `apps/web/src/lib/services/email-service.ts`
-  - `rewriteLinksForTracking()` method
-  - `composeHtmlBody()` - adds tracking pixel and rewrites links
+    - `rewriteLinksForTracking()` method
+    - `composeHtmlBody()` - adds tracking pixel and rewrites links
 
 **Worker**:
 
 - `apps/worker/src/workers/notification/emailAdapter.ts`
-  - `rewriteLinksForTracking()` function
-  - `sendEmailNotification()` - creates email with tracking
+    - `rewriteLinksForTracking()` function
+    - `sendEmailNotification()` - creates email with tracking
 
 ### Analytics
 

@@ -1,47 +1,48 @@
 {
-  "name": "buildos-platform",
-  "version": "0.0.0",
-  "private": true,
-  "description": "BuildOS Platform - AI-powered productivity platform monorepo",
-  "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "test": "turbo test",
-    "test:run": "turbo test:run",
-    "lint": "turbo lint",
-    "lint:fix": "turbo lint:fix",
-    "typecheck": "turbo typecheck",
-    "format": "prettier --write .",
-    "clean": "turbo clean",
-    "pre-push": "turbo pre-push",
-    "gen:types": "tsx scripts/generate-types.ts",
-    "gen:schema": "tsx scripts/extract-database-schema.ts",
-    "gen:web": "pnpm --filter=web gen:web",
-    "gen:all": "pnpm run gen:types && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
-    "label-paths": "tsx scripts/labelFilePaths.ts"
-  },
-  "devDependencies": {
-    "dotenv": "^16.4.5",
-    "prettier": "^3.6.2",
-    "tsx": "^4.20.3",
-    "turbo": "^2.3.3"
-  },
-  "packageManager": "pnpm@9.15.2",
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "overrides": {
-      "cookie@<0.7.0": ">=0.7.0",
-      "brace-expansion@>=1.0.0 <=1.1.11": ">=1.1.12",
-      "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2",
-      "form-data@>=4.0.0 <4.0.4": ">=4.0.4",
-      "@eslint/plugin-kit@<0.3.4": ">=0.3.4",
-      "linkifyjs@<4.3.2": ">=4.3.2"
-    }
-  }
+	"name": "buildos-platform",
+	"version": "0.0.0",
+	"private": true,
+	"description": "BuildOS Platform - AI-powered productivity platform monorepo",
+	"scripts": {
+		"dev": "turbo dev",
+		"build": "turbo build",
+		"test": "turbo test",
+		"test:run": "turbo test:run",
+		"lint": "turbo lint",
+		"lint:fix": "turbo lint:fix",
+		"typecheck": "turbo typecheck",
+		"format": "prettier --write .",
+		"clean": "turbo clean",
+		"pre-push": "turbo pre-push",
+		"gen:types": "tsx scripts/generate-types.ts",
+		"gen:schema": "tsx scripts/extract-database-schema.ts",
+		"gen:web": "pnpm --filter=web gen:web",
+		"gen:all": "pnpm run gen:types && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
+		"label-paths": "tsx scripts/labelFilePaths.ts"
+	},
+	"devDependencies": {
+		"dotenv": "^16.4.5",
+		"prettier": "^3.6.2",
+		"prettier-plugin-svelte": "^3.4.0",
+		"tsx": "^4.20.3",
+		"turbo": "^2.3.3"
+	},
+	"packageManager": "pnpm@9.15.2",
+	"engines": {
+		"node": ">=20.0.0",
+		"pnpm": ">=9.0.0"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		],
+		"overrides": {
+			"cookie@<0.7.0": ">=0.7.0",
+			"brace-expansion@>=1.0.0 <=1.1.11": ">=1.1.12",
+			"brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2",
+			"form-data@>=4.0.0 <4.0.4": ">=4.0.4",
+			"@eslint/plugin-kit@<0.3.4": ">=0.3.4",
+			"linkifyjs@<4.3.2": ">=4.3.2"
+		}
+	}
 }

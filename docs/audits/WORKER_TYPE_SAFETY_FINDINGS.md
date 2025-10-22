@@ -63,12 +63,8 @@ return sum + (metadata?.todays_task_count || 0);
 
 // Better:
 const metadata = pb.metadata as unknown;
-if (
-  typeof metadata === "object" &&
-  metadata !== null &&
-  "todays_task_count" in metadata
-) {
-  return sum + ((metadata.todays_task_count as number) || 0);
+if (typeof metadata === 'object' && metadata !== null && 'todays_task_count' in metadata) {
+	return sum + ((metadata.todays_task_count as number) || 0);
 }
 ```
 
@@ -78,10 +74,10 @@ if (
 
 ```typescript
 // Unsafe - bypasses null safety:
-let timezone = (user as any)?.timezone || "UTC";
+let timezone = (user as any)?.timezone || 'UTC';
 
 // Better:
-if (!user) throw new Error("User fetch failed");
+if (!user) throw new Error('User fetch failed');
 const timezone: string = user.timezone; // Already non-null per schema
 ```
 
@@ -127,32 +123,32 @@ if (eventType === "brief.completed" && delivery.payload.data?.brief_id) {
 ### Null Field Accessed Without Checks
 
 1. **`users.timezone` (non-nullable string)**
-   - Code: `(user as any)?.timezone` - WRONG (should always exist)
-   - Files: briefWorker.ts:52, dailySmsWorker.ts:71
+    - Code: `(user as any)?.timezone` - WRONG (should always exist)
+    - Files: briefWorker.ts:52, dailySmsWorker.ts:71
 
 2. **`project_daily_briefs.metadata` (nullable Json)**
-   - Code: `pb.metadata as any` then accesses `.todays_task_count`
-   - Files: briefWorker.ts:127, briefGenerator.ts:231, smsAdapter.ts:220
+    - Code: `pb.metadata as any` then accesses `.todays_task_count`
+    - Files: briefWorker.ts:127, briefGenerator.ts:231, smsAdapter.ts:220
 
 3. **`emails.template_data` (nullable Json)**
-   - Code: `templateData?.brief_id`
-   - File: emailWorker.ts:73
+    - Code: `templateData?.brief_id`
+    - File: emailWorker.ts:73
 
 4. **`user_sms_preferences.phone_verified` (nullable boolean)**
-   - Code: `!smsPrefs?.phone_verified` (treats null as false)
-   - File: dailySmsWorker.ts:93
+    - Code: `!smsPrefs?.phone_verified` (treats null as false)
+    - File: dailySmsWorker.ts:93
 
 5. **`task_calendar_events.event_start` (nullable string)**
-   - Code: Just checks `!event.event_start` (no format validation)
-   - File: dailySmsWorker.ts:196
+    - Code: Just checks `!event.event_start` (no format validation)
+    - File: dailySmsWorker.ts:196
 
 6. **`daily_briefs.llm_analysis` (nullable string)**
-   - Code: `brief.llm_analysis || brief.summary_content` (silent null coalescing)
-   - File: emailAdapter.ts:213
+    - Code: `brief.llm_analysis || brief.summary_content` (silent null coalescing)
+    - File: emailAdapter.ts:213
 
 7. **`notification_deliveries.payload` (non-nullable Json)**
-   - Code: Accesses `.data?.brief_id` without validating payload structure
-   - File: emailAdapter.ts:191-258
+    - Code: Accesses `.data?.brief_id` without validating payload structure
+    - File: emailAdapter.ts:191-258
 
 ---
 
@@ -247,35 +243,35 @@ Missing checks:
 
 ```typescript
 // Test 1: User fetch fails
-describe("briefWorker.processBriefJob", () => {
-  it("handles user fetch error gracefully", async () => {
-    // Should throw, not crash on undefined timezone
-  });
+describe('briefWorker.processBriefJob', () => {
+	it('handles user fetch error gracefully', async () => {
+		// Should throw, not crash on undefined timezone
+	});
 
-  it("validates timezone format before use", async () => {
-    // Should handle invalid timezone strings
-  });
+	it('validates timezone format before use', async () => {
+		// Should handle invalid timezone strings
+	});
 });
 
 // Test 2: Metadata is null
-describe("brief generation", () => {
-  it("handles null project brief metadata", async () => {
-    // Should not crash when pb.metadata is null
-  });
+describe('brief generation', () => {
+	it('handles null project brief metadata', async () => {
+		// Should not crash when pb.metadata is null
+	});
 
-  it("validates metadata structure", async () => {
-    // Should handle missing task_count fields
-  });
+	it('validates metadata structure', async () => {
+		// Should handle missing task_count fields
+	});
 });
 
 // Test 3: Payload missing fields
-describe("notification delivery", () => {
-  it("handles missing payload.data?.brief_id", async () => {
-    // Should not query with undefined ID
-  });
+describe('notification delivery', () => {
+	it('handles missing payload.data?.brief_id', async () => {
+		// Should not query with undefined ID
+	});
 
-  it("validates payload structure before template", async () => {
-    // Should not render undefined in href
-  });
+	it('validates payload structure before template', async () => {
+		// Should not render undefined in href
+	});
 });
 ```

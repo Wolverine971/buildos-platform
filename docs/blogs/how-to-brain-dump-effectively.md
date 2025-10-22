@@ -1,38 +1,29 @@
 ---
-title: "How to Brain Dump Effectively"
-description: "Learn how AI transforms brain dumping from a manual organization nightmare into an automated productivity system. Discover why voice beats typing and how to never lose another idea in a notebook."
-author: "DJ Wayne"
-date: "2025-06-18"
-loc: "https://build-os.com/blogs/how-to-brain-dump-effectively"
-lastmod: "2025-06-18"
-changefreq: "monthly"
-priority: "0.7"
+title: 'How to Brain Dump Effectively'
+description: 'Learn how AI transforms brain dumping from a manual organization nightmare into an automated productivity system. Discover why voice beats typing and how to never lose another idea in a notebook.'
+author: 'DJ Wayne'
+date: '2025-06-18'
+loc: 'https://build-os.com/blogs/how-to-brain-dump-effectively'
+lastmod: '2025-06-18'
+changefreq: 'monthly'
+priority: '0.7'
 published: true
-type: ["productivity", "AI", "tools"]
-tags:
-  [
-    "brain-dump",
-    "productivity",
-    "AI",
-    "voice-notes",
-    "Build-OS",
-    "organization",
-    "mental-load",
-  ]
-category: "productivity"
+type: ['productivity', 'AI', 'tools']
+tags: ['brain-dump', 'productivity', 'AI', 'voice-notes', 'Build-OS', 'organization', 'mental-load']
+category: 'productivity'
 keywords:
-  [
-    "brain dump",
-    "voice notes",
-    "AI organization",
-    "Build OS",
-    "productivity system",
-    "mental load",
-    "thought organization",
-  ]
-image: "/images/blog/brain-dump-effectively.jpg"
-imageAlt: "Voice recording transforming into organized digital structure"
-readingTime: "4 min"
+    [
+        'brain dump',
+        'voice notes',
+        'AI organization',
+        'Build OS',
+        'productivity system',
+        'mental load',
+        'thought organization'
+    ]
+image: '/images/blog/brain-dump-effectively.jpg'
+imageAlt: 'Voice recording transforming into organized digital structure'
+readingTime: '4 min'
 ---
 
 ## How to Brain Dump Effectively

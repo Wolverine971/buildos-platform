@@ -14,9 +14,9 @@
 ### 3️⃣ The Meat (Listicle / Key Insights)
 
 - Use numbered bullets or sub-sections:
-  1. **Key takeaway 1** → one-sentence explanation + quick example
-  2. **Key takeaway 2** → why it works + mini-screenshot/gif if helpful
-  3. etc.
+    1. **Key takeaway 1** → one-sentence explanation + quick example
+    2. **Key takeaway 2** → why it works + mini-screenshot/gif if helpful
+    3. etc.
 
 ### 4️⃣ Action Steps
 

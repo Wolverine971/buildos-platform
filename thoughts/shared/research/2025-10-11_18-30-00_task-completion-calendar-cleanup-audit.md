@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: a9edfdc5ccc2d07aac4dcde470eb7a80d94a7c11
 branch: main
 repository: buildos-platform
-topic: "Task Completion Calendar Cleanup Audit"
+topic: 'Task Completion Calendar Cleanup Audit'
 tags: [research, codebase, tasks, calendar, completion, audit, bugs]
 status: complete
 last_updated: 2025-10-11
@@ -111,19 +111,19 @@ if (data.status === 'done' && existingTask?.task_calendar_events?.length > 0) {
 
 ```typescript
 // Clean the task data
-const cleanedData = cleanDataForTable("tasks", {
-  ...data, // ❌ Just passes through data as-is
-  updated_at: new Date().toISOString(),
+const cleanedData = cleanDataForTable('tasks', {
+	...data, // ❌ Just passes through data as-is
+	updated_at: new Date().toISOString()
 });
 
 const { data: updatedTask, error } = await supabase
-  .from("tasks")
-  .update(cleanedData) // ❌ No completed_at handling
-  .eq("id", id)
-  .eq("project_id", params.id)
-  .eq("user_id", user.id)
-  .select("*, task_calendar_events(*)")
-  .single();
+	.from('tasks')
+	.update(cleanedData) // ❌ No completed_at handling
+	.eq('id', id)
+	.eq('project_id', params.id)
+	.eq('user_id', user.id)
+	.select('*, task_calendar_events(*)')
+	.single();
 ```
 
 **Verdict**: ❌ **CRITICAL BUG**
@@ -155,22 +155,22 @@ const { data: updatedTask, error } = await supabase
 
 ```typescript
 async function updateAllInstances(
-  supabase: any,
-  calendarService: CalendarService,
-  task: any,
-  updates: any, // ❌ Just passes through updates
-  userId: string,
+	supabase: any,
+	calendarService: CalendarService,
+	task: any,
+	updates: any, // ❌ Just passes through updates
+	userId: string
 ) {
-  // Update the task itself
-  const { error: updateError } = await supabase
-    .from("tasks")
-    .update({
-      ...updates, // ❌ No completed_at handling
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", task.id);
+	// Update the task itself
+	const { error: updateError } = await supabase
+		.from('tasks')
+		.update({
+			...updates, // ❌ No completed_at handling
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', task.id);
 
-  // ... calendar updates but no deletion logic for completion
+	// ... calendar updates but no deletion logic for completion
 }
 ```
 
@@ -261,15 +261,15 @@ async deleteCalendarEvent(userId: string, params: DeleteCalendarEventParams) {
 
 ```typescript
 // What the code DOES:
-if (newTaskData.status === "done" && hasCalendarEvents) {
-  // Delete ALL calendar events regardless of date
+if (newTaskData.status === 'done' && hasCalendarEvents) {
+	// Delete ALL calendar events regardless of date
 }
 
 // What's NOT implemented (but user wants this behavior anyway):
 const taskDate = new Date(existingTask.start_date);
 const now = new Date();
 if (taskDate > now) {
-  // Skip deletion - preserve future events
+	// Skip deletion - preserve future events
 }
 ```
 
@@ -315,16 +315,16 @@ if (taskDate > now) {
 // Add BEFORE cleaning the data:
 
 // Handle completion status change (matching single task endpoint)
-if (data.status === "done" && existingTask?.status !== "done") {
-  data.completed_at = new Date().toISOString();
-} else if (data.status !== "done" && existingTask?.status === "done") {
-  data.completed_at = null;
+if (data.status === 'done' && existingTask?.status !== 'done') {
+	data.completed_at = new Date().toISOString();
+} else if (data.status !== 'done' && existingTask?.status === 'done') {
+	data.completed_at = null;
 }
 
 // Then clean the data as normal:
-const cleanedData = cleanDataForTable("tasks", {
-  ...data,
-  updated_at: new Date().toISOString(),
+const cleanedData = cleanDataForTable('tasks', {
+	...data,
+	updated_at: new Date().toISOString()
 });
 ```
 
@@ -335,42 +335,36 @@ const cleanedData = cleanDataForTable("tasks", {
 **Option A**: Add completion logic to `updateAllInstances()` (Line 288):
 
 ```typescript
-async function updateAllInstances(
-  supabase,
-  calendarService,
-  task,
-  updates,
-  userId,
-) {
-  // Handle completion status change
-  if (updates.status === "done" && task.status !== "done") {
-    updates.completed_at = new Date().toISOString();
-  } else if (updates.status !== "done" && task.status === "done") {
-    updates.completed_at = null;
-  }
+async function updateAllInstances(supabase, calendarService, task, updates, userId) {
+	// Handle completion status change
+	if (updates.status === 'done' && task.status !== 'done') {
+		updates.completed_at = new Date().toISOString();
+	} else if (updates.status !== 'done' && task.status === 'done') {
+		updates.completed_at = null;
+	}
 
-  // Update the task itself
-  const { error: updateError } = await supabase
-    .from("tasks")
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", task.id);
+	// Update the task itself
+	const { error: updateError } = await supabase
+		.from('tasks')
+		.update({
+			...updates,
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', task.id);
 
-  // Check if task is being marked as done - remove calendar events
-  if (updates.status === "done" && task.task_calendar_events?.length > 0) {
-    for (const event of task.task_calendar_events) {
-      try {
-        await calendarService.deleteCalendarEvent(userId, {
-          event_id: event.calendar_event_id,
-          calendar_id: event.calendar_id || "primary",
-        });
-      } catch (error) {
-        console.error("Error deleting calendar event:", error);
-      }
-    }
-  }
+	// Check if task is being marked as done - remove calendar events
+	if (updates.status === 'done' && task.task_calendar_events?.length > 0) {
+		for (const event of task.task_calendar_events) {
+			try {
+				await calendarService.deleteCalendarEvent(userId, {
+					event_id: event.calendar_event_id,
+					calendar_id: event.calendar_id || 'primary'
+				});
+			} catch (error) {
+				console.error('Error deleting calendar event:', error);
+			}
+		}
+	}
 }
 ```
 
@@ -378,45 +372,45 @@ async function updateAllInstances(
 
 ```typescript
 async function updateSingleInstance(
-  supabase,
-  calendarService,
-  task,
-  updates,
-  instanceDate,
-  userId,
+	supabase,
+	calendarService,
+	task,
+	updates,
+	instanceDate,
+	userId
 ) {
-  // If marking instance as completed, set completed_at
-  const instanceUpdates: any = {
-    task_id: task.id,
-    instance_date: instanceDate,
-    user_id: userId,
-    notes: JSON.stringify({ exception: true, updates }),
-    updated_at: new Date().toISOString(),
-  };
+	// If marking instance as completed, set completed_at
+	const instanceUpdates: any = {
+		task_id: task.id,
+		instance_date: instanceDate,
+		user_id: userId,
+		notes: JSON.stringify({ exception: true, updates }),
+		updated_at: new Date().toISOString()
+	};
 
-  if (updates.status === "completed") {
-    instanceUpdates.status = "completed";
-    instanceUpdates.completed_at = new Date().toISOString();
-  }
+	if (updates.status === 'completed') {
+		instanceUpdates.status = 'completed';
+		instanceUpdates.completed_at = new Date().toISOString();
+	}
 
-  // Create or update the instance record
-  const { error: instanceError } = await supabase
-    .from("recurring_task_instances")
-    .upsert(instanceUpdates);
+	// Create or update the instance record
+	const { error: instanceError } = await supabase
+		.from('recurring_task_instances')
+		.upsert(instanceUpdates);
 
-  // If completed, remove calendar event for this instance
-  if (updates.status === "completed") {
-    const calendarEvent = task.task_calendar_events?.find(
-      (e: any) => e.recurrence_instance_date === instanceDate,
-    );
+	// If completed, remove calendar event for this instance
+	if (updates.status === 'completed') {
+		const calendarEvent = task.task_calendar_events?.find(
+			(e: any) => e.recurrence_instance_date === instanceDate
+		);
 
-    if (calendarEvent) {
-      await calendarService.deleteCalendarEvent(userId, {
-        event_id: calendarEvent.calendar_event_id,
-        calendar_id: calendarEvent.calendar_id || "primary",
-      });
-    }
-  }
+		if (calendarEvent) {
+			await calendarService.deleteCalendarEvent(userId, {
+				event_id: calendarEvent.calendar_event_id,
+				calendar_id: calendarEvent.calendar_id || 'primary'
+			});
+		}
+	}
 }
 ```
 
@@ -427,26 +421,26 @@ Create tests to verify completion behavior across all endpoints:
 ```typescript
 // tests/api/task-completion.test.ts
 
-describe("Task Completion Calendar Cleanup", () => {
-  it("should set completed_at when marking single task as done", async () => {
-    // Test PATCH /api/projects/[id]/tasks/[taskId]
-  });
+describe('Task Completion Calendar Cleanup', () => {
+	it('should set completed_at when marking single task as done', async () => {
+		// Test PATCH /api/projects/[id]/tasks/[taskId]
+	});
 
-  it("should set completed_at when batch updating tasks to done", async () => {
-    // Test PATCH /api/projects/[id]/tasks/batch
-  });
+	it('should set completed_at when batch updating tasks to done', async () => {
+		// Test PATCH /api/projects/[id]/tasks/batch
+	});
 
-  it("should remove calendar events when single task completed", async () => {
-    // Test calendar deletion
-  });
+	it('should remove calendar events when single task completed', async () => {
+		// Test calendar deletion
+	});
 
-  it("should remove calendar events when batch updating to done", async () => {
-    // Test batch calendar deletion
-  });
+	it('should remove calendar events when batch updating to done', async () => {
+		// Test batch calendar deletion
+	});
 
-  it("should handle recurring task instance completion", async () => {
-    // Test PATCH /api/tasks/[id]/recurrence
-  });
+	it('should handle recurring task instance completion', async () => {
+		// Test PATCH /api/tasks/[id]/recurrence
+	});
 });
 ```
 
@@ -457,7 +451,7 @@ describe("Task Completion Calendar Cleanup", () => {
 **Valid Status Values** (from `packages/shared-types/src/database.types.ts:5825`):
 
 ```typescript
-type task_status = "backlog" | "in_progress" | "done" | "blocked";
+type task_status = 'backlog' | 'in_progress' | 'done' | 'blocked';
 ```
 
 **IMPORTANT**: The system uses `'done'` NOT `'completed'`

@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 74e70eb30ed46bd4b3442cc270b1b5a438b2501e
 branch: main
 repository: daily-brief-worker
-topic: "Email Sending from Daily Brief"
+topic: 'Email Sending from Daily Brief'
 tags: [research, codebase, email, gmail, nodemailer, daily-brief]
 status: complete
 last_updated: 2025-01-25
@@ -125,24 +125,24 @@ EMAIL_FROM_NAME=BuildOS                     # Display name for sender
 ### Why Emails Might Not Be Sending
 
 1. **Missing Gmail Configuration**
-   - Check: `echo $GMAIL_USER` and `echo $GMAIL_APP_PASSWORD`
-   - Fix: Add credentials to `.env` file
+    - Check: `echo $GMAIL_USER` and `echo $GMAIL_APP_PASSWORD`
+    - Fix: Add credentials to `.env` file
 
 2. **User Hasn't Opted In**
-   - Check: `user_brief_preferences.email_daily_brief` column
-   - Fix: Set to `true` for the user
+    - Check: `user_brief_preferences.email_daily_brief` column
+    - Fix: Set to `true` for the user
 
 3. **Invalid Gmail App Password**
-   - Symptoms: Authentication errors in logs
-   - Fix: Generate new app password from Google Account settings
+    - Symptoms: Authentication errors in logs
+    - Fix: Generate new app password from Google Account settings
 
 4. **Gmail Sending Limits**
-   - Limit: 500 emails/day for regular accounts
-   - Fix: Use Google Workspace account or alternative service
+    - Limit: 500 emails/day for regular accounts
+    - Fix: Use Google Workspace account or alternative service
 
 5. **Development Mode**
-   - Symptom: Logs show "Email (simulated)"
-   - Fix: Configure Gmail credentials
+    - Symptom: Logs show "Email (simulated)"
+    - Fix: Configure Gmail credentials
 
 ### Testing Email Configuration
 

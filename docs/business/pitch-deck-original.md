@@ -512,16 +512,16 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 **What we're building NOW that competitors can't replicate:**
 
 1. **User Context Moat** (compounds over time)
-   - Every brain dump makes switching harder
-   - Context is the new lock-in
+    - Every brain dump makes switching harder
+    - Context is the new lock-in
 
 2. **Community Trust** (can't be bought)
-   - ADHD community loyalty is fierce
-   - Founder authenticity is our unfair advantage
+    - ADHD community loyalty is fierce
+    - Founder authenticity is our unfair advantage
 
 3. **AI-Native Architecture** (requires ground-up rebuild)
-   - Incumbents trapped in old data models
-   - We're built for AI collaboration from day 1
+    - Incumbents trapped in old data models
+    - We're built for AI collaboration from day 1
 
 ### The Window is 12-18 Months
 

@@ -56,87 +56,87 @@ apps/worker/tests/integration/sms-event-scheduling/
 **Test: End-to-End Scheduling Flow**
 
 ```typescript
-describe("SMS Event Scheduling - End to End", () => {
-  it("schedules and sends SMS for calendar event", async () => {
-    // 1. Create test user with SMS enabled
-    // 2. Create calendar event for tomorrow 10 AM
-    // 3. Trigger midnight scheduler
-    // 4. Verify scheduled_sms_messages created
-    // 5. Fast-forward to send time
-    // 6. Verify SMS sent via mock Twilio
-    // 7. Verify status updates
-    // 8. Verify delivery tracking
-  });
+describe('SMS Event Scheduling - End to End', () => {
+	it('schedules and sends SMS for calendar event', async () => {
+		// 1. Create test user with SMS enabled
+		// 2. Create calendar event for tomorrow 10 AM
+		// 3. Trigger midnight scheduler
+		// 4. Verify scheduled_sms_messages created
+		// 5. Fast-forward to send time
+		// 6. Verify SMS sent via mock Twilio
+		// 7. Verify status updates
+		// 8. Verify delivery tracking
+	});
 });
 ```
 
 **Test: Calendar Event Changes**
 
 ```typescript
-describe("Calendar Event Synchronization", () => {
-  it("cancels SMS when event is deleted", async () => {
-    // 1. Schedule SMS for event
-    // 2. Delete event via webhook
-    // 3. Verify SMS cancelled
-    // 4. Verify job not sent
-  });
+describe('Calendar Event Synchronization', () => {
+	it('cancels SMS when event is deleted', async () => {
+		// 1. Schedule SMS for event
+		// 2. Delete event via webhook
+		// 3. Verify SMS cancelled
+		// 4. Verify job not sent
+	});
 
-  it("reschedules SMS when event time changes", async () => {
-    // 1. Schedule SMS for 10 AM event (send at 9:45 AM)
-    // 2. Reschedule event to 2 PM via webhook
-    // 3. Verify SMS rescheduled to 1:45 PM
-    // 4. Verify message content updated
-  });
+	it('reschedules SMS when event time changes', async () => {
+		// 1. Schedule SMS for 10 AM event (send at 9:45 AM)
+		// 2. Reschedule event to 2 PM via webhook
+		// 3. Verify SMS rescheduled to 1:45 PM
+		// 4. Verify message content updated
+	});
 
-  it("regenerates message when event details change", async () => {
-    // 1. Schedule SMS with event title "Meeting"
-    // 2. Update event title to "Q4 Planning" via webhook
-    // 3. Verify message regenerated with new title
-  });
+	it('regenerates message when event details change', async () => {
+		// 1. Schedule SMS with event title "Meeting"
+		// 2. Update event title to "Q4 Planning" via webhook
+		// 3. Verify message regenerated with new title
+	});
 });
 ```
 
 **Test: Pre-Send Validation**
 
 ```typescript
-describe("Pre-Send Validation", () => {
-  it("skips cancelled messages", async () => {
-    // 1. Schedule SMS
-    // 2. Cancel via API
-    // 3. Fast-forward to send time
-    // 4. Verify SMS not sent
-  });
+describe('Pre-Send Validation', () => {
+	it('skips cancelled messages', async () => {
+		// 1. Schedule SMS
+		// 2. Cancel via API
+		// 3. Fast-forward to send time
+		// 4. Verify SMS not sent
+	});
 
-  it("reschedules during quiet hours", async () => {
-    // 1. User quiet hours: 10 PM - 8 AM
-    // 2. Schedule SMS for 11 PM
-    // 3. Verify rescheduled to 8 AM
-    // 4. Verify sent at 8 AM
-  });
+	it('reschedules during quiet hours', async () => {
+		// 1. User quiet hours: 10 PM - 8 AM
+		// 2. Schedule SMS for 11 PM
+		// 3. Verify rescheduled to 8 AM
+		// 4. Verify sent at 8 AM
+	});
 
-  it("enforces daily limits", async () => {
-    // 1. User limit: 5 SMS/day
-    // 2. Create 10 events
-    // 3. Verify only 5 SMS scheduled
-    // 4. Verify 6th+ cancelled with reason
-  });
+	it('enforces daily limits', async () => {
+		// 1. User limit: 5 SMS/day
+		// 2. Create 10 events
+		// 3. Verify only 5 SMS scheduled
+		// 4. Verify 6th+ cancelled with reason
+	});
 });
 ```
 
 **Test: Timezone Edge Cases**
 
 ```typescript
-describe("Timezone Handling", () => {
-  it("handles user timezone correctly", async () => {
-    // Test users in: PST, EST, UTC, Tokyo
-    // Verify midnight runs at correct local time
-    // Verify send times respect user timezone
-  });
+describe('Timezone Handling', () => {
+	it('handles user timezone correctly', async () => {
+		// Test users in: PST, EST, UTC, Tokyo
+		// Verify midnight runs at correct local time
+		// Verify send times respect user timezone
+	});
 
-  it("handles DST transitions", async () => {
-    // Test scheduling during DST change
-    // Verify times adjust correctly
-  });
+	it('handles DST transitions', async () => {
+		// Test scheduling during DST change
+		// Verify times adjust correctly
+	});
 });
 ```
 
@@ -145,20 +145,20 @@ describe("Timezone Handling", () => {
 **Test: Retry Logic**
 
 ```typescript
-describe("Retry Logic", () => {
-  it("retries failed sends with exponential backoff", async () => {
-    // 1. Mock Twilio to fail first 2 attempts
-    // 2. Trigger send
-    // 3. Verify retry after 2 min, then 4 min
-    // 4. Verify success on 3rd attempt
-  });
+describe('Retry Logic', () => {
+	it('retries failed sends with exponential backoff', async () => {
+		// 1. Mock Twilio to fail first 2 attempts
+		// 2. Trigger send
+		// 3. Verify retry after 2 min, then 4 min
+		// 4. Verify success on 3rd attempt
+	});
 
-  it("stops retrying after max attempts", async () => {
-    // 1. Mock Twilio to always fail
-    // 2. Verify 3 retry attempts
-    // 3. Verify stops after max
-    // 4. Verify status = 'failed' permanently
-  });
+	it('stops retrying after max attempts', async () => {
+		// 1. Mock Twilio to always fail
+		// 2. Verify 3 retry attempts
+		// 3. Verify stops after max
+		// 4. Verify status = 'failed' permanently
+	});
 });
 ```
 
@@ -176,29 +176,29 @@ describe("Retry Logic", () => {
 
 ```typescript
 interface SMSMetrics {
-  // Operational Metrics
-  scheduled_count: number; // SMS scheduled per day
-  sent_count: number; // SMS sent per day
-  delivered_count: number; // SMS delivered per day
-  failed_count: number; // SMS failed per day
-  cancelled_count: number; // SMS cancelled per day
+	// Operational Metrics
+	scheduled_count: number; // SMS scheduled per day
+	sent_count: number; // SMS sent per day
+	delivered_count: number; // SMS delivered per day
+	failed_count: number; // SMS failed per day
+	cancelled_count: number; // SMS cancelled per day
 
-  // Performance Metrics
-  avg_delivery_time_ms: number; // Time from send to delivery
-  avg_generation_time_ms: number; // LLM generation time
+	// Performance Metrics
+	avg_delivery_time_ms: number; // Time from send to delivery
+	avg_generation_time_ms: number; // LLM generation time
 
-  // Quality Metrics
-  llm_success_rate: number; // LLM vs template ratio
-  delivery_success_rate: number; // Delivered / Sent
+	// Quality Metrics
+	llm_success_rate: number; // LLM vs template ratio
+	delivery_success_rate: number; // Delivered / Sent
 
-  // Cost Metrics
-  llm_cost_per_user: number; // Daily LLM cost per user
-  total_daily_llm_cost: number; // Total LLM spend
+	// Cost Metrics
+	llm_cost_per_user: number; // Daily LLM cost per user
+	total_daily_llm_cost: number; // Total LLM spend
 
-  // User Engagement
-  opt_out_rate: number; // Users who opt out
-  quiet_hours_reschedule_rate: number;
-  daily_limit_hit_rate: number;
+	// User Engagement
+	opt_out_rate: number; // Users who opt out
+	quiet_hours_reschedule_rate: number;
+	daily_limit_hit_rate: number;
 }
 ```
 
@@ -206,25 +206,25 @@ interface SMSMetrics {
 
 ```typescript
 export class SMSMetricsService {
-  async recordScheduled(userId: string, count: number) {
-    // Insert into metrics table
-  }
+	async recordScheduled(userId: string, count: number) {
+		// Insert into metrics table
+	}
 
-  async recordSent(smsId: string, metadata: any) {
-    // Record send with timing
-  }
+	async recordSent(smsId: string, metadata: any) {
+		// Record send with timing
+	}
 
-  async recordDelivery(smsId: string, deliveryTimeMs: number) {
-    // Calculate delivery time
-  }
+	async recordDelivery(smsId: string, deliveryTimeMs: number) {
+		// Calculate delivery time
+	}
 
-  async getDailyMetrics(date: string): Promise<SMSMetrics> {
-    // Aggregate metrics for dashboard
-  }
+	async getDailyMetrics(date: string): Promise<SMSMetrics> {
+		// Aggregate metrics for dashboard
+	}
 
-  async getUserMetrics(userId: string, days: number): Promise<SMSMetrics> {
-    // Per-user metrics for analysis
-  }
+	async getUserMetrics(userId: string, days: number): Promise<SMSMetrics> {
+		// Per-user metrics for analysis
+	}
 }
 ```
 
@@ -268,49 +268,49 @@ GROUP BY date;
 
 ```typescript
 export class SMSAlertsService {
-  async checkAlerts() {
-    const metrics = await this.metricsService.getDailyMetrics(today());
+	async checkAlerts() {
+		const metrics = await this.metricsService.getDailyMetrics(today());
 
-    // Critical: Delivery rate < 90%
-    if (metrics.delivery_success_rate < 0.9) {
-      await this.sendAlert({
-        severity: "critical",
-        title: "SMS Delivery Rate Below 90%",
-        message: `Current: ${metrics.delivery_success_rate * 100}%`,
-        channel: "pagerduty", // or 'slack' for dev
-      });
-    }
+		// Critical: Delivery rate < 90%
+		if (metrics.delivery_success_rate < 0.9) {
+			await this.sendAlert({
+				severity: 'critical',
+				title: 'SMS Delivery Rate Below 90%',
+				message: `Current: ${metrics.delivery_success_rate * 100}%`,
+				channel: 'pagerduty' // or 'slack' for dev
+			});
+		}
 
-    // Critical: LLM failures > 50%
-    if (metrics.llm_success_rate < 0.5) {
-      await this.sendAlert({
-        severity: "critical",
-        title: "LLM Generation Failing",
-        message: `Success rate: ${metrics.llm_success_rate * 100}%`,
-        channel: "pagerduty",
-      });
-    }
+		// Critical: LLM failures > 50%
+		if (metrics.llm_success_rate < 0.5) {
+			await this.sendAlert({
+				severity: 'critical',
+				title: 'LLM Generation Failing',
+				message: `Success rate: ${metrics.llm_success_rate * 100}%`,
+				channel: 'pagerduty'
+			});
+		}
 
-    // Warning: LLM cost spike
-    if (metrics.total_daily_llm_cost > metrics.avg_cost * 2) {
-      await this.sendAlert({
-        severity: "warning",
-        title: "LLM Cost Spike Detected",
-        message: `Today: $${metrics.total_daily_llm_cost}, Avg: $${metrics.avg_cost}`,
-        channel: "slack",
-      });
-    }
+		// Warning: LLM cost spike
+		if (metrics.total_daily_llm_cost > metrics.avg_cost * 2) {
+			await this.sendAlert({
+				severity: 'warning',
+				title: 'LLM Cost Spike Detected',
+				message: `Today: $${metrics.total_daily_llm_cost}, Avg: $${metrics.avg_cost}`,
+				channel: 'slack'
+			});
+		}
 
-    // Warning: High opt-out rate
-    if (metrics.opt_out_rate > 0.1) {
-      await this.sendAlert({
-        severity: "warning",
-        title: "High SMS Opt-Out Rate",
-        message: `${metrics.opt_out_rate * 100}% users opted out in last 24h`,
-        channel: "slack",
-      });
-    }
-  }
+		// Warning: High opt-out rate
+		if (metrics.opt_out_rate > 0.1) {
+			await this.sendAlert({
+				severity: 'warning',
+				title: 'High SMS Opt-Out Rate',
+				message: `${metrics.opt_out_rate * 100}% users opted out in last 24h`,
+				channel: 'slack'
+			});
+		}
+	}
 }
 ```
 
@@ -334,10 +334,10 @@ export class SMSAlertsService {
 - [ ] Enable SMS event reminders for test accounts
 - [ ] Monitor for 3 days (minimum 6 events per user)
 - [ ] Collect feedback on:
-  - Message quality and helpfulness
-  - Timing accuracy
-  - Quiet hours respect
-  - UI usability
+    - Message quality and helpfulness
+    - Timing accuracy
+    - Quiet hours respect
+    - UI usability
 
 **Success Criteria:**
 
@@ -409,9 +409,9 @@ WHERE user_id IN (SELECT id FROM beta_users_list);
 const useTemplate = Math.random() < 0.5;
 
 if (useTemplate) {
-  message = generateTemplateMessage(event);
+	message = generateTemplateMessage(event);
 } else {
-  message = await generateLLMMessage(event);
+	message = await generateLLMMessage(event);
 }
 
 // Track user feedback and engagement
@@ -548,24 +548,24 @@ ADD COLUMN user_feedback TEXT;
 ## 📝 Deliverables
 
 1. **Test Suite**
-   - Integration tests for all critical flows
-   - Edge case and failure scenario tests
-   - Test documentation and CI/CD integration
+    - Integration tests for all critical flows
+    - Edge case and failure scenario tests
+    - Test documentation and CI/CD integration
 
 2. **Monitoring System**
-   - Metrics collection service
-   - Alerting for critical issues
-   - Dashboard for operations team
+    - Metrics collection service
+    - Alerting for critical issues
+    - Dashboard for operations team
 
 3. **Rollout Documentation**
-   - Rollout plan and schedule
-   - Success criteria per phase
-   - Rollback procedures
+    - Rollout plan and schedule
+    - Success criteria per phase
+    - Rollback procedures
 
 4. **Optimization Framework**
-   - A/B testing infrastructure
-   - Feedback collection
-   - Continuous improvement process
+    - A/B testing infrastructure
+    - Feedback collection
+    - Continuous improvement process
 
 ---
 

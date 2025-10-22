@@ -4,17 +4,17 @@ researcher: Claude Code
 git_commit: 7f656fbcf6fea7de9adf752040d4677117b0eec0
 branch: main
 repository: buildos-platform
-topic: "Notification Preferences Table Refactor: Remove event_type from user_notification_preferences"
+topic: 'Notification Preferences Table Refactor: Remove event_type from user_notification_preferences'
 tags:
-  [
-    research,
-    codebase,
-    notifications,
-    database-refactor,
-    migration,
-    user-notification-preferences,
-    user-notifications,
-  ]
+    [
+        research,
+        codebase,
+        notifications,
+        database-refactor,
+        migration,
+        user-notification-preferences,
+        user-notifications
+    ]
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude Code
@@ -152,11 +152,11 @@ Different event types have different default channel preferences:
 ```typescript
 // Current: Query by user_id AND event_type
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .eq("event_type", eventType) // <-- FILTERS BY EVENT TYPE
-  .single();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.eq('event_type', eventType) // <-- FILTERS BY EVENT TYPE
+	.single();
 ```
 
 #### Query Pattern (Web)
@@ -166,11 +166,11 @@ const { data: preferences } = await supabase
 ```typescript
 // Current: Query by user_id AND event_type
 const { data } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .eq("event_type", eventType) // <-- FILTERS BY EVENT TYPE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.eq('event_type', eventType) // <-- FILTERS BY EVENT TYPE
+	.maybeSingle();
 ```
 
 ## Proposed Architecture
@@ -195,8 +195,8 @@ const { data } = await supabase
 - ✅ ADD `event_type` column to track which event triggered the notification
 - ✅ Keep existing `type` column for display categorization
 - ✅ Both columns serve different purposes:
-  - `event_type`: What triggered it (e.g., 'brief.completed')
-  - `type`: How to display it (e.g., 'payment_warning')
+    - `event_type`: What triggered it (e.g., 'brief.completed')
+    - `type`: How to display it (e.g., 'payment_warning')
 
 ### New Usage Patterns
 
@@ -216,11 +216,11 @@ VALUES ('user-123', true, false);
 ```typescript
 // Proposed: Query by user_id only
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  // NO event_type filter
-  .single();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	// NO event_type filter
+	.single();
 ```
 
 ## Comprehensive Impact Analysis
@@ -404,22 +404,22 @@ WHERE user_id = target_user_id
 
 ```typescript
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .eq("event_type", eventType) // <-- REMOVE THIS LINE
-  .single();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.eq('event_type', eventType) // <-- REMOVE THIS LINE
+	.single();
 ```
 
 **Proposed Code**:
 
 ```typescript
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  // No event_type filter
-  .maybeSingle(); // Changed to maybeSingle in case user has no preferences yet
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	// No event_type filter
+	.maybeSingle(); // Changed to maybeSingle in case user has no preferences yet
 ```
 
 **Impact**: This function is called before every notification send. Changes affect ALL notification channels.
@@ -432,22 +432,22 @@ const { data: preferences } = await supabase
 
 ```typescript
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", user.id)
-  .eq("event_type", "user") // <-- REMOVE THIS LINE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', user.id)
+	.eq('event_type', 'user') // <-- REMOVE THIS LINE
+	.maybeSingle();
 ```
 
 **Proposed Code**:
 
 ```typescript
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", user.id)
-  // No event_type filter
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', user.id)
+	// No event_type filter
+	.maybeSingle();
 ```
 
 ##### 2.3 Email Adapter
@@ -459,22 +459,22 @@ const { data: notificationPrefs } = await supabase
 ```typescript
 // Double-check email preferences before sending
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("email_enabled")
-  .eq("user_id", delivery.user_id)
-  .eq("event_type", delivery.event_type) // <-- REMOVE THIS LINE
-  .single();
+	.from('user_notification_preferences')
+	.select('email_enabled')
+	.eq('user_id', delivery.user_id)
+	.eq('event_type', delivery.event_type) // <-- REMOVE THIS LINE
+	.single();
 ```
 
 **Proposed Code**:
 
 ```typescript
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("email_enabled")
-  .eq("user_id", delivery.user_id)
-  // No event_type filter
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('email_enabled')
+	.eq('user_id', delivery.user_id)
+	// No event_type filter
+	.maybeSingle();
 ```
 
 ##### 2.4 SMS Adapter
@@ -491,22 +491,22 @@ const { data: prefs } = await supabase
 
 ```typescript
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // <-- REMOVE THIS LINE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // <-- REMOVE THIS LINE
+	.maybeSingle();
 ```
 
 **Proposed Code**:
 
 ```typescript
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  // No event_type filter
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	// No event_type filter
+	.maybeSingle();
 ```
 
 ##### 2.6 Email Worker (Legacy)
@@ -517,11 +517,11 @@ const { data: prefs } = await supabase
 
 ```typescript
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // <-- REMOVE THIS LINE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // <-- REMOVE THIS LINE
+	.maybeSingle();
 ```
 
 **Proposed Code**: Same as above - remove event_type filter
@@ -538,25 +538,25 @@ const { data: prefs } = await supabase
 **Current Code (Lines 320-328)**:
 
 ```typescript
-await supabase.from("user_notifications").insert({
-  user_id: delivery.user_id,
-  title: delivery.title,
-  message: delivery.message,
-  type: delivery.notification_type,
-  // ... other fields
+await supabase.from('user_notifications').insert({
+	user_id: delivery.user_id,
+	title: delivery.title,
+	message: delivery.message,
+	type: delivery.notification_type
+	// ... other fields
 });
 ```
 
 **Proposed Code**:
 
 ```typescript
-await supabase.from("user_notifications").insert({
-  user_id: delivery.user_id,
-  title: delivery.title,
-  message: delivery.message,
-  type: delivery.notification_type,
-  event_type: delivery.event_type, // <-- ADD THIS FIELD
-  // ... other fields
+await supabase.from('user_notifications').insert({
+	user_id: delivery.user_id,
+	title: delivery.title,
+	message: delivery.message,
+	type: delivery.notification_type,
+	event_type: delivery.event_type // <-- ADD THIS FIELD
+	// ... other fields
 });
 ```
 
@@ -586,16 +586,16 @@ await supabase.from("user_notifications").insert({
 
 ```typescript
 export const GET: RequestHandler = async ({ url, locals }) => {
-  const eventType = url.searchParams.get("event_type"); // <-- REMOVE PARAM
-  const dailyBrief = url.searchParams.get("daily_brief") === "true";
+	const eventType = url.searchParams.get('event_type'); // <-- REMOVE PARAM
+	const dailyBrief = url.searchParams.get('daily_brief') === 'true';
 
-  // Query with event_type filter
-  const { data } = await supabase
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("event_type", eventType || "user") // <-- REMOVE THIS LINE
-    .maybeSingle();
+	// Query with event_type filter
+	const { data } = await supabase
+		.from('user_notification_preferences')
+		.select('*')
+		.eq('user_id', user.id)
+		.eq('event_type', eventType || 'user') // <-- REMOVE THIS LINE
+		.maybeSingle();
 };
 ```
 
@@ -603,34 +603,34 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 ```typescript
 export const GET: RequestHandler = async ({ url, locals }) => {
-  // Remove event_type parameter handling
+	// Remove event_type parameter handling
 
-  // Query without event_type filter
-  const { data } = await supabase
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    // No event_type filter
-    .maybeSingle();
+	// Query without event_type filter
+	const { data } = await supabase
+		.from('user_notification_preferences')
+		.select('*')
+		.eq('user_id', user.id)
+		// No event_type filter
+		.maybeSingle();
 
-  // Return single set of preferences for all events
+	// Return single set of preferences for all events
 };
 ```
 
 **Current PUT Handler (Lines 74-205)**:
 
 ```typescript
-const eventType = body.event_type || "user"; // <-- REMOVE
+const eventType = body.event_type || 'user'; // <-- REMOVE
 
-const { error } = await supabase.from("user_notification_preferences").upsert(
-  {
-    user_id: user.id,
-    event_type: eventType, // <-- REMOVE THIS FIELD
-    // ... other fields
-  },
-  {
-    onConflict: "user_id,event_type", // <-- CHANGE TO 'user_id' ONLY
-  },
+const { error } = await supabase.from('user_notification_preferences').upsert(
+	{
+		user_id: user.id,
+		event_type: eventType // <-- REMOVE THIS FIELD
+		// ... other fields
+	},
+	{
+		onConflict: 'user_id,event_type' // <-- CHANGE TO 'user_id' ONLY
+	}
 );
 ```
 
@@ -639,15 +639,15 @@ const { error } = await supabase.from("user_notification_preferences").upsert(
 ```typescript
 // Remove event_type from request body handling
 
-const { error } = await supabase.from("user_notification_preferences").upsert(
-  {
-    user_id: user.id,
-    // NO event_type field
-    // ... other fields
-  },
-  {
-    onConflict: "user_id", // <-- Changed to user_id only
-  },
+const { error } = await supabase.from('user_notification_preferences').upsert(
+	{
+		user_id: user.id
+		// NO event_type field
+		// ... other fields
+	},
+	{
+		onConflict: 'user_id' // <-- Changed to user_id only
+	}
 );
 ```
 
@@ -681,11 +681,11 @@ async getDefaults(): UserNotificationPreferences
 
 ```typescript
 switch (eventType) {
-  case "brief.completed":
-    return { push: true, email: true, sms: false, in_app: true };
-  case "task.due_soon":
-    return { push: true, email: false, sms: true, in_app: true };
-  // ... different defaults per event
+	case 'brief.completed':
+		return { push: true, email: true, sms: false, in_app: true };
+	case 'task.due_soon':
+		return { push: true, email: false, sms: true, in_app: true };
+	// ... different defaults per event
 }
 ```
 
@@ -694,14 +694,14 @@ switch (eventType) {
 ```typescript
 // Single default for ALL events
 return {
-  push_enabled: true,
-  email_enabled: true,
-  sms_enabled: false,
-  in_app_enabled: true,
-  priority: "normal",
-  batch_enabled: false,
-  quiet_hours_enabled: false,
-  // ... etc
+	push_enabled: true,
+	email_enabled: true,
+	sms_enabled: false,
+	in_app_enabled: true,
+	priority: 'normal',
+	batch_enabled: false,
+	quiet_hours_enabled: false
+	// ... etc
 };
 ```
 
@@ -752,11 +752,11 @@ return {
 ```typescript
 // Fetches payment warnings from user_notifications
 const { data: paymentWarnings } = await supabase
-  .from("user_notifications")
-  .select("*")
-  .eq("user_id", user.id)
-  .eq("type", "payment_warning")
-  .is("dismissed_at", null);
+	.from('user_notifications')
+	.select('*')
+	.eq('user_id', user.id)
+	.eq('type', 'payment_warning')
+	.is('dismissed_at', null);
 ```
 
 **Proposed Changes**:
@@ -773,9 +773,9 @@ const { data: paymentWarnings } = await supabase
 ```typescript
 // Dismisses payment warning
 await supabase
-  .from("user_notifications")
-  .update({ dismissed_at: new Date().toISOString() })
-  .eq("id", id);
+	.from('user_notifications')
+	.update({ dismissed_at: new Date().toISOString() })
+	.eq('id', id);
 ```
 
 **No changes needed** - user_notifications update doesn't involve preferences table
@@ -803,14 +803,14 @@ await supabase
 
 ```typescript
 export interface UserNotificationPreferences {
-  id?: string;
-  user_id?: string;
-  event_type: EventType; // <-- REMOVE THIS FIELD
+	id?: string;
+	user_id?: string;
+	event_type: EventType; // <-- REMOVE THIS FIELD
 
-  // Channel preferences
-  push_enabled: boolean;
-  email_enabled: boolean;
-  // ... rest of fields
+	// Channel preferences
+	push_enabled: boolean;
+	email_enabled: boolean;
+	// ... rest of fields
 }
 ```
 
@@ -818,30 +818,30 @@ export interface UserNotificationPreferences {
 
 ```typescript
 export interface UserNotificationPreferences {
-  id?: string;
-  user_id?: string;
-  // NO event_type field
+	id?: string;
+	user_id?: string;
+	// NO event_type field
 
-  // Channel preferences
-  push_enabled: boolean;
-  email_enabled: boolean;
-  // ... rest of fields
+	// Channel preferences
+	push_enabled: boolean;
+	email_enabled: boolean;
+	// ... rest of fields
 }
 
 // Add new interface for user_notifications with event_type
 export interface UserNotification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: string; // Display type (payment_warning, trial_warning, etc.)
-  event_type?: string; // <-- ADD THIS: Trigger event (brief.completed, etc.)
-  action_url?: string;
-  priority?: string;
-  created_at?: string;
-  read_at?: string;
-  dismissed_at?: string;
-  expires_at?: string;
+	id: string;
+	user_id: string;
+	title: string;
+	message: string;
+	type: string; // Display type (payment_warning, trial_warning, etc.)
+	event_type?: string; // <-- ADD THIS: Trigger event (brief.completed, etc.)
+	action_url?: string;
+	priority?: string;
+	created_at?: string;
+	read_at?: string;
+	dismissed_at?: string;
+	expires_at?: string;
 }
 ```
 
@@ -1006,50 +1006,50 @@ Instead of removing event_type entirely, consider:
 ### Phase 2: Backend Updates (Week 2)
 
 1. **Update Worker Service**:
-   - Modify all 7 files identified in section 2
-   - Update tests with new mock data
-   - Deploy to staging
+    - Modify all 7 files identified in section 2
+    - Update tests with new mock data
+    - Deploy to staging
 
 2. **Update Database Functions**:
-   - Modify `emit_notification_event()` function
-   - Update any other RLS policies if needed
-   - Test in staging environment
+    - Modify `emit_notification_event()` function
+    - Update any other RLS policies if needed
+    - Test in staging environment
 
 ### Phase 3: Frontend Updates (Week 3)
 
 1. **Update Web App**:
-   - Modify API routes (section 3.1)
-   - Update services (section 3.2)
-   - Update stores (section 3.3)
-   - Simplify UI components (section 3.4)
-   - Update tests
+    - Modify API routes (section 3.1)
+    - Update services (section 3.2)
+    - Update stores (section 3.3)
+    - Simplify UI components (section 3.4)
+    - Update tests
 
 2. **Update Documentation**:
-   - API documentation
-   - User-facing help docs
-   - Migration changelog
+    - API documentation
+    - User-facing help docs
+    - Migration changelog
 
 ### Phase 4: Migration (Week 4)
 
 1. **Pre-migration**:
-   - Notify users via email about changes
-   - Export current preferences as backup
-   - Test rollback procedure
+    - Notify users via email about changes
+    - Export current preferences as backup
+    - Test rollback procedure
 
 2. **Execute Migration**:
-   - Run during low-traffic window
-   - Monitor for errors
-   - Validate data integrity
+    - Run during low-traffic window
+    - Monitor for errors
+    - Validate data integrity
 
 3. **Post-migration**:
-   - Monitor error logs for 48 hours
-   - Gather user feedback
-   - Keep rollback capability for 7 days
+    - Monitor error logs for 48 hours
+    - Gather user feedback
+    - Keep rollback capability for 7 days
 
 4. **Cleanup**:
-   - Remove feature flag
-   - Archive backup table
-   - Update all documentation
+    - Remove feature flag
+    - Archive backup table
+    - Update all documentation
 
 ## Testing Strategy
 
@@ -1094,13 +1094,13 @@ RENAME TO user_notification_preferences;
 ```
 
 2. **Redeploy previous application versions**:
-   - Worker service: Previous version
-   - Web app: Previous version
+    - Worker service: Previous version
+    - Web app: Previous version
 
 3. **Verify rollback**:
-   - Check queries work
-   - Check notifications send
-   - Monitor error logs
+    - Check queries work
+    - Check notifications send
+    - Monitor error logs
 
 ### Partial Rollback (24-48 hours)
 

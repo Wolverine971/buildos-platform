@@ -5,18 +5,18 @@
  * @module @buildos/shared-utils/logging
  */
 
-export { Logger, createLogger } from "./logger.js";
+export { Logger, createLogger } from './logger.js';
 export type {
-  LogLevel,
-  LogContext,
-  LogMetadata,
-  LogEntry,
-  LoggerConfig,
-  LogOutput,
-} from "./types.js";
+	LogLevel,
+	LogContext,
+	LogMetadata,
+	LogEntry,
+	LoggerConfig,
+	LogOutput
+} from './types.js';
 export {
-  generateCorrelationId,
-  createCorrelationContext,
-  extractCorrelationContext,
-  injectCorrelationContext,
-} from "./correlation.js";
+	generateCorrelationId,
+	createCorrelationContext,
+	extractCorrelationContext,
+	injectCorrelationContext
+} from './correlation.js';

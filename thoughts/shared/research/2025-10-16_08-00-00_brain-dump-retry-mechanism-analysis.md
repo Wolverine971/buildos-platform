@@ -5,8 +5,7 @@ git_commit: 7f656fbcf6fea7de9adf752040d4677117b0eec0
 branch: main
 repository: buildos-platform
 topic: "Brain Dump Retry Mechanism - Why Retry Status Isn't Reaching Frontend"
-tags:
-  [research, codebase, brain-dump, retry-mechanism, sse-streaming, bug-analysis]
+tags: [research, codebase, brain-dump, retry-mechanism, sse-streaming, bug-analysis]
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude
@@ -110,59 +109,58 @@ The streaming endpoint tries to wrap `processBrainDumpDual` to emit retry messag
 
 ```typescript
 // Also track retries
-const originalProcessBrainDumpDual =
-  processor["processBrainDumpDual"].bind(processor);
+const originalProcessBrainDumpDual = processor['processBrainDumpDual'].bind(processor);
 let currentAttempt = 0;
 
-processor["processBrainDumpDual"] = async function (args: any) {
-  const maxRetries = args.options?.retryAttempts || 3;
+processor['processBrainDumpDual'] = async function (args: any) {
+	const maxRetries = args.options?.retryAttempts || 3;
 
-  // Wrap the original method to track attempts
-  const wrappedMethod = async () => {
-    currentAttempt++;
+	// Wrap the original method to track attempts
+	const wrappedMethod = async () => {
+		currentAttempt++;
 
-    // Emit SSE retry message on subsequent attempts
-    if (currentAttempt > 1) {
-      const retryMessage: SSERetry = {
-        type: "retry",
-        message: `Retrying dual processing...`,
-        attempt: currentAttempt,
-        maxAttempts: maxRetries,
-        processName: "dual-processing",
-      };
-      await sendSSEMessage(writer, encoder, retryMessage);
-    }
+		// Emit SSE retry message on subsequent attempts
+		if (currentAttempt > 1) {
+			const retryMessage: SSERetry = {
+				type: 'retry',
+				message: `Retrying dual processing...`,
+				attempt: currentAttempt,
+				maxAttempts: maxRetries,
+				processName: 'dual-processing'
+			};
+			await sendSSEMessage(writer, encoder, retryMessage);
+		}
 
-    try {
-      return await originalProcessBrainDumpDual.call(processor, args);
-    } catch (error) {
-      if (currentAttempt < maxRetries) {
-        // Will retry
-        throw error;
-      } else {
-        // Final failure
-        const finalErrorMessage: SSEError = {
-          type: "error",
-          message: "Dual processing failed after all retries",
-          error: error.message,
-          context: "general",
-          recoverable: false,
-        };
-        await sendSSEMessage(writer, encoder, finalErrorMessage);
-        throw error;
-      }
-    }
-  };
+		try {
+			return await originalProcessBrainDumpDual.call(processor, args);
+		} catch (error) {
+			if (currentAttempt < maxRetries) {
+				// Will retry
+				throw error;
+			} else {
+				// Final failure
+				const finalErrorMessage: SSEError = {
+					type: 'error',
+					message: 'Dual processing failed after all retries',
+					error: error.message,
+					context: 'general',
+					recoverable: false
+				};
+				await sendSSEMessage(writer, encoder, finalErrorMessage);
+				throw error;
+			}
+		}
+	};
 
-  // Replace the internal method temporarily
-  const originalMethod = processor["processBrainDumpDual"];
-  processor["processBrainDumpDual"] = originalProcessBrainDumpDual;
+	// Replace the internal method temporarily
+	const originalMethod = processor['processBrainDumpDual'];
+	processor['processBrainDumpDual'] = originalProcessBrainDumpDual;
 
-  try {
-    return await wrappedMethod(); // ❌ ONLY CALLED ONCE
-  } finally {
-    processor["processBrainDumpDual"] = originalMethod;
-  }
+	try {
+		return await wrappedMethod(); // ❌ ONLY CALLED ONCE
+	} finally {
+		processor['processBrainDumpDual'] = originalMethod;
+	}
 };
 ```
 
@@ -183,11 +181,11 @@ The `SSERetry` interface is properly defined:
 
 ```typescript
 export interface SSERetry {
-  type: "retry";
-  message: string;
-  attempt: number;
-  maxAttempts: number;
-  processName: string;
+	type: 'retry';
+	message: string;
+	attempt: number;
+	maxAttempts: number;
+	processName: string;
 }
 ```
 
@@ -264,10 +262,10 @@ Additional Metadata:
 2. **SSE stream created** → `SSEResponse.createStream()` returns `{ writer, encoder, response }`
 3. **Processing starts** → `processBrainDumpWithStreaming()` runs in background
 4. **Method overrides** → Stream endpoint overrides processor methods to emit SSE events:
-   - `runPreparatoryAnalysis` → Emits `SSEAnalysis` messages
-   - `extractProjectContext` → Emits `SSEContextProgress` messages
-   - `extractTasks` → Emits `SSETasksProgress` messages
-   - `processBrainDumpDual` → ❌ BROKEN: Attempts to emit `SSERetry` messages but fails
+    - `runPreparatoryAnalysis` → Emits `SSEAnalysis` messages
+    - `extractProjectContext` → Emits `SSEContextProgress` messages
+    - `extractTasks` → Emits `SSETasksProgress` messages
+    - `processBrainDumpDual` → ❌ BROKEN: Attempts to emit `SSERetry` messages but fails
 5. **Frontend receives** → `SSEProcessor.processStream()` routes messages to `DualProcessingResults.handleStreamUpdate()`
 
 ### Why the Current Approach Doesn't Work
@@ -371,40 +369,40 @@ Move the retry loop out of `processBrainDumpDual` into the wrapper so it can emi
 ### Manual Testing
 
 1. **Trigger a timeout**:
-   - Create a very long brain dump (>6000 chars)
-   - Set short timeout in smart-llm-service.ts (e.g., 5 seconds)
-   - Watch frontend for retry banner
+    - Create a very long brain dump (>6000 chars)
+    - Set short timeout in smart-llm-service.ts (e.g., 5 seconds)
+    - Watch frontend for retry banner
 
 2. **Monitor SSE stream**:
-   - Open browser DevTools → Network tab
-   - Filter for `/api/braindumps/stream`
-   - Watch EventStream messages
-   - Look for `type: 'retry'` messages
+    - Open browser DevTools → Network tab
+    - Filter for `/api/braindumps/stream`
+    - Watch EventStream messages
+    - Look for `type: 'retry'` messages
 
 ### Automated Testing
 
 ```typescript
 // Test for retry message emission
-describe("Brain Dump Retry Messaging", () => {
-  it("should emit SSE retry messages on failure", async () => {
-    const messages: StreamingMessage[] = [];
+describe('Brain Dump Retry Messaging', () => {
+	it('should emit SSE retry messages on failure', async () => {
+		const messages: StreamingMessage[] = [];
 
-    const mockWriter = {
-      write: vi.fn((chunk) => {
-        const decoded = new TextDecoder().decode(chunk);
-        const parsed = JSON.parse(decoded.replace("data: ", ""));
-        messages.push(parsed);
-      }),
-    };
+		const mockWriter = {
+			write: vi.fn((chunk) => {
+				const decoded = new TextDecoder().decode(chunk);
+				const parsed = JSON.parse(decoded.replace('data: ', ''));
+				messages.push(parsed);
+			})
+		};
 
-    // Simulate failure that triggers retry
-    // ...
+		// Simulate failure that triggers retry
+		// ...
 
-    const retryMessages = messages.filter((m) => m.type === "retry");
-    expect(retryMessages).toHaveLength(2); // 2 retries before success
-    expect(retryMessages[0].attempt).toBe(2);
-    expect(retryMessages[1].attempt).toBe(3);
-  });
+		const retryMessages = messages.filter((m) => m.type === 'retry');
+		expect(retryMessages).toHaveLength(2); // 2 retries before success
+		expect(retryMessages[0].attempt).toBe(2);
+		expect(retryMessages[1].attempt).toBe(3);
+	});
 });
 ```
 
@@ -445,8 +443,8 @@ const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s
 
 const response = await fetch(API_URL, {
-  signal: controller.signal,
-  // ...
+	signal: controller.signal
+	// ...
 });
 ```
 
@@ -468,8 +466,8 @@ The merge functions (`mergeDualProcessingResultsForExistingProject` and `mergeDu
 2. **What's the optimal retry count?** Default is 3, but timeouts take 120s each. 3 retries = 6 minutes potential wait time. Should we reduce retries but increase timeout?
 
 3. **Should we show different messages for different failure types?**
-   - Timeout vs JSON parse error vs network error?
-   - Context failure vs task failure?
+    - Timeout vs JSON parse error vs network error?
+    - Context failure vs task failure?
 
 4. **Should retry count persist across page refreshes?** If user refreshes during retry, should we resume from where we left off?
 

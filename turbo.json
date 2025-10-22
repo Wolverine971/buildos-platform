@@ -1,127 +1,127 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
-  "globalDependencies": ["**/.env.*local", "**/.env"],
-  "globalEnv": [
-    "NODE_ENV",
-    "PUBLIC_SUPABASE_URL",
-    "PUBLIC_SUPABASE_ANON_KEY",
-    "PUBLIC_SUPABASE_PROJECT_ID",
-    "PRIVATE_SUPABASE_SERVICE_KEY",
-    "PUBLIC_GOOGLE_CLIENT_ID",
-    "PRIVATE_GOOGLE_CLIENT_ID",
-    "PRIVATE_GOOGLE_CLIENT_SECRET",
-    "GOOGLE_CLIENT_SECRET",
-    "PUBLIC_APP_URL",
-    "PUBLIC_RAILWAY_WORKER_URL",
-    "PRIVATE_CRON_SECRET",
-    "PRIVATE_BUILDOS_WEBHOOK_SECRET",
-    "PRIVATE_DJ_GMAIL_APP_PASSWORD",
-    "PRIVATE_ZACH_GMAIL_APP_PASSWORD",
-    "PRIVATE_OPENAI_API_KEY",
-    "PRIVATE_ANTHROPIC_API_KEY",
-    "PRIVATE_OPENROUTER_API_KEY",
-    "OPENAI_API_KEY",
-    "ENABLE_STRIPE",
-    "STRIPE_SECRET_KEY",
-    "PUBLIC_STRIPE_PUBLISHABLE_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-    "STRIPE_PRICE_ID",
-    "PUBLIC_BRIEF_POLLING_INTERVAL",
-    "PUBLIC_BRIEF_MAX_POLLING_TIME",
-    "VERCEL",
-    "VERCEL_ENV",
-    "VERCEL_URL",
-    "VERCEL_REGION",
-    "ANALYZE",
-    "PRIVATE_TWILIO_ACCOUNT_SID",
-    "PRIVATE_TWILIO_AUTH_TOKEN",
-    "PRIVATE_TWILIO_MESSAGING_SERVICE_SID",
-    "PRIVATE_TWILIO_VERIFY_SERVICE_SID",
-    "PRIVATE_TWILIO_STATUS_CALLBACK_URL",
-    "TWILIO_ACCOUNT_SID",
-    "TWILIO_AUTH_TOKEN",
-    "TWILIO_MESSAGING_SERVICE_SID",
-    "PRIVATE_SMS_RATE_LIMIT_PER_MINUTE",
-    "PRIVATE_SMS_RATE_LIMIT_PER_HOUR"
-  ],
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [
-        "apps/web/.vercel/**",
-        "apps/web/.svelte-kit/**",
-        "dist/**",
-        "build/**",
-        ".tsbuildinfo"
-      ],
-      "env": [
-        "NODE_ENV",
-        "PUBLIC_SUPABASE_URL",
-        "PUBLIC_SUPABASE_ANON_KEY",
-        "PUBLIC_SUPABASE_PROJECT_ID",
-        "PRIVATE_SUPABASE_SERVICE_KEY",
-        "PUBLIC_GOOGLE_CLIENT_ID",
-        "PRIVATE_GOOGLE_CLIENT_ID",
-        "PRIVATE_GOOGLE_CLIENT_SECRET",
-        "GOOGLE_CLIENT_SECRET",
-        "PUBLIC_APP_URL",
-        "PUBLIC_RAILWAY_WORKER_URL",
-        "PRIVATE_CRON_SECRET",
-        "PRIVATE_BUILDOS_WEBHOOK_SECRET",
-        "PRIVATE_DJ_GMAIL_APP_PASSWORD",
-        "PRIVATE_ZACH_GMAIL_APP_PASSWORD",
-        "PRIVATE_OPENAI_API_KEY",
-        "PRIVATE_ANTHROPIC_API_KEY",
-        "PRIVATE_OPENROUTER_API_KEY",
-        "OPENAI_API_KEY",
-        "ENABLE_STRIPE",
-        "STRIPE_SECRET_KEY",
-        "PUBLIC_STRIPE_PUBLISHABLE_KEY",
-        "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_PRICE_ID",
-        "PUBLIC_BRIEF_POLLING_INTERVAL",
-        "PUBLIC_BRIEF_MAX_POLLING_TIME",
-        "PRIVATE_TWILIO_ACCOUNT_SID",
-        "PRIVATE_TWILIO_AUTH_TOKEN",
-        "PRIVATE_TWILIO_MESSAGING_SERVICE_SID",
-        "PRIVATE_TWILIO_VERIFY_SERVICE_SID",
-        "PRIVATE_TWILIO_STATUS_CALLBACK_URL",
-        "TWILIO_ACCOUNT_SID",
-        "TWILIO_AUTH_TOKEN",
-        "TWILIO_MESSAGING_SERVICE_SID"
-      ]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
-      "cache": false
-    },
-    "test:run": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
-    },
-    "lint": {
-      "outputs": []
-    },
-    "lint:fix": {
-      "outputs": [],
-      "cache": false
-    },
-    "typecheck": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "clean": {
-      "cache": false
-    },
-    "pre-push": {
-      "dependsOn": ["typecheck", "test", "lint", "build"],
-      "cache": false
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"globalDependencies": ["**/.env.*local", "**/.env"],
+	"globalEnv": [
+		"NODE_ENV",
+		"PUBLIC_SUPABASE_URL",
+		"PUBLIC_SUPABASE_ANON_KEY",
+		"PUBLIC_SUPABASE_PROJECT_ID",
+		"PRIVATE_SUPABASE_SERVICE_KEY",
+		"PUBLIC_GOOGLE_CLIENT_ID",
+		"PRIVATE_GOOGLE_CLIENT_ID",
+		"PRIVATE_GOOGLE_CLIENT_SECRET",
+		"GOOGLE_CLIENT_SECRET",
+		"PUBLIC_APP_URL",
+		"PUBLIC_RAILWAY_WORKER_URL",
+		"PRIVATE_CRON_SECRET",
+		"PRIVATE_BUILDOS_WEBHOOK_SECRET",
+		"PRIVATE_DJ_GMAIL_APP_PASSWORD",
+		"PRIVATE_ZACH_GMAIL_APP_PASSWORD",
+		"PRIVATE_OPENAI_API_KEY",
+		"PRIVATE_ANTHROPIC_API_KEY",
+		"PRIVATE_OPENROUTER_API_KEY",
+		"OPENAI_API_KEY",
+		"ENABLE_STRIPE",
+		"STRIPE_SECRET_KEY",
+		"PUBLIC_STRIPE_PUBLISHABLE_KEY",
+		"STRIPE_WEBHOOK_SECRET",
+		"STRIPE_PRICE_ID",
+		"PUBLIC_BRIEF_POLLING_INTERVAL",
+		"PUBLIC_BRIEF_MAX_POLLING_TIME",
+		"VERCEL",
+		"VERCEL_ENV",
+		"VERCEL_URL",
+		"VERCEL_REGION",
+		"ANALYZE",
+		"PRIVATE_TWILIO_ACCOUNT_SID",
+		"PRIVATE_TWILIO_AUTH_TOKEN",
+		"PRIVATE_TWILIO_MESSAGING_SERVICE_SID",
+		"PRIVATE_TWILIO_VERIFY_SERVICE_SID",
+		"PRIVATE_TWILIO_STATUS_CALLBACK_URL",
+		"TWILIO_ACCOUNT_SID",
+		"TWILIO_AUTH_TOKEN",
+		"TWILIO_MESSAGING_SERVICE_SID",
+		"PRIVATE_SMS_RATE_LIMIT_PER_MINUTE",
+		"PRIVATE_SMS_RATE_LIMIT_PER_HOUR"
+	],
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [
+				"apps/web/.vercel/**",
+				"apps/web/.svelte-kit/**",
+				"dist/**",
+				"build/**",
+				".tsbuildinfo"
+			],
+			"env": [
+				"NODE_ENV",
+				"PUBLIC_SUPABASE_URL",
+				"PUBLIC_SUPABASE_ANON_KEY",
+				"PUBLIC_SUPABASE_PROJECT_ID",
+				"PRIVATE_SUPABASE_SERVICE_KEY",
+				"PUBLIC_GOOGLE_CLIENT_ID",
+				"PRIVATE_GOOGLE_CLIENT_ID",
+				"PRIVATE_GOOGLE_CLIENT_SECRET",
+				"GOOGLE_CLIENT_SECRET",
+				"PUBLIC_APP_URL",
+				"PUBLIC_RAILWAY_WORKER_URL",
+				"PRIVATE_CRON_SECRET",
+				"PRIVATE_BUILDOS_WEBHOOK_SECRET",
+				"PRIVATE_DJ_GMAIL_APP_PASSWORD",
+				"PRIVATE_ZACH_GMAIL_APP_PASSWORD",
+				"PRIVATE_OPENAI_API_KEY",
+				"PRIVATE_ANTHROPIC_API_KEY",
+				"PRIVATE_OPENROUTER_API_KEY",
+				"OPENAI_API_KEY",
+				"ENABLE_STRIPE",
+				"STRIPE_SECRET_KEY",
+				"PUBLIC_STRIPE_PUBLISHABLE_KEY",
+				"STRIPE_WEBHOOK_SECRET",
+				"STRIPE_PRICE_ID",
+				"PUBLIC_BRIEF_POLLING_INTERVAL",
+				"PUBLIC_BRIEF_MAX_POLLING_TIME",
+				"PRIVATE_TWILIO_ACCOUNT_SID",
+				"PRIVATE_TWILIO_AUTH_TOKEN",
+				"PRIVATE_TWILIO_MESSAGING_SERVICE_SID",
+				"PRIVATE_TWILIO_VERIFY_SERVICE_SID",
+				"PRIVATE_TWILIO_STATUS_CALLBACK_URL",
+				"TWILIO_ACCOUNT_SID",
+				"TWILIO_AUTH_TOKEN",
+				"TWILIO_MESSAGING_SERVICE_SID"
+			]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"outputs": ["coverage/**"],
+			"cache": false
+		},
+		"test:run": {
+			"dependsOn": ["^build"],
+			"outputs": ["coverage/**"]
+		},
+		"lint": {
+			"outputs": []
+		},
+		"lint:fix": {
+			"outputs": [],
+			"cache": false
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"clean": {
+			"cache": false
+		},
+		"pre-push": {
+			"dependsOn": ["typecheck", "test", "lint", "build"],
+			"cache": false
+		}
+	}
 }

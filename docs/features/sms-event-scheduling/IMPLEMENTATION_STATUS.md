@@ -28,26 +28,26 @@ The system is **fully production-ready with UI, AI-powered messages, calendar sy
 2. **Fetch calendar events** for each user's upcoming day (timezone-aware)
 3. **Filter events** that need reminders (skips past events, all-day events, quiet hours)
 4. **Generate intelligent LLM messages** using DeepSeek Chat V3:
-   - Context-aware and conversational
-   - Optimized for 160 character SMS limit
-   - Includes event details, time, and links when available
-   - Example: `"Meeting in 15 mins: Project Sync. Join via meet.google.com/abc-xyz"`
+    - Context-aware and conversational
+    - Optimized for 160 character SMS limit
+    - Includes event details, time, and links when available
+    - Example: `"Meeting in 15 mins: Project Sync. Join via meet.google.com/abc-xyz"`
 5. **Fallback to templates** if LLM fails for any reason (100% reliability)
 6. **Schedule SMS sends** at the appropriate time (e.g., 15 mins before event)
 7. **Respect user preferences**:
-   - Quiet hours
-   - Daily SMS limits (default: 10/day)
-   - Phone verification status
-   - Opt-out status
+    - Quiet hours
+    - Daily SMS limits (default: 10/day)
+    - Phone verification status
+    - Opt-out status
 8. **Track LLM usage**:
-   - Records which messages were LLM vs template-generated
-   - Tracks model used (for cost analysis)
-   - Saves generation metadata
+    - Records which messages were LLM vs template-generated
+    - Tracks model used (for cost analysis)
+    - Saves generation metadata
 9. **Handle calendar event changes** (Phase 3):
-   - **Cancel SMS** when events are deleted
-   - **Reschedule SMS** when event times change
-   - **Regenerate messages** when event details update
-   - Automatic sync via calendar webhook integration
+    - **Cancel SMS** when events are deleted
+    - **Reschedule SMS** when event times change
+    - **Regenerate messages** when event details update
+    - Automatic sync via calendar webhook integration
 10. **Provide full UI control** (Phase 5):
 
 - **Enable/disable** event reminders via toggle
@@ -412,10 +412,10 @@ When LLM is unavailable, the system generates simple but effective templates:
 - ✅ Event change detection (delete, reschedule, update)
 - ✅ Message regeneration on event updates
 - ✅ Worker API endpoints:
-  - `POST /sms/scheduled/:id/cancel`
-  - `PATCH /sms/scheduled/:id/update`
-  - `POST /sms/scheduled/:id/regenerate`
-  - `GET /sms/scheduled/user/:userId`
+    - `POST /sms/scheduled/:id/cancel`
+    - `PATCH /sms/scheduled/:id/update`
+    - `POST /sms/scheduled/:id/regenerate`
+    - `GET /sms/scheduled/user/:userId`
 
 **Result:** Calendar events and SMS reminders stay perfectly synchronized
 
@@ -447,9 +447,9 @@ When LLM is unavailable, the system generates simple but effective templates:
 - ✅ Filter by status (all, scheduled, sent, cancelled)
 - ✅ Manual message cancellation with confirmation
 - ✅ Web API proxy endpoints:
-  - `GET /api/sms/scheduled` - List messages
-  - `DELETE /api/sms/scheduled/:id` - Cancel message
-  - `PUT /api/sms/preferences` - Update preferences
+    - `GET /api/sms/scheduled` - List messages
+    - `DELETE /api/sms/scheduled/:id` - Cancel message
+    - `PUT /api/sms/preferences` - Update preferences
 - ✅ Authorization checks ensure user data security
 
 **Result:** Users have full visibility and control over SMS event reminders
@@ -506,27 +506,27 @@ When LLM is unavailable, the system generates simple but effective templates:
 ### Manual Test Checklist
 
 1. **Database Migration**
-   - [ ] Verify `scheduled_sms_messages` table exists
-   - [ ] Test RPC functions work
-   - [ ] Check RLS policies allow access
+    - [ ] Verify `scheduled_sms_messages` table exists
+    - [ ] Test RPC functions work
+    - [ ] Check RLS policies allow access
 
 2. **Scheduler**
-   - [ ] Verify cron job registered (check logs at midnight)
-   - [ ] Confirm user filtering works (SMS enabled, verified, opted-in)
-   - [ ] Check job queuing
+    - [ ] Verify cron job registered (check logs at midnight)
+    - [ ] Confirm user filtering works (SMS enabled, verified, opted-in)
+    - [ ] Check job queuing
 
 3. **Worker**
-   - [ ] Test event fetching (timezone-aware)
-   - [ ] Verify event filtering (past events, quiet hours, limits)
-   - [ ] Confirm message creation
-   - [ ] Check SMS job queuing
+    - [ ] Test event fetching (timezone-aware)
+    - [ ] Verify event filtering (past events, quiet hours, limits)
+    - [ ] Confirm message creation
+    - [ ] Check SMS job queuing
 
 4. **End-to-End**
-   - [ ] Create calendar event for tomorrow
-   - [ ] Wait for midnight scheduler
-   - [ ] Verify scheduled SMS created
-   - [ ] Wait for send time
-   - [ ] Confirm SMS received
+    - [ ] Create calendar event for tomorrow
+    - [ ] Wait for midnight scheduler
+    - [ ] Verify scheduled SMS created
+    - [ ] Wait for send time
+    - [ ] Confirm SMS received
 
 ### SQL Queries for Testing
 

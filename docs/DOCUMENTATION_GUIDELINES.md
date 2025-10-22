@@ -24,11 +24,11 @@
 ```markdown
 ---
 date: [Current date and time with timezone in ISO format]
-researcher: [Researcher name, e.g., "Claude Code"]
+researcher: [Researcher name, e.g., 'Claude Code']
 git_commit: [Current commit hash]
 branch: [Current branch name]
 repository: buildos-platform
-topic: "[Clear topic description]"
+topic: '[Clear topic description]'
 tags: [research, codebase, relevant-component-names]
 status: complete
 last_updated: [YYYY-MM-DD]
@@ -158,9 +158,9 @@ last_updated_by: [Researcher name]
 **Required README files:**
 
 - Every feature folder must have a `README.md` explaining:
-  - What the feature does
-  - Key files and their purposes
-  - Links to related documentation
+    - What the feature does
+    - Key files and their purposes
+    - Links to related documentation
 
 ---
 
@@ -327,18 +327,18 @@ Before creating ANY documentation file, ask:
 - Don't create a new research file if it's related to existing research
 - Instead, append to the existing file with a new section:
 
-  ```markdown
-  ## Follow-up Research [YYYY-MM-DD HH:MM:SS]
+    ```markdown
+    ## Follow-up Research [YYYY-MM-DD HH:MM:SS]
 
-  [New findings]
-  ```
+    [New findings]
+    ```
 
 - Update frontmatter:
-  ```yaml
-  last_updated: YYYY-MM-DD
-  last_updated_by: [Your name]
-  last_updated_note: "Added follow-up research for [description]"
-  ```
+    ```yaml
+    last_updated: YYYY-MM-DD
+    last_updated_by: [Your name]
+    last_updated_note: 'Added follow-up research for [description]'
+    ```
 
 ---
 

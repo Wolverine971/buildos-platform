@@ -1,10 +1,10 @@
 ---
-title: "TypeScript Type Safety Audit"
+title: 'TypeScript Type Safety Audit'
 date: 2025-10-21
-author: "Claude Code"
-tags: ["typescript", "type-safety", "code-quality", "audit"]
-status: "completed"
-severity: "medium"
+author: 'Claude Code'
+tags: ['typescript', 'type-safety', 'code-quality', 'audit']
+status: 'completed'
+severity: 'medium'
 ---
 
 # TypeScript Type Safety Audit
@@ -35,13 +35,13 @@ This audit evaluates TypeScript type safety across the BuildOS platform monorepo
 
 ```json
 {
-  "compilerOptions": {
-    "strict": true, // ✅ All strict checks enabled
-    "noUncheckedIndexedAccess": true, // ✅ Extra safety for array/object access
-    "checkJs": true, // ✅ Type-check JavaScript files
-    "allowJs": true,
-    "forceConsistentCasingInFileNames": true
-  }
+	"compilerOptions": {
+		"strict": true, // ✅ All strict checks enabled
+		"noUncheckedIndexedAccess": true, // ✅ Extra safety for array/object access
+		"checkJs": true, // ✅ Type-check JavaScript files
+		"allowJs": true,
+		"forceConsistentCasingInFileNames": true
+	}
 }
 ```
 
@@ -53,15 +53,15 @@ This audit evaluates TypeScript type safety across the BuildOS platform monorepo
 
 ```json
 {
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
-  }
+	"compilerOptions": {
+		"strict": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"noImplicitThis": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true
+	}
 }
 ```
 
@@ -127,8 +127,8 @@ const result: any = await response.json();
 ```typescript
 // apps/worker/src/routes/sms/scheduled.ts
 const updateData: any = {
-  scheduled_at: new Date(scheduled_at).toISOString(),
-  message_content,
+	scheduled_at: new Date(scheduled_at).toISOString(),
+	message_content
 };
 ```
 
@@ -168,29 +168,29 @@ let mockSupabase: any;
 
 1. **Supabase query results** - 50+ instances
 
-   ```typescript
-   // apps/web/src/routes/api/projects/[id]/stats/+server.ts
-   const stats = await supabase.from("project_stats").select("*"); // Returns any
-   ```
+    ```typescript
+    // apps/web/src/routes/api/projects/[id]/stats/+server.ts
+    const stats = await supabase.from('project_stats').select('*'); // Returns any
+    ```
 
 2. **LLM API responses** - 30+ instances
 
-   ```typescript
-   // Should use OpenRouterResponse interface instead
-   const result: any = await response.json();
-   ```
+    ```typescript
+    // Should use OpenRouterResponse interface instead
+    const result: any = await response.json();
+    ```
 
 3. **Request/Response bodies** - 40+ instances
 
-   ```typescript
-   // apps/web/src/lib/services/base/api-service.ts
-   async post<T>(endpoint: string, body: any): Promise<T>
-   ```
+    ```typescript
+    // apps/web/src/lib/services/base/api-service.ts
+    async post<T>(endpoint: string, body: any): Promise<T>
+    ```
 
 4. **Metadata/options objects** - 60+ instances
-   ```typescript
-   metadata?: any;  // Should be Record<string, unknown> or specific interface
-   ```
+    ```typescript
+    metadata?: any;  // Should be Record<string, unknown> or specific interface
+    ```
 
 ### Summary: Any Type Usage
 
@@ -213,37 +213,37 @@ let mockSupabase: any;
 
 1. **Browser APIs not in types** (1 instance)
 
-   ```typescript
-   // apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:1086
-   // @ts-ignore - View Transition API not fully typed yet
-   if (!document.startViewTransition) return;
-   ```
+    ```typescript
+    // apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:1086
+    // @ts-ignore - View Transition API not fully typed yet
+    if (!document.startViewTransition) return;
+    ```
 
-   **Verdict:** ✅ Valid - experimental browser API
+    **Verdict:** ✅ Valid - experimental browser API
 
 2. **Missing schema fields** (6 instances)
 
-   ```typescript
-   // apps/web/src/lib/stores/project.store.ts:464
-   // @ts-ignore - phase_id might be passed but not in type
-   const phaseId = (task as any).phase_id;
-   ```
+    ```typescript
+    // apps/web/src/lib/stores/project.store.ts:464
+    // @ts-ignore - phase_id might be passed but not in type
+    const phaseId = (task as any).phase_id;
+    ```
 
-   **Verdict:** ⚠️ Indicates schema/type mismatch - should fix types
+    **Verdict:** ⚠️ Indicates schema/type mismatch - should fix types
 
 3. **Test edge cases** (2 instances)
 
-   ```typescript
-   // apps/web/src/lib/utils/__tests__/heading-normalization.test.ts
-   // @ts-expect-error - testing null input
-   normalizeHeading(null);
-   ```
+    ```typescript
+    // apps/web/src/lib/utils/__tests__/heading-normalization.test.ts
+    // @ts-expect-error - testing null input
+    normalizeHeading(null);
+    ```
 
-   **Verdict:** ✅ Valid - intentionally testing invalid inputs
+    **Verdict:** ✅ Valid - intentionally testing invalid inputs
 
 4. **Documentation references** (2 instances)
-   - References in markdown docs discussing the pattern
-     **Verdict:** ✅ Valid - documentation only
+    - References in markdown docs discussing the pattern
+      **Verdict:** ✅ Valid - documentation only
 
 #### Problematic Uses (2 instances)
 
@@ -274,20 +274,20 @@ const phaseId = originalData.phase_id;
 ```typescript
 // apps/worker/src/worker.ts:38
 async function processBrief(job: ProcessingJob) {
-  // ⚠️ Missing return type
-  // Returns Promise<void>
+	// ⚠️ Missing return type
+	// Returns Promise<void>
 }
 
 // apps/worker/src/scheduler.ts:140
 export function startScheduler() {
-  // ⚠️ Missing return type
-  // Returns NodeJS.Timeout
+	// ⚠️ Missing return type
+	// Returns NodeJS.Timeout
 }
 
 // apps/web/src/lib/utils/braindump-validation.ts
 function cleanupExpiredEntries() {
-  // ⚠️ Missing return type
-  // Returns void
+	// ⚠️ Missing return type
+	// Returns void
 }
 ```
 
@@ -324,7 +324,7 @@ Enable `noImplicitReturns` isn't enough - should also enable ESLint rule:
 
 ```typescript
 // apps/worker/src/workers/brief/briefGenerator.ts:737
-const { data } = await supabase.from("phase_tasks").select("*");
+const { data } = await supabase.from('phase_tasks').select('*');
 // `data` is `any` - should be PhaseTask[] | null
 ```
 
@@ -333,7 +333,7 @@ const { data } = await supabase.from("phase_tasks").select("*");
 ```typescript
 // apps/web/src/routes/briefs/+server.ts:100
 function fetchBriefs(supabase: any, userId: string) {
-  // Should be: SupabaseClient<Database>
+	// Should be: SupabaseClient<Database>
 }
 ```
 
@@ -341,7 +341,7 @@ function fetchBriefs(supabase: any, userId: string) {
 
 ```typescript
 // Common pattern across codebase
-const { data, error } = await supabase.from("users").select("*");
+const { data, error } = await supabase.from('users').select('*');
 // Should use: supabase.from('users').select<User>('*')
 ```
 
@@ -352,9 +352,9 @@ const { data, error } = await supabase.from("users").select("*");
 ```typescript
 // packages/supabase-client/src/index.ts
 export function createSupabaseClient(
-  cookies: { name: string; value: string; options: any }[],
+	cookies: { name: string; value: string; options: any }[]
 ): TypedSupabaseClient {
-  // Properly typed client
+	// Properly typed client
 }
 ```
 
@@ -370,17 +370,17 @@ const supabase: any = createClient(...);
 
 1. **Data mutations without type checking:**
 
-   ```typescript
-   await supabase.from("projects").update({ status: "unknown_status" }); // No error!
-   ```
+    ```typescript
+    await supabase.from('projects').update({ status: 'unknown_status' }); // No error!
+    ```
 
 2. **Row-Level Security (RLS) bypassed by `any`:**
-   - Type system should catch unauthorized column access
-   - `any` defeats this protection
+    - Type system should catch unauthorized column access
+    - `any` defeats this protection
 
 3. **Schema drift detection:**
-   - Changes to database not caught at compile time
-   - Runtime errors instead of type errors
+    - Changes to database not caught at compile time
+    - Runtime errors instead of type errors
 
 ### Summary: Supabase Typing
 
@@ -433,9 +433,9 @@ const mockSupabase = {} as unknown as SupabaseClient;
 
 ```typescript
 // apps/worker/src/lib/utils/queueCleanup.ts:53
-(["generate_brief", "send_email"] as QueueJobType[],
-  // apps/web/src/lib/services/phase-generation/strategies/phases-only.strategy.ts
-  tasks.filter(Boolean) as Task[]);
+(['generate_brief', 'send_email'] as QueueJobType[],
+	// apps/web/src/lib/services/phase-generation/strategies/phases-only.strategy.ts
+	tasks.filter(Boolean) as Task[]);
 ```
 
 **Risk:** Assumes runtime value matches type - no validation
@@ -467,7 +467,7 @@ return new this.originalDateNow(this.currentTime) as any;
 
 ```typescript
 // Bypassing RPC type checking in 10+ places
-await (supabase as any).rpc("function_name", params);
+await (supabase as any).rpc('function_name', params);
 ```
 
 **Fix:** Define RPC function types in database.types.ts
@@ -521,7 +521,7 @@ end: logs?.[logs.length - 1]?.created_at,
 ```typescript
 // apps/web/src/lib/utils/operations/operations-executor.test.ts:274
 if (mockSupabase.from.mock.results[0]?.value?.insert?.mock?.calls?.[0]) {
-  // Excessive chaining suggests fragile test setup
+	// Excessive chaining suggests fragile test setup
 }
 ```
 
@@ -556,32 +556,32 @@ if (mockSupabase.from.mock.results[0]?.value?.insert?.mock?.calls?.[0]) {
 
 ```typescript
 interface OpenRouterResponse {
-  id: string;
-  provider?: string;
-  model: string;
-  object: string;
-  created: number;
-  choices: Array<{
-    message: {
-      content: string;
-      role: string;
-    };
-    finish_reason: string;
-    native_finish_reason?: string;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    prompt_tokens_details?: {
-      cached_tokens?: number;
-      audio_tokens?: number;
-    };
-    completion_tokens_details?: {
-      reasoning_tokens?: number;
-    };
-  };
-  system_fingerprint?: string;
+	id: string;
+	provider?: string;
+	model: string;
+	object: string;
+	created: number;
+	choices: Array<{
+		message: {
+			content: string;
+			role: string;
+		};
+		finish_reason: string;
+		native_finish_reason?: string;
+	}>;
+	usage?: {
+		prompt_tokens: number;
+		completion_tokens: number;
+		total_tokens: number;
+		prompt_tokens_details?: {
+			cached_tokens?: number;
+			audio_tokens?: number;
+		};
+		completion_tokens_details?: {
+			reasoning_tokens?: number;
+		};
+	};
+	system_fingerprint?: string;
 }
 ```
 
@@ -592,7 +592,7 @@ interface OpenRouterResponse {
 ```typescript
 // apps/worker/src/lib/services/llm-pool.ts:276
 if (!result.choices?.[0]?.message?.content) {
-  throw new Error("Invalid response from LLM API: no content in choices");
+	throw new Error('Invalid response from LLM API: no content in choices');
 }
 content = result.choices[0].message.content;
 ```
@@ -607,11 +607,11 @@ const result: any = await response.json();
 
 // Better pattern (used in some places)
 try {
-  const cleanedContent = this.cleanLLMJsonResponse(content);
-  return JSON.parse(cleanedContent) as T;
+	const cleanedContent = this.cleanLLMJsonResponse(content);
+	return JSON.parse(cleanedContent) as T;
 } catch (parseError: any) {
-  console.error("Failed to parse JSON response:", content);
-  throw new Error(`Invalid JSON response: ${parseError.message}`);
+	console.error('Failed to parse JSON response:', content);
+	throw new Error(`Invalid JSON response: ${parseError.message}`);
 }
 ```
 
@@ -643,43 +643,43 @@ try {
 ### 🔴 High Priority (Fix Soon)
 
 1. **Supabase Query Typing** (Grade: C-)
-   - 200+ untyped queries
-   - High risk of runtime errors
-   - **Fix:** Enforce typed client usage, add ESLint rule
+    - 200+ untyped queries
+    - High risk of runtime errors
+    - **Fix:** Enforce typed client usage, add ESLint rule
 
 2. **Excessive `any` Types** (Grade: C)
-   - 2,263 instances across codebase
-   - Defeats purpose of TypeScript
-   - **Fix:** Replace with proper interfaces/types (see recommendations)
+    - 2,263 instances across codebase
+    - Defeats purpose of TypeScript
+    - **Fix:** Replace with proper interfaces/types (see recommendations)
 
 3. **Unsafe Type Assertions** (Grade: C)
-   - 80+ `as any` casts
-   - 200+ database result casts
-   - **Fix:** Add validation or proper types
+    - 80+ `as any` casts
+    - 200+ database result casts
+    - **Fix:** Add validation or proper types
 
 ### 🟡 Medium Priority (Address During Refactoring)
 
 4. **Missing Return Types** (Grade: C+)
-   - 50+ functions missing explicit returns
-   - **Fix:** Add ESLint rule, gradually add types
+    - 50+ functions missing explicit returns
+    - **Fix:** Add ESLint rule, gradually add types
 
 5. **API Service `any` Parameters** (Grade: C)
-   - Generic methods use `body: any`
-   - **Fix:** Use type parameters or `unknown`
+    - Generic methods use `body: any`
+    - **Fix:** Use type parameters or `unknown`
 
 ### 🟢 Low Priority (Good State)
 
 6. **Type Suppression Comments** (Grade: A-)
-   - Only 13 instances, mostly justified
-   - **Action:** Fix `phase_id` schema issue
+    - Only 13 instances, mostly justified
+    - **Action:** Fix `phase_id` schema issue
 
 7. **Optional Chaining** (Grade: B+)
-   - Generally well-used
-   - **Action:** Review test code with excessive chaining
+    - Generally well-used
+    - **Action:** Review test code with excessive chaining
 
 8. **TypeScript Configuration** (Grade: A)
-   - All strict modes enabled
-   - **Action:** None needed
+    - All strict modes enabled
+    - **Action:** None needed
 
 ---
 
@@ -689,74 +689,74 @@ try {
 
 1. **Add ESLint Rules:**
 
-   ```json
-   {
-     "@typescript-eslint/no-explicit-any": "error",
-     "@typescript-eslint/explicit-function-return-type": "warn",
-     "@typescript-eslint/no-unsafe-assignment": "warn",
-     "@typescript-eslint/no-unsafe-member-access": "warn"
-   }
-   ```
+    ```json
+    {
+    	"@typescript-eslint/no-explicit-any": "error",
+    	"@typescript-eslint/explicit-function-return-type": "warn",
+    	"@typescript-eslint/no-unsafe-assignment": "warn",
+    	"@typescript-eslint/no-unsafe-member-access": "warn"
+    }
+    ```
 
 2. **Create Typed Supabase Helper:**
 
-   ```typescript
-   // Enforce typed client usage
-   import { TypedSupabaseClient } from "@buildos/supabase-client";
+    ```typescript
+    // Enforce typed client usage
+    import { TypedSupabaseClient } from '@buildos/supabase-client';
 
-   export function createTypedClient(): TypedSupabaseClient {
-     // Wrap creation with proper types
-   }
-   ```
+    export function createTypedClient(): TypedSupabaseClient {
+    	// Wrap creation with proper types
+    }
+    ```
 
 3. **Fix High-Risk `any` Types:**
-   - API service methods (`body: any` → `body: unknown`)
-   - Supabase query functions (`supabase: any` → `TypedSupabaseClient`)
-   - LLM response parsing (already has interfaces, enforce usage)
+    - API service methods (`body: any` → `body: unknown`)
+    - Supabase query functions (`supabase: any` → `TypedSupabaseClient`)
+    - LLM response parsing (already has interfaces, enforce usage)
 
 ### Short-Term (Month 1)
 
 4. **Gradual `any` Reduction:**
-   - Create interfaces for common patterns (metadata, options, etc.)
-   - Replace error catch blocks: `catch (error: any)` → `catch (error: unknown)`
-   - Add return types to all public API functions
+    - Create interfaces for common patterns (metadata, options, etc.)
+    - Replace error catch blocks: `catch (error: any)` → `catch (error: unknown)`
+    - Add return types to all public API functions
 
 5. **Database Type Safety:**
-   - Generate Supabase types regularly
-   - Add type guards for database results
-   - Create helper functions for common queries
+    - Generate Supabase types regularly
+    - Add type guards for database results
+    - Create helper functions for common queries
 
 6. **Validation Layer:**
 
-   ```typescript
-   // Use Zod for runtime validation
-   import { z } from "zod";
+    ```typescript
+    // Use Zod for runtime validation
+    import { z } from 'zod';
 
-   const TaskSchema = z.object({
-     id: z.string(),
-     title: z.string(),
-     // ...
-   });
+    const TaskSchema = z.object({
+    	id: z.string(),
+    	title: z.string()
+    	// ...
+    });
 
-   const result = TaskSchema.parse(apiResponse); // Throws if invalid
-   ```
+    const result = TaskSchema.parse(apiResponse); // Throws if invalid
+    ```
 
 ### Long-Term (Quarter 1)
 
 7. **Type Coverage Metrics:**
-   - Install `type-coverage` package
-   - Set minimum coverage threshold (95%+)
-   - Track in CI/CD pipeline
+    - Install `type-coverage` package
+    - Set minimum coverage threshold (95%+)
+    - Track in CI/CD pipeline
 
 8. **Documentation:**
-   - Document type conventions in CONTRIBUTING.md
-   - Create examples of proper typing patterns
-   - Type safety guidelines for new code
+    - Document type conventions in CONTRIBUTING.md
+    - Create examples of proper typing patterns
+    - Type safety guidelines for new code
 
 9. **Migration Strategy:**
-   - Create "type debt" tracking issue
-   - Prioritize by risk (DB queries > API > utilities)
-   - Allocate refactoring time in sprints
+    - Create "type debt" tracking issue
+    - Prioritize by risk (DB queries > API > utilities)
+    - Allocate refactoring time in sprints
 
 ---
 
@@ -789,14 +789,14 @@ The BuildOS platform has a **solid TypeScript foundation** with strict mode enab
 **Before:**
 
 ```typescript
-const { data } = await supabase.from("tasks").select("*");
+const { data } = await supabase.from('tasks').select('*');
 // data is any
 ```
 
 **After:**
 
 ```typescript
-const { data } = await supabase.from("tasks").select<Task>("*");
+const { data } = await supabase.from('tasks').select<Task>('*');
 // data is Task[] | null
 ```
 
@@ -849,16 +849,10 @@ const tasks = data.tasks as Task[];
 
 ```typescript
 function isTask(value: unknown): value is Task {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "id" in value &&
-    "title" in value
-  );
+	return typeof value === 'object' && value !== null && 'id' in value && 'title' in value;
 }
 
-const tasks =
-  Array.isArray(data.tasks) && data.tasks.every(isTask) ? data.tasks : [];
+const tasks = Array.isArray(data.tasks) && data.tasks.every(isTask) ? data.tasks : [];
 ```
 
 ---

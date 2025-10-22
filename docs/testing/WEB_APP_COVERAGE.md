@@ -56,22 +56,22 @@ The BuildOS web app has **29 test files** covering approximately **10-15%** of t
 
 ```typescript
 export default defineConfig({
-  plugins: [sveltekit()],
-  test: {
-    globals: true,
-    environment: "node",
-    setupFiles: ["./vitest.setup.ts"],
-    include: ["**/*.{test,spec}.{js,ts}"],
-    // CRITICAL: Excludes LLM tests to avoid API costs
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/lib/tests/llm/**",
-      "**/lib/tests/llm-simple/**",
-    ],
-    silent: false,
-    reporters: ["default"],
-  },
+	plugins: [sveltekit()],
+	test: {
+		globals: true,
+		environment: 'node',
+		setupFiles: ['./vitest.setup.ts'],
+		include: ['**/*.{test,spec}.{js,ts}'],
+		// CRITICAL: Excludes LLM tests to avoid API costs
+		exclude: [
+			'**/node_modules/**',
+			'**/dist/**',
+			'**/lib/tests/llm/**',
+			'**/lib/tests/llm-simple/**'
+		],
+		silent: false,
+		reporters: ['default']
+	}
 });
 ```
 
@@ -83,16 +83,16 @@ export default defineConfig({
 
 ```typescript
 export default defineConfig({
-  plugins: [sveltekit()],
-  test: {
-    globals: true,
-    environment: "node",
-    setupFiles: ["./vitest.setup.ts"],
-    include: ["**/lib/tests/llm/**/*.test.ts"],
-    testTimeout: 20000, // 20s for API calls
-    maxConcurrency: 1, // Sequential to avoid rate limits
-    silent: false,
-  },
+	plugins: [sveltekit()],
+	test: {
+		globals: true,
+		environment: 'node',
+		setupFiles: ['./vitest.setup.ts'],
+		include: ['**/lib/tests/llm/**/*.test.ts'],
+		testTimeout: 20000, // 20s for API calls
+		maxConcurrency: 1, // Sequential to avoid rate limits
+		silent: false
+	}
 });
 ```
 
@@ -150,12 +150,12 @@ pnpm pre-push          # typecheck + test + lint + build
 **Key Test Cases**:
 
 ```typescript
-describe("validateBrainDumpInput", () => {
-  it("should accept valid long brain dump (> 50 chars)");
-  it("should accept valid short brain dump with project ID");
-  it("should reject short endpoint without project ID");
-  it("should reject empty input");
-  it("should reject input that is too long");
+describe('validateBrainDumpInput', () => {
+	it('should accept valid long brain dump (> 50 chars)');
+	it('should accept valid short brain dump with project ID');
+	it('should reject short endpoint without project ID');
+	it('should reject empty input');
+	it('should reject input that is too long');
 });
 ```
 
@@ -231,54 +231,54 @@ describe("validateBrainDumpInput", () => {
 **Small Projects (2-4 tasks)**:
 
 ```typescript
-it("should create blog project with basic tasks", async () => {
-  const result = await processNewProject(`
+it('should create blog project with basic tasks', async () => {
+	const result = await processNewProject(`
     I want to create a personal blog using SvelteKit...
   `);
 
-  // Validates:
-  // ✅ Project name extraction
-  // ✅ Task count (2-4 expected)
-  // ✅ Slug generation (lowercase, hyphenated)
-  // ✅ Priority assignment
-  // ✅ Task titles are actionable
+	// Validates:
+	// ✅ Project name extraction
+	// ✅ Task count (2-4 expected)
+	// ✅ Slug generation (lowercase, hyphenated)
+	// ✅ Priority assignment
+	// ✅ Task titles are actionable
 });
 ```
 
 **Large Projects (8+ tasks)**:
 
 ```typescript
-it("should create ecommerce platform with comprehensive tasks", async () => {
-  const result = await processNewProject(`
+it('should create ecommerce platform with comprehensive tasks', async () => {
+	const result = await processNewProject(`
     Build a full-featured e-commerce platform with...
   `);
 
-  // Validates:
-  // ✅ Complex project structure
-  // ✅ Multiple phases
-  // ✅ Task count (8+ expected)
-  // ✅ Dependency handling
-  // ✅ Priority distribution
+	// Validates:
+	// ✅ Complex project structure
+	// ✅ Multiple phases
+	// ✅ Task count (8+ expected)
+	// ✅ Dependency handling
+	// ✅ Priority distribution
 });
 ```
 
 **Edge Cases**:
 
 ```typescript
-it("should handle mixed content (code + text)", async () => {
-  // ✅ Tests parsing with code snippets
+it('should handle mixed content (code + text)', async () => {
+	// ✅ Tests parsing with code snippets
 });
 
-it("should handle project references", async () => {
-  // ✅ Tests @project-name references
+it('should handle project references', async () => {
+	// ✅ Tests @project-name references
 });
 
-it("should generate valid slugs", async () => {
-  // ✅ Tests slug format (lowercase, hyphens)
+it('should generate valid slugs', async () => {
+	// ✅ Tests slug format (lowercase, hyphens)
 });
 
-it("should handle single task projects", async () => {
-  // ✅ Tests minimal project structure
+it('should handle single task projects', async () => {
+	// ✅ Tests minimal project structure
 });
 ```
 
@@ -309,14 +309,14 @@ it("should handle single task projects", async () => {
 **Key Test Cases**:
 
 ```typescript
-it("should add tasks to existing project", async () => {
-  // ✅ Tests appending tasks
-  // ✅ Validates project ID reference
-  // ✅ Checks phase assignment
+it('should add tasks to existing project', async () => {
+	// ✅ Tests appending tasks
+	// ✅ Validates project ID reference
+	// ✅ Checks phase assignment
 });
 
-it("should update project description", async () => {
-  // ✅ Tests context updates
+it('should update project description', async () => {
+	// ✅ Tests context updates
 });
 ```
 
@@ -353,56 +353,56 @@ it("should update project description", async () => {
 **Race Condition Scenarios**:
 
 ```typescript
-it("should track update BEFORE API call", async () => {
-  const orderOfOperations: string[] = [];
+it('should track update BEFORE API call', async () => {
+	const orderOfOperations: string[] = [];
 
-  mockService.trackUpdate = vi.fn((id) => {
-    orderOfOperations.push(`trackUpdate:${id}`);
-  });
+	mockService.trackUpdate = vi.fn((id) => {
+		orderOfOperations.push(`trackUpdate:${id}`);
+	});
 
-  // Perform optimistic update
-  const tempId = store.createProjectOptimistically(data);
+	// Perform optimistic update
+	const tempId = store.createProjectOptimistically(data);
 
-  // Verify tracking happened BEFORE API call
-  expect(orderOfOperations[0]).toBe(`trackUpdate:${tempId}`);
-  expect(orderOfOperations[1]).toBe("apiCall");
+	// Verify tracking happened BEFORE API call
+	expect(orderOfOperations[0]).toBe(`trackUpdate:${tempId}`);
+	expect(orderOfOperations[1]).toBe('apiCall');
 
-  // ✅ Prevents race condition where API returns before tracking
+	// ✅ Prevents race condition where API returns before tracking
 });
 ```
 
 **Optimistic Update Testing**:
 
 ```typescript
-it("should handle optimistic project creation", async () => {
-  // ✅ Tests temporary ID generation
-  // ✅ Tests UI update before API response
-  // ✅ Tests ID replacement after API success
-  // ✅ Tests rollback on API failure
+it('should handle optimistic project creation', async () => {
+	// ✅ Tests temporary ID generation
+	// ✅ Tests UI update before API response
+	// ✅ Tests ID replacement after API success
+	// ✅ Tests rollback on API failure
 });
 
-it("should prevent duplicate tracking IDs", async () => {
-  // ✅ Tests ID uniqueness
-  // ✅ Tests cleanup after success
+it('should prevent duplicate tracking IDs', async () => {
+	// ✅ Tests ID uniqueness
+	// ✅ Tests cleanup after success
 });
 ```
 
 **Real-Time Sync Testing**:
 
 ```typescript
-it("should handle concurrent updates from multiple sources", async () => {
-  // ✅ Tests Supabase real-time updates
-  // ✅ Tests optimistic update + real-time sync
-  // ✅ Tests conflict resolution
+it('should handle concurrent updates from multiple sources', async () => {
+	// ✅ Tests Supabase real-time updates
+	// ✅ Tests optimistic update + real-time sync
+	// ✅ Tests conflict resolution
 });
 ```
 
 **Cleanup Testing**:
 
 ```typescript
-it("should clean up tracking IDs after completion", async () => {
-  // ✅ Tests memory cleanup
-  // ✅ Tests no memory leaks
+it('should clean up tracking IDs after completion', async () => {
+	// ✅ Tests memory cleanup
+	// ✅ Tests no memory leaks
 });
 ```
 
@@ -428,25 +428,25 @@ it("should clean up tracking IDs after completion", async () => {
 **Race Condition Prevention**:
 
 ```typescript
-it("should capture project_id before state changes", async () => {
-  let capturedProjectId: string | undefined;
+it('should capture project_id before state changes', async () => {
+	let capturedProjectId: string | undefined;
 
-  const optimisticUpdate = () => {
-    capturedProjectId = store.getCurrentProjectId();
-    // State change happens here
-  };
+	const optimisticUpdate = () => {
+		capturedProjectId = store.getCurrentProjectId();
+		// State change happens here
+	};
 
-  // ✅ Verifies data captured BEFORE state mutation
-  expect(capturedProjectId).toBeDefined();
+	// ✅ Verifies data captured BEFORE state mutation
+	expect(capturedProjectId).toBeDefined();
 });
 ```
 
 **Optimistic Updates**:
 
 ```typescript
-it("should handle optimistic dashboard updates", async () => {
-  // ✅ Tests dashboard data updates
-  // ✅ Tests real-time sync with Supabase
+it('should handle optimistic dashboard updates', async () => {
+	// ✅ Tests dashboard data updates
+	// ✅ Tests real-time sync with Supabase
 });
 ```
 
@@ -467,81 +467,81 @@ it("should handle optimistic dashboard updates", async () => {
 **DoS Prevention**:
 
 ```typescript
-describe("DoS Prevention", () => {
-  it("should reject payloads over 50KB", async () => {
-    const hugePayload = "a".repeat(51 * 1024); // 51KB
+describe('DoS Prevention', () => {
+	it('should reject payloads over 50KB', async () => {
+		const hugePayload = 'a'.repeat(51 * 1024); // 51KB
 
-    const response = await POST({
-      request: createMockRequest({ content: hugePayload }),
-      locals: mockLocals,
-    });
+		const response = await POST({
+			request: createMockRequest({ content: hugePayload }),
+			locals: mockLocals
+		});
 
-    // ✅ Verifies 413 Payload Too Large
-    expect(response.status).toBe(413);
-    expect(await response.json()).toMatchObject({
-      error: expect.stringContaining("too large"),
-    });
-  });
+		// ✅ Verifies 413 Payload Too Large
+		expect(response.status).toBe(413);
+		expect(await response.json()).toMatchObject({
+			error: expect.stringContaining('too large')
+		});
+	});
 
-  it("should accept payloads under 50KB", async () => {
-    const validPayload = "a".repeat(49 * 1024); // 49KB
+	it('should accept payloads under 50KB', async () => {
+		const validPayload = 'a'.repeat(49 * 1024); // 49KB
 
-    // ✅ Verifies acceptance
-    expect(response.status).toBe(200);
-  });
+		// ✅ Verifies acceptance
+		expect(response.status).toBe(200);
+	});
 });
 ```
 
 **Input Validation**:
 
 ```typescript
-describe("Input Validation", () => {
-  it("should reject empty content", async () => {
-    // ✅ Tests empty string rejection
-  });
+describe('Input Validation', () => {
+	it('should reject empty content', async () => {
+		// ✅ Tests empty string rejection
+	});
 
-  it("should reject whitespace-only content", async () => {
-    // ✅ Tests whitespace validation
-  });
+	it('should reject whitespace-only content', async () => {
+		// ✅ Tests whitespace validation
+	});
 
-  it("should sanitize HTML input", async () => {
-    // ✅ Tests XSS prevention
-  });
+	it('should sanitize HTML input', async () => {
+		// ✅ Tests XSS prevention
+	});
 
-  it("should validate content length", async () => {
-    // ✅ Tests min/max length
-  });
+	it('should validate content length', async () => {
+		// ✅ Tests min/max length
+	});
 });
 ```
 
 **Authentication**:
 
 ```typescript
-describe("Authentication", () => {
-  it("should reject unauthenticated requests", async () => {
-    const response = await POST({
-      request: mockRequest,
-      locals: { user: null }, // No user
-    });
+describe('Authentication', () => {
+	it('should reject unauthenticated requests', async () => {
+		const response = await POST({
+			request: mockRequest,
+			locals: { user: null } // No user
+		});
 
-    // ✅ Verifies 401 Unauthorized
-    expect(response.status).toBe(401);
-  });
+		// ✅ Verifies 401 Unauthorized
+		expect(response.status).toBe(401);
+	});
 
-  it("should accept authenticated requests", async () => {
-    // ✅ Verifies session validation
-  });
+	it('should accept authenticated requests', async () => {
+		// ✅ Verifies session validation
+	});
 });
 ```
 
 **Rate Limiting**:
 
 ```typescript
-describe("Rate Limiting", () => {
-  it("should enforce rate limits", async () => {
-    // ✅ Tests rate limit enforcement
-    // ✅ Tests 429 Too Many Requests
-  });
+describe('Rate Limiting', () => {
+	it('should enforce rate limits', async () => {
+		// ✅ Tests rate limit enforcement
+		// ✅ Tests 429 Too Many Requests
+	});
 });
 ```
 
@@ -628,40 +628,40 @@ describe("Rate Limiting", () => {
 **Core Functionality**:
 
 ```typescript
-it("should subscribe and emit events", () => {
-  const callback = vi.fn();
-  eventBus.subscribe("testEvent", callback);
-  eventBus.emit("testEvent", { data: "test" });
+it('should subscribe and emit events', () => {
+	const callback = vi.fn();
+	eventBus.subscribe('testEvent', callback);
+	eventBus.emit('testEvent', { data: 'test' });
 
-  expect(callback).toHaveBeenCalledWith({ data: "test" });
+	expect(callback).toHaveBeenCalledWith({ data: 'test' });
 });
 ```
 
 **Edge Cases**:
 
 ```typescript
-it("should handle unsubscribe during emit", () => {
-  // ✅ Tests unsubscribe called inside callback
-  // ✅ Tests no errors thrown
+it('should handle unsubscribe during emit', () => {
+	// ✅ Tests unsubscribe called inside callback
+	// ✅ Tests no errors thrown
 });
 
-it("should handle errors in callbacks", () => {
-  // ✅ Tests error isolation
-  // ✅ Tests other callbacks still run
+it('should handle errors in callbacks', () => {
+	// ✅ Tests error isolation
+	// ✅ Tests other callbacks still run
 });
 
-it("should handle rapid events", () => {
-  // ✅ Tests performance
-  // ✅ Tests no event loss
+it('should handle rapid events', () => {
+	// ✅ Tests performance
+	// ✅ Tests no event loss
 });
 ```
 
 **Real-World Scenarios**:
 
 ```typescript
-it("should handle concurrent updates", () => {
-  // ✅ Tests multiple simultaneous emits
-  // ✅ Tests callback ordering
+it('should handle concurrent updates', () => {
+	// ✅ Tests multiple simultaneous emits
+	// ✅ Tests callback ordering
 });
 ```
 
@@ -721,25 +721,25 @@ it("should handle concurrent updates", () => {
 **CRUD Operations**:
 
 ```typescript
-describe("Create Operations", () => {
-  it("should create project", async () => {
-    // ✅ Tests project creation
-    // ✅ Tests data validation
-  });
+describe('Create Operations', () => {
+	it('should create project', async () => {
+		// ✅ Tests project creation
+		// ✅ Tests data validation
+	});
 
-  it("should create task with project reference", async () => {
-    // ✅ Tests foreign key relationships
-  });
+	it('should create task with project reference', async () => {
+		// ✅ Tests foreign key relationships
+	});
 });
 
-describe("Update Operations", () => {
-  it("should update with ID in data field", async () => {
-    // ✅ Tests update by ID
-  });
+describe('Update Operations', () => {
+	it('should update with ID in data field', async () => {
+		// ✅ Tests update by ID
+	});
 
-  it("should update with conditions field", async () => {
-    // ✅ Tests conditional updates
-  });
+	it('should update with conditions field', async () => {
+		// ✅ Tests conditional updates
+	});
 });
 ```
 
@@ -813,24 +813,24 @@ describe('Rollback', () => {
 **Example**:
 
 ```typescript
-it("renders with user ID", () => {
-  render(ArchetypeStep, {
-    props: { userId: "test-id", onNext: vi.fn() },
-  });
+it('renders with user ID', () => {
+	render(ArchetypeStep, {
+		props: { userId: 'test-id', onNext: vi.fn() }
+	});
 
-  expect(screen.getByText("Select Your Archetype")).toBeTruthy();
+	expect(screen.getByText('Select Your Archetype')).toBeTruthy();
 });
 
-it("handles button click", async () => {
-  const mockCallback = vi.fn();
-  render(ArchetypeStep, {
-    props: { userId: "test-id", onNext: mockCallback },
-  });
+it('handles button click', async () => {
+	const mockCallback = vi.fn();
+	render(ArchetypeStep, {
+		props: { userId: 'test-id', onNext: mockCallback }
+	});
 
-  const button = screen.getByRole("button", { name: /next/i });
-  await fireEvent.click(button);
+	const button = screen.getByRole('button', { name: /next/i });
+	await fireEvent.click(button);
 
-  expect(mockCallback).toHaveBeenCalled();
+	expect(mockCallback).toHaveBeenCalled();
 });
 ```
 
@@ -879,27 +879,27 @@ it("handles button click", async () => {
 **Complete Synthesis Flow**:
 
 ```typescript
-describe("Project Synthesis Integration", () => {
-  it("should generate prompt from tasks", () => {
-    // ✅ Tests prompt generation
-    // ✅ Tests task categorization
-    // ✅ Tests context building
-  });
+describe('Project Synthesis Integration', () => {
+	it('should generate prompt from tasks', () => {
+		// ✅ Tests prompt generation
+		// ✅ Tests task categorization
+		// ✅ Tests context building
+	});
 
-  it("should process operations", () => {
-    // ✅ Tests operation parsing
-    // ✅ Tests operation validation
-  });
+	it('should process operations', () => {
+		// ✅ Tests operation parsing
+		// ✅ Tests operation validation
+	});
 
-  it("should consolidate operations", () => {
-    // ✅ Tests duplicate removal
-    // ✅ Tests operation merging
-  });
+	it('should consolidate operations', () => {
+		// ✅ Tests duplicate removal
+		// ✅ Tests operation merging
+	});
 
-  it("should sequence operations correctly", () => {
-    // ✅ Tests operation ordering
-    // ✅ Tests dependency resolution
-  });
+	it('should sequence operations correctly', () => {
+		// ✅ Tests operation ordering
+		// ✅ Tests dependency resolution
+	});
 });
 ```
 
@@ -1492,61 +1492,61 @@ See the [What IS Tested](#what-is-tested---detailed-breakdown) section above for
 **Priority**: P0 - Critical Production Risks
 
 1. **Add Calendar Service Tests** (16 hours)
-   - Test Google Calendar API operations (mocked)
-   - Test timezone conversions
-   - Test RRULE generation
-   - Test error handling and retries
+    - Test Google Calendar API operations (mocked)
+    - Test timezone conversions
+    - Test RRULE generation
+    - Test error handling and retries
 
 2. **Add Calendar Analysis Tests** (12 hours)
-   - Test AI analysis pipeline
-   - Test event filtering
-   - Test suggestion generation
-   - Test confidence scoring
+    - Test AI analysis pipeline
+    - Test event filtering
+    - Test suggestion generation
+    - Test confidence scoring
 
 3. **Add Phase Generation Tests** (12 hours)
-   - Test orchestrator strategy selection
-   - Test each strategy independently
-   - Test calendar-aware scheduling
-   - Test conflict resolution
+    - Test orchestrator strategy selection
+    - Test each strategy independently
+    - Test calendar-aware scheduling
+    - Test conflict resolution
 
 4. **Add Project Service Tests** (10 hours)
-   - Test CRUD operations
-   - Test cache behavior
-   - Test real-time updates
+    - Test CRUD operations
+    - Test cache behavior
+    - Test real-time updates
 
 5. **Add Brain Dump Background Service Tests** (10 hours)
-   - Test auto-accept flow
-   - Test session storage
-   - Test retry logic
-   - Test state transitions
+    - Test auto-accept flow
+    - Test session storage
+    - Test retry logic
+    - Test state transitions
 
 ### Short-Term Actions (Week 3-5)
 
 **Priority**: P1 - High Production Risk
 
 6. **Add Critical API Endpoint Tests** (20 hours)
-   - Test calendar endpoints (5 routes)
-   - Test project endpoints (10 routes)
-   - Test task endpoints (8 routes)
-   - Test daily brief endpoints (3 routes)
-   - Focus on: validation, auth, error handling
+    - Test calendar endpoints (5 routes)
+    - Test project endpoints (10 routes)
+    - Test task endpoints (8 routes)
+    - Test daily brief endpoints (3 routes)
+    - Focus on: validation, auth, error handling
 
 7. **Add Stripe Service Tests** (8 hours)
-   - Test payment flows
-   - Test webhook signature validation
-   - Mock Stripe API
+    - Test payment flows
+    - Test webhook signature validation
+    - Mock Stripe API
 
 8. **Add Brain Dump UI Component Tests** (16 hours)
-   - Test BrainDumpModal (critical)
-   - Test RecordingView
-   - Test OperationsList
-   - Use Svelte Testing Library
+    - Test BrainDumpModal (critical)
+    - Test RecordingView
+    - Test OperationsList
+    - Use Svelte Testing Library
 
 9. **Add Store Tests** (12 hours)
-   - Test brain-dump-v2.store (critical)
-   - Test backgroundJobs.store
-   - Test userContext.store
-   - Focus on Svelte 5 runes reactivity
+    - Test brain-dump-v2.store (critical)
+    - Test backgroundJobs.store
+    - Test userContext.store
+    - Focus on Svelte 5 runes reactivity
 
 ### Medium-Term Actions (Week 6-8)
 

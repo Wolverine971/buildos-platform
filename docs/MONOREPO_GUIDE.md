@@ -107,15 +107,15 @@ Defined in `turbo.json`:
 
 ```json
 {
-  "pipeline": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".svelte-kit/**", "dist/**"]
-    },
-    "test": {
-      "dependsOn": ["build"]
-    }
-  }
+	"pipeline": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [".svelte-kit/**", "dist/**"]
+		},
+		"test": {
+			"dependsOn": ["build"]
+		}
+	}
 }
 ```
 
@@ -156,10 +156,10 @@ Apps reference shared packages in their `package.json`:
 
 ```json
 {
-  "dependencies": {
-    "@buildos/shared-types": "workspace:*",
-    "@buildos/supabase-client": "workspace:*"
-  }
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
+		"@buildos/supabase-client": "workspace:*"
+	}
 }
 ```
 

@@ -52,19 +52,19 @@ https://build-os.com/sms/monitoring
 **Status Indicators:**
 
 - **🟢 Healthy** (Green): All systems operational
-  - Delivery rate ≥ 90%
-  - LLM success rate ≥ 50%
-  - No critical alerts
+    - Delivery rate ≥ 90%
+    - LLM success rate ≥ 50%
+    - No critical alerts
 
 - **🟡 Degraded** (Yellow): Performance below targets
-  - Delivery rate 75-90% OR
-  - LLM success rate 25-50% OR
-  - Warning alerts active
+    - Delivery rate 75-90% OR
+    - LLM success rate 25-50% OR
+    - Warning alerts active
 
 - **🔴 Critical** (Red): Significant issues detected
-  - Delivery rate < 75% OR
-  - LLM success rate < 25% OR
-  - Critical alerts active
+    - Delivery rate < 75% OR
+    - LLM success rate < 25% OR
+    - Critical alerts active
 
 ### 2. Metrics Summary
 
@@ -441,37 +441,37 @@ The dashboard is fully responsive and works on mobile devices:
 ### Daily Monitoring
 
 1. **Morning Check** (5 minutes):
-   - Review system health status
-   - Check any overnight alerts
-   - Verify delivery rate is healthy
-   - Review LLM cost trends
+    - Review system health status
+    - Check any overnight alerts
+    - Verify delivery rate is healthy
+    - Review LLM cost trends
 
 2. **Throughout Day** (as needed):
-   - Keep dashboard open with auto-refresh ON
-   - Respond to critical alerts immediately
-   - Investigate degraded status within 1 hour
+    - Keep dashboard open with auto-refresh ON
+    - Respond to critical alerts immediately
+    - Investigate degraded status within 1 hour
 
 3. **End of Day** (5 minutes):
-   - Review daily totals
-   - Resolve any remaining alerts
-   - Check for unusual patterns
+    - Review daily totals
+    - Resolve any remaining alerts
+    - Check for unusual patterns
 
 ### Weekly Review
 
 1. **Trend Analysis**:
-   - Compare delivery rates week-over-week
-   - Review LLM cost trends
-   - Analyze failure patterns
+    - Compare delivery rates week-over-week
+    - Review LLM cost trends
+    - Analyze failure patterns
 
 2. **Optimization**:
-   - Tune alert thresholds based on baselines
-   - Identify cost reduction opportunities
-   - Review and resolve old alerts
+    - Tune alert thresholds based on baselines
+    - Identify cost reduction opportunities
+    - Review and resolve old alerts
 
 3. **Documentation**:
-   - Document any recurring issues
-   - Update runbooks
-   - Share insights with team
+    - Document any recurring issues
+    - Update runbooks
+    - Share insights with team
 
 ---
 

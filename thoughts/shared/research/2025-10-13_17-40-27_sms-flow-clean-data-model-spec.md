@@ -4,22 +4,14 @@ researcher: Claude Code
 git_commit: 6e0f4fcff7e4b19f003d75ccb8634f8f2b78b41a
 branch: main
 repository: buildos-platform
-topic: "Clean SMS Flow Data Model Specification - Post-Refactor Architecture"
-tags:
-  [
-    specification,
-    sms,
-    notifications,
-    data-model,
-    architecture,
-    user_sms_preferences,
-  ]
+topic: 'Clean SMS Flow Data Model Specification - Post-Refactor Architecture'
+tags: [specification, sms, notifications, data-model, architecture, user_sms_preferences]
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude Code
 related_docs:
-  - thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md
-  - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
+    - thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md
+    - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
 ---
 
 # Clean SMS Flow Data Model Specification
@@ -317,19 +309,19 @@ CREATE TABLE user_sms_preferences (
 // apps/worker/src/workers/brief/briefWorker.ts
 
 if (notificationPrefs?.should_sms_daily_brief) {
-  // Check phone verification
-  const smsPrefs = await getSMSPreferences(userId);
+	// Check phone verification
+	const smsPrefs = await getSMSPreferences(userId);
 
-  if (smsPrefs.phone_verified && !smsPrefs.opted_out) {
-    // Check rate limits
-    if (smsPrefs.daily_sms_count < smsPrefs.daily_sms_limit) {
-      // Check quiet hours
-      if (!isInQuietHours(smsPrefs)) {
-        // Send SMS
-        await sendDailyBriefSMS(userId, briefId);
-      }
-    }
-  }
+	if (smsPrefs.phone_verified && !smsPrefs.opted_out) {
+		// Check rate limits
+		if (smsPrefs.daily_sms_count < smsPrefs.daily_sms_limit) {
+			// Check quiet hours
+			if (!isInQuietHours(smsPrefs)) {
+				// Send SMS
+				await sendDailyBriefSMS(userId, briefId);
+			}
+		}
+	}
 }
 ```
 
@@ -452,52 +444,43 @@ WHERE evening_recap_enabled = true
 ```typescript
 // apps/worker/src/lib/utils/quietHoursChecker.ts
 
-import { utcToZonedTime } from "date-fns-tz";
+import { utcToZonedTime } from 'date-fns-tz';
 
-export function isInQuietHours(
-  smsPrefs: UserSMSPreferences,
-  sendTime: Date = new Date(),
-): boolean {
-  if (!smsPrefs.quiet_hours_start || !smsPrefs.quiet_hours_end) {
-    return false; // No quiet hours set
-  }
+export function isInQuietHours(smsPrefs: UserSMSPreferences, sendTime: Date = new Date()): boolean {
+	if (!smsPrefs.quiet_hours_start || !smsPrefs.quiet_hours_end) {
+		return false; // No quiet hours set
+	}
 
-  const timezone = smsPrefs.timezone || "UTC";
-  const timeInUserTz = utcToZonedTime(sendTime, timezone);
-  const currentMinutes =
-    timeInUserTz.getHours() * 60 + timeInUserTz.getMinutes();
+	const timezone = smsPrefs.timezone || 'UTC';
+	const timeInUserTz = utcToZonedTime(sendTime, timezone);
+	const currentMinutes = timeInUserTz.getHours() * 60 + timeInUserTz.getMinutes();
 
-  const [startHour, startMin] = smsPrefs.quiet_hours_start
-    .split(":")
-    .map(Number);
-  const [endHour, endMin] = smsPrefs.quiet_hours_end.split(":").map(Number);
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
+	const [startHour, startMin] = smsPrefs.quiet_hours_start.split(':').map(Number);
+	const [endHour, endMin] = smsPrefs.quiet_hours_end.split(':').map(Number);
+	const startMinutes = startHour * 60 + startMin;
+	const endMinutes = endHour * 60 + endMin;
 
-  // Handle overnight quiet hours (e.g., 22:00 - 08:00)
-  if (startMinutes < endMinutes) {
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  } else {
-    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-  }
+	// Handle overnight quiet hours (e.g., 22:00 - 08:00)
+	if (startMinutes < endMinutes) {
+		return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+	} else {
+		return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+	}
 }
 
-export function calculateQuietHoursEnd(
-  quietHoursEnd: string,
-  timezone: string,
-): Date {
-  const [endHour, endMin] = quietHoursEnd.split(":").map(Number);
-  const now = new Date();
-  const endTime = utcToZonedTime(now, timezone);
+export function calculateQuietHoursEnd(quietHoursEnd: string, timezone: string): Date {
+	const [endHour, endMin] = quietHoursEnd.split(':').map(Number);
+	const now = new Date();
+	const endTime = utcToZonedTime(now, timezone);
 
-  endTime.setHours(endHour, endMin, 0, 0);
+	endTime.setHours(endHour, endMin, 0, 0);
 
-  // If end time already passed today, schedule for tomorrow
-  if (endTime <= now) {
-    endTime.setDate(endTime.getDate() + 1);
-  }
+	// If end time already passed today, schedule for tomorrow
+	if (endTime <= now) {
+		endTime.setDate(endTime.getDate() + 1);
+	}
 
-  return zonedTimeToUtc(endTime, timezone);
+	return zonedTimeToUtc(endTime, timezone);
 }
 ```
 
@@ -523,57 +506,57 @@ export function calculateQuietHoursEnd(
 ```typescript
 // apps/worker/src/lib/utils/rateLimitChecker.ts
 
-import { format, parseISO } from "date-fns";
+import { format, parseISO } from 'date-fns';
 
 export async function checkAndIncrementSMSCount(
-  userId: string,
-  supabase: SupabaseClient,
+	userId: string,
+	supabase: SupabaseClient
 ): Promise<{ allowed: boolean; reason?: string }> {
-  const { data: smsPrefs, error } = await supabase
-    .from("user_sms_preferences")
-    .select("daily_sms_count, daily_sms_limit, daily_count_reset_at")
-    .eq("user_id", userId)
-    .single();
+	const { data: smsPrefs, error } = await supabase
+		.from('user_sms_preferences')
+		.select('daily_sms_count, daily_sms_limit, daily_count_reset_at')
+		.eq('user_id', userId)
+		.single();
 
-  if (error || !smsPrefs) {
-    return { allowed: false, reason: "SMS preferences not found" };
-  }
+	if (error || !smsPrefs) {
+		return { allowed: false, reason: 'SMS preferences not found' };
+	}
 
-  // Check if count needs reset
-  const today = format(new Date(), "yyyy-MM-dd");
-  const lastReset = smsPrefs.daily_count_reset_at
-    ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd")
-    : null;
+	// Check if count needs reset
+	const today = format(new Date(), 'yyyy-MM-dd');
+	const lastReset = smsPrefs.daily_count_reset_at
+		? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd')
+		: null;
 
-  let currentCount = smsPrefs.daily_sms_count || 0;
-  const limit = smsPrefs.daily_sms_limit || 10;
+	let currentCount = smsPrefs.daily_sms_count || 0;
+	const limit = smsPrefs.daily_sms_limit || 10;
 
-  if (!lastReset || lastReset !== today) {
-    // Reset count for new day
-    currentCount = 0;
-    await supabase
-      .from("user_sms_preferences")
-      .update({
-        daily_sms_count: 0,
-        daily_count_reset_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
-  }
+	if (!lastReset || lastReset !== today) {
+		// Reset count for new day
+		currentCount = 0;
+		await supabase
+			.from('user_sms_preferences')
+			.update({
+				daily_sms_count: 0,
+				daily_count_reset_at: new Date().toISOString()
+			})
+			.eq('user_id', userId);
+	}
 
-  if (currentCount >= limit) {
-    return {
-      allowed: false,
-      reason: `Daily SMS limit reached (${currentCount}/${limit})`,
-    };
-  }
+	if (currentCount >= limit) {
+		return {
+			allowed: false,
+			reason: `Daily SMS limit reached (${currentCount}/${limit})`
+		};
+	}
 
-  // Increment count BEFORE sending (prevents race conditions)
-  await supabase
-    .from("user_sms_preferences")
-    .update({ daily_sms_count: currentCount + 1 })
-    .eq("user_id", userId);
+	// Increment count BEFORE sending (prevents race conditions)
+	await supabase
+		.from('user_sms_preferences')
+		.update({ daily_sms_count: currentCount + 1 })
+		.eq('user_id', userId);
 
-  return { allowed: true };
+	return { allowed: true };
 }
 ```
 
@@ -599,27 +582,27 @@ export async function checkAndIncrementSMSCount(
 // packages/shared-types/src/index.ts
 
 export interface UserNotificationPreferences {
-  id: string;
-  user_id: string;
-  event_type: string;
+	id: string;
+	user_id: string;
+	event_type: string;
 
-  // User-Level Daily Brief (event_type='user')
-  should_email_daily_brief: boolean;
-  should_sms_daily_brief: boolean;
+	// User-Level Daily Brief (event_type='user')
+	should_email_daily_brief: boolean;
+	should_sms_daily_brief: boolean;
 
-  // Event-Based Notifications
-  push_enabled: boolean;
-  in_app_enabled: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
+	// Event-Based Notifications
+	push_enabled: boolean;
+	in_app_enabled: boolean;
+	email_enabled: boolean;
+	sms_enabled: boolean;
 
-  created_at: string;
-  updated_at: string;
+	created_at: string;
+	updated_at: string;
 }
 
 export type DailyBriefNotificationPrefs = Pick<
-  UserNotificationPreferences,
-  "should_email_daily_brief" | "should_sms_daily_brief"
+	UserNotificationPreferences,
+	'should_email_daily_brief' | 'should_sms_daily_brief'
 >;
 ```
 
@@ -631,49 +614,46 @@ export type DailyBriefNotificationPrefs = Pick<
 // packages/shared-types/src/index.ts
 
 export interface UserSMSPreferences {
-  id: string;
-  user_id: string;
+	id: string;
+	user_id: string;
 
-  // Phone Verification
-  phone_number: string | null;
-  phone_verified: boolean;
-  phone_verified_at: string | null;
-  opted_out: boolean;
-  opted_out_at: string | null;
-  opt_out_reason: string | null;
+	// Phone Verification
+	phone_number: string | null;
+	phone_verified: boolean;
+	phone_verified_at: string | null;
+	opted_out: boolean;
+	opted_out_at: string | null;
+	opt_out_reason: string | null;
 
-  // SMS Feature Toggles
-  event_reminders_enabled: boolean;
-  event_reminder_lead_time_minutes: number;
-  morning_kickoff_enabled: boolean;
-  morning_kickoff_time: string; // TIME format
-  evening_recap_enabled: boolean;
+	// SMS Feature Toggles
+	event_reminders_enabled: boolean;
+	event_reminder_lead_time_minutes: number;
+	morning_kickoff_enabled: boolean;
+	morning_kickoff_time: string; // TIME format
+	evening_recap_enabled: boolean;
 
-  // Safety Controls
-  quiet_hours_start: string | null; // TIME format
-  quiet_hours_end: string | null; // TIME format
-  daily_sms_limit: number;
-  daily_sms_count: number;
-  daily_count_reset_at: string | null;
+	// Safety Controls
+	quiet_hours_start: string | null; // TIME format
+	quiet_hours_end: string | null; // TIME format
+	daily_sms_limit: number;
+	daily_sms_count: number;
+	daily_count_reset_at: string | null;
 
-  // Metadata
-  created_at: string;
-  updated_at: string;
+	// Metadata
+	created_at: string;
+	updated_at: string;
 }
 
 // Helper type for phone verification check
 export type PhoneVerificationStatus = Pick<
-  UserSMSPreferences,
-  "phone_number" | "phone_verified" | "opted_out"
+	UserSMSPreferences,
+	'phone_number' | 'phone_verified' | 'opted_out'
 >;
 
 // Helper type for safety controls
 export type SMSSafetyControls = Pick<
-  UserSMSPreferences,
-  | "quiet_hours_start"
-  | "quiet_hours_end"
-  | "daily_sms_limit"
-  | "daily_sms_count"
+	UserSMSPreferences,
+	'quiet_hours_start' | 'quiet_hours_end' | 'daily_sms_limit' | 'daily_sms_count'
 >;
 ```
 
@@ -746,23 +726,23 @@ Response:
 GET / api / sms / preferences;
 
 Response: {
-  // Phone Verification
-  phone_number: string | null;
-  phone_verified: boolean;
-  opted_out: boolean;
+	// Phone Verification
+	phone_number: string | null;
+	phone_verified: boolean;
+	opted_out: boolean;
 
-  // Feature Toggles
-  event_reminders_enabled: boolean;
-  event_reminder_lead_time_minutes: number;
-  morning_kickoff_enabled: boolean;
-  morning_kickoff_time: string;
-  evening_recap_enabled: boolean;
+	// Feature Toggles
+	event_reminders_enabled: boolean;
+	event_reminder_lead_time_minutes: number;
+	morning_kickoff_enabled: boolean;
+	morning_kickoff_time: string;
+	evening_recap_enabled: boolean;
 
-  // Safety Controls
-  quiet_hours_start: string | null;
-  quiet_hours_end: string | null;
-  daily_sms_limit: number;
-  daily_sms_count: number;
+	// Safety Controls
+	quiet_hours_start: string | null;
+	quiet_hours_end: string | null;
+	daily_sms_limit: number;
+	daily_sms_count: number;
 }
 ```
 
@@ -808,8 +788,8 @@ Response:
 ```typescript
 // If user enables SMS but phone not verified:
 if (should_sms_daily_brief && !phone_verified) {
-  showPhoneVerificationModal();
-  should_sms_daily_brief = false; // Revert until verified
+	showPhoneVerificationModal();
+	should_sms_daily_brief = false; // Revert until verified
 }
 ```
 
@@ -822,19 +802,19 @@ if (should_sms_daily_brief && !phone_verified) {
 **Sections**:
 
 1. **Phone Verification** (Top section - required)
-   - Display verified phone number or verification button
-   - Show opt-out status
+    - Display verified phone number or verification button
+    - Show opt-out status
 
 2. **SMS Features** (Main section)
-   - [ ] Calendar Event Reminders (toggle) ✅ Working
-     - Lead time slider (5, 10, 15, 30, 60 minutes)
-   - [ ] Morning Kickoff (toggle + time picker) ⏳ Coming Soon
-   - [ ] Evening Recap (toggle) ⏳ Coming Soon
+    - [ ] Calendar Event Reminders (toggle) ✅ Working
+        - Lead time slider (5, 10, 15, 30, 60 minutes)
+    - [ ] Morning Kickoff (toggle + time picker) ⏳ Coming Soon
+    - [ ] Evening Recap (toggle) ⏳ Coming Soon
 
 3. **Safety Settings** (Advanced section)
-   - Quiet hours (start time, end time pickers)
-   - Daily SMS limit (number input, 1-50 range)
-   - Current SMS count / limit display
+    - Quiet hours (start time, end time pickers)
+    - Daily SMS limit (number input, 1-50 range)
+    - Current SMS count / limit display
 
 **Design Notes**:
 
@@ -880,22 +860,22 @@ if (should_sms_daily_brief && !phone_verified) {
 ### Key Metrics to Track
 
 1. **SMS Delivery Success Rate**
-   - Total SMS sent vs delivered
-   - Failed SMS reasons
+    - Total SMS sent vs delivered
+    - Failed SMS reasons
 
 2. **Quiet Hours Violations**
-   - Should be 0 after bug fixes deployed
+    - Should be 0 after bug fixes deployed
 
 3. **Rate Limit Hits**
-   - How many users hit daily limits
-   - Adjust defaults if too restrictive
+    - How many users hit daily limits
+    - Adjust defaults if too restrictive
 
 4. **Phone Verification Rate**
-   - % of users who verify phone numbers
+    - % of users who verify phone numbers
 
 5. **Opt-Out Rate**
-   - Track why users opt out
-   - Improve SMS experience
+    - Track why users opt out
+    - Improve SMS experience
 
 ### Monitoring Queries
 

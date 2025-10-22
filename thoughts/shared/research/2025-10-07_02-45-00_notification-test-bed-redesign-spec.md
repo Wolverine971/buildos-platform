@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 6f9c8dc2b31bed0d2dd4f601c0bb7999f134c2c7
 branch: main
 repository: buildos-platform
-topic: "Notification Test-Bed Page Redesign Specification"
+topic: 'Notification Test-Bed Page Redesign Specification'
 tags: [research, notifications, admin, ui-spec, test-bed]
 status: complete
 last_updated: 2025-10-07
@@ -106,11 +106,11 @@ The current notification test-bed page uses a linear 4-step flow that's function
 - Search by email, name, or user ID
 - Display search results in a dropdown or inline list
 - Show key user info in results:
-  - Avatar/initials
-  - Name and email
-  - Admin badge if applicable
-  - Channel availability indicators (📱 Push, 📧 Email, 📞 SMS)
-  - Last activity indicator
+    - Avatar/initials
+    - Name and email
+    - Admin badge if applicable
+    - Channel availability indicators (📱 Push, 📧 Email, 📞 SMS)
+    - Last activity indicator
 
 **Behavior:**
 
@@ -140,13 +140,13 @@ The current notification test-bed page uses a linear 4-step flow that's function
 
 - Table showing event types and channel preferences
 - Format:
-  ```
-  Event Type              | Push | Email | SMS | In-App | Subscribed
-  -------------------------|------|-------|-----|--------|------------
-  brief.completed          | ✓    | ✓     | ✗   | ✓      | Yes
-  brief.failed             | ✓    | ✓     | ✗   | ✓      | Yes
-  task.due_soon            | ✗    | ✓     | ✗   | ✓      | No
-  ```
+    ```
+    Event Type              | Push | Email | SMS | In-App | Subscribed
+    -------------------------|------|-------|-----|--------|------------
+    brief.completed          | ✓    | ✓     | ✗   | ✓      | Yes
+    brief.failed             | ✓    | ✓     | ✗   | ✓      | Yes
+    task.due_soon            | ✗    | ✓     | ✗   | ✓      | No
+    ```
 - Show quiet hours if configured
 - Show rate limits if configured
 
@@ -221,18 +221,18 @@ The current notification test-bed page uses a linear 4-step flow that's function
 
 - Dynamic form fields based on selected event type
 - Use typed payload interfaces from `notification.types.ts`:
-  - `UserSignupEventPayload`
-  - `BriefCompletedEventPayload`
-  - `BriefFailedEventPayload`
-  - `BrainDumpProcessedEventPayload`
-  - `TaskDueSoonEventPayload`
-  - `ProjectPhaseScheduledEventPayload`
-  - `CalendarSyncFailedEventPayload`
+    - `UserSignupEventPayload`
+    - `BriefCompletedEventPayload`
+    - `BriefFailedEventPayload`
+    - `BrainDumpProcessedEventPayload`
+    - `TaskDueSoonEventPayload`
+    - `ProjectPhaseScheduledEventPayload`
+    - `CalendarSyncFailedEventPayload`
 - Smart field types:
-  - Text inputs for strings
-  - Number inputs for counts
-  - Date pickers for dates
-  - Selects for enums
+    - Text inputs for strings
+    - Number inputs for counts
+    - Date pickers for dates
+    - Selects for enums
 - Validation based on types
 - "Use Real Data" button - populates from user's actual records
 
@@ -248,8 +248,8 @@ The current notification test-bed page uses a linear 4-step flow that's function
 
 - "Load Sample Data" button (current behavior)
 - "Load Real User Data" button (NEW - powerful!)
-  - Example: For `task.due_soon`, load a real upcoming task
-  - Example: For `brief.completed`, load today's brief data
+    - Example: For `task.due_soon`, load a real upcoming task
+    - Example: For `brief.completed`, load today's brief data
 - Field descriptions/tooltips
 - Inline validation errors
 
@@ -345,21 +345,21 @@ Sent 2:45 PM
 **Primary Actions:**
 
 - **"Send Test Notification"** button (primary CTA)
-  - Confirm dialog: "Send [event_type] to [user_email] via [channels]?"
-  - Shows count of notifications (1 event × N channels)
-  - Validates all required fields
+    - Confirm dialog: "Send [event_type] to [user_email] via [channels]?"
+    - Shows count of notifications (1 event × N channels)
+    - Validates all required fields
 - **"Copy Configuration"** button
-  - Copies payload as JSON to clipboard
-  - Useful for debugging or documentation
+    - Copies payload as JSON to clipboard
+    - Useful for debugging or documentation
 
 **Secondary Actions:**
 
 - **"Save as Template"** (NEW)
-  - Save current configuration for later use
-  - Name the template
-  - Templates stored per admin user
+    - Save current configuration for later use
+    - Name the template
+    - Templates stored per admin user
 - **"Load Template"** dropdown
-  - Quick access to saved configurations
+    - Quick access to saved configurations
 
 **After Sending:**
 
@@ -437,9 +437,9 @@ Sent 2:45 PM
 
 - Start with simple mode (select user, event type, send)
 - Advanced options behind "Advanced" toggle:
-  - JSON editor mode
-  - Custom payload fields
-  - Rate limit override (admin only)
+    - JSON editor mode
+    - Custom payload fields
+    - Rate limit override (admin only)
 - Context panel expandable/collapsible
 - History section collapsed by default
 
@@ -466,19 +466,19 @@ Sent 2:45 PM
 #### New Services
 
 1. **`notification-context.service.ts`**
-   - `getUserNotificationContext(userId)` - Get full notification context
-   - `getUserSubscriptions(userId)` - Get user's event subscriptions
-   - `getUserChannelCapabilities(userId)` - Check push/sms availability
-   - `getRecentNotifications(userId, limit)` - Last N notifications
+    - `getUserNotificationContext(userId)` - Get full notification context
+    - `getUserSubscriptions(userId)` - Get user's event subscriptions
+    - `getUserChannelCapabilities(userId)` - Check push/sms availability
+    - `getRecentNotifications(userId, limit)` - Last N notifications
 
 2. **`notification-preview.service.ts`**
-   - `generatePreview(eventType, payload, channel)` - Generate preview
-   - `formatNotificationForChannel(event, channel)` - Format for specific channel
+    - `generatePreview(eventType, payload, channel)` - Generate preview
+    - `formatNotificationForChannel(event, channel)` - Format for specific channel
 
 3. **`notification-template.service.ts`** (optional)
-   - `saveTemplate(template)` - Save configuration
-   - `loadTemplate(templateId)` - Load saved configuration
-   - `listTemplates()` - Get all templates
+    - `saveTemplate(template)` - Save configuration
+    - `loadTemplate(templateId)` - Load saved configuration
+    - `listTemplates()` - Get all templates
 
 #### API Endpoints
 
@@ -499,45 +499,45 @@ Sent 2:45 PM
 
 1. **User Selection:**
 
-   ```
-   User types in search → Debounce 300ms → API call
-   → Display results → User clicks
-   → Load full context (parallel API calls):
-     - Basic user info
-     - Notification preferences
-     - Channel capabilities
-     - Recent notifications
-   ```
+    ```
+    User types in search → Debounce 300ms → API call
+    → Display results → User clicks
+    → Load full context (parallel API calls):
+      - Basic user info
+      - Notification preferences
+      - Channel capabilities
+      - Recent notifications
+    ```
 
 2. **Event Type Selection:**
 
-   ```
-   User selects event type
-   → Load payload template
-   → Check user's subscription status
-   → Update channel selection defaults
-   → Generate preview
-   ```
+    ```
+    User selects event type
+    → Load payload template
+    → Check user's subscription status
+    → Update channel selection defaults
+    → Generate preview
+    ```
 
 3. **Configuration:**
 
-   ```
-   User edits payload
-   → Validate payload
-   → Update preview (real-time or on blur)
-   ```
+    ```
+    User edits payload
+    → Validate payload
+    → Update preview (real-time or on blur)
+    ```
 
 4. **Sending:**
-   ```
-   User clicks send
-   → Validate all fields
-   → Show confirmation dialog
-   → Send API request
-   → Show loading state
-   → Success: Show success message + event ID
-   → Error: Show error message with retry option
-   → Update history
-   ```
+    ```
+    User clicks send
+    → Validate all fields
+    → Show confirmation dialog
+    → Send API request
+    → Show loading state
+    → Success: Show success message + event ID
+    → Error: Show error message with retry option
+    → Update history
+    ```
 
 ### Migration Plan
 
@@ -671,28 +671,28 @@ These patterns should be applied to the notification test-bed.
 ## Open Questions
 
 1. **Template Management:**
-   - Should templates be user-specific or global?
-   - Should admins be able to share templates?
+    - Should templates be user-specific or global?
+    - Should admins be able to share templates?
 
 2. **Real Data Loading:**
-   - How to handle when user has no relevant data (e.g., no briefs)?
-   - Should we create dummy data or just show validation error?
+    - How to handle when user has no relevant data (e.g., no briefs)?
+    - Should we create dummy data or just show validation error?
 
 3. **Rate Limiting:**
-   - Should admins be able to override rate limits in test mode?
-   - Should test notifications count against rate limits?
+    - Should admins be able to override rate limits in test mode?
+    - Should test notifications count against rate limits?
 
 4. **Preview Accuracy:**
-   - Should preview use actual notification worker logic?
-   - How to handle dynamic content (e.g., LLM-generated text)?
+    - Should preview use actual notification worker logic?
+    - How to handle dynamic content (e.g., LLM-generated text)?
 
 5. **Multi-Channel Sending:**
-   - Should we send to all selected channels simultaneously or sequentially?
-   - How to handle partial failures (e.g., email succeeds, SMS fails)?
+    - Should we send to all selected channels simultaneously or sequentially?
+    - How to handle partial failures (e.g., email succeeds, SMS fails)?
 
 6. **History & Tracking:**
-   - Should test notifications be marked differently in logs?
-   - Should there be a separate test history vs production history?
+    - Should test notifications be marked differently in logs?
+    - Should there be a separate test history vs production history?
 
 ## Success Metrics
 

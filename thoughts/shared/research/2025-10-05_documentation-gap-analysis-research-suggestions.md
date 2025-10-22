@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: ac3926bfd8b265462ed239421d7cd1573b489972
 branch: main
 repository: buildos-platform
-topic: "Documentation Gap Analysis & Research Suggestions for BuildOS"
+topic: 'Documentation Gap Analysis & Research Suggestions for BuildOS'
 tags: [research, documentation, gaps, suggestions, meta]
 status: complete
 last_updated: 2025-10-05
@@ -77,26 +77,26 @@ These are **foundational architectural topics** that exist in code but lack comp
 **Research Needed**:
 
 - **ADR-002: Dual Processing Architecture** - Document the decision to process brain dumps with parallel context + task extraction
-  - Why dual processing vs single LLM call?
-  - Performance implications (token usage, latency)
-  - Accuracy improvements
-  - When to use dual vs single processing (thresholds: 500 chars, 5000 chars, 8000 chars combined)
-  - Trade-offs and alternatives considered
+    - Why dual processing vs single LLM call?
+    - Performance implications (token usage, latency)
+    - Accuracy improvements
+    - When to use dual vs single processing (thresholds: 500 chars, 5000 chars, 8000 chars combined)
+    - Trade-offs and alternatives considered
 
 - **ADR-003: Project Calendars** - Document the calendar-per-project design
-  - Why separate calendars vs single unified calendar?
-  - Google Calendar integration architecture
-  - Sync strategy and conflicts
-  - Performance and scalability
-  - User experience implications
+    - Why separate calendars vs single unified calendar?
+    - Google Calendar integration architecture
+    - Sync strategy and conflicts
+    - Performance and scalability
+    - User experience implications
 
 - **Additional ADRs to Create**:
-  - ADR-004: Supabase Queue vs Redis/BullMQ
-  - ADR-005: Svelte 5 Runes Migration
-  - ADR-006: Monorepo Architecture (Turborepo)
-  - ADR-007: LLM Provider Selection (OpenAI, DeepSeek, OpenRouter)
-  - ADR-008: Real-time vs Polling for Updates
-  - ADR-009: Client-Side vs Server-Side Rendering Strategy
+    - ADR-004: Supabase Queue vs Redis/BullMQ
+    - ADR-005: Svelte 5 Runes Migration
+    - ADR-006: Monorepo Architecture (Turborepo)
+    - ADR-007: LLM Provider Selection (OpenAI, DeepSeek, OpenRouter)
+    - ADR-008: Real-time vs Polling for Updates
+    - ADR-009: Client-Side vs Server-Side Rendering Strategy
 
 **Files to Reference**:
 
@@ -115,27 +115,27 @@ These are **foundational architectural topics** that exist in code but lack comp
 **Research Needed**:
 
 - **C4 Model Diagrams**:
-  - Level 1: System Context (BuildOS in the broader ecosystem)
-  - Level 2: Container Diagram (Web App, Worker, Supabase, External APIs)
-  - Level 3: Component Diagrams (major features like brain dump, calendar, notifications)
-  - Level 4: Code Diagrams (key classes and interactions)
+    - Level 1: System Context (BuildOS in the broader ecosystem)
+    - Level 2: Container Diagram (Web App, Worker, Supabase, External APIs)
+    - Level 3: Component Diagrams (major features like brain dump, calendar, notifications)
+    - Level 4: Code Diagrams (key classes and interactions)
 
 - **Data Flow Diagrams**:
-  - Brain dump processing flow (user input → AI processing → database → UI update)
-  - Daily brief generation flow (scheduler → worker → email delivery)
-  - Calendar sync flow (Google Calendar ↔ BuildOS ↔ Supabase)
-  - Notification system flow (trigger → queue → display → user action)
+    - Brain dump processing flow (user input → AI processing → database → UI update)
+    - Daily brief generation flow (scheduler → worker → email delivery)
+    - Calendar sync flow (Google Calendar ↔ BuildOS ↔ Supabase)
+    - Notification system flow (trigger → queue → display → user action)
 
 - **Sequence Diagrams**:
-  - User creates brain dump with streaming
-  - Background task processing lifecycle
-  - Real-time subscription updates
-  - OAuth flow (Google Sign-In)
+    - User creates brain dump with streaming
+    - Background task processing lifecycle
+    - Real-time subscription updates
+    - OAuth flow (Google Sign-In)
 
 - **Entity Relationship Diagrams (ERDs)**:
-  - Complete database schema visualization
-  - Table relationships
-  - RLS policies overview
+    - Complete database schema visualization
+    - Table relationships
+    - RLS policies overview
 
 **Tools to Consider**:
 
@@ -523,18 +523,18 @@ Third-party integrations that need comprehensive documentation or deeper explora
 **Research Needed**:
 
 - **LLM Provider Comparison**: OpenAI GPT-4 vs DeepSeek vs Claude vs Gemini
-  - Cost per million tokens
-  - Quality comparison for brain dump processing
-  - Latency comparison
-  - Reliability and uptime
+    - Cost per million tokens
+    - Quality comparison for brain dump processing
+    - Latency comparison
+    - Reliability and uptime
 - **Smart LLM Service Architecture** (Worker has this, web might too)
-  - Multi-provider pooling
-  - Automatic fallback
-  - Cost optimization strategies
+    - Multi-provider pooling
+    - Automatic fallback
+    - Cost optimization strategies
 - **Prompt Engineering Best Practices**:
-  - Token optimization techniques
-  - Streaming vs non-streaming trade-offs
-  - Temperature and parameter tuning
+    - Token optimization techniques
+    - Streaming vs non-streaming trade-offs
+    - Temperature and parameter tuning
 - **Future Research**: Fine-tuning models for BuildOS-specific tasks
 
 **Files to Reference**:
@@ -557,10 +557,10 @@ Third-party integrations that need comprehensive documentation or deeper explora
 **Research Opportunities**:
 
 - **Advanced Billing Scenarios**:
-  - Proration handling for mid-cycle upgrades/downgrades
-  - Volume-based pricing models
-  - Usage-based billing (e.g., per brain dump or LLM token)
-  - Annual vs monthly pricing optimization
+    - Proration handling for mid-cycle upgrades/downgrades
+    - Volume-based pricing models
+    - Usage-based billing (e.g., per brain dump or LLM token)
+    - Annual vs monthly pricing optimization
 - **Revenue Recognition**: When to recognize revenue (ASC 606 compliance)
 - **Tax Handling**: Stripe Tax integration for global compliance
 - **Failed Payment Recovery**: Advanced dunning strategies beyond current implementation
@@ -713,11 +713,11 @@ Third-party integrations that need comprehensive documentation or deeper explora
 - What analytics are currently tracked?
 - Mixpanel, Amplitude, PostHog, or custom solution?
 - Key product metrics to track:
-  - Brain dump creation rate
-  - Task completion rate
-  - Daily brief engagement
-  - Feature adoption
-  - User activation funnel
+    - Brain dump creation rate
+    - Task completion rate
+    - Daily brief engagement
+    - Feature adoption
+    - User activation funnel
 - Privacy considerations (GDPR, CCPA)
 
 **Priority**: 🟡 **MEDIUM**
@@ -741,9 +741,9 @@ Research topics focused on performance, optimization, and scalability.
 - **Token Usage Analytics**: Actual token usage across all prompts
 - **Cost Breakdown**: Cost per feature (brain dump, phases, briefs)
 - **Optimization Strategies**:
-  - Prompt compression techniques
-  - Context window optimization
-  - Caching strategies for repeated content
+    - Prompt compression techniques
+    - Context window optimization
+    - Caching strategies for repeated content
 - **Provider Cost Comparison**: OpenAI vs DeepSeek vs alternatives at scale
 - **Budget Alerts**: How to monitor and alert on unusual token usage
 - **User-Level Cost Tracking**: Cost per user, LTV vs CAC analysis
@@ -851,11 +851,11 @@ Research topics focused on performance, optimization, and scalability.
 - **APM (Application Performance Monitoring)**: Implement New Relic, Datadog, or alternative
 - **Logging Strategy**: Structured logging with context
 - **Metrics to Track**:
-  - Request latency (p50, p95, p99)
-  - Error rates by endpoint
-  - Queue job success/failure rates
-  - LLM API latency and errors
-  - Database query performance
+    - Request latency (p50, p95, p99)
+    - Error rates by endpoint
+    - Queue job success/failure rates
+    - LLM API latency and errors
+    - Database query performance
 - **Alerting Strategy**: When to alert, who to notify, alert fatigue prevention
 - **Dashboards**: Create observability dashboards for key metrics
 - **Distributed Tracing**: Trace requests across web app → worker → external APIs
@@ -871,15 +871,15 @@ Research topics focused on performance, optimization, and scalability.
 **Research Needed**:
 
 - **What to Cache**:
-  - User preferences
-  - Project metadata
-  - Calendar events
-  - LLM responses (if deterministic)
+    - User preferences
+    - Project metadata
+    - Calendar events
+    - LLM responses (if deterministic)
 - **Where to Cache**:
-  - Browser (service worker, localStorage)
-  - CDN (Vercel Edge)
-  - Server (Redis, in-memory)
-  - Database (materialized views)
+    - Browser (service worker, localStorage)
+    - CDN (Vercel Edge)
+    - Server (Redis, in-memory)
+    - Database (materialized views)
 - **Cache Invalidation**: Strategies for keeping cache fresh
 - **Cache Performance**: Measure cache hit rates
 

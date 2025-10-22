@@ -36,9 +36,9 @@
 - **Age Range:** \***\*\_\_\_\*\***
 - **Geographic Location:** \***\*\_\_\_\*\***
 - **Pain Points They Have:**
-  1. ***
-  2. ***
-  3. ***
+    1. ***
+    2. ***
+    3. ***
 - **What They Value Most:** \***\*\_\_\_\*\***
 
 ### Secondary Audience
@@ -110,9 +110,9 @@ Based on your bio: **I help professionals and teams achieve better project organ
 
 - **Tweets per day:** 0.24 (current rate - needs increase)
 - **Best posting times (your audience):**
-  - Morning: \***\*\_\_\_\*\***
-  - Afternoon: \***\*\_\_\_\*\***
-  - Evening: \***\*\_\_\_\*\***
+    - Morning: \***\*\_\_\_\*\***
+    - Afternoon: \***\*\_\_\_\*\***
+    - Evening: \***\*\_\_\_\*\***
 - **Weekend posting:** Yes/No
 - **Thread frequency:** \_\_\_ per week
 

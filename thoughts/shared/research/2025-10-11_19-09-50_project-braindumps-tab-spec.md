@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 8c174f8ad0770686342224a27be3db2bb810938b
 branch: main
 repository: buildos-platform
-topic: "Project Braindumps Tab - Research & Specification"
+topic: 'Project Braindumps Tab - Research & Specification'
 tags: [research, braindumps, project-page, ui-spec, responsive-design]
 status: complete
 last_updated: 2025-10-11
@@ -85,16 +85,16 @@ async function loadComponent(name: string) {
 
 ```typescript
 interface Braindump {
-  id: string;
-  content: string;
-  ai_summary?: string;
-  status: "processed" | "processing" | "pending";
-  updated_at: string;
-  created_at: string;
-  isNote: boolean;
-  isNewProject: boolean;
-  linkedProject: { id: string; name: string } | null;
-  linkedTypes: Array<"project" | "task" | "note">;
+	id: string;
+	content: string;
+	ai_summary?: string;
+	status: 'processed' | 'processing' | 'pending';
+	updated_at: string;
+	created_at: string;
+	isNote: boolean;
+	isNewProject: boolean;
+	linkedProject: { id: string; name: string } | null;
+	linkedTypes: Array<'project' | 'task' | 'note'>;
 }
 ```
 
@@ -111,12 +111,12 @@ interface Braindump {
 
 ```typescript
 brain_dump_links: {
-  id: number;
-  brain_dump_id: string; // FK → brain_dumps.id
-  created_at: string;
-  note_id: string | null; // FK → notes.id
-  project_id: string | null; // FK → projects.id
-  task_id: string | null; // FK → tasks.id
+	id: number;
+	brain_dump_id: string; // FK → brain_dumps.id
+	created_at: string;
+	note_id: string | null; // FK → notes.id
+	project_id: string | null; // FK → projects.id
+	task_id: string | null; // FK → tasks.id
 }
 ```
 
@@ -124,9 +124,9 @@ brain_dump_links: {
 
 ```typescript
 const { data } = await supabase
-  .from("brain_dump_links")
-  .select(
-    `
+	.from('brain_dump_links')
+	.select(
+		`
     brain_dump_id,
     created_at as linked_at,
     task_id,
@@ -137,10 +137,10 @@ const { data } = await supabase
     ),
     tasks (id, title, status, position),
     notes (id, title)
-  `,
-  )
-  .eq("project_id", projectId)
-  .order("created_at", { ascending: false });
+  `
+	)
+	.eq('project_id', projectId)
+	.order('created_at', { ascending: false });
 ```
 
 **Relationship Structure**:
@@ -166,28 +166,28 @@ const { data } = await supabase
 **State Management (Svelte 5 Runes)**:
 
 ```typescript
-let sortField: SortField = $state("created_at");
-let sortDirection: SortDirection = $state("desc");
+let sortField: SortField = $state('created_at');
+let sortDirection: SortDirection = $state('desc');
 let showSortDropdown = $state(false);
 
 function setSortField(field: SortField) {
-  if (sortField === field) {
-    sortDirection = sortDirection === "desc" ? "asc" : "desc";
-  } else {
-    sortField = field;
-    sortDirection = "desc";
-  }
-  showSortDropdown = false;
+	if (sortField === field) {
+		sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+	} else {
+		sortField = field;
+		sortDirection = 'desc';
+	}
+	showSortDropdown = false;
 }
 
 // Reactive sorting with $derived
 let sortedBraindumps = $derived(
-  braindumps.sort((a, b) => {
-    const aDate = new Date(a[sortField]);
-    const bDate = new Date(b[sortField]);
-    const comparison = aDate.getTime() - bDate.getTime();
-    return sortDirection === "desc" ? -comparison : comparison;
-  }),
+	braindumps.sort((a, b) => {
+		const aDate = new Date(a[sortField]);
+		const bDate = new Date(b[sortField]);
+		const comparison = aDate.getTime() - bDate.getTime();
+		return sortDirection === 'desc' ? -comparison : comparison;
+	})
 );
 ```
 
@@ -281,12 +281,12 @@ The `projectStoreV2` should be extended to include:
 
 ```typescript
 interface ProjectStoreV2State {
-  // Existing fields...
-  braindumps: BraindumpWithLinks[] | null;
-  loadingStates: {
-    // Existing fields...
-    braindumps: LoadingState;
-  };
+	// Existing fields...
+	braindumps: BraindumpWithLinks[] | null;
+	loadingStates: {
+		// Existing fields...
+		braindumps: LoadingState;
+	};
 }
 ```
 
@@ -332,13 +332,7 @@ Add new tab:
 Update `ExtendedTabType`:
 
 ```typescript
-type ExtendedTabType =
-  | "overview"
-  | "tasks"
-  | "briefs"
-  | "notes"
-  | "synthesis"
-  | "braindumps"; // Add this
+type ExtendedTabType = 'overview' | 'tasks' | 'briefs' | 'notes' | 'synthesis' | 'braindumps'; // Add this
 ```
 
 #### 3.2 Main Component: `BraindumpsSection.svelte`
@@ -351,19 +345,19 @@ type ExtendedTabType =
 
 ```typescript
 interface Props {
-  onOpenBraindump?: (braindump: BraindumpWithLinks) => void;
-  onDeleteBraindump?: (braindumpId: string) => void;
+	onOpenBraindump?: (braindump: BraindumpWithLinks) => void;
+	onDeleteBraindump?: (braindumpId: string) => void;
 }
 ```
 
 **State**:
 
 ```typescript
-import { projectStoreV2 } from "$lib/stores/project.store";
+import { projectStoreV2 } from '$lib/stores/project.store';
 
 // Sort state
-let sortField: "created_at" | "linked_at" = $state("linked_at");
-let sortDirection: "asc" | "desc" = $state("desc");
+let sortField: 'created_at' | 'linked_at' = $state('linked_at');
+let sortDirection: 'asc' | 'desc' = $state('desc');
 let showSortDropdown = $state(false);
 
 // UI state
@@ -374,7 +368,7 @@ let showDetailModal = $state(false);
 // Data from store
 $: storeState = $projectStoreV2;
 $: braindumps = storeState.braindumps || [];
-$: isLoading = storeState.loadingStates.braindumps === "loading";
+$: isLoading = storeState.loadingStates.braindumps === 'loading';
 ```
 
 **Computed Values**:
@@ -382,12 +376,12 @@ $: isLoading = storeState.loadingStates.braindumps === "loading";
 ```typescript
 // Sorted braindumps
 let sortedBraindumps = $derived(
-  [...braindumps].sort((a, b) => {
-    const aDate = new Date(a[sortField]);
-    const bDate = new Date(b[sortField]);
-    const comparison = aDate.getTime() - bDate.getTime();
-    return sortDirection === "desc" ? -comparison : comparison;
-  }),
+	[...braindumps].sort((a, b) => {
+		const aDate = new Date(a[sortField]);
+		const bDate = new Date(b[sortField]);
+		const comparison = aDate.getTime() - bDate.getTime();
+		return sortDirection === 'desc' ? -comparison : comparison;
+	})
 );
 
 // Braindump count
@@ -398,68 +392,68 @@ let braindumpCount = $derived(braindumps.length);
 
 ```svelte
 <div class="space-y-4">
-  <!-- Header with sort controls -->
-  <div class="flex items-center justify-between">
-    <h2 class="text-lg font-semibold">
-      Brain Dumps ({braindumpCount})
-    </h2>
+	<!-- Header with sort controls -->
+	<div class="flex items-center justify-between">
+		<h2 class="text-lg font-semibold">
+			Brain Dumps ({braindumpCount})
+		</h2>
 
-    <!-- Sort controls -->
-    <div class="flex items-center gap-2">
-      <!-- Sort field dropdown -->
-      <Button
-        variant="outline"
-        size="sm"
-        icon={ChevronDown}
-        iconPosition="right"
-        onclick={() => showSortDropdown = !showSortDropdown}
-      >
-        {sortField === 'created_at' ? 'Created' : 'Linked'}
-      </Button>
+		<!-- Sort controls -->
+		<div class="flex items-center gap-2">
+			<!-- Sort field dropdown -->
+			<Button
+				variant="outline"
+				size="sm"
+				icon={ChevronDown}
+				iconPosition="right"
+				onclick={() => (showSortDropdown = !showSortDropdown)}
+			>
+				{sortField === 'created_at' ? 'Created' : 'Linked'}
+			</Button>
 
-      <!-- Sort direction toggle -->
-      <Button
-        variant="outline"
-        size="sm"
-        icon={sortDirection === 'desc' ? ArrowDown : ArrowUp}
-        onclick={() => sortDirection = sortDirection === 'desc' ? 'asc' : 'desc'}
-        title={sortDirection === 'desc' ? 'Newest first' : 'Oldest first'}
-      />
-    </div>
-  </div>
+			<!-- Sort direction toggle -->
+			<Button
+				variant="outline"
+				size="sm"
+				icon={sortDirection === 'desc' ? ArrowDown : ArrowUp}
+				onclick={() => (sortDirection = sortDirection === 'desc' ? 'asc' : 'desc')}
+				title={sortDirection === 'desc' ? 'Newest first' : 'Oldest first'}
+			/>
+		</div>
+	</div>
 
-  <!-- Braindump cards grid -->
-  {#if isLoading}
-    <LoadingSkeleton message="Loading braindumps..." height="200px" />
-  {:else if sortedBraindumps.length === 0}
-    <EmptyState
-      icon={Brain}
-      title="No brain dumps yet"
-      description="Brain dumps that create or modify this project will appear here."
-    />
-  {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {#each sortedBraindumps as braindump (braindump.id)}
-        <BraindumpProjectCard
-          {braindump}
-          isExpanded={expandedBraindumpIds.has(braindump.id)}
-          onToggleExpand={() => toggleExpand(braindump.id)}
-          onClick={() => handleBraindumpClick(braindump)}
-          onDelete={() => onDeleteBraindump?.(braindump.id)}
-        />
-      {/each}
-    </div>
-  {/if}
+	<!-- Braindump cards grid -->
+	{#if isLoading}
+		<LoadingSkeleton message="Loading braindumps..." height="200px" />
+	{:else if sortedBraindumps.length === 0}
+		<EmptyState
+			icon={Brain}
+			title="No brain dumps yet"
+			description="Brain dumps that create or modify this project will appear here."
+		/>
+	{:else}
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{#each sortedBraindumps as braindump (braindump.id)}
+				<BraindumpProjectCard
+					{braindump}
+					isExpanded={expandedBraindumpIds.has(braindump.id)}
+					onToggleExpand={() => toggleExpand(braindump.id)}
+					onClick={() => handleBraindumpClick(braindump)}
+					onDelete={() => onDeleteBraindump?.(braindump.id)}
+				/>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <!-- Detail modal -->
 {#if showDetailModal && selectedBraindump}
-  <BraindumpModalHistory
-    braindump={selectedBraindump}
-    isOpen={showDetailModal}
-    onClose={() => showDetailModal = false}
-    on:delete={handleDelete}
-  />
+	<BraindumpModalHistory
+		braindump={selectedBraindump}
+		isOpen={showDetailModal}
+		onClose={() => (showDetailModal = false)}
+		on:delete={handleDelete}
+	/>
 {/if}
 ```
 
@@ -467,23 +461,23 @@ let braindumpCount = $derived(braindumps.length);
 
 ```typescript
 function toggleExpand(braindumpId: string) {
-  if (expandedBraindumpIds.has(braindumpId)) {
-    expandedBraindumpIds.delete(braindumpId);
-  } else {
-    expandedBraindumpIds.add(braindumpId);
-  }
-  expandedBraindumpIds = expandedBraindumpIds; // Trigger reactivity
+	if (expandedBraindumpIds.has(braindumpId)) {
+		expandedBraindumpIds.delete(braindumpId);
+	} else {
+		expandedBraindumpIds.add(braindumpId);
+	}
+	expandedBraindumpIds = expandedBraindumpIds; // Trigger reactivity
 }
 
 function handleBraindumpClick(braindump: BraindumpWithLinks) {
-  selectedBraindump = braindump;
-  showDetailModal = true;
-  onOpenBraindump?.(braindump);
+	selectedBraindump = braindump;
+	showDetailModal = true;
+	onOpenBraindump?.(braindump);
 }
 
 function handleDelete(event: CustomEvent) {
-  const { braindump } = event.detail;
-  onDeleteBraindump?.(braindump.id);
+	const { braindump } = event.detail;
+	onDeleteBraindump?.(braindump.id);
 }
 ```
 
@@ -497,11 +491,11 @@ function handleDelete(event: CustomEvent) {
 
 ```typescript
 interface Props {
-  braindump: BraindumpWithLinks;
-  isExpanded?: boolean;
-  onToggleExpand?: () => void;
-  onClick?: () => void;
-  onDelete?: () => void;
+	braindump: BraindumpWithLinks;
+	isExpanded?: boolean;
+	onToggleExpand?: () => void;
+	onClick?: () => void;
+	onDelete?: () => void;
 }
 
 export let braindump: BraindumpWithLinks;
@@ -515,24 +509,24 @@ export let onDelete: (() => void) | undefined = undefined;
 
 ```typescript
 interface BraindumpWithLinks {
-  id: string;
-  title: string;
-  content: string;
-  ai_summary?: string;
-  status: "processed" | "processing" | "pending";
-  created_at: string;
-  updated_at: string;
-  linked_at: string; // When linked to project
-  linked_tasks: {
-    id: string;
-    title: string;
-    status: string;
-    position: number;
-  }[];
-  linked_notes: {
-    id: string;
-    title: string;
-  }[];
+	id: string;
+	title: string;
+	content: string;
+	ai_summary?: string;
+	status: 'processed' | 'processing' | 'pending';
+	created_at: string;
+	updated_at: string;
+	linked_at: string; // When linked to project
+	linked_tasks: {
+		id: string;
+		title: string;
+		status: string;
+		position: number;
+	}[];
+	linked_notes: {
+		id: string;
+		title: string;
+	}[];
 }
 ```
 
@@ -540,125 +534,135 @@ interface BraindumpWithLinks {
 
 ```svelte
 <div
-  class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2
+	class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2
          transition-all cursor-pointer group hover:shadow-md
          {getBorderColor(braindump)}"
-  role="button"
-  tabindex="0"
-  onclick={onClick}
-  onkeydown={handleKeyDown}
+	role="button"
+	tabindex="0"
+	onclick={onClick}
+	onkeydown={handleKeyDown}
 >
-  <!-- Header: Title + Time + Actions -->
-  <div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-200 dark:border-gray-700">
-    <div class="flex items-start justify-between gap-2">
-      <!-- Title or "Untitled" -->
-      <div class="flex-1 min-w-0">
-        <h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 truncate">
-          {braindump.title || 'Untitled Brain Dump'}
-        </h3>
-      </div>
+	<!-- Header: Title + Time + Actions -->
+	<div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-200 dark:border-gray-700">
+		<div class="flex items-start justify-between gap-2">
+			<!-- Title or "Untitled" -->
+			<div class="flex-1 min-w-0">
+				<h3
+					class="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 truncate"
+				>
+					{braindump.title || 'Untitled Brain Dump'}
+				</h3>
+			</div>
 
-      <!-- Time + Actions -->
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <!-- Creation date -->
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          {getTimeDisplay(braindump.created_at)}
-        </span>
+			<!-- Time + Actions -->
+			<div class="flex items-center gap-2 flex-shrink-0">
+				<!-- Creation date -->
+				<span class="text-xs text-gray-500 dark:text-gray-400">
+					{getTimeDisplay(braindump.created_at)}
+				</span>
 
-        <!-- Delete button (hover reveal) -->
-        <button
-          class="opacity-0 group-hover:opacity-100 transition-opacity p-1
+				<!-- Delete button (hover reveal) -->
+				<button
+					class="opacity-0 group-hover:opacity-100 transition-opacity p-1
                  rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-          onclick={(e) => {
-            e.stopPropagation();
-            onDelete?.();
-          }}
-          title="Delete braindump"
-        >
-          <Trash2 class="w-4 h-4 text-gray-500 hover:text-red-600" />
-        </button>
-      </div>
-    </div>
-  </div>
+					onclick={(e) => {
+						e.stopPropagation();
+						onDelete?.();
+					}}
+					title="Delete braindump"
+				>
+					<Trash2 class="w-4 h-4 text-gray-500 hover:text-red-600" />
+				</button>
+			</div>
+		</div>
+	</div>
 
-  <!-- Content Section -->
-  <div class="px-3 py-2 sm:px-4 sm:py-3">
-    <!-- Content preview (2 lines or expanded) -->
-    <div class="mb-3">
-      {#if isExpanded}
-        <div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-          {braindump.content}
-        </div>
-      {:else}
-        <div class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-          {truncateContent(braindump.content)}
-        </div>
-      {/if}
+	<!-- Content Section -->
+	<div class="px-3 py-2 sm:px-4 sm:py-3">
+		<!-- Content preview (2 lines or expanded) -->
+		<div class="mb-3">
+			{#if isExpanded}
+				<div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+					{braindump.content}
+				</div>
+			{:else}
+				<div class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+					{truncateContent(braindump.content)}
+				</div>
+			{/if}
 
-      <!-- Expand/Collapse button -->
-      {#if braindump.content.length > 150}
-        <button
-          class="text-xs text-primary-600 dark:text-primary-400 hover:underline mt-1"
-          onclick={(e) => {
-            e.stopPropagation();
-            onToggleExpand?.();
-          }}
-        >
-          {isExpanded ? 'Show less' : 'Show more'}
-        </button>
-      {/if}
-    </div>
+			<!-- Expand/Collapse button -->
+			{#if braindump.content.length > 150}
+				<button
+					class="text-xs text-primary-600 dark:text-primary-400 hover:underline mt-1"
+					onclick={(e) => {
+						e.stopPropagation();
+						onToggleExpand?.();
+					}}
+				>
+					{isExpanded ? 'Show less' : 'Show more'}
+				</button>
+			{/if}
+		</div>
 
-    <!-- Footer: Linked tasks + Status -->
-    <div class="flex items-center justify-between gap-2">
-      <!-- Linked tasks -->
-      <div class="flex items-center gap-2 flex-wrap">
-        {#if braindump.linked_tasks.length > 0}
-          <div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <CheckSquare class="w-3 h-3" />
-            <span>{braindump.linked_tasks.length} task{braindump.linked_tasks.length > 1 ? 's' : ''}</span>
-          </div>
+		<!-- Footer: Linked tasks + Status -->
+		<div class="flex items-center justify-between gap-2">
+			<!-- Linked tasks -->
+			<div class="flex items-center gap-2 flex-wrap">
+				{#if braindump.linked_tasks.length > 0}
+					<div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+						<CheckSquare class="w-3 h-3" />
+						<span
+							>{braindump.linked_tasks.length} task{braindump.linked_tasks.length > 1
+								? 's'
+								: ''}</span
+						>
+					</div>
 
-          <!-- Task links (first 3) -->
-          <div class="flex items-center gap-1">
-            {#each braindump.linked_tasks.slice(0, 3) as task}
-              <a
-                href="#"
-                class="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20
+					<!-- Task links (first 3) -->
+					<div class="flex items-center gap-1">
+						{#each braindump.linked_tasks.slice(0, 3) as task}
+							<a
+								href="#"
+								class="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20
                        text-blue-700 dark:text-blue-300 hover:bg-blue-100
                        dark:hover:bg-blue-900/30 transition-colors"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  // Open task modal
-                }}
-                title={task.title}
-              >
-                {task.title.substring(0, 20)}{task.title.length > 20 ? '...' : ''}
-              </a>
-            {/each}
+								onclick={(e) => {
+									e.stopPropagation();
+									// Open task modal
+								}}
+								title={task.title}
+							>
+								{task.title.substring(0, 20)}{task.title.length > 20 ? '...' : ''}
+							</a>
+						{/each}
 
-            {#if braindump.linked_tasks.length > 3}
-              <span class="text-xs text-gray-500">
-                +{braindump.linked_tasks.length - 3} more
-              </span>
-            {/if}
-          </div>
-        {/if}
+						{#if braindump.linked_tasks.length > 3}
+							<span class="text-xs text-gray-500">
+								+{braindump.linked_tasks.length - 3} more
+							</span>
+						{/if}
+					</div>
+				{/if}
 
-        {#if braindump.linked_notes.length > 0}
-          <div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <FileText class="w-3 h-3" />
-            <span>{braindump.linked_notes.length} note{braindump.linked_notes.length > 1 ? 's' : ''}</span>
-          </div>
-        {/if}
-      </div>
+				{#if braindump.linked_notes.length > 0}
+					<div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+						<FileText class="w-3 h-3" />
+						<span
+							>{braindump.linked_notes.length} note{braindump.linked_notes.length > 1
+								? 's'
+								: ''}</span
+						>
+					</div>
+				{/if}
+			</div>
 
-      <!-- Status badge -->
-      <div class="flex-shrink-0">
-        <StatusBadge status={braindump.status} size="sm" />
-      </div>
-    </div>
-  </div>
+			<!-- Status badge -->
+			<div class="flex-shrink-0">
+				<StatusBadge status={braindump.status} size="sm" />
+			</div>
+		</div>
+	</div>
 </div>
 ```
 
@@ -666,33 +670,31 @@ interface BraindumpWithLinks {
 
 ```typescript
 function truncateContent(content: string, maxLength: number = 150): string {
-  const stripped = content.replace(/[#*_`]/g, "").trim();
-  return stripped.length > maxLength
-    ? stripped.substring(0, maxLength) + "..."
-    : stripped;
+	const stripped = content.replace(/[#*_`]/g, '').trim();
+	return stripped.length > maxLength ? stripped.substring(0, maxLength) + '...' : stripped;
 }
 
 function getTimeDisplay(dateStr: string): string {
-  const date = new Date(dateStr);
-  const hoursAgo = differenceInHours(new Date(), date);
+	const date = new Date(dateStr);
+	const hoursAgo = differenceInHours(new Date(), date);
 
-  if (hoursAgo < 24) {
-    return formatDistanceToNow(date, { addSuffix: true });
-  }
+	if (hoursAgo < 24) {
+		return formatDistanceToNow(date, { addSuffix: true });
+	}
 
-  return format(date, "MMM d, yyyy");
+	return format(date, 'MMM d, yyyy');
 }
 
 function getBorderColor(braindump: BraindumpWithLinks): string {
-  // Regular braindumps
-  return "border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700";
+	// Regular braindumps
+	return 'border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700';
 }
 
 function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    onClick?.();
-  }
+	if (event.key === 'Enter' || event.key === ' ') {
+		event.preventDefault();
+		onClick?.();
+	}
 }
 ```
 
@@ -711,24 +713,24 @@ function handleKeyDown(event: KeyboardEvent) {
 **File**: `/apps/web/src/routes/api/projects/[id]/braindumps/+server.ts` (NEW)
 
 ```typescript
-import { json } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-  const { id: projectId } = params;
-  const session = await locals.getSession();
+	const { id: projectId } = params;
+	const session = await locals.getSession();
 
-  if (!session?.user) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+	if (!session?.user) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
-  const supabase = locals.supabase;
+	const supabase = locals.supabase;
 
-  // Get all braindumps linked to this project
-  const { data: braindumpLinks, error } = await supabase
-    .from("brain_dump_links")
-    .select(
-      `
+	// Get all braindumps linked to this project
+	const { data: braindumpLinks, error } = await supabase
+		.from('brain_dump_links')
+		.select(
+			`
       brain_dump_id,
       created_at as linked_at,
       task_id,
@@ -753,58 +755,56 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         id,
         title
       )
-    `,
-    )
-    .eq("project_id", projectId)
-    .eq("brain_dumps.user_id", session.user.id)
-    .order("created_at", { ascending: false });
+    `
+		)
+		.eq('project_id', projectId)
+		.eq('brain_dumps.user_id', session.user.id)
+		.order('created_at', { ascending: false });
 
-  if (error) {
-    console.error("Error fetching project braindumps:", error);
-    return json({ error: "Failed to fetch braindumps" }, { status: 500 });
-  }
+	if (error) {
+		console.error('Error fetching project braindumps:', error);
+		return json({ error: 'Failed to fetch braindumps' }, { status: 500 });
+	}
 
-  // Transform data to group by braindump
-  const braindumpsMap = new Map<string, any>();
+	// Transform data to group by braindump
+	const braindumpsMap = new Map<string, any>();
 
-  for (const link of braindumpLinks || []) {
-    const braindump = link.brain_dumps;
-    const braindumpId = braindump.id;
+	for (const link of braindumpLinks || []) {
+		const braindump = link.brain_dumps;
+		const braindumpId = braindump.id;
 
-    if (!braindumpsMap.has(braindumpId)) {
-      braindumpsMap.set(braindumpId, {
-        ...braindump,
-        linked_at: link.linked_at,
-        linked_tasks: [],
-        linked_notes: [],
-      });
-    }
+		if (!braindumpsMap.has(braindumpId)) {
+			braindumpsMap.set(braindumpId, {
+				...braindump,
+				linked_at: link.linked_at,
+				linked_tasks: [],
+				linked_notes: []
+			});
+		}
 
-    const bd = braindumpsMap.get(braindumpId);
+		const bd = braindumpsMap.get(braindumpId);
 
-    if (link.task_id && link.tasks) {
-      // Avoid duplicates
-      if (!bd.linked_tasks.find((t: any) => t.id === link.tasks.id)) {
-        bd.linked_tasks.push(link.tasks);
-      }
-    }
+		if (link.task_id && link.tasks) {
+			// Avoid duplicates
+			if (!bd.linked_tasks.find((t: any) => t.id === link.tasks.id)) {
+				bd.linked_tasks.push(link.tasks);
+			}
+		}
 
-    if (link.note_id && link.notes) {
-      if (!bd.linked_notes.find((n: any) => n.id === link.notes.id)) {
-        bd.linked_notes.push(link.notes);
-      }
-    }
-  }
+		if (link.note_id && link.notes) {
+			if (!bd.linked_notes.find((n: any) => n.id === link.notes.id)) {
+				bd.linked_notes.push(link.notes);
+			}
+		}
+	}
 
-  // Convert map to array and sort tasks by position
-  const braindumps = Array.from(braindumpsMap.values()).map((bd) => ({
-    ...bd,
-    linked_tasks: bd.linked_tasks.sort(
-      (a: any, b: any) => a.position - b.position,
-    ),
-  }));
+	// Convert map to array and sort tasks by position
+	const braindumps = Array.from(braindumpsMap.values()).map((bd) => ({
+		...bd,
+		linked_tasks: bd.linked_tasks.sort((a: any, b: any) => a.position - b.position)
+	}));
 
-  return json({ braindumps });
+	return json({ braindumps });
 };
 ```
 
@@ -816,19 +816,19 @@ Add to store state:
 
 ```typescript
 interface ProjectStoreV2State {
-  // ... existing fields
+	// ... existing fields
 
-  braindumps: BraindumpWithLinks[] | null;
+	braindumps: BraindumpWithLinks[] | null;
 
-  loadingStates: {
-    // ... existing fields
-    braindumps: LoadingState;
-  };
+	loadingStates: {
+		// ... existing fields
+		braindumps: LoadingState;
+	};
 
-  lastFetch: {
-    // ... existing fields
-    braindumps?: number;
-  };
+	lastFetch: {
+		// ... existing fields
+		braindumps?: number;
+	};
 }
 ```
 
@@ -891,10 +891,10 @@ Add to progressive loading in `+page.svelte`:
 
 ```typescript
 $effect(() => {
-  if (project?.id && activeTab === "braindumps") {
-    // Load braindumps when tab is active
-    projectStoreV2.loadBraindumps();
-  }
+	if (project?.id && activeTab === 'braindumps') {
+		// Load braindumps when tab is active
+		projectStoreV2.loadBraindumps();
+	}
 });
 ```
 
@@ -906,15 +906,15 @@ $effect(() => {
 
 ```typescript
 const tabs = [
-  // ... existing tabs
-  {
-    id: "braindumps",
-    label: "Brain Dumps",
-    icon: Brain,
-    mobileLabel: "Dumps",
-    count: $projectStoreV2.braindumps?.length || 0,
-    hideCount: false,
-  },
+	// ... existing tabs
+	{
+		id: 'braindumps',
+		label: 'Brain Dumps',
+		icon: Brain,
+		mobileLabel: 'Dumps',
+		count: $projectStoreV2.braindumps?.length || 0,
+		hideCount: false
+	}
 ];
 ```
 
@@ -926,20 +926,19 @@ let BraindumpsSection = $state<any>(null);
 
 // Load component function
 async function loadComponent(name: string, tab: string) {
-  // ... existing cases
+	// ... existing cases
 
-  if (name === "BraindumpsSection") {
-    BraindumpsSection = (
-      await import("$lib/components/project/BraindumpsSection.svelte")
-    ).default;
-  }
+	if (name === 'BraindumpsSection') {
+		BraindumpsSection = (await import('$lib/components/project/BraindumpsSection.svelte'))
+			.default;
+	}
 }
 
 // Tab loading effect
 $effect(() => {
-  if (activeTab === "braindumps" && !BraindumpsSection) {
-    loadComponent("BraindumpsSection", "braindumps");
-  }
+	if (activeTab === 'braindumps' && !BraindumpsSection) {
+		loadComponent('BraindumpsSection', 'braindumps');
+	}
 });
 ```
 
@@ -948,18 +947,18 @@ $effect(() => {
 ```svelte
 <!-- Braindumps Tab -->
 <div class:hidden={activeTab !== 'braindumps'}>
-  {#if activeTab === 'braindumps'}
-    {#if shouldShowSkeleton && loadingStates.braindumps === 'loading'}
-      <LoadingSkeleton message="Loading brain dumps..." height="300px" />
-    {:else if BraindumpsSection}
-      <BraindumpsSection
-        onOpenBraindump={(bd) => handleOpenBraindump(bd)}
-        onDeleteBraindump={(id) => handleDeleteBraindump(id)}
-      />
-    {:else}
-      <LoadingSkeleton message={loadingMessage} height="200px" />
-    {/if}
-  {/if}
+	{#if activeTab === 'braindumps'}
+		{#if shouldShowSkeleton && loadingStates.braindumps === 'loading'}
+			<LoadingSkeleton message="Loading brain dumps..." height="300px" />
+		{:else if BraindumpsSection}
+			<BraindumpsSection
+				onOpenBraindump={(bd) => handleOpenBraindump(bd)}
+				onDeleteBraindump={(id) => handleDeleteBraindump(id)}
+			/>
+		{:else}
+			<LoadingSkeleton message={loadingMessage} height="200px" />
+		{/if}
+	{/if}
 </div>
 ```
 
@@ -967,39 +966,39 @@ $effect(() => {
 
 ```typescript
 function handleOpenBraindump(braindump: BraindumpWithLinks) {
-  // Optional: track analytics
-  console.log("Opened braindump:", braindump.id);
+	// Optional: track analytics
+	console.log('Opened braindump:', braindump.id);
 }
 
 async function handleDeleteBraindump(braindumpId: string) {
-  // Optimistic update
-  const state = $projectStoreV2;
-  const previousBraindumps = state.braindumps;
+	// Optimistic update
+	const state = $projectStoreV2;
+	const previousBraindumps = state.braindumps;
 
-  projectStoreV2.updateStoreState({
-    braindumps: state.braindumps?.filter((bd) => bd.id !== braindumpId) || null,
-  });
+	projectStoreV2.updateStoreState({
+		braindumps: state.braindumps?.filter((bd) => bd.id !== braindumpId) || null
+	});
 
-  try {
-    const response = await fetch(`/api/braindumps/${braindumpId}`, {
-      method: "DELETE",
-    });
+	try {
+		const response = await fetch(`/api/braindumps/${braindumpId}`, {
+			method: 'DELETE'
+		});
 
-    if (!response.ok) {
-      throw new Error("Failed to delete braindump");
-    }
+		if (!response.ok) {
+			throw new Error('Failed to delete braindump');
+		}
 
-    // Show success toast
-    toastStore.success("Brain dump deleted");
-  } catch (error) {
-    // Rollback on error
-    projectStoreV2.updateStoreState({
-      braindumps: previousBraindumps,
-    });
+		// Show success toast
+		toastStore.success('Brain dump deleted');
+	} catch (error) {
+		// Rollback on error
+		projectStoreV2.updateStoreState({
+			braindumps: previousBraindumps
+		});
 
-    toastStore.error("Failed to delete brain dump");
-    console.error("Error deleting braindump:", error);
-  }
+		toastStore.error('Failed to delete brain dump');
+		console.error('Error deleting braindump:', error);
+	}
 }
 ```
 
@@ -1009,32 +1008,32 @@ async function handleDeleteBraindump(braindumpId: string) {
 
 ```typescript
 export interface BraindumpWithLinks {
-  id: string;
-  title: string;
-  content: string;
-  ai_summary?: string;
-  status: "processed" | "processing" | "pending";
-  created_at: string;
-  updated_at: string;
-  linked_at: string;
-  linked_tasks: LinkedTask[];
-  linked_notes: LinkedNote[];
+	id: string;
+	title: string;
+	content: string;
+	ai_summary?: string;
+	status: 'processed' | 'processing' | 'pending';
+	created_at: string;
+	updated_at: string;
+	linked_at: string;
+	linked_tasks: LinkedTask[];
+	linked_notes: LinkedNote[];
 }
 
 export interface LinkedTask {
-  id: string;
-  title: string;
-  status: string;
-  position: number;
+	id: string;
+	title: string;
+	status: string;
+	position: number;
 }
 
 export interface LinkedNote {
-  id: string;
-  title: string;
+	id: string;
+	title: string;
 }
 
-export type BraindumpSortField = "created_at" | "linked_at";
-export type SortDirection = "asc" | "desc";
+export type BraindumpSortField = 'created_at' | 'linked_at';
+export type SortDirection = 'asc' | 'desc';
 ```
 
 ### 7. Mobile Responsive Behavior
@@ -1069,35 +1068,32 @@ export type SortDirection = "asc" | "desc";
 
 ```svelte
 <EmptyState
-  icon={Brain}
-  title="No brain dumps yet"
-  description="Brain dumps that create or modify this project will appear here."
-  action={{
-    label: "Create Brain Dump",
-    onclick: () => goto('/dashboard')  // Or open brain dump modal
-  }}
+	icon={Brain}
+	title="No brain dumps yet"
+	description="Brain dumps that create or modify this project will appear here."
+	action={{
+		label: 'Create Brain Dump',
+		onclick: () => goto('/dashboard') // Or open brain dump modal
+	}}
 />
 ```
 
 **Loading State**:
 
 ```svelte
-<LoadingSkeleton
-  message="Loading brain dumps..."
-  height="300px"
-/>
+<LoadingSkeleton message="Loading brain dumps..." height="300px" />
 ```
 
 **Error State**:
 
 ```svelte
 <ErrorState
-  title="Failed to load brain dumps"
-  description="There was an error loading brain dumps. Please try again."
-  action={{
-    label: "Retry",
-    onclick: () => projectStoreV2.loadBraindumps(true)
-  }}
+	title="Failed to load brain dumps"
+	description="There was an error loading brain dumps. Please try again."
+	action={{
+		label: 'Retry',
+		onclick: () => projectStoreV2.loadBraindumps(true)
+	}}
 />
 ```
 

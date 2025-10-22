@@ -4,9 +4,8 @@ researcher: Claude (AI Assistant)
 git_commit: a33084ed
 branch: main
 repository: buildos-platform
-topic: "Dashboard Time Blocks Integration & Modal Design Specification"
-tags:
-  [research, time-play, dashboard, modal-design, calendar-integration, ui-ux]
+topic: 'Dashboard Time Blocks Integration & Modal Design Specification'
+tags: [research, time-play, dashboard, modal-design, calendar-integration, ui-ux]
 status: complete
 last_updated: 2025-10-15
 last_updated_by: Claude (AI Assistant)
@@ -93,12 +92,10 @@ This spec has been updated based on user feedback to shift from a separate widge
 
 ```typescript
 // Display mode determines what users see
-const showTimeBlocks = $derived(
-  displayMode === "intermediate" || displayMode === "experienced",
-);
+const showTimeBlocks = $derived(displayMode === 'intermediate' || displayMode === 'experienced');
 
 // Card title changes based on what's shown
-const cardTitle = $derived(showTimeBlocks ? "Focus & Tasks" : "Task Details");
+const cardTitle = $derived(showTimeBlocks ? 'Focus & Tasks' : 'Task Details');
 ```
 
 **Display Modes**:
@@ -120,10 +117,10 @@ const cardTitle = $derived(showTimeBlocks ? "Focus & Tasks" : "Task Details");
 
 - **Time blocks** (chronologically ordered by start_time)
 - Each time block shows:
-  - Time range (e.g., "2:00 PM - 4:00 PM")
-  - Block type indicator (project name or "Build Block")
-  - AI suggestions preview (if available)
-  - Associated tasks (if any)
+    - Time range (e.g., "2:00 PM - 4:00 PM")
+    - Block type indicator (project name or "Build Block")
+    - AI suggestions preview (if available)
+    - Associated tasks (if any)
 - **Unscheduled tasks** (shown below time blocks or in separate section)
 
 **Tomorrow Column**:
@@ -143,28 +140,28 @@ let timeBlocksLoaded = $state(false);
 
 // Computed: filter time blocks by day
 const todayBlocks = $derived.by(() => {
-  return timeBlocks.filter((block) => isSameDay(block.start_time, today));
+	return timeBlocks.filter((block) => isSameDay(block.start_time, today));
 });
 
 const tomorrowBlocks = $derived.by(() => {
-  return timeBlocks.filter((block) => isSameDay(block.start_time, tomorrow));
+	return timeBlocks.filter((block) => isSameDay(block.start_time, tomorrow));
 });
 
 // Load time blocks when card becomes visible
 async function loadTimeBlocks() {
-  if (timeBlocksLoaded || displayMode === "first-time") return;
+	if (timeBlocksLoaded || displayMode === 'first-time') return;
 
-  // Fetch next 7 days (covers today, tomorrow, and weekly view)
-  const startDate = startOfDay(new Date());
-  const endDate = addDays(startDate, 7);
+	// Fetch next 7 days (covers today, tomorrow, and weekly view)
+	const startDate = startOfDay(new Date());
+	const endDate = addDays(startDate, 7);
 
-  const response = await fetch(
-    `/api/time-play/blocks?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`,
-  );
+	const response = await fetch(
+		`/api/time-play/blocks?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
+	);
 
-  const { data } = await response.json();
-  timeBlocks = data.blocks || [];
-  timeBlocksLoaded = true;
+	const { data } = await response.json();
+	timeBlocks = data.blocks || [];
+	timeBlocksLoaded = true;
 }
 ```
 
@@ -184,13 +181,13 @@ async function loadTimeBlocks() {
 
 ```typescript
 interface Props {
-  tasks: TaskWithDetails[]; // Existing tasks data
-  timeBlocks: TimeBlockWithProject[]; // NEW: Time blocks data
-  displayMode: DashboardDisplayMode; // Determines if time blocks are shown
-  isLoading?: boolean;
-  onTaskClick?: (task: TaskWithDetails) => void;
-  onTimeBlockClick?: (block: TimeBlockWithProject) => void; // NEW
-  onCreateTimeBlock?: () => void; // NEW
+	tasks: TaskWithDetails[]; // Existing tasks data
+	timeBlocks: TimeBlockWithProject[]; // NEW: Time blocks data
+	displayMode: DashboardDisplayMode; // Determines if time blocks are shown
+	isLoading?: boolean;
+	onTaskClick?: (task: TaskWithDetails) => void;
+	onTimeBlockClick?: (block: TimeBlockWithProject) => void; // NEW
+	onCreateTimeBlock?: () => void; // NEW
 }
 ```
 
@@ -270,174 +267,184 @@ interface Props {
 </script>
 
 <section class="mb-4 sm:mb-6">
-  <!-- Card Header -->
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
-      {cardTitle}
-    </h2>
-    {#if showTimeBlocks}
-      <button
-        type="button"
-        class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
-        onclick={onCreateTimeBlock}
-      >
-        <span>+</span>
-        <span>New Focus Session</span>
-      </button>
-    {/if}
-  </div>
+	<!-- Card Header -->
+	<div class="flex items-center justify-between mb-3">
+		<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+			{cardTitle}
+		</h2>
+		{#if showTimeBlocks}
+			<button
+				type="button"
+				class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+				onclick={onCreateTimeBlock}
+			>
+				<span>+</span>
+				<span>New Focus Session</span>
+			</button>
+		{/if}
+	</div>
 
-  <!-- Three-column layout (existing structure, enhanced with time blocks) -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+	<!-- Three-column layout (existing structure, enhanced with time blocks) -->
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+		<!-- PAST COLUMN (tasks only, no time blocks) -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
+		>
+			<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Past</h3>
 
-    <!-- PAST COLUMN (tasks only, no time blocks) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-        Past
-      </h3>
+			{#if pastTasks.length > 0}
+				<div class="space-y-2">
+					{#each pastTasks as task}
+						<button
+							type="button"
+							class="w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+							onclick={() => onTaskClick?.(task)}
+						>
+							<!-- Existing task display -->
+							<div class="text-sm font-medium text-gray-900 dark:text-white">
+								{task.title}
+							</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400">
+								{task.project_name}
+							</div>
+						</button>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-sm text-gray-500 dark:text-gray-400">No past tasks</p>
+			{/if}
+		</div>
 
-      {#if pastTasks.length > 0}
-        <div class="space-y-2">
-          {#each pastTasks as task}
-            <button
-              type="button"
-              class="w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              onclick={() => onTaskClick?.(task)}
-            >
-              <!-- Existing task display -->
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
-                {task.title}
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                {task.project_name}
-              </div>
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No past tasks</p>
-      {/if}
-    </div>
+		<!-- TODAY COLUMN (time blocks + tasks) -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
+		>
+			<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Today</h3>
 
-    <!-- TODAY COLUMN (time blocks + tasks) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-        Today
-      </h3>
-
-      <div class="space-y-3">
-        <!-- Time Blocks Section (if enabled) -->
-        {#if showTimeBlocks}
-          {#if todayBlocks.length > 0}
-            <!-- Render time blocks -->
-            {#each todayBlocks as block}
-              <div class="border-l-4 pl-3 py-2 rounded-r-lg
+			<div class="space-y-3">
+				<!-- Time Blocks Section (if enabled) -->
+				{#if showTimeBlocks}
+					{#if todayBlocks.length > 0}
+						<!-- Render time blocks -->
+						{#each todayBlocks as block}
+							<div
+								class="border-l-4 pl-3 py-2 rounded-r-lg
                           bg-gradient-to-r from-purple-50/30 to-transparent
                           dark:from-purple-900/20 dark:to-transparent
                           hover:from-purple-50/50 dark:hover:from-purple-900/30
                           transition-all"
-                   style="border-left-color: {resolveBlockAccentColor(block)}">
-
-                <!-- Time Block Header -->
-                <button
-                  type="button"
-                  class="w-full text-left"
-                  onclick={() => onTimeBlockClick?.(block)}
-                >
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                      {formatTime(block.start_time)} - {formatTime(block.end_time)}
-                    </span>
-                    <span class="text-xs px-1.5 py-0.5 rounded
+								style="border-left-color: {resolveBlockAccentColor(block)}"
+							>
+								<!-- Time Block Header -->
+								<button
+									type="button"
+									class="w-full text-left"
+									onclick={() => onTimeBlockClick?.(block)}
+								>
+									<div class="flex items-center justify-between mb-1">
+										<span
+											class="text-xs font-semibold text-gray-700 dark:text-gray-300"
+										>
+											{formatTime(block.start_time)} - {formatTime(
+												block.end_time
+											)}
+										</span>
+										<span
+											class="text-xs px-1.5 py-0.5 rounded
                                  bg-purple-100 text-purple-700
-                                 dark:bg-purple-900/40 dark:text-purple-300">
-                      {block.duration_minutes}m
-                    </span>
-                  </div>
+                                 dark:bg-purple-900/40 dark:text-purple-300"
+										>
+											{block.duration_minutes}m
+										</span>
+									</div>
 
-                  <div class="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                    {block.block_type === 'project' ? block.project?.name : '🎯 Build Block'}
-                  </div>
+									<div
+										class="text-sm font-medium text-gray-900 dark:text-white mb-1"
+									>
+										{block.block_type === 'project'
+											? block.project?.name
+											: '🎯 Build Block'}
+									</div>
 
-                  <!-- AI Suggestions preview -->
-                  {#if block.ai_suggestions && block.ai_suggestions.length > 0}
-                    <div class="text-xs text-gray-600 dark:text-gray-400">
-                      💡 {block.ai_suggestions.length} suggestions
-                    </div>
-                  {/if}
-                </button>
+									<!-- AI Suggestions preview -->
+									{#if block.ai_suggestions && block.ai_suggestions.length > 0}
+										<div class="text-xs text-gray-600 dark:text-gray-400">
+											💡 {block.ai_suggestions.length} suggestions
+										</div>
+									{/if}
+								</button>
 
-                <!-- Tasks within this time block -->
-                {#each getTasksForBlock(block.id) as task}
-                  <button
-                    type="button"
-                    class="w-full text-left pl-3 mt-2 p-1.5 rounded
+								<!-- Tasks within this time block -->
+								{#each getTasksForBlock(block.id) as task}
+									<button
+										type="button"
+										class="w-full text-left pl-3 mt-2 p-1.5 rounded
                            hover:bg-white dark:hover:bg-gray-800 transition-colors"
-                    onclick={() => onTaskClick?.(task)}
-                  >
-                    <div class="text-xs text-gray-700 dark:text-gray-300">
-                      ✓ {task.title}
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            {/each}
+										onclick={() => onTaskClick?.(task)}
+									>
+										<div class="text-xs text-gray-700 dark:text-gray-300">
+											✓ {task.title}
+										</div>
+									</button>
+								{/each}
+							</div>
+						{/each}
 
-            <!-- Divider before unscheduled tasks -->
-            {#if todayUnscheduledTasks.length > 0}
-              <div class="border-t border-gray-200 dark:border-gray-700 my-3"></div>
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                Unscheduled
-              </p>
-            {/if}
-          {:else}
-            <!-- Empty state for time blocks -->
-            <button
-              type="button"
-              class="w-full p-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600
+						<!-- Divider before unscheduled tasks -->
+						{#if todayUnscheduledTasks.length > 0}
+							<div class="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+							<p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+								Unscheduled
+							</p>
+						{/if}
+					{:else}
+						<!-- Empty state for time blocks -->
+						<button
+							type="button"
+							class="w-full p-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600
                      hover:border-purple-400 dark:hover:border-purple-500
                      text-center transition-all"
-              onclick={onCreateTimeBlock}
-            >
-              <div class="text-2xl mb-1">🎯</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400">
-                No focus sessions today
-              </div>
-              <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Click to schedule
-              </div>
-            </button>
-          {/if}
-        {/if}
+							onclick={onCreateTimeBlock}
+						>
+							<div class="text-2xl mb-1">🎯</div>
+							<div class="text-xs text-gray-600 dark:text-gray-400">
+								No focus sessions today
+							</div>
+							<div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+								Click to schedule
+							</div>
+						</button>
+					{/if}
+				{/if}
 
-        <!-- Unscheduled Tasks (or all tasks if time blocks disabled) -->
-        {#each (showTimeBlocks ? todayUnscheduledTasks : todayTasks) as task}
-          <button
-            type="button"
-            class="w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-            onclick={() => onTaskClick?.(task)}
-          >
-            <div class="text-sm font-medium text-gray-900 dark:text-white">
-              {task.title}
-            </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">
-              {task.project_name}
-            </div>
-          </button>
-        {/each}
-      </div>
-    </div>
+				<!-- Unscheduled Tasks (or all tasks if time blocks disabled) -->
+				{#each showTimeBlocks ? todayUnscheduledTasks : todayTasks as task}
+					<button
+						type="button"
+						class="w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+						onclick={() => onTaskClick?.(task)}
+					>
+						<div class="text-sm font-medium text-gray-900 dark:text-white">
+							{task.title}
+						</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400">
+							{task.project_name}
+						</div>
+					</button>
+				{/each}
+			</div>
+		</div>
 
-    <!-- TOMORROW COLUMN (same structure as Today) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-        Tomorrow
-      </h3>
+		<!-- TOMORROW COLUMN (same structure as Today) -->
+		<div
+			class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
+		>
+			<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Tomorrow</h3>
 
-      <!-- Same structure as Today column -->
-      <!-- [Implementation mirrors Today column logic] -->
-    </div>
-  </div>
+			<!-- Same structure as Today column -->
+			<!-- [Implementation mirrors Today column logic] -->
+		</div>
+	</div>
 </section>
 ```
 
@@ -465,17 +472,17 @@ interface Props {
 
 ```typescript
 interface Props {
-  isOpen: boolean;
-  block?: TimeBlockWithProject | null; // undefined = create mode
-  projects: Array<{
-    id: string;
-    name: string;
-    calendar_color_id: string | null;
-  }>;
-  onClose: () => void;
-  onCreate?: (block: TimeBlockWithProject) => void;
-  onUpdate?: (block: TimeBlockWithProject) => void;
-  onDelete?: (blockId: string) => void;
+	isOpen: boolean;
+	block?: TimeBlockWithProject | null; // undefined = create mode
+	projects: Array<{
+		id: string;
+		name: string;
+		calendar_color_id: string | null;
+	}>;
+	onClose: () => void;
+	onCreate?: (block: TimeBlockWithProject) => void;
+	onUpdate?: (block: TimeBlockWithProject) => void;
+	onDelete?: (blockId: string) => void;
 }
 ```
 
@@ -483,436 +490,479 @@ interface Props {
 
 ```svelte
 <script lang="ts">
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import FormField from '$lib/components/ui/FormField.svelte';
-  import TextInput from '$lib/components/ui/TextInput.svelte';
-  import Select from '$lib/components/ui/Select.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
-  import { Calendar, Clock, Zap, Trash2 } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
+	import { Calendar, Clock, Zap, Trash2 } from 'lucide-svelte';
 
-  let {
-    isOpen = false,
-    block = null,
-    projects = [],
-    onClose,
-    onCreate,
-    onUpdate,
-    onDelete
-  }: Props = $props();
+	let {
+		isOpen = false,
+		block = null,
+		projects = [],
+		onClose,
+		onCreate,
+		onUpdate,
+		onDelete
+	}: Props = $props();
 
-  // Local state (Svelte 5 runes)
-  let blockType = $state<'project' | 'build'>(block?.block_type || 'project');
-  let selectedProjectId = $state<string | null>(block?.project_id || null);
-  let startDateTime = $state<string>('');
-  let endDateTime = $state<string>('');
-  let isSubmitting = $state(false);
-  let isRegenerating = $state(false);
+	// Local state (Svelte 5 runes)
+	let blockType = $state<'project' | 'build'>(block?.block_type || 'project');
+	let selectedProjectId = $state<string | null>(block?.project_id || null);
+	let startDateTime = $state<string>('');
+	let endDateTime = $state<string>('');
+	let isSubmitting = $state(false);
+	let isRegenerating = $state(false);
 
-  const isEditing = $derived(!!block);
-  const modalTitle = $derived(
-    isEditing
-      ? `Edit Focus Session`
-      : `Schedule Focus Session`
-  );
+	const isEditing = $derived(!!block);
+	const modalTitle = $derived(isEditing ? `Edit Focus Session` : `Schedule Focus Session`);
 
-  // Calculate duration
-  const durationMinutes = $derived.by(() => {
-    if (!startDateTime || !endDateTime) return 0;
-    const start = new Date(startDateTime);
-    const end = new Date(endDateTime);
-    return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
-  });
+	// Calculate duration
+	const durationMinutes = $derived.by(() => {
+		if (!startDateTime || !endDateTime) return 0;
+		const start = new Date(startDateTime);
+		const end = new Date(endDateTime);
+		return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
+	});
 
-  // Initialize values when block changes
-  $effect(() => {
-    if (block) {
-      blockType = block.block_type;
-      selectedProjectId = block.project_id;
-      startDateTime = formatDateTimeForInput(block.start_time);
-      endDateTime = formatDateTimeForInput(block.end_time);
-    }
-  });
+	// Initialize values when block changes
+	$effect(() => {
+		if (block) {
+			blockType = block.block_type;
+			selectedProjectId = block.project_id;
+			startDateTime = formatDateTimeForInput(block.start_time);
+			endDateTime = formatDateTimeForInput(block.end_time);
+		}
+	});
 
-  async function handleSubmit() {
-    // Validation
-    if (blockType === 'project' && !selectedProjectId) {
-      alert('Please select a project');
-      return;
-    }
+	async function handleSubmit() {
+		// Validation
+		if (blockType === 'project' && !selectedProjectId) {
+			alert('Please select a project');
+			return;
+		}
 
-    if (!startDateTime || !endDateTime) {
-      alert('Please select start and end times');
-      return;
-    }
+		if (!startDateTime || !endDateTime) {
+			alert('Please select start and end times');
+			return;
+		}
 
-    if (durationMinutes < 15) {
-      alert('Focus session must be at least 15 minutes');
-      return;
-    }
+		if (durationMinutes < 15) {
+			alert('Focus session must be at least 15 minutes');
+			return;
+		}
 
-    isSubmitting = true;
+		isSubmitting = true;
 
-    try {
-      const params = {
-        block_type: blockType,
-        project_id: blockType === 'project' ? selectedProjectId : null,
-        start_time: new Date(startDateTime).toISOString(),
-        end_time: new Date(endDateTime).toISOString()
-      };
+		try {
+			const params = {
+				block_type: blockType,
+				project_id: blockType === 'project' ? selectedProjectId : null,
+				start_time: new Date(startDateTime).toISOString(),
+				end_time: new Date(endDateTime).toISOString()
+			};
 
-      if (isEditing && onUpdate) {
-        // Update existing block
-        const response = await fetch(`/api/time-play/blocks/${block.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params)
-        });
+			if (isEditing && onUpdate) {
+				// Update existing block
+				const response = await fetch(`/api/time-play/blocks/${block.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(params)
+				});
 
-        const { data } = await response.json();
-        onUpdate(data.time_block);
-      } else if (!isEditing && onCreate) {
-        // Create new block
-        const response = await fetch('/api/time-play/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params)
-        });
+				const { data } = await response.json();
+				onUpdate(data.time_block);
+			} else if (!isEditing && onCreate) {
+				// Create new block
+				const response = await fetch('/api/time-play/create', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(params)
+				});
 
-        const { data } = await response.json();
-        onCreate(data.time_block);
-      }
+				const { data } = await response.json();
+				onCreate(data.time_block);
+			}
 
-      onClose();
-    } catch (error) {
-      console.error('Failed to save time block:', error);
-      alert(error.message || 'Failed to save focus session');
-    } finally {
-      isSubmitting = false;
-    }
-  }
+			onClose();
+		} catch (error) {
+			console.error('Failed to save time block:', error);
+			alert(error.message || 'Failed to save focus session');
+		} finally {
+			isSubmitting = false;
+		}
+	}
 
-  async function handleRegenerate() {
-    if (!block) return;
+	async function handleRegenerate() {
+		if (!block) return;
 
-    isRegenerating = true;
-    try {
-      const response = await fetch(`/api/time-play/blocks/${block.id}/suggestions`, {
-        method: 'POST'
-      });
+		isRegenerating = true;
+		try {
+			const response = await fetch(`/api/time-play/blocks/${block.id}/suggestions`, {
+				method: 'POST'
+			});
 
-      const { data } = await response.json();
-      if (onUpdate) {
-        onUpdate(data.time_block);
-      }
-    } catch (error) {
-      console.error('Failed to regenerate suggestions:', error);
-    } finally {
-      isRegenerating = false;
-    }
-  }
+			const { data } = await response.json();
+			if (onUpdate) {
+				onUpdate(data.time_block);
+			}
+		} catch (error) {
+			console.error('Failed to regenerate suggestions:', error);
+		} finally {
+			isRegenerating = false;
+		}
+	}
 
-  async function handleDelete() {
-    if (!block || !onDelete) return;
+	async function handleDelete() {
+		if (!block || !onDelete) return;
 
-    if (!confirm('Delete this focus session? This will also remove it from your calendar.')) {
-      return;
-    }
+		if (!confirm('Delete this focus session? This will also remove it from your calendar.')) {
+			return;
+		}
 
-    try {
-      await fetch(`/api/time-play/delete/${block.id}`, { method: 'DELETE' });
-      onDelete(block.id);
-      onClose();
-    } catch (error) {
-      console.error('Failed to delete time block:', error);
-      alert('Failed to delete focus session');
-    }
-  }
+		try {
+			await fetch(`/api/time-play/delete/${block.id}`, { method: 'DELETE' });
+			onDelete(block.id);
+			onClose();
+		} catch (error) {
+			console.error('Failed to delete time block:', error);
+			alert('Failed to delete focus session');
+		}
+	}
 </script>
 
 <Modal title={modalTitle} {isOpen} {onClose} size="xl">
-  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-    <!-- Two-column layout (matches TaskModal) -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-      <!-- Left Column: Content (3/4 width) -->
-      <div class="lg:col-span-3 space-y-5">
-
-        <!-- Block Type Selector -->
-        <div class="bg-gradient-to-r from-purple-50/50 to-blue-50/50
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+	>
+		<!-- Two-column layout (matches TaskModal) -->
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+			<!-- Left Column: Content (3/4 width) -->
+			<div class="lg:col-span-3 space-y-5">
+				<!-- Block Type Selector -->
+				<div
+					class="bg-gradient-to-r from-purple-50/50 to-blue-50/50
                     dark:from-purple-900/20 dark:to-blue-900/20
                     -m-4 sm:-m-5 mb-0 p-4 sm:p-5 rounded-t-xl
-                    border-b border-gray-200/50 dark:border-gray-700/50">
-          <FormField label="Session Type" labelFor="block-type" required>
-            <div class="flex gap-3">
-              <button
-                type="button"
-                class="flex-1 p-3 rounded-lg border-2 transition-all
+                    border-b border-gray-200/50 dark:border-gray-700/50"
+				>
+					<FormField label="Session Type" labelFor="block-type" required>
+						<div class="flex gap-3">
+							<button
+								type="button"
+								class="flex-1 p-3 rounded-lg border-2 transition-all
                        {blockType === 'project'
-                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
-                onclick={() => blockType = 'project'}
-              >
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 rounded-full border-2
+									? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+									: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
+								onclick={() => (blockType = 'project')}
+							>
+								<div class="flex items-center gap-2">
+									<div
+										class="w-4 h-4 rounded-full border-2
                              {blockType === 'project'
-                               ? 'border-blue-500 bg-blue-500'
-                               : 'border-gray-400'}" />
-                  <span class="font-semibold text-sm">Project Focus</span>
-                </div>
-                <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  Work on a specific project
-                </p>
-              </button>
+											? 'border-blue-500 bg-blue-500'
+											: 'border-gray-400'}"
+									/>
+									<span class="font-semibold text-sm">Project Focus</span>
+								</div>
+								<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+									Work on a specific project
+								</p>
+							</button>
 
-              <button
-                type="button"
-                class="flex-1 p-3 rounded-lg border-2 transition-all
+							<button
+								type="button"
+								class="flex-1 p-3 rounded-lg border-2 transition-all
                        {blockType === 'build'
-                         ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
-                onclick={() => blockType = 'build'}
-              >
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 rounded-full border-2
+									? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+									: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
+								onclick={() => (blockType = 'build')}
+							>
+								<div class="flex items-center gap-2">
+									<div
+										class="w-4 h-4 rounded-full border-2
                              {blockType === 'build'
-                               ? 'border-purple-500 bg-purple-500'
-                               : 'border-gray-400'}" />
-                  <span class="font-semibold text-sm">Build Block</span>
-                </div>
-                <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  Flexible deep work time
-                </p>
-              </button>
-            </div>
-          </FormField>
-        </div>
+											? 'border-purple-500 bg-purple-500'
+											: 'border-gray-400'}"
+									/>
+									<span class="font-semibold text-sm">Build Block</span>
+								</div>
+								<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+									Flexible deep work time
+								</p>
+							</button>
+						</div>
+					</FormField>
+				</div>
 
-        <!-- Project Selector (conditional) -->
-        {#if blockType === 'project'}
-          <FormField label="Project" labelFor="project" required>
-            <Select id="project" bind:value={selectedProjectId} size="lg">
-              <option value="">Select a project...</option>
-              {#each projects as project}
-                <option value={project.id}>{project.name}</option>
-              {/each}
-            </Select>
-          </FormField>
-        {/if}
+				<!-- Project Selector (conditional) -->
+				{#if blockType === 'project'}
+					<FormField label="Project" labelFor="project" required>
+						<Select id="project" bind:value={selectedProjectId} size="lg">
+							<option value="">Select a project...</option>
+							{#each projects as project}
+								<option value={project.id}>{project.name}</option>
+							{/each}
+						</Select>
+					</FormField>
+				{/if}
 
-        <!-- Time Selection -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Start Time" labelFor="start-time" required>
-            <TextInput
-              id="start-time"
-              type="datetime-local"
-              bind:value={startDateTime}
-              icon={Clock}
-            />
-          </FormField>
+				<!-- Time Selection -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<FormField label="Start Time" labelFor="start-time" required>
+						<TextInput
+							id="start-time"
+							type="datetime-local"
+							bind:value={startDateTime}
+							icon={Clock}
+						/>
+					</FormField>
 
-          <FormField label="End Time" labelFor="end-time" required>
-            <TextInput
-              id="end-time"
-              type="datetime-local"
-              bind:value={endDateTime}
-              icon={Clock}
-            />
-          </FormField>
-        </div>
+					<FormField label="End Time" labelFor="end-time" required>
+						<TextInput
+							id="end-time"
+							type="datetime-local"
+							bind:value={endDateTime}
+							icon={Clock}
+						/>
+					</FormField>
+				</div>
 
-        <!-- Duration Display -->
-        {#if durationMinutes > 0}
-          <div class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20
-                      border border-blue-200 dark:border-blue-700">
-            <div class="flex items-center gap-2 text-sm">
-              <Clock class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span class="font-medium text-blue-900 dark:text-blue-100">
-                Duration: {Math.floor(durationMinutes / 60)}h {durationMinutes % 60}m
-              </span>
-            </div>
-          </div>
-        {/if}
+				<!-- Duration Display -->
+				{#if durationMinutes > 0}
+					<div
+						class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20
+                      border border-blue-200 dark:border-blue-700"
+					>
+						<div class="flex items-center gap-2 text-sm">
+							<Clock class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+							<span class="font-medium text-blue-900 dark:text-blue-100">
+								Duration: {Math.floor(durationMinutes / 60)}h {durationMinutes %
+									60}m
+							</span>
+						</div>
+					</div>
+				{/if}
 
-        <!-- AI Suggestions Section (edit mode only) -->
-        {#if isEditing && block}
-          <div class="mt-6">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                <span class="mr-1.5">💡</span>Focus Suggestions
-              </h3>
-              <button
-                type="button"
-                class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
+				<!-- AI Suggestions Section (edit mode only) -->
+				{#if isEditing && block}
+					<div class="mt-6">
+						<div class="flex items-center justify-between mb-3">
+							<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+								<span class="mr-1.5">💡</span>Focus Suggestions
+							</h3>
+							<button
+								type="button"
+								class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
                        flex items-center gap-1"
-                onclick={handleRegenerate}
-                disabled={isRegenerating}
-              >
-                <Zap class="w-3 h-3" />
-                {isRegenerating ? 'Regenerating...' : 'Regenerate'}
-              </button>
-            </div>
+								onclick={handleRegenerate}
+								disabled={isRegenerating}
+							>
+								<Zap class="w-3 h-3" />
+								{isRegenerating ? 'Regenerating...' : 'Regenerate'}
+							</button>
+						</div>
 
-            {#if block.ai_suggestions && block.ai_suggestions.length > 0}
-              <div class="space-y-2">
-                {#each block.ai_suggestions as suggestion, index}
-                  <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50
-                              border border-gray-200 dark:border-gray-700">
-                    <div class="flex items-start gap-3">
-                      <span class="flex-shrink-0 w-6 h-6 rounded-full
+						{#if block.ai_suggestions && block.ai_suggestions.length > 0}
+							<div class="space-y-2">
+								{#each block.ai_suggestions as suggestion, index}
+									<div
+										class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50
+                              border border-gray-200 dark:border-gray-700"
+									>
+										<div class="flex items-start gap-3">
+											<span
+												class="flex-shrink-0 w-6 h-6 rounded-full
                                    bg-blue-500 text-white text-xs
-                                   flex items-center justify-center font-bold">
-                        {index + 1}
-                      </span>
-                      <div class="flex-1">
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                          {suggestion.title}
-                        </h4>
-                        <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                          {suggestion.reason}
-                        </p>
-                        {#if suggestion.project_name || suggestion.estimated_minutes}
-                          <div class="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                            {#if suggestion.project_name}
-                              <span>{suggestion.project_name}</span>
-                            {/if}
-                            {#if suggestion.estimated_minutes}
-                              <span>•</span>
-                              <span>{suggestion.estimated_minutes} min</span>
-                            {/if}
-                            {#if suggestion.priority}
-                              <span>•</span>
-                              <span class="uppercase">{suggestion.priority}</span>
-                            {/if}
-                          </div>
-                        {/if}
-                      </div>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                No suggestions yet. Click "Regenerate" to get AI-powered focus suggestions.
-              </p>
-            {/if}
-          </div>
-        {/if}
-      </div>
+                                   flex items-center justify-center font-bold"
+											>
+												{index + 1}
+											</span>
+											<div class="flex-1">
+												<h4
+													class="text-sm font-medium text-gray-900 dark:text-white"
+												>
+													{suggestion.title}
+												</h4>
+												<p
+													class="text-xs text-gray-600 dark:text-gray-300 mt-1"
+												>
+													{suggestion.reason}
+												</p>
+												{#if suggestion.project_name || suggestion.estimated_minutes}
+													<div
+														class="flex items-center gap-2 mt-2 text-xs text-gray-500"
+													>
+														{#if suggestion.project_name}
+															<span>{suggestion.project_name}</span>
+														{/if}
+														{#if suggestion.estimated_minutes}
+															<span>•</span>
+															<span
+																>{suggestion.estimated_minutes} min</span
+															>
+														{/if}
+														{#if suggestion.priority}
+															<span>•</span>
+															<span class="uppercase"
+																>{suggestion.priority}</span
+															>
+														{/if}
+													</div>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								No suggestions yet. Click "Regenerate" to get AI-powered focus
+								suggestions.
+							</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
 
-      <!-- Right Column: Metadata Sidebar (1/4 width) -->
-      <div class="lg:col-span-1">
-        <div class="bg-gradient-to-br from-gray-50/50 to-gray-100/30
+			<!-- Right Column: Metadata Sidebar (1/4 width) -->
+			<div class="lg:col-span-1">
+				<div
+					class="bg-gradient-to-br from-gray-50/50 to-gray-100/30
                     dark:from-gray-800/50 dark:to-gray-900/30
                     rounded-xl p-3 sm:p-4 space-y-4
                     border border-gray-200/50 dark:border-gray-700/50
-                    shadow-sm">
-
-          <!-- Calendar Sync Status -->
-          {#if isEditing && block}
-            <div class="space-y-2">
-              <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Calendar Sync
-              </h4>
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full
-                           {block.sync_status === 'synced'
-                             ? 'bg-green-500'
-                             : 'bg-yellow-500'}" />
-                <span class="text-xs text-gray-600 dark:text-gray-300">
-                  {block.sync_status === 'synced' ? 'Synced' : 'Pending'}
-                </span>
-              </div>
-              {#if block.calendar_event_link}
-                <a
-                  href={block.calendar_event_link}
-                  target="_blank"
-                  class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
+                    shadow-sm"
+				>
+					<!-- Calendar Sync Status -->
+					{#if isEditing && block}
+						<div class="space-y-2">
+							<h4
+								class="text-xs font-semibold uppercase tracking-wider text-gray-500"
+							>
+								Calendar Sync
+							</h4>
+							<div class="flex items-center gap-2">
+								<div
+									class="w-2 h-2 rounded-full
+                           {block.sync_status === 'synced' ? 'bg-green-500' : 'bg-yellow-500'}"
+								/>
+								<span class="text-xs text-gray-600 dark:text-gray-300">
+									{block.sync_status === 'synced' ? 'Synced' : 'Pending'}
+								</span>
+							</div>
+							{#if block.calendar_event_link}
+								<a
+									href={block.calendar_event_link}
+									target="_blank"
+									class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
                          flex items-center gap-1"
-                >
-                  <Calendar class="w-3 h-3" />
-                  Open in Calendar
-                </a>
-              {/if}
-            </div>
-          {/if}
+								>
+									<Calendar class="w-3 h-3" />
+									Open in Calendar
+								</a>
+							{/if}
+						</div>
+					{/if}
 
-          <!-- Metadata -->
-          <div class="space-y-2">
-            <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Session Info
-            </h4>
-            <div class="text-xs space-y-1">
-              <div class="flex justify-between">
-                <span class="text-gray-500">Type</span>
-                <span class="font-medium text-gray-900 dark:text-white">
-                  {blockType === 'project' ? 'Project' : 'Build'}
-                </span>
-              </div>
-              {#if durationMinutes > 0}
-                <div class="flex justify-between">
-                  <span class="text-gray-500">Duration</span>
-                  <span class="font-medium text-gray-900 dark:text-white">
-                    {durationMinutes} min
-                  </span>
-                </div>
-              {/if}
-            </div>
-          </div>
+					<!-- Metadata -->
+					<div class="space-y-2">
+						<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+							Session Info
+						</h4>
+						<div class="text-xs space-y-1">
+							<div class="flex justify-between">
+								<span class="text-gray-500">Type</span>
+								<span class="font-medium text-gray-900 dark:text-white">
+									{blockType === 'project' ? 'Project' : 'Build'}
+								</span>
+							</div>
+							{#if durationMinutes > 0}
+								<div class="flex justify-between">
+									<span class="text-gray-500">Duration</span>
+									<span class="font-medium text-gray-900 dark:text-white">
+										{durationMinutes} min
+									</span>
+								</div>
+							{/if}
+						</div>
+					</div>
 
-          <!-- Activity (edit mode only) -->
-          {#if isEditing && block}
-            <div class="space-y-2">
-              <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Activity
-              </h4>
-              <div class="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-                <div>Created {formatRelativeTime(block.created_at)}</div>
-                {#if block.updated_at !== block.created_at}
-                  <div>Updated {formatRelativeTime(block.updated_at)}</div>
-                {/if}
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
+					<!-- Activity (edit mode only) -->
+					{#if isEditing && block}
+						<div class="space-y-2">
+							<h4
+								class="text-xs font-semibold uppercase tracking-wider text-gray-500"
+							>
+								Activity
+							</h4>
+							<div class="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+								<div>Created {formatRelativeTime(block.created_at)}</div>
+								{#if block.updated_at !== block.created_at}
+									<div>Updated {formatRelativeTime(block.updated_at)}</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
 
-    <!-- Action Buttons -->
-    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-      <!-- Mobile Layout -->
-      <div class="sm:hidden space-y-3">
-        <Button type="submit" variant="primary" size="lg" class="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Focus Session')}
-        </Button>
-        <div class="grid grid-cols-2 gap-2">
-          <Button type="button" variant="ghost" onclick={onClose}>Cancel</Button>
-          {#if isEditing && onDelete}
-            <Button type="button" variant="danger" onclick={handleDelete}>Delete</Button>
-          {/if}
-        </div>
-      </div>
+		<!-- Action Buttons -->
+		<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+			<!-- Mobile Layout -->
+			<div class="sm:hidden space-y-3">
+				<Button
+					type="submit"
+					variant="primary"
+					size="lg"
+					class="w-full"
+					disabled={isSubmitting}
+				>
+					{isSubmitting
+						? 'Saving...'
+						: isEditing
+							? 'Save Changes'
+							: 'Create Focus Session'}
+				</Button>
+				<div class="grid grid-cols-2 gap-2">
+					<Button type="button" variant="ghost" onclick={onClose}>Cancel</Button>
+					{#if isEditing && onDelete}
+						<Button type="button" variant="danger" onclick={handleDelete}>Delete</Button
+						>
+					{/if}
+				</div>
+			</div>
 
-      <!-- Desktop Layout -->
-      <div class="hidden sm:flex sm:justify-between">
-        {#if isEditing && onDelete}
-          <Button type="button" variant="danger" onclick={handleDelete}>
-            <Trash2 class="w-4 h-4 mr-2" />
-            Delete Session
-          </Button>
-        {:else}
-          <div />
-        {/if}
+			<!-- Desktop Layout -->
+			<div class="hidden sm:flex sm:justify-between">
+				{#if isEditing && onDelete}
+					<Button type="button" variant="danger" onclick={handleDelete}>
+						<Trash2 class="w-4 h-4 mr-2" />
+						Delete Session
+					</Button>
+				{:else}
+					<div />
+				{/if}
 
-        <div class="flex gap-3">
-          <Button type="button" variant="outline" onclick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Focus Session')}
-          </Button>
-        </div>
-      </div>
-    </div>
-  </form>
+				<div class="flex gap-3">
+					<Button type="button" variant="outline" onclick={onClose}>Cancel</Button>
+					<Button type="submit" variant="primary" disabled={isSubmitting}>
+						{isSubmitting
+							? 'Saving...'
+							: isEditing
+								? 'Save Changes'
+								: 'Create Focus Session'}
+					</Button>
+				</div>
+			</div>
+		</div>
+	</form>
 </Modal>
 ```
 
@@ -948,95 +998,91 @@ interface Props {
 
 ```svelte
 <script lang="ts">
-  import type { WeeklyTasksData, TimeBlockWithProject } from '@buildos/shared-types';
-  import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
-  import { formatTime } from '$lib/utils/date-helpers';
+	import type { WeeklyTasksData, TimeBlockWithProject } from '@buildos/shared-types';
+	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
+	import { formatTime } from '$lib/utils/date-helpers';
 
-  let {
-    weeklyTasks,
-    timeBlocks = [], // NEW: time blocks data
-    displayMode,
-    onTaskClick,
-    onTimeBlockClick // NEW
-  }: Props = $props();
+	let {
+		weeklyTasks,
+		timeBlocks = [], // NEW: time blocks data
+		displayMode,
+		onTaskClick,
+		onTimeBlockClick // NEW
+	}: Props = $props();
 
-  const showTimeBlocks = $derived(
-    displayMode === 'intermediate' || displayMode === 'experienced'
-  );
+	const showTimeBlocks = $derived(
+		displayMode === 'intermediate' || displayMode === 'experienced'
+	);
 
-  // Group time blocks by day
-  function getTimeBlocksForDay(date: Date): TimeBlockWithProject[] {
-    return timeBlocks
-      .filter(block => isSameDay(new Date(block.start_time), date))
-      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  }
+	// Group time blocks by day
+	function getTimeBlocksForDay(date: Date): TimeBlockWithProject[] {
+		return timeBlocks
+			.filter((block) => isSameDay(new Date(block.start_time), date))
+			.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+	}
 </script>
 
 <!-- For each day in weekly view -->
 {#each daysOfWeek as day}
-  <div class="day-column">
-    <h3>{formatDayHeader(day)}</h3>
+	<div class="day-column">
+		<h3>{formatDayHeader(day)}</h3>
 
-    <!-- NEW: Time Blocks Section (if enabled) -->
-    {#if showTimeBlocks}
-      {#each getTimeBlocksForDay(day) as block}
-        <button
-          type="button"
-          class="time-block-item w-full text-left p-2 mb-2 rounded-lg
+		<!-- NEW: Time Blocks Section (if enabled) -->
+		{#if showTimeBlocks}
+			{#each getTimeBlocksForDay(day) as block}
+				<button
+					type="button"
+					class="time-block-item w-full text-left p-2 mb-2 rounded-lg
                  border-l-4 bg-gradient-to-r from-purple-50/20 to-transparent
                  dark:from-purple-900/10 dark:to-transparent
                  hover:from-purple-50/40 dark:hover:from-purple-900/20
                  transition-all"
-          style="border-left-color: {resolveBlockAccentColor(block)}"
-          onclick={() => onTimeBlockClick?.(block)}
-        >
-          <!-- Time range -->
-          <div class="flex items-center justify-between text-xs mb-1">
-            <span class="font-semibold text-gray-700 dark:text-gray-300">
-              {formatTime(block.start_time)} - {formatTime(block.end_time)}
-            </span>
-            <span class="px-1.5 py-0.5 rounded text-xs
+					style="border-left-color: {resolveBlockAccentColor(block)}"
+					onclick={() => onTimeBlockClick?.(block)}
+				>
+					<!-- Time range -->
+					<div class="flex items-center justify-between text-xs mb-1">
+						<span class="font-semibold text-gray-700 dark:text-gray-300">
+							{formatTime(block.start_time)} - {formatTime(block.end_time)}
+						</span>
+						<span
+							class="px-1.5 py-0.5 rounded text-xs
                          bg-purple-100 text-purple-700
-                         dark:bg-purple-900/40 dark:text-purple-300">
-              {block.duration_minutes}m
-            </span>
-          </div>
+                         dark:bg-purple-900/40 dark:text-purple-300"
+						>
+							{block.duration_minutes}m
+						</span>
+					</div>
 
-          <!-- Block title -->
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            🎯 {block.block_type === 'project' ? block.project?.name : 'Build Block'}
-          </div>
+					<!-- Block title -->
+					<div class="text-sm font-medium text-gray-900 dark:text-white">
+						🎯 {block.block_type === 'project' ? block.project?.name : 'Build Block'}
+					</div>
 
-          <!-- AI suggestions count -->
-          {#if block.ai_suggestions && block.ai_suggestions.length > 0}
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              💡 {block.ai_suggestions.length} suggestions
-            </div>
-          {/if}
-        </button>
-      {/each}
+					<!-- AI suggestions count -->
+					{#if block.ai_suggestions && block.ai_suggestions.length > 0}
+						<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							💡 {block.ai_suggestions.length} suggestions
+						</div>
+					{/if}
+				</button>
+			{/each}
 
-      <!-- Divider between time blocks and tasks -->
-      {#if getTimeBlocksForDay(day).length > 0 && getTasksForDay(day).length > 0}
-        <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-          Tasks
-        </p>
-      {/if}
-    {/if}
+			<!-- Divider between time blocks and tasks -->
+			{#if getTimeBlocksForDay(day).length > 0 && getTasksForDay(day).length > 0}
+				<div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+				<p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tasks</p>
+			{/if}
+		{/if}
 
-    <!-- Existing tasks section -->
-    {#each getTasksForDay(day) as task}
-      <button
-        type="button"
-        class="task-item"
-        onclick={() => onTaskClick?.(task)}
-      >
-        <!-- Existing task display -->
-        {task.title}
-      </button>
-    {/each}
-  </div>
+		<!-- Existing tasks section -->
+		{#each getTasksForDay(day) as task}
+			<button type="button" class="task-item" onclick={() => onTaskClick?.(task)}>
+				<!-- Existing task display -->
+				{task.title}
+			</button>
+		{/each}
+	</div>
 {/each}
 ```
 
@@ -1233,141 +1279,141 @@ hover: shadow-md
 
 ```svelte
 <script lang="ts">
-  // ... existing imports ...
+	// ... existing imports ...
 
-  // CHANGED: Import renamed component
-  import TimeBlocksCard from '$lib/components/dashboard/TimeBlocksCard.svelte';
-  // Was: import TaskDetailsCard from '$lib/components/dashboard/TaskDetailsCard.svelte';
+	// CHANGED: Import renamed component
+	import TimeBlocksCard from '$lib/components/dashboard/TimeBlocksCard.svelte';
+	// Was: import TaskDetailsCard from '$lib/components/dashboard/TaskDetailsCard.svelte';
 
-  // NEW: Import time block modal
-  import TimeBlockModal from '$lib/components/time-play/TimeBlockModal.svelte';
-  import type { TimeBlockWithProject } from '@buildos/shared-types';
+	// NEW: Import time block modal
+	import TimeBlockModal from '$lib/components/time-play/TimeBlockModal.svelte';
+	import type { TimeBlockWithProject } from '@buildos/shared-types';
 
-  // ... existing props ...
+	// ... existing props ...
 
-  // NEW: Time block state
-  let timeBlocks = $state<TimeBlockWithProject[]>([]);
-  let timeBlocksLoaded = $state(false);
-  let loadingTimeBlocks = $state(false);
-  let showTimeBlockModal = $state(false);
-  let selectedTimeBlock = $state<TimeBlockWithProject | null>(null);
+	// NEW: Time block state
+	let timeBlocks = $state<TimeBlockWithProject[]>([]);
+	let timeBlocksLoaded = $state(false);
+	let loadingTimeBlocks = $state(false);
+	let showTimeBlockModal = $state(false);
+	let selectedTimeBlock = $state<TimeBlockWithProject | null>(null);
 
-  // NEW: Load time blocks function
-  async function loadTimeBlocks() {
-    if (timeBlocksLoaded || loadingTimeBlocks) return;
+	// NEW: Load time blocks function
+	async function loadTimeBlocks() {
+		if (timeBlocksLoaded || loadingTimeBlocks) return;
 
-    loadingTimeBlocks = true;
-    try {
-      // Get next 7 days (covers today, tomorrow, and weekly view)
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 7);
+		loadingTimeBlocks = true;
+		try {
+			// Get next 7 days (covers today, tomorrow, and weekly view)
+			const startDate = new Date();
+			const endDate = new Date();
+			endDate.setDate(endDate.getDate() + 7);
 
-      const response = await fetch(
-        `/api/time-play/blocks?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
-      );
+			const response = await fetch(
+				`/api/time-play/blocks?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
+			);
 
-      if (response.ok) {
-        const { data } = await response.json();
-        timeBlocks = data.blocks || [];
-        timeBlocksLoaded = true;
-      }
-    } catch (error) {
-      console.error('Failed to load time blocks:', error);
-    } finally {
-      loadingTimeBlocks = false;
-    }
-  }
+			if (response.ok) {
+				const { data } = await response.json();
+				timeBlocks = data.blocks || [];
+				timeBlocksLoaded = true;
+			}
+		} catch (error) {
+			console.error('Failed to load time blocks:', error);
+		} finally {
+			loadingTimeBlocks = false;
+		}
+	}
 
-  // NEW: Time block event handlers
-  function handleTimeBlockClick(block: TimeBlockWithProject) {
-    selectedTimeBlock = block;
-    showTimeBlockModal = true;
-  }
+	// NEW: Time block event handlers
+	function handleTimeBlockClick(block: TimeBlockWithProject) {
+		selectedTimeBlock = block;
+		showTimeBlockModal = true;
+	}
 
-  function handleCreateTimeBlock() {
-    selectedTimeBlock = null;
-    showTimeBlockModal = true;
-  }
+	function handleCreateTimeBlock() {
+		selectedTimeBlock = null;
+		showTimeBlockModal = true;
+	}
 
-  function handleTimeBlockUpdate(updatedBlock: TimeBlockWithProject) {
-    // Update in local state
-    const index = timeBlocks.findIndex(b => b.id === updatedBlock.id);
-    if (index !== -1) {
-      timeBlocks[index] = updatedBlock;
-      timeBlocks = [...timeBlocks]; // Trigger reactivity
-    }
-  }
+	function handleTimeBlockUpdate(updatedBlock: TimeBlockWithProject) {
+		// Update in local state
+		const index = timeBlocks.findIndex((b) => b.id === updatedBlock.id);
+		if (index !== -1) {
+			timeBlocks[index] = updatedBlock;
+			timeBlocks = [...timeBlocks]; // Trigger reactivity
+		}
+	}
 
-  function handleTimeBlockCreate(newBlock: TimeBlockWithProject) {
-    // Add to local state
-    timeBlocks = [...timeBlocks, newBlock];
-  }
+	function handleTimeBlockCreate(newBlock: TimeBlockWithProject) {
+		// Add to local state
+		timeBlocks = [...timeBlocks, newBlock];
+	}
 
-  function handleTimeBlockDelete(blockId: string) {
-    // Remove from local state
-    timeBlocks = timeBlocks.filter(b => b.id !== blockId);
-  }
+	function handleTimeBlockDelete(blockId: string) {
+		// Remove from local state
+		timeBlocks = timeBlocks.filter((b) => b.id !== blockId);
+	}
 
-  // NEW: Load time blocks when task details section loads
-  $effect(() => {
-    // Load when intermediate+ user and section is visible
-    if (
-      !timeBlocksLoaded &&
-      (displayMode === 'intermediate' || displayMode === 'experienced')
-    ) {
-      loadTimeBlocks();
-    }
-  });
+	// NEW: Load time blocks when task details section loads
+	$effect(() => {
+		// Load when intermediate+ user and section is visible
+		if (
+			!timeBlocksLoaded &&
+			(displayMode === 'intermediate' || displayMode === 'experienced')
+		) {
+			loadTimeBlocks();
+		}
+	});
 </script>
 
 <!-- Existing dashboard sections ... -->
 
 <!-- CHANGED: TaskDetailsCard → TimeBlocksCard (with time blocks data) -->
 <TimeBlocksCard
-  tasks={todayTasks.concat(tomorrowTasks, pastTasks)}
-  timeBlocks={timeBlocks}
-  displayMode={displayMode}
-  isLoading={loadingTimeBlocks}
-  onTaskClick={handleTaskClick}
-  onTimeBlockClick={handleTimeBlockClick}
-  onCreateTimeBlock={handleCreateTimeBlock}
+	tasks={todayTasks.concat(tomorrowTasks, pastTasks)}
+	{timeBlocks}
+	{displayMode}
+	isLoading={loadingTimeBlocks}
+	onTaskClick={handleTaskClick}
+	onTimeBlockClick={handleTimeBlockClick}
+	onCreateTimeBlock={handleCreateTimeBlock}
 />
 
 <!-- CHANGED: WeeklyTaskCalendar (now includes time blocks) -->
 {#if weeklyTasksByDate && Object.keys(weeklyTasksByDate).length > 0}
-  <section class="mb-4 sm:mb-6">
-    <WeeklyTaskCalendar
-      {weeklyTasksByDate}
-      timeBlocks={timeBlocks}
-      displayMode={displayMode}
-      onTaskClick={handleTaskClick}
-      onTimeBlockClick={handleTimeBlockClick}
-    />
-  </section>
+	<section class="mb-4 sm:mb-6">
+		<WeeklyTaskCalendar
+			{weeklyTasksByDate}
+			{timeBlocks}
+			{displayMode}
+			onTaskClick={handleTaskClick}
+			onTimeBlockClick={handleTimeBlockClick}
+		/>
+	</section>
 {/if}
 
 <!-- Stats Grid (existing) -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-6">
-  <!-- ... existing stats cards ... -->
+	<!-- ... existing stats cards ... -->
 </div>
 
 <!-- Lazy-loaded bottom sections ... -->
 
 <!-- NEW: Time Block Modal -->
 {#if showTimeBlockModal}
-  <TimeBlockModal
-    isOpen={showTimeBlockModal}
-    block={selectedTimeBlock}
-    projects={activeProjects}
-    onClose={() => {
-      showTimeBlockModal = false;
-      selectedTimeBlock = null;
-    }}
-    onCreate={handleTimeBlockCreate}
-    onUpdate={handleTimeBlockUpdate}
-    onDelete={handleTimeBlockDelete}
-  />
+	<TimeBlockModal
+		isOpen={showTimeBlockModal}
+		block={selectedTimeBlock}
+		projects={activeProjects}
+		onClose={() => {
+			showTimeBlockModal = false;
+			selectedTimeBlock = null;
+		}}
+		onCreate={handleTimeBlockCreate}
+		onUpdate={handleTimeBlockUpdate}
+		onDelete={handleTimeBlockDelete}
+	/>
 {/if}
 ```
 
@@ -1498,66 +1544,56 @@ Response: { success: true, message: '...' }
 **File**: `/apps/web/src/routes/api/time-play/blocks/[id]/+server.ts`
 
 ```typescript
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { TimeBlockService } from "$lib/services/time-block.service";
-import { CalendarService } from "$lib/services/calendar-service";
-import { isFeatureEnabled } from "$lib/utils/feature-flags";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { TimeBlockService } from '$lib/services/time-block.service';
+import { CalendarService } from '$lib/services/calendar-service';
+import { isFeatureEnabled } from '$lib/utils/feature-flags';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
-  // 1. Check authentication
-  const session = await locals.auth();
-  if (!session?.user?.id) {
-    throw error(401, "Unauthorized");
-  }
+	// 1. Check authentication
+	const session = await locals.auth();
+	if (!session?.user?.id) {
+		throw error(401, 'Unauthorized');
+	}
 
-  // 2. Check feature flag
-  const hasAccess = await isFeatureEnabled(
-    locals.supabase,
-    session.user.id,
-    "time_play",
-  );
-  if (!hasAccess) {
-    throw error(403, "Time Play feature not enabled for this user");
-  }
+	// 2. Check feature flag
+	const hasAccess = await isFeatureEnabled(locals.supabase, session.user.id, 'time_play');
+	if (!hasAccess) {
+		throw error(403, 'Time Play feature not enabled for this user');
+	}
 
-  // 3. Parse request body
-  const body = await request.json();
-  const { block_type, project_id, start_time, end_time, timezone } = body;
+	// 3. Parse request body
+	const body = await request.json();
+	const { block_type, project_id, start_time, end_time, timezone } = body;
 
-  // 4. Update time block
-  try {
-    const calendarService = new CalendarService(
-      locals.supabase,
-      session.user.id,
-    );
-    const timeBlockService = new TimeBlockService(
-      locals.supabase,
-      session.user.id,
-      calendarService,
-    );
+	// 4. Update time block
+	try {
+		const calendarService = new CalendarService(locals.supabase, session.user.id);
+		const timeBlockService = new TimeBlockService(
+			locals.supabase,
+			session.user.id,
+			calendarService
+		);
 
-    const updatedBlock = await timeBlockService.updateTimeBlock(params.id, {
-      block_type,
-      project_id,
-      start_time: start_time ? new Date(start_time) : undefined,
-      end_time: end_time ? new Date(end_time) : undefined,
-      timezone,
-    });
+		const updatedBlock = await timeBlockService.updateTimeBlock(params.id, {
+			block_type,
+			project_id,
+			start_time: start_time ? new Date(start_time) : undefined,
+			end_time: end_time ? new Date(end_time) : undefined,
+			timezone
+		});
 
-    return json({
-      success: true,
-      data: {
-        time_block: updatedBlock,
-      },
-    });
-  } catch (err) {
-    console.error("Error updating time block:", err);
-    throw error(
-      500,
-      err instanceof Error ? err.message : "Failed to update time block",
-    );
-  }
+		return json({
+			success: true,
+			data: {
+				time_block: updatedBlock
+			}
+		});
+	} catch (err) {
+		console.error('Error updating time block:', err);
+		throw error(500, err instanceof Error ? err.message : 'Failed to update time block');
+	}
 };
 ```
 
@@ -1786,33 +1822,26 @@ private async updateCalendarEvent(block: TimeBlockWithProject): Promise<void> {
 ```svelte
 <!-- Widget -->
 <section aria-label="Upcoming focus sessions">
-  <h2 id="focus-sessions-heading">Focus Sessions</h2>
-  <div role="list" aria-labelledby="focus-sessions-heading">
-    {#each blocks as block}
-      <button role="listitem" aria-label="Focus session for {blockTitle} on {date}">
-        ...
-      </button>
-    {/each}
-  </div>
+	<h2 id="focus-sessions-heading">Focus Sessions</h2>
+	<div role="list" aria-labelledby="focus-sessions-heading">
+		{#each blocks as block}
+			<button role="listitem" aria-label="Focus session for {blockTitle} on {date}">
+				...
+			</button>
+		{/each}
+	</div>
 </section>
 
 <!-- Modal -->
-<Modal
-  title="Schedule Focus Session"
-  aria-label="Focus session creation form"
->
-  <form aria-label="Focus session details">
-    <FormField label="Session Type" required>
-      <div role="radiogroup" aria-label="Select session type">
-        <button role="radio" aria-checked={blockType === 'project'}>
-          Project Focus
-        </button>
-        <button role="radio" aria-checked={blockType === 'build'}>
-          Build Block
-        </button>
-      </div>
-    </FormField>
-  </form>
+<Modal title="Schedule Focus Session" aria-label="Focus session creation form">
+	<form aria-label="Focus session details">
+		<FormField label="Session Type" required>
+			<div role="radiogroup" aria-label="Select session type">
+				<button role="radio" aria-checked={blockType === 'project'}> Project Focus </button>
+				<button role="radio" aria-checked={blockType === 'build'}> Build Block </button>
+			</div>
+		</FormField>
+	</form>
 </Modal>
 ```
 
@@ -1822,11 +1851,11 @@ private async updateCalendarEvent(block: TimeBlockWithProject): Promise<void> {
 
 ```typescript
 function handleOpenModal() {
-  showTimeBlockModal = true;
-  // Auto-focus first interactive element
-  nextTick(() => {
-    document.querySelector("[data-autofocus]")?.focus();
-  });
+	showTimeBlockModal = true;
+	// Auto-focus first interactive element
+	nextTick(() => {
+		document.querySelector('[data-autofocus]')?.focus();
+	});
 }
 ```
 
@@ -1834,9 +1863,9 @@ function handleOpenModal() {
 
 ```typescript
 function handleCloseModal() {
-  showTimeBlockModal = false;
-  // Return focus to trigger element
-  triggerElement?.focus();
+	showTimeBlockModal = false;
+	// Return focus to trigger element
+	triggerElement?.focus();
 }
 ```
 
@@ -1861,9 +1890,9 @@ All text meets **WCAG AA** standards:
 ```typescript
 // Load with intersection observer (same pattern as bottom sections)
 $effect(() => {
-  if (bottomSectionsLoaded && !timeBlocksLoaded && shouldShowTimeBlocks) {
-    loadTimeBlocks();
-  }
+	if (bottomSectionsLoaded && !timeBlocksLoaded && shouldShowTimeBlocks) {
+		loadTimeBlocks();
+	}
 });
 ```
 
@@ -1882,17 +1911,15 @@ $effect(() => {
 let TimeBlockModal = $state<any>(null);
 
 async function loadTimeBlockModal() {
-  if (!TimeBlockModal) {
-    TimeBlockModal = (
-      await import("$lib/components/time-play/TimeBlockModal.svelte")
-    ).default;
-  }
-  return TimeBlockModal;
+	if (!TimeBlockModal) {
+		TimeBlockModal = (await import('$lib/components/time-play/TimeBlockModal.svelte')).default;
+	}
+	return TimeBlockModal;
 }
 
 async function handleCreateTimeBlock() {
-  await loadTimeBlockModal();
-  showTimeBlockModal = true;
+	await loadTimeBlockModal();
+	showTimeBlockModal = true;
 }
 ```
 
@@ -1912,13 +1939,13 @@ const CACHE_DURATION = 5 * 60 * 1000;
 let lastFetchTime = 0;
 
 async function loadTimeBlocks(force = false) {
-  const now = Date.now();
-  if (!force && timeBlocksLoaded && now - lastFetchTime < CACHE_DURATION) {
-    return; // Use cached data
-  }
+	const now = Date.now();
+	if (!force && timeBlocksLoaded && now - lastFetchTime < CACHE_DURATION) {
+		return; // Use cached data
+	}
 
-  // Fetch fresh data...
-  lastFetchTime = now;
+	// Fetch fresh data...
+	lastFetchTime = now;
 }
 ```
 
@@ -1928,23 +1955,23 @@ async function loadTimeBlocks(force = false) {
 
 ```typescript
 async function handleTimeBlockUpdate(updatedBlock: TimeBlockWithProject) {
-  // 1. Update UI immediately (optimistic)
-  const index = timeBlocks.findIndex((b) => b.id === updatedBlock.id);
-  if (index !== -1) {
-    timeBlocks[index] = updatedBlock;
-  }
+	// 1. Update UI immediately (optimistic)
+	const index = timeBlocks.findIndex((b) => b.id === updatedBlock.id);
+	if (index !== -1) {
+		timeBlocks[index] = updatedBlock;
+	}
 
-  // 2. Send to server (async)
-  try {
-    await fetch(`/api/time-play/blocks/${updatedBlock.id}`, {
-      method: "PATCH",
-      body: JSON.stringify(updatedBlock),
-    });
-  } catch (error) {
-    // 3. Rollback on failure
-    await loadTimeBlocks(true); // Force refresh
-    toastService.error("Failed to update focus session");
-  }
+	// 2. Send to server (async)
+	try {
+		await fetch(`/api/time-play/blocks/${updatedBlock.id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updatedBlock)
+		});
+	} catch (error) {
+		// 3. Rollback on failure
+		await loadTimeBlocks(true); // Force refresh
+		toastService.error('Failed to update focus session');
+	}
 }
 ```
 
@@ -1958,73 +1985,71 @@ async function handleTimeBlockUpdate(updatedBlock: TimeBlockWithProject) {
 
 ```typescript
 // TimeBlockDashboardWidget.test.ts
-describe("TimeBlockDashboardWidget", () => {
-  it("displays upcoming time blocks", () => {
-    const blocks = [createMockBlock(), createMockBlock()];
-    const { getByText } = render(TimeBlockDashboardWidget, {
-      props: { timeBlocks: blocks },
-    });
+describe('TimeBlockDashboardWidget', () => {
+	it('displays upcoming time blocks', () => {
+		const blocks = [createMockBlock(), createMockBlock()];
+		const { getByText } = render(TimeBlockDashboardWidget, {
+			props: { timeBlocks: blocks }
+		});
 
-    expect(getByText("5 upcoming")).toBeInTheDocument();
-  });
+		expect(getByText('5 upcoming')).toBeInTheDocument();
+	});
 
-  it("shows empty state when no blocks", () => {
-    const { getByText } = render(TimeBlockDashboardWidget, {
-      props: { timeBlocks: [] },
-    });
+	it('shows empty state when no blocks', () => {
+		const { getByText } = render(TimeBlockDashboardWidget, {
+			props: { timeBlocks: [] }
+		});
 
-    expect(getByText("No upcoming focus sessions")).toBeInTheDocument();
-  });
+		expect(getByText('No upcoming focus sessions')).toBeInTheDocument();
+	});
 
-  it("calls onBlockClick when block is clicked", async () => {
-    const mockOnClick = vi.fn();
-    const blocks = [createMockBlock()];
-    const { getByRole } = render(TimeBlockDashboardWidget, {
-      props: { timeBlocks: blocks, onBlockClick: mockOnClick },
-    });
+	it('calls onBlockClick when block is clicked', async () => {
+		const mockOnClick = vi.fn();
+		const blocks = [createMockBlock()];
+		const { getByRole } = render(TimeBlockDashboardWidget, {
+			props: { timeBlocks: blocks, onBlockClick: mockOnClick }
+		});
 
-    await fireEvent.click(getByRole("button", { name: /Project Name/i }));
+		await fireEvent.click(getByRole('button', { name: /Project Name/i }));
 
-    expect(mockOnClick).toHaveBeenCalledWith(blocks[0]);
-  });
+		expect(mockOnClick).toHaveBeenCalledWith(blocks[0]);
+	});
 });
 
 // TimeBlockModal.test.ts
-describe("TimeBlockModal", () => {
-  it("validates required fields", async () => {
-    const { getByRole } = render(TimeBlockModal, {
-      props: { isOpen: true, projects: [] },
-    });
+describe('TimeBlockModal', () => {
+	it('validates required fields', async () => {
+		const { getByRole } = render(TimeBlockModal, {
+			props: { isOpen: true, projects: [] }
+		});
 
-    await fireEvent.click(getByRole("button", { name: /Create/i }));
+		await fireEvent.click(getByRole('button', { name: /Create/i }));
 
-    // Should show validation error
-    expect(window.alert).toHaveBeenCalledWith(
-      expect.stringContaining("select a project"),
-    );
-  });
+		// Should show validation error
+		expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('select a project'));
+	});
 
-  it("creates time block with valid data", async () => {
-    const mockOnCreate = vi.fn();
-    const projects = [{ id: "1", name: "Test Project" }];
+	it('creates time block with valid data', async () => {
+		const mockOnCreate = vi.fn();
+		const projects = [{ id: '1', name: 'Test Project' }];
 
-    const { getByLabelText, getByRole } = render(TimeBlockModal, {
-      props: { isOpen: true, projects, onCreate: mockOnCreate },
-    });
+		const { getByLabelText, getByRole } = render(TimeBlockModal, {
+			props: { isOpen: true, projects, onCreate: mockOnCreate }
+		});
 
-    // Fill form
-    await fireEvent.click(getByLabelText("Project Focus"));
-    await selectOption(getByLabelText("Project"), "Test Project");
-    await typeDateTime(getByLabelText("Start Time"), "2025-10-15T14:00");
-    await typeDateTime(getByLabelText("End Time"), "2025-10-15T16:00");
+		// Fill form
+		await fireEvent.click(getByLabelText('Project Focus'));
+		await selectOption(getByLabelText('Project'), 'Test Project');
+		await typeDateTime(getByLabelText('Start Time'), '2025-10-15T14:00');
+		await typeDateTime(getByLabelText('End Time'), '2025-10-15T16:00');
 
-    // Submit
-    await fireEvent.click(getByRole("button", { name: /Create/i }));
+		// Submit
+		await fireEvent.click(getByRole('button', { name: /Create/i }));
 
-    await waitFor(() => {
-      expect(mockOnCreate).toHaveBeenCalled();
-    });
-  });
+		await waitFor(() => {
+			expect(mockOnCreate).toHaveBeenCalled();
+		});
+	});
 });
 ```
 
@@ -2033,33 +2058,31 @@ describe("TimeBlockModal", () => {
 **Dashboard Integration**:
 
 ```typescript
-describe("Dashboard Time Blocks Integration", () => {
-  it("loads time blocks for intermediate users", async () => {
-    const user = createMockUser({ projects: 2 }); // intermediate mode
+describe('Dashboard Time Blocks Integration', () => {
+	it('loads time blocks for intermediate users', async () => {
+		const user = createMockUser({ projects: 2 }); // intermediate mode
 
-    const { findByText } = render(Dashboard, {
-      props: { user, initialData: mockDashboardData },
-    });
+		const { findByText } = render(Dashboard, {
+			props: { user, initialData: mockDashboardData }
+		});
 
-    // Wait for lazy load
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/time-play/blocks"),
-      );
-    });
+		// Wait for lazy load
+		await waitFor(() => {
+			expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/time-play/blocks'));
+		});
 
-    expect(await findByText("Focus Sessions")).toBeInTheDocument();
-  });
+		expect(await findByText('Focus Sessions')).toBeInTheDocument();
+	});
 
-  it("hides time blocks for first-time users", () => {
-    const user = createMockUser({ projects: 0 }); // first-time mode
+	it('hides time blocks for first-time users', () => {
+		const user = createMockUser({ projects: 0 }); // first-time mode
 
-    const { queryByText } = render(Dashboard, {
-      props: { user, initialData: mockDashboardData },
-    });
+		const { queryByText } = render(Dashboard, {
+			props: { user, initialData: mockDashboardData }
+		});
 
-    expect(queryByText("Focus Sessions")).not.toBeInTheDocument();
-  });
+		expect(queryByText('Focus Sessions')).not.toBeInTheDocument();
+	});
 });
 ```
 
@@ -2068,42 +2091,42 @@ describe("Dashboard Time Blocks Integration", () => {
 **User Flows**:
 
 ```typescript
-test.describe("Time Block Dashboard Integration", () => {
-  test("user can create focus session from dashboard", async ({ page }) => {
-    await page.goto("/");
+test.describe('Time Block Dashboard Integration', () => {
+	test('user can create focus session from dashboard', async ({ page }) => {
+		await page.goto('/');
 
-    // Click "Schedule Focus Session" button
-    await page.click("text=Schedule Focus Session");
+		// Click "Schedule Focus Session" button
+		await page.click('text=Schedule Focus Session');
 
-    // Fill modal form
-    await page.click("text=Project Focus");
-    await page.selectOption('[data-testid="project-select"]', "Project 1");
-    await page.fill('[data-testid="start-time"]', "2025-10-15T14:00");
-    await page.fill('[data-testid="end-time"]', "2025-10-15T16:00");
+		// Fill modal form
+		await page.click('text=Project Focus');
+		await page.selectOption('[data-testid="project-select"]', 'Project 1');
+		await page.fill('[data-testid="start-time"]', '2025-10-15T14:00');
+		await page.fill('[data-testid="end-time"]', '2025-10-15T16:00');
 
-    // Submit
-    await page.click('button:has-text("Create Focus Session")');
+		// Submit
+		await page.click('button:has-text("Create Focus Session")');
 
-    // Verify widget updates
-    await expect(page.locator("text=Project 1")).toBeVisible();
-    await expect(page.locator("text=120 min")).toBeVisible();
-  });
+		// Verify widget updates
+		await expect(page.locator('text=Project 1')).toBeVisible();
+		await expect(page.locator('text=120 min')).toBeVisible();
+	});
 
-  test("user can edit focus session", async ({ page }) => {
-    await page.goto("/");
+	test('user can edit focus session', async ({ page }) => {
+		await page.goto('/');
 
-    // Click existing block
-    await page.click('[data-testid="time-block-item"]');
+		// Click existing block
+		await page.click('[data-testid="time-block-item"]');
 
-    // Modify end time
-    await page.fill('[data-testid="end-time"]', "2025-10-15T17:00");
+		// Modify end time
+		await page.fill('[data-testid="end-time"]', '2025-10-15T17:00');
 
-    // Save
-    await page.click('button:has-text("Save Changes")');
+		// Save
+		await page.click('button:has-text("Save Changes")');
 
-    // Verify updated duration
-    await expect(page.locator("text=180 min")).toBeVisible();
-  });
+		// Verify updated duration
+		await expect(page.locator('text=180 min')).toBeVisible();
+	});
 });
 ```
 
@@ -2193,28 +2216,28 @@ test.describe("Time Block Dashboard Integration", () => {
 
 - [ ] **Rename** `TaskDetailsCard.svelte` → `TimeBlocksCard.svelte`
 - [ ] **Enhance** TimeBlocksCard with time block display logic
-  - [ ] Add time block props and state
-  - [ ] Implement time block rendering in Today/Tomorrow columns
-  - [ ] Add color-coded left borders
-  - [ ] Implement "unscheduled tasks" separator
-  - [ ] Add empty state with CTA
+    - [ ] Add time block props and state
+    - [ ] Implement time block rendering in Today/Tomorrow columns
+    - [ ] Add color-coded left borders
+    - [ ] Implement "unscheduled tasks" separator
+    - [ ] Add empty state with CTA
 - [ ] **Create** `TimeBlockModal.svelte` component
-  - [ ] Implement two-column layout
-  - [ ] Add block type selector
-  - [ ] Add time/date inputs with validation
-  - [ ] Add AI suggestions display
-  - [ ] Add calendar sync status
+    - [ ] Implement two-column layout
+    - [ ] Add block type selector
+    - [ ] Add time/date inputs with validation
+    - [ ] Add AI suggestions display
+    - [ ] Add calendar sync status
 - [ ] **Enhance** `WeeklyTaskCalendar.svelte`
-  - [ ] Add time blocks display above tasks
-  - [ ] Implement compact time block cards
-  - [ ] Add divider between time blocks and tasks
+    - [ ] Add time blocks display above tasks
+    - [ ] Implement compact time block cards
+    - [ ] Add divider between time blocks and tasks
 - [ ] **Implement** `PATCH /api/time-play/blocks/{id}` endpoint
 - [ ] **Add** `updateTimeBlock()` method to TimeBlockService
 - [ ] **Update** Dashboard.svelte
-  - [ ] Add time block state management
-  - [ ] Add time block event handlers
-  - [ ] Pass time blocks to TimeBlocksCard and WeeklyTaskCalendar
-  - [ ] Add TimeBlockModal integration
+    - [ ] Add time block state management
+    - [ ] Add time block event handlers
+    - [ ] Pass time blocks to TimeBlocksCard and WeeklyTaskCalendar
+    - [ ] Add TimeBlockModal integration
 
 ### Phase 2: Visual Polish (Week 2)
 
@@ -2245,10 +2268,10 @@ test.describe("Time Block Dashboard Integration", () => {
 - [ ] Write unit tests for enhanced WeeklyTaskCalendar
 - [ ] Write integration tests for dashboard with time blocks
 - [ ] Write E2E tests for user flows
-  - [ ] Create time block from dashboard
-  - [ ] Edit time block
-  - [ ] Delete time block
-  - [ ] View time blocks in weekly calendar
+    - [ ] Create time block from dashboard
+    - [ ] Edit time block
+    - [ ] Delete time block
+    - [ ] View time blocks in weekly calendar
 - [ ] Test accessibility (keyboard, screen reader)
 - [ ] Test responsive layouts on devices
 - [ ] Test progressive disclosure (different user levels)

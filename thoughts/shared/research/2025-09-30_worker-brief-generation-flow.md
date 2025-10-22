@@ -4,17 +4,8 @@ researcher: Claude Code
 git_commit: 8b13282dff5d4f494e46faac78de27c02d0c5e43
 branch: main
 repository: buildos-platform
-topic: "Worker Brief Generation Flow - Complete Architecture Analysis"
-tags:
-  [
-    research,
-    codebase,
-    worker,
-    brief-generation,
-    queue-system,
-    email-flow,
-    llm-integration,
-  ]
+topic: 'Worker Brief Generation Flow - Complete Architecture Analysis'
+tags: [research, codebase, worker, brief-generation, queue-system, email-flow, llm-integration]
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude Code
@@ -50,22 +41,22 @@ The BuildOS worker service is a sophisticated, queue-based background job proces
 ### Core Services
 
 1. **API Server** (`apps/worker/src/index.ts:1-405`)
-   - Express server on port 3001
-   - REST endpoints: `/queue/brief`, `/queue/phases`, `/queue/onboarding`, `/jobs/:jobId`
-   - Health checks and queue statistics
-   - CORS configuration for web app integration
+    - Express server on port 3001
+    - REST endpoints: `/queue/brief`, `/queue/phases`, `/queue/onboarding`, `/jobs/:jobId`
+    - Health checks and queue statistics
+    - CORS configuration for web app integration
 
 2. **Queue Worker** (`apps/worker/src/worker.ts:1-226`)
-   - Supabase queue processor with atomic job claiming
-   - Job type handlers: brief generation, email sending, phases, onboarding, SMS
-   - Concurrent processing with `Promise.allSettled` isolation
-   - Health monitoring and graceful shutdown
+    - Supabase queue processor with atomic job claiming
+    - Job type handlers: brief generation, email sending, phases, onboarding, SMS
+    - Concurrent processing with `Promise.allSettled` isolation
+    - Health monitoring and graceful shutdown
 
 3. **Scheduler** (`apps/worker/src/scheduler.ts:1-554`)
-   - Cron-based automation (runs hourly)
-   - Timezone-aware scheduling with `date-fns-tz`
-   - Engagement backoff integration (optional feature flag)
-   - Batch user preference processing
+    - Cron-based automation (runs hourly)
+    - Timezone-aware scheduling with `date-fns-tz`
+    - Engagement backoff integration (optional feature flag)
+    - Batch user preference processing
 
 ### Technology Stack
 
@@ -90,7 +81,7 @@ The BuildOS worker service is a sophisticated, queue-based background job proces
 **Phase 1: Job Initialization** (Lines 31-34)
 
 ```typescript
-await updateJobStatus(job.id, "processing", "brief");
+await updateJobStatus(job.id, 'processing', 'brief');
 ```
 
 - Updates `queue_jobs` table from "pending" → "processing"
@@ -113,11 +104,11 @@ await updateJobStatus(job.id, "processing", "brief");
 
 ```typescript
 const brief = await generateDailyBrief(
-  job.data.userId,
-  briefDate,
-  job.data.options,
-  timezone,
-  job.id,
+	job.data.userId,
+	briefDate,
+	job.data.options,
+	timezone,
+	job.id
 );
 ```
 
@@ -143,14 +134,14 @@ const brief = await generateDailyBrief(
 **1. Brief Record Creation** (Lines 94-146)
 
 ```typescript
-await supabase.from("daily_briefs").upsert(
-  {
-    user_id: userId,
-    brief_date: briefDateInUserTz,
-    generation_status: "processing",
-    generation_progress: { step: "starting", progress: 0 },
-  },
-  { onConflict: "user_id, brief_date" },
+await supabase.from('daily_briefs').upsert(
+	{
+		user_id: userId,
+		brief_date: briefDateInUserTz,
+		generation_status: 'processing',
+		generation_progress: { step: 'starting', progress: 0 }
+	},
+	{ onConflict: 'user_id, brief_date' }
 );
 ```
 
@@ -219,9 +210,9 @@ Updates `daily_briefs` table with:
 
 - Tone varies by inactivity (gentle → motivating → direct)
 - Custom subject lines:
-  - ≤4 days: "Your BuildOS tasks are waiting for you"
-  - 5-10 days: "You've made progress - don't let it slip away"
-  - > 10 days: "We miss you at BuildOS - here's what's waiting"
+    - ≤4 days: "Your BuildOS tasks are waiting for you"
+    - 5-10 days: "You've made progress - don't let it slip away"
+    - > 10 days: "We miss you at BuildOS - here's what's waiting"
 
 ### Database Schema
 
@@ -255,13 +246,13 @@ Updates `daily_briefs` table with:
 #### Job Addition (Lines 65-105)
 
 ```typescript
-const { data: jobId } = await supabase.rpc("add_queue_job", {
-  p_user_id: userId,
-  p_job_type: jobType,
-  p_metadata: data,
-  p_priority: options?.priority ?? 10,
-  p_scheduled_for: scheduledFor,
-  p_dedup_key: dedupKey,
+const { data: jobId } = await supabase.rpc('add_queue_job', {
+	p_user_id: userId,
+	p_job_type: jobType,
+	p_metadata: data,
+	p_priority: options?.priority ?? 10,
+	p_scheduled_for: scheduledFor,
+	p_dedup_key: dedupKey
 });
 ```
 
@@ -275,9 +266,9 @@ const { data: jobId } = await supabase.rpc("add_queue_job", {
 #### Job Processing (Lines 168-226)
 
 ```typescript
-const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-  p_job_types: jobTypes,
-  p_batch_size: this.batchSize,
+const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+	p_job_types: jobTypes,
+	p_batch_size: this.batchSize
 });
 ```
 
@@ -306,8 +297,8 @@ await this.failJob(job.id, error.message, shouldRetry);
 #### Stalled Job Recovery (Lines 354-371)
 
 ```typescript
-const { data: count } = await supabase.rpc("reset_stalled_jobs", {
-  p_stall_timeout: `${this.stalledTimeout / 1000} seconds`,
+const { data: count } = await supabase.rpc('reset_stalled_jobs', {
+	p_stall_timeout: `${this.stalledTimeout / 1000} seconds`
 });
 ```
 
@@ -460,9 +451,9 @@ Converts relative paths to absolute:
 2. Capture user-agent and IP address
 3. Lookup email from `emails` table
 4. Update `email_recipients`:
-   - `opened_at` (first open only)
-   - `open_count += 1`
-   - `last_opened_at = now()`
+    - `opened_at` (first open only)
+    - `open_count += 1`
+    - `last_opened_at = now()`
 5. Log event to `email_tracking_events`
 6. Return 1x1 transparent PNG (Cache-Control: no-store)
 
@@ -556,22 +547,22 @@ Converts relative paths to absolute:
 
 ```typescript
 const llmService = new SmartLLMService({
-  httpReferer: "https://build-os.com",
-  appName: "BuildOS Daily Brief Worker",
+	httpReferer: 'https://build-os.com',
+	appName: 'BuildOS Daily Brief Worker'
 });
 
 // Standard brief
 await llmService.generateText({
-  profile: "quality",
-  temperature: 0.4,
-  maxTokens: 2200,
+	profile: 'quality',
+	temperature: 0.4,
+	maxTokens: 2200
 });
 
 // Re-engagement email
 await llmService.generateText({
-  profile: "quality",
-  temperature: 0.7, // Higher for engaging content
-  maxTokens: 1500,
+	profile: 'quality',
+	temperature: 0.7, // Higher for engaging content
+	maxTokens: 1500
 });
 ```
 
@@ -614,11 +605,7 @@ delay = (retryDelayMs * 2) ^ retryCount;
 **`notifyUser` Function:**
 
 ```typescript
-async function notifyUser(
-  userId: string,
-  event: string | object,
-  payload?: any,
-);
+async function notifyUser(userId: string, event: string | object, payload?: any);
 ```
 
 **How it works:**
@@ -639,9 +626,7 @@ async function notifyUser(
 #### Queue-Level Isolation (`supabaseQueue.ts:193-220`)
 
 ```typescript
-const results = await Promise.allSettled(
-  jobs.map((job) => this.processJob(job)),
-);
+const results = await Promise.allSettled(jobs.map((job) => this.processJob(job)));
 ```
 
 - One job failure doesn't crash others
@@ -652,9 +637,9 @@ const results = await Promise.allSettled(
 
 ```typescript
 try {
-  await this.executeJobProcessor(job, processor, startTime);
+	await this.executeJobProcessor(job, processor, startTime);
 } catch (error) {
-  await this.failJob(job.id, error.message, false);
+	await this.failJob(job.id, error.message, false);
 }
 ```
 

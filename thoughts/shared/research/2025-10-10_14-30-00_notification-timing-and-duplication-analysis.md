@@ -4,12 +4,12 @@ status: completed
 priority: high
 tags: [notifications, worker, timing, debugging]
 related_files:
-  - apps/worker/src/workers/brief/briefWorker.ts
-  - apps/worker/src/workers/notification/notificationWorker.ts
-  - packages/shared-types/src/payloadTransformer.ts
-  - apps/web/supabase/migrations/20251010_add_scheduled_for_to_notification_events.sql
-  - apps/web/supabase/migrations/20251006_notification_system_phase3.sql
-  - apps/web/supabase/migrations/20251011_fix_queue_status_comparison.sql
+    - apps/worker/src/workers/brief/briefWorker.ts
+    - apps/worker/src/workers/notification/notificationWorker.ts
+    - packages/shared-types/src/payloadTransformer.ts
+    - apps/web/supabase/migrations/20251010_add_scheduled_for_to_notification_events.sql
+    - apps/web/supabase/migrations/20251006_notification_system_phase3.sql
+    - apps/web/supabase/migrations/20251011_fix_queue_status_comparison.sql
 created: 2025-10-10
 ---
 
@@ -31,29 +31,29 @@ User reported two issues with daily brief notifications:
 
 // Calculate task counts from project briefs
 const todaysTaskCount =
-  projectBriefs?.reduce((sum, pb) => {
-    const metadata = pb.metadata as any;
-    return sum + (metadata?.todays_task_count || 0);
-  }, 0) || 0;
+	projectBriefs?.reduce((sum, pb) => {
+		const metadata = pb.metadata as any;
+		return sum + (metadata?.todays_task_count || 0);
+	}, 0) || 0;
 
 // Similar calculations for overdue, upcoming, next 7 days, recently completed
 
 // Call emit_notification_event RPC with scheduled time
-await (serviceClient.rpc as any)("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_target_user_id: job.data.userId,
-  p_payload: {
-    brief_id: brief.id,
-    brief_date: briefDate,
-    task_count: todaysTaskCount, // backward compatibility
-    todays_task_count: todaysTaskCount,
-    overdue_task_count: overdueTaskCount,
-    upcoming_task_count: upcomingTaskCount,
-    next_seven_days_task_count: nextSevenDaysTaskCount,
-    recently_completed_count: recentlyCompletedCount,
-    project_count: projectCount,
-  },
-  p_scheduled_for: notificationScheduledFor?.toISOString(), // User's preferred time
+await (serviceClient.rpc as any)('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_target_user_id: job.data.userId,
+	p_payload: {
+		brief_id: brief.id,
+		brief_date: briefDate,
+		task_count: todaysTaskCount, // backward compatibility
+		todays_task_count: todaysTaskCount,
+		overdue_task_count: overdueTaskCount,
+		upcoming_task_count: upcomingTaskCount,
+		next_seven_days_task_count: nextSevenDaysTaskCount,
+		recently_completed_count: recentlyCompletedCount,
+		project_count: projectCount
+	},
+	p_scheduled_for: notificationScheduledFor?.toISOString() // User's preferred time
 });
 ```
 
@@ -96,8 +96,8 @@ END;
 - Creates ONE notification event
 - Loops through active subscriptions (normally ONE per user for brief.completed)
 - For each subscription:
-  - Creates ONE push delivery **per active push subscription** (can be multiple devices)
-  - Creates ONE in-app delivery (if enabled)
+    - Creates ONE push delivery **per active push subscription** (can be multiple devices)
+    - Creates ONE in-app delivery (if enabled)
 - ALL jobs scheduled for `v_scheduled_time` (user's preferred time)
 
 ### 3. Worker Job Claiming (claim_pending_jobs RPC)
@@ -123,8 +123,8 @@ typedDelivery = await enrichDeliveryPayload(typedDelivery, jobLogger);
 
 // Transform event payload to notification message
 const transformedPayload = transformEventPayload(
-  event.event_type as EventType,
-  event.payload as any,
+	event.event_type as EventType,
+	event.payload as any
 );
 ```
 
@@ -133,26 +133,23 @@ const transformedPayload = transformEventPayload(
 ```typescript
 // packages/shared-types/src/payloadTransformer.ts:51-96
 
-function transformBriefCompleted(
-  payload: BriefCompletedEventPayload,
-): NotificationPayload {
-  const todaysCount = payload.todays_task_count || 0;
-  const overdueCount = payload.overdue_task_count || 0;
-  const upcomingCount = payload.upcoming_task_count || 0;
+function transformBriefCompleted(payload: BriefCompletedEventPayload): NotificationPayload {
+	const todaysCount = payload.todays_task_count || 0;
+	const overdueCount = payload.overdue_task_count || 0;
+	const upcomingCount = payload.upcoming_task_count || 0;
 
-  const taskBreakdown: string[] = [];
-  if (todaysCount > 0) taskBreakdown.push(`Today: ${todaysCount}`);
-  if (overdueCount > 0) taskBreakdown.push(`Overdue: ${overdueCount}`);
-  if (upcomingCount > 0) taskBreakdown.push(`Upcoming: ${upcomingCount}`);
+	const taskBreakdown: string[] = [];
+	if (todaysCount > 0) taskBreakdown.push(`Today: ${todaysCount}`);
+	if (overdueCount > 0) taskBreakdown.push(`Overdue: ${overdueCount}`);
+	if (upcomingCount > 0) taskBreakdown.push(`Upcoming: ${upcomingCount}`);
 
-  const taskSummary =
-    taskBreakdown.length > 0 ? taskBreakdown.join(" | ") : "No tasks scheduled";
+	const taskSummary = taskBreakdown.length > 0 ? taskBreakdown.join(' | ') : 'No tasks scheduled';
 
-  return {
-    title: "Your Daily Brief is Ready! 📋",
-    body: `${taskSummary} across ${projectText}`,
-    // ...
-  };
+	return {
+		title: 'Your Daily Brief is Ready! 📋',
+		body: `${taskSummary} across ${projectText}`
+		// ...
+	};
 }
 ```
 
@@ -231,10 +228,10 @@ HAVING COUNT(*) > 1;
 ```typescript
 // Counted ALL user tasks, not just tasks in the brief
 const { data: tasks } = await supabase
-  .from("tasks")
-  .select("id")
-  .eq("user_id", job.data.userId)
-  .is("deleted_at", null);
+	.from('tasks')
+	.select('id')
+	.eq('user_id', job.data.userId)
+	.is('deleted_at', null);
 const taskCount = tasks?.length || 0;
 ```
 
@@ -243,10 +240,10 @@ const taskCount = tasks?.length || 0;
 ```typescript
 // Sum today's tasks from project briefs metadata
 const taskCount =
-  projectBriefs?.reduce((sum, pb) => {
-    const metadata = pb.metadata as any;
-    return sum + (metadata?.todays_task_count || 0);
-  }, 0) || 0;
+	projectBriefs?.reduce((sum, pb) => {
+		const metadata = pb.metadata as any;
+		return sum + (metadata?.todays_task_count || 0);
+	}, 0) || 0;
 ```
 
 Now includes comprehensive breakdown:
@@ -282,9 +279,9 @@ Generation Buffer: 2 minutes
 ```typescript
 // apps/worker/src/lib/supabaseQueue.ts
 
-const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-  p_job_types: ["send_notification"],
-  p_batch_size: 10,
+const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+	p_job_types: ['send_notification'],
+	p_batch_size: 10
 });
 ```
 
@@ -389,46 +386,46 @@ Add settings page for notification preferences:
 
 1. **Check user's push subscriptions:**
 
-   ```sql
-   SELECT id, endpoint, user_agent, is_active, last_used_at, created_at
-   FROM push_subscriptions
-   WHERE user_id = 'USER_ID_HERE'
-   ORDER BY created_at DESC;
-   ```
+    ```sql
+    SELECT id, endpoint, user_agent, is_active, last_used_at, created_at
+    FROM push_subscriptions
+    WHERE user_id = 'USER_ID_HERE'
+    ORDER BY created_at DESC;
+    ```
 
 2. **Check user's notification subscriptions:**
 
-   ```sql
-   SELECT event_type, is_active, created_at
-   FROM notification_subscriptions
-   WHERE user_id = 'USER_ID_HERE';
-   ```
+    ```sql
+    SELECT event_type, is_active, created_at
+    FROM notification_subscriptions
+    WHERE user_id = 'USER_ID_HERE';
+    ```
 
 3. **Check user's preferences:**
 
-   ```sql
-   SELECT event_type, push_enabled, in_app_enabled, email_enabled
-   FROM user_notification_preferences
-   WHERE user_id = 'USER_ID_HERE';
-   ```
+    ```sql
+    SELECT event_type, push_enabled, in_app_enabled, email_enabled
+    FROM user_notification_preferences
+    WHERE user_id = 'USER_ID_HERE';
+    ```
 
 4. **Check recent notification deliveries:**
-   ```sql
-   SELECT
-     nd.id,
-     nd.channel,
-     nd.status,
-     nd.created_at,
-     nd.sent_at,
-     ne.event_type,
-     ne.payload->>'brief_id' as brief_id
-   FROM notification_deliveries nd
-   JOIN notification_events ne ON nd.event_id = ne.id
-   WHERE nd.recipient_user_id = 'USER_ID_HERE'
-     AND ne.event_type = 'brief.completed'
-   ORDER BY nd.created_at DESC
-   LIMIT 20;
-   ```
+    ```sql
+    SELECT
+      nd.id,
+      nd.channel,
+      nd.status,
+      nd.created_at,
+      nd.sent_at,
+      ne.event_type,
+      ne.payload->>'brief_id' as brief_id
+    FROM notification_deliveries nd
+    JOIN notification_events ne ON nd.event_id = ne.id
+    WHERE nd.recipient_user_id = 'USER_ID_HERE'
+      AND ne.event_type = 'brief.completed'
+    ORDER BY nd.created_at DESC
+    LIMIT 20;
+    ```
 
 ## Summary
 

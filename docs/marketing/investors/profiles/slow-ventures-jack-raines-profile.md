@@ -175,10 +175,10 @@ Jack has written critically about SBF/FTX collapse:
 
 - **Email Jack**: Jack@slow.co
 - **Prerequisites**:
-  - Making decent living through current channels
-  - Desire to build company beyond content
-  - Clear vision for business expansion
-  - Capital as primary constraint
+    - Making decent living through current channels
+    - Desire to build company beyond content
+    - Clear vision for business expansion
+    - Capital as primary constraint
 
 #### Creator Fund Pitch Elements
 

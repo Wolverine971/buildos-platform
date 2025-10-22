@@ -4,9 +4,8 @@ researcher: Claude Code
 git_commit: 1df7369b330929e44974a52bab3c77042d09bab5
 branch: main
 repository: buildos-platform
-topic: "Daily Brief Notification Refactor - Implementation Plan"
-tags:
-  [implementation, notifications, daily-briefs, refactoring, database-migration]
+topic: 'Daily Brief Notification Refactor - Implementation Plan'
+tags: [implementation, notifications, daily-briefs, refactoring, database-migration]
 status: completed
 last_updated: 2025-10-13
 last_updated_by: Claude Code
@@ -72,25 +71,25 @@ All planned changes have been implemented and tested. Additional post-implementa
 - **Problem**: Worker files queried `user_notification_preferences` without filtering by `event_type='user'`, causing `.single()` to fail if multiple preference rows existed
 - **Impact**: Would break when users have both user-level and event-based preferences
 - **Files Fixed**:
-  - `/apps/worker/src/workers/brief/briefWorker.ts:102` - Added `.eq("event_type", "user")`
-  - `/apps/worker/src/workers/brief/emailWorker.ts:95` - Added `.eq("event_type", "user")`
-  - `/apps/worker/src/lib/services/email-sender.ts:127` - Added `.eq("event_type", "user")`
+    - `/apps/worker/src/workers/brief/briefWorker.ts:102` - Added `.eq("event_type", "user")`
+    - `/apps/worker/src/workers/brief/emailWorker.ts:95` - Added `.eq("event_type", "user")`
+    - `/apps/worker/src/lib/services/email-sender.ts:127` - Added `.eq("event_type", "user")`
 - **Status**: ✅ FIXED
 
 **Bug #2: Duplicate UI Controls in NotificationPreferences**
 
 - **Problem**: Component showed duplicate email/SMS toggles in two separate sections:
-  1. "Daily Brief Notifications" (user-level, correct)
-  2. "Advanced Notification Settings" (event-based, duplicate)
+    1. "Daily Brief Notifications" (user-level, correct)
+    2. "Advanced Notification Settings" (event-based, duplicate)
 - **Impact**: User confusion about which toggle to use, inconsistent UX
 - **Solution**: Removed duplicate toggles from Advanced section, renamed to "Additional Notification Channels"
 - **File Fixed**: `/apps/web/src/lib/components/settings/NotificationPreferences.svelte`
 - **Changes**:
-  - Removed duplicate email toggle (lines 462-491)
-  - Removed duplicate SMS toggle (lines 537-581)
-  - Updated `savePreferences()` to only save push/in-app settings to event-based preferences
-  - Updated `hasAnyChannelEnabled` to include dailyBrief toggles
-  - Updated warning message text
+    - Removed duplicate email toggle (lines 462-491)
+    - Removed duplicate SMS toggle (lines 537-581)
+    - Updated `savePreferences()` to only save push/in-app settings to event-based preferences
+    - Updated `hasAnyChannelEnabled` to include dailyBrief toggles
+    - Updated warning message text
 - **Status**: ✅ FIXED
 
 **Bug #3: Inconsistent State Management**
@@ -125,9 +124,9 @@ All planned changes have been implemented and tested. Additional post-implementa
 
 ```typescript
 export interface DailyBriefNotificationPreferences {
-  should_email_daily_brief: boolean;
-  should_sms_daily_brief: boolean;
-  updated_at?: string;
+	should_email_daily_brief: boolean;
+	should_sms_daily_brief: boolean;
+	updated_at?: string;
 }
 ```
 
@@ -138,14 +137,14 @@ export interface DailyBriefNotificationPreferences {
 **Two-Section Approach in NotificationPreferences.svelte**:
 
 1. **"Daily Brief Notifications"** (User-level, `event_type='user'`)
-   - Email toggle: Controls `should_email_daily_brief`
-   - SMS toggle: Controls `should_sms_daily_brief`
-   - Shows phone verification warnings if needed
+    - Email toggle: Controls `should_email_daily_brief`
+    - SMS toggle: Controls `should_sms_daily_brief`
+    - Shows phone verification warnings if needed
 
 2. **"Additional Notification Channels"** (Event-based, `event_type='brief.completed'`)
-   - Push toggle: For future push notifications
-   - In-app toggle: For future in-app notifications
-   - Does NOT include email/SMS (those are user-level only)
+    - Push toggle: For future push notifications
+    - In-app toggle: For future in-app notifications
+    - Does NOT include email/SMS (those are user-level only)
 
 **Rationale**:
 
@@ -239,13 +238,13 @@ ON CONFLICT (user_id) DO UPDATE SET
 ```typescript
 // Check if user wants email
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("email_daily_brief, timezone")
-  .eq("user_id", job.data.userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('email_daily_brief, timezone')
+	.eq('user_id', job.data.userId)
+	.single();
 
 if (preferences?.email_daily_brief) {
-  // Create email record and queue job
+	// Create email record and queue job
 }
 ```
 
@@ -254,53 +253,51 @@ if (preferences?.email_daily_brief) {
 ```typescript
 // After brief generation completes, check notification preferences
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", job.data.userId)
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', job.data.userId)
+	.single();
 
 // Email notification
 if (notificationPrefs?.should_email_daily_brief) {
-  logger.info("📧 User opted in for email notification, creating email record");
-  // Create email record and queue job (existing code)
+	logger.info('📧 User opted in for email notification, creating email record');
+	// Create email record and queue job (existing code)
 }
 
 // SMS notification
 if (notificationPrefs?.should_sms_daily_brief) {
-  logger.info(
-    "📱 User opted in for SMS notification, checking phone verification",
-  );
+	logger.info('📱 User opted in for SMS notification, checking phone verification');
 
-  // Check phone verification
-  const { data: smsPrefs } = await supabase
-    .from("user_sms_preferences")
-    .select("phone_number, phone_verified, opted_out")
-    .eq("user_id", job.data.userId)
-    .single();
+	// Check phone verification
+	const { data: smsPrefs } = await supabase
+		.from('user_sms_preferences')
+		.select('phone_number, phone_verified, opted_out')
+		.eq('user_id', job.data.userId)
+		.single();
 
-  if (!smsPrefs?.phone_number) {
-    logger.warn("⚠️ User wants SMS but has no phone number - skipping");
-    // TODO: Trigger phone verification flow in UI
-  } else if (!smsPrefs?.phone_verified) {
-    logger.warn("⚠️ User wants SMS but phone not verified - skipping");
-    // TODO: Trigger phone verification flow in UI
-  } else if (smsPrefs?.opted_out) {
-    logger.warn("⚠️ User opted out of SMS - skipping");
-  } else {
-    logger.info("✅ Phone verified, queuing SMS notification");
-    // Queue SMS via existing notification system
-    await serviceClient.rpc("emit_notification_event", {
-      p_event_type: "brief.completed",
-      p_event_source: "worker_job",
-      p_target_user_id: job.data.userId,
-      p_payload: {
-        brief_id: brief.id,
-        brief_date: briefDate,
-        message: `Your daily brief is ready! ${todaysTaskCount} tasks today.`,
-        // ... other data
-      },
-    });
-  }
+	if (!smsPrefs?.phone_number) {
+		logger.warn('⚠️ User wants SMS but has no phone number - skipping');
+		// TODO: Trigger phone verification flow in UI
+	} else if (!smsPrefs?.phone_verified) {
+		logger.warn('⚠️ User wants SMS but phone not verified - skipping');
+		// TODO: Trigger phone verification flow in UI
+	} else if (smsPrefs?.opted_out) {
+		logger.warn('⚠️ User opted out of SMS - skipping');
+	} else {
+		logger.info('✅ Phone verified, queuing SMS notification');
+		// Queue SMS via existing notification system
+		await serviceClient.rpc('emit_notification_event', {
+			p_event_type: 'brief.completed',
+			p_event_source: 'worker_job',
+			p_target_user_id: job.data.userId,
+			p_payload: {
+				brief_id: brief.id,
+				brief_date: briefDate,
+				message: `Your daily brief is ready! ${todaysTaskCount} tasks today.`
+				// ... other data
+			}
+		});
+	}
 }
 ```
 
@@ -312,13 +309,12 @@ if (notificationPrefs?.should_sms_daily_brief) {
 
 ```typescript
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("email_daily_brief, is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('email_daily_brief, is_active')
+	.eq('user_id', userId)
+	.single();
 
-const shouldSend =
-  preferences.email_daily_brief === true && preferences.is_active === true;
+const shouldSend = preferences.email_daily_brief === true && preferences.is_active === true;
 ```
 
 **New Code:**
@@ -326,26 +322,25 @@ const shouldSend =
 ```typescript
 // Check notification preferences for email
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.single();
 
 // Check brief preferences for is_active (brief generation)
 const { data: briefPrefs } = await supabase
-  .from("user_brief_preferences")
-  .select("is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('is_active')
+	.eq('user_id', userId)
+	.single();
 
 const shouldSend =
-  notificationPrefs?.should_email_daily_brief === true &&
-  briefPrefs?.is_active === true; // User must have active brief generation
+	notificationPrefs?.should_email_daily_brief === true && briefPrefs?.is_active === true; // User must have active brief generation
 
 logger.info(`📧 Email eligibility check for user ${userId}:
   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief}
   → is_active: ${briefPrefs?.is_active}
-  → Result: ${shouldSend ? "SEND EMAIL ✅" : "SKIP EMAIL ❌"}`);
+  → Result: ${shouldSend ? 'SEND EMAIL ✅' : 'SKIP EMAIL ❌'}`);
 ```
 
 ### 3. Worker - Email Worker
@@ -356,13 +351,13 @@ logger.info(`📧 Email eligibility check for user ${userId}:
 
 ```typescript
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("email_daily_brief, is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('email_daily_brief, is_active')
+	.eq('user_id', userId)
+	.single();
 
 if (!preferences?.email_daily_brief || !preferences?.is_active) {
-  // Cancel email
+	// Cancel email
 }
 ```
 
@@ -370,24 +365,24 @@ if (!preferences?.email_daily_brief || !preferences?.is_active) {
 
 ```typescript
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.single();
 
 const { data: briefPrefs } = await supabase
-  .from("user_brief_preferences")
-  .select("is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('is_active')
+	.eq('user_id', userId)
+	.single();
 
 logger.info(`📧 Email preferences check for user ${userId}:
   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief}
   → is_active: ${briefPrefs?.is_active}`);
 
 if (!notificationPrefs?.should_email_daily_brief || !briefPrefs?.is_active) {
-  logger.info(`📭 Email preferences changed, marking as cancelled`);
-  // Cancel email
+	logger.info(`📭 Email preferences changed, marking as cancelled`);
+	// Cancel email
 }
 ```
 
@@ -399,10 +394,10 @@ if (!notificationPrefs?.should_email_daily_brief || !briefPrefs?.is_active) {
 
 ```typescript
 const { data: preferences, error } = await supabase
-  .from("user_brief_preferences")
-  .select("*")
-  .eq("user_id", user.id)
-  .single();
+	.from('user_brief_preferences')
+	.select('*')
+	.eq('user_id', user.id)
+	.single();
 ```
 
 **Keep as-is** - This endpoint should only return brief generation preferences
@@ -412,29 +407,22 @@ Remove `email_daily_brief` from the destructuring and update logic:
 
 ```typescript
 // OLD
-const {
-  frequency,
-  day_of_week,
-  time_of_day,
-  timezone,
-  is_active,
-  email_daily_brief,
-} = await request.json();
+const { frequency, day_of_week, time_of_day, timezone, is_active, email_daily_brief } =
+	await request.json();
 
 // NEW
-const { frequency, day_of_week, time_of_day, timezone, is_active } =
-  await request.json();
+const { frequency, day_of_week, time_of_day, timezone, is_active } = await request.json();
 
 // Remove email_daily_brief from upsert
-const { data, error } = await supabase.from("user_brief_preferences").upsert({
-  user_id: user.id,
-  frequency,
-  day_of_week,
-  time_of_day,
-  timezone,
-  is_active,
-  // REMOVED: email_daily_brief
-  updated_at: new Date().toISOString(),
+const { data, error } = await supabase.from('user_brief_preferences').upsert({
+	user_id: user.id,
+	frequency,
+	day_of_week,
+	time_of_day,
+	timezone,
+	is_active,
+	// REMOVED: email_daily_brief
+	updated_at: new Date().toISOString()
 });
 ```
 
@@ -449,89 +437,82 @@ Add handling for `should_email_daily_brief` and `should_sms_daily_brief` to exis
 **File:** `/apps/web/src/routes/api/notification-preferences/daily-brief/+server.ts`
 
 ```typescript
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({
-  locals: { supabase, getSession },
-}) => {
-  const session = await getSession();
-  if (!session?.user) {
-    throw error(401, "Unauthorized");
-  }
+export const GET: RequestHandler = async ({ locals: { supabase, getSession } }) => {
+	const session = await getSession();
+	if (!session?.user) {
+		throw error(401, 'Unauthorized');
+	}
 
-  const { data: preferences, error: dbError } = await supabase
-    .from("user_notification_preferences")
-    .select("should_email_daily_brief, should_sms_daily_brief")
-    .eq("user_id", session.user.id)
-    .single();
+	const { data: preferences, error: dbError } = await supabase
+		.from('user_notification_preferences')
+		.select('should_email_daily_brief, should_sms_daily_brief')
+		.eq('user_id', session.user.id)
+		.single();
 
-  if (dbError && dbError.code !== "PGRST116") {
-    console.error("Error fetching notification preferences:", dbError);
-    throw error(500, "Database error");
-  }
+	if (dbError && dbError.code !== 'PGRST116') {
+		console.error('Error fetching notification preferences:', dbError);
+		throw error(500, 'Database error');
+	}
 
-  // Return defaults if no preferences exist
-  if (!preferences) {
-    return json({
-      should_email_daily_brief: false,
-      should_sms_daily_brief: false,
-    });
-  }
+	// Return defaults if no preferences exist
+	if (!preferences) {
+		return json({
+			should_email_daily_brief: false,
+			should_sms_daily_brief: false
+		});
+	}
 
-  return json(preferences);
+	return json(preferences);
 };
 
-export const POST: RequestHandler = async ({
-  locals: { supabase, getSession },
-  request,
-}) => {
-  const session = await getSession();
-  if (!session?.user) {
-    throw error(401, "Unauthorized");
-  }
+export const POST: RequestHandler = async ({ locals: { supabase, getSession }, request }) => {
+	const session = await getSession();
+	if (!session?.user) {
+		throw error(401, 'Unauthorized');
+	}
 
-  const { should_email_daily_brief, should_sms_daily_brief } =
-    await request.json();
+	const { should_email_daily_brief, should_sms_daily_brief } = await request.json();
 
-  // If user wants SMS, check phone verification
-  if (should_sms_daily_brief) {
-    const { data: smsPrefs } = await supabase
-      .from("user_sms_preferences")
-      .select("phone_number, phone_verified")
-      .eq("user_id", session.user.id)
-      .single();
+	// If user wants SMS, check phone verification
+	if (should_sms_daily_brief) {
+		const { data: smsPrefs } = await supabase
+			.from('user_sms_preferences')
+			.select('phone_number, phone_verified')
+			.eq('user_id', session.user.id)
+			.single();
 
-    if (!smsPrefs?.phone_number || !smsPrefs?.phone_verified) {
-      return json(
-        {
-          success: false,
-          error: "phone_verification_required",
-          message:
-            "Please verify your phone number to enable SMS notifications",
-        },
-        { status: 400 },
-      );
-    }
-  }
+		if (!smsPrefs?.phone_number || !smsPrefs?.phone_verified) {
+			return json(
+				{
+					success: false,
+					error: 'phone_verification_required',
+					message: 'Please verify your phone number to enable SMS notifications'
+				},
+				{ status: 400 }
+			);
+		}
+	}
 
-  const { data, error: dbError } = await supabase
-    .from("user_notification_preferences")
-    .upsert({
-      user_id: session.user.id,
-      should_email_daily_brief,
-      should_sms_daily_brief,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+	const { data, error: dbError } = await supabase
+		.from('user_notification_preferences')
+		.upsert({
+			user_id: session.user.id,
+			should_email_daily_brief,
+			should_sms_daily_brief,
+			updated_at: new Date().toISOString()
+		})
+		.select()
+		.single();
 
-  if (dbError) {
-    console.error("Error updating notification preferences:", dbError);
-    throw error(500, "Database error");
-  }
+	if (dbError) {
+		console.error('Error updating notification preferences:', dbError);
+		throw error(500, 'Database error');
+	}
 
-  return json({ success: true, data });
+	return json({ success: true, data });
 };
 ```
 
@@ -544,27 +525,27 @@ export const POST: RequestHandler = async ({
 ```typescript
 // OLD
 export interface BriefPreferences {
-  frequency: string;
-  day_of_week: number | null;
-  time_of_day: string;
-  timezone: string;
-  is_active: boolean;
-  email_daily_brief?: boolean; // REMOVE THIS
+	frequency: string;
+	day_of_week: number | null;
+	time_of_day: string;
+	timezone: string;
+	is_active: boolean;
+	email_daily_brief?: boolean; // REMOVE THIS
 }
 
 // NEW
 export interface BriefPreferences {
-  frequency: string;
-  day_of_week: number | null;
-  time_of_day: string;
-  timezone: string;
-  is_active: boolean;
+	frequency: string;
+	day_of_week: number | null;
+	time_of_day: string;
+	timezone: string;
+	is_active: boolean;
 }
 
 // Add new interface for notification preferences
 export interface DailyBriefNotificationPreferences {
-  should_email_daily_brief: boolean;
-  should_sms_daily_brief: boolean;
+	should_email_daily_brief: boolean;
+	should_sms_daily_brief: boolean;
 }
 ```
 
@@ -572,56 +553,48 @@ export interface DailyBriefNotificationPreferences {
 
 ```typescript
 // Add to briefPreferences.ts or create separate file
-import { writable } from "svelte/store";
+import { writable } from 'svelte/store';
 
 function createDailyBriefNotificationPreferences() {
-  const { subscribe, set, update } =
-    writable<DailyBriefNotificationPreferences>({
-      should_email_daily_brief: false,
-      should_sms_daily_brief: false,
-    });
+	const { subscribe, set, update } = writable<DailyBriefNotificationPreferences>({
+		should_email_daily_brief: false,
+		should_sms_daily_brief: false
+	});
 
-  return {
-    subscribe,
-    async load(supabase: SupabaseClient) {
-      const { data, error } = await supabase
-        .from("user_notification_preferences")
-        .select("should_email_daily_brief, should_sms_daily_brief")
-        .single();
+	return {
+		subscribe,
+		async load(supabase: SupabaseClient) {
+			const { data, error } = await supabase
+				.from('user_notification_preferences')
+				.select('should_email_daily_brief, should_sms_daily_brief')
+				.single();
 
-      if (!error && data) {
-        set({
-          should_email_daily_brief: data.should_email_daily_brief ?? false,
-          should_sms_daily_brief: data.should_sms_daily_brief ?? false,
-        });
-      }
-    },
-    async save(
-      supabase: SupabaseClient,
-      preferences: DailyBriefNotificationPreferences,
-    ) {
-      const response = await fetch(
-        "/api/notification-preferences/daily-brief",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(preferences),
-        },
-      );
+			if (!error && data) {
+				set({
+					should_email_daily_brief: data.should_email_daily_brief ?? false,
+					should_sms_daily_brief: data.should_sms_daily_brief ?? false
+				});
+			}
+		},
+		async save(supabase: SupabaseClient, preferences: DailyBriefNotificationPreferences) {
+			const response = await fetch('/api/notification-preferences/daily-brief', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(preferences)
+			});
 
-      const result = await response.json();
+			const result = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.message || "Failed to save preferences");
-      }
+			if (!result.success) {
+				throw new Error(result.message || 'Failed to save preferences');
+			}
 
-      set(preferences);
-    },
-  };
+			set(preferences);
+		}
+	};
 }
 
-export const dailyBriefNotificationPreferences =
-  createDailyBriefNotificationPreferences();
+export const dailyBriefNotificationPreferences = createDailyBriefNotificationPreferences();
 ```
 
 ### 7. UI Updates
@@ -635,15 +608,15 @@ Need to update to use new notification preferences store. Read the file to see c
 Update to show two sections:
 
 1. **Brief Generation Settings** (from `user_brief_preferences`)
-   - Frequency
-   - Day of week
-   - Time of day
-   - Timezone
-   - Is active
+    - Frequency
+    - Day of week
+    - Time of day
+    - Timezone
+    - Is active
 
 2. **Notification Settings** (from `user_notification_preferences`)
-   - Email notifications toggle
-   - SMS notifications toggle (with phone verification check)
+    - Email notifications toggle
+    - SMS notifications toggle (with phone verification check)
 
 **File:** `/apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte`
 
@@ -656,40 +629,40 @@ Update onboarding to set both preference tables correctly.
 ```typescript
 // Update user_brief_preferences (remove email_daily_brief)
 user_brief_preferences: {
-  created_at: string;
-  day_of_week: number | null;
-  // email_daily_brief: boolean | null; // REMOVE
-  frequency: string | null;
-  id: string;
-  is_active: boolean | null;
-  time_of_day: string | null;
-  timezone: string | null;
-  updated_at: string;
-  user_id: string;
+	created_at: string;
+	day_of_week: number | null;
+	// email_daily_brief: boolean | null; // REMOVE
+	frequency: string | null;
+	id: string;
+	is_active: boolean | null;
+	time_of_day: string | null;
+	timezone: string | null;
+	updated_at: string;
+	user_id: string;
 }
 
 // Update user_notification_preferences (add new columns)
 user_notification_preferences: {
-  batch_enabled: boolean | null;
-  batch_interval_minutes: number | null;
-  created_at: string | null;
-  email_enabled: boolean | null;
-  event_type: string;
-  id: string;
-  in_app_enabled: boolean | null;
-  max_per_day: number | null;
-  max_per_hour: number | null;
-  priority: string | null;
-  push_enabled: boolean | null;
-  quiet_hours_enabled: boolean | null;
-  quiet_hours_end: string | null;
-  quiet_hours_start: string | null;
-  should_email_daily_brief: boolean | null; // ADD
-  should_sms_daily_brief: boolean | null; // ADD
-  sms_enabled: boolean | null;
-  timezone: string | null;
-  updated_at: string | null;
-  user_id: string;
+	batch_enabled: boolean | null;
+	batch_interval_minutes: number | null;
+	created_at: string | null;
+	email_enabled: boolean | null;
+	event_type: string;
+	id: string;
+	in_app_enabled: boolean | null;
+	max_per_day: number | null;
+	max_per_hour: number | null;
+	priority: string | null;
+	push_enabled: boolean | null;
+	quiet_hours_enabled: boolean | null;
+	quiet_hours_end: string | null;
+	quiet_hours_start: string | null;
+	should_email_daily_brief: boolean | null; // ADD
+	should_sms_daily_brief: boolean | null; // ADD
+	sms_enabled: boolean | null;
+	timezone: string | null;
+	updated_at: string | null;
+	user_id: string;
 }
 ```
 
@@ -698,22 +671,22 @@ user_notification_preferences: {
 ```typescript
 // Update BriefPreferences interface
 export interface BriefPreferences {
-  id: string;
-  user_id: string;
-  frequency: string;
-  day_of_week?: number;
-  time_of_day: string;
-  timezone: string;
-  is_active: boolean;
-  // email_daily_brief?: boolean; // REMOVE
-  created_at: string;
-  updated_at: string;
+	id: string;
+	user_id: string;
+	frequency: string;
+	day_of_week?: number;
+	time_of_day: string;
+	timezone: string;
+	is_active: boolean;
+	// email_daily_brief?: boolean; // REMOVE
+	created_at: string;
+	updated_at: string;
 }
 
 // Add new interface
 export interface DailyBriefNotificationPreferences {
-  should_email_daily_brief: boolean;
-  should_sms_daily_brief: boolean;
+	should_email_daily_brief: boolean;
+	should_sms_daily_brief: boolean;
 }
 ```
 
@@ -959,59 +932,59 @@ If issues arise:
 ### Worker (Initial Implementation + Bug Fixes)
 
 - ✅ `/apps/worker/src/workers/brief/briefWorker.ts` (MODIFIED - Lines 97-132)
-  - Added query for `user_notification_preferences` with `should_email_daily_brief` and `should_sms_daily_brief`
-  - Added SMS notification logic with phone verification checks
-  - **BUG FIX**: Added `.eq("event_type", "user")` to line 102
+    - Added query for `user_notification_preferences` with `should_email_daily_brief` and `should_sms_daily_brief`
+    - Added SMS notification logic with phone verification checks
+    - **BUG FIX**: Added `.eq("event_type", "user")` to line 102
 - ✅ `/apps/worker/src/workers/brief/emailWorker.ts` (MODIFIED - Lines 88-160)
-  - Updated preference checks to use new columns
-  - Split query into notification prefs + brief prefs
-  - **BUG FIX**: Added `.eq("event_type", "user")` to line 95
+    - Updated preference checks to use new columns
+    - Split query into notification prefs + brief prefs
+    - **BUG FIX**: Added `.eq("event_type", "user")` to line 95
 - ✅ `/apps/worker/src/lib/services/email-sender.ts` (MODIFIED - Lines 119-177)
-  - Updated `shouldSendEmail()` to check both tables
-  - Improved logging for preference checks
-  - **BUG FIX**: Added `.eq("event_type", "user")` to line 127
+    - Updated `shouldSendEmail()` to check both tables
+    - Improved logging for preference checks
+    - **BUG FIX**: Added `.eq("event_type", "user")` to line 127
 
 ### Web API (Initial Implementation)
 
 - ✅ `/apps/web/src/routes/api/brief-preferences/+server.ts` (MODIFIED)
-  - Removed `email_daily_brief` from request handling
-  - No longer saves email preferences to brief table
+    - Removed `email_daily_brief` from request handling
+    - No longer saves email preferences to brief table
 - ✅ `/apps/web/src/routes/api/notification-preferences/+server.ts` (MODIFIED)
-  - **CHOSE OPTION A**: Extended existing endpoint instead of creating new one
-  - Added `?daily_brief=true` query parameter support
-  - GET/POST handlers for user-level daily brief preferences
-  - Phone verification validation for SMS
+    - **CHOSE OPTION A**: Extended existing endpoint instead of creating new one
+    - Added `?daily_brief=true` query parameter support
+    - GET/POST handlers for user-level daily brief preferences
+    - Phone verification validation for SMS
 
 ### Web UI (Initial Implementation + Bug Fixes)
 
 - ✅ `/apps/web/src/lib/stores/briefPreferences.ts` (MODIFIED - Lines 5-15)
-  - Removed `email_daily_brief` from interface
-  - No longer handles email notification preferences
+    - Removed `email_daily_brief` from interface
+    - No longer handles email notification preferences
 - ✅ `/apps/web/src/lib/stores/notificationPreferences.ts` (CREATED)
-  - New store for user-level daily brief notification preferences
-  - Handles `should_email_daily_brief` and `should_sms_daily_brief`
+    - New store for user-level daily brief notification preferences
+    - Handles `should_email_daily_brief` and `should_sms_daily_brief`
 - ✅ `/apps/web/src/lib/components/settings/NotificationPreferences.svelte` (MODIFIED)
-  - Added "Daily Brief Notifications" section for user-level preferences
-  - **BUG FIX**: Removed duplicate email toggle from "Advanced" section (lines 462-491)
-  - **BUG FIX**: Removed duplicate SMS toggle from "Advanced" section (lines 537-581)
-  - **BUG FIX**: Updated `savePreferences()` to only save push/in-app to event-based prefs
-  - **BUG FIX**: Updated `hasAnyChannelEnabled` to include dailyBrief toggles
-  - Renamed "Advanced Notification Settings" to "Additional Notification Channels"
+    - Added "Daily Brief Notifications" section for user-level preferences
+    - **BUG FIX**: Removed duplicate email toggle from "Advanced" section (lines 462-491)
+    - **BUG FIX**: Removed duplicate SMS toggle from "Advanced" section (lines 537-581)
+    - **BUG FIX**: Updated `savePreferences()` to only save push/in-app to event-based prefs
+    - **BUG FIX**: Updated `hasAnyChannelEnabled` to include dailyBrief toggles
+    - Renamed "Advanced Notification Settings" to "Additional Notification Channels"
 - ✅ `/apps/web/src/lib/components/briefs/BriefsSettingsModal.svelte` (MODIFIED)
-  - Updated to use both `briefPreferencesStore` and `notificationPreferencesStore`
-  - Correctly separates generation timing from notification delivery
+    - Updated to use both `briefPreferencesStore` and `notificationPreferencesStore`
+    - Correctly separates generation timing from notification delivery
 - ✅ `/apps/web/src/lib/components/briefs/DailyBriefsTab.svelte` (MODIFIED)
-  - Updated to load notification preferences from new store
+    - Updated to load notification preferences from new store
 
 ### Shared Types (Initial Implementation)
 
 - ✅ `/packages/shared-types/src/database.schema.ts` (MODIFIED - Lines 1136-1137)
-  - Added `should_email_daily_brief: boolean | null`
-  - Added `should_sms_daily_brief: boolean | null`
+    - Added `should_email_daily_brief: boolean | null`
+    - Added `should_sms_daily_brief: boolean | null`
 - ✅ `/packages/shared-types/src/database.types.ts` (REGENERATED)
-  - Auto-generated from schema changes
+    - Auto-generated from schema changes
 - ✅ `/packages/shared-types/src/index.ts` (MODIFIED)
-  - Exported new `DailyBriefNotificationPreferences` interface
+    - Exported new `DailyBriefNotificationPreferences` interface
 
 ### Files NOT Modified (Decision Documented)
 
@@ -1034,16 +1007,16 @@ If issues arise:
 ## Questions to Resolve
 
 1. **Should we keep the notification system's `email_enabled` for "brief.completed" events?**
-   - Current plan: Ignore it, use `should_email_daily_brief` only
-   - This avoids the duplicate email problem
+    - Current plan: Ignore it, use `should_email_daily_brief` only
+    - This avoids the duplicate email problem
 
 2. **What happens if a user enables SMS but never verifies their phone?**
-   - Current plan: Log warning, skip SMS, don't trigger verification flow automatically
-   - UI should detect this state and prompt user to verify
+    - Current plan: Log warning, skip SMS, don't trigger verification flow automatically
+    - UI should detect this state and prompt user to verify
 
 3. **Should we consolidate with the existing notification system more deeply?**
-   - Future work: Could use `emit_notification_event` for emails too
-   - For now: Keep existing email system, add SMS option
+    - Future work: Could use `emit_notification_event` for emails too
+    - For now: Keep existing email system, add SMS option
 
 ---
 

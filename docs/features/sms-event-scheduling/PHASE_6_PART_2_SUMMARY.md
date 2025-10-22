@@ -31,29 +31,29 @@ Phase 6 Part 2 implements comprehensive monitoring and alerting for the SMS Even
 **Tables Created:**
 
 - **`sms_metrics`**: Time-series metrics table
-  - Supports daily and hourly granularity
-  - 15 metric types (operational, performance, quality, cost, engagement)
-  - User-level and system-wide metrics
-  - Unique constraint prevents duplicate entries
-  - Indexed for fast queries
+    - Supports daily and hourly granularity
+    - 15 metric types (operational, performance, quality, cost, engagement)
+    - User-level and system-wide metrics
+    - Unique constraint prevents duplicate entries
+    - Indexed for fast queries
 
 - **`sms_metrics_daily`**: Materialized view for dashboard performance
-  - Pre-aggregated daily metrics
-  - Calculated delivery and LLM success rates
-  - Refreshed hourly via scheduler
-  - Indexed for sub-second queries
+    - Pre-aggregated daily metrics
+    - Calculated delivery and LLM success rates
+    - Refreshed hourly via scheduler
+    - Indexed for sub-second queries
 
 - **`sms_alert_thresholds`**: Configurable alert configuration
-  - 5 default alert types (delivery, LLM, cost, opt-out, limit)
-  - Severity levels: critical, warning, info
-  - Notification channels: Slack, PagerDuty, Email
-  - Cooldown periods to prevent spam
+    - 5 default alert types (delivery, LLM, cost, opt-out, limit)
+    - Severity levels: critical, warning, info
+    - Notification channels: Slack, PagerDuty, Email
+    - Cooldown periods to prevent spam
 
 - **`sms_alert_history`**: Alert audit trail
-  - Triggered alerts with timestamps
-  - Resolution tracking
-  - Notification status and errors
-  - Indexed for fast queries
+    - Triggered alerts with timestamps
+    - Resolution tracking
+    - Notification status and errors
+    - Indexed for fast queries
 
 **RPC Functions:**
 
@@ -69,31 +69,31 @@ Phase 6 Part 2 implements comprehensive monitoring and alerting for the SMS Even
 **Key Features:**
 
 - **Operational Metrics**
-  - `recordScheduled()`: Track scheduled SMS count
-  - `recordSent()`: Track sent SMS with Twilio SID
-  - `recordDelivered()`: Track delivery with timing
-  - `recordFailed()`: Track failures with error messages
-  - `recordCancelled()`: Track user cancellations
+    - `recordScheduled()`: Track scheduled SMS count
+    - `recordSent()`: Track sent SMS with Twilio SID
+    - `recordDelivered()`: Track delivery with timing
+    - `recordFailed()`: Track failures with error messages
+    - `recordCancelled()`: Track user cancellations
 
 - **Performance Metrics**
-  - Delivery time calculation (sent → delivered)
-  - LLM generation time tracking
-  - Average metrics via materialized view
+    - Delivery time calculation (sent → delivered)
+    - LLM generation time tracking
+    - Average metrics via materialized view
 
 - **Quality Metrics**
-  - LLM success vs template fallback tracking
-  - Delivery success rate calculation
-  - User-level quality monitoring
+    - LLM success vs template fallback tracking
+    - Delivery success rate calculation
+    - User-level quality monitoring
 
 - **Engagement Metrics**
-  - Opt-out tracking
-  - Quiet hours skip counting
-  - Daily limit hit tracking
+    - Opt-out tracking
+    - Quiet hours skip counting
+    - Daily limit hit tracking
 
 - **Cost Metrics**
-  - LLM generation cost per message
-  - SMS delivery cost (future)
-  - Average cost per user calculation
+    - LLM generation cost per message
+    - SMS delivery cost (future)
+    - Average cost per user calculation
 
 **Design Patterns:**
 
@@ -109,22 +109,22 @@ Phase 6 Part 2 implements comprehensive monitoring and alerting for the SMS Even
 **Key Features:**
 
 - **Alert Types Implemented**
-  1. `delivery_rate_critical`: < 90% (PagerDuty, 60min cooldown)
-  2. `llm_failure_critical`: > 50% template fallback (PagerDuty, 30min)
-  3. `llm_cost_spike_warning`: > 2x average (Slack, 120min)
-  4. `opt_out_rate_warning`: > 10% (Slack, 240min)
-  5. `daily_limit_hit_warning`: > 20% (Slack, 180min)
+    1. `delivery_rate_critical`: < 90% (PagerDuty, 60min cooldown)
+    2. `llm_failure_critical`: > 50% template fallback (PagerDuty, 30min)
+    3. `llm_cost_spike_warning`: > 2x average (Slack, 120min)
+    4. `opt_out_rate_warning`: > 10% (Slack, 240min)
+    5. `daily_limit_hit_warning`: > 20% (Slack, 180min)
 
 - **Notification Channels**
-  - **Slack**: Rich formatted messages with emoji indicators
-  - **PagerDuty**: Incident creation with severity routing
-  - **Email**: Placeholder for future implementation
+    - **Slack**: Rich formatted messages with emoji indicators
+    - **PagerDuty**: Incident creation with severity routing
+    - **Email**: Placeholder for future implementation
 
 - **Alert Management**
-  - Cooldown period enforcement
-  - Alert history tracking
-  - Resolution workflow
-  - Unresolved alerts query
+    - Cooldown period enforcement
+    - Alert history tracking
+    - Resolution workflow
+    - Unresolved alerts query
 
 **Slack Notification Format:**
 
@@ -164,16 +164,14 @@ BuildOS SMS Monitoring | [timestamp]
 ```typescript
 // Track LLM generation metrics (non-blocking)
 smsMetricsService
-  .recordLLMGeneration(userId, generatedVia, costUsd, generationTimeMs)
-  .catch((err) => console.error("[DailySMS] Error tracking LLM metrics:", err));
+	.recordLLMGeneration(userId, generatedVia, costUsd, generationTimeMs)
+	.catch((err) => console.error('[DailySMS] Error tracking LLM metrics:', err));
 
 // Track quiet hours skips
 if (quietHoursSkipCount > 0) {
-  smsMetricsService
-    .recordQuietHoursSkip(userId, quietHoursSkipCount)
-    .catch((err) =>
-      console.error("[DailySMS] Error tracking quiet hours skips:", err),
-    );
+	smsMetricsService
+		.recordQuietHoursSkip(userId, quietHoursSkipCount)
+		.catch((err) => console.error('[DailySMS] Error tracking quiet hours skips:', err));
 }
 ```
 
@@ -190,10 +188,8 @@ if (quietHoursSkipCount > 0) {
 ```typescript
 // Track sent metrics (non-blocking)
 smsMetricsService
-  .recordSent(job.data.user_id, message_id, twilioMessage.sid)
-  .catch((err) =>
-    console.error("[SMS Worker] Error tracking sent metrics:", err),
-  );
+	.recordSent(job.data.user_id, message_id, twilioMessage.sid)
+	.catch((err) => console.error('[SMS Worker] Error tracking sent metrics:', err));
 ```
 
 #### Twilio Webhook Handler (`apps/web/src/routes/api/webhooks/twilio/status/+server.ts`)
@@ -206,18 +202,17 @@ smsMetricsService
 
 ```typescript
 // Track delivery metrics when message is delivered
-if (messageStatus === "delivered" && updatedMessage?.user_id) {
-  const deliveryTimeMs =
-    new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
+if (messageStatus === 'delivered' && updatedMessage?.user_id) {
+	const deliveryTimeMs = new Date(deliveredAt).getTime() - new Date(sentAt).getTime();
 
-  smsMetricsService
-    .recordDelivered(updatedMessage.user_id, messageId, deliveryTimeMs)
-    .catch((err) => {
-      logWebhookEvent("error", "Failed to record delivery metrics", {
-        ...webhookContext,
-        error: err.message,
-      });
-    });
+	smsMetricsService
+		.recordDelivered(updatedMessage.user_id, messageId, deliveryTimeMs)
+		.catch((err) => {
+			logWebhookEvent('error', 'Failed to record delivery metrics', {
+				...webhookContext,
+				error: err.message
+			});
+		});
 }
 ```
 
@@ -229,9 +224,9 @@ if (messageStatus === "delivered" && updatedMessage?.user_id) {
 
 ```typescript
 // Run hourly to check SMS alert thresholds and refresh metrics view
-cron.schedule("0 * * * *", async () => {
-  console.log("🚨 Checking SMS alert thresholds...");
-  await checkSMSAlerts();
+cron.schedule('0 * * * *', async () => {
+	console.log('🚨 Checking SMS alert thresholds...');
+	await checkSMSAlerts();
 });
 ```
 
@@ -275,20 +270,20 @@ cron.schedule("0 * * * *", async () => {
 
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "metric_date": "2025-10-08",
-      "scheduled_count": 150,
-      "sent_count": 145,
-      "delivered_count": 138,
-      "failed_count": 7,
-      "delivery_rate_percent": 95.17,
-      "llm_success_rate_percent": 82.76,
-      "active_users": 42
-    }
-  ],
-  "date_range": { "start": "2025-10-01", "end": "2025-10-08" }
+	"success": true,
+	"data": [
+		{
+			"metric_date": "2025-10-08",
+			"scheduled_count": 150,
+			"sent_count": 145,
+			"delivered_count": 138,
+			"failed_count": 7,
+			"delivery_rate_percent": 95.17,
+			"llm_success_rate_percent": 82.76,
+			"active_users": 42
+		}
+	],
+	"date_range": { "start": "2025-10-01", "end": "2025-10-08" }
 }
 ```
 
@@ -305,22 +300,22 @@ cron.schedule("0 * * * *", async () => {
 
 ```json
 {
-  "success": true,
-  "data": {
-    "metrics": [
-      /* daily metrics */
-    ],
-    "summary": {
-      "total_scheduled": 25,
-      "total_sent": 24,
-      "total_delivered": 23,
-      "total_failed": 1,
-      "delivery_rate_percent": 95.83,
-      "total_llm_cost_usd": "0.0012",
-      "days": 7
-    }
-  },
-  "user_id": "user-uuid"
+	"success": true,
+	"data": {
+		"metrics": [
+			/* daily metrics */
+		],
+		"summary": {
+			"total_scheduled": 25,
+			"total_sent": 24,
+			"total_delivered": 23,
+			"total_failed": 1,
+			"delivery_rate_percent": 95.83,
+			"total_llm_cost_usd": "0.0012",
+			"days": 7
+		}
+	},
+	"user_id": "user-uuid"
 }
 ```
 
@@ -332,17 +327,17 @@ cron.schedule("0 * * * *", async () => {
 
 ```json
 {
-  "success": true,
-  "data": {
-    "metric_date": "2025-10-08",
-    "scheduled_count": 150,
-    "delivery_rate_percent": 95.17,
-    "health": {
-      "delivery_healthy": true,
-      "llm_healthy": true,
-      "overall_healthy": true
-    }
-  }
+	"success": true,
+	"data": {
+		"metric_date": "2025-10-08",
+		"scheduled_count": 150,
+		"delivery_rate_percent": 95.17,
+		"health": {
+			"delivery_healthy": true,
+			"llm_healthy": true,
+			"overall_healthy": true
+		}
+	}
 }
 ```
 
@@ -354,25 +349,25 @@ cron.schedule("0 * * * *", async () => {
 
 ```json
 {
-  "success": true,
-  "data": {
-    "today": {
-      /* today metrics */
-    },
-    "week": {
-      "totals": { "scheduled": 1050, "sent": 1020, "delivered": 975 },
-      "delivery_rate_percent": 95.59,
-      "avg_daily_cost_usd": "0.0012"
-    },
-    "alerts": {
-      "unresolved_count": 0,
-      "has_critical": false
-    },
-    "health": {
-      "overall_healthy": true,
-      "status": "healthy"
-    }
-  }
+	"success": true,
+	"data": {
+		"today": {
+			/* today metrics */
+		},
+		"week": {
+			"totals": { "scheduled": 1050, "sent": 1020, "delivered": 975 },
+			"delivery_rate_percent": 95.59,
+			"avg_daily_cost_usd": "0.0012"
+		},
+		"alerts": {
+			"unresolved_count": 0,
+			"has_critical": false
+		},
+		"health": {
+			"overall_healthy": true,
+			"status": "healthy"
+		}
+	}
 }
 ```
 
@@ -401,9 +396,9 @@ cron.schedule("0 * * * *", async () => {
 
 ```json
 {
-  "success": true,
-  "message": "Alert resolved successfully",
-  "alert_id": "alert-uuid"
+	"success": true,
+	"message": "Alert resolved successfully",
+	"alert_id": "alert-uuid"
 }
 ```
 
@@ -493,10 +488,8 @@ cron.schedule("0 * * * *", async () => {
 
 ```typescript
 smsMetricsService
-  .recordSent(userId, messageId, twilioSid)
-  .catch((err) =>
-    console.error("[SMS Worker] Error tracking sent metrics:", err),
-  );
+	.recordSent(userId, messageId, twilioSid)
+	.catch((err) => console.error('[SMS Worker] Error tracking sent metrics:', err));
 ```
 
 ### 2. Materialized Views
@@ -568,7 +561,7 @@ DO UPDATE SET
 
 ```typescript
 export class SMSMetricsService {
-  /* ... */
+	/* ... */
 }
 export const smsMetricsService = new SMSMetricsService();
 ```
@@ -609,21 +602,21 @@ export const smsMetricsService = new SMSMetricsService();
 
 1. **Database Migration**
 
-   ```bash
-   psql $DATABASE_URL < apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
-   ```
+    ```bash
+    psql $DATABASE_URL < apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
+    ```
 
 2. **Environment Variables**
 
-   ```bash
-   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-   PAGERDUTY_INTEGRATION_KEY=your_integration_key
-   ```
+    ```bash
+    SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    PAGERDUTY_INTEGRATION_KEY=your_integration_key
+    ```
 
 3. **Scheduler Verification**
-   - Confirm worker service is running
-   - Check logs for hourly alert checks
-   - Verify materialized view refreshes
+    - Confirm worker service is running
+    - Check logs for hourly alert checks
+    - Verify materialized view refreshes
 
 ### Monitoring Dashboard (Future)
 

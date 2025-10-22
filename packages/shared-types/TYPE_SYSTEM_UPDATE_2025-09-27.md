@@ -12,14 +12,14 @@ Successfully implemented comprehensive type system update for the queue and brie
 
 - Created centralized type definitions using database enums as source of truth
 - Defined strongly-typed metadata interfaces for each job type:
-  - `DailyBriefJobMetadata` - with briefDate, timezone, generation_progress
-  - `PhaseGenerationJobMetadata` - with projectId, regenerate options
-  - `OnboardingAnalysisJobMetadata` - with userId and step tracking
-  - `CalendarSyncJobMetadata` - with sync direction and date ranges
-  - `BrainDumpProcessJobMetadata` - with processing modes
-  - `EmailJobMetadata` - with recipient and email types
-  - `RecurringTaskJobMetadata` - with task management
-  - `CleanupJobMetadata` - with deletion tracking
+    - `DailyBriefJobMetadata` - with briefDate, timezone, generation_progress
+    - `PhaseGenerationJobMetadata` - with projectId, regenerate options
+    - `OnboardingAnalysisJobMetadata` - with userId and step tracking
+    - `CalendarSyncJobMetadata` - with sync direction and date ranges
+    - `BrainDumpProcessJobMetadata` - with processing modes
+    - `EmailJobMetadata` - with recipient and email types
+    - `RecurringTaskJobMetadata` - with task management
+    - `CleanupJobMetadata` - with deletion tracking
 - Created `JobMetadataMap` for type-safe metadata access
 - Added `BriefGenerationProgress` interface with detailed step tracking
 
@@ -80,23 +80,23 @@ Key features:
 ### 4. Issues Resolved
 
 1. **Fixed enum value mismatches**:
-   - Changed `"daily_brief"` → `"generate_daily_brief"`
-   - Removed non-existent `"project_brief"`
-   - Changed `"phase_generation"` → `"generate_phases"`
+    - Changed `"daily_brief"` → `"generate_daily_brief"`
+    - Removed non-existent `"project_brief"`
+    - Changed `"phase_generation"` → `"generate_phases"`
 
 2. **Added missing status values**:
-   - Added `"cancelled"` status
-   - Added `"retrying"` status
+    - Added `"cancelled"` status
+    - Added `"retrying"` status
 
 3. **Eliminated weak 'any' typing**:
-   - Replaced `metadata?: Record<string, any>` with strongly-typed interfaces
-   - Replaced `generation_progress?: any` with `BriefGenerationProgress`
-   - Replaced `result?: any` with type-safe result maps
+    - Replaced `metadata?: Record<string, any>` with strongly-typed interfaces
+    - Replaced `generation_progress?: any` with `BriefGenerationProgress`
+    - Replaced `result?: any` with type-safe result maps
 
 4. **Resolved duplicate definitions**:
-   - Single source of truth in shared-types package
-   - Removed conflicting local definitions
-   - Centralized all queue-related types
+    - Single source of truth in shared-types package
+    - Removed conflicting local definitions
+    - Centralized all queue-related types
 
 ## Verification Results
 
@@ -136,17 +136,13 @@ Key features:
 ### For New Code
 
 ```typescript
-import type {
-  QueueJobType,
-  QueueJobStatus,
-  JobMetadataMap,
-} from "@buildos/shared-types";
+import type { QueueJobType, QueueJobStatus, JobMetadataMap } from '@buildos/shared-types';
 
 // Type-safe job creation
-const metadata: JobMetadataMap["generate_daily_brief"] = {
-  briefDate: "2025-09-27",
-  timezone: "America/New_York",
-  forceRegenerate: false,
+const metadata: JobMetadataMap['generate_daily_brief'] = {
+	briefDate: '2025-09-27',
+	timezone: 'America/New_York',
+	forceRegenerate: false
 };
 ```
 

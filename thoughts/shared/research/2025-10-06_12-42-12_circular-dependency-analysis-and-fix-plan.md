@@ -4,16 +4,8 @@ researcher: Claude (Anthropic)
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Circular Dependency Analysis and Fix Plan"
-tags:
-  [
-    research,
-    circular-dependencies,
-    architecture,
-    refactoring,
-    project-store,
-    realtime-service,
-  ]
+topic: 'Circular Dependency Analysis and Fix Plan'
+tags: [research, circular-dependencies, architecture, refactoring, project-store, realtime-service]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (Anthropic)
@@ -131,19 +123,15 @@ static async initialize(projectId: string, supabaseClient: SupabaseClient): Prom
  * Check if real-time sync is active for a project
  * This checks if RealtimeProjectService is initialized and connected
  */
-export async function isRealTimeSyncActive(
-  projectId: string,
-): Promise<boolean> {
-  try {
-    // Dynamic import to avoid circular dependencies
-    const { RealtimeProjectService } = await import(
-      "$lib/services/realtimeProject.service"
-    );
-    return RealtimeProjectService.isInitialized();
-  } catch (error) {
-    console.warn("Could not check real-time sync status:", error);
-    return false;
-  }
+export async function isRealTimeSyncActive(projectId: string): Promise<boolean> {
+	try {
+		// Dynamic import to avoid circular dependencies
+		const { RealtimeProjectService } = await import('$lib/services/realtimeProject.service');
+		return RealtimeProjectService.isInitialized();
+	} catch (error) {
+		console.warn('Could not check real-time sync status:', error);
+		return false;
+	}
 }
 ```
 
@@ -211,25 +199,25 @@ The research found **17 additional files** using dynamic imports, but these are 
 // apps/web/src/lib/services/realtimeProject.service.ts
 
 export class RealtimeProjectService {
-  private static onLocalUpdateCallback?: (entityId: string) => void;
+	private static onLocalUpdateCallback?: (entityId: string) => void;
 
-  static initialize(
-    projectId: string,
-    supabaseClient: SupabaseClient,
-    onLocalUpdate?: (entityId: string) => void,
-  ): Promise<void> {
-    this.onLocalUpdateCallback = onLocalUpdate;
-    // ... rest of initialization
-  }
+	static initialize(
+		projectId: string,
+		supabaseClient: SupabaseClient,
+		onLocalUpdate?: (entityId: string) => void
+	): Promise<void> {
+		this.onLocalUpdateCallback = onLocalUpdate;
+		// ... rest of initialization
+	}
 
-  static trackLocalUpdate(entityId: string): void {
-    this.state.recentLocalUpdates.add(entityId);
-    setTimeout(() => {
-      this.state.recentLocalUpdates.delete(entityId);
-    }, 3000);
-  }
+	static trackLocalUpdate(entityId: string): void {
+		this.state.recentLocalUpdates.add(entityId);
+		setTimeout(() => {
+			this.state.recentLocalUpdates.delete(entityId);
+		}, 3000);
+	}
 
-  // Store can still call this method, but service no longer needs store import
+	// Store can still call this method, but service no longer needs store import
 }
 ```
 
@@ -243,20 +231,20 @@ export class RealtimeProjectService {
 
 // Create a local tracker instead
 class ProjectStoreV2 {
-  private realtimeTracker?: (entityId: string) => void;
+	private realtimeTracker?: (entityId: string) => void;
 
-  setRealtimeTracker(tracker: (entityId: string) => void): void {
-    this.realtimeTracker = tracker;
-  }
+	setRealtimeTracker(tracker: (entityId: string) => void): void {
+		this.realtimeTracker = tracker;
+	}
 
-  async createTaskOptimistically(taskData: any): Promise<void> {
-    const tempId = `temp_${Date.now()}`;
+	async createTaskOptimistically(taskData: any): Promise<void> {
+		const tempId = `temp_${Date.now()}`;
 
-    // Use callback instead of direct service call
-    this.realtimeTracker?.(tempId);
+		// Use callback instead of direct service call
+		this.realtimeTracker?.(tempId);
 
-    // ... rest of method
-  }
+		// ... rest of method
+	}
 }
 ```
 
@@ -265,18 +253,18 @@ class ProjectStoreV2 {
 ```typescript
 // apps/web/src/routes/projects/[id]/+page.svelte
 
-import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
-import { projectStoreV2 } from "$lib/stores/project.store";
+import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
+import { projectStoreV2 } from '$lib/stores/project.store';
 
 $effect(() => {
-  // Set up bidirectional communication via callbacks
-  projectStoreV2.setRealtimeTracker((id) => {
-    RealtimeProjectService.trackLocalUpdate(id);
-  });
+	// Set up bidirectional communication via callbacks
+	projectStoreV2.setRealtimeTracker((id) => {
+		RealtimeProjectService.trackLocalUpdate(id);
+	});
 
-  RealtimeProjectService.initialize(projectId, supabase, (id) =>
-    projectStoreV2.updateStoreState(id),
-  );
+	RealtimeProjectService.initialize(projectId, supabase, (id) =>
+		projectStoreV2.updateStoreState(id)
+	);
 });
 ```
 
@@ -313,37 +301,37 @@ $effect(() => {
  * This module breaks the circular dependency between store and service
  */
 class LocalUpdateTracker {
-  private recentUpdates = new Set<string>();
-  private timeouts = new Map<string, NodeJS.Timeout>();
+	private recentUpdates = new Set<string>();
+	private timeouts = new Map<string, NodeJS.Timeout>();
 
-  track(entityId: string, ttl: number = 3000): void {
-    this.recentUpdates.add(entityId);
+	track(entityId: string, ttl: number = 3000): void {
+		this.recentUpdates.add(entityId);
 
-    // Clear any existing timeout
-    const existingTimeout = this.timeouts.get(entityId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
+		// Clear any existing timeout
+		const existingTimeout = this.timeouts.get(entityId);
+		if (existingTimeout) {
+			clearTimeout(existingTimeout);
+		}
 
-    // Set new timeout
-    const timeout = setTimeout(() => {
-      this.recentUpdates.delete(entityId);
-      this.timeouts.delete(entityId);
-    }, ttl);
+		// Set new timeout
+		const timeout = setTimeout(() => {
+			this.recentUpdates.delete(entityId);
+			this.timeouts.delete(entityId);
+		}, ttl);
 
-    this.timeouts.set(entityId, timeout);
-  }
+		this.timeouts.set(entityId, timeout);
+	}
 
-  isTracked(entityId: string): boolean {
-    return this.recentUpdates.has(entityId);
-  }
+	isTracked(entityId: string): boolean {
+		return this.recentUpdates.has(entityId);
+	}
 
-  clear(): void {
-    // Clear all timeouts to prevent memory leaks
-    this.timeouts.forEach((timeout) => clearTimeout(timeout));
-    this.timeouts.clear();
-    this.recentUpdates.clear();
-  }
+	clear(): void {
+		// Clear all timeouts to prevent memory leaks
+		this.timeouts.forEach((timeout) => clearTimeout(timeout));
+		this.timeouts.clear();
+		this.recentUpdates.clear();
+	}
 }
 
 // Singleton instance
@@ -357,17 +345,17 @@ export const localUpdateTracker = new LocalUpdateTracker();
 
 // ❌ Remove: import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 // ✅ Add:
-import { localUpdateTracker } from "$lib/utils/local-update-tracker";
+import { localUpdateTracker } from '$lib/utils/local-update-tracker';
 
 class ProjectStoreV2 {
-  async createTaskOptimistically(taskData: any): Promise<void> {
-    const tempId = `temp_${Date.now()}`;
+	async createTaskOptimistically(taskData: any): Promise<void> {
+		const tempId = `temp_${Date.now()}`;
 
-    // Track via shared module instead of service
-    localUpdateTracker.track(tempId);
+		// Track via shared module instead of service
+		localUpdateTracker.track(tempId);
 
-    // ... rest of method
-  }
+		// ... rest of method
+	}
 }
 ```
 
@@ -376,21 +364,21 @@ class ProjectStoreV2 {
 
 // ❌ Remove: import { projectStoreV2 } from '$lib/stores/project.store';
 // Keep the import but only use for updates, not for tracking
-import { localUpdateTracker } from "$lib/utils/local-update-tracker";
+import { localUpdateTracker } from '$lib/utils/local-update-tracker';
 
 export class RealtimeProjectService {
-  private static handleDatabaseChange(change: any): void {
-    const entityId = change.new.id;
+	private static handleDatabaseChange(change: any): void {
+		const entityId = change.new.id;
 
-    // Check if this was a recent local update
-    if (localUpdateTracker.isTracked(entityId)) {
-      console.log("Skipping duplicate real-time update for", entityId);
-      return;
-    }
+		// Check if this was a recent local update
+		if (localUpdateTracker.isTracked(entityId)) {
+			console.log('Skipping duplicate real-time update for', entityId);
+			return;
+		}
 
-    // Update the store with the change
-    projectStoreV2.updateStoreState(change);
-  }
+		// Update the store with the change
+		projectStoreV2.updateStoreState(change);
+	}
 }
 ```
 
@@ -400,11 +388,11 @@ export class RealtimeProjectService {
 // apps/web/src/lib/utils/brain-dump-navigation.ts
 
 // Can now use regular import instead of dynamic import!
-import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
+import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 
 export function isRealTimeSyncActive(projectId: string): boolean {
-  // No more async/dynamic import needed
-  return RealtimeProjectService.isInitialized();
+	// No more async/dynamic import needed
+	return RealtimeProjectService.isInitialized();
 }
 ```
 
@@ -440,41 +428,41 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 type EventCallback<T = any> = (data: T) => void;
 
 class EventBus {
-  private listeners = new Map<string, Set<EventCallback>>();
+	private listeners = new Map<string, Set<EventCallback>>();
 
-  on<T = any>(event: string, callback: EventCallback<T>): () => void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)!.add(callback);
+	on<T = any>(event: string, callback: EventCallback<T>): () => void {
+		if (!this.listeners.has(event)) {
+			this.listeners.set(event, new Set());
+		}
+		this.listeners.get(event)!.add(callback);
 
-    // Return unsubscribe function
-    return () => this.off(event, callback);
-  }
+		// Return unsubscribe function
+		return () => this.off(event, callback);
+	}
 
-  off(event: string, callback: EventCallback): void {
-    const callbacks = this.listeners.get(event);
-    if (callbacks) {
-      callbacks.delete(callback);
-    }
-  }
+	off(event: string, callback: EventCallback): void {
+		const callbacks = this.listeners.get(event);
+		if (callbacks) {
+			callbacks.delete(callback);
+		}
+	}
 
-  emit<T = any>(event: string, data?: T): void {
-    const callbacks = this.listeners.get(event);
-    if (callbacks) {
-      callbacks.forEach((callback) => {
-        try {
-          callback(data);
-        } catch (error) {
-          console.error(`Error in event listener for "${event}":`, error);
-        }
-      });
-    }
-  }
+	emit<T = any>(event: string, data?: T): void {
+		const callbacks = this.listeners.get(event);
+		if (callbacks) {
+			callbacks.forEach((callback) => {
+				try {
+					callback(data);
+				} catch (error) {
+					console.error(`Error in event listener for "${event}":`, error);
+				}
+			});
+		}
+	}
 
-  clear(): void {
-    this.listeners.clear();
-  }
+	clear(): void {
+		this.listeners.clear();
+	}
 }
 
 // Singleton instance
@@ -482,9 +470,9 @@ export const eventBus = new EventBus();
 
 // Type-safe event names
 export const PROJECT_EVENTS = {
-  LOCAL_UPDATE: "project:local-update",
-  REALTIME_CHANGE: "project:realtime-change",
-  SYNC_STATUS_CHANGED: "project:sync-status-changed",
+	LOCAL_UPDATE: 'project:local-update',
+	REALTIME_CHANGE: 'project:realtime-change',
+	SYNC_STATUS_CHANGED: 'project:sync-status-changed'
 } as const;
 ```
 
@@ -495,21 +483,21 @@ export const PROJECT_EVENTS = {
 
 // ❌ Remove: import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 // ✅ Add:
-import { eventBus, PROJECT_EVENTS } from "$lib/utils/event-bus";
+import { eventBus, PROJECT_EVENTS } from '$lib/utils/event-bus';
 
 class ProjectStoreV2 {
-  async createTaskOptimistically(taskData: any): Promise<void> {
-    const tempId = `temp_${Date.now()}`;
+	async createTaskOptimistically(taskData: any): Promise<void> {
+		const tempId = `temp_${Date.now()}`;
 
-    // Emit event instead of calling service directly
-    eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: tempId });
+		// Emit event instead of calling service directly
+		eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: tempId });
 
-    // ... rest of method
+		// ... rest of method
 
-    if (result.data) {
-      eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: result.id });
-    }
-  }
+		if (result.data) {
+			eventBus.emit(PROJECT_EVENTS.LOCAL_UPDATE, { entityId: result.id });
+		}
+	}
 }
 ```
 
@@ -574,24 +562,23 @@ export class RealtimeProjectService {
 // apps/web/src/lib/stores/project.store.ts
 
 class ProjectStoreV2 {
-  private unsubscribeRealtimeChanges?: () => void;
+	private unsubscribeRealtimeChanges?: () => void;
 
-  initialize(): void {
-    // Listen for real-time changes
-    this.unsubscribeRealtimeChanges = eventBus.on(
-      PROJECT_EVENTS.REALTIME_CHANGE,
-      (change) => this.handleRealtimeChange(change),
-    );
-  }
+	initialize(): void {
+		// Listen for real-time changes
+		this.unsubscribeRealtimeChanges = eventBus.on(PROJECT_EVENTS.REALTIME_CHANGE, (change) =>
+			this.handleRealtimeChange(change)
+		);
+	}
 
-  private handleRealtimeChange(change: any): void {
-    // Update store state based on real-time change
-    this.updateStoreState(change);
-  }
+	private handleRealtimeChange(change: any): void {
+		// Update store state based on real-time change
+		this.updateStoreState(change);
+	}
 
-  cleanup(): void {
-    this.unsubscribeRealtimeChanges?.();
-  }
+	cleanup(): void {
+		this.unsubscribeRealtimeChanges?.();
+	}
 }
 ```
 
@@ -601,10 +588,10 @@ class ProjectStoreV2 {
 // apps/web/src/lib/utils/brain-dump-navigation.ts
 
 // Can now use regular import!
-import { RealtimeProjectService } from "$lib/services/realtimeProject.service";
+import { RealtimeProjectService } from '$lib/services/realtimeProject.service';
 
 export function isRealTimeSyncActive(projectId: string): boolean {
-  return RealtimeProjectService.isInitialized();
+	return RealtimeProjectService.isInitialized();
 }
 ```
 
@@ -639,25 +626,25 @@ export function isRealTimeSyncActive(projectId: string): boolean {
 // apps/web/src/lib/interfaces/local-update-tracker.interface.ts
 
 export interface ILocalUpdateTracker {
-  track(entityId: string): void;
-  isTracked(entityId: string): boolean;
+	track(entityId: string): void;
+	isTracked(entityId: string): boolean;
 }
 
 // apps/web/src/lib/services/realtimeProject.service.ts
 
 export class RealtimeProjectService implements ILocalUpdateTracker {
-  // ... implements interface
+	// ... implements interface
 }
 
 // apps/web/src/lib/stores/project.store.ts
 
 class ProjectStoreV2 {
-  constructor(private localUpdateTracker: ILocalUpdateTracker) {}
+	constructor(private localUpdateTracker: ILocalUpdateTracker) {}
 
-  async createTaskOptimistically(taskData: any): Promise<void> {
-    // Use injected dependency
-    this.localUpdateTracker.track(tempId);
-  }
+	async createTaskOptimistically(taskData: any): Promise<void> {
+		// Use injected dependency
+		this.localUpdateTracker.track(tempId);
+	}
 }
 
 // Wire up with DI container
@@ -768,33 +755,33 @@ export const projectStoreV2 = new ProjectStoreV2(tracker);
 
 ```typescript
 // Example test for event bus
-describe("EventBus", () => {
-  it("should emit and receive events", () => {
-    const callback = vi.fn();
-    eventBus.on("test-event", callback);
-    eventBus.emit("test-event", { data: "test" });
-    expect(callback).toHaveBeenCalledWith({ data: "test" });
-  });
+describe('EventBus', () => {
+	it('should emit and receive events', () => {
+		const callback = vi.fn();
+		eventBus.on('test-event', callback);
+		eventBus.emit('test-event', { data: 'test' });
+		expect(callback).toHaveBeenCalledWith({ data: 'test' });
+	});
 
-  it("should unsubscribe", () => {
-    const callback = vi.fn();
-    const unsubscribe = eventBus.on("test-event", callback);
-    unsubscribe();
-    eventBus.emit("test-event", { data: "test" });
-    expect(callback).not.toHaveBeenCalled();
-  });
+	it('should unsubscribe', () => {
+		const callback = vi.fn();
+		const unsubscribe = eventBus.on('test-event', callback);
+		unsubscribe();
+		eventBus.emit('test-event', { data: 'test' });
+		expect(callback).not.toHaveBeenCalled();
+	});
 });
 
 // Example test for store (now testable!)
-describe("ProjectStoreV2", () => {
-  it("should emit local update event on optimistic create", () => {
-    const emitSpy = vi.spyOn(eventBus, "emit");
-    store.createTaskOptimistically({ name: "Test" });
-    expect(emitSpy).toHaveBeenCalledWith(
-      PROJECT_EVENTS.LOCAL_UPDATE,
-      expect.objectContaining({ entityId: expect.stringContaining("temp_") }),
-    );
-  });
+describe('ProjectStoreV2', () => {
+	it('should emit local update event on optimistic create', () => {
+		const emitSpy = vi.spyOn(eventBus, 'emit');
+		store.createTaskOptimistically({ name: 'Test' });
+		expect(emitSpy).toHaveBeenCalledWith(
+			PROJECT_EVENTS.LOCAL_UPDATE,
+			expect.objectContaining({ entityId: expect.stringContaining('temp_') })
+		);
+	});
 });
 ```
 
@@ -871,23 +858,23 @@ The Event Bus is essentially an implementation of the Observer pattern (pub/sub)
 ## Open Questions
 
 1. **Should we use a typed event emitter library?**
-   - Current implementation is lightweight but could benefit from type safety
-   - Consider: `mitt`, `eventemitter3`, or custom typed solution
+    - Current implementation is lightweight but could benefit from type safety
+    - Consider: `mitt`, `eventemitter3`, or custom typed solution
 
 2. **Should we apply event bus pattern to other bridge services?**
-   - Brain dump notification bridge
-   - Phase generation bridge
-   - Calendar analysis bridge
-   - Could standardize on event-driven communication
+    - Brain dump notification bridge
+    - Phase generation bridge
+    - Calendar analysis bridge
+    - Could standardize on event-driven communication
 
 3. **Performance considerations**:
-   - Current implementation is synchronous
-   - Should we add async event support for heavy operations?
+    - Current implementation is synchronous
+    - Should we add async event support for heavy operations?
 
 4. **Event naming convention**:
-   - Current: `project:local-update`
-   - Alternative: `PROJECT_LOCAL_UPDATE` or `project.local.update`
-   - Need to establish codebase-wide convention
+    - Current: `project:local-update`
+    - Alternative: `PROJECT_LOCAL_UPDATE` or `project.local.update`
+    - Need to establish codebase-wide convention
 
 ## Conclusion
 

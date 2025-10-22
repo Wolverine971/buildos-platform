@@ -4,11 +4,11 @@ date: 2025-10-03
 status: complete
 tags: [database, schema, onboarding, preferences, notifications, research]
 related_docs:
-  - /apps/web/src/lib/database.schema.ts
-  - /apps/web/supabase/migrations/20250102_add_email_daily_brief_preference.sql
-  - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
-  - /apps/web/supabase/migrations/20241220_trial_system.sql
-  - /apps/web/src/routes/onboarding/+page.svelte
+    - /apps/web/src/lib/database.schema.ts
+    - /apps/web/supabase/migrations/20250102_add_email_daily_brief_preference.sql
+    - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
+    - /apps/web/supabase/migrations/20241220_trial_system.sql
+    - /apps/web/src/routes/onboarding/+page.svelte
 ---
 
 # User Preferences & Onboarding Database Schema Research
@@ -40,31 +40,31 @@ This research document provides a comprehensive analysis of the BuildOS database
 
 ```typescript
 users: {
-  // Identity
-  id: string;
-  email: string;
-  name: string | null;
-  bio: string | null;
+	// Identity
+	id: string;
+	email: string;
+	name: string | null;
+	bio: string | null;
 
-  // Onboarding & Access
-  completed_onboarding: boolean | null;
-  access_restricted: boolean | null;
-  access_restricted_at: string | null;
+	// Onboarding & Access
+	completed_onboarding: boolean | null;
+	access_restricted: boolean | null;
+	access_restricted_at: string | null;
 
-  // Admin & Beta
-  is_admin: boolean;
-  is_beta_user: boolean | null;
+	// Admin & Beta
+	is_admin: boolean;
+	is_beta_user: boolean | null;
 
-  // Subscription (Stripe integration)
-  stripe_customer_id: string | null;
-  subscription_plan_id: string | null;
-  subscription_status: string | null; // 'trialing', 'active', 'free', etc.
-  trial_ends_at: string | null; // 14-day trial by default
+	// Subscription (Stripe integration)
+	stripe_customer_id: string | null;
+	subscription_plan_id: string | null;
+	subscription_status: string | null; // 'trialing', 'active', 'free', etc.
+	trial_ends_at: string | null; // 14-day trial by default
 
-  // Timestamps
-  created_at: string;
-  updated_at: string;
-  last_visit: string | null;
+	// Timestamps
+	created_at: string;
+	updated_at: string;
+	last_visit: string | null;
 }
 ```
 
@@ -88,45 +88,45 @@ users: {
 
 ```typescript
 user_context: {
-  id: string;
-  user_id: string;
+	id: string;
+	user_id: string;
 
-  // NEW: 4-Question Onboarding Input (Current System)
-  input_projects: string | null; // "What are you building?"
-  input_work_style: string | null; // "How do you work?"
-  input_challenges: string | null; // "What's blocking you?"
-  input_help_focus: string | null; // "What do you need help with?"
+	// NEW: 4-Question Onboarding Input (Current System)
+	input_projects: string | null; // "What are you building?"
+	input_work_style: string | null; // "How do you work?"
+	input_challenges: string | null; // "What's blocking you?"
+	input_help_focus: string | null; // "What do you need help with?"
 
-  // Tracking last parsed values for change detection
-  last_parsed_input_projects: string | null;
-  last_parsed_input_work_style: string | null;
-  last_parsed_input_challenges: string | null;
-  last_parsed_input_help_focus: string | null;
+	// Tracking last parsed values for change detection
+	last_parsed_input_projects: string | null;
+	last_parsed_input_work_style: string | null;
+	last_parsed_input_challenges: string | null;
+	last_parsed_input_help_focus: string | null;
 
-  // AI-Generated Context (Legacy/Processed fields)
-  active_projects: string | null;
-  background: string | null;
-  blockers: string | null;
-  collaboration_needs: string | null;
-  communication_style: string | null;
-  focus_areas: string | null;
-  goals_overview: string | null;
-  habits: string | null;
-  help_priorities: string | null;
-  organization_method: string | null;
-  preferred_work_hours: string | null;
-  priorities: string | null;
-  productivity_challenges: string | null;
-  schedule_preferences: string | null;
-  skill_gaps: string | null;
-  tools: string | null;
-  work_style: string | null;
-  workflows: string | null;
+	// AI-Generated Context (Legacy/Processed fields)
+	active_projects: string | null;
+	background: string | null;
+	blockers: string | null;
+	collaboration_needs: string | null;
+	communication_style: string | null;
+	focus_areas: string | null;
+	goals_overview: string | null;
+	habits: string | null;
+	help_priorities: string | null;
+	organization_method: string | null;
+	preferred_work_hours: string | null;
+	priorities: string | null;
+	productivity_challenges: string | null;
+	schedule_preferences: string | null;
+	skill_gaps: string | null;
+	tools: string | null;
+	work_style: string | null;
+	workflows: string | null;
 
-  // Timestamps
-  created_at: string;
-  updated_at: string;
-  onboarding_completed_at: string | null;
+	// Timestamps
+	created_at: string;
+	updated_at: string;
+	onboarding_completed_at: string | null;
 }
 ```
 
@@ -135,28 +135,28 @@ user_context: {
 From `/apps/web/src/routes/onboarding/+page.svelte`:
 
 1. **Step 1: Projects** (`input_projects`)
-   - Icon: Rocket
-   - Question: "Tell me about your current projects, goals, and initiatives"
-   - Placeholder: "List your active projects, business goals, creative works..."
-   - Examples: Building SaaS platform, writing blog, learning React
+    - Icon: Rocket
+    - Question: "Tell me about your current projects, goals, and initiatives"
+    - Placeholder: "List your active projects, business goals, creative works..."
+    - Examples: Building SaaS platform, writing blog, learning React
 
 2. **Step 2: Work Style** (`input_work_style`)
-   - Icon: Settings
-   - Question: "Describe your work habits, preferred schedules, tools you use"
-   - Placeholder: "Share your daily routines, peak productivity hours..."
-   - Examples: Deep work 9-11am, use Notion, prefer async communication
+    - Icon: Settings
+    - Question: "Describe your work habits, preferred schedules, tools you use"
+    - Placeholder: "Share your daily routines, peak productivity hours..."
+    - Examples: Deep work 9-11am, use Notion, prefer async communication
 
 3. **Step 3: Challenges** (`input_challenges`)
-   - Icon: HelpCircle
-   - Question: "What challenges are you facing with productivity?"
-   - Placeholder: "Describe productivity challenges, time management issues..."
-   - Examples: Switching tasks, projects pile up, time estimation struggles
+    - Icon: HelpCircle
+    - Question: "What challenges are you facing with productivity?"
+    - Placeholder: "Describe productivity challenges, time management issues..."
+    - Examples: Switching tasks, projects pile up, time estimation struggles
 
 4. **Step 4: Help Focus** (`input_help_focus`)
-   - Icon: Target
-   - Question: "What aspects of productivity do you want BuildOS to focus on?"
-   - Placeholder: "Project organization, task scheduling, daily planning..."
-   - Examples: Focus on project organization, help with scheduling
+    - Icon: Target
+    - Question: "What aspects of productivity do you want BuildOS to focus on?"
+    - Placeholder: "Project organization, task scheduling, daily planning..."
+    - Examples: Focus on project organization, help with scheduling
 
 **Features:**
 
@@ -178,24 +178,24 @@ From `/apps/web/src/routes/onboarding/+page.svelte`:
 
 ```typescript
 user_brief_preferences: {
-  id: string;
-  user_id: string;
+	id: string;
+	user_id: string;
 
-  // Scheduling
-  frequency: string | null; // 'daily' or 'weekly'
-  day_of_week: number | null; // 0-6 (Monday=1) for weekly
-  time_of_day: string | null; // HH:MM:SS format (e.g., '09:00:00')
-  timezone: string | null; // IANA timezone (default: 'UTC')
+	// Scheduling
+	frequency: string | null; // 'daily' or 'weekly'
+	day_of_week: number | null; // 0-6 (Monday=1) for weekly
+	time_of_day: string | null; // HH:MM:SS format (e.g., '09:00:00')
+	timezone: string | null; // IANA timezone (default: 'UTC')
 
-  // Status
-  is_active: boolean | null; // Enable/disable brief generation
+	// Status
+	is_active: boolean | null; // Enable/disable brief generation
 
-  // NEW: Email delivery preference
-  email_daily_brief: boolean | null; // Opt-in for email delivery (default: false)
+	// NEW: Email delivery preference
+	email_daily_brief: boolean | null; // Opt-in for email delivery (default: false)
 
-  // Timestamps
-  created_at: string;
-  updated_at: string;
+	// Timestamps
+	created_at: string;
+	updated_at: string;
 }
 ```
 
@@ -227,37 +227,37 @@ user_brief_preferences: {
 
 ```typescript
 user_sms_preferences: {
-  id: string;
-  user_id: string;
+	id: string;
+	user_id: string;
 
-  // Phone Contact
-  phone_number: string | null;
-  phone_verified: boolean | null; // Twilio verification status
-  phone_verified_at: string | null;
+	// Phone Contact
+	phone_number: string | null;
+	phone_verified: boolean | null; // Twilio verification status
+	phone_verified_at: string | null;
 
-  // Notification Preferences
-  task_reminders: boolean | null; // Task reminder SMS (default: false)
-  daily_brief_sms: boolean | null; // Daily brief via SMS (default: false)
-  urgent_alerts: boolean | null; // Urgent task alerts (default: true)
+	// Notification Preferences
+	task_reminders: boolean | null; // Task reminder SMS (default: false)
+	daily_brief_sms: boolean | null; // Daily brief via SMS (default: false)
+	urgent_alerts: boolean | null; // Urgent task alerts (default: true)
 
-  // Timing Preferences
-  quiet_hours_start: string | null; // TIME format (default: '21:00')
-  quiet_hours_end: string | null; // TIME format (default: '08:00')
-  timezone: string | null; // Default: 'America/Los_Angeles'
+	// Timing Preferences
+	quiet_hours_start: string | null; // TIME format (default: '21:00')
+	quiet_hours_end: string | null; // TIME format (default: '08:00')
+	timezone: string | null; // Default: 'America/Los_Angeles'
 
-  // Rate Limiting
-  daily_sms_limit: number | null; // Max SMS per day (default: 10)
-  daily_sms_count: number | null; // Current count (default: 0)
-  daily_count_reset_at: string | null; // Reset timestamp
+	// Rate Limiting
+	daily_sms_limit: number | null; // Max SMS per day (default: 10)
+	daily_sms_count: number | null; // Current count (default: 0)
+	daily_count_reset_at: string | null; // Reset timestamp
 
-  // Opt-out
-  opted_out: boolean | null; // Master opt-out (default: false)
-  opted_out_at: string | null;
-  opt_out_reason: string | null;
+	// Opt-out
+	opted_out: boolean | null; // Master opt-out (default: false)
+	opted_out_at: string | null;
+	opt_out_reason: string | null;
 
-  // Timestamps
-  created_at: string | null;
-  updated_at: string | null;
+	// Timestamps
+	created_at: string | null;
+	updated_at: string | null;
 }
 ```
 
@@ -322,27 +322,27 @@ user_calendar_preferences: {
 
 ```typescript
 user_notifications: {
-  id: string;
-  user_id: string;
+	id: string;
+	user_id: string;
 
-  // Content
-  title: string;
-  message: string;
-  type: string; // Notification category
+	// Content
+	title: string;
+	message: string;
+	type: string; // Notification category
 
-  // Actions
-  action_url: string | null; // Optional action link
+	// Actions
+	action_url: string | null; // Optional action link
 
-  // Priority & Expiry
-  priority: string | null; // Display priority
-  expires_at: string | null; // Auto-expire timestamp
+	// Priority & Expiry
+	priority: string | null; // Display priority
+	expires_at: string | null; // Auto-expire timestamp
 
-  // Status
-  read_at: string | null; // Marked as read
-  dismissed_at: string | null; // Dismissed by user
+	// Status
+	read_at: string | null; // Marked as read
+	dismissed_at: string | null; // Dismissed by user
 
-  // Timestamps
-  created_at: string | null;
+	// Timestamps
+	created_at: string | null;
 }
 ```
 
@@ -359,11 +359,11 @@ Tracks which trial reminder emails have been sent:
 
 ```typescript
 trial_reminders: {
-  id: string;
-  user_id: string;
-  reminder_type: string; // '7_days', '3_days', '1_day', 'expired', 'grace_period'
-  sent_at: string | null;
-  created_at: string | null;
+	id: string;
+	user_id: string;
+	reminder_type: string; // '7_days', '3_days', '1_day', 'expired', 'grace_period'
+	sent_at: string | null;
+	created_at: string | null;
 }
 ```
 
@@ -373,17 +373,17 @@ Stores Google OAuth tokens for calendar integration:
 
 ```typescript
 user_calendar_tokens: {
-  id: string;
-  user_id: string;
-  access_token: string;
-  refresh_token: string | null;
-  expiry_date: number | null;
-  google_email: string | null;
-  google_user_id: string | null;
-  scope: string | null;
-  token_type: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+	id: string;
+	user_id: string;
+	access_token: string;
+	refresh_token: string | null;
+	expiry_date: number | null;
+	google_email: string | null;
+	google_user_id: string | null;
+	scope: string | null;
+	token_type: string | null;
+	created_at: string | null;
+	updated_at: string | null;
 }
 ```
 
@@ -469,15 +469,15 @@ Leverage existing tables with a migration plan:
 
 1. **Store onboarding context in `user_context`** (already working)
 2. **Store notification prefs in respective tables:**
-   - Email: `user_brief_preferences.email_daily_brief`
-   - SMS: `user_sms_preferences` (already has all fields needed)
-   - Phone: `user_sms_preferences.phone_number`
+    - Email: `user_brief_preferences.email_daily_brief`
+    - SMS: `user_sms_preferences` (already has all fields needed)
+    - Phone: `user_sms_preferences.phone_number`
 3. **Add tracking field to `users` table:**
-   ```sql
-   ALTER TABLE users
-   ADD COLUMN IF NOT EXISTS onboarding_v2_completed_at TIMESTAMPTZ,
-   ADD COLUMN IF NOT EXISTS primary_contact_method TEXT;
-   ```
+    ```sql
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS onboarding_v2_completed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS primary_contact_method TEXT;
+    ```
 
 Benefits:
 
@@ -528,30 +528,30 @@ Based on schema analysis, here's what's **missing** for the new onboarding:
 ## Next Steps for New Onboarding Implementation
 
 1. **Design new onboarding API contract**
-   - Consolidated endpoint: `/api/onboarding/v2`
-   - Single POST with all data (context + preferences)
-   - Return unified response with validation errors
+    - Consolidated endpoint: `/api/onboarding/v2`
+    - Single POST with all data (context + preferences)
+    - Return unified response with validation errors
 
 2. **Create database migration**
-   - Use Option C approach (extend existing tables)
-   - Add tracking fields to `users` table
-   - Create indexes for performance
+    - Use Option C approach (extend existing tables)
+    - Add tracking fields to `users` table
+    - Create indexes for performance
 
 3. **Build Svelte onboarding component**
-   - Multi-step form (5-7 steps recommended)
-   - Real-time validation
-   - Progress saving (auto-save like current onboarding)
-   - Phone verification integration
+    - Multi-step form (5-7 steps recommended)
+    - Real-time validation
+    - Progress saving (auto-save like current onboarding)
+    - Phone verification integration
 
 4. **Update services**
-   - Extend `OnboardingProgressService`
-   - Create `NotificationPreferenceService` for unified prefs
-   - Update `SMSService` for verification flow
+    - Extend `OnboardingProgressService`
+    - Create `NotificationPreferenceService` for unified prefs
+    - Update `SMSService` for verification flow
 
 5. **Testing strategy**
-   - Unit tests for new API endpoints
-   - Integration tests for onboarding flow
-   - E2E tests for complete user journey
+    - Unit tests for new API endpoints
+    - Integration tests for onboarding flow
+    - E2E tests for complete user journey
 
 ## References
 

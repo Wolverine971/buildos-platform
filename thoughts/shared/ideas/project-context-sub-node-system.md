@@ -162,251 +162,244 @@ Create file: `contextParser.ts`
 
 ```typescript
 interface ParsedSection {
-  title: string;
-  slug: string;
-  content: string;
-  level: number;
-  position: number;
-  contentLength: number;
-  startLine: number;
-  endLine: number;
+	title: string;
+	slug: string;
+	content: string;
+	level: number;
+	position: number;
+	contentLength: number;
+	startLine: number;
+	endLine: number;
 }
 
 interface ContextAnalysis {
-  totalLength: number;
-  sections: ParsedSection[];
-  eligibleForSubnodes: ParsedSection[];
-  shouldBreak: boolean;
-  breakStrategy: "optional" | "mandatory" | "none";
+	totalLength: number;
+	sections: ParsedSection[];
+	eligibleForSubnodes: ParsedSection[];
+	shouldBreak: boolean;
+	breakStrategy: 'optional' | 'mandatory' | 'none';
 }
 
 class ContextParser {
-  private readonly OPTIONAL_BREAK_THRESHOLD = 3000;
-  private readonly MANDATORY_BREAK_THRESHOLD = 10000;
-  private readonly SECTION_BREAK_THRESHOLD = 2000;
-  private readonly PREVIEW_LENGTH = 100;
+	private readonly OPTIONAL_BREAK_THRESHOLD = 3000;
+	private readonly MANDATORY_BREAK_THRESHOLD = 10000;
+	private readonly SECTION_BREAK_THRESHOLD = 2000;
+	private readonly PREVIEW_LENGTH = 100;
 
-  /**
-   * Main entry point - analyzes markdown context and determines breaking strategy
-   */
-  analyzeContext(markdownContent: string): ContextAnalysis {
-    const totalLength = markdownContent.length;
+	/**
+	 * Main entry point - analyzes markdown context and determines breaking strategy
+	 */
+	analyzeContext(markdownContent: string): ContextAnalysis {
+		const totalLength = markdownContent.length;
 
-    // Determine breaking strategy based on total length
-    let breakStrategy: "optional" | "mandatory" | "none";
-    if (totalLength < this.OPTIONAL_BREAK_THRESHOLD) {
-      breakStrategy = "none";
-    } else if (totalLength >= this.MANDATORY_BREAK_THRESHOLD) {
-      breakStrategy = "mandatory";
-    } else {
-      breakStrategy = "optional";
-    }
+		// Determine breaking strategy based on total length
+		let breakStrategy: 'optional' | 'mandatory' | 'none';
+		if (totalLength < this.OPTIONAL_BREAK_THRESHOLD) {
+			breakStrategy = 'none';
+		} else if (totalLength >= this.MANDATORY_BREAK_THRESHOLD) {
+			breakStrategy = 'mandatory';
+		} else {
+			breakStrategy = 'optional';
+		}
 
-    // Parse all sections from markdown
-    const sections = this.parseMarkdownSections(markdownContent);
+		// Parse all sections from markdown
+		const sections = this.parseMarkdownSections(markdownContent);
 
-    // Determine which sections should become subnodes
-    const eligibleForSubnodes = this.determineEligibleSections(
-      sections,
-      breakStrategy,
-    );
+		// Determine which sections should become subnodes
+		const eligibleForSubnodes = this.determineEligibleSections(sections, breakStrategy);
 
-    const shouldBreak = eligibleForSubnodes.length > 0;
+		const shouldBreak = eligibleForSubnodes.length > 0;
 
-    return {
-      totalLength,
-      sections,
-      eligibleForSubnodes,
-      shouldBreak,
-      breakStrategy,
-    };
-  }
+		return {
+			totalLength,
+			sections,
+			eligibleForSubnodes,
+			shouldBreak,
+			breakStrategy
+		};
+	}
 
-  /**
-   * Parse markdown into sections based on headers
-   */
-  private parseMarkdownSections(markdown: string): ParsedSection[] {
-    const lines = markdown.split("\n");
-    const sections: ParsedSection[] = [];
+	/**
+	 * Parse markdown into sections based on headers
+	 */
+	private parseMarkdownSections(markdown: string): ParsedSection[] {
+		const lines = markdown.split('\n');
+		const sections: ParsedSection[] = [];
 
-    let currentSection: ParsedSection | null = null;
-    let contentBuffer: string[] = [];
-    let position = 0;
-    let startLine = 0;
+		let currentSection: ParsedSection | null = null;
+		let contentBuffer: string[] = [];
+		let position = 0;
+		let startLine = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
 
-      if (headerMatch) {
-        // Save previous section if exists
-        if (currentSection) {
-          currentSection.content = contentBuffer.join("\n").trim();
-          currentSection.contentLength = currentSection.content.length;
-          currentSection.endLine = i - 1;
-          if (currentSection.content) {
-            sections.push(currentSection);
-          }
-        }
+			if (headerMatch) {
+				// Save previous section if exists
+				if (currentSection) {
+					currentSection.content = contentBuffer.join('\n').trim();
+					currentSection.contentLength = currentSection.content.length;
+					currentSection.endLine = i - 1;
+					if (currentSection.content) {
+						sections.push(currentSection);
+					}
+				}
 
-        // Start new section
-        const level = headerMatch[1].length;
-        const title = headerMatch[2].trim();
-        currentSection = {
-          title,
-          slug: this.generateSlug(title),
-          content: "",
-          level,
-          position: position++,
-          contentLength: 0,
-          startLine: i,
-          endLine: lines.length - 1,
-        };
-        contentBuffer = [];
-        startLine = i + 1;
-      } else {
-        contentBuffer.push(line);
-      }
-    }
+				// Start new section
+				const level = headerMatch[1].length;
+				const title = headerMatch[2].trim();
+				currentSection = {
+					title,
+					slug: this.generateSlug(title),
+					content: '',
+					level,
+					position: position++,
+					contentLength: 0,
+					startLine: i,
+					endLine: lines.length - 1
+				};
+				contentBuffer = [];
+				startLine = i + 1;
+			} else {
+				contentBuffer.push(line);
+			}
+		}
 
-    // Save last section
-    if (currentSection) {
-      currentSection.content = contentBuffer.join("\n").trim();
-      currentSection.contentLength = currentSection.content.length;
-      if (currentSection.content) {
-        sections.push(currentSection);
-      }
-    }
+		// Save last section
+		if (currentSection) {
+			currentSection.content = contentBuffer.join('\n').trim();
+			currentSection.contentLength = currentSection.content.length;
+			if (currentSection.content) {
+				sections.push(currentSection);
+			}
+		}
 
-    return sections;
-  }
+		return sections;
+	}
 
-  /**
-   * Determine which sections should become subnodes based on strategy
-   */
-  private determineEligibleSections(
-    sections: ParsedSection[],
-    strategy: "optional" | "mandatory" | "none",
-  ): ParsedSection[] {
-    if (strategy === "none") {
-      return [];
-    }
+	/**
+	 * Determine which sections should become subnodes based on strategy
+	 */
+	private determineEligibleSections(
+		sections: ParsedSection[],
+		strategy: 'optional' | 'mandatory' | 'none'
+	): ParsedSection[] {
+		if (strategy === 'none') {
+			return [];
+		}
 
-    if (strategy === "mandatory") {
-      // For mandatory breaking, take all substantial sections
-      // Prioritize top-level sections (h1, h2)
-      return sections.filter((s) => s.level <= 2 && s.contentLength > 500);
-    }
+		if (strategy === 'mandatory') {
+			// For mandatory breaking, take all substantial sections
+			// Prioritize top-level sections (h1, h2)
+			return sections.filter((s) => s.level <= 2 && s.contentLength > 500);
+		}
 
-    // Optional breaking - only sections over threshold
-    return sections.filter(
-      (s) => s.contentLength > this.SECTION_BREAK_THRESHOLD,
-    );
-  }
+		// Optional breaking - only sections over threshold
+		return sections.filter((s) => s.contentLength > this.SECTION_BREAK_THRESHOLD);
+	}
 
-  /**
-   * Generate URL-safe slug from title
-   */
-  private generateSlug(title: string): string {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .substring(0, 50); // Limit length
-  }
+	/**
+	 * Generate URL-safe slug from title
+	 */
+	private generateSlug(title: string): string {
+		return title
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-|-$/g, '')
+			.substring(0, 50); // Limit length
+	}
 
-  /**
-   * Generate tags for a section based on content analysis
-   */
-  generateTags(section: ParsedSection): string[] {
-    const tags: string[] = [];
+	/**
+	 * Generate tags for a section based on content analysis
+	 */
+	generateTags(section: ParsedSection): string[] {
+		const tags: string[] = [];
 
-    // Add level-based tag
-    tags.push(`h${section.level}`);
+		// Add level-based tag
+		tags.push(`h${section.level}`);
 
-    // Add content-based tags
-    const titleLower = section.title.toLowerCase();
-    const contentLower = section.content.toLowerCase();
+		// Add content-based tags
+		const titleLower = section.title.toLowerCase();
+		const contentLower = section.content.toLowerCase();
 
-    // Common section type detection
-    if (titleLower.match(/overview|introduction|summary|abstract/i)) {
-      tags.push("overview");
-    }
-    if (titleLower.match(/technical|architecture|implementation|system/i)) {
-      tags.push("technical");
-    }
-    if (titleLower.match(/strategy|plan|approach|roadmap/i)) {
-      tags.push("strategy");
-    }
-    if (titleLower.match(/scope|requirements|specification/i)) {
-      tags.push("scope");
-    }
-    if (titleLower.match(/goal|objective|outcome|result/i)) {
-      tags.push("goals");
-    }
-    if (titleLower.match(/risk|issue|challenge|mitigation/i)) {
-      tags.push("risks");
-    }
-    if (titleLower.match(/timeline|schedule|milestone|deadline/i)) {
-      tags.push("timeline");
-    }
+		// Common section type detection
+		if (titleLower.match(/overview|introduction|summary|abstract/i)) {
+			tags.push('overview');
+		}
+		if (titleLower.match(/technical|architecture|implementation|system/i)) {
+			tags.push('technical');
+		}
+		if (titleLower.match(/strategy|plan|approach|roadmap/i)) {
+			tags.push('strategy');
+		}
+		if (titleLower.match(/scope|requirements|specification/i)) {
+			tags.push('scope');
+		}
+		if (titleLower.match(/goal|objective|outcome|result/i)) {
+			tags.push('goals');
+		}
+		if (titleLower.match(/risk|issue|challenge|mitigation/i)) {
+			tags.push('risks');
+		}
+		if (titleLower.match(/timeline|schedule|milestone|deadline/i)) {
+			tags.push('timeline');
+		}
 
-    // Add size-based tag
-    if (section.contentLength > 5000) {
-      tags.push("large-section");
-    } else if (section.contentLength > 2500) {
-      tags.push("medium-section");
-    } else {
-      tags.push("small-section");
-    }
+		// Add size-based tag
+		if (section.contentLength > 5000) {
+			tags.push('large-section');
+		} else if (section.contentLength > 2500) {
+			tags.push('medium-section');
+		} else {
+			tags.push('small-section');
+		}
 
-    return [...new Set(tags)]; // Remove duplicates
-  }
+		return [...new Set(tags)]; // Remove duplicates
+	}
 
-  /**
-   * Create parent context with previews replacing extracted sections
-   */
-  createParentContextWithPreviews(
-    originalContent: string,
-    extractedSections: ParsedSection[],
-  ): string {
-    if (extractedSections.length === 0) {
-      return originalContent;
-    }
+	/**
+	 * Create parent context with previews replacing extracted sections
+	 */
+	createParentContextWithPreviews(
+		originalContent: string,
+		extractedSections: ParsedSection[]
+	): string {
+		if (extractedSections.length === 0) {
+			return originalContent;
+		}
 
-    let parentContent = originalContent;
+		let parentContent = originalContent;
 
-    // Sort sections by position (reverse) to replace from bottom up
-    const sortedSections = [...extractedSections].sort(
-      (a, b) => b.startLine - a.startLine,
-    );
+		// Sort sections by position (reverse) to replace from bottom up
+		const sortedSections = [...extractedSections].sort((a, b) => b.startLine - a.startLine);
 
-    for (const section of sortedSections) {
-      // Create the header pattern to find
-      const headerPattern = `${"#".repeat(section.level)} ${section.title}`;
+		for (const section of sortedSections) {
+			// Create the header pattern to find
+			const headerPattern = `${'#'.repeat(section.level)} ${section.title}`;
 
-      // Create preview text
-      const preview = section.content.substring(0, this.PREVIEW_LENGTH);
-      const cleanPreview = preview.replace(/\n/g, " ").trim();
+			// Create preview text
+			const preview = section.content.substring(0, this.PREVIEW_LENGTH);
+			const cleanPreview = preview.replace(/\n/g, ' ').trim();
 
-      // Create replacement with preview
-      const replacement = `${headerPattern}\n*[Content extracted to sub-node: ${cleanPreview}...]*`;
+			// Create replacement with preview
+			const replacement = `${headerPattern}\n*[Content extracted to sub-node: ${cleanPreview}...]*`;
 
-      // Find and replace the section
-      const sectionRegex = new RegExp(
-        `${this.escapeRegex(headerPattern)}[\\s\\S]*?(?=^#{1,${section.level}}\\s|$)`,
-        "gm",
-      );
+			// Find and replace the section
+			const sectionRegex = new RegExp(
+				`${this.escapeRegex(headerPattern)}[\\s\\S]*?(?=^#{1,${section.level}}\\s|$)`,
+				'gm'
+			);
 
-      parentContent = parentContent.replace(sectionRegex, replacement);
-    }
+			parentContent = parentContent.replace(sectionRegex, replacement);
+		}
 
-    return parentContent;
-  }
+		return parentContent;
+	}
 
-  private escapeRegex(string: string): string {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
+	private escapeRegex(string: string): string {
+		return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
 }
 
 export default ContextParser;
@@ -417,308 +410,305 @@ export default ContextParser;
 Create file: `migrationService.ts`
 
 ```typescript
-import { SupabaseClient } from "@supabase/supabase-js";
-import ContextParser from "./contextParser";
+import { SupabaseClient } from '@supabase/supabase-js';
+import ContextParser from './contextParser';
 
 interface MigrationResult {
-  success: boolean;
-  projectId: string;
-  subnodesCreated: number;
-  error?: string;
-  details?: any;
+	success: boolean;
+	projectId: string;
+	subnodesCreated: number;
+	error?: string;
+	details?: any;
 }
 
 class ContextMigrationService {
-  private parser: ContextParser;
+	private parser: ContextParser;
 
-  constructor(private supabase: SupabaseClient) {
-    this.parser = new ContextParser();
-  }
+	constructor(private supabase: SupabaseClient) {
+		this.parser = new ContextParser();
+	}
 
-  /**
-   * Migrate a single project's context to subnode structure
-   */
-  async migrateProject(projectId: string): Promise<MigrationResult> {
-    try {
-      // 1. Fetch project data
-      const { data: project, error: fetchError } = await this.supabase
-        .from("projects")
-        .select("id, context, user_id, name")
-        .eq("id", projectId)
-        .single();
+	/**
+	 * Migrate a single project's context to subnode structure
+	 */
+	async migrateProject(projectId: string): Promise<MigrationResult> {
+		try {
+			// 1. Fetch project data
+			const { data: project, error: fetchError } = await this.supabase
+				.from('projects')
+				.select('id, context, user_id, name')
+				.eq('id', projectId)
+				.single();
 
-      if (fetchError || !project) {
-        return {
-          success: false,
-          projectId,
-          subnodesCreated: 0,
-          error: "Project not found",
-        };
-      }
+			if (fetchError || !project) {
+				return {
+					success: false,
+					projectId,
+					subnodesCreated: 0,
+					error: 'Project not found'
+				};
+			}
 
-      if (!project.context) {
-        return {
-          success: false,
-          projectId,
-          subnodesCreated: 0,
-          error: "Project has no context",
-        };
-      }
+			if (!project.context) {
+				return {
+					success: false,
+					projectId,
+					subnodesCreated: 0,
+					error: 'Project has no context'
+				};
+			}
 
-      // 2. Analyze context
-      const analysis = this.parser.analyzeContext(project.context);
+			// 2. Analyze context
+			const analysis = this.parser.analyzeContext(project.context);
 
-      console.log(
-        `Project ${project.name}: ${analysis.totalLength} chars, ` +
-          `strategy: ${analysis.breakStrategy}, ` +
-          `eligible sections: ${analysis.eligibleForSubnodes.length}`,
-      );
+			console.log(
+				`Project ${project.name}: ${analysis.totalLength} chars, ` +
+					`strategy: ${analysis.breakStrategy}, ` +
+					`eligible sections: ${analysis.eligibleForSubnodes.length}`
+			);
 
-      // 3. If no breaking needed, just update metadata
-      if (!analysis.shouldBreak) {
-        await this.supabase
-          .from("projects")
-          .update({
-            context_has_subnodes: false,
-            context_last_parsed: new Date().toISOString(),
-            context_structure: {
-              total_length: analysis.totalLength,
-              has_subnodes: false,
-              last_parsed: new Date().toISOString(),
-              sub_nodes: {},
-            },
-          })
-          .eq("id", projectId);
+			// 3. If no breaking needed, just update metadata
+			if (!analysis.shouldBreak) {
+				await this.supabase
+					.from('projects')
+					.update({
+						context_has_subnodes: false,
+						context_last_parsed: new Date().toISOString(),
+						context_structure: {
+							total_length: analysis.totalLength,
+							has_subnodes: false,
+							last_parsed: new Date().toISOString(),
+							sub_nodes: {}
+						}
+					})
+					.eq('id', projectId);
 
-        return {
-          success: true,
-          projectId,
-          subnodesCreated: 0,
-          details: { reason: "Content too small or no large sections" },
-        };
-      }
+				return {
+					success: true,
+					projectId,
+					subnodesCreated: 0,
+					details: { reason: 'Content too small or no large sections' }
+				};
+			}
 
-      // 4. Create subnodes
-      const subNodeMap: Record<string, any> = {};
-      const subNodeRecords = [];
+			// 4. Create subnodes
+			const subNodeMap: Record<string, any> = {};
+			const subNodeRecords = [];
 
-      for (const section of analysis.eligibleForSubnodes) {
-        const tags = this.parser.generateTags(section);
-        const preview =
-          section.content.substring(0, 100) +
-          (section.content.length > 100 ? "..." : "");
+			for (const section of analysis.eligibleForSubnodes) {
+				const tags = this.parser.generateTags(section);
+				const preview =
+					section.content.substring(0, 100) + (section.content.length > 100 ? '...' : '');
 
-        subNodeRecords.push({
-          project_id: projectId,
-          user_id: project.user_id,
-          slug: section.slug,
-          title: section.title,
-          content: section.content,
-          preview: preview,
-          position: section.position,
-          level: section.level,
-          tags: tags,
-          metadata: {
-            original_length: section.contentLength,
-            start_line: section.startLine,
-            end_line: section.endLine,
-          },
-        });
-      }
+				subNodeRecords.push({
+					project_id: projectId,
+					user_id: project.user_id,
+					slug: section.slug,
+					title: section.title,
+					content: section.content,
+					preview: preview,
+					position: section.position,
+					level: section.level,
+					tags: tags,
+					metadata: {
+						original_length: section.contentLength,
+						start_line: section.startLine,
+						end_line: section.endLine
+					}
+				});
+			}
 
-      // 5. Batch insert subnodes
-      const { data: insertedNodes, error: insertError } = await this.supabase
-        .from("sub_contexts")
-        .insert(subNodeRecords)
-        .select("id, slug, content_length, tags");
+			// 5. Batch insert subnodes
+			const { data: insertedNodes, error: insertError } = await this.supabase
+				.from('sub_contexts')
+				.insert(subNodeRecords)
+				.select('id, slug, content_length, tags');
 
-      if (insertError) {
-        console.error("Error inserting subnodes:", insertError);
-        return {
-          success: false,
-          projectId,
-          subnodesCreated: 0,
-          error: insertError.message,
-        };
-      }
+			if (insertError) {
+				console.error('Error inserting subnodes:', insertError);
+				return {
+					success: false,
+					projectId,
+					subnodesCreated: 0,
+					error: insertError.message
+				};
+			}
 
-      // 6. Build subnode reference map
-      for (const node of insertedNodes || []) {
-        subNodeMap[node.slug] = {
-          id: node.id,
-          content_length: node.content_length,
-          tags: node.tags,
-          position: subNodeRecords.find((r) => r.slug === node.slug)?.position,
-        };
-      }
+			// 6. Build subnode reference map
+			for (const node of insertedNodes || []) {
+				subNodeMap[node.slug] = {
+					id: node.id,
+					content_length: node.content_length,
+					tags: node.tags,
+					position: subNodeRecords.find((r) => r.slug === node.slug)?.position
+				};
+			}
 
-      // 7. Create parent context with previews
-      const parentContext = this.parser.createParentContextWithPreviews(
-        project.context,
-        analysis.eligibleForSubnodes,
-      );
+			// 7. Create parent context with previews
+			const parentContext = this.parser.createParentContextWithPreviews(
+				project.context,
+				analysis.eligibleForSubnodes
+			);
 
-      // 8. Update project with new structure
-      const { error: updateError } = await this.supabase
-        .from("projects")
-        .update({
-          context: parentContext,
-          context_has_subnodes: true,
-          context_structure: {
-            total_length: analysis.totalLength,
-            has_subnodes: true,
-            last_parsed: new Date().toISOString(),
-            break_strategy: analysis.breakStrategy,
-            sub_nodes: subNodeMap,
-          },
-          context_last_parsed: new Date().toISOString(),
-        })
-        .eq("id", projectId);
+			// 8. Update project with new structure
+			const { error: updateError } = await this.supabase
+				.from('projects')
+				.update({
+					context: parentContext,
+					context_has_subnodes: true,
+					context_structure: {
+						total_length: analysis.totalLength,
+						has_subnodes: true,
+						last_parsed: new Date().toISOString(),
+						break_strategy: analysis.breakStrategy,
+						sub_nodes: subNodeMap
+					},
+					context_last_parsed: new Date().toISOString()
+				})
+				.eq('id', projectId);
 
-      if (updateError) {
-        console.error("Error updating project:", updateError);
-        return {
-          success: false,
-          projectId,
-          subnodesCreated: insertedNodes?.length || 0,
-          error: updateError.message,
-        };
-      }
+			if (updateError) {
+				console.error('Error updating project:', updateError);
+				return {
+					success: false,
+					projectId,
+					subnodesCreated: insertedNodes?.length || 0,
+					error: updateError.message
+				};
+			}
 
-      return {
-        success: true,
-        projectId,
-        subnodesCreated: insertedNodes?.length || 0,
-        details: {
-          strategy: analysis.breakStrategy,
-          totalSections: analysis.sections.length,
-          extractedSections: analysis.eligibleForSubnodes.map((s) => ({
-            title: s.title,
-            size: s.contentLength,
-          })),
-        },
-      };
-    } catch (error: any) {
-      console.error(`Error migrating project ${projectId}:`, error);
-      return {
-        success: false,
-        projectId,
-        subnodesCreated: 0,
-        error: error.message,
-      };
-    }
-  }
+			return {
+				success: true,
+				projectId,
+				subnodesCreated: insertedNodes?.length || 0,
+				details: {
+					strategy: analysis.breakStrategy,
+					totalSections: analysis.sections.length,
+					extractedSections: analysis.eligibleForSubnodes.map((s) => ({
+						title: s.title,
+						size: s.contentLength
+					}))
+				}
+			};
+		} catch (error: any) {
+			console.error(`Error migrating project ${projectId}:`, error);
+			return {
+				success: false,
+				projectId,
+				subnodesCreated: 0,
+				error: error.message
+			};
+		}
+	}
 
-  /**
-   * Migrate all projects in batches
-   */
-  async migrateAllProjects(
-    batchSize: number = 10,
-    dryRun: boolean = false,
-  ): Promise<{
-    totalProjects: number;
-    successful: number;
-    failed: number;
-    results: MigrationResult[];
-  }> {
-    // Get all projects that need migration
-    const { data: projects, error: fetchError } = await this.supabase
-      .from("projects")
-      .select("id, name")
-      .not("context", "is", null)
-      .is("context_has_subnodes", null);
+	/**
+	 * Migrate all projects in batches
+	 */
+	async migrateAllProjects(
+		batchSize: number = 10,
+		dryRun: boolean = false
+	): Promise<{
+		totalProjects: number;
+		successful: number;
+		failed: number;
+		results: MigrationResult[];
+	}> {
+		// Get all projects that need migration
+		const { data: projects, error: fetchError } = await this.supabase
+			.from('projects')
+			.select('id, name')
+			.not('context', 'is', null)
+			.is('context_has_subnodes', null);
 
-    if (fetchError || !projects) {
-      console.error("Error fetching projects:", fetchError);
-      return {
-        totalProjects: 0,
-        successful: 0,
-        failed: 0,
-        results: [],
-      };
-    }
+		if (fetchError || !projects) {
+			console.error('Error fetching projects:', fetchError);
+			return {
+				totalProjects: 0,
+				successful: 0,
+				failed: 0,
+				results: []
+			};
+		}
 
-    console.log(`Found ${projects.length} projects to migrate`);
+		console.log(`Found ${projects.length} projects to migrate`);
 
-    if (dryRun) {
-      console.log("DRY RUN - No changes will be made");
-      return {
-        totalProjects: projects.length,
-        successful: 0,
-        failed: 0,
-        results: [],
-      };
-    }
+		if (dryRun) {
+			console.log('DRY RUN - No changes will be made');
+			return {
+				totalProjects: projects.length,
+				successful: 0,
+				failed: 0,
+				results: []
+			};
+		}
 
-    const results: MigrationResult[] = [];
-    let successful = 0;
-    let failed = 0;
+		const results: MigrationResult[] = [];
+		let successful = 0;
+		let failed = 0;
 
-    // Process in batches
-    for (let i = 0; i < projects.length; i += batchSize) {
-      const batch = projects.slice(i, i + batchSize);
-      console.log(
-        `Processing batch ${Math.floor(i / batchSize) + 1} ` +
-          `(projects ${i + 1}-${Math.min(i + batchSize, projects.length)})`,
-      );
+		// Process in batches
+		for (let i = 0; i < projects.length; i += batchSize) {
+			const batch = projects.slice(i, i + batchSize);
+			console.log(
+				`Processing batch ${Math.floor(i / batchSize) + 1} ` +
+					`(projects ${i + 1}-${Math.min(i + batchSize, projects.length)})`
+			);
 
-      // Process batch in parallel
-      const batchResults = await Promise.all(
-        batch.map((p) => this.migrateProject(p.id)),
-      );
+			// Process batch in parallel
+			const batchResults = await Promise.all(batch.map((p) => this.migrateProject(p.id)));
 
-      // Tally results
-      for (const result of batchResults) {
-        results.push(result);
-        if (result.success) {
-          successful++;
-        } else {
-          failed++;
-        }
-      }
+			// Tally results
+			for (const result of batchResults) {
+				results.push(result);
+				if (result.success) {
+					successful++;
+				} else {
+					failed++;
+				}
+			}
 
-      console.log(
-        `Batch complete. Total progress: ${successful} successful, ${failed} failed`,
-      );
+			console.log(
+				`Batch complete. Total progress: ${successful} successful, ${failed} failed`
+			);
 
-      // Add a small delay between batches to avoid overwhelming the database
-      if (i + batchSize < projects.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
+			// Add a small delay between batches to avoid overwhelming the database
+			if (i + batchSize < projects.length) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
+		}
 
-    return {
-      totalProjects: projects.length,
-      successful,
-      failed,
-      results,
-    };
-  }
+		return {
+			totalProjects: projects.length,
+			successful,
+			failed,
+			results
+		};
+	}
 
-  /**
-   * Test migration on a few projects first
-   */
-  async testMigration(limit: number = 5): Promise<void> {
-    console.log(`Testing migration on ${limit} projects...`);
+	/**
+	 * Test migration on a few projects first
+	 */
+	async testMigration(limit: number = 5): Promise<void> {
+		console.log(`Testing migration on ${limit} projects...`);
 
-    const { data: testProjects } = await this.supabase
-      .from("projects")
-      .select("id, name")
-      .not("context", "is", null)
-      .is("context_has_subnodes", null)
-      .limit(limit);
+		const { data: testProjects } = await this.supabase
+			.from('projects')
+			.select('id, name')
+			.not('context', 'is', null)
+			.is('context_has_subnodes', null)
+			.limit(limit);
 
-    if (!testProjects || testProjects.length === 0) {
-      console.log("No projects to test");
-      return;
-    }
+		if (!testProjects || testProjects.length === 0) {
+			console.log('No projects to test');
+			return;
+		}
 
-    for (const project of testProjects) {
-      console.log(`\nTesting project: ${project.name}`);
-      const result = await this.migrateProject(project.id);
-      console.log("Result:", result);
-    }
-  }
+		for (const project of testProjects) {
+			console.log(`\nTesting project: ${project.name}`);
+			const result = await this.migrateProject(project.id);
+			console.log('Result:', result);
+		}
+	}
 }
 
 export default ContextMigrationService;
@@ -732,35 +722,35 @@ export default ContextMigrationService;
 // Test file: testContextMigration.ts
 
 async function runTests() {
-  // 1. Test the parser
-  const parser = new ContextParser();
+	// 1. Test the parser
+	const parser = new ContextParser();
 
-  const testContent = `
+	const testContent = `
 # Project Overview
 This is a short intro.
 
 ## Technical Architecture
-${"x".repeat(2500)} // Long content
+${'x'.repeat(2500)} // Long content
 
 ## Implementation Details
-${"y".repeat(1800)} // Below threshold
+${'y'.repeat(1800)} // Below threshold
 
 ### Sub-section
 Some content here.
   `;
 
-  const analysis = parser.analyzeContext(testContent);
-  console.log("Parser test:", analysis);
+	const analysis = parser.analyzeContext(testContent);
+	console.log('Parser test:', analysis);
 
-  // 2. Test single project migration
-  const migrationService = new ContextMigrationService(supabase);
-  await migrationService.testMigration(1);
+	// 2. Test single project migration
+	const migrationService = new ContextMigrationService(supabase);
+	await migrationService.testMigration(1);
 
-  // 3. Verify database functions
-  const { data: fullContext } = await supabase.rpc("get_full_project_context", {
-    p_project_id: "test-project-id",
-  });
-  console.log("Reconstructed context length:", fullContext?.length);
+	// 3. Verify database functions
+	const { data: fullContext } = await supabase.rpc('get_full_project_context', {
+		p_project_id: 'test-project-id'
+	});
+	console.log('Reconstructed context length:', fullContext?.length);
 }
 ```
 
@@ -813,35 +803,35 @@ WHERE context IS NOT NULL;
 // Rollout script: rollout.ts
 
 async function stagedRollout() {
-  const migrationService = new ContextMigrationService(supabase);
+	const migrationService = new ContextMigrationService(supabase);
 
-  // Stage 1: Test on 5 projects
-  console.log("Stage 1: Testing on 5 projects...");
-  await migrationService.testMigration(5);
+	// Stage 1: Test on 5 projects
+	console.log('Stage 1: Testing on 5 projects...');
+	await migrationService.testMigration(5);
 
-  // Verify results
-  const stage1Check = await verifyMigration(5);
-  if (!stage1Check.success) {
-    console.error("Stage 1 failed, aborting");
-    return;
-  }
+	// Verify results
+	const stage1Check = await verifyMigration(5);
+	if (!stage1Check.success) {
+		console.error('Stage 1 failed, aborting');
+		return;
+	}
 
-  // Stage 2: Migrate 10% of projects
-  console.log("Stage 2: Migrating 10% of projects...");
-  const { data: tenPercentProjects } = await supabase
-    .from("projects")
-    .select("id")
-    .not("context", "is", null)
-    .is("context_has_subnodes", null)
-    .limit(Math.ceil(totalProjects * 0.1));
+	// Stage 2: Migrate 10% of projects
+	console.log('Stage 2: Migrating 10% of projects...');
+	const { data: tenPercentProjects } = await supabase
+		.from('projects')
+		.select('id')
+		.not('context', 'is', null)
+		.is('context_has_subnodes', null)
+		.limit(Math.ceil(totalProjects * 0.1));
 
-  for (const project of tenPercentProjects) {
-    await migrationService.migrateProject(project.id);
-  }
+	for (const project of tenPercentProjects) {
+		await migrationService.migrateProject(project.id);
+	}
 
-  // Stage 3: Full migration
-  console.log("Stage 3: Full migration...");
-  await migrationService.migrateAllProjects(20); // Batch size of 20
+	// Stage 3: Full migration
+	console.log('Stage 3: Full migration...');
+	await migrationService.migrateAllProjects(20); // Batch size of 20
 }
 ```
 
@@ -849,33 +839,32 @@ async function stagedRollout() {
 
 ```typescript
 async function verifyMigration(expectedCount?: number) {
-  // Check that all projects have been processed
-  const { data: unprocessed } = await supabase
-    .from("projects")
-    .select("id")
-    .not("context", "is", null)
-    .is("context_has_subnodes", null);
+	// Check that all projects have been processed
+	const { data: unprocessed } = await supabase
+		.from('projects')
+		.select('id')
+		.not('context', 'is', null)
+		.is('context_has_subnodes', null);
 
-  // Verify reconstruction works
-  const { data: testProjects } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("context_has_subnodes", true)
-    .limit(5);
+	// Verify reconstruction works
+	const { data: testProjects } = await supabase
+		.from('projects')
+		.select('id')
+		.eq('context_has_subnodes', true)
+		.limit(5);
 
-  for (const project of testProjects || []) {
-    const { data: reconstructed } = await supabase.rpc(
-      "get_full_project_context",
-      { p_project_id: project.id },
-    );
+	for (const project of testProjects || []) {
+		const { data: reconstructed } = await supabase.rpc('get_full_project_context', {
+			p_project_id: project.id
+		});
 
-    if (!reconstructed) {
-      console.error(`Failed to reconstruct context for project ${project.id}`);
-      return { success: false };
-    }
-  }
+		if (!reconstructed) {
+			console.error(`Failed to reconstruct context for project ${project.id}`);
+			return { success: false };
+		}
+	}
 
-  return { success: true };
+	return { success: true };
 }
 ```
 
@@ -887,125 +876,115 @@ async function verifyMigration(expectedCount?: number) {
 // File: contextUpdateService.ts
 
 class ContextUpdateService {
-  constructor(private supabase: SupabaseClient) {}
+	constructor(private supabase: SupabaseClient) {}
 
-  /**
-   * Update a specific subnode
-   */
-  async updateSubnode(
-    projectId: string,
-    subnodeSlug: string,
-    newContent: string,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      // 1. Update the subnode
-      const { error: updateError } = await this.supabase
-        .from("sub_contexts")
-        .update({
-          content: newContent,
-          preview:
-            newContent.substring(0, 100) +
-            (newContent.length > 100 ? "..." : ""),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("project_id", projectId)
-        .eq("slug", subnodeSlug);
+	/**
+	 * Update a specific subnode
+	 */
+	async updateSubnode(
+		projectId: string,
+		subnodeSlug: string,
+		newContent: string
+	): Promise<{ success: boolean; error?: string }> {
+		try {
+			// 1. Update the subnode
+			const { error: updateError } = await this.supabase
+				.from('sub_contexts')
+				.update({
+					content: newContent,
+					preview: newContent.substring(0, 100) + (newContent.length > 100 ? '...' : ''),
+					updated_at: new Date().toISOString()
+				})
+				.eq('project_id', projectId)
+				.eq('slug', subnodeSlug);
 
-      if (updateError) throw updateError;
+			if (updateError) throw updateError;
 
-      // 2. Update parent preview
-      await this.updateParentPreview(projectId, subnodeSlug, newContent);
+			// 2. Update parent preview
+			await this.updateParentPreview(projectId, subnodeSlug, newContent);
 
-      // 3. Update context_structure metadata
-      await this.updateContextStructure(
-        projectId,
-        subnodeSlug,
-        newContent.length,
-      );
+			// 3. Update context_structure metadata
+			await this.updateContextStructure(projectId, subnodeSlug, newContent.length);
 
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  }
+			return { success: true };
+		} catch (error: any) {
+			return { success: false, error: error.message };
+		}
+	}
 
-  /**
-   * Add a new section to context
-   */
-  async addSection(
-    projectId: string,
-    title: string,
-    content: string,
-    position?: number,
-  ): Promise<{ success: boolean; error?: string }> {
-    // Implementation for adding new sections
-    // This would need to re-analyze the context and potentially create new subnodes
-    return { success: true };
-  }
+	/**
+	 * Add a new section to context
+	 */
+	async addSection(
+		projectId: string,
+		title: string,
+		content: string,
+		position?: number
+	): Promise<{ success: boolean; error?: string }> {
+		// Implementation for adding new sections
+		// This would need to re-analyze the context and potentially create new subnodes
+		return { success: true };
+	}
 
-  /**
-   * Remove a subnode and merge back to parent
-   */
-  async mergeSubnodeToParent(
-    projectId: string,
-    subnodeSlug: string,
-  ): Promise<{ success: boolean; error?: string }> {
-    // Implementation for merging subnode back to parent
-    return { success: true };
-  }
+	/**
+	 * Remove a subnode and merge back to parent
+	 */
+	async mergeSubnodeToParent(
+		projectId: string,
+		subnodeSlug: string
+	): Promise<{ success: boolean; error?: string }> {
+		// Implementation for merging subnode back to parent
+		return { success: true };
+	}
 
-  private async updateParentPreview(
-    projectId: string,
-    subnodeSlug: string,
-    newContent: string,
-  ) {
-    // Update the preview in the parent context
-    const preview = newContent.substring(0, 100);
+	private async updateParentPreview(projectId: string, subnodeSlug: string, newContent: string) {
+		// Update the preview in the parent context
+		const preview = newContent.substring(0, 100);
 
-    const { data: project } = await this.supabase
-      .from("projects")
-      .select("context")
-      .eq("id", projectId)
-      .single();
+		const { data: project } = await this.supabase
+			.from('projects')
+			.select('context')
+			.eq('id', projectId)
+			.single();
 
-    if (project?.context) {
-      // Update preview placeholder
-      const updatedContext = project.context.replace(
-        /\*\[Content extracted to sub-node:[^*]+\*\]/,
-        `*[Content extracted to sub-node: ${preview}...]*`,
-      );
+		if (project?.context) {
+			// Update preview placeholder
+			const updatedContext = project.context.replace(
+				/\*\[Content extracted to sub-node:[^*]+\*\]/,
+				`*[Content extracted to sub-node: ${preview}...]*`
+			);
 
-      await this.supabase
-        .from("projects")
-        .update({ context: updatedContext })
-        .eq("id", projectId);
-    }
-  }
+			await this.supabase
+				.from('projects')
+				.update({ context: updatedContext })
+				.eq('id', projectId);
+		}
+	}
 
-  private async updateContextStructure(
-    projectId: string,
-    subnodeSlug: string,
-    newLength: number,
-  ) {
-    const { data: project } = await this.supabase
-      .from("projects")
-      .select("context_structure")
-      .eq("id", projectId)
-      .single();
+	private async updateContextStructure(
+		projectId: string,
+		subnodeSlug: string,
+		newLength: number
+	) {
+		const { data: project } = await this.supabase
+			.from('projects')
+			.select('context_structure')
+			.eq('id', projectId)
+			.single();
 
-    if (project?.context_structure) {
-      const structure = project.context_structure;
-      if (structure.sub_nodes && structure.sub_nodes[subnodeSlug]) {
-        structure.sub_nodes[subnodeSlug].content_length = newLength;
-        structure.last_updated = new Date().toISOString();
+		if (project?.context_structure) {
+			const structure = project.context_structure;
+			if (structure.sub_nodes && structure.sub_nodes[subnodeSlug]) {
+				structure.sub_nodes[subnodeSlug].content_length = newLength;
+				structure.last_updated = new Date().toISOString();
 
-        await this.supabase
-          .from("projects")
-          .update({ context_structure: structure })
-          .eq("id", projectId);
-      }
-    }
-  }
+				await this.supabase
+					.from('projects')
+					.update({ context_structure: structure })
+					.eq('id', projectId);
+			}
+		}
+	}
 }
 ```
 

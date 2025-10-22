@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 287c919d038ad40ed67052178d4c0ea679003b3b
 branch: main
 repository: buildos-platform
-topic: "Daily SMS Scheduling Flow - Completeness Investigation"
+topic: 'Daily SMS Scheduling Flow - Completeness Investigation'
 tags: [research, codebase, sms, calendar-reminders, worker, daily-scheduling]
 status: complete
 last_updated: 2025-10-13
@@ -56,9 +56,9 @@ The flow is fully implemented across all components:
 
 ```typescript
 // Runs at midnight (12:00 AM) every day
-cron.schedule("0 0 * * *", async () => {
-  console.log("📱 Checking for daily SMS reminders...");
-  await checkAndScheduleDailySMS();
+cron.schedule('0 0 * * *', async () => {
+	console.log('📱 Checking for daily SMS reminders...');
+	await checkAndScheduleDailySMS();
 });
 ```
 
@@ -76,16 +76,16 @@ The `checkAndScheduleDailySMS()` function:
 
 ```typescript
 const jobData = {
-  userId: pref.user_id,
-  date: todayDate,
-  timezone: userTimezone,
-  leadTimeMinutes: pref.event_reminder_lead_time_minutes || 15,
+	userId: pref.user_id,
+	date: todayDate,
+	timezone: userTimezone,
+	leadTimeMinutes: pref.event_reminder_lead_time_minutes || 15
 };
 
-await queue.add("schedule_daily_sms", pref.user_id, jobData, {
-  priority: 5,
-  scheduledFor: now,
-  dedupKey: `schedule-daily-sms-${pref.user_id}-${todayDate}`,
+await queue.add('schedule_daily_sms', pref.user_id, jobData, {
+	priority: 5,
+	scheduledFor: now,
+	dedupKey: `schedule-daily-sms-${pref.user_id}-${todayDate}`
 });
 ```
 
@@ -112,7 +112,7 @@ LIMIT 10;
 **Registration**: `apps/worker/src/worker.ts:213`
 
 ```typescript
-queue.process("schedule_daily_sms", processScheduleDailySMS);
+queue.process('schedule_daily_sms', processScheduleDailySMS);
 ```
 
 #### Processing Flow
@@ -120,29 +120,29 @@ queue.process("schedule_daily_sms", processScheduleDailySMS);
 When a `schedule_daily_sms` job is picked up:
 
 1. **Validate User Eligibility** (lines 57-108)
-   - Checks SMS preferences and phone verification
-   - Enforces daily SMS limits
-   - Resets daily count if needed
+    - Checks SMS preferences and phone verification
+    - Enforces daily SMS limits
+    - Resets daily count if needed
 
 2. **Fetch Calendar Events** (lines 110-137)
-   - Queries `task_calendar_events` table
-   - Filters for synced events within user's day (timezone-aware)
-   - Date range calculation uses `date-fns-tz` for accuracy
+    - Queries `task_calendar_events` table
+    - Filters for synced events within user's day (timezone-aware)
+    - Date range calculation uses `date-fns-tz` for accuracy
 
 3. **Process Each Event** (lines 173-301)
-   - Calculates reminder time (event start - lead time)
-   - **Filters out**:
-     - Past events (reminder time < now)
-     - All-day events (future enhancement)
-     - Events in quiet hours
-   - **Generates messages** using `SMSMessageGenerator`
-   - Creates `scheduled_sms_messages` records
+    - Calculates reminder time (event start - lead time)
+    - **Filters out**:
+        - Past events (reminder time < now)
+        - All-day events (future enhancement)
+        - Events in quiet hours
+    - **Generates messages** using `SMSMessageGenerator`
+    - Creates `scheduled_sms_messages` records
 
 4. **Queue SMS Jobs** (lines 369-421)
-   - Creates `sms_messages` records with `status = 'scheduled'`
-   - Links to `scheduled_sms_messages` via `sms_message_id`
-   - Queues `send_sms` jobs with scheduled times
-   - Uses dedup key: `send-scheduled-sms-{scheduled_sms_id}`
+    - Creates `sms_messages` records with `status = 'scheduled'`
+    - Links to `scheduled_sms_messages` via `sms_message_id`
+    - Queues `send_sms` jobs with scheduled times
+    - Uses dedup key: `send-scheduled-sms-{scheduled_sms_id}`
 
 **Key Data Flow**:
 
@@ -177,19 +177,19 @@ The `SMSMessageGenerator` class provides intelligent message generation:
 **Two-Tier System**:
 
 1. **LLM Generation** (Primary) - Uses DeepSeek Chat V3 via OpenRouter
-   - Cost: ~$0.00005 per SMS (~$0.05 per 1,000 messages)
-   - Model: `deepseek/deepseek-chat` (95% cost reduction vs Anthropic)
-   - Temperature: 0.6, Max tokens: 100
-   - Context-aware prompts based on event type (meeting/deadline/all-day)
-   - Automatically extracts meeting links from descriptions (Google Meet, Zoom, Teams)
-   - Formats attendees intelligently ("Sarah", "Sarah and John", "Sarah, John, and 3 others")
-   - Includes location if < 30 chars
-   - Validates and truncates to 160 chars
+    - Cost: ~$0.00005 per SMS (~$0.05 per 1,000 messages)
+    - Model: `deepseek/deepseek-chat` (95% cost reduction vs Anthropic)
+    - Temperature: 0.6, Max tokens: 100
+    - Context-aware prompts based on event type (meeting/deadline/all-day)
+    - Automatically extracts meeting links from descriptions (Google Meet, Zoom, Teams)
+    - Formats attendees intelligently ("Sarah", "Sarah and John", "Sarah, John, and 3 others")
+    - Includes location if < 30 chars
+    - Validates and truncates to 160 chars
 
 2. **Template Fallback** (Reliability)
-   - Triggers if LLM fails for any reason
-   - Template: `{event_title} {time_until} [@ location] [. meeting_link]`
-   - Guarantees 100% message generation success
+    - Triggers if LLM fails for any reason
+    - Template: `{event_title} {time_until} [@ location] [. meeting_link]`
+    - Guarantees 100% message generation success
 
 **Message Validation** (lines 182-210):
 
@@ -218,9 +218,9 @@ System prompt emphasizes:
 
 ```typescript
 const generatedMessage = await smsGenerator.generateEventReminder(
-  eventContext,
-  leadTimeMinutes,
-  userId,
+	eventContext,
+	leadTimeMinutes,
+	userId
 );
 
 const message = generatedMessage.content;
@@ -240,7 +240,7 @@ const message = generatedMessage.content;
 **Registration**: `apps/worker/src/worker.ts:214`
 
 ```typescript
-queue.process("send_sms", processSMS);
+queue.process('send_sms', processSMS);
 ```
 
 #### Processing Flow
@@ -248,40 +248,40 @@ queue.process("send_sms", processSMS);
 When a `send_sms` job is claimed by the worker:
 
 1. **Service Availability Check** (lines 58-65)
-   - Verifies Twilio credentials are configured
-   - Fails gracefully if Twilio not available
+    - Verifies Twilio credentials are configured
+    - Fails gracefully if Twilio not available
 
 2. **Pre-send Validation** (lines 80-245) - **For scheduled SMS only**
-   - **Cancelled Check**: If scheduled SMS is cancelled, marks job complete and skips send
-   - **Quiet Hours Check**: If in quiet hours, reschedules job to end of quiet hours
-   - **Daily Limit Check**: If daily limit reached, cancels SMS and marks job complete
-   - **Calendar Event Check**: If linked event is deleted, cancels SMS
+    - **Cancelled Check**: If scheduled SMS is cancelled, marks job complete and skips send
+    - **Quiet Hours Check**: If in quiet hours, reschedules job to end of quiet hours
+    - **Daily Limit Check**: If daily limit reached, cancels SMS and marks job complete
+    - **Calendar Event Check**: If linked event is deleted, cancels SMS
 
 3. **Twilio SMS Sending** (lines 258-267)
 
-   ```typescript
-   const twilioMessage = await twilioClient.sendSMS({
-     to: phone_number,
-     body: message,
-     metadata: { message_id, user_id, scheduled_sms_id },
-   });
-   ```
+    ```typescript
+    const twilioMessage = await twilioClient.sendSMS({
+    	to: phone_number,
+    	body: message,
+    	metadata: { message_id, user_id, scheduled_sms_id }
+    });
+    ```
 
 4. **Success Updates** (lines 275-346)
-   - Updates `sms_messages`: `status = 'sent'`, `twilio_sid`, `sent_at`
-   - Updates `scheduled_sms_messages`: `status = 'sent'`, `sms_message_id`, `twilio_sid`
-   - Increments `daily_sms_count` via RPC
-   - Records metrics (non-blocking)
-   - Marks job as completed
-   - Notifies user via Supabase Realtime
+    - Updates `sms_messages`: `status = 'sent'`, `twilio_sid`, `sent_at`
+    - Updates `scheduled_sms_messages`: `status = 'sent'`, `sms_message_id`, `twilio_sid`
+    - Increments `daily_sms_count` via RPC
+    - Records metrics (non-blocking)
+    - Marks job as completed
+    - Notifies user via Supabase Realtime
 
 5. **Error Handling** (lines 353-459)
-   - Updates both tables with error status
-   - Tracks failed metrics
-   - **Retry Logic**:
-     - Checks `send_attempts < max_send_attempts` (default 3)
-     - Exponential backoff: `2^attempts * 60` seconds
-     - Re-queues job with new `scheduled_for` timestamp
+    - Updates both tables with error status
+    - Tracks failed metrics
+    - **Retry Logic**:
+        - Checks `send_attempts < max_send_attempts` (default 3)
+        - Exponential backoff: `2^attempts * 60` seconds
+        - Re-queues job with new `scheduled_for` timestamp
 
 **Key Features**:
 
@@ -305,12 +305,12 @@ A dedicated monorepo package used by both web and worker:
 
 ```typescript
 export class TwilioClient {
-  async sendSMS(params): Promise<MessageInstance>;
-  async verifyPhoneNumber(phoneNumber): Promise<{ verificationSid }>;
-  async checkVerification(phoneNumber, code): Promise<boolean>;
-  async getMessageStatus(messageSid): Promise<string>;
-  async cancelScheduledMessage(messageSid): Promise<void>;
-  private formatPhoneNumber(phone): string; // Auto-formats to +1 format
+	async sendSMS(params): Promise<MessageInstance>;
+	async verifyPhoneNumber(phoneNumber): Promise<{ verificationSid }>;
+	async checkVerification(phoneNumber, code): Promise<boolean>;
+	async getMessageStatus(messageSid): Promise<string>;
+	async cancelScheduledMessage(messageSid): Promise<void>;
+	private formatPhoneNumber(phone): string; // Auto-formats to +1 format
 }
 ```
 
@@ -333,13 +333,11 @@ let twilioClient: TwilioClient | null = null;
 let smsService: SMSService | null = null;
 
 if (accountSid && authToken && messagingServiceSid) {
-  twilioClient = new TwilioClient(twilioConfig);
-  smsService = new SMSService(twilioClient, supabase);
-  console.log("Twilio SMS service initialized successfully");
+	twilioClient = new TwilioClient(twilioConfig);
+	smsService = new SMSService(twilioClient, supabase);
+	console.log('Twilio SMS service initialized successfully');
 } else {
-  console.warn(
-    "Twilio credentials not configured - SMS functionality disabled",
-  );
+	console.warn('Twilio credentials not configured - SMS functionality disabled');
 }
 ```
 
@@ -526,44 +524,44 @@ CREATE OR REPLACE FUNCTION increment_daily_sms_count(
 **Integration Tests**: 58 tests across 5 suites
 
 1. **Scheduling Flow** (`01-scheduling.test.ts`) - 6 tests
-   - End-to-end scheduling from calendar event to SMS
-   - Database linkage verification
-   - LLM vs template generation
-   - Past event filtering
-   - Daily limit enforcement
+    - End-to-end scheduling from calendar event to SMS
+    - Database linkage verification
+    - LLM vs template generation
+    - Past event filtering
+    - Daily limit enforcement
 
 2. **Calendar Sync** (`02-calendar-sync.test.ts`) - 10 tests
-   - SMS cancellation on event deletion
-   - Pre-send validation for deleted events
-   - SMS rescheduling on event time changes
-   - Event title changes and message updates
-   - Bulk event updates
+    - SMS cancellation on event deletion
+    - Pre-send validation for deleted events
+    - SMS rescheduling on event time changes
+    - Event title changes and message updates
+    - Bulk event updates
 
 3. **Pre-send Validation** (`03-validation.test.ts`) - 15 tests
-   - Cancelled message handling
-   - Race condition: cancelled while in queue
-   - Quiet hours validation (including midnight spanning)
-   - Daily limit enforcement and reset
-   - Event existence verification
-   - User preference validation (opt-out, phone verification)
+    - Cancelled message handling
+    - Race condition: cancelled while in queue
+    - Quiet hours validation (including midnight spanning)
+    - Daily limit enforcement and reset
+    - Event existence verification
+    - User preference validation (opt-out, phone verification)
 
 4. **Delivery Tracking** (`04-delivery.test.ts`) - 11 tests
-   - Full status flow (scheduled → sent → delivered)
-   - Delivery time metrics
-   - Failed SMS tracking and retry logic
-   - Max retry enforcement
-   - Webhook status sequences
-   - Out-of-order webhook handling
+    - Full status flow (scheduled → sent → delivered)
+    - Delivery time metrics
+    - Failed SMS tracking and retry logic
+    - Max retry enforcement
+    - Webhook status sequences
+    - Out-of-order webhook handling
 
 5. **Edge Cases** (`05-edge-cases.test.ts`) - 16 tests
-   - Timezone handling (PST, EST, UTC, Tokyo, Hawaii)
-   - Cross-timezone midnight handling
-   - DST transitions (spring forward, fall back)
-   - Lead time variations (5 min, 60 min)
-   - Long event titles, special characters, untitled events
-   - Duplicate scheduling attempts
-   - Concurrent preference updates
-   - Empty states (no events, all past events)
+    - Timezone handling (PST, EST, UTC, Tokyo, Hawaii)
+    - Cross-timezone midnight handling
+    - DST transitions (spring forward, fall back)
+    - Lead time variations (5 min, 60 min)
+    - Long event titles, special characters, untitled events
+    - Duplicate scheduling attempts
+    - Concurrent preference updates
+    - Empty states (no events, all past events)
 
 **Unit Tests**:
 
@@ -948,41 +946,41 @@ VALUES (
 ### Minor Issues ⚠️
 
 1. **Cost Tracking Not Exposed**
-   - **Issue**: `SmartLLMService` tracks LLM costs internally but doesn't return them to callers
-   - **Location**: `apps/worker/src/lib/services/smart-llm-service.ts`
-   - **Impact**: LLM generation cost in `scheduled_sms_messages.generation_cost_usd` is always NULL
-   - **Fix**: Modify `generateText()` to return usage/cost in response
+    - **Issue**: `SmartLLMService` tracks LLM costs internally but doesn't return them to callers
+    - **Location**: `apps/worker/src/lib/services/smart-llm-service.ts`
+    - **Impact**: LLM generation cost in `scheduled_sms_messages.generation_cost_usd` is always NULL
+    - **Fix**: Modify `generateText()` to return usage/cost in response
 
 2. **Missing Unit Tests**
-   - **Issue**: No direct unit tests for `processDailySMS()` and `processSMSJob()`
-   - **Impact**: Harder to debug specific worker logic in isolation
-   - **Mitigation**: Comprehensive integration tests provide good coverage
-   - **Recommendation**: Add unit test files with mocked dependencies
+    - **Issue**: No direct unit tests for `processDailySMS()` and `processSMSJob()`
+    - **Impact**: Harder to debug specific worker logic in isolation
+    - **Mitigation**: Comprehensive integration tests provide good coverage
+    - **Recommendation**: Add unit test files with mocked dependencies
 
 3. **All-day Events Not Supported**
-   - **Issue**: All-day calendar events are skipped (lines 192-197 in `dailySmsWorker.ts`)
-   - **Impact**: Users won't get reminders for all-day events
-   - **Status**: Documented as "Phase 2 enhancement"
-   - **Reason**: All-day events don't have specific times, need different reminder logic
+    - **Issue**: All-day calendar events are skipped (lines 192-197 in `dailySmsWorker.ts`)
+    - **Impact**: Users won't get reminders for all-day events
+    - **Status**: Documented as "Phase 2 enhancement"
+    - **Reason**: All-day events don't have specific times, need different reminder logic
 
 4. **Original Table Migrations Not in Repo**
-   - **Issue**: Core SMS table creation migrations not found in repo
-   - **Impact**: Can't recreate database from scratch using migrations alone
-   - **Mitigation**: Tables exist in production, type definitions are accurate
-   - **Recommendation**: Export and commit migration files for `sms_messages`, `scheduled_sms_messages`, `user_sms_preferences`, `sms_templates`
+    - **Issue**: Core SMS table creation migrations not found in repo
+    - **Impact**: Can't recreate database from scratch using migrations alone
+    - **Mitigation**: Tables exist in production, type definitions are accurate
+    - **Recommendation**: Export and commit migration files for `sms_messages`, `scheduled_sms_messages`, `user_sms_preferences`, `sms_templates`
 
 ### Not Issues (By Design)
 
 1. **Graceful Degradation Without Twilio**
-   - Worker runs without Twilio credentials
-   - SMS jobs fail with clear error messages
-   - Other job types (briefs, emails) continue working
-   - This is intentional for dev/test environments
+    - Worker runs without Twilio credentials
+    - SMS jobs fail with clear error messages
+    - Other job types (briefs, emails) continue working
+    - This is intentional for dev/test environments
 
 2. **Template Fallback**
-   - If LLM fails, system uses templates
-   - This is a feature, not a bug
-   - Ensures 100% message generation success
+    - If LLM fails, system uses templates
+    - This is a feature, not a bug
+    - Ensures 100% message generation success
 
 ## Recommendations
 
@@ -995,24 +993,24 @@ VALUES (
 ### Optional Enhancements
 
 1. **Add Unit Tests**
-   - Create `dailySmsWorker.test.ts` with mocked dependencies
-   - Create `smsWorker.test.ts` with mocked Twilio
-   - Create `smsMetrics.test.ts` for metrics tracking
+    - Create `dailySmsWorker.test.ts` with mocked dependencies
+    - Create `smsWorker.test.ts` with mocked Twilio
+    - Create `smsMetrics.test.ts` for metrics tracking
 
 2. **Fix Cost Tracking**
-   - Modify `SmartLLMService.generateText()` to return cost data
-   - Update `SMSMessageGenerator` to capture and return costs
-   - Populate `scheduled_sms_messages.generation_cost_usd`
+    - Modify `SmartLLMService.generateText()` to return cost data
+    - Update `SMSMessageGenerator` to capture and return costs
+    - Populate `scheduled_sms_messages.generation_cost_usd`
 
 3. **Export Migration Files**
-   - Document current schema in migration files
-   - Commit to `supabase/migrations/` or `apps/web/supabase/migrations/`
-   - Enable fresh database setup from migrations
+    - Document current schema in migration files
+    - Commit to `supabase/migrations/` or `apps/web/supabase/migrations/`
+    - Enable fresh database setup from migrations
 
 4. **All-day Event Support** (Phase 2)
-   - Design reminder logic for all-day events
-   - Decide on reminder times (e.g., 9am day-of, 6pm day-before)
-   - Implement and test
+    - Design reminder logic for all-day events
+    - Decide on reminder times (e.g., 9am day-of, 6pm day-before)
+    - Implement and test
 
 ## Conclusion
 
@@ -1060,23 +1058,23 @@ All 6 implementation phases are finished:
 ## Open Questions
 
 1. **Are Twilio credentials configured in production?**
-   - Check Railway environment variables for worker
-   - Verify `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`
+    - Check Railway environment variables for worker
+    - Verify `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`
 
 2. **Is the scheduler cron job actually running?**
-   - Check worker logs for "📱 Checking for daily SMS reminders..." every midnight
-   - Query `queue_jobs` table for `schedule_daily_sms` jobs
+    - Check worker logs for "📱 Checking for daily SMS reminders..." every midnight
+    - Query `queue_jobs` table for `schedule_daily_sms` jobs
 
 3. **Are any users currently eligible for SMS reminders?**
-   - Query `user_sms_preferences` for users with `event_reminders_enabled = true`, `phone_verified = true`, `opted_out = false`
-   - Check if these users have calendar events in `task_calendar_events`
+    - Query `user_sms_preferences` for users with `event_reminders_enabled = true`, `phone_verified = true`, `opted_out = false`
+    - Check if these users have calendar events in `task_calendar_events`
 
 4. **Should cost tracking be prioritized?**
-   - Current cost: ~$0.00005 per SMS (~$0.05 per 1,000 messages)
-   - Cost tracking would require modifying `SmartLLMService`
-   - Impact: Better visibility into LLM expenses
+    - Current cost: ~$0.00005 per SMS (~$0.05 per 1,000 messages)
+    - Cost tracking would require modifying `SmartLLMService`
+    - Impact: Better visibility into LLM expenses
 
 5. **Is all-day event support needed for MVP?**
-   - Current implementation skips all-day events
-   - May be acceptable for initial launch
-   - Can be added in Phase 2 enhancement
+    - Current implementation skips all-day events
+    - May be acceptable for initial launch
+    - Can be added in Phase 2 enhancement

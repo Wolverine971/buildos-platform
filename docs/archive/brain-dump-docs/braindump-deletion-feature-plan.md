@@ -10,14 +10,14 @@ Enable users to delete braindumps from the `/history` page with proper data clea
 
 - **DELETE endpoint exists**: `/api/braindumps/[id]/+server.ts` (lines 119-147)
 - **Current functionality**:
-  - Deletes `brain_dump_links` records
-  - Hard deletes the braindump record
+    - Deletes `brain_dump_links` records
+    - Hard deletes the braindump record
 - **Missing functionality**:
-  - No UI implementation on `/history` page
-  - Incomplete data cleanup (missing `project_questions` handling)
-  - No user confirmation dialog
-  - No audit logging
-  - No soft delete option
+    - No UI implementation on `/history` page
+    - Incomplete data cleanup (missing `project_questions` handling)
+    - No user confirmation dialog
+    - No audit logging
+    - No soft delete option
 
 ### Database Relationships
 
@@ -166,14 +166,14 @@ ALTER TABLE brain_dumps ADD COLUMN deleted_at TIMESTAMP;
 ```typescript
 // DELETE /api/braindumps/[id]
 interface DeleteBraindumpResponse {
-  success: boolean;
-  deleted: {
-    braindump_id: string;
-    title: string;
-    links_cleared: number;
-    questions_affected: number;
-  };
-  warnings?: string[];
+	success: boolean;
+	deleted: {
+		braindump_id: string;
+		title: string;
+		links_cleared: number;
+		questions_affected: number;
+	};
+	warnings?: string[];
 }
 ```
 
@@ -181,20 +181,20 @@ interface DeleteBraindumpResponse {
 
 ```typescript
 interface BraindumpDeleteDialogProps {
-  braindump: {
-    id: string;
-    title: string;
-    created_at: string;
-    content?: string;
-  };
-  linkedCounts?: {
-    projects: number;
-    tasks: number;
-    notes: number;
-    questions: number;
-  };
-  onConfirm: () => Promise<void>;
-  onCancel: () => void;
+	braindump: {
+		id: string;
+		title: string;
+		created_at: string;
+		content?: string;
+	};
+	linkedCounts?: {
+		projects: number;
+		tasks: number;
+		notes: number;
+		questions: number;
+	};
+	onConfirm: () => Promise<void>;
+	onCancel: () => void;
 }
 ```
 

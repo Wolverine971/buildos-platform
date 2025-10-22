@@ -1,12 +1,12 @@
 ---
-title: "Project Context Document Pretty-Print Tool - Technical Specification"
+title: 'Project Context Document Pretty-Print Tool - Technical Specification'
 date: 2025-10-14
 author: Claude Code
 status: draft
 tags: [feature-spec, export, pdf-generation, design-system]
 related:
-  - /apps/web/src/lib/components/project/ProjectContextDocModal.svelte
-  - /apps/web/tailwind.config.js
+    - /apps/web/src/lib/components/project/ProjectContextDocModal.svelte
+    - /apps/web/tailwind.config.js
 ---
 
 # Project Context Document Pretty-Print Tool - Technical Specification
@@ -56,21 +56,21 @@ Inspired by Apple's Human Interface Guidelines and PRD design language:
 - **Primary Font**: SF Pro Display for headings (fallback: system-ui, -apple-system)
 - **Body Font**: SF Pro Text for body content (fallback: system-ui, -apple-system)
 - **Hierarchy**:
-  - Project Name: 28pt, Bold, #1e3a8a (primary-900)
-  - H1: 24pt, Semibold, #1e40af (primary-800)
-  - H2: 20pt, Semibold, #2563eb (primary-600)
-  - H3: 16pt, Medium, #3b82f6 (primary-500)
-  - Body: 11pt, Regular, #374151 (gray-700)
-  - Metadata: 9pt, Regular, #6b7280 (gray-500)
+    - Project Name: 28pt, Bold, #1e3a8a (primary-900)
+    - H1: 24pt, Semibold, #1e40af (primary-800)
+    - H2: 20pt, Semibold, #2563eb (primary-600)
+    - H3: 16pt, Medium, #3b82f6 (primary-500)
+    - Body: 11pt, Regular, #374151 (gray-700)
+    - Metadata: 9pt, Regular, #6b7280 (gray-500)
 
 #### Layout
 
 - **Page Size**: A4 (210mm × 297mm)
 - **Margins**:
-  - Top: 25mm (includes header space)
-  - Right: 20mm
-  - Bottom: 20mm
-  - Left: 25mm
+    - Top: 25mm (includes header space)
+    - Right: 20mm
+    - Bottom: 20mm
+    - Left: 25mm
 - **Content Width**: 165mm
 - **Line Height**: 1.6 for body text, 1.3 for headings
 - **Paragraph Spacing**: 0.8em between paragraphs
@@ -169,10 +169,10 @@ Inspired by Apple's Human Interface Guidelines and PRD design language:
 - Markdown rendered to HTML with custom CSS
 - Use `@tailwindcss/typography` styles as base
 - Custom overrides for PDF-specific adjustments:
-  - No link underlines (show URLs in footnotes if needed)
-  - Code blocks: Light gray background, monospace font
-  - Lists: Proper indentation (20pt per level)
-  - Tables: Borders with gray-200, zebra striping optional
+    - No link underlines (show URLs in footnotes if needed)
+    - Code blocks: Light gray background, monospace font
+    - Lists: Proper indentation (20pt per level)
+    - Tables: Borders with gray-200, zebra striping optional
 
 #### Footer (All Pages)
 
@@ -329,16 +329,16 @@ apps/web/
 
 1. ✅ Research and specification (this document)
 2. Set up development environment
-   - Install Pandoc locally
-   - Install WeasyPrint via pip
-   - Test basic conversion pipeline
+    - Install Pandoc locally
+    - Install WeasyPrint via pip
+    - Test basic conversion pipeline
 3. Create template system foundation
-   - Create `/lib/templates/export/` directory
-   - Design HTML template with placeholders
-   - Create CSS stylesheet with BuildOS theme
+    - Create `/lib/templates/export/` directory
+    - Design HTML template with placeholders
+    - Create CSS stylesheet with BuildOS theme
 4. Prepare logo asset
-   - Optimize brain-bolt.png for PDF embedding
-   - Create grayscale/tinted version at correct size
+    - Optimize brain-bolt.png for PDF embedding
+    - Create grayscale/tinted version at correct size
 
 **Deliverables**:
 
@@ -352,21 +352,21 @@ apps/web/
 **Tasks**:
 
 1. Create service layer
-   - `project-export.service.ts`: Main orchestrator
-   - `pdf-generator.ts`: Pandoc/WeasyPrint wrapper
-   - `template-renderer.ts`: Template variable substitution
-   - `markdown-processor.ts`: Preprocessing and sanitization
+    - `project-export.service.ts`: Main orchestrator
+    - `pdf-generator.ts`: Pandoc/WeasyPrint wrapper
+    - `template-renderer.ts`: Template variable substitution
+    - `markdown-processor.ts`: Preprocessing and sanitization
 2. Create API endpoints
-   - `/api/projects/[id]/export/pdf/+server.ts`
-   - `/api/projects/[id]/export/preview/+server.ts`
+    - `/api/projects/[id]/export/pdf/+server.ts`
+    - `/api/projects/[id]/export/preview/+server.ts`
 3. Implement error handling
-   - Graceful degradation if Pandoc/WeasyPrint unavailable
-   - Validation for project ID and permissions
-   - File size limits and timeouts
+    - Graceful degradation if Pandoc/WeasyPrint unavailable
+    - Validation for project ID and permissions
+    - File size limits and timeouts
 4. Write unit tests
-   - Service layer tests
-   - Template rendering tests
-   - Mock Pandoc/WeasyPrint calls
+    - Service layer tests
+    - Template rendering tests
+    - Mock Pandoc/WeasyPrint calls
 
 **Deliverables**:
 
@@ -380,22 +380,22 @@ apps/web/
 **Tasks**:
 
 1. Update `ProjectContextDocModal.svelte`
-   - Add "Export" dropdown button in header
-   - Implement PDF download trigger
-   - Add HTML preview option
-   - Show loading state during generation
-   - Display success/error toast messages
+    - Add "Export" dropdown button in header
+    - Implement PDF download trigger
+    - Add HTML preview option
+    - Show loading state during generation
+    - Display success/error toast messages
 2. Create loading/progress UI
-   - Loading spinner or progress bar
-   - Estimated time remaining (optional)
+    - Loading spinner or progress bar
+    - Estimated time remaining (optional)
 3. Handle browser download
-   - Proper filename: `{project-slug}-context.pdf`
-   - Content-Disposition headers
-   - MIME type: `application/pdf`
+    - Proper filename: `{project-slug}-context.pdf`
+    - Content-Disposition headers
+    - MIME type: `application/pdf`
 4. Error handling and user feedback
-   - Show friendly error messages
-   - Retry mechanism
-   - Link to troubleshooting docs
+    - Show friendly error messages
+    - Retry mechanism
+    - Link to troubleshooting docs
 
 **Deliverables**:
 
@@ -409,27 +409,27 @@ apps/web/
 **Tasks**:
 
 1. Typography refinement
-   - Test on real project context documents
-   - Adjust font sizes, spacing, margins
-   - Ensure readability at print scale
+    - Test on real project context documents
+    - Adjust font sizes, spacing, margins
+    - Ensure readability at print scale
 2. Logo placement and branding
-   - Fine-tune logo size and opacity
-   - Verify BuildOS colors match brand
-   - Test header/footer layouts
+    - Fine-tune logo size and opacity
+    - Verify BuildOS colors match brand
+    - Test header/footer layouts
 3. Cross-browser testing
-   - Chrome, Firefox, Safari
-   - Mobile responsiveness (HTML preview)
+    - Chrome, Firefox, Safari
+    - Mobile responsiveness (HTML preview)
 4. Print testing
-   - Test PDF print output on physical printer
-   - Verify page breaks, margins, colors
+    - Test PDF print output on physical printer
+    - Verify page breaks, margins, colors
 5. Performance optimization
-   - Measure generation time
-   - Implement caching if needed
-   - Optimize CSS and templates
+    - Measure generation time
+    - Implement caching if needed
+    - Optimize CSS and templates
 6. Documentation
-   - Update README with setup instructions
-   - Create troubleshooting guide
-   - Document API endpoints
+    - Update README with setup instructions
+    - Create troubleshooting guide
+    - Document API endpoints
 
 **Deliverables**:
 
@@ -443,21 +443,21 @@ apps/web/
 **Tasks**:
 
 1. Environment setup
-   - Install Pandoc on Vercel/production server
-   - Configure Python/WeasyPrint runtime
-   - Set environment variables
+    - Install Pandoc on Vercel/production server
+    - Configure Python/WeasyPrint runtime
+    - Set environment variables
 2. Deployment checklist
-   - Database migrations (if needed)
-   - Feature flag setup
-   - Monitoring and logging
+    - Database migrations (if needed)
+    - Feature flag setup
+    - Monitoring and logging
 3. Rollout strategy
-   - Beta testing with select users
-   - Gradual rollout
-   - Monitor error rates
+    - Beta testing with select users
+    - Gradual rollout
+    - Monitor error rates
 4. Post-launch monitoring
-   - Track usage metrics
-   - Monitor generation times
-   - Collect user feedback
+    - Track usage metrics
+    - Monitor generation times
+    - Collect user feedback
 
 **Deliverables**:
 
@@ -477,91 +477,84 @@ apps/web/
  * Handles generation of PDF and HTML exports for project context documents
  */
 
-import type { Project } from "$lib/types/project";
-import { TemplateRenderer } from "./template-renderer";
-import { PDFGenerator } from "./pdf-generator";
-import { MarkdownProcessor } from "./markdown-processor";
+import type { Project } from '$lib/types/project';
+import { TemplateRenderer } from './template-renderer';
+import { PDFGenerator } from './pdf-generator';
+import { MarkdownProcessor } from './markdown-processor';
 
 export class ProjectExportService {
-  private templateRenderer: TemplateRenderer;
-  private pdfGenerator: PDFGenerator;
-  private markdownProcessor: MarkdownProcessor;
+	private templateRenderer: TemplateRenderer;
+	private pdfGenerator: PDFGenerator;
+	private markdownProcessor: MarkdownProcessor;
 
-  constructor() {
-    this.templateRenderer = new TemplateRenderer();
-    this.pdfGenerator = new PDFGenerator();
-    this.markdownProcessor = new MarkdownProcessor();
-  }
+	constructor() {
+		this.templateRenderer = new TemplateRenderer();
+		this.pdfGenerator = new PDFGenerator();
+		this.markdownProcessor = new MarkdownProcessor();
+	}
 
-  /**
-   * Generate PDF export of project context document
-   */
-  async exportToPDF(projectId: string, userId: string): Promise<Buffer> {
-    // 1. Fetch project data with permissions check
-    const project = await this.fetchProjectWithPermissions(projectId, userId);
+	/**
+	 * Generate PDF export of project context document
+	 */
+	async exportToPDF(projectId: string, userId: string): Promise<Buffer> {
+		// 1. Fetch project data with permissions check
+		const project = await this.fetchProjectWithPermissions(projectId, userId);
 
-    // 2. Preprocess markdown content
-    const processedContext = await this.markdownProcessor.process(
-      project.context || "",
-    );
+		// 2. Preprocess markdown content
+		const processedContext = await this.markdownProcessor.process(project.context || '');
 
-    // 3. Render HTML from template
-    const html = await this.templateRenderer.render("context-doc", {
-      project: {
-        name: project.name,
-        status: project.status,
-        startDate: project.start_date,
-        endDate: project.end_date,
-        context: processedContext,
-      },
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        generatedBy: "BuildOS",
-      },
-    });
+		// 3. Render HTML from template
+		const html = await this.templateRenderer.render('context-doc', {
+			project: {
+				name: project.name,
+				status: project.status,
+				startDate: project.start_date,
+				endDate: project.end_date,
+				context: processedContext
+			},
+			metadata: {
+				generatedAt: new Date().toISOString(),
+				generatedBy: 'BuildOS'
+			}
+		});
 
-    // 4. Convert HTML to PDF using Pandoc + WeasyPrint
-    const pdfBuffer = await this.pdfGenerator.generatePDF(html, {
-      cssPath: "/lib/templates/export/context-doc.css",
-      logoPath: "/lib/templates/export/assets/brain-bolt-export.png",
-    });
+		// 4. Convert HTML to PDF using Pandoc + WeasyPrint
+		const pdfBuffer = await this.pdfGenerator.generatePDF(html, {
+			cssPath: '/lib/templates/export/context-doc.css',
+			logoPath: '/lib/templates/export/assets/brain-bolt-export.png'
+		});
 
-    return pdfBuffer;
-  }
+		return pdfBuffer;
+	}
 
-  /**
-   * Generate HTML preview of project context document
-   */
-  async exportToHTML(projectId: string, userId: string): Promise<string> {
-    const project = await this.fetchProjectWithPermissions(projectId, userId);
+	/**
+	 * Generate HTML preview of project context document
+	 */
+	async exportToHTML(projectId: string, userId: string): Promise<string> {
+		const project = await this.fetchProjectWithPermissions(projectId, userId);
 
-    const processedContext = await this.markdownProcessor.process(
-      project.context || "",
-    );
+		const processedContext = await this.markdownProcessor.process(project.context || '');
 
-    const html = await this.templateRenderer.render("preview", {
-      project: {
-        name: project.name,
-        status: project.status,
-        startDate: project.start_date,
-        endDate: project.end_date,
-        context: processedContext,
-      },
-    });
+		const html = await this.templateRenderer.render('preview', {
+			project: {
+				name: project.name,
+				status: project.status,
+				startDate: project.start_date,
+				endDate: project.end_date,
+				context: processedContext
+			}
+		});
 
-    return html;
-  }
+		return html;
+	}
 
-  /**
-   * Fetch project with permissions check
-   */
-  private async fetchProjectWithPermissions(
-    projectId: string,
-    userId: string,
-  ): Promise<Project> {
-    // Implementation: Query Supabase with RLS check
-    // Throw error if unauthorized or not found
-  }
+	/**
+	 * Fetch project with permissions check
+	 */
+	private async fetchProjectWithPermissions(projectId: string, userId: string): Promise<Project> {
+		// Implementation: Query Supabase with RLS check
+		// Throw error if unauthorized or not found
+	}
 }
 ```
 
@@ -573,104 +566,100 @@ export class ProjectExportService {
  * Wrapper around Pandoc and WeasyPrint for PDF generation
  */
 
-import { exec } from "child_process";
-import { promisify } from "util";
-import { writeFile, readFile, unlink } from "fs/promises";
-import path from "path";
-import os from "os";
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFile, readFile, unlink } from 'fs/promises';
+import path from 'path';
+import os from 'os';
 
 const execAsync = promisify(exec);
 
 interface PDFOptions {
-  cssPath: string;
-  logoPath: string;
-  pageSize?: "A4" | "Letter";
-  timeout?: number; // milliseconds
+	cssPath: string;
+	logoPath: string;
+	pageSize?: 'A4' | 'Letter';
+	timeout?: number; // milliseconds
 }
 
 export class PDFGenerator {
-  /**
-   * Generate PDF from HTML string using WeasyPrint
-   */
-  async generatePDF(html: string, options: PDFOptions): Promise<Buffer> {
-    const tempDir = await this.createTempDirectory();
-    const htmlPath = path.join(tempDir, "document.html");
-    const pdfPath = path.join(tempDir, "document.pdf");
+	/**
+	 * Generate PDF from HTML string using WeasyPrint
+	 */
+	async generatePDF(html: string, options: PDFOptions): Promise<Buffer> {
+		const tempDir = await this.createTempDirectory();
+		const htmlPath = path.join(tempDir, 'document.html');
+		const pdfPath = path.join(tempDir, 'document.pdf');
 
-    try {
-      // 1. Write HTML to temp file
-      await writeFile(htmlPath, html, "utf-8");
+		try {
+			// 1. Write HTML to temp file
+			await writeFile(htmlPath, html, 'utf-8');
 
-      // 2. Run WeasyPrint command
-      const command = this.buildWeasyPrintCommand(htmlPath, pdfPath, options);
-      const { stdout, stderr } = await execAsync(command, {
-        timeout: options.timeout || 30000, // 30 second default timeout
-      });
+			// 2. Run WeasyPrint command
+			const command = this.buildWeasyPrintCommand(htmlPath, pdfPath, options);
+			const { stdout, stderr } = await execAsync(command, {
+				timeout: options.timeout || 30000 // 30 second default timeout
+			});
 
-      if (stderr && stderr.includes("ERROR")) {
-        throw new Error(`WeasyPrint error: ${stderr}`);
-      }
+			if (stderr && stderr.includes('ERROR')) {
+				throw new Error(`WeasyPrint error: ${stderr}`);
+			}
 
-      // 3. Read generated PDF
-      const pdfBuffer = await readFile(pdfPath);
+			// 3. Read generated PDF
+			const pdfBuffer = await readFile(pdfPath);
 
-      // 4. Clean up temp files
-      await this.cleanupTempDirectory(tempDir);
+			// 4. Clean up temp files
+			await this.cleanupTempDirectory(tempDir);
 
-      return pdfBuffer;
-    } catch (error) {
-      // Clean up on error
-      await this.cleanupTempDirectory(tempDir);
-      throw error;
-    }
-  }
+			return pdfBuffer;
+		} catch (error) {
+			// Clean up on error
+			await this.cleanupTempDirectory(tempDir);
+			throw error;
+		}
+	}
 
-  /**
-   * Build WeasyPrint command with options
-   */
-  private buildWeasyPrintCommand(
-    htmlPath: string,
-    pdfPath: string,
-    options: PDFOptions,
-  ): string {
-    const cssOption = options.cssPath ? `--stylesheet ${options.cssPath}` : "";
-    const pageSize = options.pageSize || "A4";
+	/**
+	 * Build WeasyPrint command with options
+	 */
+	private buildWeasyPrintCommand(htmlPath: string, pdfPath: string, options: PDFOptions): string {
+		const cssOption = options.cssPath ? `--stylesheet ${options.cssPath}` : '';
+		const pageSize = options.pageSize || 'A4';
 
-    return `weasyprint ${htmlPath} ${pdfPath} ${cssOption} --media-type print --page-size ${pageSize}`;
-  }
+		return `weasyprint ${htmlPath} ${pdfPath} ${cssOption} --media-type print --page-size ${pageSize}`;
+	}
 
-  /**
-   * Create temporary directory for file operations
-   */
-  private async createTempDirectory(): Promise<string> {
-    const tempDir = path.join(os.tmpdir(), `buildos-export-${Date.now()}`);
-    await execAsync(`mkdir -p ${tempDir}`);
-    return tempDir;
-  }
+	/**
+	 * Create temporary directory for file operations
+	 */
+	private async createTempDirectory(): Promise<string> {
+		const tempDir = path.join(os.tmpdir(), `buildos-export-${Date.now()}`);
+		await execAsync(`mkdir -p ${tempDir}`);
+		return tempDir;
+	}
 
-  /**
-   * Clean up temporary directory
-   */
-  private async cleanupTempDirectory(tempDir: string): Promise<void> {
-    try {
-      await execAsync(`rm -rf ${tempDir}`);
-    } catch (error) {
-      console.error("Failed to cleanup temp directory:", error);
-      // Don't throw - cleanup failure shouldn't break the export
-    }
-  }
+	/**
+	 * Clean up temporary directory
+	 */
+	private async cleanupTempDirectory(tempDir: string): Promise<void> {
+		try {
+			await execAsync(`rm -rf ${tempDir}`);
+		} catch (error) {
+			console.error('Failed to cleanup temp directory:', error);
+			// Don't throw - cleanup failure shouldn't break the export
+		}
+	}
 
-  /**
-   * Check if WeasyPrint is installed and available
-   */
-  async isAvailable(): Promise<boolean> {
-    try {
-      await execAsync("weasyprint --version");
-      return true;
-    } catch {
-      return false;
-    }
-  }
+	/**
+	 * Check if WeasyPrint is installed and available
+	 */
+	async isAvailable(): Promise<boolean> {
+		try {
+			await execAsync('weasyprint --version');
+			return true;
+		} catch {
+			return false;
+		}
+	}
 }
 ```
 
@@ -679,57 +668,54 @@ export class PDFGenerator {
 ```html
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{project.name}} - Context Document</title>
-    <style>
-      /* External CSS will be injected by WeasyPrint */
-    </style>
-  </head>
-  <body>
-    <!-- Header (First Page Only) -->
-    <header class="document-header">
-      <div class="logo-container">
-        <img src="{{logoPath}}" alt="BuildOS" class="brand-logo" />
-      </div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{{project.name}} - Context Document</title>
+		<style>
+			/* External CSS will be injected by WeasyPrint */
+		</style>
+	</head>
+	<body>
+		<!-- Header (First Page Only) -->
+		<header class="document-header">
+			<div class="logo-container">
+				<img src="{{logoPath}}" alt="BuildOS" class="brand-logo" />
+			</div>
 
-      <h1 class="project-name">{{project.name}}</h1>
+			<h1 class="project-name">{{project.name}}</h1>
 
-      <div class="project-metadata">
-        <span class="status-badge status-{{project.status}}">
-          <span class="status-dot"></span>
-          {{project.status}}
-        </span>
+			<div class="project-metadata">
+				<span class="status-badge status-{{project.status}}">
+					<span class="status-dot"></span>
+					{{project.status}}
+				</span>
 
-        {{#if project.startDate}}
-        <span class="metadata-item">
-          Started {{formatDate project.startDate}}
-        </span>
-        {{/if}} {{#if project.endDate}}
-        <span class="metadata-item"> Due {{formatDate project.endDate}} </span>
-        {{/if}}
-      </div>
+				{{#if project.startDate}}
+				<span class="metadata-item"> Started {{formatDate project.startDate}} </span>
+				{{/if}} {{#if project.endDate}}
+				<span class="metadata-item"> Due {{formatDate project.endDate}} </span>
+				{{/if}}
+			</div>
 
-      <hr class="header-divider" />
-    </header>
+			<hr class="header-divider" />
+		</header>
 
-    <!-- Main Content -->
-    <main class="document-content">
-      <article class="prose">{{{project.context}}}</article>
-    </main>
+		<!-- Main Content -->
+		<main class="document-content">
+			<article class="prose">{{{project.context}}}</article>
+		</main>
 
-    <!-- Footer (All Pages) -->
-    <footer class="document-footer">
-      <div class="footer-content">
-        <span class="page-number"
-          >Page <span class="page-counter"></span> of
-          <span class="page-total"></span
-        ></span>
-        <span class="footer-brand">Generated by BuildOS</span>
-      </div>
-    </footer>
-  </body>
+		<!-- Footer (All Pages) -->
+		<footer class="document-footer">
+			<div class="footer-content">
+				<span class="page-number"
+					>Page <span class="page-counter"></span> of <span class="page-total"></span
+				></span>
+				<span class="footer-brand">Generated by BuildOS</span>
+			</div>
+		</footer>
+	</body>
 </html>
 ```
 
@@ -746,28 +732,28 @@ export class PDFGenerator {
    ======================================== */
 
 @page {
-  size: A4;
-  margin: 25mm 20mm 20mm 25mm;
+	size: A4;
+	margin: 25mm 20mm 20mm 25mm;
 
-  @top-right {
-    content: "";
-  }
+	@top-right {
+		content: '';
+	}
 
-  @bottom-center {
-    content: "Page " counter(page) " of " counter(pages);
-    font-family:
-      "SF Pro Text",
-      -apple-system,
-      system-ui,
-      sans-serif;
-    font-size: 9pt;
-    color: #6b7280;
-  }
+	@bottom-center {
+		content: 'Page ' counter(page) ' of ' counter(pages);
+		font-family:
+			'SF Pro Text',
+			-apple-system,
+			system-ui,
+			sans-serif;
+		font-size: 9pt;
+		color: #6b7280;
+	}
 }
 
 /* First page has larger top margin for header */
 @page :first {
-  margin-top: 25mm;
+	margin-top: 25mm;
 }
 
 /* ========================================
@@ -775,41 +761,39 @@ export class PDFGenerator {
    ======================================== */
 
 :root {
-  /* BuildOS Colors */
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-800: #1e40af;
-  --primary-900: #1e3a8a;
+	/* BuildOS Colors */
+	--primary-50: #eff6ff;
+	--primary-100: #dbeafe;
+	--primary-500: #3b82f6;
+	--primary-600: #2563eb;
+	--primary-800: #1e40af;
+	--primary-900: #1e3a8a;
 
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-500: #6b7280;
-  --gray-700: #374151;
-  --gray-900: #111827;
+	--gray-50: #f9fafb;
+	--gray-100: #f3f4f6;
+	--gray-200: #e5e7eb;
+	--gray-500: #6b7280;
+	--gray-700: #374151;
+	--gray-900: #111827;
 
-  /* Typography */
-  --font-display:
-    "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body:
-    "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+	/* Typography */
+	--font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
 }
 
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 body {
-  font-family: var(--font-body);
-  font-size: 11pt;
-  line-height: 1.6;
-  color: var(--gray-700);
-  background: white;
-  margin: 0;
-  padding: 0;
+	font-family: var(--font-body);
+	font-size: 11pt;
+	line-height: 1.6;
+	color: var(--gray-700);
+	background: white;
+	margin: 0;
+	padding: 0;
 }
 
 /* ========================================
@@ -817,96 +801,96 @@ body {
    ======================================== */
 
 .document-header {
-  position: relative;
-  margin-bottom: 40pt;
-  padding-bottom: 20pt;
+	position: relative;
+	margin-bottom: 40pt;
+	padding-bottom: 20pt;
 }
 
 .logo-container {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 51pt; /* 18mm */
-  height: 51pt;
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 51pt; /* 18mm */
+	height: 51pt;
 }
 
 .brand-logo {
-  width: 100%;
-  height: 100%;
-  opacity: 0.8;
-  object-fit: contain;
+	width: 100%;
+	height: 100%;
+	opacity: 0.8;
+	object-fit: contain;
 }
 
 .project-name {
-  font-family: var(--font-display);
-  font-size: 28pt;
-  font-weight: 700;
-  color: var(--primary-900);
-  margin: 0 0 8pt 0;
-  line-height: 1.2;
-  max-width: 70%; /* Leave space for logo */
+	font-family: var(--font-display);
+	font-size: 28pt;
+	font-weight: 700;
+	color: var(--primary-900);
+	margin: 0 0 8pt 0;
+	line-height: 1.2;
+	max-width: 70%; /* Leave space for logo */
 }
 
 .project-metadata {
-  display: flex;
-  align-items: center;
-  gap: 12pt;
-  flex-wrap: wrap;
-  margin-bottom: 16pt;
+	display: flex;
+	align-items: center;
+	gap: 12pt;
+	flex-wrap: wrap;
+	margin-bottom: 16pt;
 }
 
 .status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4pt;
-  padding: 4pt 10pt;
-  border-radius: 12pt;
-  font-size: 9pt;
-  font-weight: 500;
-  text-transform: capitalize;
+	display: inline-flex;
+	align-items: center;
+	gap: 4pt;
+	padding: 4pt 10pt;
+	border-radius: 12pt;
+	font-size: 9pt;
+	font-weight: 500;
+	text-transform: capitalize;
 }
 
 .status-dot {
-  display: inline-block;
-  width: 6pt;
-  height: 6pt;
-  border-radius: 50%;
+	display: inline-block;
+	width: 6pt;
+	height: 6pt;
+	border-radius: 50%;
 }
 
 /* Status colors */
 .status-active {
-  background-color: #d1fae5;
-  color: #065f46;
+	background-color: #d1fae5;
+	color: #065f46;
 }
 .status-active .status-dot {
-  background-color: #10b981;
+	background-color: #10b981;
 }
 
 .status-paused {
-  background-color: #fef3c7;
-  color: #92400e;
+	background-color: #fef3c7;
+	color: #92400e;
 }
 .status-paused .status-dot {
-  background-color: #f59e0b;
+	background-color: #f59e0b;
 }
 
 .status-completed {
-  background-color: var(--primary-100);
-  color: var(--primary-800);
+	background-color: var(--primary-100);
+	color: var(--primary-800);
 }
 .status-completed .status-dot {
-  background-color: var(--primary-500);
+	background-color: var(--primary-500);
 }
 
 .metadata-item {
-  font-size: 9pt;
-  color: var(--gray-500);
+	font-size: 9pt;
+	color: var(--gray-500);
 }
 
 .header-divider {
-  border: none;
-  border-top: 1px solid var(--gray-200);
-  margin: 0;
+	border: none;
+	border-top: 1px solid var(--gray-200);
+	margin: 0;
 }
 
 /* ========================================
@@ -914,176 +898,176 @@ body {
    ======================================== */
 
 .document-content {
-  margin: 0;
-  padding: 0;
+	margin: 0;
+	padding: 0;
 }
 
 .prose {
-  max-width: 100%;
+	max-width: 100%;
 }
 
 /* Headings */
 .prose h1 {
-  font-family: var(--font-display);
-  font-size: 24pt;
-  font-weight: 600;
-  color: var(--primary-800);
-  line-height: 1.3;
-  margin: 32pt 0 12pt 0;
-  page-break-after: avoid;
+	font-family: var(--font-display);
+	font-size: 24pt;
+	font-weight: 600;
+	color: var(--primary-800);
+	line-height: 1.3;
+	margin: 32pt 0 12pt 0;
+	page-break-after: avoid;
 }
 
 .prose h2 {
-  font-family: var(--font-display);
-  font-size: 20pt;
-  font-weight: 600;
-  color: var(--primary-600);
-  line-height: 1.3;
-  margin: 24pt 0 10pt 0;
-  page-break-after: avoid;
+	font-family: var(--font-display);
+	font-size: 20pt;
+	font-weight: 600;
+	color: var(--primary-600);
+	line-height: 1.3;
+	margin: 24pt 0 10pt 0;
+	page-break-after: avoid;
 }
 
 .prose h3 {
-  font-family: var(--font-display);
-  font-size: 16pt;
-  font-weight: 500;
-  color: var(--primary-500);
-  line-height: 1.4;
-  margin: 20pt 0 8pt 0;
-  page-break-after: avoid;
+	font-family: var(--font-display);
+	font-size: 16pt;
+	font-weight: 500;
+	color: var(--primary-500);
+	line-height: 1.4;
+	margin: 20pt 0 8pt 0;
+	page-break-after: avoid;
 }
 
 .prose h4 {
-  font-size: 13pt;
-  font-weight: 600;
-  color: var(--gray-900);
-  line-height: 1.4;
-  margin: 16pt 0 6pt 0;
-  page-break-after: avoid;
+	font-size: 13pt;
+	font-weight: 600;
+	color: var(--gray-900);
+	line-height: 1.4;
+	margin: 16pt 0 6pt 0;
+	page-break-after: avoid;
 }
 
 /* Paragraphs */
 .prose p {
-  margin: 0 0 12pt 0;
-  orphans: 3;
-  widows: 3;
+	margin: 0 0 12pt 0;
+	orphans: 3;
+	widows: 3;
 }
 
 /* Lists */
 .prose ul,
 .prose ol {
-  margin: 12pt 0;
-  padding-left: 20pt;
+	margin: 12pt 0;
+	padding-left: 20pt;
 }
 
 .prose li {
-  margin: 4pt 0;
-  line-height: 1.6;
+	margin: 4pt 0;
+	line-height: 1.6;
 }
 
 .prose ul ul,
 .prose ol ol,
 .prose ul ol,
 .prose ol ul {
-  margin: 4pt 0;
+	margin: 4pt 0;
 }
 
 /* Links */
 .prose a {
-  color: var(--primary-600);
-  text-decoration: none;
-  font-weight: 500;
+	color: var(--primary-600);
+	text-decoration: none;
+	font-weight: 500;
 }
 
 .prose a::after {
-  content: " (" attr(href) ")";
-  font-size: 8pt;
-  color: var(--gray-500);
-  font-weight: 400;
+	content: ' (' attr(href) ')';
+	font-size: 8pt;
+	color: var(--gray-500);
+	font-weight: 400;
 }
 
 /* Emphasis */
 .prose strong {
-  font-weight: 600;
-  color: var(--gray-900);
+	font-weight: 600;
+	color: var(--gray-900);
 }
 
 .prose em {
-  font-style: italic;
-  color: var(--gray-700);
+	font-style: italic;
+	color: var(--gray-700);
 }
 
 /* Code */
 .prose code {
-  font-family: var(--font-mono);
-  font-size: 9.5pt;
-  background-color: var(--gray-100);
-  padding: 2pt 4pt;
-  border-radius: 3pt;
-  color: var(--gray-800);
+	font-family: var(--font-mono);
+	font-size: 9.5pt;
+	background-color: var(--gray-100);
+	padding: 2pt 4pt;
+	border-radius: 3pt;
+	color: var(--gray-800);
 }
 
 .prose pre {
-  background-color: var(--gray-100);
-  border-radius: 6pt;
-  padding: 12pt;
-  margin: 16pt 0;
-  overflow-x: auto;
-  page-break-inside: avoid;
+	background-color: var(--gray-100);
+	border-radius: 6pt;
+	padding: 12pt;
+	margin: 16pt 0;
+	overflow-x: auto;
+	page-break-inside: avoid;
 }
 
 .prose pre code {
-  background-color: transparent;
-  padding: 0;
-  font-size: 9pt;
-  line-height: 1.5;
+	background-color: transparent;
+	padding: 0;
+	font-size: 9pt;
+	line-height: 1.5;
 }
 
 /* Blockquotes */
 .prose blockquote {
-  border-left: 3pt solid var(--primary-500);
-  padding-left: 16pt;
-  margin: 16pt 0;
-  font-style: italic;
-  color: var(--gray-700);
-  page-break-inside: avoid;
+	border-left: 3pt solid var(--primary-500);
+	padding-left: 16pt;
+	margin: 16pt 0;
+	font-style: italic;
+	color: var(--gray-700);
+	page-break-inside: avoid;
 }
 
 /* Tables */
 .prose table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 16pt 0;
-  font-size: 10pt;
-  page-break-inside: avoid;
+	width: 100%;
+	border-collapse: collapse;
+	margin: 16pt 0;
+	font-size: 10pt;
+	page-break-inside: avoid;
 }
 
 .prose thead {
-  background-color: var(--gray-50);
+	background-color: var(--gray-50);
 }
 
 .prose th {
-  font-weight: 600;
-  text-align: left;
-  padding: 8pt 10pt;
-  border-bottom: 2pt solid var(--gray-200);
-  color: var(--gray-900);
+	font-weight: 600;
+	text-align: left;
+	padding: 8pt 10pt;
+	border-bottom: 2pt solid var(--gray-200);
+	color: var(--gray-900);
 }
 
 .prose td {
-  padding: 8pt 10pt;
-  border-bottom: 1pt solid var(--gray-200);
+	padding: 8pt 10pt;
+	border-bottom: 1pt solid var(--gray-200);
 }
 
 .prose tr:last-child td {
-  border-bottom: none;
+	border-bottom: none;
 }
 
 /* Horizontal Rules */
 .prose hr {
-  border: none;
-  border-top: 1pt solid var(--gray-200);
-  margin: 24pt 0;
+	border: none;
+	border-top: 1pt solid var(--gray-200);
+	margin: 24pt 0;
 }
 
 /* ========================================
@@ -1091,7 +1075,7 @@ body {
    ======================================== */
 
 .document-footer {
-  display: none; /* Footer handled by @page rule */
+	display: none; /* Footer handled by @page rule */
 }
 
 /* ========================================
@@ -1105,28 +1089,28 @@ body {
 .prose h4,
 .prose h5,
 .prose h6 {
-  page-break-after: avoid;
+	page-break-after: avoid;
 }
 
 .prose pre,
 .prose blockquote,
 .prose table {
-  page-break-inside: avoid;
+	page-break-inside: avoid;
 }
 
 /* Ensure consistent rendering */
 img {
-  max-width: 100%;
-  height: auto;
-  page-break-inside: avoid;
+	max-width: 100%;
+	height: auto;
+	page-break-inside: avoid;
 }
 
 /* Remove orphans and widows */
 p,
 li,
 td {
-  orphans: 3;
-  widows: 3;
+	orphans: 3;
+	widows: 3;
 }
 ```
 
@@ -1138,54 +1122,54 @@ td {
  * GET /api/projects/:id/export/pdf
  */
 
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { ProjectExportService } from "$lib/services/export/project-export.service";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { ProjectExportService } from '$lib/services/export/project-export.service';
 
 const exportService = new ProjectExportService();
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-  try {
-    // 1. Verify user authentication
-    const session = await locals.getSession();
-    if (!session?.user) {
-      throw error(401, "Unauthorized");
-    }
+	try {
+		// 1. Verify user authentication
+		const session = await locals.getSession();
+		if (!session?.user) {
+			throw error(401, 'Unauthorized');
+		}
 
-    const projectId = params.id;
-    const userId = session.user.id;
+		const projectId = params.id;
+		const userId = session.user.id;
 
-    // 2. Generate PDF
-    const pdfBuffer = await exportService.exportToPDF(projectId, userId);
+		// 2. Generate PDF
+		const pdfBuffer = await exportService.exportToPDF(projectId, userId);
 
-    // 3. Return PDF with appropriate headers
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${getFilename(projectId)}.pdf"`,
-        "Cache-Control": "no-cache",
-        "Content-Length": pdfBuffer.length.toString(),
-      },
-    });
-  } catch (err) {
-    console.error("PDF export error:", err);
+		// 3. Return PDF with appropriate headers
+		return new Response(pdfBuffer, {
+			status: 200,
+			headers: {
+				'Content-Type': 'application/pdf',
+				'Content-Disposition': `attachment; filename="${getFilename(projectId)}.pdf"`,
+				'Cache-Control': 'no-cache',
+				'Content-Length': pdfBuffer.length.toString()
+			}
+		});
+	} catch (err) {
+		console.error('PDF export error:', err);
 
-    if (err.status === 401 || err.status === 403) {
-      throw err;
-    }
+		if (err.status === 401 || err.status === 403) {
+			throw err;
+		}
 
-    if (err.message.includes("not found")) {
-      throw error(404, "Project not found");
-    }
+		if (err.message.includes('not found')) {
+			throw error(404, 'Project not found');
+		}
 
-    throw error(500, "Failed to generate PDF export");
-  }
+		throw error(500, 'Failed to generate PDF export');
+	}
 };
 
 function getFilename(projectId: string): string {
-  const timestamp = new Date().toISOString().split("T")[0];
-  return `buildos-project-${projectId}-context-${timestamp}`;
+	const timestamp = new Date().toISOString().split('T')[0];
+	return `buildos-project-${projectId}-context-${timestamp}`;
 }
 ```
 
@@ -1194,85 +1178,84 @@ function getFilename(projectId: string): string {
 ```svelte
 <!-- Add export button to modal header -->
 <script lang="ts">
-  // ... existing imports ...
-  import { FileDown, FileText, Loader2 } from 'lucide-svelte';
+	// ... existing imports ...
+	import { FileDown, FileText, Loader2 } from 'lucide-svelte';
 
-  // ... existing code ...
+	// ... existing code ...
 
-  let exportingPDF = false;
-  let exportError: string | null = null;
+	let exportingPDF = false;
+	let exportError: string | null = null;
 
-  async function handleExportPDF() {
-    exportingPDF = true;
-    exportError = null;
+	async function handleExportPDF() {
+		exportingPDF = true;
+		exportError = null;
 
-    try {
-      const response = await fetch(`/api/projects/${project.id}/export/pdf`);
+		try {
+			const response = await fetch(`/api/projects/${project.id}/export/pdf`);
 
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
+			if (!response.ok) {
+				throw new Error('Failed to generate PDF');
+			}
 
-      // Download PDF
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.slug || project.id}-context.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+			// Download PDF
+			const blob = await response.blob();
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${project.slug || project.id}-context.pdf`;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
 
-      toastService.success('PDF exported successfully');
+			toastService.success('PDF exported successfully');
+		} catch (error) {
+			console.error('Export error:', error);
+			exportError = 'Failed to export PDF. Please try again.';
+			toastService.error(exportError);
+		} finally {
+			exportingPDF = false;
+		}
+	}
 
-    } catch (error) {
-      console.error('Export error:', error);
-      exportError = 'Failed to export PDF. Please try again.';
-      toastService.error(exportError);
-    } finally {
-      exportingPDF = false;
-    }
-  }
-
-  async function handlePreviewHTML() {
-    window.open(`/api/projects/${project.id}/export/preview`, '_blank');
-  }
+	async function handlePreviewHTML() {
+		window.open(`/api/projects/${project.id}/export/preview`, '_blank');
+	}
 </script>
 
 <!-- In the modal header, add export button next to copy button -->
 <div class="flex items-center space-x-2">
-  <!-- Existing copy button -->
-  <Button
-    type="button"
-    on:click={copyFullContext}
-    disabled={copySuccess}
-    variant={copySuccess ? 'primary' : 'outline'}
-    size="sm"
-  >
-    <Copy class="w-3 h-3 mr-1.5" />
-    <span class="hidden sm:inline">{copyButtonText}</span>
-    <span class="sm:hidden">Copy</span>
-  </Button>
+	<!-- Existing copy button -->
+	<Button
+		type="button"
+		on:click={copyFullContext}
+		disabled={copySuccess}
+		variant={copySuccess ? 'primary' : 'outline'}
+		size="sm"
+	>
+		<Copy class="w-3 h-3 mr-1.5" />
+		<span class="hidden sm:inline">{copyButtonText}</span>
+		<span class="sm:hidden">Copy</span>
+	</Button>
 
-  <!-- NEW: Export button with dropdown -->
-  <div class="relative">
-    <Button
-      type="button"
-      on:click={handleExportPDF}
-      disabled={exportingPDF}
-      variant="primary"
-      size="sm"
-    >
-      {#if exportingPDF}
-        <Loader2 class="w-3 h-3 mr-1.5 animate-spin" />
-        Generating...
-      {:else}
-        <FileDown class="w-3 h-3 mr-1.5" />
-        Export PDF
-      {/if}
-    </Button>
-  </div>
+	<!-- NEW: Export button with dropdown -->
+	<div class="relative">
+		<Button
+			type="button"
+			on:click={handleExportPDF}
+			disabled={exportingPDF}
+			variant="primary"
+			size="sm"
+		>
+			{#if exportingPDF}
+				<Loader2 class="w-3 h-3 mr-1.5 animate-spin" />
+				Generating...
+			{:else}
+				<FileDown class="w-3 h-3 mr-1.5" />
+				Export PDF
+			{/if}
+		</Button>
+	</div>
 </div>
 ```
 
@@ -1285,40 +1268,40 @@ function getFilename(projectId: string): string {
 **Service Layer Tests** (`project-export.service.test.ts`):
 
 ```typescript
-describe("ProjectExportService", () => {
-  describe("exportToPDF", () => {
-    it("should generate PDF for valid project", async () => {
-      // Test implementation
-    });
+describe('ProjectExportService', () => {
+	describe('exportToPDF', () => {
+		it('should generate PDF for valid project', async () => {
+			// Test implementation
+		});
 
-    it("should throw error for unauthorized user", async () => {
-      // Test implementation
-    });
+		it('should throw error for unauthorized user', async () => {
+			// Test implementation
+		});
 
-    it("should handle missing project context gracefully", async () => {
-      // Test implementation
-    });
-  });
+		it('should handle missing project context gracefully', async () => {
+			// Test implementation
+		});
+	});
 });
 ```
 
 **PDF Generator Tests** (`pdf-generator.test.ts`):
 
 ```typescript
-describe("PDFGenerator", () => {
-  describe("generatePDF", () => {
-    it("should generate valid PDF from HTML", async () => {
-      // Test implementation with mock WeasyPrint
-    });
+describe('PDFGenerator', () => {
+	describe('generatePDF', () => {
+		it('should generate valid PDF from HTML', async () => {
+			// Test implementation with mock WeasyPrint
+		});
 
-    it("should respect timeout option", async () => {
-      // Test implementation
-    });
+		it('should respect timeout option', async () => {
+			// Test implementation
+		});
 
-    it("should clean up temp files on error", async () => {
-      // Test implementation
-    });
-  });
+		it('should clean up temp files on error', async () => {
+			// Test implementation
+		});
+	});
 });
 ```
 
@@ -1379,18 +1362,18 @@ pip3 install weasyprint
 
 ```json
 {
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node"
-    }
-  ],
-  "functions": {
-    "api/projects/[id]/export/pdf.ts": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  }
+	"builds": [
+		{
+			"src": "package.json",
+			"use": "@vercel/node"
+		}
+	],
+	"functions": {
+		"api/projects/[id]/export/pdf.ts": {
+			"memory": 1024,
+			"maxDuration": 30
+		}
+	}
 }
 ```
 
@@ -1442,24 +1425,24 @@ ENABLE_PDF_EXPORT=true
 
 ```typescript
 // Log export events
-logger.info("PDF export started", {
-  projectId,
-  userId,
-  contextLength: project.context.length,
+logger.info('PDF export started', {
+	projectId,
+	userId,
+	contextLength: project.context.length
 });
 
-logger.info("PDF export completed", {
-  projectId,
-  userId,
-  generationTimeMs,
-  fileSizeBytes,
+logger.info('PDF export completed', {
+	projectId,
+	userId,
+	generationTimeMs,
+	fileSizeBytes
 });
 
-logger.error("PDF export failed", {
-  projectId,
-  userId,
-  error: error.message,
-  stack: error.stack,
+logger.error('PDF export failed', {
+	projectId,
+	userId,
+	error: error.message,
+	stack: error.stack
 });
 ```
 
@@ -1470,54 +1453,54 @@ logger.error("PDF export failed", {
 ### 8.1 Phase 2 Features (Post-Launch)
 
 1. **Multiple Themes**
-   - Classic (current design)
-   - Modern (gradient accents)
-   - Minimal (ultra-clean)
-   - Dark mode variant
+    - Classic (current design)
+    - Modern (gradient accents)
+    - Minimal (ultra-clean)
+    - Dark mode variant
 
 2. **Customization Options**
-   - Choose font family
-   - Adjust font sizes
-   - Toggle logo visibility
-   - Custom brand colors
+    - Choose font family
+    - Adjust font sizes
+    - Toggle logo visibility
+    - Custom brand colors
 
 3. **Advanced Layouts**
-   - Two-column layout option
-   - Landscape orientation
-   - Executive summary page
-   - Table of contents generation
+    - Two-column layout option
+    - Landscape orientation
+    - Executive summary page
+    - Table of contents generation
 
 4. **Additional Formats**
-   - DOCX export (editable)
-   - Markdown export (raw)
-   - Plain text export
+    - DOCX export (editable)
+    - Markdown export (raw)
+    - Plain text export
 
 5. **Batch Operations**
-   - Export all projects at once
-   - Zip archive download
-   - Email PDF to stakeholders
+    - Export all projects at once
+    - Zip archive download
+    - Email PDF to stakeholders
 
 6. **Collaborative Features**
-   - Share PDF link (time-limited)
-   - Comments/annotations
-   - Version comparison
+    - Share PDF link (time-limited)
+    - Comments/annotations
+    - Version comparison
 
 ### 8.2 Technical Improvements
 
 1. **Performance**
-   - Implement Redis caching layer
-   - Background job processing
-   - PDF streaming for large documents
+    - Implement Redis caching layer
+    - Background job processing
+    - PDF streaming for large documents
 
 2. **Quality**
-   - SVG logo support
-   - Syntax highlighting for code blocks
-   - Image optimization in context
+    - SVG logo support
+    - Syntax highlighting for code blocks
+    - Image optimization in context
 
 3. **Accessibility**
-   - Tagged PDF support
-   - Screen reader compatibility
-   - WCAG compliance
+    - Tagged PDF support
+    - Screen reader compatibility
+    - WCAG compliance
 
 ---
 

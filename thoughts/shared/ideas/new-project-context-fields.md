@@ -92,32 +92,32 @@ Analyze the braindump to identify:
 
 ```json
 {
-  "analysis_summary": "Overall assessment of the braindump content",
-  "braindump_classification": "strategic|tactical|mixed|status_update|unrelated",
-  "context_indicators": ["List of strategic changes detected"],
-  "core_dimensions_touched": {
-    "core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
-    "core_people_bonds": "Complete updated paragraph or omit if not mentioned",
-    "core_goals_momentum": "Complete updated paragraph or omit if not mentioned",
-    "core_meaning_identity": "Complete updated paragraph or omit if not mentioned",
-    "core_reality_understanding": "Complete updated paragraph or omit if not mentioned",
-    "core_trust_safeguards": "Complete updated paragraph or omit if not mentioned",
-    "core_opportunity_freedom": "Complete updated paragraph or omit if not mentioned",
-    "core_power_resources": "Complete updated paragraph or omit if not mentioned",
-    "core_harmony_integration": "Complete updated paragraph or omit if not mentioned"
-  },
-  "relevant_task_ids": ["task-abc-123", "task-def-456"],
-  "task_indicators": {
-    "task-abc-123": "How this task was referenced"
-  },
-  "new_tasks_detected": false,
-  "confidence_level": "high|medium|low",
-  "processing_recommendation": {
-    "skip_context": false,
-    "skip_core_dimensions": false,
-    "skip_tasks": false,
-    "reason": "Explanation of processing decision"
-  }
+	"analysis_summary": "Overall assessment of the braindump content",
+	"braindump_classification": "strategic|tactical|mixed|status_update|unrelated",
+	"context_indicators": ["List of strategic changes detected"],
+	"core_dimensions_touched": {
+		"core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
+		"core_people_bonds": "Complete updated paragraph or omit if not mentioned",
+		"core_goals_momentum": "Complete updated paragraph or omit if not mentioned",
+		"core_meaning_identity": "Complete updated paragraph or omit if not mentioned",
+		"core_reality_understanding": "Complete updated paragraph or omit if not mentioned",
+		"core_trust_safeguards": "Complete updated paragraph or omit if not mentioned",
+		"core_opportunity_freedom": "Complete updated paragraph or omit if not mentioned",
+		"core_power_resources": "Complete updated paragraph or omit if not mentioned",
+		"core_harmony_integration": "Complete updated paragraph or omit if not mentioned"
+	},
+	"relevant_task_ids": ["task-abc-123", "task-def-456"],
+	"task_indicators": {
+		"task-abc-123": "How this task was referenced"
+	},
+	"new_tasks_detected": false,
+	"confidence_level": "high|medium|low",
+	"processing_recommendation": {
+		"skip_context": false,
+		"skip_core_dimensions": false,
+		"skip_tasks": false,
+		"reason": "Explanation of processing decision"
+	}
 }
 ```
 
@@ -200,17 +200,17 @@ Your Job is to update the project context document and core dimensions based on 
 ## Update Rules:
 
 1. **CONTEXT FIELD**:
-   - PRESERVE all existing context
-   - MERGE new insights organically
-   - ADD timestamps for significant updates
-   - Let structure evolve naturally
+    - PRESERVE all existing context
+    - MERGE new insights organically
+    - ADD timestamps for significant updates
+    - Let structure evolve naturally
 
 2. **CORE DIMENSIONS**:
-   - REPLACE entire dimension content when updating
-   - Include ALL relevant information holistically
-   - Use user's direct phrasing where possible
-   - Write full paragraphs, not bullets
-   - Only include in output if dimension is touched
+    - REPLACE entire dimension content when updating
+    - Include ALL relevant information holistically
+    - Use user's direct phrasing where possible
+    - Write full paragraphs, not bullets
+    - Only include in output if dimension is touched
 
 3. **Only update what's mentioned in the braindump**
 
@@ -218,37 +218,37 @@ Your Job is to update the project context document and core dimensions based on 
 
 ```json
 {
-  "title": "Short title for brain dump",
-  "summary": "2-3 sentence summary of what was extracted",
-  "insights": "Key insights from this braindump",
-  "tags": ["relevant", "tags"],
-  "metadata": {
-    "processingNote": "Explain what was updated and why",
-    "dimensions_updated": ["list of core dimensions that were updated"]
-  },
-  "operations": [
-    {
-      "id": "op-[timestamp]-project-update",
-      "table": "projects",
-      "operation": "update",
-      "data": {
-        "id": "project-id-here",
-        "context": "COMPLETE markdown with ALL existing + new content...",
-        "executive_summary": "Updated if vision/scope changed",
-        "tags": ["updated", "tags"],
-        "status": "active|paused|completed|archived",
-        "core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
-        "core_people_bonds": "Complete updated paragraph or omit if not mentioned",
-        "core_goals_momentum": "Complete updated paragraph or omit if not mentioned",
-        "core_meaning_identity": "Complete updated paragraph or omit if not mentioned",
-        "core_reality_understanding": "Complete updated paragraph or omit if not mentioned",
-        "core_trust_safeguards": "Complete updated paragraph or omit if not mentioned",
-        "core_opportunity_freedom": "Complete updated paragraph or omit if not mentioned",
-        "core_power_resources": "Complete updated paragraph or omit if not mentioned",
-        "core_harmony_integration": "Complete updated paragraph or omit if not mentioned"
-      }
-    }
-  ]
+	"title": "Short title for brain dump",
+	"summary": "2-3 sentence summary of what was extracted",
+	"insights": "Key insights from this braindump",
+	"tags": ["relevant", "tags"],
+	"metadata": {
+		"processingNote": "Explain what was updated and why",
+		"dimensions_updated": ["list of core dimensions that were updated"]
+	},
+	"operations": [
+		{
+			"id": "op-[timestamp]-project-update",
+			"table": "projects",
+			"operation": "update",
+			"data": {
+				"id": "project-id-here",
+				"context": "COMPLETE markdown with ALL existing + new content...",
+				"executive_summary": "Updated if vision/scope changed",
+				"tags": ["updated", "tags"],
+				"status": "active|paused|completed|archived",
+				"core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
+				"core_people_bonds": "Complete updated paragraph or omit if not mentioned",
+				"core_goals_momentum": "Complete updated paragraph or omit if not mentioned",
+				"core_meaning_identity": "Complete updated paragraph or omit if not mentioned",
+				"core_reality_understanding": "Complete updated paragraph or omit if not mentioned",
+				"core_trust_safeguards": "Complete updated paragraph or omit if not mentioned",
+				"core_opportunity_freedom": "Complete updated paragraph or omit if not mentioned",
+				"core_power_resources": "Complete updated paragraph or omit if not mentioned",
+				"core_harmony_integration": "Complete updated paragraph or omit if not mentioned"
+			}
+		}
+	]
 }
 ```
 
@@ -258,15 +258,15 @@ Your Job is to update the project context document and core dimensions based on 
 
 ```json
 {
-  "title": "Title for the braindump",
-  "summary": "Summary of the braindump content",
-  "insights": "Key insights from the content",
-  "tags": ["relevant", "tags"],
-  "metadata": {
-    "processingNote": "No updates needed - tactical/task-focused content",
-    "dimensions_updated": []
-  },
-  "operations": []
+	"title": "Title for the braindump",
+	"summary": "Summary of the braindump content",
+	"insights": "Key insights from the content",
+	"tags": ["relevant", "tags"],
+	"metadata": {
+		"processingNote": "No updates needed - tactical/task-focused content",
+		"dimensions_updated": []
+	},
+	"operations": []
 }
 ```
 

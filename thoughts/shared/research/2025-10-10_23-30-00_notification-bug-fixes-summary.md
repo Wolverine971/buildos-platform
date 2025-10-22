@@ -1,12 +1,12 @@
 ---
-title: "Notification System Bug Fixes Summary"
+title: 'Notification System Bug Fixes Summary'
 date: 2025-10-10
 time: 23:30:00
 tags: [notifications, bug-fixes, race-conditions, analytics, database]
 status: completed
 priority: CRITICAL
 related:
-  - 2025-10-10_21-00-00_notification-system-audit.md
+    - 2025-10-10_21-00-00_notification-system-audit.md
 ---
 
 # Notification System Bug Fixes Summary
@@ -27,9 +27,9 @@ Fixed all 6 critical bugs identified during the notification system audit. All f
 
 - Created migration: `20251011_fix_notification_analytics_bugs.sql`
 - Updated `get_notification_channel_performance()` function:
-  - Added explicit `sent` column counting `status='sent'`
-  - Fixed `delivered` column to count `status='delivered'` correctly
-  - Added new `delivery_rate` metric (% of sent that were confirmed delivered)
+    - Added explicit `sent` column counting `status='sent'`
+    - Fixed `delivered` column to count `status='delivered'` correctly
+    - Added new `delivery_rate` metric (% of sent that were confirmed delivered)
 - Updated TypeScript interface in `notification-analytics.service.ts` to match new structure
 
 **Impact:** Analytics dashboards now show accurate delivery metrics.
@@ -76,14 +76,14 @@ Fixed all 6 critical bugs identified during the notification system audit. All f
 
 - Created migration: `20251011_atomic_queue_job_operations.sql`
 - Added 8 atomic RPC functions:
-  1. `claim_pending_jobs()` - Atomic job claiming with `FOR UPDATE SKIP LOCKED`
-  2. `complete_queue_job()` - Mark job as completed
-  3. `fail_queue_job()` - Mark job as failed with retry logic
-  4. `reset_stalled_jobs()` - Recover crashed worker jobs
-  5. `add_queue_job()` - Atomic job creation with deduplication
-  6. `cancel_jobs_atomic()` - Cancel jobs matching criteria
-  7. `cancel_brief_jobs_for_date()` - Cancel duplicate brief jobs
-  8. `cancel_job_with_reason()` - Cancel single job with reason
+    1. `claim_pending_jobs()` - Atomic job claiming with `FOR UPDATE SKIP LOCKED`
+    2. `complete_queue_job()` - Mark job as completed
+    3. `fail_queue_job()` - Mark job as failed with retry logic
+    4. `reset_stalled_jobs()` - Recover crashed worker jobs
+    5. `add_queue_job()` - Atomic job creation with deduplication
+    6. `cancel_jobs_atomic()` - Cancel jobs matching criteria
+    7. `cancel_brief_jobs_for_date()` - Cancel duplicate brief jobs
+    8. `cancel_job_with_reason()` - Cancel single job with reason
 - Updated `notificationWorker.ts` to use `claim_pending_jobs()` RPC
 - Updated to use `complete_queue_job()` and `fail_queue_job()` RPCs
 
@@ -105,9 +105,9 @@ Fixed all 6 critical bugs identified during the notification system audit. All f
 - Included in migration: `20251011_fix_notification_analytics_bugs.sql`
 - Added explicit `FILTER (WHERE sent_at IS NOT NULL)` to all delivery time calculations
 - Fixed in 3 functions:
-  1. `get_notification_channel_performance()` - Line 64
-  2. `get_notification_event_performance()` - Line 102
-  3. `get_sms_notification_stats()` - Line 157
+    1. `get_notification_channel_performance()` - Line 64
+    2. `get_notification_event_performance()` - Line 102
+    3. `get_sms_notification_stats()` - Line 157
 
 **Impact:** Analytics calculations now handle NULL timestamps correctly.
 
@@ -127,10 +127,10 @@ Fixed all 6 critical bugs identified during the notification system audit. All f
 
 - Created migration: `20251011_atomic_twilio_webhook_updates.sql`
 - Added `update_sms_status_atomic()` RPC function:
-  - Updates both tables in a single transaction
-  - Handles status mapping automatically
-  - Sets appropriate timestamps based on status
-  - Returns all relevant data for metrics tracking
+    - Updates both tables in a single transaction
+    - Handles status mapping automatically
+    - Sets appropriate timestamps based on status
+    - Returns all relevant data for metrics tracking
 - Updated webhook handler to use atomic RPC
 - Removed old non-atomic dual-table update code
 
@@ -143,41 +143,41 @@ Fixed all 6 critical bugs identified during the notification system audit. All f
 All migrations include comprehensive DROP cleanup to avoid function signature conflicts.
 
 1. **`20251011_fix_notification_analytics_bugs.sql`** ✅
-   - Fixes Bug #1 (Analytics delivered metric)
-   - Fixes Bug #5 (NULL checks in delivery time)
-   - Updates 3 analytics RPC functions
-   - Drops existing functions before recreating with new signatures
-   - Re-grants permissions after dropping
+    - Fixes Bug #1 (Analytics delivered metric)
+    - Fixes Bug #5 (NULL checks in delivery time)
+    - Updates 3 analytics RPC functions
+    - Drops existing functions before recreating with new signatures
+    - Re-grants permissions after dropping
 
 2. **`20251011_atomic_queue_job_operations.sql`** ✅
-   - Fixes Bug #4 (Worker job claiming race condition)
-   - Adds 8 atomic queue operation RPCs
-   - Enables safe multi-worker job processing
-   - Uses dynamic DO block to drop ALL function variations
-   - Prevents "function name not unique" errors
+    - Fixes Bug #4 (Worker job claiming race condition)
+    - Adds 8 atomic queue operation RPCs
+    - Enables safe multi-worker job processing
+    - Uses dynamic DO block to drop ALL function variations
+    - Prevents "function name not unique" errors
 
 3. **`20251011_atomic_twilio_webhook_updates.sql`** ✅
-   - Fixes Bug #6 (Twilio webhook dual-table update)
-   - Adds atomic SMS status update RPC
-   - Ensures data consistency across tables
-   - Drops existing function before recreating
+    - Fixes Bug #6 (Twilio webhook dual-table update)
+    - Adds atomic SMS status update RPC
+    - Ensures data consistency across tables
+    - Drops existing function before recreating
 
 ## Code Changes
 
 ### Modified Files
 
 1. **`/apps/web/src/lib/services/notification-analytics.service.ts`**
-   - Updated `ChannelMetrics` interface to include new `sent` and `delivery_rate` fields
+    - Updated `ChannelMetrics` interface to include new `sent` and `delivery_rate` fields
 
 2. **`/apps/worker/src/workers/notification/notificationWorker.ts`**
-   - Updated `processNotificationJobs()` to use atomic `claim_pending_jobs()` RPC
-   - Replaced non-atomic status updates with `complete_queue_job()` and `fail_queue_job()` RPCs
-   - Added better error handling and logging
+    - Updated `processNotificationJobs()` to use atomic `claim_pending_jobs()` RPC
+    - Replaced non-atomic status updates with `complete_queue_job()` and `fail_queue_job()` RPCs
+    - Added better error handling and logging
 
 3. **`/apps/web/src/routes/api/webhooks/twilio/status/+server.ts`**
-   - Replaced dual-table updates with single `update_sms_status_atomic()` RPC call
-   - Removed separate `notification_deliveries` update code
-   - Enhanced logging for atomic update success/failure
+    - Replaced dual-table updates with single `update_sms_status_atomic()` RPC call
+    - Removed separate `notification_deliveries` update code
+    - Enhanced logging for atomic update success/failure
 
 ## Testing Recommendations
 
@@ -235,18 +235,18 @@ If issues arise:
 
 1. **Analytics Migration:**
 
-   ```sql
-   -- Revert to old function (before fix)
-   -- Analytics will be incorrect but system will function
-   ```
+    ```sql
+    -- Revert to old function (before fix)
+    -- Analytics will be incorrect but system will function
+    ```
 
 2. **Worker Job Operations:**
-   - Revert `notificationWorker.ts` to use direct queries
-   - Note: Will reintroduce race condition
+    - Revert `notificationWorker.ts` to use direct queries
+    - Note: Will reintroduce race condition
 
 3. **Twilio Webhook:**
-   - Revert webhook handler to separate updates
-   - Note: Will reintroduce inconsistency risk
+    - Revert webhook handler to separate updates
+    - Note: Will reintroduce inconsistency risk
 
 ## Performance Impact
 
@@ -271,21 +271,21 @@ If issues arise:
 With all bugs fixed, the next phase is:
 
 1. **Build out `/admin/notifications/logs` page**
-   - UI for event log and delivery log
-   - Real-time updates via Supabase Realtime
-   - Filtering and search capabilities
+    - UI for event log and delivery log
+    - Real-time updates via Supabase Realtime
+    - Filtering and search capabilities
 
 2. **Implement shared logger throughout system**
-   - Use `@buildos/shared-utils/logging` in web and worker
-   - Add correlation IDs for request tracing
-   - Create `notification_logs` table for persistent logging
+    - Use `@buildos/shared-utils/logging` in web and worker
+    - Add correlation IDs for request tracing
+    - Create `notification_logs` table for persistent logging
 
 3. **Implement missing notification event triggers**
-   - `task.due_soon`
-   - `brain_dump.processed`
-   - `calendar.event_reminder`
-   - `project.milestone_reached`
-   - `trial.expiring`
+    - `task.due_soon`
+    - `brain_dump.processed`
+    - `calendar.event_reminder`
+    - `project.milestone_reached`
+    - `trial.expiring`
 
 ## Summary
 

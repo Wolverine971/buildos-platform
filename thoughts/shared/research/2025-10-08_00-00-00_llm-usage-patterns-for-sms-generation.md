@@ -1,16 +1,16 @@
 ---
-title: "LLM Usage Patterns in BuildOS - Research for SMS Message Generation"
+title: 'LLM Usage Patterns in BuildOS - Research for SMS Message Generation'
 date: 2025-10-08
 author: Claude (AI Assistant)
 tags: [research, llm, ai, sms, prompts, architecture]
 status: completed
 related_files:
-  - /apps/web/src/lib/services/smart-llm-service.ts
-  - /apps/worker/src/lib/services/smart-llm-service.ts
-  - /apps/worker/src/workers/brief/prompts.ts
-  - /apps/worker/src/workers/brief/briefGenerator.ts
-  - /apps/worker/src/workers/onboarding/prompts.ts
-purpose: "Document LLM service patterns, prompt engineering techniques, and configuration options that can be adapted for SMS message generation"
+    - /apps/web/src/lib/services/smart-llm-service.ts
+    - /apps/worker/src/lib/services/smart-llm-service.ts
+    - /apps/worker/src/workers/brief/prompts.ts
+    - /apps/worker/src/workers/brief/briefGenerator.ts
+    - /apps/worker/src/workers/onboarding/prompts.ts
+purpose: 'Document LLM service patterns, prompt engineering techniques, and configuration options that can be adapted for SMS message generation'
 ---
 
 # LLM Usage Patterns in BuildOS Codebase
@@ -38,17 +38,17 @@ Both versions share the same architecture with minor differences in model availa
 
 ```typescript
 export class SmartLLMService {
-  // Configuration
-  private apiKey: string;
-  private apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-  private supabase?: SupabaseClient<Database>; // Optional logging
+	// Configuration
+	private apiKey: string;
+	private apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+	private supabase?: SupabaseClient<Database>; // Optional logging
 
-  constructor(config?: {
-    httpReferer?: string;
-    appName?: string;
-    supabase?: SupabaseClient<Database>;
-    apiKey?: string;
-  });
+	constructor(config?: {
+		httpReferer?: string;
+		appName?: string;
+		supabase?: SupabaseClient<Database>;
+		apiKey?: string;
+	});
 }
 ```
 
@@ -136,9 +136,9 @@ static selectProfile(context: {
 
 ```typescript
 const profiles = SmartLLMService.selectProfile({
-  complexity: "moderate",
-  priority: "quality",
-  isProduction: true,
+	complexity: 'moderate',
+	priority: 'quality',
+	isProduction: true
 });
 // Returns: { json: 'powerful', text: 'quality' }
 ```
@@ -180,14 +180,14 @@ For **SMS message generation**, use these settings:
 
 ```typescript
 const smsContent = await llmService.generateText({
-  prompt: userPrompt,
-  userId: userId,
-  profile: "quality", // High-quality, concise writing
-  systemPrompt: smsSystemPrompt,
-  temperature: 0.6, // Balanced creativity/consistency
-  maxTokens: 100, // SMS is short (~160 chars = ~40 tokens)
-  streaming: false, // Not needed for short messages
-  operationType: "sms_generation",
+	prompt: userPrompt,
+	userId: userId,
+	profile: 'quality', // High-quality, concise writing
+	systemPrompt: smsSystemPrompt,
+	temperature: 0.6, // Balanced creativity/consistency
+	maxTokens: 100, // SMS is short (~160 chars = ~40 tokens)
+	streaming: false, // Not needed for short messages
+	operationType: 'sms_generation'
 });
 ```
 
@@ -419,26 +419,22 @@ try {
 ```typescript
 // From smart-llm-service.ts (lines 398-430)
 try {
-  const cleaned = this.cleanJSONResponse(content);
-  result = JSON.parse(cleaned) as T;
+	const cleaned = this.cleanJSONResponse(content);
+	result = JSON.parse(cleaned) as T;
 } catch (parseError) {
-  console.error(`JSON parse error with ${actualModel}:`, parseError);
+	console.error(`JSON parse error with ${actualModel}:`, parseError);
 
-  // If validation is enabled and parse failed, retry with powerful model
-  if (options.validation?.retryOnParseError && retryCount < maxRetries) {
-    retryCount++;
-    const retryResponse = await this.callOpenRouter({
-      model: "deepseek/deepseek-chat",
-      models: [
-        "deepseek/deepseek-chat",
-        "qwen/qwen-2.5-72b-instruct",
-        "openai/gpt-4o",
-      ],
-      temperature: 0.1, // Lower temperature for retry
-      // ...
-    });
-    // Try parsing again
-  }
+	// If validation is enabled and parse failed, retry with powerful model
+	if (options.validation?.retryOnParseError && retryCount < maxRetries) {
+		retryCount++;
+		const retryResponse = await this.callOpenRouter({
+			model: 'deepseek/deepseek-chat',
+			models: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'openai/gpt-4o'],
+			temperature: 0.1 // Lower temperature for retry
+			// ...
+		});
+		// Try parsing again
+	}
 }
 ```
 
@@ -452,36 +448,34 @@ try {
 ### 6.3 SMS Error Handling Strategy
 
 ```typescript
-async function generateSMSWithFallback(
-  params: SMSGenerationParams,
-): Promise<string> {
-  try {
-    // Primary generation
-    return await llmService.generateText({
-      profile: "quality",
-      temperature: 0.6,
-      maxTokens: 100,
-      // ...
-    });
-  } catch (primaryError) {
-    console.error("Primary SMS generation failed:", primaryError);
+async function generateSMSWithFallback(params: SMSGenerationParams): Promise<string> {
+	try {
+		// Primary generation
+		return await llmService.generateText({
+			profile: 'quality',
+			temperature: 0.6,
+			maxTokens: 100
+			// ...
+		});
+	} catch (primaryError) {
+		console.error('Primary SMS generation failed:', primaryError);
 
-    try {
-      // Fallback: simpler prompt, lower temperature
-      return await llmService.generateText({
-        profile: "balanced",
-        temperature: 0.4,
-        maxTokens: 80,
-        systemPrompt: simplifiedSystemPrompt,
-        // ...
-      });
-    } catch (fallbackError) {
-      console.error("Fallback SMS generation failed:", fallbackError);
+		try {
+			// Fallback: simpler prompt, lower temperature
+			return await llmService.generateText({
+				profile: 'balanced',
+				temperature: 0.4,
+				maxTokens: 80,
+				systemPrompt: simplifiedSystemPrompt
+				// ...
+			});
+		} catch (fallbackError) {
+			console.error('Fallback SMS generation failed:', fallbackError);
 
-      // Final fallback: template-based message
-      return generateTemplateSMS(params);
-    }
-  }
+			// Final fallback: template-based message
+			return generateTemplateSMS(params);
+		}
+	}
 }
 ```
 
@@ -590,27 +584,11 @@ Write a reminder SMS for this task. Be encouraging and specific.`;
 ```typescript
 // From worker smart-llm-service.ts profile mappings
 const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
-  fast: [
-    "deepseek/deepseek-chat",
-    "qwen/qwen-2.5-72b-instruct",
-    "google/gemini-flash-1.5",
-  ],
-  balanced: [
-    "deepseek/deepseek-chat",
-    "qwen/qwen-2.5-72b-instruct",
-    "google/gemini-flash-1.5",
-  ],
-  powerful: [
-    "deepseek/deepseek-chat",
-    "qwen/qwen-2.5-72b-instruct",
-    "google/gemini-flash-1.5",
-  ],
-  maximum: [
-    "deepseek/deepseek-chat",
-    "qwen/qwen-2.5-72b-instruct",
-    "openai/gpt-4o",
-  ],
-  custom: [],
+	fast: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'google/gemini-flash-1.5'],
+	balanced: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'google/gemini-flash-1.5'],
+	powerful: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'google/gemini-flash-1.5'],
+	maximum: ['deepseek/deepseek-chat', 'qwen/qwen-2.5-72b-instruct', 'openai/gpt-4o'],
+	custom: []
 };
 ```
 
@@ -627,16 +605,13 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 **From briefGenerator.ts (lines 920-931):**
 
 ```typescript
-function trimMarkdownForPrompt(
-  markdown: string,
-  maxLength: number = 8000,
-): string {
-  if (!markdown) return "";
-  if (markdown.length <= maxLength) {
-    return markdown;
-  }
-  const truncated = markdown.slice(0, maxLength);
-  return `${truncated}\n\n... (content truncated for analysis prompt)`;
+function trimMarkdownForPrompt(markdown: string, maxLength: number = 8000): string {
+	if (!markdown) return '';
+	if (markdown.length <= maxLength) {
+		return markdown;
+	}
+	const truncated = markdown.slice(0, maxLength);
+	return `${truncated}\n\n... (content truncated for analysis prompt)`;
 }
 ```
 
@@ -670,10 +645,10 @@ function trimMarkdownForPrompt(
 ```typescript
 // From braindump-processor.ts
 interface BrainDumpOptions {
-  autoExecute?: boolean;
-  streamResults?: boolean; // Enables streaming
-  useDualProcessing?: boolean;
-  retryAttempts?: number;
+	autoExecute?: boolean;
+	streamResults?: boolean; // Enables streaming
+	useDualProcessing?: boolean;
+	retryAttempts?: number;
 }
 ```
 
@@ -686,13 +661,13 @@ interface BrainDumpOptions {
 ```typescript
 // From briefGenerator.ts
 llmAnalysis = await llmService.generateText({
-  prompt: analysisPrompt,
-  userId,
-  profile: "quality",
-  temperature: 0.4,
-  maxTokens: 2200,
-  systemPrompt: DailyBriefAnalysisPrompt.getSystemPrompt(),
-  // streaming not specified = false
+	prompt: analysisPrompt,
+	userId,
+	profile: 'quality',
+	temperature: 0.4,
+	maxTokens: 2200,
+	systemPrompt: DailyBriefAnalysisPrompt.getSystemPrompt()
+	// streaming not specified = false
 });
 ```
 
@@ -776,78 +751,78 @@ metadata: {
 ```typescript
 // apps/worker/src/lib/services/sms-generation.service.ts
 
-import { SmartLLMService } from "./smart-llm-service";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@buildos/shared-types";
+import { SmartLLMService } from './smart-llm-service';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@buildos/shared-types';
 
 export interface SMSGenerationOptions {
-  task: {
-    id: string;
-    title: string;
-    description?: string;
-    start_date?: string;
-    priority?: string;
-  };
-  project: {
-    id: string;
-    name: string;
-  };
-  user: {
-    id: string;
-    first_name?: string;
-    timezone: string;
-  };
-  smsType: "reminder" | "encouragement" | "reengagement";
-  timeUntilTask?: number; // minutes
+	task: {
+		id: string;
+		title: string;
+		description?: string;
+		start_date?: string;
+		priority?: string;
+	};
+	project: {
+		id: string;
+		name: string;
+	};
+	user: {
+		id: string;
+		first_name?: string;
+		timezone: string;
+	};
+	smsType: 'reminder' | 'encouragement' | 'reengagement';
+	timeUntilTask?: number; // minutes
 }
 
 export class SMSGenerationService {
-  private llmService: SmartLLMService;
-  private supabase: SupabaseClient<Database>;
+	private llmService: SmartLLMService;
+	private supabase: SupabaseClient<Database>;
 
-  constructor(supabase: SupabaseClient<Database>) {
-    this.supabase = supabase;
-    this.llmService = new SmartLLMService({
-      httpReferer: "https://build-os.com",
-      appName: "BuildOS SMS Generator",
-      supabase,
-    });
-  }
+	constructor(supabase: SupabaseClient<Database>) {
+		this.supabase = supabase;
+		this.llmService = new SmartLLMService({
+			httpReferer: 'https://build-os.com',
+			appName: 'BuildOS SMS Generator',
+			supabase
+		});
+	}
 
-  async generateSMS(options: SMSGenerationOptions): Promise<string> {
-    const systemPrompt = this.getSystemPrompt(options.smsType);
-    const userPrompt = this.getUserPrompt(options);
+	async generateSMS(options: SMSGenerationOptions): Promise<string> {
+		const systemPrompt = this.getSystemPrompt(options.smsType);
+		const userPrompt = this.getUserPrompt(options);
 
-    try {
-      const smsText = await this.llmService.generateText({
-        prompt: userPrompt,
-        userId: options.user.id,
-        profile: "quality",
-        systemPrompt,
-        temperature: this.getTemperature(options.smsType),
-        maxTokens: 100,
-        streaming: false,
-        operationType: `sms_${options.smsType}_generation`,
-        taskId: options.task.id,
-        projectId: options.project.id,
-      });
+		try {
+			const smsText = await this.llmService.generateText({
+				prompt: userPrompt,
+				userId: options.user.id,
+				profile: 'quality',
+				systemPrompt,
+				temperature: this.getTemperature(options.smsType),
+				maxTokens: 100,
+				streaming: false,
+				operationType: `sms_${options.smsType}_generation`,
+				taskId: options.task.id,
+				projectId: options.project.id
+			});
 
-      // Validate length
-      if (smsText.length > 160) {
-        console.warn(`SMS too long (${smsText.length} chars), truncating...`);
-        return smsText.substring(0, 157) + "...";
-      }
+			// Validate length
+			if (smsText.length > 160) {
+				console.warn(`SMS too long (${smsText.length} chars), truncating...`);
+				return smsText.substring(0, 157) + '...';
+			}
 
-      return smsText;
-    } catch (error) {
-      console.error("SMS generation failed:", error);
-      // Fallback to template
-      return this.getTemplateSMS(options);
-    }
-  }
+			return smsText;
+		} catch (error) {
+			console.error('SMS generation failed:', error);
+			// Fallback to template
+			return this.getTemplateSMS(options);
+		}
+	}
 
-  private getSystemPrompt(smsType: string): string {
-    const basePrompt = `You are a BuildOS task assistant writing concise SMS reminders.
+	private getSystemPrompt(smsType: string): string {
+		const basePrompt = `You are a BuildOS task assistant writing concise SMS reminders.
 
 Tone: Friendly, supportive, action-oriented
 Length: MUST be under 160 characters
@@ -856,72 +831,72 @@ Format: Plain text only, no links or formatting
 
 `;
 
-    switch (smsType) {
-      case "reminder":
-        return (
-          basePrompt +
-          `Focus: Remind about upcoming task with time and context.
+		switch (smsType) {
+			case 'reminder':
+				return (
+					basePrompt +
+					`Focus: Remind about upcoming task with time and context.
 Example: "📋 Your task 'Client call prep' starts in 30 min (Marketing project). You've got this!"`
-        );
+				);
 
-      case "encouragement":
-        return (
-          basePrompt +
-          `Focus: Motivate user to complete an overdue task.
+			case 'encouragement':
+				return (
+					basePrompt +
+					`Focus: Motivate user to complete an overdue task.
 Example: "🌟 Still time to tackle 'Finish report' today! Small progress counts. Let's do this!"`
-        );
+				);
 
-      case "reengagement":
-        return (
-          basePrompt +
-          `Focus: Welcome back an inactive user with what's waiting.
+			case 'reengagement':
+				return (
+					basePrompt +
+					`Focus: Welcome back an inactive user with what's waiting.
 Example: "👋 Welcome back! You have 3 tasks ready in your Marketing project. Ready to dive in?"`
-        );
+				);
 
-      default:
-        return basePrompt;
-    }
-  }
+			default:
+				return basePrompt;
+		}
+	}
 
-  private getUserPrompt(options: SMSGenerationOptions): string {
-    const { task, project, user, timeUntilTask } = options;
-    const timeString = timeUntilTask
-      ? `${Math.floor(timeUntilTask / 60)} hours ${timeUntilTask % 60} minutes`
-      : "soon";
+	private getUserPrompt(options: SMSGenerationOptions): string {
+		const { task, project, user, timeUntilTask } = options;
+		const timeString = timeUntilTask
+			? `${Math.floor(timeUntilTask / 60)} hours ${timeUntilTask % 60} minutes`
+			: 'soon';
 
-    return `Task: ${task.title}
+		return `Task: ${task.title}
 Project: ${project.name}
-Priority: ${task.priority || "medium"}
+Priority: ${task.priority || 'medium'}
 Time until start: ${timeString}
-User name: ${user.first_name || "there"}
-Description: ${task.description?.substring(0, 100) || "No description"}
+User name: ${user.first_name || 'there'}
+Description: ${task.description?.substring(0, 100) || 'No description'}
 
 Generate a friendly SMS reminder under 160 characters.`;
-  }
+	}
 
-  private getTemperature(smsType: string): number {
-    switch (smsType) {
-      case "reminder":
-        return 0.4; // Factual, consistent
-      case "encouragement":
-        return 0.7; // Warm, varied
-      case "reengagement":
-        return 0.7; // Engaging
-      default:
-        return 0.5;
-    }
-  }
+	private getTemperature(smsType: string): number {
+		switch (smsType) {
+			case 'reminder':
+				return 0.4; // Factual, consistent
+			case 'encouragement':
+				return 0.7; // Warm, varied
+			case 'reengagement':
+				return 0.7; // Engaging
+			default:
+				return 0.5;
+		}
+	}
 
-  private getTemplateSMS(options: SMSGenerationOptions): string {
-    // Fallback templates when LLM fails
-    const { task, project, timeUntilTask } = options;
+	private getTemplateSMS(options: SMSGenerationOptions): string {
+		// Fallback templates when LLM fails
+		const { task, project, timeUntilTask } = options;
 
-    if (timeUntilTask && timeUntilTask < 60) {
-      return `📋 "${task.title}" starts in ${timeUntilTask} min (${project.name}). Ready?`;
-    } else {
-      return `📋 Reminder: "${task.title}" from ${project.name} is coming up soon!`;
-    }
-  }
+		if (timeUntilTask && timeUntilTask < 60) {
+			return `📋 "${task.title}" starts in ${timeUntilTask} min (${project.name}). Ready?`;
+		} else {
+			return `📋 Reminder: "${task.title}" from ${project.name} is coming up soon!`;
+		}
+	}
 }
 ```
 
@@ -929,29 +904,29 @@ Generate a friendly SMS reminder under 160 characters.`;
 
 ```typescript
 // In worker scheduler or API endpoint
-import { SMSGenerationService } from "./lib/services/sms-generation.service";
+import { SMSGenerationService } from './lib/services/sms-generation.service';
 
 const smsService = new SMSGenerationService(supabase);
 
 const smsMessage = await smsService.generateSMS({
-  task: {
-    id: "task-123",
-    title: "Review Q4 budget",
-    description: "Final review before board meeting",
-    start_date: "2025-10-08T14:00:00Z",
-    priority: "high",
-  },
-  project: {
-    id: "proj-456",
-    name: "Finance Planning",
-  },
-  user: {
-    id: "user-789",
-    first_name: "Anna",
-    timezone: "America/New_York",
-  },
-  smsType: "reminder",
-  timeUntilTask: 30, // minutes
+	task: {
+		id: 'task-123',
+		title: 'Review Q4 budget',
+		description: 'Final review before board meeting',
+		start_date: '2025-10-08T14:00:00Z',
+		priority: 'high'
+	},
+	project: {
+		id: 'proj-456',
+		name: 'Finance Planning'
+	},
+	user: {
+		id: 'user-789',
+		first_name: 'Anna',
+		timezone: 'America/New_York'
+	},
+	smsType: 'reminder',
+	timeUntilTask: 30 // minutes
 });
 
 // Send via Twilio

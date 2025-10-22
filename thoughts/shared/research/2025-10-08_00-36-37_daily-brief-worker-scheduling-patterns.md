@@ -5,11 +5,11 @@ status: completed
 created: 2025-10-08T00:36:37Z
 tags: [worker, scheduler, queue, timezone, sms, daily-briefs]
 related_files:
-  - /apps/worker/src/scheduler.ts
-  - /apps/worker/src/worker.ts
-  - /apps/worker/src/lib/supabaseQueue.ts
-  - /apps/worker/src/workers/brief/briefWorker.ts
-  - /apps/worker/src/workers/brief/briefGenerator.ts
+    - /apps/worker/src/scheduler.ts
+    - /apps/worker/src/worker.ts
+    - /apps/worker/src/lib/supabaseQueue.ts
+    - /apps/worker/src/workers/brief/briefWorker.ts
+    - /apps/worker/src/workers/brief/briefGenerator.ts
 ---
 
 # Daily Brief Worker - Scheduling Patterns for SMS Implementation
@@ -37,14 +37,14 @@ This document analyzes the daily brief generation flow in the worker service to 
 
 ```typescript
 // Lines 121-132
-cron.schedule("0 * * * *", async () => {
-  console.log("🔍 Checking for scheduled briefs...");
-  await checkAndScheduleBriefs();
+cron.schedule('0 * * * *', async () => {
+	console.log('🔍 Checking for scheduled briefs...');
+	await checkAndScheduleBriefs();
 });
 
 // Also runs once at startup
 setTimeout(() => {
-  checkAndScheduleBriefs();
+	checkAndScheduleBriefs();
 }, 5000);
 ```
 
@@ -61,28 +61,28 @@ setTimeout(() => {
 
 ```typescript
 function calculateDailyRunTime(
-  now: Date,
-  hours: number,
-  minutes: number,
-  seconds: number,
-  timezone: string,
+	now: Date,
+	hours: number,
+	minutes: number,
+	seconds: number,
+	timezone: string
 ): Date {
-  // Get current time in user's timezone
-  const nowInUserTz = utcToZonedTime(now, timezone);
+	// Get current time in user's timezone
+	const nowInUserTz = utcToZonedTime(now, timezone);
 
-  // Set target time for today with precise time (no milliseconds)
-  let targetInUserTz = setHours(nowInUserTz, hours);
-  targetInUserTz = setMinutes(targetInUserTz, minutes);
-  targetInUserTz = setSeconds(targetInUserTz, seconds);
-  targetInUserTz.setMilliseconds(0); // Ensure precise scheduling
+	// Set target time for today with precise time (no milliseconds)
+	let targetInUserTz = setHours(nowInUserTz, hours);
+	targetInUserTz = setMinutes(targetInUserTz, minutes);
+	targetInUserTz = setSeconds(targetInUserTz, seconds);
+	targetInUserTz.setMilliseconds(0); // Ensure precise scheduling
 
-  // If target time has passed today, schedule for tomorrow
-  if (isBefore(targetInUserTz, nowInUserTz)) {
-    targetInUserTz = addDays(targetInUserTz, 1);
-  }
+	// If target time has passed today, schedule for tomorrow
+	if (isBefore(targetInUserTz, nowInUserTz)) {
+		targetInUserTz = addDays(targetInUserTz, 1);
+	}
 
-  // Convert back to UTC
-  return zonedTimeToUtc(targetInUserTz, timezone);
+	// Convert back to UTC
+	return zonedTimeToUtc(targetInUserTz, timezone);
 }
 ```
 
@@ -108,18 +108,18 @@ const priority = isImmediate ? 1 : 10;
 const dedupKey = `brief-${userId}-${briefDate}`;
 
 if (isImmediate) {
-  // Atomically cancel any existing jobs for this date
-  const { count } = await queue.cancelBriefJobsForDate(userId, briefDate);
-  if (count > 0) {
-    console.log(`🚫 Cancelled ${count} existing brief job(s)`);
-  }
+	// Atomically cancel any existing jobs for this date
+	const { count } = await queue.cancelBriefJobsForDate(userId, briefDate);
+	if (count > 0) {
+		console.log(`🚫 Cancelled ${count} existing brief job(s)`);
+	}
 }
 
 // Add job with dedup key
-const job = await queue.add("generate_daily_brief", userId, jobData, {
-  priority,
-  scheduledFor,
-  dedupKey: isImmediate ? `${dedupKey}-${Date.now()}` : dedupKey,
+const job = await queue.add('generate_daily_brief', userId, jobData, {
+	priority,
+	scheduledFor,
+	dedupKey: isImmediate ? `${dedupKey}-${Date.now()}` : dedupKey
 });
 ```
 
@@ -154,18 +154,18 @@ constructor(options?: {
 ```typescript
 // Development (Lines 129-136)
 export const developmentConfig: Partial<QueueConfiguration> = {
-  pollInterval: 2000, // Faster polling
-  batchSize: 2, // Smaller batches for debugging
-  stalledTimeout: 120000, // Shorter timeout
-  statsUpdateInterval: 30000, // More frequent stats
+	pollInterval: 2000, // Faster polling
+	batchSize: 2, // Smaller batches for debugging
+	stalledTimeout: 120000, // Shorter timeout
+	statsUpdateInterval: 30000 // More frequent stats
 };
 
 // Production (Lines 139-146)
 export const productionConfig: Partial<QueueConfiguration> = {
-  pollInterval: 5000, // Standard polling
-  batchSize: 10, // Larger batches for throughput
-  stalledTimeout: 600000, // Longer timeout
-  statsUpdateInterval: 300000, // Less frequent stats (5 minutes)
+	pollInterval: 5000, // Standard polling
+	batchSize: 10, // Larger batches for throughput
+	stalledTimeout: 600000, // Longer timeout
+	statsUpdateInterval: 300000 // Less frequent stats (5 minutes)
 };
 ```
 
@@ -280,20 +280,18 @@ pending → processing → completed
 
 ```typescript
 export interface LegacyJob<T = any> {
-  id: string;
-  data: T & { userId: string };
-  opts: { priority?: number };
-  timestamp: number;
-  attemptsMade: number;
-  updateProgress: (progress: number | object) => Promise<void>;
-  log: (message: string) => Promise<void>;
+	id: string;
+	data: T & { userId: string };
+	opts: { priority?: number };
+	timestamp: number;
+	attemptsMade: number;
+	updateProgress: (progress: number | object) => Promise<void>;
+	log: (message: string) => Promise<void>;
 }
 
-export function createLegacyJob<T>(
-  processingJob: ProcessingJob<T>,
-): LegacyJob<T> {
-  const adapter = new JobAdapter(processingJob);
-  return adapter.getLegacyJob();
+export function createLegacyJob<T>(processingJob: ProcessingJob<T>): LegacyJob<T> {
+	const adapter = new JobAdapter(processingJob);
+	return adapter.getLegacyJob();
 }
 ```
 
@@ -301,25 +299,25 @@ export function createLegacyJob<T>(
 
 ```typescript
 async function processBrief(job: ProcessingJob) {
-  const jobType = job.data.priority === 1 ? "⚡ IMMEDIATE" : "📅 SCHEDULED";
+	const jobType = job.data.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
 
-  await job.log(`${jobType} brief started for user ${job.userId}`);
+	await job.log(`${jobType} brief started for user ${job.userId}`);
 
-  try {
-    // Convert ProcessingJob to type-safe legacy format
-    const legacyJob = createLegacyJob(job);
+	try {
+		// Convert ProcessingJob to type-safe legacy format
+		const legacyJob = createLegacyJob(job);
 
-    // Use existing brief processor with type-safe adapter
-    await processBriefJob(legacyJob);
+		// Use existing brief processor with type-safe adapter
+		await processBriefJob(legacyJob);
 
-    const duration = Date.now() - startTime;
-    await job.log(`✅ ${jobType} brief completed in ${duration}ms`);
+		const duration = Date.now() - startTime;
+		await job.log(`✅ ${jobType} brief completed in ${duration}ms`);
 
-    return { success: true, duration };
-  } catch (error: any) {
-    await job.log(`❌ ${jobType} brief failed: ${error.message}`);
-    throw error;
-  }
+		return { success: true, duration };
+	} catch (error: any) {
+		await job.log(`❌ ${jobType} brief failed: ${error.message}`);
+		throw error;
+	}
 }
 ```
 
@@ -328,12 +326,12 @@ async function processBrief(job: ProcessingJob) {
 **Processor Registration (Lines 170-180):**
 
 ```typescript
-queue.process("generate_daily_brief", processBrief);
-queue.process("generate_brief_email", processEmailBrief);
-queue.process("generate_phases", processPhases);
-queue.process("onboarding_analysis", processOnboarding);
-queue.process("send_notification", processNotificationWrapper);
-queue.process("send_sms", processSMS);
+queue.process('generate_daily_brief', processBrief);
+queue.process('generate_brief_email', processEmailBrief);
+queue.process('generate_phases', processPhases);
+queue.process('onboarding_analysis', processOnboarding);
+queue.process('send_notification', processNotificationWrapper);
+queue.process('send_sms', processSMS);
 ```
 
 **Pattern:**
@@ -430,48 +428,32 @@ private async handleProgressUpdateError(
 
 ```typescript
 // Lines 150-154: Fetching projects
-await updateProgress(
-  dailyBrief.id,
-  { step: "fetching_projects", progress: 10 },
-  jobId,
-);
+await updateProgress(dailyBrief.id, { step: 'fetching_projects', progress: 10 }, jobId);
 
 // Lines 165-182: Generating project briefs
 const projectBriefPromises = projects.map(async (project, i) => {
-  const progress = 20 + (i / projects.length) * 60; // 20% to 80%
+	const progress = 20 + (i / projects.length) * 60; // 20% to 80%
 
-  await updateProgress(
-    dailyBrief.id,
-    {
-      step: `processing_project_${project.name}`,
-      progress: Math.round(progress),
-    },
-    jobId,
-  );
+	await updateProgress(
+		dailyBrief.id,
+		{
+			step: `processing_project_${project.name}`,
+			progress: Math.round(progress)
+		},
+		jobId
+	);
 
-  return await generateProjectBrief(project, briefDate, timezone);
+	return await generateProjectBrief(project, briefDate, timezone);
 });
 
 // Lines 212-216: Consolidating briefs
-await updateProgress(
-  dailyBrief.id,
-  { step: "consolidating_briefs", progress: 85 },
-  jobId,
-);
+await updateProgress(dailyBrief.id, { step: 'consolidating_briefs', progress: 85 }, jobId);
 
 // Lines 234-238: LLM analysis
-await updateProgress(
-  dailyBrief.id,
-  { step: "llm_analysis", progress: 90 },
-  jobId,
-);
+await updateProgress(dailyBrief.id, { step: 'llm_analysis', progress: 90 }, jobId);
 
 // Lines 340-344: Finalizing
-await updateProgress(
-  dailyBrief.id,
-  { step: "finalizing", progress: 95 },
-  jobId,
-);
+await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 95 }, jobId);
 ```
 
 ---
@@ -572,43 +554,41 @@ private calculateBackoffDecision(
 const engagementDataMap = new Map();
 
 if (ENGAGEMENT_BACKOFF_ENABLED) {
-  console.log("🔍 Batch checking engagement status for all users...");
-  const engagementChecks = await Promise.allSettled(
-    preferences.map(async (preference) => {
-      const decision = await backoffCalculator.shouldSendDailyBrief(
-        preference.user_id,
-      );
-      return { userId: preference.user_id, decision };
-    }),
-  );
+	console.log('🔍 Batch checking engagement status for all users...');
+	const engagementChecks = await Promise.allSettled(
+		preferences.map(async (preference) => {
+			const decision = await backoffCalculator.shouldSendDailyBrief(preference.user_id);
+			return { userId: preference.user_id, decision };
+		})
+	);
 
-  engagementChecks.forEach((result) => {
-    if (result.status === "fulfilled" && result.value) {
-      const { userId, decision } = result.value;
-      engagementDataMap.set(userId, decision);
-    }
-  });
+	engagementChecks.forEach((result) => {
+		if (result.status === 'fulfilled' && result.value) {
+			const { userId, decision } = result.value;
+			engagementDataMap.set(userId, decision);
+		}
+	});
 }
 
 // PHASE 2: Filter users based on engagement
 for (const preference of preferences) {
-  if (ENGAGEMENT_BACKOFF_ENABLED) {
-    const backoffDecision = engagementDataMap.get(preference.user_id);
+	if (ENGAGEMENT_BACKOFF_ENABLED) {
+		const backoffDecision = engagementDataMap.get(preference.user_id);
 
-    if (!backoffDecision?.shouldSend) {
-      console.log(`⏸️ Skipping brief for user: ${backoffDecision?.reason}`);
-      continue;
-    }
+		if (!backoffDecision?.shouldSend) {
+			console.log(`⏸️ Skipping brief for user: ${backoffDecision?.reason}`);
+			continue;
+		}
 
-    engagementMetadata = {
-      isReengagement: backoffDecision.isReengagement,
-      daysSinceLastLogin: backoffDecision.daysSinceLastLogin,
-    };
-  }
+		engagementMetadata = {
+			isReengagement: backoffDecision.isReengagement,
+			daysSinceLastLogin: backoffDecision.daysSinceLastLogin
+		};
+	}
 
-  // Calculate next run time and queue job
-  const nextRunTime = calculateNextRunTime(preference, now);
-  usersToSchedule.push({ preference, nextRunTime, engagementMetadata });
+	// Calculate next run time and queue job
+	const nextRunTime = calculateNextRunTime(preference, now);
+	usersToSchedule.push({ preference, nextRunTime, engagementMetadata });
 }
 ```
 
@@ -616,8 +596,7 @@ for (const preference of preferences) {
 
 ```typescript
 // Line 24
-const ENGAGEMENT_BACKOFF_ENABLED =
-  process.env.ENGAGEMENT_BACKOFF_ENABLED === "true";
+const ENGAGEMENT_BACKOFF_ENABLED = process.env.ENGAGEMENT_BACKOFF_ENABLED === 'true';
 ```
 
 ---
@@ -711,37 +690,30 @@ private async executeJobProcessor(
 let twilioClient: TwilioClient | null = null;
 let smsService: SMSService | null = null;
 
-if (
-  twilioConfig.accountSid &&
-  twilioConfig.authToken &&
-  twilioConfig.messagingServiceSid
-) {
-  try {
-    twilioClient = new TwilioClient(twilioConfig);
-    smsService = new SMSService(twilioClient, supabase);
-    console.log("Twilio SMS service initialized successfully");
-  } catch (error) {
-    console.error("Failed to initialize Twilio client:", error);
-    twilioClient = null;
-    smsService = null;
-  }
+if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingServiceSid) {
+	try {
+		twilioClient = new TwilioClient(twilioConfig);
+		smsService = new SMSService(twilioClient, supabase);
+		console.log('Twilio SMS service initialized successfully');
+	} catch (error) {
+		console.error('Failed to initialize Twilio client:', error);
+		twilioClient = null;
+		smsService = null;
+	}
 } else {
-  console.warn(
-    "Twilio credentials not configured - SMS functionality disabled",
-  );
+	console.warn('Twilio credentials not configured - SMS functionality disabled');
 }
 
 // Lines 56-64: Graceful failure
 export async function processSMSJob(job: LegacyJob<any>) {
-  if (!twilioClient || !smsService) {
-    const errorMessage =
-      "SMS service not available - Twilio credentials not configured";
-    console.error(errorMessage);
-    await updateJobStatus(job.id, "failed", "send_sms", errorMessage);
-    throw new Error(errorMessage);
-  }
+	if (!twilioClient || !smsService) {
+		const errorMessage = 'SMS service not available - Twilio credentials not configured';
+		console.error(errorMessage);
+		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage);
+		throw new Error(errorMessage);
+	}
 
-  // Continue processing...
+	// Continue processing...
 }
 ```
 
@@ -755,49 +727,49 @@ export async function processSMSJob(job: LegacyJob<any>) {
 
 ```typescript
 // Lines 28-46: Daily brief scheduling
-it("should schedule daily brief 24 hours apart", () => {
-  const now = new Date("2024-01-15T10:00:00Z");
-  const preference = {
-    frequency: "daily",
-    time_of_day: "09:00:00",
-    timezone: "UTC",
-  };
+it('should schedule daily brief 24 hours apart', () => {
+	const now = new Date('2024-01-15T10:00:00Z');
+	const preference = {
+		frequency: 'daily',
+		time_of_day: '09:00:00',
+		timezone: 'UTC'
+	};
 
-  const nextRun = calculateNextRunTime(preference, now);
+	const nextRun = calculateNextRunTime(preference, now);
 
-  // Should schedule for tomorrow at 09:00 since 09:00 today has passed
-  expect(nextRun).toEqual(new Date("2024-01-16T09:00:00Z"));
+	// Should schedule for tomorrow at 09:00 since 09:00 today has passed
+	expect(nextRun).toEqual(new Date('2024-01-16T09:00:00Z'));
 });
 
 // Lines 67-84: Timezone handling
-it("should handle different timezones correctly", () => {
-  const now = new Date("2024-01-15T10:00:00Z"); // 10:00 UTC = 05:00 EST
-  const preference = {
-    frequency: "daily",
-    time_of_day: "09:00:00",
-    timezone: "America/New_York",
-  };
+it('should handle different timezones correctly', () => {
+	const now = new Date('2024-01-15T10:00:00Z'); // 10:00 UTC = 05:00 EST
+	const preference = {
+		frequency: 'daily',
+		time_of_day: '09:00:00',
+		timezone: 'America/New_York'
+	};
 
-  const nextRun = calculateNextRunTime(preference, now);
+	const nextRun = calculateNextRunTime(preference, now);
 
-  // Should schedule for today at 09:00 EST (14:00 UTC)
-  expect(nextRun).toEqual(new Date("2024-01-15T14:00:00Z"));
+	// Should schedule for today at 09:00 EST (14:00 UTC)
+	expect(nextRun).toEqual(new Date('2024-01-15T14:00:00Z'));
 });
 
 // Lines 86-104: Weekly frequency
-it("should handle weekly frequency", () => {
-  const now = new Date("2024-01-15T10:00:00Z"); // Monday
-  const preference = {
-    frequency: "weekly",
-    day_of_week: 1, // Monday
-    time_of_day: "09:00:00",
-    timezone: "UTC",
-  };
+it('should handle weekly frequency', () => {
+	const now = new Date('2024-01-15T10:00:00Z'); // Monday
+	const preference = {
+		frequency: 'weekly',
+		day_of_week: 1, // Monday
+		time_of_day: '09:00:00',
+		timezone: 'UTC'
+	};
 
-  const nextRun = calculateNextRunTime(preference, now);
+	const nextRun = calculateNextRunTime(preference, now);
 
-  // Should schedule for next Monday since 09:00 today has passed
-  expect(nextRun).toEqual(new Date("2024-01-22T09:00:00Z"));
+	// Should schedule for next Monday since 09:00 today has passed
+	expect(nextRun).toEqual(new Date('2024-01-22T09:00:00Z'));
 });
 ```
 
@@ -828,57 +800,56 @@ CREATE TABLE user_sms_preferences (
 
 ```typescript
 async function checkAndScheduleSMS() {
-  const now = new Date();
-  const oneHourFromNow = addHours(now, 1);
+	const now = new Date();
+	const oneHourFromNow = addHours(now, 1);
 
-  // Get active SMS preferences
-  const { data: preferences } = await supabase
-    .from("user_sms_preferences")
-    .select("*")
-    .eq("is_active", true);
+	// Get active SMS preferences
+	const { data: preferences } = await supabase
+		.from('user_sms_preferences')
+		.select('*')
+		.eq('is_active', true);
 
-  // Calculate next run times
-  const usersToSchedule = preferences.map((pref) => ({
-    preference: pref,
-    nextRunTime: calculateNextRunTime(pref, now),
-  }));
+	// Calculate next run times
+	const usersToSchedule = preferences.map((pref) => ({
+		preference: pref,
+		nextRunTime: calculateNextRunTime(pref, now)
+	}));
 
-  // Filter for jobs in next hour
-  const toBatchSchedule = usersToSchedule.filter(
-    ({ nextRunTime }) =>
-      isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow),
-  );
+	// Filter for jobs in next hour
+	const toBatchSchedule = usersToSchedule.filter(
+		({ nextRunTime }) => isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)
+	);
 
-  // Batch check for existing jobs
-  const { data: existingJobs } = await supabase
-    .from("queue_jobs")
-    .select("user_id, scheduled_for")
-    .in("user_id", userIds)
-    .eq("job_type", "send_daily_sms")
-    .in("status", ["pending", "processing"]);
+	// Batch check for existing jobs
+	const { data: existingJobs } = await supabase
+		.from('queue_jobs')
+		.select('user_id, scheduled_for')
+		.in('user_id', userIds)
+		.eq('job_type', 'send_daily_sms')
+		.in('status', ['pending', 'processing']);
 
-  // Queue jobs for users without existing jobs
-  await Promise.allSettled(
-    usersToQueue.map(({ preference, nextRunTime }) =>
-      queue.add(
-        "send_daily_sms",
-        preference.user_id,
-        {
-          userId: preference.user_id,
-          timezone: preference.timezone,
-          scheduledDate: format(
-            utcToZonedTime(nextRunTime, preference.timezone),
-            "yyyy-MM-dd",
-          ),
-        },
-        {
-          priority: 10,
-          scheduledFor: nextRunTime,
-          dedupKey: `sms-${preference.user_id}-${format(nextRunTime, "yyyy-MM-dd")}`,
-        },
-      ),
-    ),
-  );
+	// Queue jobs for users without existing jobs
+	await Promise.allSettled(
+		usersToQueue.map(({ preference, nextRunTime }) =>
+			queue.add(
+				'send_daily_sms',
+				preference.user_id,
+				{
+					userId: preference.user_id,
+					timezone: preference.timezone,
+					scheduledDate: format(
+						utcToZonedTime(nextRunTime, preference.timezone),
+						'yyyy-MM-dd'
+					)
+				},
+				{
+					priority: 10,
+					scheduledFor: nextRunTime,
+					dedupKey: `sms-${preference.user_id}-${format(nextRunTime, 'yyyy-MM-dd')}`
+				}
+			)
+		)
+	);
 }
 ```
 
@@ -886,9 +857,9 @@ async function checkAndScheduleSMS() {
 
 ```typescript
 // Run every hour
-cron.schedule("0 * * * *", async () => {
-  console.log("🔍 Checking for scheduled SMS...");
-  await checkAndScheduleSMS();
+cron.schedule('0 * * * *', async () => {
+	console.log('🔍 Checking for scheduled SMS...');
+	await checkAndScheduleSMS();
 });
 ```
 
@@ -896,43 +867,39 @@ cron.schedule("0 * * * *", async () => {
 
 ```typescript
 async function processDailySMS(job: ProcessingJob) {
-  const { userId, timezone, scheduledDate } = job.data;
+	const { userId, timezone, scheduledDate } = job.data;
 
-  await job.log(`Starting daily SMS for user ${userId}`);
-  await job.updateProgress({
-    current: 1,
-    total: 3,
-    message: "Generating content",
-  });
+	await job.log(`Starting daily SMS for user ${userId}`);
+	await job.updateProgress({
+		current: 1,
+		total: 3,
+		message: 'Generating content'
+	});
 
-  // Generate SMS content (similar to brief generation)
-  const smsContent = await generateDailySMSContent(
-    userId,
-    scheduledDate,
-    timezone,
-  );
+	// Generate SMS content (similar to brief generation)
+	const smsContent = await generateDailySMSContent(userId, scheduledDate, timezone);
 
-  await job.updateProgress({ current: 2, total: 3, message: "Sending SMS" });
+	await job.updateProgress({ current: 2, total: 3, message: 'Sending SMS' });
 
-  // Queue SMS send job
-  await queue.add(
-    "send_sms",
-    userId,
-    {
-      message_id: smsContent.id,
-      phone_number: smsContent.phone_number,
-      message: smsContent.message,
-      priority: "normal",
-    },
-    {
-      priority: 5,
-      scheduledFor: new Date(),
-    },
-  );
+	// Queue SMS send job
+	await queue.add(
+		'send_sms',
+		userId,
+		{
+			message_id: smsContent.id,
+			phone_number: smsContent.phone_number,
+			message: smsContent.message,
+			priority: 'normal'
+		},
+		{
+			priority: 5,
+			scheduledFor: new Date()
+		}
+	);
 
-  await job.updateProgress({ current: 3, total: 3, message: "SMS queued" });
+	await job.updateProgress({ current: 3, total: 3, message: 'SMS queued' });
 
-  return { success: true, sms_id: smsContent.id };
+	return { success: true, sms_id: smsContent.id };
 }
 ```
 
@@ -1001,29 +968,29 @@ async function processDailySMS(job: ProcessingJob) {
 ### Critical Patterns to Replicate
 
 1. **Timezone-Aware Scheduling:**
-   - Convert to user TZ → Calculate target time → Convert to UTC
-   - Clear milliseconds for precise scheduling
-   - Handle "time has passed today" logic
+    - Convert to user TZ → Calculate target time → Convert to UTC
+    - Clear milliseconds for precise scheduling
+    - Handle "time has passed today" logic
 
 2. **Atomic Job Management:**
-   - Use database RPCs for atomic operations
-   - Deduplication via `dedupKey`
-   - Batch checking for existing jobs
+    - Use database RPCs for atomic operations
+    - Deduplication via `dedupKey`
+    - Batch checking for existing jobs
 
 3. **Error Isolation:**
-   - Multi-layer try-catch blocks
-   - Promise.allSettled for parallel operations
-   - Graceful degradation for missing services
+    - Multi-layer try-catch blocks
+    - Promise.allSettled for parallel operations
+    - Graceful degradation for missing services
 
 4. **Progress Tracking:**
-   - Update at key milestones
-   - Exponential backoff for retries
-   - Don't fail job if progress update fails
+    - Update at key milestones
+    - Exponential backoff for retries
+    - Don't fail job if progress update fails
 
 5. **Testing Strategy:**
-   - Test timezone conversions
-   - Test scheduling logic (today vs tomorrow)
-   - Test weekly vs daily frequencies
+    - Test timezone conversions
+    - Test scheduling logic (today vs tomorrow)
+    - Test weekly vs daily frequencies
 
 ### Environment Configuration
 

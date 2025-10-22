@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: 65b0c8047572e2b905909a2590a344b077484c5a
 branch: main
 repository: buildos-platform
-topic: "Testing Infrastructure Comprehensive Audit"
+topic: 'Testing Infrastructure Comprehensive Audit'
 tags: [research, testing, infrastructure, coverage, vitest, quality-assurance]
 status: complete
 last_updated: 2025-10-06
@@ -188,11 +188,11 @@ The BuildOS platform has **strategic but limited test coverage** (~10-15%) focus
 
 - `briefBackoffCalculator.test.ts` - 324 lines
 - Tests all engagement states:
-  - Active users (0-2 days)
-  - Cooling off (3 days)
-  - Re-engagement (4, 10 days)
-  - Backoff periods (5-9, 11-30 days)
-  - Recurring (31+ days)
+    - Active users (0-2 days)
+    - Cooling off (3 days)
+    - Re-engagement (4, 10 days)
+    - Backoff periods (5-9, 11-30 days)
+    - Recurring (31+ days)
 - Edge cases: new users, null visits, DB errors
 - Reference: [apps/worker/tests/briefBackoffCalculator.test.ts:1](file:///Users/annawayne/buildos-platform/apps/worker/tests/briefBackoffCalculator.test.ts#L1)
 
@@ -330,11 +330,11 @@ Reference: [turbo.json:1](file:///Users/annawayne/buildos-platform/turbo.json#L1
 
 ```json
 {
-  "test": {
-    "dependsOn": ["^build"],
-    "outputs": ["coverage/**"],
-    "cache": false
-  }
+	"test": {
+		"dependsOn": ["^build"],
+		"outputs": ["coverage/**"],
+		"cache": false
+	}
 }
 ```
 
@@ -359,10 +359,10 @@ Reference: [turbo.json:1](file:///Users/annawayne/buildos-platform/turbo.json#L1
 ```typescript
 // Supabase client with chainable methods
 const createMockSupabase = () => ({
-  from: vi.fn().mockReturnThis(),
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  single: vi.fn().mockResolvedValue({ data: null, error: null }),
+	from: vi.fn().mockReturnThis(),
+	select: vi.fn().mockReturnThis(),
+	eq: vi.fn().mockReturnThis(),
+	single: vi.fn().mockResolvedValue({ data: null, error: null })
 });
 ```
 
@@ -370,47 +370,47 @@ const createMockSupabase = () => ({
 
 ```typescript
 beforeEach(() => {
-  vi.clearAllMocks();
-  vi.resetModules();
+	vi.clearAllMocks();
+	vi.resetModules();
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });
 ```
 
 **3. Race Condition Testing**:
 
 ```typescript
-it("should track update BEFORE API call", async () => {
-  const orderOfOperations: string[] = [];
-  mockService.trackUpdate = vi.fn((id) => {
-    orderOfOperations.push(`trackUpdate:${id}`);
-  });
-  // Verify order of operations
-  expect(orderOfOperations[0]).toBe("trackUpdate:temp-id");
+it('should track update BEFORE API call', async () => {
+	const orderOfOperations: string[] = [];
+	mockService.trackUpdate = vi.fn((id) => {
+		orderOfOperations.push(`trackUpdate:${id}`);
+	});
+	// Verify order of operations
+	expect(orderOfOperations[0]).toBe('trackUpdate:temp-id');
 });
 ```
 
 **4. Timezone Testing**:
 
 ```typescript
-it("should handle different timezones correctly", () => {
-  const now = new Date("2024-01-15T10:00:00Z");
-  const preference = { timezone: "America/New_York", time_of_day: "09:00:00" };
-  const nextRun = calculateNextRunTime(preference, now);
-  expect(nextRun).toEqual(new Date("2024-01-15T14:00:00Z"));
+it('should handle different timezones correctly', () => {
+	const now = new Date('2024-01-15T10:00:00Z');
+	const preference = { timezone: 'America/New_York', time_of_day: '09:00:00' };
+	const nextRun = calculateNextRunTime(preference, now);
+	expect(nextRun).toEqual(new Date('2024-01-15T14:00:00Z'));
 });
 ```
 
 **5. Parallel Processing Validation**:
 
 ```typescript
-it("should process multiple projects in parallel", async () => {
-  const startTime = Date.now();
-  const results = await Promise.allSettled(promises);
-  const totalTime = Date.now() - startTime;
-  expect(totalTime).toBeLessThan(400); // Not 300ms × N
+it('should process multiple projects in parallel', async () => {
+	const startTime = Date.now();
+	const results = await Promise.allSettled(promises);
+	const totalTime = Date.now() - startTime;
+	expect(totalTime).toBeLessThan(400); // Not 300ms × N
 });
 ```
 
@@ -444,61 +444,61 @@ it("should process multiple projects in parallel", async () => {
 #### P0 - CRITICAL (Immediate Risk)
 
 1. **Calendar Integration** (3,934 lines, 0 tests)
-   - Google Calendar API operations
-   - AI-powered calendar analysis
-   - Webhook handling
-   - Timezone conversions
-   - Reference: Multiple files in [apps/web/src/lib/services/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/)
+    - Google Calendar API operations
+    - AI-powered calendar analysis
+    - Webhook handling
+    - Timezone conversions
+    - Reference: Multiple files in [apps/web/src/lib/services/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/)
 
 2. **Queue System** (15,522 lines, 0 tests)
-   - Atomic job claiming
-   - Job state transitions
-   - Retry logic with backoff
-   - Progress tracking
-   - Reference: [apps/worker/src/lib/supabaseQueue.ts:1](file:///Users/annawayne/buildos-platform/apps/worker/src/lib/supabaseQueue.ts#L1)
+    - Atomic job claiming
+    - Job state transitions
+    - Retry logic with backoff
+    - Progress tracking
+    - Reference: [apps/worker/src/lib/supabaseQueue.ts:1](file:///Users/annawayne/buildos-platform/apps/worker/src/lib/supabaseQueue.ts#L1)
 
 3. **API Endpoints** (151/153 untested)
-   - Input validation gaps
-   - Authorization checks untested
-   - Error handling untested
-   - Reference: [apps/web/src/routes/api/](file:///Users/annawayne/buildos-platform/apps/web/src/routes/api/)
+    - Input validation gaps
+    - Authorization checks untested
+    - Error handling untested
+    - Reference: [apps/web/src/routes/api/](file:///Users/annawayne/buildos-platform/apps/web/src/routes/api/)
 
 4. **Shared Validation Logic** (622 lines, 0 tests)
-   - Job type validators
-   - Used across both apps
-   - Reference: [packages/shared-types/src/validation.ts:1](file:///Users/annawayne/buildos-platform/packages/shared-types/src/validation.ts#L1)
+    - Job type validators
+    - Used across both apps
+    - Reference: [packages/shared-types/src/validation.ts:1](file:///Users/annawayne/buildos-platform/packages/shared-types/src/validation.ts#L1)
 
 #### P1 - HIGH (Production Risk)
 
 5. **Phase Generation System** (6 files, 0 tests)
-   - Strategy pattern implementation
-   - Calendar optimization
-   - Task distribution
-   - Reference: [apps/web/src/lib/services/phase-generation/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/phase-generation/)
+    - Strategy pattern implementation
+    - Calendar optimization
+    - Task distribution
+    - Reference: [apps/web/src/lib/services/phase-generation/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/phase-generation/)
 
 6. **Worker Processors** (34 files, mostly untested)
-   - Brief generation
-   - Email generation
-   - Onboarding analysis
-   - Notification dispatch
-   - Reference: [apps/worker/src/workers/](file:///Users/annawayne/buildos-platform/apps/worker/src/workers/)
+    - Brief generation
+    - Email generation
+    - Onboarding analysis
+    - Notification dispatch
+    - Reference: [apps/worker/src/workers/](file:///Users/annawayne/buildos-platform/apps/worker/src/workers/)
 
 7. **Brain Dump UI Flow** (18 components, 0 tests)
-   - Core user journey untested
-   - Reference: [apps/web/src/lib/components/brain-dump/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/components/brain-dump/)
+    - Core user journey untested
+    - Reference: [apps/web/src/lib/components/brain-dump/](file:///Users/annawayne/buildos-platform/apps/web/src/lib/components/brain-dump/)
 
 8. **Payment Processing** (0 tests)
-   - Stripe integration
-   - Webhook signature validation
-   - Reference: [apps/web/src/lib/services/stripe-service.ts:1](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/stripe-service.ts#L1)
+    - Stripe integration
+    - Webhook signature validation
+    - Reference: [apps/web/src/lib/services/stripe-service.ts:1](file:///Users/annawayne/buildos-platform/apps/web/src/lib/services/stripe-service.ts#L1)
 
 #### P2 - MEDIUM (Quality Risk)
 
 9. **Email/SMS Services** (30,000+ lines, 0 tests)
-   - SMTP transport
-   - Webhook delivery
-   - Template rendering
-   - Reference: Multiple files in [apps/worker/src/lib/services/](file:///Users/annawayne/buildos-platform/apps/worker/src/lib/services/)
+    - SMTP transport
+    - Webhook delivery
+    - Template rendering
+    - Reference: Multiple files in [apps/worker/src/lib/services/](file:///Users/annawayne/buildos-platform/apps/worker/src/lib/services/)
 
 10. **LLM Services** (42,724 lines, 0 tests in worker)
     - DeepSeek-first strategy
@@ -568,71 +568,71 @@ The platform appears to follow a **"test what matters most"** approach:
 **Priority**: P0 - Production Stability
 
 1. **Add Calendar Service Tests**
-   - Mock Google Calendar API
-   - Test CRUD operations, timezone conversions
-   - Test error handling and retries
-   - **Estimated Effort**: 16 hours
+    - Mock Google Calendar API
+    - Test CRUD operations, timezone conversions
+    - Test error handling and retries
+    - **Estimated Effort**: 16 hours
 
 2. **Add Queue System Tests**
-   - Mock Supabase RPCs
-   - Test job lifecycle, atomic operations
-   - Test retry logic and backoff
-   - **Estimated Effort**: 12 hours
+    - Mock Supabase RPCs
+    - Test job lifecycle, atomic operations
+    - Test retry logic and backoff
+    - **Estimated Effort**: 12 hours
 
 3. **Add Shared Validation Tests**
-   - Test all job type validators
-   - Test edge cases (null, invalid formats)
-   - Test timezone validation
-   - **Estimated Effort**: 6 hours
+    - Test all job type validators
+    - Test edge cases (null, invalid formats)
+    - Test timezone validation
+    - **Estimated Effort**: 6 hours
 
 ### Phase 2: API Coverage (Weeks 3-4)
 
 **Priority**: P1 - Security & Reliability
 
 4. **Test Critical API Endpoints**
-   - Brain dump endpoints (4 routes)
-   - Calendar endpoints (5 routes)
-   - Project endpoints (10 routes)
-   - Focus on: request validation, auth, error responses
-   - **Estimated Effort**: 20 hours
+    - Brain dump endpoints (4 routes)
+    - Calendar endpoints (5 routes)
+    - Project endpoints (10 routes)
+    - Focus on: request validation, auth, error responses
+    - **Estimated Effort**: 20 hours
 
 5. **Add Supabase Client Tests**
-   - Test client factory functions
-   - Test environment validation
-   - Test redirect URL generation
-   - **Estimated Effort**: 4 hours
+    - Test client factory functions
+    - Test environment validation
+    - Test redirect URL generation
+    - **Estimated Effort**: 4 hours
 
 ### Phase 3: Worker Coverage (Week 5)
 
 **Priority**: P1 - Background Job Reliability
 
 6. **Test Worker Processors**
-   - Brief worker job processing
-   - Email worker delivery
-   - Test timezone handling, error isolation
-   - **Estimated Effort**: 16 hours
+    - Brief worker job processing
+    - Email worker delivery
+    - Test timezone handling, error isolation
+    - **Estimated Effort**: 16 hours
 
 7. **Test Email Services**
-   - Mock SMTP transport
-   - Test template rendering
-   - Test webhook delivery
-   - **Estimated Effort**: 12 hours
+    - Mock SMTP transport
+    - Test template rendering
+    - Test webhook delivery
+    - **Estimated Effort**: 12 hours
 
 ### Phase 4: Component Testing (Week 6)
 
 **Priority**: P2 - User Experience
 
 8. **Add Component Tests**
-   - Brain dump modal flow
-   - Notification system
-   - Use Svelte Testing Library
-   - **Estimated Effort**: 20 hours
+    - Brain dump modal flow
+    - Notification system
+    - Use Svelte Testing Library
+    - **Estimated Effort**: 20 hours
 
 9. **Add Store Tests**
-   - Test Svelte 5 runes reactivity
-   - Test state persistence
-   - Test derived state
-   - **Estimated Effort**: 8 hours
+    - Test Svelte 5 runes reactivity
+    - Test state persistence
+    - Test derived state
+    - **Estimated Effort**: 8 hours
 
 ### Phase 5: E2E Testing (Week 7-8)
 

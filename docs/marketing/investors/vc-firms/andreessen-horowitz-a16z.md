@@ -128,15 +128,15 @@ Andreessen Horowitz focuses on bold vision companies with differentiated product
 ### Application Pathways:
 
 1. **Speedrun Accelerator** (sr.a16z.com) - Up to $1M, <1% acceptance rate
-   - Requirements: Early traction, founder-market fit, bold 5-10 year vision
-   - Applications open through May 11, 2025
+    - Requirements: Early traction, founder-market fit, bold 5-10 year vision
+    - Applications open through May 11, 2025
 
 2. **a16z START** - Up to $1M for earliest stage companies
-   - Support: 1:1 support and network introductions
-   - Apply at: a16z.com/start
+    - Support: 1:1 support and network introductions
+    - Apply at: a16z.com/start
 
 3. **Seed Fund** - $400M dedicated seed fund
-   - Requirements: Prototype or early traction required
+    - Requirements: Prototype or early traction required
 
 ### Meeting Format Expectations:
 

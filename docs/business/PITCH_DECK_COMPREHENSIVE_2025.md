@@ -427,7 +427,7 @@ _Transforming scattered thoughts into organized action_
 
 - **Context engineering (done right) makes AI actually useful**
 - # **A growing, desperate market**
-  **A unique window for BuildOS**
+    **A unique window for BuildOS**
 
 ### Why This Creates Opportunity
 
@@ -529,9 +529,9 @@ _Transforming scattered thoughts into organized action_
 
 - Support founder salary + 1 strong full-stack engineer
 - **Ship V1.0** (MVP finalization)
-  - Dial in notifications and daily briefs
-  - Optimize brain dump → organization flow
-  - Payment system launch ($20/mo tier)
+    - Dial in notifications and daily briefs
+    - Optimize brain dump → organization flow
+    - Payment system launch ($20/mo tier)
 - Marketing & distribution experiments (find what works)
 
 ### Growth Targets

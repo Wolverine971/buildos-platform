@@ -14,18 +14,18 @@ Sequoia Capital represents one of the most prestigious and aligned investment op
 
 - **Historical AUM**: $85 billion globally as of 2022 (pre-restructuring)
 - **2024 Restructuring**: Split into three independent entities:
-  - **Sequoia Capital** (US & Europe) - _Most relevant for BuildOS_
-  - **Peak XV Partners** (India & Southeast Asia)
-  - **HongShan** (China)
+    - **Sequoia Capital** (US & Europe) - _Most relevant for BuildOS_
+    - **Peak XV Partners** (India & Southeast Asia)
+    - **HongShan** (China)
 
 ### Investment Activity (2024-2025)
 
 - **2024**: 109 investments
 - **2025 YTD**: 82 investments (through September)
 - **Average Investment Sizes**:
-  - Series A: $17.5M average
-  - Seed: $8.04M average
-  - Series B: $67.1M average
+    - Series A: $17.5M average
+    - Seed: $8.04M average
+    - Series B: $67.1M average
 
 ### Geographic Focus
 

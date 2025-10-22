@@ -4,16 +4,8 @@ researcher: Claude Code
 git_commit: 27b0cb62a982e6a98364bf465c89048c874fa6c3
 branch: main
 repository: buildos-platform
-topic: "Notification System Analysis - Repeated Notifications and Task Count Discrepancies"
-tags:
-  [
-    research,
-    notifications,
-    task-count,
-    multi-device,
-    brief-completed,
-    payload-transformer,
-  ]
+topic: 'Notification System Analysis - Repeated Notifications and Task Count Discrepancies'
+tags: [research, notifications, task-count, multi-device, brief-completed, payload-transformer]
 status: complete
 last_updated: 2025-10-10
 last_updated_by: Claude Code
@@ -192,14 +184,14 @@ The worker prevents duplicate sends **per delivery**:
 ```typescript
 // Skip if already sent or currently being processed
 if (
-  delivery.status === "sent" ||
-  delivery.status === "delivered" ||
-  delivery.status === "clicked"
+	delivery.status === 'sent' ||
+	delivery.status === 'delivered' ||
+	delivery.status === 'clicked'
 ) {
-  console.log(
-    `[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`,
-  );
-  return;
+	console.log(
+		`[NotificationWorker] Delivery ${delivery_id} already completed (${delivery.status}), skipping`
+	);
+	return;
 }
 ```
 
@@ -248,9 +240,9 @@ Tasks are categorized into 5 groups:
 
 ```typescript
 const todaysTasks = project.tasks.filter((task: TaskWithCalendarEvent) => {
-  if (!task.start_date || task.outdated || task.status === "done") return false;
-  const taskStartDate = parseISO(task.start_date);
-  return taskStartDate >= todayBounds.start && taskStartDate <= todayBounds.end;
+	if (!task.start_date || task.outdated || task.status === 'done') return false;
+	const taskStartDate = parseISO(task.start_date);
+	return taskStartDate >= todayBounds.start && taskStartDate <= todayBounds.end;
 });
 ```
 
@@ -267,9 +259,9 @@ const todaysTasks = project.tasks.filter((task: TaskWithCalendarEvent) => {
 
 ```typescript
 const overdueTasks = tasks.filter((task) => {
-  if (!task.start_date || task.status === "done" || task.outdated) return false;
-  const taskStartDate = parseISO(task.start_date);
-  return taskStartDate < todayBounds.start; // Before today
+	if (!task.start_date || task.status === 'done' || task.outdated) return false;
+	const taskStartDate = parseISO(task.start_date);
+	return taskStartDate < todayBounds.start; // Before today
 });
 ```
 
@@ -296,11 +288,7 @@ const nextSevenDaysTasks = getUpcomingTasks(project.tasks, briefDate, timezone);
 ##### E. Recently Completed Tasks (Lines 536-540, 750-772)
 
 ```typescript
-const recentlyCompletedTasks = getRecentlyCompletedTasks(
-  project.tasks,
-  briefDate,
-  timezone,
-);
+const recentlyCompletedTasks = getRecentlyCompletedTasks(project.tasks, briefDate, timezone);
 // Returns tasks completed in last 24 hours (based on updated_at)
 ```
 
@@ -313,18 +301,18 @@ const recentlyCompletedTasks = getRecentlyCompletedTasks(
 ```typescript
 // Get task and project counts from project_daily_briefs
 const { data: projectBriefs } = await supabase
-  .from("project_daily_briefs")
-  .select("id, metadata")
-  .eq("daily_brief_id", brief.id);
+	.from('project_daily_briefs')
+	.select('id, metadata')
+	.eq('daily_brief_id', brief.id);
 
 const projectCount = projectBriefs?.length || 0;
 
 // Calculate task count from project briefs (today's tasks only)
 const taskCount =
-  projectBriefs?.reduce((sum, pb) => {
-    const metadata = pb.metadata as any;
-    return sum + (metadata?.todays_task_count || 0); // ← ONLY TODAY'S TASKS
-  }, 0) || 0;
+	projectBriefs?.reduce((sum, pb) => {
+		const metadata = pb.metadata as any;
+		return sum + (metadata?.todays_task_count || 0); // ← ONLY TODAY'S TASKS
+	}, 0) || 0;
 ```
 
 **Critical Finding**: Notification `task_count` = **ONLY today's tasks**, not all tasks
@@ -334,18 +322,18 @@ const taskCount =
 **File**: `apps/worker/src/workers/brief/briefWorker.ts` (Lines 332-344)
 
 ```typescript
-await (serviceClient.rpc as any)("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_event_source: "worker_job",
-  p_target_user_id: job.data.userId,
-  p_payload: {
-    brief_id: brief.id,
-    brief_date: briefDate,
-    timezone: timezone,
-    task_count: taskCount, // ← TODAY'S TASKS ONLY
-    project_count: projectCount,
-  },
-  p_scheduled_for: notificationScheduledFor?.toISOString(),
+await (serviceClient.rpc as any)('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: job.data.userId,
+	p_payload: {
+		brief_id: brief.id,
+		brief_date: briefDate,
+		timezone: timezone,
+		task_count: taskCount, // ← TODAY'S TASKS ONLY
+		project_count: projectCount
+	},
+	p_scheduled_for: notificationScheduledFor?.toISOString()
 });
 ```
 
@@ -354,27 +342,22 @@ await (serviceClient.rpc as any)("emit_notification_event", {
 **File**: `packages/shared-types/src/payloadTransformer.ts` (Lines 51-72)
 
 ```typescript
-function transformBriefCompleted(
-  payload: BriefCompletedEventPayload,
-): NotificationPayload {
-  const taskText =
-    payload.task_count === 1 ? "1 task" : `${payload.task_count || 0} tasks`;
-  const projectText =
-    payload.project_count === 1
-      ? "1 project"
-      : `${payload.project_count || 0} projects`;
+function transformBriefCompleted(payload: BriefCompletedEventPayload): NotificationPayload {
+	const taskText = payload.task_count === 1 ? '1 task' : `${payload.task_count || 0} tasks`;
+	const projectText =
+		payload.project_count === 1 ? '1 project' : `${payload.project_count || 0} projects`;
 
-  return {
-    title: "Your Daily Brief is Ready! 📋",
-    body: `${taskText} across ${projectText} for ${payload.brief_date}`,
-    action_url: `/briefs/${payload.brief_id}`,
-    icon_url: "/AppImages/android/android-launchericon-192-192.png",
-    data: {
-      brief_id: payload.brief_id,
-      brief_date: payload.brief_date,
-      timezone: payload.timezone,
-    },
-  };
+	return {
+		title: 'Your Daily Brief is Ready! 📋',
+		body: `${taskText} across ${projectText} for ${payload.brief_date}`,
+		action_url: `/briefs/${payload.brief_id}`,
+		icon_url: '/AppImages/android/android-launchericon-192-192.png',
+		data: {
+			brief_id: payload.brief_id,
+			brief_date: payload.brief_date,
+			timezone: payload.timezone
+		}
+	};
 }
 ```
 
@@ -544,25 +527,25 @@ Or:
 
 ```typescript
 const taskCount =
-  projectBriefs?.reduce((sum, pb) => {
-    const metadata = pb.metadata as any;
-    return sum + (metadata?.todays_task_count || 0);
-  }, 0) || 0;
+	projectBriefs?.reduce((sum, pb) => {
+		const metadata = pb.metadata as any;
+		return sum + (metadata?.todays_task_count || 0);
+	}, 0) || 0;
 ```
 
 **After**:
 
 ```typescript
 const taskCount =
-  projectBriefs?.reduce((sum, pb) => {
-    const metadata = pb.metadata as any;
-    return (
-      sum +
-      (metadata?.todays_task_count || 0) +
-      (metadata?.overdue_task_count || 0) +
-      (metadata?.upcoming_task_count || 0)
-    );
-  }, 0) || 0;
+	projectBriefs?.reduce((sum, pb) => {
+		const metadata = pb.metadata as any;
+		return (
+			sum +
+			(metadata?.todays_task_count || 0) +
+			(metadata?.overdue_task_count || 0) +
+			(metadata?.upcoming_task_count || 0)
+		);
+	}, 0) || 0;
 ```
 
 **Pros**:
@@ -603,9 +586,9 @@ const taskCount =
 ### Test Case 2: Task Count Accuracy
 
 1. Create project with:
-   - 2 tasks starting today
-   - 10 tasks overdue (start date before today)
-   - 8 tasks upcoming (start date after today)
+    - 2 tasks starting today
+    - 10 tasks overdue (start date before today)
+    - 8 tasks upcoming (start date after today)
 2. Generate daily brief
 3. Check notification message
 4. Compare with brief UI
@@ -627,24 +610,24 @@ const taskCount =
 ## Open Questions
 
 1. **Should we implement smart dismissal?**
-   - Dismiss notifications on all devices when opened on one device
-   - Requires real-time sync via Supabase Realtime
-   - **Recommendation**: Future enhancement, not urgent
+    - Dismiss notifications on all devices when opened on one device
+    - Requires real-time sync via Supabase Realtime
+    - **Recommendation**: Future enhancement, not urgent
 
 2. **Should notification show all pending tasks or just today's tasks?**
-   - Current: Only today's tasks
-   - Alternative: Today + overdue + upcoming
-   - **Recommendation**: Keep today's only, but make message clearer
+    - Current: Only today's tasks
+    - Alternative: Today + overdue + upcoming
+    - **Recommendation**: Keep today's only, but make message clearer
 
 3. **Should users have option to control multi-device behavior?**
-   - Current: All devices always receive notifications
-   - Alternative: Add "preferred device only" setting
-   - **Recommendation**: Not needed - matches industry standards
+    - Current: All devices always receive notifications
+    - Alternative: Add "preferred device only" setting
+    - **Recommendation**: Not needed - matches industry standards
 
 4. **Should we add task count breakdown to notification?**
-   - Current: "2 tasks across 3 projects"
-   - Alternative: "Today: 2 | Overdue: 10 | Upcoming: 8"
-   - **Recommendation**: Yes - improves clarity without overwhelming
+    - Current: "2 tasks across 3 projects"
+    - Alternative: "Today: 2 | Overdue: 10 | Upcoming: 8"
+    - **Recommendation**: Yes - improves clarity without overwhelming
 
 ---
 

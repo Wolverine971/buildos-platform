@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 1affbd47e642822c878036bd8bf1ba83ce972b0a
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Task Editing Enhancement - Full Field Support"
+topic: 'Calendar Analysis Task Editing Enhancement - Full Field Support'
 tags: [research, codebase, calendar-analysis, task-editing, ui-enhancement]
 status: complete
 last_updated: 2025-10-03
@@ -207,25 +207,25 @@ let taskEdits = $state<Record<number, any>>({}); // ❌ Uses array index, not ta
 
 ```svelte
 {#if isTaskEditing && taskEdits[index]}
-  <div class="space-y-3">
-    <!-- Title -->
-    <input type="text" bind:value={taskEdits[index].title} ... />
+	<div class="space-y-3">
+		<!-- Title -->
+		<input type="text" bind:value={taskEdits[index].title} ... />
 
-    <!-- Description -->
-    <textarea bind:value={taskEdits[index].description} rows="2" ... />
+		<!-- Description -->
+		<textarea bind:value={taskEdits[index].description} rows="2" ... />
 
-    <!-- Priority and Start Date in 2-column grid -->
-    <div class="grid grid-cols-2 gap-3">
-      <select bind:value={taskEdits[index].priority}>
-        <option value="low">Low Priority</option>
-        <option value="medium">Medium Priority</option>
-        <option value="high">High Priority</option>
-      </select>
-      <input type="datetime-local" bind:value={taskEdits[index].start_date} />
-    </div>
+		<!-- Priority and Start Date in 2-column grid -->
+		<div class="grid grid-cols-2 gap-3">
+			<select bind:value={taskEdits[index].priority}>
+				<option value="low">Low Priority</option>
+				<option value="medium">Medium Priority</option>
+				<option value="high">High Priority</option>
+			</select>
+			<input type="datetime-local" bind:value={taskEdits[index].start_date} />
+		</div>
 
-    <!-- Save/Cancel buttons -->
-  </div>
+		<!-- Save/Cancel buttons -->
+	</div>
 {/if}
 ```
 
@@ -242,33 +242,33 @@ let taskEdits = $state<Record<number, any>>({}); // ❌ Uses array index, not ta
 
 ```typescript
 function saveTaskEdit(suggestionId: string, taskIndex: number) {
-  const taskEdit = taskEdits[taskIndex];
+	const taskEdit = taskEdits[taskIndex];
 
-  // Basic validations
-  if (!taskEdit.title || taskEdit.title.trim().length === 0) {
-    toastService.error("Task title is required");
-    return;
-  }
+	// Basic validations
+	if (!taskEdit.title || taskEdit.title.trim().length === 0) {
+		toastService.error('Task title is required');
+		return;
+	}
 
-  if (taskEdit.title.length > 255) {
-    toastService.error("Task title must be 255 characters or less");
-    return;
-  }
+	if (taskEdit.title.length > 255) {
+		toastService.error('Task title must be 255 characters or less');
+		return;
+	}
 
-  if (taskEdit.start_date) {
-    const date = new Date(taskEdit.start_date);
-    if (isNaN(date.getTime())) {
-      toastService.error("Please enter a valid date");
-      return;
-    }
-  }
+	if (taskEdit.start_date) {
+		const date = new Date(taskEdit.start_date);
+		if (isNaN(date.getTime())) {
+			toastService.error('Please enter a valid date');
+			return;
+		}
+	}
 
-  // Update suggestion in place
-  suggestion.suggested_tasks[taskIndex] = { ...taskEdit };
-  suggestions = [...suggestions]; // Trigger reactivity
+	// Update suggestion in place
+	suggestion.suggested_tasks[taskIndex] = { ...taskEdit };
+	suggestions = [...suggestions]; // Trigger reactivity
 
-  editingTask = null;
-  delete taskEdits[taskIndex];
+	editingTask = null;
+	delete taskEdits[taskIndex];
 }
 ```
 
@@ -288,35 +288,35 @@ function saveTaskEdit(suggestionId: string, taskIndex: number) {
 ### Primary Files Analyzed
 
 1. **CalendarAnalysisResults.svelte**
-   - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte`
-   - Current task display: Lines 843-912
-   - Current task editing: Lines 769-841
-   - Task validation: Lines 145-194
-   - Task state management: Lines 72-76
+    - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte`
+    - Current task display: Lines 843-912
+    - Current task editing: Lines 769-841
+    - Task validation: Lines 145-194
+    - Task state management: Lines 72-76
 
 2. **OperationEditModal.svelte**
-   - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/brain-dump/OperationEditModal.svelte`
-   - Dynamic field rendering: Lines 400-667
-   - Markdown support: Lines 418-425
-   - JSONB editing: Lines 437-557
-   - Validation system: Lines 153-206
+    - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/brain-dump/OperationEditModal.svelte`
+    - Dynamic field rendering: Lines 400-667
+    - Markdown support: Lines 418-425
+    - JSONB editing: Lines 437-557
+    - Validation system: Lines 153-206
 
 3. **field-config-generator.ts**
-   - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/field-config-generator.ts`
-   - Main generator: `generateFieldConfig()` function
-   - Field type patterns and select options
-   - Required field logic by table and operation
+    - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/field-config-generator.ts`
+    - Main generator: `generateFieldConfig()` function
+    - Field type patterns and select options
+    - Required field logic by table and operation
 
 4. **calendar-analysis.service.ts**
-   - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/calendar-analysis.service.ts`
-   - Task structure definition: Lines 78-98
-   - AI prompt for task generation: Lines 376-391
-   - Task acceptance and creation: Lines 527-593
+    - Path: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/calendar-analysis.service.ts`
+    - Task structure definition: Lines 78-98
+    - AI prompt for task generation: Lines 376-391
+    - Task acceptance and creation: Lines 527-593
 
 5. **Database Schema**
-   - Path: `/Users/annawayne/buildos-platform/apps/web/supabase/migrations/20250129_calendar_intelligence_integration.sql`
-   - `calendar_project_suggestions` table definition
-   - `suggested_tasks` JSONB field: Lines 113-124
+    - Path: `/Users/annawayne/buildos-platform/apps/web/supabase/migrations/20250129_calendar_intelligence_integration.sql`
+    - `calendar_project_suggestions` table definition
+    - `suggested_tasks` JSONB field: Lines 113-124
 
 ---
 
@@ -334,10 +334,10 @@ function saveTaskEdit(suggestionId: string, taskIndex: number) {
 
 ```typescript
 interface Props {
-  isOpen: boolean;
-  task: SuggestedTask | null; // Current task being edited
-  onSave: (updatedTask: SuggestedTask) => void;
-  onClose: () => void;
+	isOpen: boolean;
+	task: SuggestedTask | null; // Current task being edited
+	onSave: (updatedTask: SuggestedTask) => void;
+	onClose: () => void;
 }
 ```
 
@@ -357,124 +357,116 @@ Create a new field config generator specifically for calendar tasks:
 **New File**: `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/calendar-task-field-config.ts`
 
 ```typescript
-import type { FieldConfig } from "$lib/utils/field-config-generator";
+import type { FieldConfig } from '$lib/utils/field-config-generator';
 
 export interface CalendarTaskFieldConfig extends FieldConfig {
-  conditionalDisplay?: (task: any) => boolean; // Show field based on conditions
-  group?: string; // Group related fields (basic, scheduling, recurrence)
+	conditionalDisplay?: (task: any) => boolean; // Show field based on conditions
+	group?: string; // Group related fields (basic, scheduling, recurrence)
 }
 
 export function generateCalendarTaskFieldConfig(
-  task?: any,
+	task?: any
 ): Record<string, CalendarTaskFieldConfig> {
-  return {
-    // Group 1: Basic Information
-    title: {
-      type: "text",
-      label: "Task Title",
-      required: true,
-      placeholder: "Enter a clear, actionable task title",
-      group: "basic",
-    },
-    description: {
-      type: "textarea",
-      label: "Brief Description",
-      required: true,
-      placeholder: "Brief description of what needs to be done",
-      rows: 2,
-      group: "basic",
-    },
-    details: {
-      type: "textarea",
-      label: "Detailed Information",
-      required: false,
-      placeholder: "Comprehensive specifics about the task...",
-      rows: 4,
-      markdown: true, // Enable markdown toggle
-      group: "basic",
-    },
+	return {
+		// Group 1: Basic Information
+		title: {
+			type: 'text',
+			label: 'Task Title',
+			required: true,
+			placeholder: 'Enter a clear, actionable task title',
+			group: 'basic'
+		},
+		description: {
+			type: 'textarea',
+			label: 'Brief Description',
+			required: true,
+			placeholder: 'Brief description of what needs to be done',
+			rows: 2,
+			group: 'basic'
+		},
+		details: {
+			type: 'textarea',
+			label: 'Detailed Information',
+			required: false,
+			placeholder: 'Comprehensive specifics about the task...',
+			rows: 4,
+			markdown: true, // Enable markdown toggle
+			group: 'basic'
+		},
 
-    // Group 2: Status and Priority
-    status: {
-      type: "select",
-      label: "Status",
-      required: true,
-      options: ["backlog", "in_progress", "done", "blocked"],
-      group: "status",
-    },
-    priority: {
-      type: "select",
-      label: "Priority",
-      required: true,
-      options: ["low", "medium", "high"],
-      group: "status",
-    },
+		// Group 2: Status and Priority
+		status: {
+			type: 'select',
+			label: 'Status',
+			required: true,
+			options: ['backlog', 'in_progress', 'done', 'blocked'],
+			group: 'status'
+		},
+		priority: {
+			type: 'select',
+			label: 'Priority',
+			required: true,
+			options: ['low', 'medium', 'high'],
+			group: 'status'
+		},
 
-    // Group 3: Scheduling
-    task_type: {
-      type: "select",
-      label: "Task Type",
-      required: true,
-      options: ["one_off", "recurring"],
-      group: "scheduling",
-    },
-    duration_minutes: {
-      type: "number",
-      label: "Duration (minutes)",
-      required: false,
-      min: 15,
-      max: 480,
-      placeholder: "60",
-      group: "scheduling",
-    },
-    start_date: {
-      type: "datetime-local",
-      label: "Start Date & Time",
-      required: false,
-      group: "scheduling",
-    },
+		// Group 3: Scheduling
+		task_type: {
+			type: 'select',
+			label: 'Task Type',
+			required: true,
+			options: ['one_off', 'recurring'],
+			group: 'scheduling'
+		},
+		duration_minutes: {
+			type: 'number',
+			label: 'Duration (minutes)',
+			required: false,
+			min: 15,
+			max: 480,
+			placeholder: '60',
+			group: 'scheduling'
+		},
+		start_date: {
+			type: 'datetime-local',
+			label: 'Start Date & Time',
+			required: false,
+			group: 'scheduling'
+		},
 
-    // Group 4: Recurrence (conditional)
-    recurrence_pattern: {
-      type: "select",
-      label: "Recurrence Pattern",
-      required: false, // Required if task_type='recurring'
-      options: [
-        "daily",
-        "weekdays",
-        "weekly",
-        "biweekly",
-        "monthly",
-        "quarterly",
-        "yearly",
-      ],
-      conditionalDisplay: (task) => task?.task_type === "recurring",
-      group: "recurrence",
-    },
-    recurrence_ends: {
-      type: "date",
-      label: "Recurrence End Date",
-      required: false,
-      conditionalDisplay: (task) => task?.task_type === "recurring",
-      group: "recurrence",
-    },
+		// Group 4: Recurrence (conditional)
+		recurrence_pattern: {
+			type: 'select',
+			label: 'Recurrence Pattern',
+			required: false, // Required if task_type='recurring'
+			options: ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'],
+			conditionalDisplay: (task) => task?.task_type === 'recurring',
+			group: 'recurrence'
+		},
+		recurrence_ends: {
+			type: 'date',
+			label: 'Recurrence End Date',
+			required: false,
+			conditionalDisplay: (task) => task?.task_type === 'recurring',
+			group: 'recurrence'
+		},
 
-    // Group 5: Metadata
-    event_id: {
-      type: "text",
-      label: "Linked Calendar Event",
-      required: false,
-      readonly: true, // Display only, not editable
-      group: "metadata",
-    },
-    tags: {
-      type: "tags",
-      label: "Tags",
-      required: false,
-      placeholder: "Enter tags separated by commas",
-      group: "metadata",
-    },
-  };
+		// Group 5: Metadata
+		event_id: {
+			type: 'text',
+			label: 'Linked Calendar Event',
+			required: false,
+			readonly: true, // Display only, not editable
+			group: 'metadata'
+		},
+		tags: {
+			type: 'tags',
+			label: 'Tags',
+			required: false,
+			placeholder: 'Enter tags separated by commas',
+			group: 'metadata'
+		}
+	};
 }
 ```
 
@@ -484,78 +476,78 @@ export function generateCalendarTaskFieldConfig(
 
 ```typescript
 function validateTask(task: SuggestedTask): string[] {
-  const errors: string[] = [];
+	const errors: string[] = [];
 
-  // Required fields
-  if (!task.title || task.title.trim().length === 0) {
-    errors.push("Task title is required");
-  }
-  if (task.title && task.title.length > 255) {
-    errors.push("Task title must be 255 characters or less");
-  }
-  if (!task.description || task.description.trim().length === 0) {
-    errors.push("Brief description is required");
-  }
+	// Required fields
+	if (!task.title || task.title.trim().length === 0) {
+		errors.push('Task title is required');
+	}
+	if (task.title && task.title.length > 255) {
+		errors.push('Task title must be 255 characters or less');
+	}
+	if (!task.description || task.description.trim().length === 0) {
+		errors.push('Brief description is required');
+	}
 
-  // Enum validations
-  const validStatuses = ["backlog", "in_progress", "done", "blocked"];
-  if (task.status && !validStatuses.includes(task.status)) {
-    errors.push("Invalid status value");
-  }
+	// Enum validations
+	const validStatuses = ['backlog', 'in_progress', 'done', 'blocked'];
+	if (task.status && !validStatuses.includes(task.status)) {
+		errors.push('Invalid status value');
+	}
 
-  const validPriorities = ["low", "medium", "high"];
-  if (task.priority && !validPriorities.includes(task.priority)) {
-    errors.push("Invalid priority value");
-  }
+	const validPriorities = ['low', 'medium', 'high'];
+	if (task.priority && !validPriorities.includes(task.priority)) {
+		errors.push('Invalid priority value');
+	}
 
-  const validTaskTypes = ["one_off", "recurring"];
-  if (task.task_type && !validTaskTypes.includes(task.task_type)) {
-    errors.push("Invalid task type");
-  }
+	const validTaskTypes = ['one_off', 'recurring'];
+	if (task.task_type && !validTaskTypes.includes(task.task_type)) {
+		errors.push('Invalid task type');
+	}
 
-  // Conditional validations
-  if (task.task_type === "recurring") {
-    if (!task.recurrence_pattern) {
-      errors.push("Recurrence pattern is required for recurring tasks");
-    } else {
-      const validPatterns = [
-        "daily",
-        "weekdays",
-        "weekly",
-        "biweekly",
-        "monthly",
-        "quarterly",
-        "yearly",
-      ];
-      if (!validPatterns.includes(task.recurrence_pattern)) {
-        errors.push("Invalid recurrence pattern");
-      }
-    }
-  }
+	// Conditional validations
+	if (task.task_type === 'recurring') {
+		if (!task.recurrence_pattern) {
+			errors.push('Recurrence pattern is required for recurring tasks');
+		} else {
+			const validPatterns = [
+				'daily',
+				'weekdays',
+				'weekly',
+				'biweekly',
+				'monthly',
+				'quarterly',
+				'yearly'
+			];
+			if (!validPatterns.includes(task.recurrence_pattern)) {
+				errors.push('Invalid recurrence pattern');
+			}
+		}
+	}
 
-  // Date validations
-  if (task.start_date) {
-    const date = new Date(task.start_date);
-    if (isNaN(date.getTime())) {
-      errors.push("Invalid start date format");
-    }
-  }
+	// Date validations
+	if (task.start_date) {
+		const date = new Date(task.start_date);
+		if (isNaN(date.getTime())) {
+			errors.push('Invalid start date format');
+		}
+	}
 
-  if (task.recurrence_ends) {
-    const date = new Date(task.recurrence_ends);
-    if (isNaN(date.getTime())) {
-      errors.push("Invalid recurrence end date format");
-    }
-  }
+	if (task.recurrence_ends) {
+		const date = new Date(task.recurrence_ends);
+		if (isNaN(date.getTime())) {
+			errors.push('Invalid recurrence end date format');
+		}
+	}
 
-  // Number validations
-  if (task.duration_minutes !== undefined && task.duration_minutes !== null) {
-    if (task.duration_minutes < 15 || task.duration_minutes > 480) {
-      errors.push("Duration must be between 15 and 480 minutes");
-    }
-  }
+	// Number validations
+	if (task.duration_minutes !== undefined && task.duration_minutes !== null) {
+		if (task.duration_minutes < 15 || task.duration_minutes > 480) {
+			errors.push('Duration must be between 15 and 480 minutes');
+		}
+	}
 
-  return errors;
+	return errors;
 }
 ```
 
@@ -570,7 +562,7 @@ function validateTask(task: SuggestedTask): string[] {
 **File**: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte`
 
 ```typescript
-import CalendarTaskEditModal from "./CalendarTaskEditModal.svelte";
+import CalendarTaskEditModal from './CalendarTaskEditModal.svelte';
 
 // Updated state (replace lines 72-76)
 let tasksExpanded = $state(new Set<string>());
@@ -584,42 +576,38 @@ let isTaskEditModalOpen = $state(false); // New: Modal open state
 
 ```typescript
 function startEditingTask(suggestionId: string, taskIndex: number) {
-  const suggestion = suggestions.find((s) => s.id === suggestionId);
-  const task = suggestion?.suggested_tasks?.[taskIndex];
+	const suggestion = suggestions.find((s) => s.id === suggestionId);
+	const task = suggestion?.suggested_tasks?.[taskIndex];
 
-  if (task) {
-    editingTaskKey = `${suggestionId}-${taskIndex}`;
-    editingTaskData = { ...task }; // Clone task data
-    isTaskEditModalOpen = true;
-  }
+	if (task) {
+		editingTaskKey = `${suggestionId}-${taskIndex}`;
+		editingTaskData = { ...task }; // Clone task data
+		isTaskEditModalOpen = true;
+	}
 }
 
 function handleTaskSave(updatedTask: SuggestedTask) {
-  if (!editingTaskKey) return;
+	if (!editingTaskKey) return;
 
-  const [suggestionId, indexStr] = editingTaskKey.split("-");
-  const taskIndex = parseInt(indexStr, 10);
+	const [suggestionId, indexStr] = editingTaskKey.split('-');
+	const taskIndex = parseInt(indexStr, 10);
 
-  const suggestion = suggestions.find((s) => s.id === suggestionId);
-  if (
-    suggestion &&
-    suggestion.suggested_tasks &&
-    Array.isArray(suggestion.suggested_tasks)
-  ) {
-    suggestion.suggested_tasks[taskIndex] = updatedTask;
-    suggestions = [...suggestions]; // Trigger reactivity
-    toastService.success("Task updated successfully");
-  }
+	const suggestion = suggestions.find((s) => s.id === suggestionId);
+	if (suggestion && suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
+		suggestion.suggested_tasks[taskIndex] = updatedTask;
+		suggestions = [...suggestions]; // Trigger reactivity
+		toastService.success('Task updated successfully');
+	}
 
-  isTaskEditModalOpen = false;
-  editingTaskKey = null;
-  editingTaskData = null;
+	isTaskEditModalOpen = false;
+	editingTaskKey = null;
+	editingTaskData = null;
 }
 
 function handleTaskEditClose() {
-  isTaskEditModalOpen = false;
-  editingTaskKey = null;
-  editingTaskData = null;
+	isTaskEditModalOpen = false;
+	editingTaskKey = null;
+	editingTaskData = null;
 }
 ```
 
@@ -629,21 +617,21 @@ function handleTaskEditClose() {
 
 ```svelte
 <div class="flex items-start justify-between">
-  <div class="flex-1">
-    <!-- Task title, description, metadata display -->
-    <!-- ... existing read-only display code ... -->
-  </div>
+	<div class="flex-1">
+		<!-- Task title, description, metadata display -->
+		<!-- ... existing read-only display code ... -->
+	</div>
 
-  <!-- Edit button -->
-  <Button
-    size="sm"
-    variant="ghost"
-    icon={Edit3}
-    on:click={() => startEditingTask(suggestion.id, index)}
-    disabled={processing}
-    class="ml-2 !p-1.5"
-    title="Edit task"
-  />
+	<!-- Edit button -->
+	<Button
+		size="sm"
+		variant="ghost"
+		icon={Edit3}
+		on:click={() => startEditingTask(suggestion.id, index)}
+		disabled={processing}
+		class="ml-2 !p-1.5"
+		title="Edit task"
+	/>
 </div>
 ```
 
@@ -654,12 +642,12 @@ function handleTaskEditClose() {
 ```svelte
 <!-- Task Edit Modal -->
 {#if isTaskEditModalOpen && editingTaskData}
-  <CalendarTaskEditModal
-    isOpen={isTaskEditModalOpen}
-    task={editingTaskData}
-    onSave={handleTaskSave}
-    onClose={handleTaskEditClose}
-  />
+	<CalendarTaskEditModal
+		isOpen={isTaskEditModalOpen}
+		task={editingTaskData}
+		onSave={handleTaskSave}
+		onClose={handleTaskEditClose}
+	/>
 {/if}
 ```
 
@@ -675,114 +663,131 @@ function handleTaskEditClose() {
 
 ```svelte
 <div class="flex-1 min-w-0">
-  <!-- Header: Title + Status Badge -->
-  <div class="flex items-center gap-2 mb-2">
-    <h5 class="font-medium text-gray-900 dark:text-white text-sm">
-      {task.title}
-    </h5>
-    {#if task.status}
-      <span class="px-2 py-0.5 text-xs rounded-full font-medium
-        {task.status === 'done' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-         task.status === 'in_progress' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-         task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-         'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}">
-        {task.status}
-      </span>
-    {/if}
-    {#if isPastTask}
-      <span class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-        Past Event
-      </span>
-    {/if}
-  </div>
+	<!-- Header: Title + Status Badge -->
+	<div class="flex items-center gap-2 mb-2">
+		<h5 class="font-medium text-gray-900 dark:text-white text-sm">
+			{task.title}
+		</h5>
+		{#if task.status}
+			<span
+				class="px-2 py-0.5 text-xs rounded-full font-medium
+        {task.status === 'done'
+					? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+					: task.status === 'in_progress'
+						? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+						: task.status === 'blocked'
+							? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+							: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}"
+			>
+				{task.status}
+			</span>
+		{/if}
+		{#if isPastTask}
+			<span
+				class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full"
+			>
+				Past Event
+			</span>
+		{/if}
+	</div>
 
-  <!-- Description -->
-  {#if task.description}
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-      {task.description}
-    </p>
-  {/if}
+	<!-- Description -->
+	{#if task.description}
+		<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+			{task.description}
+		</p>
+	{/if}
 
-  <!-- Details (if present) -->
-  {#if task.details}
-    <div class="text-xs text-gray-500 dark:text-gray-400 mb-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700">
-      <strong>Details:</strong>
-      <p class="mt-1">{task.details}</p>
-    </div>
-  {/if}
+	<!-- Details (if present) -->
+	{#if task.details}
+		<div
+			class="text-xs text-gray-500 dark:text-gray-400 mb-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700"
+		>
+			<strong>Details:</strong>
+			<p class="mt-1">{task.details}</p>
+		</div>
+	{/if}
 
-  <!-- Metadata Grid -->
-  <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-    <!-- Priority -->
-    {#if task.priority}
-      <span class="inline-flex px-2 py-0.5 rounded-full font-medium
-        {task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-         task.priority === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-         'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}">
-        {task.priority} priority
-      </span>
-    {/if}
+	<!-- Metadata Grid -->
+	<div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+		<!-- Priority -->
+		{#if task.priority}
+			<span
+				class="inline-flex px-2 py-0.5 rounded-full font-medium
+        {task.priority === 'high'
+					? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+					: task.priority === 'medium'
+						? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+						: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}"
+			>
+				{task.priority} priority
+			</span>
+		{/if}
 
-    <!-- Task Type -->
-    {#if task.task_type}
-      <span class="flex items-center gap-1">
-        <TrendingUp class="w-3 h-3" />
-        {task.task_type === 'recurring' ? 'Recurring' : 'One-time'}
-      </span>
-    {/if}
+		<!-- Task Type -->
+		{#if task.task_type}
+			<span class="flex items-center gap-1">
+				<TrendingUp class="w-3 h-3" />
+				{task.task_type === 'recurring' ? 'Recurring' : 'One-time'}
+			</span>
+		{/if}
 
-    <!-- Start Date -->
-    {#if task.start_date}
-      <span class="flex items-center gap-1">
-        <Calendar class="w-3 h-3" />
-        {formatDate(task.start_date)}
-      </span>
-    {/if}
+		<!-- Start Date -->
+		{#if task.start_date}
+			<span class="flex items-center gap-1">
+				<Calendar class="w-3 h-3" />
+				{formatDate(task.start_date)}
+			</span>
+		{/if}
 
-    <!-- Duration -->
-    {#if task.duration_minutes}
-      <span class="flex items-center gap-1">
-        <Clock class="w-3 h-3" />
-        {task.duration_minutes}min
-      </span>
-    {/if}
+		<!-- Duration -->
+		{#if task.duration_minutes}
+			<span class="flex items-center gap-1">
+				<Clock class="w-3 h-3" />
+				{task.duration_minutes}min
+			</span>
+		{/if}
 
-    <!-- Recurrence (if recurring) -->
-    {#if task.task_type === 'recurring' && task.recurrence_pattern}
-      <span class="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
-        <Repeat class="w-3 h-3" />
-        {task.recurrence_pattern}
-        {#if task.recurrence_ends}
-          until {new Date(task.recurrence_ends).toLocaleDateString()}
-        {/if}
-      </span>
-    {/if}
-  </div>
+		<!-- Recurrence (if recurring) -->
+		{#if task.task_type === 'recurring' && task.recurrence_pattern}
+			<span
+				class="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full"
+			>
+				<Repeat class="w-3 h-3" />
+				{task.recurrence_pattern}
+				{#if task.recurrence_ends}
+					until {new Date(task.recurrence_ends).toLocaleDateString()}
+				{/if}
+			</span>
+		{/if}
+	</div>
 
-  <!-- Tags (if present) -->
-  {#if task.tags && task.tags.length > 0}
-    <div class="flex flex-wrap gap-1.5 mt-2">
-      {#each task.tags as tag}
-        <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
-          {tag}
-        </span>
-      {/each}
-    </div>
-  {/if}
+	<!-- Tags (if present) -->
+	{#if task.tags && task.tags.length > 0}
+		<div class="flex flex-wrap gap-1.5 mt-2">
+			{#each task.tags as tag}
+				<span
+					class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+				>
+					{tag}
+				</span>
+			{/each}
+		</div>
+	{/if}
 
-  <!-- Linked Event (if present) -->
-  {#if task.event_id}
-    <div class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-      Linked to calendar event: {task.event_id}
-    </div>
-  {/if}
+	<!-- Linked Event (if present) -->
+	{#if task.event_id}
+		<div class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+			Linked to calendar event: {task.event_id}
+		</div>
+	{/if}
 </div>
 ```
 
 **New Icon Import** (add to line 7-20):
 
 ```typescript
-import { Repeat } from "lucide-svelte"; // For recurrence indicator
+import { Repeat } from 'lucide-svelte'; // For recurrence indicator
 ```
 
 ---
@@ -951,19 +956,19 @@ Add section:
 ## Open Questions
 
 1. **UI Layout**: Should recurring task fields be in a collapsible section or always visible when task_type='recurring'?
-   - **Recommendation**: Always visible to avoid extra click for common use case
+    - **Recommendation**: Always visible to avoid extra click for common use case
 
 2. **Validation Strictness**: Should we allow tasks with missing non-required fields to be saved?
-   - **Recommendation**: Yes, follow current behavior (only validate required fields)
+    - **Recommendation**: Yes, follow current behavior (only validate required fields)
 
 3. **Default Values**: When creating new tasks, what defaults should be used?
-   - **Recommendation**: status='backlog', priority='medium', task_type='one_off' (match AI defaults)
+    - **Recommendation**: status='backlog', priority='medium', task_type='one_off' (match AI defaults)
 
 4. **Markdown Preview**: Should details field default to edit or preview mode?
-   - **Recommendation**: Edit mode by default (user opening edit modal expects to edit)
+    - **Recommendation**: Edit mode by default (user opening edit modal expects to edit)
 
 5. **Event ID Field**: Should it be completely hidden or shown as read-only info?
-   - **Recommendation**: Show as read-only with link icon to indicate calendar connection
+    - **Recommendation**: Show as read-only with link icon to indicate calendar connection
 
 ---
 

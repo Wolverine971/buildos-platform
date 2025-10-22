@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: 6f9c8dc2b31bed0d2dd4f601c0bb7999f134c2c7
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis 2-Part LLM Flow Redesign"
+topic: 'Calendar Analysis 2-Part LLM Flow Redesign'
 tags: [research, codebase, calendar-analysis, llm-optimization, architecture]
 status: complete
 last_updated: 2025-10-07
@@ -73,24 +73,24 @@ private async analyzeEventsWithAI({
 #### Problems with Current Approach
 
 1. **Cognitive Overload**
-   - LLM must simultaneously: understand events, identify patterns, check duplicates, generate context, create tasks, validate dates
-   - Too many competing concerns leads to mistakes and generic output
+    - LLM must simultaneously: understand events, identify patterns, check duplicates, generate context, create tasks, validate dates
+    - Too many competing concerns leads to mistakes and generic output
 
 2. **Token Inefficiency**
-   - All events (300+ possible) sent with full details
-   - Existing projects (50+) included even if not relevant
-   - Full data models included even though only subset needed for initial grouping
+    - All events (300+ possible) sent with full details
+    - Existing projects (50+) included even if not relevant
+    - Full data models included even though only subset needed for initial grouping
 
 3. **Quality Issues** (observed in code comments and validations)
-   - LLM generates tasks with past dates despite explicit warnings (lines 604-617)
-   - Projects sometimes have <2 tasks (lines 621-631)
-   - Deduplication fields not consistently provided
-   - Generic context that doesn't deeply incorporate event details
+    - LLM generates tasks with past dates despite explicit warnings (lines 604-617)
+    - Projects sometimes have <2 tasks (lines 621-631)
+    - Deduplication fields not consistently provided
+    - Generic context that doesn't deeply incorporate event details
 
 4. **Deduplication Data Loss**
-   - Deduplication fields (`add_to_existing`, `existing_project_id`, `deduplication_reasoning`) requested in prompt
-   - BUT not stored in database (lines 1164-1170) - missing from `event_patterns` object
-   - This means deduplication decisions are lost even if LLM provides them
+    - Deduplication fields (`add_to_existing`, `existing_project_id`, `deduplication_reasoning`) requested in prompt
+    - BUT not stored in database (lines 1164-1170) - missing from `event_patterns` object
+    - This means deduplication decisions are lost even if LLM provides them
 
 ### Calendar Event Data Structure
 
@@ -167,13 +167,10 @@ From `project-data-fetcher.ts:258-286` and `data-formatter.ts:273-320`:
 **Fetching Logic:**
 
 ```typescript
-const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(
-  userId,
-  {
-    limit: 50,
-    includeStatus: ["active", "planning"],
-  },
-);
+const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+	limit: 50,
+	includeStatus: ['active', 'planning']
+});
 ```
 
 **Data Included in Summary:**
@@ -232,24 +229,24 @@ Project Suggestions
 
 ```typescript
 interface EventPatternInput {
-  events: LightweightCalendarEvent[];
-  dateContext: {
-    today: string;
-    analysisRangeStart: string;
-    analysisRangeEnd: string;
-  };
+	events: LightweightCalendarEvent[];
+	dateContext: {
+		today: string;
+		analysisRangeStart: string;
+		analysisRangeEnd: string;
+	};
 }
 
 interface LightweightCalendarEvent {
-  id: string;
-  title: string;
-  description_snippet: string; // First 200 chars
-  start: string;
-  end: string;
-  is_recurring: boolean;
-  attendee_count: number;
-  is_organizer: boolean;
-  location?: string;
+	id: string;
+	title: string;
+	description_snippet: string; // First 200 chars
+	start: string;
+	end: string;
+	is_recurring: boolean;
+	attendee_count: number;
+	is_organizer: boolean;
+	location?: string;
 }
 ```
 
@@ -265,39 +262,39 @@ interface LightweightCalendarEvent {
 
 ```typescript
 interface EventGroupAnalysis {
-  groups: EventGroup[];
-  ungrouped_event_ids: string[]; // Events that don't fit any pattern
+	groups: EventGroup[];
+	ungrouped_event_ids: string[]; // Events that don't fit any pattern
 }
 
 interface EventGroup {
-  group_id: string; // Generated: "group-1", "group-2", etc.
+	group_id: string; // Generated: "group-1", "group-2", etc.
 
-  // High-level project identification
-  project_theme: string; // e.g., "Marketing Campaign Planning"
-  suggested_project_name: string; // e.g., "Q4 Marketing Campaign"
-  confidence: number; // 0-1 score
+	// High-level project identification
+	project_theme: string; // e.g., "Marketing Campaign Planning"
+	suggested_project_name: string; // e.g., "Q4 Marketing Campaign"
+	confidence: number; // 0-1 score
 
-  // Event relationships
-  event_ids: string[]; // IDs of events in this group
-  event_count: number;
+	// Event relationships
+	event_ids: string[]; // IDs of events in this group
+	event_count: number;
 
-  // Pattern analysis
-  keywords: string[]; // Keywords that indicated this pattern
-  recurring_pattern?: "daily" | "weekly" | "biweekly" | "monthly";
-  meeting_series: boolean; // Is this a recurring meeting series?
+	// Pattern analysis
+	keywords: string[]; // Keywords that indicated this pattern
+	recurring_pattern?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+	meeting_series: boolean; // Is this a recurring meeting series?
 
-  // Context
-  reasoning: string; // Why these events were grouped together
-  key_participants: string[]; // Unique email addresses across events
-  time_range: {
-    earliest_event: string;
-    latest_event: string;
-  };
+	// Context
+	reasoning: string; // Why these events were grouped together
+	key_participants: string[]; // Unique email addresses across events
+	time_range: {
+		earliest_event: string;
+		latest_event: string;
+	};
 
-  // Preliminary metadata
-  estimated_start_date: string; // YYYY-MM-DD
-  estimated_end_date: string | null; // YYYY-MM-DD or null if ongoing
-  suggested_tags: string[];
+	// Preliminary metadata
+	estimated_start_date: string; // YYYY-MM-DD
+	estimated_end_date: string | null; // YYYY-MM-DD or null if ongoing
+	suggested_tags: string[];
 }
 ```
 
@@ -319,12 +316,12 @@ interface EventGroup {
 
 ```typescript
 interface ProjectCreationInput {
-  event_groups: EventGroup[]; // From Part 1
-  full_event_details: Record<string, CalendarEvent>; // Only events in groups
-  existing_projects: ProjectSummary[]; // For deduplication
-  dateContext: {
-    today: string;
-  };
+	event_groups: EventGroup[]; // From Part 1
+	full_event_details: Record<string, CalendarEvent>; // Only events in groups
+	existing_projects: ProjectSummary[]; // For deduplication
+	dateContext: {
+		today: string;
+	};
 }
 ```
 
@@ -340,60 +337,60 @@ interface ProjectCreationInput {
 
 ```typescript
 interface ProjectCreationResult {
-  suggestions: ProjectSuggestion[];
+	suggestions: ProjectSuggestion[];
 }
 
 interface ProjectSuggestion {
-  // Source reference
-  event_group_id: string; // Reference to group from Part 1
+	// Source reference
+	event_group_id: string; // Reference to group from Part 1
 
-  // Project fields (BuildOS model)
-  name: string;
-  slug: string;
-  description: string;
-  context: string; // Rich markdown following framework
-  executive_summary: string;
-  status: "active" | "paused" | "completed" | "archived";
-  start_date: string; // YYYY-MM-DD
-  end_date?: string; // YYYY-MM-DD
-  tags: string[];
+	// Project fields (BuildOS model)
+	name: string;
+	slug: string;
+	description: string;
+	context: string; // Rich markdown following framework
+	executive_summary: string;
+	status: 'active' | 'paused' | 'completed' | 'archived';
+	start_date: string; // YYYY-MM-DD
+	end_date?: string; // YYYY-MM-DD
+	tags: string[];
 
-  // Calendar analysis metadata
-  event_ids: string[]; // All event IDs in this project
-  confidence: number;
-  reasoning: string;
-  keywords: string[];
+	// Calendar analysis metadata
+	event_ids: string[]; // All event IDs in this project
+	confidence: number;
+	reasoning: string;
+	keywords: string[];
 
-  // Deduplication (CRITICAL - must be stored)
-  add_to_existing: boolean;
-  existing_project_id: string | null;
-  deduplication_reasoning: string; // Always required
+	// Deduplication (CRITICAL - must be stored)
+	add_to_existing: boolean;
+	existing_project_id: string | null;
+	deduplication_reasoning: string; // Always required
 
-  // Tasks
-  suggested_tasks: TaskSuggestion[];
+	// Tasks
+	suggested_tasks: TaskSuggestion[];
 }
 
 interface TaskSuggestion {
-  // Task fields (BuildOS model)
-  title: string;
-  description: string;
-  details: string; // Comprehensive event details
-  status: "backlog" | "in_progress" | "done" | "blocked";
-  priority: "low" | "medium" | "high";
-  task_type: "one_off" | "recurring";
-  duration_minutes?: number;
-  start_date?: string; // YYYY-MM-DDTHH:MM:SS (MUST be >= today)
-  recurrence_pattern?:
-    | "daily"
-    | "weekdays"
-    | "weekly"
-    | "biweekly"
-    | "monthly"
-    | "quarterly"
-    | "yearly";
-  recurrence_ends?: string; // YYYY-MM-DD
-  event_id?: string; // Linked calendar event
-  tags?: string[];
+	// Task fields (BuildOS model)
+	title: string;
+	description: string;
+	details: string; // Comprehensive event details
+	status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+	priority: 'low' | 'medium' | 'high';
+	task_type: 'one_off' | 'recurring';
+	duration_minutes?: number;
+	start_date?: string; // YYYY-MM-DDTHH:MM:SS (MUST be >= today)
+	recurrence_pattern?:
+		| 'daily'
+		| 'weekdays'
+		| 'weekly'
+		| 'biweekly'
+		| 'monthly'
+		| 'quarterly'
+		| 'yearly';
+	recurrence_ends?: string; // YYYY-MM-DD
+	event_id?: string; // Linked calendar event
+	tags?: string[];
 }
 ```
 
@@ -466,36 +463,36 @@ async createProjectsFromGroups(input): Promise<ProjectSuggestion[]> {
 ### Files to Modify
 
 1. **`calendar-analysis.service.ts`** (primary changes)
-   - Split `analyzeEventsWithAI` into two methods:
-     - `analyzeEventPatterns()` - Part 1
-     - `createProjectsFromGroups()` - Part 2
-   - Update `analyzeUserCalendar()` orchestration (lines 112-216)
-   - Fix deduplication field storage (lines 1164-1170)
+    - Split `analyzeEventsWithAI` into two methods:
+        - `analyzeEventPatterns()` - Part 1
+        - `createProjectsFromGroups()` - Part 2
+    - Update `analyzeUserCalendar()` orchestration (lines 112-216)
+    - Fix deduplication field storage (lines 1164-1170)
 
 2. **`calendar-analysis.service.ts:1144-1181`** (bug fix)
-   - Add deduplication fields to `event_patterns` object:
+    - Add deduplication fields to `event_patterns` object:
 
-   ```typescript
-   event_patterns: {
-     executive_summary: suggestion.executive_summary,
-     start_date: suggestion.start_date,
-     end_date: suggestion.end_date,
-     tags: suggestion.tags,
-     slug: suggestion.slug,
-     // ADD THESE:
-     add_to_existing: suggestion.add_to_existing,
-     existing_project_id: suggestion.existing_project_id,
-     deduplication_reasoning: suggestion.deduplication_reasoning
-   }
-   ```
+    ```typescript
+    event_patterns: {
+      executive_summary: suggestion.executive_summary,
+      start_date: suggestion.start_date,
+      end_date: suggestion.end_date,
+      tags: suggestion.tags,
+      slug: suggestion.slug,
+      // ADD THESE:
+      add_to_existing: suggestion.add_to_existing,
+      existing_project_id: suggestion.existing_project_id,
+      deduplication_reasoning: suggestion.deduplication_reasoning
+    }
+    ```
 
 3. **New Prompt Files** (create these)
-   - `/apps/web/docs/prompts/calendar-analysis/part1-event-grouping-prompt.md`
-   - `/apps/web/docs/prompts/calendar-analysis/part2-project-creation-prompt.md`
+    - `/apps/web/docs/prompts/calendar-analysis/part1-event-grouping-prompt.md`
+    - `/apps/web/docs/prompts/calendar-analysis/part2-project-creation-prompt.md`
 
 4. **Potentially Update Schema** (if needed)
-   - Consider dedicated columns for deduplication fields instead of JSONB
-   - `calendar_project_suggestions` table might benefit from explicit columns
+    - Consider dedicated columns for deduplication fields instead of JSONB
+    - `calendar_project_suggestions` table might benefit from explicit columns
 
 ### Key Functions to Reference
 
@@ -689,17 +686,17 @@ ${projectsContext || 'No existing projects found.'}
 **IMPORTANT**: Check each event group against existing projects above.
 
 1. **If match found** (confidence >= 70%):
-   - Set "add_to_existing": true
-   - Set "existing_project_id": "uuid"
-   - Set "deduplication_reasoning": "Why this matches"
-   - Still generate tasks to add to existing project
+    - Set "add_to_existing": true
+    - Set "existing_project_id": "uuid"
+    - Set "deduplication_reasoning": "Why this matches"
+    - Still generate tasks to add to existing project
 
 2. **Only create NEW project if**:
-   - No semantic match with existing projects
-   - Events represent meaningfully different work
+    - No semantic match with existing projects
+    - Events represent meaningfully different work
 
 3. **When uncertain** (50-70%):
-   - Err on side of adding to existing projects
+    - Err on side of adding to existing projects
 
 ## Event Groups to Process
 
@@ -1091,80 +1088,80 @@ event_patterns: {
 - **Part 1**: ~1000-1500 tokens (lightweight events only)
 - **Part 2**: ~1500-2000 tokens per batch of 5 groups
 - **Total**: ~2500-3500 tokens (similar), BUT:
-  - Each prompt is focused (better quality)
-  - Part 2 can be batched (process 5 groups at a time)
-  - Overall better token efficiency for large event sets
+    - Each prompt is focused (better quality)
+    - Part 2 can be batched (process 5 groups at a time)
+    - Overall better token efficiency for large event sets
 
 ### Quality Improvements Expected
 
 1. **Better Event Grouping**
-   - Part 1 dedicated to pattern recognition
-   - No distraction from data models or deduplication
-   - Can focus on semantic relationships
+    - Part 1 dedicated to pattern recognition
+    - No distraction from data models or deduplication
+    - Can focus on semantic relationships
 
 2. **Better Deduplication**
-   - Part 2 has pre-grouped events
-   - Can focus on comparing project theme to existing projects
-   - Not overwhelmed by event processing
+    - Part 2 has pre-grouped events
+    - Can focus on comparing project theme to existing projects
+    - Not overwhelmed by event processing
 
 3. **Richer Context**
-   - Part 2 can dedicate tokens to comprehensive context
-   - Has event groups already identified
-   - Can reference group patterns in context
+    - Part 2 can dedicate tokens to comprehensive context
+    - Has event groups already identified
+    - Can reference group patterns in context
 
 4. **Better Task Generation**
-   - Understanding from Part 1 grouping
-   - Can create tasks that align with project pattern
-   - More thoughtful task scheduling
+    - Understanding from Part 1 grouping
+    - Can create tasks that align with project pattern
+    - More thoughtful task scheduling
 
 ### Error Handling Considerations
 
 1. **Part 1 Failure**
-   - If Part 1 fails, entire analysis fails
-   - Could fall back to single-prompt approach
-   - Or return error and let user retry
+    - If Part 1 fails, entire analysis fails
+    - Could fall back to single-prompt approach
+    - Or return error and let user retry
 
 2. **Part 2 Failure**
-   - If Part 2 fails on one batch, continue with others
-   - Could retry failed batch
-   - Return partial results if some batches succeed
+    - If Part 2 fails on one batch, continue with others
+    - Could retry failed batch
+    - Return partial results if some batches succeed
 
 3. **LLM Hallucinations**
-   - Part 1: Validate all event IDs exist
-   - Part 2: Validate all group IDs reference Part 1 output
-   - Validate all dates are in correct format
+    - Part 1: Validate all event IDs exist
+    - Part 2: Validate all group IDs reference Part 1 output
+    - Validate all dates are in correct format
 
 ## Open Questions
 
 1. **Should we store event groups?**
-   - Pros: Can show user how events were grouped, debug issues
-   - Cons: Additional database complexity
-   - **Recommendation**: Store in analysis metadata JSONB field
+    - Pros: Can show user how events were grouped, debug issues
+    - Cons: Additional database complexity
+    - **Recommendation**: Store in analysis metadata JSONB field
 
 2. **Should we allow user to modify grouping?**
-   - Could show event groups to user before Part 2
-   - Let user merge/split groups
-   - **Recommendation**: Future enhancement, not MVP
+    - Could show event groups to user before Part 2
+    - Let user merge/split groups
+    - **Recommendation**: Future enhancement, not MVP
 
 3. **How to handle ungrouped events?**
-   - Could run Part 2 on ungrouped events as individual projects
-   - Or just log and ignore them
-   - **Recommendation**: Log for now, revisit if users want them
+    - Could run Part 2 on ungrouped events as individual projects
+    - Or just log and ignore them
+    - **Recommendation**: Log for now, revisit if users want them
 
 4. **Should we enhance existing project context?**
-   - If adding to existing project, could fetch existing context
-   - Use it to inform new task generation
-   - **Recommendation**: Yes, fetch in Part 2 if `add_to_existing: true`
+    - If adding to existing project, could fetch existing context
+    - Use it to inform new task generation
+    - **Recommendation**: Yes, fetch in Part 2 if `add_to_existing: true`
 
 5. **Batch size for Part 2?**
-   - 5 groups per call seems reasonable
-   - Could make configurable
-   - **Recommendation**: Start with 5, monitor token usage
+    - 5 groups per call seems reasonable
+    - Could make configurable
+    - **Recommendation**: Start with 5, monitor token usage
 
 6. **Should we include more event fields in Part 1?**
-   - conferenceData, attendee names, event type
-   - Trade-off: More context vs token usage
-   - **Recommendation**: Start minimal, add if needed
+    - conferenceData, attendee names, event type
+    - Trade-off: More context vs token usage
+    - **Recommendation**: Start minimal, add if needed
 
 ## Related Research
 
@@ -1177,19 +1174,19 @@ event_patterns: {
 ### Immediate Actions (MVP)
 
 1. ✅ **Split `analyzeEventsWithAI` into two methods**
-   - `analyzeEventPatterns()` for Part 1
-   - `createProjectsFromGroups()` for Part 2
+    - `analyzeEventPatterns()` for Part 1
+    - `createProjectsFromGroups()` for Part 2
 
 2. ✅ **Fix deduplication field storage bug**
-   - Add `add_to_existing`, `existing_project_id`, `deduplication_reasoning` to `event_patterns`
+    - Add `add_to_existing`, `existing_project_id`, `deduplication_reasoning` to `event_patterns`
 
 3. ✅ **Create new prompt templates**
-   - Part 1: Event grouping prompt
-   - Part 2: Project creation prompt
+    - Part 1: Event grouping prompt
+    - Part 2: Project creation prompt
 
 4. ✅ **Update orchestration in `analyzeUserCalendar()`**
-   - Call Part 1, then Part 2
-   - Handle errors appropriately
+    - Call Part 1, then Part 2
+    - Handle errors appropriately
 
 ### Future Enhancements
 

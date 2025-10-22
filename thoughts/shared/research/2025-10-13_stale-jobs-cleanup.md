@@ -1,5 +1,5 @@
 ---
-title: "Stale Jobs Cleanup - October 2025"
+title: 'Stale Jobs Cleanup - October 2025'
 date: 2025-10-13
 type: operations
 status: completed
@@ -41,11 +41,11 @@ Identified all job-related tables:
 Found stale records:
 
 - **Queue Jobs**: 48 failed jobs (30-78 days old)
-  - 39 `generate_daily_brief` jobs
-  - 9 `other` jobs (onboarding analysis, misc)
+    - 39 `generate_daily_brief` jobs
+    - 9 `other` jobs (onboarding analysis, misc)
 - **Daily Briefs**: 28 failed/pending/stuck briefs (30-136 days old)
-  - 25 failed/pending (>30 days)
-  - 3 stuck in "processing" status (>7 days)
+    - 25 failed/pending (>30 days)
+    - 3 stuck in "processing" status (>7 days)
 - **Project Briefs**: 3 pending briefs (136 days old)
 
 **Common failure reasons:**
@@ -98,63 +98,63 @@ These are expected and normal - they represent recent failures that may still ne
 ### Analysis Scripts
 
 1. **`scripts/analyze-stale-data.ts`**
-   - Comprehensive analysis of all job-related tables
-   - Groups by status and type
-   - Identifies old records (>30d)
+    - Comprehensive analysis of all job-related tables
+    - Groups by status and type
+    - Identifies old records (>30d)
 
-   ```bash
-   cd apps/worker
-   pnpm tsx scripts/analyze-stale-data.ts
-   ```
+    ```bash
+    cd apps/worker
+    pnpm tsx scripts/analyze-stale-data.ts
+    ```
 
 2. **`scripts/preview-cleanup.ts`**
-   - Dry-run preview of what will be deleted
-   - Shows sample records with ages and error messages
-   - Safety checks and validation
+    - Dry-run preview of what will be deleted
+    - Shows sample records with ages and error messages
+    - Safety checks and validation
 
-   ```bash
-   cd apps/worker
-   pnpm tsx scripts/preview-cleanup.ts
-   ```
+    ```bash
+    cd apps/worker
+    pnpm tsx scripts/preview-cleanup.ts
+    ```
 
 3. **`scripts/check-stale-jobs.ts`** (existing)
-   - Monitors for stale jobs >24h old
-   - Shows job statistics
-   - Useful for ongoing monitoring
-   ```bash
-   cd apps/worker
-   pnpm tsx scripts/check-stale-jobs.ts
-   ```
+    - Monitors for stale jobs >24h old
+    - Shows job statistics
+    - Useful for ongoing monitoring
+    ```bash
+    cd apps/worker
+    pnpm tsx scripts/check-stale-jobs.ts
+    ```
 
 ### Migration Files
 
 1. **`supabase/migrations/20251013_cleanup_stale_jobs.sql`**
-   - SQL migration for cleanup
-   - Includes logging and verification
-   - Can be run via psql or Supabase CLI
+    - SQL migration for cleanup
+    - Includes logging and verification
+    - Can be run via psql or Supabase CLI
 
-   ```bash
-   # Via psql (if available)
-   psql "$DATABASE_URL" -f supabase/migrations/20251013_cleanup_stale_jobs.sql
+    ```bash
+    # Via psql (if available)
+    psql "$DATABASE_URL" -f supabase/migrations/20251013_cleanup_stale_jobs.sql
 
-   # Or use the TypeScript runner (recommended)
-   cd apps/worker
-   pnpm tsx scripts/run-cleanup-migration.ts
-   ```
+    # Or use the TypeScript runner (recommended)
+    cd apps/worker
+    pnpm tsx scripts/run-cleanup-migration.ts
+    ```
 
 2. **`scripts/run-cleanup-migration.ts`**
-   - TypeScript runner for the migration
-   - Interactive confirmation prompt
-   - Pre/post verification
-   - Safe execution with error handling
+    - TypeScript runner for the migration
+    - Interactive confirmation prompt
+    - Pre/post verification
+    - Safe execution with error handling
 
-   ```bash
-   cd apps/worker
-   pnpm tsx scripts/run-cleanup-migration.ts
+    ```bash
+    cd apps/worker
+    pnpm tsx scripts/run-cleanup-migration.ts
 
-   # Auto-confirm (use with caution)
-   echo "" | pnpm tsx scripts/run-cleanup-migration.ts
-   ```
+    # Auto-confirm (use with caution)
+    echo "" | pnpm tsx scripts/run-cleanup-migration.ts
+    ```
 
 ## Future Maintenance
 

@@ -4,7 +4,7 @@ researcher: Claude (AI Assistant)
 git_commit: 65b0c8047572e2b905909a2590a344b077484c5a
 branch: main
 repository: buildos-platform
-topic: "Notification Tracking System - Comprehensive Specification"
+topic: 'Notification Tracking System - Comprehensive Specification'
 tags: [research, notifications, tracking, analytics, email, push, sms, in-app]
 status: in-progress
 implementation_status: phase_3_complete
@@ -141,11 +141,7 @@ SELECT opened_at, clicked_at FROM notification_deliveries WHERE id = 'yyy';
 
 ```html
 <!-- Tracking pixel embedded in email HTML -->
-<img
-  src="https://build-os.com/api/email-tracking/abc123"
-  width="1"
-  height="1"
-/>
+<img src="https://build-os.com/api/email-tracking/abc123" width="1" height="1" />
 ```
 
 **Tables Used**:
@@ -343,17 +339,17 @@ COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL) AS clicked,
 
 ```javascript
 // Service worker
-self.addEventListener("notificationclick", (event) => {
-  const deliveryId = event.notification.data?.deliveryId;
+self.addEventListener('notificationclick', (event) => {
+	const deliveryId = event.notification.data?.deliveryId;
 
-  // Track the click
-  fetch("/api/notification-tracking/click/" + deliveryId, {
-    method: "POST",
-    body: JSON.stringify({ action: event.action }),
-  });
+	// Track the click
+	fetch('/api/notification-tracking/click/' + deliveryId, {
+		method: 'POST',
+		body: JSON.stringify({ action: event.action })
+	});
 
-  // Then handle navigation
-  clients.openWindow(event.notification.data?.url);
+	// Then handle navigation
+	clients.openWindow(event.notification.data?.url);
 });
 ```
 
@@ -375,17 +371,17 @@ self.addEventListener("notificationclick", (event) => {
 **Options for Link Shortening**:
 
 1. **Custom Implementation** (Recommended)
-   - Full control
-   - No external dependencies
-   - Privacy-friendly
-   - Example: `https://build-os.com/l/abc123`
+    - Full control
+    - No external dependencies
+    - Privacy-friendly
+    - Example: `https://build-os.com/l/abc123`
 
 2. **Third-Party Service**
-   - Bitly API
-   - TinyURL
-   - Rebrandly
-   - Pros: Fast to implement
-   - Cons: External dependency, potential privacy issues
+    - Bitly API
+    - TinyURL
+    - Rebrandly
+    - Pros: Fast to implement
+    - Cons: External dependency, potential privacy issues
 
 **Implementation**:
 
@@ -425,24 +421,24 @@ self.addEventListener("notificationclick", (event) => {
 
 ```svelte
 <script>
-  import { onMount } from 'svelte';
+	import { onMount } from 'svelte';
 
-  onMount(() => {
-    // Track view when notification appears
-    trackNotificationView(notification.deliveryId);
-  });
+	onMount(() => {
+		// Track view when notification appears
+		trackNotificationView(notification.deliveryId);
+	});
 
-  async function handleClick() {
-    // Track click
-    await trackNotificationClick(notification.deliveryId);
+	async function handleClick() {
+		// Track click
+		await trackNotificationClick(notification.deliveryId);
 
-    // Navigate
-    goto(notification.url);
-  }
+		// Navigate
+		goto(notification.url);
+	}
 </script>
 
 <div on:click={handleClick}>
-  {notification.message}
+	{notification.message}
 </div>
 ```
 
@@ -505,13 +501,13 @@ POST /api/notification-tracking/view/:delivery_id  (in-app only)
 
 ```json
 {
-  "timestamp": "2025-10-06T22:00:00Z",
-  "metadata": {
-    "action": "primary_button", // For push notifications
-    "link_url": "https://...", // For click tracking
-    "user_agent": "...",
-    "ip_address": "..."
-  }
+	"timestamp": "2025-10-06T22:00:00Z",
+	"metadata": {
+		"action": "primary_button", // For push notifications
+		"link_url": "https://...", // For click tracking
+		"user_agent": "...",
+		"ip_address": "..."
+	}
 }
 ```
 
@@ -519,9 +515,9 @@ POST /api/notification-tracking/view/:delivery_id  (in-app only)
 
 ```json
 {
-  "success": true,
-  "delivery_id": "uuid",
-  "tracked_at": "2025-10-06T22:00:00Z"
+	"success": true,
+	"delivery_id": "uuid",
+	"tracked_at": "2025-10-06T22:00:00Z"
 }
 ```
 
@@ -563,31 +559,31 @@ GET /l/:short_code  -- Redirects to destination, tracks click
 **File**: `apps/web/src/service-worker.ts`
 
 ```typescript
-self.addEventListener("notificationclick", async (event) => {
-  event.preventDefault();
+self.addEventListener('notificationclick', async (event) => {
+	event.preventDefault();
 
-  const deliveryId = event.notification.data?.deliveryId;
-  const url = event.notification.data?.url;
-  const action = event.action;
+	const deliveryId = event.notification.data?.deliveryId;
+	const url = event.notification.data?.url;
+	const action = event.action;
 
-  // Track the click (non-blocking)
-  event.waitUntil(
-    fetch("/api/notification-tracking/click/" + deliveryId, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    }).catch((err) => {
-      console.error("Failed to track notification click:", err);
-    }),
-  );
+	// Track the click (non-blocking)
+	event.waitUntil(
+		fetch('/api/notification-tracking/click/' + deliveryId, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action })
+		}).catch((err) => {
+			console.error('Failed to track notification click:', err);
+		})
+	);
 
-  // Close notification
-  event.notification.close();
+	// Close notification
+	event.notification.close();
 
-  // Open URL
-  if (url) {
-    event.waitUntil(clients.openWindow(url));
-  }
+	// Open URL
+	if (url) {
+		event.waitUntil(clients.openWindow(url));
+	}
 });
 ```
 
@@ -600,17 +596,14 @@ self.addEventListener("notificationclick", async (event) => {
 
 // NEW: Find and update notification_deliveries
 const { data: delivery } = await supabase
-  .from("notification_deliveries")
-  .select("id, opened_at")
-  .eq("channel", "email")
-  .eq("external_id", email.id) // email.id stored as external_id
-  .single();
+	.from('notification_deliveries')
+	.select('id, opened_at')
+	.eq('channel', 'email')
+	.eq('external_id', email.id) // email.id stored as external_id
+	.single();
 
 if (delivery && !delivery.opened_at) {
-  await supabase
-    .from("notification_deliveries")
-    .update({ opened_at: now })
-    .eq("id", delivery.id);
+	await supabase.from('notification_deliveries').update({ opened_at: now }).eq('id', delivery.id);
 }
 ```
 
@@ -755,10 +748,10 @@ notification_tracking_links
 
 ```json
 {
-  "metadata": {
-    "user_agent": "Mozilla/5.0...",
-    "client_type": "web|mobile|email"
-  }
+	"metadata": {
+		"user_agent": "Mozilla/5.0...",
+		"client_type": "web|mobile|email"
+	}
 }
 ```
 
@@ -766,10 +759,10 @@ notification_tracking_links
 
 ```json
 {
-  "success": true,
-  "delivery_id": "uuid",
-  "opened_at": "2025-10-06T22:00:00Z",
-  "is_first_open": true
+	"success": true,
+	"delivery_id": "uuid",
+	"opened_at": "2025-10-06T22:00:00Z",
+	"is_first_open": true
 }
 ```
 
@@ -798,11 +791,11 @@ notification_tracking_links
 
 ```json
 {
-  "metadata": {
-    "action": "primary_button", // Optional: for push notifications
-    "link_url": "https://...", // Optional: clicked link
-    "user_agent": "..."
-  }
+	"metadata": {
+		"action": "primary_button", // Optional: for push notifications
+		"link_url": "https://...", // Optional: clicked link
+		"user_agent": "..."
+	}
 }
 ```
 
@@ -810,10 +803,10 @@ notification_tracking_links
 
 ```json
 {
-  "success": true,
-  "delivery_id": "uuid",
-  "clicked_at": "2025-10-06T22:00:00Z",
-  "is_first_click": true
+	"success": true,
+	"delivery_id": "uuid",
+	"clicked_at": "2025-10-06T22:00:00Z",
+	"is_first_click": true
 }
 ```
 
@@ -868,8 +861,8 @@ notification_tracking_links
 
 ```json
 {
-  "delivery_id": "uuid",
-  "destination_url": "https://build-os.com/app/briefs"
+	"delivery_id": "uuid",
+	"destination_url": "https://build-os.com/app/briefs"
 }
 ```
 
@@ -877,9 +870,9 @@ notification_tracking_links
 
 ```json
 {
-  "short_code": "abc123",
-  "short_url": "https://build-os.com/l/abc123",
-  "destination_url": "https://build-os.com/app/briefs"
+	"short_code": "abc123",
+	"short_url": "https://build-os.com/l/abc123",
+	"destination_url": "https://build-os.com/app/briefs"
 }
 ```
 
@@ -896,13 +889,13 @@ notification_tracking_links
 **What Was Implemented**:
 
 1. ✅ Connected existing email tracking to `notification_deliveries` (minimal fix)
-   - Updated `/api/email-tracking/[tracking_id]/+server.ts` to sync opens
-   - Email opens now update both `email_recipients` AND `notification_deliveries`
+    - Updated `/api/email-tracking/[tracking_id]/+server.ts` to sync opens
+    - Email opens now update both `email_recipients` AND `notification_deliveries`
 2. ✅ Implemented email click tracking
-   - Created `/api/email-tracking/[tracking_id]/click/+server.ts`
-   - Added link rewriting to both `email-service.ts` and `emailAdapter.ts`
-   - Clicks update `notification_deliveries.clicked_at` and set status to 'clicked'
-   - Click implies open (sets `opened_at` if not already set)
+    - Created `/api/email-tracking/[tracking_id]/click/+server.ts`
+    - Added link rewriting to both `email-service.ts` and `emailAdapter.ts`
+    - Clicks update `notification_deliveries.clicked_at` and set status to 'clicked'
+    - Click implies open (sets `opened_at` if not already set)
 
 **What Was Deferred**:
 
@@ -988,33 +981,33 @@ We chose **Option 3 (Hybrid)** from the assessment:
 **What Was Implemented**:
 
 1. ✅ Database migration (`20251007_notification_tracking_links.sql`)
-   - Created `notification_tracking_links` table with short_code, delivery_id, destination_url
-   - Added `generate_short_code()` function for 6-character base62 codes
-   - Added `create_tracking_link()` function with collision handling
-   - Added `get_link_click_stats()` analytics function
-   - Added `cleanup_old_tracking_links()` maintenance function
-   - Configured RLS policies for secure access
+    - Created `notification_tracking_links` table with short_code, delivery_id, destination_url
+    - Added `generate_short_code()` function for 6-character base62 codes
+    - Added `create_tracking_link()` function with collision handling
+    - Added `get_link_click_stats()` analytics function
+    - Added `cleanup_old_tracking_links()` maintenance function
+    - Configured RLS policies for secure access
 
 2. ✅ Redirect endpoint (`/l/[short_code]/+server.ts`)
-   - Looks up short code in database
-   - Updates click tracking (first_clicked_at, last_clicked_at, click_count)
-   - Updates notification_deliveries (clicked_at, opened_at, status)
-   - Redirects to destination URL
-   - Graceful error handling (redirects to home on error)
+    - Looks up short code in database
+    - Updates click tracking (first_clicked_at, last_clicked_at, click_count)
+    - Updates notification_deliveries (clicked_at, opened_at, status)
+    - Redirects to destination URL
+    - Graceful error handling (redirects to home on error)
 
 3. ✅ Link shortener service (`link-shortener.service.ts`)
-   - `createTrackingLink()` - creates shortened URLs
-   - `shortenUrlsInText()` - finds and replaces all URLs in text
-   - `getLinkStats()` - retrieves click analytics
-   - Base URL detection (works in dev and prod)
+    - `createTrackingLink()` - creates shortened URLs
+    - `shortenUrlsInText()` - finds and replaces all URLs in text
+    - `getLinkStats()` - retrieves click analytics
+    - Base URL detection (works in dev and prod)
 
 4. ✅ SMS adapter update (`smsAdapter.ts`)
-   - Added `shortenUrlsInMessage()` function
-   - Regex to find all HTTP(S) URLs
-   - Calls `create_tracking_link()` RPC function
-   - Replaces URLs with shortened versions
-   - Logs character savings
-   - Graceful fallback if shortening fails
+    - Added `shortenUrlsInMessage()` function
+    - Regex to find all HTTP(S) URLs
+    - Calls `create_tracking_link()` RPC function
+    - Replaces URLs with shortened versions
+    - Logs character savings
+    - Graceful fallback if shortening fails
 
 **Files Created**:
 
@@ -1116,63 +1109,63 @@ We chose **Option 3 (Hybrid)** from the assessment:
 **Tracking API**:
 
 ```typescript
-describe("Notification Tracking API", () => {
-  test("tracks first open correctly", async () => {
-    const delivery = await createTestDelivery();
-    const response = await trackOpen(delivery.id);
+describe('Notification Tracking API', () => {
+	test('tracks first open correctly', async () => {
+		const delivery = await createTestDelivery();
+		const response = await trackOpen(delivery.id);
 
-    expect(response.is_first_open).toBe(true);
+		expect(response.is_first_open).toBe(true);
 
-    const updated = await getDelivery(delivery.id);
-    expect(updated.opened_at).toBeTruthy();
-  });
+		const updated = await getDelivery(delivery.id);
+		expect(updated.opened_at).toBeTruthy();
+	});
 
-  test("handles duplicate opens", async () => {
-    const delivery = await createTestDelivery();
-    await trackOpen(delivery.id);
-    const response = await trackOpen(delivery.id);
+	test('handles duplicate opens', async () => {
+		const delivery = await createTestDelivery();
+		await trackOpen(delivery.id);
+		const response = await trackOpen(delivery.id);
 
-    expect(response.is_first_open).toBe(false);
-  });
+		expect(response.is_first_open).toBe(false);
+	});
 
-  test("click implies open", async () => {
-    const delivery = await createTestDelivery();
-    await trackClick(delivery.id);
+	test('click implies open', async () => {
+		const delivery = await createTestDelivery();
+		await trackClick(delivery.id);
 
-    const updated = await getDelivery(delivery.id);
-    expect(updated.opened_at).toBeTruthy();
-    expect(updated.clicked_at).toBeTruthy();
-  });
+		const updated = await getDelivery(delivery.id);
+		expect(updated.opened_at).toBeTruthy();
+		expect(updated.clicked_at).toBeTruthy();
+	});
 });
 ```
 
 **Link Shortener**:
 
 ```typescript
-describe("Link Shortener", () => {
-  test("creates unique short codes", async () => {
-    const link1 = await createTrackingLink(deliveryId, "https://example.com");
-    const link2 = await createTrackingLink(deliveryId, "https://example.com");
+describe('Link Shortener', () => {
+	test('creates unique short codes', async () => {
+		const link1 = await createTrackingLink(deliveryId, 'https://example.com');
+		const link2 = await createTrackingLink(deliveryId, 'https://example.com');
 
-    expect(link1.short_code).not.toBe(link2.short_code);
-  });
+		expect(link1.short_code).not.toBe(link2.short_code);
+	});
 
-  test("redirects correctly", async () => {
-    const link = await createTrackingLink(deliveryId, "https://example.com");
-    const response = await fetch(`/l/${link.short_code}`);
+	test('redirects correctly', async () => {
+		const link = await createTrackingLink(deliveryId, 'https://example.com');
+		const response = await fetch(`/l/${link.short_code}`);
 
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://example.com");
-  });
+		expect(response.status).toBe(302);
+		expect(response.headers.get('location')).toBe('https://example.com');
+	});
 
-  test("tracks clicks on redirect", async () => {
-    const link = await createTrackingLink(deliveryId, "https://example.com");
-    await fetch(`/l/${link.short_code}`);
+	test('tracks clicks on redirect', async () => {
+		const link = await createTrackingLink(deliveryId, 'https://example.com');
+		await fetch(`/l/${link.short_code}`);
 
-    const updated = await getTrackingLink(link.short_code);
-    expect(updated.click_count).toBe(1);
-    expect(updated.first_clicked_at).toBeTruthy();
-  });
+		const updated = await getTrackingLink(link.short_code);
+		expect(updated.click_count).toBe(1);
+		expect(updated.first_clicked_at).toBeTruthy();
+	});
 });
 ```
 
@@ -1203,28 +1196,28 @@ describe("Link Shortener", () => {
 ### E2E Tests
 
 ```typescript
-describe("E2E: Notification Tracking", () => {
-  test("email open tracking end-to-end", async () => {
-    // 1. Send notification
-    const event = await emitNotificationEvent("brief.completed", userId);
+describe('E2E: Notification Tracking', () => {
+	test('email open tracking end-to-end', async () => {
+		// 1. Send notification
+		const event = await emitNotificationEvent('brief.completed', userId);
 
-    // 2. Wait for email delivery
-    await waitForDelivery(event.id, "email");
+		// 2. Wait for email delivery
+		await waitForDelivery(event.id, 'email');
 
-    // 3. Get tracking pixel URL
-    const email = await getEmailByEventId(event.id);
+		// 3. Get tracking pixel URL
+		const email = await getEmailByEventId(event.id);
 
-    // 4. Load tracking pixel
-    await fetch(email.trackingPixelUrl);
+		// 4. Load tracking pixel
+		await fetch(email.trackingPixelUrl);
 
-    // 5. Verify delivery tracked
-    const delivery = await getDeliveryByEventId(event.id, "email");
-    expect(delivery.opened_at).toBeTruthy();
+		// 5. Verify delivery tracked
+		const delivery = await getDeliveryByEventId(event.id, 'email');
+		expect(delivery.opened_at).toBeTruthy();
 
-    // 6. Verify analytics updated
-    const analytics = await getChannelPerformance("email");
-    expect(analytics.open_rate).toBeGreaterThan(0);
-  });
+		// 6. Verify analytics updated
+		const analytics = await getChannelPerformance('email');
+		expect(analytics.open_rate).toBeGreaterThan(0);
+	});
 });
 ```
 

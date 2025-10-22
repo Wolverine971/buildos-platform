@@ -36,15 +36,15 @@ Coatue operates a lifecycle investment platform with a "tech-obsessed" approach,
 ### Most Relevant for BuildOS:
 
 - **Philippe Laffont** - Founder & Portfolio Manager
-  - Background: MIT computer science (1989), Tiger Management alumni
-  - Focus: Overall strategy, technology-first investing
-  - Net Worth: $6.5B (Forbes), part of "Tiger Cubs" generation
+    - Background: MIT computer science (1989), Tiger Management alumni
+    - Focus: Overall strategy, technology-first investing
+    - Net Worth: $6.5B (Forbes), part of "Tiger Cubs" generation
 
 - **Jade Lai** - Partner (Joined April 2023)
-  - Background: Former A16z enterprise partner, Playground Global principal
-  - Focus: "Early stage enterprise software, AI/ML, open source, data infrastructure, developer tooling"
-  - Sweet Spot: Seed through Series B in Developer Tools, Data Services, AI, Enterprise
-  - Notable Investments: Together AI, Anyscale, Lumos Security, Convex
+    - Background: Former A16z enterprise partner, Playground Global principal
+    - Focus: "Early stage enterprise software, AI/ML, open source, data infrastructure, developer tooling"
+    - Sweet Spot: Seed through Series B in Developer Tools, Data Services, AI, Enterprise
+    - Notable Investments: Together AI, Anyscale, Lumos Security, Convex
 
 ### Partner Expertise:
 

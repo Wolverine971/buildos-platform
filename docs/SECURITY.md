@@ -173,11 +173,11 @@ Configured in `/apps/web/src/lib/utils/rate-limiter.ts`:
 
 ```typescript
 export const RATE_LIMITS = {
-  API_GENERAL: { requests: 100, windowMs: 60000 }, // 100/min
-  API_AUTH: { requests: 5, windowMs: 60000 }, // 5/min
-  API_AI: { requests: 20, windowMs: 60000 }, // 20/min (brain dumps)
-  API_TRANSCRIBE: { requests: 10, windowMs: 60000 }, // 10/min
-  API_SMS: { requests: 3, windowMs: 60000 }, // 3/min
+	API_GENERAL: { requests: 100, windowMs: 60000 }, // 100/min
+	API_AUTH: { requests: 5, windowMs: 60000 }, // 5/min
+	API_AI: { requests: 20, windowMs: 60000 }, // 20/min (brain dumps)
+	API_TRANSCRIBE: { requests: 10, windowMs: 60000 }, // 10/min
+	API_SMS: { requests: 3, windowMs: 60000 } // 3/min
 };
 ```
 
@@ -196,17 +196,17 @@ Separate rate limiting for security events:
 ### What Gets Logged
 
 1. **Prompt Injection Attempts** (all of them):
-   - Blocked attacks
-   - Detected but allowed
-   - False positives
+    - Blocked attacks
+    - Detected but allowed
+    - False positives
 
 2. **Rate Limit Violations**:
-   - User ID, attempt count, timestamp
+    - User ID, attempt count, timestamp
 
 3. **Metadata**:
-   - IP address (if available)
-   - User agent
-   - Context (brain_dump_id, endpoint, etc.)
+    - IP address (if available)
+    - User agent
+    - Context (brain_dump_id, endpoint, etc.)
 
 ### Retention Policy
 
@@ -228,8 +228,8 @@ Security logs are retained indefinitely for compliance and forensic analysis.
 2. **Logged**: Full details in `security_logs` table
 3. **Admin Review**: Check `/admin/security` for context
 4. **Decision**: Legitimate false positive or actual attack?
-   - False positive: No action needed (system learns from LLM feedback)
-   - Actual attack: Consider user investigation
+    - False positive: No action needed (system learns from LLM feedback)
+    - Actual attack: Consider user investigation
 
 ### If Rate Limit is Exceeded
 
@@ -263,7 +263,7 @@ Security logs are retained indefinitely for compliance and forensic analysis.
 
 ```typescript
 // Structured prompt with clear boundaries
-const systemPrompt = "You are an assistant.";
+const systemPrompt = 'You are an assistant.';
 const userPrompt = `===USER INPUT BEGINS===\n${sanitizedInput}\n===USER INPUT ENDS===`;
 ```
 
@@ -288,9 +288,9 @@ const prompt = `Analyze this: ${userInput}`;
 ### Completed Audits
 
 1. **2025-10-21**: Input Validation and Security Audit
-   - Findings: 12 high-priority issues
-   - Fixed: Prompt injection vulnerability (Finding #4)
-   - Report: `/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md`
+    - Findings: 12 high-priority issues
+    - Fixed: Prompt injection vulnerability (Finding #4)
+    - Report: `/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md`
 
 ### Planned Audits
 

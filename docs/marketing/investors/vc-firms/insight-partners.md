@@ -35,12 +35,12 @@ Insight Partners predicts that 2025 will be the year GenAI becomes a baseline ex
 ### Most Relevant for BuildOS:
 
 - **Managing Directors** - Growth equity specialists
-  - Focus: Scaling technology companies through growth stages
-  - Background: Operational expertise and enterprise software experience
+    - Focus: Scaling technology companies through growth stages
+    - Background: Operational expertise and enterprise software experience
 
 - **Sector-Focused Partners** - AI and enterprise software specialists
-  - Focus: Industry-specific growth opportunities
-  - Background: Deep technology and scaling experience
+    - Focus: Industry-specific growth opportunities
+    - Background: Deep technology and scaling experience
 
 ### Partner Expertise:
 

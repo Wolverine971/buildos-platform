@@ -4,16 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: 65b0c8047572e2b905909a2590a344b077484c5a
 branch: main
 repository: buildos-platform
-topic: "Test Failures Deep Analysis and Remediation Strategy"
-tags:
-  [
-    research,
-    testing,
-    bug-fix,
-    dashboardData,
-    brain-dump-processor,
-    prompt-audit,
-  ]
+topic: 'Test Failures Deep Analysis and Remediation Strategy'
+tags: [research, testing, bug-fix, dashboardData, brain-dump-processor, prompt-audit]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
@@ -99,27 +91,24 @@ const taskProjectId = projectId || task?.project_id;
 
 // 4. VALIDATE (Lines 196-205)
 if (!taskProjectId) {
-  return {
-    success: false,
-    message: "Task project information not available...",
-  };
+	return {
+		success: false,
+		message: 'Task project information not available...'
+	};
 }
 
 // 5. APPLY OPTIMISTIC UPDATE (Line 208)
 const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
 
 // 6. MAKE API CALL (Lines 210-213)
-const result = await this.patch<Task>(
-  `/projects/${taskProjectId}/tasks/${taskId}`,
-  updates,
-);
+const result = await this.patch<Task>(`/projects/${taskProjectId}/tasks/${taskId}`, updates);
 
 // 7. CONFIRM OR ROLLBACK (Lines 215-224)
 if (result.success && result.data) {
-  dashboardStore.confirmOptimisticUpdate(optimisticUpdateId);
-  dashboardStore.updateTask(taskId, result.data?.task || result.data);
+	dashboardStore.confirmOptimisticUpdate(optimisticUpdateId);
+	dashboardStore.updateTask(taskId, result.data?.task || result.data);
 } else {
-  dashboardStore.rollbackOptimisticUpdate(optimisticUpdateId);
+	dashboardStore.rollbackOptimisticUpdate(optimisticUpdateId);
 }
 ```
 
@@ -177,8 +166,8 @@ applyTaskDelete(state, taskId): void
 ```typescript
 // Test expects orderOfOperations[0] === 'updateTask'
 // But should be 'getState' (line 86)
-expect(orderOfOperations[0]).toBe("getState"); // ✅ CORRECT
-expect(orderOfOperations[1]).toBe("updateTask"); // ✅ CORRECT
+expect(orderOfOperations[0]).toBe('getState'); // ✅ CORRECT
+expect(orderOfOperations[1]).toBe('updateTask'); // ✅ CORRECT
 ```
 
 **Tests 2-7: updateTask/revertUpdate not called**
@@ -191,33 +180,33 @@ expect(orderOfOperations[1]).toBe("updateTask"); // ✅ CORRECT
 
 1. **Properly mock `DashboardStore`**:
 
-   ```typescript
-   mockDashboardStore = {
-     getState: vi.fn(() => mockState),
-     updateTask: vi.fn(() => "optimistic-id-123"),
-     deleteTask: vi.fn(() => "optimistic-id-456"),
-     addTask: vi.fn(() => "optimistic-id-789"),
-     confirmOptimisticUpdate: vi.fn(),
-     rollbackOptimisticUpdate: vi.fn(),
-   };
-   ```
+    ```typescript
+    mockDashboardStore = {
+    	getState: vi.fn(() => mockState),
+    	updateTask: vi.fn(() => 'optimistic-id-123'),
+    	deleteTask: vi.fn(() => 'optimistic-id-456'),
+    	addTask: vi.fn(() => 'optimistic-id-789'),
+    	confirmOptimisticUpdate: vi.fn(),
+    	rollbackOptimisticUpdate: vi.fn()
+    };
+    ```
 
 2. **Mock Supabase responses**:
 
-   ```typescript
-   mockSupabase.single.mockResolvedValue({
-     data: { ...task, ...updates },
-     error: null,
-   });
-   ```
+    ```typescript
+    mockSupabase.single.mockResolvedValue({
+    	data: { ...task, ...updates },
+    	error: null
+    });
+    ```
 
 3. **Verify the complete flow**:
-   - getState() called
-   - Task found in state
-   - updateTask() called with correct params
-   - API called with project_id
-   - confirmOptimisticUpdate() called on success
-   - rollbackOptimisticUpdate() called on failure
+    - getState() called
+    - Task found in state
+    - updateTask() called with correct params
+    - API called with project_id
+    - confirmOptimisticUpdate() called on success
+    - rollbackOptimisticUpdate() called on failure
 
 ---
 
@@ -233,9 +222,9 @@ expect(orderOfOperations[1]).toBe("updateTask"); // ✅ CORRECT
 // Returns: Wrapper object with metadata
 
 const response = await llmPool.makeRequest({
-  systemPrompt: "...",
-  userPrompt: "...",
-  userId: "...",
+	systemPrompt: '...',
+	userPrompt: '...',
+	userId: '...'
 });
 const result = response.result; // Nested in wrapper
 ```
@@ -248,11 +237,11 @@ const result = response.result; // Nested in wrapper
 // Returns: Direct parsed JSON object
 
 const result = await llmService.getJSONResponse({
-  systemPrompt: "...",
-  userPrompt: "...",
-  userId: "...",
-  profile: "balanced", // fast | balanced | powerful | maximum
-  operationType: "brain_dump",
+	systemPrompt: '...',
+	userPrompt: '...',
+	userId: '...',
+	profile: 'balanced', // fast | balanced | powerful | maximum
+	operationType: 'brain_dump'
 });
 // Result is direct JSON, no wrapper
 ```
@@ -324,53 +313,53 @@ await this.llmService.getJSONResponse({ ... }); // Different method
 
 1. **Mock SmartLLMService**:
 
-   ```typescript
-   // Don't mock the module - replace the instance
-   beforeEach(() => {
-     processor = new BrainDumpProcessor(mockSupabase);
+    ```typescript
+    // Don't mock the module - replace the instance
+    beforeEach(() => {
+    	processor = new BrainDumpProcessor(mockSupabase);
 
-     // Replace the llmService instance
-     const mockLLMService = {
-       getJSONResponse: vi.fn(),
-     };
-     (processor as any).llmService = mockLLMService;
-   });
-   ```
+    	// Replace the llmService instance
+    	const mockLLMService = {
+    		getJSONResponse: vi.fn()
+    	};
+    	(processor as any).llmService = mockLLMService;
+    });
+    ```
 
 2. **Mock responses correctly**:
 
-   ```typescript
-   // Old format (wrapper):
-   mockLLMPool.makeRequest.mockResolvedValue({
-     result: { operations: [...] } // ❌ Nested
-   });
+    ```typescript
+    // Old format (wrapper):
+    mockLLMPool.makeRequest.mockResolvedValue({
+      result: { operations: [...] } // ❌ Nested
+    });
 
-   // New format (direct):
-   mockLLMService.getJSONResponse.mockResolvedValue({
-     operations: [...] // ✅ Direct
-   });
-   ```
+    // New format (direct):
+    mockLLMService.getJSONResponse.mockResolvedValue({
+      operations: [...] // ✅ Direct
+    });
+    ```
 
 3. **Mock dual processing calls**:
 
-   ```typescript
-   // Preparatory analysis
-   mockLLMService.getJSONResponse.mockResolvedValueOnce({
-     braindump_classification: 'task-focused',
-     needs_context_update: false,
-     relevant_task_ids: ['task-1']
-   });
+    ```typescript
+    // Preparatory analysis
+    mockLLMService.getJSONResponse.mockResolvedValueOnce({
+      braindump_classification: 'task-focused',
+      needs_context_update: false,
+      relevant_task_ids: ['task-1']
+    });
 
-   // Context extraction
-   mockLLMService.getJSONResponse.mockResolvedValueOnce({
-     operations: [{ table: 'projects', operation: 'update', data: {...} }]
-   });
+    // Context extraction
+    mockLLMService.getJSONResponse.mockResolvedValueOnce({
+      operations: [{ table: 'projects', operation: 'update', data: {...} }]
+    });
 
-   // Task extraction
-   mockLLMService.getJSONResponse.mockResolvedValueOnce({
-     operations: [{ table: 'tasks', operation: 'create', data: {...} }]
-   });
-   ```
+    // Task extraction
+    mockLLMService.getJSONResponse.mockResolvedValueOnce({
+      operations: [{ table: 'tasks', operation: 'create', data: {...} }]
+    });
+    ```
 
 ---
 
@@ -422,49 +411,48 @@ From `/apps/web/src/lib/utils/prompt-audit.ts` (lines 135-194):
 
 ```typescript
 export function determineScenarioType({
-  isNewProject,
-  brainDumpLength,
-  isDualProcessing,
-  processingType, // 'context' | 'tasks' | 'context-update'
-  isShortBrainDump,
-  hasQuestions,
+	isNewProject,
+	brainDumpLength,
+	isDualProcessing,
+	processingType, // 'context' | 'tasks' | 'context-update'
+	isShortBrainDump,
+	hasQuestions
 }): string {
-  // Priority 1: Short braindump (existing projects only)
-  if (isShortBrainDump && !isNewProject) {
-    if (processingType === "context-update")
-      return "short-braindump-context-update";
-    if (processingType === "tasks") {
-      return hasQuestions
-        ? "short-braindump-task-extraction-with-questions"
-        : "short-braindump-task-extraction";
-    }
-  }
+	// Priority 1: Short braindump (existing projects only)
+	if (isShortBrainDump && !isNewProject) {
+		if (processingType === 'context-update') return 'short-braindump-context-update';
+		if (processingType === 'tasks') {
+			return hasQuestions
+				? 'short-braindump-task-extraction-with-questions'
+				: 'short-braindump-task-extraction';
+		}
+	}
 
-  // Priority 2: Dual processing
-  if (isDualProcessing) {
-    if (isNewProject) {
-      if (processingType === "context") return "new-project-dual-context";
-      if (processingType === "tasks") return "new-project-dual-tasks";
-    } else {
-      if (processingType === "context") return "existing-project-dual-context";
-      if (processingType === "tasks") {
-        return hasQuestions
-          ? "existing-project-dual-tasks-with-questions"
-          : "existing-project-dual-tasks";
-      }
-    }
-  }
+	// Priority 2: Dual processing
+	if (isDualProcessing) {
+		if (isNewProject) {
+			if (processingType === 'context') return 'new-project-dual-context';
+			if (processingType === 'tasks') return 'new-project-dual-tasks';
+		} else {
+			if (processingType === 'context') return 'existing-project-dual-context';
+			if (processingType === 'tasks') {
+				return hasQuestions
+					? 'existing-project-dual-tasks-with-questions'
+					: 'existing-project-dual-tasks';
+			}
+		}
+	}
 
-  // Priority 3: Singular (new project without dual)
-  if (isNewProject && !isDualProcessing) return "new-project-singular";
+	// Priority 3: Singular (new project without dual)
+	if (isNewProject && !isDualProcessing) return 'new-project-singular';
 
-  // Priority 4: Fallback
-  const isShort = brainDumpLength < 500;
-  return isNewProject
-    ? "new-project-singular"
-    : isShort
-      ? "short-braindump-task-extraction"
-      : "existing-project-dual-context";
+	// Priority 4: Fallback
+	const isShort = brainDumpLength < 500;
+	return isNewProject
+		? 'new-project-singular'
+		: isShort
+			? 'short-braindump-task-extraction'
+			: 'existing-project-dual-context';
 }
 ```
 
@@ -484,40 +472,40 @@ export function determineScenarioType({
 
 1. **Fix invalid input**:
 
-   ```typescript
-   // OLD (invalid):
-   determineScenarioType({
-     processingType: "questions", // ❌ Not a valid value
-   });
+    ```typescript
+    // OLD (invalid):
+    determineScenarioType({
+    	processingType: 'questions' // ❌ Not a valid value
+    });
 
-   // NEW (correct):
-   determineScenarioType({
-     processingType: "tasks",
-     hasQuestions: true, // ✅ Separate parameter
-   });
-   ```
+    // NEW (correct):
+    determineScenarioType({
+    	processingType: 'tasks',
+    	hasQuestions: true // ✅ Separate parameter
+    });
+    ```
 
 2. **Update expected values**:
 
-   ```typescript
-   // Instead of 'dual-processing-tasks'
-   expect(result).toBe("existing-project-dual-tasks");
+    ```typescript
+    // Instead of 'dual-processing-tasks'
+    expect(result).toBe('existing-project-dual-tasks');
 
-   // Instead of 'new-project-short' or 'new-project-long'
-   expect(result).toBe("new-project-singular");
-   ```
+    // Instead of 'new-project-short' or 'new-project-long'
+    expect(result).toBe('new-project-singular');
+    ```
 
 3. **Add missing parameters**:
-   ```typescript
-   // For short braindumps:
-   determineScenarioType({
-     isNewProject: false,
-     brainDumpLength: 400,
-     isDualProcessing: false,
-     isShortBrainDump: true, // ✅ Add this
-     processingType: "tasks",
-   });
-   ```
+    ```typescript
+    // For short braindumps:
+    determineScenarioType({
+    	isNewProject: false,
+    	brainDumpLength: 400,
+    	isDualProcessing: false,
+    	isShortBrainDump: true, // ✅ Add this
+    	processingType: 'tasks'
+    });
+    ```
 
 ---
 

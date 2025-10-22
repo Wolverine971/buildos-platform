@@ -43,7 +43,7 @@ const matches = Array.from(content.matchAll(regex));
 **Fix**: Updated import to regular import (not type-only):
 
 ```typescript
-import { SmartLLMService } from "$lib/services/smart-llm-service";
+import { SmartLLMService } from '$lib/services/smart-llm-service';
 ```
 
 **Verification**: ✅ TypeScript recognizes the class correctly
@@ -247,17 +247,17 @@ User Input → Rate Limit Check (Pass) → Regex Scan (Low Severity)
 
 ```typescript
 security_logs: {
-  id: string; // Auto-generated UUID
-  user_id: string; // FK to users
-  event_type: string; // CHECK constraint in migration
-  content: string; // Flagged content
-  regex_patterns: Json | null; // Array of SuspiciousPattern
-  llm_validation: Json | null; // LLMValidationResult
-  was_blocked: boolean; // Whether blocked
-  created_at: string; // Auto-generated timestamp
-  metadata: Json | null; // Additional context
-  ip_address: string | null; // Future use
-  user_agent: string | null; // Future use
+	id: string; // Auto-generated UUID
+	user_id: string; // FK to users
+	event_type: string; // CHECK constraint in migration
+	content: string; // Flagged content
+	regex_patterns: Json | null; // Array of SuspiciousPattern
+	llm_validation: Json | null; // LLMValidationResult
+	was_blocked: boolean; // Whether blocked
+	created_at: string; // Auto-generated timestamp
+	metadata: Json | null; // Additional context
+	ip_address: string | null; // Future use
+	user_agent: string | null; // Future use
 }
 ```
 
@@ -279,16 +279,16 @@ security_logs: {
 
 ```typescript
 export interface SuspiciousPattern {
-  pattern: string; // Description of pattern
-  matchedText: string; // Actual text that matched
-  severity: "low" | "medium" | "high";
-  category:
-    | "role-override"
-    | "instruction-ignore"
-    | "prompt-extraction"
-    | "delimiter-abuse"
-    | "data-extraction";
-  position: number; // Character position in content
+	pattern: string; // Description of pattern
+	matchedText: string; // Actual text that matched
+	severity: 'low' | 'medium' | 'high';
+	category:
+		| 'role-override'
+		| 'instruction-ignore'
+		| 'prompt-extraction'
+		| 'delimiter-abuse'
+		| 'data-extraction';
+	position: number; // Character position in content
 }
 ```
 
@@ -300,11 +300,11 @@ export interface SuspiciousPattern {
 
 ```typescript
 export interface LLMValidationResult {
-  isMalicious: boolean;
-  confidence: "low" | "medium" | "high";
-  reason: string;
-  matchedPatterns: string[];
-  shouldBlock: boolean;
+	isMalicious: boolean;
+	confidence: 'low' | 'medium' | 'high';
+	reason: string;
+	matchedPatterns: string[];
+	shouldBlock: boolean;
 }
 ```
 
@@ -316,9 +316,9 @@ export interface LLMValidationResult {
 
 ```typescript
 export interface RateLimitResult {
-  isAllowed: boolean;
-  attemptsInWindow: number;
-  resetTime: number;
+	isAllowed: boolean;
+	attemptsInWindow: number;
+	resetTime: number;
 }
 ```
 

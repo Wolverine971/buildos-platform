@@ -1,5 +1,5 @@
 ---
-title: "Notification Queue and Worker Flow Audit"
+title: 'Notification Queue and Worker Flow Audit'
 date: 2025-10-10
 type: technical-audit
 status: complete
@@ -80,15 +80,15 @@ This document provides a complete audit of the BuildOS notification system, trac
 
 - **File:** `/apps/web/supabase/migrations/20251010_add_scheduled_for_to_notification_events.sql`
 - **Parameters:**
-  ```sql
-  p_event_type TEXT              -- e.g., 'brief.completed', 'user.signup'
-  p_event_source TEXT            -- 'database_trigger', 'worker_job', 'api_action', 'cron_scheduler'
-  p_actor_user_id UUID           -- User who caused the event (optional)
-  p_target_user_id UUID          -- User affected by event (optional)
-  p_payload JSONB                -- Event-specific data
-  p_metadata JSONB               -- Additional metadata
-  p_scheduled_for TIMESTAMPTZ    -- When to send notification (optional, defaults to NOW())
-  ```
+    ```sql
+    p_event_type TEXT              -- e.g., 'brief.completed', 'user.signup'
+    p_event_source TEXT            -- 'database_trigger', 'worker_job', 'api_action', 'cron_scheduler'
+    p_actor_user_id UUID           -- User who caused the event (optional)
+    p_target_user_id UUID          -- User affected by event (optional)
+    p_payload JSONB                -- Event-specific data
+    p_metadata JSONB               -- Additional metadata
+    p_scheduled_for TIMESTAMPTZ    -- When to send notification (optional, defaults to NOW())
+    ```
 
 **2. Daily Brief Completion (Worker)**
 
@@ -96,9 +96,9 @@ This document provides a complete audit of the BuildOS notification system, trac
 - **Lines:** 299-381
 - **When:** After brief generation completes successfully
 - **Logging:**
-  - ✅ Line 342-349: Logs notification scheduling info
-  - ✅ Line 352: Logs task count statistics
-  - ✅ Line 375-377: Logs event emission success
+    - ✅ Line 342-349: Logs notification scheduling info
+    - ✅ Line 352: Logs task count statistics
+    - ✅ Line 375-377: Logs event emission success
 
 **3. Test Notification API (Admin)**
 
@@ -106,8 +106,8 @@ This document provides a complete audit of the BuildOS notification system, trac
 - **Lines:** 106-206 (test mode), 208-237 (production mode)
 - **When:** Admin manually triggers test notification
 - **Logging:**
-  - ✅ Line 59-62: Logs payload transformation attempts
-  - ✅ Line 160-162: Warns when channel unavailable
+    - ✅ Line 59-62: Logs payload transformation attempts
+    - ✅ Line 160-162: Warns when channel unavailable
 
 **4. User Signup Trigger (Database)**
 
@@ -138,10 +138,10 @@ CREATE TABLE notification_events (
 
 - ⚠️ **NO LOGGING** - Runs silently in database
 - **Gap:** No visibility into:
-  - How many subscriptions matched
-  - Which channels were enabled/disabled
-  - Whether deliveries were created
-  - Any errors during subscription processing
+    - How many subscriptions matched
+    - Which channels were enabled/disabled
+    - Whether deliveries were created
+    - Any errors during subscription processing
 
 ---
 
@@ -153,50 +153,50 @@ CREATE TABLE notification_events (
 
 1. **Find Active Subscriptions**
 
-   ```sql
-   SELECT * FROM notification_subscriptions
-   WHERE event_type = p_event_type
-     AND is_active = true
-   ```
+    ```sql
+    SELECT * FROM notification_subscriptions
+    WHERE event_type = p_event_type
+      AND is_active = true
+    ```
 
 2. **Get User Preferences**
 
-   ```sql
-   SELECT * FROM user_notification_preferences
-   WHERE user_id = v_subscription.user_id
-     AND event_type = p_event_type
-   ```
+    ```sql
+    SELECT * FROM user_notification_preferences
+    WHERE user_id = v_subscription.user_id
+      AND event_type = p_event_type
+    ```
 
-   - If not found, uses defaults: `push=true, email=false, sms=false, in_app=true`
+    - If not found, uses defaults: `push=true, email=false, sms=false, in_app=true`
 
 3. **For Each Enabled Channel:**
 
-   **PUSH Channel:**
-   - Queries `push_subscriptions` for active subscriptions
-   - For each push subscription:
-     - Creates `notification_deliveries` record with:
-       - `channel='push'`
-       - `channel_identifier=endpoint`
-       - `status='pending'`
-     - Creates `queue_jobs` record with:
-       - `job_type='send_notification'`
-       - `queue_job_id='notif_{delivery_id}'`
-       - `scheduled_for=v_scheduled_time` (from p_scheduled_for or NOW())
-       - `metadata={event_id, delivery_id, channel, event_type}`
+    **PUSH Channel:**
+    - Queries `push_subscriptions` for active subscriptions
+    - For each push subscription:
+        - Creates `notification_deliveries` record with:
+            - `channel='push'`
+            - `channel_identifier=endpoint`
+            - `status='pending'`
+        - Creates `queue_jobs` record with:
+            - `job_type='send_notification'`
+            - `queue_job_id='notif_{delivery_id}'`
+            - `scheduled_for=v_scheduled_time` (from p_scheduled_for or NOW())
+            - `metadata={event_id, delivery_id, channel, event_type}`
 
-   **IN_APP Channel:**
-   - Creates `notification_deliveries` record
-   - Creates `queue_jobs` record
-   - Similar structure to push
+    **IN_APP Channel:**
+    - Creates `notification_deliveries` record
+    - Creates `queue_jobs` record
+    - Similar structure to push
 
-   **EMAIL Channel:**
-   - ⚠️ **NOT IMPLEMENTED** in current emit_notification_event
-   - Comment: "Email and SMS would be added here in future phases"
+    **EMAIL Channel:**
+    - ⚠️ **NOT IMPLEMENTED** in current emit_notification_event
+    - Comment: "Email and SMS would be added here in future phases"
 
-   **SMS Channel:**
-   - Implemented in migration `20251006_sms_notification_channel_phase1.sql`
-   - Checks `user_sms_preferences` for verified phone
-   - Creates delivery and queue job if phone verified and not opted out
+    **SMS Channel:**
+    - Implemented in migration `20251006_sms_notification_channel_phase1.sql`
+    - Checks `user_sms_preferences` for verified phone
+    - Creates delivery and queue job if phone verified and not opted out
 
 **notification_deliveries Table:**
 
@@ -246,10 +246,10 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 
 - ⚠️ **NO LOGGING** - Database function runs silently
 - **Critical Gap:** Cannot see:
-  - Which users got delivery records created
-  - Which channels were skipped (no subscription, disabled, etc.)
-  - Whether queue jobs were successfully created
-  - Any database errors during batch creation
+    - Which users got delivery records created
+    - Which channels were skipped (no subscription, disabled, etc.)
+    - Whether queue jobs were successfully created
+    - Any database errors during batch creation
 
 ---
 
@@ -265,45 +265,45 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 
 1. **Query for Pending Jobs:**
 
-   ```typescript
-   const { data: jobs, error } = await supabase
-     .from("queue_jobs")
-     .select("*")
-     .eq("job_type", "send_notification")
-     .eq("status", "pending")
-     .lte("scheduled_for", new Date().toISOString())
-     .order("scheduled_for", { ascending: true })
-     .limit(10);
-   ```
+    ```typescript
+    const { data: jobs, error } = await supabase
+    	.from('queue_jobs')
+    	.select('*')
+    	.eq('job_type', 'send_notification')
+    	.eq('status', 'pending')
+    	.lte('scheduled_for', new Date().toISOString())
+    	.order('scheduled_for', { ascending: true })
+    	.limit(10);
+    ```
 
 2. **Process Jobs in Parallel:**
 
-   ```typescript
-   await Promise.allSettled(
-     jobs.map(async (job) => {
-       // Mark as processing
-       await supabase
-         .from("queue_jobs")
-         .update({
-           status: "processing",
-           started_at: new Date().toISOString(),
-         })
-         .eq("id", job.id);
+    ```typescript
+    await Promise.allSettled(
+    	jobs.map(async (job) => {
+    		// Mark as processing
+    		await supabase
+    			.from('queue_jobs')
+    			.update({
+    				status: 'processing',
+    				started_at: new Date().toISOString()
+    			})
+    			.eq('id', job.id);
 
-       // Process notification
-       await processNotification(typedJob);
+    		// Process notification
+    		await processNotification(typedJob);
 
-       // Mark as completed
-       await supabase
-         .from("queue_jobs")
-         .update({
-           status: "completed",
-           completed_at: new Date().toISOString(),
-         })
-         .eq("id", job.id);
-     }),
-   );
-   ```
+    		// Mark as completed
+    		await supabase
+    			.from('queue_jobs')
+    			.update({
+    				status: 'completed',
+    				completed_at: new Date().toISOString()
+    			})
+    			.eq('id', job.id);
+    	})
+    );
+    ```
 
 **Logging:**
 
@@ -336,87 +336,85 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 
 1. **Fetch Delivery Record** (Lines 326-336)
 
-   ```typescript
-   const { data: delivery, error: fetchError } = await supabase
-     .from("notification_deliveries")
-     .select("*")
-     .eq("id", delivery_id)
-     .single();
-   ```
+    ```typescript
+    const { data: delivery, error: fetchError } = await supabase
+    	.from('notification_deliveries')
+    	.select('*')
+    	.eq('id', delivery_id)
+    	.single();
+    ```
 
-   - **Logging:**
-     - ✅ Line 320-322: Logs job and delivery being processed
-     - ✅ Line 333-335: Logs error if delivery not found
+    - **Logging:**
+        - ✅ Line 320-322: Logs job and delivery being processed
+        - ✅ Line 333-335: Logs error if delivery not found
 
 2. **Status Validation** (Lines 338-348)
-   - Skips if already in final state: `sent`, `delivered`, or `clicked`
-   - **Logging:**
-     - ✅ Line 344-346: Logs when delivery already completed
-   - **Gap:** Doesn't log status, only that it's completed
+    - Skips if already in final state: `sent`, `delivered`, or `clicked`
+    - **Logging:**
+        - ✅ Line 344-346: Logs when delivery already completed
+    - **Gap:** Doesn't log status, only that it's completed
 
 3. **Attempt Limit Check** (Lines 350-367)
-   - Fails if `attempts >= max_attempts`
-   - **Logging:**
-     - ✅ Line 354-356: Logs when max attempts exceeded
-   - **Status Updates:**
-     - ✅ Sets `status='failed'`, `failed_at=NOW()`, `last_error`
+    - Fails if `attempts >= max_attempts`
+    - **Logging:**
+        - ✅ Line 354-356: Logs when max attempts exceeded
+    - **Status Updates:**
+        - ✅ Sets `status='failed'`, `failed_at=NOW()`, `last_error`
 
 4. **Payload Enrichment** (Lines 392-404)
-   - Calls `enrichDeliveryPayload()` to transform event data
-   - Validates final payload has title and body
-   - **Logging:**
-     - ✅ Line 397-400: Logs validation errors
-   - **Gap:** No log of successful transformation
+    - Calls `enrichDeliveryPayload()` to transform event data
+    - Validates final payload has title and body
+    - **Logging:**
+        - ✅ Line 397-400: Logs validation errors
+    - **Gap:** No log of successful transformation
 
 5. **Send Notification** (Lines 406-410)
-   - Routes to channel adapter
-   - **Logging:**
-     - ✅ Line 406-408: Logs attempt number and channel
-     - ✅ Line 425-427: Logs success
-     - ✅ Line 433-435: Logs failure
-   - **Status Updates:**
-     - ✅ Increments `attempts`
-     - ✅ Success: `status='sent'`, `sent_at=NOW()`, `external_id` (if provided)
-     - ✅ Failure: `status='failed'`, `failed_at=NOW()`, `last_error`
+    - Routes to channel adapter
+    - **Logging:**
+        - ✅ Line 406-408: Logs attempt number and channel
+        - ✅ Line 425-427: Logs success
+        - ✅ Line 433-435: Logs failure
+    - **Status Updates:**
+        - ✅ Increments `attempts`
+        - ✅ Success: `status='sent'`, `sent_at=NOW()`, `external_id` (if provided)
+        - ✅ Failure: `status='failed'`, `failed_at=NOW()`, `last_error`
 
 6. **Critical Status Update** (Lines 438-456)
 
-   ```typescript
-   const { error: updateError } = await supabase
-     .from("notification_deliveries")
-     .update(updateData)
-     .eq("id", delivery_id);
+    ```typescript
+    const { error: updateError } = await supabase
+    	.from('notification_deliveries')
+    	.update(updateData)
+    	.eq('id', delivery_id);
 
-   if (updateError) {
-     console.error(
-       `[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status for ${delivery_id}`,
-     );
-     console.error(
-       `[NotificationWorker] This may cause duplicate sends! Delivery data:`,
-       updateData,
-     );
-     throw new Error(
-       `Failed to update delivery status: ${updateError.message}`,
-     );
-   }
-   ```
+    if (updateError) {
+    	console.error(
+    		`[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status for ${delivery_id}`
+    	);
+    	console.error(
+    		`[NotificationWorker] This may cause duplicate sends! Delivery data:`,
+    		updateData
+    	);
+    	throw new Error(`Failed to update delivery status: ${updateError.message}`);
+    }
+    ```
 
-   - **Logging:**
-     - ✅ Line 446-451: **CRITICAL** warning about potential duplicates
-     - ✅ Line 458-460: Logs successful status update
-   - **Gap:** No tracking of duplicate sends if this fails
+    - **Logging:**
+        - ✅ Line 446-451: **CRITICAL** warning about potential duplicates
+        - ✅ Line 458-460: Logs successful status update
+    - **Gap:** No tracking of duplicate sends if this fails
 
 7. **Error Handling** (Lines 471-519)
-   - Catches all errors
-   - Tries to mark delivery as failed
-   - Uses optimistic locking to prevent race conditions
-   - **Logging:**
-     - ✅ Line 472-475: Logs processing error
-     - ✅ Line 507-509: Logs delivery marked as failed
-     - ✅ Line 512-515: Logs if cleanup fails
-   - **Status Updates:**
-     - ✅ Only updates if not already in final state
-     - ✅ Uses `.eq("status", currentDelivery.status)` for optimistic lock
+    - Catches all errors
+    - Tries to mark delivery as failed
+    - Uses optimistic locking to prevent race conditions
+    - **Logging:**
+        - ✅ Line 472-475: Logs processing error
+        - ✅ Line 507-509: Logs delivery marked as failed
+        - ✅ Line 512-515: Logs if cleanup fails
+    - **Status Updates:**
+        - ✅ Only updates if not already in final state
+        - ✅ Uses `.eq("status", currentDelivery.status)` for optimistic lock
 
 ---
 
@@ -547,10 +545,10 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 - **Lines:** 108-156 - `extractTemplateVars()` for event-specific variables
 - **Lines:** 162-249 - `formatSMSMessage()` with fallback to hardcoded
 - **Logging:**
-  - ✅ Line 67-70: Warns when template not found
-  - ✅ Line 187-189: Logs template rendering
-  - ✅ Line 195-198: Warns when message truncated
-  - ✅ Line 206-208: Logs fallback formatting
+    - ✅ Line 67-70: Warns when template not found
+    - ✅ Line 187-189: Logs template rendering
+    - ✅ Line 195-198: Warns when message truncated
+    - ✅ Line 206-208: Logs fallback formatting
 
 **URL Shortening:**
 
@@ -558,20 +556,20 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 - Uses `create_tracking_link()` RPC
 - Creates records in `notification_tracking_links`
 - **Logging:**
-  - ✅ Line 304-310: Logs shortening failures
-  - ✅ Line 313-315: Warns when no short code generated
-  - ✅ Line 324-326: Logs successful URL shortening
-  - ✅ Line 328-331: Logs errors per URL
-  - ✅ Line 336-338: Logs summary of shortened URLs
+    - ✅ Line 304-310: Logs shortening failures
+    - ✅ Line 313-315: Warns when no short code generated
+    - ✅ Line 324-326: Logs successful URL shortening
+    - ✅ Line 328-331: Logs errors per URL
+    - ✅ Line 336-338: Logs summary of shortened URLs
 
 **Message Creation:**
 
 - **Logging:**
-  - ✅ Line 381-383: Logs message formatting and recipient
-  - ✅ Line 406: Logs sms_messages creation errors
-  - ✅ Line 413-415: Logs sms_messages record created
-  - ✅ Line 450-451: Logs SMS job queued
-  - ✅ Line 458: Logs general SMS errors
+    - ✅ Line 381-383: Logs message formatting and recipient
+    - ✅ Line 406: Logs sms_messages creation errors
+    - ✅ Line 413-415: Logs sms_messages record created
+    - ✅ Line 450-451: Logs SMS job queued
+    - ✅ Line 458: Logs general SMS errors
 
 **Status Updates:**
 
@@ -623,66 +621,66 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 ### Adequate Logging
 
 1. **Worker Processing:**
-   - ✅ Job claim and processing start
-   - ✅ Delivery attempts and channel
-   - ✅ Success/failure results
-   - ✅ Status update confirmations
-   - ✅ Critical warnings (duplicate send risk)
+    - ✅ Job claim and processing start
+    - ✅ Delivery attempts and channel
+    - ✅ Success/failure results
+    - ✅ Status update confirmations
+    - ✅ Critical warnings (duplicate send risk)
 
 2. **Channel Adapters:**
-   - ✅ Email: Template formatting, webhook calls
-   - ✅ SMS: Template rendering, URL shortening, message queueing
-   - ✅ Push: Error handling
-   - ✅ In-App: Error handling
+    - ✅ Email: Template formatting, webhook calls
+    - ✅ SMS: Template rendering, URL shortening, message queueing
+    - ✅ Push: Error handling
+    - ✅ In-App: Error handling
 
 3. **Brief Worker:**
-   - ✅ Notification scheduling info
-   - ✅ Task count statistics
-   - ✅ Event emission
+    - ✅ Notification scheduling info
+    - ✅ Task count statistics
+    - ✅ Event emission
 
 ### Missing or Insufficient Logging
 
 #### Critical Gaps
 
 1. **Database Event Creation (emit_notification_event):**
-   - ❌ No logging whatsoever
-   - **Impact:** Cannot debug why deliveries weren't created
-   - **Cannot see:**
-     - How many subscriptions matched
-     - Which channels were enabled/disabled per user
-     - Which users got deliveries created
-     - Any database errors during batch creation
-   - **Recommendation:** Add a companion audit table or use RAISE NOTICE
+    - ❌ No logging whatsoever
+    - **Impact:** Cannot debug why deliveries weren't created
+    - **Cannot see:**
+        - How many subscriptions matched
+        - Which channels were enabled/disabled per user
+        - Which users got deliveries created
+        - Any database errors during batch creation
+    - **Recommendation:** Add a companion audit table or use RAISE NOTICE
 
 2. **Queue Polling (Silent Polls):**
-   - ❌ No log when no jobs found
-   - **Impact:** Cannot verify worker is running when idle
-   - **Recommendation:** Periodic heartbeat log (every 5 minutes)
+    - ❌ No log when no jobs found
+    - **Impact:** Cannot verify worker is running when idle
+    - **Recommendation:** Periodic heartbeat log (every 5 minutes)
 
 3. **Tracking Events:**
-   - ❌ No logging when deliveries transition to `opened`, `clicked`, `bounced`
-   - **Impact:** Cannot debug tracking failures
-   - **Files to check:** Email/SMS tracking endpoints
+    - ❌ No logging when deliveries transition to `opened`, `clicked`, `bounced`
+    - **Impact:** Cannot debug tracking failures
+    - **Files to check:** Email/SMS tracking endpoints
 
 #### Minor Gaps
 
 4. **Push Notifications:**
-   - ⚠️ No log on successful send (only on error)
-   - ⚠️ No log when subscription expired/deactivated
-   - **Impact:** Cannot count successes without querying database
+    - ⚠️ No log on successful send (only on error)
+    - ⚠️ No log when subscription expired/deactivated
+    - **Impact:** Cannot count successes without querying database
 
 5. **In-App Notifications:**
-   - ⚠️ No log on successful insertion
-   - **Impact:** Cannot verify in-app delivery without database query
+    - ⚠️ No log on successful insertion
+    - **Impact:** Cannot verify in-app delivery without database query
 
 6. **Payload Transformation:**
-   - ⚠️ No log of successful transformation
-   - Only logs errors and fallbacks
-   - **Impact:** Cannot verify correct payload generation
+    - ⚠️ No log of successful transformation
+    - Only logs errors and fallbacks
+    - **Impact:** Cannot verify correct payload generation
 
 7. **Test API:**
-   - ⚠️ Limited logging of channel availability checks
-   - Could log more detail about why channels are skipped
+    - ⚠️ Limited logging of channel availability checks
+    - Could log more detail about why channels are skipped
 
 ---
 
@@ -696,16 +694,14 @@ metadata JSONB  -- {event_id, delivery_id, channel, event_type}
 
 ```typescript
 const { error: updateError } = await supabase
-  .from("notification_deliveries")
-  .update(updateData)
-  .eq("id", delivery_id);
+	.from('notification_deliveries')
+	.update(updateData)
+	.eq('id', delivery_id);
 
 if (updateError) {
-  console.error(
-    `[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status`,
-  );
-  console.error(`[NotificationWorker] This may cause duplicate sends!`);
-  throw new Error(`Failed to update delivery status: ${updateError.message}`);
+	console.error(`[NotificationWorker] ⚠️  CRITICAL: Failed to update delivery status`);
+	console.error(`[NotificationWorker] This may cause duplicate sends!`);
+	throw new Error(`Failed to update delivery status: ${updateError.message}`);
 }
 ```
 
@@ -747,22 +743,22 @@ if (updateError) {
 
 ```typescript
 const { data: jobs, error } = await supabase
-  .from("queue_jobs")
-  .select("*")
-  .eq("job_type", "send_notification")
-  .eq("status", "pending")
-  .lte("scheduled_for", new Date().toISOString())
-  .order("scheduled_for", { ascending: true })
-  .limit(10);
+	.from('queue_jobs')
+	.select('*')
+	.eq('job_type', 'send_notification')
+	.eq('status', 'pending')
+	.lte('scheduled_for', new Date().toISOString())
+	.order('scheduled_for', { ascending: true })
+	.limit(10);
 
 // Later...
 await supabase
-  .from("queue_jobs")
-  .update({
-    status: "processing",
-    started_at: new Date().toISOString(),
-  })
-  .eq("id", job.id);
+	.from('queue_jobs')
+	.update({
+		status: 'processing',
+		started_at: new Date().toISOString()
+	})
+	.eq('id', job.id);
 ```
 
 **Mitigation (Current):**
@@ -887,62 +883,62 @@ scheduled_for: isRetryable
 ### Integration Tests Needed
 
 1. **End-to-End Notification Flow:**
-   - Create event via `emit_notification_event()`
-   - Verify deliveries created
-   - Verify queue jobs created
-   - Mock channel adapters
-   - Verify status transitions
-   - **File to create:** `apps/worker/tests/integration/notification-flow.test.ts`
+    - Create event via `emit_notification_event()`
+    - Verify deliveries created
+    - Verify queue jobs created
+    - Mock channel adapters
+    - Verify status transitions
+    - **File to create:** `apps/worker/tests/integration/notification-flow.test.ts`
 
 2. **Status Transition Tests:**
-   - Test all state transitions in Status Transition Matrix
-   - Verify timestamps set correctly
-   - Verify optimistic locking works
-   - **File to create:** `apps/worker/tests/integration/notification-status.test.ts`
+    - Test all state transitions in Status Transition Matrix
+    - Verify timestamps set correctly
+    - Verify optimistic locking works
+    - **File to create:** `apps/worker/tests/integration/notification-status.test.ts`
 
 3. **Retry Logic Tests:**
-   - Test max attempts enforcement
-   - Test exponential backoff calculation
-   - Test retry on transient errors
-   - **File to create:** `apps/worker/tests/unit/notification-retry.test.ts`
+    - Test max attempts enforcement
+    - Test exponential backoff calculation
+    - Test retry on transient errors
+    - **File to create:** `apps/worker/tests/unit/notification-retry.test.ts`
 
 4. **Concurrent Processing Tests:**
-   - Simulate multiple workers
-   - Verify no duplicate sends
-   - Verify atomic job claiming
-   - **File to create:** `apps/worker/tests/integration/notification-concurrency.test.ts`
+    - Simulate multiple workers
+    - Verify no duplicate sends
+    - Verify atomic job claiming
+    - **File to create:** `apps/worker/tests/integration/notification-concurrency.test.ts`
 
 ### Manual Testing Checklist
 
 1. **Push Notifications:**
-   - [ ] Subscribe to brief.completed event
-   - [ ] Generate daily brief
-   - [ ] Verify push notification received
-   - [ ] Check delivery status in database
-   - [ ] Verify queue job status
+    - [ ] Subscribe to brief.completed event
+    - [ ] Generate daily brief
+    - [ ] Verify push notification received
+    - [ ] Check delivery status in database
+    - [ ] Verify queue job status
 
 2. **In-App Notifications:**
-   - [ ] Same as above for in-app channel
-   - [ ] Verify user_notifications record created
+    - [ ] Same as above for in-app channel
+    - [ ] Verify user_notifications record created
 
 3. **Email Notifications:**
-   - [ ] Enable email in preferences
-   - [ ] Generate daily brief
-   - [ ] Verify email sent via webhook
-   - [ ] Check tracking pixel and links
+    - [ ] Enable email in preferences
+    - [ ] Generate daily brief
+    - [ ] Verify email sent via webhook
+    - [ ] Check tracking pixel and links
 
 4. **SMS Notifications:**
-   - [ ] Set phone number and verify
-   - [ ] Enable SMS in preferences
-   - [ ] Generate daily brief
-   - [ ] Verify SMS message queued
-   - [ ] Check URL shortening worked
+    - [ ] Set phone number and verify
+    - [ ] Enable SMS in preferences
+    - [ ] Generate daily brief
+    - [ ] Verify SMS message queued
+    - [ ] Check URL shortening worked
 
 5. **Error Scenarios:**
-   - [ ] Test with expired push subscription (should deactivate)
-   - [ ] Test with invalid email (should fail gracefully)
-   - [ ] Test with unverified phone (should skip)
-   - [ ] Test with max attempts exceeded (should mark failed)
+    - [ ] Test with expired push subscription (should deactivate)
+    - [ ] Test with invalid email (should fail gracefully)
+    - [ ] Test with unverified phone (should skip)
+    - [ ] Test with max attempts exceeded (should mark failed)
 
 ---
 
@@ -952,56 +948,56 @@ scheduled_for: isRetryable
 
 1. **Notification Health Dashboard:**
 
-   ```sql
-   CREATE VIEW notification_health AS
-   SELECT
-     DATE(created_at) as date,
-     event_type,
-     COUNT(*) as total_events,
-     COUNT(DISTINCT recipient_user_id) as unique_recipients,
-     SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-     AVG(EXTRACT(EPOCH FROM (sent_at - created_at))) as avg_delivery_time_sec
-   FROM notification_deliveries d
-   JOIN notification_events e ON d.event_id = e.id
-   GROUP BY 1, 2
-   ORDER BY 1 DESC, 2;
-   ```
+    ```sql
+    CREATE VIEW notification_health AS
+    SELECT
+      DATE(created_at) as date,
+      event_type,
+      COUNT(*) as total_events,
+      COUNT(DISTINCT recipient_user_id) as unique_recipients,
+      SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+      AVG(EXTRACT(EPOCH FROM (sent_at - created_at))) as avg_delivery_time_sec
+    FROM notification_deliveries d
+    JOIN notification_events e ON d.event_id = e.id
+    GROUP BY 1, 2
+    ORDER BY 1 DESC, 2;
+    ```
 
 2. **Queue Job Health:**
-   ```sql
-   CREATE VIEW queue_health AS
-   SELECT
-     DATE(created_at) as date,
-     job_type,
-     status,
-     COUNT(*) as count,
-     AVG(EXTRACT(EPOCH FROM (completed_at - created_at))) as avg_processing_time_sec,
-     AVG(attempts) as avg_attempts
-   FROM queue_jobs
-   WHERE job_type = 'send_notification'
-   GROUP BY 1, 2, 3
-   ORDER BY 1 DESC, 2, 3;
-   ```
+    ```sql
+    CREATE VIEW queue_health AS
+    SELECT
+      DATE(created_at) as date,
+      job_type,
+      status,
+      COUNT(*) as count,
+      AVG(EXTRACT(EPOCH FROM (completed_at - created_at))) as avg_processing_time_sec,
+      AVG(attempts) as avg_attempts
+    FROM queue_jobs
+    WHERE job_type = 'send_notification'
+    GROUP BY 1, 2, 3
+    ORDER BY 1 DESC, 2, 3;
+    ```
 
 ### Alerts
 
 1. **High Failure Rate:**
-   - Alert if >10% of deliveries fail in last hour
-   - Query: `SELECT COUNT(*) WHERE status='failed' AND created_at > NOW() - INTERVAL '1 hour'`
+    - Alert if >10% of deliveries fail in last hour
+    - Query: `SELECT COUNT(*) WHERE status='failed' AND created_at > NOW() - INTERVAL '1 hour'`
 
 2. **Stuck Jobs:**
-   - Alert if jobs in `processing` state for >10 minutes
-   - Query: `SELECT * WHERE status='processing' AND started_at < NOW() - INTERVAL '10 minutes'`
+    - Alert if jobs in `processing` state for >10 minutes
+    - Query: `SELECT * WHERE status='processing' AND started_at < NOW() - INTERVAL '10 minutes'`
 
 3. **Delayed Jobs:**
-   - Alert if `pending` jobs scheduled more than 5 minutes ago
-   - Query: `SELECT * WHERE status='pending' AND scheduled_for < NOW() - INTERVAL '5 minutes'`
+    - Alert if `pending` jobs scheduled more than 5 minutes ago
+    - Query: `SELECT * WHERE status='pending' AND scheduled_for < NOW() - INTERVAL '5 minutes'`
 
 4. **Worker Heartbeat:**
-   - Alert if no jobs processed in last 15 minutes during business hours
-   - Requires adding periodic heartbeat log
+    - Alert if no jobs processed in last 15 minutes during business hours
+    - Requires adding periodic heartbeat log
 
 ---
 

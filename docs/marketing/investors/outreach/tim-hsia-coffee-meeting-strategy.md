@@ -98,20 +98,20 @@
 **Keep it tight and impactful:**
 
 1. **The Problem** (20 seconds)
-   - "Let me show you what ADHD professionals deal with daily..."
-   - Show the chaos of multiple notes, tasks, ideas scattered everywhere
+    - "Let me show you what ADHD professionals deal with daily..."
+    - Show the chaos of multiple notes, tasks, ideas scattered everywhere
 
 2. **The Magic Moment** (40 seconds)
-   - "Watch what happens when they brain dump into BuildOS..."
-   - Show transformation: messy thoughts → organized projects and tasks
+    - "Watch what happens when they brain dump into BuildOS..."
+    - Show transformation: messy thoughts → organized projects and tasks
 
 3. **The Retention Hook** (40 seconds)
-   - "Here's why users stick: BuildOS gets smarter with context..."
-   - Show how the AI improves with usage
+    - "Here's why users stick: BuildOS gets smarter with context..."
+    - Show how the AI improves with usage
 
 4. **User Love** (20 seconds)
-   - Share 1-2 powerful quotes from your DAUs
-   - "Users call it their 'second brain that actually works'"
+    - Share 1-2 powerful quotes from your DAUs
+    - "Users call it their 'second brain that actually works'"
 
 ---
 

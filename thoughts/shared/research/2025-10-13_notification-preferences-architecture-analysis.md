@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: current
 branch: main
 repository: buildos-platform
-topic: "Notification Preferences Architecture Analysis - Post-Refactor"
+topic: 'Notification Preferences Architecture Analysis - Post-Refactor'
 tags: [research, notifications, architecture, preferences, database-schema]
 status: complete
 last_updated: 2025-10-13
@@ -35,11 +35,11 @@ The refactor introduced a critical pattern: user-level preferences use `event_ty
 
 ```typescript
 user_notification_preferences: {
-  user_id: string;
-  event_type: string; // 'user' for user-level preferences
-  should_email_daily_brief: boolean | null; // ✅ NEW (refactor)
-  should_sms_daily_brief: boolean | null; // ✅ NEW (refactor)
-  // ... other columns
+	user_id: string;
+	event_type: string; // 'user' for user-level preferences
+	should_email_daily_brief: boolean | null; // ✅ NEW (refactor)
+	should_sms_daily_brief: boolean | null; // ✅ NEW (refactor)
+	// ... other columns
 }
 ```
 
@@ -52,36 +52,32 @@ user_notification_preferences: {
 ```typescript
 // Check if this is a user-level daily brief preference update
 const isDailyBriefUpdate =
-  (should_email_daily_brief !== undefined ||
-    should_sms_daily_brief !== undefined) &&
-  !event_type;
+	(should_email_daily_brief !== undefined || should_sms_daily_brief !== undefined) && !event_type;
 
 if (isDailyBriefUpdate) {
-  // Validate phone number if enabling SMS (lines 92-123)
-  if (should_sms_daily_brief === true) {
-    const { data: smsPrefs } = await supabase
-      .from("user_sms_preferences")
-      .select("phone_number, phone_verified, opted_out")
-      .eq("user_id", user.id)
-      .single();
+	// Validate phone number if enabling SMS (lines 92-123)
+	if (should_sms_daily_brief === true) {
+		const { data: smsPrefs } = await supabase
+			.from('user_sms_preferences')
+			.select('phone_number, phone_verified, opted_out')
+			.eq('user_id', user.id)
+			.single();
 
-    // Check phone_number exists, phone_verified, not opted_out
-  }
+		// Check phone_number exists, phone_verified, not opted_out
+	}
 
-  // Store with event_type='user' (lines 146-168)
-  const dailyBriefUpdates = {
-    user_id: user.id,
-    event_type: "user", // ← CRITICAL: User-level preferences
-    should_email_daily_brief,
-    should_sms_daily_brief,
-    updated_at: new Date().toISOString(),
-  };
+	// Store with event_type='user' (lines 146-168)
+	const dailyBriefUpdates = {
+		user_id: user.id,
+		event_type: 'user', // ← CRITICAL: User-level preferences
+		should_email_daily_brief,
+		should_sms_daily_brief,
+		updated_at: new Date().toISOString()
+	};
 
-  await supabase
-    .from("user_notification_preferences")
-    .upsert(dailyBriefUpdates, {
-      onConflict: "user_id,event_type", // Composite key ensures one row per user
-    });
+	await supabase.from('user_notification_preferences').upsert(dailyBriefUpdates, {
+		onConflict: 'user_id,event_type' // Composite key ensures one row per user
+	});
 }
 ```
 
@@ -98,13 +94,12 @@ if (isDailyBriefUpdate) {
 **Lines 98-118** - Brief generation worker checks these preferences:
 
 ```typescript
-const { data: notificationPrefs, error: notificationPrefsError } =
-  await supabase
-    .from("user_notification_preferences")
-    .select("should_email_daily_brief, should_sms_daily_brief")
-    .eq("user_id", job.data.userId)
-    .eq("event_type", "user") // ← CRITICAL: Must filter by event_type='user'
-    .single();
+const { data: notificationPrefs, error: notificationPrefsError } = await supabase
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', job.data.userId)
+	.eq('event_type', 'user') // ← CRITICAL: Must filter by event_type='user'
+	.single();
 
 const shouldEmailBrief = notificationPrefs?.should_email_daily_brief ?? false;
 const shouldSmsBrief = notificationPrefs?.should_sms_daily_brief ?? false;
@@ -118,21 +113,20 @@ const shouldSmsBrief = notificationPrefs?.should_sms_daily_brief ?? false;
 
 ```typescript
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // ← CRITICAL: Must filter by event_type='user'
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // ← CRITICAL: Must filter by event_type='user'
+	.single();
 
 const { data: briefPrefs } = await supabase
-  .from("user_brief_preferences")
-  .select("is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('is_active')
+	.eq('user_id', userId)
+	.single();
 
 const shouldSendEmail =
-  notificationPrefs?.should_email_daily_brief === true &&
-  briefPrefs?.is_active === true;
+	notificationPrefs?.should_email_daily_brief === true && briefPrefs?.is_active === true;
 ```
 
 **File**: `/apps/worker/src/lib/services/email-sender.ts`
@@ -179,9 +173,9 @@ async shouldSendEmail(userId: string): Promise<boolean> {
 1. Brief generation completes
 2. Worker checks `should_sms_daily_brief` (event_type='user')
 3. If true, checks SMS prerequisites:
-   - `user_sms_preferences.phone_verified = true`
-   - `user_sms_preferences.phone_number` exists
-   - `user_sms_preferences.opted_out = false`
+    - `user_sms_preferences.phone_verified = true`
+    - `user_sms_preferences.phone_number` exists
+    - `user_sms_preferences.opted_out = false`
 4. If all pass, emits `brief.completed` notification event
 5. Notification system delivers via SMS adapter
 
@@ -204,13 +198,13 @@ async shouldSendEmail(userId: string): Promise<boolean> {
 
 ```typescript
 user_notification_preferences: {
-  user_id: string;
-  event_type: string; // e.g., 'brief.completed', 'task.due', etc.
-  email_enabled: boolean | null;
-  sms_enabled: boolean | null;
-  push_enabled: boolean | null;
-  in_app_enabled: boolean | null;
-  // ... other columns
+	user_id: string;
+	event_type: string; // e.g., 'brief.completed', 'task.due', etc.
+	email_enabled: boolean | null;
+	sms_enabled: boolean | null;
+	push_enabled: boolean | null;
+	in_app_enabled: boolean | null;
+	// ... other columns
 }
 ```
 
@@ -222,67 +216,64 @@ user_notification_preferences: {
 
 ```typescript
 export async function checkUserPreferences(
-  userId: string,
-  eventType: string,
-  channel: NotificationChannel,
-  logger: Logger,
+	userId: string,
+	eventType: string,
+	channel: NotificationChannel,
+	logger: Logger
 ): Promise<PreferenceCheckResult> {
-  // Get notification preferences for this event type
-  const { data: prefs } = await supabase
-    .from("user_notification_preferences")
-    .select("push_enabled, in_app_enabled, email_enabled, sms_enabled")
-    .eq("user_id", userId)
-    .eq("event_type", eventType) // Event-specific preferences
-    .single();
+	// Get notification preferences for this event type
+	const { data: prefs } = await supabase
+		.from('user_notification_preferences')
+		.select('push_enabled, in_app_enabled, email_enabled, sms_enabled')
+		.eq('user_id', userId)
+		.eq('event_type', eventType) // Event-specific preferences
+		.single();
 
-  // Check channel-specific preference
-  let channelEnabled = false;
-  switch (channel) {
-    case "push":
-      channelEnabled = prefs.push_enabled || false;
-      break;
-    case "in_app":
-      channelEnabled = prefs.in_app_enabled || false;
-      break;
-    case "email":
-      channelEnabled = prefs.email_enabled || false;
-      break;
-    case "sms":
-      channelEnabled = prefs.sms_enabled || false;
-      break;
-  }
+	// Check channel-specific preference
+	let channelEnabled = false;
+	switch (channel) {
+		case 'push':
+			channelEnabled = prefs.push_enabled || false;
+			break;
+		case 'in_app':
+			channelEnabled = prefs.in_app_enabled || false;
+			break;
+		case 'email':
+			channelEnabled = prefs.email_enabled || false;
+			break;
+		case 'sms':
+			channelEnabled = prefs.sms_enabled || false;
+			break;
+	}
 
-  if (!channelEnabled) {
-    return {
-      allowed: false,
-      reason: `${channel} notifications disabled for event type: ${eventType}`,
-    };
-  }
+	if (!channelEnabled) {
+		return {
+			allowed: false,
+			reason: `${channel} notifications disabled for event type: ${eventType}`
+		};
+	}
 
-  // Additional checks for SMS channel (lines 122-188)
-  if (channel === "sms") {
-    const { data: smsPrefs } = await supabase
-      .from("user_sms_preferences")
-      .select("opted_out, phone_verified, phone_number, daily_brief_sms")
-      .eq("user_id", userId)
-      .single();
+	// Additional checks for SMS channel (lines 122-188)
+	if (channel === 'sms') {
+		const { data: smsPrefs } = await supabase
+			.from('user_sms_preferences')
+			.select('opted_out, phone_verified, phone_number, daily_brief_sms')
+			.eq('user_id', userId)
+			.single();
 
-    if (smsPrefs.opted_out)
-      return { allowed: false, reason: "User opted out of SMS" };
-    if (!smsPrefs.phone_verified)
-      return { allowed: false, reason: "Phone not verified" };
-    if (!smsPrefs.phone_number)
-      return { allowed: false, reason: "No phone number" };
+		if (smsPrefs.opted_out) return { allowed: false, reason: 'User opted out of SMS' };
+		if (!smsPrefs.phone_verified) return { allowed: false, reason: 'Phone not verified' };
+		if (!smsPrefs.phone_number) return { allowed: false, reason: 'No phone number' };
 
-    // ⚠️ REDUNDANT CHECK (lines 176-186)
-    if (eventType === "brief.completed") {
-      if (!smsPrefs.daily_brief_sms) {
-        return { allowed: false, reason: "Daily brief SMS disabled" };
-      }
-    }
-  }
+		// ⚠️ REDUNDANT CHECK (lines 176-186)
+		if (eventType === 'brief.completed') {
+			if (!smsPrefs.daily_brief_sms) {
+				return { allowed: false, reason: 'Daily brief SMS disabled' };
+			}
+		}
+	}
 
-  return { allowed: true, reason: "User preferences allow this notification" };
+	return { allowed: true, reason: 'User preferences allow this notification' };
 }
 ```
 
@@ -320,42 +311,42 @@ export async function checkUserPreferences(
 
 ```typescript
 user_sms_preferences: {
-  user_id: string;
+	user_id: string;
 
-  // ✅ STILL NEEDED - Core SMS functionality
-  phone_number: string | null;
-  phone_verified: boolean | null;
-  phone_verified_at: string | null;
-  opted_out: boolean | null;
-  opted_out_at: string | null;
-  opt_out_reason: string | null;
+	// ✅ STILL NEEDED - Core SMS functionality
+	phone_number: string | null;
+	phone_verified: boolean | null;
+	phone_verified_at: string | null;
+	opted_out: boolean | null;
+	opted_out_at: string | null;
+	opt_out_reason: string | null;
 
-  // ✅ STILL NEEDED - Calendar event reminders (separate system)
-  event_reminders_enabled: boolean | null;
-  event_reminder_lead_time_minutes: number | null;
-  morning_kickoff_enabled: boolean | null;
-  morning_kickoff_time: string | null;
-  next_up_enabled: boolean | null;
-  evening_recap_enabled: boolean | null;
+	// ✅ STILL NEEDED - Calendar event reminders (separate system)
+	event_reminders_enabled: boolean | null;
+	event_reminder_lead_time_minutes: number | null;
+	morning_kickoff_enabled: boolean | null;
+	morning_kickoff_time: string | null;
+	next_up_enabled: boolean | null;
+	evening_recap_enabled: boolean | null;
 
-  // ⚠️ REDUNDANT with user_notification_preferences (event_type='user')
-  daily_brief_sms: boolean | null;
+	// ⚠️ REDUNDANT with user_notification_preferences (event_type='user')
+	daily_brief_sms: boolean | null;
 
-  // ✅ STILL NEEDED - Rate limiting
-  daily_sms_limit: number | null;
-  daily_sms_count: number | null;
-  daily_count_reset_at: string | null;
+	// ✅ STILL NEEDED - Rate limiting
+	daily_sms_limit: number | null;
+	daily_sms_count: number | null;
+	daily_count_reset_at: string | null;
 
-  // ✅ STILL NEEDED - Quiet hours
-  quiet_hours_start: string | null; // HH:MM:SS
-  quiet_hours_end: string | null;
+	// ✅ STILL NEEDED - Quiet hours
+	quiet_hours_start: string | null; // HH:MM:SS
+	quiet_hours_end: string | null;
 
-  // ⚠️ REDUNDANT with users.timezone
-  timezone: string | null;
+	// ⚠️ REDUNDANT with users.timezone
+	timezone: string | null;
 
-  // Other fields
-  task_reminders: boolean | null;
-  urgent_alerts: boolean | null;
+	// Other fields
+	task_reminders: boolean | null;
+	urgent_alerts: boolean | null;
 }
 ```
 
@@ -426,26 +417,26 @@ Midnight Scheduler
 
 ```typescript
 // dailySmsWorker.ts:104-129
-const today = format(new Date(), "yyyy-MM-dd");
+const today = format(new Date(), 'yyyy-MM-dd');
 const needsReset = smsPrefs.daily_count_reset_at
-  ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd") !== today
-  : true;
+	? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd') !== today
+	: true;
 
 if (needsReset) {
-  await supabase
-    .from("user_sms_preferences")
-    .update({
-      daily_sms_count: 0,
-      daily_count_reset_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
+	await supabase
+		.from('user_sms_preferences')
+		.update({
+			daily_sms_count: 0,
+			daily_count_reset_at: new Date().toISOString()
+		})
+		.eq('user_id', userId);
 }
 
 const currentCount = needsReset ? 0 : smsPrefs.daily_sms_count || 0;
 const limit = smsPrefs.daily_sms_limit || 10;
 
 if (currentCount >= limit) {
-  return { message: "Daily SMS limit reached" };
+	return { message: 'Daily SMS limit reached' };
 }
 ```
 
@@ -470,29 +461,29 @@ if (currentCount >= limit) {
 ```typescript
 // smsWorker.ts:127-171
 if (userPrefs.quiet_hours_start && userPrefs.quiet_hours_end) {
-  const quietStart = parseInt(userPrefs.quiet_hours_start);
-  const quietEnd = parseInt(userPrefs.quiet_hours_end);
-  const currentHour = now.getHours();
+	const quietStart = parseInt(userPrefs.quiet_hours_start);
+	const quietEnd = parseInt(userPrefs.quiet_hours_end);
+	const currentHour = now.getHours();
 
-  const isQuietHours =
-    quietStart < quietEnd
-      ? currentHour >= quietStart && currentHour < quietEnd
-      : currentHour >= quietStart || currentHour < quietEnd;
+	const isQuietHours =
+		quietStart < quietEnd
+			? currentHour >= quietStart && currentHour < quietEnd
+			: currentHour >= quietStart || currentHour < quietEnd;
 
-  if (isQuietHours) {
-    // Reschedule to end of quiet hours
-    const rescheduleTime = new Date(now);
-    rescheduleTime.setHours(quietEnd, 0, 0, 0);
+	if (isQuietHours) {
+		// Reschedule to end of quiet hours
+		const rescheduleTime = new Date(now);
+		rescheduleTime.setHours(quietEnd, 0, 0, 0);
 
-    await supabase
-      .from("scheduled_sms_messages")
-      .update({
-        scheduled_for: rescheduleTime.toISOString(),
-      })
-      .eq("id", scheduled_sms_id);
+		await supabase
+			.from('scheduled_sms_messages')
+			.update({
+				scheduled_for: rescheduleTime.toISOString()
+			})
+			.eq('id', scheduled_sms_id);
 
-    return { success: false, reason: "quiet_hours" };
-  }
+		return { success: false, reason: 'quiet_hours' };
+	}
 }
 ```
 
@@ -508,13 +499,13 @@ if (userPrefs.quiet_hours_start && userPrefs.quiet_hours_end) {
 
 ```typescript
 // Special check for brief.completed SMS
-if (eventType === "brief.completed") {
-  if (!smsPrefs.daily_brief_sms) {
-    return {
-      allowed: false,
-      reason: "Daily brief SMS notifications disabled",
-    };
-  }
+if (eventType === 'brief.completed') {
+	if (!smsPrefs.daily_brief_sms) {
+		return {
+			allowed: false,
+			reason: 'Daily brief SMS notifications disabled'
+		};
+	}
 }
 ```
 
@@ -560,7 +551,7 @@ if (eventType === "brief.completed") {
 ```typescript
 // briefWorker.ts checks should_sms_daily_brief
 if (notificationPrefs?.should_sms_daily_brief) {
-  // Emits notification event
+	// Emits notification event
 }
 
 // emit_notification_event() checks sms_enabled for event type
@@ -612,13 +603,13 @@ Add quiet hours check to `smsAdapter.ts` before queuing SMS:
 ```typescript
 // Before line 492 in smsAdapter.ts
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("quiet_hours_start, quiet_hours_end, timezone")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('quiet_hours_start, quiet_hours_end, timezone')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 if (isInQuietHours(now, smsPrefs)) {
-  // Reschedule delivery or skip
+	// Reschedule delivery or skip
 }
 ```
 
@@ -654,16 +645,16 @@ Add rate limit check to `smsAdapter.ts` before queuing SMS:
 ```typescript
 // Before line 492 in smsAdapter.ts
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("daily_sms_count, daily_sms_limit")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('daily_sms_count, daily_sms_limit')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 if (smsPrefs.daily_sms_count >= smsPrefs.daily_sms_limit) {
-  return {
-    success: false,
-    error: "Daily SMS limit reached",
-  };
+	return {
+		success: false,
+		error: 'Daily SMS limit reached'
+	};
 }
 ```
 
@@ -725,29 +716,29 @@ if (smsPrefs.daily_sms_count >= smsPrefs.daily_sms_limit) {
 ```typescript
 // Before queuing SMS message
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("quiet_hours_start, quiet_hours_end, timezone")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('quiet_hours_start, quiet_hours_end, timezone')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 if (smsPrefs?.quiet_hours_start && smsPrefs?.quiet_hours_end) {
-  const now = new Date();
-  const userTz = smsPrefs.timezone || "UTC";
-  const userTime = utcToZonedTime(now, userTz);
+	const now = new Date();
+	const userTz = smsPrefs.timezone || 'UTC';
+	const userTime = utcToZonedTime(now, userTz);
 
-  const isInQuietHours = checkQuietHours(
-    userTime,
-    smsPrefs.quiet_hours_start,
-    smsPrefs.quiet_hours_end,
-  );
+	const isInQuietHours = checkQuietHours(
+		userTime,
+		smsPrefs.quiet_hours_start,
+		smsPrefs.quiet_hours_end
+	);
 
-  if (isInQuietHours) {
-    // Reschedule to end of quiet hours or mark as failed
-    return {
-      success: false,
-      error: "In quiet hours - rescheduled",
-    };
-  }
+	if (isInQuietHours) {
+		// Reschedule to end of quiet hours or mark as failed
+		return {
+			success: false,
+			error: 'In quiet hours - rescheduled'
+		};
+	}
 }
 ```
 
@@ -762,31 +753,31 @@ if (smsPrefs?.quiet_hours_start && smsPrefs?.quiet_hours_end) {
 ```typescript
 // Before queuing SMS message
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("daily_sms_count, daily_sms_limit, daily_count_reset_at")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('daily_sms_count, daily_sms_limit, daily_count_reset_at')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 // Check if needs reset
-const today = format(new Date(), "yyyy-MM-dd");
+const today = format(new Date(), 'yyyy-MM-dd');
 const needsReset = smsPrefs?.daily_count_reset_at
-  ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd") !== today
-  : true;
+	? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd') !== today
+	: true;
 
 const currentCount = needsReset ? 0 : smsPrefs?.daily_sms_count || 0;
 const limit = smsPrefs?.daily_sms_limit || 10;
 
 if (currentCount >= limit) {
-  smsLogger.warn("Daily SMS limit reached", {
-    userId: delivery.recipient_user_id,
-    currentCount,
-    limit,
-  });
+	smsLogger.warn('Daily SMS limit reached', {
+		userId: delivery.recipient_user_id,
+		currentCount,
+		limit
+	});
 
-  return {
-    success: false,
-    error: `Daily SMS limit reached (${currentCount}/${limit})`,
-  };
+	return {
+		success: false,
+		error: `Daily SMS limit reached (${currentCount}/${limit})`
+	};
 }
 ```
 
@@ -798,13 +789,13 @@ if (currentCount >= limit) {
 
 ```typescript
 // DELETE THIS:
-if (eventType === "brief.completed") {
-  if (!smsPrefs.daily_brief_sms) {
-    return {
-      allowed: false,
-      reason: "Daily brief SMS notifications disabled",
-    };
-  }
+if (eventType === 'brief.completed') {
+	if (!smsPrefs.daily_brief_sms) {
+		return {
+			allowed: false,
+			reason: 'Daily brief SMS notifications disabled'
+		};
+	}
 }
 ```
 
@@ -838,8 +829,8 @@ COMMENT ON COLUMN user_sms_preferences.timezone IS
 
 - Update all queries to read from `users.timezone`
 - Files to update:
-  - `/apps/worker/src/scheduler.ts` (scheduler reads brief prefs)
-  - `/apps/worker/src/workers/dailySmsWorker.ts` (reads SMS prefs)
+    - `/apps/worker/src/scheduler.ts` (scheduler reads brief prefs)
+    - `/apps/worker/src/workers/dailySmsWorker.ts` (reads SMS prefs)
 
 ---
 

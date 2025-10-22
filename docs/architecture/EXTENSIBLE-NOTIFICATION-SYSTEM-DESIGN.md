@@ -141,31 +141,31 @@ graph TB
 ### Core Principles
 
 1. **Event-Driven Architecture**
-   - Events are immutable facts about things that happened
-   - Event sources emit events without knowing about subscribers
-   - Subscribers react to events independently
+    - Events are immutable facts about things that happened
+    - Event sources emit events without knowing about subscribers
+    - Subscribers react to events independently
 
 2. **Separation of Concerns**
-   - **Event** = What happened (user.signup, brief.completed)
-   - **Subscription** = Who cares about what events
-   - **Preference** = How they want to be notified
-   - **Delivery** = Actual notification sent via channel
+    - **Event** = What happened (user.signup, brief.completed)
+    - **Subscription** = Who cares about what events
+    - **Preference** = How they want to be notified
+    - **Delivery** = Actual notification sent via channel
 
 3. **Preference-First Design**
-   - Users opt-in to notifications (not opt-out)
-   - Granular control per event type and channel
-   - Quiet hours, frequency limits, channel preferences
+    - Users opt-in to notifications (not opt-out)
+    - Granular control per event type and channel
+    - Quiet hours, frequency limits, channel preferences
 
 4. **Queue-Based Delivery**
-   - All notifications go through queue system
-   - Retry logic for failed deliveries
-   - Idempotent operations
-   - Audit trail of all attempts
+    - All notifications go through queue system
+    - Retry logic for failed deliveries
+    - Idempotent operations
+    - Audit trail of all attempts
 
 5. **Extensibility**
-   - Adding new event types: Register in event registry
-   - Adding new channels: Implement adapter interface
-   - No changes to core dispatcher logic
+    - Adding new event types: Register in event registry
+    - Adding new channels: Implement adapter interface
+    - No changes to core dispatcher logic
 
 ---
 
@@ -292,17 +292,17 @@ CREATE INDEX idx_notification_events_created_at ON notification_events(created_a
 
 ```json
 {
-  "id": "uuid",
-  "event_type": "user.signup",
-  "event_source": "database_trigger",
-  "actor_user_id": "new-user-id",
-  "target_user_id": null,
-  "payload": {
-    "user_email": "user@example.com",
-    "signup_method": "google_oauth",
-    "referral_source": "organic"
-  },
-  "created_at": "2025-10-05T12:00:00Z"
+	"id": "uuid",
+	"event_type": "user.signup",
+	"event_source": "database_trigger",
+	"actor_user_id": "new-user-id",
+	"target_user_id": null,
+	"payload": {
+		"user_email": "user@example.com",
+		"signup_method": "google_oauth",
+		"referral_source": "organic"
+	},
+	"created_at": "2025-10-05T12:00:00Z"
 }
 ```
 
@@ -508,47 +508,43 @@ ALTER TYPE queue_type ADD VALUE 'send_notification';
 // packages/shared-types/src/notifications.types.ts
 
 export type EventType =
-  // Admin Events (restricted)
-  | "user.signup"
-  | "user.trial_expired"
-  | "payment.failed"
-  | "error.critical"
+	// Admin Events (restricted)
+	| 'user.signup'
+	| 'user.trial_expired'
+	| 'payment.failed'
+	| 'error.critical'
 
-  // User Events (per-user)
-  | "brief.completed"
-  | "brief.failed"
-  | "brain_dump.processed"
-  | "task.due_soon"
-  | "project.phase_scheduled"
-  | "calendar.sync_failed";
+	// User Events (per-user)
+	| 'brief.completed'
+	| 'brief.failed'
+	| 'brain_dump.processed'
+	| 'task.due_soon'
+	| 'project.phase_scheduled'
+	| 'calendar.sync_failed';
 
 export interface NotificationEvent<T = any> {
-  event_type: EventType;
-  event_source:
-    | "database_trigger"
-    | "worker_job"
-    | "api_action"
-    | "cron_scheduler";
-  actor_user_id?: string;
-  target_user_id?: string;
-  payload: T;
-  metadata?: Record<string, any>;
+	event_type: EventType;
+	event_source: 'database_trigger' | 'worker_job' | 'api_action' | 'cron_scheduler';
+	actor_user_id?: string;
+	target_user_id?: string;
+	payload: T;
+	metadata?: Record<string, any>;
 }
 
 // Event-specific payload interfaces
 export interface UserSignupEventPayload {
-  user_id: string;
-  user_email: string;
-  signup_method: "email" | "google_oauth";
-  referral_source?: string;
+	user_id: string;
+	user_email: string;
+	signup_method: 'email' | 'google_oauth';
+	referral_source?: string;
 }
 
 export interface BriefCompletedEventPayload {
-  brief_id: string;
-  brief_date: string;
-  timezone: string;
-  task_count: number;
-  project_count: number;
+	brief_id: string;
+	brief_date: string;
+	timezone: string;
+	task_count: number;
+	project_count: number;
 }
 ```
 
@@ -558,42 +554,42 @@ export interface BriefCompletedEventPayload {
 // apps/worker/src/services/notification-event-registry.ts
 
 export interface EventDefinition {
-  type: EventType;
-  adminOnly: boolean;
-  description: string;
-  defaultChannels: NotificationChannel[];
-  payloadSchema: z.ZodSchema;
+	type: EventType;
+	adminOnly: boolean;
+	description: string;
+	defaultChannels: NotificationChannel[];
+	payloadSchema: z.ZodSchema;
 }
 
 export const EVENT_REGISTRY: Record<EventType, EventDefinition> = {
-  "user.signup": {
-    type: "user.signup",
-    adminOnly: true,
-    description: "New user signs up for BuildOS",
-    defaultChannels: ["push", "in_app"],
-    payloadSchema: z.object({
-      user_id: z.string().uuid(),
-      user_email: z.string().email(),
-      signup_method: z.enum(["email", "google_oauth"]),
-      referral_source: z.string().optional(),
-    }),
-  },
+	'user.signup': {
+		type: 'user.signup',
+		adminOnly: true,
+		description: 'New user signs up for BuildOS',
+		defaultChannels: ['push', 'in_app'],
+		payloadSchema: z.object({
+			user_id: z.string().uuid(),
+			user_email: z.string().email(),
+			signup_method: z.enum(['email', 'google_oauth']),
+			referral_source: z.string().optional()
+		})
+	},
 
-  "brief.completed": {
-    type: "brief.completed",
-    adminOnly: false,
-    description: "Daily brief generation complete",
-    defaultChannels: ["push", "email"],
-    payloadSchema: z.object({
-      brief_id: z.string().uuid(),
-      brief_date: z.string(),
-      timezone: z.string(),
-      task_count: z.number(),
-      project_count: z.number(),
-    }),
-  },
+	'brief.completed': {
+		type: 'brief.completed',
+		adminOnly: false,
+		description: 'Daily brief generation complete',
+		defaultChannels: ['push', 'email'],
+		payloadSchema: z.object({
+			brief_id: z.string().uuid(),
+			brief_date: z.string(),
+			timezone: z.string(),
+			task_count: z.number(),
+			project_count: z.number()
+		})
+	}
 
-  // ... more events
+	// ... more events
 };
 ```
 
@@ -607,58 +603,49 @@ export const EVENT_REGISTRY: Record<EventType, EventDefinition> = {
 // apps/worker/src/services/notifications/adapters/base-adapter.ts
 
 export interface NotificationPayload {
-  title: string;
-  body: string;
-  action_url?: string;
-  icon_url?: string;
-  image_url?: string;
-  data?: Record<string, any>;
+	title: string;
+	body: string;
+	action_url?: string;
+	icon_url?: string;
+	image_url?: string;
+	data?: Record<string, any>;
 }
 
 export interface DeliveryResult {
-  success: boolean;
-  external_id?: string;
-  error?: string;
+	success: boolean;
+	external_id?: string;
+	error?: string;
 }
 
 export abstract class ChannelAdapter {
-  abstract channel: NotificationChannel;
+	abstract channel: NotificationChannel;
 
-  /**
-   * Format generic notification payload for this channel
-   */
-  abstract formatPayload(
-    event: NotificationEvent,
-    payload: NotificationPayload,
-  ): any;
+	/**
+	 * Format generic notification payload for this channel
+	 */
+	abstract formatPayload(event: NotificationEvent, payload: NotificationPayload): any;
 
-  /**
-   * Send notification via this channel
-   */
-  abstract send(
-    recipient: string,
-    formattedPayload: any,
-  ): Promise<DeliveryResult>;
+	/**
+	 * Send notification via this channel
+	 */
+	abstract send(recipient: string, formattedPayload: any): Promise<DeliveryResult>;
 
-  /**
-   * Track delivery status
-   */
-  async trackDelivery(
-    deliveryId: string,
-    result: DeliveryResult,
-  ): Promise<void> {
-    await supabase
-      .from("notification_deliveries")
-      .update({
-        status: result.success ? "sent" : "failed",
-        sent_at: result.success ? new Date().toISOString() : null,
-        failed_at: result.success ? null : new Date().toISOString(),
-        external_id: result.external_id,
-        last_error: result.error,
-        attempts: supabase.raw("attempts + 1"),
-      })
-      .eq("id", deliveryId);
-  }
+	/**
+	 * Track delivery status
+	 */
+	async trackDelivery(deliveryId: string, result: DeliveryResult): Promise<void> {
+		await supabase
+			.from('notification_deliveries')
+			.update({
+				status: result.success ? 'sent' : 'failed',
+				sent_at: result.success ? new Date().toISOString() : null,
+				failed_at: result.success ? null : new Date().toISOString(),
+				external_id: result.external_id,
+				last_error: result.error,
+				attempts: supabase.raw('attempts + 1')
+			})
+			.eq('id', deliveryId);
+	}
 }
 ```
 
@@ -667,54 +654,48 @@ export abstract class ChannelAdapter {
 ```typescript
 // apps/worker/src/services/notifications/adapters/push-adapter.ts
 
-import webpush from "web-push";
+import webpush from 'web-push';
 
 export class BrowserPushAdapter extends ChannelAdapter {
-  channel: NotificationChannel = "push";
+	channel: NotificationChannel = 'push';
 
-  formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
-    return {
-      title: payload.title,
-      body: payload.body,
-      icon:
-        payload.icon_url ||
-        "/AppImages/android/android-launchericon-192-192.png",
-      badge: "/AppImages/android/android-launchericon-96-96.png",
-      tag: event.event_type,
-      requireInteraction: false,
-      data: {
-        url: payload.action_url,
-        event_type: event.event_type,
-        ...payload.data,
-      },
-    };
-  }
+	formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
+		return {
+			title: payload.title,
+			body: payload.body,
+			icon: payload.icon_url || '/AppImages/android/android-launchericon-192-192.png',
+			badge: '/AppImages/android/android-launchericon-96-96.png',
+			tag: event.event_type,
+			requireInteraction: false,
+			data: {
+				url: payload.action_url,
+				event_type: event.event_type,
+				...payload.data
+			}
+		};
+	}
 
-  async send(
-    subscription: string, // JSON stringified PushSubscription
-    formattedPayload: any,
-  ): Promise<DeliveryResult> {
-    try {
-      const pushSubscription = JSON.parse(subscription);
+	async send(
+		subscription: string, // JSON stringified PushSubscription
+		formattedPayload: any
+	): Promise<DeliveryResult> {
+		try {
+			const pushSubscription = JSON.parse(subscription);
 
-      await webpush.sendNotification(
-        pushSubscription,
-        JSON.stringify(formattedPayload),
-        {
-          TTL: 60 * 60 * 24, // 24 hours
-          urgency: "normal",
-        },
-      );
+			await webpush.sendNotification(pushSubscription, JSON.stringify(formattedPayload), {
+				TTL: 60 * 60 * 24, // 24 hours
+				urgency: 'normal'
+			});
 
-      return { success: true };
-    } catch (error: any) {
-      if (error.statusCode === 410) {
-        // Subscription expired - mark for cleanup
-        return { success: false, error: "Subscription expired" };
-      }
-      return { success: false, error: error.message };
-    }
-  }
+			return { success: true };
+		} catch (error: any) {
+			if (error.statusCode === 410) {
+				// Subscription expired - mark for cleanup
+				return { success: false, error: 'Subscription expired' };
+			}
+			return { success: false, error: error.message };
+		}
+	}
 }
 ```
 
@@ -724,45 +705,42 @@ export class BrowserPushAdapter extends ChannelAdapter {
 // apps/worker/src/services/notifications/adapters/email-adapter.ts
 
 export class EmailAdapter extends ChannelAdapter {
-  channel: NotificationChannel = "email";
+	channel: NotificationChannel = 'email';
 
-  formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
-    return {
-      subject: payload.title,
-      html: this.renderTemplate(event, payload),
-      text: payload.body,
-    };
-  }
+	formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
+		return {
+			subject: payload.title,
+			html: this.renderTemplate(event, payload),
+			text: payload.body
+		};
+	}
 
-  async send(email: string, formattedPayload: any): Promise<DeliveryResult> {
-    try {
-      // Reuse existing email infrastructure
-      const result = await emailService.send({
-        to: email,
-        subject: formattedPayload.subject,
-        html: formattedPayload.html,
-        text: formattedPayload.text,
-      });
+	async send(email: string, formattedPayload: any): Promise<DeliveryResult> {
+		try {
+			// Reuse existing email infrastructure
+			const result = await emailService.send({
+				to: email,
+				subject: formattedPayload.subject,
+				html: formattedPayload.html,
+				text: formattedPayload.text
+			});
 
-      return { success: true, external_id: result.messageId };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  }
+			return { success: true, external_id: result.messageId };
+		} catch (error: any) {
+			return { success: false, error: error.message };
+		}
+	}
 
-  private renderTemplate(
-    event: NotificationEvent,
-    payload: NotificationPayload,
-  ): string {
-    // Template rendering logic
-    return `
+	private renderTemplate(event: NotificationEvent, payload: NotificationPayload): string {
+		// Template rendering logic
+		return `
       <div style="font-family: sans-serif;">
         <h2>${payload.title}</h2>
         <p>${payload.body}</p>
-        ${payload.action_url ? `<a href="${payload.action_url}">View Details</a>` : ""}
+        ${payload.action_url ? `<a href="${payload.action_url}">View Details</a>` : ''}
       </div>
     `;
-  }
+	}
 }
 ```
 
@@ -772,33 +750,33 @@ export class EmailAdapter extends ChannelAdapter {
 // apps/worker/src/services/notifications/adapters/in-app-adapter.ts
 
 export class InAppAdapter extends ChannelAdapter {
-  channel: NotificationChannel = "in_app";
+	channel: NotificationChannel = 'in_app';
 
-  formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
-    return {
-      type: "info",
-      title: payload.title,
-      message: payload.body,
-      action_url: payload.action_url,
-    };
-  }
+	formatPayload(event: NotificationEvent, payload: NotificationPayload): any {
+		return {
+			type: 'info',
+			title: payload.title,
+			message: payload.body,
+			action_url: payload.action_url
+		};
+	}
 
-  async send(userId: string, formattedPayload: any): Promise<DeliveryResult> {
-    try {
-      // Insert into user_notifications table (existing infrastructure)
-      await supabase.from("user_notifications").insert({
-        user_id: userId,
-        type: formattedPayload.type,
-        title: formattedPayload.title,
-        message: formattedPayload.message,
-        action_url: formattedPayload.action_url,
-      });
+	async send(userId: string, formattedPayload: any): Promise<DeliveryResult> {
+		try {
+			// Insert into user_notifications table (existing infrastructure)
+			await supabase.from('user_notifications').insert({
+				user_id: userId,
+				type: formattedPayload.type,
+				title: formattedPayload.title,
+				message: formattedPayload.message,
+				action_url: formattedPayload.action_url
+			});
 
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  }
+			return { success: true };
+		} catch (error: any) {
+			return { success: false, error: error.message };
+		}
+	}
 }
 ```
 
@@ -1056,39 +1034,39 @@ sequenceDiagram
 // apps/worker/src/workers/brief/briefWorker.ts (line 255)
 
 async function processBrief(job: ProcessingJob<BriefMetadata>) {
-  const { userId, briefDate, timezone } = job.metadata;
+	const { userId, briefDate, timezone } = job.metadata;
 
-  // ... existing brief generation logic
+	// ... existing brief generation logic
 
-  const brief = await generateBrief(userId, briefDate, timezone);
+	const brief = await generateBrief(userId, briefDate, timezone);
 
-  // Save brief
-  await supabase.from("daily_briefs").insert(brief);
+	// Save brief
+	await supabase.from('daily_briefs').insert(brief);
 
-  // EXISTING: Realtime notification
-  await notifyUser("brief_completed", {
-    briefId: brief.id,
-    briefDate,
-    timezone,
-  });
+	// EXISTING: Realtime notification
+	await notifyUser('brief_completed', {
+		briefId: brief.id,
+		briefDate,
+		timezone
+	});
 
-  // NEW: Emit notification event
-  await notificationEventDispatcher.emit("brief.completed", {
-    event_source: "worker_job",
-    target_user_id: userId,
-    payload: {
-      brief_id: brief.id,
-      brief_date: briefDate,
-      timezone,
-      task_count: brief.task_count,
-      project_count: brief.project_count,
-    },
-  });
+	// NEW: Emit notification event
+	await notificationEventDispatcher.emit('brief.completed', {
+		event_source: 'worker_job',
+		target_user_id: userId,
+		payload: {
+			brief_id: brief.id,
+			brief_date: briefDate,
+			timezone,
+			task_count: brief.task_count,
+			project_count: brief.project_count
+		}
+	});
 
-  // Queue email job (existing)
-  if (userPrefs.email_daily_brief) {
-    await queue.add("generate_brief_email", userId, { briefId: brief.id });
-  }
+	// Queue email job (existing)
+	if (userPrefs.email_daily_brief) {
+		await queue.add('generate_brief_email', userId, { briefId: brief.id });
+	}
 }
 ```
 
@@ -1122,68 +1100,66 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 ```svelte
 <!-- apps/web/src/lib/components/settings/BriefNotificationPreferences.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
+	import { onMount } from 'svelte';
+	import { notificationPreferencesService } from '$lib/services/notification-preferences.service';
 
-  let preferences = $state<UserNotificationPreferences | null>(null);
+	let preferences = $state<UserNotificationPreferences | null>(null);
 
-  onMount(async () => {
-    preferences = await notificationPreferencesService.get('brief.completed');
-  });
+	onMount(async () => {
+		preferences = await notificationPreferencesService.get('brief.completed');
+	});
 
-  async function updateChannel(channel: string, enabled: boolean) {
-    await notificationPreferencesService.update('brief.completed', {
-      [`${channel}_enabled`]: enabled
-    });
-  }
+	async function updateChannel(channel: string, enabled: boolean) {
+		await notificationPreferencesService.update('brief.completed', {
+			[`${channel}_enabled`]: enabled
+		});
+	}
 </script>
 
 <div class="space-y-4">
-  <h3 class="font-semibold">Daily Brief Notifications</h3>
+	<h3 class="font-semibold">Daily Brief Notifications</h3>
 
-  {#if preferences}
-    <label class="flex items-center gap-3">
-      <input
-        type="checkbox"
-        checked={preferences.push_enabled}
-        onchange={(e) => updateChannel('push', e.currentTarget.checked)}
-      />
-      <div>
-        <div class="font-medium">Browser Push</div>
-        <p class="text-sm text-gray-600">
-          Get instant notifications when your daily brief is ready
-        </p>
-      </div>
-    </label>
+	{#if preferences}
+		<label class="flex items-center gap-3">
+			<input
+				type="checkbox"
+				checked={preferences.push_enabled}
+				onchange={(e) => updateChannel('push', e.currentTarget.checked)}
+			/>
+			<div>
+				<div class="font-medium">Browser Push</div>
+				<p class="text-sm text-gray-600">
+					Get instant notifications when your daily brief is ready
+				</p>
+			</div>
+		</label>
 
-    <label class="flex items-center gap-3">
-      <input
-        type="checkbox"
-        checked={preferences.email_enabled}
-        onchange={(e) => updateChannel('email', e.currentTarget.checked)}
-      />
-      <div>
-        <div class="font-medium">Email</div>
-        <p class="text-sm text-gray-600">
-          Receive brief in your inbox (recommended)
-        </p>
-      </div>
-    </label>
+		<label class="flex items-center gap-3">
+			<input
+				type="checkbox"
+				checked={preferences.email_enabled}
+				onchange={(e) => updateChannel('email', e.currentTarget.checked)}
+			/>
+			<div>
+				<div class="font-medium">Email</div>
+				<p class="text-sm text-gray-600">Receive brief in your inbox (recommended)</p>
+			</div>
+		</label>
 
-    <label class="flex items-center gap-3">
-      <input
-        type="checkbox"
-        checked={preferences.sms_enabled}
-        onchange={(e) => updateChannel('sms', e.currentTarget.checked)}
-      />
-      <div>
-        <div class="font-medium">SMS</div>
-        <p class="text-sm text-gray-600">
-          Text message notification (standard rates apply)
-        </p>
-      </div>
-    </label>
-  {/if}
+		<label class="flex items-center gap-3">
+			<input
+				type="checkbox"
+				checked={preferences.sms_enabled}
+				onchange={(e) => updateChannel('sms', e.currentTarget.checked)}
+			/>
+			<div>
+				<div class="font-medium">SMS</div>
+				<p class="text-sm text-gray-600">
+					Text message notification (standard rates apply)
+				</p>
+			</div>
+		</label>
+	{/if}
 </div>
 ```
 
@@ -1198,28 +1174,28 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 **Tasks:**
 
 1. ✅ Database schema
-   - Create `notification_events` table
-   - Create `notification_subscriptions` table
-   - Create `user_notification_preferences` table
-   - Create `notification_deliveries` table
-   - Add RLS policies
+    - Create `notification_events` table
+    - Create `notification_subscriptions` table
+    - Create `user_notification_preferences` table
+    - Create `notification_deliveries` table
+    - Add RLS policies
 
 2. ✅ Event dispatcher
-   - Create `emit_notification_event()` RPC function
-   - Implement event validation
-   - Implement subscription lookup
-   - Implement preference filtering
+    - Create `emit_notification_event()` RPC function
+    - Implement event validation
+    - Implement subscription lookup
+    - Implement preference filtering
 
 3. ✅ Browser push infrastructure (from previous research)
-   - Service worker with push handlers
-   - VAPID key generation
-   - Push subscription management
-   - Frontend preferences UI
+    - Service worker with push handlers
+    - VAPID key generation
+    - Push subscription management
+    - Frontend preferences UI
 
 4. ✅ User signup event
-   - Modify `handle_new_user_trial()` trigger
-   - Seed admin subscriptions
-   - Test end-to-end flow
+    - Modify `handle_new_user_trial()` trigger
+    - Seed admin subscriptions
+    - Test end-to-end flow
 
 **Success Criteria:**
 
@@ -1236,18 +1212,18 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 **Tasks:**
 
 1. ✅ Notification worker
-   - Create `processNotification` job handler
-   - Integrate with existing queue system
-   - Implement retry logic
+    - Create `processNotification` job handler
+    - Integrate with existing queue system
+    - Implement retry logic
 
 2. ✅ Channel adapter interface
-   - Define `ChannelAdapter` base class
-   - Implement `BrowserPushAdapter`
-   - Implement `InAppAdapter`
+    - Define `ChannelAdapter` base class
+    - Implement `BrowserPushAdapter`
+    - Implement `InAppAdapter`
 
 3. ✅ Modify event dispatcher
-   - Queue jobs instead of immediate send
-   - Batch deliveries per user
+    - Queue jobs instead of immediate send
+    - Batch deliveries per user
 
 **Success Criteria:**
 
@@ -1264,19 +1240,19 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 **Tasks:**
 
 1. ✅ Brief completion event
-   - Emit event from brief worker
-   - Auto-subscribe users to their briefs
-   - Default preference creation
+    - Emit event from brief worker
+    - Auto-subscribe users to their briefs
+    - Default preference creation
 
 2. ✅ Email adapter
-   - Implement `EmailAdapter`
-   - Reuse existing email infrastructure
-   - Template rendering
+    - Implement `EmailAdapter`
+    - Reuse existing email infrastructure
+    - Template rendering
 
 3. ✅ Settings UI
-   - Brief notification preferences page
-   - Channel toggles
-   - Quiet hours configuration
+    - Brief notification preferences page
+    - Channel toggles
+    - Quiet hours configuration
 
 **Success Criteria:**
 
@@ -1293,25 +1269,25 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 **Tasks:**
 
 1. ✅ SMS adapter
-   - Implement `SMSAdapter`
-   - Integrate with existing Twilio infrastructure
-   - Rate limiting
+    - Implement `SMSAdapter`
+    - Integrate with existing Twilio infrastructure
+    - Rate limiting
 
 2. ✅ Notification batching
-   - Batch multiple events into digest
-   - Configurable interval (hourly, daily)
-   - Smart grouping by event type
+    - Batch multiple events into digest
+    - Configurable interval (hourly, daily)
+    - Smart grouping by event type
 
 3. ✅ Analytics dashboard
-   - Delivery rate by channel
-   - Engagement metrics (opens, clicks)
-   - Event type breakdown
-   - User opt-out tracking
+    - Delivery rate by channel
+    - Engagement metrics (opens, clicks)
+    - Event type breakdown
+    - User opt-out tracking
 
 4. ✅ Additional events
-   - `task.due_soon`
-   - `project.phase_scheduled`
-   - `calendar.sync_failed`
+    - `task.due_soon`
+    - `project.phase_scheduled`
+    - `calendar.sync_failed`
 
 **Success Criteria:**
 
@@ -1329,96 +1305,90 @@ FOR EACH ROW EXECUTE FUNCTION auto_subscribe_brief_completions();
 // apps/worker/src/services/notification-event-dispatcher.ts
 
 export class NotificationEventDispatcher {
-  private adapters: Map<NotificationChannel, ChannelAdapter>;
+	private adapters: Map<NotificationChannel, ChannelAdapter>;
 
-  constructor() {
-    this.adapters = new Map([
-      ["push", new BrowserPushAdapter()],
-      ["email", new EmailAdapter()],
-      ["sms", new SMSAdapter()],
-      ["in_app", new InAppAdapter()],
-    ]);
-  }
+	constructor() {
+		this.adapters = new Map([
+			['push', new BrowserPushAdapter()],
+			['email', new EmailAdapter()],
+			['sms', new SMSAdapter()],
+			['in_app', new InAppAdapter()]
+		]);
+	}
 
-  /**
-   * Emit a notification event
-   * This is the main entry point for all notifications
-   */
-  async emit<T = any>(
-    eventType: EventType,
-    options: {
-      event_source: string;
-      actor_user_id?: string;
-      target_user_id?: string;
-      payload: T;
-      metadata?: Record<string, any>;
-    },
-  ): Promise<string> {
-    // Validate event type
-    const eventDef = EVENT_REGISTRY[eventType];
-    if (!eventDef) {
-      throw new Error(`Unknown event type: ${eventType}`);
-    }
+	/**
+	 * Emit a notification event
+	 * This is the main entry point for all notifications
+	 */
+	async emit<T = any>(
+		eventType: EventType,
+		options: {
+			event_source: string;
+			actor_user_id?: string;
+			target_user_id?: string;
+			payload: T;
+			metadata?: Record<string, any>;
+		}
+	): Promise<string> {
+		// Validate event type
+		const eventDef = EVENT_REGISTRY[eventType];
+		if (!eventDef) {
+			throw new Error(`Unknown event type: ${eventType}`);
+		}
 
-    // Validate payload
-    eventDef.payloadSchema.parse(options.payload);
+		// Validate payload
+		eventDef.payloadSchema.parse(options.payload);
 
-    // Use RPC function for atomic event creation + subscription lookup
-    const { data, error } = await supabase.rpc("emit_notification_event", {
-      p_event_type: eventType,
-      p_event_source: options.event_source,
-      p_actor_user_id: options.actor_user_id,
-      p_target_user_id: options.target_user_id,
-      p_payload: options.payload,
-    });
+		// Use RPC function for atomic event creation + subscription lookup
+		const { data, error } = await supabase.rpc('emit_notification_event', {
+			p_event_type: eventType,
+			p_event_source: options.event_source,
+			p_actor_user_id: options.actor_user_id,
+			p_target_user_id: options.target_user_id,
+			p_payload: options.payload
+		});
 
-    if (error) {
-      console.error(
-        "[NotificationEventDispatcher] Failed to emit event:",
-        error,
-      );
-      throw error;
-    }
+		if (error) {
+			console.error('[NotificationEventDispatcher] Failed to emit event:', error);
+			throw error;
+		}
 
-    return data; // event_id
-  }
+		return data; // event_id
+	}
 
-  /**
-   * Process notification job (called by worker)
-   */
-  async process(job: NotificationJob): Promise<void> {
-    const { event_id, delivery_id, channel } = job.metadata;
+	/**
+	 * Process notification job (called by worker)
+	 */
+	async process(job: NotificationJob): Promise<void> {
+		const { event_id, delivery_id, channel } = job.metadata;
 
-    // Get delivery record
-    const { data: delivery } = await supabase
-      .from("notification_deliveries")
-      .select("*")
-      .eq("id", delivery_id)
-      .single();
+		// Get delivery record
+		const { data: delivery } = await supabase
+			.from('notification_deliveries')
+			.select('*')
+			.eq('id', delivery_id)
+			.single();
 
-    if (!delivery) {
-      throw new Error(`Delivery ${delivery_id} not found`);
-    }
+		if (!delivery) {
+			throw new Error(`Delivery ${delivery_id} not found`);
+		}
 
-    // Get adapter
-    const adapter = this.adapters.get(channel);
-    if (!adapter) {
-      throw new Error(`No adapter for channel: ${channel}`);
-    }
+		// Get adapter
+		const adapter = this.adapters.get(channel);
+		if (!adapter) {
+			throw new Error(`No adapter for channel: ${channel}`);
+		}
 
-    // Send notification
-    const result = await adapter.send(
-      delivery.channel_identifier,
-      delivery.payload,
-    );
+		// Send notification
+		const result = await adapter.send(delivery.channel_identifier, delivery.payload);
 
-    // Track result
-    await adapter.trackDelivery(delivery_id, result);
+		// Track result
+		await adapter.trackDelivery(delivery_id, result);
 
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-  }
+		if (!result.success) {
+			throw new Error(result.error);
+		}
+	}
 }
 
 export const notificationEventDispatcher = new NotificationEventDispatcher();
@@ -1432,98 +1402,95 @@ export const notificationEventDispatcher = new NotificationEventDispatcher();
 // apps/web/src/lib/services/notification-preferences.service.ts
 
 export class NotificationPreferencesService {
-  /**
-   * Get preferences for an event type
-   */
-  async get(eventType: EventType): Promise<UserNotificationPreferences> {
-    const supabase = createSupabaseBrowser();
+	/**
+	 * Get preferences for an event type
+	 */
+	async get(eventType: EventType): Promise<UserNotificationPreferences> {
+		const supabase = createSupabaseBrowser();
 
-    const { data, error } = await supabase
-      .from("user_notification_preferences")
-      .select("*")
-      .eq("event_type", eventType)
-      .single();
+		const { data, error } = await supabase
+			.from('user_notification_preferences')
+			.select('*')
+			.eq('event_type', eventType)
+			.single();
 
-    if (error && error.code !== "PGRST116") {
-      throw error;
-    }
+		if (error && error.code !== 'PGRST116') {
+			throw error;
+		}
 
-    // Return default preferences if not found
-    return data || this.getDefaults(eventType);
-  }
+		// Return default preferences if not found
+		return data || this.getDefaults(eventType);
+	}
 
-  /**
-   * Update preferences
-   */
-  async update(
-    eventType: EventType,
-    updates: Partial<UserNotificationPreferences>,
-  ): Promise<void> {
-    const supabase = createSupabaseBrowser();
+	/**
+	 * Update preferences
+	 */
+	async update(
+		eventType: EventType,
+		updates: Partial<UserNotificationPreferences>
+	): Promise<void> {
+		const supabase = createSupabaseBrowser();
 
-    const { error } = await supabase
-      .from("user_notification_preferences")
-      .upsert({
-        event_type: eventType,
-        ...updates,
-        updated_at: new Date().toISOString(),
-      });
+		const { error } = await supabase.from('user_notification_preferences').upsert({
+			event_type: eventType,
+			...updates,
+			updated_at: new Date().toISOString()
+		});
 
-    if (error) throw error;
-  }
+		if (error) throw error;
+	}
 
-  /**
-   * Subscribe to an event type
-   */
-  async subscribe(eventType: EventType): Promise<void> {
-    const supabase = createSupabaseBrowser();
+	/**
+	 * Subscribe to an event type
+	 */
+	async subscribe(eventType: EventType): Promise<void> {
+		const supabase = createSupabaseBrowser();
 
-    const { error } = await supabase.from("notification_subscriptions").insert({
-      event_type: eventType,
-      is_active: true,
-    });
+		const { error } = await supabase.from('notification_subscriptions').insert({
+			event_type: eventType,
+			is_active: true
+		});
 
-    if (error && error.code !== "23505") {
-      // Ignore duplicate errors
-      throw error;
-    }
-  }
+		if (error && error.code !== '23505') {
+			// Ignore duplicate errors
+			throw error;
+		}
+	}
 
-  /**
-   * Unsubscribe from an event type
-   */
-  async unsubscribe(eventType: EventType): Promise<void> {
-    const supabase = createSupabaseBrowser();
+	/**
+	 * Unsubscribe from an event type
+	 */
+	async unsubscribe(eventType: EventType): Promise<void> {
+		const supabase = createSupabaseBrowser();
 
-    const { error } = await supabase
-      .from("notification_subscriptions")
-      .update({ is_active: false })
-      .eq("event_type", eventType);
+		const { error } = await supabase
+			.from('notification_subscriptions')
+			.update({ is_active: false })
+			.eq('event_type', eventType);
 
-    if (error) throw error;
-  }
+		if (error) throw error;
+	}
 
-  private getDefaults(eventType: EventType): UserNotificationPreferences {
-    const eventDef = EVENT_REGISTRY[eventType];
+	private getDefaults(eventType: EventType): UserNotificationPreferences {
+		const eventDef = EVENT_REGISTRY[eventType];
 
-    return {
-      event_type: eventType,
-      push_enabled: eventDef.defaultChannels.includes("push"),
-      email_enabled: eventDef.defaultChannels.includes("email"),
-      sms_enabled: eventDef.defaultChannels.includes("sms"),
-      in_app_enabled: eventDef.defaultChannels.includes("in_app"),
-      priority: "normal",
-      batch_enabled: false,
-      quiet_hours_enabled: false,
-      quiet_hours_start: "22:00:00",
-      quiet_hours_end: "08:00:00",
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    };
-  }
+		return {
+			event_type: eventType,
+			push_enabled: eventDef.defaultChannels.includes('push'),
+			email_enabled: eventDef.defaultChannels.includes('email'),
+			sms_enabled: eventDef.defaultChannels.includes('sms'),
+			in_app_enabled: eventDef.defaultChannels.includes('in_app'),
+			priority: 'normal',
+			batch_enabled: false,
+			quiet_hours_enabled: false,
+			quiet_hours_start: '22:00:00',
+			quiet_hours_end: '08:00:00',
+			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+		};
+	}
 }
 
-export const notificationPreferencesService =
-  new NotificationPreferencesService();
+export const notificationPreferencesService = new NotificationPreferencesService();
 ```
 
 ---
@@ -1537,70 +1504,70 @@ export const notificationPreferencesService =
 ```typescript
 // apps/worker/src/services/__tests__/notification-event-dispatcher.test.ts
 
-describe("NotificationEventDispatcher", () => {
-  test("emits user.signup event", async () => {
-    const eventId = await notificationEventDispatcher.emit("user.signup", {
-      event_source: "database_trigger",
-      actor_user_id: "test-user-id",
-      payload: {
-        user_id: "test-user-id",
-        user_email: "test@example.com",
-        signup_method: "email",
-      },
-    });
+describe('NotificationEventDispatcher', () => {
+	test('emits user.signup event', async () => {
+		const eventId = await notificationEventDispatcher.emit('user.signup', {
+			event_source: 'database_trigger',
+			actor_user_id: 'test-user-id',
+			payload: {
+				user_id: 'test-user-id',
+				user_email: 'test@example.com',
+				signup_method: 'email'
+			}
+		});
 
-    expect(eventId).toBeDefined();
+		expect(eventId).toBeDefined();
 
-    // Verify event logged
-    const { data: event } = await supabase
-      .from("notification_events")
-      .select("*")
-      .eq("id", eventId)
-      .single();
+		// Verify event logged
+		const { data: event } = await supabase
+			.from('notification_events')
+			.select('*')
+			.eq('id', eventId)
+			.single();
 
-    expect(event.event_type).toBe("user.signup");
-  });
+		expect(event.event_type).toBe('user.signup');
+	});
 
-  test("validates payload schema", async () => {
-    await expect(
-      notificationEventDispatcher.emit("user.signup", {
-        event_source: "test",
-        payload: { invalid: "payload" }, // Missing required fields
-      }),
-    ).rejects.toThrow();
-  });
+	test('validates payload schema', async () => {
+		await expect(
+			notificationEventDispatcher.emit('user.signup', {
+				event_source: 'test',
+				payload: { invalid: 'payload' } // Missing required fields
+			})
+		).rejects.toThrow();
+	});
 });
 ```
 
 **Channel Adapter Tests:**
 
 ```typescript
-describe("BrowserPushAdapter", () => {
-  const adapter = new BrowserPushAdapter();
+describe('BrowserPushAdapter', () => {
+	const adapter = new BrowserPushAdapter();
 
-  test("formats payload correctly", () => {
-    const formatted = adapter.formatPayload(mockEvent, {
-      title: "Test Notification",
-      body: "Test body",
-      action_url: "/test",
-    });
+	test('formats payload correctly', () => {
+		const formatted = adapter.formatPayload(mockEvent, {
+			title: 'Test Notification',
+			body: 'Test body',
+			action_url: '/test'
+		});
 
-    expect(formatted).toHaveProperty("title");
-    expect(formatted).toHaveProperty("body");
-    expect(formatted.data.url).toBe("/test");
-  });
+		expect(formatted).toHaveProperty('title');
+		expect(formatted).toHaveProperty('body');
+		expect(formatted.data.url).toBe('/test');
+	});
 
-  test("handles subscription expiration", async () => {
-    const expiredSubscription = JSON.stringify({
-      endpoint: "expired-endpoint",
-      keys: { p256dh: "key", auth: "auth" },
-    });
+	test('handles subscription expiration', async () => {
+		const expiredSubscription = JSON.stringify({
+			endpoint: 'expired-endpoint',
+			keys: { p256dh: 'key', auth: 'auth' }
+		});
 
-    const result = await adapter.send(expiredSubscription, mockPayload);
+		const result = await adapter.send(expiredSubscription, mockPayload);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("expired");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('expired');
+	});
 });
 ```
 
@@ -1609,40 +1576,40 @@ describe("BrowserPushAdapter", () => {
 **End-to-End Flow Test:**
 
 ```typescript
-describe("User Signup Notification Flow", () => {
-  test("admins receive push notification on user signup", async () => {
-    // Setup: Create admin subscription
-    await supabase.from("notification_subscriptions").insert({
-      user_id: ADMIN_USER_ID,
-      event_type: "user.signup",
-      admin_only: true,
-    });
+describe('User Signup Notification Flow', () => {
+	test('admins receive push notification on user signup', async () => {
+		// Setup: Create admin subscription
+		await supabase.from('notification_subscriptions').insert({
+			user_id: ADMIN_USER_ID,
+			event_type: 'user.signup',
+			admin_only: true
+		});
 
-    // Simulate user signup
-    const newUser = await createTestUser("newuser@example.com");
+		// Simulate user signup
+		const newUser = await createTestUser('newuser@example.com');
 
-    // Wait for event processing
-    await sleep(2000);
+		// Wait for event processing
+		await sleep(2000);
 
-    // Verify event created
-    const { data: events } = await supabase
-      .from("notification_events")
-      .select("*")
-      .eq("event_type", "user.signup")
-      .eq("actor_user_id", newUser.id);
+		// Verify event created
+		const { data: events } = await supabase
+			.from('notification_events')
+			.select('*')
+			.eq('event_type', 'user.signup')
+			.eq('actor_user_id', newUser.id);
 
-    expect(events).toHaveLength(1);
+		expect(events).toHaveLength(1);
 
-    // Verify delivery queued
-    const { data: deliveries } = await supabase
-      .from("notification_deliveries")
-      .select("*")
-      .eq("event_id", events[0].id)
-      .eq("recipient_user_id", ADMIN_USER_ID);
+		// Verify delivery queued
+		const { data: deliveries } = await supabase
+			.from('notification_deliveries')
+			.select('*')
+			.eq('event_id', events[0].id)
+			.eq('recipient_user_id', ADMIN_USER_ID);
 
-    expect(deliveries).toHaveLength(1);
-    expect(deliveries[0].channel).toBe("push");
-  });
+		expect(deliveries).toHaveLength(1);
+		expect(deliveries[0].channel).toBe('push');
+	});
 });
 ```
 
@@ -1721,58 +1688,58 @@ LIMIT 10;
 ```svelte
 <!-- apps/web/src/routes/admin/notifications/+page.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
+	import { onMount } from 'svelte';
+	import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
 
-  let metrics = $state<NotificationMetrics | null>(null);
+	let metrics = $state<NotificationMetrics | null>(null);
 
-  onMount(async () => {
-    metrics = await notificationAnalyticsService.getMetrics('24h');
-  });
+	onMount(async () => {
+		metrics = await notificationAnalyticsService.getMetrics('24h');
+	});
 </script>
 
 <div class="space-y-6">
-  <h1 class="text-2xl font-bold">Notification Analytics</h1>
+	<h1 class="text-2xl font-bold">Notification Analytics</h1>
 
-  {#if metrics}
-    <!-- Delivery Rate by Channel -->
-    <div class="grid grid-cols-4 gap-4">
-      {#each metrics.channels as channel}
-        <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="font-semibold">{channel.name}</h3>
-          <p class="text-3xl font-bold">{channel.success_rate}%</p>
-          <p class="text-sm text-gray-600">
-            {channel.sent_count} / {channel.total_count} delivered
-          </p>
-        </div>
-      {/each}
-    </div>
+	{#if metrics}
+		<!-- Delivery Rate by Channel -->
+		<div class="grid grid-cols-4 gap-4">
+			{#each metrics.channels as channel}
+				<div class="bg-white p-4 rounded-lg shadow">
+					<h3 class="font-semibold">{channel.name}</h3>
+					<p class="text-3xl font-bold">{channel.success_rate}%</p>
+					<p class="text-sm text-gray-600">
+						{channel.sent_count} / {channel.total_count} delivered
+					</p>
+				</div>
+			{/each}
+		</div>
 
-    <!-- Event Type Breakdown -->
-    <div class="bg-white p-6 rounded-lg shadow">
-      <h3 class="font-semibold mb-4">Event Type Performance</h3>
-      <table class="w-full">
-        <thead>
-          <tr>
-            <th>Event Type</th>
-            <th>Deliveries</th>
-            <th>Open Rate</th>
-            <th>Click Rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each metrics.event_types as event}
-            <tr>
-              <td>{event.type}</td>
-              <td>{event.total_deliveries}</td>
-              <td>{event.open_rate}%</td>
-              <td>{event.click_rate}%</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {/if}
+		<!-- Event Type Breakdown -->
+		<div class="bg-white p-6 rounded-lg shadow">
+			<h3 class="font-semibold mb-4">Event Type Performance</h3>
+			<table class="w-full">
+				<thead>
+					<tr>
+						<th>Event Type</th>
+						<th>Deliveries</th>
+						<th>Open Rate</th>
+						<th>Click Rate</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each metrics.event_types as event}
+						<tr>
+							<td>{event.type}</td>
+							<td>{event.total_deliveries}</td>
+							<td>{event.open_rate}%</td>
+							<td>{event.click_rate}%</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
 </div>
 ```
 

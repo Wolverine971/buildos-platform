@@ -18,7 +18,7 @@ Start phone number verification process.
 
 ```json
 {
-  "phoneNumber": "+15551234567"
+	"phoneNumber": "+15551234567"
 }
 ```
 
@@ -26,9 +26,9 @@ Start phone number verification process.
 
 ```json
 {
-  "success": true,
-  "verificationSent": true,
-  "verificationSid": "VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	"success": true,
+	"verificationSent": true,
+	"verificationSid": "VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 }
 ```
 
@@ -50,8 +50,8 @@ Confirm phone verification with code.
 
 ```json
 {
-  "phoneNumber": "+15551234567",
-  "code": "123456"
+	"phoneNumber": "+15551234567",
+	"code": "123456"
 }
 ```
 
@@ -59,9 +59,9 @@ Confirm phone verification with code.
 
 ```json
 {
-  "success": true,
-  "verified": true,
-  "message": "Phone number verified successfully"
+	"success": true,
+	"verified": true,
+	"message": "Phone number verified successfully"
 }
 ```
 
@@ -102,7 +102,7 @@ ErrorMessage=Error description (optional)
 
 ```json
 {
-  "success": true
+	"success": true
 }
 ```
 
@@ -120,14 +120,14 @@ Send an SMS message.
 
 ```typescript
 interface SendSMSParams {
-  userId: string;
-  phoneNumber: string;
-  message: string;
-  templateKey?: string;
-  templateVars?: Record<string, any>;
-  priority?: "low" | "normal" | "high" | "urgent";
-  scheduledFor?: Date;
-  metadata?: Record<string, any>;
+	userId: string;
+	phoneNumber: string;
+	message: string;
+	templateKey?: string;
+	templateVars?: Record<string, any>;
+	priority?: 'low' | 'normal' | 'high' | 'urgent';
+	scheduledFor?: Date;
+	metadata?: Record<string, any>;
 }
 ```
 
@@ -269,10 +269,10 @@ Send SMS via Twilio API.
 
 ```typescript
 interface SendSMSParams {
-  to: string;
-  body: string;
-  scheduledAt?: Date;
-  metadata?: Record<string, any>;
+	to: string;
+	body: string;
+	scheduledAt?: Date;
+	metadata?: Record<string, any>;
 }
 ```
 
@@ -401,50 +401,50 @@ SELECT queue_sms_message(
 
 ```typescript
 type SMSStatus =
-  | "pending"
-  | "queued"
-  | "sending"
-  | "sent"
-  | "delivered"
-  | "failed"
-  | "undelivered"
-  | "scheduled"
-  | "cancelled";
+	| 'pending'
+	| 'queued'
+	| 'sending'
+	| 'sent'
+	| 'delivered'
+	| 'failed'
+	| 'undelivered'
+	| 'scheduled'
+	| 'cancelled';
 ```
 
 ### SMS Priority Enum
 
 ```typescript
-type SMSPriority = "low" | "normal" | "high" | "urgent";
+type SMSPriority = 'low' | 'normal' | 'high' | 'urgent';
 ```
 
 ### SMSMessage Type
 
 ```typescript
 interface SMSMessage {
-  id: string;
-  user_id: string;
-  phone_number: string;
-  message_content: string;
-  template_id?: string;
-  template_vars?: Record<string, any>;
-  status: SMSStatus;
-  priority: SMSPriority;
-  scheduled_for?: Date;
-  sent_at?: Date;
-  delivered_at?: Date;
-  twilio_sid?: string;
-  twilio_status?: string;
-  twilio_error_code?: number;
-  twilio_error_message?: string;
-  attempt_count: number;
-  max_attempts: number;
-  queue_job_id?: string;
-  project_id?: string;
-  task_id?: string;
-  metadata?: Record<string, any>;
-  created_at: Date;
-  updated_at: Date;
+	id: string;
+	user_id: string;
+	phone_number: string;
+	message_content: string;
+	template_id?: string;
+	template_vars?: Record<string, any>;
+	status: SMSStatus;
+	priority: SMSPriority;
+	scheduled_for?: Date;
+	sent_at?: Date;
+	delivered_at?: Date;
+	twilio_sid?: string;
+	twilio_status?: string;
+	twilio_error_code?: number;
+	twilio_error_message?: string;
+	attempt_count: number;
+	max_attempts: number;
+	queue_job_id?: string;
+	project_id?: string;
+	task_id?: string;
+	metadata?: Record<string, any>;
+	created_at: Date;
+	updated_at: Date;
 }
 ```
 
@@ -452,20 +452,20 @@ interface SMSMessage {
 
 ```typescript
 interface SMSTemplate {
-  id: string;
-  template_key: string;
-  name: string;
-  description?: string;
-  message_template: string;
-  template_vars?: Record<string, any>;
-  required_vars?: string[];
-  max_length: number;
-  is_active: boolean;
-  usage_count: number;
-  last_used_at?: Date;
-  created_by?: string;
-  created_at: Date;
-  updated_at: Date;
+	id: string;
+	template_key: string;
+	name: string;
+	description?: string;
+	message_template: string;
+	template_vars?: Record<string, any>;
+	required_vars?: string[];
+	max_length: number;
+	is_active: boolean;
+	usage_count: number;
+	last_used_at?: Date;
+	created_by?: string;
+	created_at: Date;
+	updated_at: Date;
 }
 ```
 
@@ -473,29 +473,29 @@ interface SMSTemplate {
 
 ```typescript
 interface SMSPreferences {
-  id: string;
-  user_id: string;
-  phone_number?: string;
-  phone_verified: boolean;
-  phone_verified_at?: Date;
-  // Working features
-  event_reminders_enabled: boolean; // Calendar event reminders
-  event_reminder_lead_time_minutes: number;
-  // Future features (UI ready, worker not implemented)
-  morning_kickoff_enabled: boolean;
-  morning_kickoff_time?: string;
-  evening_recap_enabled: boolean;
-  // Safety controls
-  quiet_hours_start?: string;
-  quiet_hours_end?: string;
-  daily_sms_limit: number;
-  daily_sms_count: number;
-  daily_count_reset_at?: Date;
-  opted_out: boolean;
-  opted_out_at?: Date;
-  opt_out_reason?: string;
-  created_at: Date;
-  updated_at: Date;
+	id: string;
+	user_id: string;
+	phone_number?: string;
+	phone_verified: boolean;
+	phone_verified_at?: Date;
+	// Working features
+	event_reminders_enabled: boolean; // Calendar event reminders
+	event_reminder_lead_time_minutes: number;
+	// Future features (UI ready, worker not implemented)
+	morning_kickoff_enabled: boolean;
+	morning_kickoff_time?: string;
+	evening_recap_enabled: boolean;
+	// Safety controls
+	quiet_hours_start?: string;
+	quiet_hours_end?: string;
+	daily_sms_limit: number;
+	daily_sms_count: number;
+	daily_count_reset_at?: Date;
+	opted_out: boolean;
+	opted_out_at?: Date;
+	opt_out_reason?: string;
+	created_at: Date;
+	updated_at: Date;
 }
 ```
 

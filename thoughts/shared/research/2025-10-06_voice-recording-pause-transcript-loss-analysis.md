@@ -1,13 +1,13 @@
 ---
-title: "Voice Recording Pause Transcript Loss Analysis"
+title: 'Voice Recording Pause Transcript Loss Analysis'
 date: 2025-10-06
 status: complete
 type: bug-analysis
 tags: [voice-recording, speech-recognition, transcript-loss, webkit-speech-api]
 related:
-  - apps/web/src/lib/utils/voice.ts
-  - apps/web/src/lib/services/voiceRecording.service.ts
-  - apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte
+    - apps/web/src/lib/utils/voice.ts
+    - apps/web/src/lib/services/voiceRecording.service.ts
+    - apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte
 ---
 
 # Voice Recording Pause Transcript Loss Analysis
@@ -33,21 +33,21 @@ The `onresult` event handler for SpeechRecognition **ONLY processes results from
 
 ```typescript
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-  let finalText = "";
-  let interimText = "";
+	let finalText = '';
+	let interimText = '';
 
-  // Process only new results for better performance
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    const transcript = event.results[i][0].transcript;
-    if (event.results[i].isFinal) {
-      finalText += transcript + " ";
-    } else {
-      interimText += transcript;
-    }
-  }
+	// Process only new results for better performance
+	for (let i = event.resultIndex; i < event.results.length; i++) {
+		const transcript = event.results[i][0].transcript;
+		if (event.results[i].isFinal) {
+			finalText += transcript + ' ';
+		} else {
+			interimText += transcript;
+		}
+	}
 
-  const combinedText = (finalText + interimText).trim();
-  liveTranscript.set(combinedText); // ⚠️ OVERWRITES previous content
+	const combinedText = (finalText + interimText).trim();
+	liveTranscript.set(combinedText); // ⚠️ OVERWRITES previous content
 };
 ```
 
@@ -59,14 +59,14 @@ When SpeechRecognition detects silence or reaches its internal timeout, it fires
 
 ```typescript
 recognition.onend = () => {
-  // Auto-restart if still recording (improves reliability)
-  if (get(isRecording) && recognition) {
-    try {
-      recognition.start();
-    } catch (error) {
-      console.warn("[SpeechRecognition] Failed to restart:", error);
-    }
-  }
+	// Auto-restart if still recording (improves reliability)
+	if (get(isRecording) && recognition) {
+		try {
+			recognition.start();
+		} catch (error) {
+			console.warn('[SpeechRecognition] Failed to restart:', error);
+		}
+	}
 };
 ```
 
@@ -108,11 +108,11 @@ The system has a fallback mechanism in `voiceRecording.service.ts:154-159`:
 
 ```typescript
 const shouldTranscribeAudio =
-  audioBlob &&
-  audioBlob.size > 1000 && // Minimum size to avoid empty recordings
-  (!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
-    !capturedLiveTranscript || // No live transcription captured
-    capturedLiveTranscript.length < 10); // Very short live transcription
+	audioBlob &&
+	audioBlob.size > 1000 && // Minimum size to avoid empty recordings
+	(!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
+		!capturedLiveTranscript || // No live transcription captured
+		capturedLiveTranscript.length < 10); // Very short live transcription
 ```
 
 **This helps iOS users** (who don't have live transcription) but doesn't solve the problem for desktop Chrome/Safari users who rely on live transcription.
@@ -186,54 +186,54 @@ Modify `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/voice.ts`:
 
 ```typescript
 // Add module-level accumulator
-let accumulatedFinalTranscript = "";
+let accumulatedFinalTranscript = '';
 
 // In initializeSpeechRecognition():
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-  let newFinalText = "";
-  let interimText = "";
+	let newFinalText = '';
+	let interimText = '';
 
-  // Process only new results for better performance
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    const transcript = event.results[i][0].transcript;
-    if (event.results[i].isFinal) {
-      newFinalText += transcript + " ";
-    } else {
-      interimText += transcript;
-    }
-  }
+	// Process only new results for better performance
+	for (let i = event.resultIndex; i < event.results.length; i++) {
+		const transcript = event.results[i][0].transcript;
+		if (event.results[i].isFinal) {
+			newFinalText += transcript + ' ';
+		} else {
+			interimText += transcript;
+		}
+	}
 
-  // Accumulate final results
-  if (newFinalText) {
-    accumulatedFinalTranscript += newFinalText;
-  }
+	// Accumulate final results
+	if (newFinalText) {
+		accumulatedFinalTranscript += newFinalText;
+	}
 
-  // Combine accumulated final + current interim
-  const combinedText = (accumulatedFinalTranscript + interimText).trim();
-  liveTranscript.set(combinedText);
+	// Combine accumulated final + current interim
+	const combinedText = (accumulatedFinalTranscript + interimText).trim();
+	liveTranscript.set(combinedText);
 };
 
 // Reset accumulator when starting recording
 export async function startRecording(): Promise<void> {
-  // ... existing code ...
+	// ... existing code ...
 
-  // Reset accumulator
-  accumulatedFinalTranscript = "";
-  liveTranscript.set("");
+	// Reset accumulator
+	accumulatedFinalTranscript = '';
+	liveTranscript.set('');
 
-  // ... rest of function ...
+	// ... rest of function ...
 }
 
 // Clear accumulator when stopping
 export function stopRecording(): Promise<Blob | null> {
-  return new Promise((resolve) => {
-    // ... existing code ...
+	return new Promise((resolve) => {
+		// ... existing code ...
 
-    // In cleanupResources() or onstop:
-    accumulatedFinalTranscript = "";
+		// In cleanupResources() or onstop:
+		accumulatedFinalTranscript = '';
 
-    // ... rest of function ...
-  });
+		// ... rest of function ...
+	});
 }
 ```
 
@@ -244,12 +244,12 @@ Keep accumulation in `voiceRecording.service.ts` and update the service's `liveT
 ```typescript
 // In voiceRecording.service.ts
 this.liveTranscriptUnsubscribe = liveTranscript.subscribe((transcript) => {
-  // Check if this is a final result (ends with period, question mark, etc.)
-  // or accumulate differently
-  if (transcript && !this.currentLiveTranscript.endsWith(transcript)) {
-    this.finalTranscriptSinceLastStop += transcript + " ";
-  }
-  this.currentLiveTranscript = this.finalTranscriptSinceLastStop + transcript;
+	// Check if this is a final result (ends with period, question mark, etc.)
+	// or accumulate differently
+	if (transcript && !this.currentLiveTranscript.endsWith(transcript)) {
+		this.finalTranscriptSinceLastStop += transcript + ' ';
+	}
+	this.currentLiveTranscript = this.finalTranscriptSinceLastStop + transcript;
 });
 ```
 
@@ -260,26 +260,26 @@ this.liveTranscriptUnsubscribe = liveTranscript.subscribe((transcript) => {
 ### Manual Testing Scenarios
 
 1. **Pause Mid-Sentence**:
-   - Speak: "I need to create a new project"
-   - Pause for 5 seconds
-   - Speak: "with several tasks"
-   - **Expected**: "I need to create a new project with several tasks"
+    - Speak: "I need to create a new project"
+    - Pause for 5 seconds
+    - Speak: "with several tasks"
+    - **Expected**: "I need to create a new project with several tasks"
 
 2. **Multiple Pauses**:
-   - Speak: "First part"
-   - Pause 5 seconds
-   - Speak: "Second part"
-   - Pause 5 seconds
-   - Speak: "Third part"
-   - **Expected**: "First part Second part Third part"
+    - Speak: "First part"
+    - Pause 5 seconds
+    - Speak: "Second part"
+    - Pause 5 seconds
+    - Speak: "Third part"
+    - **Expected**: "First part Second part Third part"
 
 3. **Long Recording**:
-   - Speak continuously for 30 seconds with natural pauses
-   - **Expected**: All speech captured, no loss
+    - Speak continuously for 30 seconds with natural pauses
+    - **Expected**: All speech captured, no loss
 
 4. **Very Short Pause**:
-   - Speak: "Quick pause" (pause 1 second) "continue"
-   - **Expected**: "Quick pause continue" (no restart triggered)
+    - Speak: "Quick pause" (pause 1 second) "continue"
+    - **Expected**: "Quick pause continue" (no restart triggered)
 
 ### Automated Testing
 
@@ -287,33 +287,33 @@ Add test to verify transcript accumulation:
 
 ```typescript
 // voice.test.ts
-describe("SpeechRecognition transcript accumulation", () => {
-  it("should accumulate transcripts across auto-restarts", async () => {
-    // Mock SpeechRecognition with auto-restart
-    // Simulate first session: "part one"
-    // Simulate restart
-    // Simulate second session: "part two"
-    // Assert final transcript: "part one part two"
-  });
+describe('SpeechRecognition transcript accumulation', () => {
+	it('should accumulate transcripts across auto-restarts', async () => {
+		// Mock SpeechRecognition with auto-restart
+		// Simulate first session: "part one"
+		// Simulate restart
+		// Simulate second session: "part two"
+		// Assert final transcript: "part one part two"
+	});
 });
 ```
 
 ## Files to Modify
 
 1. **Primary Fix**:
-   - `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/voice.ts`
-     - Lines 118-134: Update `onresult` handler
-     - Lines 215-217: Reset accumulator in `startRecording()`
-     - Lines 189: Reset accumulator in `cleanupResources()`
+    - `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/voice.ts`
+        - Lines 118-134: Update `onresult` handler
+        - Lines 215-217: Reset accumulator in `startRecording()`
+        - Lines 189: Reset accumulator in `cleanupResources()`
 
 2. **Optional Cleanup**:
-   - `/Users/annawayne/buildos-platform/apps/web/src/lib/services/voiceRecording.service.ts`
-     - Line 40: Either use `finalTranscriptSinceLastStop` or remove it
-     - Lines 66-68: Update subscription logic if needed
+    - `/Users/annawayne/buildos-platform/apps/web/src/lib/services/voiceRecording.service.ts`
+        - Line 40: Either use `finalTranscriptSinceLastStop` or remove it
+        - Lines 66-68: Update subscription logic if needed
 
 3. **Documentation**:
-   - Add comments explaining the accumulation logic
-   - Document the auto-restart behavior
+    - Add comments explaining the accumulation logic
+    - Document the auto-restart behavior
 
 ## Related Issues
 
@@ -342,19 +342,19 @@ describe("SpeechRecognition transcript accumulation", () => {
 ## Edge Cases
 
 1. **Very Long Recording (10+ minutes)**:
-   - Accumulated string could get large
-   - Consider max length limit or warning
+    - Accumulated string could get large
+    - Consider max length limit or warning
 
 2. **Rapid Start/Stop**:
-   - Ensure accumulator is properly reset
-   - Test cleanup in various scenarios
+    - Ensure accumulator is properly reset
+    - Test cleanup in various scenarios
 
 3. **Browser Differences**:
-   - Chrome vs Safari restart timing differs
-   - Test on multiple browsers
+    - Chrome vs Safari restart timing differs
+    - Test on multiple browsers
 
 4. **Network Issues**:
-   - Not applicable (Web Speech API is local)
+    - Not applicable (Web Speech API is local)
 
 ## Conclusion
 

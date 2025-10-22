@@ -4,17 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: ee92fb32fb758e6b168dfdb6068343222df3746c
 branch: main
 repository: buildos-platform
-topic: "Calendar Preferences Null Handling Edge Case in Task Scheduling"
-tags:
-  [
-    research,
-    codebase,
-    brain-dump,
-    task-scheduling,
-    calendar-preferences,
-    edge-case,
-    bug,
-  ]
+topic: 'Calendar Preferences Null Handling Edge Case in Task Scheduling'
+tags: [research, codebase, brain-dump, task-scheduling, calendar-preferences, edge-case, bug]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude
@@ -165,28 +156,25 @@ user_calendar_preferences: {
 ```typescript
 // During dual processing task extraction
 if (result.operations && result.operations.length > 0) {
-  const taskOps = result.operations.filter(
-    (op) => op.table === "tasks" && op.operation === "create",
-  );
-  if (taskOps.length > 0 && userId && selectedProjectId) {
-    const tasksToSchedule = taskOps.map((op) => op.data);
-    const scheduledTasks = await this.adjustTaskScheduledDateTime(
-      tasksToSchedule,
-      userId,
-      selectedProjectId,
-    );
-    // Update operations with scheduled data
-  }
+	const taskOps = result.operations.filter(
+		(op) => op.table === 'tasks' && op.operation === 'create'
+	);
+	if (taskOps.length > 0 && userId && selectedProjectId) {
+		const tasksToSchedule = taskOps.map((op) => op.data);
+		const scheduledTasks = await this.adjustTaskScheduledDateTime(
+			tasksToSchedule,
+			userId,
+			selectedProjectId
+		);
+		// Update operations with scheduled data
+	}
 }
 ```
 
 **Scheduling Method** (`adjustTaskScheduledDateTime`, lines 811-871):
 
 ```typescript
-const scheduledTasks = await this.taskTimeSlotFinder.scheduleTasks(
-  tempTasks as Task[],
-  userId,
-); // ← This is where the error occurs
+const scheduledTasks = await this.taskTimeSlotFinder.scheduleTasks(tempTasks as Task[], userId); // ← This is where the error occurs
 ```
 
 **API Endpoint**: `apps/web/src/routes/api/braindumps/stream/+server.ts`
@@ -203,21 +191,21 @@ The codebase has several established patterns for gracefully handling missing pr
 
 ```typescript
 const DEFAULT_PREFERENCES = {
-  frequency: "daily",
-  day_of_week: 1,
-  time_of_day: "09:00:00",
-  timezone: "UTC",
-  is_active: true,
-  email_daily_brief: false,
+	frequency: 'daily',
+	day_of_week: 1,
+	time_of_day: '09:00:00',
+	timezone: 'UTC',
+	is_active: true,
+	email_daily_brief: false
 };
 
 if (!preferences) {
-  const { data: newPreferences } = await supabase
-    .from("user_brief_preferences")
-    .insert({ user_id: user.id, ...DEFAULT_PREFERENCES })
-    .select()
-    .single();
-  return json({ preferences: newPreferences });
+	const { data: newPreferences } = await supabase
+		.from('user_brief_preferences')
+		.insert({ user_id: user.id, ...DEFAULT_PREFERENCES })
+		.select()
+		.single();
+	return json({ preferences: newPreferences });
 }
 ```
 
@@ -227,18 +215,18 @@ if (!preferences) {
 
 ```typescript
 return json(
-  preferences || {
-    work_start_time: "09:00",
-    work_end_time: "17:00",
-    working_days: [1, 2, 3, 4, 5],
-    default_task_duration_minutes: 60,
-    min_task_duration_minutes: 30,
-    max_task_duration_minutes: 240,
-    exclude_holidays: true,
-    holiday_country_code: "US",
-    timezone: "America/New_York",
-    prefer_morning_for_important_tasks: false,
-  },
+	preferences || {
+		work_start_time: '09:00',
+		work_end_time: '17:00',
+		working_days: [1, 2, 3, 4, 5],
+		default_task_duration_minutes: 60,
+		min_task_duration_minutes: 30,
+		max_task_duration_minutes: 240,
+		exclude_holidays: true,
+		holiday_country_code: 'US',
+		timezone: 'America/New_York',
+		prefer_morning_for_important_tasks: false
+	}
 );
 ```
 
@@ -247,14 +235,14 @@ return json(
 **Example**: Worker Brief Generator (`apps/worker/src/workers/brief/briefWorker.ts:50`)
 
 ```typescript
-let timezone = preferences?.timezone || job.data.timezone || "UTC";
+let timezone = preferences?.timezone || job.data.timezone || 'UTC';
 ```
 
 **Example**: Task Time Slot Finder (`apps/web/src/lib/services/task-time-slot-finder.ts:63,78`)
 
 ```typescript
 // Already used in some places, but not consistently:
-userCalendarPreferences?.timezone || "UTC";
+userCalendarPreferences?.timezone || 'UTC';
 ```
 
 ## Code References
@@ -427,9 +415,9 @@ ON CONFLICT (user_id) DO NOTHING;
 1. **Unit Test**: Test `TaskTimeSlotFinder.scheduleTasks()` with null preferences
 2. **Integration Test**: Test brain dump flow with user who has no calendar preferences
 3. **Edge Cases**:
-   - User with preferences but all null values
-   - User with partial preferences (some fields null)
-   - Concurrent requests creating preferences
+    - User with preferences but all null values
+    - User with partial preferences (some fields null)
+    - Concurrent requests creating preferences
 
 ---
 

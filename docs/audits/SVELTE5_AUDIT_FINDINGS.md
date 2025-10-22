@@ -65,7 +65,7 @@ let currentUser;
 
 $: user = data.user;
 $: isAuthenticated = !!data.user;
-$: currentUser = data.user?.name || "Guest";
+$: currentUser = data.user?.name || 'Guest';
 ```
 
 **Fixed Code (Runes)**:
@@ -73,7 +73,7 @@ $: currentUser = data.user?.name || "Guest";
 ```javascript
 let user = $derived(data.user);
 let isAuthenticated = $derived(!!data.user);
-let currentUser = $derived(data.user?.name || "Guest");
+let currentUser = $derived(data.user?.name || 'Guest');
 ```
 
 **Why This Matters**: These are computed values derived from props/stores. Using `$derived` tells the compiler "this value is computed" and enables optimization.
@@ -85,10 +85,10 @@ let currentUser = $derived(data.user?.name || "Guest");
 ```javascript
 // +layout.svelte (line 100-137)
 $: if ($page.route?.id !== currentRouteId && browser) {
-  currentRouteId = $page.route.id;
-  // ... multiple side effects
-  handleRouteChange();
-  analytics.trackPageView();
+	currentRouteId = $page.route.id;
+	// ... multiple side effects
+	handleRouteChange();
+	analytics.trackPageView();
 }
 ```
 
@@ -96,11 +96,11 @@ $: if ($page.route?.id !== currentRouteId && browser) {
 
 ```javascript
 $effect(() => {
-  if ($page.route?.id !== currentRouteId && browser) {
-    currentRouteId = $page.route.id;
-    handleRouteChange();
-    analytics.trackPageView();
-  }
+	if ($page.route?.id !== currentRouteId && browser) {
+		currentRouteId = $page.route.id;
+		handleRouteChange();
+		analytics.trackPageView();
+	}
 });
 ```
 
@@ -113,34 +113,27 @@ $effect(() => {
 ```javascript
 // FormField.svelte (line 16-32)
 $: containerClasses = [
-  "form-field",
-  disabled && "disabled",
-  error && "error",
-  size === "small" && "text-sm",
+	'form-field',
+	disabled && 'disabled',
+	error && 'error',
+	size === 'small' && 'text-sm'
 ]
-  .filter(Boolean)
-  .join(" ");
+	.filter(Boolean)
+	.join(' ');
 
-$: labelClasses = twMerge("font-semibold", disabled && "text-gray-400");
+$: labelClasses = twMerge('font-semibold', disabled && 'text-gray-400');
 ```
 
 **Fixed Code (Runes)**:
 
 ```javascript
 let containerClasses = $derived(
-  [
-    "form-field",
-    disabled && "disabled",
-    error && "error",
-    size === "small" && "text-sm",
-  ]
-    .filter(Boolean)
-    .join(" "),
+	['form-field', disabled && 'disabled', error && 'error', size === 'small' && 'text-sm']
+		.filter(Boolean)
+		.join(' ')
 );
 
-let labelClasses = $derived.by(() =>
-  twMerge("font-semibold", disabled && "text-gray-400"),
-);
+let labelClasses = $derived.by(() => twMerge('font-semibold', disabled && 'text-gray-400'));
 ```
 
 **Why This Matters**: Class computation should use `$derived` to avoid unnecessary recalculation. `$derived.by()` is useful for functions that need to run.
@@ -168,11 +161,11 @@ let showMobileMenu = false;
 
 // ... later in handlers
 function toggleMobileMenu() {
-  showMobileMenu = !showMobileMenu; // Won't trigger UI update!
+	showMobileMenu = !showMobileMenu; // Won't trigger UI update!
 }
 
 $: if (briefHistory.length > 0) {
-  isInitialLoading = false; // Won't update UI!
+	isInitialLoading = false; // Won't update UI!
 }
 ```
 
@@ -186,13 +179,13 @@ let showMobileMenu = $state(false);
 
 // Now all mutations will trigger re-renders
 function toggleMobileMenu() {
-  showMobileMenu = !showMobileMenu;
+	showMobileMenu = !showMobileMenu;
 }
 
 $effect(() => {
-  if (briefHistory.length > 0) {
-    isInitialLoading = false;
-  }
+	if (briefHistory.length > 0) {
+		isInitialLoading = false;
+	}
 });
 ```
 
@@ -205,14 +198,14 @@ $effect(() => {
 let dismissed = false;
 
 function handleDismiss() {
-  dismissed = true; // Won't trigger re-render!
+	dismissed = true; // Won't trigger re-render!
 }
 
 onMount(async () => {
-  const saved = localStorage.getItem("trial-dismissed");
-  if (saved) {
-    dismissed = true; // Won't hide banner!
-  }
+	const saved = localStorage.getItem('trial-dismissed');
+	if (saved) {
+		dismissed = true; // Won't hide banner!
+	}
 });
 ```
 
@@ -222,14 +215,14 @@ onMount(async () => {
 let dismissed = $state(false);
 
 function handleDismiss() {
-  dismissed = true;
+	dismissed = true;
 }
 
 onMount(async () => {
-  const saved = localStorage.getItem("trial-dismissed");
-  if (saved) {
-    dismissed = true; // Now properly hides banner
-  }
+	const saved = localStorage.getItem('trial-dismissed');
+	if (saved) {
+		dismissed = true; // Now properly hides banner
+	}
 });
 ```
 
@@ -239,33 +232,33 @@ onMount(async () => {
 
 ```javascript
 // CURRENT (BROKEN)
-let title = "Processing";
+let title = 'Processing';
 let showCancelButton = false;
 let processingStartTime = null;
-let currentStep = "parsing";
+let currentStep = 'parsing';
 
 // Modified in effects but won't trigger updates
 $effect(() => {
-  if (isOpen) {
-    title = "Brain Dump Processing"; // Won't update!
-    processingStartTime = Date.now();
-  }
+	if (isOpen) {
+		title = 'Brain Dump Processing'; // Won't update!
+		processingStartTime = Date.now();
+	}
 });
 ```
 
 **FIXED**:
 
 ```javascript
-let title = $state("Processing");
+let title = $state('Processing');
 let showCancelButton = $state(false);
 let processingStartTime = ($state < number) | (null > null);
-let currentStep = $state("parsing");
+let currentStep = $state('parsing');
 
 $effect(() => {
-  if (isOpen) {
-    title = "Brain Dump Processing";
-    processingStartTime = Date.now();
-  }
+	if (isOpen) {
+		title = 'Brain Dump Processing';
+		processingStartTime = Date.now();
+	}
 });
 ```
 
@@ -392,40 +385,40 @@ Event listeners attached to global objects (window, document) must be explicitly
 ```typescript
 // CURRENT (LEAKY)
 export function initializePWAEnhancements() {
-  const darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+	const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-  // Event listener #1 - NO CLEANUP
-  darkModeMediaQuery.addEventListener("change", (e) => {
-    updateThemeColors(e.matches);
-  });
+	// Event listener #1 - NO CLEANUP
+	darkModeMediaQuery.addEventListener('change', (e) => {
+		updateThemeColors(e.matches);
+	});
 
-  // Event listener #2 - NO CLEANUP
-  window.addEventListener("storage", handleStorageChange);
+	// Event listener #2 - NO CLEANUP
+	window.addEventListener('storage', handleStorageChange);
 
-  // Event listeners #3-5 - NO CLEANUP (passive: false means we can prevent default)
-  document.addEventListener(
-    "touchstart",
-    (e) => {
-      if (!isValidTouchTarget(e.target)) {
-        e.preventDefault();
-      }
-    },
-    { passive: false },
-  );
+	// Event listeners #3-5 - NO CLEANUP (passive: false means we can prevent default)
+	document.addEventListener(
+		'touchstart',
+		(e) => {
+			if (!isValidTouchTarget(e.target)) {
+				e.preventDefault();
+			}
+		},
+		{ passive: false }
+	);
 
-  document.addEventListener(
-    "touchmove",
-    (e) => {
-      if (!isValidTouchTarget(e.target)) {
-        e.preventDefault();
-      }
-    },
-    { passive: false },
-  );
+	document.addEventListener(
+		'touchmove',
+		(e) => {
+			if (!isValidTouchTarget(e.target)) {
+				e.preventDefault();
+			}
+		},
+		{ passive: false }
+	);
 
-  document.addEventListener("touchend", (e) => {
-    resetTouchState();
-  });
+	document.addEventListener('touchend', (e) => {
+		resetTouchState();
+	});
 }
 ```
 
@@ -448,56 +441,56 @@ export function initializePWAEnhancements() {
 
 ```typescript
 export function initializePWAEnhancements() {
-  const darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+	const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-  const handleDarkModeChange = (e: MediaQueryListEvent) => {
-    updateThemeColors(e.matches);
-  };
+	const handleDarkModeChange = (e: MediaQueryListEvent) => {
+		updateThemeColors(e.matches);
+	};
 
-  const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === "theme") {
-      updateThemeColors(e.newValue === "dark");
-    }
-  };
+	const handleStorageChange = (e: StorageEvent) => {
+		if (e.key === 'theme') {
+			updateThemeColors(e.newValue === 'dark');
+		}
+	};
 
-  const handleTouchStart = (e: TouchEvent) => {
-    if (!isValidTouchTarget(e.target)) {
-      e.preventDefault();
-    }
-  };
+	const handleTouchStart = (e: TouchEvent) => {
+		if (!isValidTouchTarget(e.target)) {
+			e.preventDefault();
+		}
+	};
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isValidTouchTarget(e.target)) {
-      e.preventDefault();
-    }
-  };
+	const handleTouchMove = (e: TouchEvent) => {
+		if (!isValidTouchTarget(e.target)) {
+			e.preventDefault();
+		}
+	};
 
-  const handleTouchEnd = (e: TouchEvent) => {
-    resetTouchState();
-  };
+	const handleTouchEnd = (e: TouchEvent) => {
+		resetTouchState();
+	};
 
-  // Add listeners with stored references
-  darkModeMediaQuery.addEventListener("change", handleDarkModeChange);
-  window.addEventListener("storage", handleStorageChange);
-  document.addEventListener("touchstart", handleTouchStart, { passive: false });
-  document.addEventListener("touchmove", handleTouchMove, { passive: false });
-  document.addEventListener("touchend", handleTouchEnd);
+	// Add listeners with stored references
+	darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
+	window.addEventListener('storage', handleStorageChange);
+	document.addEventListener('touchstart', handleTouchStart, { passive: false });
+	document.addEventListener('touchmove', handleTouchMove, { passive: false });
+	document.addEventListener('touchend', handleTouchEnd);
 
-  // Return cleanup function
-  return () => {
-    darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
-    window.removeEventListener("storage", handleStorageChange);
-    document.removeEventListener("touchstart", handleTouchStart);
-    document.removeEventListener("touchmove", handleTouchMove);
-    document.removeEventListener("touchend", handleTouchEnd);
-  };
+	// Return cleanup function
+	return () => {
+		darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+		window.removeEventListener('storage', handleStorageChange);
+		document.removeEventListener('touchstart', handleTouchStart);
+		document.removeEventListener('touchmove', handleTouchMove);
+		document.removeEventListener('touchend', handleTouchEnd);
+	};
 }
 
 // Call cleanup when app shuts down
 if (browser) {
-  const cleanup = initializePWAEnhancements();
-  // In a Svelte component or store initialization
-  onDestroy(cleanup);
+	const cleanup = initializePWAEnhancements();
+	// In a Svelte component or store initialization
+	onDestroy(cleanup);
 }
 ```
 
@@ -522,15 +515,15 @@ When subscribing to Svelte stores, you must **always save and call the unsubscri
 export const backgroundJobsStore = writable<BackgroundJob[]>([]);
 
 backgroundBrainDumpService.subscribe((job) => {
-  update((jobs) => {
-    const index = jobs.findIndex((j) => j.id === job.id);
-    if (index >= 0) {
-      jobs[index] = job;
-    } else {
-      jobs.push(job);
-    }
-    return [...jobs];
-  });
+	update((jobs) => {
+		const index = jobs.findIndex((j) => j.id === job.id);
+		if (index >= 0) {
+			jobs[index] = job;
+		} else {
+			jobs.push(job);
+		}
+		return [...jobs];
+	});
 }); // ❌ NO UNSUBSCRIBE STORED! Subscription persists forever.
 ```
 
@@ -558,30 +551,30 @@ export const backgroundJobsStore = writable<BackgroundJob[]>([]);
 let unsubscribe: (() => void) | null = null;
 
 export function initializeBackgroundJobsStore() {
-  // Unsubscribe from previous subscription if it exists
-  if (unsubscribe) {
-    unsubscribe();
-  }
+	// Unsubscribe from previous subscription if it exists
+	if (unsubscribe) {
+		unsubscribe();
+	}
 
-  // Subscribe and save the unsubscribe function
-  unsubscribe = backgroundBrainDumpService.subscribe((job) => {
-    backgroundJobsStore.update((jobs) => {
-      const index = jobs.findIndex((j) => j.id === job.id);
-      if (index >= 0) {
-        jobs[index] = job;
-      } else {
-        jobs.push(job);
-      }
-      return [...jobs];
-    });
-  });
+	// Subscribe and save the unsubscribe function
+	unsubscribe = backgroundBrainDumpService.subscribe((job) => {
+		backgroundJobsStore.update((jobs) => {
+			const index = jobs.findIndex((j) => j.id === job.id);
+			if (index >= 0) {
+				jobs[index] = job;
+			} else {
+				jobs.push(job);
+			}
+			return [...jobs];
+		});
+	});
 }
 
 export function cleanupBackgroundJobsStore() {
-  if (unsubscribe) {
-    unsubscribe();
-    unsubscribe = null;
-  }
+	if (unsubscribe) {
+		unsubscribe();
+		unsubscribe = null;
+	}
 }
 ```
 
@@ -598,7 +591,7 @@ let currentState = initialState;
 
 // This subscription is created and never cleaned up
 internalStore.subscribe((value) => {
-  currentState = value;
+	currentState = value;
 }); // ❌ Permanent subscription, holds reference forever
 ```
 
@@ -610,20 +603,20 @@ let currentState = $state(initialState);
 let unsubscribe: (() => void) | null = null;
 
 export function initializeTimeBlocksStore() {
-  if (unsubscribe) {
-    unsubscribe();
-  }
+	if (unsubscribe) {
+		unsubscribe();
+	}
 
-  unsubscribe = internalStore.subscribe((value) => {
-    currentState = value;
-  });
+	unsubscribe = internalStore.subscribe((value) => {
+		currentState = value;
+	});
 }
 
 // Call cleanup when app destroys the store
 onDestroy(() => {
-  if (unsubscribe) {
-    unsubscribe();
-  }
+	if (unsubscribe) {
+		unsubscribe();
+	}
 });
 ```
 
@@ -657,23 +650,23 @@ const unsubscribe = someStore.subscribe(callback);
 let logoutAttempts = 0;
 
 async function handleSignOut() {
-  if (loggingOut || !browser) return;
+	if (loggingOut || !browser) return;
 
-  const now = Date.now();
+	const now = Date.now();
 
-  // ❌ BUG: This comparison fails!
-  // logoutAttempts is 0 initially, then becomes a timestamp
-  // The condition '0 > 0' is always false on first call
-  // Then on second call, it's comparing 'timestamp > 0' which is always true
-  if (logoutAttempts > 0 && now - logoutAttempts < 2000) {
-    console.log("Too many logout attempts");
-    return; // Rate limiting doesn't work!
-  }
+	// ❌ BUG: This comparison fails!
+	// logoutAttempts is 0 initially, then becomes a timestamp
+	// The condition '0 > 0' is always false on first call
+	// Then on second call, it's comparing 'timestamp > 0' which is always true
+	if (logoutAttempts > 0 && now - logoutAttempts < 2000) {
+		console.log('Too many logout attempts');
+		return; // Rate limiting doesn't work!
+	}
 
-  logoutAttempts = now; // Set to timestamp
-  loggingOut = true;
+	logoutAttempts = now; // Set to timestamp
+	loggingOut = true;
 
-  // ... rest of logout logic
+	// ... rest of logout logic
 }
 ```
 
@@ -699,47 +692,47 @@ async function handleSignOut() {
 let lastLogoutAttempt = 0;
 
 async function handleSignOut() {
-  if (loggingOut || !browser) return;
+	if (loggingOut || !browser) return;
 
-  const now = Date.now();
+	const now = Date.now();
 
-  // Now the logic makes sense:
-  // "If we've tried before AND it was less than 2 seconds ago, return"
-  if (lastLogoutAttempt > 0 && now - lastLogoutAttempt < 2000) {
-    console.log("Too many logout attempts");
-    return;
-  }
+	// Now the logic makes sense:
+	// "If we've tried before AND it was less than 2 seconds ago, return"
+	if (lastLogoutAttempt > 0 && now - lastLogoutAttempt < 2000) {
+		console.log('Too many logout attempts');
+		return;
+	}
 
-  lastLogoutAttempt = now;
-  loggingOut = true;
+	lastLogoutAttempt = now;
+	loggingOut = true;
 
-  // ... rest of logout logic
+	// ... rest of logout logic
 }
 
 // Option 2: Use a Set to track attempts (more robust)
 const logoutAttempts = $state<number[]>([]);
 
 async function handleSignOut() {
-  if (loggingOut || !browser) return;
+	if (loggingOut || !browser) return;
 
-  const now = Date.now();
-  const twoSecondsAgo = now - 2000;
+	const now = Date.now();
+	const twoSecondsAgo = now - 2000;
 
-  // Remove attempts older than 2 seconds
-  while (logoutAttempts.length > 0 && logoutAttempts[0] < twoSecondsAgo) {
-    logoutAttempts.shift();
-  }
+	// Remove attempts older than 2 seconds
+	while (logoutAttempts.length > 0 && logoutAttempts[0] < twoSecondsAgo) {
+		logoutAttempts.shift();
+	}
 
-  // Allow max 1 attempt per 2 seconds
-  if (logoutAttempts.length >= 1) {
-    console.log("Too many logout attempts");
-    return;
-  }
+	// Allow max 1 attempt per 2 seconds
+	if (logoutAttempts.length >= 1) {
+		console.log('Too many logout attempts');
+		return;
+	}
 
-  logoutAttempts.push(now);
-  loggingOut = true;
+	logoutAttempts.push(now);
+	loggingOut = true;
 
-  // ... rest of logout logic
+	// ... rest of logout logic
 }
 ```
 
@@ -754,20 +747,18 @@ async function handleSignOut() {
 ```typescript
 // CURRENT (UNSAFE)
 mediaRecorder.onstop = () => {
-  let audioBlob: Blob | null = null;
+	let audioBlob: Blob | null = null;
 
-  if (audioChunks.length > 0) {
-    // ❌ Problem: audioChunks[0] exists, but what if .type is undefined?
-    // And what if capabilitiesCache is null?
-    const mimeType =
-      audioChunks[0].type ||
-      capabilitiesCache?.supportedMimeType ||
-      "audio/webm";
-    audioBlob = new Blob(audioChunks, { type: mimeType });
-  }
+	if (audioChunks.length > 0) {
+		// ❌ Problem: audioChunks[0] exists, but what if .type is undefined?
+		// And what if capabilitiesCache is null?
+		const mimeType =
+			audioChunks[0].type || capabilitiesCache?.supportedMimeType || 'audio/webm';
+		audioBlob = new Blob(audioChunks, { type: mimeType });
+	}
 
-  // audioBlob might still be null here
-  callback?.(audioBlob); // Could pass null to callback
+	// audioBlob might still be null here
+	callback?.(audioBlob); // Could pass null to callback
 };
 ```
 
@@ -790,29 +781,29 @@ mediaRecorder.onstop = () => {
 
 ```typescript
 mediaRecorder.onstop = () => {
-  let audioBlob: Blob | null = null;
+	let audioBlob: Blob | null = null;
 
-  if (audioChunks.length > 0) {
-    // Defensive coding with explicit fallback
-    let mimeType = "audio/webm"; // Default
+	if (audioChunks.length > 0) {
+		// Defensive coding with explicit fallback
+		let mimeType = 'audio/webm'; // Default
 
-    if (audioChunks[0]?.type) {
-      mimeType = audioChunks[0].type;
-    } else if (capabilitiesCache?.supportedMimeType) {
-      mimeType = capabilitiesCache.supportedMimeType;
-    }
+		if (audioChunks[0]?.type) {
+			mimeType = audioChunks[0].type;
+		} else if (capabilitiesCache?.supportedMimeType) {
+			mimeType = capabilitiesCache.supportedMimeType;
+		}
 
-    try {
-      audioBlob = new Blob(audioChunks, { type: mimeType });
-    } catch (error) {
-      console.error("Failed to create audio blob:", error);
-      // Fall back to raw blob without type specification
-      audioBlob = new Blob(audioChunks);
-    }
-  }
+		try {
+			audioBlob = new Blob(audioChunks, { type: mimeType });
+		} catch (error) {
+			console.error('Failed to create audio blob:', error);
+			// Fall back to raw blob without type specification
+			audioBlob = new Blob(audioChunks);
+		}
+	}
 
-  // Ensure we always pass a blob or null, never undefined
-  callback?.(audioBlob);
+	// Ensure we always pass a blob or null, never undefined
+	callback?.(audioBlob);
 };
 ```
 
@@ -900,16 +891,11 @@ $: averageDaily = totalVisitors / (weeks.length * 7); // Computed
 $: maxVisitors = Math.max(...graphData.map((d) => d.count)); // Computed
 $: minVisitors = Math.min(...graphData.map((d) => d.count)); // Computed
 $: percentageChange =
-  (((graphData[graphData.length - 1]?.count || 0) -
-    (graphData[0]?.count || 0)) /
-    (graphData[0]?.count || 1)) *
-  100; // Complex
+	(((graphData[graphData.length - 1]?.count || 0) - (graphData[0]?.count || 0)) /
+		(graphData[0]?.count || 1)) *
+	100; // Complex
 $: yAxisScale = calculateScale(minVisitors, maxVisitors); // Computed
-$: formattedMetrics = formatMetrics(
-  totalVisitors,
-  averageDaily,
-  percentageChange,
-); // Computed
+$: formattedMetrics = formatMetrics(totalVisitors, averageDaily, percentageChange); // Computed
 
 // 10+ expensive computed values all using $:
 // Every time data.weeks changes, ALL of these recalculate
@@ -942,32 +928,27 @@ let monthLabels = $derived.by(() => weeks.map((w) => formatMonth(w)));
 let graphData = $derived.by(() => weeks.map((w) => transformWeekData(w)));
 
 // Computed values that depend on graphData
-let totalVisitors = $derived.by(() =>
-  graphData.reduce((sum, w) => sum + w.count, 0),
-);
+let totalVisitors = $derived.by(() => graphData.reduce((sum, w) => sum + w.count, 0));
 
 let stats = $derived.by(() => {
-  if (graphData.length === 0) {
-    return { average: 0, max: 0, min: 0, change: 0 };
-  }
+	if (graphData.length === 0) {
+		return { average: 0, max: 0, min: 0, change: 0 };
+	}
 
-  const max = Math.max(...graphData.map((d) => d.count));
-  const min = Math.min(...graphData.map((d) => d.count));
-  const average = totalVisitors / (weeks.length * 7);
-  const change =
-    (((graphData[graphData.length - 1]?.count || 0) -
-      (graphData[0]?.count || 0)) /
-      (graphData[0]?.count || 1)) *
-    100;
+	const max = Math.max(...graphData.map((d) => d.count));
+	const min = Math.min(...graphData.map((d) => d.count));
+	const average = totalVisitors / (weeks.length * 7);
+	const change =
+		(((graphData[graphData.length - 1]?.count || 0) - (graphData[0]?.count || 0)) /
+			(graphData[0]?.count || 1)) *
+		100;
 
-  return { average, max, min, change };
+	return { average, max, min, change };
 });
 
 let yAxisScale = $derived(calculateScale(stats.min, stats.max));
 
-let formattedMetrics = $derived(
-  formatMetrics(totalVisitors, stats.average, stats.change),
-);
+let formattedMetrics = $derived(formatMetrics(totalVisitors, stats.average, stats.change));
 ```
 
 **Alternative - Memoization Pattern**:
@@ -1034,28 +1015,28 @@ $: ({ showNavigation, ... } = routeBasedState);
 // Use $derived for simple computations
 let user = $derived(data.user);
 let isAuthenticated = $derived(!!data.user);
-let currentUser = $derived(data.user?.name || "Guest");
+let currentUser = $derived(data.user?.name || 'Guest');
 
 // Use $effect for side effects with clear dependencies
 $effect(() => {
-  if (!browser) return;
+	if (!browser) return;
 
-  if ($page.route?.id !== currentRouteId) {
-    currentRouteId = $page.route.id;
-    handleRouteChange();
-  }
+	if ($page.route?.id !== currentRouteId) {
+		currentRouteId = $page.route.id;
+		handleRouteChange();
+	}
 });
 
 // Separate effect for resource loading
 $effect(() => {
-  if (!browser || !user || resourcesLoaded || resourcesLoadPromise) return;
+	if (!browser || !user || resourcesLoaded || resourcesLoadPromise) return;
 
-  loadResources();
+	loadResources();
 });
 
 // Route-based state
 let routeBasedState = $derived.by(() => {
-  return getRouteState($page.route?.id);
+	return getRouteState($page.route?.id);
 });
 ```
 
@@ -1293,8 +1274,8 @@ let isToday = $state(false);
 let isInitialLoading = $state(true);
 let isLoading = $state(false);
 let showMobileMenu = $state(false);
-let currentViewMode = $state < ViewMode > "list";
-let selectedSortOption = $state < SortOption > "recent";
+let currentViewMode = $state < ViewMode > 'list';
+let selectedSortOption = $state < SortOption > 'recent';
 ```
 
 **Testing**:
@@ -1327,112 +1308,112 @@ let selectedSortOption = $state < SortOption > "recent";
 ### Immediate Actions (Do Now)
 
 1. **Schedule Code Review**
-   - Create a dedicated "Svelte 5 Migration" branch
-   - Establish review process
-   - Allocate 2-3 days for critical fixes
+    - Create a dedicated "Svelte 5 Migration" branch
+    - Establish review process
+    - Allocate 2-3 days for critical fixes
 
 2. **Set Up Automated Checks**
 
-   ```bash
-   # Add to pre-commit hooks
-   # Check for old $: syntax
-   grep -r '\$:' src --include='*.svelte' && exit 1
+    ```bash
+    # Add to pre-commit hooks
+    # Check for old $: syntax
+    grep -r '\$:' src --include='*.svelte' && exit 1
 
-   # Check for plain let mutations (harder to automate)
-   # Could use a custom ESLint rule
-   ```
+    # Check for plain let mutations (harder to automate)
+    # Could use a custom ESLint rule
+    ```
 
 3. **Communicate Timeline**
-   - Notify team of changes
-   - Expect some regression testing needed
-   - Plan for 2-week migration window
+    - Notify team of changes
+    - Expect some regression testing needed
+    - Plan for 2-week migration window
 
 ### Process Improvements
 
 1. **Code Style Guide**
-   - Document rune usage patterns
-   - Add to CLAUDE.md
-   - Include examples
+    - Document rune usage patterns
+    - Add to CLAUDE.md
+    - Include examples
 
 2. **Pre-commit Hooks**
 
-   ```bash
-   #!/bin/bash
-   # Prevent committing old $: syntax
-   if grep -r '\$:' apps/web/src --include='*.svelte' | grep -v 'approved'; then
-       echo "ERROR: Found old reactive syntax $:"
-       echo "Use \$derived() or \$effect() instead"
-       exit 1
-   fi
-   ```
+    ```bash
+    #!/bin/bash
+    # Prevent committing old $: syntax
+    if grep -r '\$:' apps/web/src --include='*.svelte' | grep -v 'approved'; then
+        echo "ERROR: Found old reactive syntax $:"
+        echo "Use \$derived() or \$effect() instead"
+        exit 1
+    fi
+    ```
 
 3. **TypeScript Strictness**
-   - Enable stricter type checking
-   - Catch more potential null errors
-   - Add nullability checks
+    - Enable stricter type checking
+    - Catch more potential null errors
+    - Add nullability checks
 
 ### Documentation
 
 1. **Add to `/apps/web/CLAUDE.md`**:
 
-   ```markdown
-   ## Svelte 5 Runes Rules
+    ```markdown
+    ## Svelte 5 Runes Rules
 
-   - Always wrap mutable state in `$state()`
-   - Use `$derived` for computed values
-   - Use `$effect` for side effects
-   - Never use old `$:` syntax
-   - Clean up subscriptions and event listeners
-   ```
+    - Always wrap mutable state in `$state()`
+    - Use `$derived` for computed values
+    - Use `$effect` for side effects
+    - Never use old `$:` syntax
+    - Clean up subscriptions and event listeners
+    ```
 
 2. **Create Migration Checklist**:
-   - Template for reviewing each component
-   - Common patterns and their fixes
-   - Testing checklist per component
+    - Template for reviewing each component
+    - Common patterns and their fixes
+    - Testing checklist per component
 
 3. **Record Video Guide** (Optional):
-   - Show before/after of common patterns
-   - Screen recording of fixes
-   - Quick reference for team
+    - Show before/after of common patterns
+    - Screen recording of fixes
+    - Quick reference for team
 
 ### Testing Strategy
 
 1. **Unit Tests**
-   - Ensure state updates work
-   - Verify effects trigger correctly
-   - Check subscription cleanup
+    - Ensure state updates work
+    - Verify effects trigger correctly
+    - Check subscription cleanup
 
 2. **Integration Tests**
-   - Test component interactions
-   - Verify no memory leaks
-   - Check performance improvements
+    - Test component interactions
+    - Verify no memory leaks
+    - Check performance improvements
 
 3. **Visual Regression Testing**
-   - Take screenshots before fixes
-   - Compare after migration
-   - Use tools like Percy or Chromatic
+    - Take screenshots before fixes
+    - Compare after migration
+    - Use tools like Percy or Chromatic
 
 4. **Performance Profiling**
-   - Profile before: `pnpm dev` + DevTools
-   - Profile after: Compare render times
-   - Check memory usage over time
+    - Profile before: `pnpm dev` + DevTools
+    - Profile after: Compare render times
+    - Check memory usage over time
 
 ### Long-term Improvements
 
 1. **Automated Audits**
-   - Add linting rule for `$:` usage
-   - Check for missing `$state()` on mutations
-   - Warn about unmanaged subscriptions
+    - Add linting rule for `$:` usage
+    - Check for missing `$state()` on mutations
+    - Warn about unmanaged subscriptions
 
 2. **Performance Monitoring**
-   - Add performance metrics to analytics
-   - Track render times for key components
-   - Monitor memory usage
+    - Add performance metrics to analytics
+    - Track render times for key components
+    - Monitor memory usage
 
 3. **Component Library**
-   - Create well-reviewed, migration-complete components
-   - Use as templates for other components
-   - Gradually phase out old implementations
+    - Create well-reviewed, migration-complete components
+    - Use as templates for other components
+    - Gradually phase out old implementations
 
 ---
 
@@ -1475,16 +1456,16 @@ let computed = $derived(expensive(data));
 ```javascript
 // ❌ OLD
 $: {
-  if (condition) {
-    doSomething();
-  }
+	if (condition) {
+		doSomething();
+	}
 }
 
 // ✅ NEW
 $effect(() => {
-  if (condition) {
-    doSomething();
-  }
+	if (condition) {
+		doSomething();
+	}
 });
 ```
 
@@ -1494,13 +1475,13 @@ $effect(() => {
 // ❌ OLD
 let count = 0;
 function increment() {
-  count++;
+	count++;
 } // Won't update UI!
 
 // ✅ NEW
 let count = $state(0);
 function increment() {
-  count++;
+	count++;
 } // Updates UI!
 ```
 
@@ -1510,13 +1491,13 @@ function increment() {
 // ❌ OLD
 let selected = new Set();
 function toggle(id) {
-  selected.add(id);
+	selected.add(id);
 } // Won't update UI!
 
 // ✅ NEW
 let selected = $state(new Set());
 function toggle(id) {
-  selected.add(id);
+	selected.add(id);
 } // Updates UI!
 ```
 
@@ -1525,15 +1506,15 @@ function toggle(id) {
 ```javascript
 // ❌ OLD
 onMount(() => {
-  window.addEventListener("click", handler);
+	window.addEventListener('click', handler);
 });
 
 // ✅ NEW
 onMount(() => {
-  window.addEventListener("click", handler);
-  return () => {
-    window.removeEventListener("click", handler);
-  };
+	window.addEventListener('click', handler);
+	return () => {
+		window.removeEventListener('click', handler);
+	};
 });
 ```
 

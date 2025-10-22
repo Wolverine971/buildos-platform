@@ -4,9 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: a9d85d5d11155c068dc08e34abb04bd033d82f16
 branch: main
 repository: buildos-platform
-topic: "Second Batch Test Failures: Operations, Integration, Validation"
-tags:
-  [research, testing, operations-executor, brain-dump-integration, validation]
+topic: 'Second Batch Test Failures: Operations, Integration, Validation'
+tags: [research, testing, operations-executor, brain-dump-integration, validation]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
@@ -73,12 +72,11 @@ Tests create operations missing the required `ref` field:
 From `operation-validator.ts:33-38`:
 
 ```typescript
-if (table === "projects" && operation_type === "create" && !operation.ref) {
-  return {
-    isValid: false,
-    error:
-      "Project create operations must have a ref for other operations to reference",
-  };
+if (table === 'projects' && operation_type === 'create' && !operation.ref) {
+	return {
+		isValid: false,
+		error: 'Project create operations must have a ref for other operations to reference'
+	};
 }
 ```
 
@@ -109,16 +107,14 @@ Location: `operations-executor.ts:224-267`
 ```typescript
 // Line 90-140
 for (const operation of operationsToExecute) {
-  try {
-    const result = await this.executeOperation(operation, userId, brainDumpId);
-    rollbackStack.push({ operation, result }); // Track for rollback
-  } catch (error) {
-    // ROLLBACK: Reverse all successful operations
-    await this.rollbackOperations(rollbackStack, userId);
-    throw new Error(
-      `Operation failed and changes were rolled back: ${errorMessage}`,
-    );
-  }
+	try {
+		const result = await this.executeOperation(operation, userId, brainDumpId);
+		rollbackStack.push({ operation, result }); // Track for rollback
+	} catch (error) {
+		// ROLLBACK: Reverse all successful operations
+		await this.rollbackOperations(rollbackStack, userId);
+		throw new Error(`Operation failed and changes were rolled back: ${errorMessage}`);
+	}
 }
 ```
 
@@ -195,25 +191,25 @@ await this.llmService.getJSONResponse({ ... });
 
 ```typescript
 beforeEach(() => {
-  processor = new BrainDumpProcessor(mockSupabase);
+	processor = new BrainDumpProcessor(mockSupabase);
 
-  // Replace llmService instance
-  mockLLMService = {
-    getJSONResponse: vi.fn(),
-  };
-  (processor as any).llmService = mockLLMService;
+	// Replace llmService instance
+	mockLLMService = {
+		getJSONResponse: vi.fn()
+	};
+	(processor as any).llmService = mockLLMService;
 
-  // Replace activityLogger
-  mockActivityLogger = {
-    logActivity: vi.fn().mockResolvedValue(undefined),
-  };
-  (processor as any).activityLogger = mockActivityLogger;
+	// Replace activityLogger
+	mockActivityLogger = {
+		logActivity: vi.fn().mockResolvedValue(undefined)
+	};
+	(processor as any).activityLogger = mockActivityLogger;
 
-  // Replace operationsExecutor (for autoExecute tests)
-  mockOperationsExecutor = {
-    executeOperations: vi.fn(),
-  };
-  (processor as any).operationsExecutor = mockOperationsExecutor;
+	// Replace operationsExecutor (for autoExecute tests)
+	mockOperationsExecutor = {
+		executeOperations: vi.fn()
+	};
+	(processor as any).operationsExecutor = mockOperationsExecutor;
 });
 ```
 
@@ -223,17 +219,17 @@ beforeEach(() => {
 
 ```typescript
 mockLLMService.getJSONResponse
-  .mockResolvedValueOnce(contextResponse) // Context extraction
-  .mockResolvedValueOnce(tasksResponse); // Task extraction
+	.mockResolvedValueOnce(contextResponse) // Context extraction
+	.mockResolvedValueOnce(tasksResponse); // Task extraction
 ```
 
 **Existing Projects (3 calls)**:
 
 ```typescript
 mockLLMService.getJSONResponse
-  .mockResolvedValueOnce(prepAnalysisResponse) // Preparatory analysis
-  .mockResolvedValueOnce(contextResponse) // Context extraction
-  .mockResolvedValueOnce(tasksResponse); // Task extraction
+	.mockResolvedValueOnce(prepAnalysisResponse) // Preparatory analysis
+	.mockResolvedValueOnce(contextResponse) // Context extraction
+	.mockResolvedValueOnce(tasksResponse); // Task extraction
 ```
 
 ### Fix Strategy
@@ -254,14 +250,14 @@ mockLLMService.getJSONResponse
 ### The Test
 
 ```typescript
-it("should reject content over 500 chars", async () => {
-  const result = await BrainDumpValidator.validateShort({
-    content: "a".repeat(501),
-    selectedProjectId: "existing-project-123",
-    brainDumpId: "test-id",
-  });
+it('should reject content over 500 chars', async () => {
+	const result = await BrainDumpValidator.validateShort({
+		content: 'a'.repeat(501),
+		selectedProjectId: 'existing-project-123',
+		brainDumpId: 'test-id'
+	});
 
-  expect(result.isValid).toBe(false); // ❌ Fails - gets true
+	expect(result.isValid).toBe(false); // ❌ Fails - gets true
 });
 ```
 
@@ -271,9 +267,9 @@ it("should reject content over 500 chars", async () => {
 
 ```typescript
 export const CONTENT_LENGTH = {
-  SHORT_MAX: 500,
-  LONG_MIN: 500,
-  MAX: 100000,
+	SHORT_MAX: 500,
+	LONG_MIN: 500,
+	MAX: 100000
 } as const;
 ```
 
@@ -281,7 +277,7 @@ export const CONTENT_LENGTH = {
 
 ```typescript
 export const CONTENT_LENGTH = {
-  MAX: 100000, // Only this remains!
+	MAX: 100000 // Only this remains!
 } as const;
 
 // Comment explains:
@@ -316,8 +312,8 @@ case 'short':
 
 ```typescript
 export const CONTENT_LENGTH = {
-  SHORT_MAX: 500,
-  MAX: 100000,
+	SHORT_MAX: 500,
+	MAX: 100000
 } as const;
 ```
 

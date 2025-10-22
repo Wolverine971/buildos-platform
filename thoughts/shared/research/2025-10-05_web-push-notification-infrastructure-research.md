@@ -1,5 +1,5 @@
 ---
-title: "Web Push Notification Infrastructure Research"
+title: 'Web Push Notification Infrastructure Research'
 date: 2025-10-05
 type: research
 tags: [notifications, web-push, infrastructure, pwa, backend]
@@ -212,9 +212,9 @@ VAPID_SUBJECT=mailto:your-email@domain.com
 ```json
 // Backend (worker service)
 {
-  "dependencies": {
-    "web-push": "^3.6.7" // Standard web push library
-  }
+	"dependencies": {
+		"web-push": "^3.6.7" // Standard web push library
+	}
 }
 
 // Frontend (web app) - native APIs
@@ -287,52 +287,49 @@ CREATE TABLE user_push_preferences (
 ```typescript
 // Example: /apps/worker/src/workers/pushWorker.ts
 
-import webpush from "web-push";
-import { createClient } from "@supabase/supabase-js";
+import webpush from 'web-push';
+import { createClient } from '@supabase/supabase-js';
 
 // Configure VAPID keys
 webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.PRIVATE_VAPID_PRIVATE_KEY!,
+	process.env.VAPID_SUBJECT!,
+	process.env.PUBLIC_VAPID_PUBLIC_KEY!,
+	process.env.PRIVATE_VAPID_PRIVATE_KEY!
 );
 
 export async function sendPushNotification(
-  userId: string,
-  payload: {
-    title: string;
-    body: string;
-    icon?: string;
-    badge?: string;
-    data?: any;
-  },
+	userId: string,
+	payload: {
+		title: string;
+		body: string;
+		icon?: string;
+		badge?: string;
+		data?: any;
+	}
 ) {
-  // 1. Fetch user's push subscriptions from DB
-  const { data: subscriptions } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .eq("user_id", userId);
+	// 1. Fetch user's push subscriptions from DB
+	const { data: subscriptions } = await supabase
+		.from('push_subscriptions')
+		.select('*')
+		.eq('user_id', userId);
 
-  // 2. Send to all subscriptions
-  const results = await Promise.allSettled(
-    subscriptions.map(async (sub) => {
-      const pushSubscription = {
-        endpoint: sub.endpoint,
-        keys: {
-          p256dh: sub.p256dh_key,
-          auth: sub.auth_key,
-        },
-      };
+	// 2. Send to all subscriptions
+	const results = await Promise.allSettled(
+		subscriptions.map(async (sub) => {
+			const pushSubscription = {
+				endpoint: sub.endpoint,
+				keys: {
+					p256dh: sub.p256dh_key,
+					auth: sub.auth_key
+				}
+			};
 
-      return webpush.sendNotification(
-        pushSubscription,
-        JSON.stringify(payload),
-      );
-    }),
-  );
+			return webpush.sendNotification(pushSubscription, JSON.stringify(payload));
+		})
+	);
 
-  // 3. Clean up failed subscriptions (410 Gone = unsubscribed)
-  // 4. Update last_used_at for successful sends
+	// 3. Clean up failed subscriptions (410 Gone = unsubscribed)
+	// 4. Update last_used_at for successful sends
 }
 ```
 
@@ -370,34 +367,34 @@ export async function sendPushNotification(
 **Priority 1: Service Worker Setup**
 
 1. **Create Service Worker File**
-   - Location: `/apps/web/static/service-worker.js` or `/apps/web/src/service-worker.ts`
-   - Register in main app (`+layout.svelte` or `hooks.client.ts`)
-   - Handle push events and notification clicks
+    - Location: `/apps/web/static/service-worker.js` or `/apps/web/src/service-worker.ts`
+    - Register in main app (`+layout.svelte` or `hooks.client.ts`)
+    - Handle push events and notification clicks
 
 2. **Push Subscription Management**
-   - Request notification permission
-   - Subscribe to push service
-   - Store subscription in database
-   - Handle subscription updates/expiration
+    - Request notification permission
+    - Subscribe to push service
+    - Store subscription in database
+    - Handle subscription updates/expiration
 
 3. **UI Components**
-   - Permission request prompt
-   - Push notification preferences panel
-   - Test notification button
-   - Subscription status indicator
+    - Permission request prompt
+    - Push notification preferences panel
+    - Test notification button
+    - Subscription status indicator
 
 **Priority 2: Integration Points**
 
 1. **Update Notification System**
-   - Add push notification type to store
-   - Create push notification bridge
-   - Handle OS-level notification display
+    - Add push notification type to store
+    - Create push notification bridge
+    - Handle OS-level notification display
 
 2. **Settings Page**
-   - Add to `/apps/web/src/lib/components/settings/`
-   - Push notification toggle
-   - Notification type preferences
-   - Test notification functionality
+    - Add to `/apps/web/src/lib/components/settings/`
+    - Push notification toggle
+    - Notification type preferences
+    - Test notification functionality
 
 **Priority 3: API Endpoints**
 
@@ -415,36 +412,36 @@ export async function sendPushNotification(
 
 1. **Install Dependencies**
 
-   ```bash
-   cd apps/worker
-   pnpm add web-push
-   ```
+    ```bash
+    cd apps/worker
+    pnpm add web-push
+    ```
 
 2. **Generate VAPID Keys**
 
-   ```bash
-   npx web-push generate-vapid-keys
-   # Add to .env files (web and worker)
-   ```
+    ```bash
+    npx web-push generate-vapid-keys
+    # Add to .env files (web and worker)
+    ```
 
 3. **Configure web-push Library**
-   - Set VAPID details
-   - Create push notification service
-   - Handle subscription management
+    - Set VAPID details
+    - Create push notification service
+    - Handle subscription management
 
 **Priority 2: Worker Implementation**
 
 1. **Create Push Worker**
-   - `/apps/worker/src/workers/pushWorker.ts`
-   - Queue job type: `send_push_notification`
-   - Handle subscription failures
-   - Track delivery status
+    - `/apps/worker/src/workers/pushWorker.ts`
+    - Queue job type: `send_push_notification`
+    - Handle subscription failures
+    - Track delivery status
 
 2. **Integration with Existing Flows**
-   - Daily brief generation → Send push notification
-   - Brain dump completion → Send push notification
-   - Phase generation completion → Send push notification
-   - Calendar event reminders → Send push notification
+    - Daily brief generation → Send push notification
+    - Brain dump completion → Send push notification
+    - Phase generation completion → Send push notification
+    - Calendar event reminders → Send push notification
 
 **Priority 3: Database Schema**
 
@@ -539,21 +536,21 @@ PUSH_NOTIFICATION_URGENCY=normal  # low, normal, high
 
 ```typescript
 // Add to existing hooks.client.ts
-import { browser } from "$app/environment";
-import { PUBLIC_ENABLE_PUSH_NOTIFICATIONS } from "$env/static/public";
+import { browser } from '$app/environment';
+import { PUBLIC_ENABLE_PUSH_NOTIFICATIONS } from '$env/static/public';
 
-if (browser && PUBLIC_ENABLE_PUSH_NOTIFICATIONS === "true") {
-  // Register service worker
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((registration) => {
-        console.log("Service Worker registered:", registration);
-      })
-      .catch((error) => {
-        console.error("Service Worker registration failed:", error);
-      });
-  }
+if (browser && PUBLIC_ENABLE_PUSH_NOTIFICATIONS === 'true') {
+	// Register service worker
+	if ('serviceWorker' in navigator) {
+		navigator.serviceWorker
+			.register('/service-worker.js')
+			.then((registration) => {
+				console.log('Service Worker registered:', registration);
+			})
+			.catch((error) => {
+				console.error('Service Worker registration failed:', error);
+			});
+	}
 }
 ```
 
@@ -573,32 +570,32 @@ if (browser && PUBLIC_ENABLE_PUSH_NOTIFICATIONS === "true") {
 ```typescript
 // apps/web/src/lib/services/push-notification.service.ts
 export async function subscribeToPushNotifications(userId: string) {
-  // 1. Check permission
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    throw new Error("Notification permission denied");
-  }
+	// 1. Check permission
+	const permission = await Notification.requestPermission();
+	if (permission !== 'granted') {
+		throw new Error('Notification permission denied');
+	}
 
-  // 2. Get service worker registration
-  const registration = await navigator.serviceWorker.ready;
+	// 2. Get service worker registration
+	const registration = await navigator.serviceWorker.ready;
 
-  // 3. Subscribe to push service
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_PUBLIC_KEY),
-  });
+	// 3. Subscribe to push service
+	const subscription = await registration.pushManager.subscribe({
+		userVisibleOnly: true,
+		applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_PUBLIC_KEY)
+	});
 
-  // 4. Save to backend
-  await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId,
-      subscription: subscription.toJSON(),
-    }),
-  });
+	// 4. Save to backend
+	await fetch('/api/push/subscribe', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			userId,
+			subscription: subscription.toJSON()
+		})
+	});
 
-  return subscription;
+	return subscription;
 }
 ```
 
@@ -607,103 +604,103 @@ export async function subscribeToPushNotifications(userId: string) {
 **Location:** `/apps/worker/src/workers/pushWorker.ts` (to be created)
 
 ```typescript
-import webpush from "web-push";
+import webpush from 'web-push';
 
 // Queue job interface
 interface PushNotificationJob {
-  userId: string;
-  notification: {
-    title: string;
-    body: string;
-    icon?: string;
-    badge?: string;
-    tag?: string;
-    data?: any;
-  };
-  options?: {
-    ttl?: number;
-    urgency?: "very-low" | "low" | "normal" | "high";
-  };
+	userId: string;
+	notification: {
+		title: string;
+		body: string;
+		icon?: string;
+		badge?: string;
+		tag?: string;
+		data?: any;
+	};
+	options?: {
+		ttl?: number;
+		urgency?: 'very-low' | 'low' | 'normal' | 'high';
+	};
 }
 
 // Worker function
 export async function processPushNotification(job: PushNotificationJob) {
-  const { userId, notification, options } = job;
+	const { userId, notification, options } = job;
 
-  // 1. Fetch active subscriptions
-  const { data: subscriptions } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_active", true);
+	// 1. Fetch active subscriptions
+	const { data: subscriptions } = await supabase
+		.from('push_subscriptions')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('is_active', true);
 
-  if (!subscriptions?.length) {
-    console.log(`No active push subscriptions for user ${userId}`);
-    return;
-  }
+	if (!subscriptions?.length) {
+		console.log(`No active push subscriptions for user ${userId}`);
+		return;
+	}
 
-  // 2. Send to all subscriptions
-  const results = await Promise.allSettled(
-    subscriptions.map(async (sub) => {
-      const pushSub = {
-        endpoint: sub.endpoint,
-        keys: {
-          p256dh: sub.p256dh_key,
-          auth: sub.auth_key,
-        },
-      };
+	// 2. Send to all subscriptions
+	const results = await Promise.allSettled(
+		subscriptions.map(async (sub) => {
+			const pushSub = {
+				endpoint: sub.endpoint,
+				keys: {
+					p256dh: sub.p256dh_key,
+					auth: sub.auth_key
+				}
+			};
 
-      const payload = JSON.stringify(notification);
+			const payload = JSON.stringify(notification);
 
-      return webpush.sendNotification(pushSub, payload, {
-        TTL: options?.ttl || 86400,
-        urgency: options?.urgency || "normal",
-      });
-    }),
-  );
+			return webpush.sendNotification(pushSub, payload, {
+				TTL: options?.ttl || 86400,
+				urgency: options?.urgency || 'normal'
+			});
+		})
+	);
 
-  // 3. Handle failures and cleanup
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    const subscription = subscriptions[i];
+	// 3. Handle failures and cleanup
+	for (let i = 0; i < results.length; i++) {
+		const result = results[i];
+		const subscription = subscriptions[i];
 
-    if (result.status === "rejected") {
-      const error = result.reason;
+		if (result.status === 'rejected') {
+			const error = result.reason;
 
-      // 410 Gone = subscription expired/unsubscribed
-      if (error.statusCode === 410) {
-        await supabase
-          .from("push_subscriptions")
-          .update({ is_active: false })
-          .eq("id", subscription.id);
-      }
+			// 410 Gone = subscription expired/unsubscribed
+			if (error.statusCode === 410) {
+				await supabase
+					.from('push_subscriptions')
+					.update({ is_active: false })
+					.eq('id', subscription.id);
+			}
 
-      // Log failure
-      await supabase.from("push_notification_logs").insert({
-        user_id: userId,
-        subscription_id: subscription.id,
-        notification_type: notification.tag || "generic",
-        payload: notification,
-        status: "failed",
-        error_message: error.message,
-      });
-    } else {
-      // Update last used
-      await supabase
-        .from("push_subscriptions")
-        .update({ last_used_at: new Date().toISOString() })
-        .eq("id", subscription.id);
+			// Log failure
+			await supabase.from('push_notification_logs').insert({
+				user_id: userId,
+				subscription_id: subscription.id,
+				notification_type: notification.tag || 'generic',
+				payload: notification,
+				status: 'failed',
+				error_message: error.message
+			});
+		} else {
+			// Update last used
+			await supabase
+				.from('push_subscriptions')
+				.update({ last_used_at: new Date().toISOString() })
+				.eq('id', subscription.id);
 
-      // Log success
-      await supabase.from("push_notification_logs").insert({
-        user_id: userId,
-        subscription_id: subscription.id,
-        notification_type: notification.tag || "generic",
-        payload: notification,
-        status: "sent",
-      });
-    }
-  }
+			// Log success
+			await supabase.from('push_notification_logs').insert({
+				user_id: userId,
+				subscription_id: subscription.id,
+				notification_type: notification.tag || 'generic',
+				payload: notification,
+				status: 'sent'
+			});
+		}
+	}
 }
 ```
 
@@ -713,42 +710,42 @@ export async function processPushNotification(job: PushNotificationJob) {
 
 ```javascript
 // Listen for push events
-self.addEventListener("push", (event) => {
-  const data = event.data.json();
+self.addEventListener('push', (event) => {
+	const data = event.data.json();
 
-  const options = {
-    body: data.body,
-    icon: data.icon || "/android-chrome-192x192.png",
-    badge: data.badge || "/favicon-32x32.png",
-    tag: data.tag || "buildos-notification",
-    data: data.data || {},
-    requireInteraction: data.requireInteraction || false,
-    actions: data.actions || [],
-  };
+	const options = {
+		body: data.body,
+		icon: data.icon || '/android-chrome-192x192.png',
+		badge: data.badge || '/favicon-32x32.png',
+		tag: data.tag || 'buildos-notification',
+		data: data.data || {},
+		requireInteraction: data.requireInteraction || false,
+		actions: data.actions || []
+	};
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+	event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
 // Handle notification clicks
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || "/";
+	const urlToOpen = event.notification.data?.url || '/';
 
-  event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      // Focus existing window if available
-      for (const client of clientList) {
-        if (client.url === urlToOpen && "focus" in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise open new window
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    }),
-  );
+	event.waitUntil(
+		clients.matchAll({ type: 'window' }).then((clientList) => {
+			// Focus existing window if available
+			for (const client of clientList) {
+				if (client.url === urlToOpen && 'focus' in client) {
+					return client.focus();
+				}
+			}
+			// Otherwise open new window
+			if (clients.openWindow) {
+				return clients.openWindow(urlToOpen);
+			}
+		})
+	);
 });
 ```
 
@@ -758,29 +755,29 @@ self.addEventListener("notificationclick", (event) => {
 
 ```typescript
 // apps/web/src/lib/services/push-notification.bridge.ts
-import { notificationStore } from "$lib/stores/notification.store";
-import { sendPushNotification } from "./push-notification.service";
+import { notificationStore } from '$lib/stores/notification.store';
+import { sendPushNotification } from './push-notification.service';
 
 export async function notifyBrainDumpComplete(
-  userId: string,
-  brainDumpId: string,
-  projectName: string,
+	userId: string,
+	brainDumpId: string,
+	projectName: string
 ) {
-  // 1. Show in-app notification (existing)
-  notificationStore.setStatus(brainDumpId, "success");
+	// 1. Show in-app notification (existing)
+	notificationStore.setStatus(brainDumpId, 'success');
 
-  // 2. Send push notification (new)
-  await sendPushNotification(userId, {
-    title: "Brain Dump Complete!",
-    body: `Your thoughts have been organized into "${projectName}"`,
-    icon: "/android-chrome-192x192.png",
-    tag: `brain-dump-${brainDumpId}`,
-    data: {
-      type: "brain-dump-completion",
-      projectId: brainDumpId,
-      url: `/projects/${brainDumpId}`,
-    },
-  });
+	// 2. Send push notification (new)
+	await sendPushNotification(userId, {
+		title: 'Brain Dump Complete!',
+		body: `Your thoughts have been organized into "${projectName}"`,
+		icon: '/android-chrome-192x192.png',
+		tag: `brain-dump-${brainDumpId}`,
+		data: {
+			type: 'brain-dump-completion',
+			projectId: brainDumpId,
+			url: `/projects/${brainDumpId}`
+		}
+	});
 }
 ```
 
@@ -907,18 +904,14 @@ PRIVATE_VAPID_PRIVATE_KEY=your-secret-key
 
 ```typescript
 // Check if user is active (last activity < 5 min ago)
-const { data: user } = await supabase
-  .from("users")
-  .select("last_active")
-  .eq("id", userId)
-  .single();
+const { data: user } = await supabase.from('users').select('last_active').eq('id', userId).single();
 
 const lastActive = new Date(user.last_active);
 const isActiveNow = Date.now() - lastActive.getTime() < 5 * 60 * 1000;
 
 if (isActiveNow) {
-  // Skip push notification, they're already in the app
-  return;
+	// Skip push notification, they're already in the app
+	return;
 }
 ```
 
@@ -946,19 +939,15 @@ if (isActiveNow) {
 
 ```typescript
 export function canUsePushNotifications(): boolean {
-  if (!browser) return false;
+	if (!browser) return false;
 
-  return (
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
+	return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
 
 export function canRequestPermission(): boolean {
-  if (!canUsePushNotifications()) return false;
+	if (!canUsePushNotifications()) return false;
 
-  return Notification.permission !== "denied";
+	return Notification.permission !== 'denied';
 }
 ```
 
@@ -1374,8 +1363,8 @@ GRANT EXECUTE ON FUNCTION cleanup_expired_push_subscriptions() TO service_role;
 
 ```typescript
 {
-  success: true;
-  subscriptionId: string;
+	success: true;
+	subscriptionId: string;
 }
 ```
 
@@ -1387,7 +1376,7 @@ GRANT EXECUTE ON FUNCTION cleanup_expired_push_subscriptions() TO service_role;
 
 ```typescript
 {
-  endpoint: string;
+	endpoint: string;
 }
 ```
 
@@ -1395,7 +1384,7 @@ GRANT EXECUTE ON FUNCTION cleanup_expired_push_subscriptions() TO service_role;
 
 ```typescript
 {
-  success: true;
+	success: true;
 }
 ```
 
@@ -1424,8 +1413,8 @@ GRANT EXECUTE ON FUNCTION cleanup_expired_push_subscriptions() TO service_role;
 
 ```typescript
 {
-  success: true;
-  preferences: UserPushPreferences;
+	success: true;
+	preferences: UserPushPreferences;
 }
 ```
 
@@ -1445,12 +1434,12 @@ GRANT EXECUTE ON FUNCTION cleanup_expired_push_subscriptions() TO service_role;
 
 ```typescript
 {
-  success: true;
-  subscriptionsTested: number;
-  deliveryResults: {
-    sent: number;
-    failed: number;
-  }
+	success: true;
+	subscriptionsTested: number;
+	deliveryResults: {
+		sent: number;
+		failed: number;
+	}
 }
 ```
 

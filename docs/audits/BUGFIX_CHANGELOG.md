@@ -55,9 +55,9 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 - **Action**: Regenerated types from Supabase database schema
 - **Command**: `pnpm gen:types && pnpm gen:schema`
 - **Files Updated**:
-  - `/packages/shared-types/src/database.types.ts` - Full Supabase types
-  - `/packages/shared-types/src/database.schema.ts` - Lightweight schema extract
-  - `/apps/web/src/lib/database.schema.ts` - Web app schema copy
+    - `/packages/shared-types/src/database.types.ts` - Full Supabase types
+    - `/packages/shared-types/src/database.schema.ts` - Lightweight schema extract
+    - `/apps/web/src/lib/database.schema.ts` - Web app schema copy
 - **Note**: Deprecated fields still present in types because columns still exist in database (awaiting 2025-10-29 drop)
 - **Package Built**: `@buildos/shared-types` rebuilt successfully with no errors
 
@@ -172,12 +172,12 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 
 ```typescript
 const { data: maxOrderTask } = await supabase
-  .from("phase_tasks")
-  .select("order")
-  .eq("phase_id", phaseId)
-  .order("order", { ascending: false })
-  .limit(1)
-  .maybeSingle();
+	.from('phase_tasks')
+	.select('order')
+	.eq('phase_id', phaseId)
+	.order('order', { ascending: false })
+	.limit(1)
+	.maybeSingle();
 
 const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
 ```
@@ -221,23 +221,23 @@ const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
 **Manual Verification Steps**:
 
 1. **Queue Deduplication Test**:
-   - Go to Admin → Notifications → Deliveries
-   - Click "Resend" on a delivery multiple times quickly
-   - Verify only 1 job created in queue_jobs table (check `dedup_key` column)
-   - Repeat for "Retry" and "Test Notification"
+    - Go to Admin → Notifications → Deliveries
+    - Click "Resend" on a delivery multiple times quickly
+    - Verify only 1 job created in queue_jobs table (check `dedup_key` column)
+    - Repeat for "Retry" and "Test Notification"
 
 2. **Phase Task Ordering Test**:
-   - Create a new project with phases
-   - Add multiple tasks to a phase
-   - Move tasks between phases
-   - Verify tasks maintain correct order in phase view
-   - Check `phase_tasks.order` column in database
+    - Create a new project with phases
+    - Add multiple tasks to a phase
+    - Move tasks between phases
+    - Verify tasks maintain correct order in phase view
+    - Check `phase_tasks.order` column in database
 
 3. **Organizer Fields Test**:
-   - Sync calendar with events where you're not the organizer
-   - View project phases and tasks with calendar events
-   - Verify organizer information displays in UI
-   - Check API responses include organizer fields
+    - Sync calendar with events where you're not the organizer
+    - View project phases and tasks with calendar events
+    - Verify organizer information displays in UI
+    - Check API responses include organizer fields
 
 **Files Modified** (14 total):
 
@@ -285,9 +285,9 @@ const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
 
 1. **Migration `20251013_drop_deprecated_timezone_columns.sql`** removed `user_sms_preferences.timezone` column as part of timezone centralization to `users` table
 2. **API endpoint `/api/sms/preferences/+server.ts`** NOT updated after migration:
-   - Line 17: `DEFAULT_PREFERENCES` included `timezone: null`
-   - Lines 95-97: Destructured `timezone` from request body
-   - Lines 130-135: Attempted to insert `timezone` into `user_sms_preferences` table
+    - Line 17: `DEFAULT_PREFERENCES` included `timezone: null`
+    - Lines 95-97: Destructured `timezone` from request body
+    - Lines 130-135: Attempted to insert `timezone` into `user_sms_preferences` table
 3. **Frontend component `SMSPreferences.svelte`** sent timezone in update requests (line 81)
 
 **Impact**:
@@ -361,18 +361,18 @@ const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
 **Root Cause**: Mixing of Svelte 4 and Svelte 5 syntax patterns caused event handling incompatibilities:
 
 1. **Event Dispatcher Incompatibility** (`DailyBriefSection.svelte:3`, `DailyBriefsTab.svelte:3`):
-   - Used Svelte 4's `createEventDispatcher()` API alongside Svelte 5 runes (`$state`, `$effect`)
-   - In Svelte 5, `createEventDispatcher` + runes mode doesn't reliably propagate custom events
-   - Child components dispatched `viewBrief` events that parent never received
+    - Used Svelte 4's `createEventDispatcher()` API alongside Svelte 5 runes (`$state`, `$effect`)
+    - In Svelte 5, `createEventDispatcher` + runes mode doesn't reliably propagate custom events
+    - Child components dispatched `viewBrief` events that parent never received
 
 2. **Async Modal Loading Timing Issues** (`projects/+page.svelte:85-88`, `536-539`):
-   - Used `.then()` callbacks for async operations in `$effect` and event handlers
-   - State updates in promise callbacks occurred outside reactive tracking scope
-   - Modal state (`briefModalOpen`) set before component fully loaded
+    - Used `.then()` callbacks for async operations in `$effect` and event handlers
+    - State updates in promise callbacks occurred outside reactive tracking scope
+    - Modal state (`briefModalOpen`) set before component fully loaded
 
 3. **Props Syntax Inconsistency** (`DailyBriefSection.svelte:22`, `DailyBriefsTab.svelte:50`):
-   - Used `export let user` (Svelte 4) instead of `let { user } = $props()` (Svelte 5)
-   - Caused reactivity issues when mixed with runes-based state management
+    - Used `export let user` (Svelte 4) instead of `let { user } = $props()` (Svelte 5)
+    - Caused reactivity issues when mixed with runes-based state management
 
 **Impact**:
 
@@ -388,27 +388,27 @@ const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
 
 ```typescript
 // ❌ BEFORE: Svelte 4 event dispatcher
-import { createEventDispatcher } from "svelte";
+import { createEventDispatcher } from 'svelte';
 const dispatch = createEventDispatcher();
 export let user = null;
 
 function handleViewBrief() {
-  dispatch("viewBrief", { briefId, briefDate });
+	dispatch('viewBrief', { briefId, briefDate });
 }
 
 // ✅ AFTER: Svelte 5 callback props
 let {
-  user = null,
-  onViewBrief,
+	user = null,
+	onViewBrief
 }: {
-  user?: { id: string; email: string; is_admin: boolean } | null;
-  onViewBrief?: (data: { briefId: string | null; briefDate: string }) => void;
+	user?: { id: string; email: string; is_admin: boolean } | null;
+	onViewBrief?: (data: { briefId: string | null; briefDate: string }) => void;
 } = $props();
 
 function handleViewBrief() {
-  if (displayDailyBrief?.id && displayDailyBrief?.brief_date && onViewBrief) {
-    onViewBrief({ briefId, briefDate });
-  }
+	if (displayDailyBrief?.id && displayDailyBrief?.brief_date && onViewBrief) {
+		onViewBrief({ briefId, briefDate });
+	}
 }
 ```
 
@@ -419,23 +419,23 @@ function handleViewBrief() {
 ```typescript
 // ❌ BEFORE: Promise .then() in effect
 $effect(() => {
-  if (briefDateParam && !briefModalOpen) {
-    loadDailyBriefModal().then(() => {
-      selectedBriefDate = briefDateParam;
-      briefModalOpen = true;
-    });
-  }
+	if (briefDateParam && !briefModalOpen) {
+		loadDailyBriefModal().then(() => {
+			selectedBriefDate = briefDateParam;
+			briefModalOpen = true;
+		});
+	}
 });
 
 // ✅ AFTER: IIFE with async/await (Svelte 5 pattern)
 $effect(() => {
-  if (briefDateParam && !briefModalOpen) {
-    (async () => {
-      await loadDailyBriefModal();
-      selectedBriefDate = briefDateParam;
-      briefModalOpen = true;
-    })();
-  }
+	if (briefDateParam && !briefModalOpen) {
+		(async () => {
+			await loadDailyBriefModal();
+			selectedBriefDate = briefDateParam;
+			briefModalOpen = true;
+		})();
+	}
 });
 ```
 
@@ -459,20 +459,15 @@ $effect(() => {
 
 ```typescript
 // ❌ BEFORE: Expected CustomEvent wrapper
-async function handleViewBrief(
-  event: CustomEvent<{ briefId: string; briefDate: string }>,
-) {
-  const { briefDate } = event.detail;
-  // ...
+async function handleViewBrief(event: CustomEvent<{ briefId: string; briefDate: string }>) {
+	const { briefDate } = event.detail;
+	// ...
 }
 
 // ✅ AFTER: Direct data parameter
-async function handleViewBrief(data: {
-  briefId: string | null;
-  briefDate: string;
-}) {
-  const { briefDate } = data;
-  // ...
+async function handleViewBrief(data: { briefId: string | null; briefDate: string }) {
+	const { briefDate } = data;
+	// ...
 }
 ```
 
@@ -483,16 +478,16 @@ async function handleViewBrief(data: {
 ```typescript
 // ❌ BEFORE: Sync function with .then()
 function handlePopState() {
-  loadDailyBriefModal().then(() => {
-    // state updates
-  });
+	loadDailyBriefModal().then(() => {
+		// state updates
+	});
 }
 
 // ✅ AFTER: Async function with await
 async function handlePopState() {
-  await loadDailyBriefModal();
-  selectedBriefDate = briefDateParam;
-  briefModalOpen = true;
+	await loadDailyBriefModal();
+	selectedBriefDate = briefDateParam;
+	briefModalOpen = true;
 }
 ```
 
@@ -569,19 +564,19 @@ let displayDailyBrief = $derived(currentStreamingData?.mainBrief ? {...} : daily
 ```typescript
 // BUGGY CODE: N+1 query pattern
 const processedProjects = await Promise.all(
-  (projects || []).map(async (project) => {
-    // ❌ ONE query per project for tasks
-    const { data: taskStats } = await supabase
-      .from("tasks")
-      .select("id, status, completed_at")
-      .eq("project_id", project.id);
+	(projects || []).map(async (project) => {
+		// ❌ ONE query per project for tasks
+		const { data: taskStats } = await supabase
+			.from('tasks')
+			.select('id, status, completed_at')
+			.eq('project_id', project.id);
 
-    // ❌ ONE query per project for notes
-    const { count: notesCount } = await supabase
-      .from("notes")
-      .select("*", { count: "exact", head: true })
-      .eq("project_id", project.id);
-  }),
+		// ❌ ONE query per project for notes
+		const { count: notesCount } = await supabase
+			.from('notes')
+			.select('*', { count: 'exact', head: true })
+			.eq('project_id', project.id);
+	})
 );
 ```
 
@@ -610,43 +605,40 @@ const processedProjects = await Promise.all(
 ```typescript
 // ✅ Fetch ALL tasks once (already needed for activity timeline)
 const { data: tasks } = await supabase
-  .from("tasks")
-  .select("*, projects(name), completed_at")
-  .eq("user_id", userId)
-  .is("deleted_at", null) // NEW: Exclude soft-deleted tasks
-  .order("created_at", { ascending: false });
+	.from('tasks')
+	.select('*, projects(name), completed_at')
+	.eq('user_id', userId)
+	.is('deleted_at', null) // NEW: Exclude soft-deleted tasks
+	.order('created_at', { ascending: false });
 
 // ✅ Fetch ALL notes once (already needed for activity timeline)
 const { data: notes } = await supabase
-  .from("notes")
-  .select("*, projects(name)")
-  .eq("user_id", userId)
-  .order("created_at", { ascending: false });
+	.from('notes')
+	.select('*, projects(name)')
+	.eq('user_id', userId)
+	.order('created_at', { ascending: false });
 
 // ✅ Aggregate in-memory (no additional queries!)
-const taskCountsByProject: Record<
-  string,
-  { total: number; completed: number }
-> = {};
+const taskCountsByProject: Record<string, { total: number; completed: number }> = {};
 (tasks || []).forEach((task) => {
-  if (task.project_id) {
-    if (!taskCountsByProject[task.project_id]) {
-      taskCountsByProject[task.project_id] = { total: 0, completed: 0 };
-    }
-    taskCountsByProject[task.project_id].total++;
-    if (task.status === "done") {
-      // FIXED: Consistent status check
-      taskCountsByProject[task.project_id].completed++;
-    }
-  }
+	if (task.project_id) {
+		if (!taskCountsByProject[task.project_id]) {
+			taskCountsByProject[task.project_id] = { total: 0, completed: 0 };
+		}
+		taskCountsByProject[task.project_id].total++;
+		if (task.status === 'done') {
+			// FIXED: Consistent status check
+			taskCountsByProject[task.project_id].completed++;
+		}
+	}
 });
 
 // ✅ No async needed - pure map operation
 const processedProjects = (projects || []).map((project) => ({
-  ...project,
-  task_count: taskCountsByProject[project.id]?.total || 0,
-  completed_task_count: taskCountsByProject[project.id]?.completed || 0,
-  notes_count: notesCountsByProject[project.id] || 0,
+	...project,
+	task_count: taskCountsByProject[project.id]?.total || 0,
+	completed_task_count: taskCountsByProject[project.id]?.completed || 0,
+	notes_count: notesCountsByProject[project.id] || 0
 }));
 ```
 
@@ -655,17 +647,17 @@ const processedProjects = (projects || []).map((project) => ({
 - **Before**: 1 + 2N queries (201 queries for 100 projects, 1,001 for 500 projects)
 - **After**: 9 constant queries (regardless of project count)
 - **Speedup**:
-  - 100 projects: **22x fewer queries** (201 → 9)
-  - 500 projects: **111x fewer queries** (1,001 → 9)
+    - 100 projects: **22x fewer queries** (201 → 9)
+    - 500 projects: **111x fewer queries** (1,001 → 9)
 - **Load Time**: 2-10 seconds → ~200-300ms (expected)
 
 **Files Modified**:
 
 - `/apps/web/src/routes/api/admin/users/[userId]/activity/+server.ts:34-99` - Complete rewrite of query pattern
-  - Moved tasks and notes queries before project processing
-  - Added `is('deleted_at', null)` filter to tasks query
-  - Created in-memory aggregation maps
-  - Removed async Promise.all loop
+    - Moved tasks and notes queries before project processing
+    - Added `is('deleted_at', null)` filter to tasks query
+    - Created in-memory aggregation maps
+    - Removed async Promise.all loop
 - `/apps/web/src/routes/api/admin/users/[userId]/activity/+server.ts:196` - Fixed task status from `'completed'` to `'done'`
 
 **Improvements**:
@@ -688,47 +680,47 @@ const processedProjects = (projects || []).map((project) => ({
 
 1. **Create test user with many projects**:
 
-   ```sql
-   -- Create test user with 100 projects, each having varying task counts
-   INSERT INTO projects (user_id, name, description)
-   SELECT 'test-user-id', 'Project ' || i, 'Test project ' || i
-   FROM generate_series(1, 100) AS i;
-   ```
+    ```sql
+    -- Create test user with 100 projects, each having varying task counts
+    INSERT INTO projects (user_id, name, description)
+    SELECT 'test-user-id', 'Project ' || i, 'Test project ' || i
+    FROM generate_series(1, 100) AS i;
+    ```
 
 2. **Monitor query count**:
-   - Open browser DevTools → Network tab
-   - Navigate to: `/admin/users/{userId}/activity`
-   - Filter network requests by "supabase" or "postgres"
-   - **Expected**: ~9 total queries (not 200+)
+    - Open browser DevTools → Network tab
+    - Navigate to: `/admin/users/{userId}/activity`
+    - Filter network requests by "supabase" or "postgres"
+    - **Expected**: ~9 total queries (not 200+)
 
 3. **Measure load time**:
-   - Use DevTools Performance tab
-   - Measure total API response time
-   - **Expected**: <500ms for 100 projects (was 2-10 seconds)
+    - Use DevTools Performance tab
+    - Measure total API response time
+    - **Expected**: <500ms for 100 projects (was 2-10 seconds)
 
 4. **Verify accuracy**:
-   - Check project task counts match reality
-   - Verify deleted tasks are NOT counted:
+    - Check project task counts match reality
+    - Verify deleted tasks are NOT counted:
 
-     ```sql
-     -- Soft-delete a task
-     UPDATE tasks SET deleted_at = NOW() WHERE id = 'test-task-id';
+        ```sql
+        -- Soft-delete a task
+        UPDATE tasks SET deleted_at = NOW() WHERE id = 'test-task-id';
 
-     -- Reload admin activity page
-     -- Task count should decrease by 1
-     ```
+        -- Reload admin activity page
+        -- Task count should decrease by 1
+        ```
 
-   - Verify completed task counts use `status = 'done'`:
-     ```sql
-     SELECT COUNT(*) FROM tasks WHERE project_id = 'test-project-id' AND status = 'done';
-     -- Should match completed_task_count in API response
-     ```
+    - Verify completed task counts use `status = 'done'`:
+        ```sql
+        SELECT COUNT(*) FROM tasks WHERE project_id = 'test-project-id' AND status = 'done';
+        -- Should match completed_task_count in API response
+        ```
 
 5. **Test edge cases**:
-   - User with 0 projects → Should return empty array
-   - User with projects that have 0 tasks → Should show task_count: 0
-   - User with projects that have 0 notes → Should show notes_count: 0
-   - Tasks with NULL project_id → Should be excluded from counts
+    - User with 0 projects → Should return empty array
+    - User with projects that have 0 tasks → Should show task_count: 0
+    - User with projects that have 0 notes → Should show notes_count: 0
+    - Tasks with NULL project_id → Should be excluded from counts
 
 **Database Optimization Recommendations** (Future Work):
 
@@ -812,45 +804,45 @@ Result: Two jobs with identical dedup_key in 'pending' status
 
 1. **Database Schema** - Added partial unique index:
 
-   ```sql
-   CREATE UNIQUE INDEX CONCURRENTLY idx_queue_jobs_dedup_key_unique
-   ON queue_jobs(dedup_key)
-   WHERE dedup_key IS NOT NULL
-     AND status IN ('pending', 'processing');
-   ```
+    ```sql
+    CREATE UNIQUE INDEX CONCURRENTLY idx_queue_jobs_dedup_key_unique
+    ON queue_jobs(dedup_key)
+    WHERE dedup_key IS NOT NULL
+      AND status IN ('pending', 'processing');
+    ```
 
-   - Partial index only enforces uniqueness for active jobs (pending/processing)
-   - Allows historical jobs (completed/failed) to have duplicate `dedup_key` values
-   - `CONCURRENTLY` ensures zero-downtime deployment
+    - Partial index only enforces uniqueness for active jobs (pending/processing)
+    - Allows historical jobs (completed/failed) to have duplicate `dedup_key` values
+    - `CONCURRENTLY` ensures zero-downtime deployment
 
 2. **RPC Function** - Replaced SELECT+INSERT with atomic operation:
 
-   ```sql
-   INSERT INTO queue_jobs (...) VALUES (...)
-   ON CONFLICT (dedup_key)
-   WHERE dedup_key IS NOT NULL AND status IN ('pending', 'processing')
-   DO NOTHING
-   RETURNING id;
-   ```
+    ```sql
+    INSERT INTO queue_jobs (...) VALUES (...)
+    ON CONFLICT (dedup_key)
+    WHERE dedup_key IS NOT NULL AND status IN ('pending', 'processing')
+    DO NOTHING
+    RETURNING id;
+    ```
 
-   - Database enforces uniqueness atomically - race condition impossible
-   - If duplicate exists, INSERT fails silently and existing job ID is returned
-   - Single round-trip for new jobs (performance improvement)
+    - Database enforces uniqueness atomically - race condition impossible
+    - If duplicate exists, INSERT fails silently and existing job ID is returned
+    - Single round-trip for new jobs (performance improvement)
 
 3. **Monitoring** - Added deduplication event logging:
 
-   ```sql
-   RAISE NOTICE 'DEDUP_EVENT: Prevented duplicate job creation - job_type: %, dedup_key: %, existing_job_id: %'
-   ```
+    ```sql
+    RAISE NOTICE 'DEDUP_EVENT: Prevented duplicate job creation - job_type: %, dedup_key: %, existing_job_id: %'
+    ```
 
-   - Track how often deduplication prevents duplicates
-   - Measure impact of race condition fix
-   - Monitor for any unexpected deduplication patterns
+    - Track how often deduplication prevents duplicates
+    - Measure impact of race condition fix
+    - Monitor for any unexpected deduplication patterns
 
 4. **Cleanup** - Cancelled existing duplicate jobs:
-   - Identified all `dedup_key` values with multiple active jobs
-   - Kept oldest job per `dedup_key`, cancelled newer duplicates
-   - Set cancellation reason for audit trail
+    - Identified all `dedup_key` values with multiple active jobs
+    - Kept oldest job per `dedup_key`, cancelled newer duplicates
+    - Set cancellation reason for audit trail
 
 **Files Modified**:
 
@@ -877,77 +869,77 @@ Result: Two jobs with identical dedup_key in 'pending' status
 
 1. **Test basic deduplication**:
 
-   ```sql
-   -- Insert job with dedup key
-   SELECT add_queue_job(
-     'user-123'::uuid, 'generate_daily_brief',
-     '{"briefDate": "2025-10-21"}'::jsonb,
-     10, NOW(), 'brief-2025-10-21-user-123'
-   );
-   -- Returns: job_id_1
+    ```sql
+    -- Insert job with dedup key
+    SELECT add_queue_job(
+      'user-123'::uuid, 'generate_daily_brief',
+      '{"briefDate": "2025-10-21"}'::jsonb,
+      10, NOW(), 'brief-2025-10-21-user-123'
+    );
+    -- Returns: job_id_1
 
-   -- Try to insert duplicate (should return same ID)
-   SELECT add_queue_job(
-     'user-123'::uuid, 'generate_daily_brief',
-     '{"briefDate": "2025-10-21"}'::jsonb,
-     10, NOW(), 'brief-2025-10-21-user-123'
-   );
-   -- Returns: job_id_1 (same ID, no duplicate created)
-   ```
+    -- Try to insert duplicate (should return same ID)
+    SELECT add_queue_job(
+      'user-123'::uuid, 'generate_daily_brief',
+      '{"briefDate": "2025-10-21"}'::jsonb,
+      10, NOW(), 'brief-2025-10-21-user-123'
+    );
+    -- Returns: job_id_1 (same ID, no duplicate created)
+    ```
 
 2. **Test completed jobs don't block new jobs**:
 
-   ```sql
-   -- Mark job as completed
-   UPDATE queue_jobs SET status = 'completed'
-   WHERE dedup_key = 'brief-2025-10-21-user-123';
+    ```sql
+    -- Mark job as completed
+    UPDATE queue_jobs SET status = 'completed'
+    WHERE dedup_key = 'brief-2025-10-21-user-123';
 
-   -- Create new job with same dedup_key (should succeed)
-   SELECT add_queue_job(..., 'brief-2025-10-21-user-123');
-   -- Returns: job_id_2 (new job created)
-   ```
+    -- Create new job with same dedup_key (should succeed)
+    SELECT add_queue_job(..., 'brief-2025-10-21-user-123');
+    -- Returns: job_id_2 (new job created)
+    ```
 
 3. **Test high-concurrency scenario** (5 simultaneous requests):
 
-   ```bash
-   # Run 5 concurrent API calls
-   for i in {1..5}; do
-     curl -X POST http://localhost:3001/api/briefs/generate \
-       -H "Content-Type: application/json" \
-       -d '{"userId": "user-123", "briefDate": "2025-10-21"}' &
-   done
-   wait
+    ```bash
+    # Run 5 concurrent API calls
+    for i in {1..5}; do
+      curl -X POST http://localhost:3001/api/briefs/generate \
+        -H "Content-Type: application/json" \
+        -d '{"userId": "user-123", "briefDate": "2025-10-21"}' &
+    done
+    wait
 
-   # Verify only ONE job created
-   SELECT COUNT(*) FROM queue_jobs
-   WHERE metadata->>'briefDate' = '2025-10-21'
-     AND status IN ('pending', 'processing');
-   -- Should return: 1 (not 5)
-   ```
+    # Verify only ONE job created
+    SELECT COUNT(*) FROM queue_jobs
+    WHERE metadata->>'briefDate' = '2025-10-21'
+      AND status IN ('pending', 'processing');
+    -- Should return: 1 (not 5)
+    ```
 
 4. **Monitor deduplication events**:
 
-   ```bash
-   # Check worker logs for DEDUP_EVENT messages
-   grep "DEDUP_EVENT" /path/to/worker/logs
-   # Example output:
-   # NOTICE: DEDUP_EVENT: Prevented duplicate job creation -
-   #   job_type: generate_daily_brief,
-   #   dedup_key: brief-2025-10-21-user-123,
-   #   existing_job_id: abc-123-def
-   ```
+    ```bash
+    # Check worker logs for DEDUP_EVENT messages
+    grep "DEDUP_EVENT" /path/to/worker/logs
+    # Example output:
+    # NOTICE: DEDUP_EVENT: Prevented duplicate job creation -
+    #   job_type: generate_daily_brief,
+    #   dedup_key: brief-2025-10-21-user-123,
+    #   existing_job_id: abc-123-def
+    ```
 
 5. **Verify no active duplicates exist**:
-   ```sql
-   -- Check for any dedup_keys with multiple active jobs
-   SELECT dedup_key, COUNT(*) as job_count
-   FROM queue_jobs
-   WHERE dedup_key IS NOT NULL
-     AND status IN ('pending', 'processing')
-   GROUP BY dedup_key
-   HAVING COUNT(*) > 1;
-   -- Should return: 0 rows (no duplicates)
-   ```
+    ```sql
+    -- Check for any dedup_keys with multiple active jobs
+    SELECT dedup_key, COUNT(*) as job_count
+    FROM queue_jobs
+    WHERE dedup_key IS NOT NULL
+      AND status IN ('pending', 'processing')
+    GROUP BY dedup_key
+    HAVING COUNT(*) > 1;
+    -- Should return: 0 rows (no duplicates)
+    ```
 
 **Test Suite**: Run the comprehensive test suite at `/apps/web/supabase/migrations/test_20251021_deduplication_fix.sql` to verify all aspects of the fix:
 
@@ -1171,19 +1163,19 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 **Changed Methods**:
 
 1. **`updateBrainDumpStreamingState()` (line 1134-1187)** - Per-brain-dump update method
-   - Added `analysisStatus` field (defaults to 'not_needed')
-   - Added `analysisProgress` field (defaults to '')
-   - Added `analysisResult` field (defaults to undefined)
-   - Properly merges analysis state across updates
+    - Added `analysisStatus` field (defaults to 'not_needed')
+    - Added `analysisProgress` field (defaults to '')
+    - Added `analysisResult` field (defaults to undefined)
+    - Properly merges analysis state across updates
 
 2. **`updateStreamingState()` (line 1758-1798)** - Legacy single brain dump update method
-   - Same three analysis fields added
-   - Maintains backward compatibility for non-multi-brain-dump mode
+    - Same three analysis fields added
+    - Maintains backward compatibility for non-multi-brain-dump mode
 
 3. **`resetStreamingState()` (line 1800-1817)** - Streaming state reset method
-   - Initializes `analysisStatus` to 'not_needed'
-   - Initializes `analysisProgress` to ''
-   - Initializes `analysisResult` to null
+    - Initializes `analysisStatus` to 'not_needed'
+    - Initializes `analysisProgress` to ''
+    - Initializes `analysisResult` to null
 
 **How It Works**:
 
@@ -1247,10 +1239,10 @@ When the brain-dump-notification.bridge called `updateBrainDumpStreamingState(br
 **Changed Files**:
 
 1. **`/apps/web/src/lib/services/prompts/core/validations.ts:38-81`**:
-   - **Project Context** (line 47-55): ALWAYS normalize to H2 base level (remove conditional check)
-   - **Task Descriptions** (line 60-67): ALWAYS normalize to H1 base level (remove conditional check)
-   - **Task Details** (line 69-76): ALWAYS normalize to H1 base level (remove conditional check)
-   - Added console.warn logging to track when normalization occurs
+    - **Project Context** (line 47-55): ALWAYS normalize to H2 base level (remove conditional check)
+    - **Task Descriptions** (line 60-67): ALWAYS normalize to H1 base level (remove conditional check)
+    - **Task Details** (line 69-76): ALWAYS normalize to H1 base level (remove conditional check)
+    - Added console.warn logging to track when normalization occurs
 
 **Key Changes**:
 
@@ -1333,23 +1325,23 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
 **Updated Files**:
 
 1. `/apps/web/src/lib/services/prompts/core/prompt-components.ts`:
-   - Added "What context IS/IS NOT" with clear examples
-   - Updated core dimensions guidance for strategic focus only
-   - Enhanced `generateCoreDimensionsMarkdownInstructions()` with strategic/execution examples
+    - Added "What context IS/IS NOT" with clear examples
+    - Updated core dimensions guidance for strategic focus only
+    - Enhanced `generateCoreDimensionsMarkdownInstructions()` with strategic/execution examples
 
 2. `/apps/web/src/lib/services/promptTemplate.service.ts` (prep-analysis):
-   - Added filter: "Only capture strategic-level information, not execution details"
-   - Added examples (include vs exclude)
-   - Emphasized task-level details belong in tasks table
+    - Added filter: "Only capture strategic-level information, not execution details"
+    - Added examples (include vs exclude)
+    - Emphasized task-level details belong in tasks table
 
 3. `/apps/web/docs/prompts/brain-dump/new-project/dual-processing/context/new-project-context-prompt.md`:
-   - Updated guidelines with strategic focus emphasis
-   - Added "DO NOT include task lists, step-by-step actions, or execution details"
+    - Updated guidelines with strategic focus emphasis
+    - Added "DO NOT include task lists, step-by-step actions, or execution details"
 
 4. `/apps/web/docs/prompts/brain-dump/existing-project/dual-processing/context/existing-project-context-prompt.md`:
-   - Updated Update Rules with strategic focus
-   - Added filter for strategic relevance
-   - Added explicit "EXCLUDE task-level details" rule
+    - Updated Update Rules with strategic focus
+    - Added filter for strategic relevance
+    - Added explicit "EXCLUDE task-level details" rule
 
 **Key Philosophy**:
 
@@ -1393,9 +1385,9 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
 
 1. **Step 4.5** (new): After deleting task calendar events, fetch all timeblocks linked to the project
 2. **For each timeblock**:
-   - If it has a `calendar_event_id`, attempt to delete from Google Calendar via `CalendarService`
-   - Catch calendar deletion errors (log warnings but don't fail the entire operation)
-   - Soft-delete the timeblock in database (set `sync_status = 'deleted'` to maintain audit trail)
+    - If it has a `calendar_event_id`, attempt to delete from Google Calendar via `CalendarService`
+    - Catch calendar deletion errors (log warnings but don't fail the entire operation)
+    - Soft-delete the timeblock in database (set `sync_status = 'deleted'` to maintain audit trail)
 3. **Return summary** with counts of successful/failed deletions
 
 **Files Changed**:
@@ -1408,87 +1400,81 @@ Context and dimensions must use markdown, allowing structure to evolve naturally
 // New logic in DELETE handler (lines 132-147):
 // 4.5. Delete time blocks associated with the project
 const { data: timeBlocks, error: timeBlocksGetError } = await supabase
-  .from("time_blocks")
-  .select("id, calendar_event_id")
-  .eq("project_id", projectId)
-  .eq("user_id", userId);
+	.from('time_blocks')
+	.select('id, calendar_event_id')
+	.eq('project_id', projectId)
+	.eq('user_id', userId);
 
 if (timeBlocks && timeBlocks.length > 0 && !timeBlocksGetError) {
-  const timeBlockResults = await handleTimeBlockDeletion(
-    timeBlocks,
-    userId,
-    supabase,
-  );
-  warnings.push(...timeBlockResults.warnings);
-  errors.push(...timeBlockResults.errors);
+	const timeBlockResults = await handleTimeBlockDeletion(timeBlocks, userId, supabase);
+	warnings.push(...timeBlockResults.warnings);
+	errors.push(...timeBlockResults.errors);
 }
 
 // New helper function (lines 317-397):
 async function handleTimeBlockDeletion(
-  timeBlocks: any[],
-  userId: string,
-  supabase: any,
+	timeBlocks: any[],
+	userId: string,
+	supabase: any
 ): Promise<{ warnings: string[]; errors: string[] }> {
-  const calendarService = new CalendarService(supabase);
-  const warnings: string[] = [];
-  const errors: string[] = [];
-  let successCount = 0;
-  let failCount = 0;
+	const calendarService = new CalendarService(supabase);
+	const warnings: string[] = [];
+	const errors: string[] = [];
+	let successCount = 0;
+	let failCount = 0;
 
-  for (const block of timeBlocks) {
-    try {
-      // Delete from Google Calendar if event exists
-      if (block.calendar_event_id) {
-        try {
-          await calendarService.deleteCalendarEvent(userId, {
-            event_id: block.calendar_event_id,
-          });
-        } catch (calendarError: any) {
-          // Log but continue - we'll still soft-delete the timeblock
-          warnings.push(
-            `Failed to remove time block calendar event: ${calendarError?.message || "Unknown error"}`,
-          );
-        }
-      }
+	for (const block of timeBlocks) {
+		try {
+			// Delete from Google Calendar if event exists
+			if (block.calendar_event_id) {
+				try {
+					await calendarService.deleteCalendarEvent(userId, {
+						event_id: block.calendar_event_id
+					});
+				} catch (calendarError: any) {
+					// Log but continue - we'll still soft-delete the timeblock
+					warnings.push(
+						`Failed to remove time block calendar event: ${calendarError?.message || 'Unknown error'}`
+					);
+				}
+			}
 
-      // Soft-delete the time block in database
-      const nowIso = new Date().toISOString();
-      const { error: updateError } = await supabase
-        .from("time_blocks")
-        .update({
-          sync_status: "deleted",
-          sync_source: "app",
-          updated_at: nowIso,
-          last_synced_at: nowIso,
-        })
-        .eq("id", block.id)
-        .eq("user_id", userId);
+			// Soft-delete the time block in database
+			const nowIso = new Date().toISOString();
+			const { error: updateError } = await supabase
+				.from('time_blocks')
+				.update({
+					sync_status: 'deleted',
+					sync_source: 'app',
+					updated_at: nowIso,
+					last_synced_at: nowIso
+				})
+				.eq('id', block.id)
+				.eq('user_id', userId);
 
-      if (updateError) {
-        failCount++;
-        warnings.push(
-          `Failed to delete time block from database: ${updateError.message || "Unknown error"}`,
-        );
-      } else {
-        successCount++;
-      }
-    } catch (error: any) {
-      failCount++;
-      warnings.push(
-        `Failed to delete time block: ${error?.message || "Unknown error"}`,
-      );
-    }
-  }
+			if (updateError) {
+				failCount++;
+				warnings.push(
+					`Failed to delete time block from database: ${updateError.message || 'Unknown error'}`
+				);
+			} else {
+				successCount++;
+			}
+		} catch (error: any) {
+			failCount++;
+			warnings.push(`Failed to delete time block: ${error?.message || 'Unknown error'}`);
+		}
+	}
 
-  // Add summary messages
-  if (successCount > 0) {
-    warnings.push(`${successCount} time block(s) deleted successfully.`);
-  }
-  if (failCount > 0) {
-    errors.push(`${failCount} time block(s) failed to delete.`);
-  }
+	// Add summary messages
+	if (successCount > 0) {
+		warnings.push(`${successCount} time block(s) deleted successfully.`);
+	}
+	if (failCount > 0) {
+		errors.push(`${failCount} time block(s) failed to delete.`);
+	}
 
-  return { warnings, errors };
+	return { warnings, errors };
 }
 ```
 
@@ -1552,19 +1538,19 @@ async function handleTimeBlockDeletion(
 
 ```typescript
 // Before: Inline handlers, no cleanup
-darkModeMediaQuery.addEventListener("change", (e) => {
-  /* handler */
+darkModeMediaQuery.addEventListener('change', (e) => {
+	/* handler */
 });
 
 // After: Named handlers with cleanup
 const handleDarkModeChange = (e: MediaQueryListEvent) => {
-  /* handler */
+	/* handler */
 };
-darkModeMediaQuery.addEventListener("change", handleDarkModeChange);
+darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
 
 return () => {
-  darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
-  // ... remove all other listeners
+	darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+	// ... remove all other listeners
 };
 ```
 
@@ -1587,19 +1573,19 @@ return () => {
 ```typescript
 // Before: Subscription leak
 backgroundBrainDumpService.subscribe((job) => {
-  /* update */
+	/* update */
 });
 
 // After: Properly managed
 let unsubscribeFromService = backgroundBrainDumpService.subscribe((job) => {
-  /* update */
+	/* update */
 });
 
 destroy: () => {
-  if (unsubscribeFromService) {
-    unsubscribeFromService();
-    unsubscribeFromService = null;
-  }
+	if (unsubscribeFromService) {
+		unsubscribeFromService();
+		unsubscribeFromService = null;
+	}
 };
 ```
 
@@ -1621,19 +1607,19 @@ destroy: () => {
 ```typescript
 // Before: Permanent subscription
 internalStore.subscribe((value) => {
-  currentState = value;
+	currentState = value;
 });
 
 // After: Cleanup available
 const unsubscribe = internalStore.subscribe((value) => {
-  currentState = value;
+	currentState = value;
 });
 
 return {
-  // ... other methods
-  destroy() {
-    if (unsubscribe) unsubscribe();
-  },
+	// ... other methods
+	destroy() {
+		if (unsubscribe) unsubscribe();
+	}
 };
 ```
 
@@ -1727,13 +1713,11 @@ $: daysLeft = trialEndDate ? getDaysUntilTrialEnd(trialEndDate) : 0;
 
 // After: Reactive + modern syntax
 let dismissed = $state(
-  typeof window !== "undefined"
-    ? sessionStorage.getItem("trial_banner_dismissed") === "true"
-    : false,
+	typeof window !== 'undefined'
+		? sessionStorage.getItem('trial_banner_dismissed') === 'true'
+		: false
 );
-let trialEndDate = $derived(
-  user.trial_ends_at ? new Date(user.trial_ends_at) : null,
-);
+let trialEndDate = $derived(user.trial_ends_at ? new Date(user.trial_ends_at) : null);
 let daysLeft = $derived(trialEndDate ? getDaysUntilTrialEnd(trialEndDate) : 0);
 ```
 
@@ -1847,20 +1831,17 @@ let selectedCustomIds = $state(new Set<string>());
 
 ```typescript
 // Before (WRONG - no WHERE clause):
-supabase.from("phase_tasks").select("*");
+supabase.from('phase_tasks').select('*');
 
 // After (CORRECT - filtered by phase_id):
-const { data: phases } = await supabase
-  .from("phases")
-  .select("*")
-  .in("project_id", projectIds);
+const { data: phases } = await supabase.from('phases').select('*').in('project_id', projectIds);
 
 const phaseIds = (phases || []).map((p) => p.id);
 
 // Then fetch only relevant phase_tasks
 phaseIds.length > 0
-  ? supabase.from("phase_tasks").select("*").in("phase_id", phaseIds)
-  : Promise.resolve({ data: [] });
+	? supabase.from('phase_tasks').select('*').in('phase_id', phaseIds)
+	: Promise.resolve({ data: [] });
 ```
 
 **Files Changed**: `/apps/worker/src/workers/brief/briefGenerator.ts:426-463`
@@ -1884,21 +1865,21 @@ Removed 200+ lines of disabled legacy email code (wrapped in `if (false && shoul
 **Manual Verification Steps**:
 
 1. **Test Bug #1 Fix (Task Counts)**:
-   - Create a project with several tasks (today's tasks, overdue, upcoming)
-   - Generate a daily brief
-   - Check notification event payload - task counts should be accurate
-   - Verify email/SMS show correct task counts
+    - Create a project with several tasks (today's tasks, overdue, upcoming)
+    - Generate a daily brief
+    - Check notification event payload - task counts should be accurate
+    - Verify email/SMS show correct task counts
 
 2. **Test Bug #2 Fix (Performance)**:
-   - Check database logs/metrics during brief generation
-   - Verify phase_tasks query includes `WHERE phase_id IN (...)` clause
-   - Confirm only relevant phase_tasks are fetched
+    - Check database logs/metrics during brief generation
+    - Verify phase_tasks query includes `WHERE phase_id IN (...)` clause
+    - Confirm only relevant phase_tasks are fetched
 
 3. **Test Bug #3 Fix (Deleted Tasks)**:
-   - Create tasks and generate a brief
-   - Delete some tasks
-   - Generate a new brief
-   - Verify deleted tasks don't appear
+    - Create tasks and generate a brief
+    - Delete some tasks
+    - Generate a new brief
+    - Verify deleted tasks don't appear
 
 **Related Documentation**:
 
@@ -1935,12 +1916,12 @@ Removed 200+ lines of disabled legacy email code (wrapped in `if (false && shoul
 
 ```typescript
 supabase
-  .from("tasks")
-  .select("*")
-  .in("project_id", projectIds)
-  .eq("outdated", false)
-  .is("deleted_at", null) // Added this line to filter out deleted tasks
-  .order("updated_at", { ascending: false });
+	.from('tasks')
+	.select('*')
+	.in('project_id', projectIds)
+	.eq('outdated', false)
+	.is('deleted_at', null) // Added this line to filter out deleted tasks
+	.order('updated_at', { ascending: false });
 ```
 
 **Manual Verification Steps**:
@@ -1984,16 +1965,13 @@ supabase
 ```javascript
 // After successful save, explicitly delete the draft
 if (currentBrainDumpId) {
-  try {
-    await brainDumpService.deleteDraft(currentBrainDumpId);
-    console.log("[BrainDumpModal] Draft cleaned up after successful save");
-  } catch (deleteError) {
-    console.warn(
-      "[BrainDumpModal] Failed to delete draft after save:",
-      deleteError,
-    );
-    // Non-fatal - backend should have marked it as 'saved' anyway
-  }
+	try {
+		await brainDumpService.deleteDraft(currentBrainDumpId);
+		console.log('[BrainDumpModal] Draft cleaned up after successful save');
+	} catch (deleteError) {
+		console.warn('[BrainDumpModal] Failed to delete draft after save:', deleteError);
+		// Non-fatal - backend should have marked it as 'saved' anyway
+	}
 }
 ```
 
@@ -2037,16 +2015,16 @@ When a notification is dismissed, it only cleared layers 2 & 3 but left orphaned
 **Fix**: Added cross-layer cleanup coordination:
 
 1. **Background Service** (`braindump-background.service.ts:579-617`):
-   - Added `clearJob(jobId)` - clear specific job by ID
-   - Added `clearJobsForBrainDump(brainDumpId)` - clear all jobs for a brain dump
+    - Added `clearJob(jobId)` - clear specific job by ID
+    - Added `clearJobsForBrainDump(brainDumpId)` - clear all jobs for a brain dump
 
 2. **Notification Bridge** (`brain-dump-notification.bridge.ts:57-88`):
-   - Updated `dismiss` action to call `backgroundBrainDumpService.clearJobsForBrainDump()`
-   - Added emergency reset function `forceResetAllBrainDumpState()` exposed as `window.__resetAllBrainDumps()`
+    - Updated `dismiss` action to call `backgroundBrainDumpService.clearJobsForBrainDump()`
+    - Added emergency reset function `forceResetAllBrainDumpState()` exposed as `window.__resetAllBrainDumps()`
 
 3. **Brain Dump Store** (`brain-dump-v2.store.ts:914-970`):
-   - Updated `completeBrainDump()` to clear background jobs
-   - Updated `cancelBrainDump()` to clear background jobs
+    - Updated `completeBrainDump()` to clear background jobs
+    - Updated `cancelBrainDump()` to clear background jobs
 
 **Files Changed**:
 

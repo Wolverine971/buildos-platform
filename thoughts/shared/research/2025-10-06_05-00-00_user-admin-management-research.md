@@ -1,10 +1,10 @@
 ---
-title: "BuildOS User and Admin Management System Research"
+title: 'BuildOS User and Admin Management System Research'
 date: 2025-10-06T05:00:00Z
 author: Claude Code
 tags: [research, users, admin, database, authentication, rls]
 status: complete
-context: "Comprehensive analysis of user and admin management for test bed feature implementation"
+context: 'Comprehensive analysis of user and admin management for test bed feature implementation'
 ---
 
 # BuildOS User and Admin Management System Research
@@ -30,35 +30,35 @@ Admin access is controlled through:
 
 ```typescript
 {
-  id: string; // UUID primary key (links to auth.users)
-  email: string; // NOT NULL
-  name: string | null;
-  is_admin: boolean; // NOT NULL, defaults to false
-  is_beta_user: boolean | null;
-  created_at: timestamp;
-  updated_at: timestamp;
-  last_visit: timestamp | null;
+	id: string; // UUID primary key (links to auth.users)
+	email: string; // NOT NULL
+	name: string | null;
+	is_admin: boolean; // NOT NULL, defaults to false
+	is_beta_user: boolean | null;
+	created_at: timestamp;
+	updated_at: timestamp;
+	last_visit: timestamp | null;
 
-  // Onboarding
-  completed_onboarding: boolean | null;
-  onboarding_v2_completed_at: timestamp | null;
-  onboarding_v2_skipped_calendar: boolean | null;
-  onboarding_v2_skipped_sms: boolean | null;
+	// Onboarding
+	completed_onboarding: boolean | null;
+	onboarding_v2_completed_at: timestamp | null;
+	onboarding_v2_skipped_calendar: boolean | null;
+	onboarding_v2_skipped_sms: boolean | null;
 
-  // Subscription
-  stripe_customer_id: string | null;
-  subscription_status: string | null;
-  subscription_plan_id: uuid | null;
-  trial_ends_at: timestamp | null;
+	// Subscription
+	stripe_customer_id: string | null;
+	subscription_status: string | null;
+	subscription_plan_id: uuid | null;
+	trial_ends_at: timestamp | null;
 
-  // Access control
-  access_restricted: boolean | null;
-  access_restricted_at: timestamp | null;
+	// Access control
+	access_restricted: boolean | null;
+	access_restricted_at: timestamp | null;
 
-  // Other
-  bio: string | null;
-  usage_archetype: string | null;
-  productivity_challenges: jsonb | null;
+	// Other
+	bio: string | null;
+	usage_archetype: string | null;
+	productivity_challenges: jsonb | null;
 }
 ```
 
@@ -80,10 +80,10 @@ Admin access is controlled through:
 
 ```typescript
 {
-  user_id: string; // Primary key, foreign key to users.id
-  granted_by: string | null; // User ID who granted admin access
-  granted_at: timestamp | null; // When admin access was granted
-  created_at: timestamp; // Record creation time
+	user_id: string; // Primary key, foreign key to users.id
+	granted_by: string | null; // User ID who granted admin access
+	granted_at: timestamp | null; // When admin access was granted
+	created_at: timestamp; // Record creation time
 }
 ```
 
@@ -159,34 +159,32 @@ This function is used in RLS policies to check if the current user is an admin.
 File: `/Users/annawayne/buildos-platform/apps/web/src/routes/admin/+layout.server.ts`
 
 ```typescript
-export const load: LayoutServerLoad = async ({
-  locals: { safeGetSession, supabase },
-}) => {
-  const { user } = await safeGetSession();
+export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+	const { user } = await safeGetSession();
 
-  // Check if user is authenticated
-  if (!user) {
-    throw redirect(303, "/auth/login");
-  }
+	// Check if user is authenticated
+	if (!user) {
+		throw redirect(303, '/auth/login');
+	}
 
-  const { data: dbUser, error } = await supabase
-    .from("users")
-    .select("is_admin, email, name")
-    .eq("id", user.id)
-    .single();
+	const { data: dbUser, error } = await supabase
+		.from('users')
+		.select('is_admin, email, name')
+		.eq('id', user.id)
+		.single();
 
-  if (error || !dbUser?.is_admin) {
-    throw redirect(303, "/");
-  }
+	if (error || !dbUser?.is_admin) {
+		throw redirect(303, '/');
+	}
 
-  return {
-    user: {
-      id: dbUser.id,
-      email: dbUser.email,
-      name: dbUser.name,
-      is_admin: dbUser.is_admin,
-    },
-  };
+	return {
+		user: {
+			id: dbUser.id,
+			email: dbUser.email,
+			name: dbUser.name,
+			is_admin: dbUser.is_admin
+		}
+	};
 };
 ```
 
@@ -195,21 +193,18 @@ export const load: LayoutServerLoad = async ({
 File: `/Users/annawayne/buildos-platform/apps/web/src/routes/api/admin/users/+server.ts`
 
 ```typescript
-export const GET: RequestHandler = async ({
-  url,
-  locals: { supabase, safeGetSession },
-}) => {
-  const { user } = await safeGetSession();
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+	const { user } = await safeGetSession();
 
-  if (!user) {
-    return ApiResponse.unauthorized();
-  }
+	if (!user) {
+		return ApiResponse.unauthorized();
+	}
 
-  if (!user?.is_admin) {
-    return ApiResponse.forbidden("Admin access required");
-  }
+	if (!user?.is_admin) {
+		return ApiResponse.forbidden('Admin access required');
+	}
 
-  // ... proceed with admin operations
+	// ... proceed with admin operations
 };
 ```
 
@@ -229,11 +224,11 @@ export const GET: RequestHandler = async ({
 - Filter by onboarding status (`onboarding_filter`: 'completed' | 'pending')
 - Sort by various fields (default: `last_visit`)
 - Enriched with user metrics:
-  - Brain dump count
-  - Daily brief count
-  - Project count
-  - Calendar connection status
-  - Phase generation status
+    - Brain dump count
+    - Daily brief count
+    - Project count
+    - Calendar connection status
+    - Phase generation status
 
 **Query Parameters:**
 
@@ -253,30 +248,30 @@ export const GET: RequestHandler = async ({
 
 ```typescript
 {
-  users: Array<{
-    id: string;
-    email: string;
-    name: string | null;
-    is_admin: boolean;
-    created_at: string;
-    updated_at: string;
-    bio: string | null;
-    completed_onboarding: boolean | null;
-    last_visit: string | null;
+	users: Array<{
+		id: string;
+		email: string;
+		name: string | null;
+		is_admin: boolean;
+		created_at: string;
+		updated_at: string;
+		bio: string | null;
+		completed_onboarding: boolean | null;
+		last_visit: string | null;
 
-    // Enriched metrics
-    brain_dump_count: number;
-    brief_count: number;
-    project_count: number;
-    calendar_connected: boolean;
-    has_generated_phases: boolean;
-  }>;
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  }
+		// Enriched metrics
+		brain_dump_count: number;
+		brief_count: number;
+		project_count: number;
+		calendar_connected: boolean;
+		has_generated_phases: boolean;
+	}>;
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	}
 }
 ```
 
@@ -308,21 +303,21 @@ export const GET: RequestHandler = async ({
 
 ```typescript
 // Whitelist allowed fields
-const ALLOWED_FIELDS = ["name", "bio", "is_admin", "completed_onboarding"];
+const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'completed_onboarding'];
 const sanitizedUpdates = Object.keys(updates)
-  .filter((key) => ALLOWED_FIELDS.includes(key))
-  .reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
+	.filter((key) => ALLOWED_FIELDS.includes(key))
+	.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
 
 // Update admin_users table if is_admin was modified
-if ("is_admin" in sanitizedUpdates) {
-  if (sanitizedUpdates.is_admin) {
-    await supabase.from("admin_users").insert({
-      user_id: userId,
-      granted_by: user.id,
-    });
-  } else {
-    await supabase.from("admin_users").delete().eq("user_id", userId);
-  }
+if ('is_admin' in sanitizedUpdates) {
+	if (sanitizedUpdates.is_admin) {
+		await supabase.from('admin_users').insert({
+			user_id: userId,
+			granted_by: user.id
+		});
+	} else {
+		await supabase.from('admin_users').delete().eq('user_id', userId);
+	}
 }
 ```
 
@@ -369,26 +364,24 @@ For a test bed feature that needs to query users, use the existing admin users e
 
 ```typescript
 // Example: Get all users with their engagement metrics
-const response = await fetch(
-  "/api/admin/users?limit=100&sort_by=created_at&sort_order=desc",
-);
+const response = await fetch('/api/admin/users?limit=100&sort_by=created_at&sort_order=desc');
 const { users, pagination } = await response.json();
 
 // Users will include:
 users.forEach((user) => {
-  console.log({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    isAdmin: user.is_admin,
-    metrics: {
-      brainDumps: user.brain_dump_count,
-      projects: user.project_count,
-      briefs: user.brief_count,
-      calendarConnected: user.calendar_connected,
-      hasGeneratedPhases: user.has_generated_phases,
-    },
-  });
+	console.log({
+		id: user.id,
+		email: user.email,
+		name: user.name,
+		isAdmin: user.is_admin,
+		metrics: {
+			brainDumps: user.brain_dump_count,
+			projects: user.project_count,
+			briefs: user.brief_count,
+			calendarConnected: user.calendar_connected,
+			hasGeneratedPhases: user.has_generated_phases
+		}
+	});
 });
 ```
 
@@ -397,22 +390,22 @@ users.forEach((user) => {
 If you need custom queries on the server side:
 
 ```typescript
-import { createAdminSupabaseClient } from "$lib/supabase/admin";
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const adminClient = createAdminSupabaseClient();
 
 // Get users with specific criteria
 const { data: users } = await adminClient
-  .from("users")
-  .select("id, email, name, is_admin, created_at, last_visit")
-  .eq("is_admin", false)
-  .order("last_visit", { ascending: false, nullsFirst: false });
+	.from('users')
+	.select('id, email, name, is_admin, created_at, last_visit')
+	.eq('is_admin', false)
+	.order('last_visit', { ascending: false, nullsFirst: false });
 
 // Join with other tables for enriched data
 const { data: usersWithProjects } = await adminClient
-  .from("users")
-  .select(
-    `
+	.from('users')
+	.select(
+		`
     id,
     email,
     name,
@@ -423,9 +416,9 @@ const { data: usersWithProjects } = await adminClient
       status,
       created_at
     )
-  `,
-  )
-  .limit(50);
+  `
+	)
+	.limit(50);
 ```
 
 ### Search and Filter Examples
@@ -433,24 +426,21 @@ const { data: usersWithProjects } = await adminClient
 ```typescript
 // Search by email or name
 const { data } = await adminClient
-  .from("users")
-  .select("*")
-  .or(`email.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`);
+	.from('users')
+	.select('*')
+	.or(`email.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`);
 
 // Get active users (visited in last 30 days)
 const thirtyDaysAgo = new Date();
 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 const { data } = await adminClient
-  .from("users")
-  .select("*")
-  .gte("last_visit", thirtyDaysAgo.toISOString());
+	.from('users')
+	.select('*')
+	.gte('last_visit', thirtyDaysAgo.toISOString());
 
 // Get users who completed onboarding
-const { data } = await adminClient
-  .from("users")
-  .select("*")
-  .eq("completed_onboarding", true);
+const { data } = await adminClient.from('users').select('*').eq('completed_onboarding', true);
 ```
 
 ## Admin UI Components
@@ -460,13 +450,13 @@ const { data } = await adminClient
 File: `/Users/annawayne/buildos-platform/apps/web/src/routes/admin/`
 
 1. **Users Page:** `/admin/users`
-   - File: `users/+page.server.ts`
-   - Lists and manages users
-   - Search, filter, and sort capabilities
+    - File: `users/+page.server.ts`
+    - Lists and manages users
+    - Search, filter, and sort capabilities
 
 2. **Errors Page:** `/admin/errors`
-   - File: `errors/+page.server.ts`
-   - View and resolve system errors
+    - File: `errors/+page.server.ts`
+    - View and resolve system errors
 
 ### Admin Layout
 
@@ -495,7 +485,7 @@ BuildOS uses multiple layers of security:
 The user update endpoint uses a whitelist:
 
 ```typescript
-const ALLOWED_FIELDS = ["name", "bio", "is_admin", "completed_onboarding"];
+const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'completed_onboarding'];
 ```
 
 This prevents attackers from:
@@ -524,10 +514,8 @@ This is critical for:
 Search queries sanitize input:
 
 ```typescript
-const sanitizedSearch = search.replace(/[\\%_]/g, "\\$&");
-query = query.or(
-  `email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`,
-);
+const sanitizedSearch = search.replace(/[\\%_]/g, '\\$&');
+query = query.or(`email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`);
 ```
 
 ## Related Tables and Relationships
@@ -572,36 +560,36 @@ ALTER TABLE users
 
 ```typescript
 // File: src/lib/services/test-bed.service.ts
-import { createAdminSupabaseClient } from "$lib/supabase/admin";
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export class TestBedService {
-  async getEligibleUsers(criteria?: {
-    hasProjects?: boolean;
-    hasCalendar?: boolean;
-    minBrainDumps?: number;
-  }) {
-    const adminClient = createAdminSupabaseClient();
+	async getEligibleUsers(criteria?: {
+		hasProjects?: boolean;
+		hasCalendar?: boolean;
+		minBrainDumps?: number;
+	}) {
+		const adminClient = createAdminSupabaseClient();
 
-    let query = adminClient
-      .from("users")
-      .select(
-        `
+		let query = adminClient
+			.from('users')
+			.select(
+				`
         id, email, name, created_at,
         projects (count),
         brain_dumps (count),
         user_calendar_tokens (user_id)
-      `,
-      )
-      .eq("is_admin", false); // Exclude admins from tests
+      `
+			)
+			.eq('is_admin', false); // Exclude admins from tests
 
-    // Apply criteria filters
+		// Apply criteria filters
 
-    return query;
-  }
+		return query;
+	}
 
-  async enrollUserInTest(userId: string, testGroup: string) {
-    // Implementation
-  }
+	async enrollUserInTest(userId: string, testGroup: string) {
+		// Implementation
+	}
 }
 ```
 
@@ -611,29 +599,29 @@ Create a reusable helper for admin checks:
 
 ```typescript
 // File: src/lib/utils/auth-helpers.ts
-import type { RequestEvent } from "@sveltejs/kit";
-import { ApiResponse } from "$lib/utils/api-response";
+import type { RequestEvent } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export async function requireAdmin(event: RequestEvent) {
-  const { user } = await event.locals.safeGetSession();
+	const { user } = await event.locals.safeGetSession();
 
-  if (!user) {
-    return { error: ApiResponse.unauthorized() };
-  }
+	if (!user) {
+		return { error: ApiResponse.unauthorized() };
+	}
 
-  if (!user?.is_admin) {
-    return { error: ApiResponse.forbidden("Admin access required") };
-  }
+	if (!user?.is_admin) {
+		return { error: ApiResponse.forbidden('Admin access required') };
+	}
 
-  return { user };
+	return { user };
 }
 
 // Usage in API routes:
 export const GET: RequestHandler = async (event) => {
-  const { user, error } = await requireAdmin(event);
-  if (error) return error;
+	const { user, error } = await requireAdmin(event);
+	if (error) return error;
 
-  // Proceed with admin operation
+	// Proceed with admin operation
 };
 ```
 

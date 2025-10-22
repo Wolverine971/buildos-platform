@@ -21,27 +21,27 @@ graph TD
 ### Key Components
 
 1. **Twilio Service Package** (`packages/twilio-service/`)
-   - `TwilioClient`: Wrapper around Twilio SDK
-   - `SMSService`: Business logic for SMS operations
-   - Template rendering and message formatting
-   - Phone number formatting and validation
+    - `TwilioClient`: Wrapper around Twilio SDK
+    - `SMSService`: Business logic for SMS operations
+    - Template rendering and message formatting
+    - Phone number formatting and validation
 
 2. **Database Tables**
-   - `sms_templates`: Reusable message templates
-   - `sms_messages`: Message history and status tracking
-   - `user_sms_preferences`: User notification settings
-   - Integration with existing `queue_jobs` table
+    - `sms_templates`: Reusable message templates
+    - `sms_messages`: Message history and status tracking
+    - `user_sms_preferences`: User notification settings
+    - Integration with existing `queue_jobs` table
 
 3. **Worker Integration** (`apps/worker/src/workers/smsWorker.ts`)
-   - Processes SMS jobs from queue
-   - Handles retries with exponential backoff
-   - Updates message status in real-time
+    - Processes SMS jobs from queue
+    - Handles retries with exponential backoff
+    - Updates message status in real-time
 
 4. **Web App Integration**
-   - Frontend SMS service (`apps/web/src/lib/services/sms.service.ts`)
-   - Phone verification components
-   - SMS preferences UI
-   - API endpoints for verification and webhooks
+    - Frontend SMS service (`apps/web/src/lib/services/sms.service.ts`)
+    - Phone verification components
+    - SMS preferences UI
+    - API endpoints for verification and webhooks
 
 ## Features
 
@@ -207,13 +207,13 @@ MessageSid=SM...&MessageStatus=delivered&...
 #### Send Task Reminder
 
 ```typescript
-import { smsService } from "$lib/services/sms.service";
+import { smsService } from '$lib/services/sms.service';
 
 // Send a task reminder
 const result = await smsService.sendTaskReminder(taskId);
 
 if (result.success) {
-  console.log("Reminder sent:", result.data.messageId);
+	console.log('Reminder sent:', result.data.messageId);
 }
 ```
 
@@ -221,23 +221,20 @@ if (result.success) {
 
 ```typescript
 // Start verification
-const verifyResult = await smsService.verifyPhoneNumber("+15551234567");
+const verifyResult = await smsService.verifyPhoneNumber('+15551234567');
 
 // Confirm with code
-const confirmResult = await smsService.confirmVerification(
-  "+15551234567",
-  "123456",
-);
+const confirmResult = await smsService.confirmVerification('+15551234567', '123456');
 ```
 
 #### Update Preferences
 
 ```typescript
 await smsService.updateSMSPreferences(userId, {
-  event_reminders_enabled: true,
-  quiet_hours_start: "22:00",
-  quiet_hours_end: "08:00",
-  daily_sms_limit: 10,
+	event_reminders_enabled: true,
+	quiet_hours_start: '22:00',
+	quiet_hours_end: '08:00',
+	daily_sms_limit: 10
 });
 ```
 
@@ -261,21 +258,21 @@ SELECT queue_sms_message(
 #### Send via Worker
 
 ```typescript
-import { TwilioClient, SMSService } from "@buildos/twilio-service";
+import { TwilioClient, SMSService } from '@buildos/twilio-service';
 
 const twilioClient = new TwilioClient({
-  accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID,
-  authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN,
-  messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
+	accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID,
+	authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN,
+	messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID
 });
 
 const smsService = new SMSService(twilioClient, supabase);
 
 await smsService.sendTaskReminder({
-  userId: "user-uuid",
-  phoneNumber: "+15551234567",
-  taskName: "Complete report",
-  dueDate: new Date("2024-12-25T14:00:00"),
+	userId: 'user-uuid',
+	phoneNumber: '+15551234567',
+	taskName: 'Complete report',
+	dueDate: new Date('2024-12-25T14:00:00')
 });
 ```
 
@@ -310,23 +307,23 @@ TWILIO_STATUS_CALLBACK_URL=https://your-domain.com/api/webhooks/twilio/status
 ### Twilio Setup
 
 1. **Create Twilio Account**
-   - Sign up at [twilio.com](https://twilio.com)
-   - Note your Account SID and Auth Token
+    - Sign up at [twilio.com](https://twilio.com)
+    - Note your Account SID and Auth Token
 
 2. **Create Messaging Service**
-   - Navigate to Messaging > Services
-   - Create a new Messaging Service
-   - Add your phone numbers to the sender pool
-   - Configure opt-out keywords (STOP, UNSUBSCRIBE)
+    - Navigate to Messaging > Services
+    - Create a new Messaging Service
+    - Add your phone numbers to the sender pool
+    - Configure opt-out keywords (STOP, UNSUBSCRIBE)
 
 3. **Create Verify Service** (Optional)
-   - Navigate to Verify > Services
-   - Create a new Verify Service
-   - Configure SMS channel settings
+    - Navigate to Verify > Services
+    - Create a new Verify Service
+    - Configure SMS channel settings
 
 4. **Configure Webhooks**
-   - Set status callback URL in Messaging Service
-   - Point to: `https://your-domain.com/api/webhooks/twilio/status`
+    - Set status callback URL in Messaging Service
+    - Point to: `https://your-domain.com/api/webhooks/twilio/status`
 
 ## Security Considerations
 

@@ -8,9 +8,9 @@ This package is internal to the BuildOS monorepo and installed automatically via
 
 ```json
 {
-  "dependencies": {
-    "@buildos/shared-utils": "workspace:*"
-  }
+	"dependencies": {
+		"@buildos/shared-utils": "workspace:*"
+	}
 }
 ```
 
@@ -21,7 +21,7 @@ This package is internal to the BuildOS monorepo and installed automatically via
 **SMS Metrics & Alerts** - Track SMS operations and monitor system health
 
 ```typescript
-import { smsMetricsService, smsAlertsService } from "@buildos/shared-utils";
+import { smsMetricsService, smsAlertsService } from '@buildos/shared-utils';
 
 // Record SMS events
 await smsMetricsService.recordScheduled(userId, 5);

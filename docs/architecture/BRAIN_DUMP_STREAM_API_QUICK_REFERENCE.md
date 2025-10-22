@@ -58,15 +58,15 @@ Input → Auth & Validation → SSEStatus
 
 ```json
 {
-  "content": "Brain dump text (max 50KB)",
-  "selectedProjectId": "optional-project-id or null",
-  "brainDumpId": "existing-dump-id or new UUID",
-  "displayedQuestions": [],
-  "autoAccept": false,
-  "options": {
-    "streamResults": true,
-    "useDualProcessing": true
-  }
+	"content": "Brain dump text (max 50KB)",
+	"selectedProjectId": "optional-project-id or null",
+	"brainDumpId": "existing-dump-id or new UUID",
+	"displayedQuestions": [],
+	"autoAccept": false,
+	"options": {
+		"streamResults": true,
+		"useDualProcessing": true
+	}
 }
 ```
 
@@ -74,43 +74,43 @@ Input → Auth & Validation → SSEStatus
 
 ```json
 {
-  "type": "status|analysis|contextProgress|tasksProgress|retry|complete|error",
-  "message": "Human-readable message",
-  "data": {
-    "status": "pending|processing|completed|failed",
-    "preview": {
-      /* ProjectContextResult or TaskNoteExtractionResult */
-    },
-    "error": "Error message if failed"
-  }
+	"type": "status|analysis|contextProgress|tasksProgress|retry|complete|error",
+	"message": "Human-readable message",
+	"data": {
+		"status": "pending|processing|completed|failed",
+		"preview": {
+			/* ProjectContextResult or TaskNoteExtractionResult */
+		},
+		"error": "Error message if failed"
+	}
 }
 ```
 
 ## Frontend Integration Snippet
 
 ```typescript
-import { brainDumpService } from "$lib/services/braindump-api.service";
+import { brainDumpService } from '$lib/services/braindump-api.service';
 
 // Start streaming
 await brainDumpService.parseBrainDumpWithStream(
-  "Brain dump content",
-  projectId,
-  brainDumpId,
-  questions,
-  {
-    onProgress: (status) => {
-      console.log("Progress:", status.type, status.message);
-      // Update UI with progress
-    },
-    onComplete: (result) => {
-      console.log("Done! Operations:", result.operations.length);
-      // Show results modal
-    },
-    onError: (error) => {
-      console.error("Failed:", error);
-      // Show error toast
-    },
-  },
+	'Brain dump content',
+	projectId,
+	brainDumpId,
+	questions,
+	{
+		onProgress: (status) => {
+			console.log('Progress:', status.type, status.message);
+			// Update UI with progress
+		},
+		onComplete: (result) => {
+			console.log('Done! Operations:', result.operations.length);
+			// Show results modal
+		},
+		onError: (error) => {
+			console.error('Failed:', error);
+			// Show error toast
+		}
+	}
 );
 ```
 

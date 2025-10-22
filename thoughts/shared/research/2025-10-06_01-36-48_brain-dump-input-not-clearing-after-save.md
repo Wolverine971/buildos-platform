@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: ac3926bfd8b265462ed239421d7cd1573b489972
 branch: main
 repository: buildos-platform
-topic: "Brain Dump Input Not Clearing After Process & Save"
+topic: 'Brain Dump Input Not Clearing After Process & Save'
 tags: [research, codebase, brain-dump, bug, state-management, multi-brain-dump]
 status: complete
 last_updated: 2025-10-06
@@ -41,12 +41,12 @@ The brain dump input uses standard Svelte two-way binding with unidirectional st
 
 ```svelte
 <textarea
-    bind:value={inputText}
-    on:input={handleTextInput}
-    on:blur={handleTextBlur}
-    placeholder={placeholderText}
-    disabled={isProcessing || isInitializingRecording}
-    class="..."
+	bind:value={inputText}
+	on:input={handleTextInput}
+	on:blur={handleTextBlur}
+	placeholder={placeholderText}
+	disabled={isProcessing || isInitializingRecording}
+	class="..."
 />
 ```
 
@@ -65,13 +65,13 @@ The brain dump input uses standard Svelte two-way binding with unidirectional st
 
 ```typescript
 interface UnifiedBrainDumpState {
-  core: {
-    inputText: string; // The actual input value
-    lastSavedContent: string; // For unsaved changes detection
-    currentBrainDumpId: string | null;
-    // ...
-  };
-  // ... other domains
+	core: {
+		inputText: string; // The actual input value
+		lastSavedContent: string; // For unsaved changes detection
+		currentBrainDumpId: string | null;
+		// ...
+	};
+	// ... other domains
 }
 ```
 
@@ -92,27 +92,27 @@ interface UnifiedBrainDumpState {
 When user clicks "Process" button:
 
 1. **BrainDumpModal.svelte** `parseBrainDump()` ([apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:886-914](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte#L886-L914))
-   - Saves draft to database
-   - Gets `brainDumpId` back
+    - Saves draft to database
+    - Gets `brainDumpId` back
 
 2. **brain-dump-v2.store.ts** `startBrainDump()` ([apps/web/src/lib/stores/brain-dump-v2.store.ts:788-830](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L788-L830))
-   - Creates `SingleBrainDumpState` with `inputText: config.inputText`
-   - Adds to `activeBrainDumps` Map
-   - Sets processing phase to 'parsing'
+    - Creates `SingleBrainDumpState` with `inputText: config.inputText`
+    - Adds to `activeBrainDumps` Map
+    - Sets processing phase to 'parsing'
 
 3. **brain-dump-notification.bridge.ts** `startProcessingAPICall()` ([apps/web/src/lib/services/brain-dump-notification.bridge.ts:800-855](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/services/brain-dump-notification.bridge.ts#L800-L855))
-   - Calls API endpoint with SSE streaming
-   - Receives parse results
-   - Updates store with results
+    - Calls API endpoint with SSE streaming
+    - Receives parse results
+    - Updates store with results
 
 4. **Auto-Accept Execution** ([apps/web/src/routes/api/braindumps/stream/+server.ts:414-557](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/routes/api/braindumps/stream/+server.ts#L414-L557))
-   - Executes operations
-   - Updates brain dump status to 'saved'
-   - Returns success
+    - Executes operations
+    - Updates brain dump status to 'saved'
+    - Returns success
 
 5. **Success View Display** ([apps/web/src/lib/stores/brain-dump-v2.store.ts:1781-1848](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L1781-L1848))
-   - Sets `currentView: 'success'`
-   - Shows project info and navigation
+    - Sets `currentView: 'success'`
+    - Shows project info and navigation
 
 ### 4. Reset Behavior (The Bug)
 
@@ -121,15 +121,13 @@ When user clicks "Start New Brain Dump":
 **SuccessView.svelte** ([apps/web/src/lib/components/brain-dump/SuccessView.svelte:189-198](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/SuccessView.svelte#L189-L198))
 
 ```svelte
-<Button on:click={handleStartNew}>
-  Start New Brain Dump
-</Button>
+<Button on:click={handleStartNew}>Start New Brain Dump</Button>
 ```
 
 ```typescript
 function handleStartNew(e: Event) {
-  e.stopPropagation();
-  dispatch("startNew"); // ← Triggers event
+	e.stopPropagation();
+	dispatch('startNew'); // ← Triggers event
 }
 ```
 
@@ -137,9 +135,9 @@ function handleStartNew(e: Event) {
 
 ```typescript
 function handleStartNew() {
-  brainDumpActions.resetForNewSession(); // ← Resets session
-  brainDumpActions.openModal(); // ← Opens modal
-  brainDumpActions.clearParseResults(); // ← Clears results
+	brainDumpActions.resetForNewSession(); // ← Resets session
+	brainDumpActions.openModal(); // ← Opens modal
+	brainDumpActions.clearParseResults(); // ← Clears results
 }
 ```
 
@@ -147,38 +145,38 @@ function handleStartNew() {
 
 ```typescript
 resetForNewSession: () =>
-  update((state) => {
-    const newState = createInitialState(); // ✅ Creates state with inputText: ''
-    return {
-      ...newState,
-      ui: {
-        ...newState.ui,
-        modal: {
-          ...newState.ui.modal,
-          isOpen: state.ui.modal.isOpen, // Preserves modal open
-          currentView: "project-selection",
-        },
-      },
-      persistence: {
-        ...newState.persistence,
-        sessionId: crypto.randomUUID(),
-      },
-    };
-  });
+	update((state) => {
+		const newState = createInitialState(); // ✅ Creates state with inputText: ''
+		return {
+			...newState,
+			ui: {
+				...newState.ui,
+				modal: {
+					...newState.ui.modal,
+					isOpen: state.ui.modal.isOpen, // Preserves modal open
+					currentView: 'project-selection'
+				}
+			},
+			persistence: {
+				...newState.persistence,
+				sessionId: crypto.randomUUID()
+			}
+		};
+	});
 ```
 
 **THE BUG**: `createInitialState()` ([apps/web/src/lib/stores/brain-dump-v2.store.ts:281-355](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/stores/brain-dump-v2.store.ts#L281-L355))
 
 ```typescript
 function createInitialState(): UnifiedBrainDumpState {
-  return {
-    core: {
-      inputText: "", // ✅ Legacy field gets cleared
-      // ...
-    },
-    activeBrainDumps: new Map(), // ❌ BUT this creates a NEW Map
-    // ...
-  };
+	return {
+		core: {
+			inputText: '' // ✅ Legacy field gets cleared
+			// ...
+		},
+		activeBrainDumps: new Map() // ❌ BUT this creates a NEW Map
+		// ...
+	};
 }
 ```
 
@@ -195,7 +193,7 @@ Let me trace the actual input value binding more carefully...
 **BrainDumpModal.svelte** ([apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:54](https://github.com/annawayne/buildos-platform/blob/ac3926bfd8b265462ed239421d7cd1573b489972/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte#L54))
 
 ```typescript
-let inputText = $derived(storeState?.core?.inputText ?? "");
+let inputText = $derived(storeState?.core?.inputText ?? '');
 ```
 
 **The REAL Bug**:
@@ -211,21 +209,18 @@ Let me check the draft loading logic in the next section.
 
 ```typescript
 async function handleProjectSelect(event: CustomEvent) {
-  const project = event.detail;
+	const project = event.detail;
 
-  // ... project selection logic
+	// ... project selection logic
 
-  // Check for existing draft
-  if (!MULTI_BRAINDUMP_ENABLED && project.id !== "new") {
-    const draft = await brainDumpService.getDraft(project.id);
-    if (draft?.data?.content) {
-      brainDumpActions.updateInputText(draft.data.content); // ← LOADS DRAFT
-      brainDumpActions.setSavedContent(
-        draft.data.content,
-        draft.data.brainDumpId,
-      );
-    }
-  }
+	// Check for existing draft
+	if (!MULTI_BRAINDUMP_ENABLED && project.id !== 'new') {
+		const draft = await brainDumpService.getDraft(project.id);
+		if (draft?.data?.content) {
+			brainDumpActions.updateInputText(draft.data.content); // ← LOADS DRAFT
+			brainDumpActions.setSavedContent(draft.data.content, draft.data.brainDumpId);
+		}
+	}
 }
 ```
 
@@ -281,18 +276,18 @@ Let me check the placeholder logic...
 
 ```typescript
 $: placeholderText = (() => {
-  if (isNewProject) {
-    return "What's on your mind? Share your thoughts, ideas, and tasks...";
-  }
+	if (isNewProject) {
+		return "What's on your mind? Share your thoughts, ideas, and tasks...";
+	}
 
-  if (displayedQuestions && displayedQuestions.length > 0) {
-    const questionsText = displayedQuestions
-      .map((q, i) => `${i + 1}. ${q.question}`)
-      .join("\n");
-    return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
-  }
+	if (displayedQuestions && displayedQuestions.length > 0) {
+		const questionsText = displayedQuestions
+			.map((q, i) => `${i + 1}. ${q.question}`)
+			.join('\n');
+		return `Consider discussing:\n${questionsText}\n\nOr share any updates about ${selectedProjectName}...`;
+	}
 
-  return `What's happening with ${selectedProjectName}?`;
+	return `What's happening with ${selectedProjectName}?`;
 })();
 ```
 
@@ -349,7 +344,7 @@ This dual-model creates complexity in cleanup logic.
 Uses `$derived` runes for computed values:
 
 ```typescript
-let inputText = $derived(storeState?.core?.inputText ?? "");
+let inputText = $derived(storeState?.core?.inputText ?? '');
 ```
 
 This is efficient but means the component reactively updates based on store changes.
@@ -371,14 +366,14 @@ When auto-accept is enabled:
 
 ```typescript
 if (result && result.operations) {
-  brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
+	brainDumpV2Store.updateBrainDumpParseResults(brainDumpId, result);
 
-  // NEW: If auto-accept succeeded, complete and clear the brain dump
-  if (result.executionResult && result.executionResult.success) {
-    setTimeout(() => {
-      brainDumpV2Store.completeBrainDump(brainDumpId);
-    }, 500); // Small delay to allow success view to render
-  }
+	// NEW: If auto-accept succeeded, complete and clear the brain dump
+	if (result.executionResult && result.executionResult.success) {
+		setTimeout(() => {
+			brainDumpV2Store.completeBrainDump(brainDumpId);
+		}, 500); // Small delay to allow success view to render
+	}
 }
 ```
 
@@ -389,35 +384,32 @@ if (result && result.operations) {
 
 ```typescript
 resetForNewSession: () =>
-  update((state) => {
-    const newState = createInitialState();
+	update((state) => {
+		const newState = createInitialState();
 
-    // Clear all completed brain dumps from activeBrainDumps
-    state.activeBrainDumps.forEach((bd, id) => {
-      if (
-        bd.processing.phase === "success" ||
-        bd.processing.phase === "complete"
-      ) {
-        state.activeBrainDumps.delete(id);
-      }
-    });
+		// Clear all completed brain dumps from activeBrainDumps
+		state.activeBrainDumps.forEach((bd, id) => {
+			if (bd.processing.phase === 'success' || bd.processing.phase === 'complete') {
+				state.activeBrainDumps.delete(id);
+			}
+		});
 
-    return {
-      ...newState,
-      ui: {
-        ...newState.ui,
-        modal: {
-          ...newState.ui.modal,
-          isOpen: state.ui.modal.isOpen,
-          currentView: "project-selection",
-        },
-      },
-      persistence: {
-        ...newState.persistence,
-        sessionId: crypto.randomUUID(),
-      },
-    };
-  });
+		return {
+			...newState,
+			ui: {
+				...newState.ui,
+				modal: {
+					...newState.ui.modal,
+					isOpen: state.ui.modal.isOpen,
+					currentView: 'project-selection'
+				}
+			},
+			persistence: {
+				...newState.persistence,
+				sessionId: crypto.randomUUID()
+			}
+		};
+	});
 ```
 
 ### Option 3: Defensive Clear in handleStartNew
@@ -427,14 +419,14 @@ resetForNewSession: () =>
 
 ```typescript
 function handleStartNew() {
-  // Clear successful brain dump before resetting
-  if (successData?.brainDumpId) {
-    brainDumpActions.completeBrainDump(successData.brainDumpId);
-  }
+	// Clear successful brain dump before resetting
+	if (successData?.brainDumpId) {
+		brainDumpActions.completeBrainDump(successData.brainDumpId);
+	}
 
-  brainDumpActions.resetForNewSession();
-  brainDumpActions.openModal();
-  brainDumpActions.clearParseResults();
+	brainDumpActions.resetForNewSession();
+	brainDumpActions.openModal();
+	brainDumpActions.clearParseResults();
 }
 ```
 

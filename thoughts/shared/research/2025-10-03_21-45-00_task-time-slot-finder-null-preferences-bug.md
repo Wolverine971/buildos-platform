@@ -4,17 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: bdb68ab1643368d61bccb975270bd8b807421007
 branch: main
 repository: buildos-platform
-topic: "TaskTimeSlotFinder Null Preferences Bug Analysis"
-tags:
-  [
-    research,
-    codebase,
-    bug,
-    task-scheduling,
-    calendar-preferences,
-    null-pointer,
-    critical,
-  ]
+topic: 'TaskTimeSlotFinder Null Preferences Bug Analysis'
+tags: [research, codebase, bug, task-scheduling, calendar-preferences, null-pointer, critical]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude
@@ -72,16 +63,15 @@ The `scheduleTasks()` method (lines 42-52) fetches user calendar preferences usi
 **Problem Code (lines 42-52):**
 
 ```typescript
-const { data: userCalendarPreferences, error: userCalendarPreferencesError } =
-  await this.supabase
-    .from("user_calendar_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+const { data: userCalendarPreferences, error: userCalendarPreferencesError } = await this.supabase
+	.from('user_calendar_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.single();
 
 if (userCalendarPreferencesError) {
-  console.error(userCalendarPreferencesError);
-  console.log("no calendar preferences");
+	console.error(userCalendarPreferencesError);
+	console.log('no calendar preferences');
 }
 // ❌ userCalendarPreferences is NULL but code continues!
 ```
@@ -90,8 +80,8 @@ if (userCalendarPreferencesError) {
 
 ```typescript
 const workingDays = Object.entries(tasksByDay)
-  .map(([dateKey]) => new Date(dateKey))
-  .filter((dayDate) => this.isWorkingDay(dayDate, userCalendarPreferences));
+	.map(([dateKey]) => new Date(dateKey))
+	.filter((dayDate) => this.isWorkingDay(dayDate, userCalendarPreferences));
 //                                                  ^^^^^^^^^^^^^^^^^^^^^^
 //                                                  NULL is passed here!
 ```
@@ -158,10 +148,7 @@ From the error logs, the execution flow is:
 
 ```typescript
 const scheduler = new TaskTimeSlotFinder(this.supabase);
-const scheduledTasks = await scheduler.scheduleTasks(
-  tasksWithDates,
-  this.userId,
-);
+const scheduledTasks = await scheduler.scheduleTasks(tasksWithDates, this.userId);
 ```
 
 The strategy catches the error and falls back to "simple date updates" (line 316), which is why the phase generation doesn't completely fail.
@@ -227,13 +214,13 @@ The codebase shows inconsistent patterns:
 **Safe Pattern (used in some places):**
 
 ```typescript
-const timezone = preferences?.timezone || "UTC"; // ✅ Works with null
+const timezone = preferences?.timezone || 'UTC'; // ✅ Works with null
 ```
 
 **Unsafe Pattern (used in other places):**
 
 ```typescript
-const timezone = preferences.timezone || "UTC"; // ❌ Crashes with null
+const timezone = preferences.timezone || 'UTC'; // ❌ Crashes with null
 ```
 
 The `TaskTimeSlotFinder` uses both patterns inconsistently, which is why some operations work and others crash.
@@ -246,42 +233,41 @@ The `TaskTimeSlotFinder` uses both patterns inconsistently, which is why some op
 
 ```typescript
 // BEFORE (lines 42-52):
-const { data: userCalendarPreferences, error: userCalendarPreferencesError } =
-  await this.supabase
-    .from("user_calendar_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+const { data: userCalendarPreferences, error: userCalendarPreferencesError } = await this.supabase
+	.from('user_calendar_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.single();
 
 if (userCalendarPreferencesError) {
-  console.error(userCalendarPreferencesError);
-  console.log("no calendar preferences");
+	console.error(userCalendarPreferencesError);
+	console.log('no calendar preferences');
 }
 // Continue with potentially null userCalendarPreferences ❌
 
 // AFTER (add this after line 52):
 const preferences = userCalendarPreferences || {
-  user_id: userId,
-  id: "", // Not needed for internal operations
-  timezone: "America/New_York",
-  work_start_time: "09:00:00",
-  work_end_time: "17:00:00",
-  working_days: [1, 2, 3, 4, 5],
-  default_task_duration_minutes: 60,
-  min_task_duration_minutes: 30,
-  max_task_duration_minutes: 240,
-  exclude_holidays: true,
-  holiday_country_code: "US",
-  prefer_morning_for_important_tasks: false,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
+	user_id: userId,
+	id: '', // Not needed for internal operations
+	timezone: 'America/New_York',
+	work_start_time: '09:00:00',
+	work_end_time: '17:00:00',
+	working_days: [1, 2, 3, 4, 5],
+	default_task_duration_minutes: 60,
+	min_task_duration_minutes: 30,
+	max_task_duration_minutes: 240,
+	exclude_holidays: true,
+	holiday_country_code: 'US',
+	prefer_morning_for_important_tasks: false,
+	created_at: new Date().toISOString(),
+	updated_at: new Date().toISOString()
 };
 
 if (userCalendarPreferencesError) {
-  console.warn("No calendar preferences found for user, using defaults:", {
-    userId,
-    errorCode: userCalendarPreferencesError.code,
-  });
+	console.warn('No calendar preferences found for user, using defaults:', {
+		userId,
+		errorCode: userCalendarPreferencesError.code
+	});
 }
 
 // Then replace ALL references to userCalendarPreferences with preferences

@@ -4,16 +4,8 @@ researcher: Claude
 git_commit: 44d7af61963ba9e55483b94e95a3b59e6b2d3181
 branch: main
 repository: build_os
-topic: "Google Calendars for Projects - Implementation Requirements"
-tags:
-  [
-    research,
-    codebase,
-    calendar-integration,
-    google-calendar,
-    projects,
-    database-schema,
-  ]
+topic: 'Google Calendars for Projects - Implementation Requirements'
+tags: [research, codebase, calendar-integration, google-calendar, projects, database-schema]
 status: complete
 last_updated: 2025-01-08
 last_updated_by: Claude
@@ -95,45 +87,42 @@ The current service (`src/lib/services/calendar-service.ts`) lacks calendar mana
 ```typescript
 // Not implemented in current service:
 -calendars.insert() - // Create new calendars
-  calendars.patch() - // Update calendar properties
-  calendars.delete() - // Delete calendars
-  calendars.list() - // List user's calendars
-  acl.insert() - // Share calendars
-  acl.list() - // List calendar permissions
-  acl.delete(); // Revoke calendar access
+	calendars.patch() - // Update calendar properties
+	calendars.delete() - // Delete calendars
+	calendars.list() - // List user's calendars
+	acl.insert() - // Share calendars
+	acl.list() - // List calendar permissions
+	acl.delete(); // Revoke calendar access
 ```
 
 #### Required New Methods
 
 ```typescript
 class CalendarService {
-  // Calendar CRUD operations
-  async createProjectCalendar(
-    userId: string,
-    projectId: string,
-    options: {
-      name: string;
-      description?: string;
-      colorId?: string;
-      timeZone?: string;
-    },
-  ): Promise<ProjectCalendarResult>;
+	// Calendar CRUD operations
+	async createProjectCalendar(
+		userId: string,
+		projectId: string,
+		options: {
+			name: string;
+			description?: string;
+			colorId?: string;
+			timeZone?: string;
+		}
+	): Promise<ProjectCalendarResult>;
 
-  async updateCalendarProperties(
-    userId: string,
-    calendarId: string,
-    updates: {
-      summary?: string;
-      colorId?: string;
-    },
-  ): Promise<UpdateResult>;
+	async updateCalendarProperties(
+		userId: string,
+		calendarId: string,
+		updates: {
+			summary?: string;
+			colorId?: string;
+		}
+	): Promise<UpdateResult>;
 
-  async deleteProjectCalendar(
-    userId: string,
-    calendarId: string,
-  ): Promise<void>;
+	async deleteProjectCalendar(userId: string, calendarId: string): Promise<void>;
 
-  async listUserCalendars(userId: string): Promise<CalendarList>;
+	async listUserCalendars(userId: string): Promise<CalendarList>;
 }
 ```
 
@@ -148,21 +137,21 @@ class CalendarService {
 #### Recommended Implementation
 
 1. **Add Calendar Settings Button** in header actions:
-   - Desktop: New button with Calendar icon
-   - Mobile: Add to dropdown menu
+    - Desktop: New button with Calendar icon
+    - Mobile: Add to dropdown menu
 
 2. **Create ProjectCalendarSettingsModal.svelte**:
-   - Calendar connection status
-   - Color picker (Google's 11 preset colors)
-   - Calendar name customization
-   - Sync enable/disable toggle
-   - Calendar sharing settings
+    - Calendar connection status
+    - Color picker (Google's 11 preset colors)
+    - Calendar name customization
+    - Sync enable/disable toggle
+    - Calendar sharing settings
 
 3. **UI Components Available**:
-   - `Modal` system with mobile responsiveness
-   - `FormField`, `Button`, `Select` for forms
-   - `RadioGroup` for color selection
-   - Gradient backgrounds for visual sections
+    - `Modal` system with mobile responsiveness
+    - `FormField`, `Button`, `Select` for forms
+    - `RadioGroup` for color selection
+    - Gradient backgrounds for visual sections
 
 ### Service Layer Updates
 
@@ -173,8 +162,8 @@ class CalendarService {
 ```typescript
 // All tasks go to primary calendar
 await calendarService.scheduleTask(userId, {
-  task_id,
-  calendar_id: "primary", // Hardcoded
+	task_id,
+	calendar_id: 'primary' // Hardcoded
 });
 ```
 
@@ -184,8 +173,8 @@ await calendarService.scheduleTask(userId, {
 // Route to project-specific calendar
 const projectCalendar = await getProjectCalendar(task.project_id);
 await calendarService.scheduleTask(userId, {
-  task_id,
-  calendar_id: projectCalendar?.calendar_id || "primary",
+	task_id,
+	calendar_id: projectCalendar?.calendar_id || 'primary'
 });
 ```
 
@@ -193,16 +182,10 @@ await calendarService.scheduleTask(userId, {
 
 ```typescript
 class ProjectCalendarService {
-  async createProjectCalendar(
-    projectId: string,
-    userId: string,
-  ): Promise<string>;
-  async getProjectCalendar(projectId: string): Promise<ProjectCalendar | null>;
-  async updateCalendarSettings(
-    projectId: string,
-    settings: CalendarSettings,
-  ): Promise<void>;
-  async deleteProjectCalendar(projectId: string): Promise<void>;
+	async createProjectCalendar(projectId: string, userId: string): Promise<string>;
+	async getProjectCalendar(projectId: string): Promise<ProjectCalendar | null>;
+	async updateCalendarSettings(projectId: string, settings: CalendarSettings): Promise<void>;
+	async deleteProjectCalendar(projectId: string): Promise<void>;
 }
 ```
 
@@ -211,17 +194,17 @@ class ProjectCalendarService {
 #### New Endpoints Needed
 
 1. **`/api/projects/[id]/calendar/`**
-   - POST: Create project calendar
-   - GET: Get calendar details
-   - PUT: Update calendar settings
-   - DELETE: Remove calendar
+    - POST: Create project calendar
+    - GET: Get calendar details
+    - PUT: Update calendar settings
+    - DELETE: Remove calendar
 
 2. **`/api/projects/[id]/calendar/settings/`**
-   - GET/PUT: Manage calendar preferences
+    - GET/PUT: Manage calendar preferences
 
 3. **`/api/projects/[id]/calendar/share/`**
-   - POST: Share with team members
-   - DELETE: Revoke access
+    - POST: Share with team members
+    - DELETE: Revoke access
 
 #### Existing Endpoints to Modify
 
@@ -248,17 +231,17 @@ Google provides 11 preset colors (from design doc):
 
 ```typescript
 const GOOGLE_CALENDAR_COLORS = {
-  "1": { name: "Lavender", hex: "#7986cb" },
-  "2": { name: "Sage", hex: "#33b679" },
-  "3": { name: "Grape", hex: "#8e24aa" },
-  "4": { name: "Flamingo", hex: "#e67c73" },
-  "5": { name: "Banana", hex: "#f6bf26" },
-  "6": { name: "Tangerine", hex: "#f4511e" },
-  "7": { name: "Peacock", hex: "#039be5" },
-  "8": { name: "Graphite", hex: "#616161" },
-  "9": { name: "Blueberry", hex: "#3f51b5" },
-  "10": { name: "Basil", hex: "#0b8043" },
-  "11": { name: "Tomato", hex: "#d50000" },
+	'1': { name: 'Lavender', hex: '#7986cb' },
+	'2': { name: 'Sage', hex: '#33b679' },
+	'3': { name: 'Grape', hex: '#8e24aa' },
+	'4': { name: 'Flamingo', hex: '#e67c73' },
+	'5': { name: 'Banana', hex: '#f6bf26' },
+	'6': { name: 'Tangerine', hex: '#f4511e' },
+	'7': { name: 'Peacock', hex: '#039be5' },
+	'8': { name: 'Graphite', hex: '#616161' },
+	'9': { name: 'Blueberry', hex: '#3f51b5' },
+	'10': { name: 'Basil', hex: '#0b8043' },
+	'11': { name: 'Tomato', hex: '#d50000' }
 };
 ```
 

@@ -31,15 +31,15 @@ Successfully implemented a modal-based daily brief viewer with URL synchronizati
 
 ```typescript
 let {
-  isOpen = false,
-  brief = null,
-  briefDate = null,
-  onClose,
+	isOpen = false,
+	brief = null,
+	briefDate = null,
+	onClose
 }: {
-  isOpen?: boolean;
-  brief?: DailyBrief | null;
-  briefDate?: string | null;
-  onClose: () => void;
+	isOpen?: boolean;
+	brief?: DailyBrief | null;
+	briefDate?: string | null;
+	onClose: () => void;
 } = $props();
 
 let fetchedBrief = $state<DailyBrief | null>(null);
@@ -48,9 +48,9 @@ let error = $state<string | null>(null);
 let displayBrief = $derived(brief || fetchedBrief);
 
 $effect(() => {
-  if (isOpen && briefDate && !brief) {
-    loadBriefByDate(briefDate);
-  }
+	if (isOpen && briefDate && !brief) {
+		loadBriefByDate(briefDate);
+	}
 });
 ```
 
@@ -71,12 +71,12 @@ $effect(() => {
 const dispatch = createEventDispatcher();
 
 function handleViewBrief() {
-  if (displayDailyBrief) {
-    dispatch("viewBrief", {
-      briefId: displayDailyBrief.id,
-      briefDate: displayDailyBrief.brief_date,
-    });
-  }
+	if (displayDailyBrief) {
+		dispatch('viewBrief', {
+			briefId: displayDailyBrief.id,
+			briefDate: displayDailyBrief.brief_date
+		});
+	}
 }
 ```
 
@@ -98,30 +98,30 @@ function handleViewBrief() {
 ```typescript
 // URL synchronization
 function updateBriefUrl(briefDate: string | null) {
-  if (!browser) return;
-  const url = new URL(window.location.href);
-  if (briefDate) {
-    url.searchParams.set("briefDate", briefDate);
-  } else {
-    url.searchParams.delete("briefDate");
-  }
-  window.history.pushState({}, "", url);
+	if (!browser) return;
+	const url = new URL(window.location.href);
+	if (briefDate) {
+		url.searchParams.set('briefDate', briefDate);
+	} else {
+		url.searchParams.delete('briefDate');
+	}
+	window.history.pushState({}, '', url);
 }
 
 // Auto-open from URL
 $effect(() => {
-  if (!browser) return;
-  const urlParams = new URLSearchParams($page.url.search);
-  const briefDateParam = urlParams.get("briefDate");
+	if (!browser) return;
+	const urlParams = new URLSearchParams($page.url.search);
+	const briefDateParam = urlParams.get('briefDate');
 
-  if (briefDateParam && !briefModalOpen) {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
-      loadDailyBriefModal().then(() => {
-        selectedBriefDate = briefDateParam;
-        briefModalOpen = true;
-      });
-    }
-  }
+	if (briefDateParam && !briefModalOpen) {
+		if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
+			loadDailyBriefModal().then(() => {
+				selectedBriefDate = briefDateParam;
+				briefModalOpen = true;
+			});
+		}
+	}
 });
 ```
 
@@ -140,10 +140,10 @@ $effect(() => {
 const dispatch = createEventDispatcher();
 
 function selectBriefDate(briefDate: string) {
-  dispatch("viewBrief", {
-    briefId: null,
-    briefDate: briefDate,
-  });
+	dispatch('viewBrief', {
+		briefId: null,
+		briefDate: briefDate
+	});
 }
 ```
 
@@ -154,19 +154,19 @@ function selectBriefDate(briefDate: string) {
 Updated all email links from `/briefs/${brief.id}` to `/projects?briefDate=${brief.brief_date}`:
 
 1. **Email Sender** (`/apps/worker/src/lib/services/email-sender.ts`)
-   - Updated fallback analysis link
-   - Updated HTML email footer link
-   - Updated plain text email footer link
+    - Updated fallback analysis link
+    - Updated HTML email footer link
+    - Updated plain text email footer link
 
 2. **Tests** (`/apps/worker/tests/email-sender.test.ts`)
-   - Updated test expectations to match new URL format
+    - Updated test expectations to match new URL format
 
 3. **Documentation** (`/apps/worker/README.md`)
-   - Updated realtime notification example
+    - Updated realtime notification example
 
 4. **Webhook Specs**
-   - `/apps/worker/src/routes/webhooks/daily-brief-email/+server.ts.spec`
-   - `/apps/web/src/routes/webhooks/daily-brief-email/+server.ts.spec`
+    - `/apps/worker/src/routes/webhooks/daily-brief-email/+server.ts.spec`
+    - `/apps/web/src/routes/webhooks/daily-brief-email/+server.ts.spec`
 
 ## URL Format
 
@@ -292,20 +292,20 @@ All components updated to use proper Svelte 5 runes syntax:
 Potential improvements for future iterations:
 
 1. **Additional Query Params:**
-   - `?briefDate=2025-10-21&project=project-slug` - Open specific project brief
-   - `?briefDate=2025-10-21&scroll=priorities` - Scroll to section
+    - `?briefDate=2025-10-21&project=project-slug` - Open specific project brief
+    - `?briefDate=2025-10-21&scroll=priorities` - Scroll to section
 
 2. **URL Sharing:**
-   - Add "Share" button in modal to copy URL
-   - Social sharing integration
+    - Add "Share" button in modal to copy URL
+    - Social sharing integration
 
 3. **Date Navigation:**
-   - Previous/Next day buttons in modal
-   - Date picker for quick navigation
+    - Previous/Next day buttons in modal
+    - Date picker for quick navigation
 
 4. **History Management:**
-   - List of recently viewed briefs
-   - Quick access to previous briefs
+    - List of recently viewed briefs
+    - Quick access to previous briefs
 
 ## Benefits
 

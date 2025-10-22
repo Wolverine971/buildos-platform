@@ -63,9 +63,9 @@ _Research Date: September 17, 2025_
 
 - **Exits**: Azibo (2025), multiple acquisitions
 - **Notable Investments**:
-  - Farther, VetraFi (fintech)
-  - Reveal, Dunedain, Stitch3D (defense tech)
-  - Fellow Products, Maker Wine, Luma AI (consumer)
+    - Farther, VetraFi (fintech)
+    - Reveal, Dunedain, Stitch3D (defense tech)
+    - Fellow Products, Maker Wine, Luma AI (consumer)
 - **Historical Wins** (pre-Context): 1 unicorn, 2 IPOs, multiple acquisitions
 
 ### Team Composition
@@ -191,31 +191,31 @@ _Research Date: September 17, 2025_
 ### Key Positioning Elements
 
 1. **Problem Frame**:
-   - "Most entrepreneurs fail not from bad ideas, but from poor execution and lack of systems"
-   - Veterans succeed because they understand systematic operations
+    - "Most entrepreneurs fail not from bad ideas, but from poor execution and lack of systems"
+    - Veterans succeed because they understand systematic operations
 
 2. **Solution Position**:
-   - "BuildOS is the business operating system that turns entrepreneurial chaos into military-grade clarity"
-   - "We democratize the operational advantages that military training provides"
+    - "BuildOS is the business operating system that turns entrepreneurial chaos into military-grade clarity"
+    - "We democratize the operational advantages that military training provides"
 
 3. **Market Opportunity**:
-   - Growing solopreneur economy
-   - "Building in public" movement
-   - $200B+ productivity market
+    - Growing solopreneur economy
+    - "Building in public" movement
+    - $200B+ productivity market
 
 4. **Differentiation**:
-   - Not just another AI tool - complete business operating system
-   - Designed for ambitious solo entrepreneurs and small teams
-   - Grows from individual to team as business scales
+    - Not just another AI tool - complete business operating system
+    - Designed for ambitious solo entrepreneurs and small teams
+    - Grows from individual to team as business scales
 
 5. **Traction Points**:
-   - Time savings metrics (e.g., "4 hours to 15 minutes")
-   - User testimonials about improved execution
-   - Growth metrics and retention
+    - Time savings metrics (e.g., "4 hours to 15 minutes")
+    - User testimonials about improved execution
+    - Growth metrics and retention
 
 6. **Vision**:
-   - "The operating system for the next generation of disciplined entrepreneurs"
-   - "Making systematic business building accessible to all founders"
+    - "The operating system for the next generation of disciplined entrepreneurs"
+    - "Making systematic business building accessible to all founders"
 
 ### Tactical Recommendations
 

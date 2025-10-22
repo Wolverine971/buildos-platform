@@ -5,17 +5,17 @@ author: Claude Code
 status: completed
 priority: high
 tags:
-  - audit
-  - timeout
-  - performance
-  - reliability
-  - infrastructure
+    - audit
+    - timeout
+    - performance
+    - reliability
+    - infrastructure
 related:
-  - Vercel configuration
-  - Worker job processing
-  - LLM service integration
-  - Database query optimization
-  - SSE streaming
+    - Vercel configuration
+    - Worker job processing
+    - LLM service integration
+    - Database query optimization
+    - SSE streaming
 ---
 
 # Timeout and Deadline Management Audit
@@ -72,51 +72,51 @@ This audit examines timeout handling and deadline management across the BuildOS 
 **At-Risk Endpoints:**
 
 1. **`/api/braindumps/generate`** (POST) - **HIGH RISK**
-   - **File:** `/apps/web/src/routes/api/braindumps/generate/+server.ts`
-   - **Issue:** Synchronous LLM processing can exceed 60s
-   - **Risk:** Silent timeout failures, incomplete operations
-   - **Evidence:**
-     ```typescript
-     // Line 211: No timeout protection
-     parseResult = await processor.processBrainDump({
-       brainDump: text,
-       userId: user.id,
-       // ... processing can take 60+ seconds for complex brain dumps
-     });
-     ```
+    - **File:** `/apps/web/src/routes/api/braindumps/generate/+server.ts`
+    - **Issue:** Synchronous LLM processing can exceed 60s
+    - **Risk:** Silent timeout failures, incomplete operations
+    - **Evidence:**
+        ```typescript
+        // Line 211: No timeout protection
+        parseResult = await processor.processBrainDump({
+        	brainDump: text,
+        	userId: user.id
+        	// ... processing can take 60+ seconds for complex brain dumps
+        });
+        ```
 
 2. **`/api/transcribe`** (POST) - **MEDIUM RISK**
-   - **File:** `/apps/web/src/routes/api/transcribe/+server.ts`
-   - **Issue:** OpenAI Whisper API can be slow for long audio
-   - **Risk:** Timeout on large audio files
-   - **Evidence:**
-     ```typescript
-     // Line 112: No timeout on OpenAI API call
-     const transcription = await openai.audio.transcriptions.create({
-       model: "whisper-1",
-       file: whisperFile,
-       // No timeout specified
-     });
-     ```
+    - **File:** `/apps/web/src/routes/api/transcribe/+server.ts`
+    - **Issue:** OpenAI Whisper API can be slow for long audio
+    - **Risk:** Timeout on large audio files
+    - **Evidence:**
+        ```typescript
+        // Line 112: No timeout on OpenAI API call
+        const transcription = await openai.audio.transcriptions.create({
+        	model: 'whisper-1',
+        	file: whisperFile
+        	// No timeout specified
+        });
+        ```
 
 3. **`/api/dashboard/bottom-sections`** (GET) - **LOW RISK (Mitigated)**
-   - **File:** `/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts`
-   - **Issue:** Multiple parallel database queries
-   - **Mitigation:** ✅ Has `Promise.race` with timeouts (3-5s per query)
-   - **Evidence:**
-     ```typescript
-     // Line 142: Good timeout implementation
-     Promise.race([
-       supabase.from('brain_dumps').select(...),
-       createTimeoutPromise(5000)
-     ])
-     ```
+    - **File:** `/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts`
+    - **Issue:** Multiple parallel database queries
+    - **Mitigation:** ✅ Has `Promise.race` with timeouts (3-5s per query)
+    - **Evidence:**
+        ```typescript
+        // Line 142: Good timeout implementation
+        Promise.race([
+          supabase.from('brain_dumps').select(...),
+          createTimeoutPromise(5000)
+        ])
+        ```
 
 4. **`/api/daily-briefs/generate`** (POST) - **MEDIUM RISK**
-   - **File:** `/apps/web/src/routes/api/daily-briefs/generate/+server.ts`
-   - **Issue:** Synchronous brief generation can be slow
-   - **Mitigation:** ⚠️ Has `background` mode but default is synchronous
-   - **Risk:** Users who don't use background mode can timeout
+    - **File:** `/apps/web/src/routes/api/daily-briefs/generate/+server.ts`
+    - **Issue:** Synchronous brief generation can be slow
+    - **Mitigation:** ⚠️ Has `background` mode but default is synchronous
+    - **Risk:** Users who don't use background mode can timeout
 
 #### Recommendations
 
@@ -124,58 +124,58 @@ This audit examines timeout handling and deadline management across the BuildOS 
 
 1. **Add route-specific timeout configuration:**
 
-   ```typescript
-   // In each long-running route
-   export const config = {
-     maxDuration: 60, // Explicitly set to platform limit
-   };
-   ```
+    ```typescript
+    // In each long-running route
+    export const config = {
+    	maxDuration: 60 // Explicitly set to platform limit
+    };
+    ```
 
 2. **Convert brain dump to streaming-only:**
 
-   ```typescript
-   // Remove synchronous processing from /api/braindumps/generate
-   // Force all requests to use /api/braindumps/stream (SSE)
-   // This avoids Vercel function timeout entirely
-   ```
+    ```typescript
+    // Remove synchronous processing from /api/braindumps/generate
+    // Force all requests to use /api/braindumps/stream (SSE)
+    // This avoids Vercel function timeout entirely
+    ```
 
 3. **Add timeout wrapper for OpenAI Whisper:**
-   ```typescript
-   const transcription = await Promise.race([
-     openai.audio.transcriptions.create({...}),
-     new Promise((_, reject) =>
-       setTimeout(() => reject(new Error('Transcription timeout')), 55000)
-     )
-   ]);
-   ```
+    ```typescript
+    const transcription = await Promise.race([
+      openai.audio.transcriptions.create({...}),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Transcription timeout')), 55000)
+      )
+    ]);
+    ```
 
 **Priority 2 - Important:**
 
 4. **Add explicit timeout monitoring:**
 
-   ```typescript
-   // Middleware to log near-timeout warnings
-   const VERCEL_TIMEOUT = 60000;
-   const WARNING_THRESHOLD = 50000; // 50s
+    ```typescript
+    // Middleware to log near-timeout warnings
+    const VERCEL_TIMEOUT = 60000;
+    const WARNING_THRESHOLD = 50000; // 50s
 
-   if (Date.now() - startTime > WARNING_THRESHOLD) {
-     console.warn(`Request approaching timeout: ${endpoint}`);
-   }
-   ```
+    if (Date.now() - startTime > WARNING_THRESHOLD) {
+    	console.warn(`Request approaching timeout: ${endpoint}`);
+    }
+    ```
 
 5. **Document timeout limits in API responses:**
-   ```typescript
-   // Add to error responses
-   if (isTimeout) {
-     return ApiResponse.timeout(
-       "Operation timed out. For large operations, use streaming or background mode.",
-       {
-         maxDuration: 60,
-         suggestion: "Use /api/braindumps/stream for SSE streaming",
-       },
-     );
-   }
-   ```
+    ```typescript
+    // Add to error responses
+    if (isTimeout) {
+    	return ApiResponse.timeout(
+    		'Operation timed out. For large operations, use streaming or background mode.',
+    		{
+    			maxDuration: 60,
+    			suggestion: 'Use /api/braindumps/stream for SSE streaming'
+    		}
+    	);
+    }
+    ```
 
 ---
 
@@ -194,9 +194,9 @@ This audit examines timeout handling and deadline management across the BuildOS 
 
 ```typescript
 // Line 115: Good default
-workerTimeout: (parseEnvInt("QUEUE_WORKER_TIMEOUT", 600000), // 10 minutes default
-  // Line 84: Minimum validation
-  (validated.workerTimeout = Math.max(10000, validated.workerTimeout)));
+workerTimeout: (parseEnvInt('QUEUE_WORKER_TIMEOUT', 600000), // 10 minutes default
+	// Line 84: Minimum validation
+	(validated.workerTimeout = Math.max(10000, validated.workerTimeout)));
 ```
 
 **Job-Specific Timeouts:**
@@ -217,26 +217,26 @@ workerTimeout: (parseEnvInt("QUEUE_WORKER_TIMEOUT", 600000), // 10 minutes defau
 
 1. **Add per-job-type timeout configuration:**
 
-   ```typescript
-   // Different timeouts for different job types
-   const JOB_TIMEOUTS = {
-     generate_daily_brief: 600000, // 10 min
-     generate_phases: 300000, // 5 min
-     send_email: 30000, // 30s
-     onboarding_analysis: 180000, // 3 min
-   };
-   ```
+    ```typescript
+    // Different timeouts for different job types
+    const JOB_TIMEOUTS = {
+    	generate_daily_brief: 600000, // 10 min
+    	generate_phases: 300000, // 5 min
+    	send_email: 30000, // 30s
+    	onboarding_analysis: 180000 // 3 min
+    };
+    ```
 
 2. **Add timeout warnings before failure:**
-   ```typescript
-   // Warn at 80% of timeout
-   if (elapsedTime > timeout * 0.8) {
-     await updateJobProgress({
-       status: "warning",
-       message: "Job approaching timeout",
-     });
-   }
-   ```
+    ```typescript
+    // Warn at 80% of timeout
+    if (elapsedTime > timeout * 0.8) {
+    	await updateJobProgress({
+    		status: 'warning',
+    		message: 'Job approaching timeout'
+    	});
+    }
+    ```
 
 ---
 
@@ -255,10 +255,10 @@ workerTimeout: (parseEnvInt("QUEUE_WORKER_TIMEOUT", 600000), // 10 minutes defau
 ```typescript
 // Line 571: Good timeout implementation
 const response = await fetch(this.apiUrl, {
-  method: "POST",
-  headers,
-  body: JSON.stringify(body),
-  signal: AbortSignal.timeout(120000), // 2 minute timeout
+	method: 'POST',
+	headers,
+	body: JSON.stringify(body),
+	signal: AbortSignal.timeout(120000) // 2 minute timeout
 });
 ```
 
@@ -266,8 +266,8 @@ const response = await fetch(this.apiUrl, {
 
 ```typescript
 // Line 600: Proper error handling
-if (error instanceof Error && error.name === "AbortError") {
-  throw new Error(`Request timeout for model ${params.model}`);
+if (error instanceof Error && error.name === 'AbortError') {
+	throw new Error(`Request timeout for model ${params.model}`);
 }
 ```
 
@@ -292,35 +292,32 @@ if (error instanceof Error && error.name === "AbortError") {
 
 1. **Add timeout to brain dump processing:**
 
-   ```typescript
-   const BRAIN_DUMP_TIMEOUT = 55000; // 55s (5s buffer for Vercel)
+    ```typescript
+    const BRAIN_DUMP_TIMEOUT = 55000; // 55s (5s buffer for Vercel)
 
-   const parseResult = await Promise.race([
-     processor.processBrainDump({...}),
-     new Promise((_, reject) =>
-       setTimeout(() => reject(new Error('Brain dump processing timeout')),
-         BRAIN_DUMP_TIMEOUT)
-     )
-   ]);
-   ```
+    const parseResult = await Promise.race([
+      processor.processBrainDump({...}),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Brain dump processing timeout')),
+          BRAIN_DUMP_TIMEOUT)
+      )
+    ]);
+    ```
 
 2. **Add timeout to all external API calls:**
 
-   ```typescript
-   // Enforce timeout on all fetch calls
-   const safeFetch = (url, options) => {
-     const controller = new AbortController();
-     const timeout = setTimeout(
-       () => controller.abort(),
-       options.timeout || 30000,
-     );
+    ```typescript
+    // Enforce timeout on all fetch calls
+    const safeFetch = (url, options) => {
+    	const controller = new AbortController();
+    	const timeout = setTimeout(() => controller.abort(), options.timeout || 30000);
 
-     return fetch(url, {
-       ...options,
-       signal: controller.signal,
-     }).finally(() => clearTimeout(timeout));
-   };
-   ```
+    	return fetch(url, {
+    		...options,
+    		signal: controller.signal
+    	}).finally(() => clearTimeout(timeout));
+    };
+    ```
 
 ---
 
@@ -331,34 +328,34 @@ if (error instanceof Error && error.name === "AbortError") {
 **Timeout Protection Found:**
 
 1. **Dashboard queries** - GOOD ✅
-   - **File:** `/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts`
-   - **Timeout:** 3-5s per query using `Promise.race`
-   - **Evidence:**
+    - **File:** `/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts`
+    - **Timeout:** 3-5s per query using `Promise.race`
+    - **Evidence:**
 
-     ```typescript
-     // Line 136-243: Timeout wrapper
-     const createTimeoutPromise = (ms: number) =>
-       new Promise((_, reject) =>
-         setTimeout(() => reject(new Error('Query timeout')), ms)
-       );
+        ```typescript
+        // Line 136-243: Timeout wrapper
+        const createTimeoutPromise = (ms: number) =>
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Query timeout')), ms)
+          );
 
-     await Promise.race([
-       supabase.from('brain_dumps').select(...),
-       createTimeoutPromise(5000)
-     ])
-     ```
+        await Promise.race([
+          supabase.from('brain_dumps').select(...),
+          createTimeoutPromise(5000)
+        ])
+        ```
 
 2. **Worker statistics** - GOOD ✅
-   - **File:** `/apps/worker/src/index.ts`
-   - **Timeout:** 5s for stats collection
-   - **Evidence:**
-     ```typescript
-     // Line 109: Stats timeout
-     const timeoutPromise = new Promise((_, reject) =>
-       setTimeout(() => reject(new Error("Stats timeout")), 5000),
-     );
-     const stats = await Promise.race([statsPromise, timeoutPromise]);
-     ```
+    - **File:** `/apps/worker/src/index.ts`
+    - **Timeout:** 5s for stats collection
+    - **Evidence:**
+        ```typescript
+        // Line 109: Stats timeout
+        const timeoutPromise = new Promise((_, reject) =>
+        	setTimeout(() => reject(new Error('Stats timeout')), 5000)
+        );
+        const stats = await Promise.race([statsPromise, timeoutPromise]);
+        ```
 
 **Missing Timeout Protection:**
 
@@ -384,58 +381,58 @@ Supabase client **may** have default timeouts, but not explicitly configured:
 
 1. **Add global Supabase client timeout:**
 
-   ```typescript
-   // In Supabase client initialization
-   const supabase = createClient(url, key, {
-     db: {
-       timeout: 30000, // 30 second default query timeout
-     },
-     global: {
-       fetch: (url, options) => {
-         const controller = new AbortController();
-         const timeout = setTimeout(() => controller.abort(), 30000);
-         return fetch(url, {
-           ...options,
-           signal: controller.signal,
-         }).finally(() => clearTimeout(timeout));
-       },
-     },
-   });
-   ```
+    ```typescript
+    // In Supabase client initialization
+    const supabase = createClient(url, key, {
+    	db: {
+    		timeout: 30000 // 30 second default query timeout
+    	},
+    	global: {
+    		fetch: (url, options) => {
+    			const controller = new AbortController();
+    			const timeout = setTimeout(() => controller.abort(), 30000);
+    			return fetch(url, {
+    				...options,
+    				signal: controller.signal
+    			}).finally(() => clearTimeout(timeout));
+    		}
+    	}
+    });
+    ```
 
 2. **Add query-specific timeouts for complex queries:**
 
-   ```typescript
-   // For complex joins or aggregations
-   const complexQuery = await Promise.race([
-     supabase
-       .from("brain_dumps")
-       .select(
-         `
-         *,
-         brain_dump_links(*),
-         projects(*)
-       `,
-       )
-       .limit(50),
-     new Promise((_, reject) =>
-       setTimeout(() => reject(new Error("Complex query timeout")), 10000),
-     ),
-   ]);
-   ```
+    ```typescript
+    // For complex joins or aggregations
+    const complexQuery = await Promise.race([
+    	supabase
+    		.from('brain_dumps')
+    		.select(
+    			`
+          *,
+          brain_dump_links(*),
+          projects(*)
+        `
+    		)
+    		.limit(50),
+    	new Promise((_, reject) =>
+    		setTimeout(() => reject(new Error('Complex query timeout')), 10000)
+    	)
+    ]);
+    ```
 
 3. **Add timeout monitoring:**
 
-   ```typescript
-   // Log slow queries
-   const queryStart = Date.now();
-   const result = await supabase.from("table").select();
-   const duration = Date.now() - queryStart;
+    ```typescript
+    // Log slow queries
+    const queryStart = Date.now();
+    const result = await supabase.from('table').select();
+    const duration = Date.now() - queryStart;
 
-   if (duration > 1000) {
-     console.warn(`Slow query: ${duration}ms`, { table, query });
-   }
-   ```
+    if (duration > 1000) {
+    	console.warn(`Slow query: ${duration}ms`, { table, query });
+    }
+    ```
 
 ---
 
@@ -472,21 +469,21 @@ const timeoutId = setTimeout(() => {
 **Priority 4 - Low Priority:**
 
 1. **Add webhook retry with backoff:**
-   ```typescript
-   // Retry failed webhooks with exponential backoff
-   const retryWebhook = async (attempt = 0) => {
-     try {
-       return await sendWebhook();
-     } catch (error) {
-       if (attempt < 3) {
-         const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-         await sleep(delay);
-         return retryWebhook(attempt + 1);
-       }
-       throw error;
-     }
-   };
-   ```
+    ```typescript
+    // Retry failed webhooks with exponential backoff
+    const retryWebhook = async (attempt = 0) => {
+    	try {
+    		return await sendWebhook();
+    	} catch (error) {
+    		if (attempt < 3) {
+    			const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+    			await sleep(delay);
+    			return retryWebhook(attempt + 1);
+    		}
+    		throw error;
+    	}
+    };
+    ```
 
 ---
 
@@ -543,31 +540,31 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 
 1. **Add reconnection logic for SSE:**
 
-   ```typescript
-   // Auto-reconnect on timeout
-   const connectSSE = async (retries = 3) => {
-     try {
-       await SSEProcessor.processStream(response, callbacks, {
-         timeout: 60000,
-       });
-     } catch (error) {
-       if (retries > 0 && error.message.includes("timeout")) {
-         console.log(`SSE timeout, reconnecting... (${retries} retries left)`);
-         await sleep(1000);
-         return connectSSE(retries - 1);
-       }
-       throw error;
-     }
-   };
-   ```
+    ```typescript
+    // Auto-reconnect on timeout
+    const connectSSE = async (retries = 3) => {
+    	try {
+    		await SSEProcessor.processStream(response, callbacks, {
+    			timeout: 60000
+    		});
+    	} catch (error) {
+    		if (retries > 0 && error.message.includes('timeout')) {
+    			console.log(`SSE timeout, reconnecting... (${retries} retries left)`);
+    			await sleep(1000);
+    			return connectSSE(retries - 1);
+    		}
+    		throw error;
+    	}
+    };
+    ```
 
 2. **Add heartbeat/keepalive:**
-   ```typescript
-   // Send keepalive every 30s to prevent timeout
-   const keepaliveInterval = setInterval(() => {
-     writer.write({ type: "keepalive", timestamp: Date.now() });
-   }, 30000);
-   ```
+    ```typescript
+    // Send keepalive every 30s to prevent timeout
+    const keepaliveInterval = setInterval(() => {
+    	writer.write({ type: 'keepalive', timestamp: Date.now() });
+    }, 30000);
+    ```
 
 ---
 
@@ -578,47 +575,47 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 **Good Implementations:**
 
 1. **Worker Queue** - EXCELLENT ✅
-   - **File:** `/apps/worker/src/config/queueConfig.ts`
-   - **Max Retries:** Configurable (default: 3)
-   - **Backoff:** Exponential with configurable base
-   - **Evidence:**
+    - **File:** `/apps/worker/src/config/queueConfig.ts`
+    - **Max Retries:** Configurable (default: 3)
+    - **Backoff:** Exponential with configurable base
+    - **Evidence:**
 
-     ```typescript
-     // Line 100: Max retries
-     maxRetries: parseEnvInt("QUEUE_MAX_RETRIES", 3),
+        ```typescript
+        // Line 100: Max retries
+        maxRetries: parseEnvInt("QUEUE_MAX_RETRIES", 3),
 
-     // Line 101: Backoff base
-     retryBackoffBase: parseEnvInt("QUEUE_RETRY_BACKOFF_BASE", 1000),
+        // Line 101: Backoff base
+        retryBackoffBase: parseEnvInt("QUEUE_RETRY_BACKOFF_BASE", 1000),
 
-     // Line 79: Minimum enforcement
-     validated.retryBackoffBase = Math.max(100, validated.retryBackoffBase);
-     ```
+        // Line 79: Minimum enforcement
+        validated.retryBackoffBase = Math.max(100, validated.retryBackoffBase);
+        ```
 
 2. **Brain Dump Processing** - GOOD ✅
-   - **File:** `/apps/web/src/routes/api/braindumps/generate/+server.ts`
-   - **Max Retries:** 3 (configurable via options)
-   - **Evidence:**
-     ```typescript
-     // Line 220: Retry configuration
-     retryAttempts: options?.retryAttempts || 3;
-     ```
+    - **File:** `/apps/web/src/routes/api/braindumps/generate/+server.ts`
+    - **Max Retries:** 3 (configurable via options)
+    - **Evidence:**
+        ```typescript
+        // Line 220: Retry configuration
+        retryAttempts: options?.retryAttempts || 3;
+        ```
 
 **Missing Backoff Caps:**
 
 1. **Rate Limiter Retry** - NO CAP ⚠️
-   - **File:** `/apps/web/src/lib/utils/rate-limiter.ts`
-   - **Issue:** No maximum retry limit
-   - **Risk:** Infinite retry loops if rate limit never clears
+    - **File:** `/apps/web/src/lib/utils/rate-limiter.ts`
+    - **Issue:** No maximum retry limit
+    - **Risk:** Infinite retry loops if rate limit never clears
 
 2. **Phase Generation Retry** - NO CAP ⚠️
-   - **File:** `/apps/web/src/lib/services/phase-generation/strategies/base-strategy.ts`
-   - **Issue:** Retry logic exists but no explicit cap mentioned
-   - **Risk:** Long retry chains on persistent failures
+    - **File:** `/apps/web/src/lib/services/phase-generation/strategies/base-strategy.ts`
+    - **Issue:** Retry logic exists but no explicit cap mentioned
+    - **Risk:** Long retry chains on persistent failures
 
 3. **Calendar Service Retry** - NO CAP ⚠️
-   - **File:** `/apps/web/src/lib/services/calendar-service.ts`
-   - **Issue:** Retry logic for calendar sync without cap
-   - **Risk:** Infinite retries on OAuth failure
+    - **File:** `/apps/web/src/lib/services/calendar-service.ts`
+    - **Issue:** Retry logic for calendar sync without cap
+    - **Risk:** Infinite retries on OAuth failure
 
 #### Recommendations
 
@@ -626,74 +623,74 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 
 1. **Add max retry cap to all retry implementations:**
 
-   ```typescript
-   const MAX_RETRIES = 5;
-   const MAX_BACKOFF = 60000; // 60 seconds max
+    ```typescript
+    const MAX_RETRIES = 5;
+    const MAX_BACKOFF = 60000; // 60 seconds max
 
-   async function retryWithBackoff(fn, attempt = 0) {
-     try {
-       return await fn();
-     } catch (error) {
-       if (attempt >= MAX_RETRIES) {
-         throw new Error(`Max retries (${MAX_RETRIES}) exceeded`);
-       }
+    async function retryWithBackoff(fn, attempt = 0) {
+    	try {
+    		return await fn();
+    	} catch (error) {
+    		if (attempt >= MAX_RETRIES) {
+    			throw new Error(`Max retries (${MAX_RETRIES}) exceeded`);
+    		}
 
-       const backoff = Math.min(1000 * Math.pow(2, attempt), MAX_BACKOFF);
+    		const backoff = Math.min(1000 * Math.pow(2, attempt), MAX_BACKOFF);
 
-       await sleep(backoff);
-       return retryWithBackoff(fn, attempt + 1);
-     }
-   }
-   ```
+    		await sleep(backoff);
+    		return retryWithBackoff(fn, attempt + 1);
+    	}
+    }
+    ```
 
 2. **Add circuit breaker pattern:**
 
-   ```typescript
-   class CircuitBreaker {
-     private failures = 0;
-     private lastFailure = 0;
-     private readonly threshold = 5;
-     private readonly timeout = 60000;
+    ```typescript
+    class CircuitBreaker {
+    	private failures = 0;
+    	private lastFailure = 0;
+    	private readonly threshold = 5;
+    	private readonly timeout = 60000;
 
-     async execute(fn) {
-       if (this.isOpen()) {
-         throw new Error("Circuit breaker is open");
-       }
+    	async execute(fn) {
+    		if (this.isOpen()) {
+    			throw new Error('Circuit breaker is open');
+    		}
 
-       try {
-         const result = await fn();
-         this.onSuccess();
-         return result;
-       } catch (error) {
-         this.onFailure();
-         throw error;
-       }
-     }
+    		try {
+    			const result = await fn();
+    			this.onSuccess();
+    			return result;
+    		} catch (error) {
+    			this.onFailure();
+    			throw error;
+    		}
+    	}
 
-     isOpen() {
-       if (this.failures >= this.threshold) {
-         if (Date.now() - this.lastFailure < this.timeout) {
-           return true;
-         }
-         this.reset();
-       }
-       return false;
-     }
+    	isOpen() {
+    		if (this.failures >= this.threshold) {
+    			if (Date.now() - this.lastFailure < this.timeout) {
+    				return true;
+    			}
+    			this.reset();
+    		}
+    		return false;
+    	}
 
-     onSuccess() {
-       this.failures = 0;
-     }
+    	onSuccess() {
+    		this.failures = 0;
+    	}
 
-     onFailure() {
-       this.failures++;
-       this.lastFailure = Date.now();
-     }
+    	onFailure() {
+    		this.failures++;
+    		this.lastFailure = Date.now();
+    	}
 
-     reset() {
-       this.failures = 0;
-     }
-   }
-   ```
+    	reset() {
+    		this.failures = 0;
+    	}
+    }
+    ```
 
 ---
 
@@ -704,25 +701,25 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 **Loading State Implementations Found:**
 
 1. **Brain Dump Modal** - EXCELLENT ✅
-   - **File:** `/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte`
-   - **States:** Processing, analyzing, generating, saving
-   - **Feedback:** Real-time progress via SSE
-   - **Evidence:** Multiple `isLoading`, `isProcessing` reactive states
+    - **File:** `/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte`
+    - **States:** Processing, analyzing, generating, saving
+    - **Feedback:** Real-time progress via SSE
+    - **Evidence:** Multiple `isLoading`, `isProcessing` reactive states
 
 2. **Processing Modal** - EXCELLENT ✅
-   - **File:** `/apps/web/src/lib/components/brain-dump/ProcessingModal.svelte`
-   - **Features:** Progress indicators, step-by-step feedback
-   - **Real-time:** SSE connection for live updates
+    - **File:** `/apps/web/src/lib/components/brain-dump/ProcessingModal.svelte`
+    - **Features:** Progress indicators, step-by-step feedback
+    - **Real-time:** SSE connection for live updates
 
 3. **Dual Processing Results** - EXCELLENT ✅
-   - **File:** `/apps/web/src/lib/components/brain-dump/DualProcessingResults.svelte`
-   - **Features:** Stage-by-stage progress display
-   - **Feedback:** Analysis → Context → Tasks flow
+    - **File:** `/apps/web/src/lib/components/brain-dump/DualProcessingResults.svelte`
+    - **Features:** Stage-by-stage progress display
+    - **Feedback:** Analysis → Context → Tasks flow
 
 4. **Daily Brief Modal** - GOOD ✅
-   - **File:** `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte`
-   - **Features:** Loading states, progress tracking
-   - **Real-time:** SSE streaming for brief generation
+    - **File:** `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte`
+    - **Features:** Loading states, progress tracking
+    - **Real-time:** SSE streaming for brief generation
 
 **Common Patterns:**
 
@@ -738,41 +735,41 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 
 1. **Add timeout warnings to user:**
 
-   ```typescript
-   // Show warning when approaching timeout
-   if (elapsedTime > 45000) {
-     // 45s warning for 60s limit
-     showWarning("This is taking longer than usual. Please wait...");
-   }
-   ```
+    ```typescript
+    // Show warning when approaching timeout
+    if (elapsedTime > 45000) {
+    	// 45s warning for 60s limit
+    	showWarning('This is taking longer than usual. Please wait...');
+    }
+    ```
 
 2. **Add estimated time remaining:**
 
-   ```typescript
-   // Calculate ETA based on progress
-   const estimatedTimeRemaining = calculateETA(startTime, progress);
-   showProgress(`Estimated time: ${estimatedTimeRemaining}s`);
-   ```
+    ```typescript
+    // Calculate ETA based on progress
+    const estimatedTimeRemaining = calculateETA(startTime, progress);
+    showProgress(`Estimated time: ${estimatedTimeRemaining}s`);
+    ```
 
 3. **Add "this might take a while" messages:**
 
-   ```typescript
-   // For known slow operations
-   if (contentLength > 10000) {
-     showInfo("Processing large content may take 30-60 seconds");
-   }
-   ```
+    ```typescript
+    // For known slow operations
+    if (contentLength > 10000) {
+    	showInfo('Processing large content may take 30-60 seconds');
+    }
+    ```
 
 4. **Add background job fallback:**
-   ```typescript
-   // Offer background processing if taking too long
-   if (elapsedTime > 30000) {
-     showOption("Continue in background?", () => {
-       switchToBackgroundMode();
-       notifyWhenComplete();
-     });
-   }
-   ```
+    ```typescript
+    // Offer background processing if taking too long
+    if (elapsedTime > 30000) {
+    	showOption('Continue in background?', () => {
+    		switchToBackgroundMode();
+    		notifyWhenComplete();
+    	});
+    }
+    ```
 
 ---
 
@@ -783,56 +780,56 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 **Operations Currently Backgrounded (GOOD):**
 
 1. **Daily Brief Generation** ✅
-   - **Option:** `background: true` mode exists
-   - **File:** `/apps/web/src/routes/api/daily-briefs/generate/+server.ts`
-   - **Evidence:**
-     ```typescript
-     // Line 97: Background mode
-     if (background) {
-       return handleBackgroundGeneration(...);
-     }
-     ```
+    - **Option:** `background: true` mode exists
+    - **File:** `/apps/web/src/routes/api/daily-briefs/generate/+server.ts`
+    - **Evidence:**
+        ```typescript
+        // Line 97: Background mode
+        if (background) {
+          return handleBackgroundGeneration(...);
+        }
+        ```
 
 2. **Email Sending** ✅
-   - **Method:** Non-blocking job queue
-   - **File:** Email jobs queued separately
-   - **Evidence:** Worker handles email jobs asynchronously
+    - **Method:** Non-blocking job queue
+    - **File:** Email jobs queued separately
+    - **Evidence:** Worker handles email jobs asynchronously
 
 3. **Calendar Sync** ✅
-   - **Method:** Background worker jobs
-   - **File:** Calendar events synced via worker
+    - **Method:** Background worker jobs
+    - **File:** Calendar events synced via worker
 
 **Operations That SHOULD Be Backgrounded:**
 
 1. **Brain Dump Processing** - CURRENTLY SYNCHRONOUS ⚠️
-   - **Current:** Synchronous in `/api/braindumps/generate`
-   - **Issue:** Can take 30-60+ seconds
-   - **Risk:** Vercel timeout, poor UX
-   - **Recommendation:** Force all to use streaming or background mode
+    - **Current:** Synchronous in `/api/braindumps/generate`
+    - **Issue:** Can take 30-60+ seconds
+    - **Risk:** Vercel timeout, poor UX
+    - **Recommendation:** Force all to use streaming or background mode
 
-   **Why This Is a Problem:**
+    **Why This Is a Problem:**
 
-   ```typescript
-   // Line 211-223: Synchronous processing
-   parseResult = await processor.processBrainDump({
-     brainDump: text,
-     userId: user.id,
-     selectedProjectId: selectedProjectId,
-     // ... this can take 60+ seconds
-   });
+    ```typescript
+    // Line 211-223: Synchronous processing
+    parseResult = await processor.processBrainDump({
+    	brainDump: text,
+    	userId: user.id,
+    	selectedProjectId: selectedProjectId
+    	// ... this can take 60+ seconds
+    });
 
-   // User is waiting the entire time
-   // If Vercel times out, user sees error
-   ```
+    // User is waiting the entire time
+    // If Vercel times out, user sees error
+    ```
 
 2. **Large Data Exports** - NOT BACKGROUNDED ⚠️
-   - **Issue:** No export functionality found, but if added, should be backgrounded
-   - **Recommendation:** Implement via worker queue with email notification
+    - **Issue:** No export functionality found, but if added, should be backgrounded
+    - **Recommendation:** Implement via worker queue with email notification
 
 3. **Bulk Operations** - PARTIALLY BACKGROUNDED ⚠️
-   - **Example:** Batch task updates
-   - **Issue:** Some bulk operations synchronous
-   - **Recommendation:** Add background option for bulk operations
+    - **Example:** Batch task updates
+    - **Issue:** Some bulk operations synchronous
+    - **Recommendation:** Add background option for bulk operations
 
 #### Recommendations
 
@@ -840,109 +837,104 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 
 1. **Convert brain dump to streaming-only:**
 
-   ```typescript
-   // Remove synchronous mode from /api/braindumps/generate
-   // Redirect all requests to /api/braindumps/stream
+    ```typescript
+    // Remove synchronous mode from /api/braindumps/generate
+    // Redirect all requests to /api/braindumps/stream
 
-   export const POST: RequestHandler = async ({ request, locals }) => {
-     // Deprecation warning
-     console.warn(
-       "Synchronous brain dump endpoint deprecated, use /api/braindumps/stream",
-     );
+    export const POST: RequestHandler = async ({ request, locals }) => {
+    	// Deprecation warning
+    	console.warn('Synchronous brain dump endpoint deprecated, use /api/braindumps/stream');
 
-     // Redirect to streaming endpoint
-     return new Response(null, {
-       status: 307,
-       headers: {
-         Location: "/api/braindumps/stream",
-       },
-     });
-   };
-   ```
+    	// Redirect to streaming endpoint
+    	return new Response(null, {
+    		status: 307,
+    		headers: {
+    			Location: '/api/braindumps/stream'
+    		}
+    	});
+    };
+    ```
 
 2. **Add background mode to all long operations:**
 
-   ```typescript
-   // Standard pattern for long operations
-   interface LongOperationOptions {
-     background?: boolean;
-     notify?: boolean; // Email/push when complete
-     timeout?: number;
-   }
+    ```typescript
+    // Standard pattern for long operations
+    interface LongOperationOptions {
+    	background?: boolean;
+    	notify?: boolean; // Email/push when complete
+    	timeout?: number;
+    }
 
-   async function handleLongOperation(options: LongOperationOptions) {
-     if (options.background) {
-       // Queue job
-       const jobId = await queueBackgroundJob();
+    async function handleLongOperation(options: LongOperationOptions) {
+    	if (options.background) {
+    		// Queue job
+    		const jobId = await queueBackgroundJob();
 
-       // Return immediately
-       return ApiResponse.success({
-         jobId,
-         status: "processing",
-         message: "Processing in background",
-       });
-     }
+    		// Return immediately
+    		return ApiResponse.success({
+    			jobId,
+    			status: 'processing',
+    			message: 'Processing in background'
+    		});
+    	}
 
-     // Synchronous with timeout
-     return Promise.race([
-       performOperation(),
-       timeoutPromise(options.timeout || 55000),
-     ]);
-   }
-   ```
+    	// Synchronous with timeout
+    	return Promise.race([performOperation(), timeoutPromise(options.timeout || 55000)]);
+    }
+    ```
 
 3. **Add operation size thresholds:**
-   ```typescript
-   // Auto-background for large operations
-   if (contentSize > BACKGROUND_THRESHOLD) {
-     return handleBackgroundMode({
-       message: "Large operation detected, processing in background",
-       estimatedTime: estimateProcessingTime(contentSize),
-     });
-   }
-   ```
+    ```typescript
+    // Auto-background for large operations
+    if (contentSize > BACKGROUND_THRESHOLD) {
+    	return handleBackgroundMode({
+    		message: 'Large operation detected, processing in background',
+    		estimatedTime: estimateProcessingTime(contentSize)
+    	});
+    }
+    ```
 
 **Priority 2 - Important:**
 
 4. **Add progress polling for background jobs:**
 
-   ```typescript
-   // Client-side polling for background job status
-   async function pollJobStatus(jobId: string) {
-     const interval = setInterval(async () => {
-       const status = await getJobStatus(jobId);
+    ```typescript
+    // Client-side polling for background job status
+    async function pollJobStatus(jobId: string) {
+    	const interval = setInterval(async () => {
+    		const status = await getJobStatus(jobId);
 
-       if (status.complete) {
-         clearInterval(interval);
-         showResult(status.result);
-       } else {
-         updateProgress(status.progress);
-       }
-     }, 2000);
-   }
-   ```
+    		if (status.complete) {
+    			clearInterval(interval);
+    			showResult(status.result);
+    		} else {
+    			updateProgress(status.progress);
+    		}
+    	}, 2000);
+    }
+    ```
 
 5. **Add real-time notifications:**
-   ```typescript
-   // Use Supabase Realtime for job completion
-   const subscription = supabase
-     .channel(`job:${jobId}`)
-     .on(
-       "postgres_changes",
-       {
-         event: "UPDATE",
-         schema: "public",
-         table: "queue_jobs",
-         filter: `id=eq.${jobId}`,
-       },
-       (payload) => {
-         if (payload.new.status === "completed") {
-           notifyUser("Operation complete!");
-         }
-       },
-     )
-     .subscribe();
-   ```
+    ```typescript
+    // Use Supabase Realtime for job completion
+    const subscription = supabase
+    	.channel(`job:${jobId}`)
+    	.on(
+    		'postgres_changes',
+    		{
+    			event: 'UPDATE',
+    			schema: 'public',
+    			table: 'queue_jobs',
+    			filter: `id=eq.${jobId}`
+    		},
+    		(payload) => {
+    			if (payload.new.status === 'completed') {
+    				notifyUser('Operation complete!');
+    			}
+    		}
+    	)
+    	.subscribe();
+    ```
 
 ---
 
@@ -980,53 +972,53 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 ### Phase 1: Critical Fixes (Week 1)
 
 1. **Add Vercel timeout configuration** (1 hour)
-   - Add `maxDuration` to all API routes
-   - Document platform limits
-   - Add timeout monitoring
+    - Add `maxDuration` to all API routes
+    - Document platform limits
+    - Add timeout monitoring
 
 2. **Convert brain dump to streaming-only** (4 hours)
-   - Deprecate synchronous endpoint
-   - Update frontend to use SSE
-   - Add fallback handling
+    - Deprecate synchronous endpoint
+    - Update frontend to use SSE
+    - Add fallback handling
 
 3. **Add retry caps** (2 hours)
-   - Implement max retry limits
-   - Add exponential backoff caps
-   - Add circuit breaker pattern
+    - Implement max retry limits
+    - Add exponential backoff caps
+    - Add circuit breaker pattern
 
 4. **Add database query timeouts** (3 hours)
-   - Configure global Supabase timeout
-   - Add per-query timeouts for complex queries
-   - Add slow query logging
+    - Configure global Supabase timeout
+    - Add per-query timeouts for complex queries
+    - Add slow query logging
 
 ### Phase 2: Important Improvements (Week 2)
 
 5. **Add timeout protection to LLM calls** (2 hours)
-   - Wrap all LLM calls with timeouts
-   - Add graceful degradation
-   - Improve error messages
+    - Wrap all LLM calls with timeouts
+    - Add graceful degradation
+    - Improve error messages
 
 6. **Improve loading states** (4 hours)
-   - Add timeout warnings
-   - Add estimated time remaining
-   - Add background job fallback
+    - Add timeout warnings
+    - Add estimated time remaining
+    - Add background job fallback
 
 7. **Background all long operations** (6 hours)
-   - Add background mode to all long operations
-   - Implement job polling
-   - Add real-time notifications
+    - Add background mode to all long operations
+    - Implement job polling
+    - Add real-time notifications
 
 ### Phase 3: Polish (Week 3)
 
 8. **Add monitoring and alerts** (3 hours)
-   - Log timeout events
-   - Alert on high timeout rates
-   - Track operation durations
+    - Log timeout events
+    - Alert on high timeout rates
+    - Track operation durations
 
 9. **Documentation** (2 hours)
-   - Document timeout limits
-   - Add troubleshooting guide
-   - Update API documentation
+    - Document timeout limits
+    - Add troubleshooting guide
+    - Update API documentation
 
 10. **Testing** (4 hours)
     - Test timeout scenarios
@@ -1041,61 +1033,61 @@ const timeoutPromise = new Promise<never>((_, reject) => {
 
 1. **Timeout Events:**
 
-   ```typescript
-   // Track timeout occurrences
-   metrics.increment("api.timeout", {
-     endpoint: route,
-     duration: elapsedTime,
-     user: userId,
-   });
-   ```
+    ```typescript
+    // Track timeout occurrences
+    metrics.increment('api.timeout', {
+    	endpoint: route,
+    	duration: elapsedTime,
+    	user: userId
+    });
+    ```
 
 2. **Operation Durations:**
 
-   ```typescript
-   // Track how long operations take
-   metrics.histogram("operation.duration", duration, {
-     operation: "brain_dump_processing",
-     success: true,
-   });
-   ```
+    ```typescript
+    // Track how long operations take
+    metrics.histogram('operation.duration', duration, {
+    	operation: 'brain_dump_processing',
+    	success: true
+    });
+    ```
 
 3. **Retry Counts:**
 
-   ```typescript
-   // Track retry attempts
-   metrics.increment("retry.attempt", {
-     operation: "llm_call",
-     attempt: attemptNumber,
-   });
-   ```
+    ```typescript
+    // Track retry attempts
+    metrics.increment('retry.attempt', {
+    	operation: 'llm_call',
+    	attempt: attemptNumber
+    });
+    ```
 
 4. **Background Job Completion Time:**
-   ```typescript
-   // Track background job duration
-   metrics.histogram("background_job.duration", duration, {
-     job_type: "generate_daily_brief",
-     status: "completed",
-   });
-   ```
+    ```typescript
+    // Track background job duration
+    metrics.histogram('background_job.duration', duration, {
+    	job_type: 'generate_daily_brief',
+    	status: 'completed'
+    });
+    ```
 
 ### Alerts to Configure
 
 1. **High Timeout Rate:**
-   - Alert when timeout rate > 5% of requests
-   - Check for platform issues or code problems
+    - Alert when timeout rate > 5% of requests
+    - Check for platform issues or code problems
 
 2. **Slow Operations:**
-   - Alert when operation duration > 90% of timeout
-   - Indicates need for optimization or backgrounding
+    - Alert when operation duration > 90% of timeout
+    - Indicates need for optimization or backgrounding
 
 3. **Retry Storms:**
-   - Alert when retry count spikes
-   - Indicates upstream service issues
+    - Alert when retry count spikes
+    - Indicates upstream service issues
 
 4. **Background Job Backlog:**
-   - Alert when queue depth > 100 jobs
-   - Indicates worker capacity issues
+    - Alert when queue depth > 100 jobs
+    - Indicates worker capacity issues
 
 ---
 
@@ -1129,13 +1121,13 @@ By implementing the recommendations in this audit, the platform will have robust
 
 // Add at top of file
 export const config = {
-  maxDuration: 60, // Vercel Pro limit
+	maxDuration: 60 // Vercel Pro limit
 };
 
 // Or for specific platforms
 export const config = {
-  maxDuration: 300, // 5 minutes for Enterprise
-  runtime: "nodejs18.x",
+	maxDuration: 300, // 5 minutes for Enterprise
+	runtime: 'nodejs18.x'
 };
 ```
 
@@ -1219,47 +1211,40 @@ const resultWithRetry = await TimeoutManager.withRetry(
 // apps/web/src/lib/utils/db-timeout.ts
 
 export async function queryWithTimeout<T>(
-  queryFn: () => Promise<T>,
-  timeout: number = 30000,
-  queryName: string = "unknown",
+	queryFn: () => Promise<T>,
+	timeout: number = 30000,
+	queryName: string = 'unknown'
 ): Promise<T> {
-  const startTime = Date.now();
+	const startTime = Date.now();
 
-  try {
-    const result = await Promise.race([
-      queryFn(),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Query timeout: ${queryName}`)),
-          timeout,
-        ),
-      ),
-    ]);
+	try {
+		const result = await Promise.race([
+			queryFn(),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error(`Query timeout: ${queryName}`)), timeout)
+			)
+		]);
 
-    const duration = Date.now() - startTime;
+		const duration = Date.now() - startTime;
 
-    // Log slow queries
-    if (duration > 1000) {
-      console.warn(`Slow query (${duration}ms): ${queryName}`);
-    }
+		// Log slow queries
+		if (duration > 1000) {
+			console.warn(`Slow query (${duration}ms): ${queryName}`);
+		}
 
-    return result;
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`Query failed (${duration}ms): ${queryName}`, error);
-    throw error;
-  }
+		return result;
+	} catch (error) {
+		const duration = Date.now() - startTime;
+		console.error(`Query failed (${duration}ms): ${queryName}`, error);
+		throw error;
+	}
 }
 
 // Usage:
 const braindumps = await queryWithTimeout(
-  () =>
-    supabase
-      .from("brain_dumps")
-      .select("*, brain_dump_links(*), projects(*)")
-      .limit(50),
-  10000, // 10s timeout
-  "fetch_enriched_braindumps",
+	() => supabase.from('brain_dumps').select('*, brain_dump_links(*), projects(*)').limit(50),
+	10000, // 10s timeout
+	'fetch_enriched_braindumps'
 );
 ```
 

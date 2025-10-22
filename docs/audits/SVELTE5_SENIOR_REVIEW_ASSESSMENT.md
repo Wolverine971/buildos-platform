@@ -41,10 +41,10 @@ A comprehensive audit identified 280+ Svelte 5 issues in the codebase. Partial f
 ```typescript
 // ✅ Cleanup function properly created
 return () => {
-  darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
-  window.removeEventListener("storage", handleStorageChange);
-  document.removeEventListener("touchstart", handleTouchStart);
-  document.removeEventListener("touchmove", handleTouchMove);
+	darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+	window.removeEventListener('storage', handleStorageChange);
+	document.removeEventListener('touchstart', handleTouchStart);
+	document.removeEventListener('touchmove', handleTouchMove);
 };
 ```
 
@@ -57,10 +57,10 @@ return () => {
 let unsubscribeFromService: (() => void) | null = null;
 
 destroy: () => {
-  if (unsubscribeFromService) {
-    unsubscribeFromService();
-    unsubscribeFromService = null;
-  }
+	if (unsubscribeFromService) {
+		unsubscribeFromService();
+		unsubscribeFromService = null;
+	}
 };
 ```
 
@@ -71,7 +71,7 @@ destroy: () => {
 ```typescript
 // ✅ Comparison logic now correct
 if (lastLogoutAttempt > 0 && now - lastLogoutAttempt < 2000) {
-  return;
+	return;
 }
 lastLogoutAttempt = now;
 ```
@@ -95,13 +95,13 @@ let expandedSection = $state<string | null>(null);
 ```typescript
 // ✅ The pattern being followed elsewhere
 onMount(() => {
-  initBrainDumpNotificationBridge();
-  // ...
+	initBrainDumpNotificationBridge();
+	// ...
 });
 
 onDestroy(() => {
-  cleanupBrainDumpNotificationBridge();
-  // ...
+	cleanupBrainDumpNotificationBridge();
+	// ...
 });
 ```
 
@@ -118,13 +118,13 @@ onDestroy(() => {
 ```typescript
 // +layout.svelte, line 301-302
 onMount(() => {
-  initializePWAEnhancements(); // ❌ Returns cleanup, ignored
-  setupInstallPrompt(); // ❌ Returns cleanup, ignored
+	initializePWAEnhancements(); // ❌ Returns cleanup, ignored
+	setupInstallPrompt(); // ❌ Returns cleanup, ignored
 
-  return () => {
-    // Cleanup here is incomplete
-    // NO PWA cleanup called!
-  };
+	return () => {
+		// Cleanup here is incomplete
+		// NO PWA cleanup called!
+	};
 });
 ```
 
@@ -218,16 +218,16 @@ let installPromptCleanup = null;      // NEW - needs $state()
 
 ```typescript
 onDestroy(() => {
-  if (browser) {
-    // Cleanup some things:
-    cleanupBrainDumpNotificationBridge();
-    cleanupPhaseGenerationNotificationBridge();
+	if (browser) {
+		// Cleanup some things:
+		cleanupBrainDumpNotificationBridge();
+		cleanupPhaseGenerationNotificationBridge();
 
-    // ❌ But NOT these critical ones:
-    // backgroundJobs.destroy() - MISSING
-    // timeBlocksStore.destroy() - MISSING
-    // PWA cleanup - MISSING
-  }
+		// ❌ But NOT these critical ones:
+		// backgroundJobs.destroy() - MISSING
+		// timeBlocksStore.destroy() - MISSING
+		// PWA cleanup - MISSING
+	}
 });
 ```
 
@@ -315,20 +315,20 @@ let pwaCleanup: (() => void) | void = null;
 let installPromptCleanup: (() => void) | void = null;
 
 onMount(() => {
-  pwaCleanup = initializePWAEnhancements();
-  installPromptCleanup = setupInstallPrompt();
-  // ...
-  return () => {
-    if (typeof pwaCleanup === "function") pwaCleanup();
-    if (typeof installPromptCleanup === "function") installPromptCleanup();
-    // ... other cleanup
-  };
+	pwaCleanup = initializePWAEnhancements();
+	installPromptCleanup = setupInstallPrompt();
+	// ...
+	return () => {
+		if (typeof pwaCleanup === 'function') pwaCleanup();
+		if (typeof installPromptCleanup === 'function') installPromptCleanup();
+		// ... other cleanup
+	};
 });
 
 onDestroy(() => {
-  backgroundJobs.destroy();
-  timeBlocksStore.destroy?.();
-  // ... other cleanup
+	backgroundJobs.destroy();
+	timeBlocksStore.destroy?.();
+	// ... other cleanup
 });
 ```
 
@@ -350,14 +350,14 @@ onDestroy(() => {
 
 ```javascript
 // Add to test suite
-describe("Cleanup", () => {
-  test("PWA cleanup called on unmount", () => {
-    // Verify listeners removed
-  });
+describe('Cleanup', () => {
+	test('PWA cleanup called on unmount', () => {
+		// Verify listeners removed
+	});
 
-  test("Stores destroyed on app destroy", () => {
-    // Verify subscriptions unsubscribed
-  });
+	test('Stores destroyed on app destroy', () => {
+		// Verify subscriptions unsubscribed
+	});
 });
 ```
 
@@ -390,57 +390,57 @@ describe("Cleanup", () => {
 
 1. **Add Linting Rule**
 
-   ```javascript
-   // .eslintrc.cjs
-   'svelte/no-unused-reactive-statements': 'error',
-   'svelte/prefer-runes': 'warn',
-   ```
+    ```javascript
+    // .eslintrc.cjs
+    'svelte/no-unused-reactive-statements': 'error',
+    'svelte/prefer-runes': 'warn',
+    ```
 
 2. **Create Checklist for Component Reviews**
 
-   ```markdown
-   ## Component Review Checklist
+    ```markdown
+    ## Component Review Checklist
 
-   - [ ] No event listeners without cleanup
-   - [ ] No subscriptions without unsubscribe
-   - [ ] All state wrapped in $state()
-   - [ ] No old $: syntax
-   - [ ] Memory profile checked
-   ```
+    - [ ] No event listeners without cleanup
+    - [ ] No subscriptions without unsubscribe
+    - [ ] All state wrapped in $state()
+    - [ ] No old $: syntax
+    - [ ] Memory profile checked
+    ```
 
 3. **Document Pattern Library**
 
-   ```typescript
-   // docs/CLEANUP_PATTERNS.md
+    ```typescript
+    // docs/CLEANUP_PATTERNS.md
 
-   // Pattern 1: Event listeners
-   onMount(() => {
-       window.addEventListener('event', handler);
-       return () => window.removeEventListener('event', handler);
-   });
+    // Pattern 1: Event listeners
+    onMount(() => {
+        window.addEventListener('event', handler);
+        return () => window.removeEventListener('event', handler);
+    });
 
-   // Pattern 2: Store subscriptions
-   onMount(() => {
-       const unsub = store.subscribe(...);
-       return () => unsub();
-   });
+    // Pattern 2: Store subscriptions
+    onMount(() => {
+        const unsub = store.subscribe(...);
+        return () => unsub();
+    });
 
-   // Pattern 3: Service cleanup
-   onMount(() => {
-       service.init();
-       return () => service.cleanup();
-   });
-   ```
+    // Pattern 3: Service cleanup
+    onMount(() => {
+        service.init();
+        return () => service.cleanup();
+    });
+    ```
 
 4. **Add to Pre-commit Hook**
-   ```bash
-   #!/bin/bash
-   # Prevent committing old syntax
-   if grep -r '\$:' apps/web/src --include='*.svelte'; then
-       echo "ERROR: Old reactive syntax found. Use \$derived or \$effect"
-       exit 1
-   fi
-   ```
+    ```bash
+    #!/bin/bash
+    # Prevent committing old syntax
+    if grep -r '\$:' apps/web/src --include='*.svelte'; then
+        echo "ERROR: Old reactive syntax found. Use \$derived or \$effect"
+        exit 1
+    fi
+    ```
 
 ---
 
@@ -475,21 +475,21 @@ describe("Cleanup", () => {
 ## Questions for Product/Leadership
 
 1. **How critical is mobile stability?**
-   - Current memory leaks cause crashes after extended use
-   - Fix prioritizes mobile experience
+    - Current memory leaks cause crashes after extended use
+    - Fix prioritizes mobile experience
 
 2. **What's the timeline tolerance?**
-   - Can do critical fixes today (1h)
-   - Full migration needs 2-3 days
-   - Needs code review cycles
+    - Can do critical fixes today (1h)
+    - Full migration needs 2-3 days
+    - Needs code review cycles
 
 3. **Should we do this proactively or reactively?**
-   - Recommendation: **Proactive** - prevents production incidents
-   - Risk: User complaints about performance
+    - Recommendation: **Proactive** - prevents production incidents
+    - Risk: User complaints about performance
 
 4. **Resource availability?**
-   - One engineer can complete in 2 days
-   - Two engineers can parallelize in 1 day
+    - One engineer can complete in 2 days
+    - Two engineers can parallelize in 1 day
 
 ---
 

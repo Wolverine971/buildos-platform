@@ -4,17 +4,8 @@ researcher: Claude Code (Sonnet 4.5)
 git_commit: 77d2dd1ec881074cbf5b1257a14e8fa7d8302b60
 branch: main
 repository: Wolverine971/buildos-platform
-topic: "TimeBlock Scheduling Feature - Architecture Research & Design Exploration"
-tags:
-  [
-    research,
-    codebase,
-    calendar,
-    scheduling,
-    timeblock,
-    ai-scheduling,
-    ux-design,
-  ]
+topic: 'TimeBlock Scheduling Feature - Architecture Research & Design Exploration'
+tags: [research, codebase, calendar, scheduling, timeblock, ai-scheduling, ux-design]
 status: complete
 last_updated: 2025-10-04
 last_updated_by: Claude Code
@@ -104,11 +95,11 @@ getCalendarEvents({
 
 ```typescript
 findAvailableSlots({
-  timeMin,
-  timeMax,
-  duration_minutes: 60,
-  preferred_hours: [9, 10, 11, 14, 15, 16], // Optional filter
-  increment: 30, // 30-minute slot increments
+	timeMin,
+	timeMax,
+	duration_minutes: 60,
+	preferred_hours: [9, 10, 11, 14, 15, 16], // Optional filter
+	increment: 30 // 30-minute slot increments
 });
 // Uses Google Calendar Free/Busy API
 // Returns max 10 available slots by default
@@ -179,9 +170,9 @@ POST /api/calendar
 
 - Currently returns **all available slots**
 - TimeBlock needs **gap prioritization** based on:
-  - Gap duration (longer gaps = better for deep work)
-  - Time of day fitness (morning gaps for high-focus tasks)
-  - Adjacent event context (after meetings = low energy)
+    - Gap duration (longer gaps = better for deep work)
+    - Time of day fitness (morning gaps for high-focus tasks)
+    - Adjacent event context (after meetings = low energy)
 
 ---
 
@@ -229,10 +220,10 @@ POST /api/calendar
 
 ```typescript
 type ConflictType =
-  | "calendar" // Overlaps with calendar event
-  | "task" // Overlaps with existing task
-  | "phase_boundary" // Outside phase start/end dates
-  | "project_boundary"; // Outside project start/end dates
+	| 'calendar' // Overlaps with calendar event
+	| 'task' // Overlaps with existing task
+	| 'phase_boundary' // Outside phase start/end dates
+	| 'project_boundary'; // Outside project start/end dates
 ```
 
 **Resolution Strategies:**
@@ -352,39 +343,34 @@ CREATE TABLE user_energy_profiles (
 ```typescript
 // /apps/web/src/lib/types/timeblock.types.ts
 
-export type EnergyType =
-  | "creative"
-  | "analytical"
-  | "admin"
-  | "social"
-  | "physical";
-export type Flexibility = "fixed" | "flexible" | "moveable";
-export type OptimalTime = "morning" | "afternoon" | "evening" | "anytime";
-export type FocusLevel = "deep" | "moderate" | "light";
+export type EnergyType = 'creative' | 'analytical' | 'admin' | 'social' | 'physical';
+export type Flexibility = 'fixed' | 'flexible' | 'moveable';
+export type OptimalTime = 'morning' | 'afternoon' | 'evening' | 'anytime';
+export type FocusLevel = 'deep' | 'moderate' | 'light';
 
 export interface TaskWithTimeBlockMetadata extends Task {
-  energy_type?: EnergyType;
-  flexibility?: Flexibility;
-  priority_score?: number; // 0-100
-  optimal_time_of_day?: OptimalTime;
-  focus_level?: FocusLevel;
+	energy_type?: EnergyType;
+	flexibility?: Flexibility;
+	priority_score?: number; // 0-100
+	optimal_time_of_day?: OptimalTime;
+	focus_level?: FocusLevel;
 }
 
 export interface UserEnergyProfile {
-  user_id: string;
-  peak_energy_hours: string[];
-  low_energy_hours: string[];
-  preferred_deep_work_time: OptimalTime;
-  context_switch_cost_minutes: number;
+	user_id: string;
+	peak_energy_hours: string[];
+	low_energy_hours: string[];
+	preferred_deep_work_time: OptimalTime;
+	context_switch_cost_minutes: number;
 }
 
 export interface TimeGap {
-  start: Date;
-  end: Date;
-  duration_minutes: number;
-  time_of_day: OptimalTime;
-  follows_event?: CalendarEvent;
-  precedes_event?: CalendarEvent;
+	start: Date;
+	end: Date;
+	duration_minutes: number;
+	time_of_day: OptimalTime;
+	follows_event?: CalendarEvent;
+	precedes_event?: CalendarEvent;
 }
 ```
 
@@ -504,12 +490,12 @@ For each gap, suggest 1 primary task + 2 alternatives:
 
 ```typescript
 const response = await smartLLMService.getJSONResponse({
-  systemPrompt: "TimeBlock scheduling assistant",
-  userPrompt: buildTimeBlockMatchingPrompt(gaps, tasks, profile, recentTasks),
-  userId,
-  profile: "balanced", // DeepSeek or GPT-4o-mini
-  temperature: 0.3,
-  operationType: "timeblock_matching",
+	systemPrompt: 'TimeBlock scheduling assistant',
+	userPrompt: buildTimeBlockMatchingPrompt(gaps, tasks, profile, recentTasks),
+	userId,
+	profile: 'balanced', // DeepSeek or GPT-4o-mini
+	temperature: 0.3,
+	operationType: 'timeblock_matching'
 });
 ```
 
@@ -601,50 +587,55 @@ User opens TimeBlock view
 <!-- Inspired by PhaseSchedulingModal but gap-centric -->
 
 <script lang="ts">
-  import { timeBlockStore } from '$lib/stores/timeBlockStore';
-  import TimeBlockGapCard from './TimeBlockGapCard.svelte';
-  import TaskAlternativeSelector from './TaskAlternativeSelector.svelte';
+	import { timeBlockStore } from '$lib/stores/timeBlockStore';
+	import TimeBlockGapCard from './TimeBlockGapCard.svelte';
+	import TaskAlternativeSelector from './TaskAlternativeSelector.svelte';
 
-  let view: 'next_3_days' | 'next_week' | 'next_month' = 'next_3_days';
+	let view: 'next_3_days' | 'next_week' | 'next_month' = 'next_3_days';
 
-  onMount(async () => {
-    await timeBlockStore.initialize(userId, view);
-  });
+	onMount(async () => {
+		await timeBlockStore.initialize(userId, view);
+	});
 </script>
 
 <div class="timeblock-container">
-  <!-- Left Panel: Gap List -->
-  <div class="gap-list">
-    <h2>Available Time Blocks</h2>
-    <p class="subtitle">You have {$timeBlockStore.gaps.length} free blocks in the next {view}</p>
+	<!-- Left Panel: Gap List -->
+	<div class="gap-list">
+		<h2>Available Time Blocks</h2>
+		<p class="subtitle">
+			You have {$timeBlockStore.gaps.length} free blocks in the next {view}
+		</p>
 
-    {#each $timeBlockStore.gapMatches as gapMatch}
-      <TimeBlockGapCard
-        gap={gapMatch.gap}
-        primarySuggestion={gapMatch.primary_suggestion}
-        alternatives={gapMatch.alternatives}
-        on:swap={(e) => timeBlockStore.swapTask(gapMatch.gap.id, e.detail.taskId)}
-        on:remove={() => timeBlockStore.removeBlock(gapMatch.gap.id)}
-      />
-    {/each}
-  </div>
+		{#each $timeBlockStore.gapMatches as gapMatch}
+			<TimeBlockGapCard
+				gap={gapMatch.gap}
+				primarySuggestion={gapMatch.primary_suggestion}
+				alternatives={gapMatch.alternatives}
+				on:swap={(e) => timeBlockStore.swapTask(gapMatch.gap.id, e.detail.taskId)}
+				on:remove={() => timeBlockStore.removeBlock(gapMatch.gap.id)}
+			/>
+		{/each}
+	</div>
 
-  <!-- Right Panel: Calendar Visualization -->
-  <div class="calendar-panel">
-    <CalendarView
-      events={$timeBlockStore.proposedEvents}
-      highlightedEventId={$timeBlockStore.highlightedEventId}
-      on:eventClick={(e) => timeBlockStore.highlightGap(e.detail.gapId)}
-    />
-  </div>
+	<!-- Right Panel: Calendar Visualization -->
+	<div class="calendar-panel">
+		<CalendarView
+			events={$timeBlockStore.proposedEvents}
+			highlightedEventId={$timeBlockStore.highlightedEventId}
+			on:eventClick={(e) => timeBlockStore.highlightGap(e.detail.gapId)}
+		/>
+	</div>
 
-  <!-- Footer Actions -->
-  <div class="actions">
-    <button on:click={() => timeBlockStore.refreshGaps()}>Refresh Gaps</button>
-    <button on:click={() => timeBlockStore.acceptAll()} disabled={$timeBlockStore.status === 'saving'}>
-      Accept All Suggestions
-    </button>
-  </div>
+	<!-- Footer Actions -->
+	<div class="actions">
+		<button on:click={() => timeBlockStore.refreshGaps()}>Refresh Gaps</button>
+		<button
+			on:click={() => timeBlockStore.acceptAll()}
+			disabled={$timeBlockStore.status === 'saving'}
+		>
+			Accept All Suggestions
+		</button>
+	</div>
 </div>
 ```
 
@@ -652,69 +643,71 @@ User opens TimeBlock view
 
 ```svelte
 <script lang="ts">
-  export let gap: TimeGap;
-  export let primarySuggestion: TaskSuggestion;
-  export let alternatives: TaskSuggestion[];
+	export let gap: TimeGap;
+	export let primarySuggestion: TaskSuggestion;
+	export let alternatives: TaskSuggestion[];
 
-  let expanded = false;
-  let selectedTaskId = primarySuggestion.task_id;
+	let expanded = false;
+	let selectedTaskId = primarySuggestion.task_id;
 
-  function handleSwap(taskId: string) {
-    selectedTaskId = taskId;
-    dispatch('swap', { taskId });
-  }
+	function handleSwap(taskId: string) {
+		selectedTaskId = taskId;
+		dispatch('swap', { taskId });
+	}
 </script>
 
 <div class="gap-card" class:expanded>
-  <div class="gap-header" on:click={() => expanded = !expanded}>
-    <div class="gap-time">
-      <span class="badge {gap.time_of_day}">{gap.time_of_day}</span>
-      {formatTime(gap.start)} - {formatTime(gap.end)}
-      <span class="duration">{gap.duration_minutes}min</span>
-    </div>
+	<div class="gap-header" on:click={() => (expanded = !expanded)}>
+		<div class="gap-time">
+			<span class="badge {gap.time_of_day}">{gap.time_of_day}</span>
+			{formatTime(gap.start)} - {formatTime(gap.end)}
+			<span class="duration">{gap.duration_minutes}min</span>
+		</div>
 
-    <div class="suggested-task">
-      <span class="task-title">{primarySuggestion.task_title}</span>
-      <span class="fitness-score">{Math.round(primarySuggestion.fitness_score * 100)}% fit</span>
-    </div>
+		<div class="suggested-task">
+			<span class="task-title">{primarySuggestion.task_title}</span>
+			<span class="fitness-score"
+				>{Math.round(primarySuggestion.fitness_score * 100)}% fit</span
+			>
+		</div>
 
-    <button class="expand-icon">{expanded ? '▲' : '▼'}</button>
-  </div>
+		<button class="expand-icon">{expanded ? '▲' : '▼'}</button>
+	</div>
 
-  {#if expanded}
-    <div class="gap-body">
-      <!-- AI Rationale -->
-      <div class="rationale">
-        <strong>Why this task?</strong>
-        <p>{primarySuggestion.rationale}</p>
-      </div>
+	{#if expanded}
+		<div class="gap-body">
+			<!-- AI Rationale -->
+			<div class="rationale">
+				<strong>Why this task?</strong>
+				<p>{primarySuggestion.rationale}</p>
+			</div>
 
-      <!-- Alternative Options -->
-      {#if alternatives.length > 0}
-        <div class="alternatives">
-          <strong>Other options:</strong>
-          {#each alternatives as alt}
-            <button
-              class="alternative-task"
-              class:selected={selectedTaskId === alt.task_id}
-              on:click={() => handleSwap(alt.task_id)}
-            >
-              <span class="task-title">{alt.task_title}</span>
-              <span class="fitness">{Math.round(alt.fitness_score * 100)}%</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
+			<!-- Alternative Options -->
+			{#if alternatives.length > 0}
+				<div class="alternatives">
+					<strong>Other options:</strong>
+					{#each alternatives as alt}
+						<button
+							class="alternative-task"
+							class:selected={selectedTaskId === alt.task_id}
+							on:click={() => handleSwap(alt.task_id)}
+						>
+							<span class="task-title">{alt.task_title}</span>
+							<span class="fitness">{Math.round(alt.fitness_score * 100)}%</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
 
-      <!-- Context Info -->
-      {#if gap.follows_event}
-        <div class="context">After: {gap.follows_event.summary}</div>
-      {/if}
-      {#if gap.precedes_event}
-        <div class="context">Before: {gap.precedes_event.summary}</div>
-      {/if}
-    </div>
-  {/if}
+			<!-- Context Info -->
+			{#if gap.follows_event}
+				<div class="context">After: {gap.follows_event.summary}</div>
+			{/if}
+			{#if gap.precedes_event}
+				<div class="context">Before: {gap.precedes_event.summary}</div>
+			{/if}
+		</div>
+	{/if}
 </div>
 ```
 
@@ -733,41 +726,41 @@ User opens TimeBlock view
 ```css
 /* Gap types */
 .gap.morning {
-  @apply bg-amber-50 dark:bg-amber-900/20;
+	@apply bg-amber-50 dark:bg-amber-900/20;
 }
 .gap.afternoon {
-  @apply bg-blue-50 dark:bg-blue-900/20;
+	@apply bg-blue-50 dark:bg-blue-900/20;
 }
 .gap.evening {
-  @apply bg-purple-50 dark:bg-purple-900/20;
+	@apply bg-purple-50 dark:bg-purple-900/20;
 }
 
 /* Fitness scores */
 .fitness-high {
-  @apply text-green-600 dark:text-green-400;
+	@apply text-green-600 dark:text-green-400;
 } /* >80% */
 .fitness-medium {
-  @apply text-amber-600 dark:text-amber-400;
+	@apply text-amber-600 dark:text-amber-400;
 } /* 50-80% */
 .fitness-low {
-  @apply text-red-600 dark:text-red-400;
+	@apply text-red-600 dark:text-red-400;
 } /* <50% */
 
 /* Task energy types */
 .energy-creative {
-  @apply border-l-4 border-purple-500;
+	@apply border-l-4 border-purple-500;
 }
 .energy-analytical {
-  @apply border-l-4 border-blue-500;
+	@apply border-l-4 border-blue-500;
 }
 .energy-admin {
-  @apply border-l-4 border-gray-500;
+	@apply border-l-4 border-gray-500;
 }
 .energy-social {
-  @apply border-l-4 border-green-500;
+	@apply border-l-4 border-green-500;
 }
 .energy-physical {
-  @apply border-l-4 border-orange-500;
+	@apply border-l-4 border-orange-500;
 }
 ```
 
@@ -855,43 +848,43 @@ Stage 2 (Algorithm): "Can I actually do this?"
 // Based on schedulingStore.ts pattern
 
 interface TimeBlockState {
-  status: "idle" | "loading" | "ready" | "saving" | "error";
-  gaps: TimeGap[];
-  gapMatches: GapTaskMatch[];
-  userProfile: UserEnergyProfile | null;
-  availableTasks: TaskWithTimeBlockMetadata[];
-  highlightedGapId: string | null;
-  error: string | null;
+	status: 'idle' | 'loading' | 'ready' | 'saving' | 'error';
+	gaps: TimeGap[];
+	gapMatches: GapTaskMatch[];
+	userProfile: UserEnergyProfile | null;
+	availableTasks: TaskWithTimeBlockMetadata[];
+	highlightedGapId: string | null;
+	error: string | null;
 }
 
 export const timeBlockStore = {
-  ...writable<TimeBlockState>(initialState),
+	...writable<TimeBlockState>(initialState),
 
-  async initialize(userId: string, timeRange: string) {
-    // 1. Fetch calendar gaps
-    // 2. Fetch backlog tasks with metadata
-    // 3. Fetch user energy profile
-    // 4. Call LLM for gap-task matching
-    // 5. Validate suggestions
-    // 6. Set state to 'ready'
-  },
+	async initialize(userId: string, timeRange: string) {
+		// 1. Fetch calendar gaps
+		// 2. Fetch backlog tasks with metadata
+		// 3. Fetch user energy profile
+		// 4. Call LLM for gap-task matching
+		// 5. Validate suggestions
+		// 6. Set state to 'ready'
+	},
 
-  async swapTask(gapId: string, newTaskId: string) {
-    // 1. Update gapMatches in-memory
-    // 2. Re-validate conflicts
-    // 3. Track swap for learning (optional)
-  },
+	async swapTask(gapId: string, newTaskId: string) {
+		// 1. Update gapMatches in-memory
+		// 2. Re-validate conflicts
+		// 3. Track swap for learning (optional)
+	},
 
-  async acceptAll() {
-    // 1. Batch update task.start_date for all gaps
-    // 2. Create calendar events
-    // 3. Sync to Google Calendar
-    // 4. Redirect to calendar view
-  },
+	async acceptAll() {
+		// 1. Batch update task.start_date for all gaps
+		// 2. Create calendar events
+		// 3. Sync to Google Calendar
+		// 4. Redirect to calendar view
+	},
 
-  async refreshGaps() {
-    // Re-fetch calendar and re-run matching
-  },
+	async refreshGaps() {
+		// Re-fetch calendar and re-run matching
+	}
 };
 ```
 
@@ -1040,7 +1033,7 @@ You are BuildOS's TimeBlock scheduling assistant...
 
 ```typescript
 {
-  preferred_deep_work_time: "morning" | "afternoon" | "evening";
+	preferred_deep_work_time: 'morning' | 'afternoon' | 'evening';
 }
 ```
 
@@ -1108,8 +1101,8 @@ You are BuildOS's TimeBlock scheduling assistant...
 ```typescript
 // CalendarService.findAvailableSlots enhancement
 findAvailableSlots({
-  calendarIds: ["primary", "work-calendar-id", "family-calendar-id"],
-  mergeStrategy: "union", // Combine busy times from all calendars
+	calendarIds: ['primary', 'work-calendar-id', 'family-calendar-id'],
+	mergeStrategy: 'union' // Combine busy times from all calendars
 });
 ```
 
@@ -1164,10 +1157,10 @@ findAvailableSlots({
 
 ```typescript
 priority_score = weighted_sum(
-  project.importance * 0.4,
-  task.urgency * 0.3,
-  task.impact * 0.2,
-  task.dependencies_blocked_count * 0.1,
+	project.importance * 0.4,
+	task.urgency * 0.3,
+	task.impact * 0.2,
+	task.dependencies_blocked_count * 0.1
 );
 ```
 
@@ -1218,38 +1211,33 @@ CREATE INDEX idx_tasks_backlog_timeblock ON tasks(status, energy_type)
 **File: `/apps/web/src/lib/types/timeblock.types.ts`**
 
 ```typescript
-export type EnergyType =
-  | "creative"
-  | "analytical"
-  | "admin"
-  | "social"
-  | "physical";
-export type Flexibility = "fixed" | "flexible";
-export type OptimalTime = "morning" | "afternoon" | "evening";
+export type EnergyType = 'creative' | 'analytical' | 'admin' | 'social' | 'physical';
+export type Flexibility = 'fixed' | 'flexible';
+export type OptimalTime = 'morning' | 'afternoon' | 'evening';
 
 export interface TimeGap {
-  id: string;
-  start: Date;
-  end: Date;
-  duration_minutes: number;
-  time_of_day: OptimalTime;
-  follows_event?: { summary: string; end: Date };
-  precedes_event?: { summary: string; start: Date };
+	id: string;
+	start: Date;
+	end: Date;
+	duration_minutes: number;
+	time_of_day: OptimalTime;
+	follows_event?: { summary: string; end: Date };
+	precedes_event?: { summary: string; start: Date };
 }
 
 export interface TaskSuggestion {
-  task_id: string;
-  task_title: string;
-  energy_type: EnergyType;
-  duration_minutes: number;
-  rationale: string;
-  fitness_score: number; // 0-1
+	task_id: string;
+	task_title: string;
+	energy_type: EnergyType;
+	duration_minutes: number;
+	rationale: string;
+	fitness_score: number; // 0-1
 }
 
 export interface GapTaskMatch {
-  gap: TimeGap;
-  primary_suggestion: TaskSuggestion;
-  alternatives: TaskSuggestion[];
+	gap: TimeGap;
+	primary_suggestion: TaskSuggestion;
+	alternatives: TaskSuggestion[];
 }
 ```
 
@@ -1259,73 +1247,69 @@ export interface GapTaskMatch {
 
 ```typescript
 export class TimeBlockMatcherService {
-  async findGapsWithSuggestions(
-    userId: string,
-    timeRange: { start: Date; end: Date },
-  ): Promise<GapTaskMatch[]> {
-    // 1. Fetch calendar gaps using existing CalendarService
-    const gaps = await this.calendarService.findAvailableSlots({
-      userId,
-      timeMin: timeRange.start,
-      timeMax: timeRange.end,
-      duration_minutes: 30, // Minimum gap size
-      increment: 30,
-    });
+	async findGapsWithSuggestions(
+		userId: string,
+		timeRange: { start: Date; end: Date }
+	): Promise<GapTaskMatch[]> {
+		// 1. Fetch calendar gaps using existing CalendarService
+		const gaps = await this.calendarService.findAvailableSlots({
+			userId,
+			timeMin: timeRange.start,
+			timeMax: timeRange.end,
+			duration_minutes: 30, // Minimum gap size
+			increment: 30
+		});
 
-    // 2. Fetch backlog tasks with TimeBlock metadata
-    const availableTasks = await this.supabase
-      .from("tasks")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "backlog")
-      .is("deleted_at", null)
-      .is("start_date", null); // Not already scheduled
+		// 2. Fetch backlog tasks with TimeBlock metadata
+		const availableTasks = await this.supabase
+			.from('tasks')
+			.select('*')
+			.eq('user_id', userId)
+			.eq('status', 'backlog')
+			.is('deleted_at', null)
+			.is('start_date', null); // Not already scheduled
 
-    // 3. Fetch user preferences
-    const preferences = await this.getUserPreferences(userId);
+		// 3. Fetch user preferences
+		const preferences = await this.getUserPreferences(userId);
 
-    // 4. Categorize gaps by time of day
-    const categorizedGaps = gaps.map((g) => ({
-      ...g,
-      time_of_day: this.categorizeTimeOfDay(g.start),
-    }));
+		// 4. Categorize gaps by time of day
+		const categorizedGaps = gaps.map((g) => ({
+			...g,
+			time_of_day: this.categorizeTimeOfDay(g.start)
+		}));
 
-    // 5. Call LLM for intelligent matching
-    const llmMatches = await this.getLLMMatches(
-      categorizedGaps,
-      availableTasks,
-      preferences,
-    );
+		// 5. Call LLM for intelligent matching
+		const llmMatches = await this.getLLMMatches(categorizedGaps, availableTasks, preferences);
 
-    // 6. Validate and return
-    return this.validateMatches(llmMatches);
-  }
+		// 6. Validate and return
+		return this.validateMatches(llmMatches);
+	}
 
-  private categorizeTimeOfDay(date: Date): OptimalTime {
-    const hour = date.getHours();
-    if (hour >= 6 && hour < 12) return "morning";
-    if (hour >= 12 && hour < 17) return "afternoon";
-    return "evening";
-  }
+	private categorizeTimeOfDay(date: Date): OptimalTime {
+		const hour = date.getHours();
+		if (hour >= 6 && hour < 12) return 'morning';
+		if (hour >= 12 && hour < 17) return 'afternoon';
+		return 'evening';
+	}
 
-  private async getLLMMatches(
-    gaps: TimeGap[],
-    tasks: Task[],
-    preferences: UserCalendarPreferences,
-  ): Promise<GapTaskMatch[]> {
-    const prompt = this.buildMatchingPrompt(gaps, tasks, preferences);
+	private async getLLMMatches(
+		gaps: TimeGap[],
+		tasks: Task[],
+		preferences: UserCalendarPreferences
+	): Promise<GapTaskMatch[]> {
+		const prompt = this.buildMatchingPrompt(gaps, tasks, preferences);
 
-    const response = await this.smartLLMService.getJSONResponse({
-      systemPrompt: "TimeBlock scheduling assistant",
-      userPrompt: prompt,
-      userId: this.userId,
-      profile: "balanced",
-      temperature: 0.3,
-      operationType: "timeblock_matching",
-    });
+		const response = await this.smartLLMService.getJSONResponse({
+			systemPrompt: 'TimeBlock scheduling assistant',
+			userPrompt: prompt,
+			userId: this.userId,
+			profile: 'balanced',
+			temperature: 0.3,
+			operationType: 'timeblock_matching'
+		});
 
-    return response.gap_matches;
-  }
+		return response.gap_matches;
+	}
 }
 ```
 
@@ -1335,41 +1319,38 @@ export class TimeBlockMatcherService {
 
 ```typescript
 export async function GET({ locals, url }: RequestEvent) {
-  const session = await locals.auth();
-  if (!session?.user?.id) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+	const session = await locals.auth();
+	if (!session?.user?.id) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
-  const timeRange = url.searchParams.get("range") || "next_3_days";
-  const { start, end } = calculateTimeRange(timeRange);
+	const timeRange = url.searchParams.get('range') || 'next_3_days';
+	const { start, end } = calculateTimeRange(timeRange);
 
-  const matcherService = new TimeBlockMatcherService(
-    locals.supabase,
-    session.user.id,
-  );
+	const matcherService = new TimeBlockMatcherService(locals.supabase, session.user.id);
 
-  const gapMatches = await matcherService.findGapsWithSuggestions(
-    session.user.id,
-    { start, end },
-  );
+	const gapMatches = await matcherService.findGapsWithSuggestions(session.user.id, {
+		start,
+		end
+	});
 
-  return json({ gap_matches: gapMatches });
+	return json({ gap_matches: gapMatches });
 }
 
 export async function POST({ locals, request }: RequestEvent) {
-  // Accept user's TimeBlock selections and schedule tasks
-  const session = await locals.auth();
-  if (!session?.user?.id) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+	// Accept user's TimeBlock selections and schedule tasks
+	const session = await locals.auth();
+	if (!session?.user?.id) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
-  const { accepted_matches } = await request.json();
+	const { accepted_matches } = await request.json();
 
-  // Update task.start_date for each accepted match
-  // Create calendar events
-  // Return success
+	// Update task.start_date for each accepted match
+	// Create calendar events
+	// Return success
 
-  return json({ success: true, scheduled_count: accepted_matches.length });
+	return json({ success: true, scheduled_count: accepted_matches.length });
 }
 ```
 
@@ -1379,99 +1360,97 @@ export async function POST({ locals, request }: RequestEvent) {
 
 ```typescript
 interface TimeBlockState {
-  status: "idle" | "loading" | "ready" | "saving" | "error";
-  gapMatches: GapTaskMatch[];
-  highlightedGapId: string | null;
-  error: string | null;
+	status: 'idle' | 'loading' | 'ready' | 'saving' | 'error';
+	gapMatches: GapTaskMatch[];
+	highlightedGapId: string | null;
+	error: string | null;
 }
 
 function createTimeBlockStore() {
-  const { subscribe, set, update } = writable<TimeBlockState>({
-    status: "idle",
-    gapMatches: [],
-    highlightedGapId: null,
-    error: null,
-  });
+	const { subscribe, set, update } = writable<TimeBlockState>({
+		status: 'idle',
+		gapMatches: [],
+		highlightedGapId: null,
+		error: null
+	});
 
-  return {
-    subscribe,
+	return {
+		subscribe,
 
-    async initialize(timeRange: string = "next_3_days") {
-      update((s) => ({ ...s, status: "loading" }));
+		async initialize(timeRange: string = 'next_3_days') {
+			update((s) => ({ ...s, status: 'loading' }));
 
-      try {
-        const response = await fetch(`/api/timeblocks?range=${timeRange}`);
-        const data = await response.json();
+			try {
+				const response = await fetch(`/api/timeblocks?range=${timeRange}`);
+				const data = await response.json();
 
-        set({
-          status: "ready",
-          gapMatches: data.gap_matches,
-          highlightedGapId: null,
-          error: null,
-        });
-      } catch (error) {
-        set({
-          status: "error",
-          gapMatches: [],
-          highlightedGapId: null,
-          error: error.message,
-        });
-      }
-    },
+				set({
+					status: 'ready',
+					gapMatches: data.gap_matches,
+					highlightedGapId: null,
+					error: null
+				});
+			} catch (error) {
+				set({
+					status: 'error',
+					gapMatches: [],
+					highlightedGapId: null,
+					error: error.message
+				});
+			}
+		},
 
-    swapTask(gapId: string, newTaskId: string) {
-      update((state) => {
-        const gapMatch = state.gapMatches.find((gm) => gm.gap.id === gapId);
-        if (!gapMatch) return state;
+		swapTask(gapId: string, newTaskId: string) {
+			update((state) => {
+				const gapMatch = state.gapMatches.find((gm) => gm.gap.id === gapId);
+				if (!gapMatch) return state;
 
-        // Find task in alternatives
-        const newTask = gapMatch.alternatives.find(
-          (a) => a.task_id === newTaskId,
-        );
-        if (!newTask) return state;
+				// Find task in alternatives
+				const newTask = gapMatch.alternatives.find((a) => a.task_id === newTaskId);
+				if (!newTask) return state;
 
-        // Swap primary with alternative
-        const updatedMatch = {
-          ...gapMatch,
-          primary_suggestion: newTask,
-          alternatives: [
-            gapMatch.primary_suggestion,
-            ...gapMatch.alternatives.filter((a) => a.task_id !== newTaskId),
-          ],
-        };
+				// Swap primary with alternative
+				const updatedMatch = {
+					...gapMatch,
+					primary_suggestion: newTask,
+					alternatives: [
+						gapMatch.primary_suggestion,
+						...gapMatch.alternatives.filter((a) => a.task_id !== newTaskId)
+					]
+				};
 
-        return {
-          ...state,
-          gapMatches: state.gapMatches.map((gm) =>
-            gm.gap.id === gapId ? updatedMatch : gm,
-          ),
-        };
-      });
-    },
+				return {
+					...state,
+					gapMatches: state.gapMatches.map((gm) =>
+						gm.gap.id === gapId ? updatedMatch : gm
+					)
+				};
+			});
+		},
 
-    async acceptAll() {
-      update((s) => ({ ...s, status: "saving" }));
+		async acceptAll() {
+			update((s) => ({ ...s, status: 'saving' }));
 
-      try {
-        const acceptedMatches = get(this).gapMatches.map((gm) => ({
-          gap_id: gm.gap.id,
-          task_id: gm.primary_suggestion.task_id,
-          scheduled_start: gm.gap.start,
-        }));
+			try {
+				const acceptedMatches = get(this).gapMatches.map((gm) => ({
+					gap_id: gm.gap.id,
+					task_id: gm.primary_suggestion.task_id,
+					scheduled_start: gm.gap.start
+				}));
 
-        await fetch("/api/timeblocks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accepted_matches: acceptedMatches }),
-        });
+				await fetch('/api/timeblocks', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ accepted_matches: acceptedMatches })
+				});
 
-        update((s) => ({ ...s, status: "idle" }));
-        goto("/calendar"); // Redirect to calendar view
-      } catch (error) {
-        update((s) => ({ ...s, status: "error", error: error.message }));
-      }
-    },
-  };
+				update((s) => ({ ...s, status: 'idle' }));
+				goto('/calendar'); // Redirect to calendar view
+			} catch (error) {
+				update((s) => ({ ...s, status: 'error', error: error.message }));
+			}
+		}
+	};
 }
 
 export const timeBlockStore = createTimeBlockStore();
@@ -1483,132 +1462,129 @@ export const timeBlockStore = createTimeBlockStore();
 
 ```svelte
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { timeBlockStore } from '$lib/stores/timeBlockStore';
-  import TimeBlockGapCard from './TimeBlockGapCard.svelte';
-  import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
+	import { onMount } from 'svelte';
+	import { timeBlockStore } from '$lib/stores/timeBlockStore';
+	import TimeBlockGapCard from './TimeBlockGapCard.svelte';
+	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
 
-  export let timeRange: 'next_3_days' | 'next_week' = 'next_3_days';
+	export let timeRange: 'next_3_days' | 'next_week' = 'next_3_days';
 
-  onMount(() => {
-    timeBlockStore.initialize(timeRange);
-  });
+	onMount(() => {
+		timeBlockStore.initialize(timeRange);
+	});
 
-  $: isLoading = $timeBlockStore.status === 'loading';
-  $: isSaving = $timeBlockStore.status === 'saving';
-  $: hasGaps = $timeBlockStore.gapMatches.length > 0;
+	$: isLoading = $timeBlockStore.status === 'loading';
+	$: isSaving = $timeBlockStore.status === 'saving';
+	$: hasGaps = $timeBlockStore.gapMatches.length > 0;
 </script>
 
 <div class="timeblock-view">
-  <header class="page-header">
-    <h1>TimeBlocks</h1>
-    <p class="subtitle">
-      {#if hasGaps}
-        You have {$timeBlockStore.gapMatches.length} free blocks available
-      {:else}
-        No available time blocks found
-      {/if}
-    </p>
-  </header>
+	<header class="page-header">
+		<h1>TimeBlocks</h1>
+		<p class="subtitle">
+			{#if hasGaps}
+				You have {$timeBlockStore.gapMatches.length} free blocks available
+			{:else}
+				No available time blocks found
+			{/if}
+		</p>
+	</header>
 
-  {#if isLoading}
-    <div class="loading-state">
-      <Spinner />
-      <p>Finding your free time blocks...</p>
-    </div>
-  {:else if $timeBlockStore.error}
-    <div class="error-state">
-      <AlertTriangle />
-      <p>{$timeBlockStore.error}</p>
-    </div>
-  {:else if hasGaps}
-    <div class="timeblock-content">
-      <!-- Left Panel: Gap Cards -->
-      <div class="gap-list">
-        {#each $timeBlockStore.gapMatches as gapMatch (gapMatch.gap.id)}
-          <TimeBlockGapCard
-            gap={gapMatch.gap}
-            primarySuggestion={gapMatch.primary_suggestion}
-            alternatives={gapMatch.alternatives}
-            on:swap={(e) => timeBlockStore.swapTask(gapMatch.gap.id, e.detail.taskId)}
-          />
-        {/each}
-      </div>
+	{#if isLoading}
+		<div class="loading-state">
+			<Spinner />
+			<p>Finding your free time blocks...</p>
+		</div>
+	{:else if $timeBlockStore.error}
+		<div class="error-state">
+			<AlertTriangle />
+			<p>{$timeBlockStore.error}</p>
+		</div>
+	{:else if hasGaps}
+		<div class="timeblock-content">
+			<!-- Left Panel: Gap Cards -->
+			<div class="gap-list">
+				{#each $timeBlockStore.gapMatches as gapMatch (gapMatch.gap.id)}
+					<TimeBlockGapCard
+						gap={gapMatch.gap}
+						primarySuggestion={gapMatch.primary_suggestion}
+						alternatives={gapMatch.alternatives}
+						on:swap={(e) => timeBlockStore.swapTask(gapMatch.gap.id, e.detail.taskId)}
+					/>
+				{/each}
+			</div>
 
-      <!-- Right Panel: Calendar Visualization -->
-      <div class="calendar-panel">
-        <CalendarView
-          events={$timeBlockStore.gapMatches.map(gm => ({
-            id: gm.gap.id,
-            title: gm.primary_suggestion.task_title,
-            start: gm.gap.start,
-            end: gm.gap.end
-          }))}
-        />
-      </div>
-    </div>
+			<!-- Right Panel: Calendar Visualization -->
+			<div class="calendar-panel">
+				<CalendarView
+					events={$timeBlockStore.gapMatches.map((gm) => ({
+						id: gm.gap.id,
+						title: gm.primary_suggestion.task_title,
+						start: gm.gap.start,
+						end: gm.gap.end
+					}))}
+				/>
+			</div>
+		</div>
 
-    <!-- Footer Actions -->
-    <footer class="action-bar">
-      <button
-        class="btn-secondary"
-        on:click={() => timeBlockStore.initialize(timeRange)}
-      >
-        Refresh
-      </button>
-      <button
-        class="btn-primary"
-        disabled={isSaving}
-        on:click={() => timeBlockStore.acceptAll()}
-      >
-        {isSaving ? 'Scheduling...' : 'Accept All Suggestions'}
-      </button>
-    </footer>
-  {:else}
-    <div class="empty-state">
-      <Calendar />
-      <h2>No free time blocks found</h2>
-      <p>Your calendar is fully booked for the selected time range.</p>
-    </div>
-  {/if}
+		<!-- Footer Actions -->
+		<footer class="action-bar">
+			<button class="btn-secondary" on:click={() => timeBlockStore.initialize(timeRange)}>
+				Refresh
+			</button>
+			<button
+				class="btn-primary"
+				disabled={isSaving}
+				on:click={() => timeBlockStore.acceptAll()}
+			>
+				{isSaving ? 'Scheduling...' : 'Accept All Suggestions'}
+			</button>
+		</footer>
+	{:else}
+		<div class="empty-state">
+			<Calendar />
+			<h2>No free time blocks found</h2>
+			<p>Your calendar is fully booked for the selected time range.</p>
+		</div>
+	{/if}
 </div>
 
 <style>
-  .timeblock-view {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
+	.timeblock-view {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
 
-  .timeblock-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    flex: 1;
-    overflow: hidden;
-  }
+	.timeblock-content {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 2rem;
+		flex: 1;
+		overflow: hidden;
+	}
 
-  @media (max-width: 768px) {
-    .timeblock-content {
-      grid-template-columns: 1fr;
-    }
-    .calendar-panel {
-      display: none; /* Hide calendar on mobile */
-    }
-  }
+	@media (max-width: 768px) {
+		.timeblock-content {
+			grid-template-columns: 1fr;
+		}
+		.calendar-panel {
+			display: none; /* Hide calendar on mobile */
+		}
+	}
 
-  .gap-list {
-    overflow-y: auto;
-    padding-right: 1rem;
-  }
+	.gap-list {
+		overflow-y: auto;
+		padding-right: 1rem;
+	}
 
-  .action-bar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
-  }
+	.action-bar {
+		display: flex;
+		justify-content: flex-end;
+		gap: 1rem;
+		padding: 1rem;
+		border-top: 1px solid var(--border-color);
+	}
 </style>
 ```
 
@@ -1711,52 +1687,52 @@ export const timeBlockStore = createTimeBlockStore();
 
 2. **Fitness score calculation:** What weights should we assign to different factors?
 
-   ```
-   fitness_score =
-     energy_match * 0.4 +
-     duration_fit * 0.3 +
-     priority_urgency * 0.2 +
-     context_appropriateness * 0.1
-   ```
+    ```
+    fitness_score =
+      energy_match * 0.4 +
+      duration_fit * 0.3 +
+      priority_urgency * 0.2 +
+      context_appropriateness * 0.1
+    ```
 
 3. **LLM cost optimization:** TimeBlock matching might be called frequently. Should we:
-   - Cache matches for 15 minutes?
-   - Use faster/cheaper model (Grok) for simple cases?
-   - Fall back to algorithmic matching if LLM quota exceeded?
+    - Cache matches for 15 minutes?
+    - Use faster/cheaper model (Grok) for simple cases?
+    - Fall back to algorithmic matching if LLM quota exceeded?
 
 4. **Real-time sync:** When user's calendar changes (new event added), should:
-   - Auto-refresh gaps immediately (via webhook)?
-   - Show notification "Your TimeBlocks have changed"?
-   - Or only refresh on manual request?
+    - Auto-refresh gaps immediately (via webhook)?
+    - Show notification "Your TimeBlocks have changed"?
+    - Or only refresh on manual request?
 
 ### Product & UX
 
 5. **Task visibility:** Should TimeBlock only suggest backlog tasks, or also:
-   - In-progress tasks (that need continuation)?
-   - Tasks from specific projects (user-selected)?
-   - Recurring tasks that need rescheduling?
+    - In-progress tasks (that need continuation)?
+    - Tasks from specific projects (user-selected)?
+    - Recurring tasks that need rescheduling?
 
 6. **Energy profile onboarding:** How do we capture user energy preferences?
-   - Explicit survey during onboarding?
-   - Infer from task completion times over first 2 weeks?
-   - Ask users to rate their energy level when completing tasks?
+    - Explicit survey during onboarding?
+    - Infer from task completion times over first 2 weeks?
+    - Ask users to rate their energy level when completing tasks?
 
 7. **Gap density:** If calendar is very busy with many small gaps (15-30 min), should we:
-   - Show all gaps (might be overwhelming)?
-   - Only show "meaningful" gaps (60+ minutes)?
-   - Combine adjacent small gaps if possible?
+    - Show all gaps (might be overwhelming)?
+    - Only show "meaningful" gaps (60+ minutes)?
+    - Combine adjacent small gaps if possible?
 
 8. **Notification strategy:** When should users be notified about TimeBlocks?
-   - Daily morning: "Here are your 3 free blocks today"?
-   - When new gap appears (meeting canceled)?
-   - Only when user explicitly visits TimeBlock page?
+    - Daily morning: "Here are your 3 free blocks today"?
+    - When new gap appears (meeting canceled)?
+    - Only when user explicitly visits TimeBlock page?
 
 ### Future Enhancements
 
 9. **Week-level optimization:** Instead of gap-by-gap matching, should we offer:
-   - "Optimize my entire week" mode?
-   - Show before/after comparison of proposed schedule?
-   - Allow bulk acceptance/rejection?
+    - "Optimize my entire week" mode?
+    - Show before/after comparison of proposed schedule?
+    - Allow bulk acceptance/rejection?
 
 10. **Team coordination:** For future team features, should TimeBlock:
     - Suggest collaborative work blocks when teammates are free?

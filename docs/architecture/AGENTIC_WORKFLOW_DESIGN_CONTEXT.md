@@ -90,16 +90,16 @@ BuildOS is an AI-powered productivity platform for ADHD minds that transforms un
 ```typescript
 // Web creates job
 const job = await queue.add(
-  "job_type",
-  userId,
-  {
-    /* metadata */
-  },
-  { priority: 10, scheduledFor: new Date() },
+	'job_type',
+	userId,
+	{
+		/* metadata */
+	},
+	{ priority: 10, scheduledFor: new Date() }
 );
 
 // Worker claims and processes job
-const jobs = await queue.claimPendingJobs(["job_type"], batchSize);
+const jobs = await queue.claimPendingJobs(['job_type'], batchSize);
 ```
 
 **Atomic Job Claiming:**
@@ -114,15 +114,15 @@ const jobs = await queue.claimPendingJobs(["job_type"], batchSize);
 // Worker broadcasts notification
 const channel = supabase.channel(`user:${userId}`);
 await channel.send({
-  type: "broadcast",
-  event: "brief_completed",
-  payload: { briefId, briefDate, taskCount },
+	type: 'broadcast',
+	event: 'brief_completed',
+	payload: { briefId, briefDate, taskCount }
 });
 
 // Web subscribes to notifications
 const channel = supabase.channel(`user:${userId}`);
-channel.on("broadcast", { event: "brief_completed" }, (payload) => {
-  // Update UI
+channel.on('broadcast', { event: 'brief_completed' }, (payload) => {
+	// Update UI
 });
 ```
 
@@ -221,8 +221,8 @@ Logic:
 
 - Increments `attempts`
 - If `p_retry` and `attempts < max_attempts`:
-  - Sets `status = 'retrying'`
-  - Calculates retry delay: `2^attempts * 60 minutes`
+    - Sets `status = 'retrying'`
+    - Calculates retry delay: `2^attempts * 60 minutes`
 - Else: Sets `status = 'failed'`
 
 #### Current Job Types
@@ -251,8 +251,8 @@ Logic:
 
 ```typescript
 // 1. Register processors
-queue.process("generate_daily_brief", processBrief);
-queue.process("generate_phases", processPhases);
+queue.process('generate_daily_brief', processBrief);
+queue.process('generate_phases', processPhases);
 
 // 2. Start processing
 await queue.start();
@@ -268,23 +268,23 @@ await queue.start();
 
 ```typescript
 async function processJob(job: ProcessingJob) {
-  // 1. Validate metadata
-  const data = job.data;
+	// 1. Validate metadata
+	const data = job.data;
 
-  // 2. Fetch required data from database
-  const context = await fetchContext(job.userId);
+	// 2. Fetch required data from database
+	const context = await fetchContext(job.userId);
 
-  // 3. Execute business logic (may include LLM calls)
-  const result = await executeLogic(context, data);
+	// 3. Execute business logic (may include LLM calls)
+	const result = await executeLogic(context, data);
 
-  // 4. Save results to database
-  await saveResults(result);
+	// 4. Save results to database
+	await saveResults(result);
 
-  // 5. Update job progress
-  await job.updateProgress({ current: 100, total: 100 });
+	// 5. Update job progress
+	await job.updateProgress({ current: 100, total: 100 });
 
-  // 6. Return result
-  return { success: true, result };
+	// 6. Return result
+	return { success: true, result };
 }
 ```
 
@@ -346,27 +346,27 @@ projects: {
 
 ```typescript
 phases: {
-  id: string;
-  user_id: string;
-  project_id: string;
-  name: string;
-  description: string | null;
-  order: number;
-  start_date: string;
-  end_date: string;
-  scheduling_method: string | null;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	user_id: string;
+	project_id: string;
+	name: string;
+	description: string | null;
+	order: number;
+	start_date: string;
+	end_date: string;
+	scheduling_method: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
 phase_tasks: {
-  id: string;
-  phase_id: string;
-  task_id: string;
-  order: number;
-  assignment_reason: string | null; // Why AI assigned this task to this phase
-  suggested_start_date: string | null;
-  created_at: string;
+	id: string;
+	phase_id: string;
+	task_id: string;
+	order: number;
+	assignment_reason: string | null; // Why AI assigned this task to this phase
+	suggested_start_date: string | null;
+	created_at: string;
 }
 ```
 
@@ -419,19 +419,19 @@ brain_dump_links: {
 
 ```typescript
 user_context: {
-  id: string;
-  user_id: string;
-  background: string | null;
-  goals_overview: string | null;
-  work_style: string | null;
-  communication_style: string | null;
-  priorities: string | null;
-  focus_areas: string | null;
-  productivity_challenges: string | null;
-  active_projects: string | null;
-  // ... many more context fields
-  created_at: string;
-  updated_at: string;
+	id: string;
+	user_id: string;
+	background: string | null;
+	goals_overview: string | null;
+	work_style: string | null;
+	communication_style: string | null;
+	priorities: string | null;
+	focus_areas: string | null;
+	productivity_challenges: string | null;
+	active_projects: string | null;
+	// ... many more context fields
+	created_at: string;
+	updated_at: string;
 }
 ```
 
@@ -439,21 +439,21 @@ user_context: {
 
 ```typescript
 llm_usage_logs: {
-  id: string;
-  user_id: string;
-  operation_type: string; // "brain_dump", "brief_generation", "phase_generation", etc.
-  model_requested: string;
-  model_used: string;
-  provider: string | null;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  input_cost_usd: number;
-  output_cost_usd: number;
-  total_cost_usd: number;
-  response_time_ms: number;
-  status: string; // "success", "error", "timeout"
-  created_at: string;
+	id: string;
+	user_id: string;
+	operation_type: string; // "brain_dump", "brief_generation", "phase_generation", etc.
+	model_requested: string;
+	model_used: string;
+	provider: string | null;
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+	input_cost_usd: number;
+	output_cost_usd: number;
+	total_cost_usd: number;
+	response_time_ms: number;
+	status: string; // "success", "error", "timeout"
+	created_at: string;
 }
 ```
 
@@ -486,24 +486,24 @@ The system uses a sophisticated LLM routing service that intelligently selects m
 #### Key Features
 
 1. **Automatic Model Selection**
-   - Analyzes prompt complexity
-   - Considers cost, speed, and quality requirements
-   - Provides fallback models via OpenRouter
+    - Analyzes prompt complexity
+    - Considers cost, speed, and quality requirements
+    - Provides fallback models via OpenRouter
 
 2. **Cost Optimization**
-   - DeepSeek as primary model (95% cost reduction vs Anthropic)
-   - Tracks costs per model and operation
-   - Automatic retry with more powerful models on JSON parse errors
+    - DeepSeek as primary model (95% cost reduction vs Anthropic)
+    - Tracks costs per model and operation
+    - Automatic retry with more powerful models on JSON parse errors
 
 3. **Provider Routing**
-   ```typescript
-   {
-     order: ["deepseek", "qwen", "google", "anthropic"],
-     allow_fallbacks: true,
-     require_parameters: true,
-     data_collection: "deny"
-   }
-   ```
+    ```typescript
+    {
+      order: ["deepseek", "qwen", "google", "anthropic"],
+      allow_fallbacks: true,
+      require_parameters: true,
+      data_collection: "deny"
+    }
+    ```
 
 #### Usage Pattern
 
@@ -511,20 +511,20 @@ The system uses a sophisticated LLM routing service that intelligently selects m
 
 ```typescript
 const llmService = new SmartLLMService({
-  apiKey: process.env.PRIVATE_OPENROUTER_API_KEY,
-  supabase: supabase,
+	apiKey: process.env.PRIVATE_OPENROUTER_API_KEY,
+	supabase: supabase
 });
 
 const result = await llmService.getJSONResponse({
-  systemPrompt: "You are an expert at analyzing projects...",
-  userPrompt: "Analyze this project and generate phases...",
-  userId: userId,
-  profile: "balanced", // or "fast", "powerful", "maximum"
-  temperature: 0.2,
-  validation: {
-    retryOnParseError: true,
-    maxRetries: 2,
-  },
+	systemPrompt: 'You are an expert at analyzing projects...',
+	userPrompt: 'Analyze this project and generate phases...',
+	userId: userId,
+	profile: 'balanced', // or "fast", "powerful", "maximum"
+	temperature: 0.2,
+	validation: {
+		retryOnParseError: true,
+		maxRetries: 2
+	}
 });
 ```
 
@@ -532,11 +532,11 @@ const result = await llmService.getJSONResponse({
 
 ```typescript
 const text = await llmService.generateText({
-  prompt: "Generate a brief summary...",
-  userId: userId,
-  profile: "balanced", // or "speed", "quality", "creative"
-  temperature: 0.7,
-  maxTokens: 4096,
+	prompt: 'Generate a brief summary...',
+	userId: userId,
+	profile: 'balanced', // or "speed", "quality", "creative"
+	temperature: 0.7,
+	maxTokens: 4096
 });
 ```
 
@@ -552,25 +552,23 @@ const text = await llmService.generateText({
 
 ```typescript
 export interface LegacyJob<T = any> {
-  id: string;
-  data: T & { userId: string };
-  attemptsMade: number;
-  log: (message: string) => Promise<void>;
-  updateProgress: (progress: JobProgress) => Promise<void>;
+	id: string;
+	data: T & { userId: string };
+	attemptsMade: number;
+	log: (message: string) => Promise<void>;
+	updateProgress: (progress: JobProgress) => Promise<void>;
 }
 
-export function createLegacyJob<T = any>(
-  processingJob: ProcessingJob<T>,
-): LegacyJob<T> {
-  return {
-    id: processingJob.id,
-    data: { ...processingJob.data, userId: processingJob.userId } as T & {
-      userId: string;
-    },
-    attemptsMade: processingJob.attempts,
-    log: processingJob.log,
-    updateProgress: processingJob.updateProgress,
-  };
+export function createLegacyJob<T = any>(processingJob: ProcessingJob<T>): LegacyJob<T> {
+	return {
+		id: processingJob.id,
+		data: { ...processingJob.data, userId: processingJob.userId } as T & {
+			userId: string;
+		},
+		attemptsMade: processingJob.attempts,
+		log: processingJob.log,
+		updateProgress: processingJob.updateProgress
+	};
 }
 ```
 
@@ -670,15 +668,15 @@ Tasks can recur with patterns stored in `recurrence_pattern` field.
 
 ```typescript
 recurring_task_instances: {
-  id: string;
-  task_id: string;
-  user_id: string;
-  instance_date: string;
-  status: string;
-  completed_at: string | null;
-  skipped: boolean | null;
-  calendar_event_id: string | null;
-  created_at: string;
+	id: string;
+	task_id: string;
+	user_id: string;
+	instance_date: string;
+	status: string;
+	completed_at: string | null;
+	skipped: boolean | null;
+	calendar_event_id: string | null;
+	created_at: string;
 }
 ```
 
@@ -694,34 +692,34 @@ recurring_task_instances: {
 
 ```typescript
 notification_events: {
-  id: string;
-  event_type: string; // "brief.completed", "task.created", etc.
-  event_source: string; // "worker_job", "web_app", "scheduler"
-  target_user_id: string | null;
-  actor_user_id: string | null;
-  payload: Json;
-  metadata: Json | null;
-  correlation_id: string | null; // For tracking across services
-  created_at: string;
+	id: string;
+	event_type: string; // "brief.completed", "task.created", etc.
+	event_source: string; // "worker_job", "web_app", "scheduler"
+	target_user_id: string | null;
+	actor_user_id: string | null;
+	payload: Json;
+	metadata: Json | null;
+	correlation_id: string | null; // For tracking across services
+	created_at: string;
 }
 
 notification_deliveries: {
-  id: string;
-  event_id: string | null;
-  recipient_user_id: string;
-  channel: string; // "email", "sms", "push", "in_app"
-  status: string; // "pending", "sent", "delivered", "failed"
-  payload: Json;
-  channel_identifier: string | null; // email address, phone number, etc.
-  external_id: string | null; // Twilio SID, email tracking ID, etc.
-  tracking_id: string | null;
-  correlation_id: string | null;
-  attempts: number;
-  max_attempts: number;
-  last_error: string | null;
-  created_at: string;
-  sent_at: string | null;
-  delivered_at: string | null;
+	id: string;
+	event_id: string | null;
+	recipient_user_id: string;
+	channel: string; // "email", "sms", "push", "in_app"
+	status: string; // "pending", "sent", "delivered", "failed"
+	payload: Json;
+	channel_identifier: string | null; // email address, phone number, etc.
+	external_id: string | null; // Twilio SID, email tracking ID, etc.
+	tracking_id: string | null;
+	correlation_id: string | null;
+	attempts: number;
+	max_attempts: number;
+	last_error: string | null;
+	created_at: string;
+	sent_at: string | null;
+	delivered_at: string | null;
 }
 ```
 
@@ -729,18 +727,18 @@ notification_deliveries: {
 
 ```typescript
 // Worker emits notification event
-await supabase.rpc("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_event_source: "worker_job",
-  p_target_user_id: userId,
-  p_payload: {
-    brief_id: briefId,
-    brief_date: briefDate,
-    task_count: taskCount,
-  },
-  p_metadata: {
-    correlationId: generateCorrelationId(),
-  },
+await supabase.rpc('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: userId,
+	p_payload: {
+		brief_id: briefId,
+		brief_date: briefDate,
+		task_count: taskCount
+	},
+	p_metadata: {
+		correlationId: generateCorrelationId()
+	}
 });
 ```
 
@@ -803,8 +801,8 @@ Preparatory Analysis (LLM)
 
 ```typescript
 const [contextResult, tasksResult] = await Promise.all([
-  extractContext(systemPrompt, userContent),
-  extractTasks(systemPrompt, userContent),
+	extractContext(systemPrompt, userContent),
+	extractTasks(systemPrompt, userContent)
 ]);
 
 const mergedOperations = mergeOperations(contextResult, tasksResult);
@@ -814,12 +812,10 @@ const mergedOperations = mergeOperations(contextResult, tasksResult);
 
 ```typescript
 // Server sends SSE events
-res.write(`data: ${JSON.stringify({ phase: "analysis", progress: 25 })}\n\n`);
-res.write(`data: ${JSON.stringify({ phase: "extraction", progress: 50 })}\n\n`);
-res.write(`data: ${JSON.stringify({ phase: "validation", progress: 75 })}\n\n`);
-res.write(
-  `data: ${JSON.stringify({ phase: "complete", result: operations })}\n\n`,
-);
+res.write(`data: ${JSON.stringify({ phase: 'analysis', progress: 25 })}\n\n`);
+res.write(`data: ${JSON.stringify({ phase: 'extraction', progress: 50 })}\n\n`);
+res.write(`data: ${JSON.stringify({ phase: 'validation', progress: 75 })}\n\n`);
+res.write(`data: ${JSON.stringify({ phase: 'complete', result: operations })}\n\n`);
 ```
 
 ---
@@ -829,73 +825,73 @@ res.write(
 ### Core Requirements
 
 1. **Long-Running Tasks**
-   - Must handle tasks that take minutes to hours
-   - Progress tracking with real-time updates
-   - Ability to pause/resume
-   - Graceful failure and recovery
+    - Must handle tasks that take minutes to hours
+    - Progress tracking with real-time updates
+    - Ability to pause/resume
+    - Graceful failure and recovery
 
 2. **Multi-Step Reasoning**
-   - Break down complex tasks into subtasks
-   - Execute subtasks in parallel or sequence
-   - Validate results at each step
-   - Aggregate results
+    - Break down complex tasks into subtasks
+    - Execute subtasks in parallel or sequence
+    - Validate results at each step
+    - Aggregate results
 
 3. **Tool Usage**
-   - Access to database operations (read/write)
-   - Access to LLM services
-   - Access to external APIs (calendar, etc.)
-   - File operations if needed
+    - Access to database operations (read/write)
+    - Access to LLM services
+    - Access to external APIs (calendar, etc.)
+    - File operations if needed
 
 4. **State Management**
-   - Persist workflow state in database
-   - Resume from any step
-   - Handle retries and failures
-   - Track decision history
+    - Persist workflow state in database
+    - Resume from any step
+    - Handle retries and failures
+    - Track decision history
 
 5. **User Interaction**
-   - Request clarifications when needed
-   - Show progress in real-time
-   - Allow user intervention
-   - Provide explanations of decisions
+    - Request clarifications when needed
+    - Show progress in real-time
+    - Allow user intervention
+    - Provide explanations of decisions
 
 6. **Cost Management**
-   - Track LLM token usage
-   - Optimize model selection
-   - Batch operations when possible
-   - Budget constraints per workflow
+    - Track LLM token usage
+    - Optimize model selection
+    - Batch operations when possible
+    - Budget constraints per workflow
 
 ### Workflow Types to Support
 
 1. **Project Planning Workflow**
-   - Analyze project requirements
-   - Generate comprehensive project plan
-   - Create phases and tasks
-   - Assign priorities and dependencies
-   - Schedule tasks on calendar
+    - Analyze project requirements
+    - Generate comprehensive project plan
+    - Create phases and tasks
+    - Assign priorities and dependencies
+    - Schedule tasks on calendar
 
 2. **Task Decomposition Workflow**
-   - Break complex task into subtasks
-   - Identify dependencies
-   - Estimate durations
-   - Generate actionable steps
+    - Break complex task into subtasks
+    - Identify dependencies
+    - Estimate durations
+    - Generate actionable steps
 
 3. **Research Workflow**
-   - Gather information from notes and context
-   - Synthesize findings
-   - Generate summary report
-   - Create follow-up tasks
+    - Gather information from notes and context
+    - Synthesize findings
+    - Generate summary report
+    - Create follow-up tasks
 
 4. **Optimization Workflow**
-   - Analyze current projects and tasks
-   - Identify bottlenecks
-   - Suggest reorganization
-   - Propose task consolidation
+    - Analyze current projects and tasks
+    - Identify bottlenecks
+    - Suggest reorganization
+    - Propose task consolidation
 
 5. **Calendar Analysis Workflow**
-   - Analyze calendar patterns
-   - Identify recurring meetings/events
-   - Suggest project creation
-   - Generate tasks from meetings
+    - Analyze calendar patterns
+    - Identify recurring meetings/events
+    - Suggest project creation
+    - Generate tasks from meetings
 
 ---
 
@@ -909,33 +905,33 @@ Add to `/packages/shared-types/src/queue.types.ts`:
 
 ```typescript
 export type QueueJobType =
-  | "generate_daily_brief"
-  | "generate_phases"
-  | "onboarding_analysis"
-  | "send_sms"
-  | "send_notification"
-  | "agentic_workflow"; // NEW
+	| 'generate_daily_brief'
+	| 'generate_phases'
+	| 'onboarding_analysis'
+	| 'send_sms'
+	| 'send_notification'
+	| 'agentic_workflow'; // NEW
 
 export interface AgenticWorkflowJobData {
-  userId: string;
-  workflowType: string; // "project_planning", "task_decomposition", etc.
-  input: {
-    taskId?: string;
-    projectId?: string;
-    userPrompt?: string;
-    context?: any;
-  };
-  options: {
-    maxSteps?: number;
-    maxCost?: number;
-    autoExecute?: boolean;
-    requireConfirmation?: boolean;
-  };
+	userId: string;
+	workflowType: string; // "project_planning", "task_decomposition", etc.
+	input: {
+		taskId?: string;
+		projectId?: string;
+		userPrompt?: string;
+		context?: any;
+	};
+	options: {
+		maxSteps?: number;
+		maxCost?: number;
+		autoExecute?: boolean;
+		requireConfirmation?: boolean;
+	};
 }
 
 export interface JobMetadataMap {
-  // ... existing types
-  agentic_workflow: AgenticWorkflowJobData;
+	// ... existing types
+	agentic_workflow: AgenticWorkflowJobData;
 }
 ```
 
@@ -944,25 +940,23 @@ export interface JobMetadataMap {
 Create `/apps/worker/src/workers/agentic/agenticWorkflowWorker.ts`:
 
 ```typescript
-import { LegacyJob } from "../shared/jobAdapter";
-import { AgenticWorkflowJobData } from "../shared/queueUtils";
-import { AgenticWorkflowEngine } from "./agenticWorkflowEngine";
+import { LegacyJob } from '../shared/jobAdapter';
+import { AgenticWorkflowJobData } from '../shared/queueUtils';
+import { AgenticWorkflowEngine } from './agenticWorkflowEngine';
 
-export async function processAgenticWorkflow(
-  job: LegacyJob<AgenticWorkflowJobData>,
-) {
-  await job.log("Starting agentic workflow");
+export async function processAgenticWorkflow(job: LegacyJob<AgenticWorkflowJobData>) {
+	await job.log('Starting agentic workflow');
 
-  const engine = new AgenticWorkflowEngine({
-    userId: job.data.userId,
-    workflowType: job.data.workflowType,
-    supabase: supabase,
-    llmService: llmService,
-  });
+	const engine = new AgenticWorkflowEngine({
+		userId: job.data.userId,
+		workflowType: job.data.workflowType,
+		supabase: supabase,
+		llmService: llmService
+	});
 
-  const result = await engine.execute(job.data.input, job.data.options);
+	const result = await engine.execute(job.data.input, job.data.options);
 
-  return result;
+	return result;
 }
 ```
 
@@ -971,21 +965,21 @@ export async function processAgenticWorkflow(
 In `/apps/worker/src/worker.ts`:
 
 ```typescript
-queue.process("agentic_workflow", processAgenticWorkflowWrapper);
+queue.process('agentic_workflow', processAgenticWorkflowWrapper);
 
 async function processAgenticWorkflowWrapper(job: ProcessingJob) {
-  await job.log("Processing agentic workflow");
+	await job.log('Processing agentic workflow');
 
-  try {
-    const legacyJob = createLegacyJob(job);
-    await processAgenticWorkflow(legacyJob);
-    await job.log("✅ Agentic workflow completed");
+	try {
+		const legacyJob = createLegacyJob(job);
+		await processAgenticWorkflow(legacyJob);
+		await job.log('✅ Agentic workflow completed');
 
-    return { success: true };
-  } catch (error: any) {
-    await job.log(`❌ Agentic workflow failed: ${error.message}`);
-    throw error;
-  }
+		return { success: true };
+	} catch (error: any) {
+		await job.log(`❌ Agentic workflow failed: ${error.message}`);
+		throw error;
+	}
 }
 ```
 
@@ -994,26 +988,26 @@ async function processAgenticWorkflowWrapper(job: ProcessingJob) {
 Create endpoint in `/apps/worker/src/index.ts`:
 
 ```typescript
-app.post("/queue/agentic-workflow", async (req, res) => {
-  const { userId, workflowType, input, options } = req.body;
+app.post('/queue/agentic-workflow', async (req, res) => {
+	const { userId, workflowType, input, options } = req.body;
 
-  if (!userId || !workflowType) {
-    return res.status(400).json({
-      error: "userId and workflowType required",
-    });
-  }
+	if (!userId || !workflowType) {
+		return res.status(400).json({
+			error: 'userId and workflowType required'
+		});
+	}
 
-  const job = await queue.add(
-    "agentic_workflow",
-    userId,
-    { workflowType, input, options },
-    { priority: 5 },
-  );
+	const job = await queue.add(
+		'agentic_workflow',
+		userId,
+		{ workflowType, input, options },
+		{ priority: 5 }
+	);
 
-  return res.json({
-    success: true,
-    jobId: job.queue_job_id,
-  });
+	return res.json({
+		success: true,
+		jobId: job.queue_job_id
+	});
 });
 ```
 
@@ -1099,18 +1093,18 @@ CREATE INDEX idx_workflow_steps_workflow ON agentic_workflow_steps(workflow_id, 
 
 ```typescript
 const [analysis, suggestions] = await Promise.all([
-  llmService.getJSONResponse({
-    systemPrompt: "Analyze the project...",
-    userPrompt: projectData,
-    userId,
-    profile: "balanced",
-  }),
-  llmService.getJSONResponse({
-    systemPrompt: "Suggest improvements...",
-    userPrompt: projectData,
-    userId,
-    profile: "fast",
-  }),
+	llmService.getJSONResponse({
+		systemPrompt: 'Analyze the project...',
+		userPrompt: projectData,
+		userId,
+		profile: 'balanced'
+	}),
+	llmService.getJSONResponse({
+		systemPrompt: 'Suggest improvements...',
+		userPrompt: projectData,
+		userId,
+		profile: 'fast'
+	})
 ]);
 ```
 
@@ -1118,23 +1112,23 @@ const [analysis, suggestions] = await Promise.all([
 
 ```typescript
 async function executeWorkflow(job: ProcessingJob) {
-  const totalSteps = 5;
+	const totalSteps = 5;
 
-  await job.updateProgress({
-    current: 1,
-    total: totalSteps,
-    message: "Analyzing input",
-  });
+	await job.updateProgress({
+		current: 1,
+		total: totalSteps,
+		message: 'Analyzing input'
+	});
 
-  const analysis = await analyzeInput();
+	const analysis = await analyzeInput();
 
-  await job.updateProgress({
-    current: 2,
-    total: totalSteps,
-    message: "Generating plan",
-  });
+	await job.updateProgress({
+		current: 2,
+		total: totalSteps,
+		message: 'Generating plan'
+	});
 
-  // ... continue with steps
+	// ... continue with steps
 }
 ```
 
@@ -1142,31 +1136,31 @@ async function executeWorkflow(job: ProcessingJob) {
 
 ```typescript
 class WorkflowEngine {
-  private async saveState(workflowId: string, state: any) {
-    await supabase
-      .from("agentic_workflows")
-      .update({
-        state,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", workflowId);
-  }
+	private async saveState(workflowId: string, state: any) {
+		await supabase
+			.from('agentic_workflows')
+			.update({
+				state,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', workflowId);
+	}
 
-  private async loadState(workflowId: string) {
-    const { data } = await supabase
-      .from("agentic_workflows")
-      .select("state, current_step, variables")
-      .eq("id", workflowId)
-      .single();
+	private async loadState(workflowId: string) {
+		const { data } = await supabase
+			.from('agentic_workflows')
+			.select('state, current_step, variables')
+			.eq('id', workflowId)
+			.single();
 
-    return data;
-  }
+		return data;
+	}
 
-  async resumeWorkflow(workflowId: string) {
-    const state = await this.loadState(workflowId);
-    // Resume from current_step
-    await this.executeFromStep(state.current_step, state);
-  }
+	async resumeWorkflow(workflowId: string) {
+		const state = await this.loadState(workflowId);
+		// Resume from current_step
+		await this.executeFromStep(state.current_step, state);
+	}
 }
 ```
 
@@ -1174,42 +1168,39 @@ class WorkflowEngine {
 
 ```typescript
 interface Tool {
-  name: string;
-  description: string;
-  execute: (params: any) => Promise<any>;
+	name: string;
+	description: string;
+	execute: (params: any) => Promise<any>;
 }
 
 const tools: Tool[] = [
-  {
-    name: "fetch_project_tasks",
-    description: "Fetch all tasks for a project",
-    execute: async ({ projectId }) => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("project_id", projectId);
-      return data;
-    },
-  },
-  {
-    name: "create_task",
-    description: "Create a new task",
-    execute: async ({ projectId, title, description }) => {
-      const { data } = await supabase
-        .from("tasks")
-        .insert({ project_id: projectId, title, description, user_id })
-        .select()
-        .single();
-      return data;
-    },
-  },
+	{
+		name: 'fetch_project_tasks',
+		description: 'Fetch all tasks for a project',
+		execute: async ({ projectId }) => {
+			const { data } = await supabase.from('tasks').select('*').eq('project_id', projectId);
+			return data;
+		}
+	},
+	{
+		name: 'create_task',
+		description: 'Create a new task',
+		execute: async ({ projectId, title, description }) => {
+			const { data } = await supabase
+				.from('tasks')
+				.insert({ project_id: projectId, title, description, user_id })
+				.select()
+				.single();
+			return data;
+		}
+	}
 ];
 
 async function executeTool(toolName: string, params: any) {
-  const tool = tools.find((t) => t.name === toolName);
-  if (!tool) throw new Error(`Tool not found: ${toolName}`);
+	const tool = tools.find((t) => t.name === toolName);
+	if (!tool) throw new Error(`Tool not found: ${toolName}`);
 
-  return await tool.execute(params);
+	return await tool.execute(params);
 }
 ```
 
@@ -1217,11 +1208,11 @@ async function executeTool(toolName: string, params: any) {
 
 ```typescript
 async function agenticStep(context: string, availableTools: Tool[]) {
-  const systemPrompt = `
+	const systemPrompt = `
 You are an AI agent that can use tools to accomplish tasks.
 
 Available tools:
-${availableTools.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
+${availableTools.map((t) => `- ${t.name}: ${t.description}`).join('\n')}
 
 Respond with JSON:
 {
@@ -1232,24 +1223,24 @@ Respond with JSON:
 }
 `;
 
-  const response = await llmService.getJSONResponse({
-    systemPrompt,
-    userPrompt: context,
-    userId,
-    profile: "balanced",
-  });
+	const response = await llmService.getJSONResponse({
+		systemPrompt,
+		userPrompt: context,
+		userId,
+		profile: 'balanced'
+	});
 
-  if (response.action === "finish") {
-    return { done: true, result: response.result };
-  }
+	if (response.action === 'finish') {
+		return { done: true, result: response.result };
+	}
 
-  const toolResult = await executeTool(response.action, response.parameters);
+	const toolResult = await executeTool(response.action, response.parameters);
 
-  return {
-    done: false,
-    result: toolResult,
-    nextContext: `${context}\n\nTool ${response.action} returned: ${JSON.stringify(toolResult)}`,
-  };
+	return {
+		done: false,
+		result: toolResult,
+		nextContext: `${context}\n\nTool ${response.action} returned: ${JSON.stringify(toolResult)}`
+	};
 }
 ```
 
@@ -1275,40 +1266,40 @@ Respond with JSON:
 ### Scaling Strategies
 
 1. **Horizontal Worker Scaling**
-   - Multiple worker instances claim jobs independently
-   - No coordination needed (atomic claiming)
-   - Linear scalability
+    - Multiple worker instances claim jobs independently
+    - No coordination needed (atomic claiming)
+    - Linear scalability
 
 2. **Job Prioritization**
-   - Priority 1 = urgent/immediate
-   - Priority 10 = normal/scheduled
-   - Can create separate workers for priority levels
+    - Priority 1 = urgent/immediate
+    - Priority 10 = normal/scheduled
+    - Can create separate workers for priority levels
 
 3. **Workflow Optimization**
-   - Parallel step execution where possible
-   - Caching of repeated LLM calls
-   - Batch operations for database queries
+    - Parallel step execution where possible
+    - Caching of repeated LLM calls
+    - Batch operations for database queries
 
 ### Constraints & Considerations
 
 1. **Serverless Timeout**
-   - Vercel: 60 seconds (extendable)
-   - Railway: No timeout (long-running)
-   - **Recommendation:** Run agentic workflows in worker service
+    - Vercel: 60 seconds (extendable)
+    - Railway: No timeout (long-running)
+    - **Recommendation:** Run agentic workflows in worker service
 
 2. **Database Connection Pool**
-   - Supabase: 100 connections via PgBouncer
-   - Be mindful of connection usage
+    - Supabase: 100 connections via PgBouncer
+    - Be mindful of connection usage
 
 3. **LLM Rate Limits**
-   - OpenRouter handles rate limiting
-   - Fallback routing helps avoid limits
-   - Track usage to stay within budget
+    - OpenRouter handles rate limiting
+    - Fallback routing helps avoid limits
+    - Track usage to stay within budget
 
 4. **Cost Management**
-   - Set `maxCost` option for workflows
-   - Track cumulative costs
-   - Abort if budget exceeded
+    - Set `maxCost` option for workflows
+    - Track cumulative costs
+    - Abort if budget exceeded
 
 ---
 

@@ -28,10 +28,10 @@ The initial fixes were incomplete. While some refactoring has been done, **criti
 ```typescript
 // Line 139-144: Cleanup function is properly created
 return () => {
-  darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
-  window.removeEventListener("storage", handleStorageChange);
-  document.removeEventListener("touchstart", handleTouchStart);
-  document.removeEventListener("touchmove", handleTouchMove);
+	darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+	window.removeEventListener('storage', handleStorageChange);
+	document.removeEventListener('touchstart', handleTouchStart);
+	document.removeEventListener('touchmove', handleTouchMove);
 };
 ```
 
@@ -40,27 +40,24 @@ return () => {
 ```typescript
 // +layout.svelte, Line 301-302
 onMount(() => {
-  if (!browser) return;
+	if (!browser) return;
 
-  // ❌ BROKEN: Cleanup function is never stored!
-  initializePWAEnhancements(); // Returns cleanup function, but ignored
-  setupInstallPrompt(); // Also returns cleanup function, but ignored
+	// ❌ BROKEN: Cleanup function is never stored!
+	initializePWAEnhancements(); // Returns cleanup function, but ignored
+	setupInstallPrompt(); // Also returns cleanup function, but ignored
 
-  // ... rest of code
+	// ... rest of code
 
-  return () => {
-    // Only cleans up event listeners added here
-    window.removeEventListener(
-      "briefGenerationComplete",
-      handleBriefCompleteWrapper,
-    );
-    window.removeEventListener(
-      "briefNotification",
-      handleBriefNotificationWrapper as EventListener,
-    );
-    unsubscribeNav();
-    // ❌ MISSING: No cleanup for PWA enhancements!
-  };
+	return () => {
+		// Only cleans up event listeners added here
+		window.removeEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
+		window.removeEventListener(
+			'briefNotification',
+			handleBriefNotificationWrapper as EventListener
+		);
+		unsubscribeNav();
+		// ❌ MISSING: No cleanup for PWA enhancements!
+	};
 });
 ```
 
@@ -89,29 +86,26 @@ let pwaCleanup: (() => void) | void = null;
 let installPromptCleanup: (() => void) | void = null;
 
 onMount(() => {
-  if (!browser) return;
+	if (!browser) return;
 
-  // ✅ FIXED: Store cleanup functions
-  pwaCleanup = initializePWAEnhancements();
-  installPromptCleanup = setupInstallPrompt();
+	// ✅ FIXED: Store cleanup functions
+	pwaCleanup = initializePWAEnhancements();
+	installPromptCleanup = setupInstallPrompt();
 
-  // ... rest of code
+	// ... rest of code
 
-  return () => {
-    window.removeEventListener(
-      "briefGenerationComplete",
-      handleBriefCompleteWrapper,
-    );
-    window.removeEventListener(
-      "briefNotification",
-      handleBriefNotificationWrapper as EventListener,
-    );
-    unsubscribeNav();
+	return () => {
+		window.removeEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
+		window.removeEventListener(
+			'briefNotification',
+			handleBriefNotificationWrapper as EventListener
+		);
+		unsubscribeNav();
 
-    // ✅ NEW: Call PWA cleanups
-    if (pwaCleanup) pwaCleanup();
-    if (installPromptCleanup) installPromptCleanup();
-  };
+		// ✅ NEW: Call PWA cleanups
+		if (pwaCleanup) pwaCleanup();
+		if (installPromptCleanup) installPromptCleanup();
+	};
 });
 ```
 
@@ -132,14 +126,14 @@ let unsubscribeFromService: (() => void) | null = null;
 
 // Lines 47-57: Destroy method defined
 destroy: () => {
-  if (cleanupInterval) {
-    clearInterval(cleanupInterval);
-    cleanupInterval = null;
-  }
-  if (unsubscribeFromService) {
-    unsubscribeFromService();
-    unsubscribeFromService = null;
-  }
+	if (cleanupInterval) {
+		clearInterval(cleanupInterval);
+		cleanupInterval = null;
+	}
+	if (unsubscribeFromService) {
+		unsubscribeFromService();
+		unsubscribeFromService = null;
+	}
 };
 ```
 
@@ -187,12 +181,12 @@ The store is a singleton created at module import time. It's never destroyed bec
 // In +layout.svelte's onDestroy:
 
 onDestroy(() => {
-  if (browser) {
-    // ... existing cleanup ...
+	if (browser) {
+		// ... existing cleanup ...
 
-    // ✅ NEW: Destroy background jobs store
-    backgroundJobs.destroy();
-  }
+		// ✅ NEW: Destroy background jobs store
+		backgroundJobs.destroy();
+	}
 });
 ```
 
@@ -204,30 +198,30 @@ onDestroy(() => {
 let storeInstance: ReturnType<typeof createBackgroundJobsStore> | null = null;
 
 export function getBackgroundJobsStore() {
-  if (!storeInstance) {
-    storeInstance = createBackgroundJobsStore();
-  }
-  return storeInstance;
+	if (!storeInstance) {
+		storeInstance = createBackgroundJobsStore();
+	}
+	return storeInstance;
 }
 
 export function cleanupBackgroundJobsStore() {
-  if (storeInstance) {
-    storeInstance.destroy();
-    storeInstance = null;
-  }
+	if (storeInstance) {
+		storeInstance.destroy();
+		storeInstance = null;
+	}
 }
 
 // Then in +layout.svelte:
 onMount(() => {
-  if (browser) {
-    getBackgroundJobsStore(); // Initialize on app mount
-  }
+	if (browser) {
+		getBackgroundJobsStore(); // Initialize on app mount
+	}
 });
 
 onDestroy(() => {
-  if (browser) {
-    cleanupBackgroundJobsStore();
-  }
+	if (browser) {
+		cleanupBackgroundJobsStore();
+	}
 });
 ```
 
@@ -247,11 +241,11 @@ The store has proper cleanup patterns but they're not being called anywhere. The
 // In any component that creates timeBlocksStore:
 
 onMount(() => {
-  timeBlocksStore.initialize();
+	timeBlocksStore.initialize();
 });
 
 onDestroy(() => {
-  timeBlocksStore.destroy();
+	timeBlocksStore.destroy();
 });
 ```
 
@@ -268,15 +262,12 @@ onDestroy(() => {
 ```typescript
 // Lines 348-366: Brief notification listeners ARE cleaned up
 return () => {
-  window.removeEventListener(
-    "briefGenerationComplete",
-    handleBriefCompleteWrapper,
-  );
-  window.removeEventListener(
-    "briefNotification",
-    handleBriefNotificationWrapper as EventListener,
-  );
-  unsubscribeNav();
+	window.removeEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
+	window.removeEventListener(
+		'briefNotification',
+		handleBriefNotificationWrapper as EventListener
+	);
+	unsubscribeNav();
 };
 ```
 
@@ -303,26 +294,26 @@ setupInstallPrompt(); // ❌ Returns cleanup but ignored
 ```typescript
 // Lines 45-59: Cleanup functions are imported
 import {
-  initBrainDumpNotificationBridge,
-  cleanupBrainDumpNotificationBridge,
-} from "$lib/services/brain-dump-notification.bridge";
+	initBrainDumpNotificationBridge,
+	cleanupBrainDumpNotificationBridge
+} from '$lib/services/brain-dump-notification.bridge';
 
 // ... similar for other bridges ...
 
 // Lines 304-308: Initialized in onMount
 onMount(() => {
-  initBrainDumpNotificationBridge();
-  initPhaseGenerationNotificationBridge();
-  initCalendarAnalysisNotificationBridge();
-  initProjectSynthesisNotificationBridge();
+	initBrainDumpNotificationBridge();
+	initPhaseGenerationNotificationBridge();
+	initCalendarAnalysisNotificationBridge();
+	initProjectSynthesisNotificationBridge();
 });
 
 // Lines 372-376: Cleaned up in onDestroy
 onDestroy(() => {
-  cleanupBrainDumpNotificationBridge();
-  cleanupPhaseGenerationNotificationBridge();
-  cleanupCalendarAnalysisNotificationBridge();
-  cleanupProjectSynthesisNotificationBridge();
+	cleanupBrainDumpNotificationBridge();
+	cleanupPhaseGenerationNotificationBridge();
+	cleanupCalendarAnalysisNotificationBridge();
+	cleanupProjectSynthesisNotificationBridge();
 });
 ```
 
@@ -347,17 +338,16 @@ $: isReadOnly = data.isReadOnly || false;
 
 // Lines 100-137: Complex reactive block
 $: if ($page.route?.id !== currentRouteId && browser) {
-  currentRouteId = $page.route?.id || "";
-  // ... complex logic with multiple mutations ...
+	currentRouteId = $page.route?.id || '';
+	// ... complex logic with multiple mutations ...
 }
 
 // Line 140: Destructuring assignment
-$: ({ showNavigation, showFooter, needsOnboarding, showOnboardingModal } =
-  routeBasedState);
+$: ({ showNavigation, showFooter, needsOnboarding, showOnboardingModal } = routeBasedState);
 
 // Line 146: Conditional effect
 $: if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
-  resourcesLoadPromise = loadAuthenticatedResources();
+	resourcesLoadPromise = loadAuthenticatedResources();
 }
 ```
 
@@ -374,16 +364,16 @@ let isReadOnly = $derived(data.isReadOnly || false);
 
 // Lines 100-137: Complex logic → $effect
 $effect(() => {
-  if ($page.route?.id !== currentRouteId && browser) {
-    // ... same logic ...
-  }
+	if ($page.route?.id !== currentRouteId && browser) {
+		// ... same logic ...
+	}
 });
 
 // Line 146: Conditional effect
 $effect(() => {
-  if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
-    resourcesLoadPromise = loadAuthenticatedResources();
-  }
+	if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
+		resourcesLoadPromise = loadAuthenticatedResources();
+	}
 });
 ```
 
@@ -461,16 +451,16 @@ The notification bridges show the CORRECT pattern to follow:
 // CORRECT PATTERN FOR ALL CLEANUP
 
 // 1. Import both init and cleanup
-import { initBridge, cleanupBridge } from "$lib/services/bridge";
+import { initBridge, cleanupBridge } from '$lib/services/bridge';
 
 // 2. Initialize in onMount
 onMount(() => {
-  initBridge();
+	initBridge();
 });
 
 // 3. Cleanup in onDestroy
 onDestroy(() => {
-  cleanupBridge();
+	cleanupBridge();
 });
 ```
 
@@ -489,108 +479,99 @@ let pwaCleanup: (() => void) | void = null;
 let installPromptCleanup: (() => void) | void = null;
 
 onMount(() => {
-  if (!browser) return;
+	if (!browser) return;
 
-  // ✅ FIXED: Store and manage PWA cleanup
-  pwaCleanup = initializePWAEnhancements();
-  installPromptCleanup = setupInstallPrompt();
+	// ✅ FIXED: Store and manage PWA cleanup
+	pwaCleanup = initializePWAEnhancements();
+	installPromptCleanup = setupInstallPrompt();
 
-  // Initialize notification bridges (already correct)
-  initBrainDumpNotificationBridge();
-  initPhaseGenerationNotificationBridge();
-  initCalendarAnalysisNotificationBridge();
-  initProjectSynthesisNotificationBridge();
+	// Initialize notification bridges (already correct)
+	initBrainDumpNotificationBridge();
+	initPhaseGenerationNotificationBridge();
+	initCalendarAnalysisNotificationBridge();
+	initProjectSynthesisNotificationBridge();
 
-  // Pre-load authenticated resources if user is already available
-  if (user) {
-    loadAuthenticatedResources();
-  }
+	// Pre-load authenticated resources if user is already available
+	if (user) {
+		loadAuthenticatedResources();
+	}
 
-  const unsubscribeNav = navigationStore.subscribe(async (request) => {
-    if (request && request.url) {
-      try {
-        await goto(request.url);
-      } catch (error) {
-        console.error("[Layout] Navigation failed:", error);
-        window.location.href = request.url;
-      }
-    }
-  });
+	const unsubscribeNav = navigationStore.subscribe(async (request) => {
+		if (request && request.url) {
+			try {
+				await goto(request.url);
+			} catch (error) {
+				console.error('[Layout] Navigation failed:', error);
+				window.location.href = request.url;
+			}
+		}
+	});
 
-  // Add event listeners
-  const handleBriefCompleteWrapper = (event: Event) => {
-    try {
-      handleBriefComplete();
-    } catch (error) {
-      console.error("Error in brief complete handler:", error);
-    }
-  };
+	// Add event listeners
+	const handleBriefCompleteWrapper = (event: Event) => {
+		try {
+			handleBriefComplete();
+		} catch (error) {
+			console.error('Error in brief complete handler:', error);
+		}
+	};
 
-  const handleBriefNotificationWrapper = (event: CustomEvent) => {
-    try {
-      handleBriefNotification(event);
-    } catch (error) {
-      console.error("Error in brief notification handler:", error);
-    }
-  };
+	const handleBriefNotificationWrapper = (event: CustomEvent) => {
+		try {
+			handleBriefNotification(event);
+		} catch (error) {
+			console.error('Error in brief notification handler:', error);
+		}
+	};
 
-  window.addEventListener(
-    "briefGenerationComplete",
-    handleBriefCompleteWrapper,
-  );
-  window.addEventListener(
-    "briefNotification",
-    handleBriefNotificationWrapper as EventListener,
-  );
+	window.addEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
+	window.addEventListener('briefNotification', handleBriefNotificationWrapper as EventListener);
 
-  initializeVisitorTracking();
+	initializeVisitorTracking();
 
-  // ✅ FIXED: Return cleanup that properly removes all listeners and cleanup
-  return () => {
-    window.removeEventListener(
-      "briefGenerationComplete",
-      handleBriefCompleteWrapper,
-    );
-    window.removeEventListener(
-      "briefNotification",
-      handleBriefNotificationWrapper as EventListener,
-    );
-    unsubscribeNav();
+	// ✅ FIXED: Return cleanup that properly removes all listeners and cleanup
+	return () => {
+		window.removeEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
+		window.removeEventListener(
+			'briefNotification',
+			handleBriefNotificationWrapper as EventListener
+		);
+		unsubscribeNav();
 
-    // ✅ NEW: Call PWA cleanups
-    if (typeof pwaCleanup === "function") pwaCleanup();
-    if (typeof installPromptCleanup === "function") installPromptCleanup();
-  };
+		// ✅ NEW: Call PWA cleanups
+		if (typeof pwaCleanup === 'function') pwaCleanup();
+		if (typeof installPromptCleanup === 'function') installPromptCleanup();
+	};
 });
 
 onDestroy(() => {
-  // FIXED: Comprehensive cleanup
-  if (browser) {
-    // Cleanup notification bridges (already correct)
-    cleanupBrainDumpNotificationBridge();
-    cleanupPhaseGenerationNotificationBridge();
-    cleanupCalendarAnalysisNotificationBridge();
-    cleanupProjectSynthesisNotificationBridge();
+	// FIXED: Comprehensive cleanup
+	if (browser) {
+		// Cleanup notification bridges (already correct)
+		cleanupBrainDumpNotificationBridge();
+		cleanupPhaseGenerationNotificationBridge();
+		cleanupCalendarAnalysisNotificationBridge();
+		cleanupProjectSynthesisNotificationBridge();
 
-    // ✅ NEW: Cleanup stores
-    backgroundJobs.destroy();
-    timeBlocksStore.destroy?.();
+		// ✅ NEW: Cleanup stores
+		backgroundJobs.destroy();
+		timeBlocksStore.destroy?.();
 
-    // Clear any pending timeouts
-    if (briefCompleteTimeout) {
-      clearTimeout(briefCompleteTimeout);
-      briefCompleteTimeout = null;
-    }
-    if (briefNotificationTimeout) {
-      clearTimeout(briefNotificationTimeout);
-      briefNotificationTimeout = null;
-    }
+		// Clear any pending timeouts
+		if (briefCompleteTimeout) {
+			clearTimeout(briefCompleteTimeout);
+			briefCompleteTimeout = null;
+		}
+		if (briefNotificationTimeout) {
+			clearTimeout(briefNotificationTimeout);
+			briefNotificationTimeout = null;
+		}
 
-    // Reset promises and state
-    resourcesLoadPromise = null;
-    resourcesLoaded = false;
-    visitorTrackingInitialized = false;
-  }
+		// Reset promises and state
+		resourcesLoadPromise = null;
+		resourcesLoaded = false;
+		visitorTrackingInitialized = false;
+	}
 });
 ```
 

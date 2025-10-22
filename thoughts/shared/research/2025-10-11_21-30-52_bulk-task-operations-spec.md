@@ -4,9 +4,8 @@ researcher: Claude Code
 git_commit: a9edfdc5ccc2d07aac4dcde470eb7a80d94a7c11
 branch: main
 repository: buildos-platform
-topic: "Bulk Task Operations - Multi-Selection and Batch Updates in TasksList.svelte"
-tags:
-  [research, spec, tasks, bulk-operations, ui-patterns, calendar-integration]
+topic: 'Bulk Task Operations - Multi-Selection and Batch Updates in TasksList.svelte'
+tags: [research, spec, tasks, bulk-operations, ui-patterns, calendar-integration]
 status: complete
 last_updated: 2025-10-11
 last_updated_by: Claude Code
@@ -101,22 +100,22 @@ Implement checkbox selection pattern similar to Gmail:
 #### Add Selection UI Elements
 
 1. **Checkbox Column** (Left side of each task card)
-   - Position: Before the task status icon
-   - Size: 16px × 16px (h-4 w-4)
-   - Styling: Match existing checkbox patterns
-   - Behavior: Stop event propagation (don't trigger task edit)
+    - Position: Before the task status icon
+    - Size: 16px × 16px (h-4 w-4)
+    - Styling: Match existing checkbox patterns
+    - Behavior: Stop event propagation (don't trigger task edit)
 
 2. **Select All Checkbox** (In header/filter area)
-   - Position: In the filter controls section
-   - Label: "Select all [N] tasks"
-   - Behavior: Selects all tasks in current filter view
+    - Position: In the filter controls section
+    - Label: "Select all [N] tasks"
+    - Behavior: Selects all tasks in current filter view
 
 3. **Bulk Action Toolbar** (Conditional - appears when items selected)
-   - Position: Between filters and task list
-   - Background: `bg-blue-50 dark:bg-blue-900/20`
-   - Border: `border-blue-200 dark:border-blue-700`
-   - Shadow: Subtle elevation
-   - Sticky: Fixed position on mobile when scrolling
+    - Position: Between filters and task list
+    - Background: `bg-blue-50 dark:bg-blue-900/20`
+    - Border: `border-blue-200 dark:border-blue-700`
+    - Shadow: Subtle elevation
+    - Sticky: Fixed position on mobile when scrolling
 
 #### Visual States
 
@@ -130,74 +129,69 @@ class="bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600"
 
 ```svelte
 {#if selectedTaskIds.size > 0}
-  <div class="sticky top-0 z-10 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4 shadow-sm">
-    <div class="flex items-center justify-between gap-4">
-      <span class="text-sm font-medium text-blue-900 dark:text-blue-100">
-        {selectedTaskIds.size} task{selectedTaskIds.size > 1 ? 's' : ''} selected
-      </span>
+	<div
+		class="sticky top-0 z-10 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4 shadow-sm"
+	>
+		<div class="flex items-center justify-between gap-4">
+			<span class="text-sm font-medium text-blue-900 dark:text-blue-100">
+				{selectedTaskIds.size} task{selectedTaskIds.size > 1 ? 's' : ''} selected
+			</span>
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- Status Dropdown -->
-        <div class="relative">
-          <Button variant="outline" size="sm" icon={Circle}>
-            Status: {bulkStatus || 'Change...'} ▼
-          </Button>
-          {#if showStatusDropdown}
-            <!-- Dropdown menu with status options -->
-          {/if}
-        </div>
+			<div class="flex items-center gap-2 flex-wrap">
+				<!-- Status Dropdown -->
+				<div class="relative">
+					<Button variant="outline" size="sm" icon={Circle}>
+						Status: {bulkStatus || 'Change...'} ▼
+					</Button>
+					{#if showStatusDropdown}
+						<!-- Dropdown menu with status options -->
+					{/if}
+				</div>
 
-        <!-- Priority Dropdown -->
-        <div class="relative">
-          <Button variant="outline" size="sm" icon={ArrowUp}>
-            Priority: {bulkPriority || 'Change...'} ▼
-          </Button>
-          {#if showPriorityDropdown}
-            <!-- Dropdown menu with priority options -->
-          {/if}
-        </div>
+				<!-- Priority Dropdown -->
+				<div class="relative">
+					<Button variant="outline" size="sm" icon={ArrowUp}>
+						Priority: {bulkPriority || 'Change...'} ▼
+					</Button>
+					{#if showPriorityDropdown}
+						<!-- Dropdown menu with priority options -->
+					{/if}
+				</div>
 
-        <!-- Remove Dates -->
-        <Button
-          onclick={handleBulkRemoveDates}
-          variant="outline"
-          size="sm"
-          icon={CalendarX}
-          disabled={bulkActionInProgress}
-        >
-          Remove Dates
-        </Button>
+				<!-- Remove Dates -->
+				<Button
+					onclick={handleBulkRemoveDates}
+					variant="outline"
+					size="sm"
+					icon={CalendarX}
+					disabled={bulkActionInProgress}
+				>
+					Remove Dates
+				</Button>
 
-        <!-- Delete -->
-        <Button
-          onclick={handleBulkDelete}
-          variant="outline"
-          size="sm"
-          icon={Trash2}
-          disabled={bulkActionInProgress}
-          class="text-red-600 dark:text-red-400"
-        >
-          Delete
-        </Button>
+				<!-- Delete -->
+				<Button
+					onclick={handleBulkDelete}
+					variant="outline"
+					size="sm"
+					icon={Trash2}
+					disabled={bulkActionInProgress}
+					class="text-red-600 dark:text-red-400"
+				>
+					Delete
+				</Button>
 
-        <!-- Clear Selection -->
-        <Button
-          onclick={clearSelection}
-          variant="ghost"
-          size="sm"
-          icon={X}
-        >
-          Clear
-        </Button>
-      </div>
-    </div>
+				<!-- Clear Selection -->
+				<Button onclick={clearSelection} variant="ghost" size="sm" icon={X}>Clear</Button>
+			</div>
+		</div>
 
-    {#if bulkActionWarnings.length > 0}
-      <div class="mt-2 text-xs text-yellow-700 dark:text-yellow-300">
-        ⚠️ {bulkActionWarnings.join(', ')}
-      </div>
-    {/if}
-  </div>
+		{#if bulkActionWarnings.length > 0}
+			<div class="mt-2 text-xs text-yellow-700 dark:text-yellow-300">
+				⚠️ {bulkActionWarnings.join(', ')}
+			</div>
+		{/if}
+	</div>
 {/if}
 ```
 
@@ -470,75 +464,75 @@ async function handleBulkPriorityChange(newPriority: 'low' | 'medium' | 'high') 
 
 ```javascript
 async function handleBulkRemoveDates() {
-  if (selectedTaskIds.size === 0) return;
+	if (selectedTaskIds.size === 0) return;
 
-  // Check which tasks actually have dates
-  const tasksWithDates = selectedTasks.filter((t) => t.start_date);
+	// Check which tasks actually have dates
+	const tasksWithDates = selectedTasks.filter((t) => t.start_date);
 
-  if (tasksWithDates.length === 0) {
-    toastService.info("No tasks have dates to remove");
-    return;
-  }
+	if (tasksWithDates.length === 0) {
+		toastService.info('No tasks have dates to remove');
+		return;
+	}
 
-  // Confirm with user
-  const confirmed = await confirmDialog({
-    title: "Remove Start Dates",
-    message: `Remove start dates from ${tasksWithDates.length} task${tasksWithDates.length > 1 ? "s" : ""}? This will also remove them from your calendar.`,
-    confirmText: "Remove Dates",
-    confirmVariant: "warning",
-  });
+	// Confirm with user
+	const confirmed = await confirmDialog({
+		title: 'Remove Start Dates',
+		message: `Remove start dates from ${tasksWithDates.length} task${tasksWithDates.length > 1 ? 's' : ''}? This will also remove them from your calendar.`,
+		confirmText: 'Remove Dates',
+		confirmVariant: 'warning'
+	});
 
-  if (!confirmed) return;
+	if (!confirmed) return;
 
-  bulkActionInProgress = true;
+	bulkActionInProgress = true;
 
-  try {
-    const updates = tasksWithDates.map((task) => ({
-      id: task.id,
-      data: {
-        start_date: null,
-        // Also clear recurrence if it's a recurring task
-        ...(task.task_type === "recurring"
-          ? {
-              task_type: "one_off",
-              recurrence_pattern: null,
-              recurrence_ends: null,
-            }
-          : {}),
-      },
-    }));
+	try {
+		const updates = tasksWithDates.map((task) => ({
+			id: task.id,
+			data: {
+				start_date: null,
+				// Also clear recurrence if it's a recurring task
+				...(task.task_type === 'recurring'
+					? {
+							task_type: 'one_off',
+							recurrence_pattern: null,
+							recurrence_ends: null
+						}
+					: {})
+			}
+		}));
 
-    // Optimistic update
-    updates.forEach(({ id, data }) => {
-      const task = allTasksFromStore.find((t) => t.id === id);
-      if (task) {
-        projectStoreV2.updateTask({ ...task, ...data });
-      }
-    });
+		// Optimistic update
+		updates.forEach(({ id, data }) => {
+			const task = allTasksFromStore.find((t) => t.id === id);
+			if (task) {
+				projectStoreV2.updateTask({ ...task, ...data });
+			}
+		});
 
-    // Call batch API (will automatically handle calendar cleanup)
-    const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ updates }),
-    });
+		// Call batch API (will automatically handle calendar cleanup)
+		const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ updates })
+		});
 
-    const result = await response.json();
+		const result = await response.json();
 
-    result.successful.forEach((task) => projectStoreV2.updateTask(task));
+		result.successful.forEach((task) => projectStoreV2.updateTask(task));
 
-    toastService.success(
-      `Removed dates from ${result.summary.successful} task${result.summary.successful > 1 ? "s" : ""}`,
-    );
+		toastService.success(
+			`Removed dates from ${result.summary.successful} task${result.summary.successful > 1 ? 's' : ''}`
+		);
 
-    clearSelection();
-  } catch (error) {
-    console.error("Bulk remove dates failed:", error);
-    toastService.error("Failed to remove dates");
-    allTasksFromStore.forEach((task) => projectStoreV2.updateTask(task));
-  } finally {
-    bulkActionInProgress = false;
-  }
+		clearSelection();
+	} catch (error) {
+		console.error('Bulk remove dates failed:', error);
+		toastService.error('Failed to remove dates');
+		allTasksFromStore.forEach((task) => projectStoreV2.updateTask(task));
+	} finally {
+		bulkActionInProgress = false;
+	}
 }
 ```
 
@@ -556,57 +550,57 @@ async function handleBulkRemoveDates() {
 
 ```javascript
 async function handleBulkDelete() {
-  if (selectedTaskIds.size === 0) return;
+	if (selectedTaskIds.size === 0) return;
 
-  // Confirm with user
-  const confirmed = await confirmDialog({
-    title: "Delete Tasks",
-    message: `Delete ${selectedTaskIds.size} task${selectedTaskIds.size > 1 ? "s" : ""}? You can restore them later from the Deleted filter.`,
-    confirmText: "Delete",
-    confirmVariant: "danger",
-  });
+	// Confirm with user
+	const confirmed = await confirmDialog({
+		title: 'Delete Tasks',
+		message: `Delete ${selectedTaskIds.size} task${selectedTaskIds.size > 1 ? 's' : ''}? You can restore them later from the Deleted filter.`,
+		confirmText: 'Delete',
+		confirmVariant: 'danger'
+	});
 
-  if (!confirmed) return;
+	if (!confirmed) return;
 
-  bulkActionInProgress = true;
+	bulkActionInProgress = true;
 
-  try {
-    const updates = Array.from(selectedTaskIds).map((id) => ({
-      id,
-      data: { deleted_at: new Date().toISOString() },
-    }));
+	try {
+		const updates = Array.from(selectedTaskIds).map((id) => ({
+			id,
+			data: { deleted_at: new Date().toISOString() }
+		}));
 
-    // Optimistic update
-    updates.forEach(({ id, data }) => {
-      const task = allTasksFromStore.find((t) => t.id === id);
-      if (task) {
-        projectStoreV2.updateTask({ ...task, ...data });
-      }
-    });
+		// Optimistic update
+		updates.forEach(({ id, data }) => {
+			const task = allTasksFromStore.find((t) => t.id === id);
+			if (task) {
+				projectStoreV2.updateTask({ ...task, ...data });
+			}
+		});
 
-    // Call batch API (will automatically handle calendar cleanup)
-    const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ updates }),
-    });
+		// Call batch API (will automatically handle calendar cleanup)
+		const response = await fetch(`/api/projects/${projectId}/tasks/batch`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ updates })
+		});
 
-    const result = await response.json();
+		const result = await response.json();
 
-    result.successful.forEach((task) => projectStoreV2.updateTask(task));
+		result.successful.forEach((task) => projectStoreV2.updateTask(task));
 
-    toastService.success(
-      `Deleted ${result.summary.successful} task${result.summary.successful > 1 ? "s" : ""}`,
-    );
+		toastService.success(
+			`Deleted ${result.summary.successful} task${result.summary.successful > 1 ? 's' : ''}`
+		);
 
-    clearSelection();
-  } catch (error) {
-    console.error("Bulk delete failed:", error);
-    toastService.error("Failed to delete tasks");
-    allTasksFromStore.forEach((task) => projectStoreV2.updateTask(task));
-  } finally {
-    bulkActionInProgress = false;
-  }
+		clearSelection();
+	} catch (error) {
+		console.error('Bulk delete failed:', error);
+		toastService.error('Failed to delete tasks');
+		allTasksFromStore.forEach((task) => projectStoreV2.updateTask(task));
+	} finally {
+		bulkActionInProgress = false;
+	}
 }
 ```
 
@@ -686,10 +680,10 @@ This endpoint **already supports** everything we need:
 POST / api / projects / { projectId } / tasks / batch;
 
 {
-  updates: Array<{
-    id: string; // Task ID
-    data: Partial<Task>; // Fields to update
-  }>;
+	updates: Array<{
+		id: string; // Task ID
+		data: Partial<Task>; // Fields to update
+	}>;
 }
 ```
 
@@ -750,38 +744,38 @@ Based on comprehensive research (see `/thoughts/shared/research/2025-10-11_18-30
 
 1. **Task marked as done**
 
-   ```javascript
-   if (task.status === "done" && task.task_calendar_events.length > 0) {
-     // DELETE all associated calendar events
-     // Reason: 'task_completed'
-   }
-   ```
+    ```javascript
+    if (task.status === 'done' && task.task_calendar_events.length > 0) {
+    	// DELETE all associated calendar events
+    	// Reason: 'task_completed'
+    }
+    ```
 
 2. **Task start_date cleared**
 
-   ```javascript
-   if (task.start_date === null && task.task_calendar_events.length > 0) {
-     // DELETE all associated calendar events
-     // Reason: 'date_cleared'
-   }
-   ```
+    ```javascript
+    if (task.start_date === null && task.task_calendar_events.length > 0) {
+    	// DELETE all associated calendar events
+    	// Reason: 'date_cleared'
+    }
+    ```
 
 3. **Task deleted (soft delete)**
-   ```javascript
-   if (task.deleted_at !== null && task.task_calendar_events.length > 0) {
-     // DELETE all associated calendar events
-     // Reason: 'task_deleted'
-   }
-   ```
+    ```javascript
+    if (task.deleted_at !== null && task.task_calendar_events.length > 0) {
+    	// DELETE all associated calendar events
+    	// Reason: 'task_deleted'
+    }
+    ```
 
 #### Sync Status Values
 
 ```typescript
 type SyncStatus =
-  | "synced" // Successfully synced with Google Calendar
-  | "pending" // Not yet synced (rare)
-  | "failed" // Sync failed (with sync_error message)
-  | "cancelled"; // Marked as cancelled
+	| 'synced' // Successfully synced with Google Calendar
+	| 'pending' // Not yet synced (rare)
+	| 'failed' // Sync failed (with sync_error message)
+	| 'cancelled'; // Marked as cancelled
 ```
 
 ### 5.2 Bulk Calendar Operations
@@ -835,17 +829,17 @@ async bulkUpdateCalendarEvents(
 ```javascript
 // In CalendarService
 try {
-  await this.googleCalendarAPI.deleteEvent(calendarId, eventId);
+	await this.googleCalendarAPI.deleteEvent(calendarId, eventId);
 } catch (error) {
-  if (error.status === 404) {
-    // Event already deleted - this is OK
-    console.log("Event already deleted:", eventId);
-    // Still update database to mark as deleted
-    await this.updateSyncStatus(eventId, "cancelled");
-  } else {
-    // Other errors are real problems
-    throw error;
-  }
+	if (error.status === 404) {
+		// Event already deleted - this is OK
+		console.log('Event already deleted:', eventId);
+		// Still update database to mark as deleted
+		await this.updateSyncStatus(eventId, 'cancelled');
+	} else {
+		// Other errors are real problems
+		throw error;
+	}
 }
 ```
 
@@ -1103,89 +1097,89 @@ return { successful: taskUpdates, ... };
 **File**: `/apps/web/src/lib/components/project/TasksList.test.ts`
 
 ```typescript
-describe("TasksList - Multi-Selection", () => {
-  describe("Selection State", () => {
-    it("should toggle individual task selection", () => {
-      // Test toggleTaskSelection()
-    });
+describe('TasksList - Multi-Selection', () => {
+	describe('Selection State', () => {
+		it('should toggle individual task selection', () => {
+			// Test toggleTaskSelection()
+		});
 
-    it("should select all filtered tasks", () => {
-      // Test toggleSelectAll()
-    });
+		it('should select all filtered tasks', () => {
+			// Test toggleSelectAll()
+		});
 
-    it("should clear all selections", () => {
-      // Test clearSelection()
-    });
+		it('should clear all selections', () => {
+			// Test clearSelection()
+		});
 
-    it("should maintain selection state after filter change", () => {
-      // Test selection persistence
-    });
+		it('should maintain selection state after filter change', () => {
+			// Test selection persistence
+		});
 
-    it("should trigger Svelte 5 reactivity correctly", () => {
-      // Test Set reassignment pattern
-    });
-  });
+		it('should trigger Svelte 5 reactivity correctly', () => {
+			// Test Set reassignment pattern
+		});
+	});
 
-  describe("Bulk Operations", () => {
-    it("should update task status in bulk", async () => {
-      // Test handleBulkStatusChange()
-    });
+	describe('Bulk Operations', () => {
+		it('should update task status in bulk', async () => {
+			// Test handleBulkStatusChange()
+		});
 
-    it("should update task priority in bulk", async () => {
-      // Test handleBulkPriorityChange()
-    });
+		it('should update task priority in bulk', async () => {
+			// Test handleBulkPriorityChange()
+		});
 
-    it("should remove start dates in bulk", async () => {
-      // Test handleBulkRemoveDates()
-    });
+		it('should remove start dates in bulk', async () => {
+			// Test handleBulkRemoveDates()
+		});
 
-    it("should delete tasks in bulk", async () => {
-      // Test handleBulkDelete()
-    });
+		it('should delete tasks in bulk', async () => {
+			// Test handleBulkDelete()
+		});
 
-    it("should handle partial failures gracefully", async () => {
-      // Test mixed success/failure response
-    });
+		it('should handle partial failures gracefully', async () => {
+			// Test mixed success/failure response
+		});
 
-    it("should rollback on complete failure", async () => {
-      // Test error handling
-    });
-  });
+		it('should rollback on complete failure', async () => {
+			// Test error handling
+		});
+	});
 
-  describe("Validation", () => {
-    it("should validate bulk delete operation", () => {
-      // Test validateBulkOperation('delete')
-    });
+	describe('Validation', () => {
+		it('should validate bulk delete operation', () => {
+			// Test validateBulkOperation('delete')
+		});
 
-    it("should warn about calendar event removal", () => {
-      // Test warning generation
-    });
+		it('should warn about calendar event removal', () => {
+			// Test warning generation
+		});
 
-    it("should prevent operations with no selection", () => {
-      // Test empty selection handling
-    });
-  });
+		it('should prevent operations with no selection', () => {
+			// Test empty selection handling
+		});
+	});
 });
 ```
 
 ### 8.2 Integration Tests
 
 ```typescript
-describe("TasksList - Integration", () => {
-  it("should bulk mark tasks as done and remove from calendar", async () => {
-    // 1. Select multiple tasks with calendar events
-    // 2. Mark as done
-    // 3. Verify tasks updated
-    // 4. Verify calendar events deleted
-  });
+describe('TasksList - Integration', () => {
+	it('should bulk mark tasks as done and remove from calendar', async () => {
+		// 1. Select multiple tasks with calendar events
+		// 2. Mark as done
+		// 3. Verify tasks updated
+		// 4. Verify calendar events deleted
+	});
 
-  it("should handle bulk operations on 100+ tasks", async () => {
-    // Test performance with large selections
-  });
+	it('should handle bulk operations on 100+ tasks', async () => {
+		// Test performance with large selections
+	});
 
-  it("should maintain data consistency during concurrent operations", async () => {
-    // Test race conditions
-  });
+	it('should maintain data consistency during concurrent operations', async () => {
+		// Test race conditions
+	});
 });
 ```
 
@@ -1329,40 +1323,37 @@ let showPriorityDropdown = $state(false);
 
 // ===== REACTIVE DERIVATIONS =====
 let allTasksSelected = $derived(
-  filteredTasks.length > 0 &&
-    filteredTasks.every((task) => selectedTaskIds.has(task.id)),
+	filteredTasks.length > 0 && filteredTasks.every((task) => selectedTaskIds.has(task.id))
 );
 
 let someTasksSelected = $derived(selectedTaskIds.size > 0 && !allTasksSelected);
 
-let selectedTasks = $derived(
-  filteredTasks.filter((task) => selectedTaskIds.has(task.id)),
-);
+let selectedTasks = $derived(filteredTasks.filter((task) => selectedTaskIds.has(task.id)));
 
 // ===== SELECTION FUNCTIONS =====
 function toggleTaskSelection(taskId: string, event: Event) {
-  event.stopPropagation();
+	event.stopPropagation();
 
-  if (selectedTaskIds.has(taskId)) {
-    selectedTaskIds.delete(taskId);
-  } else {
-    selectedTaskIds.add(taskId);
-  }
+	if (selectedTaskIds.has(taskId)) {
+		selectedTaskIds.delete(taskId);
+	} else {
+		selectedTaskIds.add(taskId);
+	}
 
-  selectedTaskIds = new Set(selectedTaskIds);
+	selectedTaskIds = new Set(selectedTaskIds);
 }
 
 function toggleSelectAll() {
-  if (allTasksSelected) {
-    selectedTaskIds = new Set();
-  } else {
-    selectedTaskIds = new Set(filteredTasks.map((t) => t.id));
-  }
+	if (allTasksSelected) {
+		selectedTaskIds = new Set();
+	} else {
+		selectedTaskIds = new Set(filteredTasks.map((t) => t.id));
+	}
 }
 
 function clearSelection() {
-  selectedTaskIds = new Set();
-  bulkActionWarnings = [];
+	selectedTaskIds = new Set();
+	bulkActionWarnings = [];
 }
 
 // ===== BULK OPERATIONS =====

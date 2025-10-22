@@ -4,19 +4,19 @@ researcher: Claude Code
 git_commit: 6a0b7b671c1ac12b9e71c38c2ada052387168723
 branch: main
 repository: buildos-platform
-topic: "Frontend Notification Preferences Verification After Refactor"
+topic: 'Frontend Notification Preferences Verification After Refactor'
 tags:
-  [
-    research,
-    codebase,
-    notifications,
-    frontend,
-    user-preferences,
-    onboarding,
-    profile,
-    admin,
-    bug-report,
-  ]
+    [
+        research,
+        codebase,
+        notifications,
+        frontend,
+        user-preferences,
+        onboarding,
+        profile,
+        admin,
+        bug-report
+    ]
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude Code
@@ -77,43 +77,40 @@ After refactoring the notification preferences system to remove `event_type` fro
 
 1. **No event_type usage** (Lines 85, 237):
 
-   ```typescript
-   // Line 85 - Loading preferences
-   const prefs = await notificationPreferencesService.get(); // No event_type param ✅
+    ```typescript
+    // Line 85 - Loading preferences
+    const prefs = await notificationPreferencesService.get(); // No event_type param ✅
 
-   // Line 237 - Saving preferences
-   await notificationPreferencesService.update({
-     push_enabled: pushEnabled,
-     in_app_enabled: inAppEnabled,
-     quiet_hours_enabled: quietHoursEnabled,
-     quiet_hours_start: quietHoursStart,
-     quiet_hours_end: quietHoursEnd,
-   }); // No event_type param ✅
-   ```
+    // Line 237 - Saving preferences
+    await notificationPreferencesService.update({
+    	push_enabled: pushEnabled,
+    	in_app_enabled: inAppEnabled,
+    	quiet_hours_enabled: quietHoursEnabled,
+    	quiet_hours_start: quietHoursStart,
+    	quiet_hours_end: quietHoursEnd
+    }); // No event_type param ✅
+    ```
 
 2. **Global channel preferences** (Lines 40-57):
-   - `dailyBriefEmailEnabled` - Daily brief email toggle
-   - `dailyBriefSmsEnabled` - Daily brief SMS toggle
-   - `pushEnabled` - Push notifications
-   - `inAppEnabled` - In-app notifications
-   - `quietHoursEnabled` - Quiet hours settings
+    - `dailyBriefEmailEnabled` - Daily brief email toggle
+    - `dailyBriefSmsEnabled` - Daily brief SMS toggle
+    - `pushEnabled` - Push notifications
+    - `inAppEnabled` - In-app notifications
+    - `quietHoursEnabled` - Quiet hours settings
 
 3. **Separate daily brief handling** (Lines 115-131):
-   - Uses `notificationPreferencesStore.save()` for daily brief preferences
-   - Correctly saves `should_email_daily_brief` and `should_sms_daily_brief`
+    - Uses `notificationPreferencesStore.save()` for daily brief preferences
+    - Correctly saves `should_email_daily_brief` and `should_sms_daily_brief`
 
 #### Minor Issue:
 
 - **Line 23**: Imports `EventType` but never uses it
 
-  ```typescript
-  import type {
-    EventType,
-    UserNotificationPreferences,
-  } from "@buildos/shared-types";
-  ```
+    ```typescript
+    import type { EventType, UserNotificationPreferences } from '@buildos/shared-types';
+    ```
 
-  **Fix**: Remove unused `EventType` import
+    **Fix**: Remove unused `EventType` import
 
 **Code References**:
 
@@ -143,13 +140,13 @@ After refactoring the notification preferences system to remove `event_type` fro
 
 ```typescript
 // Line 85-92: WRONG - trying to use event_type!
-const notifResponse = await fetch("/api/notification-preferences", {
-  method: "PUT",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    event_type: "brief.completed", // ❌ PROBLEM: API doesn't use event_type anymore!
-    sms_enabled: true,
-  }),
+const notifResponse = await fetch('/api/notification-preferences', {
+	method: 'PUT',
+	headers: { 'Content-Type': 'application/json' },
+	body: JSON.stringify({
+		event_type: 'brief.completed', // ❌ PROBLEM: API doesn't use event_type anymore!
+		sms_enabled: true
+	})
 });
 ```
 
@@ -164,12 +161,12 @@ const notifResponse = await fetch("/api/notification-preferences", {
 
 ```typescript
 // CORRECT APPROACH:
-const notifResponse = await fetch("/api/notification-preferences", {
-  method: "PUT",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    should_sms_daily_brief: true, // ✅ CORRECT: Set daily brief SMS preference
-  }),
+const notifResponse = await fetch('/api/notification-preferences', {
+	method: 'PUT',
+	headers: { 'Content-Type': 'application/json' },
+	body: JSON.stringify({
+		should_sms_daily_brief: true // ✅ CORRECT: Set daily brief SMS preference
+	})
 });
 ```
 
@@ -229,25 +226,19 @@ Admin pages extensively use `event_type`, but this is **CORRECT** because they:
 ```typescript
 // Correctly queries by user_id only (no event_type filter)
 const { data, error } = await supabase
-  .from("user_notification_preferences")
-  .select(
-    dailyBrief
-      ? "should_email_daily_brief, should_sms_daily_brief, updated_at"
-      : "*",
-  )
-  .eq("user_id", user.id) // Only user_id filter ✅
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select(dailyBrief ? 'should_email_daily_brief, should_sms_daily_brief, updated_at' : '*')
+	.eq('user_id', user.id) // Only user_id filter ✅
+	.maybeSingle();
 ```
 
 ### PUT Handler (Lines 58-156):
 
 ```typescript
 // Line 144: Correctly uses user_id as unique constraint
-const { data, error } = await supabase
-  .from("user_notification_preferences")
-  .upsert(updateData, {
-    onConflict: "user_id", // ✅ One row per user
-  });
+const { data, error } = await supabase.from('user_notification_preferences').upsert(updateData, {
+	onConflict: 'user_id' // ✅ One row per user
+});
 ```
 
 ### Validation Logic:
@@ -396,13 +387,13 @@ The **onboarding bug** appears to be mixing these two concepts:
 ```typescript
 // CURRENT (WRONG):
 body: JSON.stringify({
-  event_type: "brief.completed", // ❌ Remove this
-  sms_enabled: true,
+	event_type: 'brief.completed', // ❌ Remove this
+	sms_enabled: true
 });
 
 // SHOULD BE:
 body: JSON.stringify({
-  should_sms_daily_brief: true, // ✅ Set daily brief SMS preference
+	should_sms_daily_brief: true // ✅ Set daily brief SMS preference
 });
 ```
 
@@ -421,13 +412,13 @@ body: JSON.stringify({
 ### Immediate Actions:
 
 1. **Fix Onboarding V2 Bug** (High Priority):
-   - Update `NotificationsStep.svelte` lines 85-92
-   - Remove `event_type` from API call
-   - Set `should_sms_daily_brief: true` instead
-   - Test onboarding flow end-to-end
+    - Update `NotificationsStep.svelte` lines 85-92
+    - Remove `event_type` from API call
+    - Set `should_sms_daily_brief: true` instead
+    - Test onboarding flow end-to-end
 
 2. **Clean Up Imports** (Low Priority):
-   - Remove unused `EventType` from `NotificationPreferences.svelte`
+    - Remove unused `EventType` from `NotificationPreferences.svelte`
 
 ### Testing Checklist:
 

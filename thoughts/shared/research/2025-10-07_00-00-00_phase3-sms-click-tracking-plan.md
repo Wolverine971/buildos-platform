@@ -4,7 +4,7 @@ researcher: Claude (AI Assistant)
 git_commit: TBD
 branch: main
 repository: buildos-platform
-topic: "Phase 3: SMS Click Tracking - Implementation Plan"
+topic: 'Phase 3: SMS Click Tracking - Implementation Plan'
 tags: [plan, notifications, tracking, sms, link-shortener, phase3]
 status: planning
 implementation_status: phase_3_not_started
@@ -163,62 +163,62 @@ $$ LANGUAGE plpgsql;
 
 ```typescript
 // apps/web/src/routes/l/[short_code]/+server.ts
-import type { RequestHandler } from "./$types";
-import { redirect } from "@sveltejs/kit";
+import type { RequestHandler } from './$types';
+import { redirect } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase } }) => {
-  const { short_code } = params;
+	const { short_code } = params;
 
-  try {
-    // Look up tracking link
-    const { data: link, error: linkError } = await supabase
-      .from("notification_tracking_links")
-      .select("*")
-      .eq("short_code", short_code)
-      .single();
+	try {
+		// Look up tracking link
+		const { data: link, error: linkError } = await supabase
+			.from('notification_tracking_links')
+			.select('*')
+			.eq('short_code', short_code)
+			.single();
 
-    if (linkError || !link) {
-      // Link not found - redirect to home
-      throw redirect(302, "/");
-    }
+		if (linkError || !link) {
+			// Link not found - redirect to home
+			throw redirect(302, '/');
+		}
 
-    const now = new Date().toISOString();
+		const now = new Date().toISOString();
 
-    // Update tracking link stats
-    await supabase
-      .from("notification_tracking_links")
-      .update({
-        first_clicked_at: link.first_clicked_at || now,
-        last_clicked_at: now,
-        click_count: (link.click_count || 0) + 1,
-      })
-      .eq("id", link.id);
+		// Update tracking link stats
+		await supabase
+			.from('notification_tracking_links')
+			.update({
+				first_clicked_at: link.first_clicked_at || now,
+				last_clicked_at: now,
+				click_count: (link.click_count || 0) + 1
+			})
+			.eq('id', link.id);
 
-    // Update notification delivery (via unified tracking API)
-    if (link.delivery_id) {
-      await supabase
-        .from("notification_deliveries")
-        .update({
-          clicked_at: link.first_clicked_at || now,
-          opened_at: link.first_clicked_at || now, // Click implies open for SMS
-          status: "clicked",
-        })
-        .eq("id", link.delivery_id)
-        .is("clicked_at", null); // Only update if not already clicked
-    }
+		// Update notification delivery (via unified tracking API)
+		if (link.delivery_id) {
+			await supabase
+				.from('notification_deliveries')
+				.update({
+					clicked_at: link.first_clicked_at || now,
+					opened_at: link.first_clicked_at || now, // Click implies open for SMS
+					status: 'clicked'
+				})
+				.eq('id', link.delivery_id)
+				.is('clicked_at', null); // Only update if not already clicked
+		}
 
-    // Redirect to destination
-    throw redirect(302, link.destination_url);
-  } catch (error) {
-    // If it's a redirect, let it through
-    if (error instanceof Response && error.status === 302) {
-      throw error;
-    }
+		// Redirect to destination
+		throw redirect(302, link.destination_url);
+	} catch (error) {
+		// If it's a redirect, let it through
+		if (error instanceof Response && error.status === 302) {
+			throw error;
+		}
 
-    // Otherwise redirect to home
-    console.error("[LinkShortener] Error:", error);
-    throw redirect(302, "/");
-  }
+		// Otherwise redirect to home
+		console.error('[LinkShortener] Error:', error);
+		throw redirect(302, '/');
+	}
 };
 ```
 
@@ -231,60 +231,48 @@ export const GET: RequestHandler = async ({ params, locals: { supabase } }) => {
 **Purpose**: Create tracking links for SMS adapter
 
 ```typescript
-import { createSupabaseBrowser } from "@buildos/supabase-client";
-import {
-  PUBLIC_SUPABASE_ANON_KEY,
-  PUBLIC_SUPABASE_URL,
-} from "$env/static/public";
+import { createSupabaseBrowser } from '@buildos/supabase-client';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 class LinkShortenerService {
-  private supabase = createSupabaseBrowser(
-    PUBLIC_SUPABASE_URL,
-    PUBLIC_SUPABASE_ANON_KEY,
-  );
-  private baseUrl = "https://build-os.com"; // Or get from env
+	private supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+	private baseUrl = 'https://build-os.com'; // Or get from env
 
-  /**
-   * Create a shortened tracking link
-   */
-  async createTrackingLink(
-    deliveryId: string,
-    destinationUrl: string,
-  ): Promise<string> {
-    // Call database function to create link with unique short code
-    const { data: shortCode, error } = await this.supabase.rpc(
-      "create_tracking_link",
-      {
-        p_delivery_id: deliveryId,
-        p_destination_url: destinationUrl,
-      },
-    );
+	/**
+	 * Create a shortened tracking link
+	 */
+	async createTrackingLink(deliveryId: string, destinationUrl: string): Promise<string> {
+		// Call database function to create link with unique short code
+		const { data: shortCode, error } = await this.supabase.rpc('create_tracking_link', {
+			p_delivery_id: deliveryId,
+			p_destination_url: destinationUrl
+		});
 
-    if (error) {
-      console.error("[LinkShortener] Failed to create tracking link:", error);
-      throw error;
-    }
+		if (error) {
+			console.error('[LinkShortener] Failed to create tracking link:', error);
+			throw error;
+		}
 
-    return `${this.baseUrl}/l/${shortCode}`;
-  }
+		return `${this.baseUrl}/l/${shortCode}`;
+	}
 
-  /**
-   * Extract and shorten all URLs in text
-   */
-  async shortenUrlsInText(text: string, deliveryId: string): Promise<string> {
-    // Regex to find URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urls = text.match(urlRegex) || [];
+	/**
+	 * Extract and shorten all URLs in text
+	 */
+	async shortenUrlsInText(text: string, deliveryId: string): Promise<string> {
+		// Regex to find URLs
+		const urlRegex = /(https?:\/\/[^\s]+)/g;
+		const urls = text.match(urlRegex) || [];
 
-    let result = text;
+		let result = text;
 
-    for (const url of urls) {
-      const shortUrl = await this.createTrackingLink(deliveryId, url);
-      result = result.replace(url, shortUrl);
-    }
+		for (const url of urls) {
+			const shortUrl = await this.createTrackingLink(deliveryId, url);
+			result = result.replace(url, shortUrl);
+		}
 
-    return result;
-  }
+		return result;
+	}
 }
 
 export const linkShortenerService = new LinkShortenerService();
@@ -301,28 +289,25 @@ export const linkShortenerService = new LinkShortenerService();
 ```typescript
 // In sendSMSNotification function, before sending via Twilio
 
-import { linkShortenerService } from "./link-shortener.service";
+import { linkShortenerService } from './link-shortener.service';
 
 // Rewrite URLs in message body
 let messageBody = delivery.payload.body || delivery.payload.message;
 
 if (messageBody && messageBody.match(/(https?:\/\/[^\s]+)/)) {
-  try {
-    messageBody = await linkShortenerService.shortenUrlsInText(
-      messageBody,
-      delivery.id,
-    );
-  } catch (error) {
-    console.error("[SMS] Failed to shorten URLs:", error);
-    // Continue with original URLs if shortening fails
-  }
+	try {
+		messageBody = await linkShortenerService.shortenUrlsInText(messageBody, delivery.id);
+	} catch (error) {
+		console.error('[SMS] Failed to shorten URLs:', error);
+		// Continue with original URLs if shortening fails
+	}
 }
 
 // Send via Twilio with rewritten URLs
 await twilioClient.messages.create({
-  to: delivery.channel_identifier,
-  from: TWILIO_PHONE_NUMBER,
-  body: messageBody,
+	to: delivery.channel_identifier,
+	from: TWILIO_PHONE_NUMBER,
+	body: messageBody
 });
 ```
 
@@ -356,62 +341,54 @@ CREATE POLICY "Service role can manage tracking links" ON notification_tracking_
 **Link Shortener Service**:
 
 ```typescript
-describe("LinkShortenerService", () => {
-  test("creates unique short codes", async () => {
-    const link1 = await service.createTrackingLink(
-      deliveryId,
-      "https://example.com",
-    );
-    const link2 = await service.createTrackingLink(
-      deliveryId,
-      "https://example.com",
-    );
+describe('LinkShortenerService', () => {
+	test('creates unique short codes', async () => {
+		const link1 = await service.createTrackingLink(deliveryId, 'https://example.com');
+		const link2 = await service.createTrackingLink(deliveryId, 'https://example.com');
 
-    expect(link1).not.toBe(link2);
-  });
+		expect(link1).not.toBe(link2);
+	});
 
-  test("rewrites URLs in text", async () => {
-    const text = "Check this out: https://build-os.com/app/briefs/today";
-    const result = await service.shortenUrlsInText(text, deliveryId);
+	test('rewrites URLs in text', async () => {
+		const text = 'Check this out: https://build-os.com/app/briefs/today';
+		const result = await service.shortenUrlsInText(text, deliveryId);
 
-    expect(result).toMatch(
-      /Check this out: https:\/\/build-os\.com\/l\/[a-zA-Z0-9]{6}/,
-    );
-  });
+		expect(result).toMatch(/Check this out: https:\/\/build-os\.com\/l\/[a-zA-Z0-9]{6}/);
+	});
 });
 ```
 
 **Redirect Endpoint**:
 
 ```typescript
-describe("GET /l/[short_code]", () => {
-  test("redirects to destination URL", async () => {
-    // Create test link
-    const { data } = await supabase.rpc("create_tracking_link", {
-      p_delivery_id: deliveryId,
-      p_destination_url: "https://example.com",
-    });
+describe('GET /l/[short_code]', () => {
+	test('redirects to destination URL', async () => {
+		// Create test link
+		const { data } = await supabase.rpc('create_tracking_link', {
+			p_delivery_id: deliveryId,
+			p_destination_url: 'https://example.com'
+		});
 
-    // Visit short link
-    const response = await fetch(`/l/${data}`);
+		// Visit short link
+		const response = await fetch(`/l/${data}`);
 
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://example.com");
-  });
+		expect(response.status).toBe(302);
+		expect(response.headers.get('location')).toBe('https://example.com');
+	});
 
-  test("updates click counts", async () => {
-    const shortCode = "test123";
-    await fetch(`/l/${shortCode}`);
+	test('updates click counts', async () => {
+		const shortCode = 'test123';
+		await fetch(`/l/${shortCode}`);
 
-    const { data: link } = await supabase
-      .from("notification_tracking_links")
-      .select("click_count, first_clicked_at")
-      .eq("short_code", shortCode)
-      .single();
+		const { data: link } = await supabase
+			.from('notification_tracking_links')
+			.select('click_count, first_clicked_at')
+			.eq('short_code', shortCode)
+			.single();
 
-    expect(link.click_count).toBe(1);
-    expect(link.first_clicked_at).toBeTruthy();
-  });
+		expect(link.click_count).toBe(1);
+		expect(link.first_clicked_at).toBeTruthy();
+	});
 });
 ```
 
@@ -419,43 +396,43 @@ describe("GET /l/[short_code]", () => {
 
 1. **Send Test SMS**:
 
-   ```bash
-   curl -X POST http://localhost:5173/api/admin/notifications/test \
-     -H "Content-Type: application/json" \
-     -d '{
-       "event_type": "brief.completed",
-       "payload": {
-         "title": "Your Brief is Ready",
-         "body": "View it here: https://build-os.com/app/briefs/today",
-         "action_url": "https://build-os.com/app/briefs/today"
-       },
-       "recipient_user_ids": ["<user-id>"],
-       "channels": ["sms"]
-     }'
-   ```
+    ```bash
+    curl -X POST http://localhost:5173/api/admin/notifications/test \
+      -H "Content-Type: application/json" \
+      -d '{
+        "event_type": "brief.completed",
+        "payload": {
+          "title": "Your Brief is Ready",
+          "body": "View it here: https://build-os.com/app/briefs/today",
+          "action_url": "https://build-os.com/app/briefs/today"
+        },
+        "recipient_user_ids": ["<user-id>"],
+        "channels": ["sms"]
+      }'
+    ```
 
 2. **Check SMS received**:
-   - Message should contain `https://build-os.com/l/abc123` (not full URL)
-   - Character count should be reduced
+    - Message should contain `https://build-os.com/l/abc123` (not full URL)
+    - Character count should be reduced
 
 3. **Click the link**:
-   - Should redirect to full URL
-   - Should land on correct page
+    - Should redirect to full URL
+    - Should land on correct page
 
 4. **Verify tracking**:
 
-   ```sql
-   -- Check tracking link stats
-   SELECT short_code, click_count, first_clicked_at, destination_url
-   FROM notification_tracking_links
-   ORDER BY created_at DESC
-   LIMIT 1;
+    ```sql
+    -- Check tracking link stats
+    SELECT short_code, click_count, first_clicked_at, destination_url
+    FROM notification_tracking_links
+    ORDER BY created_at DESC
+    LIMIT 1;
 
-   -- Check notification delivery
-   SELECT clicked_at, opened_at, status
-   FROM notification_deliveries
-   WHERE id = '<delivery-id>';
-   ```
+    -- Check notification delivery
+    SELECT clicked_at, opened_at, status
+    FROM notification_deliveries
+    WHERE id = '<delivery-id>';
+    ```
 
 ---
 

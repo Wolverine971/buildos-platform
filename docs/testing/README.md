@@ -234,11 +234,11 @@ pnpm test:run          # Run once
 
 ```json
 {
-  "test": {
-    "dependsOn": ["^build"],
-    "outputs": ["coverage/**"],
-    "cache": false
-  }
+	"test": {
+		"dependsOn": ["^build"],
+		"outputs": ["coverage/**"],
+		"cache": false
+	}
 }
 ```
 
@@ -257,23 +257,23 @@ pnpm test:run          # Run once
 Always use `beforeEach` and `afterEach`:
 
 ```typescript
-describe("ServiceName", () => {
-  let mockDependency: any;
-  let service: ServiceClass;
+describe('ServiceName', () => {
+	let mockDependency: any;
+	let service: ServiceClass;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockDependency = createMockDependency();
-    service = new ServiceClass(mockDependency);
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockDependency = createMockDependency();
+		service = new ServiceClass(mockDependency);
+	});
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
 
-  it("should handle operation", async () => {
-    // Test implementation
-  });
+	it('should handle operation', async () => {
+		// Test implementation
+	});
 });
 ```
 
@@ -283,12 +283,12 @@ Standard chainable mock pattern:
 
 ```typescript
 const createMockSupabase = () => ({
-  from: vi.fn().mockReturnThis(),
-  select: vi.fn().mockReturnThis(),
-  insert: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  single: vi.fn().mockResolvedValue({ data: null, error: null }),
+	from: vi.fn().mockReturnThis(),
+	select: vi.fn().mockReturnThis(),
+	insert: vi.fn().mockReturnThis(),
+	update: vi.fn().mockReturnThis(),
+	eq: vi.fn().mockReturnThis(),
+	single: vi.fn().mockResolvedValue({ data: null, error: null })
 });
 ```
 
@@ -297,17 +297,17 @@ const createMockSupabase = () => ({
 Verify order of operations:
 
 ```typescript
-it("should track update BEFORE API call", async () => {
-  const orderOfOperations: string[] = [];
+it('should track update BEFORE API call', async () => {
+	const orderOfOperations: string[] = [];
 
-  mockService.trackUpdate = vi.fn((id) => {
-    orderOfOperations.push(`trackUpdate:${id}`);
-  });
+	mockService.trackUpdate = vi.fn((id) => {
+		orderOfOperations.push(`trackUpdate:${id}`);
+	});
 
-  // Perform operations...
+	// Perform operations...
 
-  expect(orderOfOperations[0]).toBe("trackUpdate:temp-id");
-  expect(orderOfOperations[1]).toBe("apiCall");
+	expect(orderOfOperations[0]).toBe('trackUpdate:temp-id');
+	expect(orderOfOperations[1]).toBe('apiCall');
 });
 ```
 
@@ -316,17 +316,17 @@ it("should track update BEFORE API call", async () => {
 Always test timezone conversions:
 
 ```typescript
-it("should handle timezone correctly", () => {
-  const now = new Date("2025-10-01T12:00:00Z"); // UTC
-  const preference = {
-    time_of_day: "09:00:00",
-    timezone: "America/New_York",
-  };
+it('should handle timezone correctly', () => {
+	const now = new Date('2025-10-01T12:00:00Z'); // UTC
+	const preference = {
+		time_of_day: '09:00:00',
+		timezone: 'America/New_York'
+	};
 
-  const result = calculateNextRunTime(preference, now);
+	const result = calculateNextRunTime(preference, now);
 
-  // 9 AM EDT = 1 PM UTC
-  expect(result?.getUTCHours()).toBe(13);
+	// 9 AM EDT = 1 PM UTC
+	expect(result?.getUTCHours()).toBe(13);
 });
 ```
 
@@ -335,13 +335,13 @@ it("should handle timezone correctly", () => {
 Test performance of parallel operations:
 
 ```typescript
-it("should process in parallel", async () => {
-  const startTime = Date.now();
-  const results = await Promise.allSettled(promises);
-  const totalTime = Date.now() - startTime;
+it('should process in parallel', async () => {
+	const startTime = Date.now();
+	const results = await Promise.allSettled(promises);
+	const totalTime = Date.now() - startTime;
 
-  // Should NOT be 300ms × N items
-  expect(totalTime).toBeLessThan(400);
+	// Should NOT be 300ms × N items
+	expect(totalTime).toBeLessThan(400);
 });
 ```
 
@@ -351,22 +351,22 @@ it("should process in parallel", async () => {
 
 ```typescript
 // Mock SvelteKit environment
-vi.mock("$app/environment", () => ({
-  browser: true,
+vi.mock('$app/environment', () => ({
+	browser: true
 }));
 
 // Mock environment variables
-vi.mock("$env/static/private", () => ({
-  PRIVATE_GOOGLE_CLIENT_ID: "test-client-id",
-  PRIVATE_GOOGLE_CLIENT_SECRET: "test-client-secret",
+vi.mock('$env/static/private', () => ({
+	PRIVATE_GOOGLE_CLIENT_ID: 'test-client-id',
+	PRIVATE_GOOGLE_CLIENT_SECRET: 'test-client-secret'
 }));
 
 // Mock services
-vi.mock("$lib/services/llm-pool", () => ({
-  LLMPool: vi.fn().mockImplementation(() => ({
-    makeRequest: vi.fn(),
-    close: vi.fn(),
-  })),
+vi.mock('$lib/services/llm-pool', () => ({
+	LLMPool: vi.fn().mockImplementation(() => ({
+		makeRequest: vi.fn(),
+		close: vi.fn()
+	}))
 }));
 ```
 
@@ -374,26 +374,26 @@ vi.mock("$lib/services/llm-pool", () => ({
 
 ```typescript
 class MemorySessionStorage implements Storage {
-  private store = new Map<string, string>();
+	private store = new Map<string, string>();
 
-  clear(): void {
-    this.store.clear();
-  }
-  getItem(key: string): string | null {
-    return this.store.has(key) ? this.store.get(key)! : null;
-  }
-  setItem(key: string, value: string): void {
-    this.store.set(key, value);
-  }
-  removeItem(key: string): void {
-    this.store.delete(key);
-  }
-  key(index: number): string | null {
-    return Array.from(this.store.keys())[index] ?? null;
-  }
-  get length(): number {
-    return this.store.size;
-  }
+	clear(): void {
+		this.store.clear();
+	}
+	getItem(key: string): string | null {
+		return this.store.has(key) ? this.store.get(key)! : null;
+	}
+	setItem(key: string, value: string): void {
+		this.store.set(key, value);
+	}
+	removeItem(key: string): void {
+		this.store.delete(key);
+	}
+	key(index: number): string | null {
+		return Array.from(this.store.keys())[index] ?? null;
+	}
+	get length(): number {
+		return this.store.size;
+	}
 }
 ```
 
@@ -654,65 +654,65 @@ class MemorySessionStorage implements Storage {
 **Goal**: Stabilize core infrastructure
 
 1. **Add Calendar Service Tests** (16 hours)
-   - Mock Google Calendar API
-   - Test CRUD operations
-   - Test timezone conversions
-   - Test error handling
+    - Mock Google Calendar API
+    - Test CRUD operations
+    - Test timezone conversions
+    - Test error handling
 
 2. **Add Queue System Tests** (12 hours)
-   - Mock Supabase RPCs
-   - Test job lifecycle
-   - Test retry logic and backoff
-   - Test atomic operations
+    - Mock Supabase RPCs
+    - Test job lifecycle
+    - Test retry logic and backoff
+    - Test atomic operations
 
 3. **Add Shared Validation Tests** (6 hours)
-   - Test all job type validators
-   - Test edge cases (null, invalid formats)
-   - Test timezone validation
+    - Test all job type validators
+    - Test edge cases (null, invalid formats)
+    - Test timezone validation
 
 ### Phase 2: API Coverage (Weeks 3-4)
 
 **Goal**: Secure API endpoints
 
 4. **Test Critical API Endpoints** (20 hours)
-   - Brain dump endpoints (4 routes)
-   - Calendar endpoints (5 routes)
-   - Project endpoints (10 routes)
-   - Focus on: validation, auth, error responses
+    - Brain dump endpoints (4 routes)
+    - Calendar endpoints (5 routes)
+    - Project endpoints (10 routes)
+    - Focus on: validation, auth, error responses
 
 5. **Add Supabase Client Tests** (4 hours)
-   - Test client factory functions
-   - Test environment validation
-   - Test redirect URL generation
+    - Test client factory functions
+    - Test environment validation
+    - Test redirect URL generation
 
 ### Phase 3: Worker Coverage (Week 5)
 
 **Goal**: Improve background job reliability
 
 6. **Test Worker Processors** (16 hours)
-   - Brief worker job processing
-   - Email worker delivery
-   - Test timezone handling
-   - Test error isolation
+    - Brief worker job processing
+    - Email worker delivery
+    - Test timezone handling
+    - Test error isolation
 
 7. **Test Email Services** (12 hours)
-   - Mock SMTP transport
-   - Test template rendering
-   - Test webhook delivery
+    - Mock SMTP transport
+    - Test template rendering
+    - Test webhook delivery
 
 ### Phase 4: Component Testing (Week 6)
 
 **Goal**: Improve UI reliability
 
 8. **Add Component Tests** (20 hours)
-   - Brain dump modal flow
-   - Notification system
-   - Use Svelte Testing Library
+    - Brain dump modal flow
+    - Notification system
+    - Use Svelte Testing Library
 
 9. **Add Store Tests** (8 hours)
-   - Test Svelte 5 runes reactivity
-   - Test state persistence
-   - Test derived state
+    - Test Svelte 5 runes reactivity
+    - Test state persistence
+    - Test derived state
 
 ### Phase 5: E2E Testing (Weeks 7-8)
 

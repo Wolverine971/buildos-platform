@@ -1,14 +1,14 @@
 ---
-title: "Notification System - Next Steps: Logging & Admin Page Implementation"
+title: 'Notification System - Next Steps: Logging & Admin Page Implementation'
 date: 2025-10-11
 time: 00:00:00
 tags: [notifications, logging, admin-ui, next-phase, implementation]
 status: ready-to-start
 priority: HIGH
 related:
-  - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
-  - 2025-10-10_21-00-00_notification-system-audit.md
-  - /apps/web/docs/features/notifications/NOTIFICATION_LOGGING_IMPLEMENTATION_SPEC.md
+    - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
+    - 2025-10-10_21-00-00_notification-system-audit.md
+    - /apps/web/docs/features/notifications/NOTIFICATION_LOGGING_IMPLEMENTATION_SPEC.md
 ---
 
 # Notification System - Next Steps: Logging & Admin Page Implementation
@@ -65,10 +65,10 @@ related:
 ### ✅ Shared Logger Created
 
 - `packages/shared-utils/src/logging/` - Complete logging infrastructure
-  - `logger.ts` - Main Logger class
-  - `types.ts` - TypeScript interfaces
-  - `correlation.ts` - Correlation ID utilities
-  - `index.ts` - Public exports
+    - `logger.ts` - Main Logger class
+    - `types.ts` - TypeScript interfaces
+    - `correlation.ts` - Correlation ID utilities
+    - `index.ts` - Public exports
 
 ---
 
@@ -128,58 +128,55 @@ GRANT INSERT ON notification_logs TO service_role;
 #### Web App (API Routes)
 
 - `/apps/web/src/routes/api/notifications/emit/+server.ts`
-  - Add correlation ID generation
-  - Log event creation
-  - Log delivery creation
-  - Log queue job creation
+    - Add correlation ID generation
+    - Log event creation
+    - Log delivery creation
+    - Log queue job creation
 
 #### Worker (Notification Processing)
 
 - `/apps/worker/src/workers/notification/notificationWorker.ts`
-  - Log job claiming
-  - Log notification sending
-  - Log delivery status updates
-  - Log errors with correlation IDs
+    - Log job claiming
+    - Log notification sending
+    - Log delivery status updates
+    - Log errors with correlation IDs
 
 #### Web App (Webhooks)
 
 - `/apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
-  - Log webhook receipt
-  - Log status updates
-  - Preserve correlation IDs
+    - Log webhook receipt
+    - Log status updates
+    - Preserve correlation IDs
 
 #### Web App (Email Tracking)
 
 - `/apps/web/src/routes/api/email-tracking/[tracking_id]/+server.ts`
 - `/apps/web/src/routes/api/email-tracking/[tracking_id]/click/+server.ts`
-  - Log open/click events
-  - Preserve correlation IDs
+    - Log open/click events
+    - Preserve correlation IDs
 
 **Example usage:**
 
 ```typescript
-import {
-  createLogger,
-  generateCorrelationId,
-} from "@buildos/shared-utils/logging";
+import { createLogger, generateCorrelationId } from '@buildos/shared-utils/logging';
 
-const logger = createLogger("web:api:emit");
+const logger = createLogger('web:api:emit');
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  const correlationId = generateCorrelationId();
-  const requestLogger = logger.child("emit-notification", { correlationId });
+	const correlationId = generateCorrelationId();
+	const requestLogger = logger.child('emit-notification', { correlationId });
 
-  requestLogger.info("Received notification emit request", {
-    userId: user.id,
-    eventType: payload.event_type,
-  });
+	requestLogger.info('Received notification emit request', {
+		userId: user.id,
+		eventType: payload.event_type
+	});
 
-  // ... emit notification ...
+	// ... emit notification ...
 
-  requestLogger.info("Notification emitted successfully", {
-    eventId: event.id,
-    deliveryCount: deliveries.length,
-  });
+	requestLogger.info('Notification emitted successfully', {
+		eventId: event.id,
+		deliveryCount: deliveries.length
+	});
 };
 ```
 
@@ -197,54 +194,54 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 - Shows `notification_events` with linked deliveries
 - Filterable by:
-  - Event type
-  - User
-  - Date range
-  - Status
+    - Event type
+    - User
+    - Date range
+    - Status
 - Columns:
-  - Event ID
-  - Event Type
-  - User
-  - Payload (expandable JSON)
-  - Deliveries (count + status breakdown)
-  - Created At
-  - Actions (View Details, Retry)
+    - Event ID
+    - Event Type
+    - User
+    - Payload (expandable JSON)
+    - Deliveries (count + status breakdown)
+    - Created At
+    - Actions (View Details, Retry)
 
 #### Tab 2: Delivery Log
 
 - Shows `notification_deliveries` with status timeline
 - Filterable by:
-  - Channel (push, email, sms, in_app)
-  - Status
-  - User
-  - Date range
+    - Channel (push, email, sms, in_app)
+    - Status
+    - User
+    - Date range
 - Columns:
-  - Delivery ID
-  - Event Type
-  - Channel
-  - Recipient
-  - Status
-  - Timeline (created → sent → delivered/failed)
-  - Actions (View Details, Retry, Resend)
+    - Delivery ID
+    - Event Type
+    - Channel
+    - Recipient
+    - Status
+    - Timeline (created → sent → delivered/failed)
+    - Actions (View Details, Retry, Resend)
 
 #### Tab 3: System Logs (NEW)
 
 - Shows `notification_logs` with correlation tracking
 - Filterable by:
-  - Log level (debug, info, warn, error, fatal)
-  - Correlation ID
-  - Event ID
-  - Delivery ID
-  - Date range
-  - Namespace
+    - Log level (debug, info, warn, error, fatal)
+    - Correlation ID
+    - Event ID
+    - Delivery ID
+    - Date range
+    - Namespace
 - Columns:
-  - Timestamp
-  - Level (color-coded)
-  - Namespace
-  - Message
-  - Context (expandable)
-  - Correlation ID (clickable to see all related logs)
-  - Actions (View Full Context, Copy Correlation ID)
+    - Timestamp
+    - Level (color-coded)
+    - Namespace
+    - Message
+    - Context (expandable)
+    - Correlation ID (clickable to see all related logs)
+    - Actions (View Full Context, Copy Correlation ID)
 
 #### Features to Implement:
 
@@ -346,26 +343,26 @@ ORDER BY created_at DESC;
 #### Integration Testing
 
 1. **Event Log Flow:**
-   - Emit notification via `/api/notifications/emit`
-   - Verify event appears in Event Log tab
-   - Verify deliveries are created and linked
-   - Verify correlation ID is preserved
+    - Emit notification via `/api/notifications/emit`
+    - Verify event appears in Event Log tab
+    - Verify deliveries are created and linked
+    - Verify correlation ID is preserved
 
 2. **Delivery Log Flow:**
-   - Worker processes notification
-   - Verify delivery status updates appear in Delivery Log tab
-   - Verify status transitions are tracked (pending → sent → delivered)
+    - Worker processes notification
+    - Verify delivery status updates appear in Delivery Log tab
+    - Verify status transitions are tracked (pending → sent → delivered)
 
 3. **System Log Flow:**
-   - Trigger notification emit
-   - Verify logs appear in System Logs tab
-   - Click correlation ID
-   - Verify all related logs are shown (web API → worker → webhook)
+    - Trigger notification emit
+    - Verify logs appear in System Logs tab
+    - Click correlation ID
+    - Verify all related logs are shown (web API → worker → webhook)
 
 4. **Real-time Updates:**
-   - Keep logs page open
-   - Trigger notification in another tab
-   - Verify new log entries appear without refresh
+    - Keep logs page open
+    - Trigger notification in another tab
+    - Verify new log entries appear without refresh
 
 ---
 
@@ -387,10 +384,10 @@ ORDER BY created_at DESC;
 ### ✅ Step 2: Integrate Logger in Worker (COMPLETED)
 
 1. ✅ Updated `notificationWorker.ts` with full structured logging
-   - Correlation ID extraction/generation from job metadata
-   - Child logger pattern throughout (`worker:notification:process:push`)
-   - Batch processing with per-job loggers
-   - Timing metrics (durationMs)
+    - Correlation ID extraction/generation from job metadata
+    - Child logger pattern throughout (`worker:notification:process:push`)
+    - Batch processing with per-job loggers
+    - Timing metrics (durationMs)
 2. ✅ Updated `emailAdapter.ts` with logger parameter
 3. ✅ Updated `smsAdapter.ts` with logger parameter (including template rendering and URL shortening)
 4. ✅ Added `correlationId?` field to `NotificationJobMetadata` interface
@@ -458,22 +455,22 @@ ORDER BY created_at DESC;
 ### ✅ Step 6: Create API Endpoints (COMPLETED)
 
 1. ✅ Created `/api/admin/notifications/logs/events`
-   - Paginated notification events with delivery counts
-   - Filters: event_type, user_id, from, to
-   - Returns status breakdown for each event
+    - Paginated notification events with delivery counts
+    - Filters: event_type, user_id, from, to
+    - Returns status breakdown for each event
 2. ✅ Created `/api/admin/notifications/logs/deliveries`
-   - Paginated notification deliveries with timeline
-   - Filters: channel, status, user_id, event_id, from, to
-   - Returns duration metrics (to_send, to_deliver, to_open)
+    - Paginated notification deliveries with timeline
+    - Filters: channel, status, user_id, event_id, from, to
+    - Returns duration metrics (to_send, to_deliver, to_open)
 3. ✅ Created `/api/admin/notifications/logs/system`
-   - Paginated notification_logs with full context
-   - Filters: level, correlation_id, event_id, delivery_id, namespace, from, to, search
-   - Returns related users, events, and deliveries
+    - Paginated notification_logs with full context
+    - Filters: level, correlation_id, event_id, delivery_id, namespace, from, to, search
+    - Returns related users, events, and deliveries
 4. ✅ Created `/api/admin/notifications/logs/correlation/[id]`
-   - Returns ALL logs for a specific correlation ID
-   - Groups logs by namespace and timestamp
-   - Includes timeline summary with stats (log count, errors, warnings)
-   - Returns related notification event and deliveries
+    - Returns ALL logs for a specific correlation ID
+    - Groups logs by namespace and timestamp
+    - Includes timeline summary with stats (log count, errors, warnings)
+    - Returns related notification event and deliveries
 
 **Files Created:**
 
@@ -485,31 +482,31 @@ ORDER BY created_at DESC;
 ### ✅ Step 7: Create Svelte Components (COMPLETED)
 
 1. ✅ Created `LogFilters.svelte`
-   - Reusable filter component with configurable fields
-   - Supports: event_type, channel, status, level, namespace, user_id, date range, search
-   - Real-time filter updates with callbacks
+    - Reusable filter component with configurable fields
+    - Supports: event_type, channel, status, level, namespace, user_id, date range, search
+    - Real-time filter updates with callbacks
 2. ✅ Created `LogEventTable.svelte`
-   - Displays notification_events with delivery status breakdown
-   - Expandable rows to show full payload and metadata
-   - Badge colors for event types and statuses
-   - Actions: View Details, Retry
+    - Displays notification_events with delivery status breakdown
+    - Expandable rows to show full payload and metadata
+    - Badge colors for event types and statuses
+    - Actions: View Details, Retry
 3. ✅ Created `LogDeliveryTable.svelte`
-   - Displays notification_deliveries with status timeline
-   - Visual timeline icons (created → sent → delivered/failed)
-   - Duration metrics (send time, delivery time, open time)
-   - Actions: View Details, Retry, Resend
+    - Displays notification_deliveries with status timeline
+    - Visual timeline icons (created → sent → delivered/failed)
+    - Duration metrics (send time, delivery time, open time)
+    - Actions: View Details, Retry, Resend
 4. ✅ Created `LogSystemTable.svelte`
-   - Displays notification_logs with correlation tracking
-   - Color-coded log levels (debug, info, warn, error, fatal)
-   - Expandable rows to show full context, metadata, and error stacks
-   - Click correlation ID to view all related logs
-   - Actions: View Correlation, Copy Correlation ID
+    - Displays notification_logs with correlation tracking
+    - Color-coded log levels (debug, info, warn, error, fatal)
+    - Expandable rows to show full context, metadata, and error stacks
+    - Click correlation ID to view all related logs
+    - Actions: View Correlation, Copy Correlation ID
 5. ✅ Created `CorrelationViewer.svelte`
-   - Modal viewer for all logs related to a correlation ID
-   - Timeline summary with duration and error counts
-   - Shows related notification event and deliveries
-   - Logs grouped by namespace in chronological order
-   - Color-coded log levels with expandable metadata
+    - Modal viewer for all logs related to a correlation ID
+    - Timeline summary with duration and error counts
+    - Shows related notification event and deliveries
+    - Logs grouped by namespace in chronological order
+    - Color-coded log levels with expandable metadata
 
 **Files Created:**
 
@@ -563,39 +560,39 @@ ORDER BY created_at DESC;
 **Essential Reading (Start Here):**
 
 1. **Original Audit:** `/thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md`
-   - Complete system analysis
-   - All bugs identified
-   - Current architecture
+    - Complete system analysis
+    - All bugs identified
+    - Current architecture
 
 2. **Bug Fixes Summary:** `/thoughts/shared/research/2025-10-10_23-30-00_notification-bug-fixes-summary.md`
-   - All fixes applied in Phase 1
-   - Migration details
-   - Testing recommendations
+    - All fixes applied in Phase 1
+    - Migration details
+    - Testing recommendations
 
 3. **Implementation Spec:** `/apps/web/docs/features/notifications/NOTIFICATION_LOGGING_IMPLEMENTATION_SPEC.md`
-   - 5-phase implementation plan
-   - Database schema
-   - Code examples
-   - Testing requirements
+    - 5-phase implementation plan
+    - Database schema
+    - Code examples
+    - Testing requirements
 
 **Code References:**
 
 - **Shared Logger:** `/packages/shared-utils/src/logging/`
-  - `logger.ts` - Main Logger class
-  - `types.ts` - TypeScript interfaces
-  - `correlation.ts` - Correlation ID utilities
+    - `logger.ts` - Main Logger class
+    - `types.ts` - TypeScript interfaces
+    - `correlation.ts` - Correlation ID utilities
 
 - **Current Admin Page:** `/apps/web/src/routes/admin/notifications/logs/+page.svelte`
-  - Currently shows "Coming Soon"
-  - Has tab structure already
+    - Currently shows "Coming Soon"
+    - Has tab structure already
 
 - **Analytics Service:** `/apps/web/src/lib/services/notification-analytics.service.ts`
-  - Reference for API service pattern
-  - TypeScript interface patterns
+    - Reference for API service pattern
+    - TypeScript interface patterns
 
 - **Channel Performance Table:** `/apps/web/src/lib/components/admin/notifications/ChannelPerformanceTable.svelte`
-  - Reference for table component patterns
-  - Color coding, formatting helpers
+    - Reference for table component patterns
+    - Color coding, formatting helpers
 
 **Related Files:**
 
@@ -611,30 +608,30 @@ ORDER BY created_at DESC;
 ✅ **Phase 2 is complete when:**
 
 1. **Database:**
-   - `notification_logs` table created with proper indexes
-   - All logs are being written to database
-   - Correlation IDs are preserved across all systems
+    - `notification_logs` table created with proper indexes
+    - All logs are being written to database
+    - Correlation IDs are preserved across all systems
 
 2. **Logging:**
-   - Web API emits logs with correlation IDs
-   - Worker preserves and logs with correlation IDs
-   - Webhooks preserve and log with correlation IDs
-   - All logs use shared logger from `@buildos/shared-utils`
+    - Web API emits logs with correlation IDs
+    - Worker preserves and logs with correlation IDs
+    - Webhooks preserve and log with correlation IDs
+    - All logs use shared logger from `@buildos/shared-utils`
 
 3. **Admin UI:**
-   - `/admin/notifications/logs` page is fully functional
-   - All 3 tabs work (Event Log, Delivery Log, System Logs)
-   - Real-time updates work
-   - All filters work
-   - Correlation tracking works (click to see related logs)
-   - Export works
+    - `/admin/notifications/logs` page is fully functional
+    - All 3 tabs work (Event Log, Delivery Log, System Logs)
+    - Real-time updates work
+    - All filters work
+    - Correlation tracking works (click to see related logs)
+    - Export works
 
 4. **Testing:**
-   - End-to-end flow logs correctly
-   - Correlation IDs work across web → worker → webhooks
-   - Real-time subscriptions work
-   - All filters and search work
-   - Performance is acceptable with 1000+ logs
+    - End-to-end flow logs correctly
+    - Correlation IDs work across web → worker → webhooks
+    - Real-time subscriptions work
+    - All filters and search work
+    - Performance is acceptable with 1000+ logs
 
 ---
 

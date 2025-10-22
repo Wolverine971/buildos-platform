@@ -7,9 +7,9 @@ You are tasked with creating detailed implementation plans through an interactiv
 When this command is invoked:
 
 1. **Check if parameters were provided**:
-   - If a file path or ticket reference was provided as a parameter, skip the default message
-   - Immediately read any provided files FULLY
-   - Begin the research process
+    - If a file path or ticket reference was provided as a parameter, skip the default message
+    - Immediately read any provided files FULLY
+    - Begin the research process
 
 2. **If no parameters provided**, respond with:
 
@@ -34,112 +34,112 @@ Then wait for the user's input.
 ### Step 1: Context Gathering & Initial Analysis
 
 1. **Read all mentioned files immediately and FULLY**:
-   - Ticket files (e.g., `thoughts/shared/tickets/eng_1234.md`)
-   - Research documents
-   - Related implementation plans
-   - Any JSON/data files mentioned
-   - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
-   - **CRITICAL**: DO NOT spawn sub-tasks before reading these files yourself in the main context
-   - **NEVER** read files partially - if a file is mentioned, read it completely
+    - Ticket files (e.g., `thoughts/shared/tickets/eng_1234.md`)
+    - Research documents
+    - Related implementation plans
+    - Any JSON/data files mentioned
+    - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
+    - **CRITICAL**: DO NOT spawn sub-tasks before reading these files yourself in the main context
+    - **NEVER** read files partially - if a file is mentioned, read it completely
 
 2. **Spawn initial research tasks to gather context**:
    Before asking the user any questions, use specialized agents to research in parallel:
-   - Use the **codebase-locator** agent to find all files related to the ticket/task
-   - Use the **codebase-analyzer** agent to understand how the current implementation works
-   - If relevant, use the **thoughts-locator** agent to find any existing thoughts documents about this feature
-   - If a Linear ticket is mentioned, use the **linear-ticket-reader** agent to get full details
+    - Use the **codebase-locator** agent to find all files related to the ticket/task
+    - Use the **codebase-analyzer** agent to understand how the current implementation works
+    - If relevant, use the **thoughts-locator** agent to find any existing thoughts documents about this feature
+    - If a Linear ticket is mentioned, use the **linear-ticket-reader** agent to get full details
 
-   These agents will:
-   - Find relevant source files, configs, and tests
-   - Identify the specific directories to focus on (e.g., if WUI is mentioned, they'll focus on humanlayer-wui/)
-   - Trace data flow and key functions
-   - Return detailed explanations with file:line references
+    These agents will:
+    - Find relevant source files, configs, and tests
+    - Identify the specific directories to focus on (e.g., if WUI is mentioned, they'll focus on humanlayer-wui/)
+    - Trace data flow and key functions
+    - Return detailed explanations with file:line references
 
 3. **Read all files identified by research tasks**:
-   - After research tasks complete, read ALL files they identified as relevant
-   - Read them FULLY into the main context
-   - This ensures you have complete understanding before proceeding
+    - After research tasks complete, read ALL files they identified as relevant
+    - Read them FULLY into the main context
+    - This ensures you have complete understanding before proceeding
 
 4. **Analyze and verify understanding**:
-   - Cross-reference the ticket requirements with actual code
-   - Identify any discrepancies or misunderstandings
-   - Note assumptions that need verification
-   - Determine true scope based on codebase reality
+    - Cross-reference the ticket requirements with actual code
+    - Identify any discrepancies or misunderstandings
+    - Note assumptions that need verification
+    - Determine true scope based on codebase reality
 
 5. **Present informed understanding and focused questions**:
 
-   ```
-   Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
+    ```
+    Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
 
-   I've found that:
-   - [Current implementation detail with file:line reference]
-   - [Relevant pattern or constraint discovered]
-   - [Potential complexity or edge case identified]
+    I've found that:
+    - [Current implementation detail with file:line reference]
+    - [Relevant pattern or constraint discovered]
+    - [Potential complexity or edge case identified]
 
-   Questions that my research couldn't answer:
-   - [Specific technical question that requires human judgment]
-   - [Business logic clarification]
-   - [Design preference that affects implementation]
-   ```
+    Questions that my research couldn't answer:
+    - [Specific technical question that requires human judgment]
+    - [Business logic clarification]
+    - [Design preference that affects implementation]
+    ```
 
-   Only ask questions that you genuinely cannot answer through code investigation.
+    Only ask questions that you genuinely cannot answer through code investigation.
 
 ### Step 2: Research & Discovery
 
 After getting initial clarifications:
 
 1. **If the user corrects any misunderstanding**:
-   - DO NOT just accept the correction
-   - Spawn new research tasks to verify the correct information
-   - Read the specific files/directories they mention
-   - Only proceed once you've verified the facts yourself
+    - DO NOT just accept the correction
+    - Spawn new research tasks to verify the correct information
+    - Read the specific files/directories they mention
+    - Only proceed once you've verified the facts yourself
 
 2. **Create a research todo list** using TodoWrite to track exploration tasks
 
 3. **Spawn parallel sub-tasks for comprehensive research**:
-   - Create multiple Task agents to research different aspects concurrently
-   - Use the right agent for each type of research:
+    - Create multiple Task agents to research different aspects concurrently
+    - Use the right agent for each type of research:
 
-   **For deeper investigation:**
-   - **codebase-locator** - To find more specific files (e.g., "find all files that handle [specific component]")
-   - **codebase-analyzer** - To understand implementation details (e.g., "analyze how [system] works")
-   - **codebase-pattern-finder** - To find similar features we can model after
+    **For deeper investigation:**
+    - **codebase-locator** - To find more specific files (e.g., "find all files that handle [specific component]")
+    - **codebase-analyzer** - To understand implementation details (e.g., "analyze how [system] works")
+    - **codebase-pattern-finder** - To find similar features we can model after
 
-   **For historical context:**
-   - **thoughts-locator** - To find any research, plans, or decisions about this area
-   - **thoughts-analyzer** - To extract key insights from the most relevant documents
+    **For historical context:**
+    - **thoughts-locator** - To find any research, plans, or decisions about this area
+    - **thoughts-analyzer** - To extract key insights from the most relevant documents
 
-   **For related tickets:**
-   - **linear-searcher** - To find similar issues or past implementations
+    **For related tickets:**
+    - **linear-searcher** - To find similar issues or past implementations
 
-   Each agent knows how to:
-   - Find the right files and code patterns
-   - Identify conventions and patterns to follow
-   - Look for integration points and dependencies
-   - Return specific file:line references
-   - Find tests and examples
+    Each agent knows how to:
+    - Find the right files and code patterns
+    - Identify conventions and patterns to follow
+    - Look for integration points and dependencies
+    - Return specific file:line references
+    - Find tests and examples
 
 4. **Wait for ALL sub-tasks to complete** before proceeding
 
 5. **Present findings and design options**:
 
-   ```
-   Based on my research, here's what I found:
+    ```
+    Based on my research, here's what I found:
 
-   **Current State:**
-   - [Key discovery about existing code]
-   - [Pattern or convention to follow]
+    **Current State:**
+    - [Key discovery about existing code]
+    - [Pattern or convention to follow]
 
-   **Design Options:**
-   1. [Option A] - [pros/cons]
-   2. [Option B] - [pros/cons]
+    **Design Options:**
+    1. [Option A] - [pros/cons]
+    2. [Option B] - [pros/cons]
 
-   **Open Questions:**
-   - [Technical uncertainty]
-   - [Design decision needed]
+    **Open Questions:**
+    - [Technical uncertainty]
+    - [Design decision needed]
 
-   Which approach aligns best with your vision?
-   ```
+    Which approach aligns best with your vision?
+    ```
 
 ### Step 3: Plan Structure Development
 
@@ -147,19 +147,19 @@ Once aligned on approach:
 
 1. **Create initial plan outline**:
 
-   ```
-   Here's my proposed plan structure:
+    ```
+    Here's my proposed plan structure:
 
-   ## Overview
-   [1-2 sentence summary]
+    ## Overview
+    [1-2 sentence summary]
 
-   ## Implementation Phases:
-   1. [Phase name] - [what it accomplishes]
-   2. [Phase name] - [what it accomplishes]
-   3. [Phase name] - [what it accomplishes]
+    ## Implementation Phases:
+    1. [Phase name] - [what it accomplishes]
+    2. [Phase name] - [what it accomplishes]
+    3. [Phase name] - [what it accomplishes]
 
-   Does this phasing make sense? Should I adjust the order or granularity?
-   ```
+    Does this phasing make sense? Should I adjust the order or granularity?
+    ```
 
 2. **Get feedback on structure** before writing details
 
@@ -409,22 +409,22 @@ When spawning research sub-tasks:
 1. **Spawn multiple tasks in parallel** for efficiency
 2. **Each task should be focused** on a specific area
 3. **Provide detailed instructions** including:
-   - Exactly what to search for
-   - Which directories to focus on
-   - What information to extract
-   - Expected output format
+    - Exactly what to search for
+    - Which directories to focus on
+    - What information to extract
+    - Expected output format
 4. **Be EXTREMELY specific about directories**:
-   - If the ticket mentions "WUI", specify `humanlayer-wui/` directory
-   - If it mentions "daemon", specify `hld/` directory
-   - Never use generic terms like "UI" when you mean "WUI"
-   - Include the full path context in your prompts
+    - If the ticket mentions "WUI", specify `humanlayer-wui/` directory
+    - If it mentions "daemon", specify `hld/` directory
+    - Never use generic terms like "UI" when you mean "WUI"
+    - Include the full path context in your prompts
 5. **Specify read-only tools** to use
 6. **Request specific file:line references** in responses
 7. **Wait for all tasks to complete** before synthesizing
 8. **Verify sub-task results**:
-   - If a sub-task returns unexpected results, spawn follow-up tasks
-   - Cross-check findings against the actual codebase
-   - Don't accept results that seem incorrect
+    - If a sub-task returns unexpected results, spawn follow-up tasks
+    - Cross-check findings against the actual codebase
+    - Don't accept results that seem incorrect
 
 Example of spawning multiple tasks:
 

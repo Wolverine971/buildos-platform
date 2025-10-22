@@ -22,8 +22,8 @@ This guide walks you through setting up SMS notifications in BuildOS from scratc
 
 1. Navigate to Console Dashboard
 2. Find your credentials:
-   - **Account SID**: `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
-   - **Auth Token**: Click to reveal and copy
+    - **Account SID**: `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+    - **Auth Token**: Click to reveal and copy
 
 > ⚠️ **Security Note**: Never commit these credentials to version control
 
@@ -34,18 +34,18 @@ This guide walks you through setting up SMS notifications in BuildOS from scratc
 1. Navigate to **Messaging > Services** in Twilio Console
 2. Click **Create Messaging Service**
 3. Configure service:
-   ```
-   Name: BuildOS SMS
-   Use case: Notifications
-   ```
+    ```
+    Name: BuildOS SMS
+    Use case: Notifications
+    ```
 4. Click **Create**
 
 ### 2.2 Add Sender Phone Numbers
 
 1. In your Messaging Service, go to **Sender Pool**
 2. Add phone numbers:
-   - For testing: Use Twilio trial number
-   - For production: Purchase dedicated numbers
+    - For testing: Use Twilio trial number
+    - For production: Purchase dedicated numbers
 
 #### Purchase Phone Numbers (Production)
 
@@ -61,16 +61,16 @@ This guide walks you through setting up SMS notifications in BuildOS from scratc
 ### 2.3 Configure Messaging Service Settings
 
 1. **Opt-Out Management**:
-   - Enable automatic opt-out handling
-   - Keywords: STOP, UNSUBSCRIBE, CANCEL
+    - Enable automatic opt-out handling
+    - Keywords: STOP, UNSUBSCRIBE, CANCEL
 
 2. **Compliance**:
-   - Enable sticky sender
-   - Set validity period: 4 hours
+    - Enable sticky sender
+    - Set validity period: 4 hours
 
 3. **Advanced Features**:
-   - Enable delivery receipts
-   - Set status callback URL (we'll set this later)
+    - Enable delivery receipts
+    - Set status callback URL (we'll set this later)
 
 Note your **Messaging Service SID**: `MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
@@ -83,9 +83,9 @@ For phone number verification:
 1. Navigate to **Verify > Services**
 2. Click **Create new Service**
 3. Configure:
-   ```
-   Friendly name: BuildOS Verify
-   ```
+    ```
+    Friendly name: BuildOS Verify
+    ```
 4. Click **Create**
 
 ### 3.2 Configure Verify Settings
@@ -94,9 +94,9 @@ For phone number verification:
 2. **Code Length**: 6 digits
 3. **Code Validity**: 10 minutes
 4. **Custom Messages** (optional):
-   ```
-   Your BuildOS verification code is: {{code}}
-   ```
+    ```
+    Your BuildOS verification code is: {{code}}
+    ```
 
 Note your **Verify Service SID**: `VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
@@ -185,12 +185,12 @@ pnpm build --filter=@buildos/twilio-service
 1. Go to your Messaging Service in Twilio Console
 2. Navigate to **Integration**
 3. Set **Status callback URL**:
-   ```
-   https://your-app.com/api/webhooks/twilio/status
-   ```
+    ```
+    https://your-app.com/api/webhooks/twilio/status
+    ```
 4. Enable webhook for:
-   - Message status changes
-   - Incoming messages (if needed)
+    - Message status changes
+    - Incoming messages (if needed)
 
 ### 7.2 Configure Webhook Security
 
@@ -240,10 +240,10 @@ Users need to:
 
 1. Verify phone number
 2. Enable desired notifications:
-   - Calendar event reminders (working feature)
-   - Daily brief SMS (via notification preferences, not SMS preferences)
-   - Morning kickoff (future feature)
-   - Evening recap (future feature)
+    - Calendar event reminders (working feature)
+    - Daily brief SMS (via notification preferences, not SMS preferences)
+    - Morning kickoff (future feature)
+    - Evening recap (future feature)
 3. Set quiet hours (optional)
 
 **Important**: Daily brief SMS notifications are managed through the unified notification system at `/settings/notifications`, not in SMS preferences.

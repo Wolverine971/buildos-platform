@@ -1,5 +1,5 @@
 ---
-title: "Brain Dump Processor Architecture & Test Migration"
+title: 'Brain Dump Processor Architecture & Test Migration'
 date: 2025-10-06
 author: Claude Code
 tags: [architecture, testing, brain-dump, llm-service, migration]
@@ -57,9 +57,9 @@ The BrainDumpProcessor has been migrated from using `LLMPool` to `SmartLLMServic
 
 ```typescript
 interface SmartLLMServiceConfig {
-  httpReferer?: string; // For OpenRouter tracking (default: 'https://yourdomain.com')
-  appName?: string; // App identifier (default: 'SmartLLMService')
-  supabase?: SupabaseClient; // For usage logging to llm_usage_logs table
+	httpReferer?: string; // For OpenRouter tracking (default: 'https://yourdomain.com')
+	appName?: string; // App identifier (default: 'SmartLLMService')
+	supabase?: SupabaseClient; // For usage logging to llm_usage_logs table
 }
 ```
 
@@ -67,35 +67,35 @@ interface SmartLLMServiceConfig {
 
 ```typescript
 interface JSONRequestOptions<T> {
-  // Required
-  systemPrompt: string;
-  userPrompt: string;
-  userId: string;
+	// Required
+	systemPrompt: string;
+	userPrompt: string;
+	userId: string;
 
-  // Optional configuration
-  profile?: JSONProfile; // 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom'
-  temperature?: number; // Default: 0.2
+	// Optional configuration
+	profile?: JSONProfile; // 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom'
+	temperature?: number; // Default: 0.2
 
-  // Validation & retry
-  validation?: {
-    retryOnParseError?: boolean; // Retry with powerful model if JSON parse fails
-    validateSchema?: boolean;
-    maxRetries?: number; // Default: 2
-  };
+	// Validation & retry
+	validation?: {
+		retryOnParseError?: boolean; // Retry with powerful model if JSON parse fails
+		validateSchema?: boolean;
+		maxRetries?: number; // Default: 2
+	};
 
-  // Requirements (for custom profile)
-  requirements?: {
-    maxLatency?: number;
-    minAccuracy?: number;
-    maxCost?: number;
-  };
+	// Requirements (for custom profile)
+	requirements?: {
+		maxLatency?: number;
+		minAccuracy?: number;
+		maxCost?: number;
+	};
 
-  // Context for usage tracking (stored in llm_usage_logs)
-  operationType?: string; // e.g., 'brain_dump', 'brain_dump_context', 'brain_dump_tasks'
-  projectId?: string;
-  brainDumpId?: string;
-  taskId?: string;
-  briefId?: string;
+	// Context for usage tracking (stored in llm_usage_logs)
+	operationType?: string; // e.g., 'brain_dump', 'brain_dump_context', 'brain_dump_tasks'
+	projectId?: string;
+	brainDumpId?: string;
+	taskId?: string;
+	briefId?: string;
 }
 ```
 
@@ -221,12 +221,12 @@ async processBrainDump({
 ```typescript
 let existingProject: ProjectWithRelations | null = null;
 if (selectedProjectId) {
-  const fullProjectData = await this.projectDataFetcher.getFullProjectData({
-    userId,
-    projectId: selectedProjectId,
-    options: { includeTasks: true, includePhases: true },
-  });
-  existingProject = fullProjectData.fullProjectWithRelations;
+	const fullProjectData = await this.projectDataFetcher.getFullProjectData({
+		userId,
+		projectId: selectedProjectId,
+		options: { includeTasks: true, includePhases: true }
+	});
+	existingProject = fullProjectData.fullProjectWithRelations;
 }
 ```
 
@@ -235,21 +235,15 @@ if (selectedProjectId) {
 ```typescript
 let prepAnalysisResult: PreparatoryAnalysisResult | null = null;
 if (existingProject && selectedProjectId) {
-  console.log(
-    "[BrainDumpProcessor] Running preparatory analysis for existing project",
-  );
-  prepAnalysisResult = await this.runPreparatoryAnalysis(
-    brainDump,
-    existingProject,
-    userId,
-  );
-  // Analysis determines:
-  // - braindump_classification (strategic, task-focused, mixed, etc.)
-  // - needs_context_update (boolean)
-  // - relevant_task_ids (array) - token optimization
-  // - new_tasks_detected (boolean)
-  // - processing_recommendation.skip_context (boolean)
-  // - processing_recommendation.skip_tasks (boolean)
+	console.log('[BrainDumpProcessor] Running preparatory analysis for existing project');
+	prepAnalysisResult = await this.runPreparatoryAnalysis(brainDump, existingProject, userId);
+	// Analysis determines:
+	// - braindump_classification (strategic, task-focused, mixed, etc.)
+	// - needs_context_update (boolean)
+	// - relevant_task_ids (array) - token optimization
+	// - new_tasks_detected (boolean)
+	// - processing_recommendation.skip_context (boolean)
+	// - processing_recommendation.skip_tasks (boolean)
 }
 ```
 
@@ -259,15 +253,15 @@ if (existingProject && selectedProjectId) {
 
 ```typescript
 synthesisResult = await this.processBrainDumpDual({
-  brainDump,
-  brainDumpId,
-  userId,
-  selectedProjectId,
-  existingProject,
-  displayedQuestions,
-  options: { ...options, streamResults: true },
-  prepAnalysisResult, // Pass for optimization
-  processingDateTime,
+	brainDump,
+	brainDumpId,
+	userId,
+	selectedProjectId,
+	existingProject,
+	displayedQuestions,
+	options: { ...options, streamResults: true },
+	prepAnalysisResult, // Pass for optimization
+	processingDateTime
 });
 ```
 
@@ -276,31 +270,27 @@ synthesisResult = await this.processBrainDumpDual({
 **Step 6: Auto-Execute Operations** (Lines 422-482)
 
 ```typescript
-if (
-  options.autoExecute &&
-  synthesisResult.operations &&
-  synthesisResult.operations.length > 0
-) {
-  const executionResult = await this.operationsExecutor.executeOperations({
-    operations: synthesisResult.operations,
-    userId,
-    brainDumpId,
-    projectQuestions: synthesisResult.projectQuestions,
-  });
+if (options.autoExecute && synthesisResult.operations && synthesisResult.operations.length > 0) {
+	const executionResult = await this.operationsExecutor.executeOperations({
+		operations: synthesisResult.operations,
+		userId,
+		brainDumpId,
+		projectQuestions: synthesisResult.projectQuestions
+	});
 
-  // Update status service
-  await this.statusService.updateToSaved(
-    brainDumpId,
-    userId,
-    executionResult,
-    synthesisResult.operations,
-    projectInfo,
-    metadata,
-    duration,
-    "dual",
-  );
+	// Update status service
+	await this.statusService.updateToSaved(
+		brainDumpId,
+		userId,
+		executionResult,
+		synthesisResult.operations,
+		projectInfo,
+		metadata,
+		duration,
+		'dual'
+	);
 
-  synthesisResult.executionResult = executionResult;
+	synthesisResult.executionResult = executionResult;
 }
 ```
 
@@ -328,12 +318,12 @@ private async runPreparatoryAnalysis(
 
 ```typescript
 const response = await this.llmService.getJSONResponse({
-  systemPrompt,
-  userPrompt,
-  userId,
-  profile: "fast", // Use fast model for lightweight analysis
-  operationType: "brain_dump_context",
-  projectId: project.id,
+	systemPrompt,
+	userPrompt,
+	userId,
+	profile: 'fast', // Use fast model for lightweight analysis
+	operationType: 'brain_dump_context',
+	projectId: project.id
 });
 ```
 
@@ -341,19 +331,19 @@ const response = await this.llmService.getJSONResponse({
 
 ```typescript
 interface PreparatoryAnalysisResult {
-  analysis_summary: string;
-  braindump_classification: string; // 'strategic', 'task-focused', 'mixed', etc.
-  needs_context_update: boolean;
-  context_indicators: string[];
-  relevant_task_ids: string[]; // IMPORTANT: Used to filter tasks
-  task_indicators: Record<string, string>;
-  new_tasks_detected: boolean;
-  confidence_level: "low" | "medium" | "high";
-  processing_recommendation: {
-    skip_context: boolean; // If true, skip context extraction
-    skip_tasks: boolean; // If true, skip task extraction
-    reason: string;
-  };
+	analysis_summary: string;
+	braindump_classification: string; // 'strategic', 'task-focused', 'mixed', etc.
+	needs_context_update: boolean;
+	context_indicators: string[];
+	relevant_task_ids: string[]; // IMPORTANT: Used to filter tasks
+	task_indicators: Record<string, string>;
+	new_tasks_detected: boolean;
+	confidence_level: 'low' | 'medium' | 'high';
+	processing_recommendation: {
+		skip_context: boolean; // If true, skip context extraction
+		skip_tasks: boolean; // If true, skip task extraction
+		reason: string;
+	};
 }
 ```
 
@@ -371,23 +361,23 @@ private async processBrainDumpDual({
 
 ```typescript
 const [contextResult, tasksResult] = await Promise.allSettled([
-  this.extractProjectContext({
-    brainDump,
-    existingProject,
-    userId,
-    selectedProjectId,
-    prepAnalysisResult, // Can skip if recommendation says so
-    processingDateTime,
-  }),
-  this.extractTasks({
-    brainDump,
-    selectedProjectId,
-    userId,
-    existingTasks,
-    displayedQuestions,
-    prepAnalysisResult, // Filters tasks to relevant ones only
-    processingDateTime,
-  }),
+	this.extractProjectContext({
+		brainDump,
+		existingProject,
+		userId,
+		selectedProjectId,
+		prepAnalysisResult, // Can skip if recommendation says so
+		processingDateTime
+	}),
+	this.extractTasks({
+		brainDump,
+		selectedProjectId,
+		userId,
+		existingTasks,
+		displayedQuestions,
+		prepAnalysisResult, // Filters tasks to relevant ones only
+		processingDateTime
+	})
 ]);
 ```
 
@@ -395,26 +385,26 @@ const [contextResult, tasksResult] = await Promise.allSettled([
 
 ```typescript
 if (selectedProjectId) {
-  // Existing project - use standard merge
-  return await this.mergeDualProcessingResultsForExistingProject(
-    contextResult,
-    tasksResult,
-    attempt,
-    selectedProjectId,
-    userId,
-    brainDumpId,
-    options,
-  );
+	// Existing project - use standard merge
+	return await this.mergeDualProcessingResultsForExistingProject(
+		contextResult,
+		tasksResult,
+		attempt,
+		selectedProjectId,
+		userId,
+		brainDumpId,
+		options
+	);
 } else {
-  // New project - use enhanced merge with project ID assignment
-  return await this.mergeDualProcessingResultsForNewProject(
-    contextResult,
-    tasksResult,
-    attempt,
-    userId,
-    brainDumpId,
-    options,
-  );
+	// New project - use enhanced merge with project ID assignment
+	return await this.mergeDualProcessingResultsForNewProject(
+		contextResult,
+		tasksResult,
+		attempt,
+		userId,
+		brainDumpId,
+		options
+	);
 }
 ```
 
@@ -424,15 +414,13 @@ if (selectedProjectId) {
 
 ```typescript
 if (prepAnalysisResult?.processing_recommendation?.skip_context) {
-  console.log(
-    "[extractProjectContext] Skipping context processing based on analysis",
-  );
-  return {
-    title: "Context Processing Skipped",
-    summary: `Analysis determined context update not needed: ${prepAnalysisResult.processing_recommendation.reason}`,
-    operations: [], // No operations = no context update
-    // ... minimal result
-  };
+	console.log('[extractProjectContext] Skipping context processing based on analysis');
+	return {
+		title: 'Context Processing Skipped',
+		summary: `Analysis determined context update not needed: ${prepAnalysisResult.processing_recommendation.reason}`,
+		operations: [] // No operations = no context update
+		// ... minimal result
+	};
 }
 ```
 
@@ -440,12 +428,12 @@ if (prepAnalysisResult?.processing_recommendation?.skip_context) {
 
 ```typescript
 const response = await this.llmService.getJSONResponse({
-  systemPrompt,
-  userPrompt,
-  userId,
-  profile: "balanced", // Default profile for context extraction
-  operationType: "brain_dump_context",
-  projectId: selectedProjectId,
+	systemPrompt,
+	userPrompt,
+	userId,
+	profile: 'balanced', // Default profile for context extraction
+	operationType: 'brain_dump_context',
+	projectId: selectedProjectId
 });
 ```
 
@@ -457,16 +445,12 @@ const response = await this.llmService.getJSONResponse({
 
 ```typescript
 let tasksToPass = existingTasks;
-if (
-  prepAnalysisResult &&
-  prepAnalysisResult.relevant_task_ids.length > 0 &&
-  existingTasks
-) {
-  const relevantIds = new Set(prepAnalysisResult.relevant_task_ids);
-  tasksToPass = existingTasks.filter((task) => relevantIds.has(task.id));
-  console.log(
-    `[extractTasks] Filtering tasks based on analysis: ${tasksToPass.length}/${existingTasks.length} tasks`,
-  );
+if (prepAnalysisResult && prepAnalysisResult.relevant_task_ids.length > 0 && existingTasks) {
+	const relevantIds = new Set(prepAnalysisResult.relevant_task_ids);
+	tasksToPass = existingTasks.filter((task) => relevantIds.has(task.id));
+	console.log(
+		`[extractTasks] Filtering tasks based on analysis: ${tasksToPass.length}/${existingTasks.length} tasks`
+	);
 }
 ```
 
@@ -474,12 +458,12 @@ if (
 
 ```typescript
 const response = await this.llmService.getJSONResponse({
-  systemPrompt,
-  userPrompt,
-  userId,
-  profile: "balanced", // Default profile
-  operationType: "brain_dump_tasks",
-  projectId: selectedProjectId,
+	systemPrompt,
+	userPrompt,
+	userId,
+	profile: 'balanced', // Default profile
+	operationType: 'brain_dump_tasks',
+	projectId: selectedProjectId
 });
 ```
 
@@ -487,19 +471,19 @@ const response = await this.llmService.getJSONResponse({
 
 ```typescript
 if (result.operations && result.operations.length > 0) {
-  const taskOps = result.operations.filter(
-    (op) => op.table === "tasks" && op.operation === "create",
-  );
-  if (taskOps.length > 0 && userId && selectedProjectId) {
-    const tasksToSchedule = taskOps.map((op) => op.data);
-    const scheduledTasks = await this.adjustTaskScheduledDateTime(
-      tasksToSchedule,
-      userId,
-      selectedProjectId,
-    );
-    // Update operations with scheduled data
-    // ...
-  }
+	const taskOps = result.operations.filter(
+		(op) => op.table === 'tasks' && op.operation === 'create'
+	);
+	if (taskOps.length > 0 && userId && selectedProjectId) {
+		const tasksToSchedule = taskOps.map((op) => op.data);
+		const scheduledTasks = await this.adjustTaskScheduledDateTime(
+			tasksToSchedule,
+			userId,
+			selectedProjectId
+		);
+		// Update operations with scheduled data
+		// ...
+	}
 }
 ```
 
@@ -539,29 +523,25 @@ const operations: ParsedOperation[] = [];
 const errors: string[] = [];
 
 // Process context first
-if (contextResult.status === "fulfilled") {
-  operations.push(...contextResult.value.operations);
-  // Extract project reference for tasks
+if (contextResult.status === 'fulfilled') {
+	operations.push(...contextResult.value.operations);
+	// Extract project reference for tasks
 }
 
 // Process tasks with correct reference
-if (tasksResult.status === "fulfilled") {
-  // Capture questions from tasks result
-  questionAnalysis = tasksValue.questionAnalysis;
-  projectQuestions = tasksValue.projectQuestions;
+if (tasksResult.status === 'fulfilled') {
+	// Capture questions from tasks result
+	questionAnalysis = tasksValue.questionAnalysis;
+	projectQuestions = tasksValue.projectQuestions;
 
-  // Fix project references in task operations
-  const taskOps = tasksValue.operations.map((op) => {
-    if (
-      op.table === "tasks" &&
-      op.operation === "create" &&
-      !selectedProjectId
-    ) {
-      return { ...op, data: { ...op.data, project_ref: projectRef } };
-    }
-    return op;
-  });
-  operations.push(...taskOps);
+	// Fix project references in task operations
+	const taskOps = tasksValue.operations.map((op) => {
+		if (op.table === 'tasks' && op.operation === 'create' && !selectedProjectId) {
+			return { ...op, data: { ...op.data, project_ref: projectRef } };
+		}
+		return op;
+	});
+	operations.push(...taskOps);
 }
 ```
 
@@ -579,9 +559,9 @@ if (tasksResult.status === "fulfilled") {
 
 ```typescript
 this.llmService = new SmartLLMService({
-  httpReferer: "https://buildos.dev",
-  appName: "BuildOS",
-  supabase,
+	httpReferer: 'https://buildos.dev',
+	appName: 'BuildOS',
+	supabase
 });
 ```
 
@@ -686,39 +666,39 @@ this.statusService = new BrainDumpStatusService(supabase);
 #### Mock Setup Pattern
 
 ```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { BrainDumpProcessor } from "./braindump-processor";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { BrainDumpProcessor } from './braindump-processor';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-describe("BrainDumpProcessor", () => {
-  let processor: BrainDumpProcessor;
-  let mockSupabase: any;
-  let mockSmartLLMService: any;
+describe('BrainDumpProcessor', () => {
+	let processor: BrainDumpProcessor;
+	let mockSupabase: any;
+	let mockSmartLLMService: any;
 
-  beforeEach(() => {
-    // Mock Supabase
-    mockSupabase = {
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      }),
-    };
+	beforeEach(() => {
+		// Mock Supabase
+		mockSupabase = {
+			from: vi.fn().mockReturnValue({
+				insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+				update: vi.fn().mockReturnValue({
+					eq: vi.fn().mockResolvedValue({ data: null, error: null })
+				})
+			})
+		};
 
-    // Create processor
-    processor = new BrainDumpProcessor(mockSupabase);
+		// Create processor
+		processor = new BrainDumpProcessor(mockSupabase);
 
-    // Mock SmartLLMService's getJSONResponse
-    mockSmartLLMService = {
-      getJSONResponse: vi.fn(),
-    };
+		// Mock SmartLLMService's getJSONResponse
+		mockSmartLLMService = {
+			getJSONResponse: vi.fn()
+		};
 
-    // Replace the llmService instance
-    (processor as any).llmService = mockSmartLLMService;
-  });
+		// Replace the llmService instance
+		(processor as any).llmService = mockSmartLLMService;
+	});
 
-  // ... tests
+	// ... tests
 });
 ```
 
@@ -727,58 +707,58 @@ describe("BrainDumpProcessor", () => {
 ```typescript
 // For preparatory analysis (profile: 'fast', operationType: 'brain_dump_context')
 mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
-  analysis_summary: "Test analysis",
-  braindump_classification: "task-focused",
-  needs_context_update: false,
-  context_indicators: [],
-  relevant_task_ids: ["task-1", "task-2"],
-  task_indicators: {},
-  new_tasks_detected: true,
-  confidence_level: "high",
-  processing_recommendation: {
-    skip_context: true, // Test optimization
-    skip_tasks: false,
-    reason: "Only task updates needed",
-  },
+	analysis_summary: 'Test analysis',
+	braindump_classification: 'task-focused',
+	needs_context_update: false,
+	context_indicators: [],
+	relevant_task_ids: ['task-1', 'task-2'],
+	task_indicators: {},
+	new_tasks_detected: true,
+	confidence_level: 'high',
+	processing_recommendation: {
+		skip_context: true, // Test optimization
+		skip_tasks: false,
+		reason: 'Only task updates needed'
+	}
 });
 
 // For context extraction (profile: 'balanced', operationType: 'brain_dump_context')
 mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
-  title: "Test Project",
-  summary: "Project summary",
-  insights: "Key insights",
-  tags: ["test"],
-  operations: [
-    {
-      table: "projects",
-      operation: "create",
-      data: { name: "Test" },
-      ref: "new-project-1",
-    },
-  ],
-  metadata: {},
+	title: 'Test Project',
+	summary: 'Project summary',
+	insights: 'Key insights',
+	tags: ['test'],
+	operations: [
+		{
+			table: 'projects',
+			operation: 'create',
+			data: { name: 'Test' },
+			ref: 'new-project-1'
+		}
+	],
+	metadata: {}
 });
 
 // For task extraction (profile: 'balanced', operationType: 'brain_dump_tasks')
 mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
-  title: "Tasks",
-  summary: "Task summary",
-  insights: "",
-  tags: [],
-  operations: [
-    {
-      table: "tasks",
-      operation: "create",
-      data: { title: "Task 1", project_ref: "new-project-1" },
-    },
-    {
-      table: "tasks",
-      operation: "create",
-      data: { title: "Task 2", project_ref: "new-project-1" },
-    },
-  ],
-  questionAnalysis: { q1: { wasAnswered: true } },
-  projectQuestions: [{ question: "What is the deadline?" }],
+	title: 'Tasks',
+	summary: 'Task summary',
+	insights: '',
+	tags: [],
+	operations: [
+		{
+			table: 'tasks',
+			operation: 'create',
+			data: { title: 'Task 1', project_ref: 'new-project-1' }
+		},
+		{
+			table: 'tasks',
+			operation: 'create',
+			data: { title: 'Task 2', project_ref: 'new-project-1' }
+		}
+	],
+	questionAnalysis: { q1: { wasAnswered: true } },
+	projectQuestions: [{ question: 'What is the deadline?' }]
 });
 ```
 
@@ -787,68 +767,65 @@ mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
 #### 1. New Project Creation
 
 ```typescript
-it("should create new project with tasks via dual processing", async () => {
-  // Mock all three LLM calls
-  // 1. No preparatory analysis (new project)
-  // 2. Context extraction → creates project
-  // 3. Task extraction → creates tasks with project_ref
+it('should create new project with tasks via dual processing', async () => {
+	// Mock all three LLM calls
+	// 1. No preparatory analysis (new project)
+	// 2. Context extraction → creates project
+	// 3. Task extraction → creates tasks with project_ref
 
-  const result = await processor.processBrainDump({
-    brainDump: "Build a todo app with tasks",
-    userId: "user-1",
-    brainDumpId: "dump-1",
-    options: {},
-  });
+	const result = await processor.processBrainDump({
+		brainDump: 'Build a todo app with tasks',
+		userId: 'user-1',
+		brainDumpId: 'dump-1',
+		options: {}
+	});
 
-  expect(result.operations).toHaveLength(3); // 1 project + 2 tasks
-  expect(result.operations[0].table).toBe("projects");
-  expect(result.operations[1].data.project_ref).toBe("new-project-1");
+	expect(result.operations).toHaveLength(3); // 1 project + 2 tasks
+	expect(result.operations[0].table).toBe('projects');
+	expect(result.operations[1].data.project_ref).toBe('new-project-1');
 });
 ```
 
 #### 2. Existing Project Updates
 
 ```typescript
-it("should run preparatory analysis and optimize task filtering", async () => {
-  // Mock ProjectDataFetcher
-  vi.spyOn(
-    processor["projectDataFetcher"],
-    "getFullProjectData",
-  ).mockResolvedValue({
-    fullProjectWithRelations: {
-      id: "project-1",
-      name: "Existing Project",
-      tasks: [
-        { id: "task-1", title: "Old Task 1" },
-        { id: "task-2", title: "Old Task 2" },
-        { id: "task-3", title: "Old Task 3" },
-      ],
-    },
-  });
+it('should run preparatory analysis and optimize task filtering', async () => {
+	// Mock ProjectDataFetcher
+	vi.spyOn(processor['projectDataFetcher'], 'getFullProjectData').mockResolvedValue({
+		fullProjectWithRelations: {
+			id: 'project-1',
+			name: 'Existing Project',
+			tasks: [
+				{ id: 'task-1', title: 'Old Task 1' },
+				{ id: 'task-2', title: 'Old Task 2' },
+				{ id: 'task-3', title: 'Old Task 3' }
+			]
+		}
+	});
 
-  // Mock preparatory analysis returning only relevant tasks
-  mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
-    relevant_task_ids: ["task-1", "task-2"], // Only 2 of 3 tasks
-    // ...
-  });
+	// Mock preparatory analysis returning only relevant tasks
+	mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
+		relevant_task_ids: ['task-1', 'task-2'] // Only 2 of 3 tasks
+		// ...
+	});
 
-  // Mock context extraction (skipped due to recommendation)
-  // Mock task extraction (receives only 2 tasks)
+	// Mock context extraction (skipped due to recommendation)
+	// Mock task extraction (receives only 2 tasks)
 
-  const result = await processor.processBrainDump({
-    brainDump: "Update tasks",
-    userId: "user-1",
-    selectedProjectId: "project-1",
-    brainDumpId: "dump-1",
-  });
+	const result = await processor.processBrainDump({
+		brainDump: 'Update tasks',
+		userId: 'user-1',
+		selectedProjectId: 'project-1',
+		brainDumpId: 'dump-1'
+	});
 
-  // Verify task extraction was called with filtered tasks
-  expect(mockSmartLLMService.getJSONResponse).toHaveBeenCalledWith(
-    expect.objectContaining({
-      operationType: "brain_dump_tasks",
-      // userPrompt should contain only 2 tasks, not 3
-    }),
-  );
+	// Verify task extraction was called with filtered tasks
+	expect(mockSmartLLMService.getJSONResponse).toHaveBeenCalledWith(
+		expect.objectContaining({
+			operationType: 'brain_dump_tasks'
+			// userPrompt should contain only 2 tasks, not 3
+		})
+	);
 });
 ```
 
@@ -886,56 +863,55 @@ it('should handle context success + task failure gracefully', async () => {
 #### 4. Auto-Execution
 
 ```typescript
-it("should auto-execute operations when enabled", async () => {
-  const mockExecutionResult = {
-    successful: [{ id: "op1" }],
-    failed: [],
-  };
+it('should auto-execute operations when enabled', async () => {
+	const mockExecutionResult = {
+		successful: [{ id: 'op1' }],
+		failed: []
+	};
 
-  vi.spyOn(
-    processor["operationsExecutor"],
-    "executeOperations",
-  ).mockResolvedValue(mockExecutionResult);
+	vi.spyOn(processor['operationsExecutor'], 'executeOperations').mockResolvedValue(
+		mockExecutionResult
+	);
 
-  const result = await processor.processBrainDump({
-    brainDump: "Create project",
-    userId: "user-1",
-    brainDumpId: "dump-1",
-    options: { autoExecute: true },
-  });
+	const result = await processor.processBrainDump({
+		brainDump: 'Create project',
+		userId: 'user-1',
+		brainDumpId: 'dump-1',
+		options: { autoExecute: true }
+	});
 
-  expect(result.executionResult).toBeDefined();
-  expect(result.executionResult.successful).toHaveLength(1);
+	expect(result.executionResult).toBeDefined();
+	expect(result.executionResult.successful).toHaveLength(1);
 });
 ```
 
 #### 5. Question Handling
 
 ```typescript
-it("should analyze displayed questions and update status", async () => {
-  const displayedQuestions = [
-    { id: "q1", question: "What is the deadline?" },
-    { id: "q2", question: "Who is the client?" },
-  ];
+it('should analyze displayed questions and update status', async () => {
+	const displayedQuestions = [
+		{ id: 'q1', question: 'What is the deadline?' },
+		{ id: 'q2', question: 'Who is the client?' }
+	];
 
-  // Mock task extraction with question analysis
-  mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
-    operations: [],
-    questionAnalysis: {
-      q1: { wasAnswered: true },
-      q2: { wasAnswered: false },
-    },
-  });
+	// Mock task extraction with question analysis
+	mockSmartLLMService.getJSONResponse.mockResolvedValueOnce({
+		operations: [],
+		questionAnalysis: {
+			q1: { wasAnswered: true },
+			q2: { wasAnswered: false }
+		}
+	});
 
-  await processor.processBrainDump({
-    brainDump: "Deadline is next Friday",
-    userId: "user-1",
-    displayedQuestions,
-    brainDumpId: "dump-1",
-  });
+	await processor.processBrainDump({
+		brainDump: 'Deadline is next Friday',
+		userId: 'user-1',
+		displayedQuestions,
+		brainDumpId: 'dump-1'
+	});
 
-  // Verify question status update
-  expect(mockSupabase.from).toHaveBeenCalledWith("project_questions");
+	// Verify question status update
+	expect(mockSupabase.from).toHaveBeenCalledWith('project_questions');
 });
 ```
 
@@ -963,26 +939,18 @@ it('should retry with powerful model on JSON parse error', async () => {
 
 ```typescript
 beforeEach(() => {
-  // Mock all services
-  vi.spyOn(processor["activityLogger"], "logActivity").mockResolvedValue();
-  vi.spyOn(processor["errorLogger"], "logBrainDumpError").mockResolvedValue();
-  vi.spyOn(
-    processor["operationsExecutor"],
-    "executeOperations",
-  ).mockResolvedValue({
-    successful: [],
-    failed: [],
-  });
-  vi.spyOn(processor["taskTimeSlotFinder"], "scheduleTasks").mockResolvedValue(
-    [],
-  );
-  vi.spyOn(processor["statusService"], "updateToSaved").mockResolvedValue();
-  vi.spyOn(
-    processor["projectDataFetcher"],
-    "getFullProjectData",
-  ).mockResolvedValue({
-    fullProjectWithRelations: null,
-  });
+	// Mock all services
+	vi.spyOn(processor['activityLogger'], 'logActivity').mockResolvedValue();
+	vi.spyOn(processor['errorLogger'], 'logBrainDumpError').mockResolvedValue();
+	vi.spyOn(processor['operationsExecutor'], 'executeOperations').mockResolvedValue({
+		successful: [],
+		failed: []
+	});
+	vi.spyOn(processor['taskTimeSlotFinder'], 'scheduleTasks').mockResolvedValue([]);
+	vi.spyOn(processor['statusService'], 'updateToSaved').mockResolvedValue();
+	vi.spyOn(processor['projectDataFetcher'], 'getFullProjectData').mockResolvedValue({
+		fullProjectWithRelations: null
+	});
 });
 ```
 
@@ -1034,10 +1002,10 @@ beforeEach(() => {
 1. Review current tests - they're actually testing the right things (validation logic)
 2. Decide if you need full integration tests or just keep validation tests
 3. If integration tests needed:
-   - Create mock factories for SmartLLMService responses
-   - Test new project flow
-   - Test existing project flow with optimization
-   - Test error scenarios and partial failures
-   - Test auto-execution
-   - Test question handling
+    - Create mock factories for SmartLLMService responses
+    - Test new project flow
+    - Test existing project flow with optimization
+    - Test error scenarios and partial failures
+    - Test auto-execution
+    - Test question handling
 4. Consider E2E tests for critical paths (new project creation, existing project updates)

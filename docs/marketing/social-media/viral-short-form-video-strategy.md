@@ -443,51 +443,51 @@ audience? Show examples/give frameworks.
 ### 10 High-Potential Video Concepts
 
 1. **"ADHD Brain Dump" Time-lapse**
-   - Record actual brain dump → BuildOS organization in 60s
-   - Text overlay: Count of items organized, tasks created
+    - Record actual brain dump → BuildOS organization in 60s
+    - Text overlay: Count of items organized, tasks created
 
 2. **"I've Abandoned Notion 6 Times" Founder Story**
-   - Personal struggle montage
-   - Why BuildOS is different
-   - Invitation to try
+    - Personal struggle montage
+    - Why BuildOS is different
+    - Invitation to try
 
 3. **"47 Browser Tabs = My Brain" Visual Metaphor**
-   - Screen recording of chaos
-   - Transform to organized BuildOS view
-   - "Your brain on BuildOS"
+    - Screen recording of chaos
+    - Transform to organized BuildOS view
+    - "Your brain on BuildOS"
 
 4. **"ADHD Productivity Myths" Series**
-   - Myth #1: Just use a to-do list
-   - Myth #2: You need more discipline
-   - Myth #3: Plan your week on Sunday
-   - (Show why each fails + BuildOS alternative)
+    - Myth #1: Just use a to-do list
+    - Myth #2: You need more discipline
+    - Myth #3: Plan your week on Sunday
+    - (Show why each fails + BuildOS alternative)
 
 5. **"Bad Brain Day" Real-Time Demo**
-   - Authentic "I can't focus" moment
-   - Use BuildOS while scattered
-   - Show it still works
+    - Authentic "I can't focus" moment
+    - Use BuildOS while scattered
+    - Show it still works
 
 6. **"Stop Explaining Yourself to ChatGPT" Comparison**
-   - Split screen: Re-explaining context to ChatGPT
-   - vs. BuildOS: Context already there
-   - Time saved counter
+    - Split screen: Re-explaining context to ChatGPT
+    - vs. BuildOS: Context already there
+    - Time saved counter
 
 7. **"This Tool Finally Stuck" Testimonial Compilation**
-   - User quotes over B-roll
-   - Common theme: "I actually use this"
-   - Founder reaction/validation
+    - User quotes over B-roll
+    - Common theme: "I actually use this"
+    - Founder reaction/validation
 
 8. **"60 Seconds Changed My Productivity" Before/After**
-   - Morning chaos
-   - One brain dump
-   - Organized day in calendar
-   - End card: "That's it. 60 seconds."
+    - Morning chaos
+    - One brain dump
+    - Organized day in calendar
+    - End card: "That's it. 60 seconds."
 
 9. **"When Your Brain Thinks Faster Than You Type"**
-   - Frustrated typing attempt
-   - Switch to voice dump
-   - Instant organization
-   - Relief expression
+    - Frustrated typing attempt
+    - Switch to voice dump
+    - Instant organization
+    - Relief expression
 
 10. **"Built for ADHD Brains" Feature Showcase**
     - Quick cuts of ADHD-specific features

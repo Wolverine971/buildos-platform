@@ -4,17 +4,8 @@ researcher: Claude
 git_commit: 6bb028d87e33b4a7bbe8ddf1a3482e1e102c2703
 branch: main
 repository: buildos-platform
-topic: "Shared Utils Package Design: Consolidating sms-metrics and Duplicated Utilities"
-tags:
-  [
-    research,
-    codebase,
-    shared-utils,
-    sms-metrics,
-    monorepo,
-    architecture,
-    package-design,
-  ]
+topic: 'Shared Utils Package Design: Consolidating sms-metrics and Duplicated Utilities'
+tags: [research, codebase, shared-utils, sms-metrics, monorepo, architecture, package-design]
 status: complete
 last_updated: 2025-10-09
 last_updated_by: Claude
@@ -39,23 +30,23 @@ After comprehensive analysis of the codebase, I recommend **creating `@buildos/s
 ### Key Findings
 
 1. **SMS Metrics is a Domain Service (not a utility)**
-   - 1,129 lines of complex business logic
-   - Tightly coupled to SMS domain (scheduling, delivery, alerts)
-   - External dependencies (Supabase RPC functions, database tables)
-   - Service-oriented architecture with singletons
-   - **Verdict**: Belongs in its own package ✅
+    - 1,129 lines of complex business logic
+    - Tightly coupled to SMS domain (scheduling, delivery, alerts)
+    - External dependencies (Supabase RPC functions, database tables)
+    - Service-oriented architecture with singletons
+    - **Verdict**: Belongs in its own package ✅
 
 2. **Significant Utility Duplication Found**
-   - ~1,100+ lines of duplicated utility code across web/worker
-   - 4 critical duplications: ActivityLogger (95%), Markdown (90%), Email Templates (100%), LLM Utils (100%)
-   - Clear candidates for shared-utils package
-   - **Verdict**: New package needed ✅
+    - ~1,100+ lines of duplicated utility code across web/worker
+    - 4 critical duplications: ActivityLogger (95%), Markdown (90%), Email Templates (100%), LLM Utils (100%)
+    - Clear candidates for shared-utils package
+    - **Verdict**: New package needed ✅
 
 3. **Architectural Recommendation**
-   - Create `@buildos/shared-utils` for true utilities (logging, markdown, email, LLM, date helpers)
-   - Keep `@buildos/sms-metrics` as a domain-specific service package
-   - Follow established single-responsibility principle
-   - **Verdict**: Two packages serve different purposes ✅
+    - Create `@buildos/shared-utils` for true utilities (logging, markdown, email, LLM, date helpers)
+    - Keep `@buildos/sms-metrics` as a domain-specific service package
+    - Follow established single-responsibility principle
+    - **Verdict**: Two packages serve different purposes ✅
 
 ## Detailed Analysis
 
@@ -137,11 +128,11 @@ smsAlertsService.resolveAlert();
 
 ```typescript
 class ActivityLogger {
-  async logActivity(userId, activityType, metadata);
-  async logSystemMetric(metricType, value, metadata);
-  async logActivitiesBatch(activities);
-  async getUserActivitySummary(userId, startDate, endDate);
-  async updateDailyAnalytics(date);
+	async logActivity(userId, activityType, metadata);
+	async logSystemMetric(metricType, value, metadata);
+	async logActivitiesBatch(activities);
+	async getUserActivitySummary(userId, startDate, endDate);
+	async updateDailyAnalytics(date);
 }
 ```
 
@@ -277,35 +268,35 @@ From analysis of existing packages (`shared-types`, `supabase-client`, `twilio-s
 #### Established Patterns
 
 1. **Single Responsibility Principle**
-   - Each package has one clear purpose
-   - `shared-types` = types only
-   - `supabase-client` = database clients only
-   - `twilio-service` = SMS integration only
-   - `sms-metrics` = SMS metrics/alerts only
+    - Each package has one clear purpose
+    - `shared-types` = types only
+    - `supabase-client` = database clients only
+    - `twilio-service` = SMS integration only
+    - `sms-metrics` = SMS metrics/alerts only
 
 2. **Layered Architecture**
 
-   ```
-   Layer 1 (Foundation):  @buildos/shared-types
-   Layer 2 (Infrastructure): @buildos/supabase-client
-   Layer 3 (Services):    @buildos/twilio-service, @buildos/sms-metrics
-   ```
+    ```
+    Layer 1 (Foundation):  @buildos/shared-types
+    Layer 2 (Infrastructure): @buildos/supabase-client
+    Layer 3 (Services):    @buildos/twilio-service, @buildos/sms-metrics
+    ```
 
 3. **Build Configuration**
-   - All packages use `tsup` (CJS + ESM + types)
-   - Consistent package.json structure
-   - Workspace dependencies via `workspace:*`
+    - All packages use `tsup` (CJS + ESM + types)
+    - Consistent package.json structure
+    - Workspace dependencies via `workspace:*`
 
 4. **Dependency Rules**
-   - `shared-types` has no internal dependencies (foundation)
-   - `supabase-client` depends only on `shared-types`
-   - Service packages depend on both
-   - **NO circular dependencies**
+    - `shared-types` has no internal dependencies (foundation)
+    - `supabase-client` depends only on `shared-types`
+    - Service packages depend on both
+    - **NO circular dependencies**
 
 5. **Export Patterns**
-   - Barrel exports via `index.ts`
-   - Singleton instances for services
-   - Clear public API surface
+    - Barrel exports via `index.ts`
+    - Singleton instances for services
+    - Clear public API surface
 
 ---
 
@@ -384,43 +375,43 @@ packages/
 
 ```json
 {
-  "name": "@buildos/shared-utils",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Shared utility functions for BuildOS platform",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --sourcemap --watch",
-    "clean": "rm -rf dist .turbo",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run"
-  },
-  "dependencies": {
-    "@buildos/shared-types": "workspace:*",
-    "@buildos/supabase-client": "workspace:*",
-    "marked": "^X.X.X",
-    "sanitize-html": "^X.X.X",
-    "date-fns": "^X.X.X",
-    "date-fns-tz": "^X.X.X"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.10",
-    "@types/sanitize-html": "^X.X.X",
-    "tsup": "^8.3.5",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
-  }
+	"name": "@buildos/shared-utils",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Shared utility functions for BuildOS platform",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
+		"dev": "tsup src/index.ts --format cjs,esm --dts --sourcemap --watch",
+		"clean": "rm -rf dist .turbo",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run"
+	},
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
+		"@buildos/supabase-client": "workspace:*",
+		"marked": "^X.X.X",
+		"sanitize-html": "^X.X.X",
+		"date-fns": "^X.X.X",
+		"date-fns-tz": "^X.X.X"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.10",
+		"@types/sanitize-html": "^X.X.X",
+		"tsup": "^8.3.5",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	}
 }
 ```
 
@@ -457,9 +448,9 @@ packages/
 - Merge web and worker versions
 - Handle browser vs. Node.js environment differences
 - Use runtime environment detection:
-  ```typescript
-  const isBrowser = typeof window !== "undefined";
-  ```
+    ```typescript
+    const isBrowser = typeof window !== 'undefined';
+    ```
 - Update imports in both apps
 - Test markdown rendering in both contexts
 - Delete original files
@@ -471,19 +462,19 @@ packages/
 - Merge web and worker versions
 - Make ErrorLogger dependency optional:
 
-  ```typescript
-  class ActivityLogger {
-    constructor(private errorLogger?: ErrorLoggerService) {}
+    ```typescript
+    class ActivityLogger {
+    	constructor(private errorLogger?: ErrorLoggerService) {}
 
-    private logError(error: Error) {
-      if (this.errorLogger) {
-        this.errorLogger.logError(error);
-      } else {
-        console.error(error);
-      }
+    	private logError(error: Error) {
+    		if (this.errorLogger) {
+    			this.errorLogger.logError(error);
+    		} else {
+    			console.error(error);
+    		}
+    	}
     }
-  }
-  ```
+    ```
 
 - Unify ActivityType enum (keep all variants)
 - Update imports in both apps
@@ -610,46 +601,46 @@ packages/
 
 - **Risk**: Changes affect both apps simultaneously
 - **Mitigation**:
-  - Semantic versioning (0.x.x during migration)
-  - Thorough testing before each release
-  - Feature flags for experimental features
-  - Coordinated deployments
+    - Semantic versioning (0.x.x during migration)
+    - Thorough testing before each release
+    - Feature flags for experimental features
+    - Coordinated deployments
 
 ⚠️ **Migration Complexity**
 
 - **Risk**: Temporary breakage during migration
 - **Mitigation**:
-  - Migrate one utility at a time
-  - Keep both versions during transition
-  - Comprehensive test coverage
-  - Deploy web and worker together
+    - Migrate one utility at a time
+    - Keep both versions during transition
+    - Comprehensive test coverage
+    - Deploy web and worker together
 
 ⚠️ **Dependency Management**
 
 - **Risk**: Shared dependencies increase bundle size
 - **Mitigation**:
-  - Use tree-shaking (ESM exports)
-  - Separate entry points for different utilities
-  - Monitor bundle sizes
-  - Only import what's needed
+    - Use tree-shaking (ESM exports)
+    - Separate entry points for different utilities
+    - Monitor bundle sizes
+    - Only import what's needed
 
 ⚠️ **Environment Differences**
 
 - **Risk**: Browser vs. Node.js incompatibilities
 - **Mitigation**:
-  - Runtime environment detection
-  - Conditional exports in package.json
-  - Test in both environments
-  - Clear documentation
+    - Runtime environment detection
+    - Conditional exports in package.json
+    - Test in both environments
+    - Clear documentation
 
 ⚠️ **Version Management**
 
 - **Risk**: Coordinating versions across apps
 - **Mitigation**:
-  - Use `workspace:*` protocol
-  - Monorepo benefits (single version)
-  - Turborepo caching
-  - Automated dependency updates
+    - Use `workspace:*` protocol
+    - Monorepo benefits (single version)
+    - Turborepo caching
+    - Automated dependency updates
 
 ---
 
@@ -846,37 +837,37 @@ cp apps/web/src/lib/utils/llm-utils.ts packages/shared-utils/src/llm/
 ```typescript
 // packages/shared-utils/src/markdown/markdown.ts
 
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
+import { marked } from 'marked';
+import sanitizeHtml from 'sanitize-html';
 
-const isBrowser = typeof window !== "undefined";
+const isBrowser = typeof window !== 'undefined';
 
 export function renderMarkdown(content: string, options = {}) {
-  // Use marked.parse() for Node.js, marked() for browser
-  const html = isBrowser ? marked(content) : marked.parse(content);
+	// Use marked.parse() for Node.js, marked() for browser
+	const html = isBrowser ? marked(content) : marked.parse(content);
 
-  return sanitizeHtml(html, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-    allowedAttributes: {
-      ...sanitizeHtml.defaults.allowedAttributes,
-      a: ["href", "target", "rel"],
-    },
-  });
+	return sanitizeHtml(html, {
+		allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+		allowedAttributes: {
+			...sanitizeHtml.defaults.allowedAttributes,
+			a: ['href', 'target', 'rel']
+		}
+	});
 }
 
 function escapeHtml(text: string): string {
-  if (isBrowser && typeof document !== "undefined") {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  } else {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+	if (isBrowser && typeof document !== 'undefined') {
+		const div = document.createElement('div');
+		div.textContent = text;
+		return div.innerHTML;
+	} else {
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
 }
 
 // ... rest of functions
@@ -887,44 +878,44 @@ function escapeHtml(text: string): string {
 ```typescript
 // packages/shared-utils/src/logging/activityLogger.ts
 
-import { createServiceClient } from "@buildos/supabase-client";
-import type { Database } from "@buildos/shared-types";
+import { createServiceClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 
 // Define minimal interface for error logger
 interface ErrorLogger {
-  logError(error: Error, context?: Record<string, any>): Promise<void>;
+	logError(error: Error, context?: Record<string, any>): Promise<void>;
 }
 
 export class ActivityLogger {
-  private supabase = createServiceClient();
-  private errorLogger?: ErrorLogger;
+	private supabase = createServiceClient();
+	private errorLogger?: ErrorLogger;
 
-  constructor(errorLogger?: ErrorLogger) {
-    this.errorLogger = errorLogger;
-  }
+	constructor(errorLogger?: ErrorLogger) {
+		this.errorLogger = errorLogger;
+	}
 
-  async logActivity(
-    userId: string,
-    activityType: ActivityType,
-    metadata: Record<string, any> = {},
-  ): Promise<void> {
-    try {
-      // ... implementation
-    } catch (error) {
-      // Use error logger if available, otherwise console
-      if (this.errorLogger) {
-        await this.errorLogger.logError(error as Error, {
-          context: "ActivityLogger.logActivity",
-          userId,
-          activityType,
-        });
-      } else {
-        console.error("[ActivityLogger] Error logging activity:", error);
-      }
-    }
-  }
+	async logActivity(
+		userId: string,
+		activityType: ActivityType,
+		metadata: Record<string, any> = {}
+	): Promise<void> {
+		try {
+			// ... implementation
+		} catch (error) {
+			// Use error logger if available, otherwise console
+			if (this.errorLogger) {
+				await this.errorLogger.logError(error as Error, {
+					context: 'ActivityLogger.logActivity',
+					userId,
+					activityType
+				});
+			} else {
+				console.error('[ActivityLogger] Error logging activity:', error);
+			}
+		}
+	}
 
-  // ... rest of methods
+	// ... rest of methods
 }
 
 // Export singleton without error logger
@@ -932,7 +923,7 @@ export const activityLogger = new ActivityLogger();
 
 // Export factory function for custom error logger
 export function createActivityLogger(errorLogger?: ErrorLogger) {
-  return new ActivityLogger(errorLogger);
+	return new ActivityLogger(errorLogger);
 }
 ```
 
@@ -940,8 +931,8 @@ export function createActivityLogger(errorLogger?: ErrorLogger) {
 
 ```typescript
 // Web can pass error logger
-import { createActivityLogger } from "@buildos/shared-utils";
-import { errorLogger } from "$lib/services/errorLogger";
+import { createActivityLogger } from '@buildos/shared-utils';
+import { errorLogger } from '$lib/services/errorLogger';
 
 export const activityLogger = createActivityLogger(errorLogger);
 ```
@@ -950,9 +941,9 @@ export const activityLogger = createActivityLogger(errorLogger);
 
 ```typescript
 // Worker uses default singleton
-import { activityLogger } from "@buildos/shared-utils";
+import { activityLogger } from '@buildos/shared-utils';
 
-activityLogger.logActivity(userId, "task_completed", { taskId });
+activityLogger.logActivity(userId, 'task_completed', { taskId });
 ```
 
 ##### Step 6: Update App Dependencies
@@ -1011,9 +1002,9 @@ This package is internal to the BuildOS monorepo and installed automatically via
 
 ```json
 {
-  "dependencies": {
-    "@buildos/shared-utils": "workspace:*"
-  }
+	"dependencies": {
+		"@buildos/shared-utils": "workspace:*"
+	}
 }
 ```
 ````
@@ -1025,14 +1016,14 @@ This package is internal to the BuildOS monorepo and installed automatically via
 **ActivityLogger** - Track user activities and system metrics
 
 ```typescript
-import { activityLogger, createActivityLogger } from "@buildos/shared-utils";
+import { activityLogger, createActivityLogger } from '@buildos/shared-utils';
 
 // Use default singleton
-await activityLogger.logActivity(userId, "task_completed", { taskId: "123" });
+await activityLogger.logActivity(userId, 'task_completed', { taskId: '123' });
 
 // Or create with custom error logger
 const logger = createActivityLogger(myErrorLogger);
-await logger.logActivity(userId, "project_created", { projectId: "456" });
+await logger.logActivity(userId, 'project_created', { projectId: '456' });
 ```
 
 ### Markdown
@@ -1040,14 +1031,10 @@ await logger.logActivity(userId, "project_created", { projectId: "456" });
 **Markdown Utilities** - Render and process markdown content
 
 ```typescript
-import {
-  renderMarkdown,
-  stripMarkdown,
-  getMarkdownPreview,
-} from "@buildos/shared-utils";
+import { renderMarkdown, stripMarkdown, getMarkdownPreview } from '@buildos/shared-utils';
 
-const html = renderMarkdown("# Hello **World**");
-const plain = stripMarkdown("# Hello **World**"); // "Hello World"
+const html = renderMarkdown('# Hello **World**');
+const plain = stripMarkdown('# Hello **World**'); // "Hello World"
 const preview = getMarkdownPreview(longText, 100); // First 100 chars
 ```
 
@@ -1056,19 +1043,16 @@ const preview = getMarkdownPreview(longText, 100); // First 100 chars
 **Email Templates** - Generate HTML email templates
 
 ```typescript
-import {
-  generateMinimalEmailHTML,
-  generatePlainEmailHTML,
-} from "@buildos/shared-utils";
+import { generateMinimalEmailHTML, generatePlainEmailHTML } from '@buildos/shared-utils';
 
 const html = generateMinimalEmailHTML({
-  title: "Welcome to BuildOS",
-  preheader: "Get started with your account",
-  heading: "Welcome!",
-  body: "<p>Thanks for joining BuildOS.</p>",
-  ctaText: "Get Started",
-  ctaUrl: "https://build-os.com/onboarding",
-  footerText: "BuildOS Team",
+	title: 'Welcome to BuildOS',
+	preheader: 'Get started with your account',
+	heading: 'Welcome!',
+	body: '<p>Thanks for joining BuildOS.</p>',
+	ctaText: 'Get Started',
+	ctaUrl: 'https://build-os.com/onboarding',
+	footerText: 'BuildOS Team'
 });
 ```
 
@@ -1077,9 +1061,9 @@ const html = generateMinimalEmailHTML({
 **LLM Model Selection** - Select appropriate models based on prompt complexity
 
 ```typescript
-import { selectModelsForPromptComplexity } from "@buildos/shared-utils";
+import { selectModelsForPromptComplexity } from '@buildos/shared-utils';
 
-const models = selectModelsForPromptComplexity(promptLength, "high");
+const models = selectModelsForPromptComplexity(promptLength, 'high');
 // Returns: ['gpt-4o', 'gpt-4-turbo']
 ```
 

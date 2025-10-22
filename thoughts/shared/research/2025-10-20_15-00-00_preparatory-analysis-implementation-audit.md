@@ -4,16 +4,16 @@ researcher: Claude Code
 git_commit: 9f26638250d9f51922b55e692f94dc410f371c1f
 branch: main
 repository: buildos-platform
-topic: "Preparatory Analysis Feature - Implementation Audit & Optimization"
+topic: 'Preparatory Analysis Feature - Implementation Audit & Optimization'
 tags:
-  [
-    implementation,
-    preparatory-analysis,
-    brain-dump,
-    optimization,
-    senior-engineer-review,
-    performance,
-  ]
+    [
+        implementation,
+        preparatory-analysis,
+        brain-dump,
+        optimization,
+        senior-engineer-review,
+        performance
+    ]
 status: complete
 last_updated: 2025-10-20
 last_updated_by: Claude Code
@@ -66,11 +66,7 @@ The Preparatory Analysis feature is **substantially implemented with production-
 ```typescript
 // Location: braindump-processor.ts:378-398
 if (existingProject && selectedProjectId) {
-  prepAnalysisResult = await this.runPreparatoryAnalysis(
-    brainDump,
-    existingProject,
-    userId,
-  );
+	prepAnalysisResult = await this.runPreparatoryAnalysis(brainDump, existingProject, userId);
 }
 ```
 
@@ -85,11 +81,7 @@ if (existingProject && selectedProjectId) {
 
 ```typescript
 // From PreparatoryAnalysisResult type
-braindump_classification: "strategic" |
-  "tactical" |
-  "mixed" |
-  "status_update" |
-  "unrelated";
+braindump_classification: 'strategic' | 'tactical' | 'mixed' | 'status_update' | 'unrelated';
 ```
 
 - ✅ All 5 classifications available
@@ -128,8 +120,8 @@ core_dimensions_touched?: {
 ```typescript
 // Location: braindump-processor.ts:1183-1195
 if (prepAnalysisResult && prepAnalysisResult.relevant_task_ids.length > 0) {
-  const relevantIds = new Set(prepAnalysisResult.relevant_task_ids);
-  tasksToPass = existingTasks.filter((task) => relevantIds.has(task.id));
+	const relevantIds = new Set(prepAnalysisResult.relevant_task_ids);
+	tasksToPass = existingTasks.filter((task) => relevantIds.has(task.id));
 }
 ```
 
@@ -144,10 +136,10 @@ if (prepAnalysisResult && prepAnalysisResult.relevant_task_ids.length > 0) {
 
 ```typescript
 processing_recommendation: {
-  skip_context: boolean; // ✅ Used in extractProjectContext
-  skip_core_dimensions: boolean; // ✅ Checked at line 1097
-  skip_tasks: boolean; // ✅ Not currently used
-  reason: string; // ✅ Logged for debugging
+	skip_context: boolean; // ✅ Used in extractProjectContext
+	skip_core_dimensions: boolean; // ✅ Checked at line 1097
+	skip_tasks: boolean; // ✅ Not currently used
+	reason: string; // ✅ Logged for debugging
 }
 ```
 
@@ -193,13 +185,13 @@ POST /api/braindumps/stream
 ```typescript
 // Lines 165-189: Analysis starting message
 type SSEAnalysis = {
-  type: "analysis";
-  message: string;
-  data: {
-    status: "pending" | "processing" | "completed" | "failed";
-    result?: PreparatoryAnalysisResult;
-    error?: string;
-  };
+	type: 'analysis';
+	message: string;
+	data: {
+		status: 'pending' | 'processing' | 'completed' | 'failed';
+		result?: PreparatoryAnalysisResult;
+		error?: string;
+	};
 };
 ```
 
@@ -253,19 +245,19 @@ catch (error) {
 **When prepAnalysisResult is null:**
 
 1. ✅ Line 1183-1195 (extractTasks):
-   - `tasksToPass = existingTasks` (all tasks used)
-   - No filtering applied
-   - Result: Full LLM analysis
+    - `tasksToPass = existingTasks` (all tasks used)
+    - No filtering applied
+    - Result: Full LLM analysis
 
 2. ✅ Line 1025-1031 (extractProjectContext):
-   - Condition fails because `prepAnalysisResult && prepAnalysisResult.braindump_classification` is false
-   - Falls through to full context extraction
-   - Result: No skip, full processing
+    - Condition fails because `prepAnalysisResult && prepAnalysisResult.braindump_classification` is false
+    - Falls through to full context extraction
+    - Result: No skip, full processing
 
 3. ✅ Lines 1094-1112 (Core dimensions hints):
-   - `if (prepAnalysisResult?.core_dimensions_touched)` condition fails
-   - Hints not included
-   - Result: Standard context extraction
+    - `if (prepAnalysisResult?.core_dimensions_touched)` condition fails
+    - Hints not included
+    - Result: Standard context extraction
 
 **Fallback Coverage: 100%**
 
@@ -276,37 +268,33 @@ catch (error) {
 ```typescript
 // Enhanced validation with detailed logging
 if (!analysisResult) {
-  console.warn("[PrepAnalysis] Analysis result is null or undefined");
-  return null;
+	console.warn('[PrepAnalysis] Analysis result is null or undefined');
+	return null;
 }
 
 if (!analysisResult.braindump_classification) {
-  console.warn("[PrepAnalysis] Missing braindump_classification field");
-  return null;
+	console.warn('[PrepAnalysis] Missing braindump_classification field');
+	return null;
 }
 
 // Validate required fields with defaults
 const validatedResult: PreparatoryAnalysisResult = {
-  analysis_summary: analysisResult.analysis_summary || "Analysis completed",
-  braindump_classification: analysisResult.braindump_classification,
-  context_indicators: analysisResult.context_indicators || [],
-  core_dimensions_touched: analysisResult.core_dimensions_touched || undefined,
-  relevant_task_ids: analysisResult.relevant_task_ids || [],
-  task_indicators: analysisResult.task_indicators || {},
-  new_tasks_detected:
-    analysisResult.new_tasks_detected !== undefined
-      ? analysisResult.new_tasks_detected
-      : false,
-  confidence_level: analysisResult.confidence_level || "medium",
-  processing_recommendation: {
-    skip_context:
-      analysisResult.processing_recommendation?.skip_context ?? false,
-    skip_core_dimensions:
-      analysisResult.processing_recommendation?.skip_core_dimensions ?? false,
-    skip_tasks: analysisResult.processing_recommendation?.skip_tasks ?? false,
-    reason:
-      analysisResult.processing_recommendation?.reason || "Default processing",
-  },
+	analysis_summary: analysisResult.analysis_summary || 'Analysis completed',
+	braindump_classification: analysisResult.braindump_classification,
+	context_indicators: analysisResult.context_indicators || [],
+	core_dimensions_touched: analysisResult.core_dimensions_touched || undefined,
+	relevant_task_ids: analysisResult.relevant_task_ids || [],
+	task_indicators: analysisResult.task_indicators || {},
+	new_tasks_detected:
+		analysisResult.new_tasks_detected !== undefined ? analysisResult.new_tasks_detected : false,
+	confidence_level: analysisResult.confidence_level || 'medium',
+	processing_recommendation: {
+		skip_context: analysisResult.processing_recommendation?.skip_context ?? false,
+		skip_core_dimensions:
+			analysisResult.processing_recommendation?.skip_core_dimensions ?? false,
+		skip_tasks: analysisResult.processing_recommendation?.skip_tasks ?? false,
+		reason: analysisResult.processing_recommendation?.reason || 'Default processing'
+	}
 };
 ```
 
@@ -446,14 +434,14 @@ extractTasks()
 **Location:** braindump-processor.ts:310-317
 
 ```typescript
-await this.activityLogger.logActivity(userId, "brain_dump_analysis_completed", {
-  project_id: project.id,
-  classification: validatedResult.braindump_classification,
-  relevant_task_count: validatedResult.relevant_task_ids.length,
-  new_tasks_detected: validatedResult.new_tasks_detected,
-  confidence_level: validatedResult.confidence_level,
-  skip_context: validatedResult.processing_recommendation.skip_context,
-  skip_tasks: validatedResult.processing_recommendation.skip_tasks,
+await this.activityLogger.logActivity(userId, 'brain_dump_analysis_completed', {
+	project_id: project.id,
+	classification: validatedResult.braindump_classification,
+	relevant_task_count: validatedResult.relevant_task_ids.length,
+	new_tasks_detected: validatedResult.new_tasks_detected,
+	confidence_level: validatedResult.confidence_level,
+	skip_context: validatedResult.processing_recommendation.skip_context,
+	skip_tasks: validatedResult.processing_recommendation.skip_tasks
 });
 ```
 
@@ -489,14 +477,14 @@ await this.activityLogger.logActivity(userId, "brain_dump_analysis_completed", {
 ```typescript
 // Recommendation: Add timeout
 const timeoutPromise = new Promise<PreparatoryAnalysisResult>(
-  (_, reject) => setTimeout(() => reject(new Error("Analysis timeout")), 10000), // 10 seconds
+	(_, reject) => setTimeout(() => reject(new Error('Analysis timeout')), 10000) // 10 seconds
 );
 
 const response = await Promise.race([
-  llmService.getJSONResponse({
-    /* params */
-  }),
-  timeoutPromise,
+	llmService.getJSONResponse({
+		/* params */
+	}),
+	timeoutPromise
 ]);
 ```
 
@@ -512,12 +500,12 @@ const response = await Promise.race([
 
 ```typescript
 // Could use confidence to adjust downstream processing
-if (prepAnalysisResult.confidence_level === "low") {
-  // Option 1: Log warning
-  console.warn("[Prep Analysis] Low confidence result - validate carefully");
+if (prepAnalysisResult.confidence_level === 'low') {
+	// Option 1: Log warning
+	console.warn('[Prep Analysis] Low confidence result - validate carefully');
 
-  // Option 2: Skip optimizations for low confidence
-  // Treat as null to force full processing
+	// Option 2: Skip optimizations for low confidence
+	// Treat as null to force full processing
 }
 ```
 
@@ -537,8 +525,8 @@ const cacheKey = md5(`${projectId}:${brainDump.substring(0, 500)}`);
 const cached = await cache.get(cacheKey);
 
 if (cached && Date.now() - cached.timestamp < 3600000) {
-  // 1 hour TTL
-  return cached.result;
+	// 1 hour TTL
+	return cached.result;
 }
 
 const result = await this.llmService.getJSONResponse(/* ... */);
@@ -563,8 +551,8 @@ const actuallyMentioned = new Set(extractTasksFromBraindump(brainDump));
 const accuracy = calculateJaccardSimilarity(predictedTasks, actuallyMentioned);
 
 if (accuracy < 0.5) {
-  console.warn("[Task Filtering] Low accuracy:", accuracy);
-  // Could force full task list for low accuracy
+	console.warn('[Task Filtering] Low accuracy:', accuracy);
+	// Could force full task list for low accuracy
 }
 ```
 
@@ -583,7 +571,7 @@ userPrompt += `
 ## Preparatory Analysis Insights:
 
 The following core dimensions were identified in preliminary analysis and may need updating:
-${dimensionKeys.map((key) => `- ${key}`).join("\n")}
+${dimensionKeys.map((key) => `- ${key}`).join('\n')}
 
 Use these insights to focus your extraction, but re-analyze the full braindump to ensure completeness.`;
 ```
@@ -597,11 +585,8 @@ userPrompt += `
 
 The following core dimensions were identified in preliminary analysis and may need updating:
 ${Object.entries(prepAnalysisResult.core_dimensions_touched)
-  .map(
-    ([key, value]) =>
-      `- ${key}: ${value?.substring(0, 100) || "See braindump"}`,
-  )
-  .join("\n")}
+	.map(([key, value]) => `- ${key}: ${value?.substring(0, 100) || 'See braindump'}`)
+	.join('\n')}
 
 Use these insights to focus your extraction, but re-analyze the full braindump to ensure completeness.`;
 ```
@@ -643,19 +628,18 @@ if (prepAnalysisResult?.processing_recommendation.skip_tasks) {
 ```typescript
 // In runPreparatoryAnalysis
 const startTime = Date.now();
-const estimatedTokens =
-  Math.ceil(systemPrompt.length / 4) + Math.ceil(userPrompt.length / 4);
+const estimatedTokens = Math.ceil(systemPrompt.length / 4) + Math.ceil(userPrompt.length / 4);
 
 // ... execution ...
 
 const latency = Date.now() - startTime;
 await this.metricsService.recordAnalysisMetrics({
-  projectId: project.id,
-  classification: validatedResult.braindump_classification,
-  latency,
-  estimatedTokens,
-  confidence: validatedResult.confidence_level,
-  resultSize: JSON.stringify(validatedResult).length,
+	projectId: project.id,
+	classification: validatedResult.braindump_classification,
+	latency,
+	estimatedTokens,
+	confidence: validatedResult.confidence_level,
+	resultSize: JSON.stringify(validatedResult).length
 });
 ```
 
@@ -668,12 +652,12 @@ await this.metricsService.recordAnalysisMetrics({
 ### Immediate Actions (Before Ship) ✅
 
 1. ✅ **Verify processBrainDumpDual passes prepAnalysisResult**
-   - Check that the parameter flows through correctly
-   - Ensure no null reference errors
+    - Check that the parameter flows through correctly
+    - Ensure no null reference errors
 
 2. ✅ **Verify skip_tasks is intentionally unused**
-   - If intentional: document why
-   - If unintentional: implement usage
+    - If intentional: document why
+    - If unintentional: implement usage
 
 ### Phase 2 Improvements (After Ship) ⚠️
 

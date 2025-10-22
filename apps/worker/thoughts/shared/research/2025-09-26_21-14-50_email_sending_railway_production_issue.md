@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 332906fe5bbb9688f7273ea9eefa878fadd72a2d
 branch: main
 repository: daily-brief-worker
-topic: "Email Sending Failure in Railway Production - SMTP Connection Timeout"
+topic: 'Email Sending Failure in Railway Production - SMTP Connection Timeout'
 tags: [research, email, railway, smtp, production-issue, nodemailer, gmail]
 status: complete
 last_updated: 2025-09-26
@@ -52,11 +52,11 @@ This explains why the same code works locally but fails on Railway deployment.
 - **Transport**: nodemailer v7.0.6 with Gmail service
 - **Configuration**: `/Users/annawayne/daily-brief-worker/src/lib/services/gmail-transporter.ts:26-34`
 - **Required Env Variables**:
-  - `GMAIL_USER`: Gmail account email
-  - `GMAIL_APP_PASSWORD`: 16-character app-specific password
+    - `GMAIL_USER`: Gmail account email
+    - `GMAIL_APP_PASSWORD`: 16-character app-specific password
 - **Optional Variables**:
-  - `GMAIL_ALIAS` or `EMAIL_FROM`: Custom sender address
-  - `EMAIL_FROM_NAME`: Display name (default: "BuildOS")
+    - `GMAIL_ALIAS` or `EMAIL_FROM`: Custom sender address
+    - `EMAIL_FROM_NAME`: Display name (default: "BuildOS")
 
 #### Email Service Architecture
 
@@ -127,30 +127,30 @@ From production logs:
 #### 1. **Implement AWS SES (Recommended)**
 
 - **Advantages**:
-  - SDK already installed (`@aws-sdk/client-sesv2@3.883.0`)
-  - HTTP-based (bypasses SMTP restrictions)
-  - 200 free emails/day, 62,000/month from EC2
-  - Production-ready with high deliverability
+    - SDK already installed (`@aws-sdk/client-sesv2@3.883.0`)
+    - HTTP-based (bypasses SMTP restrictions)
+    - 200 free emails/day, 62,000/month from EC2
+    - Production-ready with high deliverability
 - **Implementation Path**:
-  ```typescript
-  // Add to email-service.ts alongside Gmail
-  import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-  ```
+    ```typescript
+    // Add to email-service.ts alongside Gmail
+    import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
+    ```
 
 #### 2. **Add SendGrid Integration**
 
 - **Advantages**:
-  - 100 free emails/day forever
-  - Excellent deliverability and analytics
-  - Simple HTTP API
+    - 100 free emails/day forever
+    - Excellent deliverability and analytics
+    - Simple HTTP API
 - **Implementation**: Add `@sendgrid/mail` package and API key
 
 #### 3. **Use Resend (Modern Alternative)**
 
 - **Advantages**:
-  - Developer-friendly API
-  - 100 free emails/day
-  - Built for modern applications
+    - Developer-friendly API
+    - 100 free emails/day
+    - Built for modern applications
 - **Implementation**: Add `resend` package and API key
 
 #### 4. **Upgrade to Railway Pro Plan**
@@ -163,26 +163,26 @@ From production logs:
 
 1. **Provider Abstraction Layer**:
 
-   ```typescript
-   interface EmailProvider {
-     send(data: EmailData): Promise<void>;
-     validateConfig(): boolean;
-   }
+    ```typescript
+    interface EmailProvider {
+      send(data: EmailData): Promise<void>;
+      validateConfig(): boolean;
+    }
 
-   class GmailProvider implements EmailProvider { ... }
-   class SESProvider implements EmailProvider { ... }
-   class SendGridProvider implements EmailProvider { ... }
-   ```
+    class GmailProvider implements EmailProvider { ... }
+    class SESProvider implements EmailProvider { ... }
+    class SendGridProvider implements EmailProvider { ... }
+    ```
 
 2. **Email Retry Queue**:
-   - Add `retry_email` job type
-   - Implement exponential backoff
-   - Track retry attempts in database
+    - Add `retry_email` job type
+    - Implement exponential backoff
+    - Track retry attempts in database
 
 3. **Circuit Breaker Pattern**:
-   - Prevent cascading failures
-   - Auto-recovery after cooldown
-   - Failover to backup provider
+    - Prevent cascading failures
+    - Auto-recovery after cooldown
+    - Failover to backup provider
 
 ## Related Research
 

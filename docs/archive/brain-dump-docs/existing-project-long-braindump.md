@@ -306,41 +306,41 @@ The LLM must return a JSON response with this exact structure (includes question
 
 ```json
 {
-  "title": "string - concise title for the braindump",
-  "summary": "string - 2-3 sentence summary",
-  "insights": "string - key insights from braindump",
-  "tags": ["array", "of", "tags"],
-  "metadata": {
-    "processingNote": "string - validation of user intent"
-  },
-  "operations": [
-    {
-      "id": "string - unique operation ID",
-      "table": "projects|tasks|notes",
-      "operation": "create|update",
-      "conditions": { "id": "string" }, // For updates only
-      "data": {
-        // Table-specific fields
-      },
-      "enabled": true
-    }
-  ],
-  "questionAnalysis": {
-    // Only if displayedQuestions provided
-    "[questionId]": {
-      "wasAnswered": "boolean",
-      "answerContent": "string|null"
-    }
-  },
-  "projectQuestions": [
-    // Generated questions for future braindumps
-    {
-      "question": "string",
-      "category": "clarification|decision|planning|risk|resource",
-      "priority": "high|medium|low",
-      "context": "string",
-      "expectedOutcome": "string"
-    }
-  ]
+	"title": "string - concise title for the braindump",
+	"summary": "string - 2-3 sentence summary",
+	"insights": "string - key insights from braindump",
+	"tags": ["array", "of", "tags"],
+	"metadata": {
+		"processingNote": "string - validation of user intent"
+	},
+	"operations": [
+		{
+			"id": "string - unique operation ID",
+			"table": "projects|tasks|notes",
+			"operation": "create|update",
+			"conditions": { "id": "string" }, // For updates only
+			"data": {
+				// Table-specific fields
+			},
+			"enabled": true
+		}
+	],
+	"questionAnalysis": {
+		// Only if displayedQuestions provided
+		"[questionId]": {
+			"wasAnswered": "boolean",
+			"answerContent": "string|null"
+		}
+	},
+	"projectQuestions": [
+		// Generated questions for future braindumps
+		{
+			"question": "string",
+			"category": "clarification|decision|planning|risk|resource",
+			"priority": "high|medium|low",
+			"context": "string",
+			"expectedOutcome": "string"
+		}
+	]
 }
 ```

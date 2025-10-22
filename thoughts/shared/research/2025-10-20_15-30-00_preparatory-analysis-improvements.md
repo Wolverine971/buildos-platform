@@ -4,16 +4,16 @@ researcher: Claude Code
 git_commit: 9f26638250d9f51922b55e692f94dc410f371c1f
 branch: main
 repository: buildos-platform
-topic: "Preparatory Analysis - Senior Engineer Improvements & Enhancements"
+topic: 'Preparatory Analysis - Senior Engineer Improvements & Enhancements'
 tags:
-  [
-    implementation,
-    preparatory-analysis,
-    improvements,
-    optimization,
-    senior-engineer,
-    code-quality,
-  ]
+    [
+        implementation,
+        preparatory-analysis,
+        improvements,
+        optimization,
+        senior-engineer,
+        code-quality
+    ]
 status: complete
 last_updated: 2025-10-20
 last_updated_by: Claude Code
@@ -52,12 +52,12 @@ The fast profile LLM call has no explicit timeout. If the LLM service hangs, the
 ```typescript
 // Location: braindump-processor.ts:246-254
 const response = await this.llmService.getJSONResponse({
-  systemPrompt,
-  userPrompt,
-  userId,
-  profile: "fast", // No timeout protection
-  operationType: "brain_dump_context",
-  projectId: project.id,
+	systemPrompt,
+	userPrompt,
+	userId,
+	profile: 'fast', // No timeout protection
+	operationType: 'brain_dump_context',
+	projectId: project.id
 });
 ```
 
@@ -88,19 +88,19 @@ private async executeWithTimeout<T>(
 
 ```typescript
 // Location: braindump-processor.ts:246-254 (modified)
-console.log("[PrepAnalysis] Starting LLM analysis with 10s timeout");
+console.log('[PrepAnalysis] Starting LLM analysis with 10s timeout');
 
 const response = await this.executeWithTimeout(
-  this.llmService.getJSONResponse({
-    systemPrompt,
-    userPrompt,
-    userId,
-    profile: "fast",
-    operationType: "brain_dump_context",
-    projectId: project.id,
-  }),
-  10000, // 10 second timeout for fast profile
-  "Preparatory analysis timed out after 10 seconds",
+	this.llmService.getJSONResponse({
+		systemPrompt,
+		userPrompt,
+		userId,
+		profile: 'fast',
+		operationType: 'brain_dump_context',
+		projectId: project.id
+	}),
+	10000, // 10 second timeout for fast profile
+	'Preparatory analysis timed out after 10 seconds'
 );
 ```
 
@@ -119,18 +119,18 @@ The existing catch block (line 321-342) will catch the timeout error and gracefu
 
 ```typescript
 // Test timeout behavior
-it("should timeout prep analysis after 10 seconds", async () => {
-  const slowLLM = {
-    getJSONResponse: () => new Promise((r) => setTimeout(r, 15000)),
-  };
+it('should timeout prep analysis after 10 seconds', async () => {
+	const slowLLM = {
+		getJSONResponse: () => new Promise((r) => setTimeout(r, 15000))
+	};
 
-  const result = await processor.runPreparatoryAnalysis(
-    "test braindump",
-    mockProject,
-    "user-123",
-  );
+	const result = await processor.runPreparatoryAnalysis(
+		'test braindump',
+		mockProject,
+		'user-123'
+	);
 
-  expect(result).toBeNull(); // Graceful fallback
+	expect(result).toBeNull(); // Graceful fallback
 });
 ```
 
@@ -151,7 +151,7 @@ The `skip_tasks` recommendation is captured but never used. We skip context proc
 // Tasks always processed (unless filtered)
 let tasksToPass = existingTasks;
 if (prepAnalysisResult && prepAnalysisResult.relevant_task_ids.length > 0) {
-  // ... filtering logic ...
+	// ... filtering logic ...
 }
 ```
 
@@ -162,30 +162,27 @@ if (prepAnalysisResult && prepAnalysisResult.relevant_task_ids.length > 0) {
 ```typescript
 // Location: braindump-processor.ts:1181 (add after line 1181)
 // Check if analysis recommends skipping task processing
-if (
-  prepAnalysisResult?.processing_recommendation.skip_tasks &&
-  selectedProjectId
-) {
-  console.log(
-    "[extractTasks] Skipping task processing based on analysis recommendation:",
-    prepAnalysisResult.processing_recommendation.reason,
-  );
+if (prepAnalysisResult?.processing_recommendation.skip_tasks && selectedProjectId) {
+	console.log(
+		'[extractTasks] Skipping task processing based on analysis recommendation:',
+		prepAnalysisResult.processing_recommendation.reason
+	);
 
-  // Return minimal result indicating no task extraction needed
-  return {
-    title: "Task Extraction Skipped",
-    summary: `Analysis determined no task updates needed: ${prepAnalysisResult.processing_recommendation.reason}`,
-    insights: prepAnalysisResult.analysis_summary || "No insight",
-    tags: [],
-    operations: [], // No operations = no task updates
-    metadata: {
-      totalOperations: 0,
-      tableBreakdown: {},
-      processingTime: 0,
-      timestamp: new Date().toISOString(),
-      processingNote: `Task extraction skipped based on analysis recommendation`,
-    },
-  };
+	// Return minimal result indicating no task extraction needed
+	return {
+		title: 'Task Extraction Skipped',
+		summary: `Analysis determined no task updates needed: ${prepAnalysisResult.processing_recommendation.reason}`,
+		insights: prepAnalysisResult.analysis_summary || 'No insight',
+		tags: [],
+		operations: [], // No operations = no task updates
+		metadata: {
+			totalOperations: 0,
+			tableBreakdown: {},
+			processingTime: 0,
+			timestamp: new Date().toISOString(),
+			processingNote: `Task extraction skipped based on analysis recommendation`
+		}
+	};
 }
 ```
 
@@ -198,26 +195,26 @@ if (
 ### Testing
 
 ```typescript
-it("should skip task extraction when analysis recommends skip", async () => {
-  const analysisWithSkip: PreparatoryAnalysisResult = {
-    braindump_classification: "status_update",
-    processing_recommendation: {
-      skip_tasks: true,
-      reason: "Status update, no new tasks",
-    },
-    // ... other fields ...
-  };
+it('should skip task extraction when analysis recommends skip', async () => {
+	const analysisWithSkip: PreparatoryAnalysisResult = {
+		braindump_classification: 'status_update',
+		processing_recommendation: {
+			skip_tasks: true,
+			reason: 'Status update, no new tasks'
+		}
+		// ... other fields ...
+	};
 
-  const result = await processor.extractTasks({
-    prepAnalysisResult: analysisWithSkip,
-    existingTasks: [
-      /* ... */
-    ],
-    // ... other params ...
-  });
+	const result = await processor.extractTasks({
+		prepAnalysisResult: analysisWithSkip,
+		existingTasks: [
+			/* ... */
+		]
+		// ... other params ...
+	});
 
-  expect(result.operations).toEqual([]);
-  expect(result.summary).toContain("Task extraction skipped");
+	expect(result.operations).toEqual([]);
+	expect(result.summary).toContain('Task extraction skipped');
 });
 ```
 
@@ -239,7 +236,7 @@ userPrompt += `
 ## Preparatory Analysis Insights:
 
 The following core dimensions were identified in preliminary analysis and may need updating:
-${dimensionKeys.map((key) => `- ${key}`).join("\n")}
+${dimensionKeys.map((key) => `- ${key}`).join('\n')}
 
 Use these insights to focus your extraction, but re-analyze the full braindump to ensure completeness.`;
 ```
@@ -254,14 +251,13 @@ userPrompt += `
 The following core dimensions were identified in preliminary analysis and may need updating:
 
 ${Object.entries(prepAnalysisResult.core_dimensions_touched)
-  .filter(([_, value]) => value) // Only include non-empty values
-  .map(([key, value]) => {
-    const snippet =
-      value?.substring(0, 120).replace(/\n/g, " ").trim() ||
-      "See braindump for details";
-    return `- **${key}**: ${snippet}${snippet.length >= 120 ? "..." : ""}`;
-  })
-  .join("\n")}
+	.filter(([_, value]) => value) // Only include non-empty values
+	.map(([key, value]) => {
+		const snippet =
+			value?.substring(0, 120).replace(/\n/g, ' ').trim() || 'See braindump for details';
+		return `- **${key}**: ${snippet}${snippet.length >= 120 ? '...' : ''}`;
+	})
+	.join('\n')}
 
 **Approach**: Use these insights to focus your extraction on likely-changed dimensions, but re-analyze the full braindump to ensure completeness. Do not skip any dimension that appears relevant.`;
 ```
@@ -310,19 +306,19 @@ We don't track performance metrics. Can't optimize what we don't measure.
 
 ```typescript
 interface PrepAnalysisMetrics {
-  projectId: string;
-  userId: string;
-  timestamp: string;
-  latency: number; // ms
-  estimatedTokensInput: number;
-  estimatedTokensOutput: number;
-  classification: string;
-  confidenceLevel: string;
-  dimensionsTouched: number;
-  relevantTasksCount: number;
-  newTasksDetected: boolean;
-  successfulAnalysis: boolean;
-  errorMessage?: string;
+	projectId: string;
+	userId: string;
+	timestamp: string;
+	latency: number; // ms
+	estimatedTokensInput: number;
+	estimatedTokensOutput: number;
+	classification: string;
+	confidenceLevel: string;
+	dimensionsTouched: number;
+	relevantTasksCount: number;
+	newTasksDetected: boolean;
+	successfulAnalysis: boolean;
+	errorMessage?: string;
 }
 ```
 
@@ -334,15 +330,15 @@ interface PrepAnalysisMetrics {
 // Location: braindump-processor.ts:226 (modified)
 const analysisStartTime = Date.now();
 
-console.log("[PrepAnalysis] Starting analysis for project:", project.id);
+console.log('[PrepAnalysis] Starting analysis for project:', project.id);
 // ... existing code ...
 
 const response = await this.llmService.getJSONResponse({
-  // ... params ...
+	// ... params ...
 });
 
 const analysisLatency = Date.now() - analysisStartTime;
-console.log("[PrepAnalysis] Analysis completed in:", analysisLatency, "ms");
+console.log('[PrepAnalysis] Analysis completed in:', analysisLatency, 'ms');
 ```
 
 **Step 2: Estimate tokens**
@@ -365,19 +361,18 @@ const estimatedInputTokens =
 ```typescript
 // Location: braindump-processor.ts:310-317 (enhanced)
 await this.metricsService.recordAnalysisMetrics({
-  projectId: project.id,
-  userId,
-  timestamp: new Date().toISOString(),
-  latency: analysisLatency,
-  estimatedTokensInput: estimatedInputTokens,
-  estimatedTokensOutput: this.estimateTokens(JSON.stringify(validatedResult)),
-  classification: validatedResult.braindump_classification,
-  confidenceLevel: validatedResult.confidence_level,
-  dimensionsTouched: Object.keys(validatedResult.core_dimensions_touched || {})
-    .length,
-  relevantTasksCount: validatedResult.relevant_task_ids.length,
-  newTasksDetected: validatedResult.new_tasks_detected,
-  successfulAnalysis: true,
+	projectId: project.id,
+	userId,
+	timestamp: new Date().toISOString(),
+	latency: analysisLatency,
+	estimatedTokensInput: estimatedInputTokens,
+	estimatedTokensOutput: this.estimateTokens(JSON.stringify(validatedResult)),
+	classification: validatedResult.braindump_classification,
+	confidenceLevel: validatedResult.confidence_level,
+	dimensionsTouched: Object.keys(validatedResult.core_dimensions_touched || {}).length,
+	relevantTasksCount: validatedResult.relevant_task_ids.length,
+	newTasksDetected: validatedResult.new_tasks_detected,
+	successfulAnalysis: true
 });
 ```
 
@@ -413,7 +408,7 @@ Confidence level is captured but never used. Could adjust downstream processing.
 ### Current Code
 
 ```typescript
-confidence_level: analysisResult.confidence_level || "medium";
+confidence_level: analysisResult.confidence_level || 'medium';
 // ... never used after this ...
 ```
 
@@ -423,25 +418,22 @@ confidence_level: analysisResult.confidence_level || "medium";
 
 ```typescript
 // Location: braindump-processor.ts:298 (add after logging)
-if (validatedResult.confidence_level === "low") {
-  console.warn(
-    "[PrepAnalysis] Low confidence analysis - results should be validated:",
-    {
-      classification: validatedResult.braindump_classification,
-      relevantTasks: validatedResult.relevant_task_ids.length,
-      recommendation: validatedResult.processing_recommendation.reason,
-    },
-  );
+if (validatedResult.confidence_level === 'low') {
+	console.warn('[PrepAnalysis] Low confidence analysis - results should be validated:', {
+		classification: validatedResult.braindump_classification,
+		relevantTasks: validatedResult.relevant_task_ids.length,
+		recommendation: validatedResult.processing_recommendation.reason
+	});
 
-  // Could trigger manual review flag for future
-  await this.errorLogger.logBrainDumpWarning(
-    "low_confidence_prep_analysis",
-    {
-      projectId: project.id,
-      classification: validatedResult.braindump_classification,
-    },
-    userId,
-  );
+	// Could trigger manual review flag for future
+	await this.errorLogger.logBrainDumpWarning(
+		'low_confidence_prep_analysis',
+		{
+			projectId: project.id,
+			classification: validatedResult.braindump_classification
+		},
+		userId
+	);
 }
 ```
 
@@ -449,16 +441,12 @@ if (validatedResult.confidence_level === "low") {
 
 ```typescript
 // Location: braindump-processor.ts:380-397 (modified)
-prepAnalysisResult = await this.runPreparatoryAnalysis(
-  brainDump,
-  existingProject,
-  userId,
-);
+prepAnalysisResult = await this.runPreparatoryAnalysis(brainDump, existingProject, userId);
 
 // Force full processing if confidence is low
-if (prepAnalysisResult?.confidence_level === "low") {
-  console.log("[BrainDumpProcessor] Low confidence - forcing full processing");
-  prepAnalysisResult = null; // Treat as failed, use full processing
+if (prepAnalysisResult?.confidence_level === 'low') {
+	console.log('[BrainDumpProcessor] Low confidence - forcing full processing');
+	prepAnalysisResult = null; // Treat as failed, use full processing
 }
 ```
 
@@ -472,24 +460,24 @@ if (prepAnalysisResult?.confidence_level === "low") {
 ### Testing
 
 ```typescript
-it("should log warning for low confidence analysis", async () => {
-  const lowConfidenceResult = {
-    confidence_level: "low",
-    // ... other fields ...
-  };
+it('should log warning for low confidence analysis', async () => {
+	const lowConfidenceResult = {
+		confidence_level: 'low'
+		// ... other fields ...
+	};
 
-  await processor
-    .runPreparatoryAnalysis
-    // setup to return low confidence
-    ();
+	await processor
+		.runPreparatoryAnalysis
+		// setup to return low confidence
+		();
 
-  expect(errorLogger.logBrainDumpWarning).toHaveBeenCalledWith(
-    "low_confidence_prep_analysis",
-    expect.objectContaining({
-      classification: expect.any(String),
-    }),
-    userId,
-  );
+	expect(errorLogger.logBrainDumpWarning).toHaveBeenCalledWith(
+		'low_confidence_prep_analysis',
+		expect.objectContaining({
+			classification: expect.any(String)
+		}),
+		userId
+	);
 });
 ```
 
@@ -627,46 +615,46 @@ private async getCachedOrAnalyzePrep(
 ### Unit Tests to Add
 
 ```typescript
-describe("Preparatory Analysis Improvements", () => {
-  // Timeout tests
-  describe("timeout protection", () => {
-    it("should timeout slow LLM calls", () => {
-      /* ... */
-    });
-    it("should gracefully fallback on timeout", () => {
-      /* ... */
-    });
-  });
+describe('Preparatory Analysis Improvements', () => {
+	// Timeout tests
+	describe('timeout protection', () => {
+		it('should timeout slow LLM calls', () => {
+			/* ... */
+		});
+		it('should gracefully fallback on timeout', () => {
+			/* ... */
+		});
+	});
 
-  // skip_tasks tests
-  describe("skip_tasks recommendation", () => {
-    it("should skip task extraction when recommended", () => {
-      /* ... */
-    });
-    it("should not skip when skip_tasks is false", () => {
-      /* ... */
-    });
-  });
+	// skip_tasks tests
+	describe('skip_tasks recommendation', () => {
+		it('should skip task extraction when recommended', () => {
+			/* ... */
+		});
+		it('should not skip when skip_tasks is false', () => {
+			/* ... */
+		});
+	});
 
-  // Metrics tests
-  describe("performance metrics", () => {
-    it("should record analysis latency", () => {
-      /* ... */
-    });
-    it("should estimate token counts correctly", () => {
-      /* ... */
-    });
-  });
+	// Metrics tests
+	describe('performance metrics', () => {
+		it('should record analysis latency', () => {
+			/* ... */
+		});
+		it('should estimate token counts correctly', () => {
+			/* ... */
+		});
+	});
 
-  // Confidence tests
-  describe("confidence-based processing", () => {
-    it("should warn on low confidence", () => {
-      /* ... */
-    });
-    it("should log low confidence events", () => {
-      /* ... */
-    });
-  });
+	// Confidence tests
+	describe('confidence-based processing', () => {
+		it('should warn on low confidence', () => {
+			/* ... */
+		});
+		it('should log low confidence events', () => {
+			/* ... */
+		});
+	});
 });
 ```
 

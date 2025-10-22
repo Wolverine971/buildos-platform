@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 9088e078fb6777ffb024690855c83760f77d31c9
 branch: main
 repository: buildos-platform
-topic: "SMS Event Scheduling System - Comprehensive Specification"
+topic: 'SMS Event Scheduling System - Comprehensive Specification'
 tags: [research, spec, sms, scheduling, worker, calendar, llm, notifications]
 status: complete
 last_updated: 2025-10-08
@@ -295,9 +295,9 @@ CREATE TRIGGER update_scheduled_sms_messages_updated_at
 **Design Decisions:**
 
 1. **Separate from `sms_messages`**: `scheduled_sms_messages` represents the _intent_ to send, while `sms_messages` represents the _actual send_. This separation allows:
-   - Cancelling scheduled messages before they're sent
-   - Updating message content based on event changes
-   - Tracking generation metadata separately
+    - Cancelling scheduled messages before they're sent
+    - Updating message content based on event changes
+    - Tracking generation metadata separately
 
 2. **`calendar_event_id` linkage**: Enables webhook-driven updates when events change
 
@@ -336,21 +336,21 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 **5.2: Daily Scheduler**
 
 - [ ] Add cron job to `/apps/worker/src/scheduler.ts`
-  - Pattern: `"0 0 * * *"` (every midnight)
-  - Function: `checkAndScheduleDailySMS()`
-  - Timezone-aware user filtering
+    - Pattern: `"0 0 * * *"` (every midnight)
+    - Function: `checkAndScheduleDailySMS()`
+    - Timezone-aware user filtering
 - [ ] Queue `schedule_daily_sms` jobs per user
 
 **5.3: Daily SMS Worker**
 
 - [ ] Create `/apps/worker/src/workers/dailySmsWorker.ts`
 - [ ] Implement `processDailySMS(job)`:
-  - Fetch user preferences (timezone, lead time, enabled status)
-  - Fetch calendar events for today
-  - Filter events needing reminders
-  - Call SMS Message Generator
-  - Create `scheduled_sms_messages` records
-  - Queue `send_sms` jobs
+    - Fetch user preferences (timezone, lead time, enabled status)
+    - Fetch calendar events for today
+    - Filter events needing reminders
+    - Call SMS Message Generator
+    - Create `scheduled_sms_messages` records
+    - Queue `send_sms` jobs
 
 ### Phase 2: LLM Message Generation (Week 1-2)
 
@@ -358,10 +358,10 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 
 - [ ] Create `/apps/worker/src/lib/services/smsMessageGenerator.ts`
 - [ ] Implement `generateEventReminderMessage(event, leadTimeMinutes, userContext)`
-  - Use `SmartLLMService` with DeepSeek model
-  - Temperature: 0.6 (balanced creativity)
-  - Max tokens: 100 (~160 chars)
-  - System prompt with clear constraints
+    - Use `SmartLLMService` with DeepSeek model
+    - Temperature: 0.6 (balanced creativity)
+    - Max tokens: 100 (~160 chars)
+    - System prompt with clear constraints
 - [ ] Implement template fallbacks for reliability
 - [ ] Add message validation (length, character set)
 
@@ -369,10 +369,10 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 
 - [ ] Create `/apps/worker/src/workers/sms/prompts.ts`
 - [ ] System prompts for different event types:
-  - `MEETING_REMINDER_PROMPT`
-  - `DEADLINE_REMINDER_PROMPT`
-  - `ALL_DAY_EVENT_PROMPT`
-  - `AGENDA_SUMMARY_PROMPT`
+    - `MEETING_REMINDER_PROMPT`
+    - `DEADLINE_REMINDER_PROMPT`
+    - `ALL_DAY_EVENT_PROMPT`
+    - `AGENDA_SUMMARY_PROMPT`
 - [ ] User prompt builders with event context
 
 ### Phase 3: Calendar Event Change Handling (Week 2)
@@ -382,17 +382,17 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 - [ ] Update `/apps/web/src/routes/webhooks/calendar-events/+server.ts`
 - [ ] Add post-sync hook to check for scheduled SMS
 - [ ] Implement change detection logic:
-  - Event deleted → Cancel scheduled SMS
-  - Event rescheduled → Update scheduled_for + regenerate message
-  - Event details changed → Regenerate message content
+    - Event deleted → Cancel scheduled SMS
+    - Event rescheduled → Update scheduled_for + regenerate message
+    - Event details changed → Regenerate message content
 
 **5.7: Scheduled SMS Update Service**
 
 - [ ] Create `/apps/web/src/lib/services/scheduledSmsUpdate.service.ts`
 - [ ] Implement methods:
-  - `cancelScheduledSMSForEvent(eventId)`
-  - `updateScheduledSMSForEvent(eventId, newEventData)`
-  - `regenerateMessageForEvent(eventId)`
+    - `cancelScheduledSMSForEvent(eventId)`
+    - `updateScheduledSMSForEvent(eventId, newEventData)`
+    - `regenerateMessageForEvent(eventId)`
 - [ ] Add Railway worker communication for job updates
 
 **5.8: Worker API Endpoints**
@@ -407,9 +407,9 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 
 - [ ] Update `/apps/worker/src/workers/smsWorker.ts`
 - [ ] Add pre-send validation:
-  - Check if message still scheduled (not cancelled)
-  - Verify event still exists and hasn't changed
-  - Check user preferences (quiet hours, daily limit)
+    - Check if message still scheduled (not cancelled)
+    - Verify event still exists and hasn't changed
+    - Check user preferences (quiet hours, daily limit)
 - [ ] Link `scheduled_sms_messages` to `sms_messages` after send
 - [ ] Update status based on Twilio response
 
@@ -425,9 +425,9 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 
 - [ ] Update `/apps/web/src/lib/components/settings/SMSPreferences.svelte`
 - [ ] Add toggles:
-  - Event reminders enabled/disabled
-  - Lead time selection (5, 10, 15, 30 mins)
-  - Event types to include/exclude
+    - Event reminders enabled/disabled
+    - Lead time selection (5, 10, 15, 30 mins)
+    - Event types to include/exclude
 - [ ] Add "Upcoming Scheduled Messages" preview
 
 **5.12: API Endpoints (Web)**
@@ -545,241 +545,225 @@ Focus on: What's happening today, why it matters, any preparation needed.`;
 **File**: `/apps/worker/src/lib/services/smsMessageGenerator.ts`
 
 ```typescript
-import { SmartLLMService } from "./smart-llm-service";
-import { formatDistance } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
+import { SmartLLMService } from './smart-llm-service';
+import { formatDistance } from 'date-fns';
+import { utcToZonedTime } from 'date-fns-tz';
 
 export interface EventContext {
-  eventId: string;
-  title: string;
-  startTime: Date;
-  endTime: Date;
-  description?: string;
-  location?: string;
-  attendees?: string[];
-  isAllDay: boolean;
-  userTimezone: string;
+	eventId: string;
+	title: string;
+	startTime: Date;
+	endTime: Date;
+	description?: string;
+	location?: string;
+	attendees?: string[];
+	isAllDay: boolean;
+	userTimezone: string;
 }
 
 export interface GeneratedSMS {
-  content: string;
-  generatedVia: "llm" | "template";
-  model?: string;
-  costUsd?: number;
-  metadata?: any;
+	content: string;
+	generatedVia: 'llm' | 'template';
+	model?: string;
+	costUsd?: number;
+	metadata?: any;
 }
 
 export class SMSMessageGenerator {
-  private llmService: SmartLLMService;
+	private llmService: SmartLLMService;
 
-  constructor() {
-    this.llmService = new SmartLLMService();
-  }
+	constructor() {
+		this.llmService = new SmartLLMService();
+	}
 
-  async generateEventReminder(
-    event: EventContext,
-    leadTimeMinutes: number,
-  ): Promise<GeneratedSMS> {
-    try {
-      // Calculate time until event in user's timezone
-      const now = new Date();
-      const startInUserTz = utcToZonedTime(event.startTime, event.userTimezone);
-      const timeUntil = formatDistance(startInUserTz, now, {
-        addSuffix: false,
-      });
+	async generateEventReminder(
+		event: EventContext,
+		leadTimeMinutes: number
+	): Promise<GeneratedSMS> {
+		try {
+			// Calculate time until event in user's timezone
+			const now = new Date();
+			const startInUserTz = utcToZonedTime(event.startTime, event.userTimezone);
+			const timeUntil = formatDistance(startInUserTz, now, {
+				addSuffix: false
+			});
 
-      // Determine message type
-      const messageType = this.determineMessageType(event);
+			// Determine message type
+			const messageType = this.determineMessageType(event);
 
-      // Build context for LLM
-      const context = this.buildEventContext(event, timeUntil);
+			// Build context for LLM
+			const context = this.buildEventContext(event, timeUntil);
 
-      // Generate with LLM
-      const systemPrompt = this.getSystemPrompt(messageType);
-      const userPrompt = this.getUserPrompt(messageType, context);
+			// Generate with LLM
+			const systemPrompt = this.getSystemPrompt(messageType);
+			const userPrompt = this.getUserPrompt(messageType, context);
 
-      const response = await this.llmService.generateText({
-        systemPrompt,
-        userPrompt,
-        profile: "quality",
-        temperature: 0.6,
-        maxTokens: 100,
-        operationType: "sms_reminder_generation",
-      });
+			const response = await this.llmService.generateText({
+				systemPrompt,
+				userPrompt,
+				profile: 'quality',
+				temperature: 0.6,
+				maxTokens: 100,
+				operationType: 'sms_reminder_generation'
+			});
 
-      // Validate length
-      const content = this.validateAndTruncate(response.text);
+			// Validate length
+			const content = this.validateAndTruncate(response.text);
 
-      return {
-        content,
-        generatedVia: "llm",
-        model: response.model,
-        costUsd: response.costUsd,
-        metadata: response.metadata,
-      };
-    } catch (error) {
-      console.error(
-        "[SMSMessageGenerator] LLM generation failed, using template:",
-        error,
-      );
+			return {
+				content,
+				generatedVia: 'llm',
+				model: response.model,
+				costUsd: response.costUsd,
+				metadata: response.metadata
+			};
+		} catch (error) {
+			console.error('[SMSMessageGenerator] LLM generation failed, using template:', error);
 
-      // Fallback to template
-      return this.generateFromTemplate(event, leadTimeMinutes);
-    }
-  }
+			// Fallback to template
+			return this.generateFromTemplate(event, leadTimeMinutes);
+		}
+	}
 
-  private determineMessageType(
-    event: EventContext,
-  ): "meeting" | "deadline" | "all_day" {
-    if (event.isAllDay) return "all_day";
+	private determineMessageType(event: EventContext): 'meeting' | 'deadline' | 'all_day' {
+		if (event.isAllDay) return 'all_day';
 
-    // Check for deadline keywords
-    const deadlineKeywords = ["deadline", "due", "submit", "deliver", "finish"];
-    const titleLower = event.title.toLowerCase();
-    const descLower = event.description?.toLowerCase() || "";
+		// Check for deadline keywords
+		const deadlineKeywords = ['deadline', 'due', 'submit', 'deliver', 'finish'];
+		const titleLower = event.title.toLowerCase();
+		const descLower = event.description?.toLowerCase() || '';
 
-    if (
-      deadlineKeywords.some(
-        (kw) => titleLower.includes(kw) || descLower.includes(kw),
-      )
-    ) {
-      return "deadline";
-    }
+		if (deadlineKeywords.some((kw) => titleLower.includes(kw) || descLower.includes(kw))) {
+			return 'deadline';
+		}
 
-    return "meeting";
-  }
+		return 'meeting';
+	}
 
-  private buildEventContext(event: EventContext, timeUntil: string) {
-    // Extract meeting link if present
-    const meetingLink = this.extractMeetingLink(event.description);
+	private buildEventContext(event: EventContext, timeUntil: string) {
+		// Extract meeting link if present
+		const meetingLink = this.extractMeetingLink(event.description);
 
-    // Format attendees (max 2, then "and X others")
-    const formattedAttendees =
-      event.attendees?.length > 0
-        ? this.formatAttendees(event.attendees)
-        : null;
+		// Format attendees (max 2, then "and X others")
+		const formattedAttendees =
+			event.attendees?.length > 0 ? this.formatAttendees(event.attendees) : null;
 
-    // Extract key details from description (first sentence)
-    const keyDetails = event.description
-      ? this.extractKeyDetails(event.description)
-      : null;
+		// Extract key details from description (first sentence)
+		const keyDetails = event.description ? this.extractKeyDetails(event.description) : null;
 
-    return {
-      event_title: event.title,
-      time_until_event: timeUntil,
-      duration: this.formatDuration(event.startTime, event.endTime),
-      description: keyDetails,
-      location: event.location,
-      attendees: formattedAttendees,
-      meeting_link: meetingLink,
-    };
-  }
+		return {
+			event_title: event.title,
+			time_until_event: timeUntil,
+			duration: this.formatDuration(event.startTime, event.endTime),
+			description: keyDetails,
+			location: event.location,
+			attendees: formattedAttendees,
+			meeting_link: meetingLink
+		};
+	}
 
-  private validateAndTruncate(text: string): string {
-    // Remove extra whitespace
-    let cleaned = text.trim().replace(/\s+/g, " ");
+	private validateAndTruncate(text: string): string {
+		// Remove extra whitespace
+		let cleaned = text.trim().replace(/\s+/g, ' ');
 
-    // Remove any markdown or emojis that LLM might have added
-    cleaned = cleaned.replace(/[*_~`#]/g, "");
-    cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}]/gu, ""); // Emoticons
+		// Remove any markdown or emojis that LLM might have added
+		cleaned = cleaned.replace(/[*_~`#]/g, '');
+		cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}]/gu, ''); // Emoticons
 
-    // Truncate to 160 chars if needed
-    if (cleaned.length > 160) {
-      cleaned = cleaned.substring(0, 157) + "...";
-    }
+		// Truncate to 160 chars if needed
+		if (cleaned.length > 160) {
+			cleaned = cleaned.substring(0, 157) + '...';
+		}
 
-    return cleaned;
-  }
+		return cleaned;
+	}
 
-  private generateFromTemplate(
-    event: EventContext,
-    leadTimeMinutes: number,
-  ): GeneratedSMS {
-    const timeText =
-      leadTimeMinutes < 60
-        ? `in ${leadTimeMinutes} mins`
-        : `in ${Math.round(leadTimeMinutes / 60)} hour${leadTimeMinutes >= 120 ? "s" : ""}`;
+	private generateFromTemplate(event: EventContext, leadTimeMinutes: number): GeneratedSMS {
+		const timeText =
+			leadTimeMinutes < 60
+				? `in ${leadTimeMinutes} mins`
+				: `in ${Math.round(leadTimeMinutes / 60)} hour${leadTimeMinutes >= 120 ? 's' : ''}`;
 
-    let message: string;
+		let message: string;
 
-    if (event.isAllDay) {
-      message = `Today: ${event.title}`;
-      if (event.description) {
-        const details = this.extractKeyDetails(event.description);
-        message += ` - ${details}`;
-      }
-    } else {
-      message = `${event.title} ${timeText}`;
+		if (event.isAllDay) {
+			message = `Today: ${event.title}`;
+			if (event.description) {
+				const details = this.extractKeyDetails(event.description);
+				message += ` - ${details}`;
+			}
+		} else {
+			message = `${event.title} ${timeText}`;
 
-      // Add location if short
-      if (event.location && event.location.length < 30) {
-        message += ` @ ${event.location}`;
-      }
+			// Add location if short
+			if (event.location && event.location.length < 30) {
+				message += ` @ ${event.location}`;
+			}
 
-      // Add key detail if space allows
-      if (event.description && message.length < 120) {
-        const details = this.extractKeyDetails(event.description);
-        const remaining = 160 - message.length - 3; // -3 for " - "
-        if (details.length <= remaining) {
-          message += ` - ${details}`;
-        }
-      }
-    }
+			// Add key detail if space allows
+			if (event.description && message.length < 120) {
+				const details = this.extractKeyDetails(event.description);
+				const remaining = 160 - message.length - 3; // -3 for " - "
+				if (details.length <= remaining) {
+					message += ` - ${details}`;
+				}
+			}
+		}
 
-    return {
-      content: this.validateAndTruncate(message),
-      generatedVia: "template",
-    };
-  }
+		return {
+			content: this.validateAndTruncate(message),
+			generatedVia: 'template'
+		};
+	}
 
-  // Helper methods
-  private extractKeyDetails(description: string, maxLength = 60): string {
-    // Get first sentence or first line
-    const firstSentence = description.split(/[.\n]/)[0].trim();
-    return firstSentence.length > maxLength
-      ? firstSentence.substring(0, maxLength - 3) + "..."
-      : firstSentence;
-  }
+	// Helper methods
+	private extractKeyDetails(description: string, maxLength = 60): string {
+		// Get first sentence or first line
+		const firstSentence = description.split(/[.\n]/)[0].trim();
+		return firstSentence.length > maxLength
+			? firstSentence.substring(0, maxLength - 3) + '...'
+			: firstSentence;
+	}
 
-  private extractMeetingLink(description?: string): string | null {
-    if (!description) return null;
+	private extractMeetingLink(description?: string): string | null {
+		if (!description) return null;
 
-    const meetRegex = /https:\/\/meet\.google\.com\/[a-z-]+/i;
-    const zoomRegex = /https:\/\/[a-z0-9.]*zoom\.us\/j\/\d+/i;
+		const meetRegex = /https:\/\/meet\.google\.com\/[a-z-]+/i;
+		const zoomRegex = /https:\/\/[a-z0-9.]*zoom\.us\/j\/\d+/i;
 
-    const meetMatch = description.match(meetRegex);
-    const zoomMatch = description.match(zoomRegex);
+		const meetMatch = description.match(meetRegex);
+		const zoomMatch = description.match(zoomRegex);
 
-    return meetMatch?.[0] || zoomMatch?.[0] || null;
-  }
+		return meetMatch?.[0] || zoomMatch?.[0] || null;
+	}
 
-  private formatAttendees(attendees: string[]): string {
-    if (attendees.length === 0) return "";
-    if (attendees.length === 1) return attendees[0];
-    if (attendees.length === 2) return `${attendees[0]} and ${attendees[1]}`;
-    return `${attendees[0]}, ${attendees[1]}, and ${attendees.length - 2} others`;
-  }
+	private formatAttendees(attendees: string[]): string {
+		if (attendees.length === 0) return '';
+		if (attendees.length === 1) return attendees[0];
+		if (attendees.length === 2) return `${attendees[0]} and ${attendees[1]}`;
+		return `${attendees[0]}, ${attendees[1]}, and ${attendees.length - 2} others`;
+	}
 
-  private formatDuration(start: Date, end: Date): string {
-    const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
-    if (minutes < 60) return `${minutes} mins`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMins = minutes % 60;
-    if (remainingMins === 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
-    return `${hours}h ${remainingMins}m`;
-  }
+	private formatDuration(start: Date, end: Date): string {
+		const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
+		if (minutes < 60) return `${minutes} mins`;
+		const hours = Math.floor(minutes / 60);
+		const remainingMins = minutes % 60;
+		if (remainingMins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+		return `${hours}h ${remainingMins}m`;
+	}
 
-  private getSystemPrompt(messageType: string): string {
-    // Return appropriate system prompt based on message type
-    // (Implementation omitted for brevity - use prompts from section 6.1)
-    return SYSTEM_PROMPT;
-  }
+	private getSystemPrompt(messageType: string): string {
+		// Return appropriate system prompt based on message type
+		// (Implementation omitted for brevity - use prompts from section 6.1)
+		return SYSTEM_PROMPT;
+	}
 
-  private getUserPrompt(messageType: string, context: any): string {
-    // Build user prompt with event context
-    // (Implementation omitted for brevity)
-    return `Generate reminder for: ${context.event_title}`;
-  }
+	private getUserPrompt(messageType: string, context: any): string {
+		// Build user prompt with event context
+		// (Implementation omitted for brevity)
+		return `Generate reminder for: ${context.event_title}`;
+	}
 }
 ```
 
@@ -788,24 +772,24 @@ export class SMSMessageGenerator {
 **Test Cases:**
 
 1. **Short meeting (15 mins):**
-   - Input: "Team Standup" in 15 mins, no description
-   - Expected: ~30 chars, clear and direct
+    - Input: "Team Standup" in 15 mins, no description
+    - Expected: ~30 chars, clear and direct
 
 2. **Meeting with details:**
-   - Input: "Project Review" in 30 mins, description: "Discuss Q4 roadmap and budget allocation"
-   - Expected: Include key detail from description
+    - Input: "Project Review" in 30 mins, description: "Discuss Q4 roadmap and budget allocation"
+    - Expected: Include key detail from description
 
 3. **Deadline:**
-   - Input: "Submit quarterly report" in 2 hours
-   - Expected: Create urgency without stress
+    - Input: "Submit quarterly report" in 2 hours
+    - Expected: Create urgency without stress
 
 4. **All-day event:**
-   - Input: "Company offsite" today
-   - Expected: Mention it's today, include location if available
+    - Input: "Company offsite" today
+    - Expected: Mention it's today, include location if available
 
 5. **Meeting with attendees:**
-   - Input: "1:1 with Sarah" in 15 mins, attendees: ["Sarah Johnson"]
-   - Expected: Include attendee name
+    - Input: "1:1 with Sarah" in 15 mins, attendees: ["Sarah Johnson"]
+    - Expected: Include attendee name
 
 **LLM Testing:**
 
@@ -827,8 +811,8 @@ Add new service call after successful event sync:
 ```typescript
 // After line 47 (after syncCalendarChanges completes)
 if (processedCount > 0) {
-  // NEW: Check for scheduled SMS that need updating
-  await handleScheduledSMSUpdates(userId, calendarId);
+	// NEW: Check for scheduled SMS that need updating
+	await handleScheduledSMSUpdates(userId, calendarId);
 }
 ```
 
@@ -837,222 +821,197 @@ if (processedCount > 0) {
 **File**: `/apps/web/src/lib/services/scheduledSmsUpdate.service.ts`
 
 ```typescript
-import { createServiceClient } from "@buildos/supabase-client";
+import { createServiceClient } from '@buildos/supabase-client';
 
 export class ScheduledSMSUpdateService {
-  private supabase = createServiceClient();
+	private supabase = createServiceClient();
 
-  /**
-   * Check recently synced calendar events and update scheduled SMS
-   */
-  async handleScheduledSMSUpdates(
-    userId: string,
-    calendarId: string,
-  ): Promise<void> {
-    try {
-      // Get task_calendar_events that were just updated
-      const { data: recentEvents } = await this.supabase
-        .from("task_calendar_events")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("calendar_id", calendarId)
-        .gte("last_synced_at", new Date(Date.now() - 60000).toISOString()) // Last 1 min
-        .order("last_synced_at", { ascending: false });
+	/**
+	 * Check recently synced calendar events and update scheduled SMS
+	 */
+	async handleScheduledSMSUpdates(userId: string, calendarId: string): Promise<void> {
+		try {
+			// Get task_calendar_events that were just updated
+			const { data: recentEvents } = await this.supabase
+				.from('task_calendar_events')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('calendar_id', calendarId)
+				.gte('last_synced_at', new Date(Date.now() - 60000).toISOString()) // Last 1 min
+				.order('last_synced_at', { ascending: false });
 
-      if (!recentEvents || recentEvents.length === 0) return;
+			if (!recentEvents || recentEvents.length === 0) return;
 
-      for (const event of recentEvents) {
-        await this.updateScheduledSMSForEvent(event);
-      }
-    } catch (error) {
-      console.error("[ScheduledSMSUpdate] Error handling updates:", error);
-      // Don't throw - this is non-critical
-    }
-  }
+			for (const event of recentEvents) {
+				await this.updateScheduledSMSForEvent(event);
+			}
+		} catch (error) {
+			console.error('[ScheduledSMSUpdate] Error handling updates:', error);
+			// Don't throw - this is non-critical
+		}
+	}
 
-  /**
-   * Update or cancel scheduled SMS based on event changes
-   */
-  private async updateScheduledSMSForEvent(event: any): Promise<void> {
-    // Find scheduled SMS for this event
-    const { data: scheduledMessages } = await this.supabase
-      .from("scheduled_sms_messages")
-      .select("*")
-      .eq("calendar_event_id", event.calendar_event_id)
-      .in("status", ["scheduled", "queued"]);
+	/**
+	 * Update or cancel scheduled SMS based on event changes
+	 */
+	private async updateScheduledSMSForEvent(event: any): Promise<void> {
+		// Find scheduled SMS for this event
+		const { data: scheduledMessages } = await this.supabase
+			.from('scheduled_sms_messages')
+			.select('*')
+			.eq('calendar_event_id', event.calendar_event_id)
+			.in('status', ['scheduled', 'queued']);
 
-    if (!scheduledMessages || scheduledMessages.length === 0) return;
+		if (!scheduledMessages || scheduledMessages.length === 0) return;
 
-    // Check sync_source to prevent loop (same as calendar webhook)
-    const SYNC_LOOP_PREVENTION_WINDOW = 5 * 60 * 1000; // 5 minutes
-    if (
-      event.sync_source === "app" &&
-      event.updated_at &&
-      new Date(event.updated_at).getTime() >
-        Date.now() - SYNC_LOOP_PREVENTION_WINDOW
-    ) {
-      console.log("[ScheduledSMSUpdate] Skipping app-initiated change");
-      return;
-    }
+		// Check sync_source to prevent loop (same as calendar webhook)
+		const SYNC_LOOP_PREVENTION_WINDOW = 5 * 60 * 1000; // 5 minutes
+		if (
+			event.sync_source === 'app' &&
+			event.updated_at &&
+			new Date(event.updated_at).getTime() > Date.now() - SYNC_LOOP_PREVENTION_WINDOW
+		) {
+			console.log('[ScheduledSMSUpdate] Skipping app-initiated change');
+			return;
+		}
 
-    for (const message of scheduledMessages) {
-      if (event.sync_status === "deleted") {
-        // Event was deleted - cancel scheduled SMS
-        await this.cancelScheduledSMS(message.id, "event_cancelled");
-      } else if (this.hasEventTimeChanged(message, event)) {
-        // Event was rescheduled - update scheduled_for
-        await this.rescheduleMessage(message, event);
-      } else if (this.hasEventDetailsChanged(message, event)) {
-        // Event details changed - regenerate message
-        await this.regenerateMessage(message, event);
-      }
-    }
-  }
+		for (const message of scheduledMessages) {
+			if (event.sync_status === 'deleted') {
+				// Event was deleted - cancel scheduled SMS
+				await this.cancelScheduledSMS(message.id, 'event_cancelled');
+			} else if (this.hasEventTimeChanged(message, event)) {
+				// Event was rescheduled - update scheduled_for
+				await this.rescheduleMessage(message, event);
+			} else if (this.hasEventDetailsChanged(message, event)) {
+				// Event details changed - regenerate message
+				await this.regenerateMessage(message, event);
+			}
+		}
+	}
 
-  /**
-   * Cancel a scheduled SMS message
-   */
-  private async cancelScheduledSMS(
-    messageId: string,
-    reason: string,
-  ): Promise<void> {
-    console.log(
-      `[ScheduledSMSUpdate] Cancelling message ${messageId}: ${reason}`,
-    );
+	/**
+	 * Cancel a scheduled SMS message
+	 */
+	private async cancelScheduledSMS(messageId: string, reason: string): Promise<void> {
+		console.log(`[ScheduledSMSUpdate] Cancelling message ${messageId}: ${reason}`);
 
-    // Update scheduled_sms_messages
-    await this.supabase
-      .from("scheduled_sms_messages")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        last_error: reason,
-      })
-      .eq("id", messageId);
+		// Update scheduled_sms_messages
+		await this.supabase
+			.from('scheduled_sms_messages')
+			.update({
+				status: 'cancelled',
+				cancelled_at: new Date().toISOString(),
+				last_error: reason
+			})
+			.eq('id', messageId);
 
-    // TODO: Cancel corresponding queue_jobs entry
-    // This requires Railway API call to worker
-    await this.cancelWorkerJob(messageId);
-  }
+		// TODO: Cancel corresponding queue_jobs entry
+		// This requires Railway API call to worker
+		await this.cancelWorkerJob(messageId);
+	}
 
-  /**
-   * Reschedule message for new event time
-   */
-  private async rescheduleMessage(message: any, event: any): Promise<void> {
-    console.log(
-      `[ScheduledSMSUpdate] Rescheduling message ${message.id} for new event time`,
-    );
+	/**
+	 * Reschedule message for new event time
+	 */
+	private async rescheduleMessage(message: any, event: any): Promise<void> {
+		console.log(`[ScheduledSMSUpdate] Rescheduling message ${message.id} for new event time`);
 
-    // Calculate new send time (e.g., 15 mins before event)
-    const leadTimeMinutes = 15; // TODO: Get from user preferences
-    const newSendTime = new Date(
-      new Date(event.event_start).getTime() - leadTimeMinutes * 60000,
-    );
+		// Calculate new send time (e.g., 15 mins before event)
+		const leadTimeMinutes = 15; // TODO: Get from user preferences
+		const newSendTime = new Date(
+			new Date(event.event_start).getTime() - leadTimeMinutes * 60000
+		);
 
-    // Update scheduled_sms_messages
-    await this.supabase
-      .from("scheduled_sms_messages")
-      .update({
-        scheduled_for: newSendTime.toISOString(),
-        event_start: event.event_start,
-        event_end: event.event_end,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", message.id);
+		// Update scheduled_sms_messages
+		await this.supabase
+			.from('scheduled_sms_messages')
+			.update({
+				scheduled_for: newSendTime.toISOString(),
+				event_start: event.event_start,
+				event_end: event.event_end,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', message.id);
 
-    // Update queue_jobs scheduled_for via Railway API
-    await this.updateWorkerJobSchedule(message.id, newSendTime);
+		// Update queue_jobs scheduled_for via Railway API
+		await this.updateWorkerJobSchedule(message.id, newSendTime);
 
-    // Optionally: Regenerate message with new time
-    // await this.regenerateMessage(message, event);
-  }
+		// Optionally: Regenerate message with new time
+		// await this.regenerateMessage(message, event);
+	}
 
-  /**
-   * Regenerate message content based on updated event details
-   */
-  private async regenerateMessage(message: any, event: any): Promise<void> {
-    console.log(
-      `[ScheduledSMSUpdate] Regenerating message ${message.id} for updated event`,
-    );
+	/**
+	 * Regenerate message content based on updated event details
+	 */
+	private async regenerateMessage(message: any, event: any): Promise<void> {
+		console.log(`[ScheduledSMSUpdate] Regenerating message ${message.id} for updated event`);
 
-    // Call Railway worker API to regenerate message
-    const workerUrl =
-      import.meta.env.VITE_RAILWAY_WORKER_URL || "http://localhost:3001";
+		// Call Railway worker API to regenerate message
+		const workerUrl = import.meta.env.VITE_RAILWAY_WORKER_URL || 'http://localhost:3001';
 
-    try {
-      const response = await fetch(
-        `${workerUrl}/sms/scheduled/${message.id}/regenerate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: event.calendar_event_id,
-            eventTitle: event.event_title,
-            eventStart: event.event_start,
-            eventEnd: event.event_end,
-            eventDetails: event.event_details, // JSONB
-          }),
-        },
-      );
+		try {
+			const response = await fetch(`${workerUrl}/sms/scheduled/${message.id}/regenerate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					eventId: event.calendar_event_id,
+					eventTitle: event.event_title,
+					eventStart: event.event_start,
+					eventEnd: event.event_end,
+					eventDetails: event.event_details // JSONB
+				})
+			});
 
-      if (!response.ok) {
-        throw new Error(`Worker API returned ${response.status}`);
-      }
+			if (!response.ok) {
+				throw new Error(`Worker API returned ${response.status}`);
+			}
 
-      console.log("[ScheduledSMSUpdate] Message regenerated successfully");
-    } catch (error) {
-      console.error(
-        "[ScheduledSMSUpdate] Failed to regenerate message:",
-        error,
-      );
-      // Non-critical - old message will still send
-    }
-  }
+			console.log('[ScheduledSMSUpdate] Message regenerated successfully');
+		} catch (error) {
+			console.error('[ScheduledSMSUpdate] Failed to regenerate message:', error);
+			// Non-critical - old message will still send
+		}
+	}
 
-  /**
-   * Check if event time changed significantly (>5 mins difference)
-   */
-  private hasEventTimeChanged(message: any, event: any): boolean {
-    if (!message.event_start || !event.event_start) return false;
+	/**
+	 * Check if event time changed significantly (>5 mins difference)
+	 */
+	private hasEventTimeChanged(message: any, event: any): boolean {
+		if (!message.event_start || !event.event_start) return false;
 
-    const oldStart = new Date(message.event_start).getTime();
-    const newStart = new Date(event.event_start).getTime();
-    const diffMinutes = Math.abs((newStart - oldStart) / 60000);
+		const oldStart = new Date(message.event_start).getTime();
+		const newStart = new Date(event.event_start).getTime();
+		const diffMinutes = Math.abs((newStart - oldStart) / 60000);
 
-    return diffMinutes > 5; // Only reschedule if >5 min difference
-  }
+		return diffMinutes > 5; // Only reschedule if >5 min difference
+	}
 
-  /**
-   * Check if event details changed (title, description)
-   */
-  private hasEventDetailsChanged(message: any, event: any): boolean {
-    return message.event_title !== event.event_title;
-    // Could also check event_details JSONB for description changes
-  }
+	/**
+	 * Check if event details changed (title, description)
+	 */
+	private hasEventDetailsChanged(message: any, event: any): boolean {
+		return message.event_title !== event.event_title;
+		// Could also check event_details JSONB for description changes
+	}
 
-  /**
-   * Cancel job in worker queue via Railway API
-   */
-  private async cancelWorkerJob(messageId: string): Promise<void> {
-    // TODO: Implement Railway API call
-    // For now, just log
-    console.log(
-      `[ScheduledSMSUpdate] TODO: Cancel worker job for message ${messageId}`,
-    );
-  }
+	/**
+	 * Cancel job in worker queue via Railway API
+	 */
+	private async cancelWorkerJob(messageId: string): Promise<void> {
+		// TODO: Implement Railway API call
+		// For now, just log
+		console.log(`[ScheduledSMSUpdate] TODO: Cancel worker job for message ${messageId}`);
+	}
 
-  /**
-   * Update job schedule in worker queue via Railway API
-   */
-  private async updateWorkerJobSchedule(
-    messageId: string,
-    newTime: Date,
-  ): Promise<void> {
-    // TODO: Implement Railway API call
-    console.log(
-      `[ScheduledSMSUpdate] TODO: Update worker job schedule for message ${messageId}`,
-    );
-  }
+	/**
+	 * Update job schedule in worker queue via Railway API
+	 */
+	private async updateWorkerJobSchedule(messageId: string, newTime: Date): Promise<void> {
+		// TODO: Implement Railway API call
+		console.log(
+			`[ScheduledSMSUpdate] TODO: Update worker job schedule for message ${messageId}`
+		);
+	}
 }
 ```
 
@@ -1067,133 +1026,129 @@ Add new endpoints:
  * POST /sms/scheduled/:id/regenerate
  * Regenerate message content for a scheduled SMS
  */
-app.post("/sms/scheduled/:id/regenerate", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { eventId, eventTitle, eventStart, eventEnd, eventDetails } =
-      req.body;
+app.post('/sms/scheduled/:id/regenerate', async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { eventId, eventTitle, eventStart, eventEnd, eventDetails } = req.body;
 
-    // Fetch scheduled message
-    const { data: message } = await supabase
-      .from("scheduled_sms_messages")
-      .select("*")
-      .eq("id", id)
-      .single();
+		// Fetch scheduled message
+		const { data: message } = await supabase
+			.from('scheduled_sms_messages')
+			.select('*')
+			.eq('id', id)
+			.single();
 
-    if (!message) {
-      return res.status(404).json({ error: "Scheduled message not found" });
-    }
+		if (!message) {
+			return res.status(404).json({ error: 'Scheduled message not found' });
+		}
 
-    // Get user preferences for lead time
-    const { data: prefs } = await supabase
-      .from("user_sms_preferences")
-      .select("reminder_lead_time_minutes, timezone")
-      .eq("user_id", message.user_id)
-      .single();
+		// Get user preferences for lead time
+		const { data: prefs } = await supabase
+			.from('user_sms_preferences')
+			.select('reminder_lead_time_minutes, timezone')
+			.eq('user_id', message.user_id)
+			.single();
 
-    const leadTime = prefs?.reminder_lead_time_minutes || 15;
+		const leadTime = prefs?.reminder_lead_time_minutes || 15;
 
-    // Build event context
-    const eventContext: EventContext = {
-      eventId,
-      title: eventTitle,
-      startTime: new Date(eventStart),
-      endTime: new Date(eventEnd),
-      description: eventDetails?.description,
-      location: eventDetails?.location,
-      attendees: eventDetails?.attendees,
-      isAllDay: eventDetails?.isAllDay || false,
-      userTimezone: prefs?.timezone || "UTC",
-    };
+		// Build event context
+		const eventContext: EventContext = {
+			eventId,
+			title: eventTitle,
+			startTime: new Date(eventStart),
+			endTime: new Date(eventEnd),
+			description: eventDetails?.description,
+			location: eventDetails?.location,
+			attendees: eventDetails?.attendees,
+			isAllDay: eventDetails?.isAllDay || false,
+			userTimezone: prefs?.timezone || 'UTC'
+		};
 
-    // Generate new message
-    const generator = new SMSMessageGenerator();
-    const generated = await generator.generateEventReminder(
-      eventContext,
-      leadTime,
-    );
+		// Generate new message
+		const generator = new SMSMessageGenerator();
+		const generated = await generator.generateEventReminder(eventContext, leadTime);
 
-    // Update scheduled_sms_messages
-    await supabase
-      .from("scheduled_sms_messages")
-      .update({
-        message_content: generated.content,
-        generated_via: generated.generatedVia,
-        llm_model: generated.model,
-        generation_cost_usd: generated.costUsd,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+		// Update scheduled_sms_messages
+		await supabase
+			.from('scheduled_sms_messages')
+			.update({
+				message_content: generated.content,
+				generated_via: generated.generatedVia,
+				llm_model: generated.model,
+				generation_cost_usd: generated.costUsd,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', id);
 
-    res.json({
-      success: true,
-      messageId: id,
-      newContent: generated.content,
-    });
-  } catch (error: any) {
-    console.error("[SMS Regenerate] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
+		res.json({
+			success: true,
+			messageId: id,
+			newContent: generated.content
+		});
+	} catch (error: any) {
+		console.error('[SMS Regenerate] Error:', error);
+		res.status(500).json({ error: error.message });
+	}
 });
 
 /**
  * DELETE /sms/scheduled/:id
  * Cancel a scheduled SMS message
  */
-app.delete("/sms/scheduled/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+app.delete('/sms/scheduled/:id', async (req, res) => {
+	try {
+		const { id } = req.params;
 
-    // Update status to cancelled
-    const { error } = await supabase
-      .from("scheduled_sms_messages")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+		// Update status to cancelled
+		const { error } = await supabase
+			.from('scheduled_sms_messages')
+			.update({
+				status: 'cancelled',
+				cancelled_at: new Date().toISOString()
+			})
+			.eq('id', id);
 
-    if (error) throw error;
+		if (error) throw error;
 
-    // TODO: Also cancel corresponding queue_jobs entry
-    // This prevents the job from running when its scheduled_for time arrives
+		// TODO: Also cancel corresponding queue_jobs entry
+		// This prevents the job from running when its scheduled_for time arrives
 
-    res.json({ success: true, messageId: id });
-  } catch (error: any) {
-    console.error("[SMS Cancel] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
+		res.json({ success: true, messageId: id });
+	} catch (error: any) {
+		console.error('[SMS Cancel] Error:', error);
+		res.status(500).json({ error: error.message });
+	}
 });
 
 /**
  * PATCH /sms/scheduled/:id/schedule
  * Update the scheduled send time for a message
  */
-app.patch("/sms/scheduled/:id/schedule", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { scheduledFor } = req.body;
+app.patch('/sms/scheduled/:id/schedule', async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { scheduledFor } = req.body;
 
-    if (!scheduledFor) {
-      return res.status(400).json({ error: "scheduledFor is required" });
-    }
+		if (!scheduledFor) {
+			return res.status(400).json({ error: 'scheduledFor is required' });
+		}
 
-    // Update scheduled_sms_messages
-    await supabase
-      .from("scheduled_sms_messages")
-      .update({
-        scheduled_for: new Date(scheduledFor).toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+		// Update scheduled_sms_messages
+		await supabase
+			.from('scheduled_sms_messages')
+			.update({
+				scheduled_for: new Date(scheduledFor).toISOString(),
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', id);
 
-    // TODO: Also update corresponding queue_jobs.scheduled_for
+		// TODO: Also update corresponding queue_jobs.scheduled_for
 
-    res.json({ success: true, messageId: id, newScheduledFor: scheduledFor });
-  } catch (error: any) {
-    console.error("[SMS Reschedule] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
+		res.json({ success: true, messageId: id, newScheduledFor: scheduledFor });
+	} catch (error: any) {
+		console.error('[SMS Reschedule] Error:', error);
+		res.status(500).json({ error: error.message });
+	}
 });
 ```
 
@@ -1231,78 +1186,78 @@ Based on existing architecture, use these patterns:
 // After creating scheduled messages, notify user
 const channel = supabase.channel(`user:${userId}`);
 await channel.send({
-  type: "broadcast",
-  event: "sms_scheduled",
-  payload: {
-    userId,
-    count: scheduledMessages.length,
-    date: briefDate,
-    messages: scheduledMessages.map((m) => ({
-      id: m.id,
-      eventTitle: m.event_title,
-      scheduledFor: m.scheduled_for,
-    })),
-  },
+	type: 'broadcast',
+	event: 'sms_scheduled',
+	payload: {
+		userId,
+		count: scheduledMessages.length,
+		date: briefDate,
+		messages: scheduledMessages.map((m) => ({
+			id: m.id,
+			eventTitle: m.event_title,
+			scheduledFor: m.scheduled_for
+		}))
+	}
 });
 ```
 
 **File**: `/apps/web/src/lib/services/realtimeSms.service.ts` (new)
 
 ```typescript
-import { createBrowserClient } from "@buildos/supabase-client";
-import { writable } from "svelte/store";
+import { createBrowserClient } from '@buildos/supabase-client';
+import { writable } from 'svelte/store';
 
 export interface ScheduledSMSEvent {
-  userId: string;
-  count: number;
-  date: string;
-  messages: Array<{
-    id: string;
-    eventTitle: string;
-    scheduledFor: string;
-  }>;
+	userId: string;
+	count: number;
+	date: string;
+	messages: Array<{
+		id: string;
+		eventTitle: string;
+		scheduledFor: string;
+	}>;
 }
 
 class RealtimeSMSService {
-  private supabase = createBrowserClient();
-  private channel: any = null;
+	private supabase = createBrowserClient();
+	private channel: any = null;
 
-  // Store for UI updates
-  public scheduledSMS = writable<ScheduledSMSEvent | null>(null);
+	// Store for UI updates
+	public scheduledSMS = writable<ScheduledSMSEvent | null>(null);
 
-  subscribe(userId: string) {
-    // Unsubscribe from existing channel
-    if (this.channel) {
-      this.channel.unsubscribe();
-    }
+	subscribe(userId: string) {
+		// Unsubscribe from existing channel
+		if (this.channel) {
+			this.channel.unsubscribe();
+		}
 
-    // Subscribe to user-specific channel
-    this.channel = this.supabase.channel(`user:${userId}`);
+		// Subscribe to user-specific channel
+		this.channel = this.supabase.channel(`user:${userId}`);
 
-    this.channel
-      .on("broadcast", { event: "sms_scheduled" }, (payload: any) => {
-        console.log("[RealtimeSMS] SMS scheduled:", payload);
-        this.scheduledSMS.set(payload.payload);
-      })
-      .on("broadcast", { event: "sms_sent" }, (payload: any) => {
-        console.log("[RealtimeSMS] SMS sent:", payload);
-        // Update UI
-      })
-      .on("broadcast", { event: "sms_failed" }, (payload: any) => {
-        console.error("[RealtimeSMS] SMS failed:", payload);
-        // Show error to user
-      })
-      .subscribe();
+		this.channel
+			.on('broadcast', { event: 'sms_scheduled' }, (payload: any) => {
+				console.log('[RealtimeSMS] SMS scheduled:', payload);
+				this.scheduledSMS.set(payload.payload);
+			})
+			.on('broadcast', { event: 'sms_sent' }, (payload: any) => {
+				console.log('[RealtimeSMS] SMS sent:', payload);
+				// Update UI
+			})
+			.on('broadcast', { event: 'sms_failed' }, (payload: any) => {
+				console.error('[RealtimeSMS] SMS failed:', payload);
+				// Show error to user
+			})
+			.subscribe();
 
-    return this;
-  }
+		return this;
+	}
 
-  unsubscribe() {
-    if (this.channel) {
-      this.channel.unsubscribe();
-      this.channel = null;
-    }
-  }
+	unsubscribe() {
+		if (this.channel) {
+			this.channel.unsubscribe();
+			this.channel = null;
+		}
+	}
 }
 
 export const realtimeSMSService = new RealtimeSMSService();
@@ -1325,14 +1280,14 @@ VITE_RAILWAY_WORKER_URL=https://worker.railway.app
 
 ```typescript
 app.use(
-  cors({
-    origin: [
-      "https://build-os.com",
-      "https://www.build-os.com",
-      /localhost:\d+$/, // Any localhost port for dev
-    ],
-    credentials: true,
-  }),
+	cors({
+		origin: [
+			'https://build-os.com',
+			'https://www.build-os.com',
+			/localhost:\d+$/ // Any localhost port for dev
+		],
+		credentials: true
+	})
 );
 ```
 
@@ -1345,71 +1300,71 @@ app.use(
 **Test File**: `/apps/worker/tests/smsMessageGenerator.test.ts`
 
 ```typescript
-import { describe, it, expect } from "vitest";
-import { SMSMessageGenerator } from "../src/lib/services/smsMessageGenerator";
+import { describe, it, expect } from 'vitest';
+import { SMSMessageGenerator } from '../src/lib/services/smsMessageGenerator';
 
-describe("SMSMessageGenerator", () => {
-  const generator = new SMSMessageGenerator();
+describe('SMSMessageGenerator', () => {
+	const generator = new SMSMessageGenerator();
 
-  describe("generateEventReminder", () => {
-    it("generates message under 160 characters", async () => {
-      const event = {
-        eventId: "test-123",
-        title: "Team Standup",
-        startTime: new Date(Date.now() + 15 * 60000), // 15 mins from now
-        endTime: new Date(Date.now() + 30 * 60000),
-        isAllDay: false,
-        userTimezone: "America/Los_Angeles",
-      };
+	describe('generateEventReminder', () => {
+		it('generates message under 160 characters', async () => {
+			const event = {
+				eventId: 'test-123',
+				title: 'Team Standup',
+				startTime: new Date(Date.now() + 15 * 60000), // 15 mins from now
+				endTime: new Date(Date.now() + 30 * 60000),
+				isAllDay: false,
+				userTimezone: 'America/Los_Angeles'
+			};
 
-      const result = await generator.generateEventReminder(event, 15);
+			const result = await generator.generateEventReminder(event, 15);
 
-      expect(result.content.length).toBeLessThanOrEqual(160);
-      expect(result.content).toContain("Team Standup");
-    });
+			expect(result.content.length).toBeLessThanOrEqual(160);
+			expect(result.content).toContain('Team Standup');
+		});
 
-    it("includes event details when available", async () => {
-      const event = {
-        eventId: "test-456",
-        title: "Project Review",
-        startTime: new Date(Date.now() + 30 * 60000),
-        endTime: new Date(Date.now() + 60 * 60000),
-        description: "Discuss Q4 roadmap and budget allocation",
-        location: "Conference Room A",
-        isAllDay: false,
-        userTimezone: "UTC",
-      };
+		it('includes event details when available', async () => {
+			const event = {
+				eventId: 'test-456',
+				title: 'Project Review',
+				startTime: new Date(Date.now() + 30 * 60000),
+				endTime: new Date(Date.now() + 60 * 60000),
+				description: 'Discuss Q4 roadmap and budget allocation',
+				location: 'Conference Room A',
+				isAllDay: false,
+				userTimezone: 'UTC'
+			};
 
-      const result = await generator.generateEventReminder(event, 30);
+			const result = await generator.generateEventReminder(event, 30);
 
-      expect(result.content).toContain("Project Review");
-      // Should include some detail (either location or description snippet)
-      expect(
-        result.content.includes("Q4") || result.content.includes("Conference"),
-      ).toBe(true);
-    });
+			expect(result.content).toContain('Project Review');
+			// Should include some detail (either location or description snippet)
+			expect(result.content.includes('Q4') || result.content.includes('Conference')).toBe(
+				true
+			);
+		});
 
-    it("falls back to template when LLM fails", async () => {
-      // Mock LLM service to throw error
-      // ... test implementation
-    });
+		it('falls back to template when LLM fails', async () => {
+			// Mock LLM service to throw error
+			// ... test implementation
+		});
 
-    it("handles all-day events differently", async () => {
-      const event = {
-        eventId: "test-789",
-        title: "Company Offsite",
-        startTime: new Date(),
-        endTime: new Date(),
-        isAllDay: true,
-        userTimezone: "America/New_York",
-      };
+		it('handles all-day events differently', async () => {
+			const event = {
+				eventId: 'test-789',
+				title: 'Company Offsite',
+				startTime: new Date(),
+				endTime: new Date(),
+				isAllDay: true,
+				userTimezone: 'America/New_York'
+			};
 
-      const result = await generator.generateEventReminder(event, 0);
+			const result = await generator.generateEventReminder(event, 0);
 
-      expect(result.content).toContain("Today");
-      expect(result.content).toContain("Company Offsite");
-    });
-  });
+			expect(result.content).toContain('Today');
+			expect(result.content).toContain('Company Offsite');
+		});
+	});
 });
 ```
 
@@ -1418,104 +1373,96 @@ describe("SMSMessageGenerator", () => {
 **Test File**: `/apps/worker/tests/dailySmsWorker.integration.test.ts`
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createServiceClient } from "@buildos/supabase-client";
-import { processDailySMS } from "../src/workers/dailySmsWorker";
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createServiceClient } from '@buildos/supabase-client';
+import { processDailySMS } from '../src/workers/dailySmsWorker';
 
-describe("Daily SMS Worker Integration", () => {
-  let supabase: any;
-  let testUserId: string;
+describe('Daily SMS Worker Integration', () => {
+	let supabase: any;
+	let testUserId: string;
 
-  beforeAll(async () => {
-    supabase = createServiceClient();
+	beforeAll(async () => {
+		supabase = createServiceClient();
 
-    // Create test user with SMS preferences
-    const { data: user } = await supabase.auth.admin.createUser({
-      email: "test-sms@example.com",
-      email_confirm: true,
-    });
-    testUserId = user.user.id;
+		// Create test user with SMS preferences
+		const { data: user } = await supabase.auth.admin.createUser({
+			email: 'test-sms@example.com',
+			email_confirm: true
+		});
+		testUserId = user.user.id;
 
-    // Set up SMS preferences
-    await supabase.from("user_sms_preferences").insert({
-      user_id: testUserId,
-      phone_number: "+15555551234",
-      phone_verified: true,
-      event_reminders_enabled: true,
-      reminder_lead_time_minutes: 15,
-      timezone: "America/Los_Angeles",
-    });
-  });
+		// Set up SMS preferences
+		await supabase.from('user_sms_preferences').insert({
+			user_id: testUserId,
+			phone_number: '+15555551234',
+			phone_verified: true,
+			event_reminders_enabled: true,
+			reminder_lead_time_minutes: 15,
+			timezone: 'America/Los_Angeles'
+		});
+	});
 
-  afterAll(async () => {
-    // Clean up test data
-    await supabase
-      .from("scheduled_sms_messages")
-      .delete()
-      .eq("user_id", testUserId);
-    await supabase
-      .from("user_sms_preferences")
-      .delete()
-      .eq("user_id", testUserId);
-    await supabase.auth.admin.deleteUser(testUserId);
-  });
+	afterAll(async () => {
+		// Clean up test data
+		await supabase.from('scheduled_sms_messages').delete().eq('user_id', testUserId);
+		await supabase.from('user_sms_preferences').delete().eq('user_id', testUserId);
+		await supabase.auth.admin.deleteUser(testUserId);
+	});
 
-  it("schedules SMS for upcoming calendar events", async () => {
-    // Create mock calendar event
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
+	it('schedules SMS for upcoming calendar events', async () => {
+		// Create mock calendar event
+		const tomorrow = new Date();
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		tomorrow.setHours(10, 0, 0, 0);
 
-    await supabase.from("task_calendar_events").insert({
-      user_id: testUserId,
-      calendar_event_id: "test-event-123",
-      event_title: "Test Meeting",
-      event_start: tomorrow.toISOString(),
-      event_end: new Date(tomorrow.getTime() + 60 * 60000).toISOString(),
-      sync_status: "synced",
-    });
+		await supabase.from('task_calendar_events').insert({
+			user_id: testUserId,
+			calendar_event_id: 'test-event-123',
+			event_title: 'Test Meeting',
+			event_start: tomorrow.toISOString(),
+			event_end: new Date(tomorrow.getTime() + 60 * 60000).toISOString(),
+			sync_status: 'synced'
+		});
 
-    // Run worker
-    const job = {
-      id: "test-job-123",
-      data: {
-        userId: testUserId,
-        date: tomorrow.toISOString().split("T")[0],
-        timezone: "America/Los_Angeles",
-      },
-      updateProgress: async () => {},
-    };
+		// Run worker
+		const job = {
+			id: 'test-job-123',
+			data: {
+				userId: testUserId,
+				date: tomorrow.toISOString().split('T')[0],
+				timezone: 'America/Los_Angeles'
+			},
+			updateProgress: async () => {}
+		};
 
-    await processDailySMS(job);
+		await processDailySMS(job);
 
-    // Verify scheduled message was created
-    const { data: messages } = await supabase
-      .from("scheduled_sms_messages")
-      .select("*")
-      .eq("user_id", testUserId)
-      .eq("calendar_event_id", "test-event-123");
+		// Verify scheduled message was created
+		const { data: messages } = await supabase
+			.from('scheduled_sms_messages')
+			.select('*')
+			.eq('user_id', testUserId)
+			.eq('calendar_event_id', 'test-event-123');
 
-    expect(messages).toHaveLength(1);
-    expect(messages[0].message_content).toContain("Test Meeting");
-    expect(messages[0].status).toBe("scheduled");
+		expect(messages).toHaveLength(1);
+		expect(messages[0].message_content).toContain('Test Meeting');
+		expect(messages[0].status).toBe('scheduled');
 
-    // Verify send time is 15 mins before event
-    const sendTime = new Date(messages[0].scheduled_for);
-    const expectedSendTime = new Date(tomorrow.getTime() - 15 * 60000);
-    expect(
-      Math.abs(sendTime.getTime() - expectedSendTime.getTime()),
-    ).toBeLessThan(60000); // Within 1 min
-  });
+		// Verify send time is 15 mins before event
+		const sendTime = new Date(messages[0].scheduled_for);
+		const expectedSendTime = new Date(tomorrow.getTime() - 15 * 60000);
+		expect(Math.abs(sendTime.getTime() - expectedSendTime.getTime())).toBeLessThan(60000); // Within 1 min
+	});
 
-  it("respects quiet hours", async () => {
-    // Test implementation for quiet hours logic
-    // ...
-  });
+	it('respects quiet hours', async () => {
+		// Test implementation for quiet hours logic
+		// ...
+	});
 
-  it("respects daily SMS limit", async () => {
-    // Test implementation for daily limit logic
-    // ...
-  });
+	it('respects daily SMS limit', async () => {
+		// Test implementation for daily limit logic
+		// ...
+	});
 });
 ```
 

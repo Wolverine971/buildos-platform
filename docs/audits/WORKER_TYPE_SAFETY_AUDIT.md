@@ -15,7 +15,7 @@ This audit identified **15+ significant type safety issues** in the `/apps/worke
 
 ```typescript
 // Current (UNSAFE):
-let timezone = (user as any)?.timezone || job.data.timezone || "UTC";
+let timezone = (user as any)?.timezone || job.data.timezone || 'UTC';
 
 // Issue:
 // - `timezone` field exists in `users` table (schema line 1293)
@@ -117,10 +117,10 @@ return sum + (metadata?.todays_task_count || 0);
 
 ```typescript
 const { data: user } = await supabase
-  .from("users")
-  .select("timezone") // Only selecting timezone field
-  .eq("user_id", userId)
-  .single();
+	.from('users')
+	.select('timezone') // Only selecting timezone field
+	.eq('user_id', userId)
+	.single();
 
 // Issue:
 // - `select("timezone")` means other fields are undefined
@@ -186,9 +186,9 @@ const briefId = templateData?.brief_id;
 
 ```typescript
 // Current:
-vars.user_email = flatPayload.user_email || "unknown";
+vars.user_email = flatPayload.user_email || 'unknown';
 vars.todays_task_count = flatPayload.todays_task_count || 0;
-vars.brief_date = flatPayload.brief_date || "today";
+vars.brief_date = flatPayload.brief_date || 'today';
 
 // Issue:
 // - `flatPayload` is `any` type (line 117)
@@ -261,10 +261,10 @@ if (!smsPrefs?.phone_verified) { ... }
 
 ```typescript
 if (!event.event_start) {
-  continue;
+	continue;
 }
-if (!event.event_start.includes("T")) {
-  // This suggests event_start should be ISO string
+if (!event.event_start.includes('T')) {
+	// This suggests event_start should be ISO string
 }
 
 // Issue:
@@ -281,7 +281,7 @@ if (!event.event_start.includes("T")) {
 ```typescript
 // Local definitions in worker:
 export interface ProjectDailyBrief {
-  metadata: any | null; // Line 77
+	metadata: any | null; // Line 77
 }
 
 // Actual database schema:
@@ -318,32 +318,32 @@ metadata: Json | null; // Line 732 in database.schema.ts
 ### Current Issues with Type Imports
 
 1. **Duplicate Type Definitions**: `/apps/worker/src/lib/supabase.ts` defines local types instead of importing from `@buildos/shared-types`
-   - Should import: `Database`, `NotificationDelivery`, etc.
-   - Currently re-implementing schema manually
+    - Should import: `Database`, `NotificationDelivery`, etc.
+    - Currently re-implementing schema manually
 
 2. **Missing Type Exports from shared-types**:
-   - `Json` type not consistently used
-   - Need stronger `NotificationPayload` type (currently `Record<string, any>`)
+    - `Json` type not consistently used
+    - Need stronger `NotificationPayload` type (currently `Record<string, any>`)
 
 ### Recommended Fixes
 
 ```typescript
 // ❌ BEFORE (Current unsafe pattern):
-let timezone = (user as any)?.timezone || job.data.timezone || "UTC";
+let timezone = (user as any)?.timezone || job.data.timezone || 'UTC';
 const metadata = pb.metadata as any;
 const briefId = templateData?.brief_id;
 
 // ✅ AFTER (Type-safe):
-if (!user) throw new Error("User not found");
+if (!user) throw new Error('User not found');
 const timezone = user.timezone;
 
 // Metadata typing:
 interface ProjectBriefMetadata {
-  todays_task_count?: number;
-  overdue_task_count?: number;
-  upcoming_task_count?: number;
-  next_seven_days_task_count?: number;
-  recently_completed_count?: number;
+	todays_task_count?: number;
+	overdue_task_count?: number;
+	upcoming_task_count?: number;
+	next_seven_days_task_count?: number;
+	recently_completed_count?: number;
 }
 const metadata = pb.metadata as ProjectBriefMetadata | null;
 if (!metadata?.todays_task_count) return 0;

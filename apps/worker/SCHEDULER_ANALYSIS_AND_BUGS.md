@@ -68,7 +68,7 @@ Update email_recipients table (status='sent')
 
 ```typescript
 // @ts-expect-error - generate_brief_email will be added to enum after migration
-queue.process("generate_brief_email", processEmailBrief);
+queue.process('generate_brief_email', processEmailBrief);
 ```
 
 **Impact**: If the database migration `20250930_add_email_brief_job_type_part1.sql` hasn't been run in production, email jobs will **fail to queue** with a database constraint error.
@@ -106,11 +106,11 @@ But the brief's metadata contains important re-engagement info:
 ```typescript
 // From briefGenerator.ts:347-357
 const updatedMetadata = {
-  is_reengagement: isReengagement,
-  days_since_last_login: daysSinceLastLogin,
-  email_subject: isReengagement
-    ? ReengagementBriefPrompt.getSubjectLine(daysSinceLastLogin)
-    : undefined,
+	is_reengagement: isReengagement,
+	days_since_last_login: daysSinceLastLogin,
+	email_subject: isReengagement
+		? ReengagementBriefPrompt.getSubjectLine(daysSinceLastLogin)
+		: undefined
 };
 ```
 
@@ -137,7 +137,7 @@ p_metadata: {
 **Issue**: The system defaults to `USE_WEBHOOK_EMAIL=false` and falls back to direct SMTP, but **never validates** that SMTP is configured.
 
 ```typescript
-this.useWebhook = process.env.USE_WEBHOOK_EMAIL === "true";
+this.useWebhook = process.env.USE_WEBHOOK_EMAIL === 'true';
 // ... falls back to direct SMTP if webhook fails
 ```
 
@@ -177,7 +177,7 @@ constructor(private supabase: SupabaseClient) {
 ```typescript
 const shouldSend = await emailSender.shouldSendEmail(job.data.userId);
 if (shouldSend) {
-  // Create email record
+	// Create email record
 }
 ```
 
@@ -185,13 +185,13 @@ if (shouldSend) {
 
 ```typescript
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("email_daily_brief, is_active")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('email_daily_brief, is_active')
+	.eq('user_id', userId)
+	.single();
 
 if (!preferences?.email_daily_brief || !preferences?.is_active) {
-  // Cancel email
+	// Cancel email
 }
 ```
 
@@ -217,7 +217,7 @@ if (!preferences?.email_daily_brief || !preferences?.is_active) {
 **Issue**: When email is cancelled due to preference change, the email status is updated to `'cancelled'` but the **email_recipients status is not updated**.
 
 ```typescript
-await supabase.from("emails").update({ status: "cancelled" }).eq("id", emailId);
+await supabase.from('emails').update({ status: 'cancelled' }).eq('id', emailId);
 
 // Missing: Update email_recipients status to 'cancelled'
 ```
@@ -231,16 +231,16 @@ await supabase.from("emails").update({ status: "cancelled" }).eq("id", emailId);
 
 ```typescript
 // Update email status
-await supabase.from("emails").update({ status: "cancelled" }).eq("id", emailId);
+await supabase.from('emails').update({ status: 'cancelled' }).eq('id', emailId);
 
 // Update recipient status too
 await supabase
-  .from("email_recipients")
-  .update({
-    status: "cancelled",
-    error_message: "User disabled email before sending",
-  })
-  .eq("email_id", emailId);
+	.from('email_recipients')
+	.update({
+		status: 'cancelled',
+		error_message: 'User disabled email before sending'
+	})
+	.eq('email_id', emailId);
 ```
 
 Note: `'cancelled'` is not in the `EmailRecipientStatus` type constraint. Need to either:
@@ -276,14 +276,12 @@ But then might fall back without clear indication.
 **Recommendation**: Add explicit transport validation and logging:
 
 ```typescript
-console.log("=== EMAIL TRANSPORT CONFIGURATION ===");
+console.log('=== EMAIL TRANSPORT CONFIGURATION ===');
 console.log(`USE_WEBHOOK_EMAIL: ${process.env.USE_WEBHOOK_EMAIL}`);
 console.log(`Webhook URL configured: ${!!process.env.BUILDOS_WEBHOOK_URL}`);
 console.log(`Gmail configured: ${!!getGmailConfig()}`);
-console.log(
-  `Selected transport: ${this.useWebhook ? "WEBHOOK" : "DIRECT SMTP"}`,
-);
-console.log("=====================================");
+console.log(`Selected transport: ${this.useWebhook ? 'WEBHOOK' : 'DIRECT SMTP'}`);
+console.log('=====================================');
 ```
 
 ---
@@ -316,8 +314,8 @@ GMAIL_ALIAS=noreply@build-os.com           # Optional sender alias
 
 ```typescript
 if (!isValidTimezone(timezone)) {
-  console.warn(`Invalid timezone "${timezone}" detected, falling back to UTC`);
-  timezone = "UTC";
+	console.warn(`Invalid timezone "${timezone}" detected, falling back to UTC`);
+	timezone = 'UTC';
 }
 ```
 
@@ -329,19 +327,17 @@ if (!isValidTimezone(timezone)) {
 
 ```typescript
 if (!isValidTimezone(timezone)) {
-  console.error(
-    `Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`,
-  );
+	console.error(`Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`);
 
-  // Optionally: Create error log entry
-  await supabase.from("error_logs").insert({
-    user_id: userId,
-    error_type: "invalid_timezone",
-    error_message: `Invalid timezone: ${timezone}`,
-    operation_type: "schedule_brief",
-  });
+	// Optionally: Create error log entry
+	await supabase.from('error_logs').insert({
+		user_id: userId,
+		error_type: 'invalid_timezone',
+		error_message: `Invalid timezone: ${timezone}`,
+		operation_type: 'schedule_brief'
+	});
 
-  timezone = "UTC";
+	timezone = 'UTC';
 }
 ```
 
@@ -355,13 +351,13 @@ if (!isValidTimezone(timezone)) {
 
 ```typescript
 {
-  user_id: string;
-  timezone: string | null; // ← Can be null, validated at runtime
-  time_of_day: string | null; // ← Format: "HH:MM:SS"
-  frequency: string | null; // ← Options: 'daily', 'weekly', 'custom'
-  day_of_week: number | null; // ← 0 (Sunday) to 6 (Saturday)
-  is_active: boolean | null; // ← Default: true
-  email_daily_brief: boolean | null; // ← Default: false (opt-in)
+	user_id: string;
+	timezone: string | null; // ← Can be null, validated at runtime
+	time_of_day: string | null; // ← Format: "HH:MM:SS"
+	frequency: string | null; // ← Options: 'daily', 'weekly', 'custom'
+	day_of_week: number | null; // ← 0 (Sunday) to 6 (Saturday)
+	is_active: boolean | null; // ← Default: true
+	email_daily_brief: boolean | null; // ← Default: false (opt-in)
 }
 ```
 
@@ -603,23 +599,23 @@ echo $GMAIL_APP_PASSWORD
 
 ```typescript
 // Run this in worker context to test email sending
-import { DailyBriefEmailSender } from "./lib/services/email-sender";
-import { supabase } from "./lib/supabase";
+import { DailyBriefEmailSender } from './lib/services/email-sender';
+import { supabase } from './lib/supabase';
 
 const sender = new DailyBriefEmailSender(supabase);
 
 // Check if user should receive email
-const shouldSend = await sender.shouldSendEmail("YOUR_USER_ID");
-console.log("Should send:", shouldSend);
+const shouldSend = await sender.shouldSendEmail('YOUR_USER_ID');
+console.log('Should send:', shouldSend);
 
 // Send test email
-const result = await sender.sendDailyBriefEmail("YOUR_USER_ID", "2025-10-01", {
-  id: "test-brief-id",
-  summary_content: "# Test Brief\n\nThis is a test.",
-  brief_date: "2025-10-01",
-  llm_analysis: null,
+const result = await sender.sendDailyBriefEmail('YOUR_USER_ID', '2025-10-01', {
+	id: 'test-brief-id',
+	summary_content: '# Test Brief\n\nThis is a test.',
+	brief_date: '2025-10-01',
+	llm_analysis: null
 });
-console.log("Send result:", result);
+console.log('Send result:', result);
 ```
 
 ---

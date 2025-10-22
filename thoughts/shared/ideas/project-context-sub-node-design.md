@@ -61,19 +61,19 @@ sub_contexts table:
 ## Three Access Patterns
 
 1. **Overview Mode** (Fast)
-   - Read `projects.context` directly
-   - See document structure with previews
-   - Perfect for quick scanning
+    - Read `projects.context` directly
+    - See document structure with previews
+    - Perfect for quick scanning
 
 2. **Full Document Mode** (Complete)
-   - Call `get_full_project_context()` function
-   - Reconstructs original document by replacing previews with full content
-   - Used when you need everything
+    - Call `get_full_project_context()` function
+    - Reconstructs original document by replacing previews with full content
+    - Used when you need everything
 
 3. **Focused Mode** (Targeted)
-   - Query specific `sub_contexts` rows
-   - Edit individual sections without loading entire document
-   - Ideal for targeted updates
+    - Query specific `sub_contexts` rows
+    - Edit individual sections without loading entire document
+    - Ideal for targeted updates
 
 ## Key Benefits
 
@@ -136,15 +136,15 @@ JSONB tracking of all sub-nodes:
 
 ```json
 {
-  "total_length": 15000,
-  "has_subnodes": true,
-  "sub_nodes": {
-    "technical-architecture": {
-      "id": "uuid-1234",
-      "content_length": 3400,
-      "tags": ["technical", "architecture"]
-    }
-  }
+	"total_length": 15000,
+	"has_subnodes": true,
+	"sub_nodes": {
+		"technical-architecture": {
+			"id": "uuid-1234",
+			"content_length": 3400,
+			"tags": ["technical", "architecture"]
+		}
+	}
 }
 ```
 

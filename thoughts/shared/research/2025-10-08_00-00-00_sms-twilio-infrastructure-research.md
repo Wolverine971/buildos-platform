@@ -5,10 +5,10 @@ author: Claude Code
 tags: [sms, twilio, infrastructure, notifications, messaging]
 status: complete
 related_docs:
-  - /docs/integrations/twilio/README.md
-  - /docs/guides/sms-setup-guide.md
-  - /docs/api/sms-api-reference.md
-  - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
+    - /docs/integrations/twilio/README.md
+    - /docs/guides/sms-setup-guide.md
+    - /docs/api/sms-api-reference.md
+    - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
 ---
 
 # SMS/Twilio Infrastructure Research
@@ -329,11 +329,11 @@ RETURNS TABLE (
 
 ```typescript
 interface TwilioConfig {
-  accountSid: string;
-  authToken: string;
-  messagingServiceSid: string;
-  verifyServiceSid?: string;
-  statusCallbackUrl?: string;
+	accountSid: string;
+	authToken: string;
+	messagingServiceSid: string;
+	verifyServiceSid?: string;
+	statusCallbackUrl?: string;
 }
 ```
 
@@ -570,56 +570,48 @@ Integrates SMS with the generic notification system.
 1. **Template Caching** (5-minute TTL)
 
 ```typescript
-const templateCache = new Map<
-  string,
-  { template: SMSTemplate | null; timestamp: number }
->();
+const templateCache = new Map<string, { template: SMSTemplate | null; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 ```
 
 2. **Template-based Formatting**
 
 ```typescript
-async function formatSMSMessage(
-  delivery: NotificationDelivery,
-): Promise<string> {
-  const eventType = payload.event_type;
-  const templateKey = templateKeyMap[eventType]; // e.g., "notif_user_signup"
+async function formatSMSMessage(delivery: NotificationDelivery): Promise<string> {
+	const eventType = payload.event_type;
+	const templateKey = templateKeyMap[eventType]; // e.g., "notif_user_signup"
 
-  if (templateKey) {
-    const template = await getTemplate(templateKey);
-    if (template) {
-      const variables = extractTemplateVars(payload, eventType);
-      return renderTemplate(template.message_template, variables);
-    }
-  }
+	if (templateKey) {
+		const template = await getTemplate(templateKey);
+		if (template) {
+			const variables = extractTemplateVars(payload, eventType);
+			return renderTemplate(template.message_template, variables);
+		}
+	}
 
-  // Fallback to hardcoded formatting
-  return fallbackFormat(eventType, payload);
+	// Fallback to hardcoded formatting
+	return fallbackFormat(eventType, payload);
 }
 ```
 
 3. **URL Shortening for Click Tracking**
 
 ```typescript
-async function shortenUrlsInMessage(
-  message: string,
-  deliveryId: string,
-): Promise<string> {
-  const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
-  const urls = message.match(urlRegex) || [];
+async function shortenUrlsInMessage(message: string, deliveryId: string): Promise<string> {
+	const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
+	const urls = message.match(urlRegex) || [];
 
-  for (const url of urls) {
-    const { data: shortCode } = await supabase.rpc("create_tracking_link", {
-      p_delivery_id: deliveryId,
-      p_destination_url: url,
-    });
+	for (const url of urls) {
+		const { data: shortCode } = await supabase.rpc('create_tracking_link', {
+			p_delivery_id: deliveryId,
+			p_destination_url: url
+		});
 
-    const shortUrl = `https://build-os.com/l/${shortCode}`;
-    message = message.replace(url, shortUrl);
-  }
+		const shortUrl = `https://build-os.com/l/${shortCode}`;
+		message = message.replace(url, shortUrl);
+	}
 
-  return message;
+	return message;
 }
 ```
 
@@ -674,10 +666,10 @@ export async function sendSMSNotification(delivery: NotificationDelivery): Promi
 ```typescript
 // Validates Twilio signature
 const isValid = twilio.validateRequest(
-  PRIVATE_TWILIO_AUTH_TOKEN,
-  twilioSignature,
-  webhookUrl,
-  params,
+	PRIVATE_TWILIO_AUTH_TOKEN,
+	twilioSignature,
+	webhookUrl,
+	params
 );
 ```
 
@@ -685,13 +677,13 @@ const isValid = twilio.validateRequest(
 
 ```typescript
 const statusMap: Record<string, string> = {
-  queued: "queued",
-  sending: "sending",
-  sent: "sent",
-  delivered: "delivered",
-  failed: "failed",
-  undelivered: "undelivered",
-  canceled: "cancelled",
+	queued: 'queued',
+	sending: 'sending',
+	sent: 'sent',
+	delivered: 'delivered',
+	failed: 'failed',
+	undelivered: 'undelivered',
+	canceled: 'cancelled'
 };
 ```
 
@@ -704,9 +696,9 @@ const statusMap: Record<string, string> = {
 
 ```typescript
 function categorizeErrorCode(errorCode: string): {
-  category: string;
-  shouldRetry: boolean;
-  severity: "low" | "medium" | "high" | "critical";
+	category: string;
+	shouldRetry: boolean;
+	severity: 'low' | 'medium' | 'high' | 'critical';
 };
 ```
 
@@ -721,23 +713,23 @@ function categorizeErrorCode(errorCode: string): {
 **Enhanced Retry Logic:**
 
 ```typescript
-if (messageStatus === "failed" && shouldRetry) {
-  let baseDelay = 60; // seconds
+if (messageStatus === 'failed' && shouldRetry) {
+	let baseDelay = 60; // seconds
 
-  if (errorCategory === "rate_limit") baseDelay = 300; // 5 min
-  if (errorCategory === "carrier_issue") baseDelay = 180; // 3 min
+	if (errorCategory === 'rate_limit') baseDelay = 300; // 5 min
+	if (errorCategory === 'carrier_issue') baseDelay = 180; // 3 min
 
-  const delay = Math.pow(2, attempt_count) * baseDelay; // Exponential
+	const delay = Math.pow(2, attempt_count) * baseDelay; // Exponential
 
-  // Re-queue job
-  await supabase.rpc("add_queue_job", {
-    p_job_type: "send_sms",
-    p_scheduled_for: new Date(Date.now() + delay * 1000),
-    p_metadata: {
-      retry_attempt: attempt_count + 1,
-      error_category: errorCategory,
-    },
-  });
+	// Re-queue job
+	await supabase.rpc('add_queue_job', {
+		p_job_type: 'send_sms',
+		p_scheduled_for: new Date(Date.now() + delay * 1000),
+		p_metadata: {
+			retry_attempt: attempt_count + 1,
+			error_category: errorCategory
+		}
+	});
 }
 ```
 
@@ -795,7 +787,7 @@ Opts user out of all SMS notifications.
 
 ```json
 {
-  "phoneNumber": "+15551234567"
+	"phoneNumber": "+15551234567"
 }
 ```
 
@@ -803,9 +795,9 @@ Opts user out of all SMS notifications.
 
 ```json
 {
-  "success": true,
-  "verificationSent": true,
-  "verificationSid": "VAxxxxxxxx"
+	"success": true,
+	"verificationSent": true,
+	"verificationSid": "VAxxxxxxxx"
 }
 ```
 
@@ -829,8 +821,8 @@ Opts user out of all SMS notifications.
 
 ```json
 {
-  "phoneNumber": "+15551234567",
-  "code": "123456"
+	"phoneNumber": "+15551234567",
+	"code": "123456"
 }
 ```
 
@@ -838,9 +830,9 @@ Opts user out of all SMS notifications.
 
 ```json
 {
-  "success": true,
-  "verified": true,
-  "message": "Phone number verified successfully"
+	"success": true,
+	"verified": true,
+	"message": "Phone number verified successfully"
 }
 ```
 
@@ -887,23 +879,23 @@ TWILIO_STATUS_CALLBACK_URL=https://build-os.com/api/webhooks/twilio/status
 **Required Steps:**
 
 1. **Create Twilio Account**
-   - Sign up at twilio.com
-   - Get Account SID and Auth Token
+    - Sign up at twilio.com
+    - Get Account SID and Auth Token
 
 2. **Create Messaging Service**
-   - Navigate to Messaging > Services
-   - Add phone numbers to sender pool
-   - Configure opt-out keywords (STOP, UNSUBSCRIBE)
-   - Set status callback URL
+    - Navigate to Messaging > Services
+    - Add phone numbers to sender pool
+    - Configure opt-out keywords (STOP, UNSUBSCRIBE)
+    - Set status callback URL
 
 3. **Create Verify Service** (Optional)
-   - Navigate to Verify > Services
-   - Configure SMS channel
-   - 6-digit codes, 10-minute validity
+    - Navigate to Verify > Services
+    - Configure SMS channel
+    - 6-digit codes, 10-minute validity
 
 4. **Configure Webhooks**
-   - Set status callback: `https://build-os.com/api/webhooks/twilio/status`
-   - Enable signature validation
+    - Set status callback: `https://build-os.com/api/webhooks/twilio/status`
+    - Enable signature validation
 
 ---
 
@@ -923,7 +915,7 @@ daily_count_reset_at TIMESTAMPTZ DEFAULT NOW()
 
 ```typescript
 if (prefs.daily_sms_count >= prefs.daily_sms_limit) {
-  return false; // Block sending
+	return false; // Block sending
 }
 ```
 
@@ -941,13 +933,13 @@ timezone TEXT DEFAULT 'America/Los_Angeles'
 
 ```typescript
 const isInQuietHours = this.isTimeInRange(
-  currentTime,
-  prefs.quiet_hours_start,
-  prefs.quiet_hours_end,
+	currentTime,
+	prefs.quiet_hours_start,
+	prefs.quiet_hours_end
 );
 
-if (isInQuietHours && preferenceType !== "urgent_alerts") {
-  return false; // Block non-urgent messages during quiet hours
+if (isInQuietHours && preferenceType !== 'urgent_alerts') {
+	return false; // Block non-urgent messages during quiet hours
 }
 ```
 
@@ -976,14 +968,14 @@ if (isInQuietHours && preferenceType !== "urgent_alerts") {
 **Test Coverage:**
 
 1. **SMS Service Tests:**
-   - Send task reminder SMS
-   - Block sending if user opted out
-   - Format relative time correctly
-   - Calculate priority correctly
+    - Send task reminder SMS
+    - Block sending if user opted out
+    - Format relative time correctly
+    - Calculate priority correctly
 
 2. **Twilio Client Tests:**
-   - Phone number formatting (various formats)
-   - E.164 normalization
+    - Phone number formatting (various formats)
+    - E.164 normalization
 
 **Running Tests:**
 
@@ -996,13 +988,13 @@ pnpm test
 
 ```typescript
 // Magic Twilio test numbers
-"+15005550006"; // Valid number (success)
-"+15005550001"; // Invalid number (error)
-"+15005550009"; // SMS not capable (error)
+'+15005550006'; // Valid number (success)
+'+15005550001'; // Invalid number (error)
+'+15005550009'; // SMS not capable (error)
 
 // Verification codes
-"123456"; // Always succeeds in test mode
-"000000"; // Always fails in test mode
+'123456'; // Always succeeds in test mode
+'000000'; // Always fails in test mode
 ```
 
 ### Manual Testing
@@ -1025,18 +1017,18 @@ Provides step-by-step instructions for testing:
 ```typescript
 // 1. User creates task with due date
 const task = {
-  name: "Complete report",
-  due_date: new Date("2024-12-25T14:00:00"),
-  user_id: "user-uuid",
+	name: 'Complete report',
+	due_date: new Date('2024-12-25T14:00:00'),
+	user_id: 'user-uuid'
 };
 
 // 2. System sends reminder (automated)
 await smsService.sendTaskReminder({
-  userId: task.user_id,
-  phoneNumber: userPrefs.phone_number,
-  taskName: task.name,
-  dueDate: task.due_date,
-  projectContext: project.name,
+	userId: task.user_id,
+	phoneNumber: userPrefs.phone_number,
+	taskName: task.name,
+	dueDate: task.due_date,
+	projectContext: project.name
 });
 
 // 3. Template rendered: "BuildOS: Complete report is due in 2 hours. Project: Website Redesign"
@@ -1054,12 +1046,12 @@ const brief = await generateDailyBrief(userId);
 
 // 2. Check user preferences
 if (userPrefs.daily_brief_sms) {
-  await smsService.sendDailyBriefNotification({
-    userId,
-    phoneNumber: userPrefs.phone_number,
-    mainFocus: brief.main_focus,
-    briefId: brief.id,
-  });
+	await smsService.sendDailyBriefNotification({
+		userId,
+		phoneNumber: userPrefs.phone_number,
+		mainFocus: brief.main_focus,
+		briefId: brief.id
+	});
 }
 
 // 3. Template rendered: "Your BuildOS daily brief is ready! Key focus: Complete Q4 reports. Check the app for details."
@@ -1069,14 +1061,14 @@ if (userPrefs.daily_brief_sms) {
 
 ```typescript
 // 1. Event emitted (e.g., user signup)
-await supabase.rpc("emit_notification_event", {
-  p_event_type: "user.signup",
-  p_event_source: "web",
-  p_target_user_id: null, // Broadcast to admins
-  p_payload: {
-    user_email: "new@user.com",
-    signup_method: "google",
-  },
+await supabase.rpc('emit_notification_event', {
+	p_event_type: 'user.signup',
+	p_event_source: 'web',
+	p_target_user_id: null, // Broadcast to admins
+	p_payload: {
+		user_email: 'new@user.com',
+		signup_method: 'google'
+	}
 });
 
 // 2. Function creates notification deliveries
@@ -1140,17 +1132,15 @@ try {
 
 ```typescript
 const { data: existingUser } = await supabase
-  .from("user_sms_preferences")
-  .select("user_id")
-  .eq("phone_number", phoneNumber)
-  .eq("phone_verified", true)
-  .neq("user_id", session.user.id)
-  .single();
+	.from('user_sms_preferences')
+	.select('user_id')
+	.eq('phone_number', phoneNumber)
+	.eq('phone_verified', true)
+	.neq('user_id', session.user.id)
+	.single();
 
 if (existingUser) {
-  return ApiResponse.conflict(
-    "This phone number is already verified by another user",
-  );
+	return ApiResponse.conflict('This phone number is already verified by another user');
 }
 ```
 
@@ -1160,19 +1150,16 @@ if (existingUser) {
 
 ```typescript
 if (!twilioConfig.accountSid || !twilioConfig.authToken) {
-  console.warn(
-    "Twilio credentials not configured - SMS functionality disabled",
-  );
-  twilioClient = null;
-  smsService = null;
+	console.warn('Twilio credentials not configured - SMS functionality disabled');
+	twilioClient = null;
+	smsService = null;
 }
 
 // Later in job processing:
 if (!twilioClient || !smsService) {
-  const errorMessage =
-    "SMS service not available - Twilio credentials not configured";
-  await updateJobStatus(job.id, "failed", "send_sms", errorMessage);
-  throw new Error(errorMessage);
+	const errorMessage = 'SMS service not available - Twilio credentials not configured';
+	await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage);
+	throw new Error(errorMessage);
 }
 ```
 
@@ -1191,16 +1178,16 @@ if (!twilioClient || !smsService) {
 **Signature Validation:**
 
 ```typescript
-const twilioSignature = request.headers.get("X-Twilio-Signature");
+const twilioSignature = request.headers.get('X-Twilio-Signature');
 const isValid = twilio.validateRequest(
-  PRIVATE_TWILIO_AUTH_TOKEN,
-  twilioSignature,
-  webhookUrl,
-  params,
+	PRIVATE_TWILIO_AUTH_TOKEN,
+	twilioSignature,
+	webhookUrl,
+	params
 );
 
 if (!isValid) {
-  return json({ error: "Invalid signature" }, { status: 401 });
+	return json({ error: 'Invalid signature' }, { status: 401 });
 }
 ```
 
@@ -1303,19 +1290,19 @@ ORDER BY occurrence_count DESC;
 
 ```typescript
 function logWebhookEvent(
-  level: "info" | "warn" | "error",
-  message: string,
-  context: Partial<WebhookContext> & Record<string, any>,
+	level: 'info' | 'warn' | 'error',
+	message: string,
+	context: Partial<WebhookContext> & Record<string, any>
 ) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    source: "twilio_webhook",
-    message,
-    ...context,
-  };
+	const logEntry = {
+		timestamp: new Date().toISOString(),
+		level,
+		source: 'twilio_webhook',
+		message,
+		...context
+	};
 
-  console.log("[TwilioWebhook]", message, logEntry);
+	console.log('[TwilioWebhook]', message, logEntry);
 }
 ```
 
@@ -1337,8 +1324,8 @@ const startTime = Date.now();
 // ... process webhook ...
 const processingTime = Date.now() - startTime;
 
-logWebhookEvent("info", "Webhook processed successfully", {
-  processingTimeMs: processingTime,
+logWebhookEvent('info', 'Webhook processed successfully', {
+	processingTimeMs: processingTime
 });
 ```
 
@@ -1346,13 +1333,13 @@ logWebhookEvent("info", "Webhook processed successfully", {
 
 ```typescript
 export function getTemplateCacheStats(): {
-  size: number;
-  templates: string[];
+	size: number;
+	templates: string[];
 } {
-  return {
-    size: templateCache.size,
-    templates: Array.from(templateCache.keys()),
-  };
+	return {
+		size: templateCache.size,
+		templates: Array.from(templateCache.keys())
+	};
 }
 ```
 
@@ -1386,14 +1373,13 @@ private renderTemplate(template: string, vars: Record<string, any>): string {
 
 ```typescript
 if (params.scheduledAt) {
-  const diffHours =
-    (params.scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+	const diffHours = (params.scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-  if (diffHours > 0 && diffHours <= 168) {
-    // Within 7 days
-    messageParams.sendAt = params.scheduledAt.toISOString();
-    messageParams.scheduleType = "fixed";
-  }
+	if (diffHours > 0 && diffHours <= 168) {
+		// Within 7 days
+		messageParams.sendAt = params.scheduledAt.toISOString();
+		messageParams.scheduleType = 'fixed';
+	}
 }
 ```
 
@@ -1412,9 +1398,9 @@ if (params.scheduledAt) {
 // Original: "Check https://build-os.com/admin/users/123"
 // Shortened: "Check https://build-os.com/l/abc123"
 
-const { data: shortCode } = await supabase.rpc("create_tracking_link", {
-  p_delivery_id: deliveryId,
-  p_destination_url: url,
+const { data: shortCode } = await supabase.rpc('create_tracking_link', {
+	p_delivery_id: deliveryId,
+	p_destination_url: url
 });
 
 const shortUrl = `https://build-os.com/l/${shortCode}`;
@@ -1652,13 +1638,13 @@ ORDER BY count DESC;
 ### Send SMS Directly (Backend)
 
 ```typescript
-import { TwilioClient, SMSService } from "@buildos/twilio-service";
-import { createServiceClient } from "@buildos/supabase-client";
+import { TwilioClient, SMSService } from '@buildos/twilio-service';
+import { createServiceClient } from '@buildos/supabase-client';
 
 const twilioClient = new TwilioClient({
-  accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
-  authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
-  messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID!,
+	accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
+	authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
+	messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID!
 });
 
 const supabase = createServiceClient();
@@ -1666,11 +1652,11 @@ const smsService = new SMSService(twilioClient, supabase);
 
 // Send task reminder
 await smsService.sendTaskReminder({
-  userId: "user-uuid",
-  phoneNumber: "+15551234567",
-  taskName: "Complete report",
-  dueDate: new Date("2024-12-25T14:00:00"),
-  projectContext: "Q4 Planning",
+	userId: 'user-uuid',
+	phoneNumber: '+15551234567',
+	taskName: 'Complete report',
+	dueDate: new Date('2024-12-25T14:00:00'),
+	projectContext: 'Q4 Planning'
 });
 ```
 
@@ -1691,22 +1677,19 @@ SELECT queue_sms_message(
 ### Frontend Usage
 
 ```typescript
-import { smsService } from "$lib/services/sms.service";
+import { smsService } from '$lib/services/sms.service';
 
 // Send verification code
-const verifyResult = await smsService.verifyPhoneNumber("+15551234567");
+const verifyResult = await smsService.verifyPhoneNumber('+15551234567');
 
 // Confirm verification
-const confirmResult = await smsService.confirmVerification(
-  "+15551234567",
-  "123456",
-);
+const confirmResult = await smsService.confirmVerification('+15551234567', '123456');
 
 // Update preferences
 await smsService.updateSMSPreferences(userId, {
-  task_reminders: true,
-  quiet_hours_start: "22:00",
-  quiet_hours_end: "08:00",
+	task_reminders: true,
+	quiet_hours_start: '22:00',
+	quiet_hours_end: '08:00'
 });
 
 // Send task reminder
@@ -1720,29 +1703,29 @@ await smsService.sendTaskReminder(taskId);
 ### Internal Documentation
 
 1. **[Twilio Integration README](/docs/integrations/twilio/README.md)**
-   - Complete integration guide
-   - Architecture diagrams
-   - Feature overview
+    - Complete integration guide
+    - Architecture diagrams
+    - Feature overview
 
 2. **[SMS Setup Guide](/docs/guides/sms-setup-guide.md)**
-   - Step-by-step Twilio setup
-   - Environment configuration
-   - Testing instructions
+    - Step-by-step Twilio setup
+    - Environment configuration
+    - Testing instructions
 
 3. **[SMS API Reference](/docs/api/sms-api-reference.md)**
-   - Complete API documentation
-   - Type definitions
-   - Error codes
+    - Complete API documentation
+    - Type definitions
+    - Error codes
 
 4. **[SMS Notification Channel Design](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md)**
-   - Notification system integration
-   - Design decisions
-   - Implementation phases
+    - Notification system integration
+    - Design decisions
+    - Implementation phases
 
 5. **[SMS Testing Guide](/docs/testing/SMS_NOTIFICATION_TESTING_GUIDE.md)**
-   - Testing strategies
-   - Manual test procedures
-   - Automated test examples
+    - Testing strategies
+    - Manual test procedures
+    - Automated test examples
 
 ### External Resources
 

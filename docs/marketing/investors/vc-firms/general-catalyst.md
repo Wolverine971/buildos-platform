@@ -35,17 +35,17 @@ General Catalyst focuses on "Applied AI" that transforms existing business categ
 ### Most Relevant for BuildOS:
 
 - **Hemant Taneja** - CEO and Managing Director
-  - Portfolio: Stripe, HubSpot, Grammarly, Gusto, Mindstrong
-  - Focus: Enterprise software and productivity transformation
-  - Background: Former McKinsey, focus on business model innovation
+    - Portfolio: Stripe, HubSpot, Grammarly, Gusto, Mindstrong
+    - Focus: Enterprise software and productivity transformation
+    - Background: Former McKinsey, focus on business model innovation
 
 - **Kyle Doherty** - General Partner
-  - Focus: Enterprise software and B2B applications
-  - Background: Scaling enterprise productivity companies
+    - Focus: Enterprise software and B2B applications
+    - Background: Scaling enterprise productivity companies
 
 - **Niko Bonatsos** - Managing Director
-  - Focus: Applied AI and machine learning applications
-  - Portfolio: Several AI-powered enterprise solutions
+    - Focus: Applied AI and machine learning applications
+    - Portfolio: Several AI-powered enterprise solutions
 
 ### Partner Expertise:
 

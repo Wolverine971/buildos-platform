@@ -4,21 +4,12 @@ researcher: Claude Code
 git_commit: 1df7369b330929e44974a52bab3c77042d09bab5
 branch: main
 repository: buildos-platform
-topic: "Overlapping Database Columns in Daily Briefs, SMS Notifications, and Generic Notification System"
-tags:
-  [
-    research,
-    codebase,
-    notifications,
-    sms,
-    database-schema,
-    preferences,
-    daily-briefs,
-  ]
+topic: 'Overlapping Database Columns in Daily Briefs, SMS Notifications, and Generic Notification System'
+tags: [research, codebase, notifications, sms, database-schema, preferences, daily-briefs]
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude Code
-last_updated_note: "Added follow-up research section after daily brief notification refactor completion"
+last_updated_note: 'Added follow-up research section after daily brief notification refactor completion'
 ---
 
 # Research: Overlapping Database Columns in Daily Briefs, SMS Notifications, and Generic Notification System
@@ -79,8 +70,7 @@ Scheduler → Brief Generation → Email Worker → Email Sender Service → Web
 
 ```typescript
 // /apps/worker/src/lib/services/email-sender.ts:144-151
-const shouldSend =
-  preferences.email_daily_brief === true && preferences.is_active === true;
+const shouldSend = preferences.email_daily_brief === true && preferences.is_active === true;
 ```
 
 ---
@@ -108,7 +98,7 @@ Brief Generation → emit_notification_event → Notification Worker → Email A
 ```typescript
 // /apps/worker/src/workers/notification/preferenceChecker.ts:85-95
 if (!prefs.email_enabled) {
-  return { allowed: false, reason: "Email disabled for brief.completed" };
+	return { allowed: false, reason: 'Email disabled for brief.completed' };
 }
 ```
 
@@ -162,17 +152,17 @@ await serviceClient.rpc('emit_notification_event', {
 // /apps/worker/src/workers/notification/preferenceChecker.ts:122-188
 // Check 1: Generic notification preference
 if (!prefs.sms_enabled) {
-  return { allowed: false, reason: "SMS disabled for event type" };
+	return { allowed: false, reason: 'SMS disabled for event type' };
 }
 
 // Check 2: SMS-specific preference
 const { data: smsPrefs } = await supabase
-  .from("user_sms_preferences")
-  .select("daily_brief_sms, ...")
-  .eq("user_id", userId);
+	.from('user_sms_preferences')
+	.select('daily_brief_sms, ...')
+	.eq('user_id', userId);
 
-if (eventType === "brief.completed" && !smsPrefs.daily_brief_sms) {
-  return { allowed: false, reason: "Daily brief SMS disabled" };
+if (eventType === 'brief.completed' && !smsPrefs.daily_brief_sms) {
+	return { allowed: false, reason: 'Daily brief SMS disabled' };
 }
 ```
 
@@ -225,8 +215,8 @@ Midnight Scheduler → Daily SMS Worker → SMS Worker → Twilio
 
 ```typescript
 {
-  quiet_hours_start: string | null; // HH:MM:SS format
-  quiet_hours_end: string | null; // HH:MM:SS format
+	quiet_hours_start: string | null; // HH:MM:SS format
+	quiet_hours_end: string | null; // HH:MM:SS format
 }
 ```
 
@@ -241,9 +231,9 @@ Midnight Scheduler → Daily SMS Worker → SMS Worker → Twilio
 
 ```typescript
 {
-  quiet_hours_enabled: boolean | null;
-  quiet_hours_start: string | null;
-  quiet_hours_end: string | null;
+	quiet_hours_enabled: boolean | null;
+	quiet_hours_start: string | null;
+	quiet_hours_end: string | null;
 }
 ```
 
@@ -266,7 +256,7 @@ Midnight Scheduler → Daily SMS Worker → SMS Worker → Twilio
 // /apps/worker/src/workers/smsWorker.ts:123-171
 // Calendar SMS DOES check quiet hours
 if (isInQuietHours(scheduledFor, quietHoursStart, quietHoursEnd)) {
-  // Reschedule to end of quiet hours
+	// Reschedule to end of quiet hours
 }
 ```
 
@@ -278,9 +268,9 @@ if (isInQuietHours(scheduledFor, quietHoursStart, quietHoursEnd)) {
 
 ```typescript
 {
-  daily_sms_limit: number | null; // Default: 10
-  daily_sms_count: number | null; // Current count
-  daily_count_reset_at: string | null; // Last reset timestamp
+	daily_sms_limit: number | null; // Default: 10
+	daily_sms_count: number | null; // Current count
+	daily_count_reset_at: string | null; // Last reset timestamp
 }
 ```
 
@@ -301,8 +291,8 @@ if (isInQuietHours(scheduledFor, quietHoursStart, quietHoursEnd)) {
 
 ```typescript
 {
-  max_per_hour: number | null;
-  max_per_day: number | null;
+	max_per_hour: number | null;
+	max_per_day: number | null;
 }
 ```
 
@@ -593,11 +583,11 @@ if (isInQuietHours(now, smsPrefs.quiet_hours_start, smsPrefs.quiet_hours_end, sm
 // Before queuing SMS (around line 490):
 const { daily_sms_count, daily_sms_limit } = await getSMSPreferences(userId);
 if (daily_sms_count >= daily_sms_limit) {
-  return {
-    success: false,
-    error: "Daily SMS limit reached",
-    should_retry: false,
-  };
+	return {
+		success: false,
+		error: 'Daily SMS limit reached',
+		should_retry: false
+	};
 }
 ```
 
@@ -682,22 +672,22 @@ SET timezone = COALESCE(
 ## Open Questions
 
 1. **Why does the legacy email system still exist?**
-   - Was the notification system intended to replace it?
-   - Are there differences in email formatting that users depend on?
+    - Was the notification system intended to replace it?
+    - Are there differences in email formatting that users depend on?
 
 2. **Why require BOTH `sms_enabled` AND `daily_brief_sms`?**
-   - Is this intentional defense-in-depth?
-   - Or was this an oversight during notification system implementation?
+    - Is this intentional defense-in-depth?
+    - Or was this an oversight during notification system implementation?
 
 3. **Should calendar event SMS be migrated to notification system?**
-   - Currently separate flow with dedicated worker
-   - Could use `calendar.event_reminder` event type in notification system
-   - Would simplify architecture but requires significant refactoring
+    - Currently separate flow with dedicated worker
+    - Could use `calendar.event_reminder` event type in notification system
+    - Would simplify architecture but requires significant refactoring
 
 4. **What happens if preferences are mismatched?**
-   - Example: `email_daily_brief = true` but `email_enabled = false`
-   - User gets one email but not the other
-   - Very confusing behavior!
+    - Example: `email_daily_brief = true` but `email_enabled = false`
+    - User gets one email but not the other
+    - Very confusing behavior!
 
 ---
 

@@ -5,9 +5,9 @@ author: Claude Code
 status: complete
 tags: [testing, brain-dump, mocking, architecture]
 related_files:
-  - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-integration-simple.test.ts
-  - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-processor.test.ts
-  - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/braindump-processor.ts
+    - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-integration-simple.test.ts
+    - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-processor.test.ts
+    - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/braindump-processor.ts
 ---
 
 # Brain Dump Integration Test Failures Analysis
@@ -144,37 +144,37 @@ Looking at the test file, these are **integration tests** that aim to verify:
 ### Working Example (from brain-dump-processor.test.ts)
 
 ```typescript
-describe("BrainDumpProcessor", () => {
-  let processor: BrainDumpProcessor;
-  let mockSmartLLMService: MockSmartLLMService;
-  let mockActivityLogger: MockActivityLogger;
-  let mockOperationsExecutor: MockOperationsExecutor;
-  let mockSupabase: ReturnType<typeof createMockSupabase>;
+describe('BrainDumpProcessor', () => {
+	let processor: BrainDumpProcessor;
+	let mockSmartLLMService: MockSmartLLMService;
+	let mockActivityLogger: MockActivityLogger;
+	let mockOperationsExecutor: MockOperationsExecutor;
+	let mockSupabase: ReturnType<typeof createMockSupabase>;
 
-  beforeEach(() => {
-    // 1. Setup mock Supabase client
-    mockSupabase = createMockSupabase();
+	beforeEach(() => {
+		// 1. Setup mock Supabase client
+		mockSupabase = createMockSupabase();
 
-    // 2. Create processor instance with mock Supabase
-    processor = new BrainDumpProcessor(mockSupabase);
+		// 2. Create processor instance with mock Supabase
+		processor = new BrainDumpProcessor(mockSupabase);
 
-    // 3. Replace instance properties with mocks (NOT module mocks)
-    mockSmartLLMService = {
-      getJSONResponse: vi.fn(), // ← getJSONResponse, NOT makeRequest
-    };
-    (processor as any).llmService = mockSmartLLMService;
+		// 3. Replace instance properties with mocks (NOT module mocks)
+		mockSmartLLMService = {
+			getJSONResponse: vi.fn() // ← getJSONResponse, NOT makeRequest
+		};
+		(processor as any).llmService = mockSmartLLMService;
 
-    // 4. Mock other services
-    mockActivityLogger = {
-      logActivity: vi.fn().mockResolvedValue(undefined),
-    };
-    (processor as any).activityLogger = mockActivityLogger;
+		// 4. Mock other services
+		mockActivityLogger = {
+			logActivity: vi.fn().mockResolvedValue(undefined)
+		};
+		(processor as any).activityLogger = mockActivityLogger;
 
-    mockOperationsExecutor = {
-      executeOperations: vi.fn(),
-    };
-    (processor as any).operationsExecutor = mockOperationsExecutor;
-  });
+		mockOperationsExecutor = {
+			executeOperations: vi.fn()
+		};
+		(processor as any).operationsExecutor = mockOperationsExecutor;
+	});
 });
 ```
 
@@ -202,16 +202,16 @@ mockSmartLLMService.getJSONResponse.mockResolvedValue({
 
 ```typescript
 mockSmartLLMService.getJSONResponse.mockResolvedValue({
-  title: "Mobile App Development",
-  summary: "React Native mobile app project",
-  insights: "User wants to build a mobile application",
-  operations: [
-    {
-      table: "projects",
-      operation: "create",
-      data: { name: "...", description: "..." },
-    },
-  ],
+	title: 'Mobile App Development',
+	summary: 'React Native mobile app project',
+	insights: 'User wants to build a mobile application',
+	operations: [
+		{
+			table: 'projects',
+			operation: 'create',
+			data: { name: '...', description: '...' }
+		}
+	]
 });
 ```
 
@@ -220,156 +220,156 @@ mockSmartLLMService.getJSONResponse.mockResolvedValue({
 ### Complete Setup Pattern
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { BrainDumpProcessor } from "../braindump-processor";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { BrainDumpProcessor } from '../braindump-processor';
 
 // Type definitions for mocks
 type MockSmartLLMService = {
-  getJSONResponse: ReturnType<typeof vi.fn>;
+	getJSONResponse: ReturnType<typeof vi.fn>;
 };
 
 type MockActivityLogger = {
-  logActivity: ReturnType<typeof vi.fn>;
+	logActivity: ReturnType<typeof vi.fn>;
 };
 
 type MockOperationsExecutor = {
-  executeOperations: ReturnType<typeof vi.fn>;
+	executeOperations: ReturnType<typeof vi.fn>;
 };
 
 type MockProjectDataFetcher = {
-  getFullProjectData: ReturnType<typeof vi.fn>;
+	getFullProjectData: ReturnType<typeof vi.fn>;
 };
 
 // Mock Supabase with chaining support
 const createMockSupabase = () => {
-  const mockChain = {
-    from: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    single: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-  };
+	const mockChain = {
+		from: vi.fn().mockReturnThis(),
+		select: vi.fn().mockReturnThis(),
+		insert: vi.fn().mockReturnThis(),
+		update: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis(),
+		in: vi.fn().mockReturnThis(),
+		single: vi.fn().mockReturnThis(),
+		order: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockReturnThis(),
+		rpc: vi.fn().mockResolvedValue({ data: null, error: null })
+	};
 
-  // All methods return mockChain for chaining
-  Object.keys(mockChain).forEach((key) => {
-    if (!["single", "rpc"].includes(key)) {
-      mockChain[key].mockReturnValue(mockChain);
-    }
-  });
+	// All methods return mockChain for chaining
+	Object.keys(mockChain).forEach((key) => {
+		if (!['single', 'rpc'].includes(key)) {
+			mockChain[key].mockReturnValue(mockChain);
+		}
+	});
 
-  return mockChain;
+	return mockChain;
 };
 
-describe("Brain Dump Integration Tests", () => {
-  let processor: BrainDumpProcessor;
-  let mockSupabase: any;
-  let mockLLMService: MockSmartLLMService;
-  let mockActivityLogger: MockActivityLogger;
-  let mockOperationsExecutor: MockOperationsExecutor;
-  let mockProjectDataFetcher: MockProjectDataFetcher;
+describe('Brain Dump Integration Tests', () => {
+	let processor: BrainDumpProcessor;
+	let mockSupabase: any;
+	let mockLLMService: MockSmartLLMService;
+	let mockActivityLogger: MockActivityLogger;
+	let mockOperationsExecutor: MockOperationsExecutor;
+	let mockProjectDataFetcher: MockProjectDataFetcher;
 
-  const testUserId = "550e8400-e29b-41d4-a716-446655440000";
+	const testUserId = '550e8400-e29b-41d4-a716-446655440000';
 
-  beforeEach(() => {
-    // 1. Create mock Supabase
-    mockSupabase = createMockSupabase();
+	beforeEach(() => {
+		// 1. Create mock Supabase
+		mockSupabase = createMockSupabase();
 
-    // 2. Create processor
-    processor = new BrainDumpProcessor(mockSupabase);
+		// 2. Create processor
+		processor = new BrainDumpProcessor(mockSupabase);
 
-    // 3. Replace llmService
-    mockLLMService = {
-      getJSONResponse: vi.fn(),
-    };
-    (processor as any).llmService = mockLLMService;
+		// 3. Replace llmService
+		mockLLMService = {
+			getJSONResponse: vi.fn()
+		};
+		(processor as any).llmService = mockLLMService;
 
-    // 4. Replace activityLogger
-    mockActivityLogger = {
-      logActivity: vi.fn().mockResolvedValue(undefined),
-    };
-    (processor as any).activityLogger = mockActivityLogger;
+		// 4. Replace activityLogger
+		mockActivityLogger = {
+			logActivity: vi.fn().mockResolvedValue(undefined)
+		};
+		(processor as any).activityLogger = mockActivityLogger;
 
-    // 5. Replace operationsExecutor
-    mockOperationsExecutor = {
-      executeOperations: vi.fn(),
-    };
-    (processor as any).operationsExecutor = mockOperationsExecutor;
+		// 5. Replace operationsExecutor
+		mockOperationsExecutor = {
+			executeOperations: vi.fn()
+		};
+		(processor as any).operationsExecutor = mockOperationsExecutor;
 
-    // 6. Replace projectDataFetcher
-    mockProjectDataFetcher = {
-      getFullProjectData: vi.fn().mockResolvedValue({
-        user_id: testUserId,
-        fullProjectWithRelations: null,
-        timestamp: new Date().toISOString(),
-      }),
-    };
-    (processor as any).projectDataFetcher = mockProjectDataFetcher;
+		// 6. Replace projectDataFetcher
+		mockProjectDataFetcher = {
+			getFullProjectData: vi.fn().mockResolvedValue({
+				user_id: testUserId,
+				fullProjectWithRelations: null,
+				timestamp: new Date().toISOString()
+			})
+		};
+		(processor as any).projectDataFetcher = mockProjectDataFetcher;
 
-    // Clear all mocks
-    vi.clearAllMocks();
-  });
+		// Clear all mocks
+		vi.clearAllMocks();
+	});
 
-  it("should process new project brain dump", async () => {
-    // Mock dual processing responses
-    const mockContextResponse = {
-      title: "New Project",
-      summary: "Project summary",
-      insights: "Project insights",
-      operations: [
-        {
-          table: "projects",
-          operation: "create",
-          data: {
-            name: "New Project",
-            description: "Project description",
-            status: "active",
-          },
-          ref: "new-project-1",
-        },
-      ],
-    };
+	it('should process new project brain dump', async () => {
+		// Mock dual processing responses
+		const mockContextResponse = {
+			title: 'New Project',
+			summary: 'Project summary',
+			insights: 'Project insights',
+			operations: [
+				{
+					table: 'projects',
+					operation: 'create',
+					data: {
+						name: 'New Project',
+						description: 'Project description',
+						status: 'active'
+					},
+					ref: 'new-project-1'
+				}
+			]
+		};
 
-    const mockTasksResponse = {
-      title: "Tasks",
-      summary: "Task summary",
-      insights: "",
-      operations: [
-        {
-          table: "tasks",
-          operation: "create",
-          data: {
-            title: "First task",
-            project_ref: "new-project-1",
-            status: "pending",
-          },
-        },
-      ],
-    };
+		const mockTasksResponse = {
+			title: 'Tasks',
+			summary: 'Task summary',
+			insights: '',
+			operations: [
+				{
+					table: 'tasks',
+					operation: 'create',
+					data: {
+						title: 'First task',
+						project_ref: 'new-project-1',
+						status: 'pending'
+					}
+				}
+			]
+		};
 
-    // Setup mocks for dual processing (context + tasks in parallel)
-    mockLLMService.getJSONResponse
-      .mockResolvedValueOnce(mockContextResponse)
-      .mockResolvedValueOnce(mockTasksResponse);
+		// Setup mocks for dual processing (context + tasks in parallel)
+		mockLLMService.getJSONResponse
+			.mockResolvedValueOnce(mockContextResponse)
+			.mockResolvedValueOnce(mockTasksResponse);
 
-    // Execute
-    const result = await processor.processBrainDump({
-      brainDump: "Create a new project with a task",
-      userId: testUserId,
-      selectedProjectId: undefined,
-      options: { autoExecute: false },
-      brainDumpId: "test-brain-dump-1",
-    });
+		// Execute
+		const result = await processor.processBrainDump({
+			brainDump: 'Create a new project with a task',
+			userId: testUserId,
+			selectedProjectId: undefined,
+			options: { autoExecute: false },
+			brainDumpId: 'test-brain-dump-1'
+		});
 
-    // Assertions
-    expect(result.operations).toHaveLength(2);
-    expect(result.operations[0].table).toBe("projects");
-    expect(result.operations[1].table).toBe("tasks");
-  });
+		// Assertions
+		expect(result.operations).toHaveLength(2);
+		expect(result.operations[0].table).toBe('projects');
+		expect(result.operations[1].table).toBe('tasks');
+	});
 });
 ```
 
@@ -380,8 +380,8 @@ describe("Brain Dump Integration Tests", () => {
 ```typescript
 // Dual processing makes 2 parallel calls:
 mockLLMService.getJSONResponse
-  .mockResolvedValueOnce(contextResponse) // Context extraction
-  .mockResolvedValueOnce(tasksResponse); // Task extraction
+	.mockResolvedValueOnce(contextResponse) // Context extraction
+	.mockResolvedValueOnce(tasksResponse); // Task extraction
 ```
 
 ### For Existing Projects (With selectedProjectId)
@@ -389,9 +389,9 @@ mockLLMService.getJSONResponse
 ```typescript
 // Dual processing makes 3 calls:
 mockLLMService.getJSONResponse
-  .mockResolvedValueOnce(prepAnalysisResponse) // Preparatory analysis
-  .mockResolvedValueOnce(contextResponse) // Context extraction
-  .mockResolvedValueOnce(tasksResponse); // Task extraction
+	.mockResolvedValueOnce(prepAnalysisResponse) // Preparatory analysis
+	.mockResolvedValueOnce(contextResponse) // Context extraction
+	.mockResolvedValueOnce(tasksResponse); // Task extraction
 
 // Note: Prep analysis may skip context/tasks based on recommendation
 ```
@@ -445,17 +445,17 @@ mockLLMService.getJSONResponse
 ```typescript
 // Mock ActivityLogger
 mockActivityLogger = {
-  logActivity: vi.fn().mockResolvedValue(undefined),
+	logActivity: vi.fn().mockResolvedValue(undefined)
 };
 (processor as any).activityLogger = mockActivityLogger;
 
 // Mock ProjectDataFetcher
 mockProjectDataFetcher = {
-  getFullProjectData: vi.fn().mockResolvedValue({
-    user_id: testUserId,
-    fullProjectWithRelations: null,
-    timestamp: new Date().toISOString(),
-  }),
+	getFullProjectData: vi.fn().mockResolvedValue({
+		user_id: testUserId,
+		fullProjectWithRelations: null,
+		timestamp: new Date().toISOString()
+	})
 };
 (processor as any).projectDataFetcher = mockProjectDataFetcher;
 ```

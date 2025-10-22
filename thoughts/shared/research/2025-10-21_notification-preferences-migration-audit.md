@@ -1,14 +1,14 @@
 ---
-title: "Notification Preferences Migration Audit - Post-Consolidation Analysis"
+title: 'Notification Preferences Migration Audit - Post-Consolidation Analysis'
 date: 2025-10-21
 type: research
 status: complete
 tags: [database, migration, notification-preferences, audit, supabase]
 related_migrations:
-  - 20251016_002_consolidate_notification_preferences.sql
-  - 20251013_refactor_daily_brief_notification_prefs.sql
-  - 20251016_003_update_emit_notification_event.sql
-  - 20251016_004_emit_notification_use_defaults.sql
+    - 20251016_002_consolidate_notification_preferences.sql
+    - 20251013_refactor_daily_brief_notification_prefs.sql
+    - 20251016_003_update_emit_notification_event.sql
+    - 20251016_004_emit_notification_use_defaults.sql
 ---
 
 # Notification Preferences Migration Audit
@@ -26,23 +26,23 @@ This audit reviewed all Supabase queries related to `user_notification_preferenc
 ### Recent Database Changes
 
 1. **Migration 20251013_refactor_daily_brief_notification_prefs.sql**
-   - Added `should_email_daily_brief` and `should_sms_daily_brief` columns
-   - Migrated data from old `email_daily_brief` field
-   - Kept `event_type` column (intermediate state)
+    - Added `should_email_daily_brief` and `should_sms_daily_brief` columns
+    - Migrated data from old `email_daily_brief` field
+    - Kept `event_type` column (intermediate state)
 
 2. **Migration 20251016_002_consolidate_notification_preferences.sql** (MAJOR)
-   - **REMOVED** `event_type` column
-   - Consolidated multiple rows per user into ONE row per user
-   - Created backup table: `user_notification_preferences_backup`
-   - Changed foreign key relationship to `user_id` UNIQUE
+    - **REMOVED** `event_type` column
+    - Consolidated multiple rows per user into ONE row per user
+    - Created backup table: `user_notification_preferences_backup`
+    - Changed foreign key relationship to `user_id` UNIQUE
 
 3. **Migration 20251016_003_update_emit_notification_event.sql**
-   - Updated RPC function to remove `event_type` filter from preference query
-   - Preferences now apply globally to ALL event types
+    - Updated RPC function to remove `event_type` filter from preference query
+    - Preferences now apply globally to ALL event types
 
 4. **Migration 20251016_004_emit_notification_use_defaults.sql**
-   - Updated RPC to use safe defaults for new users without preferences
-   - Prevents notification failures for users without explicit preferences
+    - Updated RPC to use safe defaults for new users without preferences
+    - Prevents notification failures for users without explicit preferences
 
 ### What Changed
 
@@ -108,10 +108,10 @@ user_notification_preferences
 
 ```typescript
 const { data, error } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief, updated_at")
-  .eq("user_id", user.id)
-  .maybeSingle(); // ✅ Correctly uses maybeSingle() for single row
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief, updated_at')
+	.eq('user_id', user.id)
+	.maybeSingle(); // ✅ Correctly uses maybeSingle() for single row
 ```
 
 **Analysis:**
@@ -146,10 +146,10 @@ const { data, error } = await supabase
 
 ```typescript
 const { data, error } = await this.supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", user.id)
-  .maybeSingle(); // ✅ Correctly uses maybeSingle()
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', user.id)
+	.maybeSingle(); // ✅ Correctly uses maybeSingle()
 ```
 
 **Analysis:**
@@ -186,12 +186,12 @@ async getAll(): Promise<UserNotificationPreferences[]>
 **RPC Call Pattern:**
 
 ```typescript
-await supabase.rpc("emit_notification_event", {
-  p_event_type: event_type,
-  p_event_source: "api_action",
-  p_actor_user_id: user.id,
-  p_payload: { ...payload, correlationId },
-  p_metadata: { ...metadata, correlationId },
+await supabase.rpc('emit_notification_event', {
+	p_event_type: event_type,
+	p_event_source: 'api_action',
+	p_actor_user_id: user.id,
+	p_payload: { ...payload, correlationId },
+	p_metadata: { ...metadata, correlationId }
 });
 ```
 
@@ -207,12 +207,12 @@ await supabase.rpc("emit_notification_event", {
 
 ```typescript
 const { data: prefs, error: prefError } = await supabase
-  .from("user_notification_preferences")
-  .select(
-    "push_enabled, in_app_enabled, email_enabled, sms_enabled, should_email_daily_brief, should_sms_daily_brief",
-  )
-  .eq("user_id", userId)
-  .single(); // ✅ Correctly uses .single() for guaranteed single row
+	.from('user_notification_preferences')
+	.select(
+		'push_enabled, in_app_enabled, email_enabled, sms_enabled, should_email_daily_brief, should_sms_daily_brief'
+	)
+	.eq('user_id', userId)
+	.single(); // ✅ Correctly uses .single() for guaranteed single row
 ```
 
 **Analysis:**
@@ -246,12 +246,11 @@ case "email":
 **Query Pattern:**
 
 ```typescript
-const { data: notificationPrefs, error: notificationPrefsError } =
-  await supabase
-    .from("user_notification_preferences")
-    .select("should_email_daily_brief, should_sms_daily_brief")
-    .eq("user_id", job.data.userId)
-    .single();
+const { data: notificationPrefs, error: notificationPrefsError } = await supabase
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', job.data.userId)
+	.single();
 ```
 
 **Analysis:**
@@ -264,17 +263,17 @@ const { data: notificationPrefs, error: notificationPrefsError } =
 **RPC Call (Correct):**
 
 ```typescript
-await (serviceClient.rpc as any)("emit_notification_event", {
-  p_event_type: "brief.completed",
-  p_event_source: "worker_job",
-  p_target_user_id: job.data.userId,
-  p_payload: {
-    brief_id: brief.id,
-    brief_date: validatedBriefDate,
-    // ... other fields
-  },
-  p_metadata: { correlationId },
-  p_scheduled_for: notificationScheduledFor?.toISOString(),
+await (serviceClient.rpc as any)('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: job.data.userId,
+	p_payload: {
+		brief_id: brief.id,
+		brief_date: validatedBriefDate
+		// ... other fields
+	},
+	p_metadata: { correlationId },
+	p_scheduled_for: notificationScheduledFor?.toISOString()
 });
 ```
 
@@ -289,12 +288,11 @@ await (serviceClient.rpc as any)("emit_notification_event", {
 **Query Pattern:**
 
 ```typescript
-const { data: notificationPrefs, error: notificationError } =
-  await this.supabase
-    .from("user_notification_preferences")
-    .select("should_email_daily_brief")
-    .eq("user_id", userId)
-    .single();
+const { data: notificationPrefs, error: notificationError } = await this.supabase
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.single();
 ```
 
 **Analysis:**
@@ -308,8 +306,7 @@ const { data: notificationPrefs, error: notificationError } =
 
 ```typescript
 const shouldSend =
-  notificationPrefs?.should_email_daily_brief === true &&
-  briefPrefs.is_active === true;
+	notificationPrefs?.should_email_daily_brief === true && briefPrefs.is_active === true;
 ```
 
 **Code Quality:** Excellent with defensive null checks
@@ -324,10 +321,10 @@ const shouldSend =
 
 ```typescript
 const { data: notificationPrefs, error: notificationError } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.single();
 ```
 
 **Analysis:**
@@ -461,11 +458,11 @@ user_notification_preferences: {
 
 ```typescript
 user_notification_preferences_backup: {
-  Row: {
-    // ...
-    event_type: string | null; // ✅ Still exists in backup only
-    // ...
-  }
+	Row: {
+		// ...
+		event_type: string | null; // ✅ Still exists in backup only
+		// ...
+	}
 }
 ```
 
@@ -486,22 +483,22 @@ No medium issues found.
 ### Low Issues: 1
 
 1. **Test Description Out of Date** (`/apps/worker/tests/email-sender.test.ts:25`)
-   - **Location:** Line 25
-   - **Issue:** Test description mentions `event_type='user'` but that pattern no longer exists
-   - **Impact:** Documentation only - test logic is correct
-   - **Fix:** Update description to "should query user_notification_preferences for user-level preferences"
+    - **Location:** Line 25
+    - **Issue:** Test description mentions `event_type='user'` but that pattern no longer exists
+    - **Impact:** Documentation only - test logic is correct
+    - **Fix:** Update description to "should query user_notification_preferences for user-level preferences"
 
 ### Advisory Notes: 2
 
 1. **Backup Table Preservation**
-   - `user_notification_preferences_backup` table still exists
-   - Contains old schema with `event_type` column
-   - **Recommendation:** Document cleanup plan or retention policy
+    - `user_notification_preferences_backup` table still exists
+    - Contains old schema with `event_type` column
+    - **Recommendation:** Document cleanup plan or retention policy
 
 2. **Deprecated Method Warning**
-   - `notification-preferences.service.ts` has deprecated `getAll()` method
-   - Method is marked with `@deprecated` tag
-   - **Recommendation:** Consider removing in future major version
+    - `notification-preferences.service.ts` has deprecated `getAll()` method
+    - Method is marked with `@deprecated` tag
+    - **Recommendation:** Consider removing in future major version
 
 ---
 
@@ -609,20 +606,20 @@ No immediate actions required.
 ### Short-term (Next Sprint): 1
 
 1. **Update Test Description**
-   - File: `/apps/worker/tests/email-sender.test.ts`
-   - Line: 25
-   - Change: Update description from "with event_type='user'" to "for user-level preferences"
+    - File: `/apps/worker/tests/email-sender.test.ts`
+    - Line: 25
+    - Change: Update description from "with event_type='user'" to "for user-level preferences"
 
 ### Long-term (Next Quarter): 2
 
 1. **Document Backup Table Policy**
-   - Create policy for `user_notification_preferences_backup` retention
-   - Options: Keep indefinitely, delete after 90 days, archive to cold storage
+    - Create policy for `user_notification_preferences_backup` retention
+    - Options: Keep indefinitely, delete after 90 days, archive to cold storage
 
 2. **Remove Deprecated Methods**
-   - Plan to remove `getAll()` method in next major version
-   - Add breaking change notice to changelog
-   - Update any internal documentation
+    - Plan to remove `getAll()` method in next major version
+    - Add breaking change notice to changelog
+    - Update any internal documentation
 
 ---
 
@@ -676,7 +673,7 @@ The codebase is production-ready with the new schema.
 - [Notification Preferences Implementation Phases](/thoughts/shared/research/2025-10-16_notification-preferences-refactor-implementation-phases.md)
 - [Frontend Notification Preferences Verification](/thoughts/shared/research/2025-10-16_08-00-00_frontend-notification-preferences-verification.md)
 - Migration files:
-  - `20251016_001_prepare_notification_preferences_refactor.sql`
-  - `20251016_002_consolidate_notification_preferences.sql`
-  - `20251016_003_update_emit_notification_event.sql`
-  - `20251016_004_emit_notification_use_defaults.sql`
+    - `20251016_001_prepare_notification_preferences_refactor.sql`
+    - `20251016_002_consolidate_notification_preferences.sql`
+    - `20251016_003_update_emit_notification_event.sql`
+    - `20251016_004_emit_notification_use_defaults.sql`

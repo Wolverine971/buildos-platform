@@ -43,8 +43,8 @@ This specification outlines a minimal implementation of an exponential backoff s
 
 - **`users.last_visit`**: Already tracks when user last logged in
 - **`daily_briefs` table**: Already tracks when briefs are generated
-  - `brief_date`: The date of the brief
-  - `generation_completed_at`: When the brief was generated/sent
+    - `brief_date`: The date of the brief
+    - `generation_completed_at`: When the brief was generated/sent
 - **`emails` table**: Already tracks all sent emails if we need more granular tracking
 
 All backoff logic will be calculated dynamically in the worker - no state storage needed.
@@ -56,175 +56,166 @@ All backoff logic will be calculated dynamically in the worker - no state storag
 ```typescript
 // Pure function approach - no database state needed!
 export class BriefBackoffCalculator {
-  private readonly BACKOFF_SCHEDULE = {
-    COOLING_OFF_DAYS: 2,
-    FIRST_REENGAGEMENT: 4,
-    SECOND_REENGAGEMENT: 10,
-    THIRD_REENGAGEMENT: 31,
-    RECURRING_INTERVAL: 31,
-  };
+	private readonly BACKOFF_SCHEDULE = {
+		COOLING_OFF_DAYS: 2,
+		FIRST_REENGAGEMENT: 4,
+		SECOND_REENGAGEMENT: 10,
+		THIRD_REENGAGEMENT: 31,
+		RECURRING_INTERVAL: 31
+	};
 
-  public async shouldSendDailyBrief(userId: string): Promise<{
-    shouldSend: boolean;
-    isReengagement: boolean;
-    daysSinceLastLogin: number;
-    reason: string; // For logging/debugging
-  }> {
-    // Fetch user's last visit and last brief sent
-    const [userData, lastBrief] = await Promise.all([
-      this.getUserLastVisit(userId),
-      this.getLastBriefSent(userId),
-    ]);
+	public async shouldSendDailyBrief(userId: string): Promise<{
+		shouldSend: boolean;
+		isReengagement: boolean;
+		daysSinceLastLogin: number;
+		reason: string; // For logging/debugging
+	}> {
+		// Fetch user's last visit and last brief sent
+		const [userData, lastBrief] = await Promise.all([
+			this.getUserLastVisit(userId),
+			this.getLastBriefSent(userId)
+		]);
 
-    if (!userData?.last_visit) {
-      // New user or never logged in - send normal brief
-      return {
-        shouldSend: true,
-        isReengagement: false,
-        daysSinceLastLogin: 0,
-        reason: "No last visit recorded",
-      };
-    }
+		if (!userData?.last_visit) {
+			// New user or never logged in - send normal brief
+			return {
+				shouldSend: true,
+				isReengagement: false,
+				daysSinceLastLogin: 0,
+				reason: 'No last visit recorded'
+			};
+		}
 
-    const daysSinceLastLogin = this.calculateDaysSince(userData.last_visit);
-    const daysSinceLastBrief = lastBrief
-      ? this.calculateDaysSince(
-          lastBrief.generation_completed_at || lastBrief.brief_date,
-        )
-      : 999; // If no brief ever sent, treat as very old
+		const daysSinceLastLogin = this.calculateDaysSince(userData.last_visit);
+		const daysSinceLastBrief = lastBrief
+			? this.calculateDaysSince(lastBrief.generation_completed_at || lastBrief.brief_date)
+			: 999; // If no brief ever sent, treat as very old
 
-    // Apply backoff logic
-    return this.calculateBackoffDecision(
-      daysSinceLastLogin,
-      daysSinceLastBrief,
-    );
-  }
+		// Apply backoff logic
+		return this.calculateBackoffDecision(daysSinceLastLogin, daysSinceLastBrief);
+	}
 
-  private async getUserLastVisit(
-    userId: string,
-  ): Promise<{ last_visit: string } | null> {
-    const { data } = await supabase
-      .from("users")
-      .select("last_visit")
-      .eq("id", userId)
-      .single();
-    return data;
-  }
+	private async getUserLastVisit(userId: string): Promise<{ last_visit: string } | null> {
+		const { data } = await supabase
+			.from('users')
+			.select('last_visit')
+			.eq('id', userId)
+			.single();
+		return data;
+	}
 
-  private async getLastBriefSent(userId: string): Promise<any> {
-    // Get the most recent daily brief
-    const { data } = await supabase
-      .from("daily_briefs")
-      .select("brief_date, generation_completed_at")
-      .eq("user_id", userId)
-      .order("brief_date", { ascending: false })
-      .limit(1)
-      .single();
-    return data;
-  }
+	private async getLastBriefSent(userId: string): Promise<any> {
+		// Get the most recent daily brief
+		const { data } = await supabase
+			.from('daily_briefs')
+			.select('brief_date, generation_completed_at')
+			.eq('user_id', userId)
+			.order('brief_date', { ascending: false })
+			.limit(1)
+			.single();
+		return data;
+	}
 
-  private calculateDaysSince(dateString: string): number {
-    return Math.floor(
-      (Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60 * 24),
-    );
-  }
+	private calculateDaysSince(dateString: string): number {
+		return Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60 * 24));
+	}
 
-  private calculateBackoffDecision(
-    daysSinceLastLogin: number,
-    daysSinceLastBrief: number,
-  ): {
-    shouldSend: boolean;
-    isReengagement: boolean;
-    daysSinceLastLogin: number;
-    reason: string;
-  } {
-    // Days 0-2: Send normal briefs
-    if (daysSinceLastLogin <= 2) {
-      return {
-        shouldSend: true,
-        isReengagement: false,
-        daysSinceLastLogin,
-        reason: "User is active (logged in within 2 days)",
-      };
-    }
+	private calculateBackoffDecision(
+		daysSinceLastLogin: number,
+		daysSinceLastBrief: number
+	): {
+		shouldSend: boolean;
+		isReengagement: boolean;
+		daysSinceLastLogin: number;
+		reason: string;
+	} {
+		// Days 0-2: Send normal briefs
+		if (daysSinceLastLogin <= 2) {
+			return {
+				shouldSend: true,
+				isReengagement: false,
+				daysSinceLastLogin,
+				reason: 'User is active (logged in within 2 days)'
+			};
+		}
 
-    // Days 2-4: Cooling off period (no emails)
-    if (daysSinceLastLogin > 2 && daysSinceLastLogin < 4) {
-      return {
-        shouldSend: false,
-        isReengagement: false,
-        daysSinceLastLogin,
-        reason: "Cooling off period (3-4 days inactive)",
-      };
-    }
+		// Days 2-4: Cooling off period (no emails)
+		if (daysSinceLastLogin > 2 && daysSinceLastLogin < 4) {
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				reason: 'Cooling off period (3-4 days inactive)'
+			};
+		}
 
-    // Day 4: First re-engagement (if we haven't sent recently)
-    if (daysSinceLastLogin === 4 && daysSinceLastBrief >= 2) {
-      return {
-        shouldSend: true,
-        isReengagement: true,
-        daysSinceLastLogin,
-        reason: "4-day re-engagement email",
-      };
-    }
+		// Day 4: First re-engagement (if we haven't sent recently)
+		if (daysSinceLastLogin === 4 && daysSinceLastBrief >= 2) {
+			return {
+				shouldSend: true,
+				isReengagement: true,
+				daysSinceLastLogin,
+				reason: '4-day re-engagement email'
+			};
+		}
 
-    // Days 4-10: First backoff
-    if (daysSinceLastLogin > 4 && daysSinceLastLogin < 10) {
-      return {
-        shouldSend: false,
-        isReengagement: false,
-        daysSinceLastLogin,
-        reason: "First backoff period (5-9 days)",
-      };
-    }
+		// Days 4-10: First backoff
+		if (daysSinceLastLogin > 4 && daysSinceLastLogin < 10) {
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				reason: 'First backoff period (5-9 days)'
+			};
+		}
 
-    // Day 10: Second re-engagement (if we haven't sent recently)
-    if (daysSinceLastLogin === 10 && daysSinceLastBrief >= 6) {
-      return {
-        shouldSend: true,
-        isReengagement: true,
-        daysSinceLastLogin,
-        reason: "10-day re-engagement email",
-      };
-    }
+		// Day 10: Second re-engagement (if we haven't sent recently)
+		if (daysSinceLastLogin === 10 && daysSinceLastBrief >= 6) {
+			return {
+				shouldSend: true,
+				isReengagement: true,
+				daysSinceLastLogin,
+				reason: '10-day re-engagement email'
+			};
+		}
 
-    // Days 10-31: Second backoff
-    if (daysSinceLastLogin > 10 && daysSinceLastLogin < 31) {
-      return {
-        shouldSend: false,
-        isReengagement: false,
-        daysSinceLastLogin,
-        reason: "Second backoff period (11-30 days)",
-      };
-    }
+		// Days 10-31: Second backoff
+		if (daysSinceLastLogin > 10 && daysSinceLastLogin < 31) {
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				reason: 'Second backoff period (11-30 days)'
+			};
+		}
 
-    // Day 31+: Send every 31 days if we haven't sent recently
-    if (daysSinceLastLogin >= 31) {
-      // Only send if it's been at least 31 days since last brief
-      if (daysSinceLastBrief >= 31) {
-        return {
-          shouldSend: true,
-          isReengagement: true,
-          daysSinceLastLogin,
-          reason: `31+ day re-engagement (${daysSinceLastLogin} days inactive)`,
-        };
-      }
-      return {
-        shouldSend: false,
-        isReengagement: false,
-        daysSinceLastLogin,
-        reason: `Waiting for 31-day interval (last brief ${daysSinceLastBrief} days ago)`,
-      };
-    }
+		// Day 31+: Send every 31 days if we haven't sent recently
+		if (daysSinceLastLogin >= 31) {
+			// Only send if it's been at least 31 days since last brief
+			if (daysSinceLastBrief >= 31) {
+				return {
+					shouldSend: true,
+					isReengagement: true,
+					daysSinceLastLogin,
+					reason: `31+ day re-engagement (${daysSinceLastLogin} days inactive)`
+				};
+			}
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				reason: `Waiting for 31-day interval (last brief ${daysSinceLastBrief} days ago)`
+			};
+		}
 
-    // Fallback (shouldn't reach here)
-    return {
-      shouldSend: false,
-      isReengagement: false,
-      daysSinceLastLogin,
-      reason: "Default: no email",
-    };
-  }
+		// Fallback (shouldn't reach here)
+		return {
+			shouldSend: false,
+			isReengagement: false,
+			daysSinceLastLogin,
+			reason: 'Default: no email'
+		};
+	}
 }
 ```
 
@@ -395,118 +386,141 @@ Add engagement visibility to the admin dashboard:
 
 ```svelte
 <script>
-  // Add to existing user data fetching
-  async function fetchUsersWithEngagement() {
-    const users = await fetchUsers();
+	// Add to existing user data fetching
+	async function fetchUsersWithEngagement() {
+		const users = await fetchUsers();
 
-    // Fetch last brief sent for each user
-    const userIds = users.map(u => u.id);
-    const { data: briefsData } = await supabase
-      .from('daily_briefs')
-      .select('user_id, brief_date, generation_completed_at')
-      .in('user_id', userIds)
-      .order('brief_date', { ascending: false });
+		// Fetch last brief sent for each user
+		const userIds = users.map((u) => u.id);
+		const { data: briefsData } = await supabase
+			.from('daily_briefs')
+			.select('user_id, brief_date, generation_completed_at')
+			.in('user_id', userIds)
+			.order('brief_date', { ascending: false });
 
-    // Group briefs by user (get most recent)
-    const briefsByUser = {};
-    briefsData?.forEach(brief => {
-      if (!briefsByUser[brief.user_id]) {
-        briefsByUser[brief.user_id] = brief;
-      }
-    });
+		// Group briefs by user (get most recent)
+		const briefsByUser = {};
+		briefsData?.forEach((brief) => {
+			if (!briefsByUser[brief.user_id]) {
+				briefsByUser[brief.user_id] = brief;
+			}
+		});
 
-    return users.map(user => {
-      const lastBrief = briefsByUser[user.id];
-      const daysSinceLastLogin = user.last_visit
-        ? Math.floor((Date.now() - new Date(user.last_visit).getTime()) / (1000 * 60 * 60 * 24))
-        : null;
+		return users.map((user) => {
+			const lastBrief = briefsByUser[user.id];
+			const daysSinceLastLogin = user.last_visit
+				? Math.floor(
+						(Date.now() - new Date(user.last_visit).getTime()) / (1000 * 60 * 60 * 24)
+					)
+				: null;
 
-      const daysSinceLastBrief = lastBrief
-        ? Math.floor((Date.now() - new Date(lastBrief.generation_completed_at || lastBrief.brief_date).getTime()) / (1000 * 60 * 60 * 24))
-        : null;
+			const daysSinceLastBrief = lastBrief
+				? Math.floor(
+						(Date.now() -
+							new Date(
+								lastBrief.generation_completed_at || lastBrief.brief_date
+							).getTime()) /
+							(1000 * 60 * 60 * 24)
+					)
+				: null;
 
-      return {
-        ...user,
-        daysSinceLastLogin,
-        daysSinceLastBrief,
-        lastBriefDate: lastBrief?.brief_date,
-        engagementStatus: getEngagementStatus(daysSinceLastLogin),
-        nextBriefStatus: getNextBriefStatus(daysSinceLastLogin, daysSinceLastBrief)
-      };
-    });
-  }
+			return {
+				...user,
+				daysSinceLastLogin,
+				daysSinceLastBrief,
+				lastBriefDate: lastBrief?.brief_date,
+				engagementStatus: getEngagementStatus(daysSinceLastLogin),
+				nextBriefStatus: getNextBriefStatus(daysSinceLastLogin, daysSinceLastBrief)
+			};
+		});
+	}
 
-  function getEngagementStatus(days) {
-    if (!days || days <= 2) return 'active';
-    if (days <= 4) return 'cooling_off';
-    if (days <= 10) return 'first_backoff';
-    if (days <= 31) return 'second_backoff';
-    return 'inactive_long_term';
-  }
+	function getEngagementStatus(days) {
+		if (!days || days <= 2) return 'active';
+		if (days <= 4) return 'cooling_off';
+		if (days <= 10) return 'first_backoff';
+		if (days <= 31) return 'second_backoff';
+		return 'inactive_long_term';
+	}
 
-  function getNextBriefStatus(daysSinceLogin, daysSinceBrief) {
-    if (!daysSinceLogin || daysSinceLogin <= 2) return 'Tomorrow (regular)';
-    if (daysSinceLogin === 4 && daysSinceBrief >= 2) return 'Today (re-engagement)';
-    if (daysSinceLogin === 10 && daysSinceBrief >= 6) return 'Today (re-engagement)';
-    if (daysSinceLogin >= 31 && daysSinceBrief >= 31) return 'Today (monthly)';
-    if (daysSinceLogin < 4) return 'Cooling off';
-    if (daysSinceLogin < 10) return `Day ${10} (re-engagement)`;
-    if (daysSinceLogin < 31) return `Day ${31} (re-engagement)`;
-    return 'Every 31 days';
-  }
+	function getNextBriefStatus(daysSinceLogin, daysSinceBrief) {
+		if (!daysSinceLogin || daysSinceLogin <= 2) return 'Tomorrow (regular)';
+		if (daysSinceLogin === 4 && daysSinceBrief >= 2) return 'Today (re-engagement)';
+		if (daysSinceLogin === 10 && daysSinceBrief >= 6) return 'Today (re-engagement)';
+		if (daysSinceLogin >= 31 && daysSinceBrief >= 31) return 'Today (monthly)';
+		if (daysSinceLogin < 4) return 'Cooling off';
+		if (daysSinceLogin < 10) return `Day ${10} (re-engagement)`;
+		if (daysSinceLogin < 31) return `Day ${31} (re-engagement)`;
+		return 'Every 31 days';
+	}
 </script>
 
 <!-- Add columns to user table -->
 <table>
-  <thead>
-    <tr>
-      <th>User</th>
-      <th>Last Login</th>
-      <th>Days Inactive</th>
-      <th>Engagement Status</th>
-      <th>Last Brief Sent</th>
-      <th>Next Brief Status</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each users as user}
-      <tr>
-        <td>{user.email}</td>
-        <td>{formatDate(user.last_visit)}</td>
-        <td>
-          {#if user.daysSinceLastLogin !== null}
-            <span class="badge" class:warning={user.daysSinceLastLogin > 7}>
-              {user.daysSinceLastLogin} days
-            </span>
-          {/if}
-        </td>
-        <td>
-          <span class="status-badge {user.engagementStatus}">
-            {user.engagementStatus}
-          </span>
-        </td>
-        <td>{formatDate(user.lastBriefDate)}</td>
-        <td>
-          <span class="next-brief-status">
-            {user.nextBriefStatus}
-          </span>
-        </td>
-      </tr>
-    {/each}
-  </tbody>
+	<thead>
+		<tr>
+			<th>User</th>
+			<th>Last Login</th>
+			<th>Days Inactive</th>
+			<th>Engagement Status</th>
+			<th>Last Brief Sent</th>
+			<th>Next Brief Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		{#each users as user}
+			<tr>
+				<td>{user.email}</td>
+				<td>{formatDate(user.last_visit)}</td>
+				<td>
+					{#if user.daysSinceLastLogin !== null}
+						<span class="badge" class:warning={user.daysSinceLastLogin > 7}>
+							{user.daysSinceLastLogin} days
+						</span>
+					{/if}
+				</td>
+				<td>
+					<span class="status-badge {user.engagementStatus}">
+						{user.engagementStatus}
+					</span>
+				</td>
+				<td>{formatDate(user.lastBriefDate)}</td>
+				<td>
+					<span class="next-brief-status">
+						{user.nextBriefStatus}
+					</span>
+				</td>
+			</tr>
+		{/each}
+	</tbody>
 </table>
 
 <style>
-  .status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-  }
-  .status-badge.active { background: #10b981; color: white; }
-  .status-badge.cooling_off { background: #f59e0b; color: white; }
-  .status-badge.first_backoff { background: #ef4444; color: white; }
-  .status-badge.second_backoff { background: #dc2626; color: white; }
-  .status-badge.inactive_long_term { background: #991b1b; color: white; }
+	.status-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.25rem;
+		font-size: 0.875rem;
+	}
+	.status-badge.active {
+		background: #10b981;
+		color: white;
+	}
+	.status-badge.cooling_off {
+		background: #f59e0b;
+		color: white;
+	}
+	.status-badge.first_backoff {
+		background: #ef4444;
+		color: white;
+	}
+	.status-badge.second_backoff {
+		background: #dc2626;
+		color: white;
+	}
+	.status-badge.inactive_long_term {
+		background: #991b1b;
+		color: white;
+	}
 </style>
 ```
 
@@ -599,12 +613,12 @@ All monitoring is internal-only through the admin interface at `/admin/users` wi
 
 ```typescript
 // apps/worker/src/__tests__/engagementTracking.test.ts
-describe("EngagementTrackingService", () => {
-  test("should send normal briefs for active users (0-2 days)", () => {});
-  test("should skip briefs during cooling off (2-4 days)", () => {});
-  test("should send re-engagement on day 4, 10, and 31", () => {});
-  test("should reset on user activity", () => {});
-  test("should handle 31+ day recurring emails", () => {});
+describe('EngagementTrackingService', () => {
+	test('should send normal briefs for active users (0-2 days)', () => {});
+	test('should skip briefs during cooling off (2-4 days)', () => {});
+	test('should send re-engagement on day 4, 10, and 31', () => {});
+	test('should reset on user activity', () => {});
+	test('should handle 31+ day recurring emails', () => {});
 });
 ```
 
@@ -644,16 +658,15 @@ CREATE OR REPLACE FUNCTION get_engagement_analytics()
 
 ```typescript
 // Simple environment variable toggle
-const ENGAGEMENT_BACKOFF_ENABLED =
-  process.env.ENGAGEMENT_BACKOFF_ENABLED === "true";
+const ENGAGEMENT_BACKOFF_ENABLED = process.env.ENGAGEMENT_BACKOFF_ENABLED === 'true';
 
 // In scheduler.ts
 if (ENGAGEMENT_BACKOFF_ENABLED) {
-  const engagement = await engagementTracking.shouldSendDailyBrief(userId);
-  if (!engagement.shouldSend) continue;
-  // Pass engagement metadata to job
+	const engagement = await engagementTracking.shouldSendDailyBrief(userId);
+	if (!engagement.shouldSend) continue;
+	// Pass engagement metadata to job
 } else {
-  // Existing logic
+	// Existing logic
 }
 ```
 
@@ -798,51 +811,51 @@ The design prioritizes simplicity, reusability of existing systems, and minimal 
 ### ✅ Phase 1: Core Logic (COMPLETED)
 
 - **BriefBackoffCalculator Class** (`apps/worker/src/lib/briefBackoffCalculator.ts`)
-  - ✅ Pure function calculator implemented
-  - ✅ Dynamic backoff logic (0-2 days active, 3-day cooling, 4-day/10-day/31-day re-engagement)
-  - ✅ Automatic reset on user activity (no explicit state tracking needed)
-  - ✅ Comprehensive unit tests (20 tests passing) in `tests/briefBackoffCalculator.test.ts`
-  - ✅ Uses existing database tables (`users.last_visit`, `daily_briefs`)
+    - ✅ Pure function calculator implemented
+    - ✅ Dynamic backoff logic (0-2 days active, 3-day cooling, 4-day/10-day/31-day re-engagement)
+    - ✅ Automatic reset on user activity (no explicit state tracking needed)
+    - ✅ Comprehensive unit tests (20 tests passing) in `tests/briefBackoffCalculator.test.ts`
+    - ✅ Uses existing database tables (`users.last_visit`, `daily_briefs`)
 
 ### ✅ Phase 2: Worker Integration (COMPLETED)
 
 #### Scheduler Integration
 
 - **Updated** `apps/worker/src/scheduler.ts`:
-  - ✅ Integrated `BriefBackoffCalculator`
-  - ✅ Feature flag support (`ENGAGEMENT_BACKOFF_ENABLED` env var, defaults to `false`)
-  - ✅ Backoff check before scheduling briefs
-  - ✅ Engagement metadata passed to job queue (isReengagement, daysSinceLastLogin)
-  - ✅ Detailed logging for debugging and monitoring
+    - ✅ Integrated `BriefBackoffCalculator`
+    - ✅ Feature flag support (`ENGAGEMENT_BACKOFF_ENABLED` env var, defaults to `false`)
+    - ✅ Backoff check before scheduling briefs
+    - ✅ Engagement metadata passed to job queue (isReengagement, daysSinceLastLogin)
+    - ✅ Detailed logging for debugging and monitoring
 
 #### Brief Generator Updates
 
 - **Updated** `apps/worker/src/workers/brief/briefGenerator.ts`:
-  - ✅ Detects re-engagement emails from job metadata
-  - ✅ Generates contextual content using LLM for re-engagement
-  - ✅ Calculates engagement statistics (pending/overdue tasks, top priorities, recent completions)
-  - ✅ Stores engagement metadata in daily brief record
-  - ✅ Custom subject lines for re-engagement emails
+    - ✅ Detects re-engagement emails from job metadata
+    - ✅ Generates contextual content using LLM for re-engagement
+    - ✅ Calculates engagement statistics (pending/overdue tasks, top priorities, recent completions)
+    - ✅ Stores engagement metadata in daily brief record
+    - ✅ Custom subject lines for re-engagement emails
 
 #### LLM Prompts
 
 - **Created** `ReengagementBriefPrompt` in `apps/worker/src/workers/brief/prompts.ts`:
-  - ✅ Dynamic system prompts based on inactivity level (4/10/31+ days)
-  - ✅ Tone adjustment (gentle → motivating → direct with value proposition)
-  - ✅ Subject line generation (context-aware)
-  - ✅ User prompt builder with task/project context
+    - ✅ Dynamic system prompts based on inactivity level (4/10/31+ days)
+    - ✅ Tone adjustment (gentle → motivating → direct with value proposition)
+    - ✅ Subject line generation (context-aware)
+    - ✅ User prompt builder with task/project context
 
 #### Email Service
 
 - **Updated** `apps/worker/src/lib/services/email-sender.ts`:
-  - ✅ Reads custom subject line from brief metadata
-  - ✅ Falls back to default subject for standard briefs
-  - ✅ Supports both webhook and SMTP email delivery
+    - ✅ Reads custom subject line from brief metadata
+    - ✅ Falls back to default subject for standard briefs
+    - ✅ Supports both webhook and SMTP email delivery
 
 #### Type Definitions
 
 - **Updated** `apps/worker/src/workers/shared/queueUtils.ts`:
-  - ✅ Extended `BriefJobData` interface with engagement metadata
+    - ✅ Extended `BriefJobData` interface with engagement metadata
 
 ### 🔄 Phase 3: Admin Dashboard (OPTIONAL)
 
@@ -851,9 +864,9 @@ The design prioritizes simplicity, reusability of existing systems, and minimal 
 **Completed**:
 
 - ✅ Analytics RPC function SQL created (`apps/worker/migrations/engagement_analytics_rpc.sql`)
-  - Can be run manually in Supabase SQL Editor
-  - Provides aggregated engagement metrics
-  - Includes total users, active/inactive breakdowns, brief counts
+    - Can be run manually in Supabase SQL Editor
+    - Provides aggregated engagement metrics
+    - Includes total users, active/inactive breakdowns, brief counts
 
 **Deferred** (not required for Phase 1-2 rollout):
 

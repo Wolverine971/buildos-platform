@@ -4,17 +4,8 @@ researcher: Claude Code
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Brain Dump Voice Recording Issues - Comprehensive Analysis"
-tags:
-  [
-    research,
-    codebase,
-    brain-dump,
-    voice-recording,
-    speech-recognition,
-    performance,
-    bugs,
-  ]
+topic: 'Brain Dump Voice Recording Issues - Comprehensive Analysis'
+tags: [research, codebase, brain-dump, voice-recording, speech-recognition, performance, bugs]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude Code
@@ -87,8 +78,8 @@ Capabilities are checked **before** microphone permissions are granted:
 
 ```typescript
 brainDumpActions.setVoiceCapabilities({
-  canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-  capabilitiesChecked: true,
+	canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+	capabilitiesChecked: true
 });
 ```
 
@@ -101,10 +92,10 @@ This check happens in `initializeModal()` immediately after voice service initia
 ```typescript
 // Cached capability detection for better performance
 let capabilitiesCache: {
-  voiceSupported: boolean;
-  liveTranscriptSupported: boolean;
-  supportedMimeType: string | null;
-  speechRecognition: any;
+	voiceSupported: boolean;
+	liveTranscriptSupported: boolean;
+	supportedMimeType: string | null;
+	speechRecognition: any;
 } | null = null;
 ```
 
@@ -122,17 +113,16 @@ The cache is:
 ```typescript
 // Check Speech Recognition support safely
 let SpeechRecConstructor = null;
-if (typeof window !== "undefined") {
-  SpeechRecConstructor =
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition;
+if (typeof window !== 'undefined') {
+	SpeechRecConstructor =
+		(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 }
 
 capabilitiesCache = {
-  voiceSupported,
-  liveTranscriptSupported: !!SpeechRecConstructor,
-  supportedMimeType,
-  speechRecognition: SpeechRecConstructor,
+	voiceSupported,
+	liveTranscriptSupported: !!SpeechRecConstructor,
+	supportedMimeType,
+	speechRecognition: SpeechRecConstructor
 };
 ```
 
@@ -149,19 +139,19 @@ The detection only checks if the `SpeechRecognition` constructor exists. It does
 
 ```typescript
 function initializeSpeechRecognition() {
-  if (!browser || recognition || !capabilitiesCache?.speechRecognition) return;
+	if (!browser || recognition || !capabilitiesCache?.speechRecognition) return;
 
-  try {
-    recognition = new capabilitiesCache.speechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
+	try {
+		recognition = new capabilitiesCache.speechRecognition();
+		recognition.continuous = true;
+		recognition.interimResults = true;
+		recognition.lang = 'en-US';
 
-    // ... event handlers ...
-  } catch (error) {
-    console.error("[SpeechRecognition] Initialization failed:", error);
-    recognition = null; // Silently fails, no UI update
-  }
+		// ... event handlers ...
+	} catch (error) {
+		console.error('[SpeechRecognition] Initialization failed:', error);
+		recognition = null; // Silently fails, no UI update
+	}
 }
 ```
 
@@ -219,48 +209,48 @@ Move validation to **after** first successful `getUserMedia()` call:
 
 ```typescript
 export async function startRecording(): Promise<void> {
-  // ... existing validation ...
+	// ... existing validation ...
 
-  try {
-    // Request microphone first
-    currentStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        /* ... */
-      },
-    });
+	try {
+		// Request microphone first
+		currentStream = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				/* ... */
+			}
+		});
 
-    // ✅ NEW: Now that we have permissions, validate SpeechRecognition
-    if (!isInitialized && capabilitiesCache?.liveTranscriptSupported) {
-      try {
-        initializeSpeechRecognition();
+		// ✅ NEW: Now that we have permissions, validate SpeechRecognition
+		if (!isInitialized && capabilitiesCache?.liveTranscriptSupported) {
+			try {
+				initializeSpeechRecognition();
 
-        // Test if it actually works
-        if (recognition) {
-          recognition.start();
-          recognition.stop(); // Quick test
-        }
+				// Test if it actually works
+				if (recognition) {
+					recognition.start();
+					recognition.stop(); // Quick test
+				}
 
-        isInitialized = true;
+				isInitialized = true;
 
-        // ✅ Update capability status based on actual usability
-        if (onCapabilityUpdate) {
-          onCapabilityUpdate({ canUseLiveTranscript: !!recognition });
-        }
-      } catch (error) {
-        console.warn("[SpeechRecognition] Runtime validation failed:", error);
-        recognition = null;
+				// ✅ Update capability status based on actual usability
+				if (onCapabilityUpdate) {
+					onCapabilityUpdate({ canUseLiveTranscript: !!recognition });
+				}
+			} catch (error) {
+				console.warn('[SpeechRecognition] Runtime validation failed:', error);
+				recognition = null;
 
-        // ✅ Update UI to reflect failure
-        if (onCapabilityUpdate) {
-          onCapabilityUpdate({ canUseLiveTranscript: false });
-        }
-      }
-    }
+				// ✅ Update UI to reflect failure
+				if (onCapabilityUpdate) {
+					onCapabilityUpdate({ canUseLiveTranscript: false });
+				}
+			}
+		}
 
-    // ... continue with recording setup ...
-  } catch (error) {
-    // ... error handling ...
-  }
+		// ... continue with recording setup ...
+	} catch (error) {
+		// ... error handling ...
+	}
 }
 ```
 
@@ -274,30 +264,28 @@ Notify UI when SpeechRecognition fails at runtime:
 
 ```typescript
 recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-  console.warn("[SpeechRecognition] Error:", event.error);
+	console.warn('[SpeechRecognition] Error:', event.error);
 
-  // ✅ NEW: Notify UI of capability loss
-  if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-    if (onCapabilityUpdate) {
-      onCapabilityUpdate({ canUseLiveTranscript: false });
-    }
-  }
+	// ✅ NEW: Notify UI of capability loss
+	if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+		if (onCapabilityUpdate) {
+			onCapabilityUpdate({ canUseLiveTranscript: false });
+		}
+	}
 
-  // Don't stop recording - MediaRecorder is the primary capture method
+	// Don't stop recording - MediaRecorder is the primary capture method
 };
 ```
 
 Add callback registration in initialization:
 
 ```typescript
-let onCapabilityUpdate:
-  | ((update: { canUseLiveTranscript: boolean }) => void)
-  | null = null;
+let onCapabilityUpdate: ((update: { canUseLiveTranscript: boolean }) => void) | null = null;
 
 export function setCapabilityUpdateCallback(
-  callback: (update: { canUseLiveTranscript: boolean }) => void,
+	callback: (update: { canUseLiveTranscript: boolean }) => void
 ): void {
-  onCapabilityUpdate = callback;
+	onCapabilityUpdate = callback;
 }
 ```
 
@@ -311,28 +299,28 @@ Add revalidation flag to bypass cache when needed:
 
 ```typescript
 function detectCapabilities(forceRevalidate = false) {
-  if (!browser) {
-    return {
-      voiceSupported: false,
-      liveTranscriptSupported: false,
-      supportedMimeType: null,
-      speechRecognition: null,
-    };
-  }
+	if (!browser) {
+		return {
+			voiceSupported: false,
+			liveTranscriptSupported: false,
+			supportedMimeType: null,
+			speechRecognition: null
+		};
+	}
 
-  // ✅ Allow cache bypass for revalidation
-  if (capabilitiesCache && !forceRevalidate) return capabilitiesCache;
+	// ✅ Allow cache bypass for revalidation
+	if (capabilitiesCache && !forceRevalidate) return capabilitiesCache;
 
-  // ... existing detection logic ...
+	// ... existing detection logic ...
 }
 
 export async function startRecording(): Promise<void> {
-  // ... existing code ...
+	// ... existing code ...
 
-  // ✅ Revalidate capabilities on each recording start
-  const capabilities = detectCapabilities(true);
+	// ✅ Revalidate capabilities on each recording start
+	const capabilities = detectCapabilities(true);
 
-  // ... continue ...
+	// ... continue ...
 }
 ```
 
@@ -346,37 +334,34 @@ Use Permissions API to detect microphone permission changes:
 
 ```typescript
 async function initializeModal() {
-  // ... existing initialization ...
+	// ... existing initialization ...
 
-  // ✅ NEW: Monitor microphone permission changes
-  if (browser && navigator.permissions) {
-    try {
-      const permissionStatus = await navigator.permissions.query({
-        name: "microphone" as PermissionName,
-      });
+	// ✅ NEW: Monitor microphone permission changes
+	if (browser && navigator.permissions) {
+		try {
+			const permissionStatus = await navigator.permissions.query({
+				name: 'microphone' as PermissionName
+			});
 
-      permissionStatus.addEventListener("change", () => {
-        console.log(
-          "[BrainDump] Microphone permission changed:",
-          permissionStatus.state,
-        );
+			permissionStatus.addEventListener('change', () => {
+				console.log('[BrainDump] Microphone permission changed:', permissionStatus.state);
 
-        if (permissionStatus.state === "denied") {
-          brainDumpActions.setVoiceCapabilities({
-            canUseLiveTranscript: false,
-            microphonePermissionGranted: false,
-          });
-        } else if (permissionStatus.state === "granted") {
-          // Revalidate capabilities with new permissions
-          voiceRecordingService.revalidateCapabilities();
-        }
-      });
-    } catch (error) {
-      console.warn("[BrainDump] Permissions API not available:", error);
-    }
-  }
+				if (permissionStatus.state === 'denied') {
+					brainDumpActions.setVoiceCapabilities({
+						canUseLiveTranscript: false,
+						microphonePermissionGranted: false
+					});
+				} else if (permissionStatus.state === 'granted') {
+					// Revalidate capabilities with new permissions
+					voiceRecordingService.revalidateCapabilities();
+				}
+			});
+		} catch (error) {
+			console.warn('[BrainDump] Permissions API not available:', error);
+		}
+	}
 
-  // ... rest of initialization ...
+	// ... rest of initialization ...
 }
 ```
 
@@ -390,23 +375,23 @@ Add detailed logging to help diagnose device-specific issues:
 
 ```typescript
 function detectCapabilities(forceRevalidate = false) {
-  // ... existing code ...
+	// ... existing code ...
 
-  // ✅ Comprehensive logging for debugging
-  console.log("[Voice] Capability detection:", {
-    browser,
-    hasNavigator: typeof navigator !== "undefined",
-    hasMediaDevices,
-    hasMediaRecorder,
-    hasSpeechRecognition: !!SpeechRecConstructor,
-    voiceSupported,
-    liveTranscriptSupported: !!SpeechRecConstructor,
-    supportedMimeType,
-    userAgent: navigator?.userAgent,
-    cached: !forceRevalidate && !!capabilitiesCache,
-  });
+	// ✅ Comprehensive logging for debugging
+	console.log('[Voice] Capability detection:', {
+		browser,
+		hasNavigator: typeof navigator !== 'undefined',
+		hasMediaDevices,
+		hasMediaRecorder,
+		hasSpeechRecognition: !!SpeechRecConstructor,
+		voiceSupported,
+		liveTranscriptSupported: !!SpeechRecConstructor,
+		supportedMimeType,
+		userAgent: navigator?.userAgent,
+		cached: !forceRevalidate && !!capabilitiesCache
+	});
 
-  // ... rest of function ...
+	// ... rest of function ...
 }
 ```
 
@@ -510,21 +495,21 @@ This is **unavoidable** but could be moved earlier.
 ```typescript
 // Setup MediaRecorder
 const recorderOptions: MediaRecorderOptions = {
-  audioBitsPerSecond: 64000,
+	audioBitsPerSecond: 64000
 };
 
 if (capabilities.supportedMimeType) {
-  recorderOptions.mimeType = capabilities.supportedMimeType;
+	recorderOptions.mimeType = capabilities.supportedMimeType;
 }
 
 mediaRecorder = new MediaRecorder(currentStream, recorderOptions); // ⚠️ ~5-10ms
 
 // Event handlers setup (~5-10ms total)
 mediaRecorder.ondataavailable = (event) => {
-  /* ... */
+	/* ... */
 };
 mediaRecorder.onerror = (event) => {
-  /* ... */
+	/* ... */
 };
 
 // ⚠️⚠️⚠️ BOTTLENECK #4: Store mutation before start() ⚠️⚠️⚠️
@@ -567,26 +552,26 @@ mediaRecorder.start(1000); // ✅ Non-blocking, starts immediately
 
 ```typescript
 async function initializeModal() {
-  // ... existing code ...
+	// ... existing code ...
 
-  // Initialize voice recording service
-  isVoiceSupported = voiceRecordingService.isVoiceSupported();
+	// Initialize voice recording service
+	isVoiceSupported = voiceRecordingService.isVoiceSupported();
 
-  // ✅ NEW: Pre-warm getUserMedia to avoid delay on recording start
-  if (isVoiceSupported && !microphonePermissionGranted) {
-    voiceRecordingService
-      .prewarmMicrophone()
-      .then(() => {
-        console.log("[BrainDump] Microphone pre-warmed");
-        brainDumpActions.setMicrophonePermission(true);
-      })
-      .catch((error) => {
-        console.warn("[BrainDump] Microphone pre-warm failed:", error);
-        // Non-fatal - user can still grant permission on button click
-      });
-  }
+	// ✅ NEW: Pre-warm getUserMedia to avoid delay on recording start
+	if (isVoiceSupported && !microphonePermissionGranted) {
+		voiceRecordingService
+			.prewarmMicrophone()
+			.then(() => {
+				console.log('[BrainDump] Microphone pre-warmed');
+				brainDumpActions.setMicrophonePermission(true);
+			})
+			.catch((error) => {
+				console.warn('[BrainDump] Microphone pre-warm failed:', error);
+				// Non-fatal - user can still grant permission on button click
+			});
+	}
 
-  // ... rest of initialization ...
+	// ... rest of initialization ...
 }
 ```
 
@@ -662,26 +647,26 @@ isRecording.set(true); // UI updates after
 
 ```typescript
 async function startRecording() {
-  if (!isVoiceSupported) return;
+	if (!isVoiceSupported) return;
 
-  try {
-    // ✅ Start recording FIRST (before UI updates)
-    await voiceRecordingService.startRecording(inputText);
+	try {
+		// ✅ Start recording FIRST (before UI updates)
+		await voiceRecordingService.startRecording(inputText);
 
-    // ⏱️ Update UI state AFTER recording has started
-    brainDumpActions.setVoiceError("");
-    brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
-    isCurrentlyRecording = true;
-  } catch (error) {
-    console.error("Recording error:", error);
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Unable to access microphone. Please check your permissions.";
-    brainDumpActions.setVoiceError(errorMessage);
-    isCurrentlyRecording = false;
-    brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
-  }
+		// ⏱️ Update UI state AFTER recording has started
+		brainDumpActions.setVoiceError('');
+		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+		isCurrentlyRecording = true;
+	} catch (error) {
+		console.error('Recording error:', error);
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: 'Unable to access microphone. Please check your permissions.';
+		brainDumpActions.setVoiceError(errorMessage);
+		isCurrentlyRecording = false;
+		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+	}
 }
 ```
 
@@ -705,11 +690,11 @@ Add to `voice.ts`:
 ```typescript
 // Export the initialization function for external pre-initialization
 export function preinitializeSpeechRecognition(): void {
-  const capabilities = detectCapabilities();
-  if (!isInitialized && capabilities.liveTranscriptSupported) {
-    initializeSpeechRecognition();
-    isInitialized = true;
-  }
+	const capabilities = detectCapabilities();
+	if (!isInitialized && capabilities.liveTranscriptSupported) {
+		initializeSpeechRecognition();
+		isInitialized = true;
+	}
 }
 ```
 
@@ -791,21 +776,21 @@ The `onresult` event handler **overwrites** the `liveTranscript` with only the c
 
 ```typescript
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-  let finalText = "";
-  let interimText = "";
+	let finalText = '';
+	let interimText = '';
 
-  // Process only new results for better performance
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    const transcript = event.results[i][0].transcript;
-    if (event.results[i].isFinal) {
-      finalText += transcript + " ";
-    } else {
-      interimText += transcript;
-    }
-  }
+	// Process only new results for better performance
+	for (let i = event.resultIndex; i < event.results.length; i++) {
+		const transcript = event.results[i][0].transcript;
+		if (event.results[i].isFinal) {
+			finalText += transcript + ' ';
+		} else {
+			interimText += transcript;
+		}
+	}
 
-  const combinedText = (finalText + interimText).trim();
-  liveTranscript.set(combinedText); // ⚠️ BUG: Overwrites previous content
+	const combinedText = (finalText + interimText).trim();
+	liveTranscript.set(combinedText); // ⚠️ BUG: Overwrites previous content
 };
 ```
 
@@ -817,14 +802,14 @@ When the user pauses, SpeechRecognition detects silence and fires `onend`, then 
 
 ```typescript
 recognition.onend = () => {
-  // Auto-restart if still recording (improves reliability)
-  if (get(isRecording) && recognition) {
-    try {
-      recognition.start();
-    } catch (error) {
-      console.warn("[SpeechRecognition] Failed to restart:", error);
-    }
-  }
+	// Auto-restart if still recording (improves reliability)
+	if (get(isRecording) && recognition) {
+		try {
+			recognition.start();
+		} catch (error) {
+			console.warn('[SpeechRecognition] Failed to restart:', error);
+		}
+	}
 };
 ```
 
@@ -864,34 +849,34 @@ Add a module-level accumulator in `voice.ts` to preserve final results across re
 
 ```typescript
 // Add at module level
-let accumulatedFinalTranscript = "";
+let accumulatedFinalTranscript = '';
 ```
 
 **Location**: `apps/web/src/lib/utils/voice.ts:118-134` (update onresult handler)
 
 ```typescript
 recognition.onresult = (event: SpeechRecognitionEvent) => {
-  let newFinalText = "";
-  let interimText = "";
+	let newFinalText = '';
+	let interimText = '';
 
-  // Process only new results for better performance
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    const transcript = event.results[i][0].transcript;
-    if (event.results[i].isFinal) {
-      newFinalText += transcript + " ";
-    } else {
-      interimText += transcript;
-    }
-  }
+	// Process only new results for better performance
+	for (let i = event.resultIndex; i < event.results.length; i++) {
+		const transcript = event.results[i][0].transcript;
+		if (event.results[i].isFinal) {
+			newFinalText += transcript + ' ';
+		} else {
+			interimText += transcript;
+		}
+	}
 
-  // ✅ Accumulate final results across restarts
-  if (newFinalText) {
-    accumulatedFinalTranscript += newFinalText;
-  }
+	// ✅ Accumulate final results across restarts
+	if (newFinalText) {
+		accumulatedFinalTranscript += newFinalText;
+	}
 
-  // ✅ Combine accumulated final + current interim
-  const combinedText = (accumulatedFinalTranscript + interimText).trim();
-  liveTranscript.set(combinedText);
+	// ✅ Combine accumulated final + current interim
+	const combinedText = (accumulatedFinalTranscript + interimText).trim();
+	liveTranscript.set(combinedText);
 };
 ```
 
@@ -899,14 +884,14 @@ recognition.onresult = (event: SpeechRecognitionEvent) => {
 
 ```typescript
 export async function startRecording(): Promise<void> {
-  // ... existing validation ...
+	// ... existing validation ...
 
-  // Reset state
-  audioChunks = [];
-  liveTranscript.set("");
-  accumulatedFinalTranscript = ""; // ✅ Reset accumulator
+	// Reset state
+	audioChunks = [];
+	liveTranscript.set('');
+	accumulatedFinalTranscript = ''; // ✅ Reset accumulator
 
-  // ... rest of function ...
+	// ... rest of function ...
 }
 ```
 
@@ -914,14 +899,14 @@ export async function startRecording(): Promise<void> {
 
 ```typescript
 function cleanupResources() {
-  // ... existing cleanup ...
+	// ... existing cleanup ...
 
-  // Reset state
-  mediaRecorder = null;
-  audioChunks = [];
-  isRecording.set(false);
-  liveTranscript.set("");
-  accumulatedFinalTranscript = ""; // ✅ Reset accumulator
+	// Reset state
+	mediaRecorder = null;
+	audioChunks = [];
+	isRecording.set(false);
+	liveTranscript.set('');
+	accumulatedFinalTranscript = ''; // ✅ Reset accumulator
 }
 ```
 
@@ -1019,23 +1004,23 @@ This design ensures:
 ### Existing Research Documents
 
 1. **Brain Dump Textarea Performance** (`2025-10-06_15-50-04_braindump-textarea-lag-performance.md`)
-   - **Relevance**: Textarea lag affects voice transcription UX indirectly
-   - **Issue**: 10-17ms lag per keystroke impacts rapid live transcript updates
-   - **Recommendation**: Apply local state pattern to improve both typing and voice transcription
+    - **Relevance**: Textarea lag affects voice transcription UX indirectly
+    - **Issue**: 10-17ms lag per keystroke impacts rapid live transcript updates
+    - **Recommendation**: Apply local state pattern to improve both typing and voice transcription
 
 2. **Brain Dump Input Not Clearing** (`2025-10-06_01-36-48_brain-dump-input-not-clearing-after-save.md`)
-   - **Relevance**: Multi-brain dump mode state management
-   - **Issue**: Input text persists after save
-   - **Note**: Voice recording should consider multi-brain dump mode implications
+    - **Relevance**: Multi-brain dump mode state management
+    - **Issue**: Input text persists after save
+    - **Note**: Voice recording should consider multi-brain dump mode implications
 
 3. **Brain Dump Complete Flow Analysis** (`2025-09-30_17-48-03_brain-dump-complete-flow.md`)
-   - **Relevance**: Comprehensive flow documentation (lines 224-278 cover voice recording)
-   - **Note**: No bugs documented in original flow analysis
+    - **Relevance**: Comprehensive flow documentation (lines 224-278 cover voice recording)
+    - **Note**: No bugs documented in original flow analysis
 
 4. **Brain Dump Flow Audit** (`2025-09-30_brain-dump-flow-audit.md`)
-   - **Relevance**: Phase 2.1 extracted VoiceRecordingService (line 1020)
-   - **Open Item**: "Testing: Voice recording transcription callback flow under investigation"
-   - **Note**: This research completes that open investigation
+    - **Relevance**: Phase 2.1 extracted VoiceRecordingService (line 1020)
+    - **Open Item**: "Testing: Voice recording transcription callback flow under investigation"
+    - **Note**: This research completes that open investigation
 
 ### Historical Context
 
@@ -1048,24 +1033,24 @@ This design ensures:
 ## Open Questions
 
 1. **Should we proactively request microphone permissions?**
-   - Pro: Eliminates recording start delay
-   - Con: May annoy users with premature permission prompts
-   - Recommendation: Request permission on modal open, not page load
+    - Pro: Eliminates recording start delay
+    - Con: May annoy users with premature permission prompts
+    - Recommendation: Request permission on modal open, not page load
 
 2. **Should we disable live transcript UI if runtime validation fails?**
-   - Pro: Honest UX, no false expectations
-   - Con: Loses the aspirational "this feature exists" signal
-   - Recommendation: Yes, disable and show fallback message
+    - Pro: Honest UX, no false expectations
+    - Con: Loses the aspirational "this feature exists" signal
+    - Recommendation: Yes, disable and show fallback message
 
 3. **Can we test SpeechRecognition without triggering permission prompt?**
-   - Current: No reliable way without requesting getUserMedia first
-   - Impact: Must request permissions to validate capabilities
-   - Recommendation: Accept this limitation, validate post-permission
+    - Current: No reliable way without requesting getUserMedia first
+    - Impact: Must request permissions to validate capabilities
+    - Recommendation: Accept this limitation, validate post-permission
 
 4. **Should we persist capability detection results across sessions?**
-   - Pro: Avoid repeated permission prompts
-   - Con: Stale detection if browser/device settings change
-   - Recommendation: No, revalidate on each modal open
+    - Pro: Avoid repeated permission prompts
+    - Con: Stale detection if browser/device settings change
+    - Recommendation: No, revalidate on each modal open
 
 ---
 
@@ -1077,26 +1062,26 @@ This design ensures:
 **Expected Impact**: 80-90% improvement across all issues
 
 1. **Issue #3 Fix** (1 hour): Add transcript accumulation
-   - Add `accumulatedFinalTranscript` module variable
-   - Update `onresult` handler to accumulate final results
-   - Reset accumulator on start/cleanup
-   - **Test**: Record with multiple pauses, verify no loss
+    - Add `accumulatedFinalTranscript` module variable
+    - Update `onresult` handler to accumulate final results
+    - Reset accumulator on start/cleanup
+    - **Test**: Record with multiple pauses, verify no loss
 
 2. **Issue #2 Fix #2** (1 hour): Reorder state updates
-   - Move `mediaRecorder.start()` before `isRecording.set(true)` in voice.ts
-   - Move UI updates after recording start in BrainDumpModal
-   - **Test**: Measure recording start delay (should be 15-30ms faster)
+    - Move `mediaRecorder.start()` before `isRecording.set(true)` in voice.ts
+    - Move UI updates after recording start in BrainDumpModal
+    - **Test**: Measure recording start delay (should be 15-30ms faster)
 
 3. **Issue #1 Fix #1** (2-3 hours): Runtime capability validation
-   - Add capability update callback to voice.ts
-   - Validate SpeechRecognition after getUserMedia succeeds
-   - Update UI on capability changes
-   - **Test**: Deny permissions, verify UI updates correctly
+    - Add capability update callback to voice.ts
+    - Validate SpeechRecognition after getUserMedia succeeds
+    - Update UI on capability changes
+    - **Test**: Deny permissions, verify UI updates correctly
 
 4. **Issue #1 Fix #2** (1 hour): Runtime failure callbacks
-   - Add `onerror` callback to update capabilities
-   - Wire up callback registration
-   - **Test**: Trigger SpeechRecognition errors, verify UI updates
+    - Add `onerror` callback to update capabilities
+    - Wire up callback registration
+    - **Test**: Trigger SpeechRecognition errors, verify UI updates
 
 ### Phase 2: Performance Optimizations (2-4 hours)
 
@@ -1104,19 +1089,19 @@ This design ensures:
 **Expected Impact**: Additional 50-100ms recording start improvement
 
 5. **Issue #2 Fix #1** (2-3 hours): Microphone pre-warming
-   - Add `prewarmMicrophone()` to voiceRecording.service.ts
-   - Call on modal initialization
-   - Reuse pre-warmed stream in voice.ts
-   - **Test**: Measure recording start delay (should be 50-100ms faster)
+    - Add `prewarmMicrophone()` to voiceRecording.service.ts
+    - Call on modal initialization
+    - Reuse pre-warmed stream in voice.ts
+    - **Test**: Measure recording start delay (should be 50-100ms faster)
 
 6. **Issue #2 Fix #3** (0.5 hours): Pre-initialize SpeechRecognition
-   - Export `preinitializeSpeechRecognition()` from voice.ts
-   - Call on modal initialization
-   - **Test**: First recording should be 15-30ms faster
+    - Export `preinitializeSpeechRecognition()` from voice.ts
+    - Call on modal initialization
+    - **Test**: First recording should be 15-30ms faster
 
 7. **Issue #2 Fix #4** (0.5 hours): Defer text processing
-   - Move text append after recording start
-   - **Test**: Measure recording start delay (should be 7-15ms faster)
+    - Move text append after recording start
+    - **Test**: Measure recording start delay (should be 7-15ms faster)
 
 ### Phase 3: Polish & Monitoring (1-2 hours)
 
@@ -1124,14 +1109,14 @@ This design ensures:
 **Expected Impact**: Better debugging and user experience
 
 8. **Issue #1 Fix #5** (0.5 hours): Add debug logging
-   - Comprehensive capability detection logging
-   - Runtime state change logging
-   - **Test**: Review logs in various scenarios
+    - Comprehensive capability detection logging
+    - Runtime state change logging
+    - **Test**: Review logs in various scenarios
 
 9. **Issue #1 Fix #3** (0.5 hours): Revalidation on recording start
-   - Add `forceRevalidate` parameter to detectCapabilities
-   - Call with force=true on each recording start
-   - **Test**: Verify capabilities stay current
+    - Add `forceRevalidate` parameter to detectCapabilities
+    - Call with force=true on each recording start
+    - **Test**: Verify capabilities stay current
 
 10. **Issue #1 Fix #4** (1 hour): Permission state monitoring
     - Add Permissions API listener in BrainDumpModal

@@ -31,11 +31,11 @@ Understand how the app currently handles project deduplication and fetching user
 ```typescript
 // Line 22-27: Projects query
 supabase
-  .from("projects")
-  .select("id, name, slug, description, created_at, updated_at")
-  .eq("user_id", user.id)
-  .order("updated_at", { ascending: false })
-  .limit(20);
+	.from('projects')
+	.select('id, name, slug, description, created_at, updated_at')
+	.eq('user_id', user.id)
+	.order('updated_at', { ascending: false })
+	.limit(20);
 ```
 
 **Returns:**
@@ -102,14 +102,14 @@ async getAllUserProjectsSummary(
 
 ```typescript
 interface ProjectSummary {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  executive_summary: string | null;
-  tags: string[];
-  status: string;
-  updated_at: string;
+	id: string;
+	name: string;
+	slug: string;
+	description: string | null;
+	executive_summary: string | null;
+	tags: string[];
+	status: string;
+	updated_at: string;
 }
 ```
 
@@ -127,15 +127,15 @@ interface ProjectSummary {
 
 ```typescript
 export function formatProjectsSummaryList(
-  projects: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    executive_summary: string | null;
-    tags: string[];
-    status: string;
-  }>,
+	projects: Array<{
+		id: string;
+		name: string;
+		slug: string;
+		description: string | null;
+		executive_summary: string | null;
+		tags: string[];
+		status: string;
+	}>
 ): string;
 ```
 
@@ -171,17 +171,17 @@ export function formatProjectsSummaryList(
 #### Evidence:
 
 1. **No usage in brain dump processor** (`braindump-processor.ts`)
-   - No calls to `getAllUserProjectsSummary()`
-   - No calls to `formatProjectsSummaryList()`
+    - No calls to `getAllUserProjectsSummary()`
+    - No calls to `formatProjectsSummaryList()`
 
 2. **No usage in prompt templates** (`promptTemplate.service.ts`)
-   - Searched entire file: no references to these functions
-   - No existing project list passed to LLM for new project creation
+    - Searched entire file: no references to these functions
+    - No existing project list passed to LLM for new project creation
 
 3. **Brain dump init API returns limited data**
-   - Only 20 most recent projects
-   - Only basic fields (no executive_summary, no tags)
-   - No deduplication checking
+    - Only 20 most recent projects
+    - Only basic fields (no executive_summary, no tags)
+    - No deduplication checking
 
 #### Why This Matters:
 
@@ -256,12 +256,12 @@ No existing projects context included!
 ```typescript
 // Line 341-346
 if (selectedProjectId) {
-  const fullProjectData = await this.projectDataFetcher.getFullProjectData({
-    userId,
-    projectId: selectedProjectId,
-    options: { includeTasks: true, includePhases: true },
-  });
-  existingProject = fullProjectData.fullProjectWithRelations;
+	const fullProjectData = await this.projectDataFetcher.getFullProjectData({
+		userId,
+		projectId: selectedProjectId,
+		options: { includeTasks: true, includePhases: true }
+	});
+	existingProject = fullProjectData.fullProjectWithRelations;
 }
 ```
 
@@ -490,13 +490,10 @@ this.cache = new CacheManager(50, 5 * 60 * 1000);
 const projectDataFetcher = new ProjectDataFetcher(this.supabase);
 
 // Get user's existing projects
-const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(
-  userId,
-  {
-    limit: 30, // Limit to avoid token bloat
-    includeStatus: ["active", "planning"], // Skip completed/archived
-  },
-);
+const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+	limit: 30, // Limit to avoid token bloat
+	includeStatus: ['active', 'planning'] // Skip completed/archived
+});
 
 // Format for LLM
 const projectsContext = formatProjectsSummaryList(existingProjects);

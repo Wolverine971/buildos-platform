@@ -1,5 +1,5 @@
 ---
-title: "Calendar Integration System Research"
+title: 'Calendar Integration System Research'
 date: 2025-10-08
 type: research
 tags: [calendar, google-calendar, architecture, database, api]
@@ -580,87 +580,87 @@ After calendar creation, automatically:
 
 ```typescript
 interface CalendarEvent {
-  // Google Calendar core fields
-  kind: "calendar#event";
-  etag: string;
-  id: string;
-  status: "confirmed" | "tentative" | "cancelled";
-  htmlLink: string;
+	// Google Calendar core fields
+	kind: 'calendar#event';
+	etag: string;
+	id: string;
+	status: 'confirmed' | 'tentative' | 'cancelled';
+	htmlLink: string;
 
-  // Timestamps
-  created: string; // ISO timestamp
-  updated: string; // ISO timestamp
+	// Timestamps
+	created: string; // ISO timestamp
+	updated: string; // ISO timestamp
 
-  // Event details
-  summary: string; // Event title
-  description?: string; // Event description/notes
-  location?: string; // Event location
-  colorId?: string; // Event color (1-11)
+	// Event details
+	summary: string; // Event title
+	description?: string; // Event description/notes
+	location?: string; // Event location
+	colorId?: string; // Event color (1-11)
 
-  // Creator & Organizer
-  creator: {
-    email: string;
-    displayName?: string;
-    self?: boolean;
-  };
-  organizer: {
-    email: string;
-    displayName?: string;
-    self?: boolean;
-  };
+	// Creator & Organizer
+	creator: {
+		email: string;
+		displayName?: string;
+		self?: boolean;
+	};
+	organizer: {
+		email: string;
+		displayName?: string;
+		self?: boolean;
+	};
 
-  // Start/End times
-  start: {
-    dateTime?: string; // ISO timestamp for timed events
-    date?: string; // YYYY-MM-DD for all-day events
-    timeZone?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
+	// Start/End times
+	start: {
+		dateTime?: string; // ISO timestamp for timed events
+		date?: string; // YYYY-MM-DD for all-day events
+		timeZone?: string;
+	};
+	end: {
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
 
-  // Recurring events
-  recurringEventId?: string; // ID of master event (if this is an instance)
-  originalStartTime?: {
-    // Original time (if modified instance)
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  recurrence?: string[]; // Array of RRULE strings
+	// Recurring events
+	recurringEventId?: string; // ID of master event (if this is an instance)
+	originalStartTime?: {
+		// Original time (if modified instance)
+		dateTime?: string;
+		date?: string;
+		timeZone?: string;
+	};
+	recurrence?: string[]; // Array of RRULE strings
 
-  // Attendees
-  attendees?: {
-    email: string;
-    displayName?: string;
-    organizer?: boolean;
-    self?: boolean;
-    responseStatus: "accepted" | "declined" | "tentative" | "needsAction";
-    comment?: string;
-    additionalGuests?: number;
-  }[];
+	// Attendees
+	attendees?: {
+		email: string;
+		displayName?: string;
+		organizer?: boolean;
+		self?: boolean;
+		responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+		comment?: string;
+		additionalGuests?: number;
+	}[];
 
-  // Reminders
-  reminders?: {
-    useDefault: boolean;
-    overrides?: {
-      method: "email" | "popup";
-      minutes: number;
-    }[];
-  };
+	// Reminders
+	reminders?: {
+		useDefault: boolean;
+		overrides?: {
+			method: 'email' | 'popup';
+			minutes: number;
+		}[];
+	};
 
-  // Metadata
-  iCalUID: string;
-  sequence: number;
-  eventType?: "default" | "outOfOffice" | "focusTime" | string;
-  transparency?: "opaque" | "transparent";
-  visibility?: "default" | "public" | "private" | "confidential";
+	// Metadata
+	iCalUID: string;
+	sequence: number;
+	eventType?: 'default' | 'outOfOffice' | 'focusTime' | string;
+	transparency?: 'opaque' | 'transparent';
+	visibility?: 'default' | 'public' | 'private' | 'confidential';
 
-  // Video conferencing
-  hangoutLink?: string; // Google Meet link
-  conferenceData?: any; // Full conference info
+	// Video conferencing
+	hangoutLink?: string; // Google Meet link
+	conferenceData?: any; // Full conference info
 }
 ```
 
@@ -668,13 +668,13 @@ interface CalendarEvent {
 
 ```typescript
 interface GetCalendarEventsResponse {
-  event_count: number;
-  time_range: {
-    start: string; // ISO 8601
-    end: string; // ISO 8601
-    timeZone?: string;
-  };
-  events: CalendarEvent[]; // ALL event data preserved
+	event_count: number;
+	time_range: {
+		start: string; // ISO 8601
+		end: string; // ISO 8601
+		timeZone?: string;
+	};
+	events: CalendarEvent[]; // ALL event data preserved
 }
 ```
 
@@ -758,14 +758,14 @@ When no `timeZone` is provided:
 
 ```typescript
 const params = {
-  task_id: "abc-123",
-  start_time: "2025-10-08T14:00:00Z",
-  // No timeZone provided
+	task_id: 'abc-123',
+	start_time: '2025-10-08T14:00:00Z'
+	// No timeZone provided
 };
 
 // Result in Google Calendar:
 {
-  dateTime: "2025-10-08T14:00:00.000Z"; // UTC time
+	dateTime: '2025-10-08T14:00:00.000Z'; // UTC time
 }
 ```
 
@@ -810,18 +810,18 @@ user_calendar_preferences:
 ```typescript
 // Fetch user's timezone preference
 const { data: prefs } = await supabase
-  .from("user_calendar_preferences")
-  .select("timezone")
-  .eq("user_id", userId)
-  .single();
+	.from('user_calendar_preferences')
+	.select('timezone')
+	.eq('user_id', userId)
+	.single();
 
-const userTimeZone = prefs?.timezone || "America/New_York";
+const userTimeZone = prefs?.timezone || 'America/New_York';
 
 // Use in calendar operations
 await calendarService.scheduleTask(userId, {
-  task_id: taskId,
-  start_time: startTime,
-  timeZone: userTimeZone, // Apply user's timezone
+	task_id: taskId,
+	start_time: startTime,
+	timeZone: userTimeZone // Apply user's timezone
 });
 ```
 
@@ -904,7 +904,7 @@ const isAllDay = event.start.date && !event.start.dateTime;
 
 // User preference to exclude all-day events
 if (preferences.exclude_all_day_events && isAllDay) {
-  // Skip this event in analysis
+	// Skip this event in analysis
 }
 ```
 
@@ -936,16 +936,16 @@ User
 
 ```typescript
 // Creating the link when scheduling a task
-await supabase.from("task_calendar_events").insert({
-  task_id: task.id,
-  user_id: userId,
-  calendar_event_id: googleEvent.id,
-  calendar_id: "primary",
-  event_title: task.title,
-  event_start: task.start_date,
-  event_end: calculateEndTime(task.start_date, task.duration_minutes),
-  sync_status: "synced",
-  sync_source: "app",
+await supabase.from('task_calendar_events').insert({
+	task_id: task.id,
+	user_id: userId,
+	calendar_event_id: googleEvent.id,
+	calendar_id: 'primary',
+	event_title: task.title,
+	event_start: task.start_date,
+	event_end: calculateEndTime(task.start_date, task.duration_minutes),
+	sync_status: 'synced',
+	sync_source: 'app'
 });
 ```
 
@@ -970,13 +970,13 @@ WHERE tce.calendar_event_id = 'google-event-id';
 
 ```typescript
 // Creating project calendar link
-await supabase.from("project_calendars").insert({
-  project_id: project.id,
-  user_id: userId,
-  calendar_id: googleCalendarId, // Google Calendar ID
-  calendar_name: `${project.name} Calendar`,
-  sync_enabled: true,
-  color_id: "7", // Google Calendar color
+await supabase.from('project_calendars').insert({
+	project_id: project.id,
+	user_id: userId,
+	calendar_id: googleCalendarId, // Google Calendar ID
+	calendar_name: `${project.name} Calendar`,
+	sync_enabled: true,
+	color_id: '7' // Google Calendar color
 });
 ```
 
@@ -1002,14 +1002,14 @@ WHERE pc.project_id = 'project-uuid';
 
 ```typescript
 // Creating suggestion from calendar events
-await supabase.from("calendar_project_suggestions").insert({
-  analysis_id: analysis.id,
-  user_id: userId,
-  suggested_name: "Q1 Marketing Campaign",
-  calendar_event_ids: ["event-1", "event-2", "event-3"], // Array of event IDs
-  event_count: 3,
-  confidence_score: 0.85,
-  ai_reasoning: "Detected recurring marketing meetings...",
+await supabase.from('calendar_project_suggestions').insert({
+	analysis_id: analysis.id,
+	user_id: userId,
+	suggested_name: 'Q1 Marketing Campaign',
+	calendar_event_ids: ['event-1', 'event-2', 'event-3'], // Array of event IDs
+	event_count: 3,
+	confidence_score: 0.85,
+	ai_reasoning: 'Detected recurring marketing meetings...'
 });
 ```
 
@@ -1052,32 +1052,32 @@ projects:
 ```typescript
 // When user accepts a suggestion
 const project = await supabase
-  .from("projects")
-  .insert({
-    user_id: userId,
-    name: suggestion.suggested_name,
-    description: suggestion.suggested_description,
-    context: suggestion.suggested_context,
-    source: "calendar_analysis",
-    source_metadata: {
-      analysis_id: suggestion.analysis_id,
-      suggestion_id: suggestion.id,
-      event_ids: suggestion.calendar_event_ids,
-      confidence: suggestion.confidence_score,
-      event_count: suggestion.event_count,
-    },
-  })
-  .select()
-  .single();
+	.from('projects')
+	.insert({
+		user_id: userId,
+		name: suggestion.suggested_name,
+		description: suggestion.suggested_description,
+		context: suggestion.suggested_context,
+		source: 'calendar_analysis',
+		source_metadata: {
+			analysis_id: suggestion.analysis_id,
+			suggestion_id: suggestion.id,
+			event_ids: suggestion.calendar_event_ids,
+			confidence: suggestion.confidence_score,
+			event_count: suggestion.event_count
+		}
+	})
+	.select()
+	.single();
 
 // Update suggestion with created project
 await supabase
-  .from("calendar_project_suggestions")
-  .update({
-    status: "accepted",
-    created_project_id: project.id,
-  })
-  .eq("id", suggestion.id);
+	.from('calendar_project_suggestions')
+	.update({
+		status: 'accepted',
+		created_project_id: project.id
+	})
+	.eq('id', suggestion.id);
 ```
 
 ### Link 5: Tasks ↔ Calendar Events (Source)
@@ -1095,18 +1095,18 @@ tasks:
 ```typescript
 // From calendar analysis
 const task = await supabase
-  .from("tasks")
-  .insert({
-    user_id: userId,
-    project_id: project.id,
-    title: calendarEvent.summary,
-    description: calendarEvent.description,
-    start_date: calendarEvent.start.dateTime,
-    source: "calendar_event",
-    source_calendar_event_id: calendarEvent.id,
-  })
-  .select()
-  .single();
+	.from('tasks')
+	.insert({
+		user_id: userId,
+		project_id: project.id,
+		title: calendarEvent.summary,
+		description: calendarEvent.description,
+		start_date: calendarEvent.start.dateTime,
+		source: 'calendar_event',
+		source_calendar_event_id: calendarEvent.id
+	})
+	.select()
+	.single();
 ```
 
 ### Recursive Links: Recurring Events
@@ -1290,29 +1290,29 @@ OAuth authentication for Google Calendar.
 ### Method 1: Direct Service Call (Server-side)
 
 ```typescript
-import { CalendarService } from "$lib/services/calendar-service";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { CalendarService } from '$lib/services/calendar-service';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // In a +page.server.ts or API route
 export const load = async ({ locals: { supabase, safeGetSession } }) => {
-  const { session } = await safeGetSession();
-  if (!session?.user?.id) return { events: [] };
+	const { session } = await safeGetSession();
+	if (!session?.user?.id) return { events: [] };
 
-  const calendarService = new CalendarService(supabase);
+	const calendarService = new CalendarService(supabase);
 
-  // Fetch events for the next 7 days
-  const response = await calendarService.getCalendarEvents(session.user.id, {
-    timeMin: new Date().toISOString(),
-    timeMax: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    maxResults: 50,
-    calendarId: "primary",
-  });
+	// Fetch events for the next 7 days
+	const response = await calendarService.getCalendarEvents(session.user.id, {
+		timeMin: new Date().toISOString(),
+		timeMax: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+		maxResults: 50,
+		calendarId: 'primary'
+	});
 
-  return {
-    events: response.events,
-    eventCount: response.event_count,
-    timeRange: response.time_range,
-  };
+	return {
+		events: response.events,
+		eventCount: response.event_count,
+		timeRange: response.time_range
+	};
 };
 ```
 
@@ -1321,23 +1321,23 @@ export const load = async ({ locals: { supabase, safeGetSession } }) => {
 ```typescript
 // In a Svelte component
 async function fetchCalendarEvents() {
-  const response = await fetch("/api/calendar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      method: "getCalendarEvents",
-      params: {
-        timeMin: new Date().toISOString(),
-        timeMax: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        maxResults: 50,
-      },
-    }),
-  });
+	const response = await fetch('/api/calendar', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			method: 'getCalendarEvents',
+			params: {
+				timeMin: new Date().toISOString(),
+				timeMax: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+				maxResults: 50
+			}
+		})
+	});
 
-  const result = await response.json();
-  if (result.success) {
-    return result.data; // GetCalendarEventsResponse
-  }
+	const result = await response.json();
+	if (result.success) {
+		return result.data; // GetCalendarEventsResponse
+	}
 }
 ```
 
@@ -1345,26 +1345,26 @@ async function fetchCalendarEvents() {
 
 ```typescript
 // Fetch events for a specific project's calendar
-const projectId = "abc-123";
+const projectId = 'abc-123';
 
 const response = await fetch(`/api/projects/${projectId}/calendar`);
 const result = await response.json();
 
 if (result.success) {
-  const projectCalendar = result.data; // { calendar_id, calendar_name, ... }
+	const projectCalendar = result.data; // { calendar_id, calendar_name, ... }
 
-  // Now fetch events for this calendar
-  const eventsResponse = await fetch("/api/calendar", {
-    method: "POST",
-    body: JSON.stringify({
-      method: "getCalendarEvents",
-      params: {
-        calendarId: projectCalendar.calendar_id,
-        timeMin: new Date().toISOString(),
-        timeMax: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    }),
-  });
+	// Now fetch events for this calendar
+	const eventsResponse = await fetch('/api/calendar', {
+		method: 'POST',
+		body: JSON.stringify({
+			method: 'getCalendarEvents',
+			params: {
+				calendarId: projectCalendar.calendar_id,
+				timeMin: new Date().toISOString(),
+				timeMax: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+			}
+		})
+	});
 }
 ```
 
@@ -1373,11 +1373,11 @@ if (result.success) {
 ```typescript
 // Query task_calendar_events to get calendar event IDs
 const { data: taskEvents } = await supabase
-  .from("task_calendar_events")
-  .select("*, tasks(title, description)")
-  .eq("user_id", userId)
-  .eq("sync_status", "synced")
-  .order("event_start", { ascending: true });
+	.from('task_calendar_events')
+	.select('*, tasks(title, description)')
+	.eq('user_id', userId)
+	.eq('sync_status', 'synced')
+	.order('event_start', { ascending: true });
 
 // taskEvents now contains all calendar-linked tasks with event details
 ```
@@ -1639,98 +1639,97 @@ Based on this research, here's how to fetch calendar events for daily brief gene
 
 ```typescript
 // In worker app's daily brief generator
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@buildos/shared-types";
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@buildos/shared-types';
 
 async function getUpcomingEventsForBrief(
-  userId: string,
-  briefDate: Date,
+	userId: string,
+	briefDate: Date
 ): Promise<CalendarEvent[]> {
-  const supabase = createClient<Database>(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY,
-  );
+	const supabase = createClient<Database>(
+		process.env.SUPABASE_URL,
+		process.env.SUPABASE_SERVICE_KEY
+	);
 
-  // 1. Check if user has calendar connected
-  const { data: calendarToken } = await supabase
-    .from("user_calendar_tokens")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+	// 1. Check if user has calendar connected
+	const { data: calendarToken } = await supabase
+		.from('user_calendar_tokens')
+		.select('*')
+		.eq('user_id', userId)
+		.single();
 
-  if (!calendarToken) {
-    return []; // No calendar connected
-  }
+	if (!calendarToken) {
+		return []; // No calendar connected
+	}
 
-  // 2. Get user's timezone preference
-  const { data: prefs } = await supabase
-    .from("user_calendar_preferences")
-    .select("timezone")
-    .eq("user_id", userId)
-    .single();
+	// 2. Get user's timezone preference
+	const { data: prefs } = await supabase
+		.from('user_calendar_preferences')
+		.select('timezone')
+		.eq('user_id', userId)
+		.single();
 
-  const userTimeZone = prefs?.timezone || "America/New_York";
+	const userTimeZone = prefs?.timezone || 'America/New_York';
 
-  // 3. Calculate time range for brief
-  const startOfDay = new Date(briefDate);
-  startOfDay.setHours(0, 0, 0, 0);
+	// 3. Calculate time range for brief
+	const startOfDay = new Date(briefDate);
+	startOfDay.setHours(0, 0, 0, 0);
 
-  const endOfDay = new Date(briefDate);
-  endOfDay.setHours(23, 59, 59, 999);
+	const endOfDay = new Date(briefDate);
+	endOfDay.setHours(23, 59, 59, 999);
 
-  // 4. Fetch events from Google Calendar
-  const calendarService = new CalendarService(supabase);
+	// 4. Fetch events from Google Calendar
+	const calendarService = new CalendarService(supabase);
 
-  try {
-    const response = await calendarService.getCalendarEvents(userId, {
-      timeMin: startOfDay.toISOString(),
-      timeMax: endOfDay.toISOString(),
-      maxResults: 100,
-      timeZone: userTimeZone,
-      // Optionally filter to specific calendars
-      calendarId: "primary", // Or get from user preferences
-    });
+	try {
+		const response = await calendarService.getCalendarEvents(userId, {
+			timeMin: startOfDay.toISOString(),
+			timeMax: endOfDay.toISOString(),
+			maxResults: 100,
+			timeZone: userTimeZone,
+			// Optionally filter to specific calendars
+			calendarId: 'primary' // Or get from user preferences
+		});
 
-    // 5. Filter events (optional)
-    const filteredEvents = response.events.filter((event) => {
-      // Exclude declined events
-      if (event.status === "cancelled") return false;
+		// 5. Filter events (optional)
+		const filteredEvents = response.events.filter((event) => {
+			// Exclude declined events
+			if (event.status === 'cancelled') return false;
 
-      // Check if user declined
-      const userAttendee = event.attendees?.find(
-        (a) => a.email === calendarToken.google_email,
-      );
-      if (userAttendee?.responseStatus === "declined") return false;
+			// Check if user declined
+			const userAttendee = event.attendees?.find(
+				(a) => a.email === calendarToken.google_email
+			);
+			if (userAttendee?.responseStatus === 'declined') return false;
 
-      // Exclude all-day events (optional)
-      if (event.start.date && !event.start.dateTime) return false;
+			// Exclude all-day events (optional)
+			if (event.start.date && !event.start.dateTime) return false;
 
-      return true;
-    });
+			return true;
+		});
 
-    return filteredEvents;
-  } catch (error) {
-    console.error("Failed to fetch calendar events:", error);
-    return [];
-  }
+		return filteredEvents;
+	} catch (error) {
+		console.error('Failed to fetch calendar events:', error);
+		return [];
+	}
 }
 
 // 6. Use in daily brief generation
 async function generateDailyBrief(userId: string, briefDate: Date) {
-  const events = await getUpcomingEventsForBrief(userId, briefDate);
+	const events = await getUpcomingEventsForBrief(userId, briefDate);
 
-  // Format events for LLM prompt
-  const eventsContext = events.map((event) => ({
-    time: event.start.dateTime || event.start.date,
-    title: event.summary,
-    location: event.location,
-    attendees: event.attendees?.map((a) => a.email),
-    meetingLink:
-      event.hangoutLink || event.conferenceData?.entryPoints?.[0]?.uri,
-  }));
+	// Format events for LLM prompt
+	const eventsContext = events.map((event) => ({
+		time: event.start.dateTime || event.start.date,
+		title: event.summary,
+		location: event.location,
+		attendees: event.attendees?.map((a) => a.email),
+		meetingLink: event.hangoutLink || event.conferenceData?.entryPoints?.[0]?.uri
+	}));
 
-  // Include in daily brief prompt
-  const prompt = `
+	// Include in daily brief prompt
+	const prompt = `
     Generate a daily brief for ${briefDate.toDateString()}.
 
     Calendar Events Today:
@@ -1742,7 +1741,7 @@ async function generateDailyBrief(userId: string, briefDate: Date) {
     ...
   `;
 
-  // ... rest of brief generation
+	// ... rest of brief generation
 }
 ```
 
@@ -1752,22 +1751,22 @@ For better performance, use existing `task_calendar_events` links:
 
 ```typescript
 async function getScheduledTasksForBrief(
-  userId: string,
-  briefDate: Date,
+	userId: string,
+	briefDate: Date
 ): Promise<Array<{ task: Task; event: CalendarEvent }>> {
-  const supabase = createClient(/* ... */);
+	const supabase = createClient(/* ... */);
 
-  const startOfDay = new Date(briefDate);
-  startOfDay.setHours(0, 0, 0, 0);
+	const startOfDay = new Date(briefDate);
+	startOfDay.setHours(0, 0, 0, 0);
 
-  const endOfDay = new Date(briefDate);
-  endOfDay.setHours(23, 59, 59, 999);
+	const endOfDay = new Date(briefDate);
+	endOfDay.setHours(23, 59, 59, 999);
 
-  // Query tasks with calendar events
-  const { data: taskEvents } = await supabase
-    .from("task_calendar_events")
-    .select(
-      `
+	// Query tasks with calendar events
+	const { data: taskEvents } = await supabase
+		.from('task_calendar_events')
+		.select(
+			`
       *,
       tasks (
         id,
@@ -1777,26 +1776,26 @@ async function getScheduledTasksForBrief(
         status,
         project:projects(name, slug)
       )
-    `,
-    )
-    .eq("user_id", userId)
-    .eq("sync_status", "synced")
-    .gte("event_start", startOfDay.toISOString())
-    .lte("event_start", endOfDay.toISOString())
-    .order("event_start", { ascending: true });
+    `
+		)
+		.eq('user_id', userId)
+		.eq('sync_status', 'synced')
+		.gte('event_start', startOfDay.toISOString())
+		.lte('event_start', endOfDay.toISOString())
+		.order('event_start', { ascending: true });
 
-  return (
-    taskEvents?.map((te) => ({
-      task: te.tasks,
-      event: {
-        id: te.calendar_event_id,
-        title: te.event_title,
-        start: te.event_start,
-        end: te.event_end,
-        link: te.event_link,
-      },
-    })) || []
-  );
+	return (
+		taskEvents?.map((te) => ({
+			task: te.tasks,
+			event: {
+				id: te.calendar_event_id,
+				title: te.event_title,
+				start: te.event_start,
+				end: te.event_end,
+				link: te.event_link
+			}
+		})) || []
+	);
 }
 ```
 

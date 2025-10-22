@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: d2b0decf96ed0c0e03dbf9ea92b57b6ddd3abb47
 branch: main
 repository: buildos-platform
-topic: "Daily Brief Manual Scheduling - Timezone Bug Investigation"
+topic: 'Daily Brief Manual Scheduling - Timezone Bug Investigation'
 tags: [research, daily-briefs, timezone, bugs, manual-scheduling]
 status: complete
 last_updated: 2025-10-08
@@ -39,7 +39,7 @@ When manually scheduling a daily brief, are dates being calculated correctly in 
 **Current Code**:
 
 ```typescript
-const targetDate = briefDate || new Date().toISOString().split("T")[0];
+const targetDate = briefDate || new Date().toISOString().split('T')[0];
 ```
 
 **Problem**:
@@ -73,16 +73,16 @@ Expected behavior:
 
 ```typescript
 // Import timezone utilities
-import { getCurrentDateInTimezone } from "$lib/utils/timezone";
+import { getCurrentDateInTimezone } from '$lib/utils/timezone';
 
 // Get user's timezone from preferences
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("timezone")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('timezone')
+	.eq('user_id', userId)
+	.single();
 
-const userTimezone = preferences?.timezone || "UTC";
+const userTimezone = preferences?.timezone || 'UTC';
 
 // Calculate target date in user's timezone
 const targetDate = briefDate || getCurrentDateInTimezone(userTimezone);
@@ -102,8 +102,8 @@ When calculating `targetBriefDate` for force regenerate, the timezone resolution
 
 ```typescript
 const targetBriefDate =
-  requestedBriefDate ||
-  format(utcToZonedTime(new Date(), requestedTimezone || "UTC"), "yyyy-MM-dd");
+	requestedBriefDate ||
+	format(utcToZonedTime(new Date(), requestedTimezone || 'UTC'), 'yyyy-MM-dd');
 ```
 
 Uses: `requestedTimezone || "UTC"`
@@ -111,7 +111,7 @@ Uses: `requestedTimezone || "UTC"`
 **Line 152** (final timezone resolution):
 
 ```typescript
-const timezone = requestedTimezone || preferences?.timezone || "UTC";
+const timezone = requestedTimezone || preferences?.timezone || 'UTC';
 ```
 
 Uses: `requestedTimezone || preferences?.timezone || "UTC"`
@@ -145,23 +145,23 @@ Result: Cancels brief for 2025-10-08, but creates brief for 2025-10-09
 ```typescript
 // Fetch user preferences BEFORE force regenerate calculation
 const { data: preferences } = await supabase
-  .from("user_brief_preferences")
-  .select("timezone")
-  .eq("user_id", userId)
-  .single();
+	.from('user_brief_preferences')
+	.select('timezone')
+	.eq('user_id', userId)
+	.single();
 
-const timezone = requestedTimezone || preferences?.timezone || "UTC";
+const timezone = requestedTimezone || preferences?.timezone || 'UTC';
 
 // Use consistent timezone for both calculations
 if (forceRegenerate) {
-  const targetBriefDate =
-    requestedBriefDate ||
-    format(
-      utcToZonedTime(new Date(), timezone), // Use resolved timezone
-      "yyyy-MM-dd",
-    );
+	const targetBriefDate =
+		requestedBriefDate ||
+		format(
+			utcToZonedTime(new Date(), timezone), // Use resolved timezone
+			'yyyy-MM-dd'
+		);
 
-  // ... rest of cancellation logic
+	// ... rest of cancellation logic
 }
 ```
 
@@ -187,12 +187,12 @@ The worker does have validation in `briefWorker.ts` lines 21-29:
 
 ```typescript
 function isValidTimezone(timezone: string): boolean {
-  try {
-    getTimezoneOffset(timezone, new Date());
-    return true;
-  } catch (error) {
-    return false;
-  }
+	try {
+		getTimezoneOffset(timezone, new Date());
+		return true;
+	} catch (error) {
+		return false;
+	}
 }
 ```
 
@@ -212,28 +212,28 @@ function isValidTimezone(timezone: string): boolean {
 
 ```typescript
 function calculateDailyRunTime(
-  now: Date,
-  hours: number,
-  minutes: number,
-  seconds: number,
-  timezone: string,
+	now: Date,
+	hours: number,
+	minutes: number,
+	seconds: number,
+	timezone: string
 ): Date {
-  // Step 1: Convert current UTC time to user's timezone
-  const nowInUserTz = utcToZonedTime(now, timezone);
+	// Step 1: Convert current UTC time to user's timezone
+	const nowInUserTz = utcToZonedTime(now, timezone);
 
-  // Step 2: Set target time in user's timezone
-  let targetInUserTz = setHours(nowInUserTz, hours);
-  targetInUserTz = setMinutes(targetInUserTz, minutes);
-  targetInUserTz = setSeconds(targetInUserTz, seconds);
-  targetInUserTz.setMilliseconds(0);
+	// Step 2: Set target time in user's timezone
+	let targetInUserTz = setHours(nowInUserTz, hours);
+	targetInUserTz = setMinutes(targetInUserTz, minutes);
+	targetInUserTz = setSeconds(targetInUserTz, seconds);
+	targetInUserTz.setMilliseconds(0);
 
-  // Step 3: Handle day rollover if time has passed
-  if (isBefore(targetInUserTz, nowInUserTz)) {
-    targetInUserTz = addDays(targetInUserTz, 1);
-  }
+	// Step 3: Handle day rollover if time has passed
+	if (isBefore(targetInUserTz, nowInUserTz)) {
+		targetInUserTz = addDays(targetInUserTz, 1);
+	}
 
-  // Step 4: Convert back to UTC for storage
-  return zonedTimeToUtc(targetInUserTz, timezone);
+	// Step 4: Convert back to UTC for storage
+	return zonedTimeToUtc(targetInUserTz, timezone);
 }
 ```
 
@@ -323,9 +323,9 @@ Different preference tables have different default timezones:
 
 ```typescript
 // User in PST at 11:59 PM
-const userTimezone = "America/Los_Angeles";
-const userLocalTime = "2025-10-08T23:59:00-07:00"; // 11:59 PM PST
-const utcTime = "2025-10-09T06:59:00Z"; // Next day UTC
+const userTimezone = 'America/Los_Angeles';
+const userLocalTime = '2025-10-08T23:59:00-07:00'; // 11:59 PM PST
+const utcTime = '2025-10-09T06:59:00Z'; // Next day UTC
 
 // Expected: briefDate should be "2025-10-08" (user's today)
 // Bug: Currently returns "2025-10-09" (user's tomorrow)
@@ -335,9 +335,9 @@ const utcTime = "2025-10-09T06:59:00Z"; // Next day UTC
 
 ```typescript
 // User in Tokyo at 2:00 AM
-const userTimezone = "Asia/Tokyo";
-const userLocalTime = "2025-10-09T02:00:00+09:00"; // 2 AM JST
-const utcTime = "2025-10-08T17:00:00Z"; // Previous day UTC
+const userTimezone = 'Asia/Tokyo';
+const userLocalTime = '2025-10-09T02:00:00+09:00'; // 2 AM JST
+const utcTime = '2025-10-08T17:00:00Z'; // Previous day UTC
 
 // Expected: briefDate should be "2025-10-09" (user's today)
 // Bug: Currently returns "2025-10-08" (user's yesterday)
@@ -372,40 +372,32 @@ const requestedTimezone = undefined;
 
 ```typescript
 // Add at top of file
-import { getCurrentDateInTimezone } from "$lib/utils/timezone";
+import { getCurrentDateInTimezone } from '$lib/utils/timezone';
 
 // In POST handler, replace line 26
-export const POST: RequestHandler = async ({
-  request,
-  locals: { supabase, safeGetSession },
-}) => {
-  const { user } = await safeGetSession();
-  if (!user) {
-    return ApiResponse.unauthorized();
-  }
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+	const { user } = await safeGetSession();
+	if (!user) {
+		return ApiResponse.unauthorized();
+	}
 
-  const body = await parseRequestBody(request);
-  const {
-    briefDate,
-    forceRegenerate = false,
-    streaming = false,
-    background = false,
-  } = body;
-  const userId = user.id;
+	const body = await parseRequestBody(request);
+	const { briefDate, forceRegenerate = false, streaming = false, background = false } = body;
+	const userId = user.id;
 
-  // NEW: Fetch user timezone
-  const { data: preferences } = await supabase
-    .from("user_brief_preferences")
-    .select("timezone")
-    .eq("user_id", userId)
-    .single();
+	// NEW: Fetch user timezone
+	const { data: preferences } = await supabase
+		.from('user_brief_preferences')
+		.select('timezone')
+		.eq('user_id', userId)
+		.single();
 
-  const userTimezone = preferences?.timezone || "UTC";
+	const userTimezone = preferences?.timezone || 'UTC';
 
-  // NEW: Calculate target date in user's timezone
-  const targetDate = briefDate || getCurrentDateInTimezone(userTimezone);
+	// NEW: Calculate target date in user's timezone
+	const targetDate = briefDate || getCurrentDateInTimezone(userTimezone);
 
-  // ... rest of handler
+	// ... rest of handler
 };
 ```
 
@@ -414,32 +406,32 @@ export const POST: RequestHandler = async ({
 **File**: `/apps/worker/src/index.ts`
 
 ```typescript
-app.post("/queue/brief", async (req, res) => {
-  // ... validation code ...
+app.post('/queue/brief', async (req, res) => {
+	// ... validation code ...
 
-  // MOVED: Get user's timezone preference EARLIER
-  const { data: preferences } = await supabase
-    .from("user_brief_preferences")
-    .select("timezone")
-    .eq("user_id", userId)
-    .single();
+	// MOVED: Get user's timezone preference EARLIER
+	const { data: preferences } = await supabase
+		.from('user_brief_preferences')
+		.select('timezone')
+		.eq('user_id', userId)
+		.single();
 
-  // CONSISTENT: Use same timezone resolution everywhere
-  const timezone = requestedTimezone || preferences?.timezone || "UTC";
+	// CONSISTENT: Use same timezone resolution everywhere
+	const timezone = requestedTimezone || preferences?.timezone || 'UTC';
 
-  // NOW: Use resolved timezone for force regenerate
-  if (forceRegenerate) {
-    const targetBriefDate =
-      requestedBriefDate ||
-      format(
-        utcToZonedTime(new Date(), timezone), // Use resolved timezone
-        "yyyy-MM-dd",
-      );
+	// NOW: Use resolved timezone for force regenerate
+	if (forceRegenerate) {
+		const targetBriefDate =
+			requestedBriefDate ||
+			format(
+				utcToZonedTime(new Date(), timezone), // Use resolved timezone
+				'yyyy-MM-dd'
+			);
 
-    // ... cancellation logic ...
-  }
+		// ... cancellation logic ...
+	}
 
-  // ... rest of endpoint ...
+	// ... rest of endpoint ...
 });
 ```
 
@@ -450,21 +442,19 @@ app.post("/queue/brief", async (req, res) => {
 ```typescript
 // Add validation function
 function isValidTimezone(timezone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
-    return true;
-  } catch {
-    return false;
-  }
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 // Use in handler
-const userTimezone = preferences?.timezone || "UTC";
+const userTimezone = preferences?.timezone || 'UTC';
 if (!isValidTimezone(userTimezone)) {
-  console.warn(
-    `Invalid timezone "${userTimezone}" for user ${userId}, falling back to UTC`,
-  );
-  userTimezone = "UTC";
+	console.warn(`Invalid timezone "${userTimezone}" for user ${userId}, falling back to UTC`);
+	userTimezone = 'UTC';
 }
 ```
 
@@ -473,21 +463,21 @@ if (!isValidTimezone(userTimezone)) {
 ## Open Questions
 
 1. **Should we standardize default timezones across all preference tables?**
-   - Currently: UTC, America/New_York, America/Los_Angeles
-   - Recommendation: Always detect from browser, fallback to UTC
+    - Currently: UTC, America/New_York, America/Los_Angeles
+    - Recommendation: Always detect from browser, fallback to UTC
 
 2. **Should we prompt users to set timezone during onboarding?**
-   - Currently: No timezone selection in onboarding flow
-   - Browser detection happens silently on first use
+    - Currently: No timezone selection in onboarding flow
+    - Browser detection happens silently on first use
 
 3. **How should we handle timezone changes for scheduled briefs?**
-   - If user changes timezone, should we reschedule pending jobs?
-   - Currently: Preference API cancels pending jobs on update
+    - If user changes timezone, should we reschedule pending jobs?
+    - Currently: Preference API cancels pending jobs on update
 
 4. **Should brief_date always be in user timezone?**
-   - Current: Yes, by convention
-   - Pro: Intuitive for users
-   - Con: Makes querying by date more complex
+    - Current: Yes, by convention
+    - Pro: Intuitive for users
+    - Con: Makes querying by date more complex
 
 ---
 

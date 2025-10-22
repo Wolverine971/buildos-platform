@@ -160,22 +160,22 @@ sequenceDiagram
 // Worker: Send notification
 const channel = supabase.channel(`user:${userId}`);
 await channel.send({
-  type: "broadcast",
-  event: "brief_completed",
-  payload: {
-    briefId: "uuid",
-    briefDate: "2025-10-05",
-    timezone: "America/New_York",
-  },
+	type: 'broadcast',
+	event: 'brief_completed',
+	payload: {
+		briefId: 'uuid',
+		briefDate: '2025-10-05',
+		timezone: 'America/New_York'
+	}
 });
 
 // Web: Subscribe to notifications
 const channel = supabase.channel(`user:${userId}`);
-channel.on("broadcast", { event: "brief_completed" }, (payload) => {
-  notificationStore.add({
-    type: "success",
-    message: "Your daily brief is ready!",
-  });
+channel.on('broadcast', { event: 'brief_completed' }, (payload) => {
+	notificationStore.add({
+		type: 'success',
+		message: 'Your daily brief is ready!'
+	});
 });
 ```
 
@@ -517,12 +517,12 @@ fail_queue_job(
 
 - Increments `attempts`
 - If `p_retry` and `attempts < max_attempts`:
-  - Sets `status = 'retrying'`
-  - Calculates retry delay: `2^attempts * 60 minutes`
-  - Updates `scheduled_for`
+    - Sets `status = 'retrying'`
+    - Calculates retry delay: `2^attempts * 60 minutes`
+    - Updates `scheduled_for`
 - Else:
-  - Sets `status = 'failed'`
-  - Sets `error_message`
+    - Sets `status = 'failed'`
+    - Sets `error_message`
 
 ---
 
@@ -623,8 +623,8 @@ const retryDelay = Math.pow(2, attemptCount) * 60 * 1000; // minutes
 
 ```typescript
 // Worker startup: Reset stalled jobs
-await supabase.rpc("reset_stalled_jobs", {
-  p_stall_timeout: "15 minutes",
+await supabase.rpc('reset_stalled_jobs', {
+	p_stall_timeout: '15 minutes'
 });
 
 // Logic:
@@ -640,18 +640,18 @@ await supabase.rpc("reset_stalled_jobs", {
 
 ```typescript
 try {
-  await processJob(job);
+	await processJob(job);
 } catch (error) {
-  console.error(`Job ${job.id} failed:`, error);
-  await failJob(job.id, error.message, shouldRetry(error));
+	console.error(`Job ${job.id} failed:`, error);
+	await failJob(job.id, error.message, shouldRetry(error));
 
-  // Log to error tracking service
-  await errorLogger.log({
-    jobId: job.id,
-    jobType: job.job_type,
-    error: error,
-    userId: job.user_id,
-  });
+	// Log to error tracking service
+	await errorLogger.log({
+		jobId: job.id,
+		jobType: job.job_type,
+		error: error,
+		userId: job.user_id
+	});
 }
 ```
 
@@ -729,7 +729,7 @@ graph LR
 
 ```typescript
 // Worker: Log queue stats every 5 minutes
-const stats = await supabase.rpc("get_queue_stats");
+const stats = await supabase.rpc('get_queue_stats');
 
 // Returns:
 // [
@@ -911,17 +911,17 @@ pnpm test:scheduler          # Scheduler tests
 
 ```typescript
 // Test job creation
-const jobId = await queue.add("test_job", userId, { test: true });
+const jobId = await queue.add('test_job', userId, { test: true });
 expect(jobId).toBeDefined();
 
 // Test job claiming
-const jobs = await queue.claim(["test_job"], 1);
+const jobs = await queue.claim(['test_job'], 1);
 expect(jobs).toHaveLength(1);
 
 // Test job completion
 await queue.complete(jobId, { success: true });
 const job = await queue.getJob(jobId);
-expect(job.status).toBe("completed");
+expect(job.status).toBe('completed');
 ```
 
 **Realtime Notifications:**
@@ -929,19 +929,19 @@ expect(job.status).toBe("completed");
 ```typescript
 // Subscribe to test channel
 const messages = [];
-const channel = supabase.channel("test:user123");
-channel.on("broadcast", { event: "*" }, (msg) => {
-  messages.push(msg);
+const channel = supabase.channel('test:user123');
+channel.on('broadcast', { event: '*' }, (msg) => {
+	messages.push(msg);
 });
 
 // Trigger notification
-await notifyUser("user123", "test_event", { data: "test" });
+await notifyUser('user123', 'test_event', { data: 'test' });
 
 // Verify received
 await sleep(1000);
 expect(messages).toContainEqual({
-  event: "test_event",
-  payload: { data: "test" },
+	event: 'test_event',
+	payload: { data: 'test' }
 });
 ```
 

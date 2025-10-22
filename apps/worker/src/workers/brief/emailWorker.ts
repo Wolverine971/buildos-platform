@@ -6,10 +6,10 @@
 //
 // Railway blocks SMTP ports - all email sending must go through webhooks to /web.
 
-import { supabase } from "../../lib/supabase";
-import { notifyUser, updateJobStatus } from "../shared/queueUtils";
-import { LegacyJob } from "../shared/jobAdapter";
-import { WebhookEmailService } from "../../lib/services/webhook-email-service";
+import { supabase } from '../../lib/supabase';
+import { notifyUser, updateJobStatus } from '../shared/queueUtils';
+import { LegacyJob } from '../shared/jobAdapter';
+import { WebhookEmailService } from '../../lib/services/webhook-email-service';
 // ⚠️ DO NOT USE: EmailService uses direct SMTP which fails on Railway
 // import { EmailService } from "../../lib/services/email-service";
 
@@ -18,274 +18,249 @@ import { WebhookEmailService } from "../../lib/services/webhook-email-service";
  * REVISED: Uses emailId instead of briefId
  */
 export interface EmailBriefJobData {
-  emailId: string; // ID from emails table (NOT briefId!)
+	emailId: string; // ID from emails table (NOT briefId!)
 }
 
 /**
  * Process email sending for a pending brief email
  * REVISED: Fetches email record, extracts brief info from template_data
  */
-export async function processEmailBriefJob(
-  job: LegacyJob<EmailBriefJobData>,
-): Promise<void> {
-  console.log(`📧 Processing email job ${job.id}
+export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): Promise<void> {
+	console.log(`📧 Processing email job ${job.id}
    → Email ID: ${job.data.emailId}
    → Job Attempts: ${job.attemptsMade || 0}
    → Started At: ${new Date().toISOString()}`);
 
-  try {
-    await updateJobStatus(job.id, "processing", "email");
+	try {
+		await updateJobStatus(job.id, 'processing', 'email');
 
-    const { emailId } = job.data;
+		const { emailId } = job.data;
 
-    if (!emailId) {
-      throw new Error(
-        "Invalid job data: emailId is required but was not provided",
-      );
-    }
+		if (!emailId) {
+			throw new Error('Invalid job data: emailId is required but was not provided');
+		}
 
-    console.log(`📬 Fetching email record ${emailId} from database...`);
+		console.log(`📬 Fetching email record ${emailId} from database...`);
 
-    // 1. Fetch the email record from existing emails table
-    const { data: email, error: emailError } = await supabase
-      .from("emails")
-      .select("*, email_recipients(*)")
-      .eq("id", emailId)
-      .single();
+		// 1. Fetch the email record from existing emails table
+		const { data: email, error: emailError } = await supabase
+			.from('emails')
+			.select('*, email_recipients(*)')
+			.eq('id', emailId)
+			.single();
 
-    if (emailError) {
-      console.error(`❌ Database error fetching email ${emailId}:`, emailError);
-      throw new Error(`Email record fetch failed: ${emailError.message}`);
-    }
+		if (emailError) {
+			console.error(`❌ Database error fetching email ${emailId}:`, emailError);
+			throw new Error(`Email record fetch failed: ${emailError.message}`);
+		}
 
-    if (!email) {
-      console.error(`❌ Email record ${emailId} does not exist in database`);
-      throw new Error("Email record not found: Email does not exist");
-    }
+		if (!email) {
+			console.error(`❌ Email record ${emailId} does not exist in database`);
+			throw new Error('Email record not found: Email does not exist');
+		}
 
-    // Validate that the nested relation was properly expanded
-    if (!Array.isArray(email.email_recipients)) {
-      console.warn(
-        `⚠️ Email recipients relation not properly expanded for email ${emailId}`,
-      );
-      // Set to empty array as fallback to allow processing to continue
-      email.email_recipients = [];
-    }
+		// Validate that the nested relation was properly expanded
+		if (!Array.isArray(email.email_recipients)) {
+			console.warn(`⚠️ Email recipients relation not properly expanded for email ${emailId}`);
+			// Set to empty array as fallback to allow processing to continue
+			email.email_recipients = [];
+		}
 
-    console.log(`✅ Email record found:
+		console.log(`✅ Email record found:
    → Status: ${email.status}
    → Subject: ${email.subject}
    → Created By: ${email.created_by}
    → Recipients: ${email.email_recipients?.length || 0}`);
 
-    // Extract brief info from template_data
-    const templateData = email.template_data as Record<string, any> | null;
-    const briefId = templateData?.brief_id;
-    const briefDate = templateData?.brief_date;
-    const userId = email.created_by;
+		// Extract brief info from template_data
+		const templateData = email.template_data as Record<string, any> | null;
+		const briefId = templateData?.brief_id;
+		const briefDate = templateData?.brief_date;
+		const userId = email.created_by;
 
-    if (!briefId || !userId) {
-      throw new Error(
-        "Invalid email template_data: missing brief_id or user_id",
-      );
-    }
+		if (!briefId || !userId) {
+			throw new Error('Invalid email template_data: missing brief_id or user_id');
+		}
 
-    console.log(
-      `📋 Email for brief ${briefId}, date ${briefDate}, user ${userId}`,
-    );
+		console.log(`📋 Email for brief ${briefId}, date ${briefDate}, user ${userId}`);
 
-    // 2. Check if email should still be sent (user may have disabled since queuing)
-    console.log(`🔍 Checking current email preferences for user ${userId}...`);
+		// 2. Check if email should still be sent (user may have disabled since queuing)
+		console.log(`🔍 Checking current email preferences for user ${userId}...`);
 
-    // Check notification preferences for email opt-in
-    const { data: notificationPrefs, error: notificationError } = await supabase
-      .from("user_notification_preferences")
-      .select("should_email_daily_brief")
-      .eq("user_id", userId)
-      .single();
+		// Check notification preferences for email opt-in
+		const { data: notificationPrefs, error: notificationError } = await supabase
+			.from('user_notification_preferences')
+			.select('should_email_daily_brief')
+			.eq('user_id', userId)
+			.single();
 
-    if (notificationError && notificationError.code !== "PGRST116") {
-      console.error(
-        `❌ Error fetching notification preferences for user ${userId}:`,
-        notificationError,
-      );
-      throw new Error(
-        `Failed to fetch notification preferences: ${notificationError.message}`,
-      );
-    }
+		if (notificationError && notificationError.code !== 'PGRST116') {
+			console.error(
+				`❌ Error fetching notification preferences for user ${userId}:`,
+				notificationError
+			);
+			throw new Error(
+				`Failed to fetch notification preferences: ${notificationError.message}`
+			);
+		}
 
-    // Check brief preferences for is_active (brief generation)
-    const { data: briefPrefs, error: briefError } = await supabase
-      .from("user_brief_preferences")
-      .select("is_active")
-      .eq("user_id", userId)
-      .single();
+		// Check brief preferences for is_active (brief generation)
+		const { data: briefPrefs, error: briefError } = await supabase
+			.from('user_brief_preferences')
+			.select('is_active')
+			.eq('user_id', userId)
+			.single();
 
-    if (briefError && briefError.code !== "PGRST116") {
-      console.error(
-        `❌ Error fetching brief preferences for user ${userId}:`,
-        briefError,
-      );
-      throw new Error(
-        `Failed to fetch brief preferences: ${briefError.message}`,
-      );
-    }
+		if (briefError && briefError.code !== 'PGRST116') {
+			console.error(`❌ Error fetching brief preferences for user ${userId}:`, briefError);
+			throw new Error(`Failed to fetch brief preferences: ${briefError.message}`);
+		}
 
-    console.log(`📋 User preferences:
-   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief ?? "not set"}
+		console.log(`📋 User preferences:
+   → should_email_daily_brief: ${notificationPrefs?.should_email_daily_brief ?? 'not set'}
    → is_active: ${briefPrefs?.is_active}`);
 
-    const shouldSendEmail =
-      notificationPrefs?.should_email_daily_brief === true &&
-      briefPrefs?.is_active === true;
+		const shouldSendEmail =
+			notificationPrefs?.should_email_daily_brief === true && briefPrefs?.is_active === true;
 
-    if (!shouldSendEmail) {
-      const reason = !briefPrefs?.is_active
-        ? "Brief generation not active"
-        : !notificationPrefs?.should_email_daily_brief
-          ? "Email notifications disabled"
-          : "Preferences not configured";
+		if (!shouldSendEmail) {
+			const reason = !briefPrefs?.is_active
+				? 'Brief generation not active'
+				: !notificationPrefs?.should_email_daily_brief
+					? 'Email notifications disabled'
+					: 'Preferences not configured';
 
-      console.log(
-        `📭 Email preferences changed, marking as cancelled for user ${userId}
-   → Reason: ${reason}`,
-      );
+			console.log(
+				`📭 Email preferences changed, marking as cancelled for user ${userId}
+   → Reason: ${reason}`
+			);
 
-      // Update email status to cancelled
-      await supabase
-        .from("emails")
-        .update({ status: "cancelled" })
-        .eq("id", emailId);
+			// Update email status to cancelled
+			await supabase.from('emails').update({ status: 'cancelled' }).eq('id', emailId);
 
-      await updateJobStatus(job.id, "completed", "email_cancelled");
-      await notifyUser(userId, {
-        type: "email_cancelled",
-        emailId,
-        briefId,
-        briefDate,
-      });
+			await updateJobStatus(job.id, 'completed', 'email_cancelled');
+			await notifyUser(userId, {
+				type: 'email_cancelled',
+				emailId,
+				briefId,
+				briefDate
+			});
 
-      return;
-    }
+			return;
+		}
 
-    // 3. Send email via webhook to web app (Railway blocks SMTP ports)
-    // ⚠️ CRITICAL: Cannot use EmailService directly - it tries SMTP which fails on Railway
-    // Must send via webhook to /web app which has no port restrictions
+		// 3. Send email via webhook to web app (Railway blocks SMTP ports)
+		// ⚠️ CRITICAL: Cannot use EmailService directly - it tries SMTP which fails on Railway
+		// Must send via webhook to /web app which has no port restrictions
 
-    // Get user email address
-    const { data: user } = await supabase
-      .from("users")
-      .select("email")
-      .eq("id", userId)
-      .single();
+		// Get user email address
+		const { data: user } = await supabase
+			.from('users')
+			.select('email')
+			.eq('id', userId)
+			.single();
 
-    if (!user?.email) {
-      throw new Error(`No email address found for user ${userId}`);
-    }
+		if (!user?.email) {
+			throw new Error(`No email address found for user ${userId}`);
+		}
 
-    console.log(`📨 Sending email to ${user.email} via webhook to web app`);
+		console.log(`📨 Sending email to ${user.email} via webhook to web app`);
 
-    // Send via webhook using WebhookEmailService (handles HMAC signature, timestamp, and source headers)
-    const webhookService = new WebhookEmailService();
-    const webhookResult = await webhookService.sendDailyBriefEmail(
-      userId,
-      briefId,
-      briefDate,
-      user.email,
-      {
-        emailRecordId: emailId,
-        recipientRecordId: email.email_recipients?.[0]?.id,
-        trackingId: email.tracking_id,
-        subject: email.subject,
-      },
-    );
+		// Send via webhook using WebhookEmailService (handles HMAC signature, timestamp, and source headers)
+		const webhookService = new WebhookEmailService();
+		const webhookResult = await webhookService.sendDailyBriefEmail(
+			userId,
+			briefId,
+			briefDate,
+			user.email,
+			{
+				emailRecordId: emailId,
+				recipientRecordId: email.email_recipients?.[0]?.id,
+				trackingId: email.tracking_id,
+				subject: email.subject
+			}
+		);
 
-    if (!webhookResult.success) {
-      throw new Error(
-        `Webhook email send failed: ${webhookResult.error || "Unknown error"}`,
-      );
-    }
+		if (!webhookResult.success) {
+			throw new Error(`Webhook email send failed: ${webhookResult.error || 'Unknown error'}`);
+		}
 
-    console.log("✅ Email sent successfully via webhook");
+		console.log('✅ Email sent successfully via webhook');
 
-    // 4. Update email status to sent (existing emails table)
-    await supabase.from("emails").update({ status: "sent" }).eq("id", emailId);
+		// 4. Update email status to sent (existing emails table)
+		await supabase.from('emails').update({ status: 'sent' }).eq('id', emailId);
 
-    // 5. Update recipient status to sent (existing email_recipients table)
-    if (email.email_recipients?.[0]?.id) {
-      await supabase
-        .from("email_recipients")
-        .update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-        })
-        .eq("id", email.email_recipients[0].id);
-    }
+		// 5. Update recipient status to sent (existing email_recipients table)
+		if (email.email_recipients?.[0]?.id) {
+			await supabase
+				.from('email_recipients')
+				.update({
+					status: 'sent',
+					sent_at: new Date().toISOString()
+				})
+				.eq('id', email.email_recipients[0].id);
+		}
 
-    // 6. Complete job
-    await updateJobStatus(job.id, "completed", "email_sent");
+		// 6. Complete job
+		await updateJobStatus(job.id, 'completed', 'email_sent');
 
-    await notifyUser(userId, {
-      type: "brief_email_sent",
-      emailId,
-      briefId,
-      briefDate,
-      trackingId: email.tracking_id ?? undefined,
-    });
+		await notifyUser(userId, {
+			type: 'brief_email_sent',
+			emailId,
+			briefId,
+			briefDate,
+			trackingId: email.tracking_id ?? undefined
+		});
 
-    console.log(`✅ Email sent successfully for brief ${briefId}`);
-  } catch (error: any) {
-    console.error(`❌ Email job ${job.id} failed:`, error);
+		console.log(`✅ Email sent successfully for brief ${briefId}`);
+	} catch (error: any) {
+		console.error(`❌ Email job ${job.id} failed:`, error);
 
-    // Update email status to failed (existing emails table)
-    if (job.data.emailId) {
-      const { data: currentEmail } = await supabase
-        .from("emails")
-        .select("template_data")
-        .eq("id", job.data.emailId)
-        .single();
+		// Update email status to failed (existing emails table)
+		if (job.data.emailId) {
+			const { data: currentEmail } = await supabase
+				.from('emails')
+				.select('template_data')
+				.eq('id', job.data.emailId)
+				.single();
 
-      const currentTemplateData =
-        (currentEmail?.template_data as Record<string, any>) || {};
+			const currentTemplateData = (currentEmail?.template_data as Record<string, any>) || {};
 
-      await supabase
-        .from("emails")
-        .update({
-          status: "failed",
-          template_data: {
-            ...currentTemplateData,
-            error: {
-              message: error.message,
-              timestamp: new Date().toISOString(),
-            },
-          },
-        })
-        .eq("id", job.data.emailId);
-    }
+			await supabase
+				.from('emails')
+				.update({
+					status: 'failed',
+					template_data: {
+						...currentTemplateData,
+						error: {
+							message: error.message,
+							timestamp: new Date().toISOString()
+						}
+					}
+				})
+				.eq('id', job.data.emailId);
+		}
 
-    await updateJobStatus(job.id, "failed", error.message);
+		await updateJobStatus(job.id, 'failed', error.message);
 
-    // Get userId from email record for notification
-    const { data: failedEmail } = await supabase
-      .from("emails")
-      .select("created_by, template_data")
-      .eq("id", job.data.emailId)
-      .single();
+		// Get userId from email record for notification
+		const { data: failedEmail } = await supabase
+			.from('emails')
+			.select('created_by, template_data')
+			.eq('id', job.data.emailId)
+			.single();
 
-    if (failedEmail) {
-      const failedTemplateData = failedEmail.template_data as Record<
-        string,
-        any
-      > | null;
-      await notifyUser(failedEmail.created_by, {
-        type: "brief_email_failed",
-        emailId: job.data.emailId,
-        briefId: failedTemplateData?.brief_id,
-        briefDate: failedTemplateData?.brief_date,
-        error: error.message,
-      });
-    }
+		if (failedEmail) {
+			const failedTemplateData = failedEmail.template_data as Record<string, any> | null;
+			await notifyUser(failedEmail.created_by, {
+				type: 'brief_email_failed',
+				emailId: job.data.emailId,
+				briefId: failedTemplateData?.brief_id,
+				briefDate: failedTemplateData?.brief_date,
+				error: error.message
+			});
+		}
 
-    throw error;
-  }
+		throw error;
+	}
 }

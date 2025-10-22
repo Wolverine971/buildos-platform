@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: c5a3a561ce2c5969333f164a63adb92e7b4ffa28
 branch: main
 repository: build_os
-topic: "Braindump Task Updates and Google Calendar Event Synchronization"
+topic: 'Braindump Task Updates and Google Calendar Event Synchronization'
 tags: [research, codebase, braindump, calendar-sync, task-calendar-events]
 status: complete
 last_updated: 2025-09-07
@@ -88,32 +88,29 @@ The main task update API (`src/routes/api/projects/[id]/tasks/[taskId]/+server.t
 ```typescript
 // 1. Query task with calendar events
 const { data: existingTask } = await supabase
-  .from("tasks")
-  .select(`*, task_calendar_events(*)`)
-  .eq("id", taskId)
-  .single();
+	.from('tasks')
+	.select(`*, task_calendar_events(*)`)
+	.eq('id', taskId)
+	.single();
 
 // 2. Update task
-const { data: updatedTask } = await supabase
-  .from("tasks")
-  .update(taskUpdate)
-  .eq("id", taskId);
+const { data: updatedTask } = await supabase.from('tasks').update(taskUpdate).eq('id', taskId);
 
 // 3. Determine calendar operations
 const operations = await determineCalendarOperations(existingTask, updates);
 
 // 4. Process calendar sync asynchronously
 if (operations.update_events) {
-  for (const event of existingTask.task_calendar_events) {
-    await calendarService.updateCalendarEvent(userId, {
-      event_id: event.calendar_event_id,
-      calendar_id: event.calendar_id,
-      start_time: newStartDate,
-      end_time: newEndTime,
-      summary: newTitle,
-      description: newDescription,
-    });
-  }
+	for (const event of existingTask.task_calendar_events) {
+		await calendarService.updateCalendarEvent(userId, {
+			event_id: event.calendar_event_id,
+			calendar_id: event.calendar_id,
+			start_time: newStartDate,
+			end_time: newEndTime,
+			summary: newTitle,
+			description: newDescription
+		});
+	}
 }
 ```
 
@@ -143,51 +140,43 @@ if (operations.update_events) {
 
 1. **Import CalendarService** in `operations-executor.ts`
 2. **After task creation** (line 365), add:
-   ```typescript
-   // Check if user has calendar connected
-   if (userId && hasCalendarConnection) {
-     const calendarService = new CalendarService(supabase);
-     await calendarService.scheduleTask(
-       userId,
-       createdTask.id,
-       createdTask,
-       "primary",
-     );
-   }
-   ```
+    ```typescript
+    // Check if user has calendar connected
+    if (userId && hasCalendarConnection) {
+    	const calendarService = new CalendarService(supabase);
+    	await calendarService.scheduleTask(userId, createdTask.id, createdTask, 'primary');
+    }
+    ```
 
 ### For Task Updates in Braindump
 
 1. **Query existing task with calendar events** before update:
 
-   ```typescript
-   const { data: existingTask } = await supabase
-     .from("tasks")
-     .select("*, task_calendar_events(*)")
-     .eq("id", taskId)
-     .single();
-   ```
+    ```typescript
+    const { data: existingTask } = await supabase
+    	.from('tasks')
+    	.select('*, task_calendar_events(*)')
+    	.eq('id', taskId)
+    	.single();
+    ```
 
 2. **After task update** (line 415), add calendar sync:
-   ```typescript
-   if (existingTask?.task_calendar_events?.length > 0) {
-     for (const event of existingTask.task_calendar_events) {
-       if (event.sync_status !== "deleted") {
-         await calendarService.updateCalendarEvent(userId, {
-           event_id: event.calendar_event_id,
-           calendar_id: event.calendar_id,
-           start_time: updates.start_date,
-           end_time: calculateEndTime(
-             updates.start_date,
-             updates.duration_minutes,
-           ),
-           summary: updates.name,
-           description: updates.description,
-         });
-       }
-     }
-   }
-   ```
+    ```typescript
+    if (existingTask?.task_calendar_events?.length > 0) {
+    	for (const event of existingTask.task_calendar_events) {
+    		if (event.sync_status !== 'deleted') {
+    			await calendarService.updateCalendarEvent(userId, {
+    				event_id: event.calendar_event_id,
+    				calendar_id: event.calendar_id,
+    				start_time: updates.start_date,
+    				end_time: calculateEndTime(updates.start_date, updates.duration_minutes),
+    				summary: updates.name,
+    				description: updates.description
+    			});
+    		}
+    	}
+    }
+    ```
 
 ### Additional Considerations
 

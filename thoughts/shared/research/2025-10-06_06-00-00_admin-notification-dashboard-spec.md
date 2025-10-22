@@ -4,7 +4,7 @@ researcher: Claude (AI Assistant)
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Admin Notification Dashboard - Analytics & Test Bed Specification"
+topic: 'Admin Notification Dashboard - Analytics & Test Bed Specification'
 tags: [research, admin, notifications, analytics, testing, spec]
 status: complete
 last_updated: 2025-10-06
@@ -449,12 +449,12 @@ Allow admins to:
 
 ```typescript
 interface EventOption {
-  type: EventType;
-  label: string; // "User Signup"
-  description: string; // From EVENT_REGISTRY
-  adminOnly: boolean;
-  defaultChannels: NotificationChannel[];
-  payloadSchema: ZodSchema;
+	type: EventType;
+	label: string; // "User Signup"
+	description: string; // From EVENT_REGISTRY
+	adminOnly: boolean;
+	defaultChannels: NotificationChannel[];
+	payloadSchema: ZodSchema;
 }
 ```
 
@@ -481,10 +481,10 @@ interface EventOption {
 
 ```typescript
 payloadSchema: z.object({
-  user_id: z.string().uuid(),
-  user_email: z.string().email(),
-  signup_method: z.enum(["email", "google_oauth"]),
-  referral_source: z.string().optional(),
+	user_id: z.string().uuid(),
+	user_email: z.string().email(),
+	signup_method: z.enum(['email', 'google_oauth']),
+	referral_source: z.string().optional()
 });
 ```
 
@@ -508,31 +508,31 @@ payloadSchema: z.object({
 **Three Modes**:
 
 1. **Actual Subscribers** (Default behavior)
-   - Uses actual subscription data from `notification_subscriptions`
-   - Shows count: "3 users are subscribed to this event"
-   - Lists subscribers with option to exclude specific users
+    - Uses actual subscription data from `notification_subscriptions`
+    - Shows count: "3 users are subscribed to this event"
+    - Lists subscribers with option to exclude specific users
 
 2. **Specific Users** (Manual selection)
-   - Search/filter users from `/api/admin/users`
-   - Multi-select with user chips
-   - Shows channel availability per user:
-     - Push: Active subscription exists
-     - Email: Email address verified
-     - SMS: Phone number on file
-     - In-App: Always available
+    - Search/filter users from `/api/admin/users`
+    - Multi-select with user chips
+    - Shows channel availability per user:
+        - Push: Active subscription exists
+        - Email: Email address verified
+        - SMS: Phone number on file
+        - In-App: Always available
 
 3. **Test Mode (Admin Only)**
-   - Only sends to current admin user
-   - Useful for quick testing without bothering other users
-   - Bypasses subscription checks
+    - Only sends to current admin user
+    - Useful for quick testing without bothering other users
+    - Bypasses subscription checks
 
 **User Search Component**:
 
 ```svelte
 <UserSearchInput
-  onSelect={(user) => addRecipient(user)}
-  placeholder="Search by email or name..."
-  excludeAdmins={eventType.adminOnly ? false : true}
+	onSelect={(user) => addRecipient(user)}
+	placeholder="Search by email or name..."
+	excludeAdmins={eventType.adminOnly ? false : true}
 />
 ```
 
@@ -540,24 +540,24 @@ payloadSchema: z.object({
 
 ```svelte
 {#each selectedUsers as user}
-  <div class="user-chip">
-    <div class="user-info">
-      <span class="name">{user.name || user.email}</span>
-      <span class="email">{user.email}</span>
-    </div>
-    <div class="channel-indicators">
-      {#if user.hasPushSubscription}
-        <Icon name="bell" class="text-green-600" />
-      {/if}
-      {#if user.email}
-        <Icon name="mail" class="text-blue-600" />
-      {/if}
-      {#if user.phone}
-        <Icon name="phone" class="text-purple-600" />
-      {/if}
-    </div>
-    <button onclick={() => removeRecipient(user.id)}>×</button>
-  </div>
+	<div class="user-chip">
+		<div class="user-info">
+			<span class="name">{user.name || user.email}</span>
+			<span class="email">{user.email}</span>
+		</div>
+		<div class="channel-indicators">
+			{#if user.hasPushSubscription}
+				<Icon name="bell" class="text-green-600" />
+			{/if}
+			{#if user.email}
+				<Icon name="mail" class="text-blue-600" />
+			{/if}
+			{#if user.phone}
+				<Icon name="phone" class="text-purple-600" />
+			{/if}
+		</div>
+		<button onclick={() => removeRecipient(user.id)}>×</button>
+	</div>
 {/each}
 ```
 
@@ -622,20 +622,20 @@ payloadSchema: z.object({
 ```html
 <!DOCTYPE html>
 <html>
-  <head>
-    <style>
-      /* Gradient header, responsive design */
-    </style>
-  </head>
-  <body>
-    <div style="background: linear-gradient(135deg, #6B46C1 0%, #9333EA 100%);">
-      <h1>New User Signup</h1>
-    </div>
-    <div style="padding: 20px;">
-      <p>test@example.com just signed up via Google OAuth</p>
-      <a href="https://build-os.com/admin/users"> View in Dashboard </a>
-    </div>
-  </body>
+	<head>
+		<style>
+			/* Gradient header, responsive design */
+		</style>
+	</head>
+	<body>
+		<div style="background: linear-gradient(135deg, #6B46C1 0%, #9333EA 100%);">
+			<h1>New User Signup</h1>
+		</div>
+		<div style="padding: 20px;">
+			<p>test@example.com just signed up via Google OAuth</p>
+			<a href="https://build-os.com/admin/users"> View in Dashboard </a>
+		</div>
+	</body>
 </html>
 ```
 
@@ -649,51 +649,51 @@ Shows mockup of notification in the bell icon dropdown
 **Behavior**:
 
 1. **Validation**:
-   - Payload schema validation (Zod)
-   - At least one recipient selected
-   - At least one channel selected
-   - Channel-recipient compatibility check
+    - Payload schema validation (Zod)
+    - At least one recipient selected
+    - At least one channel selected
+    - Channel-recipient compatibility check
 
 2. **Confirmation Modal**:
 
-   ```
-   Send Test Notification?
+    ```
+    Send Test Notification?
 
-   Event Type: user.signup
-   Recipients: 2 users (djwayne35@gmail.com, dj@build-os.com)
-   Channels: Browser Push, Email, In-App
+    Event Type: user.signup
+    Recipients: 2 users (djwayne35@gmail.com, dj@build-os.com)
+    Channels: Browser Push, Email, In-App
 
-   This will send real notifications to the selected users.
+    This will send real notifications to the selected users.
 
-   [Cancel]  [Send Test Notification]
-   ```
+    [Cancel]  [Send Test Notification]
+    ```
 
 3. **API Call**: `POST /api/admin/notifications/test`
 
-   ```typescript
-   {
-     event_type: 'user.signup',
-     payload: {
-       user_id: '...',
-       user_email: 'test@example.com',
-       signup_method: 'google_oauth'
-     },
-     recipient_user_ids: ['user-id-1', 'user-id-2'],
-     channels: ['push', 'email', 'in_app'],
-     test_mode: true  // Flags as test in database
-   }
-   ```
+    ```typescript
+    {
+      event_type: 'user.signup',
+      payload: {
+        user_id: '...',
+        user_email: 'test@example.com',
+        signup_method: 'google_oauth'
+      },
+      recipient_user_ids: ['user-id-1', 'user-id-2'],
+      channels: ['push', 'email', 'in_app'],
+      test_mode: true  // Flags as test in database
+    }
+    ```
 
 4. **Real-time Feedback**:
-   - Loading spinner while sending
-   - Success toast: "Test notification sent to 2 users across 3 channels"
-   - Error toast: "Failed to send: [error message]"
-   - Delivery status updates in "Recent Test Notifications"
+    - Loading spinner while sending
+    - Success toast: "Test notification sent to 2 users across 3 channels"
+    - Error toast: "Failed to send: [error message]"
+    - Delivery status updates in "Recent Test Notifications"
 
 5. **Result Tracking**:
-   - Creates records in `notification_events` with `metadata.test_mode = true`
-   - Creates records in `notification_deliveries`
-   - Adds to "Recent Test Notifications" table
+    - Creates records in `notification_events` with `metadata.test_mode = true`
+    - Creates records in `notification_deliveries`
+    - Adds to "Recent Test Notifications" table
 
 ---
 
@@ -836,18 +836,18 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  channels: Array<{
-    channel: NotificationChannel;
-    total_sent: number;
-    delivered: number;
-    opened: number;
-    clicked: number;
-    failed: number;
-    success_rate: number;
-    open_rate: number;
-    click_rate: number;
-    avg_delivery_time_ms: number;
-  }>;
+	channels: Array<{
+		channel: NotificationChannel;
+		total_sent: number;
+		delivered: number;
+		opened: number;
+		clicked: number;
+		failed: number;
+		success_rate: number;
+		open_rate: number;
+		click_rate: number;
+		avg_delivery_time_ms: number;
+	}>;
 }
 ```
 
@@ -863,15 +863,15 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  events: Array<{
-    event_type: EventType;
-    total_events: number;
-    total_deliveries: number;
-    unique_subscribers: number;
-    avg_delivery_time_seconds: number;
-    open_rate: number;
-    click_rate: number;
-  }>;
+	events: Array<{
+		event_type: EventType;
+		total_events: number;
+		total_deliveries: number;
+		unique_subscribers: number;
+		avg_delivery_time_seconds: number;
+		open_rate: number;
+		click_rate: number;
+	}>;
 }
 ```
 
@@ -888,14 +888,14 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  timeline: Array<{
-    time_bucket: string; // ISO timestamp
-    sent: number;
-    delivered: number;
-    opened: number;
-    clicked: number;
-    failed: number;
-  }>;
+	timeline: Array<{
+		time_bucket: string; // ISO timestamp
+		sent: number;
+		delivered: number;
+		opened: number;
+		clicked: number;
+		failed: number;
+	}>;
 }
 ```
 
@@ -912,19 +912,19 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  failures: Array<{
-    delivery_id: string;
-    event_id: string;
-    event_type: EventType;
-    channel: NotificationChannel;
-    recipient_user_id: string;
-    recipient_email: string;
-    last_error: string;
-    attempts: number;
-    max_attempts: number;
-    created_at: string;
-    failed_at: string;
-  }>;
+	failures: Array<{
+		delivery_id: string;
+		event_id: string;
+		event_type: EventType;
+		channel: NotificationChannel;
+		recipient_user_id: string;
+		recipient_email: string;
+		last_error: string;
+		attempts: number;
+		max_attempts: number;
+		created_at: string;
+		failed_at: string;
+	}>;
 }
 ```
 
@@ -936,17 +936,17 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  subscriptions: Array<{
-    user_id: string;
-    email: string;
-    name: string | null;
-    subscribed_events: EventType[];
-    push_enabled: boolean;
-    email_enabled: boolean;
-    sms_enabled: boolean;
-    in_app_enabled: boolean;
-    last_notification_sent: string | null;
-  }>;
+	subscriptions: Array<{
+		user_id: string;
+		email: string;
+		name: string | null;
+		subscribed_events: EventType[];
+		push_enabled: boolean;
+		email_enabled: boolean;
+		sms_enabled: boolean;
+		in_app_enabled: boolean;
+		last_notification_sent: string | null;
+	}>;
 }
 ```
 
@@ -988,9 +988,9 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 1. Validates payload against event schema
 2. Creates `notification_event` record (with `metadata.test_mode = true`)
 3. For each recipient × channel combination:
-   - Checks channel availability
-   - Creates `notification_deliveries` record
-   - Queues `send_notification` job
+    - Checks channel availability
+    - Creates `notification_deliveries` record
+    - Queues `send_notification` job
 4. Returns event_id and delivery IDs for tracking
 
 ---
@@ -1039,15 +1039,15 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 {
-  users: Array<{
-    id: string;
-    email: string;
-    name: string | null;
-    is_admin: boolean;
-    has_push_subscription: boolean;
-    has_phone: boolean;
-    is_subscribed_to_event?: boolean; // if event_type provided
-  }>;
+	users: Array<{
+		id: string;
+		email: string;
+		name: string | null;
+		is_admin: boolean;
+		has_push_subscription: boolean;
+		has_phone: boolean;
+		is_subscribed_to_event?: boolean; // if event_type provided
+	}>;
 }
 ```
 
@@ -1194,84 +1194,77 @@ uuid1,user.signup,2025-10-06T12:00:00Z,uuid2,push,admin@build-os.com,sent,2025-1
 
 ```typescript
 export class NotificationAnalyticsService {
-  /**
-   * Get overview metrics
-   */
-  async getOverview(timeframe: Timeframe = "7d"): Promise<AnalyticsOverview> {
-    const { data, error } = await fetch(
-      `/api/admin/notifications/analytics/overview?timeframe=${timeframe}`,
-    ).then((r) => r.json());
+	/**
+	 * Get overview metrics
+	 */
+	async getOverview(timeframe: Timeframe = '7d'): Promise<AnalyticsOverview> {
+		const { data, error } = await fetch(
+			`/api/admin/notifications/analytics/overview?timeframe=${timeframe}`
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data;
-  }
+		if (error) throw error;
+		return data;
+	}
 
-  /**
-   * Get channel performance metrics
-   */
-  async getChannelPerformance(
-    timeframe: Timeframe = "7d",
-  ): Promise<ChannelMetrics[]> {
-    const { data, error } = await fetch(
-      `/api/admin/notifications/analytics/channels?timeframe=${timeframe}`,
-    ).then((r) => r.json());
+	/**
+	 * Get channel performance metrics
+	 */
+	async getChannelPerformance(timeframe: Timeframe = '7d'): Promise<ChannelMetrics[]> {
+		const { data, error } = await fetch(
+			`/api/admin/notifications/analytics/channels?timeframe=${timeframe}`
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data.channels;
-  }
+		if (error) throw error;
+		return data.channels;
+	}
 
-  /**
-   * Get event type breakdown
-   */
-  async getEventBreakdown(
-    timeframe: Timeframe = "30d",
-  ): Promise<EventMetrics[]> {
-    const { data, error } = await fetch(
-      `/api/admin/notifications/analytics/events?timeframe=${timeframe}`,
-    ).then((r) => r.json());
+	/**
+	 * Get event type breakdown
+	 */
+	async getEventBreakdown(timeframe: Timeframe = '30d'): Promise<EventMetrics[]> {
+		const { data, error } = await fetch(
+			`/api/admin/notifications/analytics/events?timeframe=${timeframe}`
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data.events;
-  }
+		if (error) throw error;
+		return data.events;
+	}
 
-  /**
-   * Get delivery timeline
-   */
-  async getTimeline(timeframe: Timeframe = "7d"): Promise<TimelineDataPoint[]> {
-    const { data, error } = await fetch(
-      `/api/admin/notifications/analytics/timeline?timeframe=${timeframe}`,
-    ).then((r) => r.json());
+	/**
+	 * Get delivery timeline
+	 */
+	async getTimeline(timeframe: Timeframe = '7d'): Promise<TimelineDataPoint[]> {
+		const { data, error } = await fetch(
+			`/api/admin/notifications/analytics/timeline?timeframe=${timeframe}`
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data.timeline;
-  }
+		if (error) throw error;
+		return data.timeline;
+	}
 
-  /**
-   * Get recent failures
-   */
-  async getFailures(
-    timeframe: Timeframe = "24h",
-    limit: number = 50,
-  ): Promise<FailedDelivery[]> {
-    const { data, error } = await fetch(
-      `/api/admin/notifications/analytics/failures?timeframe=${timeframe}&limit=${limit}`,
-    ).then((r) => r.json());
+	/**
+	 * Get recent failures
+	 */
+	async getFailures(timeframe: Timeframe = '24h', limit: number = 50): Promise<FailedDelivery[]> {
+		const { data, error } = await fetch(
+			`/api/admin/notifications/analytics/failures?timeframe=${timeframe}&limit=${limit}`
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data.failures;
-  }
+		if (error) throw error;
+		return data.failures;
+	}
 
-  /**
-   * Get active subscriptions
-   */
-  async getSubscriptions(): Promise<SubscriptionInfo[]> {
-    const { data, error } = await fetch(
-      "/api/admin/notifications/analytics/subscriptions",
-    ).then((r) => r.json());
+	/**
+	 * Get active subscriptions
+	 */
+	async getSubscriptions(): Promise<SubscriptionInfo[]> {
+		const { data, error } = await fetch(
+			'/api/admin/notifications/analytics/subscriptions'
+		).then((r) => r.json());
 
-    if (error) throw error;
-    return data.subscriptions;
-  }
+		if (error) throw error;
+		return data.subscriptions;
+	}
 }
 
 export const notificationAnalyticsService = new NotificationAnalyticsService();
@@ -1285,102 +1278,88 @@ export const notificationAnalyticsService = new NotificationAnalyticsService();
 
 ```typescript
 export class NotificationTestService {
-  /**
-   * Send test notification
-   */
-  async sendTest(options: {
-    event_type: EventType;
-    payload: Record<string, any>;
-    recipient_user_ids: string[];
-    channels: NotificationChannel[];
-  }): Promise<TestNotificationResult> {
-    const response = await fetch("/api/admin/notifications/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...options, test_mode: true }),
-    });
+	/**
+	 * Send test notification
+	 */
+	async sendTest(options: {
+		event_type: EventType;
+		payload: Record<string, any>;
+		recipient_user_ids: string[];
+		channels: NotificationChannel[];
+	}): Promise<TestNotificationResult> {
+		const response = await fetch('/api/admin/notifications/test', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ ...options, test_mode: true })
+		});
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to send test notification");
-    }
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.message || 'Failed to send test notification');
+		}
 
-    return response.json();
-  }
+		return response.json();
+	}
 
-  /**
-   * Get test history
-   */
-  async getHistory(
-    limit: number = 20,
-    offset: number = 0,
-  ): Promise<TestHistoryResult> {
-    const response = await fetch(
-      `/api/admin/notifications/test/history?limit=${limit}&offset=${offset}`,
-    );
+	/**
+	 * Get test history
+	 */
+	async getHistory(limit: number = 20, offset: number = 0): Promise<TestHistoryResult> {
+		const response = await fetch(
+			`/api/admin/notifications/test/history?limit=${limit}&offset=${offset}`
+		);
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch test history");
-    }
+		if (!response.ok) {
+			throw new Error('Failed to fetch test history');
+		}
 
-    return response.json();
-  }
+		return response.json();
+	}
 
-  /**
-   * Search for recipients
-   */
-  async searchRecipients(
-    query: string,
-    eventType?: EventType,
-  ): Promise<RecipientSearchResult[]> {
-    const params = new URLSearchParams({ q: query });
-    if (eventType) params.append("event_type", eventType);
+	/**
+	 * Search for recipients
+	 */
+	async searchRecipients(query: string, eventType?: EventType): Promise<RecipientSearchResult[]> {
+		const params = new URLSearchParams({ q: query });
+		if (eventType) params.append('event_type', eventType);
 
-    const response = await fetch(
-      `/api/admin/notifications/recipients/search?${params}`,
-    );
+		const response = await fetch(`/api/admin/notifications/recipients/search?${params}`);
 
-    if (!response.ok) {
-      throw new Error("Failed to search recipients");
-    }
+		if (!response.ok) {
+			throw new Error('Failed to search recipients');
+		}
 
-    const data = await response.json();
-    return data.users;
-  }
+		const data = await response.json();
+		return data.users;
+	}
 
-  /**
-   * Retry failed delivery
-   */
-  async retryDelivery(deliveryId: string): Promise<void> {
-    const response = await fetch(
-      `/api/admin/notifications/deliveries/${deliveryId}/retry`,
-      {
-        method: "POST",
-      },
-    );
+	/**
+	 * Retry failed delivery
+	 */
+	async retryDelivery(deliveryId: string): Promise<void> {
+		const response = await fetch(`/api/admin/notifications/deliveries/${deliveryId}/retry`, {
+			method: 'POST'
+		});
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to retry delivery");
-    }
-  }
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.message || 'Failed to retry delivery');
+		}
+	}
 
-  /**
-   * Resend notification (new delivery)
-   */
-  async resendDelivery(deliveryId: string): Promise<void> {
-    const response = await fetch(
-      `/api/admin/notifications/deliveries/${deliveryId}/resend`,
-      {
-        method: "POST",
-      },
-    );
+	/**
+	 * Resend notification (new delivery)
+	 */
+	async resendDelivery(deliveryId: string): Promise<void> {
+		const response = await fetch(`/api/admin/notifications/deliveries/${deliveryId}/resend`, {
+			method: 'POST'
+		});
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to resend delivery");
-    }
-  }
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.message || 'Failed to resend delivery');
+		}
+	}
 }
 
 export const notificationTestService = new NotificationTestService();
@@ -1427,9 +1406,9 @@ WHERE status = 'failed';
 
 ```json
 {
-  "test_mode": true,
-  "test_sent_by": "admin-user-id",
-  "test_recipients": ["user-id-1", "user-id-2"]
+	"test_mode": true,
+	"test_sent_by": "admin-user-id",
+	"test_recipients": ["user-id-1", "user-id-2"]
 }
 ```
 
@@ -1445,121 +1424,121 @@ WHERE status = 'failed';
 
 ```svelte
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
+	import { onMount } from 'svelte';
+	import { notificationAnalyticsService } from '$lib/services/notification-analytics.service';
 
-  // Svelte 5 runes
-  let timeframe = $state<Timeframe>('7d');
-  let overview = $state<AnalyticsOverview | null>(null);
-  let channelMetrics = $state<ChannelMetrics[]>([]);
-  let eventMetrics = $state<EventMetrics[]>([]);
-  let timeline = $state<TimelineDataPoint[]>([]);
-  let failures = $state<FailedDelivery[]>([]);
-  let autoRefresh = $state(false);
+	// Svelte 5 runes
+	let timeframe = $state<Timeframe>('7d');
+	let overview = $state<AnalyticsOverview | null>(null);
+	let channelMetrics = $state<ChannelMetrics[]>([]);
+	let eventMetrics = $state<EventMetrics[]>([]);
+	let timeline = $state<TimelineDataPoint[]>([]);
+	let failures = $state<FailedDelivery[]>([]);
+	let autoRefresh = $state(false);
 
-  // Derived states
-  let hasFailures = $derived(failures.length > 0);
+	// Derived states
+	let hasFailures = $derived(failures.length > 0);
 
-  async function loadAnalytics() {
-    [overview, channelMetrics, eventMetrics, timeline, failures] = await Promise.all([
-      notificationAnalyticsService.getOverview(timeframe),
-      notificationAnalyticsService.getChannelPerformance(timeframe),
-      notificationAnalyticsService.getEventBreakdown(timeframe),
-      notificationAnalyticsService.getTimeline(timeframe),
-      notificationAnalyticsService.getFailures('24h')
-    ]);
-  }
+	async function loadAnalytics() {
+		[overview, channelMetrics, eventMetrics, timeline, failures] = await Promise.all([
+			notificationAnalyticsService.getOverview(timeframe),
+			notificationAnalyticsService.getChannelPerformance(timeframe),
+			notificationAnalyticsService.getEventBreakdown(timeframe),
+			notificationAnalyticsService.getTimeline(timeframe),
+			notificationAnalyticsService.getFailures('24h')
+		]);
+	}
 
-  onMount(() => {
-    loadAnalytics();
-  });
+	onMount(() => {
+		loadAnalytics();
+	});
 
-  $effect(() => {
-    // Auto-refresh effect
-    if (autoRefresh) {
-      const interval = setInterval(loadAnalytics, 30000);
-      return () => clearInterval(interval);
-    }
-  });
+	$effect(() => {
+		// Auto-refresh effect
+		if (autoRefresh) {
+			const interval = setInterval(loadAnalytics, 30000);
+			return () => clearInterval(interval);
+		}
+	});
 
-  $effect(() => {
-    // Reload when timeframe changes
-    loadAnalytics();
-  });
+	$effect(() => {
+		// Reload when timeframe changes
+		loadAnalytics();
+	});
 </script>
 
 <AdminPageHeader
-  title="Notification Analytics"
-  description="Monitor notification delivery, engagement, and performance across all channels"
+	title="Notification Analytics"
+	description="Monitor notification delivery, engagement, and performance across all channels"
 />
 
 <!-- Overview Metrics -->
 <div class="grid grid-cols-4 gap-4 mb-6">
-  <MetricCard
-    title="Total Sent (24h)"
-    value={overview?.total_sent}
-    trend={overview?.trend_vs_previous_period.sent}
-  />
-  <MetricCard
-    title="Delivery Success Rate"
-    value={`${overview?.delivery_success_rate}%`}
-    trend={overview?.trend_vs_previous_period.success_rate}
-  />
-  <MetricCard
-    title="Avg Open Rate"
-    value={`${overview?.avg_open_rate}%`}
-    trend={overview?.trend_vs_previous_period.open_rate}
-  />
-  <MetricCard
-    title="Avg Click Rate"
-    value={`${overview?.avg_click_rate}%`}
-    trend={overview?.trend_vs_previous_period.click_rate}
-  />
+	<MetricCard
+		title="Total Sent (24h)"
+		value={overview?.total_sent}
+		trend={overview?.trend_vs_previous_period.sent}
+	/>
+	<MetricCard
+		title="Delivery Success Rate"
+		value={`${overview?.delivery_success_rate}%`}
+		trend={overview?.trend_vs_previous_period.success_rate}
+	/>
+	<MetricCard
+		title="Avg Open Rate"
+		value={`${overview?.avg_open_rate}%`}
+		trend={overview?.trend_vs_previous_period.open_rate}
+	/>
+	<MetricCard
+		title="Avg Click Rate"
+		value={`${overview?.avg_click_rate}%`}
+		trend={overview?.trend_vs_previous_period.click_rate}
+	/>
 </div>
 
 <!-- Controls -->
 <div class="flex items-center justify-between mb-6">
-  <TimeframeSelector bind:value={timeframe} />
-  <div class="flex gap-2">
-    <label>
-      <input type="checkbox" bind:checked={autoRefresh} />
-      Auto-refresh (30s)
-    </label>
-    <button onclick={loadAnalytics}>Refresh</button>
-    <button onclick={exportAnalytics}>Export CSV</button>
-  </div>
+	<TimeframeSelector bind:value={timeframe} />
+	<div class="flex gap-2">
+		<label>
+			<input type="checkbox" bind:checked={autoRefresh} />
+			Auto-refresh (30s)
+		</label>
+		<button onclick={loadAnalytics}>Refresh</button>
+		<button onclick={exportAnalytics}>Export CSV</button>
+	</div>
 </div>
 
 <!-- Channel Performance -->
 <section class="mb-6">
-  <h2>Channel Performance</h2>
-  <ChannelPerformanceTable data={channelMetrics} />
+	<h2>Channel Performance</h2>
+	<ChannelPerformanceTable data={channelMetrics} />
 </section>
 
 <!-- Timeline Chart -->
 <section class="mb-6">
-  <h2>Delivery Timeline</h2>
-  <DeliveryTimelineChart data={timeline} />
+	<h2>Delivery Timeline</h2>
+	<DeliveryTimelineChart data={timeline} />
 </section>
 
 <!-- Event Type Breakdown -->
 <section class="mb-6">
-  <h2>Event Type Breakdown</h2>
-  <EventBreakdownTable data={eventMetrics} />
+	<h2>Event Type Breakdown</h2>
+	<EventBreakdownTable data={eventMetrics} />
 </section>
 
 <!-- Failed Deliveries -->
 {#if hasFailures}
-  <section class="mb-6">
-    <h2 class="text-red-600">Failed Deliveries (Last 24h)</h2>
-    <FailedDeliveriesTable data={failures} onRetry={retryDelivery} />
-  </section>
+	<section class="mb-6">
+		<h2 class="text-red-600">Failed Deliveries (Last 24h)</h2>
+		<FailedDeliveriesTable data={failures} onRetry={retryDelivery} />
+	</section>
 {/if}
 
 <!-- Subscription Overview -->
 <section>
-  <h2>Active Subscriptions</h2>
-  <SubscriptionOverviewTable />
+	<h2>Active Subscriptions</h2>
+	<SubscriptionOverviewTable />
 </section>
 ```
 
@@ -1573,128 +1552,120 @@ WHERE status = 'failed';
 
 ```svelte
 <script lang="ts">
-  import { notificationTestService } from '$lib/services/notification-test.service';
-  import { EVENT_REGISTRY } from '$lib/constants/notification-events';
+	import { notificationTestService } from '$lib/services/notification-test.service';
+	import { EVENT_REGISTRY } from '$lib/constants/notification-events';
 
-  // Svelte 5 runes
-  let selectedEventType = $state<EventType>('user.signup');
-  let payload = $state<Record<string, any>>({});
-  let selectedRecipients = $state<RecipientUser[]>([]);
-  let selectedChannels = $state<NotificationChannel[]>(['push', 'email', 'in_app']);
-  let recipientMode = $state<'subscribers' | 'specific' | 'test'>('specific');
-  let testHistory = $state<TestHistoryItem[]>([]);
+	// Svelte 5 runes
+	let selectedEventType = $state<EventType>('user.signup');
+	let payload = $state<Record<string, any>>({});
+	let selectedRecipients = $state<RecipientUser[]>([]);
+	let selectedChannels = $state<NotificationChannel[]>(['push', 'email', 'in_app']);
+	let recipientMode = $state<'subscribers' | 'specific' | 'test'>('specific');
+	let testHistory = $state<TestHistoryItem[]>([]);
 
-  // Derived
-  let eventDef = $derived(EVENT_REGISTRY[selectedEventType]);
-  let canSend = $derived(
-    selectedRecipients.length > 0 &&
-    selectedChannels.length > 0 &&
-    isValidPayload
-  );
+	// Derived
+	let eventDef = $derived(EVENT_REGISTRY[selectedEventType]);
+	let canSend = $derived(
+		selectedRecipients.length > 0 && selectedChannels.length > 0 && isValidPayload
+	);
 
-  async function sendTestNotification() {
-    try {
-      const result = await notificationTestService.sendTest({
-        event_type: selectedEventType,
-        payload,
-        recipient_user_ids: selectedRecipients.map(u => u.id),
-        channels: selectedChannels
-      });
+	async function sendTestNotification() {
+		try {
+			const result = await notificationTestService.sendTest({
+				event_type: selectedEventType,
+				payload,
+				recipient_user_ids: selectedRecipients.map((u) => u.id),
+				channels: selectedChannels
+			});
 
-      // Show success toast
-      toast.success(`Test notification sent to ${selectedRecipients.length} users`);
+			// Show success toast
+			toast.success(`Test notification sent to ${selectedRecipients.length} users`);
 
-      // Refresh history
-      loadTestHistory();
-    } catch (error) {
-      toast.error(error.message);
-    }
-  }
+			// Refresh history
+			loadTestHistory();
+		} catch (error) {
+			toast.error(error.message);
+		}
+	}
 
-  onMount(() => {
-    loadTestHistory();
-  });
+	onMount(() => {
+		loadTestHistory();
+	});
 </script>
 
 <AdminPageHeader
-  title="Notification Test Bed"
-  description="Test notification delivery across all channels before production rollout"
+	title="Notification Test Bed"
+	description="Test notification delivery across all channels before production rollout"
 />
 
 <div class="space-y-6">
-  <!-- Step 1: Select Event Type -->
-  <section>
-    <h2>Step 1: Select Event Type</h2>
-    <EventTypeSelector bind:value={selectedEventType} />
-    <EventTypeInfo event={eventDef} />
-  </section>
+	<!-- Step 1: Select Event Type -->
+	<section>
+		<h2>Step 1: Select Event Type</h2>
+		<EventTypeSelector bind:value={selectedEventType} />
+		<EventTypeInfo event={eventDef} />
+	</section>
 
-  <!-- Step 2: Configure Payload -->
-  <section>
-    <h2>Step 2: Configure Payload</h2>
-    <PayloadForm
-      schema={eventDef.payloadSchema}
-      bind:value={payload}
-    />
-  </section>
+	<!-- Step 2: Configure Payload -->
+	<section>
+		<h2>Step 2: Configure Payload</h2>
+		<PayloadForm schema={eventDef.payloadSchema} bind:value={payload} />
+	</section>
 
-  <!-- Step 3: Select Recipients -->
-  <section>
-    <h2>Step 3: Select Recipients</h2>
-    <RecipientModeSelector bind:value={recipientMode} />
+	<!-- Step 3: Select Recipients -->
+	<section>
+		<h2>Step 3: Select Recipients</h2>
+		<RecipientModeSelector bind:value={recipientMode} />
 
-    {#if recipientMode === 'specific'}
-      <UserSearchInput
-        onSelect={(user) => selectedRecipients = [...selectedRecipients, user]}
-        placeholder="Search users..."
-      />
-      <SelectedUsersList
-        users={selectedRecipients}
-        onRemove={(userId) => selectedRecipients = selectedRecipients.filter(u => u.id !== userId)}
-      />
-    {:else if recipientMode === 'subscribers'}
-      <SubscribersList eventType={selectedEventType} />
-    {:else}
-      <p>Test mode: Will send only to you (current admin user)</p>
-    {/if}
-  </section>
+		{#if recipientMode === 'specific'}
+			<UserSearchInput
+				onSelect={(user) => (selectedRecipients = [...selectedRecipients, user])}
+				placeholder="Search users..."
+			/>
+			<SelectedUsersList
+				users={selectedRecipients}
+				onRemove={(userId) =>
+					(selectedRecipients = selectedRecipients.filter((u) => u.id !== userId))}
+			/>
+		{:else if recipientMode === 'subscribers'}
+			<SubscribersList eventType={selectedEventType} />
+		{:else}
+			<p>Test mode: Will send only to you (current admin user)</p>
+		{/if}
+	</section>
 
-  <!-- Step 4: Select Channels -->
-  <section>
-    <h2>Step 4: Select Channels</h2>
-    <ChannelCheckboxes
-      bind:selected={selectedChannels}
-      recipients={selectedRecipients}
-      defaultChannels={eventDef.defaultChannels}
-    />
-  </section>
+	<!-- Step 4: Select Channels -->
+	<section>
+		<h2>Step 4: Select Channels</h2>
+		<ChannelCheckboxes
+			bind:selected={selectedChannels}
+			recipients={selectedRecipients}
+			defaultChannels={eventDef.defaultChannels}
+		/>
+	</section>
 
-  <!-- Preview -->
-  <section>
-    <h2>Preview</h2>
-    <NotificationPreviewTabs
-      eventType={selectedEventType}
-      payload={payload}
-      channels={selectedChannels}
-    />
-  </section>
+	<!-- Preview -->
+	<section>
+		<h2>Preview</h2>
+		<NotificationPreviewTabs
+			eventType={selectedEventType}
+			{payload}
+			channels={selectedChannels}
+		/>
+	</section>
 
-  <!-- Send Button -->
-  <div class="flex justify-center">
-    <button
-      class="btn-primary btn-lg"
-      onclick={sendTestNotification}
-      disabled={!canSend}
-    >
-      Send Test Notification
-    </button>
-  </div>
+	<!-- Send Button -->
+	<div class="flex justify-center">
+		<button class="btn-primary btn-lg" onclick={sendTestNotification} disabled={!canSend}>
+			Send Test Notification
+		</button>
+	</div>
 
-  <!-- Recent Test Notifications -->
-  <section>
-    <h2>Recent Test Notifications</h2>
-    <TestHistoryTable data={testHistory} onRetry={retryTest} />
-  </section>
+	<!-- Recent Test Notifications -->
+	<section>
+		<h2>Recent Test Notifications</h2>
+		<TestHistoryTable data={testHistory} onRetry={retryTest} />
+	</section>
 </div>
 ```
 
@@ -1726,21 +1697,19 @@ WHERE status = 'failed';
 **All routes protected by**: `/apps/web/src/routes/admin/+layout.server.ts`
 
 ```typescript
-export const load: LayoutServerLoad = async ({
-  locals: { safeGetSession, supabase },
-}) => {
-  const { user } = await safeGetSession();
-  if (!user) throw redirect(303, "/auth/login");
+export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+	const { user } = await safeGetSession();
+	if (!user) throw redirect(303, '/auth/login');
 
-  const { data: dbUser } = await supabase
-    .from("users")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
+	const { data: dbUser } = await supabase
+		.from('users')
+		.select('is_admin')
+		.eq('id', user.id)
+		.single();
 
-  if (!dbUser?.is_admin) throw redirect(303, "/");
+	if (!dbUser?.is_admin) throw redirect(303, '/');
 
-  return { user };
+	return { user };
 };
 ```
 
@@ -1749,7 +1718,7 @@ export const load: LayoutServerLoad = async ({
 ```typescript
 const { user } = await safeGetSession();
 if (!user?.is_admin) {
-  return ApiResponse.forbidden("Admin access required");
+	return ApiResponse.forbidden('Admin access required');
 }
 ```
 
@@ -1785,22 +1754,18 @@ const MAX_RECIPIENTS_PER_TEST = 20;
 const MAX_TESTS_PER_HOUR = 50;
 
 if (recipient_user_ids.length > MAX_RECIPIENTS_PER_TEST) {
-  return ApiResponse.badRequest(
-    `Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`,
-  );
+	return ApiResponse.badRequest(`Maximum ${MAX_RECIPIENTS_PER_TEST} recipients allowed per test`);
 }
 
 // Check admin's test count in last hour
 const recentTests = await supabase
-  .from("notification_events")
-  .select("id", { count: "exact" })
-  .eq("metadata->>test_sent_by", user.id)
-  .gte("created_at", new Date(Date.now() - 3600000).toISOString());
+	.from('notification_events')
+	.select('id', { count: 'exact' })
+	.eq('metadata->>test_sent_by', user.id)
+	.gte('created_at', new Date(Date.now() - 3600000).toISOString());
 
 if (recentTests.count >= MAX_TESTS_PER_HOUR) {
-  return ApiResponse.badRequest(
-    `Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`,
-  );
+	return ApiResponse.badRequest(`Rate limit exceeded: ${MAX_TESTS_PER_HOUR} tests per hour`);
 }
 ```
 
@@ -1813,13 +1778,13 @@ if (recentTests.count >= MAX_TESTS_PER_HOUR) {
 ```typescript
 const eventDef = EVENT_REGISTRY[event_type];
 if (!eventDef) {
-  return ApiResponse.badRequest(`Unknown event type: ${event_type}`);
+	return ApiResponse.badRequest(`Unknown event type: ${event_type}`);
 }
 
 try {
-  eventDef.payloadSchema.parse(payload);
+	eventDef.payloadSchema.parse(payload);
 } catch (error) {
-  return ApiResponse.badRequest(`Invalid payload: ${error.message}`);
+	return ApiResponse.badRequest(`Invalid payload: ${error.message}`);
 }
 ```
 
@@ -1910,20 +1875,20 @@ try {
 **Tasks**:
 
 - [ ] Create reusable components:
-  - [ ] `MetricCard.svelte`
-  - [ ] `TimeframeSelector.svelte`
-  - [ ] `ChannelPerformanceTable.svelte`
-  - [ ] `DeliveryTimelineChart.svelte` (using Chart.js or similar)
-  - [ ] `EventBreakdownTable.svelte`
-  - [ ] `FailedDeliveriesTable.svelte`
-  - [ ] `SubscriptionOverviewTable.svelte`
-  - [ ] `EventTypeSelector.svelte`
-  - [ ] `PayloadForm.svelte` (dynamic form based on Zod schema)
-  - [ ] `UserSearchInput.svelte`
-  - [ ] `SelectedUsersList.svelte`
-  - [ ] `ChannelCheckboxes.svelte`
-  - [ ] `NotificationPreviewTabs.svelte`
-  - [ ] `TestHistoryTable.svelte`
+    - [ ] `MetricCard.svelte`
+    - [ ] `TimeframeSelector.svelte`
+    - [ ] `ChannelPerformanceTable.svelte`
+    - [ ] `DeliveryTimelineChart.svelte` (using Chart.js or similar)
+    - [ ] `EventBreakdownTable.svelte`
+    - [ ] `FailedDeliveriesTable.svelte`
+    - [ ] `SubscriptionOverviewTable.svelte`
+    - [ ] `EventTypeSelector.svelte`
+    - [ ] `PayloadForm.svelte` (dynamic form based on Zod schema)
+    - [ ] `UserSearchInput.svelte`
+    - [ ] `SelectedUsersList.svelte`
+    - [ ] `ChannelCheckboxes.svelte`
+    - [ ] `NotificationPreviewTabs.svelte`
+    - [ ] `TestHistoryTable.svelte`
 
 **Files**:
 
@@ -2100,20 +2065,19 @@ try {
 
 ```typescript
 // notification-analytics.service.test.ts
-describe("NotificationAnalyticsService", () => {
-  test("getOverview returns analytics data", async () => {
-    const overview = await notificationAnalyticsService.getOverview("7d");
-    expect(overview).toHaveProperty("total_sent");
-    expect(overview).toHaveProperty("delivery_success_rate");
-  });
+describe('NotificationAnalyticsService', () => {
+	test('getOverview returns analytics data', async () => {
+		const overview = await notificationAnalyticsService.getOverview('7d');
+		expect(overview).toHaveProperty('total_sent');
+		expect(overview).toHaveProperty('delivery_success_rate');
+	});
 
-  test("getChannelPerformance returns channel metrics", async () => {
-    const metrics =
-      await notificationAnalyticsService.getChannelPerformance("7d");
-    expect(metrics).toBeInstanceOf(Array);
-    expect(metrics[0]).toHaveProperty("channel");
-    expect(metrics[0]).toHaveProperty("success_rate");
-  });
+	test('getChannelPerformance returns channel metrics', async () => {
+		const metrics = await notificationAnalyticsService.getChannelPerformance('7d');
+		expect(metrics).toBeInstanceOf(Array);
+		expect(metrics[0]).toHaveProperty('channel');
+		expect(metrics[0]).toHaveProperty('success_rate');
+	});
 });
 ```
 
@@ -2121,18 +2085,18 @@ describe("NotificationAnalyticsService", () => {
 
 ```typescript
 // MetricCard.test.ts
-import { render } from "@testing-library/svelte";
-import MetricCard from "./MetricCard.svelte";
+import { render } from '@testing-library/svelte';
+import MetricCard from './MetricCard.svelte';
 
-test("renders metric value", () => {
-  const { getByText } = render(MetricCard, {
-    title: "Total Sent",
-    value: 1234,
-    trend: 12.5,
-  });
+test('renders metric value', () => {
+	const { getByText } = render(MetricCard, {
+		title: 'Total Sent',
+		value: 1234,
+		trend: 12.5
+	});
 
-  expect(getByText("1234")).toBeInTheDocument();
-  expect(getByText("↑ 12.5%")).toBeInTheDocument();
+	expect(getByText('1234')).toBeInTheDocument();
+	expect(getByText('↑ 12.5%')).toBeInTheDocument();
 });
 ```
 
@@ -2144,31 +2108,31 @@ test("renders metric value", () => {
 
 ```typescript
 // notification-analytics-api.test.ts
-describe("GET /api/admin/notifications/analytics/overview", () => {
-  test("returns 401 for non-authenticated users", async () => {
-    const response = await fetch("/api/admin/notifications/analytics/overview");
-    expect(response.status).toBe(401);
-  });
+describe('GET /api/admin/notifications/analytics/overview', () => {
+	test('returns 401 for non-authenticated users', async () => {
+		const response = await fetch('/api/admin/notifications/analytics/overview');
+		expect(response.status).toBe(401);
+	});
 
-  test("returns 403 for non-admin users", async () => {
-    const response = await authenticatedFetch(
-      "/api/admin/notifications/analytics/overview",
-      regularUser,
-    );
-    expect(response.status).toBe(403);
-  });
+	test('returns 403 for non-admin users', async () => {
+		const response = await authenticatedFetch(
+			'/api/admin/notifications/analytics/overview',
+			regularUser
+		);
+		expect(response.status).toBe(403);
+	});
 
-  test("returns analytics data for admin users", async () => {
-    const response = await authenticatedFetch(
-      "/api/admin/notifications/analytics/overview",
-      adminUser,
-    );
-    expect(response.status).toBe(200);
+	test('returns analytics data for admin users', async () => {
+		const response = await authenticatedFetch(
+			'/api/admin/notifications/analytics/overview',
+			adminUser
+		);
+		expect(response.status).toBe(200);
 
-    const data = await response.json();
-    expect(data).toHaveProperty("total_sent");
-    expect(data).toHaveProperty("delivery_success_rate");
-  });
+		const data = await response.json();
+		expect(data).toHaveProperty('total_sent');
+		expect(data).toHaveProperty('delivery_success_rate');
+	});
 });
 ```
 
@@ -2180,56 +2144,56 @@ describe("GET /api/admin/notifications/analytics/overview", () => {
 
 ```typescript
 // notification-dashboard.e2e.ts
-import { test, expect } from "@playwright/test";
+import { test, expect } from '@playwright/test';
 
-test("admin can view notification analytics", async ({ page }) => {
-  // Login as admin
-  await page.goto("/auth/login");
-  await page.fill('input[type="email"]', "admin@build-os.com");
-  await page.fill('input[type="password"]', "password");
-  await page.click('button[type="submit"]');
+test('admin can view notification analytics', async ({ page }) => {
+	// Login as admin
+	await page.goto('/auth/login');
+	await page.fill('input[type="email"]', 'admin@build-os.com');
+	await page.fill('input[type="password"]', 'password');
+	await page.click('button[type="submit"]');
 
-  // Navigate to notifications dashboard
-  await page.goto("/admin/notifications");
+	// Navigate to notifications dashboard
+	await page.goto('/admin/notifications');
 
-  // Check overview metrics are visible
-  await expect(page.locator("text=Total Sent (24h)")).toBeVisible();
-  await expect(page.locator("text=Delivery Success Rate")).toBeVisible();
+	// Check overview metrics are visible
+	await expect(page.locator('text=Total Sent (24h)')).toBeVisible();
+	await expect(page.locator('text=Delivery Success Rate')).toBeVisible();
 
-  // Check chart is rendered
-  await expect(page.locator("canvas")).toBeVisible();
+	// Check chart is rendered
+	await expect(page.locator('canvas')).toBeVisible();
 
-  // Check table is rendered
-  await expect(page.locator("table")).toBeVisible();
+	// Check table is rendered
+	await expect(page.locator('table')).toBeVisible();
 });
 
-test("admin can send test notification", async ({ page }) => {
-  await loginAsAdmin(page);
-  await page.goto("/admin/notifications/test-bed");
+test('admin can send test notification', async ({ page }) => {
+	await loginAsAdmin(page);
+	await page.goto('/admin/notifications/test-bed');
 
-  // Select event type
-  await page.selectOption('select[name="event_type"]', "user.signup");
+	// Select event type
+	await page.selectOption('select[name="event_type"]', 'user.signup');
 
-  // Fill payload
-  await page.fill('input[name="user_email"]', "test@example.com");
-  await page.click('input[value="email"]'); // signup method
+	// Fill payload
+	await page.fill('input[name="user_email"]', 'test@example.com');
+	await page.click('input[value="email"]'); // signup method
 
-  // Select recipient
-  await page.fill('input[placeholder="Search users..."]', "admin");
-  await page.click("text=admin@build-os.com");
+	// Select recipient
+	await page.fill('input[placeholder="Search users..."]', 'admin');
+	await page.click('text=admin@build-os.com');
 
-  // Select channels
-  await page.check('input[name="channel_push"]');
-  await page.check('input[name="channel_email"]');
+	// Select channels
+	await page.check('input[name="channel_push"]');
+	await page.check('input[name="channel_email"]');
 
-  // Send test
-  await page.click('button:has-text("Send Test Notification")');
+	// Send test
+	await page.click('button:has-text("Send Test Notification")');
 
-  // Confirm modal
-  await page.click('button:has-text("Send Test Notification")'); // in modal
+	// Confirm modal
+	await page.click('button:has-text("Send Test Notification")'); // in modal
 
-  // Check success toast
-  await expect(page.locator("text=Test notification sent")).toBeVisible();
+	// Check success toast
+	await expect(page.locator('text=Test notification sent')).toBeVisible();
 });
 ```
 
@@ -2269,24 +2233,24 @@ test("admin can send test notification", async ({ page }) => {
 ## Open Questions
 
 1. **Chart Library**: Which charting library should we use?
-   - Recommendation: Chart.js (lightweight, good documentation)
-   - Alternative: Recharts (React-based, might need adapter for Svelte)
+    - Recommendation: Chart.js (lightweight, good documentation)
+    - Alternative: Recharts (React-based, might need adapter for Svelte)
 
 2. **Real-time Updates**: Should analytics auto-update without refresh?
-   - Recommendation: Yes, using Supabase Realtime for `notification_deliveries` table
-   - Alternative: Polling every 30s (simpler, less real-time)
+    - Recommendation: Yes, using Supabase Realtime for `notification_deliveries` table
+    - Alternative: Polling every 30s (simpler, less real-time)
 
 3. **Export Limits**: Should we limit export size?
-   - Recommendation: Yes, max 10,000 records per export
-   - Provide date range filtering to narrow results
+    - Recommendation: Yes, max 10,000 records per export
+    - Provide date range filtering to narrow results
 
 4. **Notification Previews**: How detailed should previews be?
-   - Recommendation: Show exact rendering for push/email, mockup for in-app
-   - Use iframes for email previews to isolate styles
+    - Recommendation: Show exact rendering for push/email, mockup for in-app
+    - Use iframes for email previews to isolate styles
 
 5. **Test Mode Flag**: Should test notifications be visually distinct?
-   - Recommendation: Yes, add "TEST" badge in notification title
-   - Example: "🧪 TEST: New user signup"
+    - Recommendation: Yes, add "TEST" badge in notification title
+    - Example: "🧪 TEST: New user signup"
 
 ---
 

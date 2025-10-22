@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: e9623c8d363b562a37de3f5e22e75ac2f69b00d0
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Fixes - Implementation Summary"
+topic: 'Calendar Analysis Fixes - Implementation Summary'
 tags: [implementation, calendar-analysis, fixes, rrule, prompts]
 status: in-progress
 last_updated: 2025-10-22
@@ -45,11 +45,11 @@ Implemented **10 critical fixes** out of 13 identified issues in the calendar an
 
 - **Before**: 7 keywords (birthday, vacation, pto, etc.)
 - **After**: 32 keywords organized by category:
-  - Medical/Health (9): therapy, dentist, doctor, appointment, checkup, physical, medical, pelvic floor, cardio
-  - Family/Kids (6): kindergarten, school, dismissal, co-op, daycare, early dismissal
-  - Personal Chores (4): trash, curb, mop, maintenance
-  - Social (3): housewarming, couples night, visit
-  - Additional (3): bring to school, pick up, drop off
+    - Medical/Health (9): therapy, dentist, doctor, appointment, checkup, physical, medical, pelvic floor, cardio
+    - Family/Kids (6): kindergarten, school, dismissal, co-op, daycare, early dismissal
+    - Personal Chores (4): trash, curb, mop, maintenance
+    - Social (3): housewarming, couples night, visit
+    - Additional (3): bring to school, pick up, drop off
 
 **Impact**: 60-70% reduction in false positives (personal events treated as projects)
 
@@ -138,16 +138,16 @@ Added concrete examples of good vs bad grouping:
 **Deduplication Decision** (Apply in order):
 
 1. **Strong Match (≥75% confidence)**:
-   - Set `add_to_existing: true`
-   - Set `existing_project_id: "actual-uuid-from-above"`
-   - Set `deduplication_reasoning: "Events match existing project because..."`
-   - Still generate tasks to add to that project
+    - Set `add_to_existing: true`
+    - Set `existing_project_id: "actual-uuid-from-above"`
+    - Set `deduplication_reasoning: "Events match existing project because..."`
+    - Still generate tasks to add to that project
 
 2. **Weak/No Match (<75%)**:
-   - Set `add_to_existing: false`
-   - Set `existing_project_id: null`
-   - Set `deduplication_reasoning: "No match with existing projects because..."`
-   - Create NEW project
+    - Set `add_to_existing: false`
+    - Set `existing_project_id: null`
+    - Set `deduplication_reasoning: "No match with existing projects because..."`
+    - Create NEW project
 
 ## Examples:
 
@@ -213,22 +213,22 @@ When an event has a `recurrence` field with RRULE:
 1. Set `task_type: "recurring"`
 2. **COPY the exact RRULE string** to `recurrence_rrule` field (preserve it exactly!)
 3. Parse RRULE to set `recurrence_pattern`:
-   - `FREQ=DAILY` → "daily"
-   - `FREQ=WEEKLY` → "weekly"
-   - `FREQ=MONTHLY` → "monthly"
+    - `FREQ=DAILY` → "daily"
+    - `FREQ=WEEKLY` → "weekly"
+    - `FREQ=MONTHLY` → "monthly"
 4. Parse `UNTIL` parameter for `recurrence_ends`:
-   - `UNTIL=20251215T235959Z` → "2025-12-15"
+    - `UNTIL=20251215T235959Z` → "2025-12-15"
 
 **Example**:
 
 ```json
 {
-  "title": "Sprint Planning",
-  "task_type": "recurring",
-  "recurrence_pattern": "weekly",
-  "recurrence_ends": "2025-12-15",
-  "recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z",
-  "event_id": "event-123"
+	"title": "Sprint Planning",
+	"task_type": "recurring",
+	"recurrence_pattern": "weekly",
+	"recurrence_ends": "2025-12-15",
+	"recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z",
+	"event_id": "event-123"
 }
 ```
 ````
@@ -280,17 +280,17 @@ Updated event data sent to LLM to include recurrence information:
 
 ```javascript
 groupUpcomingEvents.map((e) => ({
-  id: e.id,
-  title: e.summary,
-  description: e.description?.substring(0, 500),
-  start: e.start?.dateTime || e.start?.date,
-  end: e.end?.dateTime || e.end?.date,
-  attendees: e.attendees?.map((a) => a.email),
-  organizer: e.organizer?.email,
-  location: e.location,
-  hangoutLink: e.hangoutLink,
-  recurrence: e.recurrence, // ✅ ADDED: RRULE strings array
-  is_recurring: !!e.recurringEventId || !!e.recurrence, // ✅ ADDED
+	id: e.id,
+	title: e.summary,
+	description: e.description?.substring(0, 500),
+	start: e.start?.dateTime || e.start?.date,
+	end: e.end?.dateTime || e.end?.date,
+	attendees: e.attendees?.map((a) => a.email),
+	organizer: e.organizer?.email,
+	location: e.location,
+	hangoutLink: e.hangoutLink,
+	recurrence: e.recurrence, // ✅ ADDED: RRULE strings array
+	is_recurring: !!e.recurringEventId || !!e.recurrence // ✅ ADDED
 }));
 ```
 
@@ -558,25 +558,25 @@ async analyzeUserCalendar(userId: string, options: CalendarAnalysisOptions = {})
 ## Next Steps
 
 1. **Complete Remaining 3 Fixes** (~2.5 hours):
-   - Add project ID validation (1 hour)
-   - Add concurrent analysis prevention (30 mins)
-   - Improve error messages (1 hour)
+    - Add project ID validation (1 hour)
+    - Add concurrent analysis prevention (30 mins)
+    - Improve error messages (1 hour)
 
 2. **Test Thoroughly** (~2 hours):
-   - Run typecheck and lint
-   - Test all scenarios listed above
-   - Check actual LLM outputs with audit prompts
+    - Run typecheck and lint
+    - Test all scenarios listed above
+    - Check actual LLM outputs with audit prompts
 
 3. **Deploy** (once tests pass):
-   - Commit changes with message: "fix(calendar-analysis): implement 13 critical fixes"
-   - Monitor production for issues
-   - Check user feedback
+    - Commit changes with message: "fix(calendar-analysis): implement 13 critical fixes"
+    - Monitor production for issues
+    - Check user feedback
 
 4. **Follow-up Enhancements** (future):
-   - Add re-analysis capability (4-6 hours)
-   - Build deduplication UI (4-6 hours)
-   - Add event→task transparency (8-10 hours)
-   - ML-based personal event detection (long-term)
+    - Add re-analysis capability (4-6 hours)
+    - Build deduplication UI (4-6 hours)
+    - Add event→task transparency (8-10 hours)
+    - ML-based personal event detection (long-term)
 
 ---
 

@@ -1,19 +1,19 @@
 ---
-title: "Dashboard Optimistic Update Flow Analysis"
+title: 'Dashboard Optimistic Update Flow Analysis'
 date: 2025-10-06
 type: research
 topic: dashboard-optimistic-updates
 status: complete
 tags:
-  - optimistic-updates
-  - race-conditions
-  - dashboard
-  - testing
-  - state-management
+    - optimistic-updates
+    - race-conditions
+    - dashboard
+    - testing
+    - state-management
 files_analyzed:
-  - apps/web/src/lib/services/dashboardData.service.ts
-  - apps/web/src/lib/stores/dashboard.store.ts
-  - apps/web/src/lib/services/dashboardData.service.test.ts
+    - apps/web/src/lib/services/dashboardData.service.ts
+    - apps/web/src/lib/stores/dashboard.store.ts
+    - apps/web/src/lib/services/dashboardData.service.test.ts
 ---
 
 # Dashboard Optimistic Update Flow Analysis
@@ -74,74 +74,74 @@ async updateTask(taskId: string, updates: Partial<Task>, projectId?: string) {
 #### DashboardDataService Methods
 
 1. **`updateTask(taskId, updates, projectId?)`** (Lines 184-228)
-   - Entry point for task updates
-   - Captures project_id before optimistic update
-   - Coordinates entire flow
+    - Entry point for task updates
+    - Captures project_id before optimistic update
+    - Coordinates entire flow
 
 2. **`deleteTask(taskId)`** (Lines 233-268)
-   - Finds task to get project_id
-   - Applies optimistic delete
-   - Confirms or rolls back
+    - Finds task to get project_id
+    - Applies optimistic delete
+    - Confirms or rolls back
 
 3. **`createTask(projectId, task)`** (Lines 285-315)
-   - Generates temp ID for optimistic create
-   - Replaces temp task with real one on success
-   - Rolls back on failure
+    - Generates temp ID for optimistic create
+    - Replaces temp task with real one on success
+    - Rolls back on failure
 
 4. **`completeTask(taskId)`** (Lines 273-280)
-   - Convenience wrapper for updateTask with status='completed'
+    - Convenience wrapper for updateTask with status='completed'
 
 5. **`batchUpdateTasks(projectId, updates[])`** (Lines 334-360)
-   - Applies multiple optimistic updates
-   - Confirms all or rolls back all
+    - Applies multiple optimistic updates
+    - Confirms all or rolls back all
 
 6. **`findTaskInAllLists(state, taskId)`** (Lines 389-410)
-   - Searches all task lists for a task
-   - Checks `allTasks` first (optimization)
-   - Falls back to date-based lists
+    - Searches all task lists for a task
+    - Checks `allTasks` first (optimization)
+    - Falls back to date-based lists
 
 #### DashboardStore Methods
 
 1. **`updateTask(taskId, updates)`** (Lines 442-459)
-   - Creates OptimisticUpdate object
-   - Stores rollback data
-   - Calls `applyOptimisticUpdate()`
-   - Returns update ID for tracking
+    - Creates OptimisticUpdate object
+    - Stores rollback data
+    - Calls `applyOptimisticUpdate()`
+    - Returns update ID for tracking
 
 2. **`deleteTask(taskId)`** (Lines 483-499)
-   - Finds task for rollback data
-   - Creates 'delete' OptimisticUpdate
-   - Calls `applyOptimisticUpdate()`
+    - Finds task for rollback data
+    - Creates 'delete' OptimisticUpdate
+    - Calls `applyOptimisticUpdate()`
 
 3. **`addTask(task)`** (Lines 502-512)
-   - Creates 'create' OptimisticUpdate
-   - Calls `applyOptimisticUpdate()`
+    - Creates 'create' OptimisticUpdate
+    - Calls `applyOptimisticUpdate()`
 
 4. **`applyOptimisticUpdate(update)`** (Lines 138-160)
-   - Stores update in Map with unique ID
-   - Routes to appropriate apply method
+    - Stores update in Map with unique ID
+    - Routes to appropriate apply method
 
 5. **`rollbackOptimisticUpdate(updateId)`** (Lines 365-390)
-   - Retrieves rollback data
-   - Applies inverse operation
-   - Removes update from Map
+    - Retrieves rollback data
+    - Applies inverse operation
+    - Removes update from Map
 
 6. **`confirmOptimisticUpdate(updateId)`** (Lines 392-398)
-   - Simply removes update from Map
-   - Server response is now source of truth
+    - Simply removes update from Map
+    - Server response is now source of truth
 
 7. **`getState()`** (Lines 437-439)
-   - Returns current store state
-   - Used by service to find tasks
+    - Returns current store state
+    - Used by service to find tasks
 
 8. **`applyTaskUpdate(state, taskUpdate)`** (Lines 162-285)
-   - Handles status='done' (removes from all lists)
-   - Handles date changes (moves between lists)
-   - Handles in-place updates
+    - Handles status='done' (removes from all lists)
+    - Handles date changes (moves between lists)
+    - Handles in-place updates
 
 9. **`applyTaskCreate(state, task)`** (Lines 287-329)
-   - Adds task to appropriate date-based lists
-   - Updates stats
+    - Adds task to appropriate date-based lists
+    - Updates stats
 
 10. **`applyTaskDelete(state, taskId)`** (Lines 331-363)
     - Removes from all lists
@@ -154,11 +154,11 @@ async updateTask(taskId: string, updates: Partial<Task>, projectId?: string) {
 // FILE: dashboard.store.ts (Lines 45-51)
 
 interface OptimisticUpdate {
-  id: string; // UUID for tracking
-  type: "create" | "update" | "delete";
-  timestamp: number; // Date.now()
-  data: any; // The update being applied
-  rollbackData?: any; // Original state for rollback
+	id: string; // UUID for tracking
+	type: 'create' | 'update' | 'delete';
+	timestamp: number; // Date.now()
+	data: any; // The update being applied
+	rollbackData?: any; // Original state for rollback
 }
 ```
 
@@ -197,16 +197,15 @@ const task = this.findTaskInAllLists(currentState, taskId);
 const taskProjectId = projectId || task?.project_id;
 
 if (!taskProjectId) {
-  console.error(
-    `[DashboardDataService] Cannot update task ${taskId}: project_id not found.
-     Task may have been removed from lists due to date change.`,
-  );
-  // Don't apply optimistic update if we can't make the API call
-  return {
-    success: false,
-    message:
-      "Task project information not available. Please refresh the dashboard.",
-  };
+	console.error(
+		`[DashboardDataService] Cannot update task ${taskId}: project_id not found.
+     Task may have been removed from lists due to date change.`
+	);
+	// Don't apply optimistic update if we can't make the API call
+	return {
+		success: false,
+		message: 'Task project information not available. Please refresh the dashboard.'
+	};
 }
 
 // NOW apply optimistic update after we have project_id
@@ -225,11 +224,11 @@ const optimisticUpdateId = dashboardStore.updateTask(taskId, updates);
 
 ```typescript
 // Initial State:
-todaysTasks: [{ id: "task-1", project_id: "proj-1", start_date: "2025-10-06" }];
+todaysTasks: [{ id: 'task-1', project_id: 'proj-1', start_date: '2025-10-06' }];
 tomorrowsTasks: [];
 
 // User updates task date:
-await dashboardService.updateTask("task-1", { start_date: "2025-10-07" });
+await dashboardService.updateTask('task-1', { start_date: '2025-10-07' });
 
 // Flow:
 // 1. getState() captures current state with task in todaysTasks
@@ -255,8 +254,8 @@ const taskProjectId = projectId || task?.project_id;
 
 ```typescript
 if (!taskProjectId) {
-  // Don't apply optimistic update - prevent phantom tasks
-  return { success: false, message: "..." };
+	// Don't apply optimistic update - prevent phantom tasks
+	return { success: false, message: '...' };
 }
 ```
 
@@ -264,8 +263,8 @@ if (!taskProjectId) {
 
 ```typescript
 if (!result.success) {
-  // Rollback moves task back to original list
-  dashboardStore.rollbackOptimisticUpdate(optimisticUpdateId);
+	// Rollback moves task back to original list
+	dashboardStore.rollbackOptimisticUpdate(optimisticUpdateId);
 }
 ```
 
@@ -485,7 +484,7 @@ public getState(): DashboardState {
 
 ```typescript
 // User clicks checkbox to complete task
-await dashboardService.completeTask("task-123");
+await dashboardService.completeTask('task-123');
 
 // Flow:
 // 1. getState() finds task in todaysTasks
@@ -505,7 +504,7 @@ await dashboardService.completeTask("task-123");
 
 ```typescript
 // User drags task from today to tomorrow
-await dashboardService.updateTask("task-456", { start_date: "2025-10-07" });
+await dashboardService.updateTask('task-456', { start_date: '2025-10-07' });
 
 // Flow:
 // 1. getState() finds task in todaysTasks with start_date='2025-10-06'
@@ -530,11 +529,11 @@ await dashboardService.updateTask("task-456", { start_date: "2025-10-07" });
 // FILE: dashboard.store.ts (Lines 199-268)
 
 if (taskUpdate.start_date !== undefined) {
-  // Remove from ALL date-based lists first
-  // Find existing task to preserve data
-  // Remove from lists
-  // Create updated task
-  // Add to appropriate list(s) based on new date
+	// Remove from ALL date-based lists first
+	// Find existing task to preserve data
+	// Remove from lists
+	// Create updated task
+	// Add to appropriate list(s) based on new date
 }
 ```
 
@@ -542,7 +541,7 @@ if (taskUpdate.start_date !== undefined) {
 
 ```typescript
 // User clicks delete button
-await dashboardService.deleteTask("task-789");
+await dashboardService.deleteTask('task-789');
 
 // Flow:
 // 1. getState() finds task in weeklyTasks
@@ -566,9 +565,9 @@ await dashboardService.deleteTask("task-789");
 
 ```typescript
 // User creates new task via quick-add
-await dashboardService.createTask("proj-4", {
-  name: "New task",
-  start_date: "2025-10-06",
+await dashboardService.createTask('proj-4', {
+	name: 'New task',
+	start_date: '2025-10-06'
 });
 
 // Flow:
@@ -592,10 +591,10 @@ await dashboardService.createTask("proj-4", {
 
 ```typescript
 // User marks multiple tasks as complete
-await dashboardService.batchUpdateTasks("proj-5", [
-  { id: "task-1", updates: { status: "done" } },
-  { id: "task-2", updates: { status: "done" } },
-  { id: "task-3", updates: { status: "done" } },
+await dashboardService.batchUpdateTasks('proj-5', [
+	{ id: 'task-1', updates: { status: 'done' } },
+	{ id: 'task-2', updates: { status: 'done' } },
+	{ id: 'task-3', updates: { status: 'done' } }
 ]);
 
 // Flow:
@@ -612,15 +611,11 @@ await dashboardService.batchUpdateTasks("proj-5", [
 // FILE: dashboardData.service.ts (Lines 334-360)
 
 if (result.success) {
-  // Confirm ALL
-  optimisticUpdateIds.forEach((id) =>
-    dashboardStore.confirmOptimisticUpdate(id),
-  );
+	// Confirm ALL
+	optimisticUpdateIds.forEach((id) => dashboardStore.confirmOptimisticUpdate(id));
 } else {
-  // Rollback ALL
-  optimisticUpdateIds.forEach((id) =>
-    dashboardStore.rollbackOptimisticUpdate(id),
-  );
+	// Rollback ALL
+	optimisticUpdateIds.forEach((id) => dashboardStore.rollbackOptimisticUpdate(id));
 }
 ```
 
@@ -631,8 +626,8 @@ if (result.success) {
 ```typescript
 // Two updates to same task in quick succession
 Promise.all([
-  dashboardService.updateTask("task-1", { name: "First update" }),
-  dashboardService.updateTask("task-1", { status: "done" }),
+	dashboardService.updateTask('task-1', { name: 'First update' }),
+	dashboardService.updateTask('task-1', { status: 'done' })
 ]);
 
 // Expected Behavior:
@@ -652,10 +647,10 @@ Promise.all([
 
 ```typescript
 // Update 1: Change date (moves task)
-await dashboardService.updateTask("task-1", { start_date: "2025-10-07" });
+await dashboardService.updateTask('task-1', { start_date: '2025-10-07' });
 
 // Update 2: Update name (task now in different list)
-await dashboardService.updateTask("task-1", { name: "Updated name" });
+await dashboardService.updateTask('task-1', { name: 'Updated name' });
 
 // Expected Behavior:
 // - Update 2 should find task in tomorrowsTasks (new location)
@@ -672,12 +667,12 @@ await dashboardService.updateTask("task-1", { name: "Updated name" });
 
 ```typescript
 // Update in progress
-const updatePromise = dashboardService.updateTask("task-1", {
-  name: "Updated",
+const updatePromise = dashboardService.updateTask('task-1', {
+	name: 'Updated'
 });
 
 // Immediate delete (before update completes)
-const deletePromise = dashboardService.deleteTask("task-1");
+const deletePromise = dashboardService.deleteTask('task-1');
 
 // Expected Behavior:
 // - Both capture project_id
@@ -697,7 +692,7 @@ const deletePromise = dashboardService.deleteTask("task-1");
 
 ```typescript
 // Complete a task with calendar events
-await dashboardService.updateTask("task-1", { status: "done" });
+await dashboardService.updateTask('task-1', { status: 'done' });
 
 // Expected Behavior:
 // - Task removed from ALL lists (pastDue, today, tomorrow, weekly, weeklyByDate)
@@ -715,7 +710,7 @@ await dashboardService.updateTask("task-1", { status: "done" });
 ```typescript
 // Task deleted by another device/tab
 // Try to update it here
-await dashboardService.updateTask("task-1", { name: "Update" });
+await dashboardService.updateTask('task-1', { name: 'Update' });
 
 // Expected Behavior:
 // - getState() returns null (task not found)
@@ -734,7 +729,7 @@ await dashboardService.updateTask("task-1", { name: "Update" });
 
 ```typescript
 // Task removed from lists, but we have project_id from elsewhere
-await dashboardService.updateTask("task-1", { name: "Update" }, "proj-1");
+await dashboardService.updateTask('task-1', { name: 'Update' }, 'proj-1');
 
 // Expected Behavior:
 // - getState() returns null (task not found)
@@ -752,7 +747,7 @@ await dashboardService.updateTask("task-1", { name: "Update" }, "proj-1");
 
 ```typescript
 // Network error during API call
-await dashboardService.updateTask("task-1", { status: "done" });
+await dashboardService.updateTask('task-1', { status: 'done' });
 // Network fails here
 
 // Expected Behavior:
@@ -773,7 +768,7 @@ await dashboardService.updateTask("task-1", { status: "done" });
 
 ```typescript
 // Change date to 10 days from now (outside weekly view)
-await dashboardService.updateTask("task-1", { start_date: "2025-10-16" });
+await dashboardService.updateTask('task-1', { start_date: '2025-10-16' });
 
 // Expected Behavior:
 // - Task removed from all current lists
@@ -791,9 +786,9 @@ await dashboardService.updateTask("task-1", { start_date: "2025-10-16" });
 
 ```typescript
 // Create task with date in the past
-await dashboardService.createTask("proj-1", {
-  name: "Overdue task",
-  start_date: "2025-10-01", // 5 days ago
+await dashboardService.createTask('proj-1', {
+	name: 'Overdue task',
+	start_date: '2025-10-01' // 5 days ago
 });
 
 // Expected Behavior:
@@ -811,10 +806,10 @@ await dashboardService.createTask("proj-1", {
 
 ```typescript
 // Some tasks succeed, some fail
-await dashboardService.batchUpdateTasks("proj-1", [
-  { id: "task-1", updates: { status: "done" } },
-  { id: "task-2", updates: { status: "done" } },
-  { id: "invalid", updates: { status: "done" } }, // This will fail
+await dashboardService.batchUpdateTasks('proj-1', [
+	{ id: 'task-1', updates: { status: 'done' } },
+	{ id: 'task-2', updates: { status: 'done' } },
+	{ id: 'invalid', updates: { status: 'done' } } // This will fail
 ]);
 
 // Expected Behavior:
@@ -897,32 +892,32 @@ this.delete<T>(endpoint)
 ```typescript
 // ServiceResponse (all API methods)
 interface ServiceResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: any;
+	success: boolean;
+	data?: T;
+	message?: string;
+	error?: any;
 }
 
 // OptimisticUpdate (store operations)
 interface OptimisticUpdate {
-  id: string; // UUID
-  type: "create" | "update" | "delete";
-  timestamp: number;
-  data: any;
-  rollbackData?: any;
+	id: string; // UUID
+	type: 'create' | 'update' | 'delete';
+	timestamp: number;
+	data: any;
+	rollbackData?: any;
 }
 
 // DashboardState (getState return)
 interface DashboardState {
-  pastDueTasks: TaskWithCalendarEvents[];
-  todaysTasks: TaskWithCalendarEvents[];
-  tomorrowsTasks: TaskWithCalendarEvents[];
-  weeklyTasks: TaskWithCalendarEvents[];
-  weeklyTasksByDate: Record<string, TaskWithCalendarEvents[]>;
-  allTasks: TaskWithCalendarEvents[];
-  activeProjects: Project[];
-  // ... other fields
-  optimisticUpdates: Map<string, OptimisticUpdate>;
+	pastDueTasks: TaskWithCalendarEvents[];
+	todaysTasks: TaskWithCalendarEvents[];
+	tomorrowsTasks: TaskWithCalendarEvents[];
+	weeklyTasks: TaskWithCalendarEvents[];
+	weeklyTasksByDate: Record<string, TaskWithCalendarEvents[]>;
+	allTasks: TaskWithCalendarEvents[];
+	activeProjects: Project[];
+	// ... other fields
+	optimisticUpdates: Map<string, OptimisticUpdate>;
 }
 ```
 
@@ -956,97 +951,97 @@ interface DashboardState {
 **Recommended Coverage:**
 
 ```typescript
-describe("DashboardStore - Optimistic Updates", () => {
-  describe("updateTask", () => {
-    it("should create optimistic update with rollback data");
-    it("should return unique update ID");
-    it('should handle status="done" (remove from lists)');
-    it("should handle date changes (move between lists)");
-    it("should handle in-place updates (no date change)");
-    it("should update stats appropriately");
-  });
+describe('DashboardStore - Optimistic Updates', () => {
+	describe('updateTask', () => {
+		it('should create optimistic update with rollback data');
+		it('should return unique update ID');
+		it('should handle status="done" (remove from lists)');
+		it('should handle date changes (move between lists)');
+		it('should handle in-place updates (no date change)');
+		it('should update stats appropriately');
+	});
 
-  describe("deleteTask", () => {
-    it("should create delete optimistic update");
-    it("should store full task in rollbackData");
-    it("should remove from all lists");
-    it("should return null if task not found");
-    it("should update stats (activeTasks--)");
-  });
+	describe('deleteTask', () => {
+		it('should create delete optimistic update');
+		it('should store full task in rollbackData');
+		it('should remove from all lists');
+		it('should return null if task not found');
+		it('should update stats (activeTasks--)');
+	});
 
-  describe("addTask", () => {
-    it("should add task to appropriate date lists");
-    it("should handle past due dates");
-    it("should handle future dates");
-    it("should handle dates outside weekly range");
-    it("should update stats (activeTasks++)");
-  });
+	describe('addTask', () => {
+		it('should add task to appropriate date lists');
+		it('should handle past due dates');
+		it('should handle future dates');
+		it('should handle dates outside weekly range');
+		it('should update stats (activeTasks++)');
+	});
 
-  describe("applyOptimisticUpdate", () => {
-    it("should add update to tracking Map");
-    it("should route to correct apply method");
-    it("should handle update type");
-    it("should handle create type");
-    it("should handle delete type");
-  });
+	describe('applyOptimisticUpdate', () => {
+		it('should add update to tracking Map');
+		it('should route to correct apply method');
+		it('should handle update type');
+		it('should handle create type');
+		it('should handle delete type');
+	});
 
-  describe("rollbackOptimisticUpdate", () => {
-    it("should restore task on update rollback");
-    it("should remove task on create rollback");
-    it("should restore task on delete rollback");
-    it("should clean up tracking Map");
-    it("should handle missing rollbackData");
-  });
+	describe('rollbackOptimisticUpdate', () => {
+		it('should restore task on update rollback');
+		it('should remove task on create rollback');
+		it('should restore task on delete rollback');
+		it('should clean up tracking Map');
+		it('should handle missing rollbackData');
+	});
 
-  describe("confirmOptimisticUpdate", () => {
-    it("should remove update from Map");
-    it("should not modify task state");
-  });
+	describe('confirmOptimisticUpdate', () => {
+		it('should remove update from Map');
+		it('should not modify task state');
+	});
 
-  describe("applyTaskUpdate", () => {
-    it("should handle status changes");
-    it("should move task between date lists");
-    it("should update weeklyTasksByDate");
-    it("should remove from all lists on status=done");
-    it("should clean up empty date buckets");
-  });
+	describe('applyTaskUpdate', () => {
+		it('should handle status changes');
+		it('should move task between date lists');
+		it('should update weeklyTasksByDate');
+		it('should remove from all lists on status=done');
+		it('should clean up empty date buckets');
+	});
 
-  describe("applyTaskCreate", () => {
-    it("should add to pastDueTasks for past dates");
-    it("should add to todaysTasks for today");
-    it("should add to tomorrowsTasks for tomorrow");
-    it("should add to weeklyTasks if within 7 days");
-    it("should add to weeklyTasksByDate");
-  });
+	describe('applyTaskCreate', () => {
+		it('should add to pastDueTasks for past dates');
+		it('should add to todaysTasks for today');
+		it('should add to tomorrowsTasks for tomorrow');
+		it('should add to weeklyTasks if within 7 days');
+		it('should add to weeklyTasksByDate');
+	});
 
-  describe("applyTaskDelete", () => {
-    it("should remove from all lists");
-    it("should remove from weeklyTasksByDate");
-    it("should clean up empty date buckets");
-    it("should update activeTasks stat");
-  });
+	describe('applyTaskDelete', () => {
+		it('should remove from all lists');
+		it('should remove from weeklyTasksByDate');
+		it('should clean up empty date buckets');
+		it('should update activeTasks stat');
+	});
 
-  describe("findTaskInState", () => {
-    it("should find task in pastDueTasks");
-    it("should find task in todaysTasks");
-    it("should find task in tomorrowsTasks");
-    it("should find task in weeklyTasks");
-    it("should handle duplicates across lists");
-    it("should return null if not found");
-  });
+	describe('findTaskInState', () => {
+		it('should find task in pastDueTasks');
+		it('should find task in todaysTasks');
+		it('should find task in tomorrowsTasks');
+		it('should find task in weeklyTasks');
+		it('should handle duplicates across lists');
+		it('should return null if not found');
+	});
 });
 ```
 
 ### Integration Tests (Optional)
 
 ```typescript
-describe("Dashboard Optimistic Updates - Integration", () => {
-  it("should update task end-to-end");
-  it("should handle date change with API call");
-  it("should rollback on network failure");
-  it("should handle concurrent updates");
-  it("should handle create with temp ID replacement");
-  it("should handle batch updates atomically");
+describe('Dashboard Optimistic Updates - Integration', () => {
+	it('should update task end-to-end');
+	it('should handle date change with API call');
+	it('should rollback on network failure');
+	it('should handle concurrent updates');
+	it('should handle create with temp ID replacement');
+	it('should handle batch updates atomically');
 });
 ```
 

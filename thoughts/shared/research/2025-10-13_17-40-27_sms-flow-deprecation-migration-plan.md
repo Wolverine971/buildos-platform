@@ -4,36 +4,28 @@ researcher: Claude Code
 git_commit: 6e0f4fcff7e4b19f003d75ccb8634f8f2b78b41a
 branch: main
 repository: buildos-platform
-topic: "SMS Flow Deprecation and Migration Plan - Cleaning Up After Daily Brief Notification Refactor"
-tags:
-  [
-    migration,
-    sms,
-    notifications,
-    database-schema,
-    refactoring,
-    user_sms_preferences,
-  ]
+topic: 'SMS Flow Deprecation and Migration Plan - Cleaning Up After Daily Brief Notification Refactor'
+tags: [migration, sms, notifications, database-schema, refactoring, user_sms_preferences]
 status: phase3-migration-files-created
 last_updated: 2025-10-15T02:00:00-07:00
 last_updated_by: Claude Code
-last_updated_note: "Phase 3 migration files created - ready for deployment after 2-week observation period"
+last_updated_note: 'Phase 3 migration files created - ready for deployment after 2-week observation period'
 related_docs:
-  - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
-  - thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md
-  - docs/architecture/decisions/ADR-001-user-level-notification-preferences.md
+    - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
+    - thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md
+    - docs/architecture/decisions/ADR-001-user-level-notification-preferences.md
 implementation_files:
-  - apps/worker/src/lib/utils/smsPreferenceChecks.ts (NEW - Phase 1)
-  - apps/worker/src/workers/notification/smsAdapter.ts (MODIFIED - Phase 1)
-  - apps/worker/src/workers/notification/preferenceChecker.ts (MODIFIED - Phase 1)
-  - supabase/migrations/20251013_phase1_remove_daily_brief_sms_check.sql (NEW - Phase 1)
-  - apps/web/src/routes/api/sms/preferences/+server.ts (MODIFIED - Phase 2)
-  - apps/web/src/lib/components/settings/SMSPreferences.svelte (MODIFIED - Phase 2)
-  - apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte (MODIFIED - Phase 2)
-  - apps/web/src/lib/services/sms.service.ts (MODIFIED - Phase 2)
-  - apps/web/docs/features/onboarding-v2/README.md (MODIFIED - Phase 2)
-  - supabase/migrations/20251015_deprecate_unused_sms_fields.sql (NEW - Phase 3a)
-  - supabase/migrations/20251029_remove_deprecated_sms_fields.sql (NEW - Phase 3b)
+    - apps/worker/src/lib/utils/smsPreferenceChecks.ts (NEW - Phase 1)
+    - apps/worker/src/workers/notification/smsAdapter.ts (MODIFIED - Phase 1)
+    - apps/worker/src/workers/notification/preferenceChecker.ts (MODIFIED - Phase 1)
+    - supabase/migrations/20251013_phase1_remove_daily_brief_sms_check.sql (NEW - Phase 1)
+    - apps/web/src/routes/api/sms/preferences/+server.ts (MODIFIED - Phase 2)
+    - apps/web/src/lib/components/settings/SMSPreferences.svelte (MODIFIED - Phase 2)
+    - apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte (MODIFIED - Phase 2)
+    - apps/web/src/lib/services/sms.service.ts (MODIFIED - Phase 2)
+    - apps/web/docs/features/onboarding-v2/README.md (MODIFIED - Phase 2)
+    - supabase/migrations/20251015_deprecate_unused_sms_fields.sql (NEW - Phase 3a)
+    - supabase/migrations/20251029_remove_deprecated_sms_fields.sql (NEW - Phase 3b)
 ---
 
 # SMS Flow Deprecation and Migration Plan
@@ -189,52 +181,46 @@ daily_brief_sms = true;
 ```typescript
 // Add quiet hours validation
 const { data: smsPrefs, error: smsError } = await supabase
-  .from("user_sms_preferences")
-  .select("quiet_hours_start, quiet_hours_end, timezone")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('quiet_hours_start, quiet_hours_end, timezone')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 if (smsError) {
-  logger.error(
-    "Failed to fetch SMS preferences for quiet hours check",
-    smsError,
-  );
-  // Continue without quiet hours check (fail open)
+	logger.error('Failed to fetch SMS preferences for quiet hours check', smsError);
+	// Continue without quiet hours check (fail open)
 }
 
 if (smsPrefs && smsPrefs.quiet_hours_start && smsPrefs.quiet_hours_end) {
-  const now = new Date();
-  const userTimezone = smsPrefs.timezone || "UTC";
-  const isInQuietHours = checkQuietHours(
-    now,
-    smsPrefs.quiet_hours_start,
-    smsPrefs.quiet_hours_end,
-    userTimezone,
-  );
+	const now = new Date();
+	const userTimezone = smsPrefs.timezone || 'UTC';
+	const isInQuietHours = checkQuietHours(
+		now,
+		smsPrefs.quiet_hours_start,
+		smsPrefs.quiet_hours_end,
+		userTimezone
+	);
 
-  if (isInQuietHours) {
-    logger.info("SMS delivery in quiet hours - rescheduling", {
-      userId: delivery.recipient_user_id,
-      quietHoursStart: smsPrefs.quiet_hours_start,
-      quietHoursEnd: smsPrefs.quiet_hours_end,
-    });
+	if (isInQuietHours) {
+		logger.info('SMS delivery in quiet hours - rescheduling', {
+			userId: delivery.recipient_user_id,
+			quietHoursStart: smsPrefs.quiet_hours_start,
+			quietHoursEnd: smsPrefs.quiet_hours_end
+		});
 
-    // Reschedule to end of quiet hours
-    const rescheduledTime = calculateQuietHoursEnd(
-      smsPrefs.quiet_hours_end,
-      userTimezone,
-    );
+		// Reschedule to end of quiet hours
+		const rescheduledTime = calculateQuietHoursEnd(smsPrefs.quiet_hours_end, userTimezone);
 
-    await supabase
-      .from("notification_deliveries")
-      .update({
-        status: "scheduled",
-        scheduled_for: rescheduledTime.toISOString(),
-      })
-      .eq("id", delivery.id);
+		await supabase
+			.from('notification_deliveries')
+			.update({
+				status: 'scheduled',
+				scheduled_for: rescheduledTime.toISOString()
+			})
+			.eq('id', delivery.id);
 
-    return { success: true, rescheduled: true };
-  }
+		return { success: true, rescheduled: true };
+	}
 }
 ```
 
@@ -242,30 +228,30 @@ if (smsPrefs && smsPrefs.quiet_hours_start && smsPrefs.quiet_hours_end) {
 
 ```typescript
 // apps/worker/src/lib/utils/quietHoursChecker.ts
-import { utcToZonedTime } from "date-fns-tz";
+import { utcToZonedTime } from 'date-fns-tz';
 
 export function checkQuietHours(
-  time: Date,
-  quietStart: string, // HH:MM:SS
-  quietEnd: string, // HH:MM:SS
-  timezone: string,
+	time: Date,
+	quietStart: string, // HH:MM:SS
+	quietEnd: string, // HH:MM:SS
+	timezone: string
 ): boolean {
-  const timeInUserTz = utcToZonedTime(time, timezone);
-  const hour = timeInUserTz.getHours();
-  const minute = timeInUserTz.getMinutes();
-  const timeMinutes = hour * 60 + minute;
+	const timeInUserTz = utcToZonedTime(time, timezone);
+	const hour = timeInUserTz.getHours();
+	const minute = timeInUserTz.getMinutes();
+	const timeMinutes = hour * 60 + minute;
 
-  const [startHour, startMin] = quietStart.split(":").map(Number);
-  const [endHour, endMin] = quietEnd.split(":").map(Number);
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
+	const [startHour, startMin] = quietStart.split(':').map(Number);
+	const [endHour, endMin] = quietEnd.split(':').map(Number);
+	const startMinutes = startHour * 60 + startMin;
+	const endMinutes = endHour * 60 + endMin;
 
-  // Handle overnight quiet hours (e.g., 22:00 - 08:00)
-  if (startMinutes < endMinutes) {
-    return timeMinutes >= startMinutes && timeMinutes < endMinutes;
-  } else {
-    return timeMinutes >= startMinutes || timeMinutes < endMinutes;
-  }
+	// Handle overnight quiet hours (e.g., 22:00 - 08:00)
+	if (startMinutes < endMinutes) {
+		return timeMinutes >= startMinutes && timeMinutes < endMinutes;
+	} else {
+		return timeMinutes >= startMinutes || timeMinutes < endMinutes;
+	}
 }
 ```
 
@@ -282,75 +268,72 @@ export function checkQuietHours(
 ```typescript
 // Check daily SMS limit
 const { data: smsPrefs, error: smsError } = await supabase
-  .from("user_sms_preferences")
-  .select("daily_sms_count, daily_sms_limit, daily_count_reset_at")
-  .eq("user_id", delivery.recipient_user_id)
-  .single();
+	.from('user_sms_preferences')
+	.select('daily_sms_count, daily_sms_limit, daily_count_reset_at')
+	.eq('user_id', delivery.recipient_user_id)
+	.single();
 
 if (smsError) {
-  logger.error(
-    "Failed to fetch SMS preferences for rate limit check",
-    smsError,
-  );
-  // Fail closed - if we can't check limits, don't send
-  return { success: false, error: "Failed to verify SMS rate limit" };
+	logger.error('Failed to fetch SMS preferences for rate limit check', smsError);
+	// Fail closed - if we can't check limits, don't send
+	return { success: false, error: 'Failed to verify SMS rate limit' };
 }
 
 if (!smsPrefs) {
-  logger.error("No SMS preferences found for user", {
-    userId: delivery.recipient_user_id,
-  });
-  return { success: false, error: "SMS preferences not configured" };
+	logger.error('No SMS preferences found for user', {
+		userId: delivery.recipient_user_id
+	});
+	return { success: false, error: 'SMS preferences not configured' };
 }
 
 // Check if daily count needs reset
-const today = format(new Date(), "yyyy-MM-dd");
+const today = format(new Date(), 'yyyy-MM-dd');
 const lastReset = smsPrefs.daily_count_reset_at
-  ? format(parseISO(smsPrefs.daily_count_reset_at), "yyyy-MM-dd")
-  : null;
+	? format(parseISO(smsPrefs.daily_count_reset_at), 'yyyy-MM-dd')
+	: null;
 
 if (!lastReset || lastReset !== today) {
-  // Reset count
-  await supabase
-    .from("user_sms_preferences")
-    .update({
-      daily_sms_count: 0,
-      daily_count_reset_at: new Date().toISOString(),
-    })
-    .eq("user_id", delivery.recipient_user_id);
+	// Reset count
+	await supabase
+		.from('user_sms_preferences')
+		.update({
+			daily_sms_count: 0,
+			daily_count_reset_at: new Date().toISOString()
+		})
+		.eq('user_id', delivery.recipient_user_id);
 
-  smsPrefs.daily_sms_count = 0;
+	smsPrefs.daily_sms_count = 0;
 }
 
 const currentCount = smsPrefs.daily_sms_count || 0;
 const limit = smsPrefs.daily_sms_limit || 10;
 
 if (currentCount >= limit) {
-  logger.warn("Daily SMS limit reached", {
-    userId: delivery.recipient_user_id,
-    count: currentCount,
-    limit: limit,
-  });
+	logger.warn('Daily SMS limit reached', {
+		userId: delivery.recipient_user_id,
+		count: currentCount,
+		limit: limit
+	});
 
-  await supabase
-    .from("notification_deliveries")
-    .update({
-      status: "failed",
-      failed_at: new Date().toISOString(),
-      last_error: `Daily SMS limit reached (${currentCount}/${limit})`,
-    })
-    .eq("id", delivery.id);
+	await supabase
+		.from('notification_deliveries')
+		.update({
+			status: 'failed',
+			failed_at: new Date().toISOString(),
+			last_error: `Daily SMS limit reached (${currentCount}/${limit})`
+		})
+		.eq('id', delivery.id);
 
-  return { success: false, error: "Daily SMS limit reached" };
+	return { success: false, error: 'Daily SMS limit reached' };
 }
 
 // Increment count BEFORE sending (prevents race conditions)
 await supabase
-  .from("user_sms_preferences")
-  .update({
-    daily_sms_count: currentCount + 1,
-  })
-  .eq("user_id", delivery.recipient_user_id);
+	.from('user_sms_preferences')
+	.update({
+		daily_sms_count: currentCount + 1
+	})
+	.eq('user_id', delivery.recipient_user_id);
 ```
 
 ---
@@ -365,17 +348,17 @@ await supabase
 
 ```typescript
 // Special check for brief.completed SMS
-if (eventType === "brief.completed") {
-  if (!smsPrefs.daily_brief_sms) {
-    prefLogger.info("SMS not allowed - daily brief SMS disabled", {
-      userId,
-    });
-    return {
-      allowed: false,
-      reason: "Daily brief SMS notifications disabled",
-      preferences: prefs,
-    };
-  }
+if (eventType === 'brief.completed') {
+	if (!smsPrefs.daily_brief_sms) {
+		prefLogger.info('SMS not allowed - daily brief SMS disabled', {
+			userId
+		});
+		return {
+			allowed: false,
+			reason: 'Daily brief SMS notifications disabled',
+			preferences: prefs
+		};
+	}
 }
 ```
 
@@ -429,19 +412,19 @@ v_should_send_sms := true; -- SMS preferences already validated by notification 
 Instead of duplicating quiet hours and rate limit logic, created a shared utility with three key functions:
 
 1. **`checkQuietHours()`** - Timezone-aware quiet hours checking
-   - Handles overnight quiet hours (e.g., 22:00 - 08:00)
-   - Returns reschedule time if in quiet hours
-   - Uses `date-fns-tz` for proper timezone conversion
+    - Handles overnight quiet hours (e.g., 22:00 - 08:00)
+    - Returns reschedule time if in quiet hours
+    - Uses `date-fns-tz` for proper timezone conversion
 
 2. **`checkAndUpdateRateLimit()`** - Daily SMS limit enforcement
-   - Checks and resets count at midnight
-   - Increments count BEFORE sending (prevents race conditions)
-   - Returns detailed results for logging
+    - Checks and resets count at midnight
+    - Increments count BEFORE sending (prevents race conditions)
+    - Returns detailed results for logging
 
 3. **`performSMSSafetyChecks()`** - All-in-one safety check
-   - Checks phone verification, quiet hours, and rate limits
-   - Gets timezone from `users.timezone` (not deprecated `user_sms_preferences.timezone`)
-   - Returns comprehensive results for monitoring
+    - Checks phone verification, quiet hours, and rate limits
+    - Gets timezone from `users.timezone` (not deprecated `user_sms_preferences.timezone`)
+    - Returns comprehensive results for monitoring
 
 ##### 2. Added Safety Checks to smsAdapter.ts
 
@@ -451,10 +434,10 @@ Instead of duplicating quiet hours and rate limit logic, created a shared utilit
 
 - Line 15: Added import for `performSMSSafetyChecks`
 - Lines 435-518: Added comprehensive safety checks BEFORE sending SMS
-  - Checks run before creating sms_messages record
-  - Reschedules SMS if in quiet hours (updates notification_deliveries)
-  - Marks as failed if rate limit reached or phone not verified
-  - Detailed logging for monitoring
+    - Checks run before creating sms_messages record
+    - Reschedules SMS if in quiet hours (updates notification_deliveries)
+    - Marks as failed if rate limit reached or phone not verified
+    - Detailed logging for monitoring
 
 **Implementation Difference from Plan**:
 
@@ -644,9 +627,9 @@ Created two migration files following a safe two-step deployment strategy:
 **Key Features**:
 
 - Adds deprecation comments to all three fields:
-  - `daily_brief_sms` → Replaced by `should_sms_daily_brief`
-  - `task_reminders` → Never implemented
-  - `next_up_enabled` → Never implemented
+    - `daily_brief_sms` → Replaced by `should_sms_daily_brief`
+    - `task_reminders` → Never implemented
+    - `next_up_enabled` → Never implemented
 - Includes verification query to confirm comments were applied
 - Documents that columns will be dropped on 2025-10-29 (2 weeks from deprecation date)
 - Provides simple rollback plan (remove comments)
@@ -662,24 +645,24 @@ Created two migration files following a safe two-step deployment strategy:
 **Key Safety Features**:
 
 1. **Date Validation**: Migration will FAIL if run before 2025-10-29
-   - Calculates days since deprecation date (2025-10-15)
-   - Raises exception if less than 14 days have passed
-   - Prevents premature execution
+    - Calculates days since deprecation date (2025-10-15)
+    - Raises exception if less than 14 days have passed
+    - Prevents premature execution
 
 2. **Pre-Flight Checks**:
-   - Shows current field usage statistics
-   - Reports how many users have fields enabled
-   - Warns if any users still have deprecated fields enabled (but proceeds since code doesn't check them)
+    - Shows current field usage statistics
+    - Reports how many users have fields enabled
+    - Warns if any users still have deprecated fields enabled (but proceeds since code doesn't check them)
 
 3. **Post-Drop Verification**:
-   - Confirms all three columns are dropped
-   - Lists all remaining columns for verification
-   - Provides next steps (regenerate TypeScript schemas)
+    - Confirms all three columns are dropped
+    - Lists all remaining columns for verification
+    - Provides next steps (regenerate TypeScript schemas)
 
 4. **Comprehensive Rollback Plan**:
-   - SQL to restore columns with default values
-   - Documents that data loss is acceptable (explained why)
-   - Notes that code no longer reads these fields
+    - SQL to restore columns with default values
+    - Documents that data loss is acceptable (explained why)
+    - Notes that code no longer reads these fields
 
 **Deployment**:
 
@@ -690,29 +673,29 @@ Created two migration files following a safe two-step deployment strategy:
 #### Next Steps
 
 1. **Deploy Phase 3a** (`20251015_deprecate_unused_sms_fields.sql`):
-   - ✅ Safe to deploy immediately
-   - Mark columns as deprecated in database metadata
-   - Begin 2-week observation period
+    - ✅ Safe to deploy immediately
+    - Mark columns as deprecated in database metadata
+    - Begin 2-week observation period
 
 2. **Monitor for Issues** (2 weeks):
-   - Watch for any problems from Phase 2 code changes
-   - Verify no rollback needed
-   - Check production logs for errors
+    - Watch for any problems from Phase 2 code changes
+    - Verify no rollback needed
+    - Check production logs for errors
 
 3. **Deploy Phase 3b** (`20251029_remove_deprecated_sms_fields.sql`):
-   - ⏳ Wait until 2025-10-29 or later
-   - Safety checks will prevent premature execution
-   - Drop the deprecated columns
+    - ⏳ Wait until 2025-10-29 or later
+    - Safety checks will prevent premature execution
+    - Drop the deprecated columns
 
 4. **Regenerate TypeScript Schemas** (After Phase 3b):
 
-   ```bash
-   cd packages/shared-types
-   pnpm run generate:types
-   ```
+    ```bash
+    cd packages/shared-types
+    pnpm run generate:types
+    ```
 
-   - This will update `database.schema.ts` to exclude dropped fields
-   - Verify changes with `git diff`
+    - This will update `database.schema.ts` to exclude dropped fields
+    - Verify changes with `git diff`
 
 #### Implementation Strategy
 
@@ -733,18 +716,18 @@ Created two migration files following a safe two-step deployment strategy:
 #### Files Created
 
 1. **NEW**: `/supabase/migrations/20251015_deprecate_unused_sms_fields.sql` (79 lines)
-   - Marks columns as deprecated with detailed comments
-   - Includes verification query with informative notices
-   - Documents future removal date (2025-10-29)
-   - Provides simple rollback instructions
+    - Marks columns as deprecated with detailed comments
+    - Includes verification query with informative notices
+    - Documents future removal date (2025-10-29)
+    - Provides simple rollback instructions
 
 2. **NEW**: `/supabase/migrations/20251029_remove_deprecated_sms_fields.sql` (173 lines)
-   - Drops all three deprecated columns
-   - Includes pre-flight date validation (prevents early execution)
-   - Shows current usage statistics before dropping
-   - Verifies successful drop with detailed notices
-   - Lists all remaining columns for confirmation
-   - Comprehensive rollback instructions
+    - Drops all three deprecated columns
+    - Includes pre-flight date validation (prevents early execution)
+    - Shows current usage statistics before dropping
+    - Verifies successful drop with detailed notices
+    - Lists all remaining columns for confirmation
+    - Comprehensive rollback instructions
 
 #### Testing Checklist
 
@@ -780,23 +763,23 @@ Before deploying Phase 3b (after 2025-10-29):
 **Files to Update**:
 
 1. **API Endpoint**: `apps/web/src/routes/api/sms/preferences/+server.ts`
-   - Line 15: Remove `task_reminders: false` from defaults
-   - Line 96: Remove `task_reminders,` from parameter extraction
-   - Lines 128-129: Remove update logic
+    - Line 15: Remove `task_reminders: false` from defaults
+    - Line 96: Remove `task_reminders,` from parameter extraction
+    - Lines 128-129: Remove update logic
 
 2. **UI Component**: `apps/web/src/lib/components/settings/SMSPreferences.svelte`
-   - Line 39: Remove `let taskReminders = $state(false);`
-   - Line 64: Remove `taskReminders = preferences.task_reminders || false;`
-   - Line 85: Remove `task_reminders: taskReminders,`
-   - Lines 420-460: Remove toggle UI
+    - Line 39: Remove `let taskReminders = $state(false);`
+    - Line 64: Remove `taskReminders = preferences.task_reminders || false;`
+    - Line 85: Remove `task_reminders: taskReminders,`
+    - Lines 420-460: Remove toggle UI
 
 3. **Service Layer**: `apps/web/src/lib/services/sms.service.ts`
-   - Line 106: Remove `task_reminders` check (or remove entire `sendTaskReminder()` method)
-   - Line 243: Remove from TypeScript interface
+    - Line 106: Remove `task_reminders` check (or remove entire `sendTaskReminder()` method)
+    - Line 243: Remove from TypeScript interface
 
 4. **Twilio Package**: `packages/twilio-service/src/services/sms.service.ts`
-   - Line 44: Remove `"task_reminders"` from preference types
-   - Update tests in `__tests__/sms.test.ts`
+    - Line 44: Remove `"task_reminders"` from preference types
+    - Update tests in `__tests__/sms.test.ts`
 
 ---
 
@@ -805,20 +788,20 @@ Before deploying Phase 3b (after 2025-10-29):
 **Files to Update**:
 
 1. **API Endpoint**: `apps/web/src/routes/api/sms/preferences/+server.ts`
-   - Line 11: Remove `next_up_enabled: false` from defaults
-   - Line 92: Remove `next_up_enabled,` from parameter extraction
-   - Lines 116-117: Remove update logic
+    - Line 11: Remove `next_up_enabled: false` from defaults
+    - Line 92: Remove `next_up_enabled,` from parameter extraction
+    - Lines 116-117: Remove update logic
 
 2. **UI Component**: `apps/web/src/lib/components/settings/SMSPreferences.svelte`
-   - Line 35: Remove `let nextUpEnabled = $state(false);`
-   - Line 60: Remove `nextUpEnabled = preferences.next_up_enabled || false;`
-   - Line 81: Remove `next_up_enabled: nextUpEnabled,`
-   - Lines 308-348: Remove toggle UI
+    - Line 35: Remove `let nextUpEnabled = $state(false);`
+    - Line 60: Remove `nextUpEnabled = preferences.next_up_enabled || false;`
+    - Line 81: Remove `next_up_enabled: nextUpEnabled,`
+    - Lines 308-348: Remove toggle UI
 
 3. **Onboarding Component**: `apps/web/src/lib/components/onboarding-v2/NotificationsStep.svelte`
-   - Line 24: Remove `nextUpNotifications: false,`
-   - Line 72: Remove `next_up_enabled: smsPreferences.nextUpNotifications,`
-   - Lines 230-270: Remove toggle UI
+    - Line 24: Remove `nextUpNotifications: false,`
+    - Line 72: Remove `next_up_enabled: smsPreferences.nextUpNotifications,`
+    - Lines 230-270: Remove toggle UI
 
 ---
 
@@ -827,19 +810,19 @@ Before deploying Phase 3b (after 2025-10-29):
 **Files to Update**:
 
 1. **API Endpoint**: `apps/web/src/routes/api/sms/preferences/+server.ts`
-   - Line 16: Remove `daily_brief_sms: false` from defaults
-   - Line 97: Remove `daily_brief_sms,` from parameter extraction
-   - Lines 131-132: Remove update logic
+    - Line 16: Remove `daily_brief_sms: false` from defaults
+    - Line 97: Remove `daily_brief_sms,` from parameter extraction
+    - Lines 131-132: Remove update logic
 
 2. **UI Component**: `apps/web/src/lib/components/settings/SMSPreferences.svelte`
-   - Line 40: Remove `let dailyBriefSms = $state(false);`
-   - Line 65: Remove `dailyBriefSms = preferences.daily_brief_sms || false;`
-   - Line 86: Remove `daily_brief_sms: dailyBriefSms,`
-   - Lines 452-492: Remove toggle UI (if exists)
-   - **Note**: Daily brief SMS is now controlled by NotificationPreferences.svelte
+    - Line 40: Remove `let dailyBriefSms = $state(false);`
+    - Line 65: Remove `dailyBriefSms = preferences.daily_brief_sms || false;`
+    - Line 86: Remove `daily_brief_sms: dailyBriefSms,`
+    - Lines 452-492: Remove toggle UI (if exists)
+    - **Note**: Daily brief SMS is now controlled by NotificationPreferences.svelte
 
 3. **Service Layer**: `apps/web/src/lib/services/sms.service.ts`
-   - Line 244: Remove from TypeScript interface
+    - Line 244: Remove from TypeScript interface
 
 ---
 
@@ -925,21 +908,21 @@ pnpm run generate:api-types
 ```svelte
 <!-- Morning Kickoff Toggle -->
 <div class="flex items-start justify-between">
-  <div>
-    <label class="font-medium">
-      Morning Kickoff
-      <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-        Coming Soon
-      </span>
-    </label>
-    <p class="text-sm text-gray-600">
-      Start your day with a morning summary (feature in development)
-    </p>
-  </div>
-  <label class="relative inline-flex items-center cursor-not-allowed opacity-50">
-    <input type="checkbox" disabled bind:checked={morningKickoffEnabled} />
-    <div class="..."></div>
-  </label>
+	<div>
+		<label class="font-medium">
+			Morning Kickoff
+			<span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+				Coming Soon
+			</span>
+		</label>
+		<p class="text-sm text-gray-600">
+			Start your day with a morning summary (feature in development)
+		</p>
+	</div>
+	<label class="relative inline-flex items-center cursor-not-allowed opacity-50">
+		<input type="checkbox" disabled bind:checked={morningKickoffEnabled} />
+		<div class="..."></div>
+	</label>
 </div>
 ```
 
@@ -1105,45 +1088,45 @@ WHERE user_id = 'test-user-id';
 
 1. **Quiet Hours Violations** (Should be 0)
 
-   ```sql
-   -- Check SMS sent during quiet hours
-   SELECT d.id, d.recipient_user_id, d.sent_at, s.quiet_hours_start, s.quiet_hours_end
-   FROM notification_deliveries d
-   JOIN user_sms_preferences s ON s.user_id = d.recipient_user_id
-   WHERE d.channel = 'sms'
-     AND d.status = 'delivered'
-     AND d.sent_at > NOW() - INTERVAL '24 hours'
-     AND is_in_quiet_hours(d.sent_at, s.quiet_hours_start, s.quiet_hours_end, s.timezone);
-   ```
+    ```sql
+    -- Check SMS sent during quiet hours
+    SELECT d.id, d.recipient_user_id, d.sent_at, s.quiet_hours_start, s.quiet_hours_end
+    FROM notification_deliveries d
+    JOIN user_sms_preferences s ON s.user_id = d.recipient_user_id
+    WHERE d.channel = 'sms'
+      AND d.status = 'delivered'
+      AND d.sent_at > NOW() - INTERVAL '24 hours'
+      AND is_in_quiet_hours(d.sent_at, s.quiet_hours_start, s.quiet_hours_end, s.timezone);
+    ```
 
 2. **Rate Limit Violations** (Should be 0)
 
-   ```sql
-   -- Check users exceeding daily SMS limit
-   SELECT user_id, COUNT(*) as sms_count, daily_sms_limit
-   FROM notification_deliveries d
-   JOIN user_sms_preferences s ON s.user_id = d.recipient_user_id
-   WHERE d.channel = 'sms'
-     AND d.status = 'delivered'
-     AND d.sent_at::date = CURRENT_DATE
-   GROUP BY user_id, daily_sms_limit
-   HAVING COUNT(*) > daily_sms_limit;
-   ```
+    ```sql
+    -- Check users exceeding daily SMS limit
+    SELECT user_id, COUNT(*) as sms_count, daily_sms_limit
+    FROM notification_deliveries d
+    JOIN user_sms_preferences s ON s.user_id = d.recipient_user_id
+    WHERE d.channel = 'sms'
+      AND d.status = 'delivered'
+      AND d.sent_at::date = CURRENT_DATE
+    GROUP BY user_id, daily_sms_limit
+    HAVING COUNT(*) > daily_sms_limit;
+    ```
 
 3. **Failed SMS Deliveries** (Monitor spike)
-   ```sql
-   -- Track failed SMS rate
-   SELECT
-     DATE(created_at) as date,
-     COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
-     COUNT(*) as total_count,
-     ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'failed') / COUNT(*), 2) as failure_rate
-   FROM notification_deliveries
-   WHERE channel = 'sms'
-     AND created_at > NOW() - INTERVAL '7 days'
-   GROUP BY DATE(created_at)
-   ORDER BY date DESC;
-   ```
+    ```sql
+    -- Track failed SMS rate
+    SELECT
+      DATE(created_at) as date,
+      COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
+      COUNT(*) as total_count,
+      ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'failed') / COUNT(*), 2) as failure_rate
+    FROM notification_deliveries
+    WHERE channel = 'sms'
+      AND created_at > NOW() - INTERVAL '7 days'
+    GROUP BY DATE(created_at)
+    ORDER BY date DESC;
+    ```
 
 ---
 
@@ -1164,13 +1147,13 @@ git push origin main
 // apps/worker/src/workers/notification/preferenceChecker.ts
 
 // ROLLBACK: Re-add special case for brief.completed
-if (eventType === "brief.completed") {
-  if (!smsPrefs.daily_brief_sms) {
-    return {
-      allowed: false,
-      reason: "Daily brief SMS notifications disabled (rollback active)",
-    };
-  }
+if (eventType === 'brief.completed') {
+	if (!smsPrefs.daily_brief_sms) {
+		return {
+			allowed: false,
+			reason: 'Daily brief SMS notifications disabled (rollback active)'
+		};
+	}
 }
 ```
 
@@ -1250,20 +1233,20 @@ COMMENT ON COLUMN user_sms_preferences.daily_brief_sms IS
 ## Open Questions
 
 1. **Should we implement morning_kickoff and evening_recap features?**
-   - If YES: Keep columns and build worker implementation
-   - If NO: Remove columns entirely in Phase 2
+    - If YES: Keep columns and build worker implementation
+    - If NO: Remove columns entirely in Phase 2
 
 2. **Should quiet hours be timezone-aware?**
-   - Current: Uses user's timezone from `user_sms_preferences.timezone`
-   - Recommendation: Migrate to `users.timezone` for consistency
+    - Current: Uses user's timezone from `user_sms_preferences.timezone`
+    - Recommendation: Migrate to `users.timezone` for consistency
 
 3. **Should rate limiting be global or per-SMS-type?**
-   - Current: Global limit for ALL SMS types
-   - Alternative: Separate limits for calendar vs daily brief SMS
+    - Current: Global limit for ALL SMS types
+    - Alternative: Separate limits for calendar vs daily brief SMS
 
 4. **Should we add a "dry run" mode for testing?**
-   - Would allow testing SMS logic without actually sending SMS
-   - Useful for validating quiet hours and rate limiting
+    - Would allow testing SMS logic without actually sending SMS
+    - Useful for validating quiet hours and rate limiting
 
 ---
 

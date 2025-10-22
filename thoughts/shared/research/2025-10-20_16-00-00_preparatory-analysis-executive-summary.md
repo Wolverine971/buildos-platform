@@ -4,15 +4,15 @@ researcher: Claude Code
 git_commit: 9f26638250d9f51922b55e692f94dc410f371c1f
 branch: main
 repository: buildos-platform
-topic: "Preparatory Analysis Feature - Executive Summary & Completion Report"
+topic: 'Preparatory Analysis Feature - Executive Summary & Completion Report'
 tags:
-  [
-    preparatory-analysis,
-    implementation-complete,
-    senior-engineer-review,
-    brain-dump,
-    optimization,
-  ]
+    [
+        preparatory-analysis,
+        implementation-complete,
+        senior-engineer-review,
+        brain-dump,
+        optimization
+    ]
 status: complete
 last_updated: 2025-10-20
 last_updated_by: Claude Code
@@ -229,32 +229,32 @@ POST /api/braindumps/stream
 ### Quick Wins (30-60 min each)
 
 1. **Implement skip_tasks** (30 min)
-   - Impact: Save 5-8 seconds, ~25% cost on status updates
-   - Implementation: Add skip check in extractTasks()
+    - Impact: Save 5-8 seconds, ~25% cost on status updates
+    - Implementation: Add skip check in extractTasks()
 
 2. **Add timeout protection** (1 hour)
-   - Impact: Prevent stream hangs
-   - Implementation: 10s timeout wrapper on fast profile
+    - Impact: Prevent stream hangs
+    - Implementation: 10s timeout wrapper on fast profile
 
 ### Good to Have (45 min - 1 hour each)
 
 3. **Export performance metrics** (1 hour)
-   - Impact: Enable data-driven optimization
-   - Metrics: latency, tokens, classification distribution, confidence
+    - Impact: Enable data-driven optimization
+    - Metrics: latency, tokens, classification distribution, confidence
 
 4. **Enrich dimension hints** (45 min)
-   - Impact: Improve LLM focus accuracy
-   - Enhancement: Include snippet context in hints
+    - Impact: Improve LLM focus accuracy
+    - Enhancement: Include snippet context in hints
 
 5. **Confidence-based logging** (45 min)
-   - Impact: Monitor analysis quality
-   - Implementation: Warn on low confidence results
+    - Impact: Monitor analysis quality
+    - Implementation: Warn on low confidence results
 
 ### Optional Optimizations
 
 6. **Result caching** (1.5 hours)
-   - Impact: Limited (most dumps unique)
-   - Implementation: 1-hour TTL cache with MD5 key
+    - Impact: Limited (most dumps unique)
+    - Implementation: 1-hour TTL cache with MD5 key
 
 ---
 

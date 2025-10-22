@@ -4,9 +4,8 @@ researcher: Claude (claude-sonnet-4-5)
 git_commit: 5ccb69ca18cc0c394f285dace332b96308a45ddb
 branch: main
 repository: buildos-platform
-topic: "Live Transcript Inconsistency - Capability Detection and Caching Issues"
-tags:
-  [research, bug, voice-recording, speech-recognition, brain-dump, capabilities]
+topic: 'Live Transcript Inconsistency - Capability Detection and Caching Issues'
+tags: [research, bug, voice-recording, speech-recognition, brain-dump, capabilities]
 status: complete
 severity: medium
 last_updated: 2025-10-06
@@ -44,8 +43,8 @@ The capability is checked **once** in `initializeModal()` at line 432-435 of `Br
 
 ```javascript
 brainDumpActions.setVoiceCapabilities({
-  canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-  capabilitiesChecked: true,
+	canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+	capabilitiesChecked: true
 });
 ```
 
@@ -150,9 +149,9 @@ export async function startRecording(): Promise<void> {
 
 ```javascript
 export const forceCleanup = () => {
-  cleanupResources();
-  isInitialized = false;
-  capabilitiesCache = null; // ← Reset cache to re-detect on next use
+	cleanupResources();
+	isInitialized = false;
+	capabilitiesCache = null; // ← Reset cache to re-detect on next use
 };
 ```
 
@@ -228,9 +227,9 @@ function initializeSpeechRecognition() {
 
 ```svelte
 {#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
-    <div class="...live transcript preview...">
-        <p>{accumulatedTranscript}</p>
-    </div>
+	<div class="...live transcript preview...">
+		<p>{accumulatedTranscript}</p>
+	</div>
 {/if}
 ```
 
@@ -284,28 +283,28 @@ Based on code analysis, here are the specific scenarios that cause failure:
 ### Primary Bug Locations
 
 1. **Capability Detection Timing** (HIGH PRIORITY)
-   - File: `/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:432-435`
-   - Issue: Detection happens before permission grant
+    - File: `/apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte:432-435`
+    - Issue: Detection happens before permission grant
 
 2. **No Runtime Validation** (HIGH PRIORITY)
-   - File: `/apps/web/src/lib/utils/voice.ts:46-105`
-   - Issue: Only checks API existence, not usability
+    - File: `/apps/web/src/lib/utils/voice.ts:46-105`
+    - Issue: Only checks API existence, not usability
 
 3. **Silent Failure on Initialization** (MEDIUM PRIORITY)
-   - File: `/apps/web/src/lib/utils/voice.ts:108-156`
-   - Issue: Errors not propagated to UI or cache
+    - File: `/apps/web/src/lib/utils/voice.ts:108-156`
+    - Issue: Errors not propagated to UI or cache
 
 4. **No Retry on Start Failure** (MEDIUM PRIORITY)
-   - File: `/apps/web/src/lib/utils/voice.ts:264-270`
-   - Issue: Failure doesn't update capability state
+    - File: `/apps/web/src/lib/utils/voice.ts:264-270`
+    - Issue: Failure doesn't update capability state
 
 5. **Aggressive Caching** (MEDIUM PRIORITY)
-   - File: `/apps/web/src/lib/utils/voice.ts:57`
-   - Issue: Cache persists across sessions without revalidation
+    - File: `/apps/web/src/lib/utils/voice.ts:57`
+    - Issue: Cache persists across sessions without revalidation
 
 6. **Cleanup Timing** (LOW PRIORITY)
-   - File: `/apps/web/src/lib/services/voiceRecording.service.ts:311-329`
-   - Issue: May create race conditions
+    - File: `/apps/web/src/lib/services/voiceRecording.service.ts:311-329`
+    - Issue: May create race conditions
 
 ## Recommended Fixes
 
@@ -407,21 +406,21 @@ function initializeSpeechRecognition() {
 
 ```javascript
 async function initializeModal() {
-  // ... existing code ...
+	// ... existing code ...
 
-  // Set failure callback before initializing
-  setLiveTranscriptFailureCallback((error) => {
-    console.warn("[BrainDump] Live transcript disabled:", error);
-    brainDumpActions.setVoiceCapabilities({
-      canUseLiveTranscript: false,
-      capabilitiesChecked: true,
-    });
-  });
+	// Set failure callback before initializing
+	setLiveTranscriptFailureCallback((error) => {
+		console.warn('[BrainDump] Live transcript disabled:', error);
+		brainDumpActions.setVoiceCapabilities({
+			canUseLiveTranscript: false,
+			capabilitiesChecked: true
+		});
+	});
 
-  brainDumpActions.setVoiceCapabilities({
-    canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-    capabilitiesChecked: true,
-  });
+	brainDumpActions.setVoiceCapabilities({
+		canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+		capabilitiesChecked: true
+	});
 }
 ```
 
@@ -517,23 +516,23 @@ export const monitorMicrophonePermission = async (
 
 ```javascript
 async function initializeModal() {
-  // ... existing code ...
+	// ... existing code ...
 
-  // Monitor permission changes
-  await monitorMicrophonePermission((granted) => {
-    if (!granted) {
-      brainDumpActions.setVoiceCapabilities({
-        canUseLiveTranscript: false,
-        capabilitiesChecked: true,
-      });
-    } else {
-      // Recheck capabilities
-      brainDumpActions.setVoiceCapabilities({
-        canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-        capabilitiesChecked: true,
-      });
-    }
-  });
+	// Monitor permission changes
+	await monitorMicrophonePermission((granted) => {
+		if (!granted) {
+			brainDumpActions.setVoiceCapabilities({
+				canUseLiveTranscript: false,
+				capabilitiesChecked: true
+			});
+		} else {
+			// Recheck capabilities
+			brainDumpActions.setVoiceCapabilities({
+				canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+				capabilitiesChecked: true
+			});
+		}
+	});
 }
 ```
 
@@ -610,68 +609,68 @@ function detectCapabilities() {
 ### Manual Testing Scenarios
 
 1. **Permission Denial Flow**:
-   - Open modal
-   - Click record
-   - Deny microphone permission
-   - Verify live transcript shows as unavailable
+    - Open modal
+    - Click record
+    - Deny microphone permission
+    - Verify live transcript shows as unavailable
 
 2. **Permission Grant After Denial**:
-   - Deny permission initially
-   - Close modal
-   - Grant permission in browser settings
-   - Reopen modal
-   - Verify live transcript shows as available
+    - Deny permission initially
+    - Close modal
+    - Grant permission in browser settings
+    - Reopen modal
+    - Verify live transcript shows as available
 
 3. **Rapid Open/Close**:
-   - Open and close modal rapidly 5+ times
-   - Check if capability detection stays consistent
+    - Open and close modal rapidly 5+ times
+    - Check if capability detection stays consistent
 
 4. **Cross-Browser Testing**:
-   - Test on Chrome (should work)
-   - Test on Firefox (should work)
-   - Test on Safari desktop (may have issues)
-   - Test on iOS Safari (known to have restrictions)
-   - Test on Edge (should work)
+    - Test on Chrome (should work)
+    - Test on Firefox (should work)
+    - Test on Safari desktop (may have issues)
+    - Test on iOS Safari (known to have restrictions)
+    - Test on Edge (should work)
 
 5. **HTTPS vs HTTP**:
-   - Test on localhost (should work)
-   - Test on HTTPS production (should work)
-   - Test on HTTP (should fail gracefully)
+    - Test on localhost (should work)
+    - Test on HTTPS production (should work)
+    - Test on HTTP (should fail gracefully)
 
 ### Automated Testing
 
 ```typescript
 // Test capability detection consistency
-describe("Live Transcript Capability Detection", () => {
-  it("should detect SpeechRecognition if available", () => {
-    const capabilities = detectCapabilities();
-    expect(capabilities.liveTranscriptSupported).toBe(
-      !!(window.SpeechRecognition || window.webkitSpeechRecognition),
-    );
-  });
+describe('Live Transcript Capability Detection', () => {
+	it('should detect SpeechRecognition if available', () => {
+		const capabilities = detectCapabilities();
+		expect(capabilities.liveTranscriptSupported).toBe(
+			!!(window.SpeechRecognition || window.webkitSpeechRecognition)
+		);
+	});
 
-  it("should revalidate after permission grant", async () => {
-    // Mock getUserMedia
-    const mockStream = { getTracks: () => [] };
-    navigator.mediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream);
+	it('should revalidate after permission grant', async () => {
+		// Mock getUserMedia
+		const mockStream = { getTracks: () => [] };
+		navigator.mediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream);
 
-    await startRecording();
+		await startRecording();
 
-    // Check that runtime validation occurred
-    expect(capabilitiesCache.liveTranscriptSupported).toBeDefined();
-  });
+		// Check that runtime validation occurred
+		expect(capabilitiesCache.liveTranscriptSupported).toBeDefined();
+	});
 
-  it("should update cache on runtime failure", async () => {
-    // Mock SpeechRecognition that fails on start
-    window.SpeechRecognition = vi.fn().mockImplementation(() => ({
-      start: vi.fn().mockRejectedValue(new Error("not-allowed")),
-      stop: vi.fn(),
-    }));
+	it('should update cache on runtime failure', async () => {
+		// Mock SpeechRecognition that fails on start
+		window.SpeechRecognition = vi.fn().mockImplementation(() => ({
+			start: vi.fn().mockRejectedValue(new Error('not-allowed')),
+			stop: vi.fn()
+		}));
 
-    await startRecording();
+		await startRecording();
 
-    expect(capabilitiesCache.liveTranscriptSupported).toBe(false);
-  });
+		expect(capabilitiesCache.liveTranscriptSupported).toBe(false);
+	});
 });
 ```
 

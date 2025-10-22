@@ -4,17 +4,17 @@ researcher: Claude
 git_commit: ac3926bfd8b265462ed239421d7cd1573b489972
 branch: main
 repository: buildos-platform
-topic: "Calendar Analysis Flow Audit - Comprehensive Review and Improvement Recommendations"
+topic: 'Calendar Analysis Flow Audit - Comprehensive Review and Improvement Recommendations'
 tags:
-  [
-    research,
-    codebase,
-    calendar-analysis,
-    ai-prompts,
-    deduplication,
-    task-extraction,
-    user-experience,
-  ]
+    [
+        research,
+        codebase,
+        calendar-analysis,
+        ai-prompts,
+        deduplication,
+        task-extraction,
+        user-experience
+    ]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
@@ -69,40 +69,40 @@ The infrastructure to fix both issues **already exists** - it just needs to be c
 #### Flow Steps:
 
 1. **Initialize Analysis** (Lines 131-148)
-   - Create analysis record with status 'processing'
-   - Default: 30 days back, 60 days forward
-   - Max 300 events per analysis
+    - Create analysis record with status 'processing'
+    - Default: 30 days back, 60 days forward
+    - Max 300 events per analysis
 
 2. **Fetch & Filter Events** (Lines 149-179)
-   - Retrieve from Google Calendar via `CalendarService`
-   - Filter out: declined, all-day personal, no-title, cancelled events
-   - Store snapshots in `calendar_analysis_events` table
+    - Retrieve from Google Calendar via `CalendarService`
+    - Filter out: declined, all-day personal, no-title, cancelled events
+    - Store snapshots in `calendar_analysis_events` table
 
 3. **Separate Event Timeline** (Lines 299-314)
 
-   ```typescript
-   const pastEvents = events.filter((e) => eventDate < now);
-   const upcomingEvents = events.filter((e) => eventDate >= now);
-   ```
+    ```typescript
+    const pastEvents = events.filter((e) => eventDate < now);
+    const upcomingEvents = events.filter((e) => eventDate >= now);
+    ```
 
-   - **Past events**: Context only (understand project history)
-   - **Upcoming events**: Context + task generation
+    - **Past events**: Context only (understand project history)
+    - **Upcoming events**: Context + task generation
 
 4. **AI Analysis** (Lines 283-591)
-   - Inline prompt construction (lines 316-496)
-   - LLM profile: 'balanced' (accuracy/speed tradeoff)
-   - Temperature: 0.3 (consistent outputs)
-   - Confidence threshold: 0.4 (40% minimum)
+    - Inline prompt construction (lines 316-496)
+    - LLM profile: 'balanced' (accuracy/speed tradeoff)
+    - Temperature: 0.3 (consistent outputs)
+    - Confidence threshold: 0.4 (40% minimum)
 
 5. **Store Suggestions** (Lines 982-1019)
-   - Save to `calendar_project_suggestions` table
-   - Include: project metadata, confidence, events, tasks, reasoning
+    - Save to `calendar_project_suggestions` table
+    - Include: project metadata, confidence, events, tasks, reasoning
 
 6. **User Review & Acceptance** (Lines 596-794)
-   - UI: `CalendarAnalysisResults.svelte`
-   - User selects/edits projects and tasks
-   - Operations executor creates projects/tasks
-   - Auto-selects suggestions with confidence >= 70%
+    - UI: `CalendarAnalysisResults.svelte`
+    - User selects/edits projects and tasks
+    - Operations executor creates projects/tasks
+    - Auto-selects suggestions with confidence >= 70%
 
 ---
 
@@ -140,8 +140,8 @@ Today's date is ${today}"
 
 - **MUST generate 2-5 tasks per project**
 - Two approaches:
-  1. Convert upcoming events to tasks (preserve date/time, link via `event_id`)
-  2. Infer logical next steps (schedule from today forward)
+    1. Convert upcoming events to tasks (preserve date/time, link via `event_id`)
+    2. Infer logical next steps (schedule from today forward)
 - **Critical requirement**: ALL tasks must have `start_date >= today`
 
 **6. Output Schema** (Lines 433-476)
@@ -205,8 +205,8 @@ Today's date is ${today}"
 
 - **File**: `/Users/annawayne/buildos-platform/apps/web/src/lib/utils/braindump-processor.ts` (Lines 341-346)
 - **How it works**:
-  - For **existing** projects: Passes full project context to LLM
-  - For **new** projects: Still doesn't pass other existing projects (same gap!)
+    - For **existing** projects: Passes full project context to LLM
+    - For **new** projects: Still doesn't pass other existing projects (same gap!)
 
 #### Current State:
 
@@ -219,13 +219,10 @@ const userPrompt = `A user has asked you to analyze their google calendar...
 Suggest projects based on these events.`;
 
 // What COULD happen (infrastructure exists!)
-const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(
-  userId,
-  {
-    limit: 30,
-    includeStatus: ["active", "planning"],
-  },
-);
+const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+	limit: 30,
+	includeStatus: ['active', 'planning']
+});
 
 const projectsContext = formatProjectsSummaryList(existingProjects);
 
@@ -278,12 +275,12 @@ Analyze calendar events and suggest projects.
 
 - **Calendar**: 10 "Sprint Planning" meetings over 3 months
 - **AI Decision**:
-  - Create project "Q4 Product Sprint"
-  - Generate 3-4 tasks:
-    - "Sprint Planning Session" (recurring, from events)
-    - "Define Q4 product roadmap" (inferred)
-    - "Prepare sprint backlog" (inferred)
-    - "Schedule stakeholder demos" (inferred)
+    - Create project "Q4 Product Sprint"
+    - Generate 3-4 tasks:
+        - "Sprint Planning Session" (recurring, from events)
+        - "Define Q4 product roadmap" (inferred)
+        - "Prepare sprint backlog" (inferred)
+        - "Schedule stakeholder demos" (inferred)
 
 #### Task Generation Approaches:
 
@@ -325,9 +322,9 @@ Analyze calendar events and suggest projects.
 ```typescript
 const taskCount = suggestion.suggested_tasks?.length || 0;
 if (taskCount === 0) {
-  console.warn(`WARNING: Project "${name}" has no tasks.`);
+	console.warn(`WARNING: Project "${name}" has no tasks.`);
 } else if (taskCount === 1) {
-  console.warn(`WARNING: Project "${name}" has only 1 task.`);
+	console.warn(`WARNING: Project "${name}" has only 1 task.`);
 }
 ```
 
@@ -337,9 +334,9 @@ if (taskCount === 0) {
 
 ```typescript
 if (taskDate < today) {
-  // Reschedule to today + add note
-  task.start_date = today.toISOString();
-  task.details = `[Rescheduled from ${originalDate}]\n\n${task.details}`;
+	// Reschedule to today + add note
+	task.start_date = today.toISOString();
+	task.details = `[Rescheduled from ${originalDate}]\n\n${task.details}`;
 }
 ```
 
@@ -397,12 +394,12 @@ Safety net for any past tasks that slip through (shouldn't happen with current p
 ### Core Service Files:
 
 - **Calendar Analysis Service**: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/calendar-analysis.service.ts`
-  - Main analysis method: Lines 131-235
-  - Event filtering: Lines 240-278
-  - LLM prompt construction: Lines 316-496
-  - Task validation: Lines 547-578
-  - Suggestion acceptance: Lines 596-794
-  - Past task rescheduling: Lines 677-716
+    - Main analysis method: Lines 131-235
+    - Event filtering: Lines 240-278
+    - LLM prompt construction: Lines 316-496
+    - Task validation: Lines 547-578
+    - Suggestion acceptance: Lines 596-794
+    - Past task rescheduling: Lines 677-716
 
 - **API Endpoint**: `/Users/annawayne/buildos-platform/apps/web/src/routes/api/calendar/analyze/+server.ts`
 
@@ -411,26 +408,26 @@ Safety net for any past tasks that slip through (shouldn't happen with current p
 ### UI Components:
 
 - **Results Modal**: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte`
-  - Auto-selection logic: Lines 91-102
-  - Task display: Lines 699-947
-  - Task selection handling: Lines 284-312
+    - Auto-selection logic: Lines 91-102
+    - Task display: Lines 699-947
+    - Task selection handling: Lines 284-312
 
 - **Notification Modal**: `/Users/annawayne/buildos-platform/apps/web/src/lib/components/notifications/types/calendar-analysis/CalendarAnalysisModalContent.svelte`
 
 ### Deduplication Infrastructure (Unused):
 
 - **Project Data Fetcher**: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/prompts/core/project-data-fetcher.ts`
-  - `getAllUserProjectsSummary()`: Lines 253-287
+    - `getAllUserProjectsSummary()`: Lines 253-287
 
 - **Data Formatter**: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/prompts/core/data-formatter.ts`
-  - `formatProjectsSummaryList()`: Lines 269-320
+    - `formatProjectsSummaryList()`: Lines 269-320
 
 ### Prompt Components:
 
 - **Shared Components**: `/Users/annawayne/buildos-platform/apps/web/src/lib/services/prompts/core/prompt-components.ts`
-  - `getProjectModel()`: Lines 146-158
-  - `getTaskModel()`: Lines 177-222
-  - `generateProjectContextFramework()`: Lines 52-124
+    - `getProjectModel()`: Lines 146-158
+    - `getTaskModel()`: Lines 177-222
+    - `generateProjectContextFramework()`: Lines 52-124
 
 ### Documentation:
 
@@ -444,29 +441,29 @@ Safety net for any past tasks that slip through (shouldn't happen with current p
 ### Design Patterns:
 
 1. **Event Timeline Separation**
-   - Past events = context only (understand project history)
-   - Upcoming events = context + tasks (actionable future work)
-   - Prevents creating tasks for meetings that already happened
+    - Past events = context only (understand project history)
+    - Upcoming events = context + tasks (actionable future work)
+    - Prevents creating tasks for meetings that already happened
 
 2. **Dual Task Generation**
-   - Event-based tasks (preserve calendar structure)
-   - Inferred tasks (fill gaps with logical next steps)
-   - Balances fidelity with usefulness
+    - Event-based tasks (preserve calendar structure)
+    - Inferred tasks (fill gaps with logical next steps)
+    - Balances fidelity with usefulness
 
 3. **Confidence-Based Filtering**
-   - Minimum threshold 0.4 (configurable)
-   - Auto-selects 0.7+ in UI
-   - Reduces noise, increases quality
+    - Minimum threshold 0.4 (configurable)
+    - Auto-selects 0.7+ in UI
+    - Reduces noise, increases quality
 
 4. **Operations-Based Execution**
-   - Uses standard `OperationsExecutor` pattern
-   - Consistent with brain dumps, manual creation
-   - Proper validation and error handling
+    - Uses standard `OperationsExecutor` pattern
+    - Consistent with brain dumps, manual creation
+    - Proper validation and error handling
 
 5. **Notification System Integration**
-   - Background analysis with progress updates
-   - Separate modal for results
-   - Unified notification architecture
+    - Background analysis with progress updates
+    - Separate modal for results
+    - Unified notification architecture
 
 ### Quality Controls:
 
@@ -500,13 +497,10 @@ Safety net for any past tasks that slip through (shouldn't happen with current p
 ```typescript
 // Add before AI analysis
 const projectDataFetcher = ProjectDataFetcher.getInstance(this.supabase);
-const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(
-  userId,
-  {
-    limit: 50,
-    includeStatus: ["active", "planning"],
-  },
-);
+const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
+	limit: 50,
+	includeStatus: ['active', 'planning']
+});
 
 const projectsContext = formatProjectsSummaryList(existingProjects);
 ```
@@ -540,14 +534,14 @@ A user has asked you to analyze their google calendar and suggest projects.
 
 ```json
 {
-  "suggestions": [
-    {
-      // Existing fields...
-      "add_to_existing": false, // NEW
-      "existing_project_id": null, // NEW
-      "deduplication_reasoning": "This is a new project because..." // NEW
-    }
-  ]
+	"suggestions": [
+		{
+			// Existing fields...
+			"add_to_existing": false, // NEW
+			"existing_project_id": null, // NEW
+			"deduplication_reasoning": "This is a new project because..." // NEW
+		}
+	]
 }
 ```
 
@@ -584,13 +578,12 @@ async acceptSuggestion(suggestionId, userId, modifications) {
 
 ```svelte
 {#if suggestion.add_to_existing}
-  <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-    <p class="text-sm text-blue-700 dark:text-blue-300">
-      💡 This matches your existing project
-      <strong>{existingProjectName}</strong>.
-      Tasks will be added there.
-    </p>
-  </div>
+	<div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+		<p class="text-sm text-blue-700 dark:text-blue-300">
+			💡 This matches your existing project
+			<strong>{existingProjectName}</strong>. Tasks will be added there.
+		</p>
+	</div>
 {/if}
 ```
 
@@ -618,11 +611,11 @@ async acceptSuggestion(suggestionId, userId, modifications) {
 ```typescript
 const upcomingEventCount = upcomingEvents.length;
 const targetTaskCount = Math.max(
-  3, // Minimum 3 tasks
-  Math.min(
-    Math.ceil(upcomingEventCount * 0.5), // 50% of upcoming events
-    12, // Maximum 12 tasks
-  ),
+	3, // Minimum 3 tasks
+	Math.min(
+		Math.ceil(upcomingEventCount * 0.5), // 50% of upcoming events
+		12 // Maximum 12 tasks
+	)
 );
 ```
 
@@ -668,23 +661,23 @@ Guidelines:
 
 ```svelte
 <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-  📊 {taskEventMapping.length} tasks from {eventIds.length} events
-  ({eventsUsedForContextOnly.length} events used for context)
-  <button on:click={expandEventDetails}>View details</button>
+	📊 {taskEventMapping.length} tasks from {eventIds.length} events ({eventsUsedForContextOnly.length}
+	events used for context)
+	<button on:click={expandEventDetails}>View details</button>
 </div>
 
 {#if showEventDetails}
-  <div class="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded">
-    <h6 class="font-medium mb-2">Event Conversion Details:</h6>
-    {#each taskEventMapping as mapping}
-      <div>
-        Task "{tasks[mapping.task_index].title}":
-        {mapping.event_ids.length > 0
-          ? `From ${mapping.event_ids.length} event(s)`
-          : 'Inferred from context'}
-      </div>
-    {/each}
-  </div>
+	<div class="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded">
+		<h6 class="font-medium mb-2">Event Conversion Details:</h6>
+		{#each taskEventMapping as mapping}
+			<div>
+				Task "{tasks[mapping.task_index].title}":
+				{mapping.event_ids.length > 0
+					? `From ${mapping.event_ids.length} event(s)`
+					: 'Inferred from context'}
+			</div>
+		{/each}
+	</div>
 {/if}
 ```
 
@@ -692,7 +685,7 @@ Guidelines:
 
 ```svelte
 <button on:click={convertMoreEvents}>
-  Convert {eventsUsedForContextOnly.length} unused events to tasks
+	Convert {eventsUsedForContextOnly.length} unused events to tasks
 </button>
 ```
 
@@ -738,19 +731,19 @@ When converting calendar events to tasks:
 ```typescript
 // In acceptSuggestion() - Lines 677+
 if (task.event_id) {
-  const event = events.find((e) => e.id === task.event_id);
-  if (event) {
-    task.details = `
+	const event = events.find((e) => e.id === task.event_id);
+	if (event) {
+		task.details = `
 **Meeting Details:**
-- **Attendees**: ${event.attendees?.join(", ") || "N/A"}
-- **Location**: ${event.location || "N/A"}
-- **Meeting Link**: ${event.meetingLink || "N/A"}
+- **Attendees**: ${event.attendees?.join(', ') || 'N/A'}
+- **Location**: ${event.location || 'N/A'}
+- **Meeting Link**: ${event.meetingLink || 'N/A'}
 
 ---
 
 ${task.details}
     `.trim();
-  }
+	}
 }
 ```
 
@@ -795,14 +788,14 @@ Decision criteria:
 
 ```svelte
 {#if task.task_type === 'recurring' && task.source_calendar_event_id}
-  <div class="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-    <p class="text-xs text-purple-700 dark:text-purple-300">
-      📅 This is a recurring task from {eventOccurrenceCount} calendar events.
-    </p>
-    <button on:click={expandToSeparateTasks} class="text-xs underline mt-1">
-      Convert to {eventOccurrenceCount} separate tasks instead
-    </button>
-  </div>
+	<div class="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+		<p class="text-xs text-purple-700 dark:text-purple-300">
+			📅 This is a recurring task from {eventOccurrenceCount} calendar events.
+		</p>
+		<button on:click={expandToSeparateTasks} class="text-xs underline mt-1">
+			Convert to {eventOccurrenceCount} separate tasks instead
+		</button>
+	</div>
 {/if}
 ```
 
@@ -826,21 +819,21 @@ Decision criteria:
 
 ```svelte
 <div class="mt-4 p-4 border-t">
-  <h4 class="font-medium mb-3">Refine Analysis</h4>
+	<h4 class="font-medium mb-3">Refine Analysis</h4>
 
-  <div class="space-y-2">
-    <button on:click={regenerateWithMoreTasks}>
-      🔄 Regenerate with more tasks per project
-    </button>
+	<div class="space-y-2">
+		<button on:click={regenerateWithMoreTasks}>
+			🔄 Regenerate with more tasks per project
+		</button>
 
-    <button on:click={analyzeWithStrictDuplication}>
-      🔍 Re-analyze with stricter duplicate detection
-    </button>
+		<button on:click={analyzeWithStrictDuplication}>
+			🔍 Re-analyze with stricter duplicate detection
+		</button>
 
-    <button on:click={convertAllEventsToTasks}>
-      📋 Convert all upcoming events to individual tasks
-    </button>
-  </div>
+		<button on:click={convertAllEventsToTasks}>
+			📋 Convert all upcoming events to individual tasks
+		</button>
+	</div>
 </div>
 ```
 

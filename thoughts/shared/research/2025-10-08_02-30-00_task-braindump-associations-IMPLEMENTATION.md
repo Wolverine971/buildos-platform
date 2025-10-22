@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: d2b0decf
 branch: main
 repository: buildos-platform
-topic: "Task-Braindump Association Implementation Summary"
+topic: 'Task-Braindump Association Implementation Summary'
 tags: [implementation, completed, ui, task-modal, braindumps]
 status: complete
 last_updated: 2025-10-08
@@ -81,42 +81,42 @@ Response:
 
 1. **Collapsed (Default)**
 
-   ```
-   ● BRAINDUMPS                          ▶
-     Click to load
-   ```
+    ```
+    ● BRAINDUMPS                          ▶
+      Click to load
+    ```
 
 2. **Loading**
 
-   ```
-   ● BRAINDUMPS                          ▼
-     🔄 Loading braindumps...
-   ```
+    ```
+    ● BRAINDUMPS                          ▼
+      🔄 Loading braindumps...
+    ```
 
 3. **Loaded with Braindumps**
 
-   ```
-   ● BRAINDUMPS                          ▼
-     2 braindumps
+    ```
+    ● BRAINDUMPS                          ▼
+      2 braindumps
 
-     [Braindump Card 1] ▶ 🔗
-     [Braindump Card 2] ▼ 🔗
-       [Full expanded content]
-       View in History →
-   ```
+      [Braindump Card 1] ▶ 🔗
+      [Braindump Card 2] ▼ 🔗
+        [Full expanded content]
+        View in History →
+    ```
 
 4. **Empty State**
 
-   ```
-   ● BRAINDUMPS                          ▼
-     No braindumps associated with this task
-   ```
+    ```
+    ● BRAINDUMPS                          ▼
+      No braindumps associated with this task
+    ```
 
 5. **Error State**
-   ```
-   ● BRAINDUMPS                          ▼
-     ⚠️  Failed to load braindumps [Retry]
-   ```
+    ```
+    ● BRAINDUMPS                          ▼
+      ⚠️  Failed to load braindumps [Retry]
+    ```
 
 ### 3. Tests
 
@@ -342,15 +342,15 @@ ORDER BY bdl.created_at DESC;
 ### E2E Testing
 
 ```typescript
-test("view braindumps for task", async ({ page }) => {
-  // Create task with linked braindump
-  // Open task modal
-  // Expand braindumps section
-  // Verify braindump appears
-  // Click braindump card
-  // Verify content expands
-  // Click history link
-  // Verify navigation to /history?braindump=id
+test('view braindumps for task', async ({ page }) => {
+	// Create task with linked braindump
+	// Open task modal
+	// Expand braindumps section
+	// Verify braindump appears
+	// Click braindump card
+	// Verify content expands
+	// Click history link
+	// Verify navigation to /history?braindump=id
 });
 ```
 
@@ -420,8 +420,7 @@ If gradual rollout desired:
 ```typescript
 // lib/config/features.ts
 export const FEATURES = {
-  TASK_BRAINDUMP_ASSOCIATIONS:
-    import.meta.env.VITE_FEATURE_TASK_BRAINDUMPS !== "false",
+	TASK_BRAINDUMP_ASSOCIATIONS: import.meta.env.VITE_FEATURE_TASK_BRAINDUMPS !== 'false'
 };
 ```
 
@@ -429,7 +428,7 @@ Then in TaskModal:
 
 ```svelte
 {#if FEATURES.TASK_BRAINDUMP_ASSOCIATIONS && isEditing && task?.id}
-  <TaskBraindumpSection taskId={task.id} />
+	<TaskBraindumpSection taskId={task.id} />
 {/if}
 ```
 

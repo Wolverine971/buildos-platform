@@ -11,41 +11,41 @@ This document specifies the design and implementation plan for integrating SMS a
 **SMS System** (Independent)
 
 - **Database Tables**:
-  - `sms_messages` - Message history and status tracking
-  - `user_sms_preferences` - Phone numbers, verification status, preferences
-  - `sms_templates` - Reusable message templates
+    - `sms_messages` - Message history and status tracking
+    - `user_sms_preferences` - Phone numbers, verification status, preferences
+    - `sms_templates` - Reusable message templates
 - **Services**:
-  - `TwilioClient` (`packages/twilio-service/`) - Twilio API wrapper
-  - `SMSService` (web app) - Frontend SMS operations
-  - SMS Worker (`apps/worker/src/workers/smsWorker.ts`) - Message processing
+    - `TwilioClient` (`packages/twilio-service/`) - Twilio API wrapper
+    - `SMSService` (web app) - Frontend SMS operations
+    - SMS Worker (`apps/worker/src/workers/smsWorker.ts`) - Message processing
 - **APIs**:
-  - `POST /api/sms/verify` - Start phone verification
-  - `POST /api/sms/verify/confirm` - Confirm verification code
-  - `POST /api/webhooks/twilio/status` - Delivery status callbacks
+    - `POST /api/sms/verify` - Start phone verification
+    - `POST /api/sms/verify/confirm` - Confirm verification code
+    - `POST /api/webhooks/twilio/status` - Delivery status callbacks
 - **Features**:
-  - Phone number verification via Twilio Verify
-  - Queue-based SMS delivery
-  - Template system
-  - Rate limiting and quiet hours
-  - Opt-out support
+    - Phone number verification via Twilio Verify
+    - Queue-based SMS delivery
+    - Template system
+    - Rate limiting and quiet hours
+    - Opt-out support
 
 **Notification System** (Event-Driven)
 
 - **Database Tables**:
-  - `notification_events` - Immutable event log
-  - `notification_deliveries` - Multi-channel delivery tracking
-  - `notification_subscriptions` - User event subscriptions
-  - `user_notification_preferences` - Per-event channel preferences
-  - `push_subscriptions` - Browser push subscriptions
+    - `notification_events` - Immutable event log
+    - `notification_deliveries` - Multi-channel delivery tracking
+    - `notification_subscriptions` - User event subscriptions
+    - `user_notification_preferences` - Per-event channel preferences
+    - `push_subscriptions` - Browser push subscriptions
 - **Channels Implemented**:
-  - ✅ Browser Push (full implementation)
-  - ✅ Email (adapter using existing email infrastructure)
-  - ✅ In-App (direct database insertion)
-  - ⚠️ SMS (placeholder only - NOT IMPLEMENTED)
+    - ✅ Browser Push (full implementation)
+    - ✅ Email (adapter using existing email infrastructure)
+    - ✅ In-App (direct database insertion)
+    - ⚠️ SMS (placeholder only - NOT IMPLEMENTED)
 - **Worker**:
-  - `notificationWorker.ts` - Processes `send_notification` jobs
-  - Routes to channel-specific adapters
-  - Retry logic and error handling
+    - `notificationWorker.ts` - Processes `send_notification` jobs
+    - Routes to channel-specific adapters
+    - Retry logic and error handling
 
 ### ❌ Current Gap
 
@@ -124,18 +124,18 @@ graph TD
 We'll use existing tables with new integration points:
 
 1. **`notification_deliveries`** - Already has SMS support
-   - `channel = 'sms'`
-   - `channel_identifier` = phone number
-   - `external_id` = Twilio message SID
+    - `channel = 'sms'`
+    - `channel_identifier` = phone number
+    - `external_id` = Twilio message SID
 
 2. **`user_sms_preferences`** - Already has phone verification
-   - `phone_number` - Used as channel identifier
-   - `phone_verified` - Required before SMS notifications
-   - `phone_verified_at` - Timestamp of verification
+    - `phone_number` - Used as channel identifier
+    - `phone_verified` - Required before SMS notifications
+    - `phone_verified_at` - Timestamp of verification
 
 3. **`sms_messages`** - Existing message tracking
-   - Add `notification_delivery_id UUID` (nullable FK to `notification_deliveries`)
-   - This links SMS messages to notification deliveries
+    - Add `notification_delivery_id UUID` (nullable FK to `notification_deliveries`)
+    - This links SMS messages to notification deliveries
 
 ### Migration: Add Foreign Key
 
@@ -244,159 +244,159 @@ COMMENT ON FUNCTION get_user_sms_channel_info IS
 **Location**: `apps/worker/src/workers/notification/smsAdapter.ts` (NEW FILE)
 
 ```typescript
-import { SupabaseClient } from "@supabase/supabase-js";
-import { TwilioClient } from "@buildos/twilio-service";
-import type { NotificationDelivery } from "@buildos/shared-types";
+import { SupabaseClient } from '@supabase/supabase-js';
+import { TwilioClient } from '@buildos/twilio-service';
+import type { NotificationDelivery } from '@buildos/shared-types';
 
 export interface SMSAdapterConfig {
-  twilioClient: TwilioClient;
-  supabase: SupabaseClient;
+	twilioClient: TwilioClient;
+	supabase: SupabaseClient;
 }
 
 export class SMSAdapter {
-  constructor(private config: SMSAdapterConfig) {}
+	constructor(private config: SMSAdapterConfig) {}
 
-  /**
-   * Send SMS notification
-   *
-   * Flow:
-   * 1. Validate delivery record has phone number
-   * 2. Format message from notification payload
-   * 3. Create sms_messages record with notification_delivery_id link
-   * 4. Queue send_sms job
-   * 5. Update notification_deliveries status
-   */
-  async send(delivery: NotificationDelivery): Promise<{
-    success: boolean;
-    messageId?: string;
-    error?: string;
-  }> {
-    try {
-      const { channel_identifier: phoneNumber, payload } = delivery;
+	/**
+	 * Send SMS notification
+	 *
+	 * Flow:
+	 * 1. Validate delivery record has phone number
+	 * 2. Format message from notification payload
+	 * 3. Create sms_messages record with notification_delivery_id link
+	 * 4. Queue send_sms job
+	 * 5. Update notification_deliveries status
+	 */
+	async send(delivery: NotificationDelivery): Promise<{
+		success: boolean;
+		messageId?: string;
+		error?: string;
+	}> {
+		try {
+			const { channel_identifier: phoneNumber, payload } = delivery;
 
-      if (!phoneNumber) {
-        throw new Error("No phone number in delivery record");
-      }
+			if (!phoneNumber) {
+				throw new Error('No phone number in delivery record');
+			}
 
-      // Format SMS message from notification payload
-      const messageContent = this.formatMessage(delivery);
+			// Format SMS message from notification payload
+			const messageContent = this.formatMessage(delivery);
 
-      // Create SMS message record
-      const { data: smsMessage, error: smsError } = await this.config.supabase
-        .from("sms_messages")
-        .insert({
-          user_id: delivery.recipient_user_id,
-          phone_number: phoneNumber,
-          message_content: messageContent,
-          priority: this.getPriority(delivery),
-          notification_delivery_id: delivery.id,
-          status: "pending",
-          metadata: {
-            event_type: payload.eventType,
-            notification_delivery_id: delivery.id,
-          },
-        })
-        .select()
-        .single();
+			// Create SMS message record
+			const { data: smsMessage, error: smsError } = await this.config.supabase
+				.from('sms_messages')
+				.insert({
+					user_id: delivery.recipient_user_id,
+					phone_number: phoneNumber,
+					message_content: messageContent,
+					priority: this.getPriority(delivery),
+					notification_delivery_id: delivery.id,
+					status: 'pending',
+					metadata: {
+						event_type: payload.eventType,
+						notification_delivery_id: delivery.id
+					}
+				})
+				.select()
+				.single();
 
-      if (smsError) {
-        throw new Error(`Failed to create SMS message: ${smsError.message}`);
-      }
+			if (smsError) {
+				throw new Error(`Failed to create SMS message: ${smsError.message}`);
+			}
 
-      // Queue SMS job using existing queue_sms_message function
-      const { data: messageId, error: queueError } =
-        await this.config.supabase.rpc("queue_sms_message", {
-          p_user_id: delivery.recipient_user_id,
-          p_phone_number: phoneNumber,
-          p_message: messageContent,
-          p_priority: this.getPriority(delivery),
-          p_metadata: {
-            notification_delivery_id: delivery.id,
-            event_type: payload.eventType,
-          },
-        });
+			// Queue SMS job using existing queue_sms_message function
+			const { data: messageId, error: queueError } = await this.config.supabase.rpc(
+				'queue_sms_message',
+				{
+					p_user_id: delivery.recipient_user_id,
+					p_phone_number: phoneNumber,
+					p_message: messageContent,
+					p_priority: this.getPriority(delivery),
+					p_metadata: {
+						notification_delivery_id: delivery.id,
+						event_type: payload.eventType
+					}
+				}
+			);
 
-      if (queueError) {
-        throw new Error(`Failed to queue SMS: ${queueError.message}`);
-      }
+			if (queueError) {
+				throw new Error(`Failed to queue SMS: ${queueError.message}`);
+			}
 
-      // Update notification delivery with external reference
-      await this.config.supabase
-        .from("notification_deliveries")
-        .update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-          external_id: smsMessage.id, // Link to SMS message record
-        })
-        .eq("id", delivery.id);
+			// Update notification delivery with external reference
+			await this.config.supabase
+				.from('notification_deliveries')
+				.update({
+					status: 'sent',
+					sent_at: new Date().toISOString(),
+					external_id: smsMessage.id // Link to SMS message record
+				})
+				.eq('id', delivery.id);
 
-      return {
-        success: true,
-        messageId: smsMessage.id,
-      };
-    } catch (error: any) {
-      console.error("SMS adapter error:", error);
+			return {
+				success: true,
+				messageId: smsMessage.id
+			};
+		} catch (error: any) {
+			console.error('SMS adapter error:', error);
 
-      // Update delivery as failed
-      await this.config.supabase
-        .from("notification_deliveries")
-        .update({
-          status: "failed",
-          failed_at: new Date().toISOString(),
-          last_error: error.message,
-        })
-        .eq("id", delivery.id);
+			// Update delivery as failed
+			await this.config.supabase
+				.from('notification_deliveries')
+				.update({
+					status: 'failed',
+					failed_at: new Date().toISOString(),
+					last_error: error.message
+				})
+				.eq('id', delivery.id);
 
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
 
-  /**
-   * Format notification payload into SMS message
-   */
-  private formatMessage(delivery: NotificationDelivery): string {
-    const { payload } = delivery;
-    const eventType = payload.eventType;
+	/**
+	 * Format notification payload into SMS message
+	 */
+	private formatMessage(delivery: NotificationDelivery): string {
+		const { payload } = delivery;
+		const eventType = payload.eventType;
 
-    // Use templates based on event type
-    switch (eventType) {
-      case "user.signup":
-        return `BuildOS: New user signup - ${payload.user_email}`;
+		// Use templates based on event type
+		switch (eventType) {
+			case 'user.signup':
+				return `BuildOS: New user signup - ${payload.user_email}`;
 
-      case "brief.completed":
-        return `Your BuildOS daily brief is ready! ${payload.task_count} tasks planned. Check the app for details.`;
+			case 'brief.completed':
+				return `Your BuildOS daily brief is ready! ${payload.task_count} tasks planned. Check the app for details.`;
 
-      case "brief.failed":
-        return `Your daily brief generation failed. Please check the app for details.`;
+			case 'brief.failed':
+				return `Your daily brief generation failed. Please check the app for details.`;
 
-      case "task.due_soon":
-        return `Task reminder: ${payload.task_name} is due ${payload.due_time}`;
+			case 'task.due_soon':
+				return `Task reminder: ${payload.task_name} is due ${payload.due_time}`;
 
-      default:
-        return `BuildOS notification: ${payload.title || "New update available"}`;
-    }
-  }
+			default:
+				return `BuildOS notification: ${payload.title || 'New update available'}`;
+		}
+	}
 
-  /**
-   * Map notification priority to SMS priority
-   */
-  private getPriority(
-    delivery: NotificationDelivery,
-  ): "low" | "normal" | "high" | "urgent" {
-    const priority = delivery.payload.priority || "normal";
+	/**
+	 * Map notification priority to SMS priority
+	 */
+	private getPriority(delivery: NotificationDelivery): 'low' | 'normal' | 'high' | 'urgent' {
+		const priority = delivery.payload.priority || 'normal';
 
-    const priorityMap: Record<string, "low" | "normal" | "high" | "urgent"> = {
-      low: "low",
-      normal: "normal",
-      high: "high",
-      critical: "urgent",
-    };
+		const priorityMap: Record<string, 'low' | 'normal' | 'high' | 'urgent'> = {
+			low: 'low',
+			normal: 'normal',
+			high: 'high',
+			critical: 'urgent'
+		};
 
-    return priorityMap[priority] || "normal";
-  }
+		return priorityMap[priority] || 'normal';
+	}
 }
 ```
 
@@ -405,47 +405,44 @@ export class SMSAdapter {
 **Location**: `apps/worker/src/workers/notification/notificationWorker.ts`
 
 ```typescript
-import { SMSAdapter } from "./smsAdapter";
+import { SMSAdapter } from './smsAdapter';
 
 // Initialize SMS adapter
 const smsAdapter = new SMSAdapter({
-  twilioClient, // Existing Twilio client
-  supabase: serviceClient,
+	twilioClient, // Existing Twilio client
+	supabase: serviceClient
 });
 
 // Update sendNotification function
-async function sendNotification(
-  channel: string,
-  delivery: NotificationDelivery,
-) {
-  switch (channel) {
-    case "push":
-      // ... existing push code
-      break;
+async function sendNotification(channel: string, delivery: NotificationDelivery) {
+	switch (channel) {
+		case 'push':
+			// ... existing push code
+			break;
 
-    case "email":
-      // ... existing email code
-      break;
+		case 'email':
+			// ... existing email code
+			break;
 
-    case "in_app":
-      // ... existing in-app code
-      break;
+		case 'in_app':
+			// ... existing in-app code
+			break;
 
-    case "sms":
-      // NEW: Use SMS adapter
-      console.log(`Sending SMS notification to ${delivery.channel_identifier}`);
-      const smsResult = await smsAdapter.send(delivery);
+		case 'sms':
+			// NEW: Use SMS adapter
+			console.log(`Sending SMS notification to ${delivery.channel_identifier}`);
+			const smsResult = await smsAdapter.send(delivery);
 
-      if (!smsResult.success) {
-        throw new Error(smsResult.error || "SMS send failed");
-      }
+			if (!smsResult.success) {
+				throw new Error(smsResult.error || 'SMS send failed');
+			}
 
-      console.log(`SMS notification queued: ${smsResult.messageId}`);
-      break;
+			console.log(`SMS notification queued: ${smsResult.messageId}`);
+			break;
 
-    default:
-      throw new Error(`Unknown channel: ${channel}`);
-  }
+		default:
+			throw new Error(`Unknown channel: ${channel}`);
+	}
 }
 ```
 
@@ -458,22 +455,22 @@ After the daily brief notification refactor, several SMS preference fields becam
 **Migration Status**:
 
 - ✅ **Phase 1** (Worker changes): Completed 2025-10-13
-  - Added quiet hours and rate limit checks to notification SMS
-  - Removed redundant `daily_brief_sms` check from preferenceChecker
-  - Updated SQL function to remove duplicate SMS preference checks
-  - Created shared SMS safety check utilities
+    - Added quiet hours and rate limit checks to notification SMS
+    - Removed redundant `daily_brief_sms` check from preferenceChecker
+    - Updated SQL function to remove duplicate SMS preference checks
+    - Created shared SMS safety check utilities
 - ✅ **Phase 2** (Web app changes): Completed 2025-10-13
-  - Removed deprecated fields from API endpoints
-  - Removed deprecated fields from UI components
-  - Updated database schema types
-  - Deprecated `sendTaskReminder()` service method
+    - Removed deprecated fields from API endpoints
+    - Removed deprecated fields from UI components
+    - Updated database schema types
+    - Deprecated `sendTaskReminder()` service method
 - ✅ **Phase 3a** (Mark deprecated): Ready for deployment
-  - Migration file created: `20251015_deprecate_unused_sms_fields.sql`
-  - Adds database comments marking fields as deprecated
+    - Migration file created: `20251015_deprecate_unused_sms_fields.sql`
+    - Adds database comments marking fields as deprecated
 - ⏳ **Phase 3b** (Drop columns): Scheduled 2025-10-29
-  - Migration file created: `20251029_remove_deprecated_sms_fields.sql`
-  - Includes safety checks to prevent premature execution
-  - Will drop: `daily_brief_sms`, `task_reminders`, `next_up_enabled`
+    - Migration file created: `20251029_remove_deprecated_sms_fields.sql`
+    - Includes safety checks to prevent premature execution
+    - Will drop: `daily_brief_sms`, `task_reminders`, `next_up_enabled`
 
 **Deprecated Fields**:
 
@@ -514,20 +511,20 @@ See [SMS Deprecation Migration Plan](/thoughts/shared/research/2025-10-13_17-40-
 ```typescript
 // When user enables SMS for an event
 async function handleSMSToggle(eventType: EventType, enabled: boolean) {
-  if (enabled) {
-    // Check if phone is verified
-    const phoneInfo = await checkPhoneVerification();
+	if (enabled) {
+		// Check if phone is verified
+		const phoneInfo = await checkPhoneVerification();
 
-    if (!phoneInfo.verified) {
-      // Show phone verification modal
-      showPhoneVerificationModal = true;
-      pendingEventType = eventType;
-      return;
-    }
-  }
+		if (!phoneInfo.verified) {
+			// Show phone verification modal
+			showPhoneVerificationModal = true;
+			pendingEventType = eventType;
+			return;
+		}
+	}
 
-  // Continue with normal preference update
-  await updatePreference(eventType, { sms_enabled: enabled });
+	// Continue with normal preference update
+	await updatePreference(eventType, { sms_enabled: enabled });
 }
 ```
 
@@ -537,26 +534,26 @@ async function handleSMSToggle(eventType: EventType, enabled: boolean) {
 
 ```svelte
 <script lang="ts">
-  import PhoneVerification from './PhoneVerification.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
+	import PhoneVerification from './PhoneVerification.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
-  export let open = $state(false);
-  export let onVerified: () => void;
+	export let open = $state(false);
+	export let onVerified: () => void;
 
-  function handleVerificationComplete() {
-    open = false;
-    onVerified?.();
-  }
+	function handleVerificationComplete() {
+		open = false;
+		onVerified?.();
+	}
 </script>
 
 <Modal bind:open title="Verify Phone Number">
-  <div class="space-y-4">
-    <p class="text-gray-600 dark:text-gray-400">
-      To receive SMS notifications, you need to verify your phone number first.
-    </p>
+	<div class="space-y-4">
+		<p class="text-gray-600 dark:text-gray-400">
+			To receive SMS notifications, you need to verify your phone number first.
+		</p>
 
-    <PhoneVerification on:verified={handleVerificationComplete} />
-  </div>
+		<PhoneVerification on:verified={handleVerificationComplete} />
+	</div>
 </Modal>
 ```
 
@@ -624,57 +621,57 @@ Phase 4 was partially implemented in Phase 2 and significantly enhanced with com
 **Core Features Implemented**:
 
 1. **Comprehensive Structured Logging**
-   - Request tracking with unique context
-   - Processing time measurements
-   - Status update logging at each step
-   - Error logging with full context
+    - Request tracking with unique context
+    - Processing time measurements
+    - Status update logging at each step
+    - Error logging with full context
 
 2. **Intelligent Error Categorization**
-   - Permanent failures (invalid numbers, account issues)
-   - Temporary failures (carrier issues, unreachable)
-   - Rate limiting detection
-   - Unknown error handling
-   - Severity levels (low, medium, high, critical)
+    - Permanent failures (invalid numbers, account issues)
+    - Temporary failures (carrier issues, unreachable)
+    - Rate limiting detection
+    - Unknown error handling
+    - Severity levels (low, medium, high, critical)
 
 3. **Enhanced Dual-Table Updates**
-   - Atomic updates to `sms_messages` first
-   - Synchronized updates to `notification_deliveries` if linked
-   - Comprehensive timestamp management (sent_at, delivered_at, failed_at)
-   - Error message propagation with context
+    - Atomic updates to `sms_messages` first
+    - Synchronized updates to `notification_deliveries` if linked
+    - Comprehensive timestamp management (sent_at, delivered_at, failed_at)
+    - Error message propagation with context
 
 4. **Smart Retry Logic**
-   - Error-based retry decisions (permanent vs temporary failures)
-   - Adaptive backoff strategies by error type
-   - Rate limit aware (5min delay for rate limits)
-   - Carrier issue handling (3min base delay)
-   - Exponential backoff with attempt tracking
+    - Error-based retry decisions (permanent vs temporary failures)
+    - Adaptive backoff strategies by error type
+    - Rate limit aware (5min delay for rate limits)
+    - Carrier issue handling (3min base delay)
+    - Exponential backoff with attempt tracking
 
 5. **Security & Validation**
-   - Twilio signature validation
-   - Early parameter validation
-   - Safe error responses (always 200 to prevent Twilio retries)
+    - Twilio signature validation
+    - Early parameter validation
+    - Safe error responses (always 200 to prevent Twilio retries)
 
 6. **Monitoring & Observability**
-   - Processing time tracking
-   - Success/failure metrics
-   - Error categorization for alerting
-   - Dual-table update confirmation
+    - Processing time tracking
+    - Success/failure metrics
+    - Error categorization for alerting
+    - Dual-table update confirmation
 
 **Key Functions**:
 
 ```typescript
 // Error categorization for intelligent retry
 function categorizeErrorCode(errorCode: string | null): {
-  category: string;
-  shouldRetry: boolean;
-  severity: "low" | "medium" | "high" | "critical";
+	category: string;
+	shouldRetry: boolean;
+	severity: 'low' | 'medium' | 'high' | 'critical';
 };
 
 // Structured logging with context
 function logWebhookEvent(
-  level: "info" | "warn" | "error",
-  message: string,
-  context: WebhookContext,
+	level: 'info' | 'warn' | 'error',
+	message: string,
+	context: WebhookContext
 );
 
 // Enhanced status mapping
@@ -752,111 +749,100 @@ All templates support variable substitution using `{{variable}}` syntax.
 **Key Features Implemented**:
 
 1. **Database Template Fetching**
-   - Fetch active templates from `sms_templates` table
-   - Query by template_key with is_active filter
-   - Error handling for missing templates
+    - Fetch active templates from `sms_templates` table
+    - Query by template_key with is_active filter
+    - Error handling for missing templates
 
 2. **Template Caching**
-   - In-memory cache with 5-minute TTL
-   - Reduces database queries for frequently used templates
-   - Cache management utilities (clear, stats)
+    - In-memory cache with 5-minute TTL
+    - Reduces database queries for frequently used templates
+    - Cache management utilities (clear, stats)
 
 3. **Variable Replacement Engine**
-   - Supports `{{variable}}` syntax
-   - Extracts variables from notification payload
-   - Handles nested payload structures (data object)
-   - Warns on missing variables
+    - Supports `{{variable}}` syntax
+    - Extracts variables from notification payload
+    - Handles nested payload structures (data object)
+    - Warns on missing variables
 
 4. **Intelligent Fallbacks**
-   - Falls back to hardcoded formatting if template not found
-   - Event-specific fallback logic
-   - Generic fallback for unknown events
+    - Falls back to hardcoded formatting if template not found
+    - Event-specific fallback logic
+    - Generic fallback for unknown events
 
 5. **Message Length Enforcement**
-   - Respects max_length from template
-   - Automatic truncation with ellipsis
-   - Logging of truncation events
+    - Respects max_length from template
+    - Automatic truncation with ellipsis
+    - Logging of truncation events
 
 **Implementation**:
 
 ```typescript
 // Template caching
-const templateCache = new Map<
-  string,
-  { template: SMSTemplate | null; timestamp: number }
->();
+const templateCache = new Map<string, { template: SMSTemplate | null; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Fetch with caching
 async function getTemplate(templateKey: string): Promise<SMSTemplate | null> {
-  // Check cache first
-  const cached = templateCache.get(templateKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.template;
-  }
+	// Check cache first
+	const cached = templateCache.get(templateKey);
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.template;
+	}
 
-  // Fetch from database and cache result
-  const { data } = await supabase
-    .from("sms_templates")
-    .select("*")
-    .eq("template_key", templateKey)
-    .eq("is_active", true)
-    .single();
+	// Fetch from database and cache result
+	const { data } = await supabase
+		.from('sms_templates')
+		.select('*')
+		.eq('template_key', templateKey)
+		.eq('is_active', true)
+		.single();
 
-  templateCache.set(templateKey, { template: data, timestamp: Date.now() });
-  return data;
+	templateCache.set(templateKey, { template: data, timestamp: Date.now() });
+	return data;
 }
 
 // Variable replacement
-function renderTemplate(
-  template: string,
-  variables: Record<string, any>,
-): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-    const value = variables[varName];
-    if (value === undefined || value === null) {
-      console.warn(`Missing template variable: ${varName}`);
-      return match; // Keep placeholder
-    }
-    return String(value);
-  });
+function renderTemplate(template: string, variables: Record<string, any>): string {
+	return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+		const value = variables[varName];
+		if (value === undefined || value === null) {
+			console.warn(`Missing template variable: ${varName}`);
+			return match; // Keep placeholder
+		}
+		return String(value);
+	});
 }
 
 // Variable extraction from payload
-function extractTemplateVars(
-  payload: any,
-  eventType: string,
-): Record<string, any> {
-  const flatPayload = { ...payload, ...(payload.data || {}) };
-  // Event-specific variable mapping
-  // ...
-  return vars;
+function extractTemplateVars(payload: any, eventType: string): Record<string, any> {
+	const flatPayload = { ...payload, ...(payload.data || {}) };
+	// Event-specific variable mapping
+	// ...
+	return vars;
 }
 
 // Main formatting with template support
-async function formatSMSMessage(
-  delivery: NotificationDelivery,
-): Promise<string> {
-  const eventType = delivery.payload.event_type || delivery.payload.eventType;
-  const templateKey = templateKeyMap[eventType];
+async function formatSMSMessage(delivery: NotificationDelivery): Promise<string> {
+	const eventType = delivery.payload.event_type || delivery.payload.eventType;
+	const templateKey = templateKeyMap[eventType];
 
-  if (templateKey) {
-    const template = await getTemplate(templateKey);
-    if (template) {
-      const variables = extractTemplateVars(delivery.payload, eventType);
-      const rendered = renderTemplate(template.message_template, variables);
+	if (templateKey) {
+		const template = await getTemplate(templateKey);
+		if (template) {
+			const variables = extractTemplateVars(delivery.payload, eventType);
+			const rendered = renderTemplate(template.message_template, variables);
 
-      // Enforce max length
-      if (template.max_length && rendered.length > template.max_length) {
-        return rendered.substring(0, template.max_length - 3) + "...";
-      }
+			// Enforce max length
+			if (template.max_length && rendered.length > template.max_length) {
+				return rendered.substring(0, template.max_length - 3) + '...';
+			}
 
-      return rendered;
-    }
-  }
+			return rendered;
+		}
+	}
 
-  // Fallback to hardcoded formatting
-  // ...
+	// Fallback to hardcoded formatting
+	// ...
 }
 ```
 
@@ -947,8 +933,7 @@ GROUP BY channel;
 
 ```typescript
 has_phone: !!(
-  u.user_sms_preferences?.[0]?.phone_number &&
-  u.user_sms_preferences?.[0]?.phone_verified
+	u.user_sms_preferences?.[0]?.phone_number && u.user_sms_preferences?.[0]?.phone_verified
 );
 ```
 
@@ -999,20 +984,20 @@ has_phone: !!(
 The SMSInsightsCard provides:
 
 1. **Phone Verification Section**:
-   - Total users with phone numbers
-   - Verified phone count with verification rate
-   - Opted out count with opt-out percentage
+    - Total users with phone numbers
+    - Verified phone count with verification rate
+    - Opted out count with opt-out percentage
 
 2. **SMS Notifications Section**:
-   - Users with SMS enabled
-   - Adoption rate progress bar
-   - Recent performance (24h sent, delivery rate, avg time)
+    - Users with SMS enabled
+    - Adoption rate progress bar
+    - Recent performance (24h sent, delivery rate, avg time)
 
 3. **Intelligent Insights**:
-   - Low adoption warning (< 50%)
-   - High opt-out alert (> 10%)
-   - Low delivery rate warning (< 90%)
-   - Success message when metrics are healthy
+    - Low adoption warning (< 50%)
+    - High opt-out alert (> 10%)
+    - Low delivery rate warning (< 90%)
+    - Success message when metrics are healthy
 
 **Monitoring Capabilities**:
 
@@ -1276,15 +1261,15 @@ SMS click tracking was implemented as part of the unified notification tracking 
 **Database Migration**: `supabase/migrations/20251007_notification_tracking_links.sql`
 
 - Created `notification_tracking_links` table
-  - `short_code` (6-character base62 unique ID)
-  - `delivery_id` (links to `notification_deliveries`)
-  - `destination_url` (original long URL)
-  - `click_count`, `first_clicked_at`, `last_clicked_at` (tracking fields)
+    - `short_code` (6-character base62 unique ID)
+    - `delivery_id` (links to `notification_deliveries`)
+    - `destination_url` (original long URL)
+    - `click_count`, `first_clicked_at`, `last_clicked_at` (tracking fields)
 - Added database functions:
-  - `generate_short_code()` - generates random 6-char codes
-  - `create_tracking_link()` - creates tracking link with collision handling
-  - `get_link_click_stats()` - analytics queries
-  - `cleanup_old_tracking_links()` - data retention
+    - `generate_short_code()` - generates random 6-char codes
+    - `create_tracking_link()` - creates tracking link with collision handling
+    - `get_link_click_stats()` - analytics queries
+    - `cleanup_old_tracking_links()` - data retention
 
 **Redirect Endpoint**: `apps/web/src/routes/l/[short_code]/+server.ts`
 

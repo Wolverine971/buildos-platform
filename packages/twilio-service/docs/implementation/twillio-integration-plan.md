@@ -117,63 +117,57 @@ SELECT pgmq.create('sms_priority_queue');
 
 ```typescript
 // packages/twilio-service/src/client.ts
-import twilio from "twilio";
-import type { Twilio } from "twilio";
+import twilio from 'twilio';
+import type { Twilio } from 'twilio';
 
 export class TwilioClient {
-  private client: Twilio;
-  private messagingServiceSid: string;
+	private client: Twilio;
+	private messagingServiceSid: string;
 
-  constructor(config: {
-    accountSid: string;
-    authToken: string;
-    messagingServiceSid: string;
-  }) {
-    this.client = twilio(config.accountSid, config.authToken);
-    this.messagingServiceSid = config.messagingServiceSid;
-  }
+	constructor(config: { accountSid: string; authToken: string; messagingServiceSid: string }) {
+		this.client = twilio(config.accountSid, config.authToken);
+		this.messagingServiceSid = config.messagingServiceSid;
+	}
 
-  async sendSMS(params: {
-    to: string;
-    body: string;
-    scheduledAt?: Date;
-    statusCallback?: string;
-  }) {
-    const messageParams: any = {
-      messagingServiceSid: this.messagingServiceSid,
-      to: params.to,
-      body: params.body,
-    };
+	async sendSMS(params: {
+		to: string;
+		body: string;
+		scheduledAt?: Date;
+		statusCallback?: string;
+	}) {
+		const messageParams: any = {
+			messagingServiceSid: this.messagingServiceSid,
+			to: params.to,
+			body: params.body
+		};
 
-    // Use Twilio's native scheduling if within 7 days
-    if (params.scheduledAt) {
-      const now = new Date();
-      const diffDays = Math.ceil(
-        (params.scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-      );
+		// Use Twilio's native scheduling if within 7 days
+		if (params.scheduledAt) {
+			const now = new Date();
+			const diffDays = Math.ceil(
+				(params.scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+			);
 
-      if (diffDays <= 7) {
-        messageParams.sendAt = params.scheduledAt.toISOString();
-        messageParams.scheduleType = "fixed";
-      }
-    }
+			if (diffDays <= 7) {
+				messageParams.sendAt = params.scheduledAt.toISOString();
+				messageParams.scheduleType = 'fixed';
+			}
+		}
 
-    if (params.statusCallback) {
-      messageParams.statusCallback = params.statusCallback;
-    }
+		if (params.statusCallback) {
+			messageParams.statusCallback = params.statusCallback;
+		}
 
-    return await this.client.messages.create(messageParams);
-  }
+		return await this.client.messages.create(messageParams);
+	}
 
-  async cancelScheduledMessage(messageSid: string) {
-    return await this.client
-      .messages(messageSid)
-      .update({ status: "canceled" });
-  }
+	async cancelScheduledMessage(messageSid: string) {
+		return await this.client.messages(messageSid).update({ status: 'canceled' });
+	}
 
-  async getMessageStatus(messageSid: string) {
-    return await this.client.messages(messageSid).fetch();
-  }
+	async getMessageStatus(messageSid: string) {
+		return await this.client.messages(messageSid).fetch();
+	}
 }
 ```
 
@@ -181,74 +175,68 @@ export class TwilioClient {
 
 ```typescript
 // packages/twilio-service/src/queue/producer.ts
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface MessageJob {
-  id: string;
-  recipient_phone: string;
-  message_content: string;
-  template_id?: string;
-  template_vars?: Record<string, any>;
-  scheduled_for?: string;
-  priority?: number;
-  metadata?: Record<string, any>;
+	id: string;
+	recipient_phone: string;
+	message_content: string;
+	template_id?: string;
+	template_vars?: Record<string, any>;
+	scheduled_for?: string;
+	priority?: number;
+	metadata?: Record<string, any>;
 }
 
 export class MessageQueueProducer {
-  private supabase: SupabaseClient;
+	private supabase: SupabaseClient;
 
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    this.supabase = createClient(supabaseUrl, supabaseKey);
-  }
+	constructor(supabaseUrl: string, supabaseKey: string) {
+		this.supabase = createClient(supabaseUrl, supabaseKey);
+	}
 
-  async enqueueMessage(job: MessageJob) {
-    // First, save to message_jobs table for tracking
-    const { data: messageJob, error: dbError } = await this.supabase
-      .from("message_jobs")
-      .insert({
-        ...job,
-        status: job.scheduled_for ? "scheduled" : "pending",
-      })
-      .select()
-      .single();
+	async enqueueMessage(job: MessageJob) {
+		// First, save to message_jobs table for tracking
+		const { data: messageJob, error: dbError } = await this.supabase
+			.from('message_jobs')
+			.insert({
+				...job,
+				status: job.scheduled_for ? 'scheduled' : 'pending'
+			})
+			.select()
+			.single();
 
-    if (dbError) throw dbError;
+		if (dbError) throw dbError;
 
-    // If not scheduled or scheduled for immediate send, add to queue
-    const shouldQueue =
-      !job.scheduled_for || new Date(job.scheduled_for) <= new Date();
+		// If not scheduled or scheduled for immediate send, add to queue
+		const shouldQueue = !job.scheduled_for || new Date(job.scheduled_for) <= new Date();
 
-    if (shouldQueue) {
-      const queueName =
-        job.priority && job.priority > 5 ? "sms_priority_queue" : "sms_queue";
+		if (shouldQueue) {
+			const queueName = job.priority && job.priority > 5 ? 'sms_priority_queue' : 'sms_queue';
 
-      const { error: queueError } = await this.supabase
-        .schema("pgmq_public")
-        .rpc("send", {
-          queue_name: queueName,
-          message: {
-            job_id: messageJob.id,
-            ...job,
-          },
-        });
+			const { error: queueError } = await this.supabase.schema('pgmq_public').rpc('send', {
+				queue_name: queueName,
+				message: {
+					job_id: messageJob.id,
+					...job
+				}
+			});
 
-      if (queueError) throw queueError;
-    }
+			if (queueError) throw queueError;
+		}
 
-    return messageJob;
-  }
+		return messageJob;
+	}
 
-  async enqueueBatch(jobs: MessageJob[]) {
-    const results = await Promise.allSettled(
-      jobs.map((job) => this.enqueueMessage(job)),
-    );
+	async enqueueBatch(jobs: MessageJob[]) {
+		const results = await Promise.allSettled(jobs.map((job) => this.enqueueMessage(job)));
 
-    return {
-      successful: results.filter((r) => r.status === "fulfilled").length,
-      failed: results.filter((r) => r.status === "rejected"),
-      total: jobs.length,
-    };
-  }
+		return {
+			successful: results.filter((r) => r.status === 'fulfilled').length,
+			failed: results.filter((r) => r.status === 'rejected'),
+			total: jobs.length
+		};
+	}
 }
 ```
 
@@ -256,167 +244,154 @@ export class MessageQueueProducer {
 
 ```typescript
 // packages/twilio-service/src/queue/consumer.ts
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { TwilioClient } from "../client";
-import { TemplateEngine } from "../templates/engine";
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { TwilioClient } from '../client';
+import { TemplateEngine } from '../templates/engine';
 
 export class MessageQueueConsumer {
-  private supabase: SupabaseClient;
-  private twilioClient: TwilioClient;
-  private templateEngine: TemplateEngine;
-  private isRunning = false;
+	private supabase: SupabaseClient;
+	private twilioClient: TwilioClient;
+	private templateEngine: TemplateEngine;
+	private isRunning = false;
 
-  constructor(supabaseUrl: string, supabaseKey: string, twilioConfig: any) {
-    this.supabase = createClient(supabaseUrl, supabaseKey);
-    this.twilioClient = new TwilioClient(twilioConfig);
-    this.templateEngine = new TemplateEngine(this.supabase);
-  }
+	constructor(supabaseUrl: string, supabaseKey: string, twilioConfig: any) {
+		this.supabase = createClient(supabaseUrl, supabaseKey);
+		this.twilioClient = new TwilioClient(twilioConfig);
+		this.templateEngine = new TemplateEngine(this.supabase);
+	}
 
-  async start() {
-    this.isRunning = true;
-    console.log("Starting message queue consumer...");
+	async start() {
+		this.isRunning = true;
+		console.log('Starting message queue consumer...');
 
-    while (this.isRunning) {
-      await this.processQueues();
-      await this.sleep(1000); // Poll every second
-    }
-  }
+		while (this.isRunning) {
+			await this.processQueues();
+			await this.sleep(1000); // Poll every second
+		}
+	}
 
-  async processQueues() {
-    // Process priority queue first
-    await this.processQueue("sms_priority_queue");
-    // Then regular queue
-    await this.processQueue("sms_queue");
-  }
+	async processQueues() {
+		// Process priority queue first
+		await this.processQueue('sms_priority_queue');
+		// Then regular queue
+		await this.processQueue('sms_queue');
+	}
 
-  private async processQueue(queueName: string) {
-    try {
-      // Read messages with 30-second visibility timeout
-      const { data: messages } = await this.supabase
-        .schema("pgmq_public")
-        .rpc("read", {
-          queue_name: queueName,
-          vt: 30,
-          qty: 10,
-        });
+	private async processQueue(queueName: string) {
+		try {
+			// Read messages with 30-second visibility timeout
+			const { data: messages } = await this.supabase.schema('pgmq_public').rpc('read', {
+				queue_name: queueName,
+				vt: 30,
+				qty: 10
+			});
 
-      if (!messages || messages.length === 0) return;
+			if (!messages || messages.length === 0) return;
 
-      for (const msg of messages) {
-        await this.processMessage(msg, queueName);
-      }
-    } catch (error) {
-      console.error(`Error processing queue ${queueName}:`, error);
-    }
-  }
+			for (const msg of messages) {
+				await this.processMessage(msg, queueName);
+			}
+		} catch (error) {
+			console.error(`Error processing queue ${queueName}:`, error);
+		}
+	}
 
-  private async processMessage(message: any, queueName: string) {
-    const job = message.message;
+	private async processMessage(message: any, queueName: string) {
+		const job = message.message;
 
-    try {
-      // Update status to processing
-      await this.updateJobStatus(job.job_id, "processing");
+		try {
+			// Update status to processing
+			await this.updateJobStatus(job.job_id, 'processing');
 
-      // Render template if needed
-      let messageContent = job.message_content;
-      if (job.template_id && job.template_vars) {
-        messageContent = await this.templateEngine.render(
-          job.template_id,
-          job.template_vars,
-        );
-      }
+			// Render template if needed
+			let messageContent = job.message_content;
+			if (job.template_id && job.template_vars) {
+				messageContent = await this.templateEngine.render(
+					job.template_id,
+					job.template_vars
+				);
+			}
 
-      // Send via Twilio
-      const twilioMessage = await this.twilioClient.sendSMS({
-        to: job.recipient_phone,
-        body: messageContent,
-        scheduledAt: job.scheduled_for
-          ? new Date(job.scheduled_for)
-          : undefined,
-      });
+			// Send via Twilio
+			const twilioMessage = await this.twilioClient.sendSMS({
+				to: job.recipient_phone,
+				body: messageContent,
+				scheduledAt: job.scheduled_for ? new Date(job.scheduled_for) : undefined
+			});
 
-      // Update job as sent
-      await this.updateJobStatus(job.job_id, "sent", {
-        twilio_sid: twilioMessage.sid,
-        sent_at: new Date(),
-      });
+			// Update job as sent
+			await this.updateJobStatus(job.job_id, 'sent', {
+				twilio_sid: twilioMessage.sid,
+				sent_at: new Date()
+			});
 
-      // Delete message from queue
-      await this.supabase.schema("pgmq_public").rpc("delete", {
-        queue_name: queueName,
-        msg_id: message.msg_id,
-      });
-    } catch (error: any) {
-      console.error("Error processing message:", error);
+			// Delete message from queue
+			await this.supabase.schema('pgmq_public').rpc('delete', {
+				queue_name: queueName,
+				msg_id: message.msg_id
+			});
+		} catch (error: any) {
+			console.error('Error processing message:', error);
 
-      // Handle retry logic
-      await this.handleFailure(job, error, message, queueName);
-    }
-  }
+			// Handle retry logic
+			await this.handleFailure(job, error, message, queueName);
+		}
+	}
 
-  private async handleFailure(
-    job: any,
-    error: any,
-    message: any,
-    queueName: string,
-  ) {
-    const retryCount = (job.retry_count || 0) + 1;
-    const maxRetries = job.max_retries || 3;
+	private async handleFailure(job: any, error: any, message: any, queueName: string) {
+		const retryCount = (job.retry_count || 0) + 1;
+		const maxRetries = job.max_retries || 3;
 
-    if (retryCount < maxRetries) {
-      // Update retry count and re-queue with exponential backoff
-      const delaySeconds = Math.pow(2, retryCount) * 60; // 2min, 4min, 8min
+		if (retryCount < maxRetries) {
+			// Update retry count and re-queue with exponential backoff
+			const delaySeconds = Math.pow(2, retryCount) * 60; // 2min, 4min, 8min
 
-      await this.updateJobStatus(job.job_id, "pending", {
-        retry_count: retryCount,
-        error_details: {
-          message: error.message,
-          timestamp: new Date(),
-        },
-      });
+			await this.updateJobStatus(job.job_id, 'pending', {
+				retry_count: retryCount,
+				error_details: {
+					message: error.message,
+					timestamp: new Date()
+				}
+			});
 
-      // Re-queue with delay
-      await this.supabase.schema("pgmq_public").rpc("send", {
-        queue_name: queueName,
-        message: { ...job, retry_count: retryCount },
-        delay: delaySeconds,
-      });
-    } else {
-      // Max retries reached, mark as failed
-      await this.updateJobStatus(job.job_id, "failed", {
-        error_details: {
-          message: error.message,
-          final_attempt: true,
-          timestamp: new Date(),
-        },
-      });
-    }
+			// Re-queue with delay
+			await this.supabase.schema('pgmq_public').rpc('send', {
+				queue_name: queueName,
+				message: { ...job, retry_count: retryCount },
+				delay: delaySeconds
+			});
+		} else {
+			// Max retries reached, mark as failed
+			await this.updateJobStatus(job.job_id, 'failed', {
+				error_details: {
+					message: error.message,
+					final_attempt: true,
+					timestamp: new Date()
+				}
+			});
+		}
 
-    // Delete the current message from queue
-    await this.supabase.schema("pgmq_public").rpc("delete", {
-      queue_name: queueName,
-      msg_id: message.msg_id,
-    });
-  }
+		// Delete the current message from queue
+		await this.supabase.schema('pgmq_public').rpc('delete', {
+			queue_name: queueName,
+			msg_id: message.msg_id
+		});
+	}
 
-  private async updateJobStatus(
-    jobId: string,
-    status: string,
-    updates: any = {},
-  ) {
-    await this.supabase
-      .from("message_jobs")
-      .update({ status, ...updates })
-      .eq("id", jobId);
-  }
+	private async updateJobStatus(jobId: string, status: string, updates: any = {}) {
+		await this.supabase
+			.from('message_jobs')
+			.update({ status, ...updates })
+			.eq('id', jobId);
+	}
 
-  private sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+	private sleep(ms: number) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
 
-  stop() {
-    this.isRunning = false;
-  }
+	stop() {
+		this.isRunning = false;
+	}
 }
 ```
 
@@ -424,30 +399,30 @@ export class MessageQueueConsumer {
 
 ```typescript
 // apps/worker/src/services/sms-worker.ts
-import { MessageQueueConsumer } from "@buildos/twilio-service";
+import { MessageQueueConsumer } from '@buildos/twilio-service';
 
 export class SMSWorkerService {
-  private consumer: MessageQueueConsumer;
+	private consumer: MessageQueueConsumer;
 
-  constructor() {
-    this.consumer = new MessageQueueConsumer(
-      process.env.PUBLIC_SUPABASE_URL!,
-      process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
-      {
-        accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
-        authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
-        messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID!,
-      },
-    );
-  }
+	constructor() {
+		this.consumer = new MessageQueueConsumer(
+			process.env.PUBLIC_SUPABASE_URL!,
+			process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
+			{
+				accountSid: process.env.PRIVATE_TWILIO_ACCOUNT_SID!,
+				authToken: process.env.PRIVATE_TWILIO_AUTH_TOKEN!,
+				messagingServiceSid: process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID!
+			}
+		);
+	}
 
-  async start() {
-    await this.consumer.start();
-  }
+	async start() {
+		await this.consumer.start();
+	}
 
-  async stop() {
-    this.consumer.stop();
-  }
+	async stop() {
+		this.consumer.stop();
+	}
 }
 
 // Add to your worker's main file
@@ -459,45 +434,45 @@ await smsWorker.start();
 
 ```typescript
 // apps/web/src/lib/services/messaging.ts
-import { MessageQueueProducer } from "@buildos/twilio-service";
-import type { MessageJob } from "@buildos/twilio-service";
+import { MessageQueueProducer } from '@buildos/twilio-service';
+import type { MessageJob } from '@buildos/twilio-service';
 
 export class MessagingService {
-  private producer: MessageQueueProducer;
+	private producer: MessageQueueProducer;
 
-  constructor(supabaseUrl: string, supabaseAnonKey: string) {
-    this.producer = new MessageQueueProducer(supabaseUrl, supabaseAnonKey);
-  }
+	constructor(supabaseUrl: string, supabaseAnonKey: string) {
+		this.producer = new MessageQueueProducer(supabaseUrl, supabaseAnonKey);
+	}
 
-  async sendReminder(params: {
-    userId: string;
-    phone: string;
-    taskName: string;
-    dueDate: Date;
-    llmGeneratedContent: string;
-  }) {
-    const job: MessageJob = {
-      id: crypto.randomUUID(),
-      recipient_phone: params.phone,
-      message_content: params.llmGeneratedContent,
-      metadata: {
-        user_id: params.userId,
-        task_name: params.taskName,
-        due_date: params.dueDate,
-        type: "task_reminder",
-      },
-      priority: this.calculatePriority(params.dueDate),
-    };
+	async sendReminder(params: {
+		userId: string;
+		phone: string;
+		taskName: string;
+		dueDate: Date;
+		llmGeneratedContent: string;
+	}) {
+		const job: MessageJob = {
+			id: crypto.randomUUID(),
+			recipient_phone: params.phone,
+			message_content: params.llmGeneratedContent,
+			metadata: {
+				user_id: params.userId,
+				task_name: params.taskName,
+				due_date: params.dueDate,
+				type: 'task_reminder'
+			},
+			priority: this.calculatePriority(params.dueDate)
+		};
 
-    return await this.producer.enqueueMessage(job);
-  }
+		return await this.producer.enqueueMessage(job);
+	}
 
-  private calculatePriority(dueDate: Date): number {
-    const hoursUntilDue = (dueDate.getTime() - Date.now()) / (1000 * 60 * 60);
-    if (hoursUntilDue < 1) return 10; // Urgent
-    if (hoursUntilDue < 24) return 5; // High priority
-    return 1; // Normal priority
-  }
+	private calculatePriority(dueDate: Date): number {
+		const hoursUntilDue = (dueDate.getTime() - Date.now()) / (1000 * 60 * 60);
+		if (hoursUntilDue < 1) return 10; // Urgent
+		if (hoursUntilDue < 24) return 5; // High priority
+		return 1; // Normal priority
+	}
 }
 ```
 

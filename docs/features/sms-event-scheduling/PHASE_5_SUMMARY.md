@@ -20,29 +20,29 @@ Phase 5 adds a complete user interface for managing SMS event reminders. Users c
 ### Key Features
 
 1. **SMS Preferences Panel**
-   - Toggle to enable/disable event reminders
-   - Lead time selector (5, 10, 15, 30, 60 minutes)
-   - Auto-save on preference changes
-   - Phone verification status warnings
+    - Toggle to enable/disable event reminders
+    - Lead time selector (5, 10, 15, 30, 60 minutes)
+    - Auto-save on preference changes
+    - Phone verification status warnings
 
 2. **Scheduled Messages List**
-   - View all upcoming SMS reminders
-   - Filter by status (all, scheduled, sent, cancelled)
-   - Cancel individual messages with confirmation
-   - Real-time refresh capability
-   - Timezone-aware date/time display
+    - View all upcoming SMS reminders
+    - Filter by status (all, scheduled, sent, cancelled)
+    - Cancel individual messages with confirmation
+    - Real-time refresh capability
+    - Timezone-aware date/time display
 
 3. **Message Details Display**
-   - Event title and timing
-   - Full message content preview
-   - Generation method badge (AI vs template)
-   - Status indicators with icons
-   - Cancellation reasons for cancelled messages
+    - Event title and timing
+    - Full message content preview
+    - Generation method badge (AI vs template)
+    - Status indicators with icons
+    - Cancellation reasons for cancelled messages
 
 4. **Web API Proxy Layer**
-   - Secure endpoints that proxy to worker service
-   - Authorization checks per user
-   - Error handling and validation
+    - Secure endpoints that proxy to worker service
+    - Authorization checks per user
+    - Error handling and validation
 
 ---
 
@@ -393,29 +393,29 @@ Note: To update existing messages, user would need to:
 ### Manual Testing
 
 - [ ] Enable event reminders toggle
-  - [ ] Verify preference saved to database
-  - [ ] Verify scheduled messages list appears
+    - [ ] Verify preference saved to database
+    - [ ] Verify scheduled messages list appears
 
 - [ ] Change lead time
-  - [ ] Verify dropdown shows all options
-  - [ ] Verify preference saves on change
-  - [ ] Verify new preference used for future messages
+    - [ ] Verify dropdown shows all options
+    - [ ] Verify preference saves on change
+    - [ ] Verify new preference used for future messages
 
 - [ ] View scheduled messages
-  - [ ] Verify list loads from API
-  - [ ] Verify filter tabs work (all, scheduled, sent, cancelled)
-  - [ ] Verify refresh button works
-  - [ ] Verify timezone formatting correct
+    - [ ] Verify list loads from API
+    - [ ] Verify filter tabs work (all, scheduled, sent, cancelled)
+    - [ ] Verify refresh button works
+    - [ ] Verify timezone formatting correct
 
 - [ ] Cancel a message
-  - [ ] Verify confirmation dialog appears
-  - [ ] Verify message status updates to cancelled
-  - [ ] Verify queue job cancelled
-  - [ ] Verify message does not send
+    - [ ] Verify confirmation dialog appears
+    - [ ] Verify message status updates to cancelled
+    - [ ] Verify queue job cancelled
+    - [ ] Verify message does not send
 
 - [ ] Phone verification warning
-  - [ ] Verify warning shows if phone not verified
-  - [ ] Verify warning hides if phone verified
+    - [ ] Verify warning shows if phone not verified
+    - [ ] Verify warning hides if phone verified
 
 ### UI/UX Testing
 

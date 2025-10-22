@@ -881,18 +881,18 @@ BuildOS is a **Turborepo monorepo** with two independently deployed applications
 ### Apps (Independently Deployable)
 
 1. **`/apps/web`** - SvelteKit web application
-   - **Deployment:** Vercel (serverless)
-   - **Documentation:** `/apps/web/docs/`
-   - **CLAUDE Guide:** `/apps/web/CLAUDE.md`
-   - **Purpose:** User UI, API endpoints, real-time updates
-   - **Tech:** SvelteKit 2 + Svelte 5 (runes)
+    - **Deployment:** Vercel (serverless)
+    - **Documentation:** `/apps/web/docs/`
+    - **CLAUDE Guide:** `/apps/web/CLAUDE.md`
+    - **Purpose:** User UI, API endpoints, real-time updates
+    - **Tech:** SvelteKit 2 + Svelte 5 (runes)
 
 2. **`/apps/worker`** - Background worker service
-   - **Deployment:** Railway (long-running)
-   - **Documentation:** `/apps/worker/docs/`
-   - **CLAUDE Guide:** `/apps/worker/CLAUDE.md`
-   - **Purpose:** Background jobs, email, scheduled tasks
-   - **Tech:** Node.js + Express + BullMQ
+    - **Deployment:** Railway (long-running)
+    - **Documentation:** `/apps/worker/docs/`
+    - **CLAUDE Guide:** `/apps/worker/CLAUDE.md`
+    - **Purpose:** Background jobs, email, scheduled tasks
+    - **Tech:** Node.js + Express + BullMQ
 
 ### Packages (Shared Libraries)
 

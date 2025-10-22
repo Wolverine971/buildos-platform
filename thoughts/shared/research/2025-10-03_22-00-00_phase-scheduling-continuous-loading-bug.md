@@ -4,9 +4,8 @@ researcher: Claude Code
 git_commit: 804149a327d20e64b02e9fc12b77e117a3fa2f53
 branch: main
 repository: buildos-platform
-topic: "Phase Scheduling Modal - Continuous Loading State Bug"
-tags:
-  [research, codebase, bug-analysis, scheduling, loading-state, race-condition]
+topic: 'Phase Scheduling Modal - Continuous Loading State Bug'
+tags: [research, codebase, bug-analysis, scheduling, loading-state, race-condition]
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude Code
@@ -46,30 +45,23 @@ Additionally, there's a **potential null preferences bug** in `task-time-slot-fi
 
 ```typescript
 async function scheduleAllTasks() {
-  if (
-    phaseValidationWarning &&
-    phaseValidationWarning.includes("Phase dates issue")
-  ) {
-    toastService.error(
-      "Cannot schedule tasks: Phase dates are outside project boundaries.",
-    );
-    return;
-  }
+	if (phaseValidationWarning && phaseValidationWarning.includes('Phase dates issue')) {
+		toastService.error('Cannot schedule tasks: Phase dates are outside project boundaries.');
+		return;
+	}
 
-  const success = await schedulingStore.saveSchedules(projectId);
+	const success = await schedulingStore.saveSchedules(projectId);
 
-  if (success) {
-    toastService.success(
-      `Successfully scheduled ${proposedSchedules.length} tasks`,
-    );
-    dispatch("scheduled", {
-      phaseId: phase.id,
-      projectId,
-      taskCount: proposedSchedules.length,
-      needsRefresh: true, // ← CRITICAL: Triggers parent refresh
-    });
-    handleClose();
-  }
+	if (success) {
+		toastService.success(`Successfully scheduled ${proposedSchedules.length} tasks`);
+		dispatch('scheduled', {
+			phaseId: phase.id,
+			projectId,
+			taskCount: proposedSchedules.length,
+			needsRefresh: true // ← CRITICAL: Triggers parent refresh
+		});
+		handleClose();
+	}
 }
 ```
 
@@ -150,18 +142,18 @@ The endpoint:
 ```typescript
 // Get user calendar preferences
 const { data: preferences } = await supabase
-  .from("user_calendar_preferences")
-  .select("*")
-  .eq("user_id", user.id)
-  .single();
+	.from('user_calendar_preferences')
+	.select('*')
+	.eq('user_id', user.id)
+	.single();
 
 const userPreferences = preferences || {
-  work_start_time: "09:00:00",
-  work_end_time: "17:00:00",
-  working_days: [1, 2, 3, 4, 5],
-  default_task_duration_minutes: 60,
-  exclude_holidays: true,
-  timeZone: timeZone || "America/New_York",
+	work_start_time: '09:00:00',
+	work_end_time: '17:00:00',
+	working_days: [1, 2, 3, 4, 5],
+	default_task_duration_minutes: 60,
+	exclude_holidays: true,
+	timeZone: timeZone || 'America/New_York'
 };
 ```
 
@@ -173,40 +165,39 @@ const userPreferences = preferences || {
 
 ```typescript
 async function handleTasksScheduled(event: CustomEvent) {
-  const { successfulTasks, failedTasks, totalTasks, needsRefresh } =
-    event.detail;
+	const { successfulTasks, failedTasks, totalTasks, needsRefresh } = event.detail;
 
-  // Show success message
-  if (successfulTasks && successfulTasks.length > 0) {
-    const successCount = successfulTasks.length;
-    const failureCount = failedTasks ? failedTasks.length : 0;
+	// Show success message
+	if (successfulTasks && successfulTasks.length > 0) {
+		const successCount = successfulTasks.length;
+		const failureCount = failedTasks ? failedTasks.length : 0;
 
-    if (failureCount > 0) {
-      toastService.warning(
-        `Scheduled ${successCount} of ${totalTasks} tasks. ${failureCount} failed.`,
-      );
-    } else {
-      toastService.success(`Successfully scheduled ${successCount} tasks`);
-    }
-  }
+		if (failureCount > 0) {
+			toastService.warning(
+				`Scheduled ${successCount} of ${totalTasks} tasks. ${failureCount} failed.`
+			);
+		} else {
+			toastService.success(`Successfully scheduled ${successCount} tasks`);
+		}
+	}
 
-  // Force reload of tasks and phases to ensure UI is fully synced
-  if (needsRefresh && dataService && data.project?.id) {
-    try {
-      // Set loading state while refreshing
-      projectStoreV2.setLoadingState("tasks", "loading"); // ← LOADING STATE SET
+	// Force reload of tasks and phases to ensure UI is fully synced
+	if (needsRefresh && dataService && data.project?.id) {
+		try {
+			// Set loading state while refreshing
+			projectStoreV2.setLoadingState('tasks', 'loading'); // ← LOADING STATE SET
 
-      // Reload tasks with calendar events
-      await dataService.loadTasks({ force: true });
-      // Reload phases to update phase-level task counts and statuses
-      await dataService.loadPhases({ force: true });
+			// Reload tasks with calendar events
+			await dataService.loadTasks({ force: true });
+			// Reload phases to update phase-level task counts and statuses
+			await dataService.loadPhases({ force: true });
 
-      projectStoreV2.setLoadingState("tasks", "idle"); // ← LOADING STATE CLEARED
-    } catch (error) {
-      console.error("Error refreshing data after scheduling:", error);
-      projectStoreV2.setLoadingState("tasks", "error");
-    }
-  }
+			projectStoreV2.setLoadingState('tasks', 'idle'); // ← LOADING STATE CLEARED
+		} catch (error) {
+			console.error('Error refreshing data after scheduling:', error);
+			projectStoreV2.setLoadingState('tasks', 'error');
+		}
+	}
 }
 ```
 
@@ -222,20 +213,20 @@ The project page uses **TWO SEPARATE loading state systems** that must stay in s
 
 ```typescript
 interface ProjectStoreState {
-  loadingStates: {
-    project: LoadingState;
-    tasks: LoadingState;
-    notes: LoadingState;
-    phases: LoadingState;
-    briefs: LoadingState;
-    synthesis: LoadingState;
-    stats: LoadingState;
-    calendar: LoadingState;
-  };
-  // ... other state
+	loadingStates: {
+		project: LoadingState;
+		tasks: LoadingState;
+		notes: LoadingState;
+		phases: LoadingState;
+		briefs: LoadingState;
+		synthesis: LoadingState;
+		stats: LoadingState;
+		calendar: LoadingState;
+	};
+	// ... other state
 }
 
-type LoadingState = "idle" | "loading" | "success" | "error" | "refreshing";
+type LoadingState = 'idle' | 'loading' | 'success' | 'error' | 'refreshing';
 ```
 
 **Updated by**:
@@ -250,19 +241,19 @@ type LoadingState = "idle" | "loading" | "success" | "error" | "refreshing";
 
 ```typescript
 class LoadingStateManager {
-  private tabStates: Map<string, TabLoadingState> = new Map();
+	private tabStates: Map<string, TabLoadingState> = new Map();
 
-  setDataLoading(
-    tab: string,
-    state: "idle" | "loading" | "success" | "error",
-    hasExistingData: boolean,
-  ) {
-    // Updates tabStates for the given tab
-  }
+	setDataLoading(
+		tab: string,
+		state: 'idle' | 'loading' | 'success' | 'error',
+		hasExistingData: boolean
+	) {
+		// Updates tabStates for the given tab
+	}
 
-  setComponentLoading(tab: string, loading: boolean) {
-    // Updates component loading state
-  }
+	setComponentLoading(tab: string, loading: boolean) {
+		// Updates component loading state
+	}
 }
 ```
 
@@ -278,27 +269,26 @@ class LoadingStateManager {
 
 ```typescript
 let shouldShowSkeleton = $derived.by(() => {
-  try {
-    // Always show skeleton until store is initialized
-    if (!storeInitialized) return true;
+	try {
+		// Always show skeleton until store is initialized
+		if (!storeInitialized) return true;
 
-    if (!activeTab) return true;
+		if (!activeTab) return true;
 
-    // Check if data has been loaded (success state) for the current tab
-    // This now properly handles empty projects by checking loading state, not content
-    const hasData = getHasExistingDataForTab(activeTab); // ← CHECKS STORE
+		// Check if data has been loaded (success state) for the current tab
+		// This now properly handles empty projects by checking loading state, not content
+		const hasData = getHasExistingDataForTab(activeTab); // ← CHECKS STORE
 
-    // Check if component is loading or not loaded
-    const isComponentLoading =
-      loadingComponents[getComponentNameForTab(activeTab)] || false;
-    const isComponentLoaded = isComponentLoadedForTab(activeTab);
+		// Check if component is loading or not loaded
+		const isComponentLoading = loadingComponents[getComponentNameForTab(activeTab)] || false;
+		const isComponentLoaded = isComponentLoadedForTab(activeTab);
 
-    // Show skeleton if data hasn't loaded OR if component is not ready
-    return !hasData || isComponentLoading || !isComponentLoaded;
-  } catch (error) {
-    console.error("[Page] Error accessing shouldShowSkeleton:", error);
-    return true; // Default to showing skeleton on error
-  }
+		// Show skeleton if data hasn't loaded OR if component is not ready
+		return !hasData || isComponentLoading || !isComponentLoaded;
+	} catch (error) {
+		console.error('[Page] Error accessing shouldShowSkeleton:', error);
+		return true; // Default to showing skeleton on error
+	}
 });
 ```
 
@@ -306,25 +296,23 @@ let shouldShowSkeleton = $derived.by(() => {
 
 ```typescript
 function getHasExistingDataForTab(tab: string): boolean {
-  // Check if data has been loaded (regardless of whether it's empty)
-  // This ensures skeleton only shows during actual loading, not for empty projects
-  switch (tab) {
-    case "overview":
-      return (
-        loadingStates.phases === "success" && loadingStates.tasks === "success"
-      ); // ← CHECKS STORE
-    case "tasks":
-      return loadingStates.tasks === "success";
-    case "notes":
-      return loadingStates.notes === "success";
-    case "briefs":
-      return loadingStates.briefs === "success";
-    case "synthesis":
-      // Synthesis is special - check both loading state and content
-      return loadingStates.synthesis === "success" || synthesis !== null;
-    default:
-      return false;
-  }
+	// Check if data has been loaded (regardless of whether it's empty)
+	// This ensures skeleton only shows during actual loading, not for empty projects
+	switch (tab) {
+		case 'overview':
+			return loadingStates.phases === 'success' && loadingStates.tasks === 'success'; // ← CHECKS STORE
+		case 'tasks':
+			return loadingStates.tasks === 'success';
+		case 'notes':
+			return loadingStates.notes === 'success';
+		case 'briefs':
+			return loadingStates.briefs === 'success';
+		case 'synthesis':
+			// Synthesis is special - check both loading state and content
+			return loadingStates.synthesis === 'success' || synthesis !== null;
+		default:
+			return false;
+	}
 }
 ```
 
@@ -408,20 +396,20 @@ During initial page load:
 ```typescript
 // FIXED: Load all essential data eagerly on project init
 await Promise.allSettled([
-  dataService.loadPhases(),
-  dataService.loadTasks(),
-  dataService.loadNotes(),
-  dataService.loadStats(),
-  dataService.loadCalendarStatus(),
+	dataService.loadPhases(),
+	dataService.loadTasks(),
+	dataService.loadNotes(),
+	dataService.loadStats(),
+	dataService.loadCalendarStatus()
 ]);
 
 // FIXED: Load overview component AFTER data is loaded and await it
-await loadComponent("PhasesSection", "overview");
+await loadComponent('PhasesSection', 'overview');
 
 // Mark all tabs as having data loaded
-loadingStateManager.setDataLoading("overview", "success", true); // ← UNCONDITIONAL
-loadingStateManager.setDataLoading("tasks", "success", true);
-loadingStateManager.setDataLoading("notes", "success", true);
+loadingStateManager.setDataLoading('overview', 'success', true); // ← UNCONDITIONAL
+loadingStateManager.setDataLoading('tasks', 'success', true);
+loadingStateManager.setDataLoading('notes', 'success', true);
 ```
 
 **THE ISSUE**:
@@ -587,11 +575,11 @@ Return tasks with updated start_date
 
 ```typescript
 const results = await Promise.allSettled([
-  dataService.loadPhases(),
-  dataService.loadTasks(),
-  dataService.loadNotes(),
-  dataService.loadStats(),
-  dataService.loadCalendarStatus(),
+	dataService.loadPhases(),
+	dataService.loadTasks(),
+	dataService.loadNotes(),
+	dataService.loadStats(),
+	dataService.loadCalendarStatus()
 ]);
 
 // Check which operations succeeded
@@ -599,21 +587,18 @@ const loadTasksResult = results[1]; // loadTasks() is index 1
 const loadPhasesResult = results[0]; // loadPhases() is index 0
 
 // Only mark as loaded if actually successful
-if (
-  loadPhasesResult.status === "fulfilled" &&
-  loadTasksResult.status === "fulfilled"
-) {
-  console.log("[Page] Essential data loaded successfully");
+if (loadPhasesResult.status === 'fulfilled' && loadTasksResult.status === 'fulfilled') {
+	console.log('[Page] Essential data loaded successfully');
 } else {
-  console.error("[Page] Some data failed to load:", {
-    phases: loadPhasesResult.status,
-    tasks: loadTasksResult.status,
-  });
-  // Don't mark as success - let store states reflect reality
+	console.error('[Page] Some data failed to load:', {
+		phases: loadPhasesResult.status,
+		tasks: loadTasksResult.status
+	});
+	// Don't mark as success - let store states reflect reality
 }
 
 // Load component regardless (for error display)
-await loadComponent("PhasesSection", "overview");
+await loadComponent('PhasesSection', 'overview');
 ```
 
 ### Fix 3: Add Timeout/Retry Logic

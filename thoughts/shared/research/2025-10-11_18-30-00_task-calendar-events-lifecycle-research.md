@@ -4,10 +4,10 @@ date: 2025-10-11T18:30:00Z
 author: Claude Code
 tags: [calendar, tasks, sync, database, architecture]
 related:
-  - /apps/web/src/lib/services/calendar-service.ts
-  - /apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
-  - /apps/web/src/routes/api/projects/[id]/tasks/batch/+server.ts
-  - /apps/web/docs/technical/architecture/CALENDAR_SERVICE_FLOW.md
+    - /apps/web/src/lib/services/calendar-service.ts
+    - /apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
+    - /apps/web/src/routes/api/projects/[id]/tasks/batch/+server.ts
+    - /apps/web/docs/technical/architecture/CALENDAR_SERVICE_FLOW.md
 status: complete
 ---
 
@@ -37,39 +37,39 @@ This document details how `task_calendar_events` are created, updated, and delet
 
 ```typescript
 {
-  id: string; // UUID primary key
-  user_id: string; // Foreign key to users
-  task_id: string; // Foreign key to tasks
-  calendar_event_id: string; // Google Calendar event ID
-  calendar_id: string; // Google Calendar ID (usually 'primary')
-  project_calendar_id: string | null; // Optional project calendar reference
+	id: string; // UUID primary key
+	user_id: string; // Foreign key to users
+	task_id: string; // Foreign key to tasks
+	calendar_event_id: string; // Google Calendar event ID
+	calendar_id: string; // Google Calendar ID (usually 'primary')
+	project_calendar_id: string | null; // Optional project calendar reference
 
-  // Event details
-  event_title: string | null;
-  event_start: string | null; // ISO timestamp
-  event_end: string | null; // ISO timestamp
-  event_link: string | null; // Google Calendar URL
+	// Event details
+	event_title: string | null;
+	event_start: string | null; // ISO timestamp
+	event_end: string | null; // ISO timestamp
+	event_link: string | null; // Google Calendar URL
 
-  // Recurring event tracking
-  is_master_event: boolean | null; // True if this is the main recurring event
-  is_exception: boolean | null; // True if this is a modified instance
-  recurrence_rule: string | null; // RRULE format (e.g., "RRULE:FREQ=DAILY")
-  recurrence_master_id: string | null; // Links to master event for exceptions
-  recurrence_instance_date: string | null;
-  exception_type: string | null; // 'modified' | 'cancelled'
-  original_start_time: string | null;
-  series_update_scope: string | null; // 'single' | 'all' | 'future'
+	// Recurring event tracking
+	is_master_event: boolean | null; // True if this is the main recurring event
+	is_exception: boolean | null; // True if this is a modified instance
+	recurrence_rule: string | null; // RRULE format (e.g., "RRULE:FREQ=DAILY")
+	recurrence_master_id: string | null; // Links to master event for exceptions
+	recurrence_instance_date: string | null;
+	exception_type: string | null; // 'modified' | 'cancelled'
+	original_start_time: string | null;
+	series_update_scope: string | null; // 'single' | 'all' | 'future'
 
-  // Sync tracking
-  sync_status: string; // 'synced' | 'pending' | 'error' | 'deleted'
-  sync_source: string | null; // 'app' | 'google' | 'system'
-  sync_error: string | null;
-  sync_version: number | null; // Incremented on each update
-  last_synced_at: string | null; // ISO timestamp
+	// Sync tracking
+	sync_status: string; // 'synced' | 'pending' | 'error' | 'deleted'
+	sync_source: string | null; // 'app' | 'google' | 'system'
+	sync_error: string | null;
+	sync_version: number | null; // Incremented on each update
+	last_synced_at: string | null; // ISO timestamp
 
-  // Timestamps
-  created_at: string | null;
-  updated_at: string | null;
+	// Timestamps
+	created_at: string | null;
+	updated_at: string | null;
 }
 ```
 
@@ -118,41 +118,41 @@ This document details how `task_calendar_events` are created, updated, and delet
 ### When Calendar Events Are Created
 
 1. **Task Scheduled with Start Date**
-   - File: `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts`
-   - Trigger: `updates.addTaskToCalendar === true` AND task has `start_date`
-   - Service: `CalendarService.scheduleTask()`
+    - File: `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts`
+    - Trigger: `updates.addTaskToCalendar === true` AND task has `start_date`
+    - Service: `CalendarService.scheduleTask()`
 
 2. **Recurring Task Creation**
-   - Same as above, but includes recurrence parameters
-   - Stores RRULE in `recurrence_rule` column
-   - Sets `is_master_event = true`
+    - Same as above, but includes recurrence parameters
+    - Stores RRULE in `recurrence_rule` column
+    - Sets `is_master_event = true`
 
 3. **Phase Task Scheduling**
-   - File: `/apps/web/src/routes/api/projects/[id]/phases/[phaseId]/schedule/+server.ts`
-   - Bulk operation that schedules multiple tasks to calendar
+    - File: `/apps/web/src/routes/api/projects/[id]/phases/[phaseId]/schedule/+server.ts`
+    - Bulk operation that schedules multiple tasks to calendar
 
 ### Creation Implementation
 
 ```typescript
 // Location: calendar-service.ts, scheduleTask()
-await this.supabase.from("task_calendar_events").upsert({
-  user_id: userId,
-  task_id: task_id,
-  calendar_event_id: response.data.id!,
-  calendar_id: calendar_id,
-  event_link: response.data.htmlLink,
-  event_start: startDate.toISOString(),
-  event_end: endDate.toISOString(),
-  event_title: task.title,
-  // Mark as master event if it's recurring
-  is_master_event: isRecurring,
-  // Store the RRULE if recurring
-  recurrence_rule: isRecurring && recurrence.length > 0 ? recurrence[0] : null,
-  // Sync metadata
-  last_synced_at: new Date().toISOString(),
-  sync_status: "synced", // ← IMPORTANT
-  sync_source: "app", // ← IMPORTANT
-  updated_at: new Date().toISOString(),
+await this.supabase.from('task_calendar_events').upsert({
+	user_id: userId,
+	task_id: task_id,
+	calendar_event_id: response.data.id!,
+	calendar_id: calendar_id,
+	event_link: response.data.htmlLink,
+	event_start: startDate.toISOString(),
+	event_end: endDate.toISOString(),
+	event_title: task.title,
+	// Mark as master event if it's recurring
+	is_master_event: isRecurring,
+	// Store the RRULE if recurring
+	recurrence_rule: isRecurring && recurrence.length > 0 ? recurrence[0] : null,
+	// Sync metadata
+	last_synced_at: new Date().toISOString(),
+	sync_status: 'synced', // ← IMPORTANT
+	sync_source: 'app', // ← IMPORTANT
+	updated_at: new Date().toISOString()
 });
 ```
 
@@ -171,21 +171,21 @@ await this.supabase.from("task_calendar_events").upsert({
 ### Update Triggers
 
 1. **Task start_date Changed**
-   - Updates event start/end times in Google Calendar
-   - Updates database record with new times
+    - Updates event start/end times in Google Calendar
+    - Updates database record with new times
 
 2. **Task Duration Changed**
-   - Recalculates end time
-   - Updates Google Calendar event
+    - Recalculates end time
+    - Updates Google Calendar event
 
 3. **Task Title Changed**
-   - Updates event summary in Google Calendar
-   - Updates `event_title` in database
+    - Updates event summary in Google Calendar
+    - Updates `event_title` in database
 
 4. **Recurrence Pattern Changed**
-   - **Deletes old event** (entire series)
-   - **Creates new event** with new recurrence
-   - Critical: This is a delete + create, not an update!
+    - **Deletes old event** (entire series)
+    - **Creates new event** with new recurrence
+    - Critical: This is a delete + create, not an update!
 
 ### Update Implementation
 
@@ -194,72 +194,69 @@ await this.supabase.from("task_calendar_events").upsert({
 
 // Edge Case 5: Updates to existing calendar events
 if (
-  hasCalendarEvents &&
-  !isDateCleared &&
-  existingTask.status !== "done" &&
-  newTaskData.status !== "done"
+	hasCalendarEvents &&
+	!isDateCleared &&
+	existingTask.status !== 'done' &&
+	newTaskData.status !== 'done'
 ) {
-  // Check for recurrence changes
-  const recurrenceChanged =
-    wasRecurring !== isNowRecurring ||
-    (isNowRecurring &&
-      wasRecurring &&
-      ((newTaskData.recurrence_pattern &&
-        newTaskData.recurrence_pattern !== existingTask.recurrence_pattern) ||
-        (newTaskData.recurrence_ends !== undefined &&
-          newTaskData.recurrence_ends !== existingTask.recurrence_ends)));
+	// Check for recurrence changes
+	const recurrenceChanged =
+		wasRecurring !== isNowRecurring ||
+		(isNowRecurring &&
+			wasRecurring &&
+			((newTaskData.recurrence_pattern &&
+				newTaskData.recurrence_pattern !== existingTask.recurrence_pattern) ||
+				(newTaskData.recurrence_ends !== undefined &&
+					newTaskData.recurrence_ends !== existingTask.recurrence_ends)));
 
-  if (recurrenceChanged) {
-    // DELETE old events first
-    operations.push({
-      type: "delete_events",
-      data: {
-        events: existingTask.task_calendar_events,
-        reason: "recurrence_changed",
-      },
-    });
+	if (recurrenceChanged) {
+		// DELETE old events first
+		operations.push({
+			type: 'delete_events',
+			data: {
+				events: existingTask.task_calendar_events,
+				reason: 'recurrence_changed'
+			}
+		});
 
-    // CREATE new event with new recurrence
-    operations.push({
-      type: "schedule_task",
-      data: {
-        startTime: formatStartTime(
-          newTaskData.start_date || existingTask.start_date,
-        ),
-        duration:
-          newTaskData.duration_minutes || existingTask.duration_minutes || 60,
-        title: newTaskData.title || existingTask.title,
-        projectName: existingTask.project.name,
-        timeZone: timeZone,
-        task_type:
-          newTaskData.task_type !== undefined
-            ? newTaskData.task_type
-            : existingTask.task_type,
-        recurrence_pattern:
-          newTaskData.task_type === "one_off"
-            ? null
-            : newTaskData.recurrence_pattern !== undefined
-              ? newTaskData.recurrence_pattern
-              : existingTask.recurrence_pattern,
-        recurrence_ends:
-          newTaskData.task_type === "one_off"
-            ? null
-            : newTaskData.recurrence_ends !== undefined
-              ? newTaskData.recurrence_ends
-              : existingTask.recurrence_ends,
-      },
-    });
-  } else {
-    // Simple update (no recurrence change)
-    operations.push({
-      type: "update_events",
-      data: {
-        task: existingTask,
-        updates: newTaskData,
-        timeZone: timeZone,
-      },
-    });
-  }
+		// CREATE new event with new recurrence
+		operations.push({
+			type: 'schedule_task',
+			data: {
+				startTime: formatStartTime(newTaskData.start_date || existingTask.start_date),
+				duration: newTaskData.duration_minutes || existingTask.duration_minutes || 60,
+				title: newTaskData.title || existingTask.title,
+				projectName: existingTask.project.name,
+				timeZone: timeZone,
+				task_type:
+					newTaskData.task_type !== undefined
+						? newTaskData.task_type
+						: existingTask.task_type,
+				recurrence_pattern:
+					newTaskData.task_type === 'one_off'
+						? null
+						: newTaskData.recurrence_pattern !== undefined
+							? newTaskData.recurrence_pattern
+							: existingTask.recurrence_pattern,
+				recurrence_ends:
+					newTaskData.task_type === 'one_off'
+						? null
+						: newTaskData.recurrence_ends !== undefined
+							? newTaskData.recurrence_ends
+							: existingTask.recurrence_ends
+			}
+		});
+	} else {
+		// Simple update (no recurrence change)
+		operations.push({
+			type: 'update_events',
+			data: {
+				task: existingTask,
+				updates: newTaskData,
+				timeZone: timeZone
+			}
+		});
+	}
 }
 ```
 
@@ -277,23 +274,23 @@ if (
 ### When Calendar Events Are Deleted
 
 1. **Task Status Changed to 'done'**
-   - Trigger: `newTaskData.status === 'done' && existingTask.status !== 'done'`
-   - Action: Delete all associated calendar events
-   - Reason: `'task_completed'`
+    - Trigger: `newTaskData.status === 'done' && existingTask.status !== 'done'`
+    - Action: Delete all associated calendar events
+    - Reason: `'task_completed'`
 
 2. **Task start_date Cleared (set to null)**
-   - Trigger: `newTaskData.start_date === null && existingTask.start_date !== null`
-   - Action: Delete all associated calendar events
-   - Reason: `'date_cleared'`
+    - Trigger: `newTaskData.start_date === null && existingTask.start_date !== null`
+    - Action: Delete all associated calendar events
+    - Reason: `'date_cleared'`
 
 3. **Task Deleted**
-   - File: `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts` (DELETE handler)
-   - Action: Delete all associated calendar events
-   - Reason: `'task_deletion'`
+    - File: `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts` (DELETE handler)
+    - Action: Delete all associated calendar events
+    - Reason: `'task_deletion'`
 
 4. **Task Type Changed (recurring → one_off)**
-   - Action: Delete recurring event, create new one-off event
-   - Reason: `'recurrence_changed'`
+    - Action: Delete recurring event, create new one-off event
+    - Reason: `'recurrence_changed'`
 
 ### Deletion Implementation
 
@@ -361,10 +358,10 @@ Based on code analysis:
 
 ```typescript
 type SyncStatus =
-  | "synced" // Successfully synced with Google Calendar
-  | "pending" // Not yet synced (queued)
-  | "error" // Sync failed
-  | "deleted"; // Marked as deleted (soft delete)
+	| 'synced' // Successfully synced with Google Calendar
+	| 'pending' // Not yet synced (queued)
+	| 'error' // Sync failed
+	| 'deleted'; // Marked as deleted (soft delete)
 ```
 
 **Note:** The database schema shows `sync_status: string` (not an enum), allowing these string values.
@@ -445,19 +442,19 @@ class CalendarService {
 ### API Endpoints
 
 1. **Single Task Update**: `/api/projects/[id]/tasks/[taskId]` (PATCH)
-   - Determines required calendar operations
-   - Calls `CalendarService` methods directly
-   - Fire-and-forget pattern (non-blocking)
+    - Determines required calendar operations
+    - Calls `CalendarService` methods directly
+    - Fire-and-forget pattern (non-blocking)
 
 2. **Batch Task Update**: `/api/projects/[id]/tasks/batch` (PATCH)
-   - Tracks calendar sync requirements
-   - Uses `bulkDeleteCalendarEvents()` and `bulkUpdateCalendarEvents()`
-   - Returns warnings for failed calendar operations
+    - Tracks calendar sync requirements
+    - Uses `bulkDeleteCalendarEvents()` and `bulkUpdateCalendarEvents()`
+    - Returns warnings for failed calendar operations
 
 3. **Task Deletion**: `/api/projects/[id]/tasks/[taskId]` (DELETE)
-   - Handles recurring event deletion scopes
-   - Deletes all associated calendar events
-   - Uses enhanced error handling
+    - Handles recurring event deletion scopes
+    - Deletes all associated calendar events
+    - Uses enhanced error handling
 
 ### Architectural Pattern
 
@@ -493,33 +490,29 @@ class CalendarService {
 ```typescript
 // Collect events to delete
 const calendarDeletions = [];
-for (const {
-  task,
-  operation,
-  existingEvents,
-} of results.calendarSyncRequired) {
-  if (operation === "delete" && existingEvents.length > 0) {
-    calendarDeletions.push(
-      ...existingEvents.map((e: any) => ({
-        event_id: e.calendar_event_id,
-        calendar_id: e.calendar_id || "primary",
-      })),
-    );
-  }
+for (const { task, operation, existingEvents } of results.calendarSyncRequired) {
+	if (operation === 'delete' && existingEvents.length > 0) {
+		calendarDeletions.push(
+			...existingEvents.map((e: any) => ({
+				event_id: e.calendar_event_id,
+				calendar_id: e.calendar_id || 'primary'
+			}))
+		);
+	}
 }
 
 // Execute bulk delete
 if (calendarDeletions.length > 0) {
-  const deleteResult = await calendarService.bulkDeleteCalendarEvents(
-    user.id,
-    calendarDeletions,
-    { batchSize: 5, reason: "bulk_status_update" }, // ← Add reason for logging
-  );
+	const deleteResult = await calendarService.bulkDeleteCalendarEvents(
+		user.id,
+		calendarDeletions,
+		{ batchSize: 5, reason: 'bulk_status_update' } // ← Add reason for logging
+	);
 
-  // Handle results
-  results.warnings.push(
-    `Calendar sync: ${deleteResult.deletedCount} events deleted, ${deleteResult.warnings.length} warnings`,
-  );
+	// Handle results
+	results.warnings.push(
+		`Calendar sync: ${deleteResult.deletedCount} events deleted, ${deleteResult.warnings.length} warnings`
+	);
 }
 ```
 
@@ -535,39 +528,33 @@ if (calendarDeletions.length > 0) {
 
 ```typescript
 const calendarUpdates = [];
-for (const {
-  task,
-  operation,
-  existingEvents,
-} of results.calendarSyncRequired) {
-  if (operation === "update" && existingEvents.length > 0 && task.start_date) {
-    const startTime = new Date(task.start_date);
-    const endTime = new Date(startTime);
-    endTime.setMinutes(startTime.getMinutes() + (task.duration_minutes || 60));
+for (const { task, operation, existingEvents } of results.calendarSyncRequired) {
+	if (operation === 'update' && existingEvents.length > 0 && task.start_date) {
+		const startTime = new Date(task.start_date);
+		const endTime = new Date(startTime);
+		endTime.setMinutes(startTime.getMinutes() + (task.duration_minutes || 60));
 
-    for (const event of existingEvents) {
-      calendarUpdates.push({
-        event_id: event.calendar_event_id,
-        calendar_id: event.calendar_id || "primary",
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        summary: task.title,
-      });
-    }
-  }
+		for (const event of existingEvents) {
+			calendarUpdates.push({
+				event_id: event.calendar_event_id,
+				calendar_id: event.calendar_id || 'primary',
+				start_time: startTime.toISOString(),
+				end_time: endTime.toISOString(),
+				summary: task.title
+			});
+		}
+	}
 }
 
 // Execute bulk update
 if (calendarUpdates.length > 0) {
-  const updateResult = await calendarService.bulkUpdateCalendarEvents(
-    user.id,
-    calendarUpdates,
-    { batchSize: 5 },
-  );
+	const updateResult = await calendarService.bulkUpdateCalendarEvents(user.id, calendarUpdates, {
+		batchSize: 5
+	});
 
-  results.warnings.push(
-    `Calendar sync: ${updateResult.updated} events updated, ${updateResult.failed} failed`,
-  );
+	results.warnings.push(
+		`Calendar sync: ${updateResult.updated} events updated, ${updateResult.failed} failed`
+	);
 }
 ```
 
@@ -576,20 +563,19 @@ if (calendarUpdates.length > 0) {
 **Single Calendar Operations** (await for immediate consistency):
 
 ```typescript
-const isSingleCalendarAdd =
-  updates.addTaskToCalendar && calendarPromises.length === 1;
+const isSingleCalendarAdd = updates.addTaskToCalendar && calendarPromises.length === 1;
 
 if (calendarPromises.length > 0) {
-  if (isSingleCalendarAdd) {
-    // Wait for single calendar operations to complete
-    // Ensures task_calendar_events are populated in response
-    await Promise.allSettled(calendarPromises);
-  } else {
-    // For bulk operations, process in background
-    Promise.allSettled(calendarPromises).catch((error) =>
-      console.error("Calendar operations failed:", error),
-    );
-  }
+	if (isSingleCalendarAdd) {
+		// Wait for single calendar operations to complete
+		// Ensures task_calendar_events are populated in response
+		await Promise.allSettled(calendarPromises);
+	} else {
+		// For bulk operations, process in background
+		Promise.allSettled(calendarPromises).catch((error) =>
+			console.error('Calendar operations failed:', error)
+		);
+	}
 }
 ```
 
@@ -599,13 +585,13 @@ if (calendarPromises.length > 0) {
 // Don't block the response for bulk operations
 // Return immediately with status
 return ApiResponse.success({
-  successful: results.successful,
-  failed: results.failed,
-  calendarSync: {
-    status: "processing",
-    deletedCount: deleteResult.deletedCount,
-    warnings: results.warnings,
-  },
+	successful: results.successful,
+	failed: results.failed,
+	calendarSync: {
+		status: 'processing',
+		deletedCount: deleteResult.deletedCount,
+		warnings: results.warnings
+	}
 });
 ```
 
@@ -613,30 +599,29 @@ return ApiResponse.success({
 
 ```typescript
 try {
-  const calendarService = new CalendarService(supabase);
-  const result = await calendarService.bulkDeleteCalendarEvents(
-    user.id,
-    calendarDeletions,
-    { batchSize: 5, reason: "bulk_operation" },
-  );
+	const calendarService = new CalendarService(supabase);
+	const result = await calendarService.bulkDeleteCalendarEvents(user.id, calendarDeletions, {
+		batchSize: 5,
+		reason: 'bulk_operation'
+	});
 
-  // Check for warnings/errors
-  if (result.warnings.length > 0) {
-    results.warnings.push(...result.warnings);
-  }
+	// Check for warnings/errors
+	if (result.warnings.length > 0) {
+		results.warnings.push(...result.warnings);
+	}
 
-  if (result.errors.length > 0) {
-    results.errors.push(...result.errors);
-  }
+	if (result.errors.length > 0) {
+		results.errors.push(...result.errors);
+	}
 
-  // Log summary
-  console.log(
-    `Bulk delete completed: ${result.deletedCount} deleted, ${result.warnings.length} warnings`,
-  );
+	// Log summary
+	console.log(
+		`Bulk delete completed: ${result.deletedCount} deleted, ${result.warnings.length} warnings`
+	);
 } catch (calendarError) {
-  console.error("Calendar sync failed during bulk update:", calendarError);
-  results.warnings.push("Some calendar events may not have been updated");
-  // Don't fail the entire operation
+	console.error('Calendar sync failed during bulk update:', calendarError);
+	results.warnings.push('Some calendar events may not have been updated');
+	// Don't fail the entire operation
 }
 ```
 
@@ -667,19 +652,15 @@ processCalendarOperations(calendarOperations); // Fire and forget
 
 ```typescript
 // Edge Case 1: Task marked as done - remove from calendar
-if (
-  newTaskData.status === "done" &&
-  existingTask.status !== "done" &&
-  hasCalendarEvents
-) {
-  operations.push({
-    type: "delete_events",
-    data: {
-      events: existingTask.task_calendar_events,
-      reason: "task_completed",
-    },
-  });
-  return operations; // No further calendar operations needed
+if (newTaskData.status === 'done' && existingTask.status !== 'done' && hasCalendarEvents) {
+	operations.push({
+		type: 'delete_events',
+		data: {
+			events: existingTask.task_calendar_events,
+			reason: 'task_completed'
+		}
+	});
+	return operations; // No further calendar operations needed
 }
 ```
 
@@ -688,20 +669,20 @@ if (
 ```typescript
 // Edge Case 3: Date cleared - remove from calendar
 const isDateCleared =
-  (newTaskData.start_date === null ||
-    newTaskData.start_date === "" ||
-    newTaskData.start_date === undefined) &&
-  existingTask.start_date;
+	(newTaskData.start_date === null ||
+		newTaskData.start_date === '' ||
+		newTaskData.start_date === undefined) &&
+	existingTask.start_date;
 
 if (isDateCleared && hasCalendarEvents) {
-  operations.push({
-    type: "delete_events",
-    data: {
-      events: existingTask.task_calendar_events,
-      reason: "date_cleared",
-    },
-  });
-  return operations; // No further calendar operations needed
+	operations.push({
+		type: 'delete_events',
+		data: {
+			events: existingTask.task_calendar_events,
+			reason: 'date_cleared'
+		}
+	});
+	return operations; // No further calendar operations needed
 }
 ```
 
@@ -710,15 +691,15 @@ if (isDateCleared && hasCalendarEvents) {
 ```typescript
 // In DELETE handler
 if (task.task_calendar_events?.length > 0) {
-  const calendarResults = await handleCalendarEventDeletion(
-    task.task_calendar_events,
-    user.id,
-    supabase,
-    taskId,
-    projectId,
-  );
-  warnings.push(...calendarResults.warnings);
-  errors.push(...calendarResults.errors);
+	const calendarResults = await handleCalendarEventDeletion(
+		task.task_calendar_events,
+		user.id,
+		supabase,
+		taskId,
+		projectId
+	);
+	warnings.push(...calendarResults.warnings);
+	errors.push(...calendarResults.errors);
 }
 ```
 
@@ -728,22 +709,22 @@ if (task.task_calendar_events?.length > 0) {
 
 ```typescript
 if (recurrenceChanged) {
-  // Step 1: Delete old events
-  operations.push({
-    type: "delete_events",
-    data: {
-      events: existingTask.task_calendar_events,
-      reason: "recurrence_changed",
-    },
-  });
+	// Step 1: Delete old events
+	operations.push({
+		type: 'delete_events',
+		data: {
+			events: existingTask.task_calendar_events,
+			reason: 'recurrence_changed'
+		}
+	});
 
-  // Step 2: Create new event with new recurrence
-  operations.push({
-    type: "schedule_task",
-    data: {
-      /* ... new recurrence settings ... */
-    },
-  });
+	// Step 2: Create new event with new recurrence
+	operations.push({
+		type: 'schedule_task',
+		data: {
+			/* ... new recurrence settings ... */
+		}
+	});
 }
 ```
 
@@ -753,19 +734,19 @@ if (recurrenceChanged) {
 
 ```typescript
 // Calendar event might already be deleted
-if (error.code === 404 || error.message?.includes("404")) {
-  // Still mark as deleted in database
-  await supabase
-    .from("task_calendar_events")
-    .update({
-      sync_status: "deleted",
-      sync_error: "Event not found in calendar",
-      last_synced_at: new Date().toISOString(),
-    })
-    .eq("id", event.id);
+if (error.code === 404 || error.message?.includes('404')) {
+	// Still mark as deleted in database
+	await supabase
+		.from('task_calendar_events')
+		.update({
+			sync_status: 'deleted',
+			sync_error: 'Event not found in calendar',
+			last_synced_at: new Date().toISOString()
+		})
+		.eq('id', event.id);
 
-  // Return success for idempotency
-  return { success: true, eventId: event.calendar_event_id };
+	// Return success for idempotency
+	return { success: true, eventId: event.calendar_event_id };
 }
 ```
 
@@ -790,14 +771,14 @@ if (error.code === 404 || error.message?.includes("404")) {
 ```typescript
 // Recommended batch sizes
 const BATCH_SIZE = {
-  delete: 5, // Conservative for deletion (avoid rate limits)
-  update: 5, // Conservative for updates
-  create: 10, // Can be more aggressive for creation
+	delete: 5, // Conservative for deletion (avoid rate limits)
+	update: 5, // Conservative for updates
+	create: 10 // Can be more aggressive for creation
 };
 
 // Usage
 await calendarService.bulkDeleteCalendarEvents(userId, events, {
-  batchSize: BATCH_SIZE.delete,
+	batchSize: BATCH_SIZE.delete
 });
 ```
 
@@ -839,59 +820,57 @@ await calendarService.bulkDeleteCalendarEvents(userId, events, {
 
 ```typescript
 // In batch update endpoint
-const tasksToComplete = updates.filter((u) => u.data.status === "done");
+const tasksToComplete = updates.filter((u) => u.data.status === 'done');
 
 // 1. Update tasks first
 const updatePromises = tasksToComplete.map(async ({ id, data }) => {
-  const { data: existingTask } = await supabase
-    .from("tasks")
-    .select("task_calendar_events(*)")
-    .eq("id", id)
-    .single();
+	const { data: existingTask } = await supabase
+		.from('tasks')
+		.select('task_calendar_events(*)')
+		.eq('id', id)
+		.single();
 
-  await supabase
-    .from("tasks")
-    .update({ ...data, updated_at: new Date().toISOString() })
-    .eq("id", id);
+	await supabase
+		.from('tasks')
+		.update({ ...data, updated_at: new Date().toISOString() })
+		.eq('id', id);
 
-  return existingTask;
+	return existingTask;
 });
 
 const existingTasks = await Promise.all(updatePromises);
 
 // 2. Collect calendar events to delete
 const eventsToDelete = existingTasks
-  .filter((task) => task?.task_calendar_events?.length > 0)
-  .flatMap((task) =>
-    task.task_calendar_events.map((e) => ({
-      id: e.id,
-      calendar_event_id: e.calendar_event_id,
-      calendar_id: e.calendar_id || "primary",
-    })),
-  );
+	.filter((task) => task?.task_calendar_events?.length > 0)
+	.flatMap((task) =>
+		task.task_calendar_events.map((e) => ({
+			id: e.id,
+			calendar_event_id: e.calendar_event_id,
+			calendar_id: e.calendar_id || 'primary'
+		}))
+	);
 
 // 3. Bulk delete calendar events (fire and forget)
 if (eventsToDelete.length > 0) {
-  const calendarService = new CalendarService(supabase);
-  calendarService
-    .bulkDeleteCalendarEvents(user.id, eventsToDelete, {
-      batchSize: 5,
-      reason: "bulk_completion",
-    })
-    .then((result) => {
-      console.log(
-        `Bulk completion: ${result.deletedCount} calendar events removed`,
-      );
-    })
-    .catch((error) => {
-      console.error("Calendar cleanup failed:", error);
-    });
+	const calendarService = new CalendarService(supabase);
+	calendarService
+		.bulkDeleteCalendarEvents(user.id, eventsToDelete, {
+			batchSize: 5,
+			reason: 'bulk_completion'
+		})
+		.then((result) => {
+			console.log(`Bulk completion: ${result.deletedCount} calendar events removed`);
+		})
+		.catch((error) => {
+			console.error('Calendar cleanup failed:', error);
+		});
 }
 
 // 4. Return immediately
 return ApiResponse.success({
-  successful: tasksToComplete.length,
-  calendarSync: { status: "processing" },
+	successful: tasksToComplete.length,
+	calendarSync: { status: 'processing' }
 });
 ```
 
@@ -900,42 +879,42 @@ return ApiResponse.success({
 ```typescript
 // In batch update endpoint
 const tasksWithClearedDates = updates.filter(
-  (u) => u.data.start_date === null && existingTaskHasDate(u.id),
+	(u) => u.data.start_date === null && existingTaskHasDate(u.id)
 );
 
 // Track calendar events to delete
 const calendarDeletions = [];
 
 for (const { id } of tasksWithClearedDates) {
-  const { data: task } = await supabase
-    .from("tasks")
-    .select("task_calendar_events(*)")
-    .eq("id", id)
-    .single();
+	const { data: task } = await supabase
+		.from('tasks')
+		.select('task_calendar_events(*)')
+		.eq('id', id)
+		.single();
 
-  if (task?.task_calendar_events?.length > 0) {
-    calendarDeletions.push(
-      ...task.task_calendar_events.map((e) => ({
-        id: e.id,
-        calendar_event_id: e.calendar_event_id,
-        calendar_id: e.calendar_id || "primary",
-      })),
-    );
-  }
+	if (task?.task_calendar_events?.length > 0) {
+		calendarDeletions.push(
+			...task.task_calendar_events.map((e) => ({
+				id: e.id,
+				calendar_event_id: e.calendar_event_id,
+				calendar_id: e.calendar_id || 'primary'
+			}))
+		);
+	}
 }
 
 // Bulk delete
 if (calendarDeletions.length > 0) {
-  const deleteResult = await calendarService.bulkDeleteCalendarEvents(
-    user.id,
-    calendarDeletions,
-    { batchSize: 5, reason: "date_cleared" },
-  );
+	const deleteResult = await calendarService.bulkDeleteCalendarEvents(
+		user.id,
+		calendarDeletions,
+		{ batchSize: 5, reason: 'date_cleared' }
+	);
 
-  return ApiResponse.success({
-    deletedEvents: deleteResult.deletedCount,
-    warnings: deleteResult.warnings,
-  });
+	return ApiResponse.success({
+		deletedEvents: deleteResult.deletedCount,
+		warnings: deleteResult.warnings
+	});
 }
 ```
 

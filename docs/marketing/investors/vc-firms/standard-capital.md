@@ -35,23 +35,23 @@ Standard Capital focuses on backing technical founders who demonstrate exception
 ### Founding Partners:
 
 - **Paul Buchheit** - General Partner
-  - Creator of Gmail and Google AdSense prototype
-  - Original investor in OpenAI (prescient AI bet)
-  - Long-time Y Combinator partner with 200+ investments
-  - 29 successful exits including DoorDash and Intuit
-  - Deep product and AI expertise
+    - Creator of Gmail and Google AdSense prototype
+    - Original investor in OpenAI (prescient AI bet)
+    - Long-time Y Combinator partner with 200+ investments
+    - 29 successful exits including DoorDash and Intuit
+    - Deep product and AI expertise
 
 - **Dalton Caldwell** - General Partner
-  - 12+ years at Y Combinator, former Managing Partner
-  - Evaluated 1,000+ startups across 25 YC batches
-  - Partner Emeritus at Y Combinator (maintaining connections)
-  - Expert in early-stage company evaluation and scaling
+    - 12+ years at Y Combinator, former Managing Partner
+    - Evaluated 1,000+ startups across 25 YC batches
+    - Partner Emeritus at Y Combinator (maintaining connections)
+    - Expert in early-stage company evaluation and scaling
 
 - **Bryan Berg** - General Partner
-  - Early Stripe employee (infrastructure and security)
-  - CTO experience at multiple startups
-  - Deep technical expertise in scaling systems
-  - Focus on technical due diligence and architecture
+    - Early Stripe employee (infrastructure and security)
+    - CTO experience at multiple startups
+    - Deep technical expertise in scaling systems
+    - Focus on technical due diligence and architecture
 
 ### Partner Expertise:
 
@@ -72,15 +72,15 @@ Standard Capital focuses on backing technical founders who demonstrate exception
 ### Partners' Track Record:
 
 - **Paul Buchheit's Notable Investments**:
-  - OpenAI (original investor, massive AI success)
-  - DoorDash (IPO, $50B+ market cap)
-  - Intuit (major exit)
-  - 29 total exits from 200+ investments
+    - OpenAI (original investor, massive AI success)
+    - DoorDash (IPO, $50B+ market cap)
+    - Intuit (major exit)
+    - 29 total exits from 200+ investments
 
 - **YC Network Effect**:
-  - Access to YC alumni network and deal flow
-  - Pattern recognition from 1,000+ startup evaluations
-  - Proven ability to identify category-defining companies
+    - Access to YC alumni network and deal flow
+    - Pattern recognition from 1,000+ startup evaluations
+    - Proven ability to identify category-defining companies
 
 ### Portfolio Relevance to BuildOS:
 

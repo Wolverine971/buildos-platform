@@ -27,9 +27,9 @@ Here’s a practical way to think about it:
 Let’s assume you’re using **GPT-4o** (as of mid-2025: \~\$5/1M input tokens, \~\$15/1M output tokens).
 
 - A typical D\&D turn =
-  - \~300–800 tokens of description/context,
-  - \~200–400 tokens user message (choices, dice rolls),
-  - \~400–800 tokens model response.
+    - \~300–800 tokens of description/context,
+    - \~200–400 tokens user message (choices, dice rolls),
+    - \~400–800 tokens model response.
 
 - That’s **\~1,000–2,000 tokens/turn**.
 - Cost per turn ≈ **\$0.01–\$0.03**.
@@ -99,17 +99,17 @@ I’ll show costs for two popular options and two cheaper ones. (Pricing pulled 
 
 - Prices: **\$3/M input**, **\$12/M output**, **\$0.75/M cached input**. ([OpenAI][1])
 - **No cache** (20 turns):
-  - Scene each turn: 20 × 10,000 × \$3/M = **\$0.60**
-  - Extra input: 20 × 400 × \$3/M = **\$0.024**
-  - Output: 20 × 600 × \$12/M = **\$0.144**
-  - **Total ≈ \$0.768**
+    - Scene each turn: 20 × 10,000 × \$3/M = **\$0.60**
+    - Extra input: 20 × 400 × \$3/M = **\$0.024**
+    - Output: 20 × 600 × \$12/M = **\$0.144**
+    - **Total ≈ \$0.768**
 
 - **With cache** (20 turns):
-  - First send of scene (to “write” it): 10,000 × \$3/M = **\$0.03**
-  - 19 cached turns: 19 × 10,000 × **\$0.75/M** = **\$0.1425**
-  - Extra input: **\$0.024** (unchanged)
-  - Output: **\$0.144** (unchanged)
-  - **Total ≈ \$0.3405**
+    - First send of scene (to “write” it): 10,000 × \$3/M = **\$0.03**
+    - 19 cached turns: 19 × 10,000 × **\$0.75/M** = **\$0.1425**
+    - Extra input: **\$0.024** (unchanged)
+    - Output: **\$0.144** (unchanged)
+    - **Total ≈ \$0.3405**
 
 ---
 
@@ -130,8 +130,8 @@ I’ll show costs for two popular options and two cheaper ones. (Pricing pulled 
 
 If you want, tell me your **expected turns per branch** and **number of branches**, and I’ll plug in your exact numbers and hand you a one-pager budget.
 
-[1]: https://openai.com/api/pricing/?utm_source=chatgpt.com "API Pricing - OpenAI"
-[2]: https://docs.anthropic.com/en/docs/about-claude/pricing?utm_source=chatgpt.com "Pricing - Anthropic API"
+[1]: https://openai.com/api/pricing/?utm_source=chatgpt.com 'API Pricing - OpenAI'
+[2]: https://docs.anthropic.com/en/docs/about-claude/pricing?utm_source=chatgpt.com 'Pricing - Anthropic API'
 
 # takeaways
 

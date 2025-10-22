@@ -1,21 +1,13 @@
 ---
-title: "Web-Worker Bidirectional Communication Patterns"
+title: 'Web-Worker Bidirectional Communication Patterns'
 date: 2025-10-08
 status: complete
-tags:
-  [
-    architecture,
-    web-worker-communication,
-    api,
-    webhooks,
-    realtime,
-    authentication,
-  ]
+tags: [architecture, web-worker-communication, api, webhooks, realtime, authentication]
 related_docs:
-  - /docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md
-  - /docs/DEPLOYMENT_TOPOLOGY.md
-  - /apps/web/CLAUDE.md
-  - /apps/worker/CLAUDE.md
+    - /docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md
+    - /docs/DEPLOYMENT_TOPOLOGY.md
+    - /apps/web/CLAUDE.md
+    - /apps/worker/CLAUDE.md
 ---
 
 # Web-Worker Bidirectional Communication Research
@@ -102,13 +94,13 @@ BuildOS uses a **queue-based architecture** with **Supabase PostgreSQL** as the 
 
 ```typescript
 const allowedOrigins = [
-  // Development
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "http://localhost:4173",
-  "https://localhost:5173",
-  // Production
-  "https://build-os.com",
+	// Development
+	'http://localhost:5173',
+	'http://localhost:3000',
+	'http://localhost:4173',
+	'https://localhost:5173',
+	// Production
+	'https://build-os.com'
 ];
 ```
 
@@ -145,38 +137,33 @@ static async queueBriefGeneration(
 **Worker Side** (`/apps/worker/src/index.ts`):
 
 ```typescript
-app.post("/queue/brief", async (req, res) => {
-  const { userId, scheduledFor, briefDate, timezone, forceRegenerate } =
-    req.body;
+app.post('/queue/brief', async (req, res) => {
+	const { userId, scheduledFor, briefDate, timezone, forceRegenerate } = req.body;
 
-  // Validate user exists
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("id", userId)
-    .single();
+	// Validate user exists
+	const { data: user } = await supabase.from('users').select('id').eq('id', userId).single();
 
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
+	if (!user) {
+		return res.status(404).json({ error: 'User not found' });
+	}
 
-  // Queue job via Supabase RPC
-  const job = await queue.add(
-    "generate_daily_brief",
-    userId,
-    { briefDate, timezone },
-    {
-      priority: forceRegenerate ? 1 : 10,
-      scheduledFor: new Date(scheduledFor),
-    },
-  );
+	// Queue job via Supabase RPC
+	const job = await queue.add(
+		'generate_daily_brief',
+		userId,
+		{ briefDate, timezone },
+		{
+			priority: forceRegenerate ? 1 : 10,
+			scheduledFor: new Date(scheduledFor)
+		}
+	);
 
-  return res.json({
-    success: true,
-    jobId: job.queue_job_id,
-    scheduledFor: scheduledFor,
-    briefDate,
-  });
+	return res.json({
+		success: true,
+		jobId: job.queue_job_id,
+		scheduledFor: scheduledFor,
+		briefDate
+	});
 });
 ```
 
@@ -198,15 +185,15 @@ static async getJobStatus(jobId: string): Promise<QueueJob | null> {
 **Worker**:
 
 ```typescript
-app.get("/jobs/:jobId", async (req, res) => {
-  const { jobId } = req.params;
-  const job = await queue.getJob(jobId);
+app.get('/jobs/:jobId', async (req, res) => {
+	const { jobId } = req.params;
+	const job = await queue.getJob(jobId);
 
-  if (!job) {
-    return res.status(404).json({ error: "Job not found" });
-  }
+	if (!job) {
+		return res.status(404).json({ error: 'Job not found' });
+	}
 
-  return res.json(job);
+	return res.json(job);
 });
 ```
 
@@ -234,29 +221,29 @@ app.get("/jobs/:jobId", async (req, res) => {
 ```typescript
 // /apps/web/src/routes/api/phases-jobs/+server.ts
 export const POST: RequestHandler = async ({ request, locals }) => {
-  const { user } = await locals.safeGetSession();
-  const { projectId, options } = await request.json();
+	const { user } = await locals.safeGetSession();
+	const { projectId, options } = await request.json();
 
-  // Verify project ownership
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("id", projectId)
-    .eq("user_id", user.id)
-    .single();
+	// Verify project ownership
+	const { data: project } = await supabase
+		.from('projects')
+		.select('id')
+		.eq('id', projectId)
+		.eq('user_id', user.id)
+		.single();
 
-  if (!project) {
-    return json({ error: "Project not found" }, { status: 404 });
-  }
+	if (!project) {
+		return json({ error: 'Project not found' }, { status: 404 });
+	}
 
-  // Call Railway worker to queue job
-  const response = await fetch(`${PUBLIC_RAILWAY_WORKER_URL}/queue/phases`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: user.id, projectId, options }),
-  });
+	// Call Railway worker to queue job
+	const response = await fetch(`${PUBLIC_RAILWAY_WORKER_URL}/queue/phases`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ userId: user.id, projectId, options })
+	});
 
-  return response.json();
+	return response.json();
 };
 ```
 
@@ -354,30 +341,30 @@ async processJob(job: QueueJob): Promise<void> {
 ```typescript
 // /apps/worker/src/workers/shared/queueUtils.ts
 export async function notifyUser(userId: string, event: string, payload?: any) {
-  try {
-    const channel = supabase.channel(`user:${userId}`);
-    await channel.send({
-      type: "broadcast",
-      event: event,
-      payload: payload,
-    });
+	try {
+		const channel = supabase.channel(`user:${userId}`);
+		await channel.send({
+			type: 'broadcast',
+			event: event,
+			payload: payload
+		});
 
-    console.log(`📢 Sent notification to user ${userId}: ${event}`);
-  } catch (error) {
-    console.error("Failed to send notification:", error);
-  }
+		console.log(`📢 Sent notification to user ${userId}: ${event}`);
+	} catch (error) {
+		console.error('Failed to send notification:', error);
+	}
 }
 
 // Usage in worker
-await notifyUser(userId, "brief_completed", {
-  briefId: "uuid",
-  briefDate: "2025-10-08",
-  timezone: "America/New_York",
+await notifyUser(userId, 'brief_completed', {
+	briefId: 'uuid',
+	briefDate: '2025-10-08',
+	timezone: 'America/New_York'
 });
 
-await notifyUser(userId, "brief_failed", {
-  error: "LLM API error",
-  briefDate: "2025-10-08",
+await notifyUser(userId, 'brief_failed', {
+	error: 'LLM API error',
+	briefDate: '2025-10-08'
 });
 ```
 
@@ -442,25 +429,22 @@ private static handleBriefCompleted(payload: any): void {
 
 ```typescript
 // Worker sends email via web app webhook
-const response = await fetch(
-  `${BUILDOS_WEBHOOK_URL}/api/webhooks/send-notification-email`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${PRIVATE_BUILDOS_WEBHOOK_SECRET}`,
-    },
-    body: JSON.stringify({
-      recipientEmail: "user@example.com",
-      recipientUserId: "uuid",
-      subject: "Your daily brief is ready",
-      htmlContent: "<html>...</html>",
-      textContent: "Your daily brief...",
-      deliveryId: "uuid",
-      eventId: "uuid",
-    }),
-  },
-);
+const response = await fetch(`${BUILDOS_WEBHOOK_URL}/api/webhooks/send-notification-email`, {
+	method: 'POST',
+	headers: {
+		'Content-Type': 'application/json',
+		Authorization: `Bearer ${PRIVATE_BUILDOS_WEBHOOK_SECRET}`
+	},
+	body: JSON.stringify({
+		recipientEmail: 'user@example.com',
+		recipientUserId: 'uuid',
+		subject: 'Your daily brief is ready',
+		htmlContent: '<html>...</html>',
+		textContent: 'Your daily brief...',
+		deliveryId: 'uuid',
+		eventId: 'uuid'
+	})
+});
 ```
 
 **Web app webhook handler**:
@@ -468,26 +452,26 @@ const response = await fetch(
 ```typescript
 // /apps/web/src/routes/api/webhooks/send-notification-email/+server.ts
 export const POST: RequestHandler = async ({ request }) => {
-  // Validate webhook secret
-  const authHeader = request.headers.get("authorization");
-  const expectedSecret = PRIVATE_BUILDOS_WEBHOOK_SECRET;
+	// Validate webhook secret
+	const authHeader = request.headers.get('authorization');
+	const expectedSecret = PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
-  if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+	if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
-  const body = await request.json();
+	const body = await request.json();
 
-  // Send email via Gmail
-  const emailService = new EmailService(supabase);
-  const result = await emailService.sendEmail({
-    to: body.recipientEmail,
-    subject: body.subject,
-    html: body.htmlContent,
-    userId: body.recipientUserId,
-  });
+	// Send email via Gmail
+	const emailService = new EmailService(supabase);
+	const result = await emailService.sendEmail({
+		to: body.recipientEmail,
+		subject: body.subject,
+		html: body.htmlContent,
+		userId: body.recipientUserId
+	});
 
-  return json({ success: true, messageId: result.messageId });
+	return json({ success: true, messageId: result.messageId });
 };
 ```
 
@@ -522,45 +506,45 @@ PRIVATE_BUILDOS_WEBHOOK_SECRET=shared-secret-key-here
 ```typescript
 // /apps/web/src/routes/api/webhooks/twilio/status/+server.ts
 export const POST: RequestHandler = async ({ request, url }) => {
-  const body = await request.text();
-  const params = new URLSearchParams(body);
+	const body = await request.text();
+	const params = new URLSearchParams(body);
 
-  const messageSid = params.get("MessageSid");
-  const messageStatus = params.get("MessageStatus");
-  const errorCode = params.get("ErrorCode");
+	const messageSid = params.get('MessageSid');
+	const messageStatus = params.get('MessageStatus');
+	const errorCode = params.get('ErrorCode');
 
-  // Validate Twilio signature
-  const twilioSignature = request.headers.get("X-Twilio-Signature");
-  const isValid = twilio.validateRequest(
-    PRIVATE_TWILIO_AUTH_TOKEN,
-    twilioSignature,
-    webhookUrl,
-    Object.fromEntries(params),
-  );
+	// Validate Twilio signature
+	const twilioSignature = request.headers.get('X-Twilio-Signature');
+	const isValid = twilio.validateRequest(
+		PRIVATE_TWILIO_AUTH_TOKEN,
+		twilioSignature,
+		webhookUrl,
+		Object.fromEntries(params)
+	);
 
-  if (!isValid) {
-    return json({ error: "Invalid signature" }, { status: 401 });
-  }
+	if (!isValid) {
+		return json({ error: 'Invalid signature' }, { status: 401 });
+	}
 
-  // Update SMS message status
-  await supabase
-    .from("sms_messages")
-    .update({
-      twilio_status: messageStatus,
-      delivered_at: messageStatus === "delivered" ? new Date() : null,
-    })
-    .eq("twilio_sid", messageSid);
+	// Update SMS message status
+	await supabase
+		.from('sms_messages')
+		.update({
+			twilio_status: messageStatus,
+			delivered_at: messageStatus === 'delivered' ? new Date() : null
+		})
+		.eq('twilio_sid', messageSid);
 
-  // If failed, queue retry job
-  if (messageStatus === "failed") {
-    await supabase.rpc("add_queue_job", {
-      p_user_id: userId,
-      p_job_type: "send_sms",
-      p_metadata: { message_id: messageId, retry_attempt: 1 },
-    });
-  }
+	// If failed, queue retry job
+	if (messageStatus === 'failed') {
+		await supabase.rpc('add_queue_job', {
+			p_user_id: userId,
+			p_job_type: 'send_sms',
+			p_metadata: { message_id: messageId, retry_attempt: 1 }
+		});
+	}
 
-  return json({ success: true });
+	return json({ success: true });
 };
 ```
 
@@ -572,7 +556,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 ```typescript
 // /apps/worker/src/lib/supabase.ts
-import { createServiceClient } from "@buildos/supabase-client";
+import { createServiceClient } from '@buildos/supabase-client';
 
 export const supabase = createServiceClient();
 ```
@@ -621,19 +605,19 @@ CREATE POLICY "Service role full access" ON sms_messages
 
 ```typescript
 app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl)
-      if (!origin) return callback(null, true);
+	cors({
+		origin: function (origin, callback) {
+			// Allow requests with no origin (mobile apps, curl)
+			if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  }),
+			if (allowedOrigins.includes(origin)) {
+				return callback(null, true);
+			} else {
+				return callback(new Error('Not allowed by CORS'));
+			}
+		},
+		credentials: true
+	})
 );
 ```
 
@@ -657,29 +641,29 @@ app.use(
 ```typescript
 // Call worker to cancel jobs
 const response = await fetch(`${RAILWAY_WORKER_URL}/queue/brief/cancel`, {
-  method: "POST",
-  body: JSON.stringify({ userId, briefDate }),
+	method: 'POST',
+	body: JSON.stringify({ userId, briefDate })
 });
 
 // OR update database directly
-await supabase.rpc("cancel_brief_jobs_for_date", {
-  p_user_id: userId,
-  p_brief_date: briefDate,
+await supabase.rpc('cancel_brief_jobs_for_date', {
+	p_user_id: userId,
+	p_brief_date: briefDate
 });
 ```
 
 **Worker**:
 
 ```typescript
-app.post("/queue/brief/cancel", async (req, res) => {
-  const { userId, briefDate } = req.body;
+app.post('/queue/brief/cancel', async (req, res) => {
+	const { userId, briefDate } = req.body;
 
-  const { count } = await queue.cancelBriefJobsForDate(userId, briefDate);
+	const { count } = await queue.cancelBriefJobsForDate(userId, briefDate);
 
-  return res.json({
-    success: true,
-    cancelledJobs: count,
-  });
+	return res.json({
+		success: true,
+		cancelledJobs: count
+	});
 });
 ```
 
@@ -694,50 +678,48 @@ app.post("/queue/brief/cancel", async (req, res) => {
 ```typescript
 // User clicks button
 async function generatePhases() {
-  const result = await RailwayWorkerService.queuePhasesGeneration(
-    userId,
-    projectId,
-    { regenerate: true },
-  );
+	const result = await RailwayWorkerService.queuePhasesGeneration(userId, projectId, {
+		regenerate: true
+	});
 
-  // Start polling for status
-  const jobId = result.jobId;
-  pollJobStatus(jobId);
+	// Start polling for status
+	const jobId = result.jobId;
+	pollJobStatus(jobId);
 }
 ```
 
 **Step 2: Queue Job** (Worker API)
 
 ```typescript
-app.post("/queue/phases", async (req, res) => {
-  const { userId, projectId, options } = req.body;
+app.post('/queue/phases', async (req, res) => {
+	const { userId, projectId, options } = req.body;
 
-  // Check for existing jobs
-  const { data: existing } = await supabase
-    .from("queue_jobs")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("metadata->projectId", projectId)
-    .in("status", ["pending", "processing"]);
+	// Check for existing jobs
+	const { data: existing } = await supabase
+		.from('queue_jobs')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('metadata->projectId', projectId)
+		.in('status', ['pending', 'processing']);
 
-  if (existing?.length > 0) {
-    return res.status(409).json({
-      error: "Already generating phases",
-    });
-  }
+	if (existing?.length > 0) {
+		return res.status(409).json({
+			error: 'Already generating phases'
+		});
+	}
 
-  // Queue job
-  const job = await queue.add(
-    "generate_phases",
-    userId,
-    {
-      projectId,
-      options,
-    },
-    { priority: 5 },
-  );
+	// Queue job
+	const job = await queue.add(
+		'generate_phases',
+		userId,
+		{
+			projectId,
+			options
+		},
+		{ priority: 5 }
+	);
 
-  return res.json({ jobId: job.queue_job_id });
+	return res.json({ jobId: job.queue_job_id });
 });
 ```
 
@@ -745,22 +727,22 @@ app.post("/queue/phases", async (req, res) => {
 
 ```typescript
 // Worker claims and processes
-queue.process("generate_phases", async (job) => {
-  const { projectId } = job.data;
+queue.process('generate_phases', async (job) => {
+	const { projectId } = job.data;
 
-  // Generate phases via LLM
-  const phases = await generatePhasesViaLLM(projectId);
+	// Generate phases via LLM
+	const phases = await generatePhasesViaLLM(projectId);
 
-  // Save to database
-  await savePhasesToDatabase(projectId, phases);
+	// Save to database
+	await savePhasesToDatabase(projectId, phases);
 
-  // Notify user via Realtime
-  await notifyUser(job.userId, "phases_completed", {
-    projectId,
-    phaseCount: phases.length,
-  });
+	// Notify user via Realtime
+	await notifyUser(job.userId, 'phases_completed', {
+		projectId,
+		phaseCount: phases.length
+	});
 
-  return { projectId, phaseCount: phases.length };
+	return { projectId, phaseCount: phases.length };
 });
 ```
 
@@ -769,13 +751,13 @@ queue.process("generate_phases", async (job) => {
 ```typescript
 // Subscribe to notifications
 supabase
-  .channel(`user:${userId}`)
-  .on("broadcast", { event: "phases_completed" }, (payload) => {
-    toastService.success("Phases generated!");
-    // Refresh project data
-    invalidateAll();
-  })
-  .subscribe();
+	.channel(`user:${userId}`)
+	.on('broadcast', { event: 'phases_completed' }, (payload) => {
+		toastService.success('Phases generated!');
+		// Refresh project data
+		invalidateAll();
+	})
+	.subscribe();
 ```
 
 ### Example 2: Daily Brief (Scheduled)
@@ -786,23 +768,23 @@ supabase
 
 ```typescript
 // Runs hourly
-cron.schedule("0 * * * *", async () => {
-  const hour = new Date().getHours();
+cron.schedule('0 * * * *', async () => {
+	const hour = new Date().getHours();
 
-  // Get users with briefs scheduled for this hour
-  const { data: users } = await supabase
-    .from("user_brief_preferences")
-    .select("*")
-    .eq("enabled", true)
-    .eq("brief_time_hour", hour);
+	// Get users with briefs scheduled for this hour
+	const { data: users } = await supabase
+		.from('user_brief_preferences')
+		.select('*')
+		.eq('enabled', true)
+		.eq('brief_time_hour', hour);
 
-  // Queue jobs for each user
-  for (const user of users) {
-    await queue.add("generate_daily_brief", user.user_id, {
-      briefDate: getTodayInTimezone(user.timezone),
-      timezone: user.timezone,
-    });
-  }
+	// Queue jobs for each user
+	for (const user of users) {
+		await queue.add('generate_daily_brief', user.user_id, {
+			briefDate: getTodayInTimezone(user.timezone),
+			timezone: user.timezone
+		});
+	}
 });
 ```
 

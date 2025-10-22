@@ -4,18 +4,18 @@ researcher: Claude Code
 git_commit: 03550792d395145857a2943a8757139ccee74fd1
 branch: main
 repository: buildos-platform
-topic: "Timezone Centralization - Implementation Complete"
+topic: 'Timezone Centralization - Implementation Complete'
 tags: [implementation, timezone, migration, database, completed]
 status: complete-with-fixes
 completion_date: 2025-10-13
 updated: 2025-10-13
 related_research:
-  - 2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
-  - 2025-10-13_17-07-51_timezone-centralization-implementation-progress.md
+    - 2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
+    - 2025-10-13_17-07-51_timezone-centralization-implementation-progress.md
 notes: |
-  Initial implementation claimed 100% complete but missed several worker code paths.
-  Additional bugfixes applied on 2025-10-13 to complete the migration.
-  See /docs/BUGFIX_CHANGELOG.md entry for details.
+    Initial implementation claimed 100% complete but missed several worker code paths.
+    Additional bugfixes applied on 2025-10-13 to complete the migration.
+    See /docs/BUGFIX_CHANGELOG.md entry for details.
 ---
 
 # Timezone Centralization - Implementation Complete ✅
@@ -88,18 +88,18 @@ All features read from same column = Guaranteed consistency
 **Files Created**:
 
 1. `/supabase/migrations/20251013_centralize_timezone_to_users_table.sql`
-   - Adds `users.timezone` column (TEXT, NOT NULL, DEFAULT 'UTC')
-   - Migrates data from 4 preference tables (priority: brief → SMS → calendar)
-   - Creates index `idx_users_timezone` for performance
-   - Adds constraint `timezone_not_empty`
-   - Comprehensive logging and verification
+    - Adds `users.timezone` column (TEXT, NOT NULL, DEFAULT 'UTC')
+    - Migrates data from 4 preference tables (priority: brief → SMS → calendar)
+    - Creates index `idx_users_timezone` for performance
+    - Adds constraint `timezone_not_empty`
+    - Comprehensive logging and verification
 
 2. `/supabase/migrations/20251013_drop_deprecated_timezone_columns.sql`
-   - Drops old timezone columns from 4 preference tables
-   - Safety checks: verifies all users have valid timezone
-   - Backup: creates temp table with old data
-   - Mismatch detection and reporting
-   - Run AFTER 1-2 weeks of monitoring
+    - Drops old timezone columns from 4 preference tables
+    - Safety checks: verifies all users have valid timezone
+    - Backup: creates temp table with old data
+    - Mismatch detection and reporting
+    - Run AFTER 1-2 weeks of monitoring
 
 **Schema Changes**:
 
@@ -113,45 +113,38 @@ All features read from same column = Guaranteed consistency
 **Files Modified**: 3
 
 1. **`apps/worker/src/scheduler.ts`** (3 locations)
-   - `queueBriefGeneration()`: Fetches from users.timezone
-   - `checkAndScheduleBriefs()`: Batch fetches user timezones (performance optimization)
-   - `checkAndScheduleDailySMS()`: Batch fetches user timezones for SMS scheduling
-   - **Performance**: Changed from N queries to 1 batch query
+    - `queueBriefGeneration()`: Fetches from users.timezone
+    - `checkAndScheduleBriefs()`: Batch fetches user timezones (performance optimization)
+    - `checkAndScheduleDailySMS()`: Batch fetches user timezones for SMS scheduling
+    - **Performance**: Changed from N queries to 1 batch query
 
 2. **`apps/worker/src/workers/brief/briefWorker.ts`** (1 location)
-   - `processBriefJob()`: Fetches timezone from users.timezone
-   - Maintains fallback: `users.timezone → job.data.timezone → 'UTC'`
+    - `processBriefJob()`: Fetches timezone from users.timezone
+    - Maintains fallback: `users.timezone → job.data.timezone → 'UTC'`
 
 3. **`apps/worker/src/workers/dailySmsWorker.ts`** (1 location)
-   - `processDailySMS()`: Fetches timezone from users.timezone
-   - Used for quiet hours enforcement and date range calculations
-   - Maintains fallback chain for safety
+    - `processDailySMS()`: Fetches timezone from users.timezone
+    - Used for quiet hours enforcement and date range calculations
+    - Maintains fallback chain for safety
 
 **Pattern Used**:
 
 ```typescript
 // Batch fetch pattern (scheduler)
 const userIds = preferences.map((p) => p.user_id).filter(Boolean);
-const { data: users } = await supabase
-  .from("users")
-  .select("id, timezone")
-  .in("id", userIds);
+const { data: users } = await supabase.from('users').select('id, timezone').in('id', userIds);
 
 const userTimezoneMap = new Map<string, string>();
 users?.forEach((user) => {
-  if (user.id && user.timezone) {
-    userTimezoneMap.set(user.id, user.timezone);
-  }
+	if (user.id && user.timezone) {
+		userTimezoneMap.set(user.id, user.timezone);
+	}
 });
 
 // Individual fetch pattern (workers)
-const { data: user } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
+const { data: user } = await supabase.from('users').select('timezone').eq('id', userId).single();
 
-const userTimezone = user?.timezone || fallback || "UTC";
+const userTimezone = user?.timezone || fallback || 'UTC';
 ```
 
 ---
@@ -163,20 +156,20 @@ const userTimezone = user?.timezone || fallback || "UTC";
 All API endpoints implement **dual-write pattern** for backward compatibility:
 
 1. **`/api/brief-preferences/+server.ts`**
-   - **GET**: Fetches timezone from users table, merges with preferences
-   - **POST**: Writes to BOTH users.timezone (primary) AND user_brief_preferences.timezone (backward compat)
+    - **GET**: Fetches timezone from users table, merges with preferences
+    - **POST**: Writes to BOTH users.timezone (primary) AND user_brief_preferences.timezone (backward compat)
 
 2. **`/api/users/calendar-preferences/+server.ts`**
-   - **GET**: Returns timezone from users table with fallback
-   - **PUT**: Updates users.timezone first, then preferences
+    - **GET**: Returns timezone from users table with fallback
+    - **PUT**: Updates users.timezone first, then preferences
 
 3. **`/api/sms/preferences/+server.ts`**
-   - **GET**: Returns timezone from users table with fallback
-   - **PUT**: Updates users.timezone first, then preferences
+    - **GET**: Returns timezone from users table with fallback
+    - **PUT**: Updates users.timezone first, then preferences
 
 4. **`/api/daily-briefs/generate/+server.ts`**
-   - **POST & GET**: Both fetch from users.timezone with fallback chain
-   - Maintains `getSafeTimezone()` validation function
+    - **POST & GET**: Both fetch from users.timezone with fallback chain
+    - Maintains `getSafeTimezone()` validation function
 
 **Dual-Write Pattern**:
 
@@ -209,30 +202,30 @@ await supabase.from('user_*_preferences').update({ timezone, ... });
 **Files Modified**: 2
 
 1. **`/apps/web/src/lib/services/task-time-slot-finder.ts`** (2 locations)
-   - `findNextAvailableSlot()`: Fetches timezone from users table
-   - `scheduleTasks()`: Uses users.timezone in default preferences
-   - Fallback chain: `users.timezone → calendar_prefs.timezone → params.timeZone → 'UTC'`
+    - `findNextAvailableSlot()`: Fetches timezone from users table
+    - `scheduleTasks()`: Uses users.timezone in default preferences
+    - Fallback chain: `users.timezone → calendar_prefs.timezone → params.timeZone → 'UTC'`
 
 2. **`/apps/web/src/lib/services/project-calendar.service.ts`** (1 location)
-   - `createProjectCalendar()`: Fetches timezone from users table
-   - Fallback: `users.timezone → calendar_prefs.timezone → 'America/New_York'`
+    - `createProjectCalendar()`: Fetches timezone from users table
+    - Fallback: `users.timezone → calendar_prefs.timezone → 'America/New_York'`
 
 **Pattern Used**:
 
 ```typescript
 // Fetch user timezone
 const { data: user } = await this.supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
+	.from('users')
+	.select('timezone')
+	.eq('id', userId)
+	.single();
 
 // Fetch preferences
 const { data: userPrefs } = await this.supabase
-  .from("user_calendar_preferences")
-  .select("timezone")
-  .eq("user_id", userId)
-  .single();
+	.from('user_calendar_preferences')
+	.select('timezone')
+	.eq('user_id', userId)
+	.single();
 
 // Use fallback chain
 const timezone = user?.timezone || userPrefs?.timezone || defaultTimezone;
@@ -247,16 +240,16 @@ const timezone = user?.timezone || userPrefs?.timezone || defaultTimezone;
 All UI components work through API endpoints, so they inherit the centralization automatically:
 
 1. **`BriefsSettingsModal.svelte`** ✅
-   - Reads/writes through `/api/brief-preferences`
-   - Endpoint handles timezone centralization transparently
+    - Reads/writes through `/api/brief-preferences`
+    - Endpoint handles timezone centralization transparently
 
 2. **`CalendarTab.svelte`** ✅
-   - Reads/writes through `/api/users/calendar-preferences`
-   - Endpoint handles timezone centralization transparently
+    - Reads/writes through `/api/users/calendar-preferences`
+    - Endpoint handles timezone centralization transparently
 
 3. **`SMSPreferences.svelte`** ✅
-   - Reads/writes through `/api/sms/preferences`
-   - Endpoint handles timezone centralization transparently
+    - Reads/writes through `/api/sms/preferences`
+    - Endpoint handles timezone centralization transparently
 
 **Architecture Decision**: By implementing centralization at the API layer, we achieved:
 
@@ -476,28 +469,28 @@ COMMIT;
 ### Improvements ✅
 
 1. **Scheduler Performance**
-   - **Before**: N individual queries for timezone (one per user)
-   - **After**: Single batch query for all user timezones
-   - **Result**: 10-100x faster (depends on number of users)
+    - **Before**: N individual queries for timezone (one per user)
+    - **After**: Single batch query for all user timezones
+    - **Result**: 10-100x faster (depends on number of users)
 
 2. **Query Simplicity**
-   - **Before**: JOINs to preference tables for timezone
-   - **After**: Direct access from users table
-   - **Result**: Simpler query plans, better caching
+    - **Before**: JOINs to preference tables for timezone
+    - **After**: Direct access from users table
+    - **Result**: Simpler query plans, better caching
 
 3. **Database Index**
-   - Added `idx_users_timezone` for fast timezone lookups
-   - Benefits timezone-based filtering (if needed in future)
+    - Added `idx_users_timezone` for fast timezone lookups
+    - Benefits timezone-based filtering (if needed in future)
 
 ### Overhead (Minimal) ⚠️
 
 1. **Additional Query**: Some code paths query users table separately
-   - **Impact**: ~5-10ms per request (negligible)
-   - **Mitigation**: Can JOIN users table in future optimization
+    - **Impact**: ~5-10ms per request (negligible)
+    - **Mitigation**: Can JOIN users table in future optimization
 
 2. **Dual Writes**: API endpoints write to 2 locations during transition
-   - **Impact**: ~2-5ms per write (temporary during transition)
-   - **Resolution**: Removed after cleanup migration
+    - **Impact**: ~2-5ms per write (temporary during transition)
+    - **Resolution**: Removed after cleanup migration
 
 ---
 
@@ -529,25 +522,25 @@ pnpm test
 **Manual Test Plan**:
 
 1. **Brief Scheduling**
-   - Update user timezone via UI
-   - Verify brief scheduled at correct time in user's timezone
-   - Check logs show correct timezone being used
+    - Update user timezone via UI
+    - Verify brief scheduled at correct time in user's timezone
+    - Check logs show correct timezone being used
 
 2. **SMS Reminders**
-   - Update user timezone via UI
-   - Verify SMS reminders sent at correct time
-   - Verify quiet hours respected in correct timezone
+    - Update user timezone via UI
+    - Verify SMS reminders sent at correct time
+    - Verify quiet hours respected in correct timezone
 
 3. **Calendar Integration**
-   - Update user timezone
-   - Verify tasks scheduled in correct timezone
-   - Verify calendar events use correct timezone
+    - Update user timezone
+    - Verify tasks scheduled in correct timezone
+    - Verify calendar events use correct timezone
 
 4. **Data Consistency**
-   - Update timezone in one location (e.g., brief settings)
-   - Verify SMS preferences also show updated timezone
-   - Verify calendar preferences also show updated timezone
-   - Verify all features use updated timezone
+    - Update timezone in one location (e.g., brief settings)
+    - Verify SMS preferences also show updated timezone
+    - Verify calendar preferences also show updated timezone
+    - Verify all features use updated timezone
 
 ---
 

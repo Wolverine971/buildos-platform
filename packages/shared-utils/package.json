@@ -1,36 +1,36 @@
 {
-  "name": "@buildos/shared-utils",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Shared utilities and services for BuildOS platform",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
-    "build:types": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
-    "dev": "tsup src/index.ts --format cjs,esm --sourcemap --watch",
-    "clean": "rm -rf dist .turbo",
-    "typecheck": "tsc --noEmit --skipLibCheck",
-    "test": "vitest",
-    "test:run": "vitest run"
-  },
-  "dependencies": {
-    "@buildos/shared-types": "workspace:*",
-    "@buildos/supabase-client": "workspace:*",
-    "date-fns": "^2.30.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.10",
-    "tsup": "^8.3.5",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
-  }
+	"name": "@buildos/shared-utils",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Shared utilities and services for BuildOS platform",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
+		"dev": "tsup src/index.ts --format cjs,esm --sourcemap --watch",
+		"clean": "rm -rf dist .turbo",
+		"typecheck": "tsc --noEmit --skipLibCheck",
+		"test": "vitest",
+		"test:run": "vitest run"
+	},
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
+		"@buildos/supabase-client": "workspace:*",
+		"date-fns": "^2.30.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.10",
+		"tsup": "^8.3.5",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	}
 }

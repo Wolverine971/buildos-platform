@@ -4,7 +4,7 @@ researcher: Claude Code
 git_commit: 9f26638250d9f51922b55e692f94dc410f371c1f
 branch: main
 repository: buildos-platform
-topic: "Timeblock Integration Implementation - Completed"
+topic: 'Timeblock Integration Implementation - Completed'
 tags: [implementation, timeblocks, daily-briefs, worker-service, complete]
 status: complete
 last_updated: 2025-10-20
@@ -96,15 +96,15 @@ interface TimeAllocationContext
 **Enhanced `DailyBriefAnalysisPrompt` Class:**
 
 - `getSystemPrompt(includeTimeblocks: boolean)`: Dynamically includes timeblock-specific goals when available
-  - Mentions capacity assessment responsibility
-  - Highlights importance of time allocation gaps
-  - Suggests unscheduled time reallocation strategies
+    - Mentions capacity assessment responsibility
+    - Highlights importance of time allocation gaps
+    - Suggests unscheduled time reallocation strategies
 
 - `buildUserPrompt()`: Now accepts optional `timeAllocationContext`
-  - Formats time data in readable format (3h 45m)
-  - Includes per-project allocation with capacity status
-  - Lists timeblock suggestions per project
-  - Shows unscheduled time with suggestions
+    - Formats time data in readable format (3h 45m)
+    - Includes per-project allocation with capacity status
+    - Lists timeblock suggestions per project
+    - Shows unscheduled time with suggestions
 
 **Helper Function:** `formatMinutes()` - Converts minutes to human-readable format
 
@@ -170,8 +170,8 @@ capacityRatio = allocatedTime / (taskCount * 60 min)
 - Ranks by confidence score
 - Includes project context and estimated minutes
 - Two forms:
-  - **Per-project**: Top 2 suggestions shown per project
-  - **Unscheduled**: Top 3 suggestions from all unscheduled blocks
+    - **Per-project**: Top 2 suggestions shown per project
+    - **Unscheduled**: Top 3 suggestions from all unscheduled blocks
 
 ### 3. Time Allocation Display
 
@@ -272,9 +272,9 @@ All new code:
 3. **Check capacity indicators**: Correctly identifies under/over allocated
 4. **Review LLM analysis**: Mentions time allocation in insights
 5. **Test edge cases**:
-   - User with no timeblocks
-   - User with only unscheduled blocks
-   - User with mismatched time/tasks
+    - User with no timeblocks
+    - User with only unscheduled blocks
+    - User with mismatched time/tasks
 
 ---
 

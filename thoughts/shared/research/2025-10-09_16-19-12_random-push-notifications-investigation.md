@@ -4,17 +4,8 @@ researcher: Claude Code
 git_commit: 6bb028d87e33b4a7bbe8ddf1a3482e1e102c2703
 branch: main
 repository: buildos-platform
-topic: "Investigation: Random Push Notifications with No Information"
-tags:
-  [
-    research,
-    codebase,
-    notifications,
-    push-notifications,
-    worker,
-    sms,
-    debugging,
-  ]
+topic: 'Investigation: Random Push Notifications with No Information'
+tags: [research, codebase, notifications, push-notifications, worker, sms, debugging]
 status: complete
 last_updated: 2025-10-09
 last_updated_by: Claude Code
@@ -55,9 +46,9 @@ The BuildOS platform has a fully implemented browser push notification system wi
 **File**: `apps/web/src/lib/services/browser-push.service.ts`
 
 - **Lines 85-156**: Main subscription flow using Web Push API
-  - Service worker registration at `/sw.js`
-  - Push subscription via `pushManager.subscribe()` with VAPID
-  - Subscription stored in `push_subscriptions` database table
+    - Service worker registration at `/sw.js`
+    - Push subscription via `pushManager.subscribe()` with VAPID
+    - Subscription stored in `push_subscriptions` database table
 - **Lines 48-62**: Permission handling and browser support checks
 - User interface at `apps/web/src/lib/components/settings/NotificationPreferences.svelte:335-400`
 
@@ -66,9 +57,9 @@ The BuildOS platform has a fully implemented browser push notification system wi
 **File**: `apps/web/static/sw.js`
 
 - **Lines 22-47**: `push` event handler that receives and displays notifications
-  - Parses push data via `event.data.json()`
-  - **Line 46**: Displays via `self.registration.showNotification(title, options)`
-  - ⚠️ **Potential issue**: If parsed data has empty `title` or `body`, notification shows empty content
+    - Parses push data via `event.data.json()`
+    - **Line 46**: Displays via `self.registration.showNotification(title, options)`
+    - ⚠️ **Potential issue**: If parsed data has empty `title` or `body`, notification shows empty content
 - **Lines 50-111**: Click tracking and app opening on notification click
 
 #### Server-Side Push Sending
@@ -76,13 +67,13 @@ The BuildOS platform has a fully implemented browser push notification system wi
 **File**: `apps/worker/src/workers/notification/notificationWorker.ts`
 
 - **Lines 56-126**: `sendPushNotification()` function
-  - **Lines 76-77**: **CRITICAL ISSUE** - Fallback to empty string:
-    ```typescript
-    title: delivery.payload.title || "BuildOS Notification",
-    body: delivery.payload.body || "",  // ⚠️ Empty string if missing
-    ```
-  - Uses `web-push` NPM package to send notifications
-  - Handles expired subscriptions (410/404 status codes)
+    - **Lines 76-77**: **CRITICAL ISSUE** - Fallback to empty string:
+        ```typescript
+        title: delivery.payload.title || "BuildOS Notification",
+        body: delivery.payload.body || "",  // ⚠️ Empty string if missing
+        ```
+    - Uses `web-push` NPM package to send notifications
+    - Handles expired subscriptions (410/404 status codes)
 
 ### 2. Notification Trigger Sources
 
@@ -94,10 +85,10 @@ The BuildOS platform has a fully implemented browser push notification system wi
 - **Cron**: Runs at midnight (`0 0 * * *`) every day
 - **Purpose**: Fetches calendar events, generates SMS messages, schedules reminders
 - **Process**:
-  1. Fetches events for user's timezone
-  2. Generates SMS content via LLM (DeepSeek) or template fallback
-  3. Creates `scheduled_sms_messages` and `sms_messages` records
-  4. Queues `send_sms` jobs for delivery
+    1. Fetches events for user's timezone
+    2. Generates SMS content via LLM (DeepSeek) or template fallback
+    3. Creates `scheduled_sms_messages` and `sms_messages` records
+    4. Queues `send_sms` jobs for delivery
 - **Metrics tracking**: Records scheduling, LLM generation, quiet hours skips, daily limits
 - **Potential trigger**: If SMS system has notification callbacks, this runs daily at midnight
 
@@ -108,10 +99,10 @@ The BuildOS platform has a fully implemented browser push notification system wi
 - **Purpose**: Receives Twilio SMS delivery status callbacks
 - **Statuses handled**: queued, sending, sent, delivered, failed, undelivered, canceled
 - **Actions**:
-  - Updates `sms_messages`, `scheduled_sms_messages`, `notification_deliveries` tables
-  - Records delivery metrics when status is `delivered`
-  - Implements intelligent retry logic for failed messages
-  - Categorizes errors (invalid_number, carrier_issue, rate_limit, etc.)
+    - Updates `sms_messages`, `scheduled_sms_messages`, `notification_deliveries` tables
+    - Records delivery metrics when status is `delivered`
+    - Implements intelligent retry logic for failed messages
+    - Categorizes errors (invalid_number, carrier_issue, rate_limit, etc.)
 - **Potential trigger**: Each SMS status change could trigger notifications about delivery status
 
 #### C. SMS Send Worker
@@ -120,33 +111,33 @@ The BuildOS platform has a fully implemented browser push notification system wi
 
 - **Job type**: `send_sms`
 - **Pre-send validation**:
-  - Checks cancellation status
-  - Verifies quiet hours compliance
-  - Validates daily SMS limits
-  - Confirms calendar event still exists
+    - Checks cancellation status
+    - Verifies quiet hours compliance
+    - Validates daily SMS limits
+    - Confirms calendar event still exists
 - **Actions**:
-  - Sends SMS via Twilio
-  - Updates status in dual-table system
-  - Calls `notifyUser()` on successful send ⚠️
-  - Implements retry with exponential backoff
+    - Sends SMS via Twilio
+    - Updates status in dual-table system
+    - Calls `notifyUser()` on successful send ⚠️
+    - Implements retry with exponential backoff
 
 #### D. Daily Brief Email Worker
 
 **File**: `apps/worker/src/workers/brief/briefWorker.ts`
 
 - **Lines 298-338**: Sends notification when daily brief completes
-  ```typescript
-  await serviceClient.rpc("emit_notification_event", {
-    p_event_type: "brief.completed",
-    p_event_source: "worker_job",
-    p_target_user_id: job.data.userId,
-    p_payload: {
-      brief_id: brief.id,
-      brief_date: briefDate,
-      // ... event-specific fields
-    },
-  });
-  ```
+    ```typescript
+    await serviceClient.rpc('emit_notification_event', {
+    	p_event_type: 'brief.completed',
+    	p_event_source: 'worker_job',
+    	p_target_user_id: job.data.userId,
+    	p_payload: {
+    		brief_id: brief.id,
+    		brief_date: briefDate
+    		// ... event-specific fields
+    	}
+    });
+    ```
 - ⚠️ **Notice**: Payload contains event-specific fields but NO `title` or `body`
 
 #### E. Multi-Channel Notification Worker
@@ -166,11 +157,11 @@ The BuildOS platform has a fully implemented browser push notification system wi
 
 - **Cron**: Runs hourly (`0 * * * *`)
 - **Monitors**:
-  - Delivery rate critical threshold
-  - LLM failure rate
-  - LLM cost spikes
-  - Opt-out rate warnings
-  - Daily limit hit warnings
+    - Delivery rate critical threshold
+    - LLM failure rate
+    - LLM cost spikes
+    - Opt-out rate warnings
+    - Daily limit hit warnings
 - **Current behavior**: Logs alerts but external integrations (Slack, PagerDuty) are commented out
 
 ### 3. The Root Cause: Missing Payload Transformation
@@ -183,12 +174,12 @@ Event payloads are event-specific with structured fields:
 
 ```typescript
 export interface BriefCompletedEventPayload {
-  brief_id: string;
-  brief_date: string;
-  timezone: string;
-  task_count: number;
-  project_count: number;
-  // NO title or body fields
+	brief_id: string;
+	brief_date: string;
+	timezone: string;
+	task_count: number;
+	project_count: number;
+	// NO title or body fields
 }
 ```
 
@@ -200,10 +191,10 @@ Delivery payloads expect generic fields:
 
 ```typescript
 export interface NotificationPayload {
-  title?: string; // Expected but not in event payloads
-  body?: string; // Expected but not in event payloads
-  type?: string;
-  // ... other fields
+	title?: string; // Expected but not in event payloads
+	body?: string; // Expected but not in event payloads
+	type?: string;
+	// ... other fields
 }
 ```
 
@@ -213,18 +204,18 @@ export interface NotificationPayload {
 
 ```typescript
 export const DEFAULT_CHANNEL_PAYLOADS = {
-  push: {
-    title: "BuildOS Notification",
-    body: "", // ⚠️ EMPTY BODY
-  },
-  in_app: {
-    title: "Notification",
-    body: "", // ⚠️ EMPTY BODY
-  },
-  sms: {
-    title: "BuildOS Notification",
-    body: "", // ⚠️ EMPTY BODY
-  },
+	push: {
+		title: 'BuildOS Notification',
+		body: '' // ⚠️ EMPTY BODY
+	},
+	in_app: {
+		title: 'Notification',
+		body: '' // ⚠️ EMPTY BODY
+	},
+	sms: {
+		title: 'BuildOS Notification',
+		body: '' // ⚠️ EMPTY BODY
+	}
 };
 ```
 
@@ -261,13 +252,13 @@ The `emit_notification_event()` RPC function:
 
 ```typescript
 const payload = JSON.stringify({
-  title: delivery.payload.title || "BuildOS Notification",
-  body: delivery.payload.body || "", // ⚠️ Empty if missing
-  icon: delivery.payload.icon || "/favicon.png",
-  data: {
-    url: delivery.payload.url || "/",
-    delivery_id: delivery.id,
-  },
+	title: delivery.payload.title || 'BuildOS Notification',
+	body: delivery.payload.body || '', // ⚠️ Empty if missing
+	icon: delivery.payload.icon || '/favicon.png',
+	data: {
+		url: delivery.payload.url || '/',
+		delivery_id: delivery.id
+	}
 });
 ```
 
@@ -276,13 +267,13 @@ const payload = JSON.stringify({
 **File**: `apps/worker/src/workers/notification/notificationWorker.ts:138-146`
 
 ```typescript
-const { error } = await supabase.from("user_notifications").insert({
-  user_id: delivery.recipient_user_id,
-  type: delivery.payload.type || "info",
-  title: delivery.payload.title || "Notification",
-  message: delivery.payload.body || "", // ⚠️ Empty if missing
-  link: delivery.payload.url,
-  read: false,
+const { error } = await supabase.from('user_notifications').insert({
+	user_id: delivery.recipient_user_id,
+	type: delivery.payload.type || 'info',
+	title: delivery.payload.title || 'Notification',
+	message: delivery.payload.body || '', // ⚠️ Empty if missing
+	link: delivery.payload.url,
+	read: false
 });
 ```
 
@@ -292,8 +283,8 @@ const { error } = await supabase.from("user_notifications").insert({
 
 ```typescript
 // Generic fallback - can result in empty body
-const title = payload.title || "BuildOS notification";
-const body = payload.body || "";
+const title = payload.title || 'BuildOS notification';
+const body = payload.body || '';
 const message = body ? `${title}: ${body}` : title; // If body empty, only title sent
 ```
 
@@ -317,27 +308,27 @@ const message = body ? `${title}: ${body}` : title; // If body empty, only title
 Based on the codebase analysis, the random push notifications are most likely triggered by:
 
 1. **Daily SMS Scheduler** (midnight cron):
-   - Runs every day at 12:00 AM
-   - If user has push notifications enabled for SMS events
-   - Location: `apps/worker/src/scheduler.ts:575`
+    - Runs every day at 12:00 AM
+    - If user has push notifications enabled for SMS events
+    - Location: `apps/worker/src/scheduler.ts:575`
 
 2. **SMS Event Callbacks**:
-   - Twilio sends webhooks for every SMS status change
-   - Each status update could trigger a notification
-   - Location: `apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
+    - Twilio sends webhooks for every SMS status change
+    - Each status update could trigger a notification
+    - Location: `apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
 
 3. **Daily Brief Completion**:
-   - Triggers notification when brief is generated
-   - Uses `emit_notification_event()` with `brief.completed` event
-   - Location: `apps/worker/src/workers/brief/briefWorker.ts:298-338`
+    - Triggers notification when brief is generated
+    - Uses `emit_notification_event()` with `brief.completed` event
+    - Location: `apps/worker/src/workers/brief/briefWorker.ts:298-338`
 
 4. **SMS Send Success**:
-   - Worker calls `notifyUser()` after successful SMS send
-   - Location: `apps/worker/src/workers/smsWorker.ts`
+    - Worker calls `notifyUser()` after successful SMS send
+    - Location: `apps/worker/src/workers/smsWorker.ts`
 
 5. **Background Job Completions**:
-   - Various worker jobs call `notifyUser()` on completion
-   - Location: `apps/worker/src/workers/shared/queueUtils.ts`
+    - Various worker jobs call `notifyUser()` on completion
+    - Location: `apps/worker/src/workers/shared/queueUtils.ts`
 
 ## Code References
 
@@ -405,22 +396,19 @@ A **Payload Transformer Service** should exist between event creation and delive
 ```typescript
 // MISSING: Payload transformer
 interface PayloadTransformer {
-  transform(
-    eventType: string,
-    eventPayload: Record<string, any>,
-  ): NotificationDeliveryPayload;
+	transform(eventType: string, eventPayload: Record<string, any>): NotificationDeliveryPayload;
 }
 
 // Example implementation:
 class BriefCompletedTransformer {
-  transform(payload: BriefCompletedEventPayload) {
-    return {
-      title: "Your daily brief is ready!",
-      body: `${payload.task_count} tasks across ${payload.project_count} projects`,
-      url: `/briefs/${payload.brief_id}`,
-      icon: "/icons/brief-ready.png",
-    };
-  }
+	transform(payload: BriefCompletedEventPayload) {
+		return {
+			title: 'Your daily brief is ready!',
+			body: `${payload.task_count} tasks across ${payload.project_count} projects`,
+			url: `/briefs/${payload.brief_id}`,
+			icon: '/icons/brief-ready.png'
+		};
+	}
 }
 ```
 
@@ -429,8 +417,8 @@ class BriefCompletedTransformer {
 The codebase uses a consistent pattern for fallbacks:
 
 ```typescript
-title: payload.title || "Default Title";
-body: payload.body || ""; // ⚠️ Empty string
+title: payload.title || 'Default Title';
+body: payload.body || ''; // ⚠️ Empty string
 ```
 
 This pattern assumes `payload.title` and `payload.body` exist, but event payloads don't include them.
@@ -445,25 +433,25 @@ Create a payload transformer service that maps event types to notification conte
 
 ```typescript
 export class PayloadTransformer {
-  static transform(eventType: string, eventPayload: any): NotificationPayload {
-    switch (eventType) {
-      case "brief.completed":
-        return {
-          title: "Daily Brief Ready",
-          body: `${eventPayload.task_count} tasks for ${eventPayload.brief_date}`,
-          url: `/briefs/${eventPayload.brief_id}`,
-        };
-      case "sms.sent":
-        return {
-          title: "SMS Sent",
-          body: `Your event reminder was sent`,
-          url: "/sms",
-        };
-      // ... other event types
-      default:
-        throw new Error(`No transformer for event type: ${eventType}`);
-    }
-  }
+	static transform(eventType: string, eventPayload: any): NotificationPayload {
+		switch (eventType) {
+			case 'brief.completed':
+				return {
+					title: 'Daily Brief Ready',
+					body: `${eventPayload.task_count} tasks for ${eventPayload.brief_date}`,
+					url: `/briefs/${eventPayload.brief_id}`
+				};
+			case 'sms.sent':
+				return {
+					title: 'SMS Sent',
+					body: `Your event reminder was sent`,
+					url: '/sms'
+				};
+			// ... other event types
+			default:
+				throw new Error(`No transformer for event type: ${eventType}`);
+		}
+	}
 }
 ```
 
@@ -480,7 +468,7 @@ Ensure deliveries always have `title` and `body`:
 ```typescript
 // Before inserting delivery
 if (!payload.title || !payload.body) {
-  throw new Error("Notification payload must include title and body");
+	throw new Error('Notification payload must include title and body');
 }
 ```
 
@@ -516,73 +504,73 @@ Add granular controls:
 ## Open Questions
 
 1. **Which specific notification is the user receiving?**
-   - Need to check browser console for notification payload
-   - Check service worker logs: `chrome://inspect/#service-workers`
-   - Check `notification_deliveries` table for recent records
+    - Need to check browser console for notification payload
+    - Check service worker logs: `chrome://inspect/#service-workers`
+    - Check `notification_deliveries` table for recent records
 
 2. **When do these notifications appear?**
-   - Midnight (daily SMS scheduler)?
-   - After SMS sends?
-   - After daily brief generation?
-   - Random times?
+    - Midnight (daily SMS scheduler)?
+    - After SMS sends?
+    - After daily brief generation?
+    - Random times?
 
 3. **User's notification preferences?**
-   - Check `user_preferences` table
-   - Check `push_subscriptions` table for active subscriptions
-   - Check `notification_subscriptions` table for enabled event types
+    - Check `user_preferences` table
+    - Check `push_subscriptions` table for active subscriptions
+    - Check `notification_subscriptions` table for enabled event types
 
 4. **Recent notification events?**
-   - Query `notification_events` table for user's recent events
-   - Check `notification_deliveries` for status and payload
-   - Review worker logs for notification jobs
+    - Query `notification_events` table for user's recent events
+    - Check `notification_deliveries` for status and payload
+    - Review worker logs for notification jobs
 
 ## Next Steps for Debugging
 
 1. **Check Browser Console**:
 
-   ```javascript
-   // In browser console
-   navigator.serviceWorker.getRegistration().then((reg) => {
-     console.log("Service Worker:", reg);
-   });
-   ```
+    ```javascript
+    // In browser console
+    navigator.serviceWorker.getRegistration().then((reg) => {
+    	console.log('Service Worker:', reg);
+    });
+    ```
 
 2. **Query Recent Notifications**:
 
-   ```sql
-   SELECT
-     ne.event_type,
-     ne.payload as event_payload,
-     nd.payload as delivery_payload,
-     nd.status,
-     nd.created_at
-   FROM notification_deliveries nd
-   JOIN notification_events ne ON nd.event_id = ne.id
-   WHERE nd.recipient_user_id = '[user_id]'
-     AND nd.channel = 'push'
-   ORDER BY nd.created_at DESC
-   LIMIT 10;
-   ```
+    ```sql
+    SELECT
+      ne.event_type,
+      ne.payload as event_payload,
+      nd.payload as delivery_payload,
+      nd.status,
+      nd.created_at
+    FROM notification_deliveries nd
+    JOIN notification_events ne ON nd.event_id = ne.id
+    WHERE nd.recipient_user_id = '[user_id]'
+      AND nd.channel = 'push'
+    ORDER BY nd.created_at DESC
+    LIMIT 10;
+    ```
 
 3. **Check Active Subscriptions**:
 
-   ```sql
-   SELECT event_type, status, created_at
-   FROM notification_subscriptions
-   WHERE user_id = '[user_id]'
-     AND status = 'active';
-   ```
+    ```sql
+    SELECT event_type, status, created_at
+    FROM notification_subscriptions
+    WHERE user_id = '[user_id]'
+      AND status = 'active';
+    ```
 
 4. **Review Worker Logs**:
-   - Check Railway logs for `notificationWorker` jobs
-   - Look for `send_notification` job processing
-   - Check for error patterns
+    - Check Railway logs for `notificationWorker` jobs
+    - Look for `send_notification` job processing
+    - Check for error patterns
 
 5. **Test with Known Event**:
-   - Trigger a test notification via admin endpoint
-   - Use proper payload with title and body
-   - Verify it appears correctly
-   - Location: `/api/admin/notifications/test`
+    - Trigger a test notification via admin endpoint
+    - Use proper payload with title and body
+    - Verify it appears correctly
+    - Location: `/api/admin/notifications/test`
 
 ---
 

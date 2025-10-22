@@ -97,45 +97,45 @@ buildos-monorepo/
 ### Phase 2: Code Migration (1-2 days)
 
 1. **Move build_os → apps/web/**
-   - Update import paths
-   - Adjust build scripts
-   - Update environment variables
+    - Update import paths
+    - Adjust build scripts
+    - Update environment variables
 
 2. **Move daily-brief-worker → apps/worker/**
-   - Update import paths
-   - Adjust deployment configs
+    - Update import paths
+    - Adjust deployment configs
 
 3. **Extract shared code → packages/**
-   - Database types
-   - Supabase client configuration
-   - Common utilities
+    - Database types
+    - Supabase client configuration
+    - Common utilities
 
 ### Phase 3: Integration (2-3 days)
 
 1. **Setup Turborepo pipelines**
-   - Define task dependencies
-   - Configure caching strategies
-   - Setup parallel execution
+    - Define task dependencies
+    - Configure caching strategies
+    - Setup parallel execution
 
 2. **Update CI/CD**
-   - Modify GitHub Actions workflows
-   - Update Vercel configuration
-   - Configure Railway deployment for worker
+    - Modify GitHub Actions workflows
+    - Update Vercel configuration
+    - Configure Railway deployment for worker
 
 3. **Environment variables**
-   - Centralize common variables
-   - App-specific overrides
+    - Centralize common variables
+    - App-specific overrides
 
 ### Phase 4: Testing & Validation (1 day)
 
 1. **Comprehensive testing**
-   - Run all test suites
-   - Verify builds
-   - Test deployments
+    - Run all test suites
+    - Verify builds
+    - Test deployments
 
 2. **Team onboarding**
-   - Documentation updates
-   - Developer workflow guides
+    - Documentation updates
+    - Developer workflow guides
 
 ## GitHub Repository Approach
 
@@ -195,25 +195,25 @@ git subtree add --prefix=apps/worker worker/main
 
 ```json
 {
-  "name": "buildos-platform",
-  "private": true,
-  "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "test": "turbo test",
-    "lint": "turbo lint",
-    "format": "prettier --write .",
-    "clean": "turbo clean"
-  },
-  "devDependencies": {
-    "turbo": "^2.3.0",
-    "prettier": "^3.6.2"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  }
+	"name": "buildos-platform",
+	"private": true,
+	"scripts": {
+		"dev": "turbo dev",
+		"build": "turbo build",
+		"test": "turbo test",
+		"lint": "turbo lint",
+		"format": "prettier --write .",
+		"clean": "turbo clean"
+	},
+	"devDependencies": {
+		"turbo": "^2.3.0",
+		"prettier": "^3.6.2"
+	},
+	"packageManager": "pnpm@9.0.0",
+	"engines": {
+		"node": ">=20.0.0",
+		"pnpm": ">=9.0.0"
+	}
 }
 ```
 
@@ -221,40 +221,40 @@ git subtree add --prefix=apps/worker worker/main
 
 ```yaml
 packages:
-  - "apps/*"
-  - "packages/*"
+    - 'apps/*'
+    - 'packages/*'
 ```
 
 ### 3. turbo.json
 
 ```json
 {
-  "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["**/.env.*local"],
-  "pipeline": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".svelte-kit/**", "dist/**", "build/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
-    },
-    "lint": {
-      "outputs": []
-    },
-    "typecheck": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "clean": {
-      "cache": false
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"globalDependencies": ["**/.env.*local"],
+	"pipeline": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [".svelte-kit/**", "dist/**", "build/**"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"outputs": ["coverage/**"]
+		},
+		"lint": {
+			"outputs": []
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"clean": {
+			"cache": false
+		}
+	}
 }
 ```
 
@@ -262,17 +262,17 @@ packages:
 
 ```json
 {
-  "name": "@buildos/shared-types",
-  "version": "1.0.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.2"
-  }
+	"name": "@buildos/shared-types",
+	"version": "1.0.0",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.2"
+	}
 }
 ```
 
@@ -298,10 +298,10 @@ packages:
 
 ```json
 {
-  "buildCommand": "cd ../.. && pnpm turbo build --filter=web",
-  "outputDirectory": "apps/web/build",
-  "installCommand": "pnpm install",
-  "framework": "sveltekit"
+	"buildCommand": "cd ../.. && pnpm turbo build --filter=web",
+	"outputDirectory": "apps/web/build",
+	"installCommand": "pnpm install",
+	"framework": "sveltekit"
 }
 ```
 
@@ -309,14 +309,14 @@ packages:
 
 ```json
 {
-  "build": {
-    "builder": "nixpacks",
-    "buildCommand": "pnpm turbo build --filter=worker"
-  },
-  "deploy": {
-    "startCommand": "cd apps/worker && pnpm start",
-    "restartPolicyType": "on-failure"
-  }
+	"build": {
+		"builder": "nixpacks",
+		"buildCommand": "pnpm turbo build --filter=worker"
+	},
+	"deploy": {
+		"startCommand": "cd apps/worker && pnpm start",
+		"restartPolicyType": "on-failure"
+	}
 }
 ```
 

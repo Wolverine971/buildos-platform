@@ -35,20 +35,20 @@ Sequoia focuses on backing founders with contrarian thinking who can fundamental
 ### Most Relevant for BuildOS:
 
 - **Pat Grady** - Partner, Growth Team (Enterprise productivity specialist)
-  - Portfolio: HubSpot, ServiceNow, Snowflake, Okta, Zoom ($250B+ value)
-  - Focus: B2B productivity and workflow automation tools
+    - Portfolio: HubSpot, ServiceNow, Snowflake, Okta, Zoom ($250B+ value)
+    - Focus: B2B productivity and workflow automation tools
 
 - **Alfred Lin** - Partner (Early-stage B2B focus)
-  - Former COO at Zappos, extensive e-commerce and operations experience
-  - Focus: Product-market fit and scaling methodologies
+    - Former COO at Zappos, extensive e-commerce and operations experience
+    - Focus: Product-market fit and scaling methodologies
 
 - **Roelof Botha** - Managing Partner
-  - Former PayPal CFO, focus on internet infrastructure and fintech
-  - Leads overall investment strategy and major rounds
+    - Former PayPal CFO, focus on internet infrastructure and fintech
+    - Leads overall investment strategy and major rounds
 
 - **Bogomil Balkansky** - Partner (AI and Infrastructure)
-  - Former VMware executive, enterprise software expertise
-  - Focus: AI infrastructure and enterprise applications
+    - Former VMware executive, enterprise software expertise
+    - Focus: AI infrastructure and enterprise applications
 
 ### Partner Expertise:
 
@@ -147,15 +147,15 @@ Sequoia focuses on backing founders with contrarian thinking who can fundamental
 ### Application Pathways:
 
 1. **Sequoia Arc Program** - Bi-annual open application for early-stage companies
-   - Requirements: Clear traction and growth metrics
-   - Focus: Product-market fit and scalability potential
+    - Requirements: Clear traction and growth metrics
+    - Focus: Product-market fit and scalability potential
 
 2. **Direct Partner Outreach** - Warm introductions through network
-   - Target: Pat Grady (enterprise productivity) or Alfred Lin (early-stage B2B)
-   - Requirements: Strong referral and compelling metrics
+    - Target: Pat Grady (enterprise productivity) or Alfred Lin (early-stage B2B)
+    - Requirements: Strong referral and compelling metrics
 
 3. **Portfolio Company Referrals** - Leverage existing Sequoia portfolio connections
-   - Best approach: Introductions through Notion, Glean, or other productivity companies
+    - Best approach: Introductions through Notion, Glean, or other productivity companies
 
 ### Sequoia's Famous 12-Slide Pitch Deck Structure:
 

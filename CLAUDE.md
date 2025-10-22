@@ -169,7 +169,7 @@ BuildOS is an AI-powered productivity platform for ADHD minds that transforms un
 let count = $state(0);
 let doubled = $derived(count * 2);
 $effect(() => {
-  /* side effects */
+	/* side effects */
 });
 
 // ❌ AVOID old reactive syntax:
@@ -282,21 +282,21 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ### Where to Put Documentation
 
 - **Research/Investigation:** `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
-  - Format: Timestamped research docs with YAML frontmatter
-  - See: `.claude/commands/research_codebase_generic.md`
+    - Format: Timestamped research docs with YAML frontmatter
+    - See: `.claude/commands/research_codebase_generic.md`
 
 - **Architecture (System-wide):** `/docs/architecture/`
-  - ADRs: `/docs/architecture/decisions/ADR-NNN-topic.md`
-  - Diagrams: `/docs/architecture/diagrams/`
+    - ADRs: `/docs/architecture/decisions/ADR-NNN-topic.md`
+    - Diagrams: `/docs/architecture/diagrams/`
 
 - **Web App Docs:** `/apps/web/docs/features/[feature]/`
-  - Feature specs, component docs, API docs, operations
+    - Feature specs, component docs, API docs, operations
 
 - **Worker Docs:** `/apps/worker/docs/features/[feature]/`
-  - Job specs, queue system, scheduler, operations
+    - Job specs, queue system, scheduler, operations
 
 - **Package Docs:** `/packages/[package]/docs/`
-  - Usage guides, implementation details
+    - Usage guides, implementation details
 
 **Complete Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md`
 

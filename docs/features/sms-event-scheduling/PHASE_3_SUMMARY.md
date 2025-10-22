@@ -13,24 +13,24 @@ Phase 3 adds **automatic calendar event change handling** to ensure SMS reminder
 ### Key Features
 
 1. **Automatic Event Change Detection**
-   - Integrated into existing `CalendarWebhookService`
-   - Detects deletions, reschedules, and updates
-   - Extracts changes from batch processing results
+    - Integrated into existing `CalendarWebhookService`
+    - Detects deletions, reschedules, and updates
+    - Extracts changes from batch processing results
 
 2. **SMS Message Lifecycle Management**
-   - **Cancel**: Automatically cancel SMS when events are deleted
-   - **Reschedule**: Update `scheduled_for` time when events are rescheduled
-   - **Regenerate**: Recreate message content when event details change
+    - **Cancel**: Automatically cancel SMS when events are deleted
+    - **Reschedule**: Update `scheduled_for` time when events are rescheduled
+    - **Regenerate**: Recreate message content when event details change
 
 3. **Worker API Endpoints**
-   - RESTful API for manual SMS management
-   - Cancel, update, regenerate, and list operations
-   - Queue job management integration
+    - RESTful API for manual SMS management
+    - Cancel, update, regenerate, and list operations
+    - Queue job management integration
 
 4. **Non-Blocking Architecture**
-   - SMS updates don't block calendar sync
-   - Failures logged but don't break core functionality
-   - Resilient error handling
+    - SMS updates don't block calendar sync
+    - Failures logged but don't break core functionality
+    - Resilient error handling
 
 ---
 
@@ -199,7 +199,7 @@ Cancel a scheduled SMS message.
 
 ```json
 {
-  "reason": "event_deleted"
+	"reason": "event_deleted"
 }
 ```
 
@@ -207,11 +207,11 @@ Cancel a scheduled SMS message.
 
 ```json
 {
-  "success": true,
-  "message": "Scheduled SMS cancelled successfully",
-  "data": {
-    /* sms record */
-  }
+	"success": true,
+	"message": "Scheduled SMS cancelled successfully",
+	"data": {
+		/* sms record */
+	}
 }
 ```
 
@@ -223,9 +223,9 @@ Update the scheduled time for an SMS.
 
 ```json
 {
-  "scheduled_for": "2025-10-09T14:45:00Z",
-  "event_start": "2025-10-09T15:00:00Z",
-  "event_end": "2025-10-09T16:00:00Z"
+	"scheduled_for": "2025-10-09T14:45:00Z",
+	"event_start": "2025-10-09T15:00:00Z",
+	"event_end": "2025-10-09T16:00:00Z"
 }
 ```
 
@@ -233,11 +233,11 @@ Update the scheduled time for an SMS.
 
 ```json
 {
-  "success": true,
-  "message": "Scheduled SMS updated successfully",
-  "data": {
-    /* updated sms record */
-  }
+	"success": true,
+	"message": "Scheduled SMS updated successfully",
+	"data": {
+		/* updated sms record */
+	}
 }
 ```
 
@@ -249,12 +249,12 @@ Regenerate message content using LLM.
 
 ```json
 {
-  "success": true,
-  "message": "Message regenerated successfully",
-  "data": {
-    /* updated sms record */
-  },
-  "generation_method": "llm"
+	"success": true,
+	"message": "Message regenerated successfully",
+	"data": {
+		/* updated sms record */
+	},
+	"generation_method": "llm"
 }
 ```
 
@@ -271,16 +271,16 @@ List scheduled SMS for a user.
 
 ```json
 {
-  "success": true,
-  "count": 5,
-  "data": [
-    {
-      /* sms record 1 */
-    },
-    {
-      /* sms record 2 */
-    }
-  ]
+	"success": true,
+	"count": 5,
+	"data": [
+		{
+			/* sms record 1 */
+		},
+		{
+			/* sms record 2 */
+		}
+	]
 }
 ```
 
@@ -291,25 +291,25 @@ List scheduled SMS for a user.
 ### Manual Testing
 
 - [ ] Delete an event in Google Calendar
-  - [ ] Verify SMS is cancelled in database
-  - [ ] Verify queue job is cancelled
-  - [ ] Verify SMS does not send
+    - [ ] Verify SMS is cancelled in database
+    - [ ] Verify queue job is cancelled
+    - [ ] Verify SMS does not send
 
 - [ ] Reschedule an event to a different time
-  - [ ] Verify `scheduled_for` is updated
-  - [ ] Verify `event_start` and `event_end` are updated
-  - [ ] Verify SMS sends at new time
+    - [ ] Verify `scheduled_for` is updated
+    - [ ] Verify `event_start` and `event_end` are updated
+    - [ ] Verify SMS sends at new time
 
 - [ ] Update event title/description
-  - [ ] Verify message regeneration is triggered
-  - [ ] Verify new message content is saved
-  - [ ] Verify SMS sends with updated message
+    - [ ] Verify message regeneration is triggered
+    - [ ] Verify new message content is saved
+    - [ ] Verify SMS sends with updated message
 
 - [ ] Test worker API endpoints
-  - [ ] POST /sms/scheduled/:id/cancel works
-  - [ ] PATCH /sms/scheduled/:id/update works
-  - [ ] POST /sms/scheduled/:id/regenerate works
-  - [ ] GET /sms/scheduled/user/:userId works
+    - [ ] POST /sms/scheduled/:id/cancel works
+    - [ ] PATCH /sms/scheduled/:id/update works
+    - [ ] POST /sms/scheduled/:id/regenerate works
+    - [ ] GET /sms/scheduled/user/:userId works
 
 ### Integration Testing
 
@@ -434,14 +434,12 @@ WHERE calendar_event_id = 'event-id';
 ```typescript
 // Fixed null handling in regenerate endpoint
 const eventStart = new Date(smsMessage.event_start || new Date());
-const eventId = smsMessage.calendar_event_id || "";
-const endTime = new Date(
-  smsMessage.event_end || smsMessage.event_start || new Date(),
-);
+const eventId = smsMessage.calendar_event_id || '';
+const endTime = new Date(smsMessage.event_end || smsMessage.event_start || new Date());
 
 // Fixed query parameter type check
-if (status && typeof status === "string") {
-  query = query.eq("status", status);
+if (status && typeof status === 'string') {
+	query = query.eq('status', status);
 }
 
 // Added explicit router type annotation

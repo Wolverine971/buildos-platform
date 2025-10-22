@@ -7,9 +7,9 @@ type: research
 status: completed
 tags: [database, tasks, schema, status-field, types]
 related_files:
-  - /packages/shared-types/src/database.types.ts
-  - /apps/web/src/lib/types/project.ts
-  - /apps/web/src/lib/types/index.ts
+    - /packages/shared-types/src/database.types.ts
+    - /apps/web/src/lib/types/project.ts
+    - /apps/web/src/lib/types/index.ts
 ---
 
 # Task Data Model and Status Field Research
@@ -85,17 +85,17 @@ tasks: {
 The `task_status` enum has exactly **4 valid values**:
 
 ```typescript
-task_status: "backlog" | "in_progress" | "done" | "blocked";
+task_status: 'backlog' | 'in_progress' | 'done' | 'blocked';
 ```
 
 **Database Enum Definition:**
 
 ```typescript
 // Line 5825
-task_status: "backlog" | "in_progress" | "done" | "blocked";
+task_status: 'backlog' | 'in_progress' | 'done' | 'blocked';
 
 // Line 6040 (array format)
-task_status: ["backlog", "in_progress", "done", "blocked"];
+task_status: ['backlog', 'in_progress', 'done', 'blocked'];
 ```
 
 ### Status Usage Patterns
@@ -108,32 +108,28 @@ From `/apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts`:
 
 ```typescript
 // Lines 94-98: Completion timestamp handling
-if (newTaskData.status === "done" && existingTask.status !== "done") {
-  newTaskData.completed_at = new Date().toISOString();
-} else if (newTaskData.status !== "done" && existingTask.status === "done") {
-  newTaskData.completed_at = null;
+if (newTaskData.status === 'done' && existingTask.status !== 'done') {
+	newTaskData.completed_at = new Date().toISOString();
+} else if (newTaskData.status !== 'done' && existingTask.status === 'done') {
+	newTaskData.completed_at = null;
 }
 
 // Lines 213-221: Calendar event removal on completion
-if (
-  newTaskData.status === "done" &&
-  existingTask.status !== "done" &&
-  hasCalendarEvents
-) {
-  operations.push({
-    type: "delete_events",
-    data: { task_id: taskId, reason: "Task marked as done" },
-  });
-  return operations;
+if (newTaskData.status === 'done' && existingTask.status !== 'done' && hasCalendarEvents) {
+	operations.push({
+		type: 'delete_events',
+		data: { task_id: taskId, reason: 'Task marked as done' }
+	});
+	return operations;
 }
 
 // Lines 224-229: Re-scheduling when uncompleting
 if (
-  existingTask.status === "done" &&
-  newTaskData.status !== "done" &&
-  (newTaskData.start_date || existingTask.start_date)
+	existingTask.status === 'done' &&
+	newTaskData.status !== 'done' &&
+	(newTaskData.start_date || existingTask.start_date)
 ) {
-  // ... re-add to calendar logic
+	// ... re-add to calendar logic
 }
 ```
 
@@ -165,49 +161,49 @@ Tasks have a **one-to-many** relationship with calendar events through the `task
 
 ```typescript
 task_calendar_events: {
-  Row: {
-    id: string;
-    task_id: string; // Foreign key to tasks
-    user_id: string;
+	Row: {
+		id: string;
+		task_id: string; // Foreign key to tasks
+		user_id: string;
 
-    // Calendar identification
-    calendar_id: string;
-    project_calendar_id: string | null;
-    calendar_event_id: string; // Google Calendar event ID
+		// Calendar identification
+		calendar_id: string;
+		project_calendar_id: string | null;
+		calendar_event_id: string; // Google Calendar event ID
 
-    // Event details
-    event_title: string | null;
-    event_start: string | null;
-    event_end: string | null;
-    event_link: string | null;
+		// Event details
+		event_title: string | null;
+		event_start: string | null;
+		event_end: string | null;
+		event_link: string | null;
 
-    // Recurrence handling
-    is_master_event: boolean | null;
-    is_exception: boolean | null;
-    recurrence_master_id: string | null;
-    recurrence_instance_date: string | null;
-    recurrence_rule: string | null;
-    exception_type: string | null;
-    original_start_time: string | null;
-    series_update_scope: string | null;
+		// Recurrence handling
+		is_master_event: boolean | null;
+		is_exception: boolean | null;
+		recurrence_master_id: string | null;
+		recurrence_instance_date: string | null;
+		recurrence_rule: string | null;
+		exception_type: string | null;
+		original_start_time: string | null;
+		series_update_scope: string | null;
 
-    // Sync status
-    sync_status: Database["public"]["Enums"]["sync_status"];
-    sync_error: string | null;
-    sync_source: string | null;
-    sync_version: number | null;
-    last_synced_at: string | null;
+		// Sync status
+		sync_status: Database['public']['Enums']['sync_status'];
+		sync_error: string | null;
+		sync_source: string | null;
+		sync_version: number | null;
+		last_synced_at: string | null;
 
-    created_at: string | null;
-    updated_at: string | null;
-  }
+		created_at: string | null;
+		updated_at: string | null;
+	}
 }
 ```
 
 ### Sync Status Enum
 
 ```typescript
-sync_status: "pending" | "synced" | "failed" | "cancelled";
+sync_status: 'pending' | 'synced' | 'failed' | 'cancelled';
 ```
 
 ## Phase Relationship
@@ -220,14 +216,14 @@ Tasks relate to phases through a **join table** `phase_tasks`:
 
 ```typescript
 phase_tasks: {
-  Row: {
-    id: string;
-    phase_id: string; // Foreign key to phases
-    task_id: string; // Foreign key to tasks
-    assignment_reason: string | null;
-    suggested_start_date: string | null;
-    created_at: string;
-  }
+	Row: {
+		id: string;
+		phase_id: string; // Foreign key to phases
+		task_id: string; // Foreign key to tasks
+		assignment_reason: string | null;
+		suggested_start_date: string | null;
+		created_at: string;
+	}
 }
 ```
 
@@ -239,24 +235,24 @@ phase_tasks: {
 
 ```typescript
 phases: {
-  Row: {
-    id: string;
-    user_id: string;
-    project_id: string;
+	Row: {
+		id: string;
+		user_id: string;
+		project_id: string;
 
-    name: string;
-    description: string | null;
-    order: number;
+		name: string;
+		description: string | null;
+		order: number;
 
-    // Time boundaries
-    start_date: string;
-    end_date: string;
+		// Time boundaries
+		start_date: string;
+		end_date: string;
 
-    scheduling_method: string | null;
+		scheduling_method: string | null;
 
-    created_at: string;
-    updated_at: string;
-  }
+		created_at: string;
+		updated_at: string;
+	}
 }
 ```
 
@@ -268,33 +264,32 @@ phases: {
 
 ```typescript
 // Base types (Lines 10-14)
-export type Project = Database["public"]["Tables"]["projects"]["Row"];
-export type Task = Database["public"]["Tables"]["tasks"]["Row"];
-export type Note = Database["public"]["Tables"]["notes"]["Row"];
-export type CalendarEvent =
-  Database["public"]["Tables"]["task_calendar_events"]["Row"];
-export type Phase = Database["public"]["Tables"]["phases"]["Row"];
+export type Project = Database['public']['Tables']['projects']['Row'];
+export type Task = Database['public']['Tables']['tasks']['Row'];
+export type Note = Database['public']['Tables']['notes']['Row'];
+export type CalendarEvent = Database['public']['Tables']['task_calendar_events']['Row'];
+export type Phase = Database['public']['Tables']['phases']['Row'];
 
 // Insert types (Lines 20-24)
-export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
-export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
+export type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
+export type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
 
 // Utility types (Lines 130-133)
-export type TaskStatus = "backlog" | "in_progress" | "done" | "blocked";
-export type TaskPriority = "low" | "medium" | "high";
-export type TaskType = "one_off" | "recurring";
+export type TaskStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskType = 'one_off' | 'recurring';
 ```
 
 ### Priority Level Enum
 
 ```typescript
-priority_level: "low" | "medium" | "high";
+priority_level: 'low' | 'medium' | 'high';
 ```
 
 ### Task Type Enum
 
 ```typescript
-task_type: "one_off" | "recurring";
+task_type: 'one_off' | 'recurring';
 ```
 
 ### Recurrence Pattern Enum
@@ -366,13 +361,7 @@ recurrence_end_reason:
 **Location:** `/apps/web/src/lib/types/index.ts` (Line 30)
 
 ```typescript
-export type TaskFilter =
-  | "all"
-  | "active"
-  | "scheduled"
-  | "overdue"
-  | "completed"
-  | "deleted";
+export type TaskFilter = 'all' | 'active' | 'scheduled' | 'overdue' | 'completed' | 'deleted';
 ```
 
 **Note:** This is a UI filter type, not a database status. The `'completed'` filter value maps to tasks with `status === 'done'` in the database.
@@ -383,32 +372,30 @@ export type TaskFilter =
 
 ```typescript
 // From /apps/web/src/routes/api/projects/list/+server.ts (Line 152)
-const completedTasks = tasks.filter((t: any) => t.status === "done");
+const completedTasks = tasks.filter((t: any) => t.status === 'done');
 
 // From /apps/web/src/routes/api/projects/[id]/details/+server.ts (Line 77)
-completedTasks: tasks.filter((t: any) => t.status === "done").length;
+completedTasks: tasks.filter((t: any) => t.status === 'done').length;
 ```
 
 ### Filtering Active Tasks
 
 ```typescript
 // From /apps/web/src/routes/api/projects/[id]/stats/+server.ts (Line 102)
-const activeTasks = allTasks.filter(
-  (t: any) => !t.deleted_at && t.status !== "done",
-);
+const activeTasks = allTasks.filter((t: any) => !t.deleted_at && t.status !== 'done');
 ```
 
 ### Status Transition Logic
 
 ```typescript
 // Task completion sets timestamp
-if (newTaskData.status === "done" && existingTask.status !== "done") {
-  newTaskData.completed_at = new Date().toISOString();
+if (newTaskData.status === 'done' && existingTask.status !== 'done') {
+	newTaskData.completed_at = new Date().toISOString();
 }
 
 // Uncompleting clears timestamp
-if (newTaskData.status !== "done" && existingTask.status === "done") {
-  newTaskData.completed_at = null;
+if (newTaskData.status !== 'done' && existingTask.status === 'done') {
+	newTaskData.completed_at = null;
 }
 ```
 
@@ -461,19 +448,19 @@ if (newTaskData.status !== "done" && existingTask.status === "done") {
 ### Primary Schema Files
 
 - **Database Types:** `/packages/shared-types/src/database.types.ts`
-  - Tasks table: Lines 3809-3940
-  - task_status enum: Lines 5825, 6040
-  - task_calendar_events table: Lines 3689-3769
-  - phase_tasks table: Lines 2475-2497
-  - phases table: Lines 2522-2577
+    - Tasks table: Lines 3809-3940
+    - task_status enum: Lines 5825, 6040
+    - task_calendar_events table: Lines 3689-3769
+    - phase_tasks table: Lines 2475-2497
+    - phases table: Lines 2522-2577
 
 ### Application Types
 
 - **Project Types:** `/apps/web/src/lib/types/project.ts`
-  - Task types: Lines 10-30
-  - Utility types: Lines 130-133
+    - Task types: Lines 10-30
+    - Utility types: Lines 130-133
 - **Index Types:** `/apps/web/src/lib/types/index.ts`
-  - TaskFilter: Line 30
+    - TaskFilter: Line 30
 
 ### Usage Examples
 

@@ -1,14 +1,14 @@
 ---
-title: "SMS Scheduling Database Schema Research"
+title: 'SMS Scheduling Database Schema Research'
 date: 2025-10-08
 type: research
 status: completed
 tags: [sms, database, schema, notifications, messaging, queue]
 related_docs:
-  - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
-  - /docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md
-  - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
-  - /apps/web/supabase/migrations/20251006_sms_notification_channel_phase1.sql
+    - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
+    - /docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md
+    - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
+    - /apps/web/supabase/migrations/20251006_sms_notification_channel_phase1.sql
 ---
 
 # SMS Scheduling Database Schema Research
@@ -229,35 +229,35 @@ CREATE TABLE notification_deliveries (
 
 ```typescript
 interface QueueJob {
-  id: string; // UUID
-  user_id: string; // UUID
+	id: string; // UUID
+	user_id: string; // UUID
 
-  // Job details
-  job_type: QueueType; // ENUM
-  queue_job_id: string; // Unique job identifier
+	// Job details
+	job_type: QueueType; // ENUM
+	queue_job_id: string; // Unique job identifier
 
-  // Scheduling
-  scheduled_for: TIMESTAMPTZ;
-  priority: number; // Default: 10 (lower = higher priority)
+	// Scheduling
+	scheduled_for: TIMESTAMPTZ;
+	priority: number; // Default: 10 (lower = higher priority)
 
-  // Status tracking
-  status: QueueStatus; // ENUM
-  attempts: number; // Default: 0
-  max_attempts: number; // Default: 3
+	// Status tracking
+	status: QueueStatus; // ENUM
+	attempts: number; // Default: 0
+	max_attempts: number; // Default: 3
 
-  // Execution tracking
-  started_at?: TIMESTAMPTZ;
-  processed_at?: TIMESTAMPTZ;
-  completed_at?: TIMESTAMPTZ;
+	// Execution tracking
+	started_at?: TIMESTAMPTZ;
+	processed_at?: TIMESTAMPTZ;
+	completed_at?: TIMESTAMPTZ;
 
-  // Results and errors
-  result?: JSONB;
-  error_message?: string;
+	// Results and errors
+	result?: JSONB;
+	error_message?: string;
 
-  // Metadata
-  metadata?: JSONB;
-  created_at: TIMESTAMPTZ;
-  updated_at?: TIMESTAMPTZ;
+	// Metadata
+	metadata?: JSONB;
+	created_at: TIMESTAMPTZ;
+	updated_at?: TIMESTAMPTZ;
 }
 ```
 
@@ -265,30 +265,30 @@ interface QueueJob {
 
 ```typescript
 type QueueType =
-  | "generate_daily_brief"
-  | "generate_phases"
-  | "sync_calendar"
-  | "process_brain_dump"
-  | "send_email"
-  | "update_recurring_tasks"
-  | "cleanup_old_data"
-  | "onboarding_analysis"
-  | "send_sms"
-  | "generate_brief_email"
-  | "send_notification"
-  | "other";
+	| 'generate_daily_brief'
+	| 'generate_phases'
+	| 'sync_calendar'
+	| 'process_brain_dump'
+	| 'send_email'
+	| 'update_recurring_tasks'
+	| 'cleanup_old_data'
+	| 'onboarding_analysis'
+	| 'send_sms'
+	| 'generate_brief_email'
+	| 'send_notification'
+	| 'other';
 ```
 
 **Queue Status ENUM:**
 
 ```typescript
 type QueueStatus =
-  | "pending" // Waiting to be processed
-  | "processing" // Currently being processed
-  | "completed" // Successfully completed
-  | "failed" // Failed after all retries
-  | "cancelled" // Manually cancelled
-  | "retrying"; // Failed, will retry
+	| 'pending' // Waiting to be processed
+	| 'processing' // Currently being processed
+	| 'completed' // Successfully completed
+	| 'failed' // Failed after all retries
+	| 'cancelled' // Manually cancelled
+	| 'retrying'; // Failed, will retry
 ```
 
 **Key Patterns:**
@@ -305,10 +305,10 @@ type QueueStatus =
 
 ```json
 {
-  "event_id": "uuid",
-  "delivery_id": "uuid",
-  "channel": "sms|email|push|in_app",
-  "event_type": "domain.action"
+	"event_id": "uuid",
+	"delivery_id": "uuid",
+	"channel": "sms|email|push|in_app",
+	"event_type": "domain.action"
 }
 ```
 
@@ -316,10 +316,10 @@ type QueueStatus =
 
 ```json
 {
-  "message_id": "uuid",
-  "phone_number": "+1234567890",
-  "message": "SMS content",
-  "priority": "low|normal|high|urgent"
+	"message_id": "uuid",
+	"phone_number": "+1234567890",
+	"message": "SMS content",
+	"priority": "low|normal|high|urgent"
 }
 ```
 
@@ -379,25 +379,25 @@ CREATE TABLE sms_messages (
 
 ```typescript
 type SMSStatus =
-  | "pending" // Created, not yet queued
-  | "queued" // Added to queue
-  | "sending" // Being sent via Twilio
-  | "sent" // Sent to carrier
-  | "delivered" // Confirmed delivered
-  | "failed" // Failed to send
-  | "undelivered" // Sent but not delivered
-  | "scheduled" // Scheduled for future
-  | "cancelled"; // Manually cancelled
+	| 'pending' // Created, not yet queued
+	| 'queued' // Added to queue
+	| 'sending' // Being sent via Twilio
+	| 'sent' // Sent to carrier
+	| 'delivered' // Confirmed delivered
+	| 'failed' // Failed to send
+	| 'undelivered' // Sent but not delivered
+	| 'scheduled' // Scheduled for future
+	| 'cancelled'; // Manually cancelled
 ```
 
 **SMS Priority ENUM:**
 
 ```typescript
 type SMSPriority =
-  | "low" // Non-urgent, can be delayed
-  | "normal" // Standard delivery
-  | "high" // Important, prioritize
-  | "urgent"; // Critical, send immediately
+	| 'low' // Non-urgent, can be delayed
+	| 'normal' // Standard delivery
+	| 'high' // Important, prioritize
+	| 'urgent'; // Critical, send immediately
 ```
 
 **Key Patterns:**
@@ -412,12 +412,12 @@ type SMSPriority =
 **Usage Patterns:**
 
 1. **Standalone SMS** (Direct send):
-   - notification_delivery_id: NULL
-   - Use case: Task reminders, daily briefs
+    - notification_delivery_id: NULL
+    - Use case: Task reminders, daily briefs
 
 2. **Event-driven SMS** (Via notification system):
-   - notification_delivery_id: UUID
-   - Use case: User signup, brief completed
+    - notification_delivery_id: UUID
+    - Use case: User signup, brief completed
 
 ### 3.2 `sms_templates`
 
@@ -661,10 +661,10 @@ pending → queued → sending → sent → delivered
 
 ```typescript
 interface RetryConfig {
-  attempts: number; // Current attempt count
-  max_attempts: number; // Maximum retries (usually 3)
-  next_retry_at?: Date; // When to retry next
-  last_error?: string; // Last error message
+	attempts: number; // Current attempt count
+	max_attempts: number; // Maximum retries (usually 3)
+	next_retry_at?: Date; // When to retry next
+	last_error?: string; // Last error message
 }
 ```
 
@@ -680,35 +680,35 @@ interface RetryConfig {
 ### Core Migrations
 
 1. **20251006_notification_system_phase1.sql**
-   - Creates notification_events, notification_subscriptions, user_notification_preferences
-   - Creates notification_deliveries
-   - Creates push_subscriptions
-   - Adds send_notification to queue_type enum
-   - Creates emit_notification_event() RPC function
+    - Creates notification_events, notification_subscriptions, user_notification_preferences
+    - Creates notification_deliveries
+    - Creates push_subscriptions
+    - Adds send_notification to queue_type enum
+    - Creates emit_notification_event() RPC function
 
 2. **20251006_notification_system_phase3.sql**
-   - Adds brief.completed and brief.failed event types
-   - Auto-subscribes users to brief notifications
-   - Backfills existing users
+    - Adds brief.completed and brief.failed event types
+    - Auto-subscribes users to brief notifications
+    - Backfills existing users
 
 3. **20251006_sms_notification_channel_phase1.sql**
-   - Adds notification_delivery_id FK to sms_messages
-   - Creates get_user_sms_channel_info() helper
-   - Updates emit_notification_event() to support SMS
+    - Adds notification_delivery_id FK to sms_messages
+    - Creates get_user_sms_channel_info() helper
+    - Updates emit_notification_event() to support SMS
 
 4. **20250928_add_sms_messaging_tables.sql**
-   - Creates sms_status and sms_priority enums
-   - Creates sms_templates table
-   - Creates sms_messages table
-   - Creates user_sms_preferences table
-   - Adds send_sms to queue_type enum
-   - Creates queue_sms_message() helper function
+    - Creates sms_status and sms_priority enums
+    - Creates sms_templates table
+    - Creates sms_messages table
+    - Creates user_sms_preferences table
+    - Adds send_sms to queue_type enum
+    - Creates queue_sms_message() helper function
 
 5. **20251007_notification_tracking_links.sql**
-   - Creates notification_tracking_links table
-   - Creates generate_short_code() function
-   - Creates create_tracking_link() function
-   - Sets up RLS policies
+    - Creates notification_tracking_links table
+    - Creates generate_short_code() function
+    - Creates create_tracking_link() function
+    - Sets up RLS policies
 
 ## 7. Key Relationships
 
@@ -740,16 +740,16 @@ SMS messages can be created in two ways:
 
 1. **Standalone SMS** (e.g., task reminders):
 
-   ```
-   user → queue_jobs → sms_messages
-   ```
+    ```
+    user → queue_jobs → sms_messages
+    ```
 
 2. **Event-driven SMS** (e.g., notification system):
-   ```
-   notification_event → notification_deliveries → sms_messages
-                     ↓
-                  queue_jobs
-   ```
+    ```
+    notification_event → notification_deliveries → sms_messages
+                      ↓
+                   queue_jobs
+    ```
 
 ## 8. Recommendations for SMS Scheduling
 
@@ -849,19 +849,19 @@ WHERE status = 'scheduled'
 
 1. **Atomic Updates**: Always update status with timestamps
 
-   ```sql
-   UPDATE sms_messages
-   SET status = 'sent',
-       sent_at = NOW(),
-       updated_at = NOW()
-   WHERE id = 'message-uuid';
-   ```
+    ```sql
+    UPDATE sms_messages
+    SET status = 'sent',
+        sent_at = NOW(),
+        updated_at = NOW()
+    WHERE id = 'message-uuid';
+    ```
 
 2. **Status Guards**: Prevent invalid transitions
-   ```sql
-   -- Can't go from 'delivered' to 'pending'
-   CREATE FUNCTION validate_status_transition() ...
-   ```
+    ```sql
+    -- Can't go from 'delivered' to 'pending'
+    CREATE FUNCTION validate_status_transition() ...
+    ```
 
 ### 9.2 Retry Logic
 

@@ -172,27 +172,27 @@ Click **Redeploy** from the latest deployment
 After deployment:
 
 1. **Check Logs**: Go to **Logs** tab
-   - Should see: "Worker started on port XXXX"
-   - Should see: "Queue worker initialized"
+    - Should see: "Worker started on port XXXX"
+    - Should see: "Queue worker initialized"
 
 2. **Test Health Endpoint**:
 
-   ```bash
-   curl https://buildos-worker.up.railway.app/health
-   ```
+    ```bash
+    curl https://buildos-worker.up.railway.app/health
+    ```
 
-   Should return: `{"status":"healthy","timestamp":"..."}`
+    Should return: `{"status":"healthy","timestamp":"..."}`
 
 3. **Check Queue Status**:
 
-   ```bash
-   curl https://buildos-worker.up.railway.app/queue/stats
-   ```
+    ```bash
+    curl https://buildos-worker.up.railway.app/queue/stats
+    ```
 
 4. **Test from Web App**:
-   - Go to your Vercel app
-   - Navigate to `/briefs` page
-   - Try generating a brief
+    - Go to your Vercel app
+    - Navigate to `/briefs` page
+    - Try generating a brief
 
 ## Troubleshooting
 

@@ -5,10 +5,10 @@ type: research
 status: complete
 tags: [ui, ux, calendar, scheduling, task-management, modals, components]
 related_files:
-  - /apps/web/src/lib/components/scheduling/
-  - /apps/web/src/lib/components/calendar/
-  - /apps/web/src/lib/components/project/PhaseSchedulingModal.svelte
-  - /apps/web/src/lib/stores/schedulingStore.ts
+    - /apps/web/src/lib/components/scheduling/
+    - /apps/web/src/lib/components/calendar/
+    - /apps/web/src/lib/components/project/PhaseSchedulingModal.svelte
+    - /apps/web/src/lib/stores/schedulingStore.ts
 ---
 
 # Calendar, Scheduling, and Task Management UI/UX Patterns Research
@@ -29,9 +29,9 @@ This document provides a comprehensive analysis of the UI/UX patterns used for c
 - **Navigation Controls:** Previous/Next period, Today button (lines 50-90, 204-232)
 - **Phase Boundary Constraints:** Navigation limited to phase start/end dates (lines 46-48, 65-73, 192-193)
 - **Event Types:**
-  - Existing calendar events (gray, lines 114-126)
-  - Proposed task schedules (primary blue or amber if conflict, lines 129-151)
-  - Highlighted tasks (ring animation, lines 142-148)
+    - Existing calendar events (gray, lines 114-126)
+    - Proposed task schedules (primary blue or amber if conflict, lines 129-151)
+    - Highlighted tasks (ring animation, lines 142-148)
 - **Mobile-First Design:** Responsive grid layouts, touch-optimized (lines 332-389)
 
 **UI Patterns:**
@@ -39,9 +39,9 @@ This document provides a comprehensive analysis of the UI/UX patterns used for c
 ```svelte
 <!-- View Mode Toggle (lines 247-272) -->
 <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-  <Button variant={viewMode === 'day' ? 'primary' : 'ghost'}>Day</Button>
-  <Button variant={viewMode === 'week' ? 'primary' : 'ghost'}>Week</Button>
-  <Button variant={viewMode === 'month' ? 'primary' : 'ghost'}>Month</Button>
+	<Button variant={viewMode === 'day' ? 'primary' : 'ghost'}>Day</Button>
+	<Button variant={viewMode === 'week' ? 'primary' : 'ghost'}>Week</Button>
+	<Button variant={viewMode === 'month' ? 'primary' : 'ghost'}>Month</Button>
 </div>
 ```
 
@@ -64,11 +64,11 @@ This document provides a comprehensive analysis of the UI/UX patterns used for c
 
 ```typescript
 function getTimePosition(date: Date): number {
-  const hours = date.getHours() + date.getMinutes() / 60;
-  const workStart = parseInt(workingHours.work_start_time.split(":")[0]);
-  const workEnd = parseInt(workingHours.work_end_time.split(":")[0]);
-  const workDuration = workEnd - workStart;
-  return ((hours - workStart) / workDuration) * 100;
+	const hours = date.getHours() + date.getMinutes() / 60;
+	const workStart = parseInt(workingHours.work_start_time.split(':')[0]);
+	const workEnd = parseInt(workingHours.work_end_time.split(':')[0]);
+	const workDuration = workEnd - workStart;
+	return ((hours - workStart) / workDuration) * 100;
 }
 ```
 
@@ -86,10 +86,10 @@ This calculates the visual position of events within working hours as a percenta
 
 - Clickable card shows task overview
 - Visual indicators:
-  - Task title and priority badge (lines 247-256)
-  - Date and duration (lines 258-269)
-  - Conflict warning if present (lines 271-278)
-  - Chevron right icon for expansion hint (line 283)
+    - Task title and priority badge (lines 247-256)
+    - Date and duration (lines 258-269)
+    - Conflict warning if present (lines 271-278)
+    - Chevron right icon for expansion hint (line 283)
 - Hover effect: `hover:bg-gray-100 dark:hover:bg-gray-700`
 
 #### Editing Mode (Expanded, lines 143-233)
@@ -98,22 +98,22 @@ This calculates the visual position of events within working hours as a percenta
 
 - **Start DateTime:** `datetime-local` input (lines 156-171)
 - **Duration in Minutes:** Number input with constraints (lines 172-193)
-  - Min: 15 minutes
-  - Max: 480 minutes (8 hours)
-  - Step: 15 minutes
+    - Min: 15 minutes
+    - Max: 480 minutes (8 hours)
+    - Step: 15 minutes
 - **Calculated End Time:** Auto-calculated display (line 190)
 
 **Validation Rules (lines 92-110):**
 
 ```typescript
 if (!tempStart || !tempDuration || tempDuration <= 0) {
-  editError = "Start time and duration are required";
+	editError = 'Start time and duration are required';
 }
 if (tempDuration > 480) {
-  editError = "Task duration cannot exceed 8 hours";
+	editError = 'Task duration cannot exceed 8 hours';
 }
 if (tempDuration < 15) {
-  editError = "Task duration must be at least 15 minutes";
+	editError = 'Task duration must be at least 15 minutes';
 }
 ```
 
@@ -129,11 +129,11 @@ if (tempDuration < 15) {
 
 ```typescript
 interface ProposedTaskSchedule {
-  proposedStart: Date; // Current schedule (may be user-edited)
-  proposedEnd: Date;
-  originalStart?: Date; // AI suggestion preserved
-  originalEnd?: Date;
-  // ... (lines 15-28 in schedulingUtils.ts)
+	proposedStart: Date; // Current schedule (may be user-edited)
+	proposedEnd: Date;
+	originalStart?: Date; // AI suggestion preserved
+	originalEnd?: Date;
+	// ... (lines 15-28 in schedulingUtils.ts)
 }
 ```
 
@@ -148,37 +148,37 @@ This enables the "Reset to AI suggestion" feature (lines 123-130).
 **Hierarchical Severity System:**
 
 1. **Phase Validation Warning** (orange, lines 61-101)
-   - Displayed when phase dates are outside project boundaries
-   - Collapsible section with ChevronDown icon
+    - Displayed when phase dates are outside project boundaries
+    - Collapsible section with ChevronDown icon
 
 2. **Error Conflicts** (red, lines 104-186)
-   - Scheduling conflicts that block proceeding
-   - Types: `calendar`, `task`, `phase_boundary`, `project_boundary`
-   - Shows count: "Scheduling Conflicts (3)"
-   - Each conflict shows:
-     - Task name as clickable badge (lines 140-150)
-     - Description (lines 152-156)
-     - Date and time (lines 158-166)
-   - Icons per type (lines 31-41)
+    - Scheduling conflicts that block proceeding
+    - Types: `calendar`, `task`, `phase_boundary`, `project_boundary`
+    - Shows count: "Scheduling Conflicts (3)"
+    - Each conflict shows:
+        - Task name as clickable badge (lines 140-150)
+        - Description (lines 152-156)
+        - Date and time (lines 158-166)
+    - Icons per type (lines 31-41)
 
 3. **Warning Conflicts** (amber, lines 189-270)
-   - Non-blocking warnings
-   - Same structure as errors but different color
+    - Non-blocking warnings
+    - Same structure as errors but different color
 
 4. **General Warnings** (blue, lines 274-324)
-   - Informational messages
-   - Single or bulleted list format
+    - Informational messages
+    - Single or bulleted list format
 
 **Expandable Sections Pattern:**
 
 ```svelte
 <button onclick={() => (sectionExpanded = !sectionExpanded)}>
-  <AlertTriangle />
-  <span>Section Title (count)</span>
-  <ChevronDown class="transition-transform {expanded ? 'rotate-180' : ''}" />
+	<AlertTriangle />
+	<span>Section Title (count)</span>
+	<ChevronDown class="transition-transform {expanded ? 'rotate-180' : ''}" />
 </button>
 {#if expanded}
-  <!-- Content -->
+	<!-- Content -->
 {/if}
 ```
 
@@ -193,13 +193,13 @@ This enables the "Reset to AI suggestion" feature (lines 123-130).
 
 ```typescript
 interface ConflictInfo {
-  type: "calendar" | "task" | "phase_boundary" | "project_boundary";
-  description: string;
-  affectedTaskIds?: string[];
-  severity: "warning" | "error";
-  taskId?: string;
-  taskName?: string;
-  date?: Date;
+	type: 'calendar' | 'task' | 'phase_boundary' | 'project_boundary';
+	description: string;
+	affectedTaskIds?: string[];
+	severity: 'warning' | 'error';
+	taskId?: string;
+	taskName?: string;
+	date?: Date;
 }
 ```
 
@@ -238,24 +238,24 @@ interface ConflictInfo {
 
 ```typescript
 function highlightAndScrollToTask(taskId: string) {
-  // Clear existing timeout
-  if (highlightTimeout) clearTimeout(highlightTimeout);
+	// Clear existing timeout
+	if (highlightTimeout) clearTimeout(highlightTimeout);
 
-  // Set highlighted task
-  highlightedTaskId = taskId;
+	// Set highlighted task
+	highlightedTaskId = taskId;
 
-  // Scroll to task
-  setTimeout(() => {
-    const element = document.getElementById(`task-schedule-item-${taskId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, 100);
+	// Scroll to task
+	setTimeout(() => {
+		const element = document.getElementById(`task-schedule-item-${taskId}`);
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}
+	}, 100);
 
-  // Clear highlight after 3 seconds
-  highlightTimeout = setTimeout(() => {
-    highlightedTaskId = null;
-  }, 3000);
+	// Clear highlight after 3 seconds
+	highlightTimeout = setTimeout(() => {
+		highlightedTaskId = null;
+	}, 3000);
 }
 ```
 
@@ -271,17 +271,17 @@ function highlightAndScrollToTask(taskId: string) {
 
 ```typescript
 const unsubscribe = schedulingStore.subscribe((state) => {
-  status = state.status;
-  error = state.error;
-  warnings = state.warnings;
-  proposedSchedules = state.proposedSchedules;
-  calendarEvents = state.calendarEvents;
-  conflicts = state.conflicts;
-  viewMode = state.viewMode;
-  currentDate = state.currentDate;
-  editingTaskId = state.editingTaskId;
-  lastLoadedPhaseId = state.lastLoadedPhaseId;
-  workingHours = state.workingHours;
+	status = state.status;
+	error = state.error;
+	warnings = state.warnings;
+	proposedSchedules = state.proposedSchedules;
+	calendarEvents = state.calendarEvents;
+	conflicts = state.conflicts;
+	viewMode = state.viewMode;
+	currentDate = state.currentDate;
+	editingTaskId = state.editingTaskId;
+	lastLoadedPhaseId = state.lastLoadedPhaseId;
+	workingHours = state.workingHours;
 });
 ```
 
@@ -301,27 +301,27 @@ const unsubscribe = schedulingStore.subscribe((state) => {
 
 - **Size Options:** `sm`, `md`, `lg`, `xl`, `2xl` (lines 12, 21-26)
 - **Accessibility:**
-  - Focus trap (lines 55-93)
-  - ARIA labels (lines 155-159)
-  - Keyboard navigation (Tab cycling, Escape to close)
+    - Focus trap (lines 55-93)
+    - ARIA labels (lines 155-159)
+    - Keyboard navigation (Tab cycling, Escape to close)
 - **Mobile-First:**
-  - Slide-up animation on mobile (lines 208-215)
-  - Scale animation on desktop (lines 217-226)
-  - Rounded top on mobile, full rounded on desktop (line 153)
-  - Max height constraints: `max-h-[90vh] sm:max-h-[85vh]` (line 153)
+    - Slide-up animation on mobile (lines 208-215)
+    - Scale animation on desktop (lines 217-226)
+    - Rounded top on mobile, full rounded on desktop (line 153)
+    - Max height constraints: `max-h-[90vh] sm:max-h-[85vh]` (line 153)
 - **Backdrop Behavior:**
-  - Configurable close-on-click (line 14, 35-38)
-  - Blur effect: `backdrop-blur-sm` (line 136)
-  - Opacity: `bg-opacity-50 dark:bg-opacity-70` (line 136)
+    - Configurable close-on-click (line 14, 35-38)
+    - Blur effect: `backdrop-blur-sm` (line 136)
+    - Opacity: `bg-opacity-50 dark:bg-opacity-70` (line 136)
 - **Persistent Mode:** Prevents accidental closure during saving (line 16)
 
 **Slot Pattern:**
 
 ```svelte
 <Modal>
-  <svelte:fragment slot="header">...</svelte:fragment>
-  <!-- Main content (default slot) -->
-  <svelte:fragment slot="footer">...</svelte:fragment>
+	<svelte:fragment slot="header">...</svelte:fragment>
+	<!-- Main content (default slot) -->
+	<svelte:fragment slot="footer">...</svelte:fragment>
 </Modal>
 ```
 
@@ -333,11 +333,11 @@ const unsubscribe = schedulingStore.subscribe((state) => {
 
 ```typescript
 interface Option {
-  id: string;
-  label: string;
-  description?: string;
-  icon?: any;
-  disabled?: boolean;
+	id: string;
+	label: string;
+	description?: string;
+	icon?: any;
+	disabled?: boolean;
 }
 ```
 
@@ -367,12 +367,12 @@ interface Option {
 
 ```typescript
 function handleSave() {
-  errors = validateCalendarTask(editedTask);
-  if (errors.length > 0) {
-    // Show error banner at top (lines 164-186)
-    return;
-  }
-  onSave(editedTask);
+	errors = validateCalendarTask(editedTask);
+	if (errors.length > 0) {
+		// Show error banner at top (lines 164-186)
+		return;
+	}
+	onSave(editedTask);
 }
 ```
 
@@ -386,28 +386,28 @@ function handleSave() {
 
 ```typescript
 interface SchedulingState {
-  status: "idle" | "loading" | "ready" | "saving" | "refreshing" | "error";
-  error: string | null;
-  warnings: string[];
+	status: 'idle' | 'loading' | 'ready' | 'saving' | 'refreshing' | 'error';
+	error: string | null;
+	warnings: string[];
 
-  // Data
-  phase: PhaseWithTasks | null;
-  proposedSchedules: ProposedTaskSchedule[];
-  calendarEvents: any[];
-  conflicts: ConflictInfo[];
+	// Data
+	phase: PhaseWithTasks | null;
+	proposedSchedules: ProposedTaskSchedule[];
+	calendarEvents: any[];
+	conflicts: ConflictInfo[];
 
-  // User preferences
-  workingHours: WorkingHours;
-  timeZone: string;
+	// User preferences
+	workingHours: WorkingHours;
+	timeZone: string;
 
-  // UI state
-  viewMode: "day" | "week" | "month";
-  currentDate: Date;
-  editingTaskId: string | null;
+	// UI state
+	viewMode: 'day' | 'week' | 'month';
+	currentDate: Date;
+	editingTaskId: string | null;
 
-  // Tracking
-  lastLoadedPhaseId: string | null;
-  isDirty: boolean;
+	// Tracking
+	lastLoadedPhaseId: string | null;
+	isDirty: boolean;
 }
 ```
 
@@ -423,13 +423,10 @@ interface SchedulingState {
 **Derived Stores:**
 
 ```typescript
-const totalTasks = derived(
-  [store],
-  ($state) => $state.proposedSchedules.length,
-);
+const totalTasks = derived([store], ($state) => $state.proposedSchedules.length);
 const conflictCount = derived(
-  [store],
-  ($state) => $state.proposedSchedules.filter((s) => s.hasConflict).length,
+	[store],
+	($state) => $state.proposedSchedules.filter((s) => s.hasConflict).length
 );
 ```
 
@@ -550,14 +547,14 @@ updateTaskSchedule(taskId: string, newStart: Date, newEnd: Date) {
 
 ```typescript
 interface UserCalendarPreferences {
-  timezone: string;
-  work_start_time: string; // e.g., "09:00:00"
-  work_end_time: string; // e.g., "17:00:00"
-  working_days: number[]; // [1,2,3,4,5] = Mon-Fri
-  default_task_duration_minutes: number;
-  min_task_duration_minutes: number;
-  max_task_duration_minutes: number;
-  prefer_morning_for_important_tasks: boolean;
+	timezone: string;
+	work_start_time: string; // e.g., "09:00:00"
+	work_end_time: string; // e.g., "17:00:00"
+	working_days: number[]; // [1,2,3,4,5] = Mon-Fri
+	default_task_duration_minutes: number;
+	min_task_duration_minutes: number;
+	max_task_duration_minutes: number;
+	prefer_morning_for_important_tasks: boolean;
 }
 ```
 
@@ -657,11 +654,11 @@ Based on this research, here are patterns to consider for time block management:
 ### 11.3 Time Block Editing
 
 - Follow `TaskScheduleItem` editing pattern:
-  - Collapsed view shows block overview
-  - Click to expand for editing
-  - datetime-local for start time
-  - duration input in minutes
-  - Auto-calculated end time display
+    - Collapsed view shows block overview
+    - Click to expand for editing
+    - datetime-local for start time
+    - duration input in minutes
+    - Auto-calculated end time display
 
 ### 11.4 Conflict Handling
 
@@ -713,37 +710,37 @@ Based on this research, here are patterns to consider for time block management:
 ## 13. Next Steps for Time Block Implementation
 
 1. **Create TimeBlockModal component**
-   - Adapt PhaseSchedulingModal structure
-   - Remove calendar panel (simpler single-column layout)
-   - Focus on block type selection and time configuration
+    - Adapt PhaseSchedulingModal structure
+    - Remove calendar panel (simpler single-column layout)
+    - Focus on block type selection and time configuration
 
 2. **Build TimeBlockTypeSelector**
-   - Use ChoiceModal pattern
-   - Define block types (Focus, Break, Meeting, etc.)
-   - Each type has icon, color, and default duration
+    - Use ChoiceModal pattern
+    - Define block types (Focus, Break, Meeting, etc.)
+    - Each type has icon, color, and default duration
 
 3. **Create TimeBlockItem component**
-   - Follow TaskScheduleItem collapsed/expanded pattern
-   - Show block type icon and color
-   - Editable start time and duration
-   - Display calculated end time
+    - Follow TaskScheduleItem collapsed/expanded pattern
+    - Show block type icon and color
+    - Editable start time and duration
+    - Display calculated end time
 
 4. **Setup timeBlockStore**
-   - Mirror schedulingStore structure
-   - Handle CRUD operations for time blocks
-   - Validate against existing tasks and events
-   - Track user overrides
+    - Mirror schedulingStore structure
+    - Handle CRUD operations for time blocks
+    - Validate against existing tasks and events
+    - Track user overrides
 
 5. **Integrate conflict detection**
-   - Reuse ScheduleConflictAlert component
-   - Check against scheduled tasks
-   - Check against calendar events
-   - Allow override or auto-adjust
+    - Reuse ScheduleConflictAlert component
+    - Check against scheduled tasks
+    - Check against calendar events
+    - Allow override or auto-adjust
 
 6. **Add to existing UI**
-   - Calendar page entry point
-   - Project page quick action
-   - Daily brief integration
+    - Calendar page entry point
+    - Project page quick action
+    - Daily brief integration
 
 ---
 

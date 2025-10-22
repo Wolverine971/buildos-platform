@@ -1,7 +1,7 @@
 ---
 date: 2025-10-06T23:45:00+0000
 researcher: Claude (AI Assistant)
-topic: "NotificationPreferences Component - Hook-up Analysis"
+topic: 'NotificationPreferences Component - Hook-up Analysis'
 tags: [analysis, notifications, preferences, ui, database]
 status: complete
 ---
@@ -74,30 +74,30 @@ The NotificationPreferences component is **correctly and fully connected** to th
 
 ```typescript
 async function loadPreferences() {
-  isLoading = true;
-  loadError = null;
+	isLoading = true;
+	loadError = null;
 
-  // 1. Call service to get preferences
-  const prefs = await notificationPreferencesService.get("brief.completed");
+	// 1. Call service to get preferences
+	const prefs = await notificationPreferencesService.get('brief.completed');
 
-  // 2. Update local state
-  if (prefs) {
-    preferences = prefs;
-    pushEnabled = prefs.push_enabled;
-    emailEnabled = prefs.email_enabled;
-    smsEnabled = prefs.sms_enabled;
-    inAppEnabled = prefs.in_app_enabled;
-    quietHoursEnabled = prefs.quiet_hours_enabled;
-    quietHoursStart = prefs.quiet_hours_start;
-    quietHoursEnd = prefs.quiet_hours_end;
-  }
+	// 2. Update local state
+	if (prefs) {
+		preferences = prefs;
+		pushEnabled = prefs.push_enabled;
+		emailEnabled = prefs.email_enabled;
+		smsEnabled = prefs.sms_enabled;
+		inAppEnabled = prefs.in_app_enabled;
+		quietHoursEnabled = prefs.quiet_hours_enabled;
+		quietHoursStart = prefs.quiet_hours_start;
+		quietHoursEnd = prefs.quiet_hours_end;
+	}
 
-  // 3. Check phone verification
-  const smsPrefs = await smsService.getSMSPreferences(userId);
-  if (smsPrefs.success && smsPrefs.data?.preferences) {
-    phoneVerified = smsPrefs.data.preferences.phone_verified || false;
-    phoneNumber = smsPrefs.data.preferences.phone_number || null;
-  }
+	// 3. Check phone verification
+	const smsPrefs = await smsService.getSMSPreferences(userId);
+	if (smsPrefs.success && smsPrefs.data?.preferences) {
+		phoneVerified = smsPrefs.data.preferences.phone_verified || false;
+		phoneNumber = smsPrefs.data.preferences.phone_number || null;
+	}
 }
 ```
 
@@ -118,24 +118,24 @@ async function loadPreferences() {
 
 ```typescript
 async function savePreferences() {
-  isSaving = true;
+	isSaving = true;
 
-  // 1. Call service to update preferences
-  await notificationPreferencesService.update("brief.completed", {
-    push_enabled: pushEnabled,
-    email_enabled: emailEnabled,
-    sms_enabled: smsEnabled,
-    in_app_enabled: inAppEnabled,
-    quiet_hours_enabled: quietHoursEnabled,
-    quiet_hours_start: quietHoursStart,
-    quiet_hours_end: quietHoursEnd,
-  });
+	// 1. Call service to update preferences
+	await notificationPreferencesService.update('brief.completed', {
+		push_enabled: pushEnabled,
+		email_enabled: emailEnabled,
+		sms_enabled: smsEnabled,
+		in_app_enabled: inAppEnabled,
+		quiet_hours_enabled: quietHoursEnabled,
+		quiet_hours_start: quietHoursStart,
+		quiet_hours_end: quietHoursEnd
+	});
 
-  // 2. Show success toast
-  toastService.success("Notification preferences saved successfully");
+	// 2. Show success toast
+	toastService.success('Notification preferences saved successfully');
 
-  // 3. Reload to get latest data
-  await loadPreferences();
+	// 3. Reload to get latest data
+	await loadPreferences();
 }
 ```
 
@@ -315,11 +315,11 @@ try {
 
 ```typescript
 if (authError || !user) {
-  throw new Error("User not authenticated");
+	throw new Error('User not authenticated');
 }
 
 if (error) {
-  throw error; // Propagates to component
+	throw error; // Propagates to component
 }
 ```
 
@@ -409,7 +409,7 @@ if (error) {
 **Current**:
 
 ```typescript
-const prefs = await notificationPreferencesService.get("brief.completed");
+const prefs = await notificationPreferencesService.get('brief.completed');
 ```
 
 **Issue**: Event type is hardcoded as `'brief.completed'`
@@ -433,43 +433,43 @@ All database operations are properly connected and secured.
 
 1. **Test Load**:
 
-   ```sql
-   -- Verify preferences load
-   SELECT * FROM user_notification_preferences
-   WHERE user_id = '<your-user-id>'
-   AND event_type = 'brief.completed';
-   ```
+    ```sql
+    -- Verify preferences load
+    SELECT * FROM user_notification_preferences
+    WHERE user_id = '<your-user-id>'
+    AND event_type = 'brief.completed';
+    ```
 
 2. **Test Save**:
-   - Toggle preferences in UI
-   - Click "Save Preferences"
-   - Verify database updated:
+    - Toggle preferences in UI
+    - Click "Save Preferences"
+    - Verify database updated:
 
-   ```sql
-   SELECT
-     push_enabled,
-     email_enabled,
-     sms_enabled,
-     in_app_enabled,
-     quiet_hours_enabled,
-     quiet_hours_start,
-     quiet_hours_end,
-     updated_at
-   FROM user_notification_preferences
-   WHERE user_id = '<your-user-id>'
-   AND event_type = 'brief.completed';
-   ```
+    ```sql
+    SELECT
+      push_enabled,
+      email_enabled,
+      sms_enabled,
+      in_app_enabled,
+      quiet_hours_enabled,
+      quiet_hours_start,
+      quiet_hours_end,
+      updated_at
+    FROM user_notification_preferences
+    WHERE user_id = '<your-user-id>'
+    AND event_type = 'brief.completed';
+    ```
 
 3. **Test First-Time User**:
-   - Delete existing preferences
-   - Reload component
-   - Verify defaults shown
-   - Save preferences
-   - Verify row created in database
+    - Delete existing preferences
+    - Reload component
+    - Verify defaults shown
+    - Save preferences
+    - Verify row created in database
 
 4. **Test RLS**:
-   - Try to query another user's preferences (should fail)
-   - Try to update another user's preferences (should fail)
+    - Try to query another user's preferences (should fail)
+    - Try to update another user's preferences (should fail)
 
 ### Expected Behavior
 

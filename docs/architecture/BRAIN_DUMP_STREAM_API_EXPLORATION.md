@@ -46,9 +46,9 @@ POST / api / braindumps / stream;
 - **Config**: `rateLimiter.check(user.id, RATE_LIMITS.API_AI)`
 - **Response**: 429 Too Many Requests with `Retry-After` header
 - **Headers Included**:
-  - `X-RateLimit-Limit`: Total requests allowed
-  - `X-RateLimit-Remaining`: Requests remaining
-  - `X-RateLimit-Reset`: Unix timestamp when limit resets
+    - `X-RateLimit-Limit`: Total requests allowed
+    - `X-RateLimit-Remaining`: Requests remaining
+    - `X-RateLimit-Reset`: Unix timestamp when limit resets
 
 ### Request Body Structure
 
@@ -81,9 +81,9 @@ POST / api / braindumps / stream;
 ```typescript
 const MAX_CONTENT_LENGTH = 50000; // 50KB
 if (content.length > MAX_CONTENT_LENGTH) {
-  return SSEResponse.badRequest(
-    `Content too long. Maximum ${MAX_CONTENT_LENGTH} characters allowed.`,
-  );
+	return SSEResponse.badRequest(
+		`Content too long. Maximum ${MAX_CONTENT_LENGTH} characters allowed.`
+	);
 }
 ```
 
@@ -92,7 +92,7 @@ if (content.length > MAX_CONTENT_LENGTH) {
 ```typescript
 const validation = await BrainDumpValidator.validateDual(requestBody);
 if (!validation.isValid) {
-  return validation.error!;
+	return validation.error!;
 }
 ```
 
@@ -161,14 +161,14 @@ Each message ends with a blank line (`\n\n`).
 
 ```json
 {
-  "type": "status",
-  "message": "Analyzing braindump...",
-  "data": {
-    "processes": ["analysis", "context", "tasks"],
-    "contentLength": 1250,
-    "isDualProcessing": true,
-    "source": "analysis-then-dual"
-  }
+	"type": "status",
+	"message": "Analyzing braindump...",
+	"data": {
+		"processes": ["analysis", "context", "tasks"],
+		"contentLength": 1250,
+		"isDualProcessing": true,
+		"source": "analysis-then-dual"
+	}
 }
 ```
 
@@ -340,17 +340,17 @@ ON ERROR:
 
 ```typescript
 async function processBrainDumpWithStreaming({
-  content,
-  selectedProjectId,
-  brainDumpId,
-  displayedQuestions,
-  writer,
-  encoder,
-  userId,
-  supabase,
-  options,
-  autoAccept,
-  processingDateTime,
+	content,
+	selectedProjectId,
+	brainDumpId,
+	displayedQuestions,
+	writer,
+	encoder,
+	userId,
+	supabase,
+	options,
+	autoAccept,
+	processingDateTime
 });
 ```
 
@@ -394,11 +394,11 @@ async function processBrainDumpWithStreaming({
 **Phase 6: Auto-Accept Execution** (Line 392-537)
 
 - If `autoAccept` is enabled and operations exist:
-  - Creates `OperationsExecutor` instance
-  - Executes all enabled operations
-  - Fetches project info for created/updated projects
-  - Updates brain dump status to 'saved'
-  - Includes execution summary in metadata
+    - Creates `OperationsExecutor` instance
+    - Executes all enabled operations
+    - Fetches project info for created/updated projects
+    - Updates brain dump status to 'saved'
+    - Includes execution summary in metadata
 
 **Phase 7: Completion** (Line 539-572)
 
@@ -429,10 +429,10 @@ static async processStream(
 
 ```typescript
 interface StreamCallbacks {
-  onProgress?: (data: any) => void; // For status/progress messages
-  onComplete?: (result: any) => void; // For completion message
-  onError?: (error: string | Error) => void;
-  onStatus?: (status: string) => void; // For custom event types
+	onProgress?: (data: any) => void; // For status/progress messages
+	onComplete?: (result: any) => void; // For completion message
+	onError?: (error: string | Error) => void;
+	onStatus?: (status: string) => void; // For custom event types
 }
 ```
 
@@ -440,9 +440,9 @@ interface StreamCallbacks {
 
 ```typescript
 interface SSEProcessorOptions {
-  timeout?: number; // Default: 60000ms
-  parseJSON?: boolean; // Default: true
-  onParseError?: (error: Error, chunk: string) => void;
+	timeout?: number; // Default: 60000ms
+	parseJSON?: boolean; // Default: true
+	onParseError?: (error: Error, chunk: string) => void;
 }
 ```
 
@@ -454,10 +454,10 @@ interface SSEProcessorOptions {
 4. **Error Handling**: Catches JSON parse errors without crashing stream
 5. **Timeout**: Enforces timeout (default 60s, configurable to 180s for long dumps)
 6. **Event Type Detection**: Routes messages to appropriate callbacks:
-   - `type === 'status'` → onStatus
-   - `type === 'progress'` → onProgress
-   - `type === 'complete'` → onComplete
-   - `type === 'error'` → onError
+    - `type === 'status'` → onStatus
+    - `type === 'progress'` → onProgress
+    - `type === 'complete'` → onComplete
+    - `type === 'error'` → onError
 
 ---
 
@@ -502,25 +502,25 @@ async parseBrainDumpWithStream(
 
 ```typescript
 switch (data.type) {
-  case "status":
-  case "contextProgress":
-  case "tasksProgress":
-  case "retry":
-    options?.onProgress?.(data);
-    break;
+	case 'status':
+	case 'contextProgress':
+	case 'tasksProgress':
+	case 'retry':
+		options?.onProgress?.(data);
+		break;
 
-  case "complete":
-    if (data.result) {
-      options?.onComplete?.(data.result);
-    }
-    break;
+	case 'complete':
+		if (data.result) {
+			options?.onComplete?.(data.result);
+		}
+		break;
 
-  case "error":
-    options?.onError?.(data.error || "Unknown error");
-    break;
+	case 'error':
+		options?.onError?.(data.error || 'Unknown error');
+		break;
 
-  default:
-    options?.onProgress?.(data);
+	default:
+		options?.onProgress?.(data);
 }
 ```
 
@@ -546,17 +546,17 @@ switch (data.type) {
 
 ```typescript
 async function parseBrainDump(event?: CustomEvent) {
-  // ... validation ...
+	// ... validation ...
 
-  // Start processing through unified store
-  processingStarted = await brainDumpV2Store.startBrainDump(brainDumpId, {
-    inputText: inputText,
-    selectedProject: selectedProject,
-    isNewProject: selectedProject?.id === "new",
-    processingType: "dual",
-    autoAcceptEnabled: autoAccept,
-    displayedQuestions: displayedQuestions,
-  });
+	// Start processing through unified store
+	processingStarted = await brainDumpV2Store.startBrainDump(brainDumpId, {
+		inputText: inputText,
+		selectedProject: selectedProject,
+		isNewProject: selectedProject?.id === 'new',
+		processingType: 'dual',
+		autoAcceptEnabled: autoAccept,
+		displayedQuestions: displayedQuestions
+	});
 }
 ```
 
@@ -584,10 +584,10 @@ async function parseBrainDump(event?: CustomEvent) {
 
 ```json
 {
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "status": 400,
-  "timestamp": "2024-10-20T12:34:56.000Z"
+	"error": "Error message",
+	"code": "ERROR_CODE",
+	"status": 400,
+	"timestamp": "2024-10-20T12:34:56.000Z"
 }
 ```
 
@@ -658,27 +658,27 @@ Frontend Handler:
 
 ```typescript
 try {
-  await brainDumpService.parseBrainDumpWithStream(
-    inputText,
-    selectedProjectId,
-    brainDumpId,
-    displayedQuestions,
-    {
-      onProgress: (status) => {
-        /* handle progress */
-      },
-      onComplete: (result) => {
-        /* handle complete */
-      },
-      onError: (error) => {
-        toastService.error(error);
-        brainDumpActions.setProcessingPhase("idle");
-      },
-    },
-  );
+	await brainDumpService.parseBrainDumpWithStream(
+		inputText,
+		selectedProjectId,
+		brainDumpId,
+		displayedQuestions,
+		{
+			onProgress: (status) => {
+				/* handle progress */
+			},
+			onComplete: (result) => {
+				/* handle complete */
+			},
+			onError: (error) => {
+				toastService.error(error);
+				brainDumpActions.setProcessingPhase('idle');
+			}
+		}
+	);
 } catch (error) {
-  console.error("Processing error:", error);
-  toastService.error("Processing failed: " + error.message);
+	console.error('Processing error:', error);
+	toastService.error('Processing failed: ' + error.message);
 }
 ```
 
@@ -688,14 +688,14 @@ try {
 
 ```typescript
 onRetry: async (attempt: number, maxAttempts: number) => {
-  const retryMessage: SSERetry = {
-    type: "retry",
-    message: `Retrying dual processing...`,
-    attempt,
-    maxAttempts,
-    processName: "dual-processing",
-  };
-  await sendSSEMessage(writer, encoder, retryMessage);
+	const retryMessage: SSERetry = {
+		type: 'retry',
+		message: `Retrying dual processing...`,
+		attempt,
+		maxAttempts,
+		processName: 'dual-processing'
+	};
+	await sendSSEMessage(writer, encoder, retryMessage);
 };
 ```
 
@@ -705,16 +705,16 @@ onRetry: async (attempt: number, maxAttempts: number) => {
 
 ```typescript
 try {
-  if (parseJSON) {
-    const parsed = JSON.parse(data);
-    this.handleParsedEvent(parsed, callbacks);
-  }
+	if (parseJSON) {
+		const parsed = JSON.parse(data);
+		this.handleParsedEvent(parsed, callbacks);
+	}
 } catch (error) {
-  if (onParseError) {
-    onParseError(error as Error, data);
-  } else {
-    console.error("Failed to parse SSE data:", error);
-  }
+	if (onParseError) {
+		onParseError(error as Error, data);
+	} else {
+		console.error('Failed to parse SSE data:', error);
+	}
 }
 ```
 

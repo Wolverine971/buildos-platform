@@ -336,46 +336,46 @@ The `emit_notification_event()` RPC function (lines 318-366) includes logic to:
 **Methods Available**:
 
 1. **`isSupported(): boolean`**
-   - Checks for Service Worker and PushManager support
-   - Returns false for unsupported browsers
+    - Checks for Service Worker and PushManager support
+    - Returns false for unsupported browsers
 
 2. **`hasPermission(): boolean`**
-   - Returns true if `Notification.permission === 'granted'`
+    - Returns true if `Notification.permission === 'granted'`
 
 3. **`requestPermission(): Promise<boolean>`**
-   - Calls `Notification.requestPermission()`
-   - Returns true if granted, false otherwise
+    - Calls `Notification.requestPermission()`
+    - Returns true if granted, false otherwise
 
 4. **`subscribe(): Promise<PushSubscription>`**
-   - Registers service worker
-   - Subscribes to push service with VAPID key
-   - Saves subscription to `push_subscriptions` table
-   - Returns browser's PushSubscription object
+    - Registers service worker
+    - Subscribes to push service with VAPID key
+    - Saves subscription to `push_subscriptions` table
+    - Returns browser's PushSubscription object
 
 5. **`unsubscribe(): Promise<void>`**
-   - Unsubscribes from push service
-   - Marks subscription as inactive in database
+    - Unsubscribes from push service
+    - Marks subscription as inactive in database
 
 6. **`getSubscription(): Promise<PushSubscription | null>`**
-   - Returns current browser subscription
+    - Returns current browser subscription
 
 7. **`isSubscribed(): Promise<boolean>`**
-   - Checks if user currently has active subscription
+    - Checks if user currently has active subscription
 
 #### Database Integration
 
 **Subscribe** (lines 119-130):
 
 ```typescript
-await this.supabase.from("push_subscriptions").upsert(
-  {
-    endpoint: request.endpoint,
-    p256dh_key: request.keys.p256dh,
-    auth_key: request.keys.auth,
-    user_agent: request.user_agent,
-    is_active: true,
-  },
-  { onConflict: "endpoint" },
+await this.supabase.from('push_subscriptions').upsert(
+	{
+		endpoint: request.endpoint,
+		p256dh_key: request.keys.p256dh,
+		auth_key: request.keys.auth,
+		user_agent: request.user_agent,
+		is_active: true
+	},
+	{ onConflict: 'endpoint' }
 );
 ```
 
@@ -383,9 +383,9 @@ await this.supabase.from("push_subscriptions").upsert(
 
 ```typescript
 await this.supabase
-  .from("push_subscriptions")
-  .update({ is_active: false })
-  .eq("endpoint", subscription.endpoint);
+	.from('push_subscriptions')
+	.update({ is_active: false })
+	.eq('endpoint', subscription.endpoint);
 ```
 
 #### Issues Found
@@ -453,18 +453,18 @@ Save subscription to database
 **Analysis of Implementation History**:
 
 1. **Phase 1**: Backend infrastructure was built first
-   - Database schema created
-   - Worker adapter implemented
-   - Service worker file created
+    - Database schema created
+    - Worker adapter implemented
+    - Service worker file created
 
 2. **Phase 2**: Service layer was built
-   - `browserPushService` class created
-   - All necessary methods implemented
+    - `browserPushService` class created
+    - All necessary methods implemented
 
 3. **Phase 3**: ❌ **UI integration was never completed**
-   - Toggle UI was added to settings
-   - But no connection to `browserPushService`
-   - Service remained unused
+    - Toggle UI was added to settings
+    - But no connection to `browserPushService`
+    - Service remained unused
 
 **Pattern**: Backend-first development without closing the loop to the frontend.
 
@@ -517,59 +517,57 @@ WHERE unp.push_enabled = true
 **Changes**:
 
 ```typescript
-import { browserPushService } from "$lib/services/browser-push.service";
+import { browserPushService } from '$lib/services/browser-push.service';
 
 // Add state for browser subscription status
 let isBrowserSubscribed = $state(false);
-let browserPermissionStatus = $state<"granted" | "denied" | "default">(
-  "default",
-);
+let browserPermissionStatus = $state<'granted' | 'denied' | 'default'>('default');
 let subscriptionError = $state<string | null>(null);
 
 // Check subscription status on mount
 onMount(async () => {
-  if (browserPushService.isSupported()) {
-    isBrowserSubscribed = await browserPushService.isSubscribed();
-    browserPermissionStatus = Notification.permission;
-  }
+	if (browserPushService.isSupported()) {
+		isBrowserSubscribed = await browserPushService.isSubscribed();
+		browserPermissionStatus = Notification.permission;
+	}
 });
 
 // Handle push toggle
 async function handlePushToggle() {
-  subscriptionError = null;
+	subscriptionError = null;
 
-  if (pushEnabled) {
-    // User enabled push - request permission and subscribe
-    try {
-      if (!browserPushService.isSupported()) {
-        throw new Error("Push notifications are not supported in this browser");
-      }
+	if (pushEnabled) {
+		// User enabled push - request permission and subscribe
+		try {
+			if (!browserPushService.isSupported()) {
+				throw new Error('Push notifications are not supported in this browser');
+			}
 
-      const hasPermission = await browserPushService.requestPermission();
-      if (!hasPermission) {
-        pushEnabled = false;
-        subscriptionError =
-          "Notification permission was denied. Please enable notifications in your browser settings.";
-        return;
-      }
+			const hasPermission = await browserPushService.requestPermission();
+			if (!hasPermission) {
+				pushEnabled = false;
+				subscriptionError =
+					'Notification permission was denied. Please enable notifications in your browser settings.';
+				return;
+			}
 
-      await browserPushService.subscribe();
-      isBrowserSubscribed = true;
-      browserPermissionStatus = "granted";
-    } catch (error) {
-      pushEnabled = false;
-      subscriptionError = error.message;
-      console.error("Failed to subscribe to push notifications:", error);
-    }
-  } else {
-    // User disabled push - unsubscribe
-    try {
-      await browserPushService.unsubscribe();
-      isBrowserSubscribed = false;
-    } catch (error) {
-      console.error("Failed to unsubscribe from push notifications:", error);
-    }
-  }
+			await browserPushService.subscribe();
+			isBrowserSubscribed = true;
+			browserPermissionStatus = 'granted';
+		} catch (error) {
+			pushEnabled = false;
+			subscriptionError = error.message;
+			console.error('Failed to subscribe to push notifications:', error);
+		}
+	} else {
+		// User disabled push - unsubscribe
+		try {
+			await browserPushService.unsubscribe();
+			isBrowserSubscribed = false;
+		} catch (error) {
+			console.error('Failed to unsubscribe from push notifications:', error);
+		}
+	}
 }
 ```
 
@@ -579,23 +577,21 @@ Add after the push notification checkbox:
 
 ```svelte
 {#if pushEnabled && !isBrowserSubscribed}
-  <div class="alert alert-warning">
-    <Icon name="alert-triangle" size={16} />
-    Browser subscription pending. Click "Save Preferences" to complete setup.
-  </div>
+	<div class="alert alert-warning">
+		<Icon name="alert-triangle" size={16} />
+		Browser subscription pending. Click "Save Preferences" to complete setup.
+	</div>
 {/if}
 
 {#if subscriptionError}
-  <div class="alert alert-error">
-    <Icon name="x-circle" size={16} />
-    {subscriptionError}
-  </div>
+	<div class="alert alert-error">
+		<Icon name="x-circle" size={16} />
+		{subscriptionError}
+	</div>
 {/if}
 
 {#if !browserPushService.isSupported()}
-  <div class="text-sm text-gray-500">
-    Push notifications are not supported in this browser.
-  </div>
+	<div class="text-sm text-gray-500">Push notifications are not supported in this browser.</div>
 {/if}
 ```
 
@@ -675,13 +671,13 @@ Implement the TODO for tracking notification clicks:
 
 ```javascript
 if (event.notification.data?.delivery_id) {
-  fetch("/api/notifications/track/click", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      delivery_id: event.notification.data.delivery_id,
-    }),
-  }).catch((err) => console.error("Failed to track click:", err));
+	fetch('/api/notifications/track/click', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			delivery_id: event.notification.data.delivery_id
+		})
+	}).catch((err) => console.error('Failed to track click:', err));
 }
 ```
 
@@ -750,8 +746,8 @@ Scenarios:
 ### Before Deploying Fix
 
 - [ ] Verify VAPID keys are configured in production:
-  - [ ] Vercel: `PUBLIC_VAPID_PUBLIC_KEY`
-  - [ ] Railway: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+    - [ ] Vercel: `PUBLIC_VAPID_PUBLIC_KEY`
+    - [ ] Railway: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 - [ ] Verify `push_subscriptions` table exists in production database
 - [ ] Verify RLS policies are enabled
 - [ ] Verify `web-push` package is installed in worker (check package.json)

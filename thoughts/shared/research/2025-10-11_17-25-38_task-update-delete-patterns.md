@@ -4,10 +4,10 @@ date: 2025-10-11 17:25:38
 tags: [research, tasks, architecture, optimistic-updates, api, patterns]
 status: completed
 related_docs:
-  - /apps/web/src/lib/services/projectService.ts
-  - /apps/web/src/lib/stores/project.store.ts
-  - /apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
-  - /apps/web/src/lib/services/projectData.service.ts
+    - /apps/web/src/lib/services/projectService.ts
+    - /apps/web/src/lib/stores/project.store.ts
+    - /apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
+    - /apps/web/src/lib/services/projectData.service.ts
 ---
 
 # Task Update and Delete Patterns in BuildOS
@@ -295,168 +295,158 @@ The PATCH endpoint handles all task updates with intelligent calendar sync:
 
 ```typescript
 export const PATCH: RequestHandler = async ({
-  params,
-  request,
-  locals: { supabase, safeGetSession },
+	params,
+	request,
+	locals: { supabase, safeGetSession }
 }) => {
-  try {
-    const { user } = await safeGetSession();
-    if (!user) return ApiResponse.unauthorized();
+	try {
+		const { user } = await safeGetSession();
+		if (!user) return ApiResponse.unauthorized();
 
-    const { id: projectId, taskId } = params;
-    const updates = await parseRequestBody(request);
-    if (!updates) return ApiResponse.badRequest("Invalid request body");
+		const { id: projectId, taskId } = params;
+		const updates = await parseRequestBody(request);
+		if (!updates) return ApiResponse.badRequest('Invalid request body');
 
-    let newTaskData = sanitizeTaskData(updates);
+		let newTaskData = sanitizeTaskData(updates);
 
-    // Extract timezone from request
-    const timeZone = updates.timeZone;
+		// Extract timezone from request
+		const timeZone = updates.timeZone;
 
-    // Get current task data with related records
-    const { data: existingTask } = await supabase
-      .from("tasks")
-      .select(
-        `
+		// Get current task data with related records
+		const { data: existingTask } = await supabase
+			.from('tasks')
+			.select(
+				`
         *,
         project:projects!inner(id, user_id, name, start_date, end_date),
         phase_tasks(id, phase_id, phases(id, name, start_date, end_date)),
         task_calendar_events(...)
-      `,
-      )
-      .eq("id", taskId)
-      .eq("project_id", projectId)
-      .eq("project.user_id", user.id)
-      .single();
+      `
+			)
+			.eq('id', taskId)
+			.eq('project_id', projectId)
+			.eq('project.user_id', user.id)
+			.single();
 
-    if (!existingTask) return ApiResponse.notFound("Task not found");
+		if (!existingTask) return ApiResponse.notFound('Task not found');
 
-    // Validate start_date against project boundaries
-    if (newTaskData.start_date) {
-      const validationError = validateTaskDate(
-        newTaskData.start_date,
-        existingTask.project,
-      );
-      if (validationError) {
-        toastService.error(validationError);
-        return ApiResponse.badRequest(validationError);
-      }
-    }
+		// Validate start_date against project boundaries
+		if (newTaskData.start_date) {
+			const validationError = validateTaskDate(newTaskData.start_date, existingTask.project);
+			if (validationError) {
+				toastService.error(validationError);
+				return ApiResponse.badRequest(validationError);
+			}
+		}
 
-    // Handle task type changes and recurrence data
-    if (
-      newTaskData.task_type === "one_off" &&
-      existingTask.task_type === "recurring"
-    ) {
-      // Clear all recurring-specific data
-      newTaskData.recurrence_pattern = null;
-      newTaskData.recurrence_ends = null;
-      newTaskData.recurrence_end_source = null;
-    }
+		// Handle task type changes and recurrence data
+		if (newTaskData.task_type === 'one_off' && existingTask.task_type === 'recurring') {
+			// Clear all recurring-specific data
+			newTaskData.recurrence_pattern = null;
+			newTaskData.recurrence_ends = null;
+			newTaskData.recurrence_end_source = null;
+		}
 
-    // Handle completion status change
-    if (newTaskData.status === "done" && existingTask.status !== "done") {
-      newTaskData.completed_at = new Date().toISOString();
-    } else if (
-      newTaskData.status !== "done" &&
-      existingTask.status === "done"
-    ) {
-      newTaskData.completed_at = null;
-    }
+		// Handle completion status change
+		if (newTaskData.status === 'done' && existingTask.status !== 'done') {
+			newTaskData.completed_at = new Date().toISOString();
+		} else if (newTaskData.status !== 'done' && existingTask.status === 'done') {
+			newTaskData.completed_at = null;
+		}
 
-    // Update task immediately (no calendar blocking)
-    const { error: updateError } = await supabase
-      .from("tasks")
-      .update({
-        ...newTaskData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", taskId);
+		// Update task immediately (no calendar blocking)
+		const { error: updateError } = await supabase
+			.from('tasks')
+			.update({
+				...newTaskData,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', taskId);
 
-    if (updateError) throw updateError;
+		if (updateError) throw updateError;
 
-    // Handle phase assignment in parallel (non-blocking)
-    const phasePromise = handlePhaseAssignment(
-      taskId,
-      projectId,
-      newTaskData.start_date,
-      supabase,
-    );
+		// Handle phase assignment in parallel (non-blocking)
+		const phasePromise = handlePhaseAssignment(
+			taskId,
+			projectId,
+			newTaskData.start_date,
+			supabase
+		);
 
-    // Intelligent calendar operation handling
-    const calendarOperations = determineCalendarOperations(
-      existingTask,
-      newTaskData,
-      updates,
-      timeZone,
-    );
+		// Intelligent calendar operation handling
+		const calendarOperations = determineCalendarOperations(
+			existingTask,
+			newTaskData,
+			updates,
+			timeZone
+		);
 
-    // Process calendar operations directly with CalendarService
-    const calendarService = new CalendarService(supabase);
-    const calendarPromises = [];
+		// Process calendar operations directly with CalendarService
+		const calendarService = new CalendarService(supabase);
+		const calendarPromises = [];
 
-    for (const operation of calendarOperations) {
-      calendarPromises.push(
-        processCalendarOperationDirectly(
-          calendarService,
-          errorLogger,
-          operation,
-          user.id,
-          taskId,
-          projectId,
-          supabase,
-        ),
-      );
-    }
+		for (const operation of calendarOperations) {
+			calendarPromises.push(
+				processCalendarOperationDirectly(
+					calendarService,
+					errorLogger,
+					operation,
+					user.id,
+					taskId,
+					projectId,
+					supabase
+				)
+			);
+		}
 
-    // Wait for phase assignment but not calendar operations
-    await phasePromise;
+		// Wait for phase assignment but not calendar operations
+		await phasePromise;
 
-    // For individual calendar additions, await to ensure complete data
-    const isSingleCalendarAdd =
-      updates.addTaskToCalendar && calendarPromises.length === 1;
+		// For individual calendar additions, await to ensure complete data
+		const isSingleCalendarAdd = updates.addTaskToCalendar && calendarPromises.length === 1;
 
-    if (calendarPromises.length > 0) {
-      if (isSingleCalendarAdd) {
-        // Wait for single operations to ensure task_calendar_events are populated
-        await Promise.allSettled(calendarPromises);
-      } else {
-        // For bulk operations, process in background
-        Promise.allSettled(calendarPromises).catch((error) =>
-          console.error("Calendar operations failed:", error),
-        );
-      }
-    }
+		if (calendarPromises.length > 0) {
+			if (isSingleCalendarAdd) {
+				// Wait for single operations to ensure task_calendar_events are populated
+				await Promise.allSettled(calendarPromises);
+			} else {
+				// For bulk operations, process in background
+				Promise.allSettled(calendarPromises).catch((error) =>
+					console.error('Calendar operations failed:', error)
+				);
+			}
+		}
 
-    // Get final task data
-    const { data: finalTask } = await supabase
-      .from("tasks")
-      .select(
-        `
+		// Get final task data
+		const { data: finalTask } = await supabase
+			.from('tasks')
+			.select(
+				`
         *,
         task_calendar_events(*),
         phase_tasks(id, phase_id, suggested_start_date, phases(...))
-      `,
-      )
-      .eq("id", taskId)
-      .single();
+      `
+			)
+			.eq('id', taskId)
+			.single();
 
-    // Return immediately with success
-    return ApiResponse.success({
-      task: finalTask,
-      calendarSync:
-        calendarOperations.length > 0
-          ? {
-              status: "processing",
-              operations: calendarOperations.map((op) => op.type),
-              message: getCalendarSyncMessage(calendarOperations),
-              timeZone: timeZone,
-            }
-          : { status: "none" },
-    });
-  } catch (error) {
-    console.error("Error updating task:", error);
-    return ApiResponse.internalError(error);
-  }
+		// Return immediately with success
+		return ApiResponse.success({
+			task: finalTask,
+			calendarSync:
+				calendarOperations.length > 0
+					? {
+							status: 'processing',
+							operations: calendarOperations.map((op) => op.type),
+							message: getCalendarSyncMessage(calendarOperations),
+							timeZone: timeZone
+						}
+					: { status: 'none' }
+		});
+	} catch (error) {
+		console.error('Error updating task:', error);
+		return ApiResponse.internalError(error);
+	}
 };
 ```
 
@@ -474,123 +464,118 @@ export const PATCH: RequestHandler = async ({
 
 ```typescript
 export const DELETE: RequestHandler = async ({
-  params,
-  request,
-  locals: { supabase, safeGetSession },
+	params,
+	request,
+	locals: { supabase, safeGetSession }
 }) => {
-  try {
-    const { user } = await safeGetSession();
-    if (!user) return ApiResponse.unauthorized();
+	try {
+		const { user } = await safeGetSession();
+		if (!user) return ApiResponse.unauthorized();
 
-    const { id: projectId, taskId } = params;
+		const { id: projectId, taskId } = params;
 
-    // Parse deletion scope for recurring tasks
-    let deletionScope: "all" | "this_only" | "this_and_future" = "all";
-    let instanceDate: string | null = null;
+		// Parse deletion scope for recurring tasks
+		let deletionScope: 'all' | 'this_only' | 'this_and_future' = 'all';
+		let instanceDate: string | null = null;
 
-    const contentType = request.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      try {
-        const body = await request.json();
-        deletionScope = body.deletion_scope || "all";
-        instanceDate = body.instance_date || null;
-      } catch {
-        // Use defaults
-      }
-    }
+		const contentType = request.headers.get('content-type');
+		if (contentType?.includes('application/json')) {
+			try {
+				const body = await request.json();
+				deletionScope = body.deletion_scope || 'all';
+				instanceDate = body.instance_date || null;
+			} catch {
+				// Use defaults
+			}
+		}
 
-    // Verify user owns the task and get calendar events
-    const { data: task } = await supabase
-      .from("tasks")
-      .select(
-        `
+		// Verify user owns the task and get calendar events
+		const { data: task } = await supabase
+			.from('tasks')
+			.select(
+				`
         id, title, status, start_date, task_type,
         project:projects!inner(id, user_id, name),
         task_calendar_events(...),
         phase_tasks(id),
         subtasks:tasks!parent_task_id(id, title, status)
-      `,
-      )
-      .eq("id", taskId)
-      .eq("project_id", projectId)
-      .eq("project.user_id", user.id)
-      .single();
+      `
+			)
+			.eq('id', taskId)
+			.eq('project_id', projectId)
+			.eq('project.user_id', user.id)
+			.single();
 
-    if (!task) return ApiResponse.notFound("Task not found");
+		if (!task) return ApiResponse.notFound('Task not found');
 
-    // Handle subtasks - prevent deletion if active subtasks exist
-    if (task?.subtasks?.length > 0) {
-      const activeSubtasks = task.subtasks.filter(
-        (st: any) => st.status !== "done",
-      );
-      if (activeSubtasks.length > 0) {
-        return ApiResponse.badRequest(
-          `Cannot delete task with ${activeSubtasks.length} active subtask(s). ` +
-            `Complete or delete subtasks first.`,
-        );
-      }
-    }
+		// Handle subtasks - prevent deletion if active subtasks exist
+		if (task?.subtasks?.length > 0) {
+			const activeSubtasks = task.subtasks.filter((st: any) => st.status !== 'done');
+			if (activeSubtasks.length > 0) {
+				return ApiResponse.badRequest(
+					`Cannot delete task with ${activeSubtasks.length} active subtask(s). ` +
+						`Complete or delete subtasks first.`
+				);
+			}
+		}
 
-    // Handle recurring task deletion based on scope
-    if (task.task_type === "recurring" && deletionScope !== "all") {
-      // ... special handling for recurring instances ...
-    }
+		// Handle recurring task deletion based on scope
+		if (task.task_type === 'recurring' && deletionScope !== 'all') {
+			// ... special handling for recurring instances ...
+		}
 
-    // Delete associated calendar events
-    if (task.task_calendar_events?.length > 0) {
-      const calendarResults = await handleCalendarEventDeletion(
-        task.task_calendar_events,
-        user.id,
-        supabase,
-        taskId,
-        projectId,
-      );
-      warnings.push(...calendarResults.warnings);
-      errors.push(...calendarResults.errors);
-    }
+		// Delete associated calendar events
+		if (task.task_calendar_events?.length > 0) {
+			const calendarResults = await handleCalendarEventDeletion(
+				task.task_calendar_events,
+				user.id,
+				supabase,
+				taskId,
+				projectId
+			);
+			warnings.push(...calendarResults.warnings);
+			errors.push(...calendarResults.errors);
+		}
 
-    // Clear brain dump links
-    await supabase
-      .from("brain_dump_links")
-      .update({ task_id: null })
-      .eq("task_id", taskId);
+		// Clear brain dump links
+		await supabase.from('brain_dump_links').update({ task_id: null }).eq('task_id', taskId);
 
-    // Clear phase tasks association
-    if (task.phase_tasks?.length) {
-      await supabase.from("phase_tasks").delete().eq("task_id", taskId);
-    }
+		// Clear phase tasks association
+		if (task.phase_tasks?.length) {
+			await supabase.from('phase_tasks').delete().eq('task_id', taskId);
+		}
 
-    // Soft delete the task by setting deleted_at timestamp
-    await supabase
-      .from("tasks")
-      .update({
-        deleted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", taskId);
+		// Soft delete the task by setting deleted_at timestamp
+		await supabase
+			.from('tasks')
+			.update({
+				deleted_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', taskId);
 
-    // Log deletion for audit trail
-    await supabase.from("user_activity_logs").insert({
-      user_id: user.id,
-      action: "task_deleted",
-      resource_type: "task",
-      resource_id: taskId,
-      metadata: {
-        task_title: task.title,
-        project_id: projectId,
-        had_calendar_events: task.task_calendar_events?.length > 0,
-        was_completed: task.status === "done",
-      },
-    });
+		// Log deletion for audit trail
+		await supabase.from('user_activity_logs').insert({
+			user_id: user.id,
+			action: 'task_deleted',
+			resource_type: 'task',
+			resource_id: taskId,
+			metadata: {
+				task_title: task.title,
+				project_id: projectId,
+				had_calendar_events: task.task_calendar_events?.length > 0,
+				was_completed: task.status === 'done'
+			}
+		});
 
-    return ApiResponse.success({
-      deleted: true,
-      message: "Task deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting task:", error);
-    return ApiResponse.internalError(error);
-  }
+		return ApiResponse.success({
+			deleted: true,
+			message: 'Task deleted successfully'
+		});
+	} catch (error) {
+		console.error('Error deleting task:', error);
+		return ApiResponse.internalError(error);
+	}
 };
 ```
 
@@ -611,23 +596,23 @@ export const DELETE: RequestHandler = async ({
 
 ```typescript
 function validateTaskDate(startDate: string, project: any): string | null {
-  const taskDate = new Date(startDate);
+	const taskDate = new Date(startDate);
 
-  if (project.start_date && taskDate < new Date(project.start_date)) {
-    return (
-      `Task date cannot be before project start date ` +
-      `(${new Date(project.start_date).toLocaleDateString()})`
-    );
-  }
+	if (project.start_date && taskDate < new Date(project.start_date)) {
+		return (
+			`Task date cannot be before project start date ` +
+			`(${new Date(project.start_date).toLocaleDateString()})`
+		);
+	}
 
-  if (project.end_date && taskDate > new Date(project.end_date)) {
-    return (
-      `Task date cannot be after project end date ` +
-      `(${new Date(project.end_date).toLocaleDateString()})`
-    );
-  }
+	if (project.end_date && taskDate > new Date(project.end_date)) {
+		return (
+			`Task date cannot be after project end date ` +
+			`(${new Date(project.end_date).toLocaleDateString()})`
+		);
+	}
 
-  return null;
+	return null;
 }
 ```
 
@@ -643,36 +628,36 @@ function validateTaskDate(startDate: string, project: any): string | null {
 
 ```typescript
 export const sanitizeTaskData = (task: Task): Partial<Task> => {
-  let sanitizedData = {
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    status: task.status,
-    priority: task.priority,
-    task_type: task.task_type,
-    start_date: task.start_date,
-    duration_minutes: task.duration_minutes,
-    deleted_at: task.deleted_at || null,
-    created_at: task.created_at,
-    updated_at: task.updated_at,
-    completed_at: task.completed_at,
-    project_id: task.project_id,
-    user_id: task.user_id,
-    parent_task_id: task.parent_task_id,
-    dependencies: task.dependencies,
-    recurrence_pattern: task.recurrence_pattern,
-    recurrence_ends: task.recurrence_ends,
-    details: task.details,
-  };
+	let sanitizedData = {
+		id: task.id,
+		title: task.title,
+		description: task.description,
+		status: task.status,
+		priority: task.priority,
+		task_type: task.task_type,
+		start_date: task.start_date,
+		duration_minutes: task.duration_minutes,
+		deleted_at: task.deleted_at || null,
+		created_at: task.created_at,
+		updated_at: task.updated_at,
+		completed_at: task.completed_at,
+		project_id: task.project_id,
+		user_id: task.user_id,
+		parent_task_id: task.parent_task_id,
+		dependencies: task.dependencies,
+		recurrence_pattern: task.recurrence_pattern,
+		recurrence_ends: task.recurrence_ends,
+		details: task.details
+	};
 
-  // Remove undefined fields
-  Object.keys(sanitizedData).forEach((key) => {
-    if (sanitizedData[key] === undefined) {
-      delete sanitizedData[key];
-    }
-  });
+	// Remove undefined fields
+	Object.keys(sanitizedData).forEach((key) => {
+		if (sanitizedData[key] === undefined) {
+			delete sanitizedData[key];
+		}
+	});
 
-  return sanitizedData;
+	return sanitizedData;
 };
 ```
 
@@ -685,12 +670,9 @@ export const sanitizeTaskData = (task: Task): Partial<Task> => {
 ### 3. Required Fields Validation
 
 ```typescript
-const validation = validateRequiredFields(data, ["title"]);
+const validation = validateRequiredFields(data, ['title']);
 if (!validation.valid) {
-  return ApiResponse.validationError(
-    validation.missing!,
-    "This field is required",
-  );
+	return ApiResponse.validationError(validation.missing!, 'This field is required');
 }
 ```
 
@@ -703,10 +685,10 @@ if (!validation.valid) {
 
 ```typescript
 // Handle completion status change
-if (newTaskData.status === "done" && existingTask.status !== "done") {
-  newTaskData.completed_at = new Date().toISOString();
-} else if (newTaskData.status !== "done" && existingTask.status === "done") {
-  newTaskData.completed_at = null;
+if (newTaskData.status === 'done' && existingTask.status !== 'done') {
+	newTaskData.completed_at = new Date().toISOString();
+} else if (newTaskData.status !== 'done' && existingTask.status === 'done') {
+	newTaskData.completed_at = null;
 }
 ```
 
@@ -719,14 +701,11 @@ if (newTaskData.status === "done" && existingTask.status !== "done") {
 ### 5. Recurrence Clearing Rules
 
 ```typescript
-if (
-  newTaskData.task_type === "one_off" &&
-  existingTask.task_type === "recurring"
-) {
-  // Clear all recurring-specific data when changing to one_off
-  newTaskData.recurrence_pattern = null;
-  newTaskData.recurrence_ends = null;
-  newTaskData.recurrence_end_source = null;
+if (newTaskData.task_type === 'one_off' && existingTask.task_type === 'recurring') {
+	// Clear all recurring-specific data when changing to one_off
+	newTaskData.recurrence_pattern = null;
+	newTaskData.recurrence_ends = null;
+	newTaskData.recurrence_end_source = null;
 }
 ```
 
@@ -746,35 +725,35 @@ The modal uses callback props to delegate updates to the parent:
 
 ```svelte
 <script lang="ts">
-  export let onUpdate: ((updatedTask: Task) => void) | null = null;
-  export let onDelete: ((taskId: string) => void) | null = null;
+	export let onUpdate: ((updatedTask: Task) => void) | null = null;
+	export let onDelete: ((taskId: string) => void) | null = null;
 
-  async function handleSubmit(formData: Record<string, any>): Promise<void> {
-    const taskData = {
-      title: titleValue.trim(),
-      // ... other fields ...
-      timeZone
-    };
+	async function handleSubmit(formData: Record<string, any>): Promise<void> {
+		const taskData = {
+			title: titleValue.trim(),
+			// ... other fields ...
+			timeZone
+		};
 
-    if (isEditing && onUpdate) {
-      onUpdate(taskData);
-    } else if (!isEditing && onCreate) {
-      onCreate(taskData);
-    }
+		if (isEditing && onUpdate) {
+			onUpdate(taskData);
+		} else if (!isEditing && onCreate) {
+			onCreate(taskData);
+		}
 
-    onClose();
-  }
+		onClose();
+	}
 
-  async function handleDelete(id: string): Promise<void> {
-    if (onDelete) {
-      try {
-        await onDelete(taskId);
-        onClose();
-      } catch (error) {
-        toastService.error('Failed to delete task');
-      }
-    }
-  }
+	async function handleDelete(id: string): Promise<void> {
+		if (onDelete) {
+			try {
+				await onDelete(taskId);
+				onClose();
+			} catch (error) {
+				toastService.error('Failed to delete task');
+			}
+		}
+	}
 </script>
 ```
 
@@ -855,23 +834,23 @@ The project page handles updates through the data service:
 ```typescript
 // In API endpoint
 const isDateCleared =
-  (newTaskData.start_date === null ||
-    newTaskData.start_date === "" ||
-    newTaskData.start_date === undefined) &&
-  existingTask.start_date;
+	(newTaskData.start_date === null ||
+		newTaskData.start_date === '' ||
+		newTaskData.start_date === undefined) &&
+	existingTask.start_date;
 
 if (isDateCleared && hasCalendarEvents) {
-  operations.push({
-    type: "delete_events",
-    data: { events: existingTask.task_calendar_events, reason: "date_cleared" },
-  });
+	operations.push({
+		type: 'delete_events',
+		data: { events: existingTask.task_calendar_events, reason: 'date_cleared' }
+	});
 }
 
 // In TaskModal
-$: if (!startDateValue && taskTypeValue === "recurring") {
-  taskTypeValue = "one_off";
-  recurrencePatternValue = "";
-  recurrenceEndsValue = "";
+$: if (!startDateValue && taskTypeValue === 'recurring') {
+	taskTypeValue = 'one_off';
+	recurrencePatternValue = '';
+	recurrenceEndsValue = '';
 }
 ```
 
@@ -886,7 +865,7 @@ $: if (!startDateValue && taskTypeValue === "recurring") {
 **Code:**
 
 ```typescript
-await dataService.updateTask(taskId, { priority: "high" });
+await dataService.updateTask(taskId, { priority: 'high' });
 ```
 
 ### 3. Status Changes
@@ -902,13 +881,13 @@ await dataService.updateTask(taskId, { priority: "high" });
 
 ```typescript
 // Completion
-if (newTaskData.status === "done" && existingTask.status !== "done") {
-  newTaskData.completed_at = new Date().toISOString();
+if (newTaskData.status === 'done' && existingTask.status !== 'done') {
+	newTaskData.completed_at = new Date().toISOString();
 }
 
 // Uncompletion
-else if (newTaskData.status !== "done" && existingTask.status === "done") {
-  newTaskData.completed_at = null;
+else if (newTaskData.status !== 'done' && existingTask.status === 'done') {
+	newTaskData.completed_at = null;
 }
 ```
 
@@ -926,14 +905,13 @@ else if (newTaskData.status !== "done" && existingTask.status === "done") {
 
 ```typescript
 // Individual additions wait for completion (ensures calendar events in response)
-const isSingleCalendarAdd =
-  updates.addTaskToCalendar && calendarPromises.length === 1;
+const isSingleCalendarAdd = updates.addTaskToCalendar && calendarPromises.length === 1;
 
 if (isSingleCalendarAdd) {
-  await Promise.allSettled(calendarPromises);
+	await Promise.allSettled(calendarPromises);
 } else {
-  // Bulk operations process in background
-  Promise.allSettled(calendarPromises).catch(console.error);
+	// Bulk operations process in background
+	Promise.allSettled(calendarPromises).catch(console.error);
 }
 ```
 
@@ -948,29 +926,26 @@ if (isSingleCalendarAdd) {
 **Code:**
 
 ```typescript
-if (task.task_type === "recurring" && deletionScope !== "all") {
-  if (deletionScope === "this_only" && instanceDate) {
-    await supabase.from("recurring_task_instances").upsert({
-      task_id: taskId,
-      instance_date: instanceDate,
-      status: "deleted",
-      deleted_at: new Date().toISOString(),
-      user_id: user.id,
-    });
-  } else if (deletionScope === "this_and_future") {
-    const newEndDate = instanceDate
-      ? new Date(new Date(instanceDate).getTime() - 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0]
-      : null;
+if (task.task_type === 'recurring' && deletionScope !== 'all') {
+	if (deletionScope === 'this_only' && instanceDate) {
+		await supabase.from('recurring_task_instances').upsert({
+			task_id: taskId,
+			instance_date: instanceDate,
+			status: 'deleted',
+			deleted_at: new Date().toISOString(),
+			user_id: user.id
+		});
+	} else if (deletionScope === 'this_and_future') {
+		const newEndDate = instanceDate
+			? new Date(new Date(instanceDate).getTime() - 24 * 60 * 60 * 1000)
+					.toISOString()
+					.split('T')[0]
+			: null;
 
-    if (newEndDate) {
-      await supabase
-        .from("tasks")
-        .update({ recurrence_ends: newEndDate })
-        .eq("id", taskId);
-    }
-  }
+		if (newEndDate) {
+			await supabase.from('tasks').update({ recurrence_ends: newEndDate }).eq('id', taskId);
+		}
+	}
 }
 ```
 
@@ -1051,10 +1026,10 @@ private rollbackOptimisticUpdate(updateId: string) {
 
 ```typescript
 try {
-  await dataService.updateTask(task.id, updates);
+	await dataService.updateTask(task.id, updates);
 } catch (error) {
-  toastService.error("Failed to update task");
-  console.error("Error updating task:", error);
+	toastService.error('Failed to update task');
+	console.error('Error updating task:', error);
 }
 ```
 
@@ -1088,7 +1063,7 @@ catch (error) {
 await phasePromise; // Wait for phase assignment
 // Calendar ops fire and forget (background)
 if (!isSingleCalendarAdd) {
-  Promise.allSettled(calendarPromises).catch(console.error);
+	Promise.allSettled(calendarPromises).catch(console.error);
 }
 ```
 
@@ -1096,12 +1071,12 @@ if (!isSingleCalendarAdd) {
 
 ```typescript
 if (result.success && result.data) {
-  // Invalidate related caches
-  if (projectId) {
-    this.cache.delete(`project:${projectId}`);
-  }
-  // Update store
-  projectStoreV2.updateTask(result.data);
+	// Invalidate related caches
+	if (projectId) {
+		this.cache.delete(`project:${projectId}`);
+	}
+	// Update store
+	projectStoreV2.updateTask(result.data);
 }
 ```
 
@@ -1180,7 +1155,7 @@ private updateStats() {
 
 ```typescript
 // In component
-await dataService.updateTask(taskId, { priority: "high" });
+await dataService.updateTask(taskId, { priority: 'high' });
 ```
 
 ### Remove Task Start Date
@@ -1198,11 +1173,11 @@ await dataService.updateTask(taskId, { start_date: null });
 
 ```typescript
 // Mark as done
-await dataService.updateTask(taskId, { status: "done" });
+await dataService.updateTask(taskId, { status: 'done' });
 // Auto-sets completed_at
 
 // Mark as not done
-await dataService.updateTask(taskId, { status: "in_progress" });
+await dataService.updateTask(taskId, { status: 'in_progress' });
 // Auto-clears completed_at
 ```
 
@@ -1210,11 +1185,11 @@ await dataService.updateTask(taskId, { status: "in_progress" });
 
 ```typescript
 try {
-  await dataService.deleteTask(taskId);
-  toastService.success("Task deleted");
+	await dataService.deleteTask(taskId);
+	toastService.success('Task deleted');
 } catch (error) {
-  toastService.error("Failed to delete task");
-  console.error("Error:", error);
+	toastService.error('Failed to delete task');
+	console.error('Error:', error);
 }
 ```
 
@@ -1222,11 +1197,11 @@ try {
 
 ```typescript
 await dataService.updateTask(taskId, {
-  title: "Updated Title",
-  priority: "high",
-  status: "in_progress",
-  start_date: new Date().toISOString(),
-  duration_minutes: 120,
+	title: 'Updated Title',
+	priority: 'high',
+	status: 'in_progress',
+	start_date: new Date().toISOString(),
+	duration_minutes: 120
 });
 ```
 
@@ -1234,8 +1209,8 @@ await dataService.updateTask(taskId, {
 
 ```typescript
 await dataService.updateTask(taskId, {
-  addTaskToCalendar: true,
-  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+	addTaskToCalendar: true,
+	timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
 });
 ```
 

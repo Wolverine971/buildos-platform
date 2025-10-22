@@ -266,7 +266,7 @@ SELECT emit_notification_event(...);
 
 ```typescript
 // In worker
-import { getTemplateCacheStats } from "./workers/notification/smsAdapter";
+import { getTemplateCacheStats } from './workers/notification/smsAdapter';
 console.log(getTemplateCacheStats());
 // Output: { size: 1, templates: ['notif_brief_completed'] }
 ```
@@ -285,7 +285,7 @@ WHERE template_key = 'notif_brief_completed';
 **Clear cache** (in worker code):
 
 ```typescript
-import { clearTemplateCache } from "./workers/notification/smsAdapter";
+import { clearTemplateCache } from './workers/notification/smsAdapter';
 clearTemplateCache();
 ```
 
@@ -422,12 +422,12 @@ INSERT INTO sms_templates (
 ```typescript
 // In test code
 const delivery = {
-  payload: {
-    event_type: "custom.test",
-    user_name: "Alice",
-    notification_count: 3,
-  },
-  // ... other required fields
+	payload: {
+		event_type: 'custom.test',
+		user_name: 'Alice',
+		notification_count: 3
+	}
+	// ... other required fields
 };
 
 const message = await formatSMSMessage(delivery);

@@ -24,9 +24,9 @@ buildos-platform/
 
 ```json
 {
-  "buildCommand": "pnpm turbo build --filter=@buildos/web",
-  "outputDirectory": "apps/web/.svelte-kit",
-  "installCommand": "pnpm install --frozen-lockfile"
+	"buildCommand": "pnpm turbo build --filter=@buildos/web",
+	"outputDirectory": "apps/web/.svelte-kit",
+	"installCommand": "pnpm install --frozen-lockfile"
 }
 ```
 
@@ -55,11 +55,11 @@ ENABLE_STRIPE=true
 
 ```json
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "sveltekit",
-  "buildCommand": "cd ../.. && pnpm turbo build --filter=@buildos/web",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "outputDirectory": ".svelte-kit"
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"framework": "sveltekit",
+	"buildCommand": "cd ../.. && pnpm turbo build --filter=@buildos/web",
+	"installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+	"outputDirectory": ".svelte-kit"
 }
 ```
 
@@ -151,63 +151,63 @@ cmd = "node dist/index.js"
 name: Deploy
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+    build-and-test:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+        steps:
+            - uses: actions/checkout@v3
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
+            - uses: pnpm/action-setup@v2
+              with:
+                  version: 9
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-          cache: "pnpm"
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: '20'
+                  cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Build packages
-        run: pnpm turbo build
+            - name: Build packages
+              run: pnpm turbo build
 
-      - name: Run tests
-        run: pnpm turbo test
+            - name: Run tests
+              run: pnpm turbo test
 
-      - name: Type check
-        run: pnpm turbo typecheck
+            - name: Type check
+              run: pnpm turbo typecheck
 
-  deploy-web:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    deploy-web:
+        needs: build-and-test
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main'
 
-    steps:
-      - name: Deploy to Vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          npx vercel --prod --token=$VERCEL_TOKEN
+        steps:
+            - name: Deploy to Vercel
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+              run: |
+                  npx vercel --prod --token=$VERCEL_TOKEN
 
-  deploy-worker:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    deploy-worker:
+        needs: build-and-test
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main'
 
-    steps:
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm install -g @railway/cli
-          railway up
+        steps:
+            - name: Deploy to Railway
+              env:
+                  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+              run: |
+                  npm install -g @railway/cli
+                  railway up
 ```
 
 ## 🔍 Monitoring Deployments

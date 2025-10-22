@@ -38,9 +38,9 @@ Transform project planning from reactive to proactive by creating a dedicated sp
 
 - Grid/list view of all active projects
 - Visual indicators showing war room readiness status:
-  - ✅ Green: Ready for war room
-  - 🟡 Yellow: Partially ready (can proceed with limitations)
-  - ❌ Red: Not ready (needs more context)
+    - ✅ Green: Ready for war room
+    - 🟡 Yellow: Partially ready (can proceed with limitations)
+    - ❌ Red: Not ready (needs more context)
 
 ### 2. Readiness Assessment
 
@@ -67,24 +67,24 @@ When a project is selected, the system evaluates readiness across multiple dimen
 
 ```typescript
 interface ReadinessScore {
-  overall: number; // 0-100
-  required: {
-    goals: boolean;
-    scope: boolean;
-    timeline: boolean;
-    context: boolean;
-  };
-  recommended: {
-    metrics: boolean;
-    resources: boolean;
-    risks: boolean;
-    stakeholders: boolean;
-    dependencies: boolean;
-    progress: boolean;
-    decisions: boolean;
-  };
-  missingElements: string[];
-  recommendations: string[];
+	overall: number; // 0-100
+	required: {
+		goals: boolean;
+		scope: boolean;
+		timeline: boolean;
+		context: boolean;
+	};
+	recommended: {
+		metrics: boolean;
+		resources: boolean;
+		risks: boolean;
+		stakeholders: boolean;
+		dependencies: boolean;
+		progress: boolean;
+		decisions: boolean;
+	};
+	missingElements: string[];
+	recommendations: string[];
 }
 ```
 
@@ -301,14 +301,14 @@ Let AI recommend specific updates based on this scenario
 ### New Tasks (5)
 
 1. **Research enterprise partnership opportunities**
-   - Priority: High
-   - Duration: 2 hours
-   - Due: Next 7 days
+    - Priority: High
+    - Duration: 2 hours
+    - Due: Next 7 days
 
 2. **Create competitive differentiation matrix**
-   - Priority: High
-   - Duration: 90 min
-   - Due: Next 3 days
+    - Priority: High
+    - Duration: 90 min
+    - Due: Next 3 days
 
 [... 3 more tasks]
 
@@ -509,10 +509,10 @@ CREATE TABLE war_room_collaboration (
 
 ```typescript
 async function assessReadiness(project: Project): ReadinessScore {
-  // Analyze project context depth and quality
-  // Check for required elements
-  // Calculate recommendation score
-  // Generate specific improvement suggestions
+	// Analyze project context depth and quality
+	// Check for required elements
+	// Calculate recommendation score
+	// Generate specific improvement suggestions
 }
 ```
 
@@ -545,19 +545,19 @@ Format: [Specified structure]
 
 ```typescript
 const narrativeEngine = {
-  generateChapter: (scenario, previousDecisions, projectContext) => {
-    // Create narrative beat
-    // Generate 3-4 meaningful choices
-    // Predict realistic consequences
-    // Maintain narrative coherence
-  },
+	generateChapter: (scenario, previousDecisions, projectContext) => {
+		// Create narrative beat
+		// Generate 3-4 meaningful choices
+		// Predict realistic consequences
+		// Maintain narrative coherence
+	},
 
-  calculateOutcomes: (decisions, scenario, projectContext) => {
-    // Assess decision quality
-    // Generate success probability
-    // Identify key learnings
-    // Create actionable recommendations
-  },
+	calculateOutcomes: (decisions, scenario, projectContext) => {
+		// Assess decision quality
+		// Generate success probability
+		// Identify key learnings
+		// Create actionable recommendations
+	}
 };
 ```
 
@@ -569,15 +569,15 @@ const narrativeEngine = {
 
 - **Military/Strategic Theme**: Subtle hints without being overwhelming
 - **Color Coding**:
-  - Green: Opportunities, strengths
-  - Yellow: Caution points, decisions needed
-  - Red: Vulnerabilities, critical risks
-  - Blue: Informational, neutral
+    - Green: Opportunities, strengths
+    - Yellow: Caution points, decisions needed
+    - Red: Vulnerabilities, critical risks
+    - Blue: Informational, neutral
 - **Interactive Elements**:
-  - Scenario cards with hover states
-  - Decision buttons with consequence previews
-  - Animated probability gauges
-  - Timeline visualizations for decision paths
+    - Scenario cards with hover states
+    - Decision buttons with consequence previews
+    - Animated probability gauges
+    - Timeline visualizations for decision paths
 
 ### Mobile Considerations
 
@@ -741,91 +741,91 @@ Team average: 70% success
 ### Phase 1: MVP (Week 1-2)
 
 1. **Data Models & Infrastructure**
-   - Create stage tree tables with parent-child relationships
-   - Build session management system
-   - Implement stage navigation logic
+    - Create stage tree tables with parent-child relationships
+    - Build session management system
+    - Implement stage navigation logic
 
 2. **Readiness Assessment**
-   - Basic readiness scoring algorithm
-   - Simple remediation wizard
-   - Project snapshot capability
+    - Basic readiness scoring algorithm
+    - Simple remediation wizard
+    - Project snapshot capability
 
 3. **Basic Scenario Generation**
-   - AI-generated scenarios only (no custom yet)
-   - 3-stage depth limit initially
-   - Simple success metrics
+    - AI-generated scenarios only (no custom yet)
+    - 3-stage depth limit initially
+    - Simple success metrics
 
 4. **Core Navigation**
-   - Forward progression through stages
-   - Basic back navigation
-   - Stage tree visualization (text-based)
+    - Forward progression through stages
+    - Basic back navigation
+    - Stage tree visualization (text-based)
 
 ### Phase 2: Interactivity (Week 3-4)
 
 1. **Project Update System**
-   - Checkbox selection interface
-   - AI proposal generation
-   - Update preview with diffs
-   - Apply updates to project
+    - Checkbox selection interface
+    - AI proposal generation
+    - Update preview with diffs
+    - Apply updates to project
 
 2. **Enhanced Navigation**
-   - Visual tree explorer
-   - Branch comparison
-   - Stage jumping
+    - Visual tree explorer
+    - Branch comparison
+    - Stage jumping
 
 3. **Custom Scenarios**
-   - User scenario input
-   - Parameter customization
-   - Variation generation
+    - User scenario input
+    - Parameter customization
+    - Variation generation
 
 4. **Suggestions Panel**
-   - Collapsible AI insights
-   - Vulnerability/opportunity detection
-   - One-click task creation
+    - Collapsible AI insights
+    - Vulnerability/opportunity detection
+    - One-click task creation
 
 ### Phase 3: Polish (Week 5-6)
 
 1. **Session Management**
-   - Save and continue
-   - Session history dashboard
-   - Progress tracking
-   - Export capabilities
+    - Save and continue
+    - Session history dashboard
+    - Progress tracking
+    - Export capabilities
 
 2. **Advanced Metrics**
-   - Probability calculations at each stage
-   - Risk/opportunity scoring
-   - Success path optimization
-   - Impact analysis
+    - Probability calculations at each stage
+    - Risk/opportunity scoring
+    - Success path optimization
+    - Impact analysis
 
 3. **Mobile Optimization**
-   - Bottom sheet modals
-   - Touch gestures
-   - Responsive tree view
-   - Offline caching
+    - Bottom sheet modals
+    - Touch gestures
+    - Responsive tree view
+    - Offline caching
 
 4. **Performance**
-   - Implement caching strategy
-   - Optimize tree operations
-   - Stream scenario generation
-   - Background saves
+    - Implement caching strategy
+    - Optimize tree operations
+    - Stream scenario generation
+    - Background saves
 
 ### Phase 4: Collaboration (Future)
 
 1. **Asynchronous Comments**
-   - Stage-level discussions
-   - Vote on decisions
-   - Alternative suggestions
+    - Stage-level discussions
+    - Vote on decisions
+    - Alternative suggestions
 
 2. **Parallel Universe Mode**
-   - Multiple user paths
-   - Comparison visualizations
-   - Synthesis reports
+    - Multiple user paths
+    - Comparison visualizations
+    - Synthesis reports
 
 3. **Advanced Features**
-   - War Council mode
-   - Turn-based exploration
-   - Team analytics
-   - Scenario templates by industry
+    - War Council mode
+    - Turn-based exploration
+    - Team analytics
+    - Scenario templates by industry
 
 ---
 
@@ -871,49 +871,49 @@ Team average: 70% success
 
 ```typescript
 interface ScenarioStage {
-  id: string;
-  sessionId: string;
-  parentStageId: string | null;
-  stageNumber: number;
-  branchPath: string; // "1.A.2.B.3.C"
+	id: string;
+	sessionId: string;
+	parentStageId: string | null;
+	stageNumber: number;
+	branchPath: string; // "1.A.2.B.3.C"
 
-  // Navigation helpers
-  children: ScenarioStage[];
-  parent: ScenarioStage | null;
-  siblings: ScenarioStage[];
+	// Navigation helpers
+	children: ScenarioStage[];
+	parent: ScenarioStage | null;
+	siblings: ScenarioStage[];
 
-  // Content
-  narrative: StageNarrative;
-  metrics: StageMetrics;
-  suggestions: AISuggestion[];
+	// Content
+	narrative: StageNarrative;
+	metrics: StageMetrics;
+	suggestions: AISuggestion[];
 
-  // State
-  explored: boolean;
-  selectedChoice: Choice | null;
-  projectUpdates: ProjectUpdate[];
+	// State
+	explored: boolean;
+	selectedChoice: Choice | null;
+	projectUpdates: ProjectUpdate[];
 }
 
 class ScenarioTreeNavigator {
-  currentStage: ScenarioStage;
-  stageHistory: ScenarioStage[];
+	currentStage: ScenarioStage;
+	stageHistory: ScenarioStage[];
 
-  // Navigation methods
-  goToStage(stageId: string): void;
-  goBack(): void;
-  exploreChoice(choice: Choice): ScenarioStage;
+	// Navigation methods
+	goToStage(stageId: string): void;
+	goBack(): void;
+	exploreChoice(choice: Choice): ScenarioStage;
 
-  // Tree operations
-  getUnexploredBranches(): ScenarioStage[];
-  getAlternativePaths(): ScenarioPath[];
-  compareOutcomes(stageIds: string[]): Comparison;
+	// Tree operations
+	getUnexploredBranches(): ScenarioStage[];
+	getAlternativePaths(): ScenarioPath[];
+	compareOutcomes(stageIds: string[]): Comparison;
 
-  // Expansion
-  extendCurrentBranch(): Promise<ScenarioStage>;
-  createVariation(stage: ScenarioStage): Promise<ScenarioStage>;
+	// Expansion
+	extendCurrentBranch(): Promise<ScenarioStage>;
+	createVariation(stage: ScenarioStage): Promise<ScenarioStage>;
 
-  // Persistence
-  saveProgress(): Promise<void>;
-  loadSession(sessionId: string): Promise<void>;
+	// Persistence
+	saveProgress(): Promise<void>;
+	loadSession(sessionId: string): Promise<void>;
 }
 ```
 
@@ -921,56 +921,54 @@ class ScenarioTreeNavigator {
 
 ```typescript
 interface ProjectUpdateRequest {
-  stageId: string;
-  updateTypes: ("context" | "tasks" | "phases" | "notes")[];
-  useAISuggestions: boolean;
+	stageId: string;
+	updateTypes: ('context' | 'tasks' | 'phases' | 'notes')[];
+	useAISuggestions: boolean;
 }
 
 interface ProjectUpdateProposal {
-  contextUpdates: {
-    section: string;
-    operation: "append" | "replace" | "prepend";
-    content: string;
-    diff: string; // Visual diff for user review
-  }[];
+	contextUpdates: {
+		section: string;
+		operation: 'append' | 'replace' | 'prepend';
+		content: string;
+		diff: string; // Visual diff for user review
+	}[];
 
-  newTasks: {
-    title: string;
-    description: string;
-    priority: "high" | "medium" | "low";
-    estimatedDuration: number;
-    suggestedDate: Date;
-    rationale: string;
-  }[];
+	newTasks: {
+		title: string;
+		description: string;
+		priority: 'high' | 'medium' | 'low';
+		estimatedDuration: number;
+		suggestedDate: Date;
+		rationale: string;
+	}[];
 
-  phaseAdjustments: {
-    phaseId: string;
-    changes: string[];
-    newDates?: { start: Date; end: Date };
-  }[];
+	phaseAdjustments: {
+		phaseId: string;
+		changes: string[];
+		newDates?: { start: Date; end: Date };
+	}[];
 
-  notes: {
-    content: string;
-    category: "insight" | "risk" | "opportunity";
-  }[];
+	notes: {
+		content: string;
+		category: 'insight' | 'risk' | 'opportunity';
+	}[];
 
-  impactAnalysis: {
-    successProbabilityDelta: number;
-    timelineImpact: string;
-    resourceRequirements: string[];
-  };
+	impactAnalysis: {
+		successProbabilityDelta: number;
+		timelineImpact: string;
+		resourceRequirements: string[];
+	};
 }
 
-async function processProjectUpdate(
-  request: ProjectUpdateRequest,
-): Promise<ProjectUpdateProposal> {
-  const stage = await getStage(request.stageId);
-  const project = await getProject(stage.projectId);
+async function processProjectUpdate(request: ProjectUpdateRequest): Promise<ProjectUpdateProposal> {
+	const stage = await getStage(request.stageId);
+	const project = await getProject(stage.projectId);
 
-  // Generate AI proposals based on stage insights
-  const proposal = await generateUpdateProposal(stage, project, request);
+	// Generate AI proposals based on stage insights
+	const proposal = await generateUpdateProposal(stage, project, request);
 
-  return proposal;
+	return proposal;
 }
 ```
 
@@ -1023,62 +1021,55 @@ GET    /api/war-room/session/:sessionId/analytics
 
 ```typescript
 interface WarRoomState {
-  // Session State
-  currentSession: WarRoomSession | null;
-  sessionHistory: WarRoomSession[];
+	// Session State
+	currentSession: WarRoomSession | null;
+	sessionHistory: WarRoomSession[];
 
-  // Navigation State
-  currentStage: ScenarioStage | null;
-  stageTree: Map<string, ScenarioStage>;
-  navigationHistory: string[]; // Stage IDs
-  expandedNodes: Set<string>; // For tree UI
+	// Navigation State
+	currentStage: ScenarioStage | null;
+	stageTree: Map<string, ScenarioStage>;
+	navigationHistory: string[]; // Stage IDs
+	expandedNodes: Set<string>; // For tree UI
 
-  // Project State
-  selectedProject: Project | null;
-  readinessScore: ReadinessScore | null;
-  projectSnapshot: Project | null; // Original state
+	// Project State
+	selectedProject: Project | null;
+	readinessScore: ReadinessScore | null;
+	projectSnapshot: Project | null; // Original state
 
-  // Scenario State
-  availableScenarios: Scenario[];
-  customScenarioDraft: string;
+	// Scenario State
+	availableScenarios: Scenario[];
+	customScenarioDraft: string;
 
-  // Update State
-  proposedUpdates: ProjectUpdateProposal | null;
-  updateHistory: ProjectUpdate[];
+	// Update State
+	proposedUpdates: ProjectUpdateProposal | null;
+	updateHistory: ProjectUpdate[];
 
-  // Collaboration State
-  collaborators: User[];
-  comments: Map<string, Comment[]>;
-  parallelPaths: Map<string, ScenarioPath>;
+	// Collaboration State
+	collaborators: User[];
+	comments: Map<string, Comment[]>;
+	parallelPaths: Map<string, ScenarioPath>;
 
-  // UI State
-  suggestionsExpanded: boolean;
-  treeViewMode: "compact" | "detailed";
-  compareMode: boolean;
-  selectedStagesForComparison: string[];
+	// UI State
+	suggestionsExpanded: boolean;
+	treeViewMode: 'compact' | 'detailed';
+	compareMode: boolean;
+	selectedStagesForComparison: string[];
 }
 
 // Svelte Store Structure
 export const warRoomStore = writable<WarRoomState>(initialState);
 
 // Derived Stores
-export const currentStageMetrics = derived(
-  warRoomStore,
-  ($store) => $store.currentStage?.metrics,
-);
+export const currentStageMetrics = derived(warRoomStore, ($store) => $store.currentStage?.metrics);
 
 export const unexploredBranches = derived(warRoomStore, ($store) => {
-  if (!$store.stageTree) return [];
-  return Array.from($store.stageTree.values()).filter(
-    (stage) => !stage.explored,
-  );
+	if (!$store.stageTree) return [];
+	return Array.from($store.stageTree.values()).filter((stage) => !stage.explored);
 });
 
 export const vulnerabilityCount = derived(warRoomStore, ($store) => {
-  if (!$store.currentStage) return 0;
-  return $store.currentStage.suggestions.filter(
-    (s) => s.type === "vulnerability",
-  ).length;
+	if (!$store.currentStage) return 0;
+	return $store.currentStage.suggestions.filter((s) => s.type === 'vulnerability').length;
 });
 ```
 

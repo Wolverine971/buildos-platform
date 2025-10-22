@@ -67,14 +67,14 @@ PRIVATE_ANTHROPIC_API_KEY  # Keep as fallback if you have it
 ## 🔄 Order of Operations
 
 1. **First: Deploy to Railway**
-   - Get the generated URL (like `buildos-worker.up.railway.app`)
+    - Get the generated URL (like `buildos-worker.up.railway.app`)
 
 2. **Second: Update Vercel**
-   - Add `PUBLIC_RAILWAY_WORKER_URL` with Railway URL
-   - Add other new variables
+    - Add `PUBLIC_RAILWAY_WORKER_URL` with Railway URL
+    - Add other new variables
 
 3. **Third: Update Railway**
-   - Add `BUILDOS_WEBHOOK_URL` with your Vercel URL
+    - Add `BUILDOS_WEBHOOK_URL` with your Vercel URL
 
 ## 🔑 Generate Shared Secret
 
@@ -98,18 +98,18 @@ Use this value for:
 
 1. **Test Railway Health**:
 
-   ```bash
-   curl https://buildos-worker.up.railway.app/health
-   ```
+    ```bash
+    curl https://buildos-worker.up.railway.app/health
+    ```
 
 2. **Test Vercel is Running**:
-   - Visit your Vercel URL
-   - Check browser console for errors
+    - Visit your Vercel URL
+    - Check browser console for errors
 
 3. **Test Integration**:
-   - Go to `/briefs` page on your web app
-   - Try generating a brief
-   - Check Railway logs for activity
+    - Go to `/briefs` page on your web app
+    - Try generating a brief
+    - Check Railway logs for activity
 
 ---
 

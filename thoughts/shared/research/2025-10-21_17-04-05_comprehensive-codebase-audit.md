@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: ed476a80517ec664a4d3c1edc812c6f008ed3077
 branch: main
 repository: buildos-platform
-topic: "Comprehensive Codebase Audit - Security, Performance, and Reliability Analysis"
+topic: 'Comprehensive Codebase Audit - Security, Performance, and Reliability Analysis'
 tags: [research, security, performance, reliability, bugs, audit]
 status: complete
 last_updated: 2025-10-21
@@ -74,7 +74,7 @@ This comprehensive audit examined the entire BuildOS platform codebase across 14
 
 ```typescript
 // Without RLS, ANY authenticated user could potentially access:
-const { data } = await supabase.from("projects").select("*");
+const { data } = await supabase.from('projects').select('*');
 // Returns ALL projects from ALL users (if developer forgets .eq('user_id'))
 ```
 
@@ -170,9 +170,9 @@ RETURNING id;
 
 ```typescript
 const rawResult = await processor.processBrainDump({
-  brainDump: content,
-  userId,
-  // ❌ NO TIMEOUT SPECIFIED - can hang indefinitely
+	brainDump: content,
+	userId
+	// ❌ NO TIMEOUT SPECIFIED - can hang indefinitely
 });
 ```
 
@@ -238,27 +238,27 @@ try {
 
 ```typescript
 export const POST: RequestHandler = async ({ request, locals }) => {
-  const { response, writer, encoder } = SSEResponse.createStream();
+	const { response, writer, encoder } = SSEResponse.createStream();
 
-  // ✅ Monitor client disconnect
-  const abortController = new AbortController();
-  let isConnected = true;
+	// ✅ Monitor client disconnect
+	const abortController = new AbortController();
+	let isConnected = true;
 
-  request.signal?.addEventListener("abort", () => {
-    console.log("Client disconnected, aborting processing");
-    isConnected = false;
-    abortController.abort();
-    SSEResponse.close(writer).catch(console.error);
-  });
+	request.signal?.addEventListener('abort', () => {
+		console.log('Client disconnected, aborting processing');
+		isConnected = false;
+		abortController.abort();
+		SSEResponse.close(writer).catch(console.error);
+	});
 
-  processBrainDumpWithStreaming({
-    writer,
-    encoder,
-    isConnected: () => isConnected,
-    signal: abortController.signal,
-  });
+	processBrainDumpWithStreaming({
+		writer,
+		encoder,
+		isConnected: () => isConnected,
+		signal: abortController.signal
+	});
 
-  return response;
+	return response;
 };
 ```
 
@@ -289,22 +289,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 ```typescript
 // In /apps/worker/src/index.ts
-process.on("uncaughtException", (error) => {
-  console.error("🚨 CRITICAL: Uncaught Exception", error);
-  queue.stop();
-  process.exit(1);
+process.on('uncaughtException', (error) => {
+	console.error('🚨 CRITICAL: Uncaught Exception', error);
+	queue.stop();
+	process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("🚨 CRITICAL: Unhandled Rejection", reason);
-  queue.stop();
-  process.exit(1);
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('🚨 CRITICAL: Unhandled Rejection', reason);
+	queue.stop();
+	process.exit(1);
 });
 
-process.on("SIGTERM", () => {
-  console.log("Received SIGTERM, gracefully shutting down...");
-  queue.stop();
-  process.exit(0);
+process.on('SIGTERM', () => {
+	console.log('Received SIGTERM, gracefully shutting down...');
+	queue.stop();
+	process.exit(0);
 });
 ```
 
@@ -330,9 +330,9 @@ const quietEnd = parseInt(userPrefs.quiet_hours_end); // "08:30:00" → 8
 const currentHour = now.getHours();
 
 const isQuietHours =
-  quietStart < quietEnd
-    ? currentHour >= quietStart && currentHour < quietEnd
-    : currentHour >= quietStart || currentHour < quietEnd;
+	quietStart < quietEnd
+		? currentHour >= quietStart && currentHour < quietEnd
+		: currentHour >= quietStart || currentHour < quietEnd;
 ```
 
 **Problem**: If quiet hours are 22:30 - 08:30, the check treats them as 22:00 - 08:00, potentially sending SMS at:
@@ -376,18 +376,18 @@ const isQuietHours =
 
 ```typescript
 const rateLimits = {
-  auth: rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 login attempts
-  }),
-  api: rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 100,
-  }),
-  llm: rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 20, // Expensive LLM calls
-  }),
+	auth: rateLimit({
+		windowMs: 15 * 60 * 1000, // 15 minutes
+		max: 5 // 5 login attempts
+	}),
+	api: rateLimit({
+		windowMs: 1 * 60 * 1000, // 1 minute
+		max: 100
+	}),
+	llm: rateLimit({
+		windowMs: 1 * 60 * 1000,
+		max: 20 // Expensive LLM calls
+	})
 };
 ```
 
@@ -671,55 +671,55 @@ ON projects(user_id, status, updated_at DESC);
 ### Security Strengths
 
 1. **Strong Authentication Flow**
-   - Proper JWT validation via `safeGetSession()`
-   - 97% of endpoints protected (177/182)
-   - Session cleanup on logout
-   - Secure cookie attributes
+    - Proper JWT validation via `safeGetSession()`
+    - 97% of endpoints protected (177/182)
+    - Session cleanup on logout
+    - Secure cookie attributes
 
 2. **Extensive Authorization Checks**
-   - 205 occurrences of `.eq('user_id')` across 81 files
-   - Consistent ownership verification
-   - Proper 401 vs 403 responses
+    - 205 occurrences of `.eq('user_id')` across 81 files
+    - Consistent ownership verification
+    - Proper 401 vs 403 responses
 
 3. **Service Key Isolation**
-   - No evidence of service key exposure in client code
-   - All usage confined to server-side files
+    - No evidence of service key exposure in client code
+    - All usage confined to server-side files
 
 ### Architecture Strengths
 
 4. **Excellent Error Handling**
-   - Consistent `ApiResponse` utility usage
-   - Comprehensive try-catch patterns
-   - Zero empty catch blocks
-   - Proper resource cleanup in finally blocks
+    - Consistent `ApiResponse` utility usage
+    - Comprehensive try-catch patterns
+    - Zero empty catch blocks
+    - Proper resource cleanup in finally blocks
 
 5. **Strong Queue System Design**
-   - Atomic job claiming with `FOR UPDATE SKIP LOCKED`
-   - Priority-based processing
-   - Exponential backoff retry logic
-   - Proper job status tracking
+    - Atomic job claiming with `FOR UPDATE SKIP LOCKED`
+    - Priority-based processing
+    - Exponential backoff retry logic
+    - Proper job status tracking
 
 6. **Good TypeScript Configuration**
-   - All apps have `strict: true` enabled
-   - Web app uses `noUncheckedIndexedAccess`
-   - Consistent config across monorepo
+    - All apps have `strict: true` enabled
+    - Web app uses `noUncheckedIndexedAccess`
+    - Consistent config across monorepo
 
 7. **Excellent SSE Cleanup**
-   - Proper stream closing in finally blocks
-   - Error handling doesn't mask cleanup
-   - Backpressure handling
+    - Proper stream closing in finally blocks
+    - Error handling doesn't mask cleanup
+    - Backpressure handling
 
 ### Code Quality Strengths
 
 8. **Comprehensive Logging**
-   - Structured logging throughout
-   - Context-rich error messages
-   - Debug-friendly console output
+    - Structured logging throughout
+    - Context-rich error messages
+    - Debug-friendly console output
 
 9. **Testing Infrastructure**
-   - Dedicated LLM tests
-   - Unit tests alongside source
-   - Pre-push validation
+    - Dedicated LLM tests
+    - Unit tests alongside source
+    - Pre-push validation
 
 10. **Documentation**
     - Extensive inline comments
@@ -969,44 +969,44 @@ ON projects(user_id, status, updated_at DESC);
 ### 🔴 IMMEDIATE (Within 24-48 Hours) - ~16 hours work
 
 1. **Verify RLS in Production** (30 min)
-   - Run SQL to check RLS enabled on tables
-   - If not enabled, enable for critical tables
+    - Run SQL to check RLS enabled on tables
+    - If not enabled, enable for critical tables
 
 2. **Create Emergency RLS Migration** (4 hours)
-   - Projects, tasks, brain_dumps, user tables
-   - Test in staging thoroughly
+    - Projects, tasks, brain_dumps, user tables
+    - Test in staging thoroughly
 
 3. **Fix Queue Deduplication Race** (2 hours)
-   - Add UNIQUE constraint
-   - Implement INSERT ON CONFLICT
+    - Add UNIQUE constraint
+    - Implement INSERT ON CONFLICT
 
 4. **Add Worker Exception Handlers** (1 hour)
-   - `uncaughtException`, `unhandledRejection`, SIGTERM
+    - `uncaughtException`, `unhandledRejection`, SIGTERM
 
 5. **Fix SMS Quiet Hours Bug** (1 hour)
-   - Use proper `checkQuietHours()` function
+    - Use proper `checkQuietHours()` function
 
 6. **Add Brain Dump Timeout** (2 hours)
-   - Promise.race with timeout
-   - Client disconnect detection
+    - Promise.race with timeout
+    - Client disconnect detection
 
 7. **Enable Rate Limiting** (1 hour)
-   - Uncomment code in hooks.server.ts
-   - Configure appropriate limits
+    - Uncomment code in hooks.server.ts
+    - Configure appropriate limits
 
 8. **Fix Critical Security Issues** (4 hours)
-   - CSRF validation
-   - Webhook authentication
-   - OAuth state expiration
+    - CSRF validation
+    - Webhook authentication
+    - OAuth state expiration
 
 ---
 
 ### 🟠 SHORT-TERM (Within 1-2 Weeks) - ~30 hours work
 
 9. **Fix Calendar Sync Issues** (6 hours)
-   - Token refresh mutex
-   - Optimistic locking
-   - Version tracking
+    - Token refresh mutex
+    - Optimistic locking
+    - Version tracking
 
 10. **Fix N+1 Queries** (8 hours)
     - Admin activity endpoint
@@ -1135,28 +1135,28 @@ npm run test:load:calendar
 ### Critical Metrics to Track
 
 1. **Security**
-   - Failed authentication attempts
-   - RLS policy violations (once enabled)
-   - Service role operations
-   - Webhook signature failures
+    - Failed authentication attempts
+    - RLS policy violations (once enabled)
+    - Service role operations
+    - Webhook signature failures
 
 2. **Performance**
-   - API response times (p50, p95, p99)
-   - Database query duration
-   - Queue processing time
-   - LLM API latency
+    - API response times (p50, p95, p99)
+    - Database query duration
+    - Queue processing time
+    - LLM API latency
 
 3. **Reliability**
-   - Job failure rate
-   - Retry counts
-   - Memory usage trends
-   - Process crash count
+    - Job failure rate
+    - Retry counts
+    - Memory usage trends
+    - Process crash count
 
 4. **Business**
-   - SMS delivery failures
-   - Brief generation success rate
-   - Calendar sync errors
-   - User-reported issues
+    - SMS delivery failures
+    - Brief generation success rate
+    - Calendar sync errors
+    - User-reported issues
 
 ---
 

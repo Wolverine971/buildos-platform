@@ -78,24 +78,24 @@
 **Four Core Categories**:
 
 1. **Vision** (Military: Strategic Thinking)
-   - Obsessed with solution
-   - Strong communicators
-   - Dedicated to goals "by any means necessary"
+    - Obsessed with solution
+    - Strong communicators
+    - Dedicated to goals "by any means necessary"
 
 2. **Intelligence** (Military: Tactical Analysis)
-   - Industry knowledge
-   - Problem-solving skills
-   - Creativity and relevant experience
+    - Industry knowledge
+    - Problem-solving skills
+    - Creativity and relevant experience
 
 3. **Character** (Military: Leadership Under Pressure)
-   - Grit and personal conviction
-   - Strong internal motivation
-   - Mental fortitude
+    - Grit and personal conviction
+    - Strong internal motivation
+    - Mental fortitude
 
 4. **Execution** (Military: Operational Excellence)
-   - Decisiveness and action-oriented approach
-   - Willingness to experiment
-   - Quick decision-making
+    - Decisiveness and action-oriented approach
+    - Willingness to experiment
+    - Quick decision-making
 
 ### Military-Influenced Investment Principles
 
@@ -210,8 +210,8 @@
 
 - **Stages**: Pre-seed through Series A
 - **Check Sizes**:
-  - Seed: $4.28M average
-  - Series B: $80M average
+    - Seed: $4.28M average
+    - Series B: $80M average
 - **Geographic Focus**: Los Angeles, San Francisco, Boulder, Austin, NYC
 - **Sectors**: AI/ML, robotics, autonomous vehicles, SaaS-enabled marketplaces
 

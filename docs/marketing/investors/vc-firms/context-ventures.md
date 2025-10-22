@@ -40,9 +40,9 @@ Context Ventures focuses on military veteran founders and consumer startups, bel
 ### Key Partners & Backgrounds:
 
 - **Tim Hsia** - Founder & Managing Partner, West Point grad, Army Infantry Officer, Stanford JD/MBA
-  - **DJ's Meeting Notes (Sept 2025)**: Met at recent meetup, very approachable and engaged. Wants me to ping him next week for follow-up discussion. Strong interest in veteran founders.
+    - **DJ's Meeting Notes (Sept 2025)**: Met at recent meetup, very approachable and engaged. Wants me to ping him next week for follow-up discussion. Strong interest in veteran founders.
 - **Mike Steadman** - Operating Partner, Marine veteran, 3x national boxing champion (Naval Academy), category design expert
-  - **DJ's Meeting Notes (Sept 2025)**: Met Mike and had great connection. He was cool and wants me to ping him. Founder of IRONBOUND Boxing, The MisFits category design studio, and Dog Whistle Branding.
+    - **DJ's Meeting Notes (Sept 2025)**: Met Mike and had great connection. He was cool and wants me to ping him. Founder of IRONBOUND Boxing, The MisFits category design studio, and Dog Whistle Branding.
 - **Warren Cheng** - Venture Partner, 14 years investment experience, consumer specialist
 - **Lenore Karafa** - Venture Partner, Marine veteran, Wharton MBA, former Citadel Head of People
 - **Carina Cho** - Associate, CEO of Media Mobilize, marketing/design background
@@ -202,9 +202,9 @@ Context Ventures focuses on military veteran founders and consumer startups, bel
 ### Direct Contacts:
 
 - **Tim Hsia**: tim@contextvc.com (likely)
-  - **DJ's Action Item**: Ping Tim next week (week of Sept 23, 2025) as requested
+    - **DJ's Action Item**: Ping Tim next week (week of Sept 23, 2025) as requested
 - **Mike Steadman**: Contact through Context Ventures or LinkedIn
-  - **DJ's Action Item**: Follow up with Mike as he expressed interest
+    - **DJ's Action Item**: Follow up with Mike as he expressed interest
 - **General**: leaders@contextvc.com
 - **LinkedIn**: Tim Hsia (active, top 2% creator), Mike Steadman
 

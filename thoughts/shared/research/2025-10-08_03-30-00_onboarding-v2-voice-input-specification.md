@@ -4,20 +4,12 @@ researcher: Claude Code
 git_commit: d2b0decf96ed0c0e03dbf9ea92b57b6ddd3abb47
 branch: main
 repository: buildos-platform
-topic: "Onboarding V2 Voice Input Specification"
-tags:
-  [
-    research,
-    onboarding,
-    voice-recording,
-    specification,
-    ProjectsCaptureStep,
-    implemented,
-  ]
+topic: 'Onboarding V2 Voice Input Specification'
+tags: [research, onboarding, voice-recording, specification, ProjectsCaptureStep, implemented]
 status: implemented
 last_updated: 2025-10-08
 last_updated_by: Claude Code
-last_updated_note: "Added implementation completion notes - voice functionality fully integrated into ProjectsCaptureStep"
+last_updated_note: 'Added implementation completion notes - voice functionality fully integrated into ProjectsCaptureStep'
 ---
 
 # Research: Onboarding V2 Voice Input Specification
@@ -66,12 +58,12 @@ How should we add voice input functionality to the Onboarding V2 page, specifica
 
 ```svelte
 <Textarea
-    bind:value={inputText}
-    placeholder="Example: Working on a new marketing campaign..."
-    rows={8}
-    maxlength={5000}
-    class="resize-none"
-    oninput={handleInput}
+	bind:value={inputText}
+	placeholder="Example: Working on a new marketing campaign..."
+	rows={8}
+	maxlength={5000}
+	class="resize-none"
+	oninput={handleInput}
 />
 ```
 
@@ -127,29 +119,29 @@ voiceRecordingService.cleanup();
 **UI Components Implemented**:
 
 1. **Voice Button** (Lines 494-560):
-   - Circular FAB (Floating Action Button)
-   - Dynamic states: idle, recording, initializing, transcribing, permission needed
-   - Pulsing animation during recording
-   - Icon changes based on state
+    - Circular FAB (Floating Action Button)
+    - Dynamic states: idle, recording, initializing, transcribing, permission needed
+    - Pulsing animation during recording
+    - Icon changes based on state
 
 2. **Recording Status Badge** (Lines 452-473):
-   - Shows duration (M:SS format)
-   - "Live" indicator when live transcription active
-   - Red-themed design
+    - Shows duration (M:SS format)
+    - "Live" indicator when live transcription active
+    - Red-themed design
 
 3. **Live Transcript Preview** (Lines 369-381):
-   - Appears above textarea during recording
-   - Gradient purple-pink background
-   - Scrollable (max height 5rem)
-   - Fade in/out transitions
+    - Appears above textarea during recording
+    - Gradient purple-pink background
+    - Scrollable (max height 5rem)
+    - Fade in/out transitions
 
 4. **iOS Notice** (Lines 434-442):
-   - Shows on iOS when live transcript not available
-   - Informs user about post-recording transcription
+    - Shows on iOS when live transcript not available
+    - Informs user about post-recording transcription
 
 5. **Error Display** (Lines 341-349):
-   - Red banner at top
-   - Auto-dismisses when error clears
+    - Red banner at top
+    - Auto-dismisses when error clears
 
 **State Management Pattern**:
 
@@ -158,18 +150,16 @@ voiceRecordingService.cleanup();
 let isVoiceSupported = $state(false);
 let isCurrentlyRecording = $state(false);
 let recordingDuration = $state(0);
-let accumulatedTranscript = $derived(
-  voiceRecordingService.getCurrentLiveTranscript(),
-);
+let accumulatedTranscript = $derived(voiceRecordingService.getCurrentLiveTranscript());
 let isLiveTranscribing = $derived(voiceRecordingService.isLiveTranscribing());
 
 // Subscribe to duration store
 const durationStore = voiceRecordingService.getRecordingDuration();
 $effect(() => {
-  const unsubscribe = durationStore.subscribe((value) => {
-    recordingDuration = value;
-  });
-  return unsubscribe;
+	const unsubscribe = durationStore.subscribe((value) => {
+		recordingDuration = value;
+	});
+	return unsubscribe;
 });
 ```
 
@@ -181,36 +171,36 @@ $effect(() => {
 
 ```typescript
 async function initializeModal() {
-  // Initialize voice recording service
-  isVoiceSupported = voiceRecordingService.isVoiceSupported();
+	// Initialize voice recording service
+	isVoiceSupported = voiceRecordingService.isVoiceSupported();
 
-  voiceRecordingService.initialize(
-    {
-      onTextUpdate: (text: string) => {
-        brainDumpActions.updateInputText(text);
-        debouncedAutoSave();
-      },
-      onError: (error: string) => {
-        brainDumpActions.setVoiceError(error);
-        toastService.error(error);
-      },
-      onPhaseChange: (phase: "idle" | "transcribing") => {
-        brainDumpActions.setProcessingPhase(phase);
-      },
-      onPermissionGranted: () => {
-        brainDumpActions.setMicrophonePermission(true);
-      },
-      onCapabilityUpdate: (update) => {
-        brainDumpActions.setVoiceCapabilities(update);
-      },
-    },
-    brainDumpService,
-  );
+	voiceRecordingService.initialize(
+		{
+			onTextUpdate: (text: string) => {
+				brainDumpActions.updateInputText(text);
+				debouncedAutoSave();
+			},
+			onError: (error: string) => {
+				brainDumpActions.setVoiceError(error);
+				toastService.error(error);
+			},
+			onPhaseChange: (phase: 'idle' | 'transcribing') => {
+				brainDumpActions.setProcessingPhase(phase);
+			},
+			onPermissionGranted: () => {
+				brainDumpActions.setMicrophonePermission(true);
+			},
+			onCapabilityUpdate: (update) => {
+				brainDumpActions.setVoiceCapabilities(update);
+			}
+		},
+		brainDumpService
+	);
 
-  brainDumpActions.setVoiceCapabilities({
-    canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
-    capabilitiesChecked: true,
-  });
+	brainDumpActions.setVoiceCapabilities({
+		canUseLiveTranscript: voiceRecordingService.isLiveTranscriptSupported(),
+		capabilitiesChecked: true
+	});
 }
 ```
 
@@ -218,33 +208,32 @@ async function initializeModal() {
 
 ```typescript
 async function startRecording() {
-  if (!isVoiceSupported) return;
+	if (!isVoiceSupported) return;
 
-  brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
+	brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
 
-  try {
-    await voiceRecordingService.startRecording(inputText);
-    brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
-    isCurrentlyRecording = true;
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unable to access microphone";
-    brainDumpActions.setVoiceError(errorMessage);
-    brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
-    isCurrentlyRecording = false;
-  }
+	try {
+		await voiceRecordingService.startRecording(inputText);
+		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+		isCurrentlyRecording = true;
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'Unable to access microphone';
+		brainDumpActions.setVoiceError(errorMessage);
+		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: false });
+		isCurrentlyRecording = false;
+	}
 }
 
 async function stopRecording() {
-  if (!isCurrentlyRecording) return;
+	if (!isCurrentlyRecording) return;
 
-  try {
-    await voiceRecordingService.stopRecording(inputText);
-    isCurrentlyRecording = false;
-  } catch (error) {
-    console.error("Stop recording error:", error);
-    isCurrentlyRecording = false;
-  }
+	try {
+		await voiceRecordingService.stopRecording(inputText);
+		isCurrentlyRecording = false;
+	} catch (error) {
+		console.error('Stop recording error:', error);
+		isCurrentlyRecording = false;
+	}
 }
 ```
 
@@ -410,151 +399,147 @@ Add voice input functionality to `ProjectsCaptureStep.svelte` following the esta
 
 1. Add voice service imports:
 
-   ```typescript
-   import { voiceRecordingService } from "$lib/services/voiceRecording.service";
-   import { brainDumpService } from "$lib/services/braindump-api.service";
-   import { toastService } from "$lib/stores/toast.store";
-   ```
+    ```typescript
+    import { voiceRecordingService } from '$lib/services/voiceRecording.service';
+    import { brainDumpService } from '$lib/services/braindump-api.service';
+    import { toastService } from '$lib/stores/toast.store';
+    ```
 
 2. Add voice state variables:
 
-   ```typescript
-   // Voice state
-   let isVoiceSupported = $state(false);
-   let isCurrentlyRecording = $state(false);
-   let recordingDuration = $state(0);
-   let voiceError = $state("");
-   let isInitializingRecording = $state(false);
-   let canUseLiveTranscript = $state(false);
-   let microphonePermissionGranted = $state(false);
-   let voiceCapabilitiesChecked = $state(false);
+    ```typescript
+    // Voice state
+    let isVoiceSupported = $state(false);
+    let isCurrentlyRecording = $state(false);
+    let recordingDuration = $state(0);
+    let voiceError = $state('');
+    let isInitializingRecording = $state(false);
+    let canUseLiveTranscript = $state(false);
+    let microphonePermissionGranted = $state(false);
+    let voiceCapabilitiesChecked = $state(false);
 
-   // Derived state
-   let accumulatedTranscript = $derived(
-     voiceRecordingService.getCurrentLiveTranscript(),
-   );
-   let isLiveTranscribing = $derived(
-     voiceRecordingService.isLiveTranscribing(),
-   );
-   ```
+    // Derived state
+    let accumulatedTranscript = $derived(voiceRecordingService.getCurrentLiveTranscript());
+    let isLiveTranscribing = $derived(voiceRecordingService.isLiveTranscribing());
+    ```
 
 3. Subscribe to duration store:
 
-   ```typescript
-   const durationStore = voiceRecordingService.getRecordingDuration();
-   let unsubscribeDuration: (() => void) | null = null;
+    ```typescript
+    const durationStore = voiceRecordingService.getRecordingDuration();
+    let unsubscribeDuration: (() => void) | null = null;
 
-   $effect(() => {
-     unsubscribeDuration = durationStore.subscribe((value) => {
-       recordingDuration = value;
-     });
-     return () => {
-       if (unsubscribeDuration) unsubscribeDuration();
-     };
-   });
-   ```
+    $effect(() => {
+    	unsubscribeDuration = durationStore.subscribe((value) => {
+    		recordingDuration = value;
+    	});
+    	return () => {
+    		if (unsubscribeDuration) unsubscribeDuration();
+    	};
+    });
+    ```
 
 4. Initialize voice service in onMount:
 
-   ```typescript
-   import { onMount, onDestroy } from "svelte";
+    ```typescript
+    import { onMount, onDestroy } from 'svelte';
 
-   onMount(() => {
-     // Initialize voice
-     isVoiceSupported = voiceRecordingService.isVoiceSupported();
+    onMount(() => {
+    	// Initialize voice
+    	isVoiceSupported = voiceRecordingService.isVoiceSupported();
 
-     voiceRecordingService.initialize(
-       {
-         onTextUpdate: (text: string) => {
-           inputText = text;
-           handleInput(); // Trigger auto-save
-         },
-         onError: (error: string) => {
-           voiceError = error;
-           toastService.error(error);
-         },
-         onPhaseChange: (phase: "idle" | "transcribing") => {
-           // Could add isTranscribing state if needed for UI
-         },
-         onPermissionGranted: () => {
-           microphonePermissionGranted = true;
-         },
-         onCapabilityUpdate: (update) => {
-           canUseLiveTranscript = update.canUseLiveTranscript;
-           voiceCapabilitiesChecked = true;
-         },
-       },
-       brainDumpService,
-     );
+    	voiceRecordingService.initialize(
+    		{
+    			onTextUpdate: (text: string) => {
+    				inputText = text;
+    				handleInput(); // Trigger auto-save
+    			},
+    			onError: (error: string) => {
+    				voiceError = error;
+    				toastService.error(error);
+    			},
+    			onPhaseChange: (phase: 'idle' | 'transcribing') => {
+    				// Could add isTranscribing state if needed for UI
+    			},
+    			onPermissionGranted: () => {
+    				microphonePermissionGranted = true;
+    			},
+    			onCapabilityUpdate: (update) => {
+    				canUseLiveTranscript = update.canUseLiveTranscript;
+    				voiceCapabilitiesChecked = true;
+    			}
+    		},
+    		brainDumpService
+    	);
 
-     canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
-     voiceCapabilitiesChecked = true;
-   });
+    	canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+    	voiceCapabilitiesChecked = true;
+    });
 
-   onDestroy(() => {
-     voiceRecordingService.cleanup();
-   });
-   ```
+    onDestroy(() => {
+    	voiceRecordingService.cleanup();
+    });
+    ```
 
 5. Add recording handlers:
 
-   ```typescript
-   async function startRecording() {
-     if (!isVoiceSupported) return;
+    ```typescript
+    async function startRecording() {
+    	if (!isVoiceSupported) return;
 
-     voiceError = "";
-     isInitializingRecording = true;
+    	voiceError = '';
+    	isInitializingRecording = true;
 
-     try {
-       await voiceRecordingService.startRecording(inputText);
-       isInitializingRecording = false;
-       isCurrentlyRecording = true;
-     } catch (error) {
-       const errorMessage =
-         error instanceof Error
-           ? error.message
-           : "Unable to access microphone. Please check your permissions.";
-       voiceError = errorMessage;
-       isInitializingRecording = false;
-       isCurrentlyRecording = false;
-     }
-   }
+    	try {
+    		await voiceRecordingService.startRecording(inputText);
+    		isInitializingRecording = false;
+    		isCurrentlyRecording = true;
+    	} catch (error) {
+    		const errorMessage =
+    			error instanceof Error
+    				? error.message
+    				: 'Unable to access microphone. Please check your permissions.';
+    		voiceError = errorMessage;
+    		isInitializingRecording = false;
+    		isCurrentlyRecording = false;
+    	}
+    }
 
-   async function stopRecording() {
-     if (!isCurrentlyRecording) return;
+    async function stopRecording() {
+    	if (!isCurrentlyRecording) return;
 
-     try {
-       await voiceRecordingService.stopRecording(inputText);
-       isCurrentlyRecording = false;
-     } catch (error) {
-       console.error("Stop recording error:", error);
-       isCurrentlyRecording = false;
-     }
-   }
+    	try {
+    		await voiceRecordingService.stopRecording(inputText);
+    		isCurrentlyRecording = false;
+    	} catch (error) {
+    		console.error('Stop recording error:', error);
+    		isCurrentlyRecording = false;
+    	}
+    }
 
-   function toggleRecording() {
-     if (isCurrentlyRecording) {
-       stopRecording();
-     } else {
-       startRecording();
-     }
-   }
-   ```
+    function toggleRecording() {
+    	if (isCurrentlyRecording) {
+    		stopRecording();
+    	} else {
+    		startRecording();
+    	}
+    }
+    ```
 
 6. Add utility function (for iOS detection):
 
-   ```typescript
-   function isIOS(): boolean {
-     if (typeof window === "undefined") return false;
-     return /iPad|iPhone|iPod/.test(navigator.userAgent);
-   }
+    ```typescript
+    function isIOS(): boolean {
+    	if (typeof window === 'undefined') return false;
+    	return /iPad|iPhone|iPod/.test(navigator.userAgent);
+    }
 
-   function formatDuration(seconds: number): string {
-     const mins = Math.floor(seconds / 60);
-     const secs = seconds % 60;
-     return `${mins}:${secs.toString().padStart(2, "0")}`;
-   }
-   ```
+    function formatDuration(seconds: number): string {
+    	const mins = Math.floor(seconds / 60);
+    	const secs = seconds % 60;
+    	return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    ```
 
 #### Phase 2: Voice UI Components (2-3 hours)
 
@@ -562,277 +547,277 @@ Add voice input functionality to `ProjectsCaptureStep.svelte` following the esta
 
 1. Import icons:
 
-   ```typescript
-   import {
-     Mic,
-     MicOff,
-     Square,
-     LoaderCircle,
-     Info,
-     TriangleAlert,
-   } from "lucide-svelte";
-   ```
+    ```typescript
+    import { Mic, MicOff, Square, LoaderCircle, Info, TriangleAlert } from 'lucide-svelte';
+    ```
 
 2. Add voice button state:
 
-   ```typescript
-   let voiceButtonState = $derived.by(() => {
-     // Priority 1: Recording
-     if (isCurrentlyRecording) {
-       return {
-         icon: MicOff,
-         ariaLabel: "Stop recording",
-         disabled: false,
-         isLoading: false,
-       };
-     }
+    ```typescript
+    let voiceButtonState = $derived.by(() => {
+    	// Priority 1: Recording
+    	if (isCurrentlyRecording) {
+    		return {
+    			icon: MicOff,
+    			ariaLabel: 'Stop recording',
+    			disabled: false,
+    			isLoading: false
+    		};
+    	}
 
-     // Priority 2: Initializing
-     if (isInitializingRecording) {
-       return {
-         icon: LoaderCircle,
-         ariaLabel: "Initializing microphone...",
-         disabled: true,
-         isLoading: true,
-       };
-     }
+    	// Priority 2: Initializing
+    	if (isInitializingRecording) {
+    		return {
+    			icon: LoaderCircle,
+    			ariaLabel: 'Initializing microphone...',
+    			disabled: true,
+    			isLoading: true
+    		};
+    	}
 
-     // Priority 3: Permission needed
-     if (!microphonePermissionGranted && voiceCapabilitiesChecked) {
-       return {
-         icon: Mic,
-         ariaLabel: "Grant microphone access",
-         disabled: false,
-         isLoading: false,
-       };
-     }
+    	// Priority 3: Permission needed
+    	if (!microphonePermissionGranted && voiceCapabilitiesChecked) {
+    		return {
+    			icon: Mic,
+    			ariaLabel: 'Grant microphone access',
+    			disabled: false,
+    			isLoading: false
+    		};
+    	}
 
-     // Default: Ready
-     return {
-       icon: Mic,
-       ariaLabel: "Start voice recording",
-       disabled: false,
-       isLoading: false,
-     };
-   });
-   ```
+    	// Default: Ready
+    	return {
+    		icon: Mic,
+    		ariaLabel: 'Start voice recording',
+    		disabled: false,
+    		isLoading: false
+    	};
+    });
+    ```
 
 3. Add UI markup (replace existing textarea section):
 
-   ```svelte
-   <!-- Voice Error (if any) -->
-   {#if voiceError}
-       <div class="absolute top-0 left-0 right-0 z-10
-                   flex items-center gap-2 px-4 py-3
-                   bg-red-50 text-red-600 text-sm
-                   border-b border-red-200 shadow-sm"
-            transition:fade={{ duration: 200 }}>
-           <TriangleAlert class="w-4 h-4 flex-shrink-0" />
-           <span>{voiceError}</span>
-       </div>
-   {/if}
+    ```svelte
+    <!-- Voice Error (if any) -->
+    {#if voiceError}
+    	<div
+    		class="absolute top-0 left-0 right-0 z-10
+                    flex items-center gap-2 px-4 py-3
+                    bg-red-50 text-red-600 text-sm
+                    border-b border-red-200 shadow-sm"
+    		transition:fade={{ duration: 200 }}
+    	>
+    		<TriangleAlert class="w-4 h-4 flex-shrink-0" />
+    		<span>{voiceError}</span>
+    	</div>
+    {/if}
 
-   <!-- Input Container -->
-   <div class="relative">
-       <!-- Live Transcript Preview (during recording) -->
-       {#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
-           <div class="mb-2 p-2.5 px-3.5
-                       bg-gradient-to-r from-purple-50/60 to-pink-50/60
-                       border border-purple-200/40 rounded-lg
-                       backdrop-blur-md max-h-20 overflow-y-auto"
-                transition:fade={{ duration: 200 }}>
-               <p class="text-sm text-gray-600 dark:text-gray-400 italic m-0 leading-normal break-words">
-                   {accumulatedTranscript}
-               </p>
-           </div>
-       {/if}
+    <!-- Input Container -->
+    <div class="relative">
+    	<!-- Live Transcript Preview (during recording) -->
+    	{#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
+    		<div
+    			class="mb-2 p-2.5 px-3.5
+                        bg-gradient-to-r from-purple-50/60 to-pink-50/60
+                        border border-purple-200/40 rounded-lg
+                        backdrop-blur-md max-h-20 overflow-y-auto"
+    			transition:fade={{ duration: 200 }}
+    		>
+    			<p
+    				class="text-sm text-gray-600 dark:text-gray-400 italic m-0 leading-normal break-words"
+    			>
+    				{accumulatedTranscript}
+    			</p>
+    		</div>
+    	{/if}
 
-       <!-- Textarea -->
-       <Textarea
-           bind:value={inputText}
-           placeholder="Example: Working on a new marketing campaign for Q4 product launch..."
-           rows={8}
-           maxlength={5000}
-           class="resize-none"
-           oninput={handleInput}
-       />
+    	<!-- Textarea -->
+    	<Textarea
+    		bind:value={inputText}
+    		placeholder="Example: Working on a new marketing campaign for Q4 product launch..."
+    		rows={8}
+    		maxlength={5000}
+    		class="resize-none"
+    		oninput={handleInput}
+    	/>
 
-       <!-- iOS Notice (when recording on iOS) -->
-       {#if isVoiceSupported && isIOS() && !canUseLiveTranscript && isCurrentlyRecording}
-           <div class="absolute bottom-2 left-4 right-4
-                       flex items-center gap-2 p-2 px-3
-                       bg-primary-50/90 text-primary-600 text-xs rounded-md"
-                transition:fade={{ duration: 200 }}>
-               <Info class="w-3.5 h-3.5 flex-shrink-0" />
-               <span>Audio will be transcribed when you stop recording</span>
-           </div>
-       {/if}
-   </div>
+    	<!-- iOS Notice (when recording on iOS) -->
+    	{#if isVoiceSupported && isIOS() && !canUseLiveTranscript && isCurrentlyRecording}
+    		<div
+    			class="absolute bottom-2 left-4 right-4
+                        flex items-center gap-2 p-2 px-3
+                        bg-primary-50/90 text-primary-600 text-xs rounded-md"
+    			transition:fade={{ duration: 200 }}
+    		>
+    			<Info class="w-3.5 h-3.5 flex-shrink-0" />
+    			<span>Audio will be transcribed when you stop recording</span>
+    		</div>
+    	{/if}
+    </div>
 
-   <!-- Action Bar -->
-   <div class="flex items-center justify-between mt-4">
-       <!-- Recording Status (left side) -->
-       <div class="flex-1">
-           {#if isCurrentlyRecording}
-               <div class="inline-flex items-center gap-2 px-3.5 py-2
-                           bg-red-50/80 dark:bg-red-900/20
-                           border border-red-200/60 dark:border-red-800/40
-                           rounded-full text-sm text-red-700 dark:text-red-300"
-                    transition:fade={{ duration: 200 }}>
-                   <span class="font-medium">Recording</span>
-                   <span class="tabular-nums opacity-90">
-                       {formatDuration(recordingDuration)}
-                   </span>
-                   {#if isLiveTranscribing && canUseLiveTranscript}
-                       <span class="hidden sm:inline text-emerald-500 dark:text-emerald-400 text-xs font-semibold">
-                           • Live
-                       </span>
-                   {/if}
-               </div>
-           {/if}
-       </div>
+    <!-- Action Bar -->
+    <div class="flex items-center justify-between mt-4">
+    	<!-- Recording Status (left side) -->
+    	<div class="flex-1">
+    		{#if isCurrentlyRecording}
+    			<div
+    				class="inline-flex items-center gap-2 px-3.5 py-2
+                            bg-red-50/80 dark:bg-red-900/20
+                            border border-red-200/60 dark:border-red-800/40
+                            rounded-full text-sm text-red-700 dark:text-red-300"
+    				transition:fade={{ duration: 200 }}
+    			>
+    				<span class="font-medium">Recording</span>
+    				<span class="tabular-nums opacity-90">
+    					{formatDuration(recordingDuration)}
+    				</span>
+    				{#if isLiveTranscribing && canUseLiveTranscript}
+    					<span
+    						class="hidden sm:inline text-emerald-500 dark:text-emerald-400 text-xs font-semibold"
+    					>
+    						• Live
+    					</span>
+    				{/if}
+    			</div>
+    		{/if}
+    	</div>
 
-       <!-- Voice Button + Continue Button (right side) -->
-       <div class="flex items-center gap-3">
-           <!-- Voice Recording Button -->
-           {#if isVoiceSupported}
-               <button
-                   onclick={toggleRecording}
-                   disabled={voiceButtonState.disabled}
-                   aria-label={voiceButtonState.ariaLabel}
-                   class="relative w-12 h-12 p-0 rounded-full transition-all
-                          {isCurrentlyRecording
-                              ? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white scale-110 animate-recording-pulse shadow-lg'
-                              : 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md text-gray-700 dark:text-gray-300'
-                          }
-                          disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-               >
-                   {#if voiceButtonState.isLoading}
-                       <LoaderCircle class="w-5 h-5 mx-auto animate-spin" />
-                   {:else if isCurrentlyRecording}
-                       <Square class="w-4 h-4 mx-auto fill-current" />
-                   {:else}
-                       <svelte:component this={voiceButtonState.icon} class="w-5 h-5 mx-auto" />
-                   {/if}
-               </button>
-           {/if}
+    	<!-- Voice Button + Continue Button (right side) -->
+    	<div class="flex items-center gap-3">
+    		<!-- Voice Recording Button -->
+    		{#if isVoiceSupported}
+    			<button
+    				onclick={toggleRecording}
+    				disabled={voiceButtonState.disabled}
+    				aria-label={voiceButtonState.ariaLabel}
+    				class="relative w-12 h-12 p-0 rounded-full transition-all
+                           {isCurrentlyRecording
+    					? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white scale-110 animate-recording-pulse shadow-lg'
+    					: 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md text-gray-700 dark:text-gray-300'}
+                           disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+    			>
+    				{#if voiceButtonState.isLoading}
+    					<LoaderCircle class="w-5 h-5 mx-auto animate-spin" />
+    				{:else if isCurrentlyRecording}
+    					<Square class="w-4 h-4 mx-auto fill-current" />
+    				{:else}
+    					<svelte:component this={voiceButtonState.icon} class="w-5 h-5 mx-auto" />
+    				{/if}
+    			</button>
+    		{/if}
 
-           <!-- Continue Button -->
-           <Button
-               onclick={handleContinue}
-               disabled={!canContinue}
-               variant="primary"
-           >
-               Continue →
-           </Button>
-       </div>
-   </div>
-   ```
+    		<!-- Continue Button -->
+    		<Button onclick={handleContinue} disabled={!canContinue} variant="primary">
+    			Continue →
+    		</Button>
+    	</div>
+    </div>
+    ```
 
 4. Add CSS animations:
 
-   ```svelte
-   <style>
-       @keyframes recording-pulse {
-           0% {
-               box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
-           }
-           50% {
-               box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15);
-           }
-           100% {
-               box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
-           }
-       }
+    ```svelte
+    <style>
+    	@keyframes recording-pulse {
+    		0% {
+    			box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    		}
+    		50% {
+    			box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15);
+    		}
+    		100% {
+    			box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
+    		}
+    	}
 
-       .animate-recording-pulse {
-           animation: recording-pulse 2s infinite;
-       }
-   </style>
-   ```
+    	.animate-recording-pulse {
+    		animation: recording-pulse 2s infinite;
+    	}
+    </style>
+    ```
 
 #### Phase 3: Testing & Refinement (1-2 hours)
 
 **Testing Checklist**:
 
 1. **Browser Compatibility**:
-   - [ ] Chrome Desktop (live transcription)
-   - [ ] Safari Desktop (API transcription fallback)
-   - [ ] Chrome Mobile (live transcription)
-   - [ ] Safari iOS (API transcription fallback + iOS notice)
-   - [ ] Edge Desktop (live transcription)
-   - [ ] Firefox Desktop (API transcription fallback)
+    - [ ] Chrome Desktop (live transcription)
+    - [ ] Safari Desktop (API transcription fallback)
+    - [ ] Chrome Mobile (live transcription)
+    - [ ] Safari iOS (API transcription fallback + iOS notice)
+    - [ ] Edge Desktop (live transcription)
+    - [ ] Firefox Desktop (API transcription fallback)
 
 2. **Permission Handling**:
-   - [ ] First-time permission request shows browser prompt
-   - [ ] Permission denied shows error message
-   - [ ] Permission granted starts recording immediately
-   - [ ] Microphone in use by another app shows error
+    - [ ] First-time permission request shows browser prompt
+    - [ ] Permission denied shows error message
+    - [ ] Permission granted starts recording immediately
+    - [ ] Microphone in use by another app shows error
 
 3. **Recording Flow**:
-   - [ ] Button shows correct states (idle → initializing → recording → transcribing → idle)
-   - [ ] Duration counter updates every second
-   - [ ] Live transcript appears on Chrome/Edge (when supported)
-   - [ ] iOS notice appears on iPhone/iPad
-   - [ ] Recording can be stopped mid-recording
-   - [ ] Transcription completes and text is appended
+    - [ ] Button shows correct states (idle → initializing → recording → transcribing → idle)
+    - [ ] Duration counter updates every second
+    - [ ] Live transcript appears on Chrome/Edge (when supported)
+    - [ ] iOS notice appears on iPhone/iPad
+    - [ ] Recording can be stopped mid-recording
+    - [ ] Transcription completes and text is appended
 
 4. **Text Integration**:
-   - [ ] Transcribed text appends to existing input
-   - [ ] Line break is added between existing and new text
-   - [ ] Character limit (5000) is respected
-   - [ ] Auto-save triggers after transcription
+    - [ ] Transcribed text appends to existing input
+    - [ ] Line break is added between existing and new text
+    - [ ] Character limit (5000) is respected
+    - [ ] Auto-save triggers after transcription
 
 5. **Error Handling**:
-   - [ ] Microphone permission denied shows error
-   - [ ] Transcription API failure shows error
-   - [ ] No microphone found shows error
-   - [ ] Errors auto-dismiss when starting new recording
+    - [ ] Microphone permission denied shows error
+    - [ ] Transcription API failure shows error
+    - [ ] No microphone found shows error
+    - [ ] Errors auto-dismiss when starting new recording
 
 6. **Cleanup**:
-   - [ ] Voice service is cleaned up when navigating to next step
-   - [ ] Voice service is cleaned up when navigating back
-   - [ ] Voice service is cleaned up when closing onboarding
-   - [ ] Media streams are properly released
+    - [ ] Voice service is cleaned up when navigating to next step
+    - [ ] Voice service is cleaned up when navigating back
+    - [ ] Voice service is cleaned up when closing onboarding
+    - [ ] Media streams are properly released
 
 7. **Accessibility**:
-   - [ ] Voice button has proper aria-label
-   - [ ] Voice button is keyboard accessible (tab + enter)
-   - [ ] Recording status is announced to screen readers
-   - [ ] Error messages are accessible
+    - [ ] Voice button has proper aria-label
+    - [ ] Voice button is keyboard accessible (tab + enter)
+    - [ ] Recording status is announced to screen readers
+    - [ ] Error messages are accessible
 
 8. **Visual Polish**:
-   - [ ] Recording button pulses during recording
-   - [ ] Transitions are smooth (200ms fade)
-   - [ ] Dark mode styles look correct
-   - [ ] Mobile responsive (button size, "Live" badge hidden on small screens)
+    - [ ] Recording button pulses during recording
+    - [ ] Transitions are smooth (200ms fade)
+    - [ ] Dark mode styles look correct
+    - [ ] Mobile responsive (button size, "Live" badge hidden on small screens)
 
 #### Phase 4: Documentation & Feature Flag (30 minutes)
 
 1. Update `ONBOARDING_V2_CONFIG`:
 
-   ```typescript
-   // /apps/web/src/lib/config/onboarding.config.ts
+    ```typescript
+    // /apps/web/src/lib/config/onboarding.config.ts
 
-   export const ONBOARDING_V2_CONFIG = {
-     features: {
-       enableVoiceInput: true, // ✅ Now actually implemented
-       // ... other features
-     },
-   };
-   ```
+    export const ONBOARDING_V2_CONFIG = {
+    	features: {
+    		enableVoiceInput: true // ✅ Now actually implemented
+    		// ... other features
+    	}
+    };
+    ```
 
 2. Add inline code comments:
 
-   ```typescript
-   // Voice recording integration - uses VoiceRecordingService singleton
-   // Follows same patterns as BrainDumpModal (see BrainDumpModal.svelte:407-444)
-   ```
+    ```typescript
+    // Voice recording integration - uses VoiceRecordingService singleton
+    // Follows same patterns as BrainDumpModal (see BrainDumpModal.svelte:407-444)
+    ```
 
 3. Update feature documentation:
-   - Add section to `/apps/web/docs/features/onboarding/README.md`
-   - Note: Voice recording available in Step 2 (ProjectsCaptureStep)
-   - Link to voice service documentation
+    - Add section to `/apps/web/docs/features/onboarding/README.md`
+    - Note: Voice recording available in Step 2 (ProjectsCaptureStep)
+    - Link to voice service documentation
 
 ### Edge Cases & Considerations
 
@@ -844,13 +829,13 @@ Add voice input functionality to `ProjectsCaptureStep.svelte` following the esta
 
 ```typescript
 onTextUpdate: (text: string) => {
-  if (text.length > 5000) {
-    inputText = text.substring(0, 5000);
-    toastService.warning("Voice input truncated to 5000 characters");
-  } else {
-    inputText = text;
-  }
-  handleInput();
+	if (text.length > 5000) {
+		inputText = text.substring(0, 5000);
+		toastService.warning('Voice input truncated to 5000 characters');
+	} else {
+		inputText = text;
+	}
+	handleInput();
 };
 ```
 
@@ -868,20 +853,20 @@ onTextUpdate: (text: string) => {
 
 ```typescript
 function handleBack() {
-  if (isCurrentlyRecording) {
-    toastService.warning("Please stop recording before navigating");
-    return;
-  }
-  dispatch("back");
+	if (isCurrentlyRecording) {
+		toastService.warning('Please stop recording before navigating');
+		return;
+	}
+	dispatch('back');
 }
 
 function handleContinue() {
-  if (isCurrentlyRecording) {
-    toastService.warning("Please stop recording before continuing");
-    return;
-  }
-  // ... existing validation
-  dispatch("continue", { inputText });
+	if (isCurrentlyRecording) {
+		toastService.warning('Please stop recording before continuing');
+		return;
+	}
+	// ... existing validation
+	dispatch('continue', { inputText });
 }
 ```
 
@@ -922,36 +907,36 @@ function handleContinue() {
 ### Performance Considerations
 
 1. **Service Initialization**:
-   - Initialize in `onMount` to avoid SSR issues
-   - ~50ms overhead (acceptable)
+    - Initialize in `onMount` to avoid SSR issues
+    - ~50ms overhead (acceptable)
 
 2. **Live Transcript Updates**:
-   - Uses Svelte stores for reactivity
-   - Minimal re-renders (only transcript preview updates)
+    - Uses Svelte stores for reactivity
+    - Minimal re-renders (only transcript preview updates)
 
 3. **API Transcription**:
-   - OpenAI Whisper: ~1-3 seconds for typical 30-second audio
-   - Non-blocking (user can continue typing while transcribing in background - but we disable this for UX clarity)
+    - OpenAI Whisper: ~1-3 seconds for typical 30-second audio
+    - Non-blocking (user can continue typing while transcribing in background - but we disable this for UX clarity)
 
 4. **Memory**:
-   - Audio blob stored temporarily in memory
-   - Released after transcription
-   - Cleanup on component destroy prevents leaks
+    - Audio blob stored temporarily in memory
+    - Released after transcription
+    - Cleanup on component destroy prevents leaks
 
 ### Security Considerations
 
 1. **Microphone Permission**:
-   - Browser handles permission prompts
-   - No persistent storage of permission state
+    - Browser handles permission prompts
+    - No persistent storage of permission state
 
 2. **Audio Data**:
-   - Audio blob sent to `/api/transcribe` endpoint (internal API)
-   - Proxied to OpenAI Whisper API (HTTPS)
-   - No audio stored on server (processed in-memory only)
+    - Audio blob sent to `/api/transcribe` endpoint (internal API)
+    - Proxied to OpenAI Whisper API (HTTPS)
+    - No audio stored on server (processed in-memory only)
 
 3. **Transcription Content**:
-   - Transcribed text handled same as typed text
-   - No special sanitization needed (existing input validation applies)
+    - Transcribed text handled same as typed text
+    - No special sanitization needed (existing input validation applies)
 
 ### Analytics & Monitoring
 
@@ -959,25 +944,25 @@ function handleContinue() {
 
 ```typescript
 // When voice recording starts
-analytics.track("Onboarding Voice Recording Started", {
-  step: "projects_capture",
-  platform: isIOS() ? "ios" : "desktop",
-  liveTranscriptSupported: canUseLiveTranscript,
+analytics.track('Onboarding Voice Recording Started', {
+	step: 'projects_capture',
+	platform: isIOS() ? 'ios' : 'desktop',
+	liveTranscriptSupported: canUseLiveTranscript
 });
 
 // When voice recording completes successfully
-analytics.track("Onboarding Voice Recording Completed", {
-  step: "projects_capture",
-  duration: recordingDuration,
-  transcriptLength: transcribedText.length,
-  transcriptionMethod: liveTranscriptUsed ? "live" : "api",
+analytics.track('Onboarding Voice Recording Completed', {
+	step: 'projects_capture',
+	duration: recordingDuration,
+	transcriptLength: transcribedText.length,
+	transcriptionMethod: liveTranscriptUsed ? 'live' : 'api'
 });
 
 // When voice recording fails
-analytics.track("Onboarding Voice Recording Failed", {
-  step: "projects_capture",
-  errorType: error.type, // 'permission_denied', 'transcription_failed', etc.
-  errorMessage: error.message,
+analytics.track('Onboarding Voice Recording Failed', {
+	step: 'projects_capture',
+	errorType: error.type, // 'permission_denied', 'transcription_failed', etc.
+	errorMessage: error.message
 });
 ```
 
@@ -1025,21 +1010,21 @@ analytics.track("Onboarding Voice Recording Failed", {
 The voice recording system follows a clean 3-layer architecture:
 
 1. **Browser API Layer** (`voice.ts`):
-   - Wraps MediaRecorder and SpeechRecognition APIs
-   - Handles browser-specific quirks
-   - Provides promise-based interface
+    - Wraps MediaRecorder and SpeechRecognition APIs
+    - Handles browser-specific quirks
+    - Provides promise-based interface
 
 2. **Service Layer** (`voiceRecordingService.ts`):
-   - Business logic for transcription strategy
-   - State management
-   - Error handling
-   - Platform detection
+    - Business logic for transcription strategy
+    - State management
+    - Error handling
+    - Platform detection
 
 3. **UI Layer** (components):
-   - Presentational logic only
-   - Receives state via props or derived stores
-   - Dispatches user actions
-   - Visual feedback
+    - Presentational logic only
+    - Receives state via props or derived stores
+    - Dispatches user actions
+    - Visual feedback
 
 **Benefit**: Components can be easily updated without touching service logic, and service can be reused across different UI contexts (Brain Dump modal, Onboarding, future features).
 
@@ -1073,8 +1058,8 @@ let transcript = $derived(voiceRecordingService.getCurrentLiveTranscript());
 
 // Side effects ($effect)
 $effect(() => {
-  const unsub = durationStore.subscribe((val) => (duration = val));
-  return unsub;
+	const unsub = durationStore.subscribe((val) => (duration = val));
+	return unsub;
 });
 ```
 
@@ -1172,19 +1157,19 @@ $effect(() => {
 ## Open Questions
 
 1. **Character limit behavior**: Should we warn before hitting 5000 chars during recording, or truncate after?
-   - **Recommendation**: Truncate after + warning toast (simpler, matches existing brain dump behavior)
+    - **Recommendation**: Truncate after + warning toast (simpler, matches existing brain dump behavior)
 
 2. **Navigation guards**: Should we prevent navigation during recording, or auto-stop recording?
-   - **Recommendation**: Prevent navigation + show warning (prevents accidental data loss)
+    - **Recommendation**: Prevent navigation + show warning (prevents accidental data loss)
 
 3. **Analytics**: Should we track voice usage per step, or just overall onboarding voice usage?
-   - **Recommendation**: Track per-step for granular insights (step 2 may have higher voice usage)
+    - **Recommendation**: Track per-step for granular insights (step 2 may have higher voice usage)
 
 4. **A/B Testing**: Should we A/B test voice button prominence (size, color, position)?
-   - **Recommendation**: Start with current design (matches brain dump modal), iterate based on usage data
+    - **Recommendation**: Start with current design (matches brain dump modal), iterate based on usage data
 
 5. **Help Text**: Should we add contextual help text explaining voice feature?
-   - **Recommendation**: Add tooltip on hover: "Click to record your thoughts via voice" (minimal, non-intrusive)
+    - **Recommendation**: Add tooltip on hover: "Click to record your thoughts via voice" (minimal, non-intrusive)
 
 ---
 
@@ -1218,80 +1203,80 @@ Voice input functionality has been successfully integrated into the `ProjectsCap
 #### Phase 1: Core Voice Integration (COMPLETED)
 
 1. **Imports Added** (Lines 3-24):
-   - Added voice-related Lucide icons: `Mic`, `MicOff`, `Square`, `LoaderCircle`, `Info`, `TriangleAlert`
-   - Added `voiceRecordingService` import from `$lib/services/voiceRecording.service`
+    - Added voice-related Lucide icons: `Mic`, `MicOff`, `Square`, `LoaderCircle`, `Info`, `TriangleAlert`
+    - Added `voiceRecordingService` import from `$lib/services/voiceRecording.service`
 
 2. **State Variables Added** (Lines 37-50):
-   - Voice recording state: `isVoiceSupported`, `isCurrentlyRecording`, `recordingDuration`
-   - Voice UI state: `voiceError`, `isInitializingRecording`, `canUseLiveTranscript`
-   - Permission state: `microphonePermissionGranted`, `voiceCapabilitiesChecked`
-   - Derived state: `accumulatedTranscript`, `isLiveTranscribing`
+    - Voice recording state: `isVoiceSupported`, `isCurrentlyRecording`, `recordingDuration`
+    - Voice UI state: `voiceError`, `isInitializingRecording`, `canUseLiveTranscript`
+    - Permission state: `microphonePermissionGranted`, `voiceCapabilitiesChecked`
+    - Derived state: `accumulatedTranscript`, `isLiveTranscribing`
 
 3. **Voice Service Initialization** (Lines 127-183):
-   - `$effect` hook initializes voice service on component mount
-   - Callbacks configured:
-     - `onTextUpdate`: Updates `projectInput` with 5000 char limit
-     - `onError`: Sets `voiceError` and shows toast
-     - `onPhaseChange`: Logs phase changes
-     - `onPermissionGranted`: Updates permission state
-     - `onCapabilityUpdate`: Updates live transcript capability
-   - Subscribed to recording duration store
-   - Cleanup on component unmount
+    - `$effect` hook initializes voice service on component mount
+    - Callbacks configured:
+        - `onTextUpdate`: Updates `projectInput` with 5000 char limit
+        - `onError`: Sets `voiceError` and shows toast
+        - `onPhaseChange`: Logs phase changes
+        - `onPermissionGranted`: Updates permission state
+        - `onCapabilityUpdate`: Updates live transcript capability
+    - Subscribed to recording duration store
+    - Cleanup on component unmount
 
 4. **Recording Handlers Added** (Lines 361-466):
-   - `startRecording()`: Initiates voice recording
-   - `stopRecording()`: Stops recording and triggers transcription
-   - `toggleRecording()`: Toggles between start/stop
-   - `isIOS()`: Detects iOS devices
-   - `formatDuration()`: Formats duration as M:SS
-   - `voiceButtonState`: Derived state for button UI (priority-based state machine)
+    - `startRecording()`: Initiates voice recording
+    - `stopRecording()`: Stops recording and triggers transcription
+    - `toggleRecording()`: Toggles between start/stop
+    - `isIOS()`: Detects iOS devices
+    - `formatDuration()`: Formats duration as M:SS
+    - `voiceButtonState`: Derived state for button UI (priority-based state machine)
 
 5. **Navigation Guard** (Lines 352-359):
-   - Updated `skipProjectCapture()` to prevent navigation during recording
+    - Updated `skipProjectCapture()` to prevent navigation during recording
 
 #### Phase 2: Voice UI Components (COMPLETED)
 
 1. **Voice Error Display** (Lines 532-541):
-   - Red banner with error message
-   - Only shows when `voiceError` is non-empty
-   - Fade in/out transitions
+    - Red banner with error message
+    - Only shows when `voiceError` is non-empty
+    - Fade in/out transitions
 
 2. **Live Transcript Preview** (Lines 545-557):
-   - Gradient purple-pink background
-   - Shows live transcription during recording
-   - Max height with scrolling
-   - Only visible when: `isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript`
+    - Gradient purple-pink background
+    - Shows live transcription during recording
+    - Max height with scrolling
+    - Only visible when: `isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript`
 
 3. **iOS Notice** (Lines 569-578):
-   - Informational notice for iOS users
-   - Explains post-recording transcription
-   - Only shows on iOS without live transcript capability
+    - Informational notice for iOS users
+    - Explains post-recording transcription
+    - Only shows on iOS without live transcript capability
 
 4. **Recording Status Badge** (Lines 771-788):
-   - Shows "Recording" with duration
-   - "• Live" indicator when live transcription active (desktop only)
-   - Replaces skip button during recording
+    - Shows "Recording" with duration
+    - "• Live" indicator when live transcription active (desktop only)
+    - Replaces skip button during recording
 
 5. **Voice Button** (Lines 803-821):
-   - 48x48px circular FAB
-   - Dynamic states:
-     - Idle: White/gray background, microphone icon
-     - Recording: Red background, stop square icon, pulsing animation
-     - Initializing: Spinning loader
-     - Disabled: 50% opacity
-   - Position: Right side, next to Continue button
-   - Conditional render based on `isVoiceSupported` and `enableVoiceInput` flag
+    - 48x48px circular FAB
+    - Dynamic states:
+        - Idle: White/gray background, microphone icon
+        - Recording: Red background, stop square icon, pulsing animation
+        - Initializing: Spinning loader
+        - Disabled: 50% opacity
+    - Position: Right side, next to Continue button
+    - Conditional render based on `isVoiceSupported` and `enableVoiceInput` flag
 
 6. **Continue Button Update** (Line 828):
-   - Added `isCurrentlyRecording` to disabled condition
-   - Prevents continuing while recording
+    - Added `isCurrentlyRecording` to disabled condition
+    - Prevents continuing while recording
 
 #### Phase 3: CSS Animations (COMPLETED)
 
 1. **Recording Pulse Animation** (Lines 845-862):
-   - `@keyframes recording-pulse`: Creates pulsing red glow effect
-   - Applied to voice button during recording
-   - 2-second infinite loop
+    - `@keyframes recording-pulse`: Creates pulsing red glow effect
+    - Applied to voice button during recording
+    - 2-second infinite loop
 
 ### Implementation Notes
 
@@ -1318,12 +1303,12 @@ Voice transcription respects the 5000 character limit:
 
 ```typescript
 onTextUpdate: (text: string) => {
-  if (text.length > 5000) {
-    projectInput = text.substring(0, 5000);
-    toastService.warning("Voice input truncated to 5000 characters");
-  } else {
-    projectInput = text;
-  }
+	if (text.length > 5000) {
+		projectInput = text.substring(0, 5000);
+		toastService.warning('Voice input truncated to 5000 characters');
+	} else {
+		projectInput = text;
+	}
 };
 ```
 
@@ -1333,8 +1318,8 @@ Users are prevented from navigating away during recording:
 
 ```typescript
 if (isCurrentlyRecording) {
-  toastService.warning("Please stop recording before continuing");
-  return;
+	toastService.warning('Please stop recording before continuing');
+	return;
 }
 ```
 

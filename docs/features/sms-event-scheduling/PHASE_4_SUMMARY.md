@@ -13,27 +13,27 @@ Phase 4 adds **enhanced SMS worker validation and delivery tracking** to ensure 
 ### Key Features
 
 1. **Pre-Send Validation**
-   - Validates message not cancelled before sending
-   - Checks user quiet hours and reschedules if needed
-   - Enforces daily SMS limits
-   - Verifies calendar events still exist
+    - Validates message not cancelled before sending
+    - Checks user quiet hours and reschedules if needed
+    - Enforces daily SMS limits
+    - Verifies calendar events still exist
 
 2. **Dual-Table Linking**
-   - Links `scheduled_sms_messages` to `sms_messages` after send
-   - Updates both tables throughout delivery lifecycle
-   - Maintains referential integrity
+    - Links `scheduled_sms_messages` to `sms_messages` after send
+    - Updates both tables throughout delivery lifecycle
+    - Maintains referential integrity
 
 3. **Enhanced Delivery Tracking**
-   - Real-time status updates via Twilio webhooks
-   - Tracks sent, delivered, failed statuses
-   - Stores delivery timestamps
-   - Error categorization and logging
+    - Real-time status updates via Twilio webhooks
+    - Tracks sent, delivered, failed statuses
+    - Stores delivery timestamps
+    - Error categorization and logging
 
 4. **Intelligent Retry Logic**
-   - Exponential backoff for failed sends
-   - Separate retry limits for scheduled SMS
-   - Respects max_send_attempts configuration
-   - Enhanced error tracking
+    - Exponential backoff for failed sends
+    - Separate retry limits for scheduled SMS
+    - Respects max_send_attempts configuration
+    - Enhanced error tracking
 
 ---
 
@@ -339,49 +339,49 @@ Attempt 2 (9:47 AM):
 ```typescript
 // Phase 4: Pre-send validation for scheduled SMS
 if (scheduled_sms_id) {
-  // Check if scheduled SMS is still valid
-  const { data: scheduledSms } = await supabase
-    .from("scheduled_sms_messages")
-    .select("*, user_sms_preferences!inner(*)")
-    .eq("id", scheduled_sms_id)
-    .single();
+	// Check if scheduled SMS is still valid
+	const { data: scheduledSms } = await supabase
+		.from('scheduled_sms_messages')
+		.select('*, user_sms_preferences!inner(*)')
+		.eq('id', scheduled_sms_id)
+		.single();
 
-  // Check if message was cancelled
-  if (scheduledSms.status === "cancelled") {
-    return { success: false, reason: "cancelled" };
-  }
+	// Check if message was cancelled
+	if (scheduledSms.status === 'cancelled') {
+		return { success: false, reason: 'cancelled' };
+	}
 
-  // Check quiet hours
-  const now = new Date();
-  const userPrefs = scheduledSms.user_sms_preferences;
+	// Check quiet hours
+	const now = new Date();
+	const userPrefs = scheduledSms.user_sms_preferences;
 
-  if (userPrefs.quiet_hours_start && userPrefs.quiet_hours_end) {
-    const quietStart = parseInt(userPrefs.quiet_hours_start);
-    const quietEnd = parseInt(userPrefs.quiet_hours_end);
-    const currentHour = now.getHours();
+	if (userPrefs.quiet_hours_start && userPrefs.quiet_hours_end) {
+		const quietStart = parseInt(userPrefs.quiet_hours_start);
+		const quietEnd = parseInt(userPrefs.quiet_hours_end);
+		const currentHour = now.getHours();
 
-    const isQuietHours =
-      quietStart < quietEnd
-        ? currentHour >= quietStart && currentHour < quietEnd
-        : currentHour >= quietStart || currentHour < quietEnd;
+		const isQuietHours =
+			quietStart < quietEnd
+				? currentHour >= quietStart && currentHour < quietEnd
+				: currentHour >= quietStart || currentHour < quietEnd;
 
-    if (isQuietHours) {
-      // Reschedule to end of quiet hours
-      const rescheduleTime = new Date(now);
-      rescheduleTime.setHours(quietEnd, 0, 0, 0);
+		if (isQuietHours) {
+			// Reschedule to end of quiet hours
+			const rescheduleTime = new Date(now);
+			rescheduleTime.setHours(quietEnd, 0, 0, 0);
 
-      // Update and re-queue
-      await supabase
-        .from("scheduled_sms_messages")
-        .update({ scheduled_for: rescheduleTime.toISOString() })
-        .eq("id", scheduled_sms_id);
+			// Update and re-queue
+			await supabase
+				.from('scheduled_sms_messages')
+				.update({ scheduled_for: rescheduleTime.toISOString() })
+				.eq('id', scheduled_sms_id);
 
-      return { success: false, reason: "quiet_hours" };
-    }
-  }
+			return { success: false, reason: 'quiet_hours' };
+		}
+	}
 
-  // Check daily limit, verify event exists, etc.
-  // ...
+	// Check daily limit, verify event exists, etc.
+	// ...
 }
 ```
 
@@ -390,21 +390,21 @@ if (scheduled_sms_id) {
 ```typescript
 // Phase 4: Link scheduled_sms_messages to sms_messages after successful send
 if (scheduled_sms_id) {
-  await supabase
-    .from("scheduled_sms_messages")
-    .update({
-      status: "sent",
-      sms_message_id: message_id,
-      twilio_sid: twilioMessage.sid,
-      sent_at: new Date().toISOString(),
-      send_attempts: supabase.sql`COALESCE(send_attempts, 0) + 1`,
-    })
-    .eq("id", scheduled_sms_id);
+	await supabase
+		.from('scheduled_sms_messages')
+		.update({
+			status: 'sent',
+			sms_message_id: message_id,
+			twilio_sid: twilioMessage.sid,
+			sent_at: new Date().toISOString(),
+			send_attempts: supabase.sql`COALESCE(send_attempts, 0) + 1`
+		})
+		.eq('id', scheduled_sms_id);
 
-  // Increment daily SMS count
-  await supabase.rpc("increment_daily_sms_count", {
-    p_user_id: job.data.user_id,
-  });
+	// Increment daily SMS count
+	await supabase.rpc('increment_daily_sms_count', {
+		p_user_id: job.data.user_id
+	});
 }
 ```
 
@@ -413,38 +413,38 @@ if (scheduled_sms_id) {
 ```typescript
 // Phase 4: Update scheduled_sms_messages if linked
 const { data: scheduledSms } = await supabase
-  .from("scheduled_sms_messages")
-  .select("id, status, send_attempts, max_send_attempts")
-  .eq("sms_message_id", messageId)
-  .maybeSingle();
+	.from('scheduled_sms_messages')
+	.select('id, status, send_attempts, max_send_attempts')
+	.eq('sms_message_id', messageId)
+	.maybeSingle();
 
 if (scheduledSms) {
-  const scheduledUpdateData: any = {
-    updated_at: new Date().toISOString(),
-  };
+	const scheduledUpdateData: any = {
+		updated_at: new Date().toISOString()
+	};
 
-  // Map status for scheduled SMS
-  if (messageStatus === "delivered") {
-    scheduledUpdateData.status = "delivered" as const;
-  } else if (messageStatus === "sent" || messageStatus === "sending") {
-    if (scheduledSms.status !== "delivered") {
-      scheduledUpdateData.status = "sent" as const;
-    }
-  } else if (
-    messageStatus === "failed" ||
-    messageStatus === "undelivered" ||
-    messageStatus === "canceled"
-  ) {
-    scheduledUpdateData.status = "failed" as const;
-    scheduledUpdateData.last_error = errorMessage
-      ? `${errorMessage} (Code: ${errorCode})`
-      : `Twilio error code: ${errorCode}`;
-  }
+	// Map status for scheduled SMS
+	if (messageStatus === 'delivered') {
+		scheduledUpdateData.status = 'delivered' as const;
+	} else if (messageStatus === 'sent' || messageStatus === 'sending') {
+		if (scheduledSms.status !== 'delivered') {
+			scheduledUpdateData.status = 'sent' as const;
+		}
+	} else if (
+		messageStatus === 'failed' ||
+		messageStatus === 'undelivered' ||
+		messageStatus === 'canceled'
+	) {
+		scheduledUpdateData.status = 'failed' as const;
+		scheduledUpdateData.last_error = errorMessage
+			? `${errorMessage} (Code: ${errorCode})`
+			: `Twilio error code: ${errorCode}`;
+	}
 
-  await supabase
-    .from("scheduled_sms_messages")
-    .update(scheduledUpdateData)
-    .eq("id", scheduledSms.id);
+	await supabase
+		.from('scheduled_sms_messages')
+		.update(scheduledUpdateData)
+		.eq('id', scheduledSms.id);
 }
 ```
 
@@ -542,7 +542,7 @@ const attemptCount = updatedMessage.attempt_count ?? 0;
 const maxAttempts = updatedMessage.max_attempts ?? 3;
 
 // Fixed status type with const assertion
-scheduledUpdateData.status = "delivered" as const;
+scheduledUpdateData.status = 'delivered' as const;
 ```
 
 **Verification:** ✅ All TypeScript compilation passing (0 errors)

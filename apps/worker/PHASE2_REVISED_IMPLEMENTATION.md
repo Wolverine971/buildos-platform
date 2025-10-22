@@ -192,28 +192,28 @@ CREATE TABLE email_logs (
 #### ✅ What We're Adding
 
 1. **Job type constraint update**
-   - Add `generate_brief_email` to allowed job types
+    - Add `generate_brief_email` to allowed job types
 
 2. **Indexes on `emails` table**
 
-   ```sql
-   -- Find emails by brief_id
-   CREATE INDEX idx_emails_category_template_data
-     ON emails(category, (template_data->>'brief_id'))
-     WHERE category = 'daily_brief';
+    ```sql
+    -- Find emails by brief_id
+    CREATE INDEX idx_emails_category_template_data
+      ON emails(category, (template_data->>'brief_id'))
+      WHERE category = 'daily_brief';
 
-   -- Find pending emails
-   CREATE INDEX idx_emails_status_category
-     ON emails(status, category, created_at)
-     WHERE status = 'pending' AND category = 'daily_brief';
-   ```
+    -- Find pending emails
+    CREATE INDEX idx_emails_status_category
+      ON emails(status, category, created_at)
+      WHERE status = 'pending' AND category = 'daily_brief';
+    ```
 
 3. **RPC Functions**
-   - `get_pending_brief_emails(limit)` - Find pending emails to send
-   - `get_brief_email_status(brief_id)` - Get email status for a brief
+    - `get_pending_brief_emails(limit)` - Find pending emails to send
+    - `get_brief_email_status(brief_id)` - Get email status for a brief
 
 4. **Monitoring View**
-   - `brief_email_stats` - Daily email delivery and engagement metrics
+    - `brief_email_stats` - Daily email delivery and engagement metrics
 
 #### ❌ What We're NOT Adding
 
@@ -233,7 +233,7 @@ CREATE TABLE email_logs (
 
 ```typescript
 interface EmailBriefJobData {
-  emailId: string; // ID from emails table (NOT briefId!)
+	emailId: string; // ID from emails table (NOT briefId!)
 }
 ```
 
@@ -446,13 +446,13 @@ psql $DATABASE_URL < supabase/migrations/20250930_add_email_brief_job_type_REVIS
 **Files to Replace**:
 
 1. `apps/worker/src/workers/brief/emailWorker.ts`
-   - Replace with `emailWorker.REVISED.ts`
+    - Replace with `emailWorker.REVISED.ts`
 
 2. `apps/worker/src/workers/brief/briefWorker.ts` (lines 94-163)
-   - Replace with snippet from `PHASE2_REVISED_briefWorker_snippet.ts`
+    - Replace with snippet from `PHASE2_REVISED_briefWorker_snippet.ts`
 
 3. `apps/worker/src/worker.ts`
-   - Already updated to register email worker
+    - Already updated to register email worker
 
 ### Step 3: Deploy Worker
 

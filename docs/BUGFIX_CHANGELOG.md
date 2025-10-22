@@ -17,6 +17,79 @@ Each entry includes:
 
 ---
 
+## 2025-10-22 - Disabled SMS in Notification System (Scheduled SMS Only)
+
+**Severity**: MEDIUM (Configuration Change)
+
+### Root Cause
+
+SMS was originally designed to be part of the generic notification system (like email and push), which would send SMS when events like briefs complete. However, the product requirements changed:
+
+**Desired Behavior**:
+
+- ✅ **Scheduled SMS Only**: Calendar-based event reminders sent throughout the day via `dailySmsWorker`
+- ❌ **NO notification-triggered SMS**: No SMS when briefs complete, tasks update, etc.
+
+**Problem**: The notification worker was still trying to send SMS via `sendSMSNotification()`, which called a non-existent `queue_sms_message` database function, causing errors in production.
+
+### Fix Description
+
+Disabled SMS in the notification system while keeping scheduled SMS functionality intact:
+
+**Changes Made**:
+
+1. Modified notification worker switch case for SMS channel (line 436-447)
+2. Now returns `success: true` with `skipped: true` instead of attempting to send
+3. Logs: "SMS notifications disabled - only scheduled calendar reminders are sent"
+4. Commented out unused import of `sendSMSNotification`
+
+**What Still Works**:
+
+- ✅ Scheduled SMS (calendar event reminders) via `scheduled_sms_messages` table
+- ✅ `dailySmsWorker` continues to schedule and send calendar-based SMS
+- ✅ Email notifications
+- ✅ Push notifications
+- ✅ In-app notifications
+
+**What's Disabled**:
+
+- ❌ SMS triggered by notification events (brief.completed, task.updated, etc.)
+- ❌ `smsAdapter.ts` no longer called by notification system
+
+### Files Changed
+
+**Modified** (1 file):
+
+1. `/apps/worker/src/workers/notification/notificationWorker.ts:29,436-447` - Disabled SMS case, commented import
+
+**Total Changes**: 13 lines modified
+
+### Testing
+
+**Manual Verification Steps**:
+
+1. Trigger a notification event (e.g., complete a brief)
+2. Check worker logs - should see "SMS notifications disabled - skipping" message
+3. Verify no errors about missing `queue_sms_message` function
+4. Verify scheduled SMS still work (check `scheduled_sms_messages` table and daily worker)
+5. Confirm email and push notifications still send normally
+
+### Related Documentation
+
+- **Worker Architecture**: `/apps/worker/CLAUDE.md`
+- **Notification Worker**: `/apps/worker/src/workers/notification/notificationWorker.ts`
+- **SMS Adapter**: `/apps/worker/src/workers/notification/smsAdapter.ts` (now unused)
+- **Daily SMS Worker**: `/apps/worker/src/workers/dailySmsWorker.ts` (still active)
+- **Scheduled SMS Table**: `scheduled_sms_messages` (still used)
+
+### Cross-References
+
+- **Related Issue**: Missing `queue_sms_message` function (no longer needed)
+- **Notification System**: Generic notification system now handles: push, in-app, email only
+- **SMS System**: Separate scheduled SMS system handles calendar event reminders only
+
+---
+
 ## 2025-10-22 - Layout & Header Inconsistency: History & Time-Blocks Pages
 
 **Severity**: LOW

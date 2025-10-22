@@ -4,17 +4,8 @@ researcher: Claude (Sonnet 4.5)
 git_commit: 8b13282dff5d4f494e46faac78de27c02d0c5e43
 branch: main
 repository: buildos-platform
-topic: "Brain Dump Complete Flow Analysis"
-tags:
-  [
-    research,
-    codebase,
-    brain-dump,
-    flow-analysis,
-    architecture,
-    svelte5,
-    ai-processing,
-  ]
+topic: 'Brain Dump Complete Flow Analysis'
+tags: [research, codebase, brain-dump, flow-analysis, architecture, svelte5, ai-processing]
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude (Sonnet 4.5)
@@ -139,9 +130,9 @@ The entire flow is orchestrated through 7 major subsystems working in concert, p
 
 ```typescript
 $effect(() => {
-  if (isOpen && !modalIsOpenFromStore) {
-    brainDumpActions.openModal(); // Sync store with props
-  }
+	if (isOpen && !modalIsOpenFromStore) {
+		brainDumpActions.openModal(); // Sync store with props
+	}
 });
 ```
 
@@ -321,14 +312,14 @@ async autoSave() {
 
 ```typescript
 CONTENT_LENGTH = {
-  SHORT_MAX: 500,
-  LONG_MIN: 500,
-  MAX: 100000,
+	SHORT_MAX: 500,
+	LONG_MIN: 500,
+	MAX: 100000
 };
 
 BRAIN_DUMP_THRESHOLDS = {
-  BRAIN_DUMP_THRESHOLD: 500,
-  COMBINED_THRESHOLD: 800,
+	BRAIN_DUMP_THRESHOLD: 500,
+	COMBINED_THRESHOLD: 800
 };
 ```
 
@@ -336,11 +327,11 @@ BRAIN_DUMP_THRESHOLDS = {
 
 ```typescript
 function shouldUseDualProcessing(
-  brainDumpLength: number,
-  existingContextLength: number = 0,
+	brainDumpLength: number,
+	existingContextLength: number = 0
 ): boolean {
-  const total = brainDumpLength + existingContextLength;
-  return brainDumpLength >= 500 || (existingContextLength > 0 && total >= 800);
+	const total = brainDumpLength + existingContextLength;
+	return brainDumpLength >= 500 || (existingContextLength > 0 && total >= 800);
 }
 ```
 
@@ -625,15 +616,15 @@ ELSE:
 **Complexity Analysis**:
 
 ```typescript
-function analyzeComplexity(text: string): "simple" | "moderate" | "complex" {
-  const length = text.length;
-  const hasNested = /\[\{|\{\[|":\s*\{/.test(text);
-  const hasComplexLogic = /if|when|analyze|extract/i.test(text);
-  const hasMultipleSteps = /step \d|first.*then/i.test(text);
+function analyzeComplexity(text: string): 'simple' | 'moderate' | 'complex' {
+	const length = text.length;
+	const hasNested = /\[\{|\{\[|":\s*\{/.test(text);
+	const hasComplexLogic = /if|when|analyze|extract/i.test(text);
+	const hasMultipleSteps = /step \d|first.*then/i.test(text);
 
-  if (length > 8000 || (hasNested && hasComplexLogic)) return "complex";
-  if (length > 3000 || hasComplexLogic || hasMultipleSteps) return "moderate";
-  return "simple";
+	if (length > 8000 || (hasNested && hasComplexLogic)) return 'complex';
+	if (length > 3000 || hasComplexLogic || hasMultipleSteps) return 'moderate';
+	return 'simple';
 }
 ```
 
@@ -650,10 +641,10 @@ function analyzeComplexity(text: string): "simple" | "moderate" | "complex" {
 
 ```typescript
 models: [
-  "deepseek/deepseek-chat", // Primary (cost-effective)
-  "qwen/qwen-2.5-72b-instruct", // Fallback 1
-  "anthropic/claude-3-haiku", // Fallback 2
-  "openai/gpt-4o-mini", // Fallback 3
+	'deepseek/deepseek-chat', // Primary (cost-effective)
+	'qwen/qwen-2.5-72b-instruct', // Fallback 1
+	'anthropic/claude-3-haiku', // Fallback 2
+	'openai/gpt-4o-mini' // Fallback 3
 ];
 ```
 
@@ -766,16 +757,16 @@ TaskModels.create(projectId) → {
 
 ```typescript
 try {
-  result = JSON.parse(cleanedResponse);
+	result = JSON.parse(cleanedResponse);
 } catch (parseError) {
-  if (retryOnParseError && retryCount < 3) {
-    // Retry with Claude 3.5 Sonnet
-    retryResponse = await callOpenRouter({
-      model: "anthropic/claude-3.5-sonnet",
-      temperature: 0.1, // Lower for accuracy
-    });
-    result = JSON.parse(cleanedResponse);
-  }
+	if (retryOnParseError && retryCount < 3) {
+		// Retry with Claude 3.5 Sonnet
+		retryResponse = await callOpenRouter({
+			model: 'anthropic/claude-3.5-sonnet',
+			temperature: 0.1 // Lower for accuracy
+		});
+		result = JSON.parse(cleanedResponse);
+	}
 }
 ```
 
@@ -883,23 +874,20 @@ async executeOperations(params) {
 const rollbackStack = [];
 
 try {
-  for (const op of operations) {
-    const result = await executeOperation(op);
-    rollbackStack.push({ operation: op, result });
-  }
+	for (const op of operations) {
+		const result = await executeOperation(op);
+		rollbackStack.push({ operation: op, result });
+	}
 } catch (error) {
-  // ROLLBACK: Reverse all operations
-  for (const { operation, result } of rollbackStack.reverse()) {
-    if (operation.operation === "create") {
-      await supabase.from(operation.table).delete().eq("id", result.id);
-    } else if (operation.operation === "update") {
-      await supabase
-        .from(operation.table)
-        .update(result.original)
-        .eq("id", operation.id);
-    }
-  }
-  throw error;
+	// ROLLBACK: Reverse all operations
+	for (const { operation, result } of rollbackStack.reverse()) {
+		if (operation.operation === 'create') {
+			await supabase.from(operation.table).delete().eq('id', result.id);
+		} else if (operation.operation === 'update') {
+			await supabase.from(operation.table).update(result.original).eq('id', operation.id);
+		}
+	}
+	throw error;
 }
 ```
 
@@ -908,17 +896,17 @@ try {
 ```typescript
 // Before execution
 operations = operations.map((op) => {
-  if (op.data.project_ref === "new-project-1") {
-    return {
-      ...op,
-      data: {
-        ...op.data,
-        project_id: actualProjectId, // Resolved UUID
-        project_ref: undefined,
-      },
-    };
-  }
-  return op;
+	if (op.data.project_ref === 'new-project-1') {
+		return {
+			...op,
+			data: {
+				...op.data,
+				project_id: actualProjectId, // Resolved UUID
+				project_ref: undefined
+			}
+		};
+	}
+	return op;
 });
 ```
 
@@ -1065,30 +1053,30 @@ switch (event.type) {
 **UI Sections**:
 
 1. **Summary Header**
-   - AI-generated summary
-   - Total operations count
-   - Processing time
+    - AI-generated summary
+    - Total operations count
+    - Processing time
 
 2. **Operations Groups**
-   - **Updates**: Existing record modifications
-   - **Creates**: New record insertions
-   - **Errors**: Invalid operations (disabled)
+    - **Updates**: Existing record modifications
+    - **Creates**: New record insertions
+    - **Errors**: Invalid operations (disabled)
 
 3. **Operation Cards**
-   - Checkbox to enable/disable
-   - Expand/collapse for diff view
-   - Edit button → OperationEditModal
-   - Remove button
+    - Checkbox to enable/disable
+    - Expand/collapse for diff view
+    - Edit button → OperationEditModal
+    - Remove button
 
 4. **Diff Display**
-   - Side-by-side comparison
-   - Added fields (green)
-   - Changed fields (yellow)
-   - Removed fields (red)
+    - Side-by-side comparison
+    - Added fields (green)
+    - Changed fields (yellow)
+    - Removed fields (red)
 
 5. **Footer Actions**
-   - "Apply Changes" button (enabled count)
-   - "Cancel" button
+    - "Apply Changes" button (enabled count)
+    - "Cancel" button
 
 **Apply Operations** (`handleApplyOperations:872-961`):
 
@@ -1121,13 +1109,13 @@ switch (event.type) {
 
 1. **Success Icon** (animated checkmark)
 2. **Success Message**
-   - "Brain dump processed successfully!"
-   - Operation count summary
-   - Failed operations (if any)
+    - "Brain dump processed successfully!"
+    - Operation count summary
+    - Failed operations (if any)
 3. **Action Buttons**
-   - "View Project" (navigate to project page)
-   - "View in History" (navigate to brain dump history)
-   - "Start New Brain Dump" (reset and reopen modal)
+    - "View Project" (navigate to project page)
+    - "View in History" (navigate to brain dump history)
+    - "Start New Brain Dump" (reset and reopen modal)
 
 **Navigation Handler** (`handleGoToProject:947-984`):
 
@@ -1239,16 +1227,16 @@ async startProcessing(config) {
 
 ```typescript
 update((state) => {
-  if (state.processing.mutex) {
-    processingMutexLock = false; // Release module mutex
-    return state; // Abort
-  }
+	if (state.processing.mutex) {
+		processingMutexLock = false; // Release module mutex
+		return state; // Abort
+	}
 
-  // Acquire in store
-  return {
-    ...state,
-    processing: { ...state.processing, mutex: true },
-  };
+	// Acquire in store
+	return {
+		...state,
+		processing: { ...state.processing, mutex: true }
+	};
 });
 ```
 
@@ -1303,12 +1291,9 @@ update((state) => {
 
 ```typescript
 // Only persist if >1000ms since last persist
-if (
-  !state.persistence.lastPersistedAt ||
-  now - state.persistence.lastPersistedAt > 1000
-) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-  state.persistence.lastPersistedAt = now;
+if (!state.persistence.lastPersistedAt || now - state.persistence.lastPersistedAt > 1000) {
+	sessionStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+	state.persistence.lastPersistedAt = now;
 }
 ```
 
@@ -1351,21 +1336,21 @@ After operations are executed, tasks can be organized into logical phases with o
 **Three Strategies**:
 
 1. **Phases Only** (`phases-only.strategy.ts`)
-   - Organize tasks without dates
-   - Flexible scheduling
-   - Nulls conflicting dates
+    - Organize tasks without dates
+    - Flexible scheduling
+    - Nulls conflicting dates
 
 2. **Schedule in Phases** (`schedule-in-phases.strategy.ts`)
-   - Assign specific dates
-   - Use TaskTimeSlotFinder
-   - Calendar integration
-   - Respect working hours
+    - Assign specific dates
+    - Use TaskTimeSlotFinder
+    - Calendar integration
+    - Respect working hours
 
 3. **Calendar Optimized** (`calendar-optimized.strategy.ts`)
-   - Advanced scheduling (stub)
-   - Considers availability
-   - Energy patterns
-   - Context batching
+    - Advanced scheduling (stub)
+    - Considers availability
+    - Energy patterns
+    - Context batching
 
 ### Phase Generation Flow
 
@@ -1418,12 +1403,12 @@ POST /api/projects/{id}/phases/generate
 
 ```json
 {
-  "selected_statuses": ["backlog", "in_progress"],
-  "scheduling_method": "schedule_in_phases",
-  "project_start_date": "2025-10-01",
-  "project_end_date": "2025-12-31",
-  "preserve_existing_dates": false,
-  "calendar_handling": "update"
+	"selected_statuses": ["backlog", "in_progress"],
+	"scheduling_method": "schedule_in_phases",
+	"project_start_date": "2025-10-01",
+	"project_end_date": "2025-12-31",
+	"preserve_existing_dates": false,
+	"calendar_handling": "update"
 }
 ```
 
@@ -1533,45 +1518,45 @@ POST /api/projects/{id}/phases/generate
 ### Error Propagation Layers
 
 1. **LLM Level**
-   - Retry failed API calls (3 attempts)
-   - Fallback to alternative models
-   - Structured error responses
+    - Retry failed API calls (3 attempts)
+    - Fallback to alternative models
+    - Structured error responses
 
 2. **Processing Level**
-   - Partial success handling
-   - Validation errors
-   - User-friendly messages
+    - Partial success handling
+    - Validation errors
+    - User-friendly messages
 
 3. **Execution Level**
-   - Rollback on failure
-   - Database constraint violations
-   - Reference resolution errors
+    - Rollback on failure
+    - Database constraint violations
+    - Reference resolution errors
 
 ### Error Recovery
 
 ```typescript
 try {
-  // Operation
+	// Operation
 } catch (error) {
-  // 1. Log to ErrorLoggerService
-  await errorLogger.logError(error, {
-    userId,
-    projectId,
-    operation: "brain_dump_processing",
-  });
+	// 1. Log to ErrorLoggerService
+	await errorLogger.logError(error, {
+		userId,
+		projectId,
+		operation: 'brain_dump_processing'
+	});
 
-  // 2. Show user-friendly message
-  toastService.error("Processing failed. Please try again.");
+	// 2. Show user-friendly message
+	toastService.error('Processing failed. Please try again.');
 
-  // 3. Cleanup state
-  brainDumpActions.setProcessingError(error.message);
-  brainDumpActions.releaseMutex();
+	// 3. Cleanup state
+	brainDumpActions.setProcessingError(error.message);
+	brainDumpActions.releaseMutex();
 
-  // 4. Activity logging
-  activityLogger.logActivity(userId, "brain_dump_failed", {
-    error: error.message,
-    duration: Date.now() - startTime,
-  });
+	// 4. Activity logging
+	activityLogger.logActivity(userId, 'brain_dump_failed', {
+		error: error.message,
+		duration: Date.now() - startTime
+	});
 }
 ```
 

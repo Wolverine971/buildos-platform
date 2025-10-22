@@ -5,9 +5,9 @@ author: Claude Code
 tags: [testing, rollback, operations-executor, brain-dump]
 status: complete
 related_files:
-  - /apps/web/src/lib/utils/operations/operations-executor.ts
-  - /apps/web/src/lib/utils/operations/operations-executor.test.ts
-  - /apps/web/src/lib/utils/operations/operation-validator.ts
+    - /apps/web/src/lib/utils/operations/operations-executor.ts
+    - /apps/web/src/lib/utils/operations/operations-executor.test.ts
+    - /apps/web/src/lib/utils/operations/operation-validator.ts
 ---
 
 # OperationsExecutor Rollback Functionality Analysis
@@ -85,56 +85,55 @@ Rollback is triggered during operation execution:
 ```typescript
 // Line 90-140 (executeOperations method)
 for (const operation of operationsToExecute) {
-  try {
-    const result = await this.executeOperation(operation, userId, brainDumpId);
-    const successfulOperation: ParsedOperation = {
-      ...operation,
-      result,
-    };
-    successful.push(successfulOperation);
+	try {
+		const result = await this.executeOperation(operation, userId, brainDumpId);
+		const successfulOperation: ParsedOperation = {
+			...operation,
+			result
+		};
+		successful.push(successfulOperation);
 
-    // ✅ Add to rollback stack for potential rollback
-    rollbackStack.push({ operation, result });
+		// ✅ Add to rollback stack for potential rollback
+		rollbackStack.push({ operation, result });
 
-    // Store result with metadata
-    if (result && result.id) {
-      results.push({
-        ...result,
-        table: operation.table,
-        operationType: operation.operation,
-      });
-    }
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+		// Store result with metadata
+		if (result && result.id) {
+			results.push({
+				...result,
+				table: operation.table,
+				operationType: operation.operation
+			});
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    console.error(
-      `Operation failed: ${errorMessage}. Rolling back ${rollbackStack.length} successful operations...`,
-    );
+		console.error(
+			`Operation failed: ${errorMessage}. Rolling back ${rollbackStack.length} successful operations...`
+		);
 
-    // Log the operation failure
-    await this.errorLogger.logDatabaseError(
-      error,
-      operation.operation,
-      operation.table,
-      operation.data?.id,
-      operation.data,
-    );
+		// Log the operation failure
+		await this.errorLogger.logDatabaseError(
+			error,
+			operation.operation,
+			operation.table,
+			operation.data?.id,
+			operation.data
+		);
 
-    // ✅ ROLLBACK: Reverse all successful operations
-    await this.rollbackOperations(rollbackStack, userId);
+		// ✅ ROLLBACK: Reverse all successful operations
+		await this.rollbackOperations(rollbackStack, userId);
 
-    // Record the failed operation
-    failed.push({
-      ...operation,
-      error: errorMessage,
-    });
+		// Record the failed operation
+		failed.push({
+			...operation,
+			error: errorMessage
+		});
 
-    // ✅ Throw error to stop execution completely
-    throw new Error(
-      `Operation failed and changes were rolled back: ${errorMessage}. Failed operation: ${operation.table} ${operation.operation}`,
-    );
-  }
+		// ✅ Throw error to stop execution completely
+		throw new Error(
+			`Operation failed and changes were rolled back: ${errorMessage}. Failed operation: ${operation.table} ${operation.operation}`
+		);
+	}
 }
 ```
 
@@ -167,8 +166,8 @@ const reversedStack = [...rollbackStack].reverse();
 **Line 237**: Only CREATE operations are rolled back
 
 ```typescript
-if (operation.operation === "create" && result?.id) {
-  // Delete the created record
+if (operation.operation === 'create' && result?.id) {
+	// Delete the created record
 }
 ```
 
@@ -195,11 +194,8 @@ This prevents accidentally deleting other users' data during rollback.
 
 ```typescript
 if (error) {
-  console.error(
-    `Failed to rollback ${operation.table} (id: ${result.id}):`,
-    error,
-  );
-  // Continue rolling back other operations even if one fails
+	console.error(`Failed to rollback ${operation.table} (id: ${result.id}):`, error);
+	// Continue rolling back other operations even if one fails
 }
 ```
 
@@ -227,12 +223,11 @@ if (error) {
 
 ```typescript
 // Validate project create operations have a ref
-if (table === "projects" && operation_type === "create" && !operation.ref) {
-  return {
-    isValid: false,
-    error:
-      "Project create operations must have a ref for other operations to reference",
-  };
+if (table === 'projects' && operation_type === 'create' && !operation.ref) {
+	return {
+		isValid: false,
+		error: 'Project create operations must have a ref for other operations to reference'
+	};
 }
 ```
 
@@ -305,7 +300,7 @@ if (table === "projects" && operation_type === "create" && !operation.ref) {
 
 ```typescript
 throw new Error(
-  `Operation failed and changes were rolled back: ${errorMessage}. Failed operation: ${operation.table} ${operation.operation}`,
+	`Operation failed and changes were rolled back: ${errorMessage}. Failed operation: ${operation.table} ${operation.operation}`
 );
 ```
 
@@ -313,16 +308,14 @@ throw new Error(
 
 ```typescript
 try {
-  await executor.executeOperations({
-    operations,
-    userId: "user-id",
-    brainDumpId: "brain-dump-id",
-  });
-  expect.fail("Should have thrown error");
+	await executor.executeOperations({
+		operations,
+		userId: 'user-id',
+		brainDumpId: 'brain-dump-id'
+	});
+	expect.fail('Should have thrown error');
 } catch (error: any) {
-  expect(error.message).toContain(
-    "Update operation requires conditions or an id in data",
-  );
+	expect(error.message).toContain('Update operation requires conditions or an id in data');
 }
 ```
 
@@ -347,21 +340,21 @@ if (operation.operation === 'create' && result?.id) {
 ## Error Handling Flow
 
 1. **Operation Validation** (Line 194-197)
-   - Validation failure → throws error immediately
-   - No rollback needed (nothing was created yet)
+    - Validation failure → throws error immediately
+    - No rollback needed (nothing was created yet)
 
 2. **Operation Execution** (Lines 452-460 for create)
-   - Database error → caught in catch block (Line 111)
-   - Error logged (Line 119-125)
-   - Rollback triggered (Line 128)
-   - Error re-thrown with rollback message (Line 137-139)
+    - Database error → caught in catch block (Line 111)
+    - Error logged (Line 119-125)
+    - Rollback triggered (Line 128)
+    - Error re-thrown with rollback message (Line 137-139)
 
 3. **Rollback Execution** (Line 224-267)
-   - Reverses successful operations in LIFO order
-   - Only deletes CREATE operations
-   - Includes user_id security check
-   - Continues on errors (resilient)
-   - Logs all actions
+    - Reverses successful operations in LIFO order
+    - Only deletes CREATE operations
+    - Includes user_id security check
+    - Continues on errors (resilient)
+    - Logs all actions
 
 ## Current Error Messages
 
@@ -415,15 +408,15 @@ Example:
 const deleteCalls: Array<{ table: string; id: string; userId: string }> = [];
 
 const deleteMock = vi.fn(() => {
-  const eqMock = vi.fn((field: string, value: any) => {
-    if (field === "id") {
-      deleteCalls.push({ table, id: value, userId: "" });
-    } else if (field === "user_id") {
-      deleteCalls[deleteCalls.length - 1].userId = value;
-    }
-    return { eq: eqMock }; // Allow chaining
-  });
-  return { eq: eqMock };
+	const eqMock = vi.fn((field: string, value: any) => {
+		if (field === 'id') {
+			deleteCalls.push({ table, id: value, userId: '' });
+		} else if (field === 'user_id') {
+			deleteCalls[deleteCalls.length - 1].userId = value;
+		}
+		return { eq: eqMock }; // Allow chaining
+	});
+	return { eq: eqMock };
 });
 ```
 
@@ -433,14 +426,14 @@ Tests should wrap `executeOperations()` in try-catch since errors are thrown:
 
 ```typescript
 try {
-  await executor.executeOperations({ operations, userId, brainDumpId });
-  expect.fail("Should have thrown error");
+	await executor.executeOperations({ operations, userId, brainDumpId });
+	expect.fail('Should have thrown error');
 } catch (error: any) {
-  // Now verify rollback behavior
-  expect(error.message).toContain("rolled back");
-  expect(deleteCalls.length).toBe(2);
-  expect(deleteCalls[0].table).toBe("tasks");
-  expect(deleteCalls[1].table).toBe("projects");
+	// Now verify rollback behavior
+	expect(error.message).toContain('rolled back');
+	expect(deleteCalls.length).toBe(2);
+	expect(deleteCalls[0].table).toBe('tasks');
+	expect(deleteCalls[1].table).toBe('projects');
 }
 ```
 
@@ -452,34 +445,34 @@ Create operations that pass validation but fail at database level:
 // Mock that succeeds first two inserts but fails third
 let insertCount = 0;
 const fromMock = vi.fn((table: string) => {
-  insertCount++;
+	insertCount++;
 
-  if (insertCount <= 2) {
-    return {
-      insert: vi.fn((data: any) => ({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: { ...data, id: `id-${insertCount}` },
-            error: null,
-          }),
-        }),
-      })),
-      delete: deleteMock, // Track deletes
-    };
-  } else {
-    // Third insert fails - this triggers rollback
-    return {
-      insert: vi.fn(() => ({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: null,
-            error: { message: "Database constraint violation", code: "23505" },
-          }),
-        }),
-      })),
-      delete: deleteMock,
-    };
-  }
+	if (insertCount <= 2) {
+		return {
+			insert: vi.fn((data: any) => ({
+				select: vi.fn().mockReturnValue({
+					single: vi.fn().mockResolvedValue({
+						data: { ...data, id: `id-${insertCount}` },
+						error: null
+					})
+				})
+			})),
+			delete: deleteMock // Track deletes
+		};
+	} else {
+		// Third insert fails - this triggers rollback
+		return {
+			insert: vi.fn(() => ({
+				select: vi.fn().mockReturnValue({
+					single: vi.fn().mockResolvedValue({
+						data: null,
+						error: { message: 'Database constraint violation', code: '23505' }
+					})
+				})
+			})),
+			delete: deleteMock
+		};
+	}
 });
 ```
 
@@ -488,10 +481,10 @@ const fromMock = vi.fn((table: string) => {
 **Test rollback order (LIFO):**
 
 ```typescript
-it("should rollback operations in reverse order (LIFO)", async () => {
-  const deleteCalls: string[] = [];
-  // Mock that tracks table names in order
-  // Verify: deleteCalls = ['tasks', 'projects'] (reverse of creation)
+it('should rollback operations in reverse order (LIFO)', async () => {
+	const deleteCalls: string[] = [];
+	// Mock that tracks table names in order
+	// Verify: deleteCalls = ['tasks', 'projects'] (reverse of creation)
 });
 ```
 
@@ -511,19 +504,19 @@ it('should only rollback create operations, not updates', async () => {
 **Test user_id security check:**
 
 ```typescript
-it("should include user_id check in rollback deletes", async () => {
-  const eqCalls: any[] = [];
-  // Track .eq() calls
-  // Verify: eqCalls includes ['user_id', 'user-123']
+it('should include user_id check in rollback deletes', async () => {
+	const eqCalls: any[] = [];
+	// Track .eq() calls
+	// Verify: eqCalls includes ['user_id', 'user-123']
 });
 ```
 
 **Test error resilience:**
 
 ```typescript
-it("should continue rolling back even if one rollback fails", async () => {
-  // Mock first delete fails, second succeeds
-  // Verify: both deletes attempted
+it('should continue rolling back even if one rollback fails', async () => {
+	// Mock first delete fails, second succeeds
+	// Verify: both deletes attempted
 });
 ```
 

@@ -50,13 +50,13 @@ The email system now uses **DeepSeek Chat V3** as the primary LLM for generating
 ## Sending Flow
 
 1. **Compose and send** via `EmailService.sendEmail`.
-   - Accepts `EmailData` containing plain text and optional HTML. If HTML is omitted, the service renders a styled template and injects the tracking pixel when `trackingEnabled` is true (default).
-   - Callers should supply `userId` (if known) and any contextual metadata.
+    - Accepts `EmailData` containing plain text and optional HTML. If HTML is omitted, the service renders a styled template and injects the tracking pixel when `trackingEnabled` is true (default).
+    - Callers should supply `userId` (if known) and any contextual metadata.
 2. **SMTP dispatch** happens through a Gmail transporter chosen by `SenderType` or sender email.
 3. **Persistence**:
-   - `emails` stores the rendered HTML, sender info, tracking settings, and metadata.
-   - `email_recipients` creates/updates a row per recipient with status `sent` or `failed`.
-   - `email_logs` records the attempt, including the external `message_id` and `tracking_id`.
+    - `emails` stores the rendered HTML, sender info, tracking settings, and metadata.
+    - `email_recipients` creates/updates a row per recipient with status `sent` or `failed`.
+    - `email_logs` records the attempt, including the external `message_id` and `tracking_id`.
 4. **Tracking pixel** (`<img src="/api/email-tracking/<tracking_id>" ...>`): when the recipient opens the email, `email_recipients` timestamps/bumps counts via the tracking API and a matching `email_tracking_events` row is inserted.
 
 ## Service Usage
@@ -66,15 +66,15 @@ The email system now uses **DeepSeek Chat V3** as the primary LLM for generating
 ```ts
 const emailService = new EmailService(supabase);
 await emailService.sendEmail({
-  to: user.email,
-  subject: "Welcome to BuildOS",
-  body: plainTextBody,
-  html: renderedHtml,
-  userId: user.id,
-  metadata: {
-    campaign: "welcome-series",
-    generated_by_llm: false,
-  },
+	to: user.email,
+	subject: 'Welcome to BuildOS',
+	body: plainTextBody,
+	html: renderedHtml,
+	userId: user.id,
+	metadata: {
+		campaign: 'welcome-series',
+		generated_by_llm: false
+	}
 });
 ```
 

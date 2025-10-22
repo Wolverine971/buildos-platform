@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 705bb77e0bbce9d9167ec5d651d42b57a880743c
 branch: main
 repository: buildos-platform
-topic: "Notification System Audit: Logging, Flow Analysis, and Bug Identification"
+topic: 'Notification System Audit: Logging, Flow Analysis, and Bug Identification'
 tags: [research, notifications, logging, bugs, audit, architecture]
 status: complete
 last_updated: 2025-10-10
@@ -70,17 +70,17 @@ COUNT(*) FILTER (WHERE nd.status = 'delivered') AS delivered,
 ```typescript
 // Step 1: Update SMS message (line 236)
 const { data: updatedMessage, error: smsError } = await supabase
-  .from("sms_messages")
-  .update(updateData)
-  .eq("id", messageId)
-  .single();
+	.from('sms_messages')
+	.update(updateData)
+	.eq('id', messageId)
+	.single();
 
 // Step 2: Update notification delivery (line 382)
 if (updatedMessage?.notification_delivery_id) {
-  const { error: deliveryError } = await supabase
-    .from("notification_deliveries")
-    .update(deliveryUpdate)
-    .eq("id", updatedMessage.notification_delivery_id);
+	const { error: deliveryError } = await supabase
+		.from('notification_deliveries')
+		.update(deliveryUpdate)
+		.eq('id', updatedMessage.notification_delivery_id);
 }
 ```
 
@@ -115,26 +115,21 @@ $$ LANGUAGE plpgsql;
 const result = await sendNotification(channel, typedDelivery);
 
 if (result.success) {
-  updateData.status = "sent"; // ❌ Marked as sent BEFORE actual email delivery
-  updateData.sent_at = new Date().toISOString();
+	updateData.status = 'sent'; // ❌ Marked as sent BEFORE actual email delivery
+	updateData.sent_at = new Date().toISOString();
 }
 ```
 
 But email adapter (`emailAdapter.ts:226-248`) calls webhook which could still fail:
 
 ```typescript
-const webhookResponse = await fetch(
-  `${webhookUrl}/api/webhooks/send-notification-email`,
-  {
-    method: "POST",
-    // ...
-  },
-);
+const webhookResponse = await fetch(`${webhookUrl}/api/webhooks/send-notification-email`, {
+	method: 'POST'
+	// ...
+});
 
 if (!webhookResponse.ok) {
-  throw new Error(
-    errorData.error || `Webhook returned ${webhookResponse.status}`,
-  );
+	throw new Error(errorData.error || `Webhook returned ${webhookResponse.status}`);
 }
 ```
 
@@ -144,9 +139,9 @@ if (!webhookResponse.ok) {
 
 ```typescript
 return {
-  success: true,
-  status: "pending_send", // New intermediate status
-  external_id: emailRecord.id,
+	success: true,
+	status: 'pending_send', // New intermediate status
+	external_id: emailRecord.id
 };
 ```
 
@@ -160,17 +155,14 @@ return {
 
 ```typescript
 const { data: jobs, error } = await supabase
-  .from("queue_jobs")
-  .select("*")
-  .eq("job_type", "send_notification")
-  .eq("status", "pending")
-  .limit(10);
+	.from('queue_jobs')
+	.select('*')
+	.eq('job_type', 'send_notification')
+	.eq('status', 'pending')
+	.limit(10);
 
 // Later, for each job
-await supabase
-  .from("queue_jobs")
-  .update({ status: "processing" })
-  .eq("id", job.id);
+await supabase.from('queue_jobs').update({ status: 'processing' }).eq('id', job.id);
 ```
 
 **Problem**: Multiple worker instances could claim same jobs (unlikely but possible).
@@ -178,9 +170,9 @@ await supabase
 **Fix**: Use existing `claim_pending_jobs()` RPC like briefWorker does:
 
 ```typescript
-const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-  p_job_type: "send_notification",
-  p_batch_size: 10,
+const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+	p_job_type: 'send_notification',
+	p_batch_size: 10
 });
 ```
 
@@ -200,22 +192,22 @@ const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
 ```typescript
 // In email tracking endpoint
 const { data: email } = await supabase
-  .from("emails")
-  .select("template_data")
-  .eq("tracking_id", trackingId)
-  .single();
+	.from('emails')
+	.select('template_data')
+	.eq('tracking_id', trackingId)
+	.single();
 
 const deliveryId = email?.template_data?.delivery_id;
 
 if (deliveryId) {
-  await supabase
-    .from("notification_deliveries")
-    .update({
-      opened_at: new Date().toISOString(),
-      status: "opened",
-    })
-    .eq("id", deliveryId)
-    .is("opened_at", null); // Only update first open
+	await supabase
+		.from('notification_deliveries')
+		.update({
+			opened_at: new Date().toISOString(),
+			status: 'opened'
+		})
+		.eq('id', deliveryId)
+		.is('opened_at', null); // Only update first open
 }
 ```
 
@@ -252,10 +244,10 @@ if (deliveryId) {
 **Pattern across codebase**:
 
 ```typescript
-console.log("✅ Success message");
-console.error("❌ Error occurred:", error);
-console.warn("⚠️ Warning about something");
-console.debug("🔍 Debug information");
+console.log('✅ Success message');
+console.error('❌ Error occurred:', error);
+console.warn('⚠️ Warning about something');
+console.debug('🔍 Debug information');
 ```
 
 **Characteristics**:
@@ -291,32 +283,32 @@ console.debug("🔍 Debug information");
 ### Critical Gaps
 
 1. **❌ No Shared Logging Framework**
-   - Each app implements its own patterns
-   - No consistency across web/worker
-   - No shared utilities in `packages/shared-utils`
+    - Each app implements its own patterns
+    - No consistency across web/worker
+    - No shared utilities in `packages/shared-utils`
 
 2. **❌ No Correlation IDs**
-   - Can't trace requests across web → worker
-   - Brain dump → brief generation not linked
-   - No distributed tracing
+    - Can't trace requests across web → worker
+    - Brain dump → brief generation not linked
+    - No distributed tracing
 
 3. **❌ No External Monitoring**
-   - No Sentry (error tracking)
-   - No DataDog (APM, logs, metrics)
-   - No log aggregation (BetterStack, Axiom)
-   - Railway/Vercel logs are ephemeral
+    - No Sentry (error tracking)
+    - No DataDog (APM, logs, metrics)
+    - No log aggregation (BetterStack, Axiom)
+    - Railway/Vercel logs are ephemeral
 
 4. **❌ Missing Logging in Database Functions**
-   - `emit_notification_event()` is completely silent
-   - Can't see how many subscriptions matched
-   - No visibility into delivery creation
-   - No error logging for subscription lookups
+    - `emit_notification_event()` is completely silent
+    - Can't see how many subscriptions matched
+    - No visibility into delivery creation
+    - No error logging for subscription lookups
 
 5. **❌ No Performance Monitoring**
-   - LLM costs tracked but not aggregated
-   - No API endpoint timing
-   - No slow query detection
-   - No worker job duration tracking
+    - LLM costs tracked but not aggregated
+    - No API endpoint timing
+    - No slow query detection
+    - No worker job duration tracking
 
 ---
 
@@ -381,65 +373,65 @@ notification_events  notification_    queue_jobs    processNotification    sendP
 ### Notification Tables (Core System)
 
 1. **notification_events** - Immutable event log
-   - Primary key generation source
-   - Event types: `domain.action` format
-   - Event sources: `database_trigger`, `worker_job`, `api_action`, `cron_scheduler`
+    - Primary key generation source
+    - Event types: `domain.action` format
+    - Event sources: `database_trigger`, `worker_job`, `api_action`, `cron_scheduler`
 
 2. **notification_deliveries** - Delivery tracking
-   - Status lifecycle: pending → sent → delivered → opened → clicked
-   - Retry logic: `attempts`, `max_attempts`, `last_error`
-   - Foreign keys: `event_id`, `subscription_id`, `recipient_user_id`
+    - Status lifecycle: pending → sent → delivered → opened → clicked
+    - Retry logic: `attempts`, `max_attempts`, `last_error`
+    - Foreign keys: `event_id`, `subscription_id`, `recipient_user_id`
 
 3. **notification_subscriptions** - User subscriptions
-   - Per-user, per-event-type subscriptions
-   - `is_active` flag for enable/disable
-   - `admin_only` flag for admin events
+    - Per-user, per-event-type subscriptions
+    - `is_active` flag for enable/disable
+    - `admin_only` flag for admin events
 
 4. **user_notification_preferences** - Channel preferences
-   - Per-user, per-event, per-channel preferences
-   - Quiet hours support with timezone
-   - Frequency limits: `max_per_day`, `max_per_hour`
+    - Per-user, per-event, per-channel preferences
+    - Quiet hours support with timezone
+    - Frequency limits: `max_per_day`, `max_per_hour`
 
 ### SMS Tables
 
 1. **sms_messages** - SMS delivery tracking
-   - Twilio integration: `twilio_sid`, `twilio_status`, `twilio_error_code`
-   - Links to notifications: `notification_delivery_id` FK
-   - Retry logic: `attempt_count`, `max_attempts`
+    - Twilio integration: `twilio_sid`, `twilio_status`, `twilio_error_code`
+    - Links to notifications: `notification_delivery_id` FK
+    - Retry logic: `attempt_count`, `max_attempts`
 
 2. **scheduled_sms_messages** - Calendar event reminders
-   - AI-generated messages with cost tracking
-   - Event linkage: `calendar_event_id`
-   - LLM metadata: `llm_model`, `generation_cost_usd`
+    - AI-generated messages with cost tracking
+    - Event linkage: `calendar_event_id`
+    - LLM metadata: `llm_model`, `generation_cost_usd`
 
 3. **sms_templates** - Template library
-   - Notification templates: `notif_brief_completed`, `notif_task_due_soon`
-   - Variable substitution: `{{variable}}` syntax
-   - Usage tracking: `usage_count`, `last_used_at`
+    - Notification templates: `notif_brief_completed`, `notif_task_due_soon`
+    - Variable substitution: `{{variable}}` syntax
+    - Usage tracking: `usage_count`, `last_used_at`
 
 4. **sms_metrics** - Analytics
-   - 22 metric types: operational, performance, quality, cost
-   - Hourly and daily granularity
-   - Materialized view: `sms_metrics_daily`
+    - 22 metric types: operational, performance, quality, cost
+    - Hourly and daily granularity
+    - Materialized view: `sms_metrics_daily`
 
 ### Email Tables (Legacy Integration)
 
 1. **emails** - Composed messages
-   - Tracking: `tracking_enabled`, `tracking_id`
-   - Integration: `template_data.delivery_id` links to `notification_deliveries`
-   - **Issue**: JSONB linkage instead of FK
+    - Tracking: `tracking_enabled`, `tracking_id`
+    - Integration: `template_data.delivery_id` links to `notification_deliveries`
+    - **Issue**: JSONB linkage instead of FK
 
 2. **email_recipients** - Per-recipient tracking
-   - Multi-open tracking: `opened_at`, `last_opened_at`, `open_count`
-   - **Missing**: No `clicked_at` field
+    - Multi-open tracking: `opened_at`, `last_opened_at`, `open_count`
+    - **Missing**: No `clicked_at` field
 
 3. **email_tracking_events** - Audit trail
-   - Event types: `sent`, `failed`, `opened`, `clicked`
-   - Forensics: `ip_address`, `user_agent`, `clicked_url`
+    - Event types: `sent`, `failed`, `opened`, `clicked`
+    - Forensics: `ip_address`, `user_agent`, `clicked_url`
 
 4. **email_logs** - Send audit
-   - Status: `sent`, `failed`, `bounced`, `complaint`
-   - Metadata: `message_id`, `sender_type`, `tracking_id`
+    - Status: `sent`, `failed`, `bounced`, `complaint`
+    - Metadata: `message_id`, `sender_type`, `tracking_id`
 
 ### Integration Issues
 
@@ -508,11 +500,11 @@ notification_events  notification_    queue_jobs    processNotification    sendP
 ### Medium-term (Month 1)
 
 9. **Implement missing event triggers**:
-   - task.due_soon (cron job)
-   - brain_dump.processed (after processing)
-   - project.phase_scheduled (phase creation)
-   - calendar.sync_failed (webhook errors)
-   - brief.failed (replace legacy notifyUser)
+    - task.due_soon (cron job)
+    - brain_dump.processed (after processing)
+    - project.phase_scheduled (phase creation)
+    - calendar.sync_failed (webhook errors)
+    - brief.failed (replace legacy notifyUser)
 
 10. **Add push/SMS/in-app tracking** - Implement open/click tracking for non-email channels
 

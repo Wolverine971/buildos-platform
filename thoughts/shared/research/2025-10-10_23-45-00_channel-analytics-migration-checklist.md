@@ -1,13 +1,13 @@
 ---
-title: "Channel Analytics Migration Updates - Frontend Checklist"
+title: 'Channel Analytics Migration Updates - Frontend Checklist'
 date: 2025-10-10
 time: 23:45:00
 tags: [notifications, analytics, migration, frontend, breaking-change]
 status: completed
 priority: HIGH
 related:
-  - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
-  - 20251011_fix_notification_analytics_bugs.sql
+    - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
+    - 20251011_fix_notification_analytics_bugs.sql
 ---
 
 # Channel Analytics Migration Updates - Frontend Checklist
@@ -35,18 +35,18 @@ related:
 
 ```typescript
 export interface ChannelMetrics {
-  channel: string;
-  total_sent: number;
-  sent: number; // NEW: Explicit sent count
-  delivered: number; // FIXED: Now counts 'delivered' correctly
-  opened: number;
-  clicked: number;
-  failed: number;
-  success_rate: number; // % sent successfully
-  delivery_rate: number; // NEW: % confirmed delivered
-  open_rate: number;
-  click_rate: number;
-  avg_delivery_time_ms: number;
+	channel: string;
+	total_sent: number;
+	sent: number; // NEW: Explicit sent count
+	delivered: number; // FIXED: Now counts 'delivered' correctly
+	opened: number;
+	clicked: number;
+	failed: number;
+	success_rate: number; // % sent successfully
+	delivery_rate: number; // NEW: % confirmed delivered
+	open_rate: number;
+	click_rate: number;
+	avg_delivery_time_ms: number;
 }
 ```
 
@@ -57,10 +57,10 @@ export interface ChannelMetrics {
 **Changes:**
 
 - **Added new columns** to table headers:
-  - `Total` - Shows `total_sent` (all notifications)
-  - `Sent` - Shows new `sent` field (status='sent')
-  - `Delivered` - Shows fixed `delivered` field (status='delivered')
-  - `Delivery Rate` - Shows new `delivery_rate` metric
+    - `Total` - Shows `total_sent` (all notifications)
+    - `Sent` - Shows new `sent` field (status='sent')
+    - `Delivered` - Shows fixed `delivered` field (status='delivered')
+    - `Delivery Rate` - Shows new `delivery_rate` metric
 - **Added helper function** `getDeliveryRateColor()` for visual feedback
 - **Added description** explaining the difference between Success Rate and Delivery Rate
 - **Updated table body** to display all 9 columns with proper formatting
@@ -172,10 +172,10 @@ SELECT * FROM get_sms_notification_stats();
 - [ ] Navigate to `/admin/notifications` page
 - [ ] Verify table displays **9 columns** (not 6)
 - [ ] Verify new columns appear:
-  - `Total` column shows total_sent
-  - `Sent` column shows sent count
-  - `Delivered` column shows delivered count (should be different from sent!)
-  - `Delivery Rate` column shows new metric with green progress bar
+    - `Total` column shows total_sent
+    - `Sent` column shows sent count
+    - `Delivered` column shows delivered count (should be different from sent!)
+    - `Delivery Rate` column shows new metric with green progress bar
 - [ ] Verify description text appears under "Channel Performance" title
 - [ ] Test different timeframes (24h, 7d, 30d, 90d)
 - [ ] Verify auto-refresh works
@@ -274,9 +274,9 @@ git checkout HEAD~1 apps/web/src/lib/components/admin/notifications/ChannelPerfo
 
 - **What they'll see:** More detailed notification metrics
 - **Benefits:**
-  - Better visibility into delivery success
-  - Can identify channels with delivery issues
-  - New "Delivery Rate" metric shows confirmation rate
+    - Better visibility into delivery success
+    - Can identify channels with delivery issues
+    - New "Delivery Rate" metric shows confirmation rate
 
 ---
 

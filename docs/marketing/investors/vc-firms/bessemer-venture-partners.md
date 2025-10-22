@@ -35,19 +35,19 @@ Bessemer has deployed $1B+ to AI-native startups since 2023, focusing on three c
 ### Most Relevant for BuildOS:
 
 - **Janelle Teng** - Partner
-  - Focus: AI/ML applications, technical teams, infrastructure
-  - Background: Former engineering and product leader
-  - Portfolio: AI-native companies across enterprise sectors
+    - Focus: AI/ML applications, technical teams, infrastructure
+    - Background: Former engineering and product leader
+    - Portfolio: AI-native companies across enterprise sectors
 
 - **Bob Goodman** - Managing Partner
-  - Focus: Enterprise software and infrastructure
-  - Background: Deep B2B and SaaS experience
-  - Recognition: Industry veteran with scaling expertise
+    - Focus: Enterprise software and infrastructure
+    - Background: Deep B2B and SaaS experience
+    - Recognition: Industry veteran with scaling expertise
 
 - **Jeremy Levine** - Partner
-  - Focus: Internet and enterprise software
-  - Portfolio: LinkedIn, Pinterest, Yelp
-  - Background: Growth and scaling experience
+    - Focus: Internet and enterprise software
+    - Portfolio: LinkedIn, Pinterest, Yelp
+    - Background: Growth and scaling experience
 
 ### Partner Expertise:
 

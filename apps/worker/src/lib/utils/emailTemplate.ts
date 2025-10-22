@@ -1,15 +1,15 @@
 // apps/worker/src/lib/utils/emailTemplate.ts
 
 export interface EmailTemplateData {
-  subject: string;
-  content: string;
-  trackingPixel?: string;
+	subject: string;
+	content: string;
+	trackingPixel?: string;
 }
 
 export function generateMinimalEmailHTML(data: EmailTemplateData): string {
-  const { subject, content, trackingPixel = "" } = data;
+	const { subject, content, trackingPixel = '' } = data;
 
-  return `
+	return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -261,9 +261,9 @@ export function generateMinimalEmailHTML(data: EmailTemplateData): string {
 
 // Alternative even more minimal template (no header/footer)
 export function generatePlainEmailHTML(data: EmailTemplateData): string {
-  const { subject, content, trackingPixel = "" } = data;
+	const { subject, content, trackingPixel = '' } = data;
 
-  return `
+	return `
 <!DOCTYPE html>
 <html lang="en">
 <head>

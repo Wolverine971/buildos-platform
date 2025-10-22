@@ -4,7 +4,7 @@ researcher: Claude (Sonnet 4.5)
 git_commit: ac3926bfd8b265462ed239421d7cd1573b489972
 branch: main
 repository: buildos-platform
-topic: "Compression Middleware Performance Impact Research"
+topic: 'Compression Middleware Performance Impact Research'
 tags: [research, performance, compression, middleware, api]
 status: complete
 last_updated: 2025-10-06
@@ -72,11 +72,11 @@ return new Response(compressedBody, { ... });
 ```typescript
 // apps/web/src/hooks.server.ts:247-253
 compressionMiddleware({
-  threshold: 1024, // Only compress responses > 1KB
-  enableBrotli: true, // Prefer brotli compression
-  enableGzip: true, // Fallback to gzip
-  brotliQuality: 4, // Balanced (0=fast, 11=best)
-  gzipLevel: 6, // Standard gzip
+	threshold: 1024, // Only compress responses > 1KB
+	enableBrotli: true, // Prefer brotli compression
+	enableGzip: true, // Fallback to gzip
+	brotliQuality: 4, // Balanced (0=fast, 11=best)
+	gzipLevel: 6 // Standard gzip
 });
 ```
 
@@ -175,19 +175,19 @@ if (cached) return cached;
 **Possible Scenarios:**
 
 1. **Double compression attempt:**
-   - Middleware compresses → Sets `Content-Encoding: br`
-   - Vercel sees header → Skips compression
-   - **Result:** Middleware overhead with no Vercel benefit
+    - Middleware compresses → Sets `Content-Encoding: br`
+    - Vercel sees header → Skips compression
+    - **Result:** Middleware overhead with no Vercel benefit
 
 2. **Vercel compression disabled:**
-   - Middleware compresses
-   - Vercel respects `Content-Encoding` header
-   - **Result:** Works as intended
+    - Middleware compresses
+    - Vercel respects `Content-Encoding` header
+    - **Result:** Works as intended
 
 3. **Vercel compresses after middleware:**
-   - Middleware compresses
-   - Vercel compresses again (unlikely, but possible)
-   - **Result:** Wasted CPU, potential corruption
+    - Middleware compresses
+    - Vercel compresses again (unlikely, but possible)
+    - **Result:** Wasted CPU, potential corruption
 
 **Recommendation:** 🔍 **VERIFY Vercel's actual behavior**
 
@@ -486,16 +486,16 @@ curl -H "Accept-Encoding: br, gzip" https://buildos.app/api/projects -v
 #### Option 3: **Async Compression with Worker Threads**
 
 ```typescript
-import { Worker } from "worker_threads";
+import { Worker } from 'worker_threads';
 
 async function compressAsync(body: Buffer, algorithm: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker("./compression-worker.js", {
-      workerData: { body, algorithm },
-    });
-    worker.on("message", resolve);
-    worker.on("error", reject);
-  });
+	return new Promise((resolve, reject) => {
+		const worker = new Worker('./compression-worker.js', {
+			workerData: { body, algorithm }
+		});
+		worker.on('message', resolve);
+		worker.on('error', reject);
+	});
 }
 ```
 
@@ -519,15 +519,15 @@ async function compressAsync(body: Buffer, algorithm: string): Promise<Buffer> {
 const compressionCache = new Map<string, Buffer>();
 
 async function compressBody(body: Buffer, algorithm: string) {
-  const cacheKey = `${hash(body)}-${algorithm}`;
+	const cacheKey = `${hash(body)}-${algorithm}`;
 
-  if (compressionCache.has(cacheKey)) {
-    return compressionCache.get(cacheKey); // ⚡ Instant
-  }
+	if (compressionCache.has(cacheKey)) {
+		return compressionCache.get(cacheKey); // ⚡ Instant
+	}
 
-  const compressed = brotliCompressSync(body);
-  compressionCache.set(cacheKey, compressed);
-  return compressed;
+	const compressed = brotliCompressSync(body);
+	compressionCache.set(cacheKey, compressed);
+	return compressed;
 }
 ```
 
@@ -548,10 +548,10 @@ async function compressBody(body: Buffer, algorithm: string) {
 
 ```typescript
 // Only compress /api/* routes, skip pages
-import { apiCompressionMiddleware } from "$lib/middleware/compression";
+import { apiCompressionMiddleware } from '$lib/middleware/compression';
 
 const handleCompression = apiCompressionMiddleware({
-  threshold: 1024,
+	threshold: 1024
 });
 ```
 
@@ -571,17 +571,17 @@ const handleCompression = apiCompressionMiddleware({
 
 ```typescript
 compressionMiddleware({
-  threshold: 1024,
-  brotliQuality: 1, // Fastest (current: 4)
-  gzipLevel: 1, // Fastest (current: 6)
+	threshold: 1024,
+	brotliQuality: 1, // Fastest (current: 4)
+	gzipLevel: 1 // Fastest (current: 6)
 });
 ```
 
 **Trade-off:**
 
 - **Quality 1 vs 4:**
-  - Compression time: ~2ms vs ~5ms (60% faster)
-  - Compression ratio: ~75% vs ~90% (slightly worse)
+    - Compression time: ~2ms vs ~5ms (60% faster)
+    - Compression ratio: ~75% vs ~90% (slightly worse)
 
 **Math:**
 
@@ -605,21 +605,15 @@ On slow network: Quality 4 is better (smaller file)
 ```typescript
 // compression.ts (add detailed timing)
 const startCompress = Date.now();
-const compressedBody = await compressBody(
-  bodyBuffer,
-  compression.algorithm,
-  options,
-);
+const compressedBody = await compressBody(bodyBuffer, compression.algorithm, options);
 const compressTime = Date.now() - startCompress;
 
 console.log(`[Compression] ${event.url.pathname}:`, {
-  originalSize: bodyBuffer.byteLength,
-  compressedSize: compressedBody.byteLength,
-  ratio:
-    ((1 - compressedBody.byteLength / bodyBuffer.byteLength) * 100).toFixed(1) +
-    "%",
-  compressionTime: `${compressTime}ms`, // ⭐ Track this!
-  encoding: compression.encoding,
+	originalSize: bodyBuffer.byteLength,
+	compressedSize: compressedBody.byteLength,
+	ratio: ((1 - compressedBody.byteLength / bodyBuffer.byteLength) * 100).toFixed(1) + '%',
+	compressionTime: `${compressTime}ms`, // ⭐ Track this!
+	encoding: compression.encoding
 });
 ```
 
@@ -630,26 +624,26 @@ console.log(`[Compression] ${event.url.pathname}:`, {
 ```typescript
 // hooks.server.ts - Add BEFORE compression
 const handleMetrics: Handle = async ({ event, resolve }) => {
-  const start = Date.now();
-  const response = await resolve(event);
-  const duration = Date.now() - start;
+	const start = Date.now();
+	const response = await resolve(event);
+	const duration = Date.now() - start;
 
-  console.log(`[Metrics] ${event.url.pathname}: ${duration}ms`);
+	console.log(`[Metrics] ${event.url.pathname}: ${duration}ms`);
 
-  // Track in database for analysis
-  await supabase.from("performance_metrics").insert({
-    endpoint: event.url.pathname,
-    duration_ms: duration,
-    timestamp: new Date().toISOString(),
-  });
+	// Track in database for analysis
+	await supabase.from('performance_metrics').insert({
+		endpoint: event.url.pathname,
+		duration_ms: duration,
+		timestamp: new Date().toISOString()
+	});
 
-  return response;
+	return response;
 };
 
 export const handle = sequence(
-  handleMetrics, // ⭐ Measure TOTAL time
-  handleSupabase,
-  handleCompression, // Adds overhead here
+	handleMetrics, // ⭐ Measure TOTAL time
+	handleSupabase,
+	handleCompression // Adds overhead here
 );
 ```
 
@@ -660,14 +654,14 @@ export const handle = sequence(
 ```typescript
 // Randomly disable compression for 10% of requests
 const handleCompression = async ({ event, resolve }) => {
-  const skipCompression = Math.random() < 0.1; // 10% sample
+	const skipCompression = Math.random() < 0.1; // 10% sample
 
-  if (skipCompression) {
-    event.locals.compressionSkipped = true;
-    return resolve(event);
-  }
+	if (skipCompression) {
+		event.locals.compressionSkipped = true;
+		return resolve(event);
+	}
 
-  return compressionMiddleware()({ event, resolve });
+	return compressionMiddleware()({ event, resolve });
 };
 ```
 
@@ -737,9 +731,9 @@ const handleCompression = async ({ event, resolve }) => {
 ```typescript
 // Measure actual compression overhead in production
 const compressionMetrics = {
-  timing: true,
-  logToConsole: dev,
-  logToDatabase: !dev,
+	timing: true,
+	logToConsole: dev,
+	logToDatabase: !dev
 };
 ```
 
@@ -789,8 +783,8 @@ const cache = new Map<string, { body: Buffer; expires: number }>();
 
 ```typescript
 compressionMiddleware({
-  brotliQuality: 2, // Faster for small/medium responses
-  gzipLevel: 3,
+	brotliQuality: 2, // Faster for small/medium responses
+	gzipLevel: 3
 });
 ```
 
@@ -922,25 +916,25 @@ const handleCompression = dev ? passthrough : compressionMiddleware();
 ## Open Questions
 
 1. **Does Vercel Edge Network compress responses by default?**
-   - Need to test in production
-   - Compare headers with/without middleware
+    - Need to test in production
+    - Compare headers with/without middleware
 
 2. **What are actual compression times in production?**
-   - Add timing metrics
-   - Track p95/p99 compression latency
+    - Add timing metrics
+    - Track p95/p99 compression latency
 
 3. **Is there a cache hit rate for compressed responses?**
-   - Currently: 0% (no caching)
-   - Potential: 80-90% for frequently accessed endpoints
+    - Currently: 0% (no caching)
+    - Potential: 80-90% for frequently accessed endpoints
 
 4. **What's the compression ratio distribution?**
-   - Dashboards: 90% (huge win)
-   - Small updates: 50% (marginal win)
-   - Need data to prioritize
+    - Dashboards: 90% (huge win)
+    - Small updates: 50% (marginal win)
+    - Need data to prioritize
 
 5. **How does compression affect Vercel bandwidth costs?**
-   - Potential savings: 60-90% bandwidth
-   - Need to measure actual cost impact
+    - Potential savings: 60-90% bandwidth
+    - Need to measure actual cost impact
 
 ---
 

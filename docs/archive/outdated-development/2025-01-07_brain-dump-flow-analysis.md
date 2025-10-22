@@ -4,17 +4,8 @@ researcher: Claude
 git_commit: c5a3a561ce2c5969333f164a63adb92e7b4ffa28
 branch: main
 repository: build_os
-topic: "Brain Dump Flow Analysis - From BrainDumpModal.svelte Through All API Endpoints and Services"
-tags:
-  [
-    research,
-    brain-dump,
-    api,
-    services,
-    ai-processing,
-    state-management,
-    optimization,
-  ]
+topic: 'Brain Dump Flow Analysis - From BrainDumpModal.svelte Through All API Endpoints and Services'
+tags: [research, brain-dump, api, services, ai-processing, state-management, optimization]
 status: complete
 last_updated: 2025-01-07
 last_updated_by: Claude
@@ -248,15 +239,12 @@ error_logs (
 ```typescript
 // Problem: Large component with 1500+ lines
 // Solution: Split into smaller, lazy-loaded components
-const RecordingView = lazy(() => import("./RecordingView.svelte"));
-const ParseResultsView = lazy(() => import("./ParseResultsDiffView.svelte"));
+const RecordingView = lazy(() => import('./RecordingView.svelte'));
+const ParseResultsView = lazy(() => import('./ParseResultsDiffView.svelte'));
 
 // Problem: Frequent re-renders from store updates
 // Solution: Use fine-grained subscriptions
-const selectedProject = derived(
-  brainDumpStore,
-  ($store) => $store.selectedProject,
-);
+const selectedProject = derived(brainDumpStore, ($store) => $store.selectedProject);
 ```
 
 **API Response Caching:**
@@ -264,21 +252,21 @@ const selectedProject = derived(
 ```typescript
 // Add response caching for frequently accessed data
 class BrainDumpService {
-  private cache = new Map<string, { data: any; timestamp: number }>();
-  private CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+	private cache = new Map<string, { data: any; timestamp: number }>();
+	private CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  async getInitData(projectId?: string) {
-    const key = `init-${projectId}`;
-    const cached = this.cache.get(key);
+	async getInitData(projectId?: string) {
+		const key = `init-${projectId}`;
+		const cached = this.cache.get(key);
 
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return cached.data;
-    }
+		if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+			return cached.data;
+		}
 
-    const response = await this.get(`/api/braindumps/init`);
-    this.cache.set(key, { data: response, timestamp: Date.now() });
-    return response;
-  }
+		const response = await this.get(`/api/braindumps/init`);
+		this.cache.set(key, { data: response, timestamp: Date.now() });
+		return response;
+	}
 }
 ```
 
@@ -318,30 +306,30 @@ async executeOperations(operations: ParsedOperation[]) {
 // Problem: No backpressure control in SSE streaming
 // Solution: Add queue management
 class StreamProcessor {
-  private queue: Array<StreamUpdate> = [];
-  private processing = false;
-  private maxQueueSize = 100;
+	private queue: Array<StreamUpdate> = [];
+	private processing = false;
+	private maxQueueSize = 100;
 
-  async addToQueue(update: StreamUpdate) {
-    if (this.queue.length >= this.maxQueueSize) {
-      // Apply backpressure
-      await this.waitForCapacity();
-    }
+	async addToQueue(update: StreamUpdate) {
+		if (this.queue.length >= this.maxQueueSize) {
+			// Apply backpressure
+			await this.waitForCapacity();
+		}
 
-    this.queue.push(update);
-    this.processQueue();
-  }
+		this.queue.push(update);
+		this.processQueue();
+	}
 
-  private async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
+	private async processQueue() {
+		if (this.processing || this.queue.length === 0) return;
 
-    this.processing = true;
-    while (this.queue.length > 0) {
-      const update = this.queue.shift();
-      await this.sendUpdate(update);
-    }
-    this.processing = false;
-  }
+		this.processing = true;
+		while (this.queue.length > 0) {
+			const update = this.queue.shift();
+			await this.sendUpdate(update);
+		}
+		this.processing = false;
+	}
 }
 ```
 
@@ -352,28 +340,28 @@ class StreamProcessor {
 ```typescript
 // Add retry queue for failed operations
 class OperationRetryQueue {
-  private retryQueue: Map<
-    string,
-    {
-      operation: ParsedOperation;
-      attempts: number;
-      lastError: Error;
-    }
-  > = new Map();
+	private retryQueue: Map<
+		string,
+		{
+			operation: ParsedOperation;
+			attempts: number;
+			lastError: Error;
+		}
+	> = new Map();
 
-  async retryFailedOperations() {
-    for (const [id, item] of this.retryQueue) {
-      if (item.attempts < 3) {
-        try {
-          await this.executeOperation(item.operation);
-          this.retryQueue.delete(id);
-        } catch (error) {
-          item.attempts++;
-          item.lastError = error;
-        }
-      }
-    }
-  }
+	async retryFailedOperations() {
+		for (const [id, item] of this.retryQueue) {
+			if (item.attempts < 3) {
+				try {
+					await this.executeOperation(item.operation);
+					this.retryQueue.delete(id);
+				} catch (error) {
+					item.attempts++;
+					item.lastError = error;
+				}
+			}
+		}
+	}
 }
 ```
 
@@ -384,19 +372,19 @@ class OperationRetryQueue {
 ```typescript
 // Implement client-side noise cancellation
 async function setupAudioProcessing(stream: MediaStream) {
-  const audioContext = new AudioContext();
-  const source = audioContext.createMediaStreamSource(stream);
+	const audioContext = new AudioContext();
+	const source = audioContext.createMediaStreamSource(stream);
 
-  // Add noise suppression
-  const noiseSuppressionNode = audioContext.createDynamicsCompressor();
-  noiseSuppressionNode.threshold.value = -50;
-  noiseSuppressionNode.knee.value = 40;
-  noiseSuppressionNode.ratio.value = 12;
+	// Add noise suppression
+	const noiseSuppressionNode = audioContext.createDynamicsCompressor();
+	noiseSuppressionNode.threshold.value = -50;
+	noiseSuppressionNode.knee.value = 40;
+	noiseSuppressionNode.ratio.value = 12;
 
-  source.connect(noiseSuppressionNode);
-  noiseSuppressionNode.connect(audioContext.destination);
+	source.connect(noiseSuppressionNode);
+	noiseSuppressionNode.connect(audioContext.destination);
 
-  return audioContext;
+	return audioContext;
 }
 ```
 
@@ -407,14 +395,14 @@ async function setupAudioProcessing(stream: MediaStream) {
 ```typescript
 // Cache frequently used prompts to reduce token usage
 class PromptCache {
-  private cache = new LRUCache<string, string>({ max: 100 });
+	private cache = new LRUCache<string, string>({ max: 100 });
 
-  getPrompt(key: string, generator: () => string): string {
-    if (!this.cache.has(key)) {
-      this.cache.set(key, generator());
-    }
-    return this.cache.get(key)!;
-  }
+	getPrompt(key: string, generator: () => string): string {
+		if (!this.cache.has(key)) {
+			this.cache.set(key, generator());
+		}
+		return this.cache.get(key)!;
+	}
 }
 ```
 
@@ -423,12 +411,12 @@ class PromptCache {
 ```typescript
 // For dual processing, truly parallelize API calls
 async function dualProcess(input: string) {
-  const [contextResult, taskResult] = await Promise.all([
-    llmPool.call(contextPrompt, ["gpt-5-nano"]),
-    llmPool.call(taskPrompt, ["gpt-5-nano"]),
-  ]);
+	const [contextResult, taskResult] = await Promise.all([
+		llmPool.call(contextPrompt, ['gpt-5-nano']),
+		llmPool.call(taskPrompt, ['gpt-5-nano'])
+	]);
 
-  return mergeResults(contextResult, taskResult);
+	return mergeResults(contextResult, taskResult);
 }
 ```
 
@@ -439,13 +427,13 @@ async function dualProcess(input: string) {
 ```typescript
 // Show immediate feedback before server confirmation
 function optimisticUpdate(operation: ParsedOperation) {
-  // Update UI immediately
-  store.addOptimisticOperation(operation);
+	// Update UI immediately
+	store.addOptimisticOperation(operation);
 
-  // Execute server operation
-  executeOperation(operation)
-    .then(() => store.confirmOperation(operation.id))
-    .catch(() => store.revertOperation(operation.id));
+	// Execute server operation
+	executeOperation(operation)
+		.then(() => store.confirmOperation(operation.id))
+		.catch(() => store.revertOperation(operation.id));
 }
 ```
 
@@ -454,18 +442,18 @@ function optimisticUpdate(operation: ParsedOperation) {
 ```typescript
 // Load critical data first, then enhance
 async function progressiveInit() {
-  // Load essential data first
-  const essential = await loadEssentialData();
-  render(essential);
+	// Load essential data first
+	const essential = await loadEssentialData();
+	render(essential);
 
-  // Then load enhancements
-  const [projects, questions, recent] = await Promise.all([
-    loadProjects(),
-    loadQuestions(),
-    loadRecentDumps(),
-  ]);
+	// Then load enhancements
+	const [projects, questions, recent] = await Promise.all([
+		loadProjects(),
+		loadQuestions(),
+		loadRecentDumps()
+	]);
 
-  enhanceUI({ projects, questions, recent });
+	enhanceUI({ projects, questions, recent });
 }
 ```
 
@@ -476,22 +464,22 @@ async function progressiveInit() {
 ```typescript
 // Track key performance indicators
 class BrainDumpMetrics {
-  trackProcessingTime(start: number, end: number, mode: string) {
-    const duration = end - start;
-    analytics.track("brain_dump_processing", {
-      duration,
-      mode,
-      tokensUsed: this.getTokenCount(),
-      operationCount: this.getOperationCount(),
-    });
-  }
+	trackProcessingTime(start: number, end: number, mode: string) {
+		const duration = end - start;
+		analytics.track('brain_dump_processing', {
+			duration,
+			mode,
+			tokensUsed: this.getTokenCount(),
+			operationCount: this.getOperationCount()
+		});
+	}
 
-  trackErrorRate() {
-    const rate = this.failedOps / this.totalOps;
-    if (rate > 0.1) {
-      alerting.trigger("high_error_rate", { rate });
-    }
-  }
+	trackErrorRate() {
+		const rate = this.failedOps / this.totalOps;
+		if (rate > 0.1) {
+			alerting.trigger('high_error_rate', { rate });
+		}
+	}
 }
 ```
 

@@ -44,12 +44,12 @@ Here’s how the system could be structured in layers:
 - Sort each day into blocks of **occupied** vs **available** time.
 - Identify free “gaps” between events that meet a minimum threshold (e.g., 30+ minutes).
 
-  ```text
-  9am–11am meeting → occupied
-  11am–2pm gap → available
-  2pm–3pm call → occupied
-  3–5pm gap → available
-  ```
+    ```text
+    9am–11am meeting → occupied
+    11am–2pm gap → available
+    2pm–3pm call → occupied
+    3–5pm gap → available
+    ```
 
 ### 2. **Context Layer (Input: Projects & Goals)**
 
@@ -74,10 +74,10 @@ It then outputs _proposed TimeBlocks_:
 
 ```json
 {
-  "date": "2025-10-07",
-  "time_range": "11:00-13:00",
-  "suggested_project": "Finish marketing site redesign",
-  "rationale": "High impact project, fits deep-work time window"
+	"date": "2025-10-07",
+	"time_range": "11:00-13:00",
+	"suggested_project": "Finish marketing site redesign",
+	"rationale": "High impact project, fits deep-work time window"
 }
 ```
 
@@ -89,8 +89,8 @@ The UI presents these gaps visually:
 - Each block can show _AI suggestion_ + _alternative options_
   e.g.
 
-  > 🟩 11:00–13:00 → Deep Work (suggested: Website redesign)
-  > 🟨 15:00–16:30 → Light work (suggested: Inbox clean-up)
+    > 🟩 11:00–13:00 → Deep Work (suggested: Website redesign)
+    > 🟨 15:00–16:30 → Light work (suggested: Inbox clean-up)
 
 Users can **accept**, **swap**, or **lock** a TimeBlock.
 

@@ -289,11 +289,11 @@ graph TD
 
 ```typescript
 // File: /apps/worker/src/worker.ts
-queue.process("generate_daily_brief", processBrief);
-queue.process("generate_brief_email", processEmailBrief);
-queue.process("generate_phases", processPhases);
-queue.process("onboarding_analysis", processOnboarding);
-queue.process("send_sms", processSMS);
+queue.process('generate_daily_brief', processBrief);
+queue.process('generate_brief_email', processEmailBrief);
+queue.process('generate_phases', processPhases);
+queue.process('onboarding_analysis', processOnboarding);
+queue.process('send_sms', processSMS);
 ```
 
 ---

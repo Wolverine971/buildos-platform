@@ -90,18 +90,18 @@ All code querying user-level preferences MUST filter by `event_type='user'`:
 ```typescript
 // ✅ CORRECT - Filters by event_type
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // REQUIRED
-  .single();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // REQUIRED
+	.single();
 
 // ❌ INCORRECT - Missing filter, .single() will fail with multiple rows
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", userId)
-  .single(); // Error: multiple rows returned
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', userId)
+	.single(); // Error: multiple rows returned
 ```
 
 ## Alternatives Considered

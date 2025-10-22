@@ -1,5 +1,5 @@
 ---
-title: "BuildOS Web-Worker Communication Architecture Research"
+title: 'BuildOS Web-Worker Communication Architecture Research'
 date: 2025-10-05T17:00:00
 author: Claude Code
 tags: [architecture, communication, queue, realtime, notifications, database]
@@ -108,33 +108,33 @@ The BuildOS platform uses a **database-centric communication pattern** between t
 
 ```typescript
 interface QueueJob {
-  id: string; // UUID primary key
-  queue_job_id: string; // Human-readable ID (e.g., "brief-USER-DATE-TIMESTAMP")
-  user_id: string; // Foreign key to users
-  job_type: QueueJobType; // Enum: generate_daily_brief, generate_phases, etc.
-  status: QueueJobStatus; // Enum: pending, processing, completed, failed, cancelled
+	id: string; // UUID primary key
+	queue_job_id: string; // Human-readable ID (e.g., "brief-USER-DATE-TIMESTAMP")
+	user_id: string; // Foreign key to users
+	job_type: QueueJobType; // Enum: generate_daily_brief, generate_phases, etc.
+	status: QueueJobStatus; // Enum: pending, processing, completed, failed, cancelled
 
-  // Scheduling
-  scheduled_for: string; // ISO timestamp
-  priority: number | null; // Lower = higher priority
+	// Scheduling
+	scheduled_for: string; // ISO timestamp
+	priority: number | null; // Lower = higher priority
 
-  // Job data
-  metadata: JSON; // Type-safe job metadata (varies by job_type)
+	// Job data
+	metadata: JSON; // Type-safe job metadata (varies by job_type)
 
-  // Execution tracking
-  attempts: number; // Current retry count
-  max_attempts: number; // Max retries allowed
+	// Execution tracking
+	attempts: number; // Current retry count
+	max_attempts: number; // Max retries allowed
 
-  // Timestamps
-  created_at: string;
-  updated_at: string | null;
-  started_at: string | null;
-  processed_at: string | null;
-  completed_at: string | null;
+	// Timestamps
+	created_at: string;
+	updated_at: string | null;
+	started_at: string | null;
+	processed_at: string | null;
+	completed_at: string | null;
 
-  // Results
-  result: JSON | null; // Type-safe job result (varies by job_type)
-  error_message: string | null;
+	// Results
+	result: JSON | null; // Type-safe job result (varies by job_type)
+	error_message: string | null;
 }
 ```
 
@@ -142,23 +142,23 @@ interface QueueJob {
 
 ```typescript
 type QueueJobType =
-  | "generate_daily_brief"
-  | "generate_phases"
-  | "process_brain_dump"
-  | "send_email"
-  | "send_sms"
-  | "sync_calendar"
-  | "update_recurring_tasks"
-  | "cleanup_old_data"
-  | "onboarding_analysis"
-  | "other";
+	| 'generate_daily_brief'
+	| 'generate_phases'
+	| 'process_brain_dump'
+	| 'send_email'
+	| 'send_sms'
+	| 'sync_calendar'
+	| 'update_recurring_tasks'
+	| 'cleanup_old_data'
+	| 'onboarding_analysis'
+	| 'other';
 
 type QueueJobStatus =
-  | "pending" // Queued, waiting to be claimed
-  | "processing" // Currently being processed
-  | "completed" // Successfully completed
-  | "failed" // Failed after retries
-  | "cancelled"; // Cancelled by user
+	| 'pending' // Queued, waiting to be claimed
+	| 'processing' // Currently being processed
+	| 'completed' // Successfully completed
+	| 'failed' // Failed after retries
+	| 'cancelled'; // Cancelled by user
 ```
 
 **Metadata Examples:**
@@ -166,30 +166,30 @@ type QueueJobStatus =
 ```typescript
 // Daily Brief Job
 interface DailyBriefJobMetadata {
-  briefDate: string; // YYYY-MM-DD
-  timezone: string; // IANA timezone
-  forceRegenerate?: boolean;
-  includeProjects?: string[];
-  excludeProjects?: string[];
-  generation_progress?: {
-    step: BriefGenerationStep;
-    progress: number; // 0-100
-    message?: string;
-    projects?: {
-      completed: number;
-      total: number;
-      failed: number;
-    };
-    timestamp: string;
-  };
+	briefDate: string; // YYYY-MM-DD
+	timezone: string; // IANA timezone
+	forceRegenerate?: boolean;
+	includeProjects?: string[];
+	excludeProjects?: string[];
+	generation_progress?: {
+		step: BriefGenerationStep;
+		progress: number; // 0-100
+		message?: string;
+		projects?: {
+			completed: number;
+			total: number;
+			failed: number;
+		};
+		timestamp: string;
+	};
 }
 
 // Phase Generation Job
 interface PhaseGenerationJobMetadata {
-  projectId: string;
-  regenerate?: boolean;
-  template?: string;
-  includeExistingTasks?: boolean;
+	projectId: string;
+	regenerate?: boolean;
+	template?: string;
+	includeExistingTasks?: boolean;
 }
 ```
 
@@ -224,44 +224,44 @@ interface PhaseGenerationJobMetadata {
 
 ```typescript
 class RealtimeBriefService {
-  static async initialize(userId: string, supabaseClient: SupabaseClient) {
-    // Create channel for user-specific notifications
-    this.state.channel = this.state.supabaseClient.channel(
-      `user-brief-notifications:${userId}`,
-    );
+	static async initialize(userId: string, supabaseClient: SupabaseClient) {
+		// Create channel for user-specific notifications
+		this.state.channel = this.state.supabaseClient.channel(
+			`user-brief-notifications:${userId}`
+		);
 
-    // Subscribe to queue_jobs changes
-    this.state.channel
-      .on(
-        "postgres_changes",
-        {
-          event: "*", // INSERT, UPDATE, DELETE
-          schema: "public",
-          table: "queue_jobs",
-          filter: `user_id=eq.${userId}`, // Only this user's jobs
-        },
-        (payload) => this.handleJobUpdate(payload),
-      )
+		// Subscribe to queue_jobs changes
+		this.state.channel
+			.on(
+				'postgres_changes',
+				{
+					event: '*', // INSERT, UPDATE, DELETE
+					schema: 'public',
+					table: 'queue_jobs',
+					filter: `user_id=eq.${userId}` // Only this user's jobs
+				},
+				(payload) => this.handleJobUpdate(payload)
+			)
 
-      // Subscribe to daily_briefs changes
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "daily_briefs",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => this.handleBriefUpdate(payload),
-      )
+			// Subscribe to daily_briefs changes
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'daily_briefs',
+					filter: `user_id=eq.${userId}`
+				},
+				(payload) => this.handleBriefUpdate(payload)
+			)
 
-      // Subscribe to broadcast events (optional)
-      .on("broadcast", { event: "brief_completed" }, (payload) =>
-        this.handleBriefCompleted(payload),
-      )
+			// Subscribe to broadcast events (optional)
+			.on('broadcast', { event: 'brief_completed' }, (payload) =>
+				this.handleBriefCompleted(payload)
+			)
 
-      .subscribe((status) => this.handleSubscriptionStatus(status));
-  }
+			.subscribe((status) => this.handleSubscriptionStatus(status));
+	}
 }
 ```
 
@@ -341,31 +341,31 @@ The web app **does not poll** for job status. It relies entirely on:
 
 ```typescript
 class SupabaseQueue {
-  private pollInterval: number = 5000; // 5 seconds
-  private batchSize: number = 5;
+	private pollInterval: number = 5000; // 5 seconds
+	private batchSize: number = 5;
 
-  async start(): Promise<void> {
-    // Process immediately on start
-    await this.processJobs();
+	async start(): Promise<void> {
+		// Process immediately on start
+		await this.processJobs();
 
-    // Set up polling interval
-    this.processingInterval = setInterval(async () => {
-      if (!this.isProcessing) {
-        await this.processJobs();
-      }
-    }, this.pollInterval);
-  }
+		// Set up polling interval
+		this.processingInterval = setInterval(async () => {
+			if (!this.isProcessing) {
+				await this.processJobs();
+			}
+		}, this.pollInterval);
+	}
 
-  private async processJobs(): Promise<void> {
-    // Claim jobs atomically using RPC
-    const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-      p_job_types: jobTypes,
-      p_batch_size: this.batchSize,
-    });
+	private async processJobs(): Promise<void> {
+		// Claim jobs atomically using RPC
+		const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+			p_job_types: jobTypes,
+			p_batch_size: this.batchSize
+		});
 
-    // Process jobs concurrently
-    await Promise.allSettled(jobs.map((job) => this.processJob(job)));
-  }
+		// Process jobs concurrently
+		await Promise.allSettled(jobs.map((job) => this.processJob(job)));
+	}
 }
 ```
 
@@ -396,9 +396,9 @@ QUEUE_STALLED_TIMEOUT=300000      # 5 minutes
 
 ```typescript
 // Worker updates job status via RPC function
-const { error } = await supabase.rpc("complete_queue_job", {
-  p_job_id: job.id,
-  p_result: result,
+const { error } = await supabase.rpc('complete_queue_job', {
+	p_job_id: job.id,
+	p_result: result
 });
 ```
 
@@ -415,27 +415,24 @@ const { error } = await supabase.rpc("complete_queue_job", {
 **File:** `/apps/worker/src/lib/progressTracker.ts`
 
 ```typescript
-export async function updateJobProgress(
-  jobId: string,
-  progress: JobProgress,
-): Promise<boolean> {
-  const { error } = await supabase
-    .from("queue_jobs")
-    .update({
-      metadata: {
-        ...existingMetadata,
-        generation_progress: {
-          step: progress.step,
-          progress: (progress.current / progress.total) * 100,
-          message: progress.message,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
+export async function updateJobProgress(jobId: string, progress: JobProgress): Promise<boolean> {
+	const { error } = await supabase
+		.from('queue_jobs')
+		.update({
+			metadata: {
+				...existingMetadata,
+				generation_progress: {
+					step: progress.step,
+					progress: (progress.current / progress.total) * 100,
+					message: progress.message,
+					timestamp: new Date().toISOString()
+				}
+			},
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', jobId);
 
-  return !error;
+	return !error;
 }
 ```
 
@@ -445,21 +442,21 @@ export async function updateJobProgress(
 
 ```typescript
 export async function notifyUser(userId: string, event: string, payload: any) {
-  const channel = supabase.channel(`user:${userId}`);
-  await channel.send({
-    type: "broadcast",
-    event: event,
-    payload: payload,
-  });
+	const channel = supabase.channel(`user:${userId}`);
+	await channel.send({
+		type: 'broadcast',
+		event: event,
+		payload: payload
+	});
 }
 ```
 
 **Usage:**
 
 ```typescript
-await notifyUser(userId, "brief_completed", {
-  briefId: result.briefId,
-  briefDate: metadata.briefDate,
+await notifyUser(userId, 'brief_completed', {
+	briefId: result.briefId,
+	briefDate: metadata.briefDate
 });
 ```
 
@@ -502,16 +499,13 @@ private static handleJobUpdate(payload: any): void {
 
 ```typescript
 // Bridge connects notification store to UI components
-function advanceStep(
-  controller: PhaseGenerationController,
-  targetStep: number,
-) {
-  controller.steps[targetStep].status = "processing";
+function advanceStep(controller: PhaseGenerationController, targetStep: number) {
+	controller.steps[targetStep].status = 'processing';
 
-  notificationStore.setProgress(
-    controller.notificationId,
-    buildProgress(controller.steps, targetStep),
-  );
+	notificationStore.setProgress(
+		controller.notificationId,
+		buildProgress(controller.steps, targetStep)
+	);
 }
 ```
 
@@ -539,17 +533,17 @@ function advanceStep(
 
 ```typescript
 // Component calls bridge
-import { startPhaseGeneration } from "$lib/services/phase-generation-notification.bridge";
+import { startPhaseGeneration } from '$lib/services/phase-generation-notification.bridge';
 
 const { notificationId } = await startPhaseGeneration({
-  projectId: "123",
-  projectName: "My Project",
-  isRegeneration: false,
-  taskCount: 15,
-  requestPayload: {
-    selected_statuses: ["backlog", "in_progress"],
-    scheduling_method: "phases_only",
-  },
+	projectId: '123',
+	projectName: 'My Project',
+	isRegeneration: false,
+	taskCount: 15,
+	requestPayload: {
+		selected_statuses: ['backlog', 'in_progress'],
+		scheduling_method: 'phases_only'
+	}
 });
 ```
 
@@ -581,20 +575,15 @@ export async function startPhaseGeneration(options: StartPhaseGenerationOptions)
 ```typescript
 // /api/projects/[id]/phases/generate/+server.ts
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-  const { user } = await safeGetSession();
-  const config = await parseRequestBody(request);
+	const { user } = await safeGetSession();
+	const config = await parseRequestBody(request);
 
-  // Execute phase generation (synchronous)
-  const orchestrator = new PhaseGenerationOrchestrator(
-    supabase,
-    user.id,
-    params.id,
-    config,
-  );
+	// Execute phase generation (synchronous)
+	const orchestrator = new PhaseGenerationOrchestrator(supabase, user.id, params.id, config);
 
-  const result = await orchestrator.generate();
+	const result = await orchestrator.generate();
 
-  return ApiResponse.success(result);
+	return ApiResponse.success(result);
 };
 ```
 
@@ -603,23 +592,23 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 ```typescript
 // phase-generation-notification.bridge.ts
 try {
-  const payload = await response.json();
+	const payload = await response.json();
 
-  // Update notification with results
-  notificationStore.update(notificationId, {
-    status: "success",
-    data: {
-      ...existingData,
-      result: {
-        phases: payload.data.phases,
-        backlogTasks: payload.data.backlogTasks,
-      },
-    },
-  });
+	// Update notification with results
+	notificationStore.update(notificationId, {
+		status: 'success',
+		data: {
+			...existingData,
+			result: {
+				phases: payload.data.phases,
+				backlogTasks: payload.data.backlogTasks
+			}
+		}
+	});
 
-  toastService.success("Phases generated successfully");
+	toastService.success('Phases generated successfully');
 } catch (error) {
-  notificationStore.setError(notificationId, error.message);
+	notificationStore.setError(notificationId, error.message);
 }
 ```
 
@@ -636,25 +625,25 @@ try {
 ```typescript
 // apps/worker/src/scheduler.ts
 async function scheduleDailyBriefs() {
-  const users = await fetchActiveUsers();
+	const users = await fetchActiveUsers();
 
-  for (const user of users) {
-    const briefDate = getCurrentDateInTimezone(user.timezone);
+	for (const user of users) {
+		const briefDate = getCurrentDateInTimezone(user.timezone);
 
-    // Add job to queue
-    await queue.add(
-      "generate_daily_brief",
-      user.id,
-      {
-        briefDate,
-        timezone: user.timezone,
-      },
-      {
-        scheduledFor: getBriefScheduleTime(user),
-        dedupKey: `brief-${user.id}-${briefDate}`,
-      },
-    );
-  }
+		// Add job to queue
+		await queue.add(
+			'generate_daily_brief',
+			user.id,
+			{
+				briefDate,
+				timezone: user.timezone
+			},
+			{
+				scheduledFor: getBriefScheduleTime(user),
+				dedupKey: `brief-${user.id}-${briefDate}`
+			}
+		);
+	}
 }
 ```
 
@@ -680,14 +669,14 @@ async add(jobType, userId, data, options) {
 
 ```typescript
 // SupabaseQueue.processJobs()
-const { data: jobs } = await supabase.rpc("claim_pending_jobs", {
-  p_job_types: ["generate_daily_brief"],
-  p_batch_size: 5,
+const { data: jobs } = await supabase.rpc('claim_pending_jobs', {
+	p_job_types: ['generate_daily_brief'],
+	p_batch_size: 5
 });
 
 // Process each job
 for (const job of jobs) {
-  await briefWorker.process(job);
+	await briefWorker.process(job);
 }
 ```
 
@@ -696,23 +685,23 @@ for (const job of jobs) {
 ```typescript
 // apps/worker/src/workers/brief/briefGenerator.ts
 export async function generateBriefForUser(job: ProcessingJob) {
-  // Update progress: Fetching projects
-  await job.updateProgress({
-    current: 1,
-    total: 5,
-    message: "Fetching your projects...",
-  });
+	// Update progress: Fetching projects
+	await job.updateProgress({
+		current: 1,
+		total: 5,
+		message: 'Fetching your projects...'
+	});
 
-  const projects = await fetchUserProjects(job.userId);
+	const projects = await fetchUserProjects(job.userId);
 
-  // Update progress: Generating briefs
-  await job.updateProgress({
-    current: 2,
-    total: 5,
-    message: `Generating briefs for ${projects.length} projects...`,
-  });
+	// Update progress: Generating briefs
+	await job.updateProgress({
+		current: 2,
+		total: 5,
+		message: `Generating briefs for ${projects.length} projects...`
+	});
 
-  // ... continue processing
+	// ... continue processing
 }
 ```
 
@@ -740,14 +729,14 @@ private static handleJobUpdate(payload: any): void {
 // SupabaseQueue.processJob()
 const result = await processor(processingJob);
 
-await supabase.rpc("complete_queue_job", {
-  p_job_id: job.id,
-  p_result: {
-    briefId: result.briefId,
-    briefDate: result.briefDate,
-    projectBriefsGenerated: result.projectCount,
-    emailSent: result.emailSent,
-  },
+await supabase.rpc('complete_queue_job', {
+	p_job_id: job.id,
+	p_result: {
+		briefId: result.briefId,
+		briefDate: result.briefDate,
+		projectBriefsGenerated: result.projectCount,
+		emailSent: result.emailSent
+	}
 });
 ```
 
@@ -918,39 +907,39 @@ Store (state) ←→ Bridge (logic) ←→ API/Service (data)
 ```typescript
 // 1. Create notification
 const notifId = notificationStore.add({
-  type: "phase-generation",
-  status: "processing",
-  isMinimized: true,
-  isPersistent: true,
-  progress: {
-    type: "steps",
-    currentStep: 0,
-    totalSteps: 4,
-    steps: [
-      { name: "Analyzing tasks", status: "processing" },
-      { name: "Generating phases", status: "pending" },
-      { name: "Scheduling", status: "pending" },
-      { name: "Finalizing", status: "pending" },
-    ],
-  },
-  actions: {
-    dismiss: () => notificationStore.remove(notifId),
-  },
+	type: 'phase-generation',
+	status: 'processing',
+	isMinimized: true,
+	isPersistent: true,
+	progress: {
+		type: 'steps',
+		currentStep: 0,
+		totalSteps: 4,
+		steps: [
+			{ name: 'Analyzing tasks', status: 'processing' },
+			{ name: 'Generating phases', status: 'pending' },
+			{ name: 'Scheduling', status: 'pending' },
+			{ name: 'Finalizing', status: 'pending' }
+		]
+	},
+	actions: {
+		dismiss: () => notificationStore.remove(notifId)
+	}
 });
 
 // 2. Update progress
 notificationStore.setProgress(notifId, {
-  type: "steps",
-  currentStep: 1,
-  steps: [
-    { name: "Analyzing tasks", status: "completed" },
-    { name: "Generating phases", status: "processing" },
-    // ...
-  ],
+	type: 'steps',
+	currentStep: 1,
+	steps: [
+		{ name: 'Analyzing tasks', status: 'completed' },
+		{ name: 'Generating phases', status: 'processing' }
+		// ...
+	]
 });
 
 // 3. Complete
-notificationStore.setStatus(notifId, "success");
+notificationStore.setStatus(notifId, 'success');
 ```
 
 ### Toast Notifications
@@ -960,9 +949,9 @@ notificationStore.setStatus(notifId, "success");
 **Purpose:** Quick feedback for completed actions
 
 ```typescript
-toastService.success("Phases generated successfully");
-toastService.error("Failed to generate brief");
-toastService.info("Processing in background...");
+toastService.success('Phases generated successfully');
+toastService.error('Failed to generate brief');
+toastService.info('Processing in background...');
 ```
 
 **Characteristics:**
@@ -978,9 +967,9 @@ toastService.info("Processing in background...");
 ```typescript
 // apps/worker/src/workers/brief/briefGenerator.ts
 async function queueBriefEmail(briefId: string, userId: string) {
-  await queue.add("generate_brief_email", userId, {
-    emailId: briefId,
-  });
+	await queue.add('generate_brief_email', userId, {
+		emailId: briefId
+	});
 }
 ```
 
@@ -989,11 +978,11 @@ async function queueBriefEmail(briefId: string, userId: string) {
 ```typescript
 // apps/worker/src/workers/email/emailWorker.ts
 async function processEmailJob(job: ProcessingJob) {
-  if (USE_WEBHOOK_EMAIL) {
-    await webhookEmailService.send(emailData);
-  } else {
-    await smtpService.send(emailData);
-  }
+	if (USE_WEBHOOK_EMAIL) {
+		await webhookEmailService.send(emailData);
+	} else {
+		await smtpService.send(emailData);
+	}
 }
 ```
 
@@ -1007,87 +996,85 @@ async function processEmailJob(job: ProcessingJob) {
 // apps/worker/src/lib/supabaseQueue.ts
 
 class SupabaseQueue {
-  // Configuration
-  private pollInterval: number = 5000; // 5 seconds
-  private batchSize: number = 5; // 5 concurrent jobs
+	// Configuration
+	private pollInterval: number = 5000; // 5 seconds
+	private batchSize: number = 5; // 5 concurrent jobs
 
-  async start(): Promise<void> {
-    console.log("Starting queue processor");
-    console.log(`Poll interval: ${this.pollInterval}ms`);
-    console.log(`Batch size: ${this.batchSize}`);
+	async start(): Promise<void> {
+		console.log('Starting queue processor');
+		console.log(`Poll interval: ${this.pollInterval}ms`);
+		console.log(`Batch size: ${this.batchSize}`);
 
-    // Process immediately on start
-    await this.processJobs();
+		// Process immediately on start
+		await this.processJobs();
 
-    // Set up polling interval
-    this.processingInterval = setInterval(async () => {
-      if (!this.isProcessing) {
-        await this.processJobs();
-      }
-    }, this.pollInterval);
-  }
+		// Set up polling interval
+		this.processingInterval = setInterval(async () => {
+			if (!this.isProcessing) {
+				await this.processJobs();
+			}
+		}, this.pollInterval);
+	}
 
-  private async processJobs(): Promise<void> {
-    if (this.isProcessing) return;
+	private async processJobs(): Promise<void> {
+		if (this.isProcessing) return;
 
-    this.isProcessing = true;
+		this.isProcessing = true;
 
-    try {
-      // ATOMIC: Claim pending jobs (prevents race conditions)
-      const { data: jobs, error } = await supabase.rpc("claim_pending_jobs", {
-        p_job_types: Array.from(this.processors.keys()),
-        p_batch_size: this.batchSize,
-      });
+		try {
+			// ATOMIC: Claim pending jobs (prevents race conditions)
+			const { data: jobs, error } = await supabase.rpc('claim_pending_jobs', {
+				p_job_types: Array.from(this.processors.keys()),
+				p_batch_size: this.batchSize
+			});
 
-      if (!jobs || jobs.length === 0) {
-        return; // No jobs to process
-      }
+			if (!jobs || jobs.length === 0) {
+				return; // No jobs to process
+			}
 
-      console.log(`Claimed ${jobs.length} job(s) for processing`);
+			console.log(`Claimed ${jobs.length} job(s) for processing`);
 
-      // Process jobs concurrently with error isolation
-      const results = await Promise.allSettled(
-        jobs.map((job) => this.processJob(job)),
-      );
+			// Process jobs concurrently with error isolation
+			const results = await Promise.allSettled(jobs.map((job) => this.processJob(job)));
 
-      // Log results
-      const successful = results.filter((r) => r.status === "fulfilled").length;
-      console.log(`Processed ${successful}/${jobs.length} jobs successfully`);
-    } finally {
-      this.isProcessing = false;
-    }
-  }
+			// Log results
+			const successful = results.filter((r) => r.status === 'fulfilled').length;
+			console.log(`Processed ${successful}/${jobs.length} jobs successfully`);
+		} finally {
+			this.isProcessing = false;
+		}
+	}
 
-  private async processJob(job: QueueJob): Promise<void> {
-    const processor = this.processors.get(job.job_type);
+	private async processJob(job: QueueJob): Promise<void> {
+		const processor = this.processors.get(job.job_type);
 
-    try {
-      // Update status to processing
-      await supabase
-        .from("queue_jobs")
-        .update({
-          status: "processing",
-          started_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
+		try {
+			// Update status to processing
+			await supabase
+				.from('queue_jobs')
+				.update({
+					status: 'processing',
+					started_at: new Date().toISOString()
+				})
+				.eq('id', job.id);
 
-      // Execute processor
-      const result = await processor(this.wrapJob(job));
+			// Execute processor
+			const result = await processor(this.wrapJob(job));
 
-      // Mark as completed (ATOMIC via RPC)
-      await supabase.rpc("complete_queue_job", {
-        p_job_id: job.id,
-        p_result: result,
-      });
-    } catch (error) {
-      // Mark as failed (ATOMIC via RPC)
-      await supabase.rpc("fail_queue_job", {
-        p_job_id: job.id,
-        p_error_message: error.message,
-        p_retry: job.attempts < job.max_attempts,
-      });
-    }
-  }
+			// Mark as completed (ATOMIC via RPC)
+			await supabase.rpc('complete_queue_job', {
+				p_job_id: job.id,
+				p_result: result
+			});
+		} catch (error) {
+			// Mark as failed (ATOMIC via RPC)
+			await supabase.rpc('fail_queue_job', {
+				p_job_id: job.id,
+				p_error_message: error.message,
+				p_retry: job.attempts < job.max_attempts
+			});
+		}
+	}
 }
 ```
 
@@ -1139,11 +1126,11 @@ $$ LANGUAGE plpgsql;
 ```typescript
 // Progress updates are non-blocking
 updateProgress: async (progress: JobProgress) => {
-  const success = await updateJobProgress(job.id, progress);
-  if (!success) {
-    // Log warning but continue job execution
-    console.warn("Progress update failed, continuing with job");
-  }
+	const success = await updateJobProgress(job.id, progress);
+	if (!success) {
+		// Log warning but continue job execution
+		console.warn('Progress update failed, continuing with job');
+	}
 };
 ```
 
@@ -1229,19 +1216,19 @@ private static handleSubscriptionError(): void {
 
 ```typescript
 // apps/worker/src/index.ts
-app.get("/health", async (req, res) => {
-  const stats = await queue.getStats();
+app.get('/health', async (req, res) => {
+	const stats = await queue.getStats();
 
-  res.json({
-    status: "healthy",
-    queue: {
-      pending: stats.pending,
-      processing: stats.processing,
-      completed: stats.completed,
-      failed: stats.failed,
-    },
-    uptime: process.uptime(),
-  });
+	res.json({
+		status: 'healthy',
+		queue: {
+			pending: stats.pending,
+			processing: stats.processing,
+			completed: stats.completed,
+			failed: stats.failed
+		},
+		uptime: process.uptime()
+	});
 });
 ```
 

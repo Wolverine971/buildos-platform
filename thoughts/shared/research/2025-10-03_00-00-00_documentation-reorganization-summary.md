@@ -488,23 +488,23 @@ TOTAL: 39 files moved/created
 ### Future Enhancements
 
 1. **Add More READMEs**
-   - `/apps/web/docs/technical/README.md`
-   - `/apps/web/docs/prompts/README.md`
-   - Feature-specific READMEs for existing features
+    - `/apps/web/docs/technical/README.md`
+    - `/apps/web/docs/prompts/README.md`
+    - Feature-specific READMEs for existing features
 
 2. **Create ADRs**
-   - Document architectural decisions in `/docs/architecture/decisions/`
+    - Document architectural decisions in `/docs/architecture/decisions/`
 
 3. **Add Architecture Diagrams**
-   - Visual diagrams in `/docs/architecture/diagrams/`
+    - Visual diagrams in `/docs/architecture/diagrams/`
 
 4. **Package Documentation**
-   - Expand `/packages/*/docs/` with usage guides
-   - Add CHANGELOG.md to packages
+    - Expand `/packages/*/docs/` with usage guides
+    - Add CHANGELOG.md to packages
 
 5. **Runbooks**
-   - Create incident response runbooks
-   - Add monitoring guides
+    - Create incident response runbooks
+    - Add monitoring guides
 
 ---
 

@@ -69,19 +69,19 @@ _Applying Lulu Cheng Meservey's Strategic Principles_
 ### The Sweet Spot Messages (All Three Circles)
 
 1. **"Your home base when your brain is everywhere"**
-   - True: We are the central hub
-   - Relevant: Mental overwhelm is universal
-   - Strategic: Positions as essential, not optional
+    - True: We are the central hub
+    - Relevant: Mental overwhelm is universal
+    - Strategic: Positions as essential, not optional
 
 2. **"Stop repeating yourself to AI"**
-   - True: Context persists across sessions
-   - Relevant: Everyone using ChatGPT/Claude frustrated by this
-   - Strategic: Creates new category of AI-native tools
+    - True: Context persists across sessions
+    - Relevant: Everyone using ChatGPT/Claude frustrated by this
+    - Strategic: Creates new category of AI-native tools
 
 3. **"Built by someone whose brain works like yours"**
-   - True: Founder has ADHD
-   - Relevant: Authenticity matters more than ever
-   - Strategic: Unassailable competitive advantage
+    - True: Founder has ADHD
+    - Relevant: Authenticity matters more than ever
+    - Strategic: Unassailable competitive advantage
 
 ---
 
@@ -111,23 +111,23 @@ _Applying Lulu Cheng Meservey's Strategic Principles_
 ### The Napoleon Principles Applied
 
 1. **Give a Cause Bigger Than the Task**
-   - Not: "Use our productivity app"
-   - But: "Reclaim your cognitive sovereignty in the AI age"
+    - Not: "Use our productivity app"
+    - But: "Reclaim your cognitive sovereignty in the AI age"
 
 2. **Brand Everything**
-   - Brain dumps → "Cognitive Downloads"
-   - Daily briefs → "Your Mission Control"
-   - Context building → "Thought Compounding"
+    - Brain dumps → "Cognitive Downloads"
+    - Daily briefs → "Your Mission Control"
+    - Context building → "Thought Compounding"
 
 3. **Be One of Them**
-   - Founder uses BuildOS daily, shares real struggles
-   - "I built this because I needed it"
-   - Show actual brain dumps, not polished demos
+    - Founder uses BuildOS daily, shares real struggles
+    - "I built this because I needed it"
+    - Show actual brain dumps, not polished demos
 
 4. **Shared Experience**
-   - Acknowledge universal struggles before solutions
-   - "We all pretend we have it together"
-   - Community of "recovering productivity tool addicts"
+    - Acknowledge universal struggles before solutions
+    - "We all pretend we have it together"
+    - Community of "recovering productivity tool addicts"
 
 ---
 
@@ -229,16 +229,16 @@ _Applying Lulu Cheng Meservey's Strategic Principles_
 ### Viral Moment Opportunities
 
 1. **The Productivity Tool Graveyard**
-   - Users share screenshots of all abandoned apps
-   - "Finally found my home base"
+    - Users share screenshots of all abandoned apps
+    - "Finally found my home base"
 
 2. **The Brain Dump Challenge**
-   - 60-second brain dump → organized project
-   - Before/after visualization
+    - 60-second brain dump → organized project
+    - Before/after visualization
 
 3. **The Context Comparison**
-   - Show ChatGPT conversation with repeated context
-   - vs. BuildOS one-click context paste
+    - Show ChatGPT conversation with repeated context
+    - vs. BuildOS one-click context paste
 
 ---
 
@@ -261,19 +261,19 @@ _Applying Lulu Cheng Meservey's Strategic Principles_
 ### The Trust Accelerators
 
 1. **Radical Transparency**
-   - Share revenue numbers
-   - Admit what doesn't work yet
-   - Show actual founder usage daily
+    - Share revenue numbers
+    - Admit what doesn't work yet
+    - Show actual founder usage daily
 
 2. **Community Proof**
-   - User stories over features
-   - Struggle acknowledgment before solutions
-   - Celebration of small wins
+    - User stories over features
+    - Struggle acknowledgment before solutions
+    - Celebration of small wins
 
 3. **Anti-Hype Positioning**
-   - "We're not revolutionary, just useful"
-   - "AI isn't magic, but it can help"
-   - "Perfect is the enemy of done"
+    - "We're not revolutionary, just useful"
+    - "AI isn't magic, but it can help"
+    - "Perfect is the enemy of done"
 
 ---
 

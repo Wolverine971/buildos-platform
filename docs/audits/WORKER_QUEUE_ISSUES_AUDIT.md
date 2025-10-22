@@ -35,24 +35,24 @@ If any job processor throws an unhandled error or returns a rejected promise, th
 ```typescript
 // In a job processor, if this happens:
 async function processSomeJob(job: ProcessingJob) {
-  const result = await someAsyncOperation(); // Throws unhandled error
-  // Worker crashes without cleanup
+	const result = await someAsyncOperation(); // Throws unhandled error
+	// Worker crashes without cleanup
 }
 ```
 
 **Fix Location:** `/apps/worker/src/index.ts` - Add to startup function:
 
 ```typescript
-process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  queue.stop();
-  process.exit(1);
+process.on('uncaughtException', (error) => {
+	console.error('Uncaught Exception:', error);
+	queue.stop();
+	process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-  queue.stop();
-  process.exit(1);
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+	queue.stop();
+	process.exit(1);
 });
 ```
 
@@ -67,9 +67,9 @@ process.on("unhandledRejection", (reason, promise) => {
 
 ```typescript
 this.processingInterval = setInterval(async () => {
-  if (!this.isProcessing) {
-    await this.processJobs(); // Async operation
-  }
+	if (!this.isProcessing) {
+		await this.processJobs(); // Async operation
+	}
 }, this.pollInterval);
 ```
 
@@ -125,7 +125,7 @@ The stalled job recovery interval is set to fire every 60 seconds:
 
 ```typescript
 this.stalledJobInterval = setInterval(async () => {
-  await this.recoverStalledJobs();
+	await this.recoverStalledJobs();
 }, 60000); // 60 seconds
 ```
 
@@ -215,7 +215,7 @@ In briefWorker.ts (lines 31-68), it handles missing data with fallbacks:
 ```typescript
 let briefDate = job.data.briefDate;
 if (!briefDate) {
-  // Falls back to "today" - but what if timezone is wrong?
+	// Falls back to "today" - but what if timezone is wrong?
 }
 ```
 
@@ -276,29 +276,22 @@ Timezone is fetched twice in scheduler with different fallbacks:
 
 ```typescript
 // Line 59-67: First fetch during queueBriefGeneration
-const { data: user } = await supabase
-  .from("users")
-  .select("timezone")
-  .eq("id", userId)
-  .single();
+const { data: user } = await supabase.from('users').select('timezone').eq('id', userId).single();
 
-const userTimezone = (user as any)?.timezone || timezone || "UTC";
+const userTimezone = (user as any)?.timezone || timezone || 'UTC';
 
 // Line 197-211: Second batch fetch during checkAndScheduleBriefs
-const { data: users } = await supabase
-  .from("users")
-  .select("id, timezone")
-  .in("id", userIds);
+const { data: users } = await supabase.from('users').select('id, timezone').in('id', userIds);
 
 const userTimezoneMap = new Map<string, string>();
 (users as any)?.forEach((user: any) => {
-  if (user.id && user.timezone) {
-    userTimezoneMap.set(user.id, user.timezone); // ONLY sets if timezone exists
-  }
+	if (user.id && user.timezone) {
+		userTimezoneMap.set(user.id, user.timezone); // ONLY sets if timezone exists
+	}
 });
 
 // Line 292: Used without null-check fallback
-userTimezoneMap.get(preference.user_id) || "UTC";
+userTimezoneMap.get(preference.user_id) || 'UTC';
 ```
 
 **Race Condition:**
@@ -319,16 +312,14 @@ Between lines 197-211 batch fetch and line 289-315 actual scheduling, user timez
 
 ```typescript
 if (ENGAGEMENT_BACKOFF_ENABLED) {
-  const engagementChecks = await Promise.allSettled(
-    preferences.map(async (preference) => {
-      if (!preference.user_id) return null;
-      const decision = await backoffCalculator.shouldSendDailyBrief(
-        preference.user_id,
-      );
-      // Each user makes a DB query to backoffCalculator
-      return { userId: preference.user_id, decision };
-    }),
-  );
+	const engagementChecks = await Promise.allSettled(
+		preferences.map(async (preference) => {
+			if (!preference.user_id) return null;
+			const decision = await backoffCalculator.shouldSendDailyBrief(preference.user_id);
+			// Each user makes a DB query to backoffCalculator
+			return { userId: preference.user_id, decision };
+		})
+	);
 }
 ```
 
@@ -357,8 +348,8 @@ In briefGenerator.ts, after generating brief, email job is queued with no verifi
 
 ```typescript
 // Queue email job (non-blocking)
-const emailJob = await queue.add("generate_brief_email", userId, jobData, {
-  // No await for confirmation
+const emailJob = await queue.add('generate_brief_email', userId, jobData, {
+	// No await for confirmation
 });
 
 // Could return before email job is actually in queue
@@ -535,19 +526,19 @@ app.get("/health", async (_req, res) => {
 
 ```typescript
 // Type assertion without validation
-let timezone = (user as any)?.timezone || job.data.timezone || "UTC";
+let timezone = (user as any)?.timezone || job.data.timezone || 'UTC';
 ```
 
 And in timezone validation:
 
 ```typescript
 function isValidTimezone(timezone: string): boolean {
-  try {
-    getTimezoneOffset(timezone, new Date());
-    return true;
-  } catch (error) {
-    return false; // Only logs warning, doesn't throw
-  }
+	try {
+		getTimezoneOffset(timezone, new Date());
+		return true;
+	} catch (error) {
+		return false; // Only logs warning, doesn't throw
+	}
 }
 ```
 
@@ -570,22 +561,22 @@ During DST transition:
 
 ```typescript
 function calculateDailyRunTime(
-  now: Date,
-  hours: number,
-  minutes: number,
-  seconds: number,
-  timezone: string,
+	now: Date,
+	hours: number,
+	minutes: number,
+	seconds: number,
+	timezone: string
 ): Date {
-  const nowInUserTz = utcToZonedTime(now, timezone);
-  // At 2 AM spring forward: clocks jump to 3 AM
-  // calculateDailyRunTime scheduled for 2:30 AM will:
-  // 1. Not exist today (skips to tomorrow)
-  // 2. Might be 7+ hours early/late
+	const nowInUserTz = utcToZonedTime(now, timezone);
+	// At 2 AM spring forward: clocks jump to 3 AM
+	// calculateDailyRunTime scheduled for 2:30 AM will:
+	// 1. Not exist today (skips to tomorrow)
+	// 2. Might be 7+ hours early/late
 
-  let targetInUserTz = setHours(nowInUserTz, hours);
-  targetInUserTz = setMinutes(targetInUserTz, minutes);
-  targetInUserTz = setSeconds(targetInUserTz, seconds);
-  // ...
+	let targetInUserTz = setHours(nowInUserTz, hours);
+	targetInUserTz = setMinutes(targetInUserTz, minutes);
+	targetInUserTz = setSeconds(targetInUserTz, seconds);
+	// ...
 }
 ```
 

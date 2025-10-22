@@ -4,10 +4,10 @@ researcher: Claude Code
 git_commit: 7f656fbcf6fea7de9adf752040d4677117b0eec0
 branch: main
 repository: buildos-platform
-topic: "Notification Preferences Refactor - Implementation Phases"
+topic: 'Notification Preferences Refactor - Implementation Phases'
 tags: [implementation, phases, notifications, refactor, migration-plan]
 status: in_progress
-progress: "Phase 4 of 9 complete (Database migrations and functions ready)"
+progress: 'Phase 4 of 9 complete (Database migrations and functions ready)'
 last_updated: 2025-10-16
 last_updated_by: Claude Code
 ---
@@ -129,42 +129,42 @@ SELECT
 ```typescript
 // BEFORE
 export interface UserNotificationPreferences {
-  id?: string;
-  user_id?: string;
-  event_type: EventType; // <-- REMOVE
-  push_enabled: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
-  in_app_enabled: boolean;
-  // ... rest
+	id?: string;
+	user_id?: string;
+	event_type: EventType; // <-- REMOVE
+	push_enabled: boolean;
+	email_enabled: boolean;
+	sms_enabled: boolean;
+	in_app_enabled: boolean;
+	// ... rest
 }
 
 // AFTER
 export interface UserNotificationPreferences {
-  id?: string;
-  user_id?: string;
-  // event_type removed
-  push_enabled: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
-  in_app_enabled: boolean;
-  // ... rest
+	id?: string;
+	user_id?: string;
+	// event_type removed
+	push_enabled: boolean;
+	email_enabled: boolean;
+	sms_enabled: boolean;
+	in_app_enabled: boolean;
+	// ... rest
 }
 
 // Update UserNotification interface
 export interface UserNotification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: string;
-  event_type?: string; // <-- ADD (optional for now)
-  action_url?: string;
-  priority?: string;
-  created_at?: string;
-  read_at?: string;
-  dismissed_at?: string;
-  expires_at?: string;
+	id: string;
+	user_id: string;
+	title: string;
+	message: string;
+	type: string;
+	event_type?: string; // <-- ADD (optional for now)
+	action_url?: string;
+	priority?: string;
+	created_at?: string;
+	read_at?: string;
+	dismissed_at?: string;
+	expires_at?: string;
 }
 ```
 
@@ -668,18 +668,18 @@ DELETE FROM user_notifications WHERE event_type = 'test.event';
 ```typescript
 // BEFORE
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .eq("event_type", eventType) // REMOVE
-  .single();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.eq('event_type', eventType) // REMOVE
+	.single();
 
 // AFTER
 const { data: preferences } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	.maybeSingle();
 ```
 
 #### 5.2 Brief Worker
@@ -691,18 +691,18 @@ const { data: preferences } = await supabase
 ```typescript
 // BEFORE
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", user.id)
-  .eq("event_type", "user") // REMOVE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', user.id)
+	.eq('event_type', 'user') // REMOVE
+	.maybeSingle();
 
 // AFTER
 const { data: notificationPrefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief, should_sms_daily_brief")
-  .eq("user_id", user.id)
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief, should_sms_daily_brief')
+	.eq('user_id', user.id)
+	.maybeSingle();
 ```
 
 #### 5.3 Email Adapter
@@ -714,18 +714,18 @@ const { data: notificationPrefs } = await supabase
 ```typescript
 // BEFORE
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("email_enabled")
-  .eq("user_id", delivery.user_id)
-  .eq("event_type", delivery.event_type) // REMOVE
-  .single();
+	.from('user_notification_preferences')
+	.select('email_enabled')
+	.eq('user_id', delivery.user_id)
+	.eq('event_type', delivery.event_type) // REMOVE
+	.single();
 
 // AFTER
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("email_enabled")
-  .eq("user_id", delivery.user_id)
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('email_enabled')
+	.eq('user_id', delivery.user_id)
+	.maybeSingle();
 ```
 
 #### 5.4 SMS Adapter
@@ -743,18 +743,18 @@ const { data: prefs } = await supabase
 ```typescript
 // BEFORE
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // REMOVE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // REMOVE
+	.maybeSingle();
 
 // AFTER
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.maybeSingle();
 ```
 
 #### 5.6 Email Worker
@@ -766,18 +766,18 @@ const { data: prefs } = await supabase
 ```typescript
 // BEFORE
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .eq("event_type", "user") // REMOVE
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.eq('event_type', 'user') // REMOVE
+	.maybeSingle();
 
 // AFTER
 const { data: prefs } = await supabase
-  .from("user_notification_preferences")
-  .select("should_email_daily_brief")
-  .eq("user_id", userId)
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('should_email_daily_brief')
+	.eq('user_id', userId)
+	.maybeSingle();
 ```
 
 #### 5.7 Notification Worker
@@ -788,22 +788,22 @@ const { data: prefs } = await supabase
 
 ```typescript
 // BEFORE
-await supabase.from("user_notifications").insert({
-  user_id: delivery.user_id,
-  title: delivery.title,
-  message: delivery.message,
-  type: delivery.notification_type,
-  priority: delivery.priority,
+await supabase.from('user_notifications').insert({
+	user_id: delivery.user_id,
+	title: delivery.title,
+	message: delivery.message,
+	type: delivery.notification_type,
+	priority: delivery.priority
 });
 
 // AFTER
-await supabase.from("user_notifications").insert({
-  user_id: delivery.user_id,
-  title: delivery.title,
-  message: delivery.message,
-  type: delivery.notification_type,
-  event_type: delivery.event_type, // ADD
-  priority: delivery.priority,
+await supabase.from('user_notifications').insert({
+	user_id: delivery.user_id,
+	title: delivery.title,
+	message: delivery.message,
+	type: delivery.notification_type,
+	event_type: delivery.event_type, // ADD
+	priority: delivery.priority
 });
 ```
 
@@ -840,27 +840,27 @@ pnpm build
 ```typescript
 // BEFORE
 export const GET: RequestHandler = async ({ url, locals }) => {
-  const eventType = url.searchParams.get("event_type"); // REMOVE
+	const eventType = url.searchParams.get('event_type'); // REMOVE
 
-  const { data } = await supabase
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("event_type", eventType || "user") // REMOVE
-    .maybeSingle();
+	const { data } = await supabase
+		.from('user_notification_preferences')
+		.select('*')
+		.eq('user_id', user.id)
+		.eq('event_type', eventType || 'user') // REMOVE
+		.maybeSingle();
 
-  return json(data || getDefaults(eventType));
+	return json(data || getDefaults(eventType));
 };
 
 // AFTER
 export const GET: RequestHandler = async ({ url, locals }) => {
-  const { data } = await supabase
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+	const { data } = await supabase
+		.from('user_notification_preferences')
+		.select('*')
+		.eq('user_id', user.id)
+		.maybeSingle();
 
-  return json(data || getDefaults());
+	return json(data || getDefaults());
 };
 ```
 
@@ -868,33 +868,33 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 ```typescript
 // BEFORE
-const eventType = body.event_type || "user"; // REMOVE
+const eventType = body.event_type || 'user'; // REMOVE
 
-const { error } = await supabase.from("user_notification_preferences").upsert(
-  {
-    user_id: user.id,
-    event_type: eventType, // REMOVE
-    push_enabled: body.push_enabled,
-    email_enabled: body.email_enabled,
-    // ... other fields
-  },
-  {
-    onConflict: "user_id,event_type", // CHANGE
-  },
+const { error } = await supabase.from('user_notification_preferences').upsert(
+	{
+		user_id: user.id,
+		event_type: eventType, // REMOVE
+		push_enabled: body.push_enabled,
+		email_enabled: body.email_enabled
+		// ... other fields
+	},
+	{
+		onConflict: 'user_id,event_type' // CHANGE
+	}
 );
 
 // AFTER
-const { error } = await supabase.from("user_notification_preferences").upsert(
-  {
-    user_id: user.id,
-    // NO event_type field
-    push_enabled: body.push_enabled,
-    email_enabled: body.email_enabled,
-    // ... other fields
-  },
-  {
-    onConflict: "user_id", // CHANGED
-  },
+const { error } = await supabase.from('user_notification_preferences').upsert(
+	{
+		user_id: user.id,
+		// NO event_type field
+		push_enabled: body.push_enabled,
+		email_enabled: body.email_enabled
+		// ... other fields
+	},
+	{
+		onConflict: 'user_id' // CHANGED
+	}
 );
 ```
 
@@ -921,11 +921,11 @@ async getDefaults(): UserNotificationPreferences
 ```typescript
 // Remove .eq('event_type', eventType) from all queries
 const { data } = await supabase
-  .from("user_notification_preferences")
-  .select("*")
-  .eq("user_id", userId)
-  // NO event_type filter
-  .maybeSingle();
+	.from('user_notification_preferences')
+	.select('*')
+	.eq('user_id', userId)
+	// NO event_type filter
+	.maybeSingle();
 ```
 
 **Consolidate defaults (Line 231-322)**:
@@ -989,29 +989,29 @@ async load() {
 ```typescript
 // BEFORE
 export interface UserNotificationPreferences {
-  id: string;
-  user_id: string;
-  event_type: string; // REMOVE
-  // ... other fields
+	id: string;
+	user_id: string;
+	event_type: string; // REMOVE
+	// ... other fields
 }
 
 // AFTER
 export interface UserNotificationPreferences {
-  id: string;
-  user_id: string;
-  // NO event_type field
-  // ... other fields
+	id: string;
+	user_id: string;
+	// NO event_type field
+	// ... other fields
 }
 
 // Update UserNotification interface (Line 1199-1211)
 export interface UserNotification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: string;
-  event_type?: string | null; // ADD
-  // ... other fields
+	id: string;
+	user_id: string;
+	title: string;
+	message: string;
+	type: string;
+	event_type?: string | null; // ADD
+	// ... other fields
 }
 ```
 
@@ -1047,9 +1047,9 @@ pnpm build
 
 ```typescript
 // BEFORE
-await notificationPreferencesService.get("brief.completed");
-await notificationPreferencesService.update("brief.completed", {
-  email_enabled: true,
+await notificationPreferencesService.get('brief.completed');
+await notificationPreferencesService.update('brief.completed', {
+	email_enabled: true
 });
 
 // AFTER
@@ -1239,14 +1239,14 @@ COMMIT;
 ### High-Risk Phases:
 
 - **Phase 3** (Migration) - Destructive operation
-  - Mitigation: Comprehensive testing on staging with production data copy
-  - Mitigation: Backup table created in Phase 1
-  - Mitigation: Transaction-based migration (can rollback)
+    - Mitigation: Comprehensive testing on staging with production data copy
+    - Mitigation: Backup table created in Phase 1
+    - Mitigation: Transaction-based migration (can rollback)
 
 - **Phase 5-6** (Worker/Web updates) - Affects live notification delivery
-  - Mitigation: Deploy during low-traffic period
-  - Mitigation: Monitor error logs closely
-  - Mitigation: Keep rollback plan ready
+    - Mitigation: Deploy during low-traffic period
+    - Mitigation: Monitor error logs closely
+    - Mitigation: Keep rollback plan ready
 
 ### Monitoring:
 
