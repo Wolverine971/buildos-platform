@@ -16,6 +16,7 @@
 		AlertCircle,
 		Bell,
 		XCircle,
+		X,
 		CreditCard
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
@@ -209,12 +210,12 @@
 	}
 
 	// Handle success messages from child components
-	function handleComponentSuccess(event) {
+	function handleComponentSuccess(event: CustomEvent<{ message?: string }>) {
 		showSuccess(event.detail?.message || 'Changes saved successfully!');
 	}
 
 	// Handle error messages from child components
-	function handleComponentError(event) {
+	function handleComponentError(event: CustomEvent<{ message?: string }>) {
 		showError(event.detail?.message || 'An error occurred');
 	}
 
@@ -242,7 +243,15 @@
 					return acc;
 				},
 				{} as Record<string, boolean>
-			)
+			),
+			categoryCompletion: storeState.progress.completedCategories.reduce(
+				(acc, cat) => {
+					acc[cat] = true;
+					return acc;
+				},
+				{} as Record<string, boolean>
+			),
+			missingCategories: storeState.progress.missingCategories
 		};
 	}
 </script>
@@ -458,17 +467,19 @@
 									>
 										${(
 											data.subscriptionDetails.subscription.subscription_plans
-												?.price / 100
+												?.price_cents / 100
 										).toFixed(2)}
 										<span class="text-sm font-normal text-gray-500"
 											>/{data.subscriptionDetails.subscription
-												.subscription_plans?.interval}</span
+												.subscription_plans?.billing_interval}</span
 										>
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-										Next billing: {new Date(
-											data.subscriptionDetails.subscription.current_period_end
-										).toLocaleDateString()}
+										Next billing: {data.subscriptionDetails.subscription.current_period_end
+											? new Date(
+													data.subscriptionDetails.subscription.current_period_end
+												).toLocaleDateString()
+											: 'N/A'}
 									</p>
 								</div>
 							</div>
@@ -494,9 +505,11 @@
 											Member since
 										</p>
 										<p class="text-sm text-gray-600 dark:text-gray-400">
-											{new Date(
-												data.subscriptionDetails.subscription.created_at
-											).toLocaleDateString()}
+											{data.subscriptionDetails.subscription.created_at
+												? new Date(
+														data.subscriptionDetails.subscription.created_at
+													).toLocaleDateString()
+												: 'N/A'}
 										</p>
 									</div>
 								</div>
@@ -557,9 +570,11 @@
 												<p
 													class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
 												>
-													{new Date(
-														invoice.created_at
-													).toLocaleDateString()}
+													{invoice.created_at
+														? new Date(
+																invoice.created_at
+															).toLocaleDateString()
+														: 'N/A'}
 												</p>
 											</div>
 											<div class="text-left sm:text-right">
@@ -737,12 +752,7 @@
 
 							<div class="p-6 overflow-y-auto max-h-[60vh]">
 								<div class="space-y-4">
-									<FormField
-										label="Name"
-										labelFor="templateName"
-										required
-										size="md"
-									>
+									<FormField label="Name" labelFor="templateName" required>
 										<TextInput
 											id="templateName"
 											name="name"
@@ -753,11 +763,7 @@
 											size="md"
 										/>
 									</FormField>
-									<FormField
-										label="Description"
-										labelFor="templateDescription"
-										size="md"
-									>
+									<FormField label="Description" labelFor="templateDescription">
 										<TextInput
 											id="templateDescription"
 											name="description"

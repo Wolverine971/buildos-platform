@@ -3,7 +3,16 @@
 	import { FileText, FolderOpen, CheckSquare, StickyNote, Brain, Calendar } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 
-	export let activities: any[] = [];
+	interface Activity {
+		activity_type: string;
+		object_name?: string;
+		title?: string;
+		created_at: string;
+		project_name?: string;
+		details?: string;
+	}
+
+	export let activities: Activity[] = [];
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 	onMount(() => {
@@ -12,7 +21,7 @@
 
 	// Sort activities by date (most recent first)
 	$: sortedActivities = activities
-		.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 		.slice(0, 20); // Show last 20 activities
 
 	function getActivityIcon(type: string) {
@@ -66,7 +75,7 @@
 		}
 	}
 
-	function formatActivityText(activity: any) {
+	function formatActivityText(activity: Activity) {
 		const action = activity.activity_type.replace('_', ' ');
 		const object = activity.object_name || activity.title || 'item';
 		return `${action} "${object}"`;

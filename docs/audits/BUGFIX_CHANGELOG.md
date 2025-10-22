@@ -80,12 +80,28 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 4. ✅ SELECT statements use `'*'` for automatic schema adaptation
 5. ⏳ Physical column removal scheduled for 2025-10-29 (migration includes safety check)
 
-**Post-Migration Actions** (After 2025-10-29):
+**Post-Migration Verification** (Completed 2025-10-22):
 
-1. Regenerate TypeScript types again (`pnpm gen:types && pnpm gen:schema`)
-2. Rebuild shared-types package
-3. Verify types no longer include deprecated fields
-4. No code changes needed (already using `'*'` selects)
+1. ✅ Regenerated TypeScript types (`pnpm gen:types && pnpm gen:schema`)
+2. ✅ Rebuilt shared-types package successfully
+3. ✅ Verified deprecated fields completely removed from types:
+    - `daily_brief_sms` - NOT FOUND in database.schema.ts ✅
+    - `task_reminders` - NOT FOUND in database.schema.ts ✅
+    - `next_up_enabled` - NOT FOUND in database.schema.ts ✅
+4. ✅ Confirmed user_sms_preferences table has only 17 valid fields (down from 20)
+5. ✅ No code changes needed (already using `'*'` selects)
+6. ✅ Migration applied successfully - all deprecated columns dropped from database
+
+**Final Schema** (`user_sms_preferences` table after migration):
+
+- phone_number, phone_verified, phone_verified_at
+- opted_out, opted_out_at, opt_out_reason
+- event_reminders_enabled, event_reminder_lead_time_minutes
+- morning_kickoff_enabled, morning_kickoff_time
+- evening_recap_enabled
+- quiet_hours_start, quiet_hours_end
+- daily_sms_limit, daily_sms_count, daily_count_reset_at
+- urgent_alerts
 
 ---
 

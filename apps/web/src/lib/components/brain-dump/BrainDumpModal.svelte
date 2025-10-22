@@ -194,6 +194,10 @@
 	// Auto-save - use regular variable for timers (not reactive)
 	let autoSaveTimeout: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
 	let isAutoSaving = $state(false);
+	// CRITICAL FIX FOR BUG #3: Track if save is pending (queued or executing)
+	// This provides proper mutual exclusion between auto-save and parse operations
+	// True if: save timeout is set OR save is actively executing
+	let saveOperationPending = $state(false);
 	let componentMounted = $state(true);
 	let cleanupCompleted = false;
 
@@ -207,6 +211,10 @@
 
 	// Project questions state
 	let displayedQuestions = $state<DisplayedBrainDumpQuestion[]>([]);
+
+	// CRITICAL FIX FOR BUG #1: Flag to prevent auto-save during initial data load
+	// This prevents race conditions where auto-save creates a new draft before initial load completes
+	let initialLoadComplete = $state(false);
 
 	// Computed states - use derived values
 	// Use $derived for computed values in Svelte 5
@@ -362,6 +370,10 @@
 
 	async function initializeModal() {
 		cleanupCompleted = false;
+		// CRITICAL FIX FOR BUG #1: Reset initial load flag at the start of initialization
+		// This prevents auto-save from firing until after initial data is loaded
+		initialLoadComplete = false;
+
 		// Clean up any stale abort controllers from previous sessions
 		if (abortController) {
 			console.log('[BrainDumpModal] Cleaning up stale abort controller on init');
@@ -515,6 +527,12 @@
 			console.error('Failed to load brain dump data:', error);
 			// Don't show error toast for background data loading
 			// The UI is still functional even without the data
+		} finally {
+			// CRITICAL FIX FOR BUG #1: Mark initial load as complete
+			// This allows auto-save to start firing (it was blocked during initial load)
+			// This prevents race conditions where auto-save creates a new draft before we load the existing one
+			initialLoadComplete = true;
+			console.log('[BrainDumpModal] Initial data load complete - auto-save enabled');
 		}
 	}
 
@@ -786,9 +804,24 @@
 			clearTimeout(autoSaveTimeout);
 		}
 
+		// CRITICAL FIX FOR BUG #3: Mark save as pending (queued)
+		// This prevents parse from starting while save is in the queue
+		saveOperationPending = true;
+
 		autoSaveTimeout = setTimeout(async () => {
-			if (componentMounted && $hasUnsavedChanges && !isProcessing && !isAutoSaving) {
+			// CRITICAL FIX FOR BUG #1: Don't auto-save until initial load completes
+			// This prevents auto-save from creating a new draft before we load the existing one
+			if (
+				componentMounted &&
+				$hasUnsavedChanges &&
+				!isProcessing &&
+				!isAutoSaving &&
+				initialLoadComplete
+			) {
 				await autoSave();
+			} else {
+				// If save didn't execute, mark as no longer pending
+				saveOperationPending = false;
 			}
 		}, 2000);
 	}
@@ -837,6 +870,9 @@
 			});
 		} finally {
 			isAutoSaving = false;
+			// CRITICAL FIX FOR BUG #3: Mark save as no longer pending
+			// This allows parse operations to proceed
+			saveOperationPending = false;
 			// Only clear controller if this is still the active one
 			// (it might have been replaced by a newer save operation)
 			if (saveAbortController?.signal === signal) {
@@ -894,13 +930,23 @@
 			mutex: isProcessing
 		});
 
-		// PHASE 3: If auto-save is in progress, abort it and wait briefly for cleanup
+		// CRITICAL FIX FOR BUG #3: If auto-save is pending (queued or executing), abort it and wait for cleanup
 		// This prevents race conditions between save and parse operations
-		if (isAutoSaving && saveAbortController) {
-			console.log('[Parse] Aborting active auto-save before parsing');
-			saveAbortController.abort();
-			// Brief wait for cleanup
-			await new Promise((resolve) => setTimeout(resolve, 50));
+		// - If it's queued: clear the timeout
+		// - If it's executing: abort the request via AbortController
+		if (saveOperationPending) {
+			if (autoSaveTimeout) {
+				console.log('[Parse] Clearing pending auto-save timeout before parsing');
+				clearTimeout(autoSaveTimeout);
+				autoSaveTimeout = null;
+				saveOperationPending = false;
+			}
+			if (isAutoSaving && saveAbortController) {
+				console.log('[Parse] Aborting active auto-save before parsing');
+				saveAbortController.abort();
+				// Wait briefly for abort to propagate
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
 		}
 
 		// Clear any existing parse results before starting new parsing

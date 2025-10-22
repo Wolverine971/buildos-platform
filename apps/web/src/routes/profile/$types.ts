@@ -1,5 +1,12 @@
 // apps/web/src/routes/profile/$types.ts
-import type { PageServerLoad, Actions } from './$types';
+import type { Database } from '@buildos/shared-types';
+
+type SubscriptionDetails = {
+	subscription: Database['public']['Tables']['customer_subscriptions']['Row'] & {
+		subscription_plans: Database['public']['Tables']['subscription_plans']['Row'] | null;
+	};
+	invoices: Database['public']['Tables']['invoices']['Row'][];
+};
 
 export interface PageData {
 	user: {
@@ -9,52 +16,22 @@ export interface PageData {
 			name?: string;
 		};
 	};
-	userContext: {
-		user_id: string;
-		background?: string;
-		identity?: string;
-		values?: string;
-		personality?: string;
-		active_projects?: string;
-		goals_overview?: string;
-		philosophies?: string;
-		worldview?: string;
-		principles?: string;
-		habits?: string;
-		workflows?: string;
-		tools?: string;
-		schedule_preferences?: string;
-		work_style?: string;
-		blockers?: string;
-		collaboration_needs?: string;
-		skill_gaps?: string;
-		aspirations?: string;
-		priorities?: string;
-		onboarding_completed_at?: string;
-		created_at?: string;
-		updated_at?: string;
-	} | null;
+	userContext: Database['public']['Tables']['user_context']['Row'] | null;
 	progressData: {
 		completed: boolean;
 		progress: number;
 		missingFields: string[];
 		completedFields: string[];
 		missingRequiredFields: string[];
-		categoryProgress: Record<string, number>;
+		categoryProgress: Record<string, boolean>;
+		categoryCompletion: Record<string, boolean>;
+		missingCategories: string[];
 	};
-	projectTemplates: Array<{
-		id: string;
-		user_id: string | null;
-		name: string;
-		description: string | null;
-		template_content: string;
-		in_use: boolean | null;
-		is_default: boolean | null;
-		variables: any;
-		created_at: string | null;
-		updated_at: string | null;
-	}>;
+	projectTemplates: Database['public']['Tables']['project_brief_templates']['Row'][];
 	completedOnboarding: boolean;
 	isAdmin: boolean;
 	justCompletedOnboarding: boolean;
+	activeTab: string;
+	subscriptionDetails: SubscriptionDetails | null;
+	stripeEnabled: boolean;
 }

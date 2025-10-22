@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/sms/verify/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@buildos/supabase-client';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -9,9 +9,6 @@ import {
 	PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID
 } from '$env/static/private';
-
-import { PRIVATE_SUPABASE_SERVICE_KEY, PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 const twilioClient = new TwilioClient({
 	accountSid: PRIVATE_TWILIO_ACCOUNT_SID,
@@ -34,13 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Check if phone number is already verified by another user
-
-		const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
-			auth: {
-				autoRefreshToken: false,
-				persistSession: false
-			}
-		});
+		const supabase = createServiceClient();
 		const { data: existingUser } = await supabase
 			.from('user_sms_preferences')
 			.select('user_id')

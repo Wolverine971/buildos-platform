@@ -1,7 +1,7 @@
 // apps/worker/src/workers/smsWorker.ts
 import type { LegacyJob } from './shared/jobAdapter';
 import { SMSService, TwilioClient } from '@buildos/twilio-service';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@buildos/supabase-client';
 import {
 	type SMSJobData,
 	notifyUser,
@@ -23,10 +23,7 @@ const twilioConfig = {
 };
 
 // Initialize Supabase client (used for SMS service and job processing)
-const supabase = createClient(
-	(process.env.PUBLIC_SUPABASE_URL || '').trim(),
-	(process.env.PRIVATE_SUPABASE_SERVICE_KEY || '').trim()
-);
+const supabase = createServiceClient();
 
 // Only initialize if all required Twilio credentials are present
 if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingServiceSid) {
@@ -81,7 +78,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			// Check if scheduled SMS is still valid
 			const { data: scheduledSms, error: scheduledError } = await supabase
 				.from('scheduled_sms_messages')
-				.select('*, user_sms_preferences!inner(*)')
+				.select('*')
 				.eq('id', scheduled_sms_id)
 				.single();
 
@@ -108,11 +105,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				return { success: false, reason: 'cancelled' };
 			}
 
-			// Check quiet hours using correct function that handles minutes
-			const now = new Date();
-			const userPrefs = scheduledSms.user_sms_preferences;
+			// Fetch user preferences and timezone separately
+			const { data: userPrefData } = await supabase
+				.from('user_sms_preferences')
+				.select('quiet_hours_start, quiet_hours_end, daily_sms_limit, daily_sms_count')
+				.eq('user_id', user_id)
+				.single();
 
-			// Get user timezone from users table
 			const { data: userData } = await supabase
 				.from('users')
 				.select('timezone')
@@ -120,7 +119,15 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				.single();
 
 			const userTimezone = userData?.timezone || 'UTC';
+			const userPrefs = userPrefData || {
+				quiet_hours_start: null,
+				quiet_hours_end: null,
+				daily_sms_limit: null,
+				daily_sms_count: null
+			};
 
+			// Check quiet hours using correct function that handles minutes
+			const now = new Date();
 			const quietHoursResult = checkQuietHours(
 				now,
 				userPrefs.quiet_hours_start,
@@ -145,7 +152,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				await supabase.rpc('add_queue_job', {
 					p_user_id: user_id,
 					p_job_type: 'send_sms',
-					p_metadata: validatedData,
+					p_metadata: validatedData as any,
 					p_scheduled_for: quietHoursResult.rescheduleTime.toISOString(),
 					p_priority: priority === 'urgent' ? 1 : 10,
 					p_dedup_key: `sms_reschedule_${scheduled_sms_id}_${quietHoursResult.rescheduleTime.getTime()}`
@@ -161,7 +168,8 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			}
 
 			// Check daily limit
-			if (userPrefs.daily_sms_limit && userPrefs.daily_sms_count) {
+			// BUG FIX #1: Use null-check instead of truthy check to handle daily_sms_count = 0
+		if (userPrefs.daily_sms_limit != null && userPrefs.daily_sms_count != null) {
 				if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
 					console.log(
 						`[SMS Worker] Daily SMS limit reached (${userPrefs.daily_sms_count}/${userPrefs.daily_sms_limit}), skipping`
@@ -189,7 +197,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 					.eq('calendar_event_id', scheduledSms.calendar_event_id)
 					.single();
 
-				if (!event || event.sync_status === 'deleted') {
+				if (!event || event.sync_status === 'cancelled') {
 					console.log(
 						`[SMS Worker] Calendar event ${scheduledSms.calendar_event_id} no longer exists, cancelling SMS`
 					);
@@ -292,11 +300,6 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 					updated_at: new Date().toISOString()
 				})
 				.eq('id', scheduled_sms_id);
-
-			// Increment daily SMS count
-			await supabase.rpc('increment_daily_sms_count', {
-				p_user_id: user_id
-			});
 
 			console.log(
 				`[SMS Worker] Successfully linked and updated scheduled SMS ${scheduled_sms_id}`
@@ -424,7 +427,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			await supabase.rpc('add_queue_job', {
 				p_user_id: user_id,
 				p_job_type: 'send_sms',
-				p_metadata: validatedData,
+				p_metadata: validatedData as any,
 				p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
 				p_priority: priority === 'urgent' ? 1 : 10
 			});

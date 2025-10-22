@@ -62,20 +62,11 @@
 	/* Apple-quality tab container */
 	.tab-container {
 		border-bottom: 1px solid rgb(229 231 235);
-		/* background: white; */
 		position: relative;
-		/* margin-bottom: 1rem; */
-	}
-
-	@media (min-width: 640px) {
-		.tab-container {
-			/* margin-bottom: 1.5rem; */
-		}
 	}
 
 	:global(.dark) .tab-container {
 		border-bottom-color: rgb(55 65 81);
-		/* background: rgb(31 41 55); */
 	}
 
 	/* Tab navigation with smooth scrolling */

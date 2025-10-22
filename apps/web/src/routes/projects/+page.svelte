@@ -8,6 +8,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
+	import type { ActionResult } from '@sveltejs/kit';
 
 	// Core components - loaded immediately
 	import TabNav from '$lib/components/ui/TabNav.svelte';
@@ -481,7 +482,7 @@
 
 	// Form enhancement
 	const createProjectEnhancement = () => {
-		return async ({ result }) => {
+		return async ({ result }: { result: ActionResult }) => {
 			creatingProject = false;
 
 			if (result.type === 'redirect') {
@@ -756,8 +757,8 @@
 
 <!-- Modals - Lazy loaded -->
 {#if NewProjectModal}
-	<svelte:component
-		this={NewProjectModal}
+	{@const Modal = NewProjectModal}
+	<Modal
 		isOpen={showNewProjectModal}
 		{creatingProject}
 		isFirstProject={projects.length === 0}
@@ -769,8 +770,8 @@
 {/if}
 
 {#if ProjectBriefModal}
-	<svelte:component
-		this={ProjectBriefModal}
+	{@const Modal = ProjectBriefModal}
+	<Modal
 		brief={selectedBrief}
 		isOpen={showBriefModal}
 		on:close={() => {
@@ -781,8 +782,8 @@
 {/if}
 
 {#if DailyBriefModal}
-	<svelte:component
-		this={DailyBriefModal}
+	{@const Modal = DailyBriefModal}
+	<Modal
 		isOpen={briefModalOpen}
 		briefDate={selectedBriefDate}
 		onClose={closeDailyBriefModal}
@@ -790,8 +791,8 @@
 {/if}
 
 {#if BrainDumpModal}
-	<svelte:component
-		this={BrainDumpModal}
+	{@const Modal = BrainDumpModal}
+	<Modal
 		isOpen={showBrainDumpModal}
 		project={selectedBrainDumpProject}
 		on:close={handleBrainDumpClose}
@@ -799,8 +800,8 @@
 {/if}
 
 {#if QuickProjectModal}
-	<svelte:component
-		this={QuickProjectModal}
+	{@const Modal = QuickProjectModal}
+	<Modal
 		isOpen={showQuickProjectModal}
 		on:close={handleQuickProjectClose}
 	/>

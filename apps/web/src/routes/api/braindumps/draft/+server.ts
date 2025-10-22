@@ -11,6 +11,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		const projectId = url.searchParams.get('projectId');
+		const excludeBrainDumpId = url.searchParams.get('excludeBrainDumpId');
 
 		// Build query based on whether projectId is provided
 		let query = supabase
@@ -26,6 +27,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			query = query.eq('project_id', projectId);
 		} else {
 			query = query.is('project_id', null);
+		}
+
+		// Exclude specified brain dump ID if provided (prevents reusing drafts already in use)
+		if (excludeBrainDumpId) {
+			query = query.neq('id', excludeBrainDumpId);
 		}
 
 		const { data, error } = await query.maybeSingle();
@@ -85,7 +91,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.badRequest('Invalid request body');
 		}
 
-		const { content, brainDumpId, selectedProjectId, forceNew } = body;
+		const { content, brainDumpId, selectedProjectId, forceNew, excludeBrainDumpId } = body;
 
 		if (!content || typeof content !== 'string' || content.trim().length === 0) {
 			return ApiResponse.validationError('content', 'Content is required');
@@ -105,15 +111,25 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// If no brainDumpId provided, check for existing draft for this project
 		if (!actualBrainDumpId) {
-			const { data: existingDraft } = await supabase
+			let query = supabase
 				.from('brain_dumps')
 				.select('id, status')
 				.eq('user_id', user.id)
 				.eq('project_id', selectedProjectId || null)
 				.in('status', ['pending', 'parsed'])
 				.order('updated_at', { ascending: false })
-				.limit(1)
-				.maybeSingle();
+				.limit(1);
+
+			// Exclude specified brain dump ID if provided (prevents reusing drafts already in use)
+			// This prevents race conditions where multiple requests try to save to the same brain dump
+			if (excludeBrainDumpId) {
+				query = query.neq('id', excludeBrainDumpId);
+				console.log(
+					`[Draft API] Excluding brain dump ${excludeBrainDumpId} from reuse search`
+				);
+			}
+
+			const { data: existingDraft } = await query.maybeSingle();
 
 			if (existingDraft) {
 				actualBrainDumpId = existingDraft.id;

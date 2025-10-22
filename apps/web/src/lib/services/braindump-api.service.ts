@@ -121,12 +121,13 @@ class BrainDumpService extends ApiClient {
 	/**
 	 * Save or update draft brain dump
 	 * @param signal - Optional AbortSignal for cancellation (Phase 3 optimization)
+	 * @param excludeBrainDumpId - Brain dump ID to exclude from reuse search (prevents race conditions)
 	 */
 	async saveDraft(
 		content: string,
 		brainDumpId?: string,
 		selectedProjectId?: string | null,
-		options?: { signal?: AbortSignal; forceNew?: boolean }
+		options?: { signal?: AbortSignal; forceNew?: boolean; excludeBrainDumpId?: string }
 	): Promise<{ data: { brainDumpId: string } }> {
 		const payload: Record<string, unknown> = {
 			content,
@@ -136,6 +137,12 @@ class BrainDumpService extends ApiClient {
 
 		if (options?.forceNew) {
 			payload.forceNew = true;
+		}
+
+		// Exclude specified brain dump ID from reuse search (prevents race conditions)
+		// This is critical when auto-save is triggered while another operation is processing
+		if (options?.excludeBrainDumpId) {
+			payload.excludeBrainDumpId = options.excludeBrainDumpId;
 		}
 
 		return this.post(

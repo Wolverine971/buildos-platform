@@ -436,10 +436,7 @@ async function sendNotification(
 				notificationDeliveryId: delivery.id
 			});
 			return {
-				success: true,
-				external_id: null,
-				skipped: true,
-				reason: 'SMS notifications disabled - only scheduled calendar reminders are sent'
+				success: true
 			};
 
 		default:

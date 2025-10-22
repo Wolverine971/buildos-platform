@@ -401,10 +401,10 @@ if (scheduled_sms_id) {
 		})
 		.eq('id', scheduled_sms_id);
 
-	// Increment daily SMS count
-	await supabase.rpc('increment_daily_sms_count', {
-		p_user_id: job.data.user_id
-	});
+	// Note: Daily SMS count is incremented in dailySmsWorker at scheduling time,
+	// not here at send time. This prevents race conditions and provides better
+	// accuracy (count represents scheduled messages, not sent messages).
+	// See dailySmsWorker.ts lines 418-423
 }
 ```
 

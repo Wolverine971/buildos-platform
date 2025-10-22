@@ -1,12 +1,43 @@
 // apps/web/src/routes/profile/+page.server.ts
-import { redirect, fail, Actions } from '@sveltejs/kit';
+import { redirect, fail, Actions, type RequestEvent } from '@sveltejs/kit';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
-import { PageServerLoad } from '../$types';
+import type { Database } from '@buildos/shared-types';
+
+// Type for subscription details
+type SubscriptionDetails = {
+	subscription: Database['public']['Tables']['customer_subscriptions']['Row'] & {
+		subscription_plans: Database['public']['Tables']['subscription_plans']['Row'] | null;
+	};
+	invoices: Database['public']['Tables']['invoices']['Row'][];
+};
+
+// Type for page load return
+type PageLoadReturn = {
+	user: any;
+	userContext: Database['public']['Tables']['user_context']['Row'] | null;
+	progressData: {
+		completed: boolean;
+		progress: number;
+		missingFields: string[];
+		completedFields: string[];
+		missingRequiredFields: string[];
+		categoryProgress: Record<string, boolean>;
+		categoryCompletion: Record<string, boolean>;
+		missingCategories: string[];
+	};
+	projectTemplates: Database['public']['Tables']['project_brief_templates']['Row'][];
+	completedOnboarding: boolean;
+	isAdmin: boolean;
+	justCompletedOnboarding: boolean;
+	activeTab: string;
+	subscriptionDetails: SubscriptionDetails | null;
+	stripeEnabled: boolean;
+};
 
 // Enhanced function to generate calendar auth URL with proper scopes
 function generateEnhancedCalendarAuthUrl(
@@ -43,7 +74,11 @@ function generateEnhancedCalendarAuthUrl(
 	return authUrl;
 }
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
+export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
+	const {
+		locals: { safeGetSession, supabase },
+		url
+	} = event;
 	const { user } = await safeGetSession();
 
 	if (!user) {
@@ -109,12 +144,11 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	// Get subscription data if Stripe is enabled
 	let subscription = null;
-	let subscriptionDetails = null;
+	let subscriptionDetails: SubscriptionDetails | null = null;
 	const stripeEnabled = StripeService.isEnabled();
 	if (stripeEnabled) {
-		const { data: subData } = await supabase
-			.from('customer_subscriptions')
-			.select(
+		const { data: subData } = await (
+			supabase.from('customer_subscriptions').select(
 				`
 				*,
 				subscription_plans (
@@ -126,7 +160,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 					interval_count
 				)
 			`
-			)
+			) as any
+		)
 			.eq('user_id', user.id)
 			.order('created_at', { ascending: false })
 			.limit(1)
@@ -139,13 +174,13 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			const { data: invoices } = await supabase
 				.from('invoices')
 				.select('*')
-				.eq('subscription_id', subscription.id)
+				.eq('subscription_id', subscription.id as string)
 				.order('created_at', { ascending: false })
 				.limit(10);
 
 			subscriptionDetails = {
-				subscription,
-				invoices: invoices || []
+				subscription: subscription as SubscriptionDetails['subscription'],
+				invoices: (invoices || []) as SubscriptionDetails['invoices']
 			};
 		}
 	}
@@ -172,36 +207,36 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 	}
 
 	// Enhanced progress data calculation for new structure
+	const categoryCompletion: Record<string, boolean> = {
+		projects: !!userContext?.input_projects?.trim(),
+		work_style: !!userContext?.input_work_style?.trim(),
+		challenges: !!userContext?.input_challenges?.trim(),
+		help_focus: !!userContext?.input_help_focus?.trim()
+	};
+
+	const missingCategoriesArray = ['projects', 'work_style', 'challenges', 'help_focus'].filter(
+		(category) => {
+			const inputField = `input_${category}` as any;
+			const value = userContext?.[inputField];
+			return !(value && typeof value === 'string' && (value as string).trim().length > 0);
+		}
+	);
+
+	const progressPercentage = userContext
+		? Math.round((Object.values(categoryCompletion).filter(Boolean).length / 4) * 100)
+		: 0;
+
 	const enhancedProgressData = {
-		...progressData,
-		// Add category-specific completion status
-		categoryCompletion: {
-			projects: !!userContext?.input_projects?.trim(),
-			work_style: !!userContext?.input_work_style?.trim(),
-			challenges: !!userContext?.input_challenges?.trim(),
-			help_focus: !!userContext?.input_help_focus?.trim()
-		},
-		// Calculate missing categories for new structure
-		missingCategories: ['projects', 'work_style', 'challenges', 'help_focus'].filter(
-			(category) => {
-				const inputField = `input_${category}` as keyof typeof userContext;
-				const value = userContext?.[inputField];
-				return !(value && typeof value === 'string' && value.trim().length > 0);
-			}
+		completed: completedOnboarding,
+		progress: progressPercentage,
+		missingFields: missingCategoriesArray,
+		completedFields: Object.keys(categoryCompletion).filter((cat) => categoryCompletion[cat]),
+		missingRequiredFields: missingCategoriesArray.filter((cat) =>
+			['projects', 'work_style', 'challenges'].includes(cat)
 		),
-		// Update progress percentage based on new structure
-		progress: userContext
-			? Math.round(
-					(Object.values({
-						projects: !!userContext?.input_projects?.trim(),
-						work_style: !!userContext?.input_work_style?.trim(),
-						challenges: !!userContext?.input_challenges?.trim(),
-						help_focus: !!userContext?.input_help_focus?.trim()
-					}).filter(Boolean).length /
-						4) *
-						100
-				)
-			: 0
+		categoryProgress: categoryCompletion as Record<string, boolean>,
+		categoryCompletion,
+		missingCategories: missingCategoriesArray
 	};
 
 	return {
@@ -432,13 +467,13 @@ export const actions: Actions = {
 
 			// Log activity
 			try {
-				await supabase.from('user_user_activity_logs').insert({
+				await supabase.from('user_activity_logs' as any).insert({
 					user_id: user.id,
 					activity_type: 'template_created',
 					metadata: {
-						template_id: template.id,
+						template_id: (template as any).id,
 						template_type: type,
-						template_name: template.name,
+						template_name: (template as any).name,
 						onboarding_version: '4_question_focused'
 					},
 					created_at: new Date().toISOString()
@@ -497,13 +532,13 @@ export const actions: Actions = {
 
 			// Log activity
 			try {
-				await supabase.from('user_user_activity_logs').insert({
+				await supabase.from('user_activity_logs' as any).insert({
 					user_id: user.id,
 					activity_type: 'template_updated',
 					metadata: {
 						template_id: id,
 						template_type: type,
-						template_name: template.name,
+						template_name: (template as any).name,
 						onboarding_version: '4_question_focused'
 					},
 					created_at: new Date().toISOString()
@@ -561,7 +596,7 @@ export const actions: Actions = {
 
 			// Log activity
 			try {
-				await supabase.from('user_activity_logs').insert({
+				await supabase.from('user_activity_logs' as any).insert({
 					user_id: user.id,
 					activity_type: 'template_set_active',
 					metadata: {
@@ -626,9 +661,9 @@ export const actions: Actions = {
 				.insert({
 					user_id: user.id,
 					name: name.trim(),
-					description: originalTemplate.description,
-					template_content: originalTemplate.template_content,
-					variables: originalTemplate.variables,
+					description: (originalTemplate as any).description,
+					template_content: (originalTemplate as any).template_content,
+					variables: (originalTemplate as any).variables,
 					in_use: true, // Set as active by default
 					is_default: false,
 					created_at: new Date().toISOString(),
@@ -644,7 +679,7 @@ export const actions: Actions = {
 
 			// Log activity
 			try {
-				await supabase.from('user_activity_logs').insert({
+				await supabase.from('user_activity_logs' as any).insert({
 					user_id: user.id,
 					activity_type: 'template_copied',
 					metadata: {
@@ -700,7 +735,7 @@ export const actions: Actions = {
 
 			// Log activity
 			try {
-				await supabase.from('user_activity_logs').insert({
+				await supabase.from('user_activity_logs' as any).insert({
 					user_id: user.id,
 					activity_type: 'template_deleted',
 					metadata: {

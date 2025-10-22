@@ -11,7 +11,7 @@
 		type RecipientSearchResult
 	} from '$lib/services/notification-test.service';
 	import { notificationRealDataService } from '$lib/services/notification-real-data.service';
-	import type { UserNotificationContext as NotificationContextType } from '../../users/[id]/notification-context/+server';
+	// import type { UserNotificationContext as NotificationContextType } from '../../users/[id]/notification-context/+server';
 	import type { EventType } from '@buildos/shared-types';
 	import type {
 		ChannelPayloads,
@@ -24,7 +24,7 @@
 
 	// User selection and context
 	let selectedUser = $state<RecipientSearchResult | null>(null);
-	let userContext = $state<NotificationContextType | null>(null);
+	let userContext = $state<UserNotificationContext | null>(null);
 	let contextLoading = $state(false);
 	let recipientSearch = $state('');
 	let searchResults = $state<RecipientSearchResult[]>([]);

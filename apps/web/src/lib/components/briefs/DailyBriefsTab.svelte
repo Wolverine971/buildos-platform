@@ -263,7 +263,7 @@
 					return;
 			}
 
-			const startDateString = startDate.toISOString().split('T')[0];
+			const startDateString = startDate.toISOString().split('T')[0] || '';
 			filtered = filtered.filter((brief) => brief.brief_date >= startDateString);
 		}
 
@@ -277,7 +277,7 @@
 		} else {
 			date.setDate(date.getDate() + 1);
 		}
-		const newDate = date.toISOString().split('T')[0];
+		const newDate = date.toISOString().split('T')[0] || '';
 
 		currentDate = newDate;
 		fetchBriefData(newDate);
@@ -371,15 +371,15 @@
 		unifiedGenerationState?.progress?.smoothedPercentage ||
 			(currentStreamingStatus
 				? Math.round(
-						(currentStreamingStatus.progress.projects.completed /
-							Math.max(1, currentStreamingStatus.progress.projects.total)) *
+						((currentStreamingStatus?.progress?.projects?.completed ?? 0) /
+							Math.max(1, currentStreamingStatus?.progress?.projects?.total ?? 1)) *
 							100
 					)
 				: 0)
 	);
 
 	// View configurations
-	const viewConfigs = [
+	const viewConfigs: Array<{ id: 'single' | 'list' | 'analytics'; label: string; icon: any }> = [
 		{ id: 'single', label: 'Today', icon: FileText },
 		{ id: 'list', label: 'History', icon: Calendar },
 		{ id: 'analytics', label: 'Analytics', icon: TrendingUp }
@@ -403,7 +403,7 @@
 		isToday &&
 			currentStreamingData?.projectBriefs?.length > 0 &&
 			currentStreamingStatus?.isGenerating
-			? currentStreamingData.projectBriefs
+			? (currentStreamingData?.projectBriefs ?? projectBriefs)
 			: projectBriefs
 	);
 
@@ -585,16 +585,12 @@
 				</FormField>
 
 				<FormField label="Date Range">
-					<Select
-						bind:value={selectedDateRange}
-						on:change={() => filterBriefs()}
-						options={[
-							{ value: 'today', label: 'Today' },
-							{ value: 'week', label: 'Last 7 days' },
-							{ value: 'month', label: 'Last 30 days' },
-							{ value: 'custom', label: 'Custom range' }
-						]}
-					/>
+					<Select bind:value={selectedDateRange} on:change={() => filterBriefs()}>
+						<option value="today">Today</option>
+						<option value="week">Last 7 days</option>
+						<option value="month">Last 30 days</option>
+						<option value="custom">Custom range</option>
+					</Select>
 				</FormField>
 
 				{#if selectedDateRange === 'custom'}
@@ -647,12 +643,12 @@
 				></Button>
 			</div>
 
-			{#if currentStreamingStatus.progress.projects.total > 0}
+			{#if currentStreamingStatus?.progress?.projects?.total}
 				<div class="space-y-2">
 					<div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
 						<span
-							>Progress: {currentStreamingStatus.progress.projects
-								.completed}/{currentStreamingStatus.progress.projects.total}</span
+							>Progress: {currentStreamingStatus?.progress?.projects?.completed ??
+								0}/{currentStreamingStatus?.progress?.projects?.total ?? 0}</span
 						>
 						<span>{overallProgress}%</span>
 					</div>
@@ -705,8 +701,8 @@
 				{#each filteredBriefs as brief}
 					<div
 						class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
-						on:click={() => selectBriefDate(brief.brief_date)}
-						on:keydown={(e) => {
+						onclick={() => selectBriefDate(brief.brief_date)}
+						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								selectBriefDate(brief.brief_date);
 							}
@@ -724,7 +720,9 @@
 								>
 									<Clock class="w-3 h-3 mr-1" />
 									{formatDateTime(
-										brief.generation_completed_at || brief.created_at
+										brief.generation_completed_at ||
+											brief.created_at ||
+											new Date().toISOString()
 									)}
 								</div>
 							</div>
@@ -877,7 +875,9 @@
 						<div class="flex items-center space-x-1">
 							<Button
 								type="button"
-								on:click={() => exportBrief(displayDailyBrief)}
+								on:click={() =>
+									displayDailyBrief &&
+									exportBrief(displayDailyBrief as DailyBrief)}
 								variant="ghost"
 								size="sm"
 								class="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
@@ -886,7 +886,8 @@
 							></Button>
 							<Button
 								type="button"
-								on:click={() => copyBrief(displayDailyBrief)}
+								on:click={() =>
+									displayDailyBrief && copyBrief(displayDailyBrief as DailyBrief)}
 								variant="ghost"
 								size="sm"
 								class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
