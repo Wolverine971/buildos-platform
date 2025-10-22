@@ -104,6 +104,10 @@
 
 	// Handle minimize (for ongoing processing)
 	function handleMinimize() {
+		if (!notification?.id) {
+			console.warn('[NotificationModal] handleMinimize called without notification id');
+			return;
+		}
 		notificationStore.minimize(notification.id);
 	}
 

@@ -190,20 +190,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 					deliveries.push(delivery);
 
-					// Queue notification job
-					const { error: jobError } = await supabase.from('queue_jobs').insert({
-						user_id: recipientId,
-						job_type: 'send_notification',
-						status: 'pending',
-						scheduled_for: new Date().toISOString(),
-						queue_job_id: `notif_${delivery.id}`,
-						metadata: {
+					// Queue notification job using atomic RPC with deduplication
+					const { data: jobId, error: jobError } = await supabase.rpc('add_queue_job', {
+						p_user_id: recipientId,
+						p_job_type: 'send_notification',
+						p_metadata: {
 							event_id: eventId,
 							delivery_id: delivery.id,
 							channel,
 							event_type,
 							correlationId // Pass correlation ID to worker
-						}
+						},
+						p_priority: 10,
+						p_scheduled_for: new Date().toISOString(),
+						p_dedup_key: `notif_test_${delivery.id}` // Prevent duplicate test notifications
 					});
 
 					if (jobError) {

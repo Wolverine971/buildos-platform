@@ -494,6 +494,14 @@
 	<div
 		class="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800"
 	>
+
+	<div
+			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+		>
+			<p class="text-gray-400 text-sm">
+				<img src="/onboarding-assets/screenshots/brain-dump-1.png" />
+			</p>
+		</div>
 		<h3 class="font-semibold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
 			<Sparkles class="w-5 h-5 text-purple-600 dark:text-purple-400" />
 			What Makes a Project?
@@ -531,11 +539,12 @@
 		</div>
 
 		<!-- Placeholder for screenshot -->
+		
 		<div
 			class="mt-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
 			<p class="text-gray-400 text-sm">
-				📸 [Screenshot: Brain dump example with highlighted sections]
+				<img src="/onboarding-assets/screenshots/brain-dump-2.png" />
 			</p>
 		</div>
 	</div>
@@ -562,49 +571,7 @@
 			</div>
 		{/if}
 
-		<!-- Brain dump textarea with voice integration -->
-		<div class="mb-6 relative">
-			<!-- Live Transcript Preview (during recording) -->
-			{#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
-				<div
-					class="mb-2 p-2.5 px-3.5 bg-gradient-to-r from-purple-50/60 to-pink-50/60 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200/40 dark:border-purple-800/40 rounded-lg backdrop-blur-md max-h-20 overflow-y-auto"
-					transition:fade={{ duration: 200 }}
-				>
-					<p
-						class="text-sm text-gray-600 dark:text-gray-400 italic m-0 leading-normal break-words"
-					>
-						{accumulatedTranscript}
-					</p>
-				</div>
-			{/if}
-
-			<!-- Textarea Input -->
-			<div class="relative">
-				<Textarea
-					bind:value={projectInput}
-					placeholder="Don't worry about structure — just brain dump. What are you building? What goals do you have? What's on your mind?"
-					rows={8}
-					disabled={isProcessing}
-					class="w-full"
-				/>
-
-				<!-- iOS Notice (when recording on iOS without live transcript) -->
-				{#if isVoiceSupported && isIOS() && !canUseLiveTranscript && isCurrentlyRecording}
-					<div
-						class="absolute bottom-2 left-4 right-4 flex items-center gap-2 p-2 px-3 bg-primary-50/90 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 text-xs rounded-md"
-						transition:fade={{ duration: 200 }}
-					>
-						<Info class="w-3.5 h-3.5 flex-shrink-0" />
-						<span>Audio will be transcribed when you stop recording</span>
-					</div>
-				{/if}
-			</div>
-
-			<!-- Character Counter -->
-			<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-				Minimum 20 characters • {projectInput.length} characters
-			</p>
-		</div>
+		
 
 		<!-- Calendar Connection & Analysis Section -->
 		{#if showConnectionSuccess}

@@ -26,19 +26,22 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Documentation Structure
 
-| Folder           | Contents                           | Key Documents                                                    |
-| ---------------- | ---------------------------------- | ---------------------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | brain-dump, calendar, notifications, onboarding, admin-dashboard |
-| `/design/`       | Design system and UI specs         | style guide, design patterns, component standards                |
-| `/development/`  | Dev guides and conventions         | testing, patterns, setup, migration tracking                     |
-| `/operations/`   | Deployment and ops                 | Vercel config, runbooks, monitoring                              |
-| `/migrations/`   | Migration tracking                 | active migrations (Phase 2.2, Phase 3, type updates)             |
-| `/integrations/` | Third-party services               | Google Calendar integration docs                                 |
-| `/prompts/`      | LLM prompt templates               | brain dump prompts, AI processing                                |
-| `/technical/`    | Technical documentation (detailed) | architecture, API, database, services, deployment                |
-| `/audits/`       | Code audits and analysis           | brain dump flow audits, code reviews                             |
+| Folder           | Contents                           | README | Key Documents                                                    |
+| ---------------- | ---------------------------------- | ------ | ---------------------------------------------------------------- |
+| `/features/`     | Feature specs and designs          | ⭐ Yes | brain-dump, calendar, notifications, onboarding, admin-dashboard |
+| `/audits/`       | Feature audits & implementation    | ⭐ Yes | Core columns, notifications, implementation reviews              |
+| `/design/`       | Design system and UI specs         | ⭐ Yes | style guide, design patterns, component standards                |
+| `/development/`  | Dev guides and conventions         | Yes    | testing, patterns, setup, migration tracking                     |
+| `/operations/`   | Deployment and ops                 | ⭐ Yes | Vercel config, runbooks, monitoring                              |
+| `/migrations/`   | Migration tracking                 | ⭐ Yes | active migrations (Phase 2.2, Phase 3, type updates)             |
+| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)  |
+| `/prompts/`      | LLM prompt templates               | Yes    | brain dump prompts, AI processing                                |
+| `/technical/`    | Technical documentation (detailed) | No     | architecture, API, database, services, deployment                |
 
-**Note:** Some documentation exists in both top-level folders (like `/features/`) and in `/technical/` for historical reasons. Prefer using `/technical/` for comprehensive technical documentation.
+**Note:**
+- ⭐ **NEW directories with README.md files** for easy navigation
+- Some documentation exists in both `/features/` and `/technical/` for comprehensive coverage
+- `/audits/` contains feature-specific implementation reviews (NEW as of Oct 20, 2025)
 
 ## Quick Start for LLM Agents
 
@@ -128,6 +131,18 @@ Admin dashboard for monitoring LLM API usage, costs, and performance:
 - Model and operation breakdowns
 - User cost analytics
 - Performance monitoring
+
+## 🔍 Feature Audits & Implementation Status
+
+**Location:** `/audits/` (NEW - Oct 20, 2025)
+
+Comprehensive reviews of feature implementations:
+
+- **Core Columns** (⚠️ **CRITICAL GAPS**) - 9 new core dimension columns partially integrated
+- **Notifications Logging** (✅ Complete) - End-to-end correlation tracking system
+- **Notification Preferences** (✅ Complete) - Notification preferences refactor
+
+See `/audits/README.md` for full audit status and details.
 
 ## Development Commands
 

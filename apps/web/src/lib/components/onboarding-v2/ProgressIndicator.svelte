@@ -43,7 +43,7 @@
 
 					<!-- Step circle -->
 					<button
-						class="relative z-10 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer
+						class="relative z-0 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer
               hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500/50
               {isCompleted
 							? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'

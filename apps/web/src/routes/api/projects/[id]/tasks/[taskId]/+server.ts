@@ -800,11 +800,23 @@ async function handlePhaseAssignment(
 		});
 
 		if (targetPhase) {
+			// Get the maximum order for this phase to append at the end
+			const { data: maxOrderTask } = await supabase
+				.from('phase_tasks')
+				.select('order')
+				.eq('phase_id', targetPhase.id)
+				.order('order', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
+
 			await supabase.from('phase_tasks').insert({
 				phase_id: targetPhase.id,
 				task_id: taskId,
 				suggested_start_date: startDate,
-				assignment_reason: 'Automatic assignment based on date'
+				assignment_reason: 'Automatic assignment based on date',
+				order: newOrder
 			});
 		}
 	}

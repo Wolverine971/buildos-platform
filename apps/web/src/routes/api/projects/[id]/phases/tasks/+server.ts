@@ -87,11 +87,23 @@ export const POST: RequestHandler = async ({
 
 		// Add to new phase (if not moving to backlog)
 		if (toPhaseId && toPhaseId !== 'backlog') {
+			// Get the maximum order for this phase to append at the end
+			const { data: maxOrderTask } = await supabase
+				.from('phase_tasks')
+				.select('order')
+				.eq('phase_id', toPhaseId)
+				.order('order', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			const newOrder = maxOrderTask ? maxOrderTask.order + 1 : 1;
+
 			const { error: insertError } = await supabase.from('phase_tasks').insert({
 				phase_id: toPhaseId,
 				task_id: taskId,
 				suggested_start_date: newStartDate || null,
-				assignment_reason: 'Manual assignment'
+				assignment_reason: 'Manual assignment',
+				order: newOrder
 			});
 
 			if (insertError) {

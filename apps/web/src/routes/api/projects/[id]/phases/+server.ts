@@ -106,7 +106,11 @@ async function handleOriginalPhasesQuery({ supabase, projectId, request }: any) 
 						event_start,
 						event_end,
 						event_link,
-						sync_status
+						sync_status,
+						organizer_email,
+						organizer_display_name,
+						organizer_self,
+						attendees
 					)
 				)
 			)

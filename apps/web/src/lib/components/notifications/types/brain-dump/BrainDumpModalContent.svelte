@@ -599,7 +599,7 @@
 	title=""
 	size="lg"
 	showCloseButton={false}
-	closeOnBackdrop={false}
+	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
 	<!-- Modal Header -->

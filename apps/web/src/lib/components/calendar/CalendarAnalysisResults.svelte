@@ -1163,8 +1163,8 @@
 		title="Calendar Analysis Results"
 		size="xl"
 		showCloseButton={!analyzing && !processing}
-		closeOnBackdrop={false}
-		closeOnEscape={false}
+		closeOnBackdrop={true}
+		closeOnEscape={true}
 	>
 		{@render resultsContent()}
 		<div slot="footer">

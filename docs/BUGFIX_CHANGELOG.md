@@ -17,6 +17,82 @@ Each entry includes:
 
 ---
 
+## 2025-10-21 - Modal Click-Outside & Notification Null Error
+
+**Severity**: MEDIUM
+
+### Root Cause
+
+Two related issues in modal components:
+
+1. **Null Error**: Event handlers in `NotificationModal.svelte` and `CalendarAnalysisModalContent.svelte` attempted to access `notification.id` without null checks. During component lifecycle (unmounting or when notification removed from store), the `notification` prop could become null before event handlers were cleaned up, causing `Cannot read properties of null (reading 'id')` errors.
+
+2. **Click-Outside Behavior**: Multiple modal components explicitly set `closeOnBackdrop={false}`, preventing users from closing modals by clicking outside them, which was inconsistent with user expectations.
+
+### Fix Description
+
+**Null Error Fix**:
+- Added null checks to `handleMinimize()` and `handleDismiss()` functions
+- Added console warnings for debugging when handlers are called without valid notification
+- Pattern: `if (!notification?.id) { console.warn(...); return; }`
+
+**Click-Outside Fix**:
+- Changed `closeOnBackdrop={false}` to `closeOnBackdrop={true}` in 7 modal components
+- Changed `persistent={!showCancelButton}` to `persistent={false}` in ProcessingModal
+- Changed `closeOnEscape={showCancelButton}` to `closeOnEscape={true}` in ProcessingModal
+- All modals now close when clicking outside or pressing Escape
+
+### Files Changed
+
+**Modified** (8 files):
+
+1. `/apps/web/src/lib/components/notifications/NotificationModal.svelte:107-112` - Added null check in `handleMinimize()`
+2. `/apps/web/src/lib/components/notifications/types/calendar-analysis/CalendarAnalysisModalContent.svelte:22-27,46,90` - Added null check + click-outside (2 modals)
+3. `/apps/web/src/lib/components/calendar/CalendarTaskEditModal.svelte:136` - Enabled click-outside
+4. `/apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte:1166-1167` - Enabled click-outside and escape
+5. `/apps/web/src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte:602` - Enabled click-outside
+6. `/apps/web/src/lib/components/brain-dump/ProcessingModal.svelte:181-183` - Enabled click-outside, escape, removed persistent
+7. `/apps/web/src/lib/components/project/TaskMoveConfirmationModal.svelte:131` - Enabled click-outside
+8. `/docs/BUGFIX_CHANGELOG.md` - This file
+
+**Total Changes**: ~20 lines modified
+
+### Testing
+
+**Manual Verification Steps**:
+
+1. ✅ Notification modals no longer throw console errors when minimize button is clicked
+2. ✅ CalendarAnalysisModalContent closes when clicking outside (both processing and results states)
+3. ✅ CalendarTaskEditModal closes when clicking outside
+4. ✅ CalendarAnalysisResults closes when clicking outside
+5. ✅ BrainDumpModalContent (notification) closes when clicking outside
+6. ✅ ProcessingModal closes when clicking outside
+7. ✅ TaskMoveConfirmationModal closes when clicking outside
+8. ✅ All modals close when pressing Escape
+
+### Related Documentation
+
+- **Notification System**: `/apps/web/src/lib/components/notifications/README.md`
+- **Modal Component**: `/apps/web/src/lib/components/ui/Modal.svelte`
+- **Web App CLAUDE.md**: `/apps/web/CLAUDE.md`
+
+### Cross-References
+
+**Code**:
+
+- Notification store: `/apps/web/src/lib/stores/notification.store.ts`
+- Modal base component: `/apps/web/src/lib/components/ui/Modal.svelte:15-60` (click-outside logic)
+- NotificationModal: `/apps/web/src/lib/components/notifications/NotificationModal.svelte:107-112`
+
+**Design Pattern**:
+
+All modals now follow consistent behavior:
+- `closeOnBackdrop={true}` (default) - Close on outside click
+- `closeOnEscape={true}` (default) - Close on Escape key
+- `persistent={false}` (default) - Allow closing via backdrop/escape
+
+---
+
 ## 2025-10-21 - LLM Prompt Injection Vulnerability
 
 **Severity**: HIGH

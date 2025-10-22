@@ -128,7 +128,7 @@
 	}
 </script>
 
-<Modal {isOpen} onClose={handleCancel} size="md" closeOnBackdrop={false} closeOnEscape={true}>
+<Modal {isOpen} onClose={handleCancel} size="md" closeOnBackdrop={true} closeOnEscape={true}>
 	<svelte:fragment slot="header">
 		<div class="flex items-center space-x-3 p-3 sm:p-4">
 			<div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">

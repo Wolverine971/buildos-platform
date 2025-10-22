@@ -565,7 +565,7 @@ Return JSON with this structure:
 		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
 		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
 			limit: 50,
-			includeStatus: ['active', 'planning']
+			includeStatus: ['active', 'paused']
 		});
 
 		const projectsContext = formatProjectsSummaryList(existingProjects || []);
@@ -921,7 +921,7 @@ Return JSON:
 		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
 		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
 			limit: 50,
-			includeStatus: ['active', 'planning']
+			includeStatus: ['active', 'paused']
 		});
 
 		const projectsContext = formatProjectsSummaryList(existingProjects || []);

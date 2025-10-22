@@ -178,9 +178,9 @@
 	size={processingType === 'dual' ? 'lg' : 'md'}
 	onClose={showCancelButton ? handleCancel : () => {}}
 	showCloseButton={showCancelButton}
-	closeOnBackdrop={false}
-	closeOnEscape={showCancelButton}
-	persistent={!showCancelButton}
+	closeOnBackdrop={true}
+	closeOnEscape={true}
+	persistent={false}
 >
 	<!-- Custom Header -->
 	<div

@@ -133,7 +133,7 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="" size="lg" showCloseButton={false} closeOnBackdrop={false}>
+<Modal {isOpen} {onClose} title="" size="lg" showCloseButton={false} closeOnBackdrop={true}>
 	<svelte:fragment slot="header">
 		<!-- Header -->
 		<div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">

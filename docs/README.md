@@ -18,6 +18,7 @@ For **package documentation**:
 ## What's in This Folder
 
 - `/architecture/` - System-wide architecture, data flows, ADRs, diagrams
+- `/audits/` - ⭐ **Comprehensive audits**: Svelte 5, Worker service, type safety, bug fixes
 - `/business/` - Business strategy, war room, communications guides
 - `/marketing/` - Brand, growth, social media, customer segments, investors
 - `/blogs/` - Content marketing, founder stories, user guides
@@ -27,7 +28,7 @@ For **package documentation**:
 - `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
 - `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
 - `/research/` - Cross-cutting research
-- `/archive/` - Historical documentation (outdated development docs, brain dump research)
+- `/archive/` - Historical documentation (outdated docs, completed migrations, archived audits)
 
 ## 📝 Documentation Standards
 

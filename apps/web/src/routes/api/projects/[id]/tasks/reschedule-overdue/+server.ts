@@ -221,12 +221,39 @@ async function updatePhaseAssignments(supabase: any, assignments: PhaseAssignmen
 			newEntries.push({
 				task_id: assignment.task_id,
 				phase_id: phaseId,
-				assignment_reason: assignment.assignment_reason
+				assignment_reason: assignment.assignment_reason,
+				order: 1 // Will be updated below with correct ordering
 			});
 		}
 	}
 
+	// Update orders for all new entries
 	if (newEntries.length > 0) {
+		// Get max orders for all affected phases
+		const uniquePhaseIds = [...new Set(newEntries.map((e) => e.phase_id))];
+		const { data: maxOrders } = await supabase
+			.from('phase_tasks')
+			.select('phase_id, order')
+			.in('phase_id', uniquePhaseIds)
+			.order('order', { ascending: false });
+
+		// Create a map of phase_id -> max order
+		const phaseMaxOrders = new Map<string, number>();
+		if (maxOrders) {
+			for (const row of maxOrders) {
+				if (!phaseMaxOrders.has(row.phase_id)) {
+					phaseMaxOrders.set(row.phase_id, row.order);
+				}
+			}
+		}
+
+		// Assign correct orders
+		for (const entry of newEntries) {
+			const currentMax = phaseMaxOrders.get(entry.phase_id) || 0;
+			entry.order = currentMax + 1;
+			phaseMaxOrders.set(entry.phase_id, entry.order);
+		}
+
 		const { error: insertError } = await supabase.from('phase_tasks').insert(newEntries);
 
 		if (insertError) {

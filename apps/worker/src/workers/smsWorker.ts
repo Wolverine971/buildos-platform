@@ -164,13 +164,14 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
           })
           .eq("id", scheduled_sms_id);
 
-        // Re-queue job
+        // Re-queue job with deduplication to prevent duplicate reschedules
         await supabase.rpc("add_queue_job", {
           p_user_id: user_id,
           p_job_type: "send_sms",
           p_metadata: validatedData,
           p_scheduled_for: quietHoursResult.rescheduleTime.toISOString(),
           p_priority: priority === "urgent" ? 1 : 10,
+          p_dedup_key: `sms_reschedule_${scheduled_sms_id}_${quietHoursResult.rescheduleTime.getTime()}`,
         });
 
         await updateJobStatus(

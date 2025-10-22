@@ -59,21 +59,21 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Queue a new notification job
-		const { error: queueError } = await supabase.from('queue_jobs').insert({
-			user_id: originalDelivery.recipient_user_id,
-			job_type: 'send_notification',
-			status: 'pending',
-			scheduled_for: new Date().toISOString(),
-			queue_job_id: `notif_resend_${newDelivery.id}`,
-			metadata: {
+		// Queue a new notification job using atomic RPC with deduplication
+		const { data: jobId, error: queueError } = await supabase.rpc('add_queue_job', {
+			p_user_id: originalDelivery.recipient_user_id,
+			p_job_type: 'send_notification',
+			p_metadata: {
 				event_id: originalDelivery.event_id,
 				delivery_id: newDelivery.id,
 				channel: originalDelivery.channel,
 				event_type: event.event_type,
 				resend: true,
 				original_delivery_id: deliveryId
-			}
+			},
+			p_priority: 10,
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: `notif_resend_${newDelivery.id}` // Prevent duplicate resend jobs
 		});
 
 		if (queueError) {

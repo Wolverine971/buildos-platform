@@ -19,6 +19,10 @@
 	}
 
 	function handleMinimize() {
+		if (!notification?.id) {
+			console.warn('[CalendarAnalysisModalContent] handleMinimize called without notification id');
+			return;
+		}
 		notificationStore.minimize(notification.id);
 		dispatch('minimize');
 	}
@@ -43,7 +47,7 @@
 		title=""
 		size="md"
 		showCloseButton={false}
-		closeOnBackdrop={false}
+		closeOnBackdrop={true}
 		closeOnEscape={true}
 	>
 		<!-- Custom header with minimize button -->
@@ -87,7 +91,7 @@
 		title=""
 		size="xl"
 		showCloseButton={false}
-		closeOnBackdrop={false}
+		closeOnBackdrop={true}
 		closeOnEscape={true}
 	>
 		<!-- Custom header with minimize button -->

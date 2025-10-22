@@ -28,13 +28,24 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 ├── START-HERE.md           ← You are here
 ├── README.md               ← Web app overview (tech stack, commands)
 │
-├── /features/              ← Feature specs and implementation guides
+├── /features/              ← ⭐ Feature specs and implementation guides
+│   ├── README.md           (Feature index - START HERE)
 │   ├── /brain-dump/        (10 docs - comprehensive)
 │   ├── /calendar-integration/ (7 docs - with improvement plans)
 │   ├── /notifications/     (6 docs - excellent docs map)
 │   ├── /admin-dashboard/   (1 doc - LLM tracking)
 │   ├── /onboarding/        (3 docs - assets + flow)
-│   └── /onboarding-v2/     (1 doc - complete guide)
+│   ├── /onboarding-v2/     (1 doc - complete guide)
+│   ├── /project-export/    (2 docs - export/print)
+│   ├── /phase-generation/  (1 doc - scheduling)
+│   └── /time-blocks/       (1 doc - time blocks)
+│
+├── /audits/                ← ⭐ NEW: Feature audits and reviews
+│   ├── README.md           (Audit index)
+│   ├── CORE_COLUMNS_AUDIT.md (⚠️ Critical gaps)
+│   ├── CORE_COLUMNS_IMPLEMENTATION_SUMMARY.md
+│   ├── NOTIFICATION_LOGGING_IMPLEMENTATION_COMPLETE.md
+│   └── NOTIFICATION_PREFERENCES_REFACTOR_COMPLETE.md
 │
 ├── /technical/             ← Technical deep-dives
 │   ├── /architecture/      (11 docs - system design)
@@ -57,7 +68,8 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 │   ├── /plans/             (feature implementation plans)
 │   └── /templates/         (FEATURE_PLAN_TEMPLATE.md)
 │
-├── /design/                ← Design system and UI patterns
+├── /design/                ← ⭐ Design system and UI patterns
+│   ├── README.md           (Design index - START HERE)
 │   ├── design-system.md    (comprehensive design guide)
 │   ├── /components/        (modal standards, etc.)
 │   └── [11 docs total]     (patterns, specs, frameworks)
@@ -68,11 +80,16 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 │   ├── /calendar-analysis/ (project detection prompts)
 │   └── /task-synthesis/    (task reorganization)
 │
-├── /operations/            ← Deployment and operations
+├── /operations/            ← ⭐ Deployment and operations
+│   ├── README.md           (Operations index)
 │   └── /deployment/        (3 docs - Vercel configuration)
 │
-└── /integrations/          ← Third-party integrations
-    └── [5 docs - Stripe]   (⚠️ Missing: Google, Twilio, OpenAI)
+├── /integrations/          ← ⭐ Third-party integrations
+│   ├── README.md           (Integration index - 20% complete)
+│   └── [5 docs - Stripe]   (⚠️ Missing: Google OAuth, Google Calendar, Twilio, OpenAI)
+│
+└── /migrations/            ← Active migrations and refactoring
+    └── README.md           (Migration index)
 ```
 
 ---
