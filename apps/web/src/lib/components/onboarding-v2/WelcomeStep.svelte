@@ -128,13 +128,33 @@
 					</div>
 					<div class="flex-1">
 						<h4 class="font-bold text-xl mb-3 text-gray-900 dark:text-white">
-							Finally, Stay Focused
+							Then, Stay Focused
 						</h4>
 						<p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
 							Clarity and organization mean nothing without follow-through. BuildOS
 							helps you maintain <strong class="text-gray-900 dark:text-white"
 								>focus</strong
-							> with smart reminders and daily check-ins.
+							> with smart reminders, calendar integration, and daily check-ins.
+						</p>
+					</div>
+				</div>
+
+				<!-- Step 4: Flexibility -->
+				<div class="flex gap-5 items-start group">
+					<div
+						class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 dark:from-orange-600 dark:to-amber-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
+					>
+						4
+					</div>
+					<div class="flex-1">
+						<h4 class="font-bold text-xl mb-3 text-gray-900 dark:text-white">
+							Finally, Stay Flexible
+						</h4>
+						<p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
+							Life changes. Priorities shift. BuildOS <strong
+								class="text-gray-900 dark:text-white">adapts</strong
+							> with you. Whether you need to reschedule tasks, regenerate plans, or reorganize
+							projects—BuildOS makes it effortless to pivot without losing momentum.
 						</p>
 					</div>
 				</div>

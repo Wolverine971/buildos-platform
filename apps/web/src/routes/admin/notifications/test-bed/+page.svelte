@@ -163,7 +163,7 @@
 		/>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
@@ -212,7 +212,7 @@
 
 		{#if error}
 			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 			>
 				<p class="text-red-800 dark:text-red-200">{error}</p>
 			</div>
@@ -220,7 +220,7 @@
 
 		{#if successMessage}
 			<div
-				class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 dark:bg-green-900/20 dark:border-green-800"
+				class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 dark:bg-green-900/20 dark:border-green-800"
 			>
 				<p class="text-green-800 dark:text-green-200">{successMessage}</p>
 			</div>

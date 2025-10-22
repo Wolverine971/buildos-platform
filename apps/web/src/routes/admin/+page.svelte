@@ -490,7 +490,7 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
 			<a
 				href="/admin/users"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
@@ -672,7 +672,7 @@
 
 		{#if error}
 			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 			>
 				<div class="flex items-center">
 					<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
@@ -682,7 +682,7 @@
 		{/if}
 
 		{#if isLoading}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
 				{#each Array(12) as _}
 					<div
 						class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 animate-pulse"
@@ -696,7 +696,7 @@
 			<!-- Errors Alert (if there are critical/unresolved errors) -->
 			{#if errorsData.critical_errors > 0 || errorsData.unresolved_errors > 10}
 				<div
-					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6"
+					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
 				>
 					<div class="flex items-start">
 						<AlertTriangle class="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
@@ -738,7 +738,7 @@
 			<!-- Key Metrics Cards - Mobile Responsive -->
 
 			<!-- Row 2: System Metrics -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-4 sm:mb-6">
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
@@ -843,7 +843,7 @@
 			</div>
 
 			<!-- Daily Visitors Chart -->
-			<div class="mb-6 sm:mb-8">
+			<div class="mb-4 sm:mb-6">
 				<VisitorContributionChart
 					visitors={dailyVisitors}
 					signups={dailySignups}
@@ -852,7 +852,7 @@
 			</div>
 
 			<!-- Brain Dump Analytics Section -->
-			<div class="mb-6 sm:mb-8">
+			<div class="mb-4 sm:mb-6">
 				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
 					Brain Dump Analytics <span
 						class="text-sm font-normal text-gray-600 dark:text-gray-400"
@@ -993,7 +993,7 @@
 			</div>
 
 			<!-- User Leaderboards -->
-			<div class="mb-6 sm:mb-8">
+			<div class="mb-4 sm:mb-6">
 				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
 					User Activity Leaderboards <span
 						class="text-sm font-normal text-gray-600 dark:text-gray-400"
@@ -1185,7 +1185,7 @@
 
 			<!-- Subscription Overview (if Stripe is enabled) -->
 			{#if subscriptionData.stripeEnabled}
-				<div class="mb-6 sm:mb-8">
+				<div class="mb-4 sm:mb-6">
 					<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
 						Subscription Analytics
 					</h2>
@@ -1301,7 +1301,7 @@
 					<!-- Failed Payments Alert -->
 					{#if subscriptionData.failedPayments.length > 0}
 						<div
-							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6"
+							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
 						>
 							<div class="flex items-start">
 								<AlertTriangle
@@ -1398,7 +1398,7 @@
 			{/if}
 
 			<!-- Feedback Overview -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
 				<!-- Total Feedback -->
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<div class="flex items-center justify-between">
@@ -1463,7 +1463,7 @@
 			</div>
 
 			<!-- Charts and Analytics - Mobile Responsive -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- Daily Active Users Chart -->
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -1576,7 +1576,7 @@
 			</div>
 
 			<!-- Recent Content - Mobile Responsive -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- Recent Feedback -->
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
@@ -1697,7 +1697,7 @@
 			</div>
 
 			<!-- System Health and Template Usage -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- System Health Metrics -->
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<h3

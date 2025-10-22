@@ -12,7 +12,7 @@
 	export let showBack: boolean = true;
 </script>
 
-<div class="mb-6 sm:mb-8">
+<div class="mb-4 sm:mb-6">
 	<!-- Back Button - Mobile and Desktop -->
 	{#if showBack}
 		<div class="mb-4">

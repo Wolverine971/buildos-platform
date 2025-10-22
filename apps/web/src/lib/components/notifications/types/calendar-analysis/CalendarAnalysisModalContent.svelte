@@ -20,7 +20,9 @@
 
 	function handleMinimize() {
 		if (!notification?.id) {
-			console.warn('[CalendarAnalysisModalContent] handleMinimize called without notification id');
+			console.warn(
+				'[CalendarAnalysisModalContent] handleMinimize called without notification id'
+			);
 			return;
 		}
 		notificationStore.minimize(notification.id);

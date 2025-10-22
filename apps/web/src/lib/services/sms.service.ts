@@ -33,9 +33,7 @@ export class SMSService extends ApiService {
 			// Check user SMS preferences
 			const { data: prefs } = await supabase
 				.from('user_sms_preferences')
-				.select(
-					'*'
-				)
+				.select('*')
 				.eq('user_id', params.userId)
 				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
 
@@ -237,9 +235,7 @@ export class SMSService extends ApiService {
 		try {
 			const { data: prefs, error } = await supabase
 				.from('user_sms_preferences')
-				.select(
-					'*'
-				)
+				.select('*')
 				.eq('user_id', userId)
 				.maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 when no rows
 

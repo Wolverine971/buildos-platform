@@ -477,11 +477,11 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
-			Step 1: Get Clarity Through Brain Dumping
+			Step 1: Clarity - Projects & Brain Dumping
 		</h2>
 		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto mb-4">
-			Remember: to get organized and productive, you first need <strong>clarity</strong>. And
-			clarity comes from getting things out of your head and onto the screen.
+			To get organized and productive, you first need <strong>clarity</strong>. And clarity
+			comes from getting things out of your head and onto the screen.
 		</p>
 		<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
 			BuildOS works with <strong>projects</strong> — think of them as siloed endeavors with a goal
@@ -494,8 +494,7 @@
 	<div
 		class="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800"
 	>
-
-	<div
+		<div
 			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
 			<p class="text-gray-400 text-sm">
@@ -539,7 +538,7 @@
 		</div>
 
 		<!-- Placeholder for screenshot -->
-		
+
 		<div
 			class="mt-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
@@ -570,8 +569,6 @@
 				<span>{voiceError}</span>
 			</div>
 		{/if}
-
-		
 
 		<!-- Calendar Connection & Analysis Section -->
 		{#if showConnectionSuccess}
@@ -624,10 +621,22 @@
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
 							Let us analyze your calendar
 						</h3>
-						<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+						<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
 							Connect your Google Calendar and we'll automatically create projects
 							based on your meetings and events. No manual entry needed!
 						</p>
+						<div
+							class="text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+						>
+							<p class="font-medium mb-1">How it works:</p>
+							<p class="leading-relaxed">
+								Our AI scans your calendar for patterns — recurring meetings,
+								project-related events, and commitments — then intelligently groups
+								them into projects. This is perfect if you already have work
+								organized in your calendar and want to import that structure into
+								BuildOS without retyping everything.
+							</p>
+						</div>
 					</div>
 				</div>
 

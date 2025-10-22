@@ -15,26 +15,37 @@ export const ONBOARDING_V2_CONFIG = {
 	// Step configuration
 	steps: {
 		welcome: { id: 'welcome', order: 0, skippable: false, title: 'Welcome to BuildOS' },
-		projects: {
-			id: 'projects',
+		clarity: {
+			id: 'clarity',
 			order: 1,
 			skippable: false,
-			title: 'Capture Current Projects'
+			title: 'Capture Current Projects (Clarity)'
 		},
-		notifications: {
-			id: 'notifications',
+		focus: {
+			id: 'focus',
 			order: 2,
 			skippable: true,
-			title: 'Accountability & Notifications'
+			title: 'Accountability & Notifications (Focus)'
 		},
-		archetype: { id: 'archetype', order: 3, skippable: false, title: 'BuildOS Usage Profile' },
-		challenges: {
-			id: 'challenges',
+		flexibility: {
+			id: 'flexibility',
+			order: 3,
+			skippable: true,
+			title: 'Knobs and Whistles (Flexibility)'
+		},
+		profile: {
+			id: 'profile',
 			order: 4,
 			skippable: false,
-			title: 'Productivity Challenges'
+			title: 'Your Profile'
 		},
-		summary: { id: 'summary', order: 5, skippable: false, title: 'Summary & First Win' }
+		admin_tour: {
+			id: 'admin_tour',
+			order: 5,
+			skippable: true,
+			title: 'Explore More'
+		},
+		summary: { id: 'summary', order: 6, skippable: false, title: 'Summary & First Win' }
 	},
 
 	// User archetypes - how users want to use BuildOS
@@ -188,7 +199,29 @@ export const ONBOARDING_V2_CONFIG = {
 			calendarAnalysisAfter:
 				'/onboarding-assets/screenshots/PLACEHOLDER_calendar_analysis_after.png',
 			smsNotification:
-				'/onboarding-assets/screenshots/PLACEHOLDER_sms_notification_example.png'
+				'/onboarding-assets/screenshots/PLACEHOLDER_sms_notification_example.png',
+			// Flexibility step assets
+			braindumpUpdateTask:
+				'/onboarding-assets/screenshots/PLACEHOLDER_braindump_update_task.png',
+			braindumpReschedule:
+				'/onboarding-assets/screenshots/PLACEHOLDER_braindump_reschedule.png',
+			phaseGenerationModal:
+				'/onboarding-assets/screenshots/PLACEHOLDER_phase_generation_modal.png',
+			phaseRegenerationBeforeAfter:
+				'/onboarding-assets/screenshots/PLACEHOLDER_phase_regeneration_before_after.png',
+			phaseScheduling: '/onboarding-assets/screenshots/PLACEHOLDER_phase_scheduling.png',
+			taskScheduleUnschedule:
+				'/onboarding-assets/screenshots/PLACEHOLDER_task_schedule_unschedule.png',
+			timeblockCreation: '/onboarding-assets/screenshots/PLACEHOLDER_timeblock_creation.png',
+			timeblockWithSuggestions:
+				'/onboarding-assets/screenshots/PLACEHOLDER_timeblock_with_suggestions.png',
+			// Admin tour assets
+			profilePageOverview:
+				'/onboarding-assets/screenshots/PLACEHOLDER_profile_page_overview.png',
+			historyPageContributionChart:
+				'/onboarding-assets/screenshots/PLACEHOLDER_history_page_contribution_chart.png',
+			projectHistoryModal:
+				'/onboarding-assets/screenshots/PLACEHOLDER_project_history_modal.png'
 		},
 		videos: {
 			calendarAnalysisDemo:

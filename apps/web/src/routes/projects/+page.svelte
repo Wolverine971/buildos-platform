@@ -619,7 +619,7 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
 	<div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 		<!-- Page header - Apple-style refined -->
-		<div class="mb-6 sm:mb-8">
+		<div class="mb-4 sm:mb-6">
 			<!-- Header section with improved spacing -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
 				<div>
@@ -663,8 +663,10 @@
 				on:change={(e) => handleTabChange(e.detail)}
 				ariaLabel="Project content tabs"
 			/>
+		</div>
 
-			<!-- Search and Filter Controls - Always reserve space to prevent layout shift -->
+		<!-- Search and Filter Controls - Always reserve space to prevent layout shift -->
+		{#if activeTab == 'briefs'}
 			<div class="filter-bar-container">
 				{#if showFilterControls}
 					<ProjectsFilterBar
@@ -687,7 +689,7 @@
 					<div class="filter-bar-skeleton"></div>
 				{/if}
 			</div>
-		</div>
+		{/if}
 
 		<!-- Daily Brief Section (only for projects tab) -->
 		{#if activeTab === 'projects' && filteredProjects?.length}
@@ -811,6 +813,9 @@
 	.filter-bar-container {
 		min-height: 60px; /* Reserve space for filter controls */
 		transition: all 0.2s ease-out;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 	}
 
 	.filter-bar-skeleton {

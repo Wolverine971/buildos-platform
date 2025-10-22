@@ -829,7 +829,7 @@
 					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
 						No Brief Available
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+					<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 						{isToday
 							? "Generate your daily brief to get started with today's priorities and insights."
 							: 'No brief was generated for this date.'}
@@ -863,7 +863,7 @@
 		{:else if displayDailyBrief}
 			<!-- Main Brief Card -->
 			<div
-				class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-4 border border-gray-200 dark:border-gray-700"
 			>
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="text-xl font-bold text-gray-900 dark:text-white">Daily Brief</h2>

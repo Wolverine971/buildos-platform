@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-22T02:00:47.262Z
+// Generated on: 2025-10-22T17:15:40.649Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -120,7 +120,7 @@ export type DatabaseSchema = {
 		full_name: string;
 		id: string;
 		invited_by: string | null;
-		ip_address: unknown | null;
+		ip_address: unknown;
 		job_title: string | null;
 		productivity_tools: string[] | null;
 		referral_source: string | null;
@@ -387,7 +387,7 @@ export type DatabaseSchema = {
 		event_data: Json | null;
 		event_type: string;
 		id: string;
-		ip_address: unknown | null;
+		ip_address: unknown;
 		recipient_id: string | null;
 		timestamp: string | null;
 		user_agent: string | null;
@@ -423,7 +423,7 @@ export type DatabaseSchema = {
 		error_type: string;
 		http_method: string | null;
 		id: string;
-		ip_address: unknown | null;
+		ip_address: unknown;
 		llm_max_tokens: number | null;
 		llm_model: string | null;
 		llm_provider: string | null;
@@ -483,7 +483,7 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_email: string | null;
 		user_id: string | null;
-		user_ip: unknown | null;
+		user_ip: unknown;
 	};
 	feedback_rate_limit: {
 		first_submission: string | null;
@@ -1113,7 +1113,7 @@ export type DatabaseSchema = {
 		activity_type: string;
 		created_at: string;
 		id: string;
-		ip_address: unknown | null;
+		ip_address: unknown;
 		user_agent: string | null;
 		user_id: string | null;
 	};
@@ -1305,7 +1305,7 @@ export type DatabaseSchema = {
 	visitors: {
 		created_at: string;
 		id: number;
-		ip_address: unknown | null;
+		ip_address: unknown;
 		updated_at: string;
 		user_agent: string | null;
 		visitor_id: string;

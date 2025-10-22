@@ -449,16 +449,18 @@
 
 <!-- Main container -->
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 		<!-- Page header -->
 		<div class="mb-8">
 			<div class="flex items-center justify-between mb-6">
 				<div>
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+					<h1
+						class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center mb-1 sm:mb-2 tracking-tight"
+					>
 						<Brain class="w-8 h-8 mr-3 text-purple-600 dark:text-purple-400" />
 						Braindump History
 					</h1>
-					<p class="text-gray-600 dark:text-gray-400 mt-2">
+					<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 						Your thinking history and idea evolution over time
 					</p>
 				</div>

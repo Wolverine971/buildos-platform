@@ -109,7 +109,7 @@
 {#if sortedActivities?.length}
 	<div class="w-full">
 		<!-- Activity Type Legend -->
-		<div class="flex flex-wrap gap-2 mb-6">
+		<div class="flex flex-wrap gap-2 mb-4 sm:mb-6">
 			<div class="flex items-center text-xs">
 				<div class="w-3 h-3 bg-blue-500 rounded mr-1"></div>
 				<span class="text-gray-600 dark:text-gray-400">Briefs</span>

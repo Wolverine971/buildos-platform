@@ -35,8 +35,9 @@
 	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
 	import NotificationsStep from '$lib/components/onboarding-v2/NotificationsStep.svelte';
-	import ArchetypeStep from '$lib/components/onboarding-v2/ArchetypeStep.svelte';
-	import ChallengesStep from '$lib/components/onboarding-v2/ChallengesStep.svelte';
+	import FlexibilityStep from '$lib/components/onboarding-v2/FlexibilityStep.svelte';
+	import CombinedProfileStep from '$lib/components/onboarding-v2/CombinedProfileStep.svelte';
+	import AdminTourStep from '$lib/components/onboarding-v2/AdminTourStep.svelte';
 	import SummaryStep from '$lib/components/onboarding-v2/SummaryStep.svelte';
 	import ProgressIndicator from '$lib/components/onboarding-v2/ProgressIndicator.svelte';
 
@@ -488,8 +489,8 @@
 		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
 	>
 		<div class="container mx-auto py-8 px-4">
-			<!-- Progress Indicator (show for steps 1-4, not welcome or summary) -->
-			{#if v2CurrentStep > 0 && v2CurrentStep < 5}
+			<!-- Progress Indicator (show for steps 1-5, not welcome or summary) -->
+			{#if v2CurrentStep > 0 && v2CurrentStep < 6}
 				<ProgressIndicator currentStep={v2CurrentStep} onStepClick={handleV2StepClick} />
 			{/if}
 
@@ -509,18 +510,17 @@
 					onEmailEnabled={handleV2EmailEnabled}
 				/>
 			{:else if v2CurrentStep === 3}
-				<ArchetypeStep
+				<FlexibilityStep onNext={handleV2Next} />
+			{:else if v2CurrentStep === 4}
+				<CombinedProfileStep
 					userId={data.user.id}
 					onNext={handleV2Next}
 					onArchetypeSelected={handleV2ArchetypeSelected}
-				/>
-			{:else if v2CurrentStep === 4}
-				<ChallengesStep
-					userId={data.user.id}
-					onNext={handleV2Next}
 					onChallengesSelected={handleV2ChallengesSelected}
 				/>
 			{:else if v2CurrentStep === 5}
+				<AdminTourStep onNext={handleV2Next} onSkip={handleV2Next} />
+			{:else if v2CurrentStep === 6}
 				<SummaryStep userId={data.user.id} summary={v2OnboardingData} />
 			{/if}
 		</div>
@@ -533,7 +533,7 @@
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-4xl">
 			<!-- Enhanced Progress Indicator -->
 			<div class="mb-10">
-				<div class="flex justify-center items-center mb-6">
+				<div class="flex justify-center items-center mb-4">
 					<div class="relative">
 						<!-- Progress line -->
 						<div
@@ -585,7 +585,7 @@
 			<div class="mb-8" in:fade={{ duration: 300, delay: 150 }}>
 				<!-- Step header -->
 				<div class="mb-8 text-center">
-					<div class="flex justify-center mb-6">
+					<div class="flex justify-center mb-4">
 						<div
 							class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center shadow-lg"
 							in:scale={{ duration: 300, start: 0.8 }}
@@ -604,7 +604,7 @@
 						{currentStepData?.title}
 					</h1>
 					<p
-						class="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-6"
+						class="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-4"
 						in:fade={{ duration: 300, delay: 250 }}
 					>
 						{currentStepData?.subtitle}
@@ -612,7 +612,7 @@
 
 					<!-- Question card -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-6 text-left"
+						class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-4 text-left"
 						in:fade={{ duration: 300, delay: 300 }}
 					>
 						<p class="text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -623,7 +623,7 @@
 
 				<!-- Voice recording button -->
 				{#if voiceSupported()}
-					<div class="text-center mb-6">
+					<div class="text-center mb-4">
 						<Button
 							onclick={handleVoiceToggle}
 							disabled={isTranscribing}

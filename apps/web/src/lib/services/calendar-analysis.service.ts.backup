@@ -314,52 +314,22 @@ export class CalendarAnalysisService extends ApiService {
 				return false;
 			}
 
-			// Skip all-day and timed events that look personal (expanded heuristic)
-			const title = (event.summary || '').toLowerCase();
-			const personalKeywords = [
-				// Current keywords
-				'birthday',
-				'anniversary',
-				'vacation',
-				'holiday',
-				'pto',
-				'out of office',
-				'ooo',
-				// Medical/Health (9 keywords)
-				'therapy',
-				'dentist',
-				'doctor',
-				'appointment',
-				'checkup',
-				'physical',
-				'medical',
-				'pelvic floor',
-				'cardio',
-				// Family/Kids (6 keywords)
-				'kindergarten',
-				'school',
-				'dismissal',
-				'co-op',
-				'daycare',
-				'early dismissal',
-				// Personal Chores (4 keywords)
-				'trash',
-				'curb',
-				'mop',
-				'maintenance',
-				// Social (3 keywords)
-				'housewarming',
-				'couples night',
-				'visit',
-				// Additional personal indicators (3 keywords)
-				'bring to school',
-				'pick up',
-				'drop off'
-			];
-
-			// Filter both all-day and timed personal events
-			if (personalKeywords.some((keyword) => title.includes(keyword))) {
-				return false;
+			// Skip all-day events that look personal (basic heuristic)
+			const isAllDay = !event.start?.dateTime;
+			if (isAllDay) {
+				const title = (event.summary || '').toLowerCase();
+				const personalKeywords = [
+					'birthday',
+					'anniversary',
+					'vacation',
+					'holiday',
+					'pto',
+					'out of office',
+					'ooo'
+				];
+				if (personalKeywords.some((keyword) => title.includes(keyword))) {
+					return false;
+				}
 			}
 
 			// Skip events with no title
@@ -420,23 +390,6 @@ Group related calendar events and identify project themes. Focus on:
 3. Project-indicating keywords (sprint, launch, milestone, review, planning, kickoff, deadline, sync, standup, retrospective, design, implementation)
 4. Series of events building toward a goal
 
-## Events to EXCLUDE from Grouping
-
-**DO NOT** group these types of events (they are personal, not work projects):
-- Personal appointments (dentist, doctor, therapy, medical, checkup)
-- Family events (birthday, kindergarten, school, daycare, dismissal)
-- Household tasks (trash, maintenance, mop, errands)
-- Social events without work context (couples night, housewarming, visit)
-- One-off personal commitments (pick up, drop off, bring to school)
-
-## Events to INCLUDE in Grouping
-
-- Work meetings with project keywords
-- Recurring meetings with multiple attendees
-- Events suggesting coordinated work effort
-- Focus time blocks for specific projects
-- Team sync meetings and standups
-
 ## Calendar Events (${events.length} total)
 
 ${JSON.stringify(lightweightEvents, null, 2)}
@@ -474,24 +427,13 @@ Return JSON with this structure:
 ## Guidelines
 
 - Only group events that are clearly related
-- **Confidence >= 0.7 for grouping (be highly selective)**
+- Confidence >= 0.5 for grouping (be selective)
 - One event can only belong to one group
 - Ungrouped events go in ungrouped_event_ids
 - Be specific with project names (not just "Team Sync")
 - Include ALL relevant events in time_range calculation
 - Ensure all event IDs in groups exist in the input events
-- Extract dates carefully from event start/end fields
-
-## Examples
-
-**GOOD Grouping** (High confidence 0.85+):
-- "Sprint Planning", "Sprint Review", "Sprint Retro" → "Agile Development Sprint Cycle" (clear series)
-- "Q4 Marketing Launch Prep", "Launch Review", "Launch Debrief" → "Q4 Marketing Campaign Launch" (thematic unity)
-
-**BAD Grouping** (Don't do this):
-- "Team Lunch", "All Hands", "1:1 with Manager" → Too generic, unrelated
-- "Lily Kindergarten", "Walter School Drop-off" → Personal/family events
-- "Therapy 1:10pm", "Dentist Appointment" → Personal appointments`;
+- Extract dates carefully from event start/end fields`;
 
 		try {
 			if (DEBUG_LOGGING) {
@@ -705,9 +647,7 @@ ${JSON.stringify(
 		attendees: e.attendees?.map((a) => a.email),
 		organizer: e.organizer?.email,
 		location: e.location,
-		hangoutLink: e.hangoutLink,
-		recurrence: e.recurrence, // RRULE strings array for recurring events
-		is_recurring: !!e.recurringEventId || !!e.recurrence
+		hangoutLink: e.hangoutLink
 	})),
 	null,
 	2
@@ -728,35 +668,20 @@ ${projectsContext || 'No existing projects found.'}
 
 ## CRITICAL: Project Deduplication Rules
 
-**IMPORTANT**: Check EVERY event group against existing projects above.
+**IMPORTANT**: Check each event group against existing projects above.
 
-**Deduplication Decision** (Apply in order):
+1. **If match found** (confidence >= 70%):
+   - Set "add_to_existing": true
+   - Set "existing_project_id": "uuid"
+   - Set "deduplication_reasoning": "Why this matches"
+   - Still generate tasks to add to existing project
 
-1. **Strong Match (≥75% confidence)**:
-   - Set "add_to_existing: true"
-   - Set "existing_project_id: 'actual-uuid-from-above'"
-   - Set "deduplication_reasoning: 'Events match existing project because...'"
-   - Still generate tasks to add to that project
+2. **Only create NEW project if**:
+   - No semantic match with existing projects
+   - Events represent meaningfully different work
 
-2. **Weak/No Match (<75%)**:
-   - Set "add_to_existing: false"
-   - Set "existing_project_id: null"
-   - Set "deduplication_reasoning: 'No match with existing projects because...'"
-   - Create NEW project
-
-**ALWAYS** provide "deduplication_reasoning" explaining your decision.
-
-## Examples:
-
-✅ **Strong Match**:
-- Existing: "Product Launch Q4 2025"
-- Events: "Launch Planning Meeting", "Launch Review" (Oct-Dec 2025)
-- Decision: "add_to_existing: true" - Events are clearly part of existing Q4 launch project
-
-❌ **No Match**:
-- Existing: "Marketing Campaign"
-- Events: "Engineering Standup", "Code Review"
-- Decision: "add_to_existing: false" - Engineering events unrelated to marketing
+3. **When uncertain** (50-70%):
+   - Err on side of adding to existing projects
 
 ## Event Groups to Process
 
@@ -805,7 +730,7 @@ Return JSON:
       "existing_project_id": null,
       "deduplication_reasoning": "Checked against existing projects. No match found because...",
 
-      // Tasks (see task generation rules below)
+      // Tasks (minimum 2 per project)
       "suggested_tasks": [
         {
           "title": "Task title",
@@ -813,10 +738,7 @@ Return JSON:
           "details": "Comprehensive details including event info",
           "status": "backlog",
           "priority": "medium",
-          "task_type": "one_off" | "recurring",
-          "recurrence_pattern": "daily|weekly|monthly|etc" or null,
-          "recurrence_ends": "YYYY-MM-DD" or null,
-          "recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z" or null,
+          "task_type": "one_off",
           "duration_minutes": 60,
           "start_date": "YYYY-MM-DDTHH:MM:SS",
           "event_id": "calendar-event-id",
@@ -829,71 +751,12 @@ Return JSON:
 
 ## CRITICAL RULES
 
-### 1. Task Generation Requirements
-
-**Task Count**: Generate tasks for 30-50% of upcoming events
-- Calculate: For ${eventGroups.length} event groups, if a group has N upcoming events, generate Math.ceil(N * 0.4) tasks minimum
-- **Minimum**: 2 tasks per project
-- **Strategy**: Convert key upcoming events to tasks + add inferred preparation/follow-up tasks
-
-**Task Dates**:
-- **ALL tasks must have start_date >= ${today}**
-- No past-dated tasks allowed
-
-### 2. Recurring Event Handling (CRITICAL)
-
-When an event has a "recurrence" field with RRULE:
-
-**Steps**:
-1. Set "task_type: 'recurring'"
-2. **COPY the exact RRULE string** to "recurrence_rrule" field (preserve it exactly!)
-3. Parse RRULE to set "recurrence_pattern":
-   - "FREQ=DAILY" → "daily"
-   - "FREQ=WEEKLY" → "weekly"
-   - "FREQ=MONTHLY" → "monthly"
-4. Parse "UNTIL" parameter for "recurrence_ends":
-   - "UNTIL=20251215T235959Z" → "2025-12-15"
-
-**Example**:
-\`\`\`json
-{
-  "title": "Sprint Planning",
-  "task_type": "recurring",
-  "recurrence_pattern": "weekly",
-  "recurrence_ends": "2025-12-15",
-  "recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z",
-  "event_id": "event-123"
-}
-\`\`\`
-
-### 3. Task Metadata (REQUIRED)
-
-**Details field MUST include**:
-\`\`\`
-**Meeting**: {event.title}
-**Date**: {event.start}
-**Duration**: {duration_minutes} minutes
-**Attendees**: {comma-separated emails}
-**Location**: {location or "Virtual"}
-**Meeting Link**: {hangoutLink or "None"}
-
-{additional context}
-\`\`\`
-
-**Duration**: Calculate from event.end - event.start (in minutes)
-**Event ID**: Always link task to source event via "event_id"
-
-### 4. Deduplication
-
-- **ALWAYS** provide "deduplication_reasoning" (even for new projects)
-- Use EXACT project IDs from "User's Existing Projects" section above
-- Don't hallucinate project IDs
-
-### 5. Data Model Compliance
-
-- Follow BuildOS data models exactly
-- All required fields must be present
-- Use proper date formats (YYYY-MM-DD or ISO 8601 for timestamps)`;
+1. **ALL tasks must have start_date >= ${today}**
+2. **Minimum 2 tasks per project**
+3. **ALWAYS provide deduplication_reasoning** (even if creating new project)
+4. **Include meeting details** in task details (attendees, location, hangoutLink)
+5. **Rich context** using BuildOS framework
+6. **Exact data model compliance**`;
 
 		try {
 			if (DEBUG_LOGGING) {
@@ -1516,7 +1379,6 @@ IMPORTANT:
 										start_date: modifiedTask.start_date,
 										recurrence_pattern: modifiedTask.recurrence_pattern,
 										recurrence_ends: modifiedTask.recurrence_ends,
-										recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
 										project_id: existingProjectId, // Use existing project ID
 										source: 'calendar_analysis',
 										source_calendar_event_id: modifiedTask.event_id,
@@ -1672,7 +1534,6 @@ IMPORTANT:
 									start_date: modifiedTask.start_date || null,
 									recurrence_pattern: modifiedTask.recurrence_pattern || null,
 									recurrence_ends: modifiedTask.recurrence_ends || null,
-									recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
 									project_ref: 'project-0', // Reference to the project created above
 									source: 'calendar_event',
 									source_calendar_event_id: modifiedTask.event_id || null

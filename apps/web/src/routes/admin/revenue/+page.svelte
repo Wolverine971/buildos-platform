@@ -173,7 +173,7 @@
 		/>
 
 		<!-- Controls -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-4">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-4 p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<Select
 					bind:value={selectedPeriod}
@@ -232,7 +232,7 @@
 
 		{#if error}
 			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 			>
 				<div class="flex items-center">
 					<AlertCircle class="h-5 w-5 text-red-600 mr-2" />

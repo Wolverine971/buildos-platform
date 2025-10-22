@@ -113,10 +113,10 @@
 </script>
 
 <div class="container mx-auto p-6">
-	<h1 class="text-3xl font-bold mb-6">Security Logs</h1>
+	<h1 class="text-3xl font-bold mb-4">Security Logs</h1>
 
 	<!-- Filters -->
-	<div class="card bg-base-200 p-4 mb-6">
+	<div class="card bg-base-200 p-4 mb-4">
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 			<div class="form-control">
 				<label class="label" for="eventType">
@@ -187,7 +187,7 @@
 
 	<!-- Error State -->
 	{#if error}
-		<div class="alert alert-error mb-6">
+		<div class="alert alert-error mb-4">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="stroke-current shrink-0 h-6 w-6"

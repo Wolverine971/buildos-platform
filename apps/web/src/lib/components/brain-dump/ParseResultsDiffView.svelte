@@ -515,7 +515,7 @@
 		<!-- Summary Section -->
 		{#if parseResults.summary}
 			<div
-				class="mb-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700"
+				class="mb-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700"
 			>
 				<h3
 					class="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-2 flex items-center gap-2"
@@ -530,7 +530,7 @@
 		<!-- Error Alert -->
 		{#if hasErrors}
 			<div
-				class="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4"
+				class="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4"
 			>
 				<div class="flex items-start gap-3">
 					<AlertTriangle
@@ -571,7 +571,7 @@
 		{:else}
 			<!-- Update Operations Section -->
 			{#if updateOperations.length > 0}
-				<div class="mb-6">
+				<div class="mb-4">
 					<h3
 						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
 					>
@@ -947,7 +947,7 @@
 
 			<!-- Create Operations Section -->
 			{#if createOperations.length > 0}
-				<div class="mb-6">
+				<div class="mb-4">
 					<h3
 						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
 					>
@@ -1205,7 +1205,7 @@
 
 			<!-- Error Operations (if any are still displayed) -->
 			{#if errorOperations.length > 0}
-				<div class="mb-6">
+				<div class="mb-4">
 					<h3
 						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
 					>

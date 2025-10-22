@@ -73,7 +73,7 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
 	<div class="mx-auto max-w-7xl">
 		<!-- Header -->
-		<div class="mb-6 sm:mb-8">
+		<div class="mb-4 sm:mb-6">
 			<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
 				LLM Usage Dashboard
 			</h1>
@@ -125,7 +125,7 @@
 		{:else if stats}
 			<!-- Overview Cards -->
 			<div
-				class="mb-6 sm:mb-8 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+				class="mb-4 sm:mb-6 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
 			>
 				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Cost</p>
@@ -181,7 +181,7 @@
 			</div>
 
 			<!-- Charts Row -->
-			<div class="mb-6 sm:mb-8 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+			<div class="mb-4 sm:mb-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
 				<!-- Cost Over Time -->
 				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
 					<h3
@@ -272,7 +272,7 @@
 			</div>
 
 			<!-- Model Breakdown -->
-			<div class="mb-6 sm:mb-8 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Model Breakdown
 				</h3>
@@ -355,7 +355,7 @@
 			</div>
 
 			<!-- Operation Breakdown -->
-			<div class="mb-6 sm:mb-8 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Operation Breakdown
 				</h3>
@@ -438,7 +438,7 @@
 			</div>
 
 			<!-- Top Users -->
-			<div class="mb-6 sm:mb-8 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Top Users by Cost
 				</h3>

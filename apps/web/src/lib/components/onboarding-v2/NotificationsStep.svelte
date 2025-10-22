@@ -146,15 +146,16 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
-			Step 2: Maintain Focus With Smart Reminders
+			Step 2: Focus - Reminders & Calendar Integration
 		</h2>
 		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto mb-4">
 			You've got <strong>clarity</strong> from brain dumping your projects. Now you need
 			<strong>focus</strong> to actually get things done.
 		</p>
 		<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
-			BuildOS helps you maintain focus through timely nudges, daily check-ins, and contextual
-			reminders that keep you moving forward on what matters most.
+			BuildOS helps you maintain focus through smart reminders, calendar integration, daily
+			check-ins, and contextual notifications that keep you moving forward on what matters
+			most.
 		</p>
 	</div>
 

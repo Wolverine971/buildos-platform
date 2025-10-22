@@ -122,7 +122,7 @@
 		{searchType === 'braindump' ? 'Brain Dump' : searchType === 'project' ? 'Project' : 'Task'} Results
 	</h1>
 
-	<p class="text-gray-600 dark:text-gray-400 mb-6">
+	<p class="text-gray-600 dark:text-gray-400 mb-4">
 		Showing results for: <span class="font-semibold text-gray-900 dark:text-gray-100"
 			>"{searchQuery}"</span
 		>

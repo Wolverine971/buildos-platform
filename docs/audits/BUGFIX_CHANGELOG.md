@@ -15,6 +15,7 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 3. **Preventative Cleanup**: Removing references now prevents issues when migration runs on 2025-10-29
 
 **Deprecated Fields**:
+
 - `daily_brief_sms` - Replaced by `user_notification_preferences.should_sms_daily_brief`
 - `task_reminders` - Never implemented, no worker flow exists
 - `next_up_enabled` - Never implemented, no worker flow exists
@@ -30,6 +31,7 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 - **Benefit**: Automatically adapts when deprecated fields are dropped from schema
 
 **Before**:
+
 ```typescript
 .select(
   'id, user_id, phone_number, ..., task_reminders, ..., next_up_enabled, daily_brief_sms, ...'
@@ -37,6 +39,7 @@ This document tracks significant bug fixes across the BuildOS platform. Entries 
 ```
 
 **After**:
+
 ```typescript
 .select('*')
 ```

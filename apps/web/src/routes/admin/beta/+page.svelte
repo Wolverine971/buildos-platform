@@ -535,7 +535,7 @@
 		</AdminPageHeader>
 
 		<!-- Tabs - Mobile Responsive -->
-		<div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+		<div class="border-b border-gray-200 dark:border-gray-700 mb-4">
 			<nav class="-mb-px flex overflow-x-auto">
 				<Button
 					on:click={() => (activeTab = 'signups')}
@@ -597,7 +597,7 @@
 
 			<!-- Data View Tab Content -->
 			<!-- Filters for Data View -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-4">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 						Comprehensive Signup Data
@@ -660,7 +660,7 @@
 
 			{#if error}
 				<div
-					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 				>
 					<p class="text-red-800 dark:text-red-200">{error}</p>
 				</div>
@@ -1255,7 +1255,7 @@
 		{:else}
 			<!-- Existing Signups/Members Content -->
 			<!-- Filters and Search -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-4">
 				<!-- Mobile Filter Toggle -->
 				<div class="sm:hidden mb-4">
 					<Button
@@ -1432,7 +1432,7 @@
 
 			{#if error}
 				<div
-					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 				>
 					<p class="text-red-800 dark:text-red-200">{error}</p>
 				</div>

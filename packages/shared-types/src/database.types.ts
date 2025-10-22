@@ -423,7 +423,7 @@ export type Database = {
           full_name: string;
           id: string;
           invited_by: string | null;
-          ip_address: unknown | null;
+          ip_address: unknown;
           job_title: string | null;
           productivity_tools: string[] | null;
           referral_source: string | null;
@@ -444,7 +444,7 @@ export type Database = {
           full_name: string;
           id?: string;
           invited_by?: string | null;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           job_title?: string | null;
           productivity_tools?: string[] | null;
           referral_source?: string | null;
@@ -465,7 +465,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           invited_by?: string | null;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           job_title?: string | null;
           productivity_tools?: string[] | null;
           referral_source?: string | null;
@@ -1419,7 +1419,7 @@ export type Database = {
           event_data: Json | null;
           event_type: string;
           id: string;
-          ip_address: unknown | null;
+          ip_address: unknown;
           recipient_id: string | null;
           timestamp: string | null;
           user_agent: string | null;
@@ -1431,7 +1431,7 @@ export type Database = {
           event_data?: Json | null;
           event_type: string;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           recipient_id?: string | null;
           timestamp?: string | null;
           user_agent?: string | null;
@@ -1443,7 +1443,7 @@ export type Database = {
           event_data?: Json | null;
           event_type?: string;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           recipient_id?: string | null;
           timestamp?: string | null;
           user_agent?: string | null;
@@ -1534,7 +1534,7 @@ export type Database = {
           error_type: string;
           http_method: string | null;
           id: string;
-          ip_address: unknown | null;
+          ip_address: unknown;
           llm_max_tokens: number | null;
           llm_model: string | null;
           llm_provider: string | null;
@@ -1572,7 +1572,7 @@ export type Database = {
           error_type: string;
           http_method?: string | null;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           llm_max_tokens?: number | null;
           llm_model?: string | null;
           llm_provider?: string | null;
@@ -1610,7 +1610,7 @@ export type Database = {
           error_type?: string;
           http_method?: string | null;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           llm_max_tokens?: number | null;
           llm_model?: string | null;
           llm_provider?: string | null;
@@ -1767,7 +1767,7 @@ export type Database = {
           user_agent: string | null;
           user_email: string | null;
           user_id: string | null;
-          user_ip: unknown | null;
+          user_ip: unknown;
         };
         Insert: {
           category: string;
@@ -1780,7 +1780,7 @@ export type Database = {
           user_agent?: string | null;
           user_email?: string | null;
           user_id?: string | null;
-          user_ip?: unknown | null;
+          user_ip?: unknown;
         };
         Update: {
           category?: string;
@@ -1793,7 +1793,7 @@ export type Database = {
           user_agent?: string | null;
           user_email?: string | null;
           user_id?: string | null;
-          user_ip?: unknown | null;
+          user_ip?: unknown;
         };
         Relationships: [];
       };
@@ -4297,7 +4297,7 @@ export type Database = {
           activity_type: string;
           created_at: string;
           id: string;
-          ip_address: unknown | null;
+          ip_address: unknown;
           user_agent: string | null;
           user_id: string | null;
         };
@@ -4306,7 +4306,7 @@ export type Database = {
           activity_type: string;
           created_at?: string;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           user_agent?: string | null;
           user_id?: string | null;
         };
@@ -4315,7 +4315,7 @@ export type Database = {
           activity_type?: string;
           created_at?: string;
           id?: string;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           user_agent?: string | null;
           user_id?: string | null;
         };
@@ -4989,7 +4989,7 @@ export type Database = {
         Row: {
           created_at: string;
           id: number;
-          ip_address: unknown | null;
+          ip_address: unknown;
           updated_at: string;
           user_agent: string | null;
           visitor_id: string;
@@ -4997,7 +4997,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: number;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           updated_at?: string;
           user_agent?: string | null;
           visitor_id: string;
@@ -5005,7 +5005,7 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: number;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           updated_at?: string;
           user_agent?: string | null;
           visitor_id?: string;
@@ -5231,12 +5231,8 @@ export type Database = {
           updated_at: string;
         }[];
       };
-      binary_quantize: {
-        Args: { "": string } | { "": unknown };
-        Returns: unknown;
-      };
       brain_dump_cleanup_preview: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           draft_to_keep_id: string;
           draft_to_keep_size: number;
@@ -5248,7 +5244,7 @@ export type Database = {
         }[];
       };
       brain_dump_cleanup_report: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           metric: string;
           value: number;
@@ -5340,17 +5336,14 @@ export type Database = {
         }[];
       };
       cleanup_duplicate_brain_dump_drafts: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           affected_projects: number;
           affected_users: number;
           deleted_count: number;
         }[];
       };
-      cleanup_old_brief_jobs: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
+      cleanup_old_brief_jobs: { Args: never; Returns: undefined };
       cleanup_old_tracking_links: {
         Args: { p_days_old?: number };
         Returns: number;
@@ -5408,10 +5401,7 @@ export type Database = {
           instance_date: string;
         }[];
       };
-      generate_short_code: {
-        Args: { length?: number };
-        Returns: string;
-      };
+      generate_short_code: { Args: { length?: number }; Returns: string };
       get_admin_model_breakdown: {
         Args: { p_end_date: string; p_start_date: string };
         Returns: {
@@ -5504,7 +5494,7 @@ export type Database = {
         Returns: Json;
       };
       get_engagement_analytics: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           active_users: number;
           avg_days_inactive: number;
@@ -5527,7 +5517,7 @@ export type Database = {
         }[];
       };
       get_notification_active_subscriptions: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           email: string;
           email_enabled: boolean;
@@ -5665,7 +5655,7 @@ export type Database = {
         Returns: Json;
       };
       get_revenue_metrics: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           average_revenue_per_user: number;
           churn_rate: number;
@@ -5722,7 +5712,7 @@ export type Database = {
         }[];
       };
       get_sms_notification_stats: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           avg_sms_delivery_time_seconds: number;
           opt_out_rate: number;
@@ -5746,7 +5736,7 @@ export type Database = {
         }[];
       };
       get_subscription_overview: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           active_subscriptions: number;
           arr: number;
@@ -5768,7 +5758,7 @@ export type Database = {
         }[];
       };
       get_user_engagement_metrics: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           active_users_30d: number;
           active_users_7d: number;
@@ -5837,7 +5827,7 @@ export type Database = {
         }[];
       };
       get_visitor_overview: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           total_visitors: number;
           unique_visitors_today: number;
@@ -5845,90 +5835,17 @@ export type Database = {
           visitors_7d: number;
         }[];
       };
-      gtrgm_compress: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      gtrgm_decompress: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      gtrgm_in: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      gtrgm_options: {
-        Args: { "": unknown };
-        Returns: undefined;
-      };
-      gtrgm_out: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      halfvec_avg: {
-        Args: { "": number[] };
-        Returns: unknown;
-      };
-      halfvec_out: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      halfvec_send: {
-        Args: { "": unknown };
-        Returns: string;
-      };
-      halfvec_typmod_in: {
-        Args: { "": unknown[] };
-        Returns: number;
-      };
       has_active_subscription: {
         Args: { user_uuid: string };
         Returns: boolean;
-      };
-      hnsw_bit_support: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      hnsw_halfvec_support: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      hnsw_sparsevec_support: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      hnswhandler: {
-        Args: { "": unknown };
-        Returns: unknown;
       };
       increment_question_display_count: {
         Args: { question_ids: string[] };
         Returns: undefined;
       };
-      is_admin: {
-        Args: Record<PropertyKey, never> | { user_id: string };
-        Returns: boolean;
-      };
-      ivfflat_bit_support: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      ivfflat_halfvec_support: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      ivfflathandler: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown };
-        Returns: number;
-      };
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown };
-        Returns: unknown;
-      };
+      is_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { user_id: string }; Returns: boolean };
       log_notification_event: {
         Args: {
           p_context?: Json;
@@ -5944,7 +5861,7 @@ export type Database = {
         Returns: undefined;
       };
       normalize_queue_job_metadata: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
           details: string;
           error_count: number;
@@ -5974,14 +5891,8 @@ export type Database = {
         };
         Returns: undefined;
       };
-      refresh_sms_metrics_daily: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
-      refresh_system_metrics: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
+      refresh_sms_metrics_daily: { Args: never; Returns: undefined };
+      refresh_system_metrics: { Args: never; Returns: undefined };
       reorder_phases_with_tasks: {
         Args: {
           p_affected_task_ids?: string[];
@@ -6066,30 +5977,8 @@ export type Database = {
           similarity: number;
         }[];
       };
-      set_limit: {
-        Args: { "": number };
-        Returns: number;
-      };
-      show_limit: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
-      };
-      show_trgm: {
-        Args: { "": string };
-        Returns: string[];
-      };
-      sparsevec_out: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
-      sparsevec_send: {
-        Args: { "": unknown };
-        Returns: string;
-      };
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] };
-        Returns: number;
-      };
+      show_limit: { Args: never; Returns: number };
+      show_trgm: { Args: { "": string }; Returns: string[] };
       start_daily_brief_generation: {
         Args: { p_brief_date?: string; p_user_id: string };
         Returns: Json;
@@ -6106,14 +5995,7 @@ export type Database = {
           started: boolean;
         }[];
       };
-      unaccent: {
-        Args: { "": string };
-        Returns: string;
-      };
-      unaccent_init: {
-        Args: { "": unknown };
-        Returns: unknown;
-      };
+      unaccent: { Args: { "": string }; Returns: string };
       update_brief_generation_progress: {
         Args: {
           p_brief_id: string;
@@ -6187,30 +6069,6 @@ export type Database = {
           job_type: string;
           status: string;
         }[];
-      };
-      vector_avg: {
-        Args: { "": number[] };
-        Returns: string;
-      };
-      vector_dims: {
-        Args: { "": string } | { "": unknown };
-        Returns: number;
-      };
-      vector_norm: {
-        Args: { "": string };
-        Returns: number;
-      };
-      vector_out: {
-        Args: { "": string };
-        Returns: unknown;
-      };
-      vector_send: {
-        Args: { "": string };
-        Returns: string;
-      };
-      vector_typmod_in: {
-        Args: { "": unknown[] };
-        Returns: number;
       };
     };
     Enums: {

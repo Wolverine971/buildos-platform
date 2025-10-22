@@ -38,9 +38,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		const { data: preferences, error } = await supabase
 			.from('user_sms_preferences')
-			.select(
-				'*'
-			)
+			.select('*')
 			.eq('user_id', user.id)
 			.maybeSingle();
 

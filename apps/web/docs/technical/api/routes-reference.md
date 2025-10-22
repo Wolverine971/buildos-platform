@@ -924,6 +924,7 @@ No parameters
 ### Response Schema
 
 Returns comprehensive user data including:
+
 - User profile and context
 - All projects with task/note counts (aggregated efficiently)
 - All brain dumps

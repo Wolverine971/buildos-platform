@@ -250,7 +250,7 @@
 		/>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
@@ -298,7 +298,7 @@
 		</div>
 
 		<!-- Auto Refresh Controls -->
-		<div class="mb-6 flex items-center justify-between">
+		<div class="mb-4 flex items-center justify-between">
 			<div class="flex items-center space-x-4">
 				<label class="flex items-center space-x-2 cursor-pointer">
 					<input

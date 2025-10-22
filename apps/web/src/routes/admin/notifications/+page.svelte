@@ -121,7 +121,7 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
 				class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
@@ -172,14 +172,14 @@
 
 		{#if error}
 			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
 			>
 				<p class="text-red-800 dark:text-red-200">{error}</p>
 			</div>
 		{/if}
 
 		<!-- Overview Metrics -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 			<MetricCard
 				title="Total Sent (24h)"
 				value={overview?.total_sent || 0}
@@ -219,7 +219,7 @@
 
 		<!-- Failed Deliveries Alert -->
 		{#if failures.length > 0}
-			<div class="mb-6">
+			<div class="mb-4">
 				<FailedDeliveriesTable
 					data={failures}
 					loading={isLoading}
@@ -230,17 +230,17 @@
 		{/if}
 
 		<!-- Channel Performance -->
-		<div class="mb-6">
+		<div class="mb-4">
 			<ChannelPerformanceTable data={channelMetrics} loading={isLoading} />
 		</div>
 
 		<!-- SMS Insights -->
-		<div class="mb-6">
+		<div class="mb-4">
 			<SMSInsightsCard data={smsStats} loading={isLoading} />
 		</div>
 
 		<!-- Event Type Breakdown -->
-		<div class="mb-6">
+		<div class="mb-4">
 			<EventBreakdownTable data={eventMetrics} loading={isLoading} />
 		</div>
 	</div>

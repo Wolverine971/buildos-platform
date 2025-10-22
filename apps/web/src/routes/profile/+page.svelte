@@ -7,36 +7,26 @@
 	import { goto } from '$app/navigation';
 	import {
 		User,
-		Edit3,
-		Save,
-		X,
 		CheckCircle,
 		Rocket,
 		Settings,
-		HelpCircle,
-		Target,
 		Sparkles,
 		Calendar,
 		Mail,
-		Brain,
-		Plus,
 		AlertCircle,
-		Briefcase,
-		Zap,
 		Bell,
 		XCircle,
 		CreditCard
 	} from 'lucide-svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 	import type { PageData } from './$types';
-	import type { UserContext } from '$lib/types/user-context';
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
 
 	// Import the new components
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
@@ -48,15 +38,11 @@
 	export let form;
 
 	// State
-	let userContext: UserContext | null = data.userContext;
-	let editingSection: string | null = null;
-	let editFormData: Partial<UserContext> = {};
-	let isSaving = false;
 	let saveSuccess = false;
 	let saveError = false;
 	let errorMessage = '';
 	let showOnboardingComplete = data.justCompletedOnboarding || false;
-	let activeTab = data.activeTab || 'about'; // Support URL param for initial tab
+	let activeTab = data.activeTab || 'account'; // Support URL param for initial tab
 	let profileTabs: TabNavTab[] = [];
 
 	// Template management state
@@ -72,34 +58,6 @@
 		completedFields: [],
 		missingRequiredFields: [],
 		categoryProgress: {}
-	};
-
-	// Updated category configuration for new 4-question structure
-	const PROFILE_CATEGORIES = {
-		projects: {
-			title: 'Current Projects & Initiatives',
-			description: 'Your active projects, goals, and initiatives',
-			color: 'text-blue-600 dark:text-blue-400',
-			icon: Rocket
-		},
-		work_style: {
-			title: 'Work Style & Preferences',
-			description: 'How you prefer to work and stay organized',
-			color: 'text-green-600 dark:text-green-400',
-			icon: Settings
-		},
-		challenges: {
-			title: 'Current Challenges & Blockers',
-			description: "What's slowing you down or causing friction",
-			color: 'text-orange-600 dark:text-orange-400',
-			icon: HelpCircle
-		},
-		help_focus: {
-			title: 'BuildOS Focus Areas',
-			description: 'How BuildOS should help you most',
-			color: 'text-purple-600 dark:text-purple-400',
-			icon: Target
-		}
 	};
 
 	// Handle form submission results
@@ -122,26 +80,17 @@
 		const urlTab = $page.url.searchParams.get('tab');
 		if (
 			urlTab &&
-			[
-				'about',
-				'prompts',
-				'briefs',
-				'calendar',
-				'account',
-				'notifications',
-				'billing'
-			].includes(urlTab)
+			['account', 'briefs', 'calendar', 'notifications', 'billing'].includes(urlTab)
 		) {
 			activeTab = urlTab;
 		}
 	}
 
 	$: profileTabs = [
-		{ id: 'about', label: 'Work Profile', icon: Briefcase },
+		{ id: 'account', label: 'Account', icon: User },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
-		{ id: 'account', label: 'Account', icon: User },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
 	];
 
@@ -152,24 +101,12 @@
 			completedOnboarding: data.completedOnboarding || false
 		});
 
-		// Subscribe to store changes
-		const unsubscribe = userContextStore.subscribe((state) => {
-			if (state.context) {
-				userContext = state.context;
-			}
-		});
-
 		// Auto-hide completion message after 5 seconds
 		if (showOnboardingComplete) {
 			setTimeout(() => {
 				showOnboardingComplete = false;
 			}, 5000);
 		}
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe();
-		};
 	});
 
 	// Function to switch tabs and update URL
@@ -178,7 +115,7 @@
 
 		// Update URL without reload
 		const url = new URL($page.url);
-		if (tab === 'about') {
+		if (tab === 'account') {
 			url.searchParams.delete('tab');
 		} else {
 			url.searchParams.set('tab', tab);
@@ -222,60 +159,6 @@
 		}
 	}
 
-	async function loadUserContext() {
-		try {
-			await userContextStore.load();
-			// The store subscription will automatically update userContext
-		} catch (error) {
-			console.error('Error loading user context:', error);
-			showError('Failed to load user context');
-		}
-	}
-
-	async function confirmDelete() {
-		if (!confirm('Are you sure you want to delete this template?')) {
-			return;
-		}
-	}
-
-	function startEditing(section: string) {
-		editingSection = section;
-		editFormData = { ...userContext };
-	}
-
-	function cancelEditing() {
-		editingSection = null;
-		editFormData = {};
-	}
-
-	async function saveSection() {
-		if (!editingSection) return;
-
-		isSaving = true;
-		try {
-			// Use the store to update context (replace mode for profile edits)
-			const updatedContext = await userContextStore.saveUserInputOnly(
-				editFormData[getSectionInputField(editingSection)] || '',
-				editingSection,
-				false // Replace mode for profile edits
-			);
-
-			// Clear editing state
-			editingSection = null;
-			editFormData = {};
-
-			// Show success message
-			showSuccess('Changes saved successfully!');
-		} catch (error) {
-			console.error('Error saving context:', error);
-			showError(
-				`Failed to save changes: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
-		} finally {
-			isSaving = false;
-		}
-	}
-
 	// Utility functions for messages
 	function showSuccess(message: string) {
 		saveSuccess = true;
@@ -292,61 +175,6 @@
 		setTimeout(() => {
 			saveError = false;
 		}, 5000);
-	}
-
-	// Get the input field name for a category
-	function getSectionInputField(category: string): keyof UserContext {
-		const mapping: Record<string, keyof UserContext> = {
-			projects: 'input_projects',
-			work_style: 'input_work_style',
-			challenges: 'input_challenges',
-			help_focus: 'input_help_focus'
-		};
-		return mapping[category] || 'input_projects';
-	}
-
-	// Get the parsed fields for a category
-	function getSectionFields(category: string): Array<{ key: keyof UserContext; label: string }> {
-		const fields: Record<string, Array<{ key: keyof UserContext; label: string }>> = {
-			projects: [
-				{ key: 'active_projects', label: 'Active Projects' },
-				{ key: 'goals_overview', label: 'Goals & Objectives' },
-				{ key: 'priorities', label: 'Current Priorities' }
-			],
-			work_style: [
-				{ key: 'work_style', label: 'Work Style' },
-				{ key: 'habits', label: 'Work Habits' },
-				{ key: 'tools', label: 'Tools & Software' },
-				{ key: 'schedule_preferences', label: 'Schedule Preferences' },
-				{ key: 'workflows', label: 'Workflows & Processes' },
-				{ key: 'preferred_work_hours', label: 'Preferred Work Hours' },
-				{ key: 'organization_method', label: 'Organization Method' }
-			],
-			challenges: [
-				{ key: 'blockers', label: 'Current Blockers' },
-				{ key: 'collaboration_needs', label: 'Support Needed' },
-				{ key: 'skill_gaps', label: 'Skills to Develop' },
-				{ key: 'productivity_challenges', label: 'Productivity Challenges' }
-			],
-			help_focus: [
-				{ key: 'help_priorities', label: 'Help Priorities' },
-				{ key: 'focus_areas', label: 'Focus Areas' },
-				{ key: 'communication_style', label: 'Communication Style' }
-			]
-		};
-
-		return fields[category] || [];
-	}
-
-	function hasContentInSection(category: string): boolean {
-		// Check both user input and parsed fields
-		const inputField = getSectionInputField(category);
-		const hasInput = userContext?.[inputField];
-
-		const parsedFields = getSectionFields(category);
-		const hasParsedContent = parsedFields.some((field) => userContext?.[field.key]);
-
-		return !!(hasInput || hasParsedContent);
 	}
 
 	function previewTemplate(template: any) {
@@ -378,12 +206,6 @@
 			projectTemplates.find((t) => t.in_use && t.user_id === data.user.id) ||
 			projectTemplates.find((t) => t.is_default && !t.user_id)
 		);
-	}
-
-	// Get user input for editing
-	function getUserInput(category: string): string {
-		const inputField = getSectionInputField(category);
-		return userContext?.[inputField] || '';
 	}
 
 	// Handle success messages from child components
@@ -521,21 +343,23 @@
 							<Mail class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
 							<span class="truncate">{data.user?.email}</span>
 						</p>
-						{#if userContext?.created_at}
+						{#if data.userContext?.created_at}
 							<p
 								class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"
 							>
 								<Calendar
 									class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0"
 								/>
-								Member since {new Date(userContext.created_at).toLocaleDateString()}
+								Member since {new Date(
+									data.userContext.created_at
+								).toLocaleDateString()}
 							</p>
 						{/if}
 					</div>
 				</div>
 
 				<div class="flex items-center">
-					{#if !userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
+					{#if !data.userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
 						<Button
 							on:click={() => goto('/onboarding')}
 							variant="primary"
@@ -572,180 +396,13 @@
 		</div>
 
 		<!-- Tab Content -->
-		{#if activeTab === 'about'}
-			<!-- Work Profile Sections -->
-			<div class="space-y-4 sm:space-y-6">
-				{#each Object.entries(PROFILE_CATEGORIES) as [category, config]}
-					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
-						transition:fade
-					>
-						<!-- Section Header -->
-						<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-							<div
-								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-							>
-								<div class="flex items-center gap-2 sm:gap-3">
-									<div
-										class={`p-1.5 sm:p-2 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0`}
-									>
-										<svelte:component
-											this={config.icon}
-											class={`w-4 h-4 sm:w-5 sm:h-5 ${config.color}`}
-										/>
-									</div>
-									<div class="min-w-0">
-										<h2
-											class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate"
-										>
-											{config.title}
-										</h2>
-										<p
-											class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-										>
-											{config.description}
-										</p>
-									</div>
-								</div>
-
-								{#if editingSection !== category && hasContentInSection(category)}
-									<Button
-										on:click={() => startEditing(category)}
-										variant="ghost"
-										size="sm"
-										class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-										icon={Edit3}
-									></Button>
-								{:else if editingSection === category}
-									<div class="flex items-center gap-2">
-										<Button
-											on:click={saveSection}
-											disabled={isSaving}
-											loading={isSaving}
-											variant="ghost"
-											size="sm"
-											class="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-											icon={Save}
-										></Button>
-										<Button
-											on:click={cancelEditing}
-											disabled={isSaving}
-											variant="ghost"
-											size="sm"
-											class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-											icon={X}
-										></Button>
-									</div>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Section Content -->
-						<div class="p-4 sm:p-6">
-							{#if !hasContentInSection(category) && editingSection !== category}
-								<div class="text-center py-6 sm:py-8">
-									<div
-										class={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center`}
-									>
-										<svelte:component
-											this={config.icon}
-											class={`w-5 h-5 sm:w-6 sm:h-6 ${config.color}`}
-										/>
-									</div>
-									<p
-										class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-3 sm:mb-4"
-									>
-										No information added yet.
-									</p>
-									<Button
-										on:click={() => startEditing(category)}
-										variant="primary"
-										size="sm"
-										icon={Plus}
-										class="text-xs sm:text-sm"
-									>
-										Add Information
-									</Button>
-								</div>
-							{:else}
-								<div class="space-y-4 sm:space-y-6">
-									{#if editingSection === category}
-										<!-- Editing Mode - Show user input field -->
-										<FormField
-											label="Update your {config.title.toLowerCase()}"
-											labelFor="user_input"
-											hint="BuildOS will automatically parse and organize this information."
-										>
-											<Textarea
-												id="user_input"
-												bind:value={
-													editFormData[getSectionInputField(category)]
-												}
-												rows={8}
-												placeholder="Tell us about your {config.title.toLowerCase()}..."
-												size="md"
-											/>
-										</FormField>
-									{:else}
-										<!-- Display Mode - Show user input first, then parsed fields -->
-										{#if getUserInput(category)}
-											<div class="mb-6">
-												<h3
-													class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center"
-												>
-													<Zap class="w-4 h-4 mr-2 text-blue-500" />
-													Onboarding Input
-												</h3>
-												<div
-													class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
-												>
-													<p
-														class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
-													>
-														{getUserInput(category)}
-													</p>
-												</div>
-											</div>
-										{/if}
-
-										<!-- Parsed Fields -->
-										{#if getSectionFields(category).some((field) => userContext?.[field.key])}
-											<div>
-												<h3
-													class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center"
-												>
-													<Brain class="w-4 h-4 mr-2 text-purple-500" />
-													AI-Organized Information
-												</h3>
-												<div class="space-y-4">
-													{#each getSectionFields(category) as field}
-														{#if userContext?.[field.key]}
-															<div
-																class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4"
-															>
-																<h4
-																	class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-																>
-																	{field.label}
-																</h4>
-																<p
-																	class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap"
-																>
-																	{userContext[field.key]}
-																</p>
-															</div>
-														{/if}
-													{/each}
-												</div>
-											</div>
-										{/if}
-									{/if}
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
+		{#if activeTab === 'account'}
+			<!-- Use the new AccountTab component -->
+			<AccountTab
+				user={data.user}
+				on:success={handleComponentSuccess}
+				on:error={handleComponentError}
+			/>
 		{:else if activeTab === 'briefs'}
 			<!-- Use the new BriefsTab component -->
 			<BriefsTab on:success={handleComponentSuccess} on:error={handleComponentError} />
@@ -754,13 +411,6 @@
 			<CalendarTab
 				{data}
 				{form}
-				on:success={handleComponentSuccess}
-				on:error={handleComponentError}
-			/>
-		{:else if activeTab === 'account'}
-			<!-- Use the new AccountTab component -->
-			<AccountTab
-				user={data.user}
 				on:success={handleComponentSuccess}
 				on:error={handleComponentError}
 			/>

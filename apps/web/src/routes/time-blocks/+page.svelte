@@ -167,15 +167,15 @@
 
 <div class="relative min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900">
 	<section
-		class="relative mx-auto flex max-w-5xl flex-col gap-4 px-3 py-6 sm:px-4 sm:py-8 lg:gap-5 lg:px-6"
+		class="relative mx-auto flex max-w-7xl flex-col gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:gap-5"
 	>
 		<header class="space-y-1">
 			<h1
-				class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl"
+				class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight"
 			>
 				Time Blocks
 			</h1>
-			<p class="text-sm text-slate-600 dark:text-slate-300 sm:text-base">
+			<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 				Focus sessions synced to your calendar
 			</p>
 		</header>

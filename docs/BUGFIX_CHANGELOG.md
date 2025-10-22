@@ -17,6 +17,207 @@ Each entry includes:
 
 ---
 
+## 2025-10-22 - Layout & Header Inconsistency: History & Time-Blocks Pages
+
+**Severity**: LOW
+
+### Root Cause
+
+The `/history` and `/time-blocks` pages used different CSS utility classes for both container width/padding AND page header styling compared to the standard patterns used by the `/` and `/projects` pages. This occurred because:
+
+1. Pages were likely implemented by different developers at different times
+2. No documented standard layout or typography pattern existed
+3. Standards evolved but older pages weren't updated
+
+**Layout Issues:**
+
+**Standard Container Pattern** (from `/` and `/projects`):
+
+- Container: `max-w-7xl` (1280px width)
+- Horizontal padding: `px-3 sm:px-4 md:px-6 lg:px-8`
+- Vertical padding: `py-4 sm:py-6 md:py-8`
+
+**Deviations Found**:
+
+- `/history`: Used `max-w-6xl` (1152px), missing responsive padding breakpoints
+- `/time-blocks`: Used `max-w-5xl` (1024px), different padding structure entirely
+
+**Header Issues:**
+
+**Standard Header Pattern** (from `/projects`):
+
+- Size: `text-2xl sm:text-3xl` (responsive sizing)
+- Weight: `font-bold`
+- Colors: `text-gray-900 dark:text-white`
+- Spacing: `mb-1 sm:mb-2 tracking-tight`
+
+**Deviations Found**:
+
+- `/history`: Used `text-3xl` (no responsive sizing, always large)
+- `/time-blocks`: Used `text-xl sm:text-2xl font-semibold` (too small, wrong weight, used slate colors instead of gray)
+
+**Impact**: Users experienced visual jarring when navigating between pages due to different page widths, inconsistent spacing, and varying header sizes. Inconsistent UX made the app feel less polished and unprofessional.
+
+### Fix Description
+
+Updated both pages to use the standard layout and header patterns:
+
+**Container Layout Fixes:**
+
+**`/history` page** (`apps/web/src/routes/history/+page.svelte:452`):
+
+- Changed container from `max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8`
+- To: `max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8`
+
+**`/time-blocks` page** (`apps/web/src/routes/time-blocks/+page.svelte:170`):
+
+- Changed container from `max-w-5xl flex-col gap-4 px-3 py-6 sm:px-4 sm:py-8 lg:gap-5 lg:px-6`
+- To: `max-w-7xl flex-col gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:gap-5`
+
+**Header Typography Fixes:**
+
+**`/history` page** (`apps/web/src/routes/history/+page.svelte:457`):
+
+- Changed `<h1>` from `text-3xl font-bold text-gray-900 dark:text-white flex items-center`
+- To: `text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center mb-1 sm:mb-2 tracking-tight`
+- Also updated subtitle from `text-gray-600 dark:text-gray-400 mt-2` to `text-sm sm:text-base text-gray-600 dark:text-gray-400` (responsive sizing)
+
+**`/time-blocks` page** (`apps/web/src/routes/time-blocks/+page.svelte:173-178`):
+
+- Changed `<h1>` from `text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl`
+- To: `text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight`
+- Updated subtitle from `text-sm text-slate-600 dark:text-slate-300 sm:text-base` to `text-sm sm:text-base text-gray-600 dark:text-gray-400` (standardized colors)
+
+All other CSS classes preserved. Layout and typography now match main page and projects page exactly.
+
+### Files Changed
+
+**Modified** (2 files):
+
+1. `/apps/web/src/routes/history/+page.svelte` - Container (line 452), header (line 457), and subtitle (line 461) updated
+2. `/apps/web/src/routes/time-blocks/+page.svelte` - Container (line 170), header (line 173), and subtitle (line 178) updated
+
+**Total Changes**: 6 lines modified (3 per file)
+
+### Testing
+
+**Manual Verification Steps**:
+
+**Layout Consistency:**
+
+1. Navigate to `/` (main page) - observe page width and padding
+2. Navigate to `/projects` - verify width/padding matches main page
+3. Navigate to `/history` - verify width/padding now matches (should be wider than before)
+4. Navigate to `/time-blocks` - verify width/padding now matches (should be wider than before)
+5. Test on different screen sizes (mobile, tablet, desktop) to verify responsive padding
+6. Verify no layout shift or content overflow on any page
+
+**Header Typography Consistency:** 7. Compare header sizes across all pages:
+
+- On mobile (< 640px): All headers should be `text-2xl`
+- On larger screens (≥ 640px): All headers should be `text-3xl`
+
+8. Verify all headers use `font-bold` (not `font-semibold`)
+9. Check header spacing is consistent (`mb-1 sm:mb-2 tracking-tight`)
+10. Verify subtitle text is responsive (`text-sm sm:text-base`)
+
+**Expected Result**: All four pages should have consistent width (1280px max), identical responsive padding, and uniform header typography across all breakpoints, creating a cohesive and professional user experience.
+
+### Related Documentation
+
+- **Web App Structure**: `/apps/web/CLAUDE.md`
+- **Component Standards**: `/apps/web/docs/technical/components/`
+- **Design System**: Future documentation should define standard layout patterns
+
+### Cross-References
+
+- **Main Page**: `/apps/web/src/routes/+page.svelte:620` - Standard layout reference
+- **Projects Page**: `/apps/web/src/routes/projects/+page.svelte:620` - Standard layout reference
+- **History Page**: `/apps/web/src/routes/history/+page.svelte:452` - Fixed container
+- **Time-Blocks Page**: `/apps/web/src/routes/time-blocks/+page.svelte:170` - Fixed container
+
+### Recommendations
+
+1. **Document Standard Layout**: Create a design system doc defining standard page container patterns
+2. **Component Library**: Consider creating a reusable `PageContainer` component to enforce consistency
+3. **Linting**: Add ESLint/Stylelint rules to detect non-standard layout patterns
+4. **Code Review**: Include layout consistency checks in PR review process
+
+---
+
+## 2025-10-22 - SMS Retry Job Validation Failure & Database Schema Mismatch
+
+**Severity**: HIGH
+
+### Root Cause
+
+Two separate but related bugs causing SMS job failures in the worker:
+
+1. **Incomplete Retry Metadata**: When Twilio webhook received a failed SMS status and attempted to retry, it created a queue job with incomplete metadata. The retry job only included `message_id` and retry tracking fields, but `validateSMSJobData()` requires `message_id`, `phone_number`, `message`, and `user_id`. This caused immediate validation failure: `Invalid SMS job data: user_id is required and must be string`.
+
+2. **Database Schema Mismatch**: The `fail_queue_job()` database function attempted to set `failed_at = NOW()` in the `queue_jobs` table, but this column doesn't exist in the schema. The table only has `completed_at`, `started_at`, and `processed_at`. This caused a secondary error: `column "failed_at" of relation "queue_jobs" does not exist`.
+
+**Why This Happens**: When a retry job fails validation in the worker, it triggers the error handling flow which calls `fail_queue_job()`, exposing both bugs sequentially.
+
+**Impact**: SMS retries failed immediately upon validation, and error handling also failed due to schema mismatch. This prevented automatic recovery from transient SMS failures.
+
+### Fix Description
+
+**Bug #1 Fix - Complete Retry Metadata**:
+
+- Added database query to fetch full SMS message data before creating retry job
+- Query retrieves: `id`, `user_id`, `phone_number`, `message_content`, `priority`
+- Retry job metadata now includes all required fields that `validateSMSJobData()` expects
+- Also includes `scheduled_sms_id` if the message is linked to a scheduled SMS
+
+**Bug #2 Fix - Database Function**:
+
+- Created migration `20251022_fix_fail_queue_job_column.sql`
+- Replaced `fail_queue_job()` function to use `completed_at` instead of `failed_at`
+- Failed jobs now correctly mark completion time using existing schema
+- Maintains backward compatibility with retry logic and exponential backoff
+
+### Files Changed
+
+**Modified** (1 file):
+
+1. `/apps/web/src/routes/api/webhooks/twilio/status/+server.ts:306-358` - Added SMS data fetch before retry, fixed metadata structure
+
+**Created** (1 file):
+
+1. `/apps/web/supabase/migrations/20251022_fix_fail_queue_job_column.sql` - Fixed database function to use correct column
+
+**Total Changes**: ~55 lines modified/added
+
+### Testing
+
+**Manual Verification Steps**:
+
+1. Trigger an SMS failure via Twilio webhook (simulate carrier error)
+2. Verify retry job is queued with complete metadata (`message_id`, `phone_number`, `message`, `user_id`)
+3. Verify the job processes without validation errors in worker logs
+4. Check that failed jobs are marked correctly in `queue_jobs` table (status='failed', `completed_at` set)
+5. Verify exponential backoff retry logic still works correctly
+6. Confirm no database errors in worker logs
+
+### Related Documentation
+
+- **Worker Architecture**: `/apps/worker/CLAUDE.md`
+- **SMS Worker**: `/apps/worker/src/workers/smsWorker.ts`
+- **Queue Validation**: `/apps/worker/src/workers/shared/queueUtils.ts:191-244`
+- **Twilio Integration**: `/packages/twilio-service/docs/implementation/`
+- **Queue System Flow**: `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`
+
+### Cross-References
+
+- **Worker Service**: `/apps/worker/` (Node.js + Express + BullMQ)
+- **Web App Webhook**: `/apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
+- **Database Schema**: `/packages/shared-types/src/database.schema.ts`
+- **SMS Job Data Interface**: `/apps/worker/src/workers/shared/queueUtils.ts:58-65`
+- **Database Migration**: `/apps/web/supabase/migrations/20251022_fix_fail_queue_job_column.sql`
+
+---
+
 ## 2025-10-21 - Modal Click-Outside & Notification Null Error
 
 **Severity**: MEDIUM

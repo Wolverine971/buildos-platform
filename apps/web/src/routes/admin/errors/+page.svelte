@@ -328,7 +328,7 @@
 		</AdminPageHeader>
 
 		<!-- Summary Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
 			{#each summary as item}
 				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
 					<h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">

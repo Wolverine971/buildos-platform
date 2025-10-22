@@ -45,3 +45,5 @@ coverage
 # Misc
 *.pem
 .cache
+# Calendar analysis prompt audits (contain user data)
+/apps/web/docs/prompts/**/*prompt.md

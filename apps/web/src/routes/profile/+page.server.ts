@@ -105,7 +105,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 	const justCompletedOnboarding = url.searchParams.get('onboarding') === 'complete';
 
 	// Get active tab from URL params
-	const activeTab = url.searchParams.get('tab') || 'about';
+	const activeTab = url.searchParams.get('tab') || 'account';
 
 	// Get subscription data if Stripe is enabled
 	let subscription = null;

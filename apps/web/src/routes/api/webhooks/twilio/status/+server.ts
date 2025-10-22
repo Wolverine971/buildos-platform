@@ -304,41 +304,57 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				const maxAttempts = updatedMessage.max_attempts ?? 3;
 
 				if (shouldRetry && attemptCount < maxAttempts) {
-					// Calculate backoff delay based on attempt count and error severity
-					let baseDelay = 60; // 1 minute base
-					if (errorInfo.category === 'rate_limit') {
-						baseDelay = 300; // 5 minutes for rate limits
-					} else if (errorInfo.category === 'carrier_issue') {
-						baseDelay = 180; // 3 minutes for carrier issues
-					}
+					// Fetch full message data for retry job
+					const { data: fullMessage, error: fetchError } = await supabase
+						.from('sms_messages')
+						.select('id, user_id, phone_number, message_content, priority')
+						.eq('id', messageId)
+						.single();
 
-					const delay = Math.pow(2, attemptCount) * baseDelay; // Exponential backoff
-					const scheduledFor = new Date(Date.now() + delay * 1000);
+					if (fetchError || !fullMessage) {
+						logger.error('Failed to fetch message for retry', fetchError);
+					} else {
+						// Calculate backoff delay based on attempt count and error severity
+						let baseDelay = 60; // 1 minute base
+						if (errorInfo.category === 'rate_limit') {
+							baseDelay = 300; // 5 minutes for rate limits
+						} else if (errorInfo.category === 'carrier_issue') {
+							baseDelay = 180; // 3 minutes for carrier issues
+						}
 
-					logger.info('Scheduling retry for failed SMS', {
-						attemptCount,
-						maxAttempts,
-						delaySeconds: delay,
-						scheduledFor: scheduledFor.toISOString(),
-						errorCategory: errorInfo.category
-					});
+						const delay = Math.pow(2, attemptCount) * baseDelay; // Exponential backoff
+						const scheduledFor = new Date(Date.now() + delay * 1000);
 
-					const { error: queueError } = await supabase.rpc('add_queue_job', {
-						p_user_id: updatedMessage.user_id,
-						p_job_type: 'send_sms',
-						p_metadata: {
-							message_id: messageId,
-							retry_attempt: attemptCount + 1,
-							previous_error: errorMessage,
-							error_code: errorCode,
-							error_category: errorInfo.category
-						},
-						p_scheduled_for: scheduledFor.toISOString(),
-						p_priority: updatedMessage.priority === 'urgent' ? 1 : 10
-					});
+						logger.info('Scheduling retry for failed SMS', {
+							attemptCount,
+							maxAttempts,
+							delaySeconds: delay,
+							scheduledFor: scheduledFor.toISOString(),
+							errorCategory: errorInfo.category
+						});
 
-					if (queueError) {
-						logger.error('Failed to queue retry job', queueError);
+						const { error: queueError } = await supabase.rpc('add_queue_job', {
+							p_user_id: fullMessage.user_id,
+							p_job_type: 'send_sms',
+							p_metadata: {
+								message_id: messageId,
+								phone_number: fullMessage.phone_number,
+								message: fullMessage.message_content,
+								user_id: fullMessage.user_id,
+								priority: fullMessage.priority,
+								scheduled_sms_id: scheduledSms?.id || undefined,
+								retry_attempt: attemptCount + 1,
+								previous_error: errorMessage,
+								error_code: errorCode,
+								error_category: errorInfo.category
+							},
+							p_scheduled_for: scheduledFor.toISOString(),
+							p_priority: fullMessage.priority === 'urgent' ? 1 : 10
+						});
+
+						if (queueError) {
+							logger.error('Failed to queue retry job', queueError);
+						}
 					}
 				} else if (!shouldRetry) {
 					logger.warn('Permanent failure - retry not attempted', {
