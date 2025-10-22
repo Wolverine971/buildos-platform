@@ -32,7 +32,7 @@
 </script>
 
 <div class="tab-container {containerClass}">
-	<nav class="tab-nav {navClass}" role="tablist" aria-label={ariaLabel}>
+	<div class="tab-nav {navClass}" role="tablist" aria-label={ariaLabel}>
 		{#each tabs as tab (tab.id)}
 			<button
 				type="button"
@@ -55,7 +55,7 @@
 				{/if}
 			</button>
 		{/each}
-	</nav>
+	</div>
 </div>
 
 <style>

@@ -475,7 +475,8 @@
 										>
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-										Next billing: {data.subscriptionDetails.subscription.current_period_end
+										Next billing: {data.subscriptionDetails.subscription
+											.current_period_end
 											? new Date(
 													data.subscriptionDetails.subscription.current_period_end
 												).toLocaleDateString()

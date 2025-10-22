@@ -216,7 +216,7 @@
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				{#each Object.entries(sortedActivities.reduce((counts, activity) => {
 						const type = activity.activity_type.split('_')[0];
-						counts[type] = (counts[type] || 0) + 1;
+						counts[type] = (counts[type || 0] || 0) + 1;
 						return counts;
 					}, {})) as [type, count]}
 					<div class="text-center">

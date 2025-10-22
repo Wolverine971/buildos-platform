@@ -21,10 +21,7 @@
 	import type { PageData } from './$types';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-
-	export let data: PageData;
 
 	let isLoading = true;
 	let error: string | null = null;

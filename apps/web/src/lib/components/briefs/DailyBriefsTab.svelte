@@ -401,7 +401,7 @@
 	// Show project briefs from streaming data ONLY while actively generating (Svelte 5 $derived)
 	let displayProjectBriefs = $derived(
 		isToday &&
-			currentStreamingData?.projectBriefs?.length > 0 &&
+			currentStreamingData?.projectBriefs?.length &&
 			currentStreamingStatus?.isGenerating
 			? (currentStreamingData?.projectBriefs ?? projectBriefs)
 			: projectBriefs
@@ -628,7 +628,7 @@
 								: 'Generating Brief'}
 						</h3>
 						<p class="text-sm text-blue-600 dark:text-blue-400 truncate">
-							{unifiedGenerationState?.message || currentStreamingStatus.message}
+							{unifiedGenerationState?.message || currentStreamingStatus?.message}
 						</p>
 					</div>
 				</div>

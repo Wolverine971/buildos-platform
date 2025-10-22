@@ -679,7 +679,7 @@ export class OperationsExecutor {
 	}): Promise<void> {
 		try {
 			// Format questions for storage (max 5)
-			const questionsToStore = projectQuestions.slice(0, 5).map((q) => ({
+			const questionsToStore = projectQuestions?.slice(0, 5).map((q) => ({
 				user_id: userId,
 				project_id: projectId,
 				question: q.question,

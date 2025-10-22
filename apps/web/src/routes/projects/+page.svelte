@@ -757,8 +757,7 @@
 
 <!-- Modals - Lazy loaded -->
 {#if NewProjectModal}
-	{@const Modal = NewProjectModal}
-	<Modal
+	<NewProjectModal
 		isOpen={showNewProjectModal}
 		{creatingProject}
 		isFirstProject={projects.length === 0}
@@ -770,8 +769,7 @@
 {/if}
 
 {#if ProjectBriefModal}
-	{@const Modal = ProjectBriefModal}
-	<Modal
+	<ProjectBriefModal
 		brief={selectedBrief}
 		isOpen={showBriefModal}
 		on:close={() => {
@@ -782,8 +780,7 @@
 {/if}
 
 {#if DailyBriefModal}
-	{@const Modal = DailyBriefModal}
-	<Modal
+	<DailyBriefModal
 		isOpen={briefModalOpen}
 		briefDate={selectedBriefDate}
 		onClose={closeDailyBriefModal}
@@ -791,8 +788,7 @@
 {/if}
 
 {#if BrainDumpModal}
-	{@const Modal = BrainDumpModal}
-	<Modal
+	<BrainDumpModal
 		isOpen={showBrainDumpModal}
 		project={selectedBrainDumpProject}
 		on:close={handleBrainDumpClose}
@@ -800,11 +796,7 @@
 {/if}
 
 {#if QuickProjectModal}
-	{@const Modal = QuickProjectModal}
-	<Modal
-		isOpen={showQuickProjectModal}
-		on:close={handleQuickProjectClose}
-	/>
+	<QuickProjectModal isOpen={showQuickProjectModal} on:close={handleQuickProjectClose} />
 {/if}
 
 <!-- Brain Dump Processing Notification moved to +layout.svelte for global persistence -->

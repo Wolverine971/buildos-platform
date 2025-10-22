@@ -169,7 +169,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 
 			// Check daily limit
 			// BUG FIX #1: Use null-check instead of truthy check to handle daily_sms_count = 0
-			if (userPrefs.daily_sms_limit != null && userPrefs.daily_sms_count != null) {
+		if (userPrefs.daily_sms_limit != null && userPrefs.daily_sms_count != null) {
 				if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
 					console.log(
 						`[SMS Worker] Daily SMS limit reached (${userPrefs.daily_sms_count}/${userPrefs.daily_sms_limit}), skipping`
@@ -285,7 +285,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			// Fetch current send_attempts to increment it
 			const { data: currentScheduledSms } = await supabase
 				.from('scheduled_sms_messages')
-				.select('send_attempts, max_send_attempts')
+				.select('send_attempts')
 				.eq('id', scheduled_sms_id)
 				.single();
 
@@ -352,31 +352,23 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			})
 			.eq('id', message_id);
 
-		let newAttemptCount = 0;
-		let maxAttempts = 3;
-		let message: any = null; // For non-scheduled SMS
-
 		// Phase 4: Update scheduled_sms_messages on failure
 		if (scheduled_sms_id) {
 			console.log(`[SMS Worker] Updating scheduled SMS ${scheduled_sms_id} with failure`);
 
-			// BUG FIX #2: Fetch both fields at once (ONLY FETCH ONCE!)
+			// Fetch current send_attempts to increment it
 			const { data: currentScheduledSms } = await supabase
 				.from('scheduled_sms_messages')
-				.select('send_attempts, max_send_attempts')
+				.select('send_attempts')
 				.eq('id', scheduled_sms_id)
 				.single();
-
-			// BUG FIX #2: Calculate and store values for reuse
-			newAttemptCount = (currentScheduledSms?.send_attempts ?? 0) + 1;
-			maxAttempts = currentScheduledSms?.max_send_attempts ?? 3;
 
 			await supabase
 				.from('scheduled_sms_messages')
 				.update({
 					status: 'failed',
 					last_error: error.message,
-					send_attempts: newAttemptCount,
+					send_attempts: (currentScheduledSms?.send_attempts ?? 0) + 1,
 					updated_at: new Date().toISOString()
 				})
 				.eq('id', scheduled_sms_id);
@@ -392,43 +384,57 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		await updateJobStatus(job.id, 'failed', 'send_sms', error.message);
 
 		// Check if we should retry
-		// BUG FIX #2: For scheduled SMS, we already fetched the data. Only fetch if NOT scheduled.
+		const { data: message } = await supabase
+			.from('sms_messages')
+			.select('attempt_count, max_attempts')
+			.eq('id', message_id)
+			.single();
+
+		// For scheduled SMS, also check max_send_attempts
 		let shouldRetry = false;
 		if (scheduled_sms_id) {
-			// BUG FIX #2: Reuse values from Phase 4 instead of fetching AGAIN
-			shouldRetry = newAttemptCount < maxAttempts;
-		} else {
-			// For regular SMS messages, fetch attempt info (only this path needs the fetch)
-			const { data: smsMessage } = await supabase
-				.from('sms_messages')
-				.select('attempt_count, max_attempts')
-				.eq('id', message_id)
+			const { data: scheduledSms } = await supabase
+				.from('scheduled_sms_messages')
+				.select('send_attempts, max_send_attempts')
+				.eq('id', scheduled_sms_id)
 				.single();
 
-			message = smsMessage;
+			if (scheduledSms) {
+				const attempts = scheduledSms.send_attempts ?? 0;
+				const maxAttempts = scheduledSms.max_send_attempts ?? 3;
+				shouldRetry = attempts < maxAttempts;
+			}
+		} else {
 			const attempts = message?.attempt_count ?? 0;
-			maxAttempts = message?.max_attempts ?? 3;
-			newAttemptCount = attempts; // For consistent naming
+			const maxAttempts = message?.max_attempts ?? 3;
 			shouldRetry = Boolean(message) && attempts < maxAttempts;
 		}
 
 		if (shouldRetry) {
 			// Re-queue with exponential backoff
-			// BUG FIX #2: Use newAttemptCount we already calculated instead of fetching AGAIN
-			const delay = Math.pow(2, newAttemptCount) * 60; // minutes
+			const attemptCount = scheduled_sms_id
+				? (
+						await supabase
+							.from('scheduled_sms_messages')
+							.select('send_attempts')
+							.eq('id', scheduled_sms_id)
+							.single()
+					).data?.send_attempts || 0
+				: message?.attempt_count || 0;
 
-			// BUG FIX #5: Add dedup_key to prevent duplicate retry jobs
-			const dedupKey = scheduled_sms_id
-				? `sms-retry-${scheduled_sms_id}-attempt-${newAttemptCount + 1}`
-				: `sms-retry-${message_id}-attempt-${newAttemptCount + 1}`;
+			const delay = Math.pow(2, attemptCount) * 60; // minutes
 
 			await supabase.rpc('add_queue_job', {
+		// BUG FIX #5: Add dedup_key to prevent duplicate retry jobs at same scheduled time
+		const dedupKey = scheduled_sms_id
+			? `sms-retry-${scheduled_sms_id}-attempt-${attemptCount + 1}`
+			: `sms-retry-${message_id}-attempt-${attemptCount + 1}`;
+
 				p_user_id: user_id,
 				p_job_type: 'send_sms',
 				p_metadata: validatedData as any,
 				p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
-				p_priority: priority === 'urgent' ? 1 : 10,
-				p_dedup_key: dedupKey
+				p_priority: priority === 'urgent' ? 1 : 10
 			});
 
 			console.log(

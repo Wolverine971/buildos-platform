@@ -10,13 +10,13 @@
 
 Comprehensive ultrathink analysis of the `/apps/worker` codebase identified **5 bugs** across the SMS worker, daily SMS scheduler, and queue retry logic:
 
-| Bug # | Severity | Status | Component | Issue |
-|-------|----------|--------|-----------|-------|
-| 1 | Small | ✅ FIXED | smsWorker.ts | Daily limit check fails when count=0 |
-| 2 | Medium | 🔴 READY | smsWorker.ts | Redundant DB queries (3x fetch of same data) |
-| 3 | Medium | 🔴 READY | dailySmsWorker.ts | Race condition in count reset (data loss) |
-| 4 | Small | 🔴 READY | dailySmsWorker.ts | Orphaned SMS on creation failure |
-| 5 | Small | 🔴 READY | smsWorker.ts | Retry job missing dedup_key |
+| Bug # | Severity | Status   | Component         | Issue                                        |
+| ----- | -------- | -------- | ----------------- | -------------------------------------------- |
+| 1     | Small    | ✅ FIXED | smsWorker.ts      | Daily limit check fails when count=0         |
+| 2     | Medium   | 🔴 READY | smsWorker.ts      | Redundant DB queries (3x fetch of same data) |
+| 3     | Medium   | 🔴 READY | dailySmsWorker.ts | Race condition in count reset (data loss)    |
+| 4     | Small    | 🔴 READY | dailySmsWorker.ts | Orphaned SMS on creation failure             |
+| 5     | Small    | 🔴 READY | smsWorker.ts      | Retry job missing dedup_key                  |
 
 ---
 
@@ -29,12 +29,13 @@ Comprehensive ultrathink analysis of the `/apps/worker` codebase identified **5 
 **Severity**: Small - Logic Error
 
 **The Problem**:
+
 ```typescript
 // BUGGY CODE:
 if (userPrefs.daily_sms_limit && userPrefs.daily_sms_count) {
-    if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
-        // ... cancel SMS ...
-    }
+	if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
+		// ... cancel SMS ...
+	}
 }
 ```
 
@@ -43,12 +44,13 @@ When `daily_sms_count` is `0` (a valid value meaning "0 messages sent today"), t
 **Root Cause**: Truthy check (`&&`) instead of null-check
 
 **The Fix**:
+
 ```typescript
 // FIXED CODE:
 if (userPrefs.daily_sms_limit != null && userPrefs.daily_sms_count != null) {
-    if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
-        // ... cancel SMS ...
-    }
+	if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
+		// ... cancel SMS ...
+	}
 }
 ```
 
@@ -70,6 +72,7 @@ The code fetches `send_attempts` from the database **THREE times**:
 3. **Third fetch** (lines 415-421): Get it a third time for delay calculation
 
 This creates:
+
 - **Performance Issue**: 3x database round trips for one field
 - **Race Condition**: Each fetch might get a different value if concurrent workers are running
 
@@ -82,31 +85,31 @@ Fetch once with all needed fields, calculate the new value, and reuse it:
 ```typescript
 // Fetch once with both fields needed
 const { data: currentScheduledSms } = await supabase
-    .from('scheduled_sms_messages')
-    .select('send_attempts, max_send_attempts')
-    .eq('id', scheduled_sms_id)
-    .single();
+	.from('scheduled_sms_messages')
+	.select('send_attempts, max_send_attempts')
+	.eq('id', scheduled_sms_id)
+	.single();
 
 const newAttemptCount = (currentScheduledSms?.send_attempts ?? 0) + 1;
 const maxAttempts = currentScheduledSms?.max_send_attempts ?? 3;
 
 // Update with the calculated value
 await supabase
-    .from('scheduled_sms_messages')
-    .update({
-        status: 'failed',
-        last_error: error.message,
-        send_attempts: newAttemptCount,
-        updated_at: new Date().toISOString()
-    })
-    .eq('id', scheduled_sms_id);
+	.from('scheduled_sms_messages')
+	.update({
+		status: 'failed',
+		last_error: error.message,
+		send_attempts: newAttemptCount,
+		updated_at: new Date().toISOString()
+	})
+	.eq('id', scheduled_sms_id);
 
 // Use the value we already have for retry decision
 const shouldRetry = newAttemptCount < maxAttempts;
 
 if (shouldRetry) {
-    const delay = Math.pow(2, newAttemptCount) * 60; // Reuse newAttemptCount!
-    // ... queue retry ...
+	const delay = Math.pow(2, newAttemptCount) * 60; // Reuse newAttemptCount!
+	// ... queue retry ...
 }
 ```
 
@@ -142,6 +145,7 @@ await supabase.from('user_sms_preferences').update({
 ```
 
 **Race Condition Scenario**:
+
 ```
 Time T1: Worker A fetches smsPrefs (daily_count_reset_at = 2025-10-20)
 Time T1: Worker B fetches smsPrefs (daily_count_reset_at = 2025-10-20)
@@ -180,10 +184,10 @@ $$ LANGUAGE plpgsql VOLATILE;
 // FIXED CODE:
 const messageCount = insertedMessages?.length || 0;
 if (messageCount > 0) {
-    await supabase.rpc('increment_user_daily_sms_count', {
-        p_user_id: userId,
-        p_increment: messageCount
-    });
+	await supabase.rpc('increment_user_daily_sms_count', {
+		p_user_id: userId,
+		p_increment: messageCount
+	});
 }
 ```
 
@@ -218,13 +222,14 @@ for (const msg of insertedMessages || []) {
 ```
 
 **What Happens**:
+
 1. `scheduled_sms_messages` record created with status='scheduled' (line 341-344)
 2. Attempt to create corresponding `sms_messages` record fails
 3. Code skips to next message without marking scheduled SMS as failed
 4. Result: Orphaned `scheduled_sms_messages` record with:
-   - No `sms_message_id` link
-   - No queued `send_sms` job
-   - Status still 'scheduled' (will never be processed)
+    - No `sms_message_id` link
+    - No queued `send_sms` job
+    - Status still 'scheduled' (will never be processed)
 
 **The Fix**:
 Mark failed records instead of orphaning them:
@@ -284,12 +289,12 @@ When re-queuing failed SMS jobs, the dedup_key is not provided:
 ```typescript
 // BUGGY CODE:
 await supabase.rpc('add_queue_job', {
-    p_user_id: user_id,
-    p_job_type: 'send_sms',
-    p_metadata: validatedData as any,
-    p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
-    p_priority: priority === 'urgent' ? 1 : 10
-    // ← MISSING: p_dedup_key parameter!
+	p_user_id: user_id,
+	p_job_type: 'send_sms',
+	p_metadata: validatedData as any,
+	p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
+	p_priority: priority === 'urgent' ? 1 : 10
+	// ← MISSING: p_dedup_key parameter!
 });
 ```
 
@@ -302,16 +307,16 @@ Add a consistent dedup_key for each retry:
 ```typescript
 // FIXED CODE:
 const dedupKey = scheduled_sms_id
-    ? `sms-retry-${scheduled_sms_id}-${newAttemptCount}`
-    : `sms-retry-${message_id}-${newAttemptCount}`;
+	? `sms-retry-${scheduled_sms_id}-${newAttemptCount}`
+	: `sms-retry-${message_id}-${newAttemptCount}`;
 
 await supabase.rpc('add_queue_job', {
-    p_user_id: user_id,
-    p_job_type: 'send_sms',
-    p_metadata: validatedData as any,
-    p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
-    p_priority: priority === 'urgent' ? 1 : 10,
-    p_dedup_key: dedupKey  // ← ADD THIS
+	p_user_id: user_id,
+	p_job_type: 'send_sms',
+	p_metadata: validatedData as any,
+	p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
+	p_priority: priority === 'urgent' ? 1 : 10,
+	p_dedup_key: dedupKey // ← ADD THIS
 });
 ```
 
@@ -322,16 +327,20 @@ await supabase.rpc('add_queue_job', {
 ## Implementation Roadmap
 
 ### Phase 1: Quick Wins (5 minutes total)
+
 - ✅ Bug #1: Already fixed
 - **Bug #5**: Add `p_dedup_key` parameter (1 line)
 
 ### Phase 2: Error Handling (5 minutes)
+
 - **Bug #4**: Mark orphaned SMS as failed (4 lines in try-catch block)
 
 ### Phase 3: Performance Optimization (10 minutes)
+
 - **Bug #2**: Refactor SMS retry logic to eliminate redundant fetches
 
 ### Phase 4: Database Migration (15 minutes)
+
 - **Bug #3**: Create atomic increment RPC function + update code
 
 **Total Implementation Time**: ~30 minutes
@@ -341,24 +350,29 @@ await supabase.rpc('add_queue_job', {
 ## Testing Recommendations
 
 ### Bug #1 Test Case
+
 - User with daily_sms_limit=5
 - User with daily_sms_count=0
 - Attempt to send SMS
 - **Expected**: Daily limit check should execute (not skip)
 
 ### Bug #2 Test Case
+
 - Monitor database queries during SMS failure/retry
 - **Expected**: Only 1-2 queries for scheduled_sms_messages (not 3)
 
 ### Bug #3 Test Case
+
 - Simulate concurrent workers processing same user's SMS
 - **Expected**: Message count should accumulate correctly
 
 ### Bug #4 Test Case
+
 - Force sms_messages insert to fail
 - **Expected**: scheduled_sms_messages should be marked as 'failed' (not left in 'scheduled' state)
 
 ### Bug #5 Test Case
+
 - Trigger SMS retry at same scheduled time twice
 - **Expected**: Only one job should be queued (dedup_key prevents duplicate)
 
@@ -372,11 +386,11 @@ This analysis follows a methodical "ultrathink" approach:
 2. **Root Cause Analysis**: Understood the underlying mechanism causing each bug
 3. **Impact Assessment**: Classified by severity and user-facing impact
 4. **Senior Patterns**: Fixes follow established best practices:
-   - Use null-checks instead of truthy checks for numeric values
-   - Fetch-once rather than fetch-multiple-times
-   - Atomic database operations for concurrent writes
-   - Proper error handling instead of silent failures
-   - Dedup keys for idempotent operations
+    - Use null-checks instead of truthy checks for numeric values
+    - Fetch-once rather than fetch-multiple-times
+    - Atomic database operations for concurrent writes
+    - Proper error handling instead of silent failures
+    - Dedup keys for idempotent operations
 
 **Key Insight**: Most bugs are in the SMS subsystem, suggesting this is a newer component that could benefit from additional code review and testing infrastructure.
 

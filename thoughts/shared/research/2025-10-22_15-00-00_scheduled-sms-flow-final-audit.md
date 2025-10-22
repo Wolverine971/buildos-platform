@@ -18,6 +18,7 @@ related_docs:
 **Status:** ✅ **FLOW IS WORKING CORRECTLY**
 
 After ultrathinking through the entire system, the scheduled SMS flow is **architecturally sound and properly implemented**. The user has already addressed previous issues:
+
 - ✅ `scheduled_sms_messages` table exists in production
 - ✅ `increment_daily_sms_count()` RPC removed - now using direct UPDATE (better design!)
 - ✅ All metadata structure is correct
@@ -33,102 +34,117 @@ After ultrathinking through the entire system, the scheduled SMS flow is **archi
 **Trigger:** Cron job runs at 00:00 user time
 
 **Steps:**
+
 1. **Fetch User Preferences** (lines 66-75)
-   ```typescript
-   SELECT * FROM user_sms_preferences
-   WHERE user_id = ? AND phone_verified = true
-     AND opted_out = false AND event_reminders_enabled = true
-   ```
+
+    ```typescript
+    SELECT * FROM user_sms_preferences
+    WHERE user_id = ? AND phone_verified = true
+      AND opted_out = false AND event_reminders_enabled = true
+    ```
 
 2. **Check & Reset Daily Count** (lines 92-106)
-   ```typescript
-   const today = format(new Date(), 'yyyy-MM-dd');
-   const needsReset = smsPrefs.daily_count_reset_at !== today;
 
-   if (needsReset) {
-     UPDATE user_sms_preferences
-     SET daily_sms_count = 0, daily_count_reset_at = NOW()
-     WHERE user_id = userId;
-   }
-   ```
+    ```typescript
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const needsReset = smsPrefs.daily_count_reset_at !== today;
+
+    if (needsReset) {
+      UPDATE user_sms_preferences
+      SET daily_sms_count = 0, daily_count_reset_at = NOW()
+      WHERE user_id = userId;
+    }
+    ```
 
 3. **Fetch Calendar Events** (lines 138-145)
-   ```typescript
-   SELECT * FROM task_calendar_events
-   WHERE user_id = ?
-     AND event_start BETWEEN startUTC AND endUTC
-     AND sync_status = 'synced'
-   ORDER BY event_start ASC
-   ```
+
+    ```typescript
+    SELECT * FROM task_calendar_events
+    WHERE user_id = ?
+      AND event_start BETWEEN startUTC AND endUTC
+      AND sync_status = 'synced'
+    ORDER BY event_start ASC
+    ```
 
 4. **Filter Events** (lines 174-228)
-   - ✅ Skip past events (line 185)
-   - ✅ Skip all-day events (line 193)
-   - ✅ Skip events in quiet hours (lines 201-228)
+    - ✅ Skip past events (line 185)
+    - ✅ Skip all-day events (line 193)
+    - ✅ Skip events in quiet hours (lines 201-228)
 
 5. **Generate Messages via LLM** (lines 250-264)
-   ```typescript
-   const generatedMessage = await smsGenerator.generateEventReminder(
-     eventContext,
-     leadTimeMinutes,
-     userId
-   );
-   ```
-   - Uses DeepSeek Chat V3 ($0.14/1M tokens)
-   - Falls back to template on failure
-   - 160 char SMS limit enforced
+
+    ```typescript
+    const generatedMessage = await smsGenerator.generateEventReminder(
+    	eventContext,
+    	leadTimeMinutes,
+    	userId
+    );
+    ```
+
+    - Uses DeepSeek Chat V3 ($0.14/1M tokens)
+    - Falls back to template on failure
+    - 160 char SMS limit enforced
 
 6. **Create `scheduled_sms_messages` Records** (lines 341-349)
-   ```typescript
-   INSERT INTO scheduled_sms_messages (
-     user_id, message_content, message_type, calendar_event_id,
-     event_title, event_start, event_end, scheduled_for,
-     timezone, status, generated_via, llm_model, generation_cost_usd
-   ) VALUES (...);
-   ```
+
+    ```typescript
+    INSERT INTO scheduled_sms_messages (
+      user_id, message_content, message_type, calendar_event_id,
+      event_title, event_start, event_end, scheduled_for,
+      timezone, status, generated_via, llm_model, generation_cost_usd
+    ) VALUES (...);
+    ```
 
 7. **Create `sms_messages` Records & Link** (lines 363-392)
-   ```typescript
-   // Create sms_messages
-   const smsMessage = INSERT INTO sms_messages (
-     user_id, phone_number, message_content, status, priority,
-     scheduled_for, metadata: { scheduled_sms_id, calendar_event_id, event_title }
-   );
 
-   // Link back to scheduled SMS
-   UPDATE scheduled_sms_messages
-   SET sms_message_id = smsMessage.id
-   WHERE id = msg.id;
-   ```
+    ```typescript
+    // Create sms_messages
+    const smsMessage = INSERT INTO sms_messages (
+      user_id, phone_number, message_content, status, priority,
+      scheduled_for, metadata: { scheduled_sms_id, calendar_event_id, event_title }
+    );
+
+    // Link back to scheduled SMS
+    UPDATE scheduled_sms_messages
+    SET sms_message_id = smsMessage.id
+    WHERE id = msg.id;
+    ```
 
 8. **Queue `send_sms` Jobs** (lines 395-410)
-   ```typescript
-   await queue.add('send_sms', userId, {
-     message_id: smsMessage.id,           // ✓ Required
-     scheduled_sms_id: msg.id,            // ✓ Optional but present
-     phone_number: smsPrefs.phone_number, // ✓ Required (E.164)
-     message: msg.message_content,        // ✓ Required
-     user_id: userId                      // ✓ Required
-   }, {
-     priority: 5,
-     scheduledFor: new Date(msg.scheduled_for),
-     dedupKey: `send-scheduled-sms-${msg.id}`
-   });
-   ```
+
+    ```typescript
+    await queue.add(
+    	'send_sms',
+    	userId,
+    	{
+    		message_id: smsMessage.id, // ✓ Required
+    		scheduled_sms_id: msg.id, // ✓ Optional but present
+    		phone_number: smsPrefs.phone_number, // ✓ Required (E.164)
+    		message: msg.message_content, // ✓ Required
+    		user_id: userId // ✓ Required
+    	},
+    	{
+    		priority: 5,
+    		scheduledFor: new Date(msg.scheduled_for),
+    		dedupKey: `send-scheduled-sms-${msg.id}`
+    	}
+    );
+    ```
 
 9. **Update Daily Count** (lines 418-423) ⭐ **KEY CHANGE**
-   ```typescript
-   // IMPROVED DESIGN: Count updated at scheduling, not at send
-   UPDATE user_sms_preferences
-   SET daily_sms_count = currentCount + insertedMessages.length
-   WHERE user_id = userId;
-   ```
 
-   **Why This Is Better:**
-   - ✅ Prevents race conditions (single atomic update)
-   - ✅ Count represents "scheduled" not "sent" (correct intent)
-   - ✅ Limit checked before scheduling, not during send
-   - ✅ No need for complex RPC function
+    ```typescript
+    // IMPROVED DESIGN: Count updated at scheduling, not at send
+    UPDATE user_sms_preferences
+    SET daily_sms_count = currentCount + insertedMessages.length
+    WHERE user_id = userId;
+    ```
+
+    **Why This Is Better:**
+    - ✅ Prevents race conditions (single atomic update)
+    - ✅ Count represents "scheduled" not "sent" (correct intent)
+    - ✅ Limit checked before scheduling, not during send
+    - ✅ No need for complex RPC function
 
 ---
 
@@ -139,6 +155,7 @@ After ultrathinking through the entire system, the scheduled SMS flow is **archi
 **Steps:**
 
 #### 2.1 Validation (line 54)
+
 ```typescript
 const validatedData = validateSMSJobData(job.data);
 // Checks: message_id, phone_number (E.164), message, user_id all present
@@ -147,6 +164,7 @@ const validatedData = validateSMSJobData(job.data);
 #### 2.2 Pre-Send Validation (lines 78-225) - **ONLY if `scheduled_sms_id` present**
 
 **Step 2.2.1: Fetch Scheduled SMS** (lines 79-89)
+
 ```typescript
 const scheduledSms = SELECT * FROM scheduled_sms_messages
                      WHERE id = scheduled_sms_id;
@@ -155,15 +173,17 @@ if (!scheduledSms) throw Error("Scheduled SMS not found");
 ```
 
 **Step 2.2.2: Check if Cancelled** (lines 92-106)
+
 ```typescript
 if (scheduledSms.status === 'cancelled') {
-  // User manually cancelled or system cancelled due to event deletion
-  smsMetricsService.recordCancelled(user_id, scheduled_sms_id, 'User cancelled');
-  return { success: false, reason: 'cancelled' };
+	// User manually cancelled or system cancelled due to event deletion
+	smsMetricsService.recordCancelled(user_id, scheduled_sms_id, 'User cancelled');
+	return { success: false, reason: 'cancelled' };
 }
 ```
 
 **Step 2.2.3: Check Quiet Hours** (lines 109-168)
+
 ```typescript
 const { data: userPrefs } = SELECT quiet_hours_start, quiet_hours_end,
                                    daily_sms_limit, daily_sms_count
@@ -191,6 +211,7 @@ if (quietHoursResult.inQuietHours) {
 ```
 
 **Step 2.2.4: Check Daily Limit** (lines 171-189)
+
 ```typescript
 // Note: This is a safety check - limit should already be enforced at scheduling
 if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
@@ -204,6 +225,7 @@ if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
 ```
 
 **Step 2.2.5: Verify Calendar Event Still Exists** (lines 192-215)
+
 ```typescript
 if (scheduledSms.calendar_event_id) {
   const event = SELECT sync_status FROM task_calendar_events
@@ -222,11 +244,13 @@ if (scheduledSms.calendar_event_id) {
 ```
 
 **Note on `sync_status` Values:**
+
 - Valid for `task_calendar_events`: `'pending' | 'failed' | 'cancelled' | 'synced'`
 - ✅ Code correctly checks for `'cancelled'` (not `'deleted'`)
 - Previous bug (checking `'deleted'`) was already fixed per BUGFIX_CHANGELOG.md
 
 **Step 2.2.6: Mark as Sending** (lines 212-218)
+
 ```typescript
 UPDATE scheduled_sms_messages
 SET status = 'sending', updated_at = NOW()
@@ -234,19 +258,21 @@ WHERE id = scheduled_sms_id;
 ```
 
 #### 2.3 Send via Twilio (lines 239-247)
+
 ```typescript
 const twilioMessage = await twilioClient.sendSMS({
-  to: phone_number,
-  body: message,
-  metadata: {
-    message_id,
-    user_id,
-    scheduled_sms_id: scheduled_sms_id || undefined
-  }
+	to: phone_number,
+	body: message,
+	metadata: {
+		message_id,
+		user_id,
+		scheduled_sms_id: scheduled_sms_id || undefined
+	}
 });
 ```
 
 #### 2.4 Update `sms_messages` Status (lines 256-263)
+
 ```typescript
 UPDATE sms_messages
 SET status = 'sent', twilio_sid = twilioMessage.sid, sent_at = NOW()
@@ -254,6 +280,7 @@ WHERE id = message_id;
 ```
 
 #### 2.5 Update `scheduled_sms_messages` Status (lines 284-301)
+
 ```typescript
 UPDATE scheduled_sms_messages
 SET status = 'sent',
@@ -268,6 +295,7 @@ WHERE id = scheduled_sms_id;
 **⭐ NOTE:** Daily count is **NOT** incremented here (already counted at scheduling)
 
 #### 2.6 Track Metrics & Complete (lines 309-329)
+
 ```typescript
 smsMetricsService.recordSent(user_id, message_id, twilioMessage.sid);
 await updateJobStatus(job.id, 'completed', 'send_sms');
@@ -283,56 +311,60 @@ await notifyUser(user_id, 'sms_sent', { message_id, phone_number, scheduled_sms_
 **Key Steps:**
 
 1. **Extract IDs from URL Params** (lines 106-107)
-   ```typescript
-   const messageId = url.searchParams.get('message_id');
-   const userId = url.searchParams.get('user_id');
-   ```
+
+    ```typescript
+    const messageId = url.searchParams.get('message_id');
+    const userId = url.searchParams.get('user_id');
+    ```
 
 2. **Atomic Dual-Table Update** (lines 189-198)
-   ```typescript
-   const updateResult = supabase.rpc('update_sms_status_atomic', {
-     p_message_id: messageId,
-     p_twilio_sid: messageSid,
-     p_twilio_status: messageStatus,
-     p_mapped_status: mappedStatus,
-     p_error_code: errorCode ? parseInt(errorCode) : undefined,
-     p_error_message: errorMessage || undefined
-   });
-   ```
-   - Updates both `sms_messages` AND `notification_deliveries` atomically
-   - Prevents race conditions
+
+    ```typescript
+    const updateResult = supabase.rpc('update_sms_status_atomic', {
+    	p_message_id: messageId,
+    	p_twilio_sid: messageSid,
+    	p_twilio_status: messageStatus,
+    	p_mapped_status: mappedStatus,
+    	p_error_code: errorCode ? parseInt(errorCode) : undefined,
+    	p_error_message: errorMessage || undefined
+    });
+    ```
+
+    - Updates both `sms_messages` AND `notification_deliveries` atomically
+    - Prevents race conditions
 
 3. **Update `scheduled_sms_messages`** (lines 246-295)
-   ```typescript
-   const scheduledSms = SELECT id, status, send_attempts, max_send_attempts
-                        FROM scheduled_sms_messages
-                        WHERE sms_message_id = messageId;
 
-   if (scheduledSms) {
-     if (messageStatus === 'delivered') {
-       UPDATE scheduled_sms_messages
-       SET status = 'delivered', updated_at = NOW()
-       WHERE id = scheduledSms.id;
-     }
-     else if (messageStatus === 'sent' || messageStatus === 'sending') {
-       UPDATE scheduled_sms_messages
-       SET status = 'sent', updated_at = NOW()
-       WHERE id = scheduledSms.id;
-     }
-     else if (messageStatus === 'failed' || messageStatus === 'undelivered') {
-       UPDATE scheduled_sms_messages
-       SET status = 'failed',
-           last_error = `${errorMessage} (Code: ${errorCode})`,
-           updated_at = NOW()
-       WHERE id = scheduledSms.id;
-     }
-   }
-   ```
+    ```typescript
+    const scheduledSms = SELECT id, status, send_attempts, max_send_attempts
+                         FROM scheduled_sms_messages
+                         WHERE sms_message_id = messageId;
+
+    if (scheduledSms) {
+      if (messageStatus === 'delivered') {
+        UPDATE scheduled_sms_messages
+        SET status = 'delivered', updated_at = NOW()
+        WHERE id = scheduledSms.id;
+      }
+      else if (messageStatus === 'sent' || messageStatus === 'sending') {
+        UPDATE scheduled_sms_messages
+        SET status = 'sent', updated_at = NOW()
+        WHERE id = scheduledSms.id;
+      }
+      else if (messageStatus === 'failed' || messageStatus === 'undelivered') {
+        UPDATE scheduled_sms_messages
+        SET status = 'failed',
+            last_error = `${errorMessage} (Code: ${errorCode})`,
+            updated_at = NOW()
+        WHERE id = scheduledSms.id;
+      }
+    }
+    ```
 
 4. **Retry Logic** (lines 301-370)
-   - Fetches full message data (phone_number, message_content, user_id)
-   - Calculates exponential backoff based on error category
-   - Queues retry job with complete metadata ✅ **FIXED** (per earlier bugfix)
+    - Fetches full message data (phone_number, message_content, user_id)
+    - Calculates exponential backoff based on error category
+    - Queues retry job with complete metadata ✅ **FIXED** (per earlier bugfix)
 
 ---
 
@@ -343,27 +375,29 @@ await notifyUser(user_id, 'sms_sent', { message_id, phone_number, scheduled_sms_
 **Steps:**
 
 1. **Event Deleted** → Cancel SMS
-   ```typescript
-   UPDATE scheduled_sms_messages
-   SET status = 'cancelled', cancelled_at = NOW()
-   WHERE calendar_event_id IN (deletedEventIds)
-     AND status = 'scheduled';
-   ```
+
+    ```typescript
+    UPDATE scheduled_sms_messages
+    SET status = 'cancelled', cancelled_at = NOW()
+    WHERE calendar_event_id IN (deletedEventIds)
+      AND status = 'scheduled';
+    ```
 
 2. **Event Rescheduled** → Update `scheduled_for`
-   ```typescript
-   UPDATE scheduled_sms_messages
-   SET scheduled_for = newReminderTime, updated_at = NOW()
-   WHERE calendar_event_id = eventId AND status = 'scheduled';
-   ```
+
+    ```typescript
+    UPDATE scheduled_sms_messages
+    SET scheduled_for = newReminderTime, updated_at = NOW()
+    WHERE calendar_event_id = eventId AND status = 'scheduled';
+    ```
 
 3. **Event Details Changed** → Regenerate message
-   ```typescript
-   const newMessage = await smsGenerator.generateEventReminder(updatedEvent);
-   UPDATE scheduled_sms_messages
-   SET message_content = newMessage, updated_at = NOW()
-   WHERE calendar_event_id = eventId AND status = 'scheduled';
-   ```
+    ```typescript
+    const newMessage = await smsGenerator.generateEventReminder(updatedEvent);
+    UPDATE scheduled_sms_messages
+    SET message_content = newMessage, updated_at = NOW()
+    WHERE calendar_event_id = eventId AND status = 'scheduled';
+    ```
 
 ---
 
@@ -374,6 +408,7 @@ await notifyUser(user_id, 'sms_sent', { message_id, phone_number, scheduled_sms_
 **Status:** ✅ **EXISTS IN PRODUCTION**
 
 **Schema:**
+
 ```sql
 CREATE TABLE scheduled_sms_messages (
   id UUID PRIMARY KEY,
@@ -420,6 +455,7 @@ CREATE TABLE scheduled_sms_messages (
 ```
 
 **Status Lifecycle:**
+
 ```
 scheduled → sending → sent → delivered
     ↓          ↓        ↓
@@ -429,6 +465,7 @@ cancelled   failed   failed
 ### Table: `sms_messages`
 
 **Columns Used:**
+
 - ✅ `id` - Primary key, used as `message_id`
 - ✅ `user_id` - Foreign key to users
 - ✅ `phone_number` - E.164 format
@@ -449,6 +486,7 @@ cancelled   failed   failed
 ### Table: `user_sms_preferences`
 
 **Columns Used:**
+
 - ✅ `phone_number` - User's phone
 - ✅ `phone_verified` - Must be true to send
 - ✅ `opted_out` - Must be false to send
@@ -462,6 +500,7 @@ cancelled   failed   failed
 ### Table: `task_calendar_events`
 
 **Columns Used:**
+
 - ✅ `calendar_event_id` - Google Calendar event ID
 - ✅ `event_title` - Event name
 - ✅ `event_start` - Start timestamp
@@ -478,18 +517,20 @@ cancelled   failed   failed
 ### Queue Job Metadata (SMSJobData)
 
 **Type Definition:**
+
 ```typescript
 export interface SMSJobData {
-  message_id: string;        // Required: sms_messages.id
-  phone_number: string;      // Required: E.164 format (+1234567890)
-  message: string;           // Required: SMS content (max 1600 chars)
-  user_id: string;           // Required: user UUID
-  priority?: 'normal' | 'urgent';  // Optional: defaults to 'normal'
-  scheduled_sms_id?: string; // Optional: scheduled_sms_messages.id (present for calendar SMS)
+	message_id: string; // Required: sms_messages.id
+	phone_number: string; // Required: E.164 format (+1234567890)
+	message: string; // Required: SMS content (max 1600 chars)
+	user_id: string; // Required: user UUID
+	priority?: 'normal' | 'urgent'; // Optional: defaults to 'normal'
+	scheduled_sms_id?: string; // Optional: scheduled_sms_messages.id (present for calendar SMS)
 }
 ```
 
 **Validation (`validateSMSJobData` in queueUtils.ts:191-244):**
+
 ```typescript
 ✓ Checks all required fields present and correct type
 ✓ Validates phone_number matches E.164 regex: /^\+[1-9]\d{1,14}$/
@@ -498,14 +539,15 @@ export interface SMSJobData {
 ```
 
 **Example Metadata from `dailySmsWorker`:**
+
 ```json
 {
-  "message_id": "123e4567-e89b-12d3-a456-426614174000",
-  "scheduled_sms_id": "987fcdeb-51a2-43f7-9876-543210fedcba",
-  "phone_number": "+14155552671",
-  "message": "Meeting in 15 mins: Project Sync. Join via meet.google.com/abc-xyz",
-  "user_id": "user-uuid-here",
-  "priority": "normal"
+	"message_id": "123e4567-e89b-12d3-a456-426614174000",
+	"scheduled_sms_id": "987fcdeb-51a2-43f7-9876-543210fedcba",
+	"phone_number": "+14155552671",
+	"message": "Meeting in 15 mins: Project Sync. Join via meet.google.com/abc-xyz",
+	"user_id": "user-uuid-here",
+	"priority": "normal"
 }
 ```
 
@@ -516,27 +558,33 @@ export interface SMSJobData {
 ### 4.1 Daily Count Management ⭐ **IMPROVED**
 
 **OLD Design (with RPC):**
+
 ```typescript
 // In smsWorker.ts after successful send
 await supabase.rpc('increment_daily_sms_count', { p_user_id: user_id });
 ```
+
 **Problems:**
+
 - Required creating/maintaining RPC function
 - Count updated at send time (race conditions possible)
 - Multiple SMS sending simultaneously could conflict
 
 **NEW Design (direct UPDATE):**
+
 ```typescript
 // In dailySmsWorker.ts after scheduling all SMS
 const currentCount = needsReset ? 0 : smsPrefs.daily_sms_count || 0;
 await supabase
-  .from('user_sms_preferences')
-  .update({
-    daily_sms_count: currentCount + (insertedMessages?.length || 0)
-  })
-  .eq('user_id', userId);
+	.from('user_sms_preferences')
+	.update({
+		daily_sms_count: currentCount + (insertedMessages?.length || 0)
+	})
+	.eq('user_id', userId);
 ```
+
 **Benefits:**
+
 - ✅ **Single atomic update** - no race conditions
 - ✅ **Count = "scheduled" not "sent"** - more accurate intent
 - ✅ **Limit enforced before scheduling** - prevents over-scheduling
@@ -545,6 +593,7 @@ await supabase
 ### 4.2 Dual-Table Linking
 
 **Pattern:**
+
 ```
 scheduled_sms_messages ←→ sms_messages
         ↓                        ↓
@@ -552,11 +601,13 @@ scheduled_sms_messages ←→ sms_messages
 ```
 
 **Linking Flow:**
+
 1. Create `scheduled_sms_messages` record
 2. Create `sms_messages` record with `metadata.scheduled_sms_id`
 3. Update `scheduled_sms_messages.sms_message_id` to link back
 
 **Benefits:**
+
 - ✅ Bidirectional references for queries
 - ✅ `scheduled_sms_messages` = scheduling intent
 - ✅ `sms_messages` = actual delivery tracking
@@ -565,6 +616,7 @@ scheduled_sms_messages ←→ sms_messages
 ### 4.3 Pre-Send Validation
 
 **Comprehensive Safety Checks:**
+
 1. ✅ Message not cancelled by user
 2. ✅ Not in quiet hours (reschedule if needed)
 3. ✅ Under daily limit
@@ -572,6 +624,7 @@ scheduled_sms_messages ←→ sms_messages
 5. ✅ Event not deleted/cancelled
 
 **Design Philosophy:**
+
 - **Fail gracefully** - Return success with `reason` instead of throwing
 - **Reschedule when possible** - Don't fail, reschedule to next valid time
 - **Log everything** - Track why each SMS was skipped
@@ -579,20 +632,29 @@ scheduled_sms_messages ←→ sms_messages
 ### 4.4 Error Handling & Retries
 
 **Retry Categories:**
+
 ```typescript
 function categorizeErrorCode(errorCode: string): {
-  category: 'invalid_number' | 'account_issue' | 'carrier_issue' | 'unreachable' | 'rate_limit' | 'unknown';
-  shouldRetry: boolean;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-}
+	category:
+		| 'invalid_number'
+		| 'account_issue'
+		| 'carrier_issue'
+		| 'unreachable'
+		| 'rate_limit'
+		| 'unknown';
+	shouldRetry: boolean;
+	severity: 'low' | 'medium' | 'high' | 'critical';
+};
 ```
 
 **Retry Logic:**
+
 - **Permanent failures** (invalid number, account issue): shouldRetry = false
 - **Temporary failures** (carrier issue, unreachable): shouldRetry = true
 - **Rate limiting**: shouldRetry = true with longer backoff
 
 **Exponential Backoff:**
+
 ```typescript
 const delay = Math.pow(2, attemptCount) * baseDelay;
 // Attempt 1: 1 min
@@ -601,6 +663,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 ```
 
 **Base Delay by Error Type:**
+
 - Rate limit: 5 min
 - Carrier issue: 3 min
 - Other: 1 min
@@ -614,6 +677,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** Event time changes after SMS already scheduled
 
 **Handling:** ✅ **Covered by `scheduledSmsUpdate.service.ts`**
+
 - Calendar webhook detects change
 - Updates `scheduled_sms_messages.scheduled_for` to new time
 - Updates queue job `scheduled_for` via RPC
@@ -623,6 +687,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** Event deleted from Google Calendar
 
 **Handling:** ✅ **Covered by multiple layers**
+
 1. **Calendar webhook** → Updates `task_calendar_events.sync_status = 'cancelled'`
 2. **SMS update service** → Updates `scheduled_sms_messages.status = 'cancelled'`
 3. **Pre-send validation** → Checks event sync_status and scheduled SMS status before sending
@@ -632,6 +697,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** User has quiet hours 10 PM - 8 AM, event at 10:05 PM
 
 **Handling:** ✅ **Filtered at scheduling**
+
 - `dailySmsWorker` checks quiet hours before scheduling (lines 201-228)
 - Event skipped, no SMS created
 - Metric tracked: `smsMetricsService.recordQuietHoursSkip()`
@@ -641,6 +707,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** SMS scheduled for 11 PM, but quiet hours start at 10 PM
 
 **Handling:** ✅ **Rescheduled by smsWorker**
+
 - Pre-send validation detects quiet hours (lines 131-168)
 - Updates `scheduled_for` to next morning 8 AM
 - Re-queues job with new time
@@ -651,6 +718,7 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** 8 SMS scheduled at midnight, limit is 10, user manually sends 5 during day
 
 **Handling:** ⚠️ **Edge case - all scheduled SMS will send**
+
 - **Current behavior:** Daily count updated at scheduling, not at send
 - **Impact:** User could receive more than limit if they manually send SMS
 - **Mitigation:** Pre-send validation checks current count (lines 171-189)
@@ -661,9 +729,10 @@ const delay = Math.pow(2, attemptCount) * baseDelay;
 **Scenario:** Google Calendar event cancelled but row still exists
 
 **Handling:** ✅ **Detected in pre-send validation**
+
 ```typescript
 if (!event || event.sync_status === 'cancelled') {
-  // Cancel the SMS
+	// Cancel the SMS
 }
 ```
 
@@ -672,6 +741,7 @@ if (!event || event.sync_status === 'cancelled') {
 **Scenario:** "delivered" webhook arrives before "sent" webhook
 
 **Handling:** ✅ **Status transitions handled gracefully**
+
 - `update_sms_status_atomic` RPC uses progressive timestamps
 - Multiple status updates don't break the system
 - Final status wins
@@ -681,6 +751,7 @@ if (!event || event.sync_status === 'cancelled') {
 **Scenario:** User moves timezones after SMS already scheduled
 
 **Handling:** ⚠️ **Not handled - by design**
+
 - SMS uses timezone from scheduling time
 - Changing timezone won't affect already-scheduled SMS
 - **Recommendation:** Document this behavior
@@ -692,6 +763,7 @@ if (!event || event.sync_status === 'cancelled') {
 ### 6.1 Database Queries per SMS Send
 
 **Count:** ~6-8 queries
+
 1. Fetch `scheduled_sms_messages` (if scheduled_sms_id present)
 2. Fetch `user_sms_preferences`
 3. Fetch `users` (for timezone)
@@ -701,6 +773,7 @@ if (!event || event.sync_status === 'cancelled') {
 7. (Optional) Retry job creation
 
 **Optimization Opportunities:**
+
 - ✅ **Good:** Indexes on all query paths
 - ✅ **Good:** Single atomic update for dual-table (in webhook)
 - ⚠️ **Could improve:** Combine user_sms_preferences + users query with JOIN
@@ -710,11 +783,13 @@ if (!event || event.sync_status === 'cancelled') {
 **Scenario:** All users' daily SMS jobs run at midnight
 
 **Impact:**
+
 - Potentially thousands of calendar event queries
 - LLM API calls for message generation
 - Bulk inserts into `scheduled_sms_messages` and `sms_messages`
 
 **Mitigations:**
+
 - ✅ **Good:** LLM has template fallback (no blocking on API)
 - ✅ **Good:** Worker processes jobs in batches (configurable batch size)
 - ✅ **Good:** Non-blocking metrics recording
@@ -723,11 +798,13 @@ if (!event || event.sync_status === 'cancelled') {
 ### 6.3 Queue Job Deduplication
 
 **Pattern:**
+
 ```typescript
-dedupKey: `send-scheduled-sms-${msg.id}`
+dedupKey: `send-scheduled-sms-${msg.id}`;
 ```
 
 **Benefits:**
+
 - ✅ Prevents duplicate jobs if daily SMS worker runs twice
 - ✅ Prevents duplicate reschedules (uses timestamp in dedup key)
 - ✅ Database-level constraint in `add_queue_job` RPC
@@ -739,47 +816,48 @@ dedupKey: `send-scheduled-sms-${msg.id}`
 ### ✅ What's Working Perfectly
 
 1. **Architecture** - Clean separation of concerns
-   - Scheduling (dailySmsWorker)
-   - Sending (smsWorker)
-   - Delivery tracking (Twilio webhook)
-   - Event sync (scheduledSmsUpdate)
+    - Scheduling (dailySmsWorker)
+    - Sending (smsWorker)
+    - Delivery tracking (Twilio webhook)
+    - Event sync (scheduledSmsUpdate)
 
 2. **Data Model** - Proper dual-table design
-   - `scheduled_sms_messages` = intent
-   - `sms_messages` = execution
-   - Bidirectional linking
+    - `scheduled_sms_messages` = intent
+    - `sms_messages` = execution
+    - Bidirectional linking
 
 3. **Validation** - Comprehensive pre-send checks
-   - Cancelled, quiet hours, limits, event existence
-   - Reschedules instead of failing
+    - Cancelled, quiet hours, limits, event existence
+    - Reschedules instead of failing
 
 4. **Error Handling** - Intelligent retry logic
-   - Categorizes errors by severity
-   - Exponential backoff with configurable delays
-   - Doesn't retry permanent failures
+    - Categorizes errors by severity
+    - Exponential backoff with configurable delays
+    - Doesn't retry permanent failures
 
 5. **Daily Count Management** ⭐ **IMPROVED**
-   - Single atomic update at scheduling
-   - Prevents race conditions
-   - Simpler than RPC approach
+    - Single atomic update at scheduling
+    - Prevents race conditions
+    - Simpler than RPC approach
 
 ### ⚠️ Minor Considerations
 
 1. **User Timezone Changes**
-   - Already-scheduled SMS won't adjust
-   - **Acceptable:** Edge case, document behavior
+    - Already-scheduled SMS won't adjust
+    - **Acceptable:** Edge case, document behavior
 
 2. **Daily Limit Edge Case**
-   - User can exceed limit if they manually send SMS after scheduled
-   - **Acceptable:** Scheduled SMS have priority
+    - User can exceed limit if they manually send SMS after scheduled
+    - **Acceptable:** Scheduled SMS have priority
 
 3. **Performance at Scale**
-   - Midnight spike for all users
-   - **Acceptable:** Workers batch process, LLM has fallback
+    - Midnight spike for all users
+    - **Acceptable:** Workers batch process, LLM has fallback
 
 ### ❌ No Critical Issues Found
 
 **All previously identified bugs have been fixed:**
+
 - ✅ `increment_daily_sms_count()` removed (better design)
 - ✅ `sync_status === 'deleted'` changed to `'cancelled'`
 - ✅ Twilio webhook retry metadata complete
@@ -796,27 +874,29 @@ All critical paths are working correctly. No immediate action needed.
 ### Future Enhancements (Optional)
 
 1. **Combine User Queries**
-   ```typescript
-   // Instead of 2 queries:
-   SELECT FROM user_sms_preferences WHERE user_id = ?
-   SELECT FROM users WHERE id = ?
 
-   // Could do 1 query with JOIN or window function
-   ```
+    ```typescript
+    // Instead of 2 queries:
+    SELECT FROM user_sms_preferences WHERE user_id = ?
+    SELECT FROM users WHERE id = ?
+
+    // Could do 1 query with JOIN or window function
+    ```
 
 2. **Add Index on Calendar Event Lookup**
-   ```sql
-   CREATE INDEX idx_task_calendar_events_lookup
-   ON task_calendar_events(calendar_event_id, sync_status);
-   ```
+
+    ```sql
+    CREATE INDEX idx_task_calendar_events_lookup
+    ON task_calendar_events(calendar_event_id, sync_status);
+    ```
 
 3. **Monitor LLM Fallback Rate**
-   - Track how often template fallback is used
-   - Optimize prompts if fallback rate >5%
+    - Track how often template fallback is used
+    - Optimize prompts if fallback rate >5%
 
 4. **Add Telemetry for Quiet Hours Reschedules**
-   - Track how often reschedules happen
-   - Identify users hitting this frequently
+    - Track how often reschedules happen
+    - Identify users hitting this frequently
 
 ---
 
@@ -825,6 +905,7 @@ All critical paths are working correctly. No immediate action needed.
 **Summary:** The scheduled SMS system is **production-ready and well-architected**.
 
 **Key Strengths:**
+
 - ✅ Comprehensive validation prevents issues before they happen
 - ✅ Daily count management improved (atomic, race-free)
 - ✅ Dual-table design provides flexibility and auditability
@@ -832,12 +913,14 @@ All critical paths are working correctly. No immediate action needed.
 - ✅ Calendar event sync keeps SMS in perfect sync with events
 
 **Code Quality:** **A+**
+
 - Clear separation of concerns
 - Extensive error handling
 - Non-blocking metrics
 - Well-documented intent
 
 **Risk Level:** **LOW**
+
 - All previously identified bugs fixed
 - No critical issues found
 - Edge cases handled appropriately
@@ -849,17 +932,20 @@ All critical paths are working correctly. No immediate action needed.
 ## Related Files
 
 ### Worker Code:
+
 - `/apps/worker/src/workers/dailySmsWorker.ts` - Scheduling logic
 - `/apps/worker/src/workers/smsWorker.ts` - Sending logic
 - `/apps/worker/src/workers/shared/queueUtils.ts` - Validation
 - `/apps/worker/src/lib/services/smsMessageGenerator.ts` - LLM generation
 
 ### Web Code:
+
 - `/apps/web/src/routes/api/webhooks/twilio/status/+server.ts` - Delivery webhooks
 - `/apps/web/src/lib/services/scheduledSmsUpdate.service.ts` - Calendar sync
 - `/apps/web/src/lib/services/calendar-webhook-service.ts` - Event detection
 
 ### Database:
+
 - `/packages/shared-types/src/database.schema.ts` - TypeScript types
 - `/apps/web/supabase/migrations/` - Schema migrations
 

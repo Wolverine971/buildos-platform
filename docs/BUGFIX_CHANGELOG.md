@@ -38,17 +38,19 @@ The previous implementation used an RPC function `increment_daily_sms_count()` t
 - **Added**: Direct atomic UPDATE in `dailySmsWorker.ts` after all messages are scheduled (lines 418-423)
 
 **New Implementation:**
+
 ```typescript
 // In dailySmsWorker.ts - Update count once after scheduling all messages
 await supabase
-  .from('user_sms_preferences')
-  .update({
-    daily_sms_count: currentCount + (insertedMessages?.length || 0)
-  })
-  .eq('user_id', userId);
+	.from('user_sms_preferences')
+	.update({
+		daily_sms_count: currentCount + (insertedMessages?.length || 0)
+	})
+	.eq('user_id', userId);
 ```
 
 **Benefits:**
+
 1. ✅ **No Race Conditions**: Single atomic update per user per day
 2. ✅ **Correct Intent**: Count represents scheduled messages, not sent messages
 3. ✅ **Better Performance**: One update instead of N updates (where N = number of SMS)
@@ -58,16 +60,19 @@ await supabase
 ### Files Changed
 
 **Modified** (2 files):
+
 1. `/apps/worker/src/workers/dailySmsWorker.ts:418-423` - Added daily count update after scheduling
 2. `/apps/worker/src/workers/smsWorker.ts:297-299` - Removed increment_daily_sms_count() call
 
 **Documentation Updated** (2 files):
+
 1. `/docs/features/sms-event-scheduling/PHASE_4_SUMMARY.md:404-407` - Updated comment explaining new design
 2. `/docs/features/sms-event-scheduling/IMPLEMENTATION_STATUS.md:6` - Added recent updates note
 
 ### Testing
 
 **Verified:**
+
 - ✅ Daily count increments correctly when SMS scheduled at midnight
 - ✅ Daily limit enforced at scheduling time (prevents over-scheduling)
 - ✅ No race conditions when multiple users scheduled simultaneously
@@ -77,14 +82,17 @@ await supabase
 ### Cross-References
 
 **Code Files**:
+
 - `/apps/worker/src/workers/dailySmsWorker.ts:418-423` - New count update location
 - `/apps/worker/src/workers/dailySmsWorker.ts:108-116` - Daily limit check at scheduling
 - `/apps/worker/src/workers/smsWorker.ts:171-189` - Safety check at send time
 
 **Documentation**:
+
 - `/thoughts/shared/research/2025-10-22_15-00-00_scheduled-sms-flow-final-audit.md` - Complete flow analysis
 
 **Related Issues**:
+
 - Original bug: `increment_daily_sms_count` function didn't exist
 - Resolution: Better architecture that doesn't need the function
 

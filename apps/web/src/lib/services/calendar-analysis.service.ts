@@ -1533,14 +1533,15 @@ IMPORTANT:
 				const executor = new OperationsExecutor(this.supabase);
 				const result = await executor.executeOperations({
 					operations,
-					userId,
-					operationType: 'calendar_analysis_add_tasks'
+					userId
 				});
 
-				if (!result.success) {
+				if (result.error || result.failed.length > 0) {
 					return {
 						success: false,
-						errors: result.errors || ['Failed to add tasks to existing project']
+						errors: result.error
+							? [result.error]
+							: [`Failed to add ${result.failed.length} task(s) to existing project`]
 					};
 				}
 
@@ -1598,7 +1599,7 @@ IMPORTANT:
 
 				operations.push(
 					...tasks
-						.map((task: any, index: number) => {
+						.map<ParsedOperation | null>((task: any, index: number) => {
 							// Check if task is selected
 							const taskKey = `${suggestionId}-${index}`;
 							if (
@@ -1680,7 +1681,7 @@ IMPORTANT:
 								enabled: true
 							};
 						})
-						.filter(Boolean) // Remove null entries for unselected tasks
+						.filter((op): op is ParsedOperation => op !== null) // Remove null entries for unselected tasks
 				);
 			}
 

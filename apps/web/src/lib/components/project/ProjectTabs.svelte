@@ -46,7 +46,7 @@
 		mobileLabel?: string;
 	}
 
-	let tabs = $derived([
+	let tabs: Tab[] = $derived([
 		{
 			id: 'overview' as const,
 			label: 'Overview',
@@ -94,7 +94,7 @@
 </script>
 
 <div class="tab-container">
-	<nav class="tab-nav" role="tablist" aria-label="Project sections">
+	<div class="tab-nav" role="tablist" aria-label="Project sections">
 		{#each visibleTabs as tab (tab.id)}
 			<button
 				type="button"
@@ -117,7 +117,7 @@
 				{/if}
 			</button>
 		{/each}
-	</nav>
+	</div>
 </div>
 
 <style>
