@@ -9,6 +9,7 @@
 
 	let {
 		blocks = [],
+		days = [],
 		viewMode = $bindable('week'),
 		selectedDate = $bindable(new Date()),
 		isCalendarConnected = false,
@@ -20,6 +21,7 @@
 		onSlotClick
 	}: {
 		blocks?: TimeBlockWithProject[];
+		days?: Date[];
 		viewMode?: 'day' | 'week' | 'month';
 		selectedDate?: Date;
 		isCalendarConnected?: boolean;
@@ -50,42 +52,8 @@
 		Array.from({ length: HOURS_END - HOURS_START }, (_, i) => HOURS_START + i)
 	);
 
-	let days = $derived.by(() => {
-		if (viewMode === 'day') {
-			return [selectedDate];
-		} else if (viewMode === 'week') {
-			// Get start of week (Monday)
-			const start = new Date(selectedDate);
-			const day = start.getDay();
-			const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-			start.setDate(diff);
-			start.setHours(0, 0, 0, 0);
-
-			return Array.from({ length: 7 }, (_, i) => {
-				const d = new Date(start);
-				d.setDate(start.getDate() + i);
-				return d;
-			});
-		} else {
-			// Month view - return full 6-week calendar grid (42 days)
-			// This matches getMonthCalendarGrid() logic and ensures proper data fetching
-			const year = selectedDate.getFullYear();
-			const month = selectedDate.getMonth();
-			const firstDayOfMonth = new Date(year, month, 1);
-
-			// Get the day of week for the first day (0 = Sunday)
-			const firstDayOfWeek = firstDayOfMonth.getDay();
-
-			// Calculate the start date (Sunday before or on the 1st)
-			const startDate = new Date(firstDayOfMonth);
-			startDate.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
-
-			// Generate 42 days (6 weeks) for complete calendar grid
-			return Array.from({ length: 42 }, (_, i) => {
-				return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-			});
-		}
-	});
+	// days array is now passed as a prop from parent component
+	// This ensures slot dayIndex values match the displayed columns
 
 	// Format functions
 	function formatDayHeader(date: Date): string {

@@ -17,6 +17,47 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Time Block Available Slots Column Mismatch
+
+**Severity**: High (Available slots appearing in wrong day columns)
+
+### Root Cause
+
+The TimePlayCalendar component was calculating its own internal `days` array based on `viewMode` and `selectedDate`, while receiving `availableSlots` with `dayIndex` values that referenced a different `days` array from the parent component. This mismatch caused available time slots to appear in incorrect day columns, leading users to create time blocks on the wrong dates.
+
+### Fix Description
+
+Modified TimePlayCalendar component to accept and use the `days` array prop from the parent component instead of calculating its own internal days array. This ensures that:
+1. The `dayIndex` values in available slots correctly map to the displayed columns
+2. Slots appear in the correct day columns
+3. Clicking on a slot creates a time block on the intended date
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/lib/components/time-blocks/TimePlayCalendar.svelte` - Added days prop to component interface and removed internal days calculation
+
+### Related Docs
+
+- **Time Blocks Feature**: `/apps/web/docs/features/time-blocks/README.md`
+- **Slot Finder Utility**: `/apps/web/src/lib/utils/slot-finder.ts`
+
+### Cross-references
+
+- **Days prop passed from parent**: Line 325 in `/apps/web/src/routes/time-blocks/+page.svelte`
+- **Slot dayIndex assignment**: Line 99 in `/apps/web/src/lib/utils/slot-finder.ts`
+- **Component interface update**: Lines 10-34 in TimePlayCalendar component
+
+### Testing Instructions
+
+1. Go to `/time-blocks` page
+2. Look at available time slots in the calendar view
+3. Click on a slot for a specific day (note the day)
+4. Verify the modal shows the correct date matching the column you clicked
+5. Create the time block
+6. Verify it appears on the correct day in the calendar
+
+---
+
 ## 2025-10-23 - Time Block Scheduling Wrong Day & Webhook Registration Issues
 
 **Severity**: Medium (UI date conversion issue and webhook configuration issue)
