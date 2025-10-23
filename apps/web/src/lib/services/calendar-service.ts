@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { GoogleOAuthService, GoogleOAuthConnectionError } from './google-oauth-service';
+import { ErrorLoggerService } from './errorLogger.service';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { recurrencePatternBuilder, type RecurrenceConfig } from './recurrence-pattern.service';
@@ -258,11 +259,13 @@ export class CalendarService {
 	private supabase: SupabaseClient;
 	private activityLogger: ActivityLogger;
 	private oAuthService: GoogleOAuthService;
+	private errorLogger: ErrorLoggerService;
 
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	/**
@@ -1043,6 +1046,14 @@ export class CalendarService {
 			};
 		} catch (error: any) {
 			console.error('Error updating calendar event:', error);
+
+			// Log the calendar update error
+			await this.errorLogger.logCalendarError(error, 'update', params.event_id, userId, {
+				calendarEventId: params.event_id,
+				calendarId: params.calendar_id || 'primary',
+				reason: error.message || 'Unknown update error'
+			});
+
 			if (error instanceof GoogleOAuthConnectionError && error.requiresReconnection) {
 				await this.handleConnectionFailure(userId, error.message);
 			}
@@ -1082,6 +1093,19 @@ export class CalendarService {
 			};
 		} catch (error: any) {
 			console.error('Error deleting calendar event:', error);
+
+			// Log the calendar deletion error
+			await this.errorLogger.logCalendarError(
+				error,
+				'delete',
+				'calendar_event', // Using calendar_event_id as task identifier
+				userId,
+				{
+					calendarEventId: params.event_id,
+					calendarId: params.calendar_id || 'primary',
+					reason: error.message || 'Unknown deletion error'
+				}
+			);
 
 			// 404 is not an error for delete operations
 			if (error.code === 404 || error.message?.includes('404')) {

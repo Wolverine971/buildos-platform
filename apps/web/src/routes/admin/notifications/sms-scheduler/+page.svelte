@@ -401,7 +401,8 @@
 											{user.email}
 										</div>
 										<div class="text-xs text-gray-500">
-											{user.name || user.full_name || 'No name'} · {user.timezone || 'UTC'}
+											{user.name || user.full_name || 'No name'} · {user.timezone ||
+												'UTC'}
 										</div>
 									</div>
 									{#if user.sms_preferences}

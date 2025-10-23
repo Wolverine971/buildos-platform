@@ -1,4 +1,4 @@
-<!-- apps/web/src/lib/components/project/RecurrenceUpdateDialog.svelte -->
+<!-- apps/web/src/lib/components/project/RecurrenceUpdateModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { RefreshCw, Calendar, AlertTriangle, Info } from 'lucide-svelte';

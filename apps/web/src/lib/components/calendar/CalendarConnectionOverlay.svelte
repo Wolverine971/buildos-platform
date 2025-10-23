@@ -77,12 +77,21 @@
 				<div class="flex justify-center mb-6">
 					<div class="relative">
 						<!-- Animated rings -->
-						<div class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping opacity-20" />
-						<div class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping animation-delay-200 opacity-15" />
+						<div
+							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping opacity-20"
+						/>
+						<div
+							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping animation-delay-200 opacity-15"
+						/>
 
 						<!-- Icon circle -->
-						<div class="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
-							<Calendar class="w-10 h-10 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
+						<div
+							class="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center"
+						>
+							<Calendar
+								class="w-10 h-10 text-blue-600 dark:text-blue-400"
+								strokeWidth={1.5}
+							/>
 						</div>
 					</div>
 				</div>
@@ -99,13 +108,17 @@
 					id="calendar-overlay-description"
 					class="text-base text-gray-600 dark:text-gray-400 mb-8 leading-relaxed"
 				>
-					Connect your Google Calendar to use time blocks. Your focus sessions will sync automatically, helping you protect deep work time and see your full schedule in one place.
+					Connect your Google Calendar to use time blocks. Your focus sessions will sync
+					automatically, helping you protect deep work time and see your full schedule in
+					one place.
 				</p>
 
 				<!-- Benefits List -->
 				<div class="space-y-3 mb-8">
 					<div class="flex items-center gap-3 text-left">
-						<div class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
+						<div
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center"
+						>
 							<Clock class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
 						</div>
 						<p class="text-sm text-gray-700 dark:text-gray-300">
@@ -113,7 +126,9 @@
 						</p>
 					</div>
 					<div class="flex items-center gap-3 text-left">
-						<div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center">
+						<div
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center"
+						>
 							<Shield class="w-4 h-4 text-purple-600 dark:text-purple-400" />
 						</div>
 						<p class="text-sm text-gray-700 dark:text-gray-300">
@@ -124,7 +139,9 @@
 
 				<!-- Error Message -->
 				{#if hasError}
-					<div class="mb-6 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900">
+					<div
+						class="mb-6 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900"
+					>
 						<p class="text-sm text-rose-700 dark:text-rose-400">
 							{errorMessage}
 						</p>
@@ -141,7 +158,9 @@
 				>
 					{#if isConnecting}
 						<div class="flex items-center justify-center gap-2">
-							<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+							<div
+								class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+							/>
 							<span>Connecting...</span>
 						</div>
 					{:else}
@@ -160,7 +179,8 @@
 				<!-- Navigation Notice -->
 				<div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
 					<p class="text-sm text-gray-600 dark:text-gray-400">
-						You can navigate to other pages using the sidebar, but time blocks require calendar connection to function.
+						You can navigate to other pages using the sidebar, but time blocks require
+						calendar connection to function.
 					</p>
 				</div>
 			</div>
@@ -177,7 +197,8 @@
 
 	/* Stagger animation for ping rings */
 	@keyframes ping {
-		75%, 100% {
+		75%,
+		100% {
 			transform: scale(2);
 			opacity: 0;
 		}

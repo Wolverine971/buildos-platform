@@ -79,28 +79,12 @@
 	}
 </script>
 
-<Modal title="" isOpen={true} {onClose} size="lg">
+<Modal  isOpen={true} {onClose} size="lg" title={blockTitle}>
 	<div class="space-y-6 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 		<!-- Header Section with Color Accent -->
 		<div class="flex items-start gap-5">
-			<!-- Vibrant accent bar with glow -->
-			<div class="relative flex-shrink-0">
-				<div
-					class="absolute inset-0 rounded-full opacity-40 blur-xl"
-					style="background: {blockColor};"
-				></div>
-				<div
-					class="relative h-20 w-1.5 rounded-full shadow-lg"
-					style="background: {blockColor};"
-				></div>
-			</div>
 
 			<div class="flex-1 space-y-3">
-				<h2
-					class="text-2xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-white"
-				>
-					{blockTitle}
-				</h2>
 				<div class="flex flex-wrap items-center gap-2">
 					<span
 						class="inline-flex items-center rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-white/10"

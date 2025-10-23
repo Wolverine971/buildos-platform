@@ -21,7 +21,11 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browser } from '$app/environment';
-	import { BriefClientService, streamingStatus, briefGenerationCompleted } from '$lib/services/briefClient.service';
+	import {
+		BriefClientService,
+		streamingStatus,
+		briefGenerationCompleted
+	} from '$lib/services/briefClient.service';
 	import { page } from '$app/stores';
 
 	// Props using Svelte 5 runes syntax
@@ -50,7 +54,10 @@
 
 	// Regenerate state
 	let isRegenerating = $state(false);
-	let regenerateProgress = $state<{ message: string; percentage: number }>({ message: '', percentage: 0 });
+	let regenerateProgress = $state<{ message: string; percentage: number }>({
+		message: '',
+		percentage: 0
+	});
 
 	// Subscribe to notification preferences store
 	let notificationPreferences = $derived($notificationPreferencesStore.preferences);
@@ -115,16 +122,26 @@
 		if (isRegenerating && generationStatus.isGenerating) {
 			regenerateProgress = {
 				message: generationStatus.message || 'Regenerating brief...',
-				percentage: generationStatus.progress?.projects?.total > 0
-					? Math.round((generationStatus.progress.projects.completed / generationStatus.progress.projects.total) * 100)
-					: 0
+				percentage:
+					generationStatus.progress?.projects?.total > 0
+						? Math.round(
+								(generationStatus.progress.projects.completed /
+									generationStatus.progress.projects.total) *
+									100
+							)
+						: 0
 			};
 		}
 	});
 
 	// Watch for regeneration completion
 	$effect(() => {
-		if (isRegenerating && completionEvent && briefDate && completionEvent.briefDate === briefDate) {
+		if (
+			isRegenerating &&
+			completionEvent &&
+			briefDate &&
+			completionEvent.briefDate === briefDate
+		) {
 			// Regeneration completed successfully
 			isRegenerating = false;
 			toastService.success('Brief regenerated successfully!');
@@ -260,7 +277,9 @@
 		<div class="flex flex-col items-center justify-center py-12 px-6">
 			<RefreshCw class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
 			<p class="text-gray-900 dark:text-white font-medium mb-2">Regenerating Brief</p>
-			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{regenerateProgress.message}</p>
+			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
+				{regenerateProgress.message}
+			</p>
 			{#if regenerateProgress.percentage > 0}
 				<div class="w-full max-w-md">
 					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">

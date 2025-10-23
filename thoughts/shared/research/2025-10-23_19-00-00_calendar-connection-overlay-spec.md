@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 22a885a6
 branch: main
 repository: buildos-platform
-topic: "Calendar Connection Overlay for Time-Blocks Page"
+topic: 'Calendar Connection Overlay for Time-Blocks Page'
 tags: [research, feature-spec, calendar-integration, time-blocks, ui-design]
 status: complete
 last_updated: 2025-10-23
@@ -30,6 +30,7 @@ The time-blocks feature requires Google Calendar integration to function properl
 ## Solution Overview
 
 Implement a sophisticated blocking overlay that:
+
 1. Clearly communicates the requirement for calendar connection
 2. Prevents interaction with the time-blocks page until connected
 3. Provides a seamless, one-click path to connect calendar
@@ -41,6 +42,7 @@ Implement a sophisticated blocking overlay that:
 ### Visual Design
 
 #### Layout Structure
+
 ```
 ┌────────────────────────────────────────────┐
 │                                            │
@@ -66,6 +68,7 @@ Implement a sophisticated blocking overlay that:
 ```
 
 #### Component Hierarchy
+
 - **Overlay Container**: Full screen, fixed position, z-50
 - **Backdrop**: Semi-transparent with glass morphism effect
 - **Content Card**: Centered modal with subtle shadow and border
@@ -76,6 +79,7 @@ Implement a sophisticated blocking overlay that:
 ### Design Tokens
 
 #### Colors
+
 - **Backdrop**: `bg-white/40 dark:bg-black/40 backdrop-blur-lg`
 - **Card Background**: `bg-white dark:bg-gray-900`
 - **Card Border**: `border border-gray-200 dark:border-gray-800`
@@ -86,17 +90,20 @@ Implement a sophisticated blocking overlay that:
 - **Button**: Blue gradient from BuildOS button styles
 
 #### Typography
+
 - **Title**: `text-2xl font-semibold tracking-tight`
 - **Subtitle**: `text-lg text-gray-700 dark:text-gray-300`
 - **Description**: `text-base text-gray-600 dark:text-gray-400`
 - **Button**: `text-base font-medium`
 
 #### Spacing
+
 - **Card Padding**: `p-8 sm:p-10 lg:p-12`
 - **Element Gaps**: `space-y-6`
 - **Button Padding**: `px-6 py-3`
 
 #### Animations
+
 - **Backdrop fade-in**: 200ms ease-out, opacity 0→1
 - **Card entrance**: 300ms ease-out, scale 0.95→1 + opacity 0→1
 - **Button hover**: 150ms ease-out, subtle scale 1→1.02
@@ -107,32 +114,31 @@ Implement a sophisticated blocking overlay that:
 ```svelte
 <!-- CalendarConnectionOverlay.svelte -->
 <div class="overlay-container">
-  <div class="backdrop" />
-  <div class="content-card">
-    <div class="icon-container">
-      <CalendarIcon />
-    </div>
-    <div class="text-stack">
-      <h2>Calendar Connection Required</h2>
-      <p class="subtitle">Connect your Google Calendar to use time blocks</p>
-      <p class="description">
-        Time blocks sync with your calendar to help you protect
-        deep work time and see your full schedule in one place.
-      </p>
-    </div>
-    <div class="actions">
-      <Button variant="primary" on:click={connectCalendar}>
-        Connect Google Calendar
-      </Button>
-      <p class="helper-text">Takes 30 seconds • We never read your private events</p>
-    </div>
-  </div>
+	<div class="backdrop" />
+	<div class="content-card">
+		<div class="icon-container">
+			<CalendarIcon />
+		</div>
+		<div class="text-stack">
+			<h2>Calendar Connection Required</h2>
+			<p class="subtitle">Connect your Google Calendar to use time blocks</p>
+			<p class="description">
+				Time blocks sync with your calendar to help you protect deep work time and see your
+				full schedule in one place.
+			</p>
+		</div>
+		<div class="actions">
+			<Button variant="primary" on:click={connectCalendar}>Connect Google Calendar</Button>
+			<p class="helper-text">Takes 30 seconds • We never read your private events</p>
+		</div>
+	</div>
 </div>
 ```
 
 ### Interaction Design
 
 #### States
+
 1. **Initial Load**: Overlay fades in smoothly if calendar not connected
 2. **Hover State**: Button scales slightly, cursor changes
 3. **Loading State**: Button shows spinner during OAuth redirect
@@ -140,6 +146,7 @@ Implement a sophisticated blocking overlay that:
 5. **Error State**: Shows inline error message if connection fails
 
 #### User Flow
+
 1. User visits `/time-blocks` without calendar connected
 2. Overlay appears with smooth animation
 3. User clicks "Connect Google Calendar"
@@ -149,6 +156,7 @@ Implement a sophisticated blocking overlay that:
 7. Time-blocks page is now fully functional
 
 #### Accessibility
+
 - **Focus Management**: Auto-focus on Connect button
 - **Keyboard Navigation**: Tab cycles through interactive elements
 - **Screen Readers**: Proper ARIA labels and role="dialog"
@@ -158,13 +166,16 @@ Implement a sophisticated blocking overlay that:
 ### Implementation Details
 
 #### Files to Create
+
 1. `/apps/web/src/lib/components/calendar/CalendarConnectionOverlay.svelte`
 
 #### Files to Modify
+
 1. `/apps/web/src/routes/time-blocks/+page.svelte` - Add overlay component
 2. `/apps/web/src/routes/time-blocks/+page.server.ts` - Already checks connection status
 
 #### Key Implementation Points
+
 - Use existing `isCalendarConnected` prop from server load
 - Leverage `Modal.svelte` patterns but make non-dismissible
 - Reuse calendar connection logic from `CalendarTab.svelte`
@@ -175,6 +186,7 @@ Implement a sophisticated blocking overlay that:
 ### Technical Implementation
 
 #### Data Flow
+
 ```typescript
 // +page.server.ts (existing)
 const isCalendarConnected = await calendarService.hasValidConnection(user.id);
@@ -186,20 +198,22 @@ const isCalendarConnected = await calendarService.hasValidConnection(user.id);
 ```
 
 #### OAuth Connection
+
 ```typescript
 // Reuse from CalendarTab.svelte
 async function connectCalendar() {
-  isConnecting = true;
-  const response = await fetch('/profile/calendar', {
-    method: 'POST',
-    body: JSON.stringify({ redirect_path: '/time-blocks' })
-  });
-  const { authUrl } = await response.json();
-  window.location.href = authUrl;
+	isConnecting = true;
+	const response = await fetch('/profile/calendar', {
+		method: 'POST',
+		body: JSON.stringify({ redirect_path: '/time-blocks' })
+	});
+	const { authUrl } = await response.json();
+	window.location.href = authUrl;
 }
 ```
 
 ### Success Metrics
+
 - Zero user confusion about calendar requirement
 - 90%+ connection rate when visiting time-blocks
 - Smooth, delightful connection experience
@@ -207,12 +221,14 @@ async function connectCalendar() {
 - Mobile-friendly implementation
 
 ### Design Inspiration
+
 - Apple's iOS permission prompts (clean, centered, minimal)
 - Notion's workspace setup flow (progressive disclosure)
 - Linear's onboarding overlays (subtle animations)
 - BuildOS's existing modal patterns (consistency)
 
 ### Edge Cases
+
 1. **OAuth Failure**: Show error message with retry button
 2. **Already Connected**: Never show overlay
 3. **Connection Lost**: Re-show overlay if tokens expire
@@ -220,6 +236,7 @@ async function connectCalendar() {
 5. **Slow Networks**: Show loading state during OAuth
 
 ## Next Steps
+
 1. Implement CalendarConnectionOverlay component
 2. Integrate into time-blocks page
 3. Test OAuth flow end-to-end

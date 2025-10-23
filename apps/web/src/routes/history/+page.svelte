@@ -21,7 +21,7 @@
 	import ContributionChart from '$lib/components/history/ContributionChart.svelte';
 	import BraindumpHistoryCard from '$components/history/BraindumpHistoryCard.svelte';
 	import BraindumpModal from '$lib/components/history/BraindumpModalHistory.svelte';
-	import BraindumpHistoryDeleteDialog from '$lib/components/history/BraindumpHistoryDeleteDialog.svelte';
+	import BraindumpHistoryDeleteModal from '$lib/components/history/BraindumpHistoryDeleteModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import './history.css';
 	import type { PageData } from './$types';
@@ -743,8 +743,8 @@
 	/>
 {/if}
 
-<!-- Delete confirmation dialog -->
-<BraindumpHistoryDeleteDialog
+<!-- Delete confirmation modal -->
+<BraindumpHistoryDeleteModal
 	isOpen={showDeleteDialog}
 	braindump={braindumpToDelete}
 	isDeleting={isDeletingBraindump}

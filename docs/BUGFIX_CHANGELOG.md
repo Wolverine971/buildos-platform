@@ -32,6 +32,7 @@ The `test:silent` npm script in `apps/web/package.json` used `2>/dev/null` to su
 3. **Added to gitignore**: Added `nul` to `.gitignore` to prevent future accidental commits
 
 The `test:silent` script still functions correctly because:
+
 - `VITEST_SILENT=true` already suppresses verbose output
 - `--reporter=dot` minimizes test output
 - `|| true` ensures the script doesn't fail
@@ -110,6 +111,7 @@ Fixed all five critical issues:
 4. **View Mode**: Switch between day/week/month views, verify proper display
 5. **Error Display**: Trigger an error (e.g., network failure), verify error message shows
 6. **Allocation**: Create/delete blocks, verify allocation updates without delay
+
 ## 2025-10-23 - Added Regenerate Brief Button with Streaming Progress
 
 **Severity**: N/A (Feature Enhancement)
@@ -131,6 +133,7 @@ The regenerate button provides the following functionality:
 5. **Error Handling**: Shows appropriate error messages if regeneration fails
 
 **User Experience**:
+
 - Button appears in the modal footer alongside Copy and Download buttons
 - Uses primary button styling for visibility
 - Shows "Regenerating..." state with spinner icon during generation
@@ -139,6 +142,7 @@ The regenerate button provides the following functionality:
 - Shows completion percentage as brief generates
 
 **Technical Approach**:
+
 - Integrated with existing `BriefClientService.startStreamingGeneration()`
 - Subscribes to `streamingStatus` store for progress updates
 - Subscribes to `briefGenerationCompleted` event for completion detection
@@ -150,36 +154,36 @@ The regenerate button provides the following functionality:
 **Modified** (1 file):
 
 1. `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte` - Added regenerate functionality
-   - Lines 3-25: Added imports (`RefreshCw` icon, `BriefClientService`, stores, `onDestroy`)
-   - Lines 51-61: Added regeneration state variables and store subscriptions
-   - Lines 113-153: Added effects for progress tracking, completion handling, and error handling
-   - Lines 199-237: Added `regenerateBrief()` function
-   - Lines 258-277: Added regenerating UI state with progress bar
-   - Lines 358-390: Added "Regenerate Brief" button to footer
+    - Lines 3-25: Added imports (`RefreshCw` icon, `BriefClientService`, stores, `onDestroy`)
+    - Lines 51-61: Added regeneration state variables and store subscriptions
+    - Lines 113-153: Added effects for progress tracking, completion handling, and error handling
+    - Lines 199-237: Added `regenerateBrief()` function
+    - Lines 258-277: Added regenerating UI state with progress bar
+    - Lines 358-390: Added "Regenerate Brief" button to footer
 
 **Total Changes**: ~115 lines added/modified
 
 ### Manual Verification Steps
 
 1. **Open Daily Brief Modal**:
-   - Go to `/projects` page
-   - Click to view a daily brief
+    - Go to `/projects` page
+    - Click to view a daily brief
 
 2. **Test Regeneration**:
-   - Click "Regenerate Brief" button
-   - Verify modal shows regenerating state with progress
-   - Observe progress messages updating ("Fetching projects...", etc.)
-   - Verify progress percentage increases
-   - Confirm brief content reloads after completion
+    - Click "Regenerate Brief" button
+    - Verify modal shows regenerating state with progress
+    - Observe progress messages updating ("Fetching projects...", etc.)
+    - Verify progress percentage increases
+    - Confirm brief content reloads after completion
 
 3. **Test Error Handling**:
-   - Verify error toast appears if regeneration fails
-   - Confirm modal returns to normal state on error
+    - Verify error toast appears if regeneration fails
+    - Confirm modal returns to normal state on error
 
 4. **Test Button States**:
-   - Verify button shows "Regenerating..." during generation
-   - Confirm other buttons are disabled during regeneration
-   - Check button icon changes to spinning refresh icon
+    - Verify button shows "Regenerating..." during generation
+    - Confirm other buttons are disabled during regeneration
+    - Check button icon changes to spinning refresh icon
 
 ### Related Docs
 
@@ -191,17 +195,20 @@ The regenerate button provides the following functionality:
 ### Cross-references
 
 **Code Locations**:
+
 - Regenerate function: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:199-237`
 - Progress tracking: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:113-145`
 - UI progress display: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:258-277`
 - Button implementation: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:358-367`
 
 **Related Services**:
+
 - `BriefClientService.startStreamingGeneration()`: Handles streaming generation with Railway worker fallback
 - `unifiedBriefGenerationStore`: Manages generation state and progress
 - API endpoint: `/api/daily-briefs/generate` (POST with `forceRegenerate: true`)
 
 **User Flow**:
+
 1. User opens daily brief modal
 2. User clicks "Regenerate Brief" button
 3. Modal enters regenerating state, shows progress
@@ -227,6 +234,7 @@ The `PUBLIC_APP_URL` environment variable contained trailing whitespace (e.g., `
 **Why This Happened**: Environment variables are loaded as-is from `.env` files or deployment config. The codebase was inconsistent about trimming whitespace - some places used `.trim()` (like `webhookUrl` on line 341), but most did not.
 
 **Impact**: All email tracking links in daily briefs were broken:
+
 - Click tracking URLs didn't work
 - Users couldn't click links in emails to reach the app
 - Email engagement analytics were not captured
@@ -237,6 +245,7 @@ The `PUBLIC_APP_URL` environment variable contained trailing whitespace (e.g., `
 Added `.trim()` to all `PUBLIC_APP_URL` usages across the worker codebase to ensure any leading/trailing whitespace in the environment variable doesn't cause malformed URLs.
 
 **Changed pattern**:
+
 ```typescript
 // BEFORE (8 locations):
 const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
@@ -246,6 +255,7 @@ const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 ```
 
 **Files affected**:
+
 1. `emailAdapter.ts` - Email link construction (3 instances)
 2. `smsAdapter.ts` - SMS link construction (1 instance)
 3. `email-sender.ts` - Email service base URL (1 instance)
@@ -274,20 +284,20 @@ Note: `webhookUrl` on line 341 of emailAdapter.ts already had `.trim()` - this f
 ### Manual Verification Steps
 
 1. **Email Link Verification**:
-   - Trigger a daily brief email
-   - Inspect the HTML source of the email
-   - Verify all tracking links are formatted correctly: `https://build-os.com/api/email-tracking/...` (no space before `/api`)
-   - Click a link in the email and verify it navigates correctly
+    - Trigger a daily brief email
+    - Inspect the HTML source of the email
+    - Verify all tracking links are formatted correctly: `https://build-os.com/api/email-tracking/...` (no space before `/api`)
+    - Click a link in the email and verify it navigates correctly
 
 2. **Click Tracking Verification**:
-   - Look for click tracking URLs in email (format: `/api/email-tracking/{id}/click?url=...`)
-   - Decode the `url` parameter and verify no `%20` appears between domain and path
-   - Click the link and verify proper redirection
+    - Look for click tracking URLs in email (format: `/api/email-tracking/{id}/click?url=...`)
+    - Decode the `url` parameter and verify no `%20` appears between domain and path
+    - Click the link and verify proper redirection
 
 3. **Environment Check**:
-   - Check your `.env` or deployment config for `PUBLIC_APP_URL`
-   - Look for trailing/leading spaces: `PUBLIC_APP_URL=https://build-os.com ` (space at end)
-   - This fix handles that automatically now
+    - Check your `.env` or deployment config for `PUBLIC_APP_URL`
+    - Look for trailing/leading spaces: `PUBLIC_APP_URL=https://build-os.com ` (space at end)
+    - This fix handles that automatically now
 
 ### Related Docs
 
@@ -298,11 +308,13 @@ Note: `webhookUrl` on line 341 of emailAdapter.ts already had `.trim()` - this f
 ### Cross-references
 
 **Code Locations**:
+
 - Email tracking URL generation: `/apps/worker/src/workers/notification/emailAdapter.ts:25-42` (rewriteLinksForTracking function)
 - Email template base URL: `/apps/worker/src/workers/notification/emailAdapter.ts:54,153`
 - Webhook URL (already had .trim()): `/apps/worker/src/workers/notification/emailAdapter.ts:341`
 
 **Related Issues**:
+
 - All instances of `PUBLIC_APP_URL` usage now consistently apply `.trim()`
 - Prevents similar issues in SMS links, LLM service configuration, and email sending
 
@@ -322,6 +334,7 @@ The TimePlayCalendar component was calculating its own internal `days` array bas
 ### Fix Description
 
 Modified TimePlayCalendar component to accept and use the `days` array prop from the parent component instead of calculating its own internal days array. This ensures that:
+
 1. The `dayIndex` values in available slots correctly map to the displayed columns
 2. Slots appear in the correct day columns
 3. Clicking on a slot creates a time block on the intended date
@@ -392,15 +405,15 @@ Fixed both issues:
 ### Testing Instructions
 
 1. **Date Fix Verification**:
-   - Create a time block from an available slot
-   - Verify it schedules on the correct day shown in the slot
-   - Test in different timezones if possible
+    - Create a time block from an available slot
+    - Verify it schedules on the correct day shown in the slot
+    - Test in different timezones if possible
 
 2. **Webhook Testing** (for development):
-   - Use ngrok or similar to expose local dev server
-   - Set `ALLOW_DEV_WEBHOOKS=true` in .env.local
-   - Connect Google Calendar and verify webhook registration
-   - Make changes in Google Calendar and verify they sync to time blocks
+    - Use ngrok or similar to expose local dev server
+    - Set `ALLOW_DEV_WEBHOOKS=true` in .env.local
+    - Connect Google Calendar and verify webhook registration
+    - Make changes in Google Calendar and verify they sync to time blocks
 
 ---
 
@@ -411,6 +424,7 @@ Fixed both issues:
 ### Root Cause
 
 The SMS scheduler admin page had multiple issues:
+
 1. Incorrect API endpoint URLs for user search
 2. Type safety issues with `any` types throughout
 3. Incorrect timeout type declarations
@@ -420,6 +434,7 @@ The SMS scheduler admin page had multiple issues:
 ### Fix Description
 
 Fixed multiple issues in the SMS scheduler admin page:
+
 - **API Endpoints**: Changed `/api/admin/users/search?q=...` to `/api/admin/users?search=...` to use the correct endpoint
 - **Type Safety**: Added proper TypeScript interfaces for User, TriggerResult, TriggerDetail, and JobStatus
 - **Timeout Types**: Changed `number | undefined` to `ReturnType<typeof setTimeout>` for proper typing
@@ -450,6 +465,7 @@ Fixed multiple issues in the SMS scheduler admin page:
 ### Root Cause
 
 The SMS scheduler API endpoint was not following platform conventions for API structure and Supabase client usage. Issues included:
+
 1. Using `createAdminServiceClient()` instead of `locals.supabase`
 2. Manual admin check via database query instead of using `user.is_admin` from session
 3. Using `locals.getSession()` instead of `locals.safeGetSession()`
@@ -461,6 +477,7 @@ The SMS scheduler API endpoint was not following platform conventions for API st
 ### Fix Description
 
 Refactored the endpoint to follow platform conventions:
+
 - Removed unused imports (`createAdminServiceClient`, `createClient`)
 - Updated to use `locals.safeGetSession()` for authentication with direct `user.is_admin` check
 - Replaced all `adminClient` usage with `locals.supabase`

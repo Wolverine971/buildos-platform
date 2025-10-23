@@ -147,10 +147,7 @@ function createTimeBlocksStore() {
 			const [blocks, allocation] = await Promise.all([
 				requestBlocks(rangeStart, rangeEnd),
 				requestAllocation(rangeStart, rangeEnd).catch((allocationError) => {
-					console.error(
-						'[TimeBlocksStore] Failed to load allocation:',
-						allocationError
-					);
+					console.error('[TimeBlocksStore] Failed to load allocation:', allocationError);
 					return null;
 				})
 			]);
