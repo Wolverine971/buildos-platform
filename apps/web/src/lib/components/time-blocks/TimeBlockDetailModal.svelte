@@ -79,11 +79,10 @@
 	}
 </script>
 
-<Modal  isOpen={true} {onClose} size="lg" title={blockTitle}>
+<Modal isOpen={true} {onClose} size="lg" title={blockTitle}>
 	<div class="space-y-6 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 		<!-- Header Section with Color Accent -->
 		<div class="flex items-start gap-5">
-
 			<div class="flex-1 space-y-3">
 				<div class="flex flex-wrap items-center gap-2">
 					<span

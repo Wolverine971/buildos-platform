@@ -1,7 +1,9 @@
 // apps/web/src/lib/services/sms.service.ts
-import { ApiService } from './base/api-service';
-import type { ServiceResponse } from './base/types';
-import { supabase } from '$lib/supabase';
+import { ApiService, type ServiceResponse } from './base/api-service';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@buildos/shared-types';
+import { ErrorLoggerService } from './errorLogger.service';
+import { createSupabaseBrowser } from '$lib/supabase';
 
 export interface SendSMSParams {
 	userId: string;
@@ -16,14 +18,18 @@ export interface SendSMSParams {
 
 export class SMSService extends ApiService {
 	private static instance: SMSService;
+	private supabase: SupabaseClient<Database>;
+	protected errorLogger: ErrorLoggerService;
 
-	private constructor() {
+	private constructor(supabase: SupabaseClient<Database>) {
 		super('');
+		this.supabase = supabase;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
-	public static getInstance(): SMSService {
+	public static getInstance(supabase: SupabaseClient<Database>): SMSService {
 		if (!SMSService.instance) {
-			SMSService.instance = new SMSService();
+			SMSService.instance = new SMSService(supabase);
 		}
 		return SMSService.instance;
 	}
@@ -31,7 +37,7 @@ export class SMSService extends ApiService {
 	async sendSMS(params: SendSMSParams): Promise<ServiceResponse<{ messageId: string }>> {
 		try {
 			// Check user SMS preferences
-			const { data: prefs } = await supabase
+			const { data: prefs } = await this.supabase
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', params.userId)
@@ -54,12 +60,12 @@ export class SMSService extends ApiService {
 			}
 
 			// Queue the SMS message
-			const { data, error } = await supabase.rpc('queue_sms_message', {
+			const { data, error } = await this.supabase.rpc('queue_sms_message', {
 				p_user_id: params.userId,
-				p_phone_number: params.phoneNumber || prefs.phone_number,
+				p_phone_number: params.phoneNumber || prefs.phone_number || '',
 				p_message: params.message,
 				p_priority: params.priority || 'normal',
-				p_scheduled_for: params.scheduledFor?.toISOString() || null,
+				p_scheduled_for: params.scheduledFor?.toISOString() ?? undefined,
 				p_metadata: params.metadata || {}
 			});
 
@@ -73,6 +79,20 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to send SMS:', error);
+			await this.errorLogger.logAPIError(
+				error,
+				'/api/sms/send',
+				'POST',
+				params.userId,
+				{
+					operation: 'sendSMS',
+					errorType: 'sms_delivery_failure',
+					phoneNumber: params.phoneNumber ? 'provided' : 'from_preferences',
+					priority: params.priority || 'normal',
+					hasTemplate: !!params.templateKey,
+					scheduled: !!params.scheduledFor
+				}
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to send SMS']
@@ -98,7 +118,7 @@ export class SMSService extends ApiService {
 		/*
 		try {
 			// Get task details
-			const { data: task } = await supabase
+			const { data: task } = await this.supabase
 				.from('tasks')
 				.select('*, projects(name)')
 				.eq('id', taskId)
@@ -112,7 +132,7 @@ export class SMSService extends ApiService {
 			}
 
 			// Get user preferences
-			const { data: prefs } = await supabase
+			const { data: prefs } = await this.supabase
 				.from('user_sms_preferences')
 				.select(
 					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
@@ -161,6 +181,17 @@ export class SMSService extends ApiService {
 			const response = await this.post('/api/sms/verify', { phoneNumber });
 			return response;
 		} catch (error: any) {
+			await this.errorLogger.logAPIError(
+				error,
+				'/api/sms/verify',
+				'POST',
+				undefined,
+				{
+					operation: 'verifyPhoneNumber',
+					errorType: 'sms_verification_send_failure',
+					hasPhoneNumber: !!phoneNumber
+				}
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to send verification']
@@ -182,9 +213,9 @@ export class SMSService extends ApiService {
 				// Update user preferences
 				const {
 					data: { user }
-				} = await supabase.auth.getUser();
+				} = await this.supabase.auth.getUser();
 				if (user) {
-					await supabase.from('user_sms_preferences').upsert(
+					await this.supabase.from('user_sms_preferences').upsert(
 						{
 							user_id: user.id,
 							phone_number: phoneNumber,
@@ -200,6 +231,18 @@ export class SMSService extends ApiService {
 
 			return response;
 		} catch (error: any) {
+			await this.errorLogger.logAPIError(
+				error,
+				'/api/sms/verify/confirm',
+				'POST',
+				undefined,
+				{
+					operation: 'confirmVerification',
+					errorType: 'sms_verification_confirm_failure',
+					hasPhoneNumber: !!phoneNumber,
+					hasCode: !!code
+				}
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to verify phone number']
@@ -209,7 +252,7 @@ export class SMSService extends ApiService {
 
 	async getSMSMessages(userId: string): Promise<ServiceResponse<{ messages: any[] }>> {
 		try {
-			const { data: messages, error } = await supabase
+			const { data: messages, error } = await this.supabase
 				.from('sms_messages')
 				.select('*')
 				.eq('user_id', userId)
@@ -224,6 +267,13 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to get SMS messages:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'sms_messages',
+				userId,
+				{ operation: 'getSMSMessages' }
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to get SMS messages']
@@ -233,7 +283,7 @@ export class SMSService extends ApiService {
 
 	async getSMSPreferences(userId: string): Promise<ServiceResponse<{ preferences: any }>> {
 		try {
-			const { data: prefs, error } = await supabase
+			const { data: prefs, error } = await this.supabase
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', userId)
@@ -247,6 +297,13 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to get SMS preferences:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_sms_preferences',
+				userId,
+				{ operation: 'getSMSPreferences' }
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to get SMS preferences']
@@ -265,7 +322,7 @@ export class SMSService extends ApiService {
 		}>
 	): Promise<ServiceResponse<{ updated: boolean }>> {
 		try {
-			const { error } = await supabase.from('user_sms_preferences').upsert(
+			const { error } = await this.supabase.from('user_sms_preferences').upsert(
 				{
 					user_id: userId,
 					...preferences,
@@ -284,6 +341,16 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to update SMS preferences:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'UPSERT',
+				'user_sms_preferences',
+				userId,
+				{
+					operation: 'updateSMSPreferences',
+					updatedFields: Object.keys(preferences)
+				}
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to update SMS preferences']
@@ -293,7 +360,7 @@ export class SMSService extends ApiService {
 
 	async optOut(userId: string): Promise<ServiceResponse<{ optedOut: boolean }>> {
 		try {
-			const { error } = await supabase.from('user_sms_preferences').upsert(
+			const { error } = await this.supabase.from('user_sms_preferences').upsert(
 				{
 					user_id: userId,
 					opted_out: true,
@@ -312,6 +379,18 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to opt out:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'UPSERT',
+				'user_sms_preferences',
+				userId,
+				{
+					operation: 'optOut',
+					errorType: 'sms_opt_out_failure',
+					severity: 'critical', // TCPA compliance requirement
+					tcpaCompliance: 'CRITICAL - Opt-out must succeed for TCPA compliance'
+				}
+			);
 			return {
 				success: false,
 				errors: [error.message || 'Failed to opt out']
@@ -320,5 +399,7 @@ export class SMSService extends ApiService {
 	}
 }
 
-// Export singleton instance
-export const smsService = SMSService.getInstance();
+// Export singleton instance (for browser contexts only)
+// Note: This creates a new Supabase client instance. For more control,
+// use SMSService.getInstance(supabaseClient) directly in your components.
+export const smsService = SMSService.getInstance(createSupabaseBrowser());

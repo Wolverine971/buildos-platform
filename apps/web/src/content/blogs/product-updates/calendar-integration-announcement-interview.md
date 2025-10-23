@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Calendar Integration Announcement'
+description: 'Planning guide for the Calendar Integration announcement.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for feature announcement.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Calendar Integration Announcement - Tasks Meet Time
 
 ## Overview & Direction

@@ -345,7 +345,7 @@
 		{/if}
 
 		<div
-			class="space-y-6 overflow-y-auto px-6 py-6 flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/30"
+			class="space-y-4 sm:space-y-5 lg:space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/30"
 		>
 			{#each Object.entries(formConfig) as [field, config] (field)}
 				{@const isContext = field === 'context'}

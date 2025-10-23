@@ -274,7 +274,7 @@
 <Modal {isOpen} {onClose} title="Daily Brief" size="lg" closeOnBackdrop={true} closeOnEscape={true}>
 	{#if isRegenerating}
 		<!-- Regenerating state -->
-		<div class="flex flex-col items-center justify-center py-12 px-6">
+		<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 			<RefreshCw class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
 			<p class="text-gray-900 dark:text-white font-medium mb-2">Regenerating Brief</p>
 			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
@@ -296,13 +296,13 @@
 		</div>
 	{:else if loading}
 		<!-- Loading state -->
-		<div class="flex flex-col items-center justify-center py-12 px-6">
+		<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 			<Loader2 class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
 			<p class="text-gray-600 dark:text-gray-400">Loading brief...</p>
 		</div>
 	{:else if error}
 		<!-- Error state -->
-		<div class="flex flex-col items-center justify-center py-12 px-6">
+		<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 			<AlertCircle class="h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
 			<p class="text-gray-900 dark:text-white font-medium mb-2">Failed to load brief</p>
 			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{error}</p>
@@ -336,7 +336,7 @@
 		</div>
 	{:else}
 		<!-- No brief available -->
-		<div class="flex flex-col items-center justify-center py-12 px-6">
+		<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 			<p class="text-gray-600 dark:text-gray-400">No brief available</p>
 		</div>
 	{/if}
@@ -373,17 +373,8 @@
 
 		{#if displayBrief}
 			<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
-				<div class="flex flex-col sm:flex-row gap-2">
-					<Button
-						on:click={regenerateBrief}
-						variant="primary"
-						size="sm"
-						icon={RefreshCw}
-						disabled={isRegenerating || loading}
-						class="w-full sm:w-auto"
-					>
-						{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}
-					</Button>
+				<div class="flex flex-col sm:flex-row gap-2 w-full">
+					
 					<Button
 						on:click={copyToClipboard}
 						variant="outline"
@@ -403,6 +394,16 @@
 						class="w-full sm:w-auto"
 					>
 						Download
+					</Button>
+					<Button
+						on:click={regenerateBrief}
+						variant="primary"
+						size="sm"
+						icon={RefreshCw}
+						disabled={isRegenerating || loading}
+						class="w-full sm:w-auto ml-auto"
+					>
+						{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}
 					</Button>
 				</div>
 			</div>

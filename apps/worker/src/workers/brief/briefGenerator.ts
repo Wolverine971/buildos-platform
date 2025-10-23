@@ -12,7 +12,9 @@ import {
 	DailyBriefAnalysisPrompt,
 	DailyBriefAnalysisProject,
 	ReengagementBriefPrompt,
-	ReengagementPromptInput
+	ReengagementPromptInput,
+	ExecutiveSummaryPrompt,
+	ExecutiveSummaryPromptInput
 } from './prompts';
 
 export type Project = Database['public']['Tables']['projects']['Row'];
@@ -392,10 +394,11 @@ export async function generateDailyBrief(
 		// 3. Consolidate all project briefs into main daily brief
 		await updateProgress(dailyBrief.id, { step: 'consolidating_briefs', progress: 85 }, jobId);
 
-		const mainBriefContent = generateMainBrief(
+		const mainBriefContent = await generateMainBrief(
 			projectBriefs,
 			briefDateInUserTz,
 			userTimezone,
+			userId,
 			timeBlockData,
 			projects
 		);
@@ -1349,13 +1352,14 @@ function buildTimeAllocationSection(
 	return section;
 }
 
-function generateMainBrief(
+async function generateMainBrief(
 	projectBriefs: any[],
 	briefDate: string,
 	timezone: string,
+	userId: string,
 	timeBlockData?: TimeBlockData,
 	projects?: Project[]
-) {
+): Promise<string> {
 	const formattedDate = formatDate(briefDate);
 
 	let mainBrief = `# 🌅 Daily Brief - ${formattedDate}\n\n`;
@@ -1367,9 +1371,7 @@ function generateMainBrief(
 		mainBrief += `## 🎉 Today is ${holidays.join(' and ')}\n\n`;
 	}
 
-	// Executive Summary
-	mainBrief += `## Executive Summary\n\n`;
-
+	// Calculate statistics for executive summary
 	const totalProjects = projectBriefs.length;
 	const projectsWithTodaysTasks = projectBriefs.filter(
 		(brief) => brief.metadata?.todays_task_count > 0
@@ -1395,20 +1397,106 @@ function generateMainBrief(
 		0
 	);
 
-	mainBrief += `You have **${totalProjects} active projects** with **${totalTodaysTasks} tasks starting today** across **${projectsWithTodaysTasks} projects**. `;
+	// Generate Executive Summary using LLM
+	mainBrief += `## Executive Summary\n\n`;
 
-	if (totalOverdueTasks > 0) {
-		mainBrief += `**${totalOverdueTasks} tasks are overdue**. `;
-	}
+	try {
+		const llmService = new SmartLLMService({
+			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
+			appName: 'BuildOS Daily Brief Worker'
+		});
 
-	mainBrief += `**${totalUpcomingTasks} tasks** are scheduled upcoming`;
-	if (totalNextSevenDaysTasks > 0) {
-		mainBrief += `, including **${totalNextSevenDaysTasks} tasks** in the next 7 days`;
+		const hasTimeblocks = timeBlockData && timeBlockData.totalMinutesAllocated > 0;
+
+		// Build time allocation context for the prompt
+		let timeAllocationContext;
+		if (hasTimeblocks && timeBlockData) {
+			timeAllocationContext = {
+				totalAllocatedMinutes: timeBlockData.totalMinutesAllocated,
+				projectAllocations: Array.from(timeBlockData.projectTimeBlocks.entries()).map(
+					([projectId, blocks]) => {
+						const project = projects?.find((p) => p.id === projectId);
+						const allocatedMinutes = blocks.reduce(
+							(sum, b) => sum + (b.duration_minutes || 0),
+							0
+						);
+						const taskCount =
+							projectBriefs.find((b) => b.project_id === projectId)?.metadata
+								?.todays_task_count || 0;
+
+						// Simple capacity heuristic: 1 task ≈ 60 minutes
+						const taskEffortMinutes = taskCount * 60;
+						const capacityRatio = taskEffortMinutes > 0 ? allocatedMinutes / taskEffortMinutes : 1;
+
+						let capacityStatus: 'aligned' | 'underallocated' | 'overallocated' = 'aligned';
+						if (capacityRatio < 0.7) capacityStatus = 'underallocated';
+						if (capacityRatio > 1.3) capacityStatus = 'overallocated';
+
+						return {
+							projectId,
+							projectName: project?.name || 'Unknown',
+							allocatedMinutes,
+							taskCount,
+							capacityStatus,
+							suggestionsFromBlocks: []
+						};
+					}
+				),
+				unscheduledTimeAnalysis: {
+					totalMinutes: timeBlockData.unscheduledBlocks.reduce(
+						(sum, b) => sum + (b.duration_minutes || 0),
+						0
+					),
+					blockCount: timeBlockData.unscheduledBlocks.length,
+					suggestedTasks: []
+				}
+			};
+		}
+
+		const summaryPromptInput: ExecutiveSummaryPromptInput = {
+			date: briefDate,
+			timezone,
+			totalProjects,
+			projectsWithTodaysTasks,
+			totalTodaysTasks,
+			totalOverdueTasks,
+			totalUpcomingTasks,
+			totalNextSevenDaysTasks,
+			totalRecentlyCompleted,
+			timeAllocationContext,
+			holidays: holidays || undefined
+		};
+
+		const executiveSummary = await llmService.generateText({
+			prompt: ExecutiveSummaryPrompt.buildUserPrompt(summaryPromptInput),
+			userId,
+			profile: 'balanced',
+			temperature: 0.6,
+			maxTokens: 300,
+			systemPrompt: ExecutiveSummaryPrompt.getSystemPrompt(hasTimeblocks)
+		});
+
+		mainBrief += `${executiveSummary.trim()}\n\n`;
+		console.log(`✨ Generated LLM executive summary for user ${userId}`);
+	} catch (error) {
+		console.error('Failed to generate LLM executive summary, using fallback:', error);
+
+		// Fallback to hardcoded template if LLM fails
+		mainBrief += `You have **${totalProjects} active projects** with **${totalTodaysTasks} tasks starting today** across **${projectsWithTodaysTasks} projects**. `;
+
+		if (totalOverdueTasks > 0) {
+			mainBrief += `**${totalOverdueTasks} tasks are overdue**. `;
+		}
+
+		mainBrief += `**${totalUpcomingTasks} tasks** are scheduled upcoming`;
+		if (totalNextSevenDaysTasks > 0) {
+			mainBrief += `, including **${totalNextSevenDaysTasks} tasks** in the next 7 days`;
+		}
+		if (totalRecentlyCompleted > 0) {
+			mainBrief += ` and **${totalRecentlyCompleted} tasks** were completed in the last 24 hours`;
+		}
+		mainBrief += `.\n\n`;
 	}
-	if (totalRecentlyCompleted > 0) {
-		mainBrief += ` and **${totalRecentlyCompleted} tasks** were completed in the last 24 hours`;
-	}
-	mainBrief += `.\n\n`;
 
 	// Time Allocation Section (Layer 5)
 	if (timeBlockData && projects) {

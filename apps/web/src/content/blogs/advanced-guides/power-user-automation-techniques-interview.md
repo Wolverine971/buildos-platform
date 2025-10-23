@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Power User Automation Techniques'
+description: 'Planning guide and outline for the Power User Automation Techniques blog post.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for blog post creation.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Power User Automation Techniques - Maximizing BuildOS Efficiency
 
 ## Overview & Direction

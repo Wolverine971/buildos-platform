@@ -232,6 +232,131 @@ export interface ReengagementPromptInput {
 	mainBriefMarkdown: string;
 }
 
+/**
+ * Executive Summary Prompt - for generating concise daily brief summaries
+ */
+
+export interface ExecutiveSummaryPromptInput {
+	date: string;
+	timezone: string;
+	totalProjects: number;
+	projectsWithTodaysTasks: number;
+	totalTodaysTasks: number;
+	totalOverdueTasks: number;
+	totalUpcomingTasks: number;
+	totalNextSevenDaysTasks: number;
+	totalRecentlyCompleted: number;
+	timeAllocationContext?: TimeAllocationContext;
+	holidays?: string[];
+}
+
+export class ExecutiveSummaryPrompt {
+	static getSystemPrompt(includeTimeblocks: boolean = false): string {
+		const basePrompt = `You are a BuildOS productivity strategist writing a concise, action-oriented executive summary for a daily brief.
+
+Your goals:
+- Provide a straight-to-the-point summary of the user's day
+- Highlight key numbers and priorities without unnecessary filler
+- Be encouraging but realistic about the workload
+- Make it scannable and immediately useful`;
+
+		const timeblockGoals = includeTimeblocks
+			? `
+- Reference time allocation when it provides critical context about capacity
+- Mention scheduling gaps or overallocations if they're significant`
+			: '';
+
+		const toneAndFormat = `
+
+Tone & format:
+- Direct, professional, and action-focused
+- 2-3 sentences maximum
+- No greeting or sign-off - just the summary
+- Use exact numbers provided in the data
+- Focus on what matters most: tasks starting today, overdue items, and time constraints`;
+
+		const guidelines = `
+
+Guidelines:
+- Start with the most important information (tasks starting today or overdue items)
+- Mention total projects only if relevant to context
+- Include upcoming tasks if they impact today's priorities
+- Reference recent completions only if they provide momentum context
+- Keep it under 100 words
+- Output plain text only - no markdown formatting needed`;
+
+		return basePrompt + timeblockGoals + toneAndFormat + guidelines;
+	}
+
+	static buildUserPrompt(input: ExecutiveSummaryPromptInput): string {
+		const {
+			date,
+			timezone,
+			totalProjects,
+			projectsWithTodaysTasks,
+			totalTodaysTasks,
+			totalOverdueTasks,
+			totalUpcomingTasks,
+			totalNextSevenDaysTasks,
+			totalRecentlyCompleted,
+			timeAllocationContext,
+			holidays
+		} = input;
+
+		let prompt = `Generate an executive summary for this daily brief:
+
+Date: ${date}
+Timezone: ${timezone}
+${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
+Statistics:
+- Total active projects: ${totalProjects}
+- Projects with tasks starting today: ${projectsWithTodaysTasks}
+- Tasks starting today: ${totalTodaysTasks}
+- Overdue tasks: ${totalOverdueTasks}
+- Upcoming tasks: ${totalUpcomingTasks}
+- Tasks in next 7 days: ${totalNextSevenDaysTasks}
+- Recently completed (last 24h): ${totalRecentlyCompleted}
+`;
+
+		// Add timeblock context if available
+		if (timeAllocationContext) {
+			const totalHours = (timeAllocationContext.totalAllocatedMinutes / 60).toFixed(1);
+			prompt += `
+Time Allocation:
+- Total scheduled time today: ${totalHours}h across ${timeAllocationContext.projectAllocations.length} project(s)`;
+
+			// Mention significant capacity issues
+			const underallocated = timeAllocationContext.projectAllocations.filter(
+				(p) => p.capacityStatus === 'underallocated'
+			);
+			const overallocated = timeAllocationContext.projectAllocations.filter(
+				(p) => p.capacityStatus === 'overallocated'
+			);
+
+			if (underallocated.length > 0) {
+				prompt += `\n- ${underallocated.length} project(s) underallocated`;
+			}
+			if (overallocated.length > 0) {
+				prompt += `\n- ${overallocated.length} project(s) overallocated`;
+			}
+
+			if (timeAllocationContext.unscheduledTimeAnalysis.totalMinutes > 0) {
+				const unscheduledHours = (
+					timeAllocationContext.unscheduledTimeAnalysis.totalMinutes / 60
+				).toFixed(1);
+				prompt += `\n- ${unscheduledHours}h unscheduled time available`;
+			}
+
+			prompt += `\n`;
+		}
+
+		prompt += `
+Write a concise executive summary (2-3 sentences max) that gives the user immediate clarity on their day.`;
+
+		return prompt;
+	}
+}
+
 export class ReengagementBriefPrompt {
 	static getSystemPrompt(daysSinceLastLogin: number): string {
 		const tone = this.getToneForInactivityLevel(daysSinceLastLogin);

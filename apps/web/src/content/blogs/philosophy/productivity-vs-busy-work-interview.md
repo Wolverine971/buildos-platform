@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Productivity vs Busy Work'
+description: 'Planning guide for the Productivity vs Busy Work blog post.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for blog post creation.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Productivity vs Busy Work - The Essential Distinction
 
 ## Overview & Direction

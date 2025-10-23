@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CalendarTokens } from '../../app';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import { randomBytes } from 'node:crypto';
+import { ErrorLoggerService } from './errorLogger.service';
 
 export interface CalendarStatus {
 	isConnected: boolean;
@@ -43,12 +44,14 @@ export class GoogleOAuthConnectionError extends Error {
 
 export class GoogleOAuthService {
 	private supabase: SupabaseClient;
+	private errorLogger: ErrorLoggerService;
 	private clientCache = new Map<string, { client: OAuth2Client; expires: number }>();
 	private readonly MAX_RETRIES = 3;
 	private readonly RETRY_DELAY_MS = 1000;
 
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	/**
@@ -165,6 +168,13 @@ export class GoogleOAuthService {
 			};
 		} catch (error) {
 			console.error('Error checking calendar status:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_calendar_tokens',
+				userId,
+				{ operation: 'getCalendarStatus' }
+			);
 			return { isConnected: false };
 		}
 	}
@@ -232,6 +242,17 @@ export class GoogleOAuthService {
 				oauth2Client.setCredentials(credentials);
 			} catch (refreshError: any) {
 				console.error('Token refresh failed:', refreshError);
+				await this.errorLogger.logAPIError(
+					refreshError,
+					'https://oauth2.googleapis.com/token',
+					'POST',
+					userId,
+					{
+						operation: 'refreshAccessToken',
+						errorType: 'oauth_token_refresh_failure',
+						requiresReconnection: true
+					}
+				);
 				throw new GoogleOAuthConnectionError(
 					'Calendar authentication expired. Connection has been reset.',
 					true
@@ -245,6 +266,17 @@ export class GoogleOAuthService {
 				await this.updateTokens(userId, newTokens);
 			} catch (updateError) {
 				console.error('Failed to update tokens in database:', updateError);
+				await this.errorLogger.logDatabaseError(
+					updateError,
+					'UPDATE',
+					'user_calendar_tokens',
+					userId,
+					{
+						operation: 'updateTokensAfterRefresh',
+						hasRefreshToken: !!newTokens.refresh_token,
+						hasAccessToken: !!newTokens.access_token
+					}
+				);
 			}
 		});
 
@@ -284,6 +316,13 @@ export class GoogleOAuthService {
 			};
 		} catch (error) {
 			console.error('Error fetching calendar tokens:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_calendar_tokens',
+				userId,
+				{ operation: 'getTokens' }
+			);
 			return null;
 		}
 	}
@@ -389,13 +428,27 @@ export class GoogleOAuthService {
 				console.error('OAuth refresh error:', refreshError);
 
 				// Handle specific OAuth errors
-				if (
+				const requiresReconnect =
 					refreshError.message?.includes('invalid_grant') ||
 					refreshError.message?.includes('Token has been expired or revoked') ||
 					refreshError.message?.includes('invalid_client') ||
 					refreshError.status === 400 ||
-					refreshError.code === 400
-				) {
+					refreshError.code === 400;
+
+				await this.errorLogger.logAPIError(
+					refreshError,
+					'https://oauth2.googleapis.com/token',
+					'POST',
+					userId,
+					{
+						operation: 'refreshCalendarToken',
+						errorType: 'oauth_refresh_failure',
+						requiresReconnection: requiresReconnect,
+						isAutoRefresh: options.autoRefresh || false
+					}
+				);
+
+				if (requiresReconnect) {
 					return {
 						success: false,
 						error: 'Calendar authorization has expired. Please reconnect your calendar.',
@@ -410,6 +463,16 @@ export class GoogleOAuthService {
 			}
 		} catch (error: any) {
 			console.error('Token refresh failed:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_calendar_tokens',
+				userId,
+				{
+					operation: 'refreshCalendarToken_outer',
+					errorType: 'token_fetch_failure'
+				}
+			);
 			return {
 				success: false,
 				error: error.message || 'Failed to refresh token'
@@ -470,6 +533,16 @@ export class GoogleOAuthService {
 			};
 		} catch (error: any) {
 			console.error('Auto-refresh check failed:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_calendar_tokens',
+				userId,
+				{
+					operation: 'autoRefreshIfNeeded',
+					errorType: 'auto_refresh_check_failure'
+				}
+			);
 			return {
 				refreshed: false,
 				error: error.message || 'Auto-refresh check failed'
@@ -506,6 +579,16 @@ export class GoogleOAuthService {
 					return true;
 				} catch (error) {
 					console.error('Quick token verification failed:', error);
+					await this.errorLogger.logAPIError(
+						error,
+						'https://oauth2.googleapis.com/token',
+						'POST',
+						userId,
+						{
+							operation: 'hasValidConnection_quickVerification',
+							errorType: 'token_verification_failure'
+						}
+					);
 					// Tokens are invalid - connection is not valid
 					return false;
 				}
@@ -514,6 +597,13 @@ export class GoogleOAuthService {
 			return true;
 		} catch (error) {
 			console.error('Error checking calendar connection:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'user_calendar_tokens',
+				userId,
+				{ operation: 'hasValidConnection' }
+			);
 			return false;
 		}
 	}
@@ -527,6 +617,16 @@ export class GoogleOAuthService {
 			this.clientCache.delete(userId);
 		} catch (error) {
 			console.error('Error disconnecting calendar:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'DELETE',
+				'user_calendar_tokens',
+				userId,
+				{
+					operation: 'disconnectCalendar',
+					errorType: 'token_deletion_failure'
+				}
+			);
 			throw error;
 		}
 	}
@@ -630,6 +730,18 @@ export class GoogleOAuthService {
 			return { success: true };
 		} catch (error: any) {
 			console.error('Error exchanging code for tokens:', error);
+			await this.errorLogger.logAPIError(
+				error,
+				'https://oauth2.googleapis.com/token',
+				'POST',
+				userId,
+				{
+					operation: 'exchangeCodeForTokens',
+					errorType: 'oauth_code_exchange_failure',
+					redirectUri,
+					hasCode: !!code
+				}
+			);
 			return { success: false, error: error.message || 'Unexpected error' };
 		}
 	}
@@ -740,6 +852,21 @@ export class GoogleOAuthService {
 				name: 'Google Calendar User'
 			};
 		}
+
+		// All methods failed - log error
+		await this.errorLogger.logAPIError(
+			new Error('Failed to fetch user profile from all Google API methods'),
+			'https://www.googleapis.com/oauth2/v1/userinfo',
+			'GET',
+			undefined,
+			{
+				operation: 'getUserProfile',
+				errorType: 'profile_fetch_complete_failure',
+				attemptedMethods: ['userinfo_v1', 'userinfo_v2', 'id_token_decode', 'calendar_api'],
+				hasFallbackEmail: !!fallbackEmail,
+				hasIdToken: !!idToken
+			}
+		);
 
 		return null;
 	}

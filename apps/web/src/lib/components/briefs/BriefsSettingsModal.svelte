@@ -262,7 +262,7 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Brief Settings" size="md">
-	<div class="space-y-6 p-6">
+	<div class="space-y-3 sm:space-y-4 px-4 sm:px-6 py-4">
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
@@ -283,7 +283,7 @@
 			</div>
 		{:else if !isEditing && briefPreferences}
 			<!-- Display Mode -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
 				<div>
 					<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Frequency
@@ -384,8 +384,8 @@
 			</div>
 		{:else}
 			<!-- Edit Mode -->
-			<div class="space-y-6">
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div class="space-y-3 sm:space-y-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
 					<FormField label="Frequency" labelFor="brief-frequency">
 						<Select
 							id="brief-frequency"

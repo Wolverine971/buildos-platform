@@ -169,33 +169,8 @@
 	}
 </script>
 
-<Modal {isOpen} onClose={handleCancel} size="md" title="">
-	<div class="p-6">
-		<!-- Header -->
-		<div class="flex items-start justify-between mb-6">
-			<div class="flex items-center gap-3">
-				<div class="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
-					<AlertTriangle class="w-5 h-5 text-rose-600 dark:text-rose-400" />
-				</div>
-				<div>
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-						Delete Recurring Task
-					</h2>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						{task?.title || 'Recurring task'}
-					</p>
-				</div>
-			</div>
-			<Button
-				onclick={handleCancel}
-				variant="ghost"
-				size="sm"
-				icon={X}
-				class="!p-1"
-				disabled={loading}
-			/>
-		</div>
-
+<Modal {isOpen} onClose={handleCancel} size="md" title="Delete Recurring Task">
+	<div class="px-4 sm:px-6 py-4">
 		<!-- Task Info -->
 		{#if task}
 			<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">

@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Phase-Based Project Execution'
+description: 'Planning guide for the Phase-Based Project Execution blog post.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for blog post creation.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Phase-Based Project Execution - Breaking Down Complexity Without Breaking Your Brain
 
 ## Overview & Direction

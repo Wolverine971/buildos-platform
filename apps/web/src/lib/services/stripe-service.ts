@@ -4,6 +4,7 @@ import { PRIVATE_STRIPE_SECRET_KEY, PRIVATE_ENABLE_STRIPE } from '$env/static/pr
 import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
+import { ErrorLoggerService } from './errorLogger.service';
 
 // Initialize Stripe only if enabled
 const stripe =
@@ -31,9 +32,11 @@ export interface CustomerPortalOptions {
 
 export class StripeService {
 	private supabase: SupabaseClient;
+	private errorLogger: ErrorLoggerService;
 
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	/**
@@ -251,6 +254,26 @@ export class StripeService {
 				.eq('event_id', event.id);
 		} catch (error) {
 			console.error(`Error processing webhook event ${event.id}:`, error);
+
+			// Log to error tracking system
+			const subscription = event.data.object as any;
+			const userId = subscription?.metadata?.user_id;
+
+			await this.errorLogger.logAPIError(
+				error,
+				'/api/webhooks/stripe',
+				'POST',
+				userId,
+				{
+					operation: 'handleWebhookEvent',
+					errorType: 'stripe_webhook_processing_error',
+					eventId: event.id,
+					eventType: event.type,
+					stripeCustomerId: subscription?.customer,
+					stripeSubscriptionId: subscription?.id,
+					webhookAttempts: existingEvent ? (existingEvent.attempts || 1) + 1 : 1
+				}
+			);
 
 			// Mark as failed
 			await this.supabase

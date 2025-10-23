@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: BuildOS Beta Launch'
+description: 'Planning guide for the BuildOS Beta Launch announcement.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for launch announcement.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: BuildOS Beta Launch Announcement
 
 ## Overview & Direction

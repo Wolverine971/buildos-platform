@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Academic Researcher Case Study'
+description: 'Planning guide for the Academic Researcher Time Management case study.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for case study creation.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Case Study - Academic Researcher Time Management Transformation
 
 ## Overview & Direction

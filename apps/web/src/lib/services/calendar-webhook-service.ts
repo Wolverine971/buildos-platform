@@ -3,6 +3,7 @@ import { google, calendar_v3 } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleOAuthService } from './google-oauth-service';
 import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
+import { ErrorLoggerService } from './errorLogger.service';
 import * as crypto from 'crypto';
 
 export interface WebhookChannel {
@@ -33,6 +34,7 @@ interface RetryConfig {
 
 export class CalendarWebhookService {
 	private supabase: SupabaseClient;
+	private errorLogger: ErrorLoggerService;
 	private oAuthService: GoogleOAuthService;
 	private smsUpdateService: ScheduledSmsUpdateService;
 	private readonly retryConfig: RetryConfig = {
@@ -44,6 +46,7 @@ export class CalendarWebhookService {
 
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
 		this.smsUpdateService = new ScheduledSmsUpdateService(supabase);
 	}
@@ -157,6 +160,19 @@ export class CalendarWebhookService {
 			return { success: true };
 		} catch (error: any) {
 			console.error('Failed to register webhook:', error);
+			await this.errorLogger.logAPIError(
+				error,
+				'https://www.googleapis.com/calendar/v3/events/watch',
+				'POST',
+				userId,
+				{
+					operation: 'registerWebhook',
+					errorType: 'calendar_webhook_registration_failure',
+					calendarId,
+					webhookUrl,
+					hasAuth: !!error.message?.includes('authentication')
+				}
+			);
 			return {
 				success: false,
 				error: error.message || 'Failed to register webhook'
@@ -193,6 +209,17 @@ export class CalendarWebhookService {
 			}
 		} catch (error) {
 			console.error('Initial sync failed:', error);
+			await this.errorLogger.logAPIError(
+				error,
+				'https://www.googleapis.com/calendar/v3/calendars/events',
+				'GET',
+				userId,
+				{
+					operation: 'performInitialSync',
+					errorType: 'calendar_initial_sync_failure',
+					calendarId
+				}
+			);
 		}
 	}
 
@@ -340,6 +367,22 @@ export class CalendarWebhookService {
 
 			// Clear the sync token to force a fresh start next time
 			console.log('[RESYNC] Clearing sync token due to error...');
+
+			// Log to error tracking
+			await this.errorLogger.logCalendarError(
+				error,
+				'sync',
+				calendarId,
+				userId,
+				{
+					calendarId,
+					operation: 'performFullResync',
+					errorType: 'calendar_full_resync_failure',
+					errorCode: error.code,
+					reason: error.message
+				}
+			);
+
 			await this.supabase
 				.from('calendar_webhook_channels')
 				.update({

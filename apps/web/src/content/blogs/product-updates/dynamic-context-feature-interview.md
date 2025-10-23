@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Dynamic Context Feature'
+description: 'Planning guide for the Dynamic Context Feature announcement.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for feature announcement.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Dynamic Context Feature - Projects That Learn
 
 ## Overview & Direction

@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Custom Context Field Mastery'
+description: 'Planning guide and outline for the Custom Context Field Mastery blog post.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for blog post creation.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Custom Context Field Mastery - Making Projects Remember What Matters
 
 ## Overview & Direction

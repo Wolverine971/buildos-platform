@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/calendar/CalendarTaskEditModal.svelte -->
 <script lang="ts">
-	import { Save, AlertCircle, Calendar, X } from 'lucide-svelte';
+	import { Save, AlertCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -133,67 +133,38 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="" size="lg" showCloseButton={false} closeOnBackdrop={true}>
-	<svelte:fragment slot="header">
-		<!-- Header -->
-		<div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-3">
-					<Calendar class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-					<div>
-						<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-							Edit Task
-						</h3>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-							Edit calendar-suggested task details
-						</p>
-					</div>
-				</div>
-				<Button
-					on:click={onClose}
-					variant="ghost"
-					size="sm"
-					class="!p-1.5 -mr-1.5"
-					aria-label="Close modal"
-				>
-					<X class="w-4 h-4" />
-				</Button>
-			</div>
-
-			<!-- Error Display -->
-			{#if errors.length > 0}
-				<div
-					class="mt-3 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
-					role="alert"
-				>
-					<div class="flex items-start gap-2">
-						<AlertCircle
-							class="w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
-						/>
-						<div class="flex-1 min-w-0">
-							<p class="text-sm font-medium text-rose-800 dark:text-rose-200 mb-1">
-								Please fix the following errors:
-							</p>
-							<ul class="text-xs text-rose-700 dark:text-rose-300 space-y-0.5">
-								{#each errors as error}
-									<li>• {error}</li>
-								{/each}
-							</ul>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-	</svelte:fragment>
-
+<Modal {isOpen} {onClose} title="Edit Task" size="lg" closeOnBackdrop={true}>
 	<!-- Form Content -->
 	<form
 		on:submit={(e) => {
 			e.preventDefault();
 			handleSave();
 		}}
-		class="px-4 py-4 space-y-6"
+		class="px-4 sm:px-6 py-4 space-y-4"
 	>
+		<!-- Error Display -->
+		{#if errors.length > 0}
+			<div
+				class="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
+				role="alert"
+			>
+				<div class="flex items-start gap-2">
+					<AlertCircle
+						class="w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
+					/>
+					<div class="flex-1 min-w-0">
+						<p class="text-sm font-medium text-rose-800 dark:text-rose-200 mb-1">
+							Please fix the following errors:
+						</p>
+						<ul class="text-xs text-rose-700 dark:text-rose-300 space-y-0.5">
+							{#each errors as error}
+								<li>• {error}</li>
+							{/each}
+						</ul>
+					</div>
+				</div>
+			</div>
+		{/if}
 		{#each fieldGroups as group}
 			{@const groupFields = group.fields.filter((f) => shouldDisplayField(f))}
 

@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
+import { ErrorLoggerService } from './errorLogger.service';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -415,6 +416,7 @@ export class SmartLLMService {
 	private apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 	private costTracking = new Map<string, number>();
 	private performanceMetrics = new Map<string, number[]>();
+	private errorLogger?: ErrorLoggerService;
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
@@ -432,6 +434,9 @@ export class SmartLLMService {
 		this.httpReferer = config?.httpReferer || 'https://yourdomain.com';
 		this.appName = config?.appName || 'SmartLLMService';
 		this.supabase = config?.supabase;
+		if (config?.supabase) {
+			this.errorLogger = ErrorLoggerService.getInstance(config.supabase);
+		}
 	}
 
 	// ============================================
@@ -510,6 +515,21 @@ export class SmartLLMService {
 			}
 		} catch (error) {
 			console.error('Exception while logging LLM usage:', error);
+			if (this.errorLogger) {
+				await this.errorLogger.logDatabaseError(
+					error,
+					'INSERT',
+					'llm_usage_logs',
+					params.userId,
+					{
+						operation: 'logUsageToDatabase',
+						errorType: 'llm_usage_logging_failure',
+						operationType: params.operationType,
+						modelUsed: params.modelUsed,
+						status: params.status
+					}
+				);
+			}
 		}
 	}
 
@@ -620,11 +640,45 @@ export class SmartLLMService {
 							`Retry also failed after ${retryCount} attempts:`,
 							retryError
 						);
+						// Log critical parse failure
+						if (this.errorLogger) {
+							await this.errorLogger.logAPIError(
+								retryError,
+								this.apiUrl,
+								'POST',
+								options.userId,
+								{
+									operation: 'getJSONResponse_retry_parse_failure',
+									errorType: 'llm_json_parse_failure_after_retry',
+									modelRequested: preferredModels[0],
+									retryModel: 'anthropic/claude-3.5-sonnet',
+									retryAttempt: retryCount,
+									maxRetries,
+									responseLength: cleanedRetry?.length || 0
+								}
+							);
+						}
 						throw new Error(
 							`Failed to parse JSON after ${retryCount} retries. Original error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
 						);
 					}
 				} else {
+					// Log parse failure without retry
+					if (this.errorLogger) {
+						await this.errorLogger.logAPIError(
+							parseError,
+							this.apiUrl,
+							'POST',
+							options.userId,
+							{
+								operation: 'getJSONResponse_parse_failure',
+								errorType: 'llm_json_parse_failure',
+								modelUsed: actualModel,
+								responseLength: cleaned.length,
+								retryDisabled: !options.validation?.retryOnParseError
+							}
+						);
+					}
 					throw parseError;
 				}
 			}
@@ -698,6 +752,27 @@ export class SmartLLMService {
 			const requestCompletedAt = new Date();
 
 			console.error(`OpenRouter request failed:`, error);
+
+			// Log to error tracking system
+			if (this.errorLogger) {
+				await this.errorLogger.logAPIError(
+					error,
+					this.apiUrl,
+					'POST',
+					options.userId,
+					{
+						operation: 'getJSONResponse',
+						errorType: 'llm_api_request_failure',
+						modelRequested: preferredModels[0],
+						profile,
+						complexity,
+						isTimeout: lastError.message.includes('timeout'),
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId
+					}
+				);
+			}
 
 			// Log failure to database
 			this.logUsageToDatabase({
@@ -848,6 +923,27 @@ export class SmartLLMService {
 
 			console.error(`OpenRouter text generation failed:`, error);
 
+			// Log to error tracking system
+			if (this.errorLogger) {
+				await this.errorLogger.logAPIError(
+					error,
+					this.apiUrl,
+					'POST',
+					options.userId,
+					{
+						operation: 'generateText',
+						errorType: 'llm_text_generation_failure',
+						modelRequested: preferredModels[0],
+						profile,
+						estimatedLength,
+						isTimeout: (error as Error).message.includes('timeout'),
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId
+					}
+				);
+			}
+
 			// Log failure to database
 			this.logUsageToDatabase({
 				userId: options.userId,
@@ -968,6 +1064,23 @@ export class SmartLLMService {
 			return data;
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') {
+				if (this.errorLogger) {
+					await this.errorLogger.logAPIError(
+						error,
+						this.apiUrl,
+						'POST',
+						undefined,
+						{
+							operation: 'callOpenRouter_timeout',
+							errorType: 'llm_api_timeout',
+							modelRequested: params.model,
+							alternativeModels: params.models?.join(', ') || 'none',
+							timeoutMs: 120000,
+							temperature: params.temperature,
+							maxTokens: params.max_tokens
+						}
+					);
+				}
 				throw new Error(`Request timeout for model ${params.model}`);
 			}
 			throw error;

@@ -1,3 +1,18 @@
+---
+title: 'Blog Guide: Phase Management Update'
+description: 'Planning guide for the Phase Management Update announcement.'
+author: 'DJ Wayne'
+date: '2025-10-23'
+lastmod: '2025-10-23'
+changefreq: 'monthly'
+priority: '0.1'
+published: false
+tags: ['planning', 'outline', 'internal']
+readingTime: 1
+excerpt: 'Internal planning document for feature announcement.'
+pic: 'planning'
+---
+
 # Blog Interview Guide: Phase Management Update - Three Ways to Generate Phases
 
 ## Overview & Direction

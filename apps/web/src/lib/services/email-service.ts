@@ -12,6 +12,7 @@ import {
 	type SenderType
 } from '$lib/utils/email-config';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
+import { ErrorLoggerService } from './errorLogger.service';
 
 export interface EmailData {
 	to: string;
@@ -34,7 +35,11 @@ export interface EmailData {
 }
 
 export class EmailService {
-	constructor(private supabase: SupabaseClient) {}
+	private errorLogger: ErrorLoggerService;
+
+	constructor(private supabase: SupabaseClient) {
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+	}
 
 	/**
 	 * Send an email through Gmail with database + open tracking.
@@ -123,6 +128,25 @@ export class EmailService {
 			console.error('Error sending email:', error);
 
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			// Log to error tracking system
+			await this.errorLogger.logAPIError(
+				error,
+				'/api/email/send',
+				'POST',
+				data.userId ?? undefined,
+				{
+					operation: 'sendEmail',
+					errorType: 'email_delivery_failure',
+					recipientEmail: data.to,
+					subject: data.subject,
+					senderType,
+					trackingEnabled,
+					hasHtml: !!data.html,
+					ccCount: data.cc?.length || 0,
+					bccCount: data.bcc?.length || 0
+				}
+			);
 
 			await this.supabase.from('email_logs').insert({
 				to_email: data.to,
@@ -290,6 +314,20 @@ export class EmailService {
 			return newEmailId;
 		} catch (error) {
 			console.error('Failed to log rich email data:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				emailId ? 'UPDATE' : 'INSERT',
+				'emails',
+				recipientId || undefined,
+				{
+					operation: 'logRichEmailData',
+					emailId: emailId || 'new',
+					recipientEmail,
+					subject,
+					trackingEnabled,
+					category
+				}
+			);
 			return emailId || null;
 		}
 	}
@@ -337,6 +375,19 @@ export class EmailService {
 			});
 		} catch (error) {
 			console.error('Failed to persist email recipient:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				existing?.id ? 'UPDATE' : 'INSERT',
+				'email_recipients',
+				recipientId || undefined,
+				{
+					operation: 'persistRecipient',
+					emailId,
+					recipientEmail,
+					status,
+					hasExistingRecord: !!existing?.id
+				}
+			);
 		}
 	}
 

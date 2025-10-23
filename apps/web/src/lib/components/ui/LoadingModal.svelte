@@ -11,7 +11,7 @@
 	<div use:portal class="loading-modal-root" transition:fade|global={{ duration: 150 }}>
 		<div class="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center">
 			<div
-				class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl transform"
+				class="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl transform"
 				transition:fade|global={{ duration: 150 }}
 			>
 				<div
