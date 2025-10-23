@@ -9,7 +9,7 @@ import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 const stripe =
 	PRIVATE_ENABLE_STRIPE === 'true' && PRIVATE_STRIPE_SECRET_KEY
 		? new Stripe(PRIVATE_STRIPE_SECRET_KEY, {
-				apiVersion: '2023-10-16',
+				apiVersion: '2025-08-27.basil',
 				typescript: true
 			})
 		: null;

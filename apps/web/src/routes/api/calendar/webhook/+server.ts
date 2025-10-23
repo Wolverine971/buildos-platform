@@ -5,13 +5,15 @@ import { dev } from '$app/environment';
 
 import { ApiResponse } from '$lib/utils/api-response';
 
-// todo check this
 // Register webhook for current user
 export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
 	}
+
+	// In dev, webhooks need a publicly accessible URL (e.g., ngrok)
+	// You can override this check with an environment variable if using a tunnel
 	if (dev) {
 		return;
 	}
@@ -34,7 +36,7 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 
 // Unregister webhook
 export const DELETE: RequestHandler = async ({ locals: { safeGetSession, supabase } }) => {
-	const { session, user } = await safeGetSession();
+	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
 	}

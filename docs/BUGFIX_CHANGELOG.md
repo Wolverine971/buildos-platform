@@ -17,6 +17,58 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Time Block Scheduling Wrong Day & Webhook Registration Issues
+
+**Severity**: Medium (UI date conversion issue and webhook configuration issue)
+
+### Root Cause
+
+Two separate issues were identified:
+
+1. **Time Block Wrong Day**: When creating time blocks from available slots, the datetime-local input was receiving UTC ISO strings instead of local time strings. This caused dates to shift by timezone offset, potentially scheduling blocks on the wrong day for users in timezones far from UTC.
+
+2. **Webhook Registration Blocked**: Calendar webhook registration was completely blocked in development mode with no way to override, preventing testing of calendar sync functionality.
+
+### Fix Description
+
+Fixed both issues:
+
+1. **Date Handling**: Updated `formatForInput()` function in TimeBlockCreateModal to format dates as local datetime strings (YYYY-MM-DDTHH:mm) instead of ISO/UTC strings, preserving the correct day when passing to datetime-local inputs.
+
+2. **Webhook Configuration**: Added environment variable `ALLOW_DEV_WEBHOOKS` to allow webhook registration in development when using tools like ngrok for public URLs. Added informative console message about the requirement.
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/lib/components/time-blocks/TimeBlockCreateModal.svelte` - Fixed date formatting
+- **Modified**: `/apps/web/src/routes/api/calendar/webhook/+server.ts` - Added dev webhook override
+
+### Related Docs
+
+- **Time Blocks Feature**: `/apps/web/docs/features/time-blocks/README.md`
+- **Calendar Webhook Service**: `/apps/web/src/lib/services/calendar-webhook-service.ts`
+- **Slot Finder Utility**: `/apps/web/src/lib/utils/slot-finder.ts`
+
+### Cross-references
+
+- **Webhook sync implementation**: Lines 852-899 in `/apps/web/src/lib/services/calendar-webhook-service.ts` handle time block updates from Google Calendar
+- **Date creation**: Lines 95-100 in `/apps/web/src/lib/utils/slot-finder.ts` create slot dates
+- **Modal date handling**: Lines 42-51 in TimeBlockCreateModal handle date formatting
+
+### Testing Instructions
+
+1. **Date Fix Verification**:
+   - Create a time block from an available slot
+   - Verify it schedules on the correct day shown in the slot
+   - Test in different timezones if possible
+
+2. **Webhook Testing** (for development):
+   - Use ngrok or similar to expose local dev server
+   - Set `ALLOW_DEV_WEBHOOKS=true` in .env.local
+   - Connect Google Calendar and verify webhook registration
+   - Make changes in Google Calendar and verify they sync to time blocks
+
+---
+
 ## 2025-10-23 - SMS Scheduler Admin Page Multiple Issues
 
 **Severity**: Medium (Multiple code quality and functionality issues)
