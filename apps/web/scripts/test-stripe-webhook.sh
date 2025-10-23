@@ -1,4 +1,4 @@
-#!/bin/bash
+# apps/web/scripts/test-stripe-webhook.sh
 
 # Stripe Webhook Testing Helper Script
 # This script helps you test Stripe webhooks locally

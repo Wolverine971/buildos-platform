@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+// apps/web/scripts/check-auth-schema.js
 
 /**
  * Diagnostic script to check Supabase auth schema for missing provider column

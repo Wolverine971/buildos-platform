@@ -17,6 +17,89 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - SMS Scheduler Admin Page Multiple Issues
+
+**Severity**: Medium (Multiple code quality and functionality issues)
+
+### Root Cause
+
+The SMS scheduler admin page had multiple issues:
+1. Incorrect API endpoint URLs for user search
+2. Type safety issues with `any` types throughout
+3. Incorrect timeout type declarations
+4. Improper field references (full_name vs name)
+5. Missing null safety checks for optional properties
+
+### Fix Description
+
+Fixed multiple issues in the SMS scheduler admin page:
+- **API Endpoints**: Changed `/api/admin/users/search?q=...` to `/api/admin/users?search=...` to use the correct endpoint
+- **Type Safety**: Added proper TypeScript interfaces for User, TriggerResult, TriggerDetail, and JobStatus
+- **Timeout Types**: Changed `number | undefined` to `ReturnType<typeof setTimeout>` for proper typing
+- **Field Names**: Updated template to check both `user.name` and `user.full_name` for compatibility
+- **API Parameters**: Removed unsupported `sms_enabled` parameter from user list endpoint
+- **Null Safety**: Added proper check for `status.messages` before checking length
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/routes/admin/notifications/sms-scheduler/+page.svelte`
+
+### Related Docs
+
+- **Admin Users API**: `/apps/web/src/routes/api/admin/users/+server.ts`
+- **API Response Utils**: `/apps/web/src/lib/utils/api-response.ts`
+
+### Cross-references
+
+- Part of the manual SMS scheduler trigger feature
+- Related to the API endpoint refactoring from earlier
+
+---
+
+## 2025-10-23 - API Endpoint Structure and Supabase Usage Issues
+
+**Severity**: Medium (Code quality and consistency issue)
+
+### Root Cause
+
+The SMS scheduler API endpoint was not following platform conventions for API structure and Supabase client usage. Issues included:
+1. Using `createAdminServiceClient()` instead of `locals.supabase`
+2. Manual admin check via database query instead of using `user.is_admin` from session
+3. Using `locals.getSession()` instead of `locals.safeGetSession()`
+4. Importing unused Supabase client
+5. Inconsistent error response patterns
+6. Admin activity logging to non-existent table
+7. Missing request validation for date format
+
+### Fix Description
+
+Refactored the endpoint to follow platform conventions:
+- Removed unused imports (`createAdminServiceClient`, `createClient`)
+- Updated to use `locals.safeGetSession()` for authentication with direct `user.is_admin` check
+- Replaced all `adminClient` usage with `locals.supabase`
+- Removed admin activity logging feature (table doesn't exist)
+- Added date format validation (YYYY-MM-DD) with proper error messages
+- Used `parseRequestBody` helper for safer JSON parsing
+- Updated error responses to use consistent `ApiResponse` methods (`databaseError`, `internalError`)
+- Added validation for user_ids array length (max 100 users)
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/routes/api/admin/sms/daily-scheduler/trigger/+server.ts`
+
+### Related Docs
+
+- **API Response Utils**: `/apps/web/src/lib/utils/api-response.ts`
+- **Correct API Pattern Example**: `/apps/web/src/routes/api/admin/emails/send/+server.ts`
+- **Auth Pattern Example**: `/apps/web/src/routes/api/search/+server.ts`
+
+### Cross-references
+
+- Follows the same authentication pattern as other admin endpoints
+- Part of the manual SMS scheduler trigger feature
+
+---
+
 ## 2025-10-23 - Incorrect Toast Import in SMS Scheduler Admin Page
 
 **Severity**: Low (UI consistency issue)

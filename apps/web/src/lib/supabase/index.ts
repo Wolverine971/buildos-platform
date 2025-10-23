@@ -1,3 +1,4 @@
+// apps/web/src/lib/supabase/index.ts
 /**
  * Supabase Client Factory for BuildOS Web App
  *

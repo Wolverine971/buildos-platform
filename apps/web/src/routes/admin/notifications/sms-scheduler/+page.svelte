@@ -18,10 +18,54 @@
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
+	// Type definitions
+	interface User {
+		id: string;
+		email: string;
+		full_name?: string | null;
+		name?: string | null;
+		timezone?: string | null;
+		sms_preferences?: {
+			daily_sms_count?: number;
+			daily_sms_limit?: number;
+		};
+	}
+
+	interface TriggerDetail {
+		user_id: string;
+		timezone: string;
+		lead_time_minutes: number;
+		queued?: boolean;
+		would_queue?: boolean;
+		error?: string;
+		job_data?: any;
+	}
+
+	interface TriggerResult {
+		message: string;
+		users_processed: number;
+		jobs_queued: number;
+		dry_run: boolean;
+		date_override?: string;
+		details: TriggerDetail[];
+	}
+
+	interface JobStatus {
+		user_id: string;
+		date: string;
+		message_count: number;
+		messages?: Array<{
+			scheduled_for: string;
+			event_title: string;
+			message_content: string;
+			status: 'pending' | 'sent' | 'failed' | 'cancelled';
+		}>;
+	}
+
 	// User search and selection
 	let userSearch = $state('');
 	let selectedUsers = $state<string[]>([]);
-	let searchResults = $state<any[]>([]);
+	let searchResults = $state<User[]>([]);
 	let isSearching = $state(false);
 
 	// Trigger options
@@ -32,10 +76,10 @@
 
 	// Status tracking
 	let isTriggering = $state(false);
-	let lastTriggerResult = $state<any>(null);
-	let jobStatuses = $state(new Map<string, any>());
+	let lastTriggerResult = $state<TriggerResult | null>(null);
+	let jobStatuses = $state(new Map<string, JobStatus>());
 	let isPolling = $state(false);
-	let pollInterval: number | null = null;
+	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let activeTab = $state<'trigger' | 'results' | 'monitor'>('trigger');
 
 	// Search users
@@ -45,7 +89,7 @@
 		isSearching = true;
 		try {
 			const response = await fetch(
-				`/api/admin/users/search?q=${encodeURIComponent(userSearch)}&sms_enabled=true`
+				`/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=20`
 			);
 			if (response.ok) {
 				const data = await response.json();
@@ -172,11 +216,13 @@
 	async function loadAllSmsUsers() {
 		isSearching = true;
 		try {
-			const response = await fetch('/api/admin/users?sms_enabled=true&limit=100');
+			const response = await fetch('/api/admin/users?limit=100');
 			if (response.ok) {
 				const data = await response.json();
+				// Note: filtering by SMS enabled status would need to be done after fetching
+				// or the API endpoint would need to be updated to support this filter
 				searchResults = data.data?.users || [];
-				toastService.success(`Loaded ${searchResults.length} SMS-enabled users`);
+				toastService.success(`Loaded ${searchResults.length} users`);
 			} else {
 				toastService.error('Failed to load users');
 			}
@@ -204,11 +250,11 @@
 	});
 
 	// Debounce search
-	let searchTimeout: number | undefined;
+	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
 		clearTimeout(searchTimeout);
 		if (userSearch.trim().length >= 2) {
-			searchTimeout = setTimeout(searchUsers, 300) as any;
+			searchTimeout = setTimeout(searchUsers, 300);
 		}
 	});
 </script>
@@ -355,7 +401,7 @@
 											{user.email}
 										</div>
 										<div class="text-xs text-gray-500">
-											{user.full_name || 'No name'} · {user.timezone || 'UTC'}
+											{user.name || user.full_name || 'No name'} · {user.timezone || 'UTC'}
 										</div>
 									</div>
 									{#if user.sms_preferences}
@@ -628,7 +674,7 @@
 								{/if}
 							</div>
 
-							{#if status.messages?.length > 0}
+							{#if status.messages && status.messages.length > 0}
 								<div class="border dark:border-gray-700 rounded-lg overflow-hidden">
 									<table class="w-full text-xs">
 										<thead class="bg-gray-50 dark:bg-gray-700">

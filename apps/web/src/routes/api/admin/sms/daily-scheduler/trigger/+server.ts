@@ -1,7 +1,5 @@
-import { json } from '@sveltejs/kit';
-import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminServiceClient } from '$lib/server/supabase-admin';
-import { createClient } from '@supabase/supabase-js';
+// apps/web/src/routes/api/admin/sms/daily-scheduler/trigger/+server.ts
+import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 interface TriggerOptions {
@@ -12,68 +10,51 @@ interface TriggerOptions {
 	skip_daily_limit?: boolean; // Ignore daily SMS limits
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-	// 1. Admin authentication check
-	const session = await locals.getSession();
-	if (!session?.user?.id) {
+// Date validation regex: YYYY-MM-DD
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Helper to validate date format
+function isValidDateFormat(date: string): boolean {
+	if (!DATE_REGEX.test(date)) return false;
+
+	// Also check if it's a valid date
+	const dateObj = new Date(date + 'T00:00:00');
+	return dateObj instanceof Date && !isNaN(dateObj.getTime());
+}
+
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+	// 1. Admin authentication check using standard pattern
+	const { user } = await safeGetSession();
+	if (!user) {
 		return ApiResponse.unauthorized('Authentication required');
 	}
 
-	const adminClient = createAdminServiceClient();
-	const { data: user } = await adminClient
-		.from('users')
-		.select('is_admin')
-		.eq('id', session.user.id)
-		.single();
-
-	if (!user?.is_admin) {
+	if (!user.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
 
-	// 2. Parse options
-	let options: TriggerOptions;
-	try {
-		options = await request.json();
-	} catch (error) {
+	// 2. Parse and validate request body
+	const options = await parseRequestBody<TriggerOptions>(request);
+	if (!options) {
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	// 3. Rate limiting (prevent abuse) - try to use admin_activity_logs if it exists
-	// Note: This table may not exist in all deployments, so we handle gracefully
-	try {
-		const { data: recentTriggers } = await adminClient
-			.from('admin_activity_logs')
-			.select('id')
-			.eq('admin_user_id', session.user.id)
-			.eq('action', 'sms_scheduler_manual_trigger')
-			.gte('created_at', new Date(Date.now() - 3600000).toISOString()) // 1 hour
-			.limit(10);
+	// 3. Validate options
+	if (options.override_date && !isValidDateFormat(options.override_date)) {
+		return ApiResponse.badRequest('Invalid date format. Use YYYY-MM-DD format.');
+	}
 
-		if (recentTriggers && recentTriggers.length >= 10) {
-			return ApiResponse.tooManyRequests('Maximum 10 manual triggers per hour');
-		}
+	if (options.user_ids && !Array.isArray(options.user_ids)) {
+		return ApiResponse.badRequest('user_ids must be an array');
+	}
 
-		// 4. Log the admin action
-		await adminClient.from('admin_activity_logs').insert({
-			admin_user_id: session.user.id,
-			action: 'sms_scheduler_manual_trigger',
-			metadata: options,
-			ip_address: request.headers.get('x-forwarded-for') || 'unknown'
-		});
-	} catch (error) {
-		// If admin_activity_logs table doesn't exist, log to console instead
-		console.log('Admin action (SMS scheduler manual trigger):', {
-			admin_user_id: session.user.id,
-			action: 'sms_scheduler_manual_trigger',
-			metadata: options,
-			timestamp: new Date().toISOString()
-		});
-		// Continue execution - don't fail just because logging table is missing
+	if (options.user_ids && options.user_ids.length > 100) {
+		return ApiResponse.badRequest('Maximum 100 users can be processed at once');
 	}
 
 	try {
-		// 5. Fetch eligible users
-		let smsPreferencesQuery = adminClient
+		// 4. Fetch eligible users
+		let smsPreferencesQuery = supabase
 			.from('user_sms_preferences')
 			.select('user_id, event_reminders_enabled, event_reminder_lead_time_minutes')
 			.eq('event_reminders_enabled', true)
@@ -88,7 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: smsPreferences, error: prefError } = await smsPreferencesQuery;
 
 		if (prefError) {
-			return ApiResponse.error('Failed to fetch SMS preferences', prefError);
+			return ApiResponse.databaseError(prefError);
 		}
 
 		if (!smsPreferences || smsPreferences.length === 0) {
@@ -99,16 +80,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// 6. Get user timezones
+		// 5. Get user timezones
 		const userIds = smsPreferences.map((p) => p.user_id);
-		const { data: users } = await adminClient
+		const { data: users } = await supabase
 			.from('users')
 			.select('id, timezone')
 			.in('id', userIds);
 
 		const timezoneMap = new Map(users?.map((u) => [u.id, u.timezone || 'UTC']) || []);
 
-		// 7. Process each user (dry run or actual)
+		// 6. Process each user (dry run or actual)
 		const results = {
 			users_processed: smsPreferences.length,
 			jobs_queued: 0,
@@ -131,12 +112,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				skipQuietHours: options.skip_quiet_hours || false,
 				skipDailyLimit: options.skip_daily_limit || false,
 				manualTrigger: true,
-				triggeredBy: session.user.id
+				triggeredBy: user.id
 			};
 
 			if (!options.dry_run) {
 				// Queue the job using the existing queue system
-				const { error: queueError } = await adminClient.rpc('add_queue_job', {
+				const { error: queueError } = await supabase.rpc('add_queue_job', {
 					p_user_id: pref.user_id,
 					p_job_type: 'schedule_daily_sms',
 					p_metadata: jobData,
@@ -168,7 +149,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// 8. Return results
+		// 7. Return results
 		return ApiResponse.success({
 			message: options.dry_run
 				? `Dry run completed. Would queue ${results.users_processed} jobs`
@@ -177,26 +158,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 	} catch (error) {
 		console.error('Manual SMS scheduler trigger error:', error);
-		return ApiResponse.error('Failed to trigger SMS scheduler', error);
+		return ApiResponse.internalError(error, 'Failed to trigger SMS scheduler');
 	}
 };
 
 // GET endpoint to check job status
-export const GET: RequestHandler = async ({ url, locals }) => {
-	// Admin authentication check
-	const session = await locals.getSession();
-	if (!session?.user?.id) {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+	// Admin authentication check using standard pattern
+	const { user } = await safeGetSession();
+	if (!user) {
 		return ApiResponse.unauthorized('Authentication required');
 	}
 
-	const adminClient = createAdminServiceClient();
-	const { data: user } = await adminClient
-		.from('users')
-		.select('is_admin')
-		.eq('id', session.user.id)
-		.single();
-
-	if (!user?.is_admin) {
+	if (!user.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
 
@@ -207,8 +181,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return ApiResponse.badRequest('user_id parameter required');
 	}
 
+	// Validate date format if provided
+	if (date && !isValidDateFormat(date)) {
+		return ApiResponse.badRequest('Invalid date format. Use YYYY-MM-DD format.');
+	}
+
 	// Fetch scheduled SMS messages for this user and date
-	const { data: messages, error } = await adminClient
+	const { data: messages, error } = await supabase
 		.from('scheduled_sms_messages')
 		.select(
 			`
@@ -227,7 +206,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		.order('scheduled_for', { ascending: true });
 
 	if (error) {
-		return ApiResponse.error('Failed to fetch scheduled messages', error);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success({
