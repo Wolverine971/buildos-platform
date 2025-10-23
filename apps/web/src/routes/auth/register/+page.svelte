@@ -238,7 +238,7 @@
 			<div class="flex justify-center mb-6">
 				<video
 					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-					class="w-16 h-16"
+					class="w-16 h-16 rounded-md"
 					autoplay
 					loop
 					muted
@@ -451,7 +451,7 @@
 							fullWidth={true}
 							variant="primary"
 							size="lg"
-							class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+							class=""
 						>
 							{loading ? 'Creating account...' : 'Create account'}
 						</Button>

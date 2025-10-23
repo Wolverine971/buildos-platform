@@ -94,7 +94,7 @@
 			<div class="flex justify-center mb-6">
 				<video
 					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-					class="w-14 h-14"
+					class="w-14 h-14 rounded-md"
 					autoplay
 					loop
 					muted
