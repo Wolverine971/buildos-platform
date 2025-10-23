@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			}
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to calculate time allocation:', error);
+		console.error('[TimeBlocks] Failed to calculate time allocation:', error);
 		return json({ error: 'Failed to calculate time allocation' }, { status: 500 });
 	}
 };

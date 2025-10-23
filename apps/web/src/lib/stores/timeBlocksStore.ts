@@ -1,7 +1,11 @@
 // apps/web/src/lib/stores/timeBlocksStore.ts
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import type { TimeAllocation, TimeBlockWithProject } from '@buildos/shared-types';
+import type {
+	TimeAllocation,
+	TimeBlockSuggestionsState,
+	TimeBlockWithProject
+} from '@buildos/shared-types';
 import type { SlotFinderConfig } from '$lib/types/time-blocks';
 import { DEFAULT_SLOT_FINDER_CONFIG } from '$lib/types/time-blocks';
 
@@ -17,10 +21,35 @@ interface TimeBlocksState {
 	slotFinderConfig: SlotFinderConfig;
 }
 
+function normalizeBlock(block: TimeBlockWithProject): TimeBlockWithProject {
+	if (block.suggestions_state && typeof block.suggestions_state.status === 'string') {
+		return block;
+	}
+
+	const fallbackState: TimeBlockSuggestionsState =
+		Array.isArray(block.ai_suggestions) && block.ai_suggestions.length > 0
+			? {
+					status: 'completed',
+					startedAt: block.suggestions_generated_at ?? block.created_at,
+					completedAt: block.suggestions_generated_at ?? block.updated_at
+				}
+			: {
+					status: 'pending',
+					startedAt: block.created_at
+				};
+
+	return {
+		...block,
+		suggestions_state: fallbackState
+	};
+}
+
 function sortBlocks(blocks: TimeBlockWithProject[]): TimeBlockWithProject[] {
-	return [...blocks].sort(
-		(a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-	);
+	return [...blocks]
+		.map((block) => normalizeBlock(block))
+		.sort(
+			(a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+		);
 }
 
 function createDefaultDateRange(): { start: Date; end: Date } {
@@ -249,17 +278,18 @@ function createTimeBlocksStore() {
 
 				const { data } = await response.json();
 				const newBlock: TimeBlockWithProject = data.time_block;
+				const normalizedBlock = normalizeBlock(newBlock);
 
 				update((state) => ({
 					...state,
 					isCreating: false,
-					blocks: sortBlocks([...state.blocks, newBlock])
+					blocks: sortBlocks([...state.blocks, normalizedBlock])
 				}));
 
 				// Await to prevent race condition
 				await refreshAllocation();
 
-				return newBlock;
+				return normalizedBlock;
 			} catch (error) {
 				console.error('[TimeBlocksStore] createBlock failed:', error);
 				update((state) => ({
@@ -269,6 +299,33 @@ function createTimeBlocksStore() {
 				}));
 				throw error;
 			}
+		},
+
+		upsertBlock(block: TimeBlockWithProject) {
+			const normalized = normalizeBlock(block);
+
+			update((state) => {
+				const hasExisting = state.blocks.some((existing) => existing.id === normalized.id);
+				const nextBlocks = hasExisting
+					? state.blocks.map((existing) =>
+							existing.id === normalized.id ? normalized : existing
+					  )
+					: [...state.blocks, normalized];
+
+				return {
+					...state,
+					blocks: sortBlocks(nextBlocks)
+				};
+			});
+		},
+
+		updateBlockSuggestionsState(blockId: string, suggestionsState: TimeBlockSuggestionsState) {
+			update((state) => ({
+				...state,
+				blocks: state.blocks.map((block) =>
+					block.id === blockId ? { ...block, suggestions_state: suggestionsState } : block
+				)
+			}));
 		},
 
 		async regenerateSuggestions(blockId: string) {
@@ -295,7 +352,7 @@ function createTimeBlocksStore() {
 				}
 
 				const { data } = await response.json();
-				const updatedBlock: TimeBlockWithProject = data.time_block;
+				const updatedBlock: TimeBlockWithProject = normalizeBlock(data.time_block);
 
 				update((state) => ({
 					...state,

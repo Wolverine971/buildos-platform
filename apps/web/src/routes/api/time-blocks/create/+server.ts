@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	try {
 		payload = await request.json();
 	} catch (err) {
-		console.error('[TimePlay] Invalid JSON payload:', err);
+		console.error('[TimeBlocks] Invalid JSON payload:', err);
 		return json({ error: 'Invalid JSON payload' }, { status: 400 });
 	}
 
@@ -62,7 +62,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			}
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to create time block:', error);
+		console.error('[TimeBlocks] Failed to create time block:', error);
 		const message = error instanceof Error ? error.message : 'Failed to create time block';
 		return json({ error: message }, { status: 500 });
 	}

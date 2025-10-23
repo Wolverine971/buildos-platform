@@ -27,7 +27,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 			message: 'Time block deleted successfully'
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to delete time block:', error);
+		console.error('[TimeBlocks] Failed to delete time block:', error);
 		const message = error instanceof Error ? error.message : 'Failed to delete time block';
 		return json({ error: message }, { status: 500 });
 	}

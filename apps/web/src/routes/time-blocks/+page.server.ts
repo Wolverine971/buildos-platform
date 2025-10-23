@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		.order('name', { ascending: true });
 
 	if (projectsError) {
-		console.error('[TimePlay] Failed to load projects:', projectsError);
+		console.error('[TimeBlocks] Failed to load projects:', projectsError);
 		throw error(500, 'Failed to load projects');
 	}
 

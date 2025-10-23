@@ -198,7 +198,7 @@ export class TimeBlockSuggestionService {
 
 	private buildSystemPrompt(blockType: TimeBlockType): string {
 		return [
-			'You are an executive productivity assistant for the BuildOS Time Play feature.',
+			'You are an executive productivity assistant for the BuildOS Time Blocks feature.',
 			'Generate concise, practical focus suggestions for an upcoming time block.',
 			'Always return valid JSON with this shape:',
 			'{',

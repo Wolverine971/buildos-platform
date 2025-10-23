@@ -7,10 +7,9 @@ import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 import { ErrorLoggerService } from './errorLogger.service';
 
 // Initialize Stripe only if enabled
-const stripe =
+const stripeClient =
 	PRIVATE_ENABLE_STRIPE === 'true' && PRIVATE_STRIPE_SECRET_KEY
 		? new Stripe(PRIVATE_STRIPE_SECRET_KEY, {
-				apiVersion: '2025-08-27.basil',
 				typescript: true
 			})
 		: null;
@@ -30,6 +29,27 @@ export interface CustomerPortalOptions {
 	returnUrl: string;
 }
 
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+	const subscription = (invoice as Stripe.Invoice & {
+		subscription?: string | Stripe.Subscription | null;
+	}).subscription;
+
+	if (!subscription) return null;
+	return typeof subscription === 'string' ? subscription : subscription.id;
+}
+
+function getInvoiceCustomerId(invoice: Stripe.Invoice): string | null {
+	const customer = invoice.customer;
+	if (!customer) return null;
+	return typeof customer === 'string' ? customer : customer.id;
+}
+
+function getSubscriptionCustomerId(subscription: Stripe.Subscription): string | null {
+	const customer = subscription.customer;
+	if (!customer) return null;
+	return typeof customer === 'string' ? customer : customer.id;
+}
+
 export class StripeService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
@@ -43,7 +63,7 @@ export class StripeService {
 	 * Check if Stripe is enabled
 	 */
 	static isEnabled(): boolean {
-		return PRIVATE_ENABLE_STRIPE === 'true' && !!stripe;
+		return PRIVATE_ENABLE_STRIPE === 'true' && !!stripeClient;
 	}
 
 	/**
@@ -54,10 +74,21 @@ export class StripeService {
 	}
 
 	/**
+	 * Get configured Stripe instance
+	 */
+	static getClient(): Stripe {
+		if (!stripeClient) {
+			throw new Error('Stripe is not enabled');
+		}
+
+		return stripeClient;
+	}
+
+	/**
 	 * Create or get Stripe customer
 	 */
 	async getOrCreateCustomer(userId: string, email: string): Promise<string> {
-		if (!stripe) throw new Error('Stripe is not enabled');
+		const stripe = StripeService.getClient();
 
 		// Check if user already has a Stripe customer ID
 		const { data: user } = await this.supabase
@@ -94,7 +125,7 @@ export class StripeService {
 	 * Create checkout session for subscription
 	 */
 	async createCheckoutSession(options: CreateCheckoutSessionOptions): Promise<string> {
-		if (!stripe) throw new Error('Stripe is not enabled');
+		const stripe = StripeService.getClient();
 
 		// Check for existing active subscription
 		const { data: existingSub } = await this.supabase
@@ -162,7 +193,7 @@ export class StripeService {
 	 * Create customer portal session
 	 */
 	async createPortalSession(options: CustomerPortalOptions): Promise<string> {
-		if (!stripe) throw new Error('Stripe is not enabled');
+		const stripe = StripeService.getClient();
 
 		const session = await stripe.billingPortal.sessions.create({
 			customer: options.customerId,
@@ -176,7 +207,7 @@ export class StripeService {
 	 * Cancel subscription
 	 */
 	async cancelSubscription(subscriptionId: string, immediately = false): Promise<void> {
-		if (!stripe) throw new Error('Stripe is not enabled');
+		const stripe = StripeService.getClient();
 
 		if (immediately) {
 			await stripe.subscriptions.cancel(subscriptionId);
@@ -194,7 +225,7 @@ export class StripeService {
 		// Check if we've already processed this event
 		const { data: existingEvent } = await this.supabase
 			.from('webhook_events')
-			.select('id, status')
+			.select('id, status, attempts')
 			.eq('event_id', event.id)
 			.single();
 
@@ -258,13 +289,17 @@ export class StripeService {
 			// Log to error tracking system
 			const subscription = event.data.object as any;
 			const userId = subscription?.metadata?.user_id;
+			const stripeCustomerId =
+				typeof subscription?.customer === 'string'
+					? subscription.customer
+					: subscription?.customer?.id;
 
 			await this.errorLogger.logAPIError(error, '/api/webhooks/stripe', 'POST', userId, {
 				operation: 'handleWebhookEvent',
 				errorType: 'stripe_webhook_processing_error',
 				eventId: event.id,
 				eventType: event.type,
-				stripeCustomerId: subscription?.customer,
+				stripeCustomerId,
 				stripeSubscriptionId: subscription?.id,
 				webhookAttempts: existingEvent ? (existingEvent.attempts || 1) + 1 : 1
 			});
@@ -291,9 +326,8 @@ export class StripeService {
 
 		// Session will have subscription ID if it was a subscription checkout
 		if (session.subscription) {
-			const subscription = await stripe!.subscriptions.retrieve(
-				session.subscription as string
-			);
+			const stripe = StripeService.getClient();
+			const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
 			await this.handleSubscriptionUpdate(subscription);
 		}
 	}
@@ -308,11 +342,23 @@ export class StripeService {
 			return;
 		}
 
-		const priceId = subscription.items.data[0]?.price.id;
+		const priceId = subscription.items.data[0]?.price?.id;
 		if (!priceId) {
 			console.error(`Subscription ${subscription.id} has no price ID`);
 			return;
 		}
+
+		const primaryItem = subscription.items.data[0] as (Stripe.SubscriptionItem & {
+			current_period_start?: number | null;
+			current_period_end?: number | null;
+		}) | undefined;
+
+		const currentPeriodStart = primaryItem?.current_period_start
+			? new Date(primaryItem.current_period_start * 1000).toISOString()
+			: null;
+		const currentPeriodEnd = primaryItem?.current_period_end
+			? new Date(primaryItem.current_period_end * 1000).toISOString()
+			: null;
 
 		// Get plan details
 		const { data: plan } = await this.supabase
@@ -322,18 +368,22 @@ export class StripeService {
 			.single();
 
 		// Upsert subscription record
+		const customerId = getSubscriptionCustomerId(subscription);
+		if (!customerId) {
+			console.warn(`Subscription ${subscription.id} is missing customer reference`);
+			return;
+		}
+
 		await this.supabase.from('customer_subscriptions').upsert(
 			{
 				user_id: userId,
-				stripe_customer_id: subscription.customer as string,
+				stripe_customer_id: customerId,
 				stripe_subscription_id: subscription.id,
 				stripe_price_id: priceId,
 				plan_id: plan?.id,
 				status: subscription.status,
-				current_period_start: new Date(
-					subscription.current_period_start * 1000
-				).toISOString(),
-				current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+				current_period_start: currentPeriodStart,
+				current_period_end: currentPeriodEnd,
 				cancel_at: subscription.cancel_at
 					? new Date(subscription.cancel_at * 1000).toISOString()
 					: null,
@@ -366,7 +416,18 @@ export class StripeService {
 	 * Handle subscription deletion
 	 */
 	private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-		const userId = subscription.metadata?.user_id;
+		let userId = subscription.metadata?.user_id;
+
+		if (!userId) {
+			const { data: existingSubscription } = await this.supabase
+				.from('customer_subscriptions')
+				.select('user_id')
+				.eq('stripe_subscription_id', subscription.id)
+				.single();
+
+			userId = existingSubscription?.user_id ?? undefined;
+		}
+
 		if (!userId) return;
 
 		// Update subscription record
@@ -392,32 +453,69 @@ export class StripeService {
 	 * Handle successful invoice payment
 	 */
 	private async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-		if (!invoice.subscription || !invoice.customer) return;
+		const subscriptionId = getInvoiceSubscriptionId(invoice);
+		const customerId = getInvoiceCustomerId(invoice);
+		if (!subscriptionId || !customerId) return;
 
-		const { data: subscription } = await this.supabase
+		const stripe = StripeService.getClient();
+
+		const { data: existingSubscription } = await this.supabase
 			.from('customer_subscriptions')
 			.select('id, user_id, status')
-			.eq('stripe_subscription_id', invoice.subscription)
+			.eq('stripe_subscription_id', subscriptionId)
 			.single();
 
-		if (!subscription) return;
+		let userId = existingSubscription?.user_id ?? undefined;
+		let customerSubscriptionId = existingSubscription?.id ?? undefined;
 
-		// Record invoice
-		await this.supabase.from('invoices').insert({
-			user_id: subscription.user_id,
-			stripe_invoice_id: invoice.id,
-			stripe_customer_id: invoice.customer as string,
-			subscription_id: subscription.id,
-			amount_paid: invoice.amount_paid,
-			amount_due: invoice.amount_due,
-			currency: invoice.currency,
-			status: invoice.status || 'paid',
-			invoice_pdf: invoice.invoice_pdf,
-			hosted_invoice_url: invoice.hosted_invoice_url
-		});
+		if (!userId) {
+			const { data: userByCustomer } = await this.supabase
+				.from('users')
+				.select('id')
+				.eq('stripe_customer_id', customerId)
+				.single();
+
+			userId = userByCustomer?.id ?? undefined;
+		}
+
+		if (!userId) {
+			console.warn(
+				`Unable to resolve user for invoice ${invoice.id} (customer ${customerId})`
+			);
+			return;
+		}
+
+		// Record invoice (idempotent)
+		await this.supabase
+			.from('invoices')
+			.upsert(
+				{
+					user_id: userId,
+					stripe_invoice_id: invoice.id,
+					stripe_customer_id: customerId,
+					subscription_id: customerSubscriptionId,
+					amount_paid: invoice.amount_paid,
+					amount_due: invoice.amount_due,
+					currency: invoice.currency,
+					status: invoice.status || 'paid',
+					invoice_pdf: invoice.invoice_pdf,
+					hosted_invoice_url: invoice.hosted_invoice_url
+				},
+				{ onConflict: 'stripe_invoice_id' }
+			);
+
+		// Sync subscription state from Stripe to capture the latest status changes
+		try {
+			const latestSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+			await this.handleSubscriptionUpdate(latestSubscription);
+		} catch (error) {
+			console.error(`Failed to refresh subscription ${subscriptionId}:`, error);
+		}
+
+		if (!existingSubscription) return;
 
 		// If subscription was past_due, resolve any failed payments
-		if (subscription.status === 'past_due') {
+		if (existingSubscription.status === 'past_due') {
 			const { DunningService } = await import('./dunning-service');
 			const dunningService = new DunningService(this.supabase);
 
@@ -429,7 +527,7 @@ export class StripeService {
 				.update({
 					status: 'active'
 				})
-				.eq('id', subscription.id);
+				.eq('id', existingSubscription.id);
 
 			// Update user status
 			await this.supabase
@@ -439,7 +537,7 @@ export class StripeService {
 					access_restricted: false,
 					access_restricted_at: null
 				})
-				.eq('id', subscription.user_id);
+				.eq('id', existingSubscription.user_id);
 		}
 	}
 
@@ -447,12 +545,14 @@ export class StripeService {
 	 * Handle failed invoice payment
 	 */
 	private async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-		if (!invoice.subscription || !invoice.customer) return;
+		const subscriptionId = getInvoiceSubscriptionId(invoice);
+		const customerId = getInvoiceCustomerId(invoice);
+		if (!subscriptionId || !customerId) return;
 
 		const { data: subscription } = await this.supabase
 			.from('customer_subscriptions')
 			.select('id, user_id')
-			.eq('stripe_subscription_id', invoice.subscription)
+			.eq('stripe_subscription_id', subscriptionId)
 			.single();
 
 		if (!subscription) return;
@@ -495,7 +595,7 @@ export class StripeService {
 		signature: string,
 		secret: string
 	): Stripe.Event {
-		if (!stripe) throw new Error('Stripe is not enabled');
+		const stripe = StripeService.getClient();
 		return stripe.webhooks.constructEvent(payload, signature, secret);
 	}
 

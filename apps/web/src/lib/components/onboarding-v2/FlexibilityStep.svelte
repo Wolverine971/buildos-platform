@@ -398,7 +398,7 @@
 						</div>
 						<div class="flex-1">
 							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
-								Timeblocks (Time Play)
+								Timeblocks
 							</h4>
 							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
 								Block off time on your calendar to work on specific projects—BuildOS

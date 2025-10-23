@@ -93,7 +93,6 @@ describe('TimeBlockService', () => {
 			end_time: new Date('2025-10-15T11:00:00Z')
 		};
 
-		const generatedAtIso = suggestionResult.generatedAt.toISOString();
 		const nowIso = new Date('2025-10-15T08:00:00Z').toISOString();
 
 		const insertedBlock = {
@@ -106,10 +105,14 @@ describe('TimeBlockService', () => {
 			timezone: 'America/New_York',
 			calendar_event_id: 'cal-event-123',
 			calendar_event_link: 'https://calendar.google.com/event?eid=123',
-			ai_suggestions: suggestionResult.suggestions,
-			suggestions_summary: suggestionResult.summary,
-			suggestions_generated_at: generatedAtIso,
-			suggestions_model: suggestionResult.model,
+			ai_suggestions: null,
+			suggestions_summary: null,
+			suggestions_generated_at: null,
+			suggestions_model: null,
+			suggestions_state: {
+				status: 'pending',
+				startedAt: nowIso
+			},
 			sync_status: 'synced',
 			last_synced_at: nowIso,
 			created_at: nowIso,
@@ -151,12 +154,7 @@ describe('TimeBlockService', () => {
 		const result = await service.createTimeBlock(params);
 
 		expect(result).toEqual(insertedBlock);
-		expect(mockSuggestionService.generateSuggestions).toHaveBeenCalledWith(
-			expect.objectContaining({
-				blockType: 'project',
-				projectId: 'proj-1'
-			})
-		);
+		expect(mockSuggestionService.generateSuggestions).not.toHaveBeenCalled();
 		expect(mockCalendarService.createStandaloneEvent).toHaveBeenCalledWith(
 			'user-123',
 			expect.objectContaining({
@@ -214,7 +212,9 @@ describe('TimeBlockService', () => {
 		});
 	});
 
-	it('regenerates suggestions and updates calendar event', async () => {
+	it('generates suggestions for a time block and updates calendar event', async () => {
+		const nowIso = new Date('2025-10-15T08:00:00Z').toISOString();
+
 		const existingBlock = {
 			id: 'block-1',
 			user_id: 'user-123',
@@ -226,10 +226,14 @@ describe('TimeBlockService', () => {
 			timezone: 'America/New_York',
 			calendar_event_id: 'cal-event-123',
 			calendar_event_link: 'https://calendar.google.com/event?eid=123',
-			ai_suggestions: suggestionResult.suggestions,
-			suggestions_summary: suggestionResult.summary,
-			suggestions_generated_at: suggestionResult.generatedAt.toISOString(),
-			suggestions_model: suggestionResult.model,
+			ai_suggestions: null,
+			suggestions_summary: null,
+			suggestions_generated_at: null,
+			suggestions_model: null,
+			suggestions_state: {
+				status: 'pending',
+				startedAt: '2025-10-15T07:59:00.000Z'
+			},
 			sync_status: 'synced',
 			last_synced_at: '2025-10-15T08:00:00.000Z',
 			created_at: '2025-10-15T07:00:00.000Z',
@@ -245,7 +249,7 @@ describe('TimeBlockService', () => {
 			suggestions: [
 				{
 					title: 'Refine investor memo',
-					reason: 'Needed before tomorrow’s sync.',
+					reason: "Needed before tomorrow's sync.",
 					project_id: 'proj-1',
 					project_name: 'Test Project',
 					estimated_minutes: 60,
@@ -261,25 +265,31 @@ describe('TimeBlockService', () => {
 
 		mockSuggestionService.generateSuggestions.mockResolvedValueOnce(newSuggestionResult);
 
-		const updatedBlock = {
-			...existingBlock,
-			ai_suggestions: newSuggestionResult.suggestions,
-			suggestions_summary: newSuggestionResult.summary,
-			suggestions_generated_at: newSuggestionResult.generatedAt.toISOString(),
-			suggestions_model: newSuggestionResult.model,
-			last_synced_at: new Date('2025-10-15T08:00:00Z').toISOString(),
-			updated_at: new Date('2025-10-15T08:00:00Z').toISOString()
+		const selectBuilder = createQueryBuilder({ data: existingBlock, error: null });
+		const generatingBuilder = createQueryBuilder({ data: null, error: null });
+		const finalUpdateResult = {
+			data: {
+				...existingBlock,
+				ai_suggestions: newSuggestionResult.suggestions,
+				suggestions_summary: newSuggestionResult.summary,
+				suggestions_generated_at: newSuggestionResult.generatedAt.toISOString(),
+				suggestions_model: newSuggestionResult.model,
+				suggestions_state: {
+					status: 'completed',
+					startedAt: existingBlock.suggestions_state.startedAt,
+					completedAt: nowIso
+				},
+				last_synced_at: nowIso,
+				updated_at: nowIso
+			},
+			error: null
 		};
+		const finalBuilder = createQueryBuilder(finalUpdateResult);
 
 		const mockQueue: Array<{ table: string; builder: any }> = [
-			{
-				table: 'time_blocks',
-				builder: createQueryBuilder({ data: existingBlock, error: null })
-			},
-			{
-				table: 'time_blocks',
-				builder: createQueryBuilder({ data: updatedBlock, error: null })
-			}
+			{ table: 'time_blocks', builder: selectBuilder },
+			{ table: 'time_blocks', builder: generatingBuilder },
+			{ table: 'time_blocks', builder: finalBuilder }
 		];
 
 		mockSupabase.from.mockImplementation((table: string) => {
@@ -291,22 +301,57 @@ describe('TimeBlockService', () => {
 			return next.builder;
 		});
 
-		const result = await service.regenerateSuggestions('block-1');
+		const result = await service.generateSuggestionsForTimeBlock('block-1');
 
-		expect(result).toEqual(updatedBlock);
+		expect(result).toEqual(finalUpdateResult.data);
 		expect(mockSuggestionService.generateSuggestions).toHaveBeenCalledWith(
 			expect.objectContaining({
 				blockType: 'project',
 				projectId: 'proj-1'
 			})
 		);
+		expect(generatingBuilder.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				suggestions_state: expect.objectContaining({
+					status: 'generating',
+					startedAt: existingBlock.suggestions_state.startedAt,
+					progress: expect.stringContaining('Generating')
+				})
+			})
+		);
+		expect(finalBuilder.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ai_suggestions: newSuggestionResult.suggestions,
+				suggestions_summary: newSuggestionResult.summary,
+				suggestions_state: expect.objectContaining({
+					status: 'completed'
+				})
+			})
+		);
 		expect(mockCalendarService.updateCalendarEvent).toHaveBeenCalledWith(
 			'user-123',
 			expect.objectContaining({
 				event_id: 'cal-event-123',
-				description: expect.stringContaining('Refine investor memo')
+				description: expect.stringContaining('Refine investor memo'),
+				start: new Date(existingBlock.start_time),
+				end: new Date(existingBlock.end_time),
+				timeZone: 'America/New_York'
 			})
 		);
+	});
+
+	it('delegates regenerateSuggestions to generateSuggestionsForTimeBlock', async () => {
+		const delegateResult = { id: 'block-xyz' } as any;
+		const spy = vi
+			.spyOn(service, 'generateSuggestionsForTimeBlock')
+			.mockResolvedValue(delegateResult);
+
+		const result = await service.regenerateSuggestions('block-xyz');
+
+		expect(spy).toHaveBeenCalledWith('block-xyz');
+		expect(result).toBe(delegateResult);
+
+		spy.mockRestore();
 	});
 
 	describe('calculateTimeAllocation', () => {

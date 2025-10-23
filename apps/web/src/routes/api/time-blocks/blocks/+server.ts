@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			}
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to fetch time blocks:', error);
+		console.error('[TimeBlocks] Failed to fetch time blocks:', error);
 		return json({ error: 'Failed to fetch time blocks' }, { status: 500 });
 	}
 };

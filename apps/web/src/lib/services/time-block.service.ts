@@ -7,6 +7,7 @@ import type {
 	TimeBlockSyncStatus,
 	TimeBlockType,
 	TimeBlockSuggestion,
+	TimeBlockSuggestionsState,
 	TimeAllocation,
 	Database
 } from '@buildos/shared-types';
@@ -75,6 +76,55 @@ export class TimeBlockService {
 		return this.suggestionService;
 	}
 
+	private async fetchTimeBlockWithProject(blockId: string): Promise<TimeBlockWithProject> {
+		const { data: existingBlock, error: fetchError } = await this.supabase
+			.from('time_blocks')
+			.select(
+				`
+				*,
+				project:projects(id, name, calendar_color_id)
+			`
+			)
+			.eq('id', blockId)
+			.eq('user_id', this.userId)
+			.maybeSingle();
+
+		if (fetchError) {
+			throw fetchError;
+		}
+
+		if (!existingBlock) {
+			throw new Error('Time block not found');
+		}
+
+		if (existingBlock.sync_status === 'deleted') {
+			throw new Error('Cannot generate suggestions for deleted blocks');
+		}
+
+		return existingBlock as TimeBlockWithProject;
+	}
+
+	private async updateSuggestionsState(
+		blockId: string,
+		state: TimeBlockSuggestionsState
+	): Promise<void> {
+		const nowIso = new Date().toISOString();
+		const updatePayload: Record<string, unknown> = {
+			suggestions_state: state,
+			updated_at: nowIso
+		};
+
+		const { error } = await this.supabase
+			.from('time_blocks')
+			.update(updatePayload)
+			.eq('id', blockId)
+			.eq('user_id', this.userId);
+
+		if (error) {
+			console.error('[TimeBlockService] Failed to update suggestions_state:', error);
+		}
+	}
+
 	/**
 	 * Create a new time block and sync it to Google Calendar.
 	 */
@@ -115,26 +165,12 @@ export class TimeBlockService {
 			project = projectRow;
 		}
 
-		let suggestionResult: TimeBlockSuggestionResult | null = null;
-		try {
-			suggestionResult = await this.getSuggestionService().generateSuggestions({
-				blockType,
-				projectId,
-				startTime,
-				endTime,
-				durationMinutes,
-				timezone
-			});
-		} catch (error) {
-			console.error('[TimeBlockService] Failed to generate suggestions:', error);
-		}
-
 		const calendarContent = this.buildCalendarEventContent({
 			blockType,
 			projectName: project?.name ?? null,
 			projectColorId: project?.calendar_color_id ?? null,
-			suggestions: suggestionResult?.suggestions ?? [],
-			suggestionSummary: suggestionResult?.summary ?? null
+			suggestions: [],
+			suggestionSummary: null
 		});
 
 		const calendarEvent = await this.syncToGoogleCalendar({
@@ -160,12 +196,14 @@ export class TimeBlockService {
 				timezone,
 				calendar_event_id: calendarEvent.eventId,
 				calendar_event_link: calendarEvent.eventLink ?? null,
-				ai_suggestions: suggestionResult ? suggestionResult.suggestions : null,
-				suggestions_summary: suggestionResult?.summary ?? null,
-				suggestions_generated_at: suggestionResult
-					? suggestionResult.generatedAt.toISOString()
-					: null,
-				suggestions_model: suggestionResult?.model ?? null,
+				ai_suggestions: null,
+				suggestions_summary: null,
+				suggestions_generated_at: null,
+				suggestions_model: null,
+				suggestions_state: {
+					status: 'pending',
+					startedAt: nowIso
+				},
 				sync_status: 'synced' as TimeBlockSyncStatus,
 				sync_source: 'app', // Track that this change came from the app
 				last_synced_at: nowIso,
@@ -185,6 +223,115 @@ export class TimeBlockService {
 		}
 
 		return timeBlock as TimeBlockWithProject;
+	}
+
+	async generateSuggestionsForTimeBlock(blockId: string): Promise<TimeBlockWithProject> {
+		const existingBlock = await this.fetchTimeBlockWithProject(blockId);
+
+		const startTime = new Date(existingBlock.start_time);
+		const endTime = new Date(existingBlock.end_time);
+		const durationMinutes = existingBlock.duration_minutes;
+		const timezone = existingBlock.timezone ?? DEFAULT_TIMEZONE;
+		const blockType = existingBlock.block_type as TimeBlockType;
+		const projectId = existingBlock.project_id;
+		const projectName = existingBlock.project?.name ?? null;
+		const projectColorId = existingBlock.project?.calendar_color_id ?? null;
+
+		const generationStartedAt =
+			existingBlock.suggestions_state?.startedAt ?? new Date().toISOString();
+
+		await this.updateSuggestionsState(blockId, {
+			status: 'generating',
+			startedAt: generationStartedAt,
+			progress: 'Generating AI suggestions...'
+		});
+
+		try {
+			const suggestionResult = await this.getSuggestionService().generateSuggestions({
+				blockType,
+				projectId,
+				startTime,
+				endTime,
+				durationMinutes,
+				timezone
+			});
+
+			const completedAt = new Date();
+			const completedAtIso = completedAt.toISOString();
+
+			const calendarContent = this.buildCalendarEventContent({
+				blockType,
+				projectName,
+				projectColorId,
+				suggestions: suggestionResult.suggestions,
+				suggestionSummary: suggestionResult.summary
+			});
+
+			const updatePayload = {
+				ai_suggestions: suggestionResult.suggestions,
+				suggestions_summary: suggestionResult.summary ?? null,
+				suggestions_generated_at: suggestionResult.generatedAt.toISOString(),
+				suggestions_model: suggestionResult.model ?? null,
+				suggestions_state: {
+					status: 'completed',
+					startedAt: generationStartedAt,
+					completedAt: completedAtIso
+				} as TimeBlockSuggestionsState,
+				last_synced_at: completedAtIso,
+				updated_at: completedAtIso,
+				sync_status: 'synced' as TimeBlockSyncStatus,
+				sync_source: 'app'
+			};
+
+			const { data: updatedBlock, error: updateError } = await this.supabase
+				.from('time_blocks')
+				.update(updatePayload)
+				.eq('id', blockId)
+				.eq('user_id', this.userId)
+				.select(
+					`
+					*,
+					project:projects(id, name, calendar_color_id)
+				`
+				)
+				.single();
+
+			if (updateError) {
+				throw updateError;
+			}
+
+			if (updatedBlock?.calendar_event_id) {
+				try {
+					await this.calendarService.updateCalendarEvent(this.userId, {
+						event_id: updatedBlock.calendar_event_id,
+						summary: calendarContent.summary,
+						description: calendarContent.description,
+						start: startTime,
+						end: endTime,
+						timeZone: timezone,
+						colorId: calendarContent.colorId
+					});
+				} catch (calendarError) {
+					console.error(
+						'[TimeBlockService] Failed to update calendar event with suggestions:',
+						calendarError
+					);
+				}
+			}
+
+			return updatedBlock as TimeBlockWithProject;
+		} catch (error) {
+			console.error('[TimeBlockService] Suggestion generation failed:', error);
+
+			await this.updateSuggestionsState(blockId, {
+				status: 'failed',
+				error: error instanceof Error ? error.message : 'Failed to generate suggestions',
+				startedAt: generationStartedAt,
+				completedAt: new Date().toISOString()
+			});
+
+			throw error;
+		}
 	}
 
 	/**
@@ -387,99 +534,7 @@ export class TimeBlockService {
 	 * Fetch all time blocks for the user within a date range.
 	 */
 	async regenerateSuggestions(blockId: string): Promise<TimeBlockWithProject> {
-		const { data: existingBlock, error: fetchError } = await this.supabase
-			.from('time_blocks')
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
-			.eq('id', blockId)
-			.eq('user_id', this.userId)
-			.maybeSingle();
-
-		if (fetchError) {
-			throw fetchError;
-		}
-
-		if (!existingBlock) {
-			throw new Error('Time block not found');
-		}
-
-		if (existingBlock.sync_status === 'deleted') {
-			throw new Error('Cannot regenerate suggestions for deleted blocks');
-		}
-
-		const startTime = new Date(existingBlock.start_time);
-		const endTime = new Date(existingBlock.end_time);
-		const durationMinutes = existingBlock.duration_minutes;
-		const timezone = existingBlock.timezone ?? DEFAULT_TIMEZONE;
-
-		const blockType = existingBlock.block_type as TimeBlockType;
-
-		const suggestionResult = await this.getSuggestionService().generateSuggestions({
-			blockType,
-			projectId: existingBlock.project_id,
-			startTime,
-			endTime,
-			durationMinutes,
-			timezone
-		});
-
-		const nowIso = new Date().toISOString();
-
-		const { data: updatedBlock, error: updateError } = await this.supabase
-			.from('time_blocks')
-			.update({
-				ai_suggestions: suggestionResult.suggestions,
-				suggestions_summary: suggestionResult.summary ?? null,
-				suggestions_generated_at: suggestionResult.generatedAt.toISOString(),
-				suggestions_model: suggestionResult.model ?? null,
-				last_synced_at: nowIso,
-				updated_at: nowIso,
-				sync_status: 'synced',
-				sync_source: 'app' // Track that this change came from the app
-			})
-			.eq('id', blockId)
-			.eq('user_id', this.userId)
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
-			.single();
-
-		if (updateError) {
-			throw updateError;
-		}
-
-		if (existingBlock.calendar_event_id) {
-			const calendarContent = this.buildCalendarEventContent({
-				blockType,
-				projectName: updatedBlock.project?.name ?? null,
-				projectColorId: updatedBlock.project?.calendar_color_id ?? null,
-				suggestions: suggestionResult.suggestions,
-				suggestionSummary: suggestionResult.summary ?? null
-			});
-
-			try {
-				await this.calendarService.updateCalendarEvent(this.userId, {
-					event_id: existingBlock.calendar_event_id,
-					summary: calendarContent.summary,
-					description: calendarContent.description,
-					timeZone: timezone
-				});
-			} catch (error) {
-				console.error(
-					'[TimeBlockService] Failed to update calendar event suggestions:',
-					error
-				);
-			}
-		}
-
-		return updatedBlock as TimeBlockWithProject;
+		return this.generateSuggestionsForTimeBlock(blockId);
 	}
 
 	async getTimeBlocks(startDate: Date, endDate: Date): Promise<TimeBlockWithProject[]> {
@@ -769,8 +824,8 @@ export class TimeBlockService {
 	}): { summary: string; description: string; colorId: string } {
 		const summary =
 			params.blockType === 'project'
-				? `${params.projectName ?? 'Focus Work'} — Focus Session`
-				: 'Build Block — Focus Time';
+				? `${params.projectName ?? 'Focus Work'} - Focus Session`
+				: 'Build Block - Focus Time';
 
 		const colorId =
 			params.blockType === 'project'
@@ -778,7 +833,7 @@ export class TimeBlockService {
 				: validateColorId(BUILD_BLOCK_COLOR);
 
 		const lines: string[] = [
-			'Time block created with BuildOS Time Play.',
+			'Time block created with BuildOS TimeBlocks.',
 			`Block type: ${params.blockType === 'project' ? 'Project focus' : 'Build block'}`
 		];
 
@@ -813,7 +868,7 @@ export class TimeBlockService {
 
 				const header =
 					meta.length > 0
-						? `${index + 1}. ${suggestion.title} (${meta.join(' · ')})`
+						? `${index + 1}. ${suggestion.title} (${meta.join(' | ')})`
 						: `${index + 1}. ${suggestion.title}`;
 
 				lines.push(header);
@@ -827,7 +882,7 @@ export class TimeBlockService {
 			});
 		}
 
-		lines.push('', 'Need a refresh? Regenerate suggestions from the Time Play panel.');
+		lines.push('', 'Need a refresh? Regenerate suggestions from the TimeBlocks panel.');
 
 		return {
 			summary,

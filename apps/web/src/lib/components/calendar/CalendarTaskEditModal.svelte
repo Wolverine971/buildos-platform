@@ -195,7 +195,7 @@
 										<span class="text-rose-500 ml-0.5">*</span>
 									{/if}
 								</label>
-								{#if config.markdown}
+								{#if config?.markdown}
 									<MarkdownToggleField
 										value={(value as string) || ''}
 										onUpdate={(newValue) =>
@@ -207,8 +207,8 @@
 									<Textarea
 										id={fieldId}
 										bind:value={editedTask[field as keyof SuggestedTask]}
-										rows={config.rows || 3}
-										placeholder={config.placeholder || ''}
+										rows={config?.rows || 3}
+										placeholder={config?.placeholder || ''}
 										size="sm"
 										class="text-sm"
 									/>

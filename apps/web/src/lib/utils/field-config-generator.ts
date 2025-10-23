@@ -26,6 +26,7 @@ export interface FieldConfig {
 	max?: number;
 	placeholder?: string;
 	markdown?: boolean;
+	rows?: number;
 }
 
 // Fields to exclude from editing (system fields)

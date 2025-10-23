@@ -7,9 +7,12 @@
  * All notification types extend BaseNotification and use discriminated unions.
  */
 
+import type { TimeBlockSuggestionsState, TimeBlockType } from '@buildos/shared-types';
 import type { BrainDumpParseResult, ParsedOperation } from './brain-dump';
-import type { Phase, Task, TaskComparison, SynthesisContent } from './project';
+import type { Phase, Task } from './project';
 import type { SynthesisOptions } from './synthesis';
+import type { TaskComparison } from '$lib/types';
+
 
 // ============================================================================
 // Core Enums & Primitives
@@ -35,6 +38,7 @@ export type NotificationType =
 	| 'project-synthesis'
 	| 'calendar-analysis'
 	| 'daily-brief'
+	| 'time-block'
 	| 'generic';
 
 /**
@@ -183,6 +187,30 @@ export interface BrainDumpNotification extends BaseNotification {
 }
 
 // ============================================================================
+// Time Block Notification
+// ============================================================================
+
+export interface TimeBlockNotification extends BaseNotification {
+	type: 'time-block';
+	data: {
+		timeBlockId: string;
+		blockType: TimeBlockType;
+		projectId?: string | null;
+		projectName?: string | null;
+		startTime: string;
+		endTime: string;
+		durationMinutes: number;
+		calendarEventId?: string | null;
+		calendarEventLink?: string | null;
+		suggestionsState?: TimeBlockSuggestionsState | null;
+		suggestionsSummary?: string | null;
+		error?: string | null;
+	};
+	progress: NotificationProgress;
+	actions: NotificationActions;
+}
+
+// ============================================================================
 // Phase Generation Notification
 // ============================================================================
 
@@ -310,6 +338,7 @@ export interface GenericNotification extends BaseNotification {
  */
 export type Notification =
 	| BrainDumpNotification
+	| TimeBlockNotification
 	| PhaseGenerationNotification
 	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification

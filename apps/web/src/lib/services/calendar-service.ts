@@ -782,7 +782,7 @@ export class CalendarService {
 	}
 
 	/**
-	 * Create a standalone calendar event (used for Time Play blocks and similar flows)
+	 * Create a standalone calendar event (used for TimeBlocks and similar flows)
 	 */
 	async createStandaloneEvent(
 		userId: string,

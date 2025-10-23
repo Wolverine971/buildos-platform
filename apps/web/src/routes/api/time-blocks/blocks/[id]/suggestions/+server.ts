@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession, s
 			}
 		});
 	} catch (error) {
-		console.error('[TimePlay] Failed to regenerate suggestions:', error);
+		console.error('[TimeBlocks] Failed to regenerate suggestions:', error);
 		const message =
 			error instanceof Error ? error.message : 'Failed to regenerate block suggestions';
 		return json({ error: message }, { status: 500 });

@@ -72,7 +72,7 @@
 				<tr>
 					<th>User</th>
 					<th>Email</th>
-					<th>Time Play</th>
+					<th>TimeBlocks</th>
 					<th>Last Updated</th>
 					<th></th>
 				</tr>
