@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/sms/metrics/summary/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createServiceClient } from '@buildos/supabase-client';
 import { smsMetricsService, smsAlertsService } from '@buildos/shared-utils';
 import { format, subDays } from 'date-fns';
 

@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/admin/notifications/test-bed/+page.svelte -->
 <script lang="ts">
-	import { Send, Bell, Eye, Search, Loader2, Database, RotateCw } from 'lucide-svelte';
+	import { Send, Bell, Eye, Search, Loader2, Database, RotateCw, Calendar } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import UserNotificationContext from '$lib/components/admin/UserNotificationContext.svelte';
@@ -163,7 +163,7 @@
 		/>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
@@ -190,6 +190,21 @@
 							Test Bed
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">Current page</p>
+					</div>
+				</div>
+			</a>
+
+			<a
+				href="/admin/notifications/sms-scheduler"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							SMS Scheduler
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">Manual trigger</p>
 					</div>
 				</div>
 			</a>

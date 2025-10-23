@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/notifications/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Bell, TrendingUp, Send, Eye, MousePointerClick } from 'lucide-svelte';
+	import { Bell, TrendingUp, Send, Eye, MousePointerClick, Calendar } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import MetricCard from '$lib/components/admin/notifications/MetricCard.svelte';
 	import TimeframeSelector from '$lib/components/admin/notifications/TimeframeSelector.svelte';
@@ -121,7 +121,7 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
 				class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
@@ -149,6 +149,23 @@
 						</h3>
 						<p class="text-sm text-gray-600 dark:text-gray-400">
 							Send test notifications
+						</p>
+					</div>
+				</div>
+			</a>
+
+			<a
+				href="/admin/notifications/sms-scheduler"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							SMS Scheduler
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Manual trigger & monitoring
 						</p>
 					</div>
 				</div>

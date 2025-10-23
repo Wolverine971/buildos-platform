@@ -471,9 +471,11 @@
 				</div>
 
 				<div class="mt-4 text-center">
-					<Button href="/auth/login" variant="secondary" fullWidth={true} size="lg">
-						Go to Sign In
-					</Button>
+					<a href="/auth/login">
+						<Button variant="secondary" fullWidth={true} size="lg">
+							Go to Sign In
+						</Button>
+					</a>
 				</div>
 			{/if}
 

@@ -23,6 +23,11 @@ interface DailySMSJobData {
 	date: string; // YYYY-MM-DD
 	timezone: string;
 	leadTimeMinutes: number;
+	// Manual trigger flags
+	skipQuietHours?: boolean;
+	skipDailyLimit?: boolean;
+	manualTrigger?: boolean;
+	triggeredBy?: string;
 }
 
 /**
@@ -108,11 +113,22 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 		const currentCount = needsReset ? 0 : smsPrefs.daily_sms_count || 0;
 		const limit = smsPrefs.daily_sms_limit || 10;
 
-		if (currentCount >= limit) {
+		// Check daily SMS limit (unless manually overridden)
+		if (!job.data.skipDailyLimit) {
+			if (currentCount >= limit) {
+				console.log(
+					`⏭️ [DailySMS] User ${userId} has reached daily SMS limit (${currentCount}/${limit})${job.data.manualTrigger ? ' - manual override available' : ''}`
+				);
+				return {
+					success: true,
+					message: 'Daily SMS limit reached',
+					manualOverrideAvailable: job.data.manualTrigger
+				};
+			}
+		} else {
 			console.log(
-				`⏭️ [DailySMS] User ${userId} has reached daily SMS limit (${currentCount}/${limit})`
+				`⚠️ [DailySMS] Skipping daily limit check (manual override by ${job.data.triggeredBy || 'admin'})`
 			);
-			return { success: true, message: 'Daily SMS limit reached' };
 		}
 
 		// Calculate date range for calendar events
@@ -197,8 +213,12 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 				continue;
 			}
 
-			// Check quiet hours
-			if (smsPrefs.quiet_hours_start && smsPrefs.quiet_hours_end) {
+			// Check quiet hours (unless manually overridden)
+			if (
+				!job.data.skipQuietHours &&
+				smsPrefs.quiet_hours_start &&
+				smsPrefs.quiet_hours_end
+			) {
 				const reminderTimeInUserTz = utcToZonedTime(reminderTime, userTimezone);
 				const reminderHour = reminderTimeInUserTz.getHours();
 				const reminderMinute = reminderTimeInUserTz.getMinutes();
@@ -226,6 +246,10 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 					quietHoursSkipCount++;
 					continue;
 				}
+			} else if (job.data.skipQuietHours) {
+				console.log(
+					`⚠️ [DailySMS] Quiet hours check skipped for event "${event.event_title}" (manual override)`
+				);
 			}
 
 			// Generate message using LLM (with template fallback)
@@ -382,6 +406,16 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
 			if (smsError || !smsMessage) {
 				console.error('❌ [DailySMS] Error creating sms_message:', smsError);
+
+				// BUG FIX #4: Mark scheduled SMS as failed instead of orphaning it
+				await supabase
+					.from('scheduled_sms_messages')
+					.update({
+						status: 'failed',
+						last_error: `Failed to create SMS message: ${smsError?.message || 'Unknown error'}`
+					})
+					.eq('id', msg.id);
+
 				continue; // Skip this message but continue with others
 			}
 

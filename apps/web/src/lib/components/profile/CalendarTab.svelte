@@ -34,6 +34,9 @@
 	import { toastService } from '$lib/stores/toast.store';
 	// import { getSupabase } from '$lib/supabase';
 	import { getSupabase } from '$lib/supabase-helpers';
+	import CalendarDisconnectModal from '$lib/components/calendar/CalendarDisconnectModal.svelte';
+	import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
+	import { invalidate } from '$app/navigation';
 
 	// Props
 	export let data: any;
@@ -52,6 +55,10 @@
 	let analysisInProgress = false;
 	let calendarAnalysisHistory: any[] = [];
 	let calendarProjects: any[] = [];
+	let showDisconnectModal = false;
+	let calendarDependencies: any = null;
+	let checkingDependencies = false;
+	let disconnecting = false;
 
 	// Calendar timezones
 	const CALENDAR_TIMEZONES = [
@@ -88,7 +95,7 @@
 	// Handle form submission results
 	$: if (form?.success) {
 		// Handle calendar-specific success messages
-		if (form?.calendarDisconnected) {
+		if (form?.calendarDisconnected && browser) {
 			// Calendar was disconnected, refresh calendar data
 			loadCalendarData();
 		}
@@ -351,6 +358,79 @@
 			year: 'numeric'
 		});
 	}
+
+	// Handle disconnect button click
+	async function handleDisconnectClick() {
+		checkingDependencies = true;
+		try {
+			const supabase = getSupabase();
+			const service = new CalendarDisconnectService(supabase);
+			calendarDependencies = await service.checkCalendarDependencies(data.user.id);
+
+			if (calendarDependencies.totalAffectedItems > 0) {
+				// Show modal if there are dependencies
+				showDisconnectModal = true;
+			} else {
+				// No dependencies, disconnect directly
+				await disconnectCalendar(false);
+			}
+		} catch (error) {
+			console.error('Error checking calendar dependencies:', error);
+			toastService.error('Failed to check calendar data');
+		} finally {
+			checkingDependencies = false;
+		}
+	}
+
+	// Handle disconnect modal confirmation
+	async function handleDisconnectConfirm(event: CustomEvent) {
+		const { action } = event.detail;
+		showDisconnectModal = false;
+
+		// Disconnect calendar with data removal option
+		await disconnectCalendar(action === 'remove');
+	}
+
+	// Perform the actual disconnect
+	async function disconnectCalendar(removeData: boolean) {
+		disconnecting = true;
+		try {
+			const supabase = getSupabase();
+
+			// If removeData is true, remove calendar data first
+			if (removeData) {
+				const service = new CalendarDisconnectService(supabase);
+				await service.removeCalendarData(data.user.id);
+			}
+
+			// Submit the disconnect form action
+			const formData = new FormData();
+			formData.append('removeData', removeData.toString());
+
+			const response = await fetch('?/disconnectCalendar', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (response.ok) {
+				await loadCalendarData();
+				toastService.success(
+					removeData
+						? 'Calendar disconnected and all data removed'
+						: 'Calendar disconnected successfully'
+				);
+				// Force refresh the page data
+				await invalidate('profile:calendar');
+			} else {
+				throw new Error('Failed to disconnect calendar');
+			}
+		} catch (error) {
+			console.error('Error disconnecting calendar:', error);
+			toastService.error('Failed to disconnect calendar');
+		} finally {
+			disconnecting = false;
+		}
+	}
 </script>
 
 <div class="space-y-6">
@@ -422,28 +502,18 @@
 									loading={refreshingCalendar}
 								></Button>
 
-								<form
-									method="POST"
-									action="?/disconnectCalendar"
-									use:enhance={() => {
-										return async ({ update }) => {
-											await update();
-											// Refresh calendar data after disconnect
-											await loadCalendarData();
-										};
-									}}
+								<Button
+									on:click={handleDisconnectClick}
+									variant="danger"
+									size="sm"
+									class="sm:size-md"
+									icon={Unlink}
+									disabled={checkingDependencies || disconnecting}
+									loading={checkingDependencies || disconnecting}
 								>
-									<Button
-										type="submit"
-										variant="danger"
-										size="sm"
-										class="sm:size-md"
-										icon={Unlink}
-									>
-										<span class="hidden sm:inline">Disconnect</span>
-										<span class="sm:hidden">Disconnect</span>
-									</Button>
-								</form>
+									<span class="hidden sm:inline">Disconnect</span>
+									<span class="sm:hidden">Disconnect</span>
+								</Button>
 							</div>
 						</div>
 					{:else}
@@ -997,4 +1067,13 @@
 		showAnalysisModal = false;
 		startCalendarAnalysis();
 	}}
+/>
+
+<!-- Calendar Disconnect Modal -->
+<CalendarDisconnectModal
+	bind:isOpen={showDisconnectModal}
+	calendarData={calendarDependencies?.breakdown}
+	loading={disconnecting}
+	on:confirm={handleDisconnectConfirm}
+	on:cancel={() => (showDisconnectModal = false)}
 />

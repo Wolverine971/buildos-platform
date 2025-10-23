@@ -1,14 +1,14 @@
 // apps/web/src/lib/services/stripe-service.ts
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, ENABLE_STRIPE } from '$env/static/private';
+import { PRIVATE_STRIPE_SECRET_KEY, PRIVATE_ENABLE_STRIPE } from '$env/static/private';
 import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 
 // Initialize Stripe only if enabled
 const stripe =
-	ENABLE_STRIPE === 'true' && STRIPE_SECRET_KEY
-		? new Stripe(STRIPE_SECRET_KEY, {
+	PRIVATE_ENABLE_STRIPE === 'true' && PRIVATE_STRIPE_SECRET_KEY
+		? new Stripe(PRIVATE_STRIPE_SECRET_KEY, {
 				apiVersion: '2023-10-16',
 				typescript: true
 			})
@@ -40,7 +40,7 @@ export class StripeService {
 	 * Check if Stripe is enabled
 	 */
 	static isEnabled(): boolean {
-		return ENABLE_STRIPE === 'true' && !!stripe;
+		return PRIVATE_ENABLE_STRIPE === 'true' && !!stripe;
 	}
 
 	/**
@@ -141,25 +141,6 @@ export class StripeService {
 					...options.metadata
 				},
 				description: INVOICE_CONFIG.memoTemplates.subscription
-			},
-			invoice_creation: {
-				enabled: true,
-				invoice_data: {
-					description: INVOICE_CONFIG.memoTemplates.subscription,
-					footer: INVOICE_CONFIG.footerText,
-					metadata: {
-						user_id: options.userId
-					},
-					custom_fields: [
-						{
-							name: 'Customer ID',
-							value: options.userId
-						}
-					],
-					rendering_options: {
-						amount_tax_display: 'include_inclusive_tax'
-					}
-				}
 			},
 			customer_update: {
 				address: 'auto',

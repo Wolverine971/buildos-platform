@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY } from '$env/static/private';
+import { PRIVATE_STRIPE_SECRET_KEY } from '$env/static/private';
 
 export const GET: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession, su
 		}
 
 		// Otherwise, fetch from Stripe
-		const stripe = new Stripe(STRIPE_SECRET_KEY!, {
+		const stripe = new Stripe(PRIVATE_STRIPE_SECRET_KEY!, {
 			apiVersion: '2023-10-16'
 		});
 

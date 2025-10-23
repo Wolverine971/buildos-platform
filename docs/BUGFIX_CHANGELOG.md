@@ -17,6 +17,295 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Incorrect Toast Import in SMS Scheduler Admin Page
+
+**Severity**: Low (UI consistency issue)
+
+### Root Cause
+
+The SMS scheduler admin page was using the wrong toast notification library. It was importing `toast` from 'svelte-sonner' instead of using the platform's standard `toastService` from the toast store. This appears to be a copy-paste error or developer oversight when creating this new admin page.
+
+### Fix Description
+
+Updated the import statement and all toast notification calls to use the platform's standard `toastService`:
+
+- Changed import from `import { toast } from 'svelte-sonner'` to `import { toastService } from '$lib/stores/toast.store'`
+- Updated all 9 instances of `toast.error()` and `toast.success()` to use `toastService.error()` and `toastService.success()`
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/routes/admin/notifications/sms-scheduler/+page.svelte`
+
+### Related Docs
+
+- **Toast Service Standard**: `/apps/web/src/lib/stores/toast.store.ts`
+- **Calendar Client Example**: `/apps/web/src/lib/api/calendar-client.ts:2` (correct usage example)
+
+### Cross-references
+
+- This admin page is part of the manual SMS scheduler trigger feature
+- Related to the notification system improvements from 2025-10-22
+
+---
+
+## 2025-10-22 - Missing public.users Entry on Registration & SSR Fetch Issue
+
+**Severity**: CRITICAL (All new registrations broken, users cannot access app)
+
+### Root Cause
+
+Two critical issues preventing new users from accessing the application:
+
+1. **Missing Database Trigger**: No trigger existed to create a corresponding `public.users` entry when a new `auth.users` record was created via Supabase Auth registration. This caused:
+    - Users successfully authenticated via Supabase Auth
+    - But `hooks.server.ts:141` couldn't find user data in `public.users`
+    - Result: Authenticated users redirected to login in infinite loop
+    - Error: `User data not found for authenticated user: [user-id]`
+
+2. **SSR Fetch Violation**: `CalendarTab.svelte:100` had a reactive statement calling `loadCalendarData()` without checking for `browser`, causing:
+    - `fetch()` being called during server-side rendering
+    - SSR warning: "Avoid calling `fetch` eagerly during server-side rendering"
+
+### Fix Description
+
+1. **Created Database Trigger** (`20251022_create_handle_new_user_trigger.sql`):
+    - Added `handle_new_user()` function that creates `public.users` entry AFTER auth.users creation
+    - Only creates if user doesn't already exist (matches Google OAuth pattern)
+    - Populates name from metadata or email prefix
+    - Does NOT set trial_ends_at (handled by existing triggers)
+    - Includes data recovery script for affected users
+
+2. **Fixed SSR Issue**: Added `browser` check before calling `loadCalendarData()`
+
+### Files Changed
+
+- **Added**: `/apps/web/supabase/migrations/20251022_create_handle_new_user_trigger.sql`
+- **Modified**: `/apps/web/src/lib/components/profile/CalendarTab.svelte:98`
+
+### Related Docs
+
+- **Google OAuth Pattern**: `/apps/web/src/lib/utils/google-oauth.ts:182-220` (reference implementation)
+- **Hooks Server**: `/apps/web/src/hooks.server.ts:131-143` (where error occurred)
+- **Registration API**: `/apps/web/src/routes/api/auth/register/+server.ts`
+
+### Cross-references
+
+- **Similar Pattern**: Google OAuth flow creates users the same way (check exists, create if missing)
+- **Related Migration**: `20251022_fix_foreign_key_constraint_timing.sql` (similar trigger timing issues)
+
+### Verification Steps
+
+1. New user registration now works end-to-end
+2. Affected users (like f104e5ff-98f4-4116-b1b3-3875025fec23) can now log in
+3. No SSR warnings on profile page load
+4. Calendar tab loads without errors
+
+---
+
+## 2025-10-22 - Registration Foreign Key Constraint Timing Issue
+
+**Severity**: CRITICAL (Registration completely broken)
+
+### Root Cause
+
+Supabase Auth registration failing with cascading errors due to trigger timing and incorrect table references:
+
+1. **First Error**: `ERROR: column "provider" does not exist (SQLSTATE 42703)`
+    - Function was querying `SELECT provider FROM auth.users`
+    - But `provider` column exists in `auth.identities`, not `auth.users`
+
+2. **Second Error**: `ERROR: record "new" has no field "referral_source" (SQLSTATE 42703)`
+    - Function referenced `NEW.referral_source`
+    - But `users` table doesn't have a `referral_source` column
+
+3. **Critical Error**: `ERROR: foreign key constraint "notification_events_actor_user_id_fkey" (SQLSTATE 23503)`
+    - Function tried to emit notification with `actor_user_id := NEW.id`
+    - **This was the actual blocking issue** - user doesn't exist in database yet
+    - BEFORE INSERT trigger timing issue - foreign key constraint violation
+    - The notification tables existed all along, but FK constraints couldn't be satisfied
+
+**The Bugs**:
+
+```sql
+-- BUG 1 - WRONG TABLE:
+SELECT provider FROM auth.users WHERE id = NEW.id  -- ❌ Wrong table
+
+-- BUG 2 - NON-EXISTENT COLUMN:
+'referral_source', NEW.referral_source  -- ❌ Column doesn't exist
+
+-- BUG 3 - TRIGGER TIMING:
+BEFORE INSERT trigger calling emit_notification_event()  -- ❌ User doesn't exist yet
+
+-- BUG 4 - MISSING TABLES:
+SELECT * FROM notification_subscriptions  -- ❌ Table doesn't exist (along with 4 others)
+```
+
+**Why This Happened**:
+
+- Misunderstanding of Supabase auth schema structure
+- Function was written expecting columns that don't exist in the actual schema
+- Incorrect trigger timing (BEFORE INSERT when it needed AFTER INSERT for notifications)
+- Schema drift: TypeScript types in `database.schema.ts` define notification tables, but migrations to create them were never run
+- No schema validation during function creation
+
+**Impact**: All new user registrations fail when the trigger tries to execute, blocking user onboarding completely.
+
+### Fix Description
+
+Fixed all issues with proper trigger timing and column references:
+
+**1. Root Cause Identification**:
+
+- Found `handle_new_user_trial()` function with multiple bugs
+- Bug 1: Querying provider from wrong table (`auth.users` instead of `auth.identities`)
+- Bug 2: Referencing non-existent `referral_source` column in `users` table
+- Bug 3: **Critical Issue** - Foreign key violation due to BEFORE INSERT trigger timing
+    - Notification tables existed all along (verified in TypeScript schema)
+    - The issue was trying to reference a user that didn't exist yet
+
+**2. Solution Applied**:
+
+- **Split Triggers**: Separated into BEFORE INSERT (trial setup) and AFTER INSERT (notifications)
+    - BEFORE INSERT: Sets trial period (can modify NEW record, user doesn't exist yet)
+    - AFTER INSERT: Sends notifications (user exists, foreign key constraints satisfied)
+- **Fixed Column References**: Corrected provider query and removed referral_source
+- **Added Error Handling**: Graceful fallbacks to ensure user creation always succeeds
+
+**3. The Fix Migration**:
+
+- **APPLY THIS**: `/apps/web/supabase/migrations/20251022_fix_foreign_key_constraint_timing.sql`
+- This single migration fixes all issues with proper trigger timing
+
+**4. Diagnostic Tools Created**:
+
+- SQL diagnostic to check auth schema structure
+- Helps identify similar issues in the future
+- Path: `/apps/web/supabase/diagnostics/check_auth_schema.sql`
+
+**5. Enhanced Error Handling**:
+
+- Improved registration endpoint error logging
+- Detects schema errors and provides diagnostic hints
+- Returns user-friendly error while logging technical details
+
+### Files Changed
+
+**Final Solution** (1 file):
+
+- `/apps/web/supabase/migrations/20251022_fix_foreign_key_constraint_timing.sql` - **THE FIX** - Splits trigger for proper timing
+
+**Diagnostic Tools**:
+
+- `/apps/web/supabase/diagnostics/check_auth_schema.sql` - Diagnostic query
+- `/apps/web/supabase/diagnostics/README.md` - Documentation
+
+**Modified** (2 files):
+
+1. `/apps/web/src/routes/api/auth/register/+server.ts:56-77` - Added enhanced error logging for schema issues
+2. `/docs/BUGFIX_CHANGELOG.md` - This documentation
+
+### Testing
+
+**Fix Application** (run BOTH migrations in order):
+
+1. **First**: Fix the missing tables:
+    - Run: `/apps/web/supabase/migrations/20251022_create_all_missing_notification_tables.sql`
+    - Creates all 5 notification system tables
+    - Adds indexes, RLS policies, and permissions
+    - Creates default admin subscriptions
+
+2. **Second**: Fix the trigger issues:
+    - Run: `/apps/web/supabase/migrations/20251022_fix_handle_new_user_trial_complete.sql`
+    - Splits trigger into BEFORE and AFTER
+    - Fixes provider table reference
+    - Removes referral_source reference
+
+**Verification Steps**:
+
+1. Test user registration with a new email address
+2. Check that no "column provider does not exist" errors appear
+3. Verify the new user appears in the database with trial status
+4. Check that signup notifications are sent to admins (if configured)
+
+**Expected Results**:
+
+- ✅ New users can register successfully
+- ✅ No "column provider does not exist" errors
+- ✅ Trial period is set correctly (14 days by default)
+- ✅ Signup notifications include correct provider (email, google, etc.)
+- ✅ Existing users still authenticate correctly
+
+### Related Documentation
+
+- **Supabase Auth Schema**: Standard auth schema includes `auth.identities.provider` column
+- **Registration Endpoint**: `/apps/web/src/routes/api/auth/register/+server.ts`
+- **Database Types**: `/packages/shared-types/src/database.schema.ts` (public schema only)
+
+### Cross-References
+
+**Error Logs** (appeared sequentially as we fixed each bug):
+
+```
+First error:
+ERROR: column "provider" does not exist (SQLSTATE 42703)
+
+Second error (after fixing first):
+ERROR: record "new" has no field "referral_source" (SQLSTATE 42703)
+
+Third error (after fixing first two):
+ERROR: insert or update on table "notification_events" violates foreign key constraint
+"notification_events_actor_user_id_fkey" (SQLSTATE 23503)
+
+Fourth error (after fixing first three):
+ERROR: relation "notification_subscriptions" does not exist (SQLSTATE 42P01)
+```
+
+**The Four Bugs**:
+
+```sql
+-- BUG 1: Wrong table for provider (in handle_new_user_trial)
+SELECT provider FROM auth.users WHERE id = NEW.id  -- ❌ WRONG TABLE
+-- Fixed to:
+SELECT provider FROM auth.identities WHERE user_id = NEW.id  -- ✅ CORRECT
+
+-- BUG 2: Non-existent column (in handle_new_user_trial)
+'referral_source', NEW.referral_source  -- ❌ Column doesn't exist
+-- Fixed by: Removing this line entirely
+
+-- BUG 3: Trigger timing issue (in handle_new_user_trial)
+BEFORE INSERT trigger with emit_notification_event()  -- ❌ User doesn't exist yet
+-- Fixed by: Split into BEFORE INSERT (trial) and AFTER INSERT (notification) triggers
+
+-- BUG 4: Missing tables (in emit_notification_event)
+SELECT * FROM notification_subscriptions  -- ❌ Table doesn't exist
+-- Fixed by: Creating all 5 notification tables with proper schema
+```
+
+**Fix Files** (run both):
+
+- **Tables**: `/apps/web/supabase/migrations/20251022_create_all_missing_notification_tables.sql`
+- **Triggers**: `/apps/web/supabase/migrations/20251022_fix_handle_new_user_trial_complete.sql`
+- Diagnostic query: `/apps/web/supabase/diagnostics/check_auth_schema.sql`
+- Helper script: `/apps/web/scripts/check-auth-schema.js`
+
+**Database Functions Involved**:
+
+- `handle_new_user()` - Creates user record (works fine)
+- `handle_new_user_trial()` - **OLD BROKEN FUNCTION** (had bugs 1-3)
+- `set_user_trial_period()` - **NEW FUNCTION** - Sets up trial (BEFORE INSERT)
+- `notify_user_signup()` - **NEW FUNCTION** - Sends notifications (AFTER INSERT)
+- `emit_notification_event()` - Sends signup notifications (had bug 4 - missing tables)
+
+**Missing Tables Created**:
+
+- `notification_events` - Stores all notification trigger events
+- `notification_subscriptions` - Defines who gets notified for which events
+- `notification_deliveries` - Tracks notification delivery attempts
+- `notification_logs` - Detailed logging for debugging
+- `notification_tracking_links` - Click tracking for notification links
+
+---
+
 ## 2025-10-22 - Improved Daily SMS Count Management (Architecture Enhancement)
 
 **Severity**: MEDIUM (Performance/Architecture Improvement)

@@ -56,6 +56,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (signUpError) {
 			console.error('Registration error:', signUpError);
 
+			// Enhanced error logging for auth schema issues
+			if (
+				signUpError.message.includes('column') &&
+				signUpError.message.includes('does not exist')
+			) {
+				console.error('AUTH SCHEMA ERROR - Missing column detected:', {
+					message: signUpError.message,
+					error: signUpError,
+					hint: 'Run diagnostic query: /apps/web/supabase/diagnostics/check_auth_schema.sql',
+					fix: 'If provider column missing, run: /apps/web/supabase/migrations/20251022_fix_auth_identities_provider.sql'
+				});
+
+				// Return a user-friendly error while we investigate
+				return json(
+					{
+						error: 'Registration service is temporarily unavailable. Our team has been notified.',
+						code: 'AUTH_SERVICE_ERROR',
+						debug:
+							process.env.NODE_ENV === 'development' ? signUpError.message : undefined
+					},
+					{ status: 503 }
+				);
+			}
+
 			// Handle specific error cases
 			if (
 				signUpError.message.includes('already registered') ||
@@ -72,6 +96,48 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			return json({ error: signUpError.message }, { status: 400 });
+		}
+
+		// IMPORTANT: Create public.users entry since we can't use triggers on auth.users in Supabase
+		if (data.user) {
+			console.log('Creating public.users entry for:', data.user.email);
+
+			// First check if user already exists (shouldn't happen, but be safe)
+			const { data: existingUser, error: fetchError } = await supabase
+				.from('users')
+				.select('id')
+				.eq('id', data.user.id)
+				.maybeSingle();
+
+			if (fetchError && fetchError.code === 'PGRST116') {
+				// User doesn't exist, create them
+				const { error: insertError } = await supabase.from('users').insert({
+					id: data.user.id,
+					email: data.user.email as string,
+					name:
+						name ||
+						data.user.user_metadata?.name ||
+						data.user.email?.split('@')[0] ||
+						'User',
+					is_admin: false,
+					completed_onboarding: false,
+					created_at: new Date().toISOString(),
+					updated_at: new Date().toISOString()
+					// Note: trial_ends_at and subscription_status will be set by the BEFORE INSERT trigger on public.users
+				});
+
+				if (insertError) {
+					console.error('Error creating public.users entry:', insertError);
+					// Don't fail registration, but log the error
+					// The user can still authenticate, and we can fix the profile later
+				} else {
+					console.log('Successfully created public.users entry');
+				}
+			} else if (!fetchError && existingUser) {
+				console.log('public.users entry already exists');
+			} else if (fetchError) {
+				console.error('Error checking user existence:', fetchError);
+			}
 		}
 
 		// Check if email confirmation is required

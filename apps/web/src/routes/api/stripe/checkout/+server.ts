@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({
 			userId: user.id,
 			userEmail: userData.email,
 			priceId: STRIPE_PRICE_ID || 'price_placeholder',
-			successUrl: `${PUBLIC_APP_URL || url.origin}/dashboard?payment=success`,
+			successUrl: `${PUBLIC_APP_URL || url.origin}?payment=success`,
 			cancelUrl: `${PUBLIC_APP_URL || url.origin}/pricing?payment=cancelled`,
 			discountCode,
 			metadata: {

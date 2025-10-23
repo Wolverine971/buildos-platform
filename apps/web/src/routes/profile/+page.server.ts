@@ -6,6 +6,7 @@ import { ActivityLogger } from '$lib/utils/activityLogger';
 import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
+import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
 import type { Database } from '@buildos/shared-types';
 
 // Type for subscription details
@@ -347,16 +348,26 @@ export const actions: Actions = {
 	},
 
 	// Disconnect calendar action
-	disconnectCalendar: async ({ locals: { safeGetSession, supabase } }) => {
+	disconnectCalendar: async ({ request, locals: { safeGetSession, supabase } }) => {
 		const { user } = await safeGetSession();
 		if (!user) {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
 		try {
+			// Get the removeData parameter from the form
+			const formData = await request.formData();
+			const removeData = formData.get('removeData') === 'true';
+
 			// Unregister webhook first
 			const webhookService = new CalendarWebhookService(supabase);
 			await webhookService.unregisterWebhook(user.id, 'primary');
+
+			// Optionally remove calendar data
+			if (removeData) {
+				const disconnectService = new CalendarDisconnectService(supabase);
+				await disconnectService.removeCalendarData(user.id);
+			}
 
 			// Then disconnect calendar
 			const calendarService = new CalendarService(supabase);
@@ -367,12 +378,14 @@ export const actions: Actions = {
 			// Log the manual disconnection
 			await activityLogger.logActivity(user.id, 'admin_action', {
 				action: 'calendar_manually_disconnected',
+				data_removed: removeData,
 				timestamp: new Date().toISOString()
 			});
 
 			return {
 				success: true,
-				calendarDisconnected: true
+				calendarDisconnected: true,
+				dataRemoved: removeData
 			};
 		} catch (error) {
 			console.error('Error disconnecting calendar:', error);

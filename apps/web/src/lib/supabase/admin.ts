@@ -1,5 +1,7 @@
 // apps/web/src/lib/supabase/admin.ts
-import { createServiceClient } from '@buildos/supabase-client';
+import { createCustomClient } from '@buildos/supabase-client';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
 
 /**
  * Create an admin Supabase client for server-side operations
@@ -44,5 +46,11 @@ import { createServiceClient } from '@buildos/supabase-client';
  * This uses the PRIVATE_SUPABASE_SERVICE_KEY environment variable internally.
  */
 export function createAdminSupabaseClient() {
-	return createServiceClient();
+	// In SvelteKit, we need to import environment variables from $env modules
+	// and pass them explicitly to the client constructor
+	if (!PUBLIC_SUPABASE_URL || !PRIVATE_SUPABASE_SERVICE_KEY) {
+		throw new Error('Missing Supabase environment variables');
+	}
+
+	return createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY);
 }

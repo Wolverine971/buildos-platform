@@ -193,7 +193,7 @@ interface Props {
 
 **Component Structure**:
 
-```svelte
+```
 <script lang="ts">
   import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
   import { formatTime, isSameDay } from '$lib/utils/date-helpers';
