@@ -197,7 +197,7 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
 	}
 
 	// Validate PUBLIC_APP_URL (used for email/SMS tracking links)
-	const appUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+	const appUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 	try {
 		new URL(appUrl);
 	} catch {

@@ -9,9 +9,10 @@
 		CheckCircle,
 		Mail,
 		Loader2,
-		AlertCircle
+		AlertCircle,
+		RefreshCw
 	} from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
@@ -20,6 +21,8 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browser } from '$app/environment';
+	import { BriefClientService, streamingStatus, briefGenerationCompleted } from '$lib/services/briefClient.service';
+	import { page } from '$app/stores';
 
 	// Props using Svelte 5 runes syntax
 	let {
@@ -45,9 +48,17 @@
 	let copiedToClipboard = $state(false);
 	let emailOptInLoading = $state(false);
 
+	// Regenerate state
+	let isRegenerating = $state(false);
+	let regenerateProgress = $state<{ message: string; percentage: number }>({ message: '', percentage: 0 });
+
 	// Subscribe to notification preferences store
 	let notificationPreferences = $derived($notificationPreferencesStore.preferences);
 	let hasEmailOptIn = $derived(notificationPreferences?.should_email_daily_brief || false);
+
+	// Subscribe to streaming status for regeneration
+	let generationStatus = $derived($streamingStatus);
+	let completionEvent = $derived($briefGenerationCompleted);
 
 	// Fetch brief when briefDate changes
 	$effect(() => {
@@ -99,6 +110,48 @@
 		}
 	});
 
+	// Watch for regeneration progress updates
+	$effect(() => {
+		if (isRegenerating && generationStatus.isGenerating) {
+			regenerateProgress = {
+				message: generationStatus.message || 'Regenerating brief...',
+				percentage: generationStatus.progress?.projects?.total > 0
+					? Math.round((generationStatus.progress.projects.completed / generationStatus.progress.projects.total) * 100)
+					: 0
+			};
+		}
+	});
+
+	// Watch for regeneration completion
+	$effect(() => {
+		if (isRegenerating && completionEvent && briefDate && completionEvent.briefDate === briefDate) {
+			// Regeneration completed successfully
+			isRegenerating = false;
+			toastService.success('Brief regenerated successfully!');
+
+			// Reload the brief
+			if (briefDate) {
+				loadBriefByDate(briefDate);
+			}
+		}
+	});
+
+	// Watch for regeneration errors
+	$effect(() => {
+		if (isRegenerating && !generationStatus.isGenerating && generationStatus.error) {
+			isRegenerating = false;
+			toastService.error(`Failed to regenerate brief: ${generationStatus.error}`);
+		}
+	});
+
+	// Cleanup on component destroy
+	onDestroy(() => {
+		// Reset regeneration state if modal is closed during regeneration
+		if (isRegenerating) {
+			isRegenerating = false;
+		}
+	});
+
 	async function copyToClipboard() {
 		if (!displayBrief) return;
 
@@ -143,6 +196,46 @@
 		}
 	}
 
+	async function regenerateBrief() {
+		if (!briefDate || !browser) return;
+
+		// Get user from page data
+		const userData = $page.data?.user;
+		if (!userData) {
+			toastService.error('User not found. Please refresh the page.');
+			return;
+		}
+
+		// Get supabase client from page data
+		const supabaseClient = $page.data?.supabase;
+		if (!supabaseClient) {
+			toastService.error('Could not connect to database. Please refresh the page.');
+			return;
+		}
+
+		try {
+			isRegenerating = true;
+			regenerateProgress = { message: 'Starting regeneration...', percentage: 0 };
+
+			// Start streaming generation with force regenerate
+			await BriefClientService.startStreamingGeneration({
+				briefDate,
+				forceRegenerate: true,
+				user: {
+					id: userData.id,
+					email: userData.email || '',
+					is_admin: userData.is_admin || false
+				},
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				supabaseClient
+			});
+		} catch (err) {
+			console.error('Failed to start regeneration:', err);
+			isRegenerating = false;
+			toastService.error(err instanceof Error ? err.message : 'Failed to start regeneration');
+		}
+	}
+
 	function getPriorityCount(content: string): number {
 		const priorityMatch = content.match(/### 🎯 Top Priorities Today\s*\n((?:- .+\n?)+)/);
 		if (priorityMatch && priorityMatch[1]) {
@@ -162,7 +255,27 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Daily Brief" size="lg" closeOnBackdrop={true} closeOnEscape={true}>
-	{#if loading}
+	{#if isRegenerating}
+		<!-- Regenerating state -->
+		<div class="flex flex-col items-center justify-center py-12 px-6">
+			<RefreshCw class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+			<p class="text-gray-900 dark:text-white font-medium mb-2">Regenerating Brief</p>
+			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{regenerateProgress.message}</p>
+			{#if regenerateProgress.percentage > 0}
+				<div class="w-full max-w-md">
+					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+						<div
+							class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+							style="width: {regenerateProgress.percentage}%"
+						></div>
+					</div>
+					<p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
+						{regenerateProgress.percentage}%
+					</p>
+				</div>
+			{/if}
+		</div>
+	{:else if loading}
 		<!-- Loading state -->
 		<div class="flex flex-col items-center justify-center py-12 px-6">
 			<Loader2 class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
@@ -243,10 +356,21 @@
 			<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
 				<div class="flex flex-col sm:flex-row gap-2">
 					<Button
+						on:click={regenerateBrief}
+						variant="primary"
+						size="sm"
+						icon={RefreshCw}
+						disabled={isRegenerating || loading}
+						class="w-full sm:w-auto"
+					>
+						{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}
+					</Button>
+					<Button
 						on:click={copyToClipboard}
 						variant="outline"
 						size="sm"
 						icon={copiedToClipboard ? CheckCircle : Copy}
+						disabled={isRegenerating}
 						class="w-full sm:w-auto"
 					>
 						{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}
@@ -256,6 +380,7 @@
 						variant="outline"
 						size="sm"
 						icon={Download}
+						disabled={isRegenerating}
 						class="w-full sm:w-auto"
 					>
 						Download

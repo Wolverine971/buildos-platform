@@ -55,7 +55,7 @@ export class SMSMessageGenerator {
 
 	constructor() {
 		this.llmService = new SmartLLMService({
-			httpReferer: process.env.PUBLIC_APP_URL || 'https://build-os.com',
+			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 			appName: 'BuildOS-Worker'
 		});
 	}

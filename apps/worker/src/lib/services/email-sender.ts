@@ -27,7 +27,7 @@ export interface DailyBriefResult {
 
 export class DailyBriefEmailSender {
 	private webhookEmailService: WebhookEmailService;
-	private baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+	private baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 
 	constructor(private supabase: SupabaseClient) {
 		// ⚠️ CRITICAL: Worker is deployed on Railway which blocks SMTP ports (25, 465, 587)

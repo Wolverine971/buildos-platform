@@ -22,7 +22,7 @@ export interface DeliveryResult {
  * Rewrite links in HTML for click tracking
  */
 function rewriteLinksForTracking(html: string, trackingId: string): string {
-	const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+	const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 
 	// Rewrite all <a href="..."> tags to go through click tracking
 	return html.replace(
@@ -51,7 +51,7 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 	text: string;
 } {
 	const { payload } = delivery;
-	const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+	const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 
 	// Defensive validation - ensure required fields exist
 	const title = payload.title || 'Notification';
@@ -150,7 +150,7 @@ export async function sendEmailNotification(
 		// ✅ DOUBLE-CHECK USER PREFERENCES
 		// This is a safety check in case preferences changed between worker check and adapter execution
 		const eventType = delivery.payload.event_type || 'unknown';
-		const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+		const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 		const prefCheck = await checkUserPreferences(
 			delivery.recipient_user_id,
 			eventType,
@@ -241,12 +241,9 @@ export async function sendEmailNotification(
 						day: 'numeric'
 					});
 
-					subject = `Daily Brief - ${dateFormatted}`;
+					subject = `BuildOS Daily Brief - ${dateFormatted}`;
 
 					const fullContent = `
-            <h1 style="color: #111827; font-size: 24px; margin-bottom: 8px;">Your Daily Brief</h1>
-            <p style="color: #6b7280; font-size: 14px; margin-bottom: 24px;">${dateFormatted}</p>
-
             <div style="margin: 20px 0;">
               ${contentHtml}
             </div>
@@ -254,7 +251,7 @@ export async function sendEmailNotification(
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
             <div style="text-align: center; margin-top: 24px;">
-              <a href="${baseUrl}/daily-briefs/${delivery.payload.data?.brief_id || ''}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <a href="${baseUrl}/projects?briefDate=${delivery.payload.data?.brief_date || ''}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #d1d5db; margin: 0 8px;">|</span>
               <a href="${baseUrl}/profile?tab=notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
             </div>

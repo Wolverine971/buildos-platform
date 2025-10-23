@@ -17,6 +17,49 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Windows `nul` Files Created by `/dev/null` Redirect
+
+**Severity**: Low (Code pollution, no functional impact)
+
+### Root Cause
+
+The `test:silent` npm script in `apps/web/package.json` used `2>/dev/null` to suppress stderr output. On Windows, `/dev/null` doesn't exist as a special device like on Unix/Linux, so bash creates a regular file named `nul` instead of discarding the output. This resulted in `nul` files being created at the repository root and in `apps/web/`.
+
+### Fix Description
+
+1. **Removed `nul` files**: Deleted `nul` and `apps/web/nul` from the repository
+2. **Fixed script**: Removed the `2>/dev/null` redirect from the `test:silent` script
+3. **Added to gitignore**: Added `nul` to `.gitignore` to prevent future accidental commits
+
+The `test:silent` script still functions correctly because:
+- `VITEST_SILENT=true` already suppresses verbose output
+- `--reporter=dot` minimizes test output
+- `|| true` ensures the script doesn't fail
+
+### Files Changed
+
+- **Modified**: `/apps/web/package.json` (line 30) - Removed `2>/dev/null` from test:silent script
+- **Modified**: `/.gitignore` (line 48) - Added `nul` to ignore list
+- **Deleted**: `/nul` - Removed Windows artifact file
+- **Deleted**: `/apps/web/nul` - Removed Windows artifact file
+
+### Related Docs
+
+- **Testing Documentation**: `/apps/web/docs/technical/testing/` - Testing strategy and patterns
+- **Package Scripts**: `/apps/web/CLAUDE.md` - Web app development guide
+
+### Cross-references
+
+- **Script location**: `/apps/web/package.json:30`
+- **Gitignore entry**: `/.gitignore:48`
+- **Platform compatibility**: Windows vs Unix/Linux `/dev/null` behavior differences
+
+### Prevention
+
+The `nul` entry in `.gitignore` will prevent these files from being accidentally committed if they're created in the future. For cross-platform scripts, avoid using `/dev/null` redirects - rely on tool-specific flags for output suppression instead.
+
+---
+
 ## 2025-10-23 - Multiple Critical Time Blocks Bugs Fixed
 
 **Severity**: Critical (Multiple runtime errors and UX issues affecting core functionality)
@@ -67,6 +110,204 @@ Fixed all five critical issues:
 4. **View Mode**: Switch between day/week/month views, verify proper display
 5. **Error Display**: Trigger an error (e.g., network failure), verify error message shows
 6. **Allocation**: Create/delete blocks, verify allocation updates without delay
+## 2025-10-23 - Added Regenerate Brief Button with Streaming Progress
+
+**Severity**: N/A (Feature Enhancement)
+
+### Description
+
+Added a "Regenerate Brief" button to the Daily Brief modal that allows users to manually trigger brief regeneration with real-time streaming progress updates.
+
+**Note**: This is a feature enhancement, not a bug fix, but documented here for visibility and cross-referencing.
+
+### Implementation Details
+
+The regenerate button provides the following functionality:
+
+1. **Streaming Progress Updates**: Uses the existing `BriefClientService` with streaming to show real-time generation progress
+2. **Force Regeneration**: Calls the generation API with `forceRegenerate: true` to bypass existing brief checks
+3. **Progress Indicator**: Displays a progress bar with status messages and percentage completion
+4. **Auto-reload**: Automatically reloads the brief content after successful regeneration
+5. **Error Handling**: Shows appropriate error messages if regeneration fails
+
+**User Experience**:
+- Button appears in the modal footer alongside Copy and Download buttons
+- Uses primary button styling for visibility
+- Shows "Regenerating..." state with spinner icon during generation
+- Disables other modal actions while regenerating
+- Displays progress messages like "Fetching projects...", "Generating briefs...", etc.
+- Shows completion percentage as brief generates
+
+**Technical Approach**:
+- Integrated with existing `BriefClientService.startStreamingGeneration()`
+- Subscribes to `streamingStatus` store for progress updates
+- Subscribes to `briefGenerationCompleted` event for completion detection
+- Uses Svelte 5 `$effect()` runes for reactive updates
+- Handles cleanup on component destroy
+
+### Files Changed
+
+**Modified** (1 file):
+
+1. `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte` - Added regenerate functionality
+   - Lines 3-25: Added imports (`RefreshCw` icon, `BriefClientService`, stores, `onDestroy`)
+   - Lines 51-61: Added regeneration state variables and store subscriptions
+   - Lines 113-153: Added effects for progress tracking, completion handling, and error handling
+   - Lines 199-237: Added `regenerateBrief()` function
+   - Lines 258-277: Added regenerating UI state with progress bar
+   - Lines 358-390: Added "Regenerate Brief" button to footer
+
+**Total Changes**: ~115 lines added/modified
+
+### Manual Verification Steps
+
+1. **Open Daily Brief Modal**:
+   - Go to `/projects` page
+   - Click to view a daily brief
+
+2. **Test Regeneration**:
+   - Click "Regenerate Brief" button
+   - Verify modal shows regenerating state with progress
+   - Observe progress messages updating ("Fetching projects...", etc.)
+   - Verify progress percentage increases
+   - Confirm brief content reloads after completion
+
+3. **Test Error Handling**:
+   - Verify error toast appears if regeneration fails
+   - Confirm modal returns to normal state on error
+
+4. **Test Button States**:
+   - Verify button shows "Regenerating..." during generation
+   - Confirm other buttons are disabled during regeneration
+   - Check button icon changes to spinning refresh icon
+
+### Related Docs
+
+- **Daily Brief Modal**: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte`
+- **Brief Client Service**: `/apps/web/src/lib/services/briefClient.service.ts`
+- **Brief Generation API**: `/apps/web/src/routes/api/daily-briefs/generate/+server.ts`
+- **Worker Brief Generator**: `/apps/worker/src/workers/brief/briefGenerator.ts`
+
+### Cross-references
+
+**Code Locations**:
+- Regenerate function: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:199-237`
+- Progress tracking: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:113-145`
+- UI progress display: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:258-277`
+- Button implementation: `/apps/web/src/lib/components/briefs/DailyBriefModal.svelte:358-367`
+
+**Related Services**:
+- `BriefClientService.startStreamingGeneration()`: Handles streaming generation with Railway worker fallback
+- `unifiedBriefGenerationStore`: Manages generation state and progress
+- API endpoint: `/api/daily-briefs/generate` (POST with `forceRegenerate: true`)
+
+**User Flow**:
+1. User opens daily brief modal
+2. User clicks "Regenerate Brief" button
+3. Modal enters regenerating state, shows progress
+4. `BriefClientService` calls generation API with `forceRegenerate: true`
+5. Progress updates stream through store subscriptions
+6. On completion, brief is reloaded automatically
+7. Success toast shown, modal returns to normal state
+
+---
+
+## 2025-10-23 - Malformed Email Tracking URLs with Encoded Spaces
+
+**Severity**: High (All email tracking links broken in daily briefs)
+
+### Root Cause
+
+The `PUBLIC_APP_URL` environment variable contained trailing whitespace (e.g., `'https://build-os.com '`). When constructing tracking URLs like `${baseUrl}/api/email-tracking/...`, the space became part of the URL:
+
+- Direct URLs: `https://build-os.com /api/...` (space before path)
+- URL-encoded (in click tracking): `https://build-os.com%20/api/...` (`%20` = encoded space)
+- Browsers rejected these malformed URLs as invalid
+
+**Why This Happened**: Environment variables are loaded as-is from `.env` files or deployment config. The codebase was inconsistent about trimming whitespace - some places used `.trim()` (like `webhookUrl` on line 341), but most did not.
+
+**Impact**: All email tracking links in daily briefs were broken:
+- Click tracking URLs didn't work
+- Users couldn't click links in emails to reach the app
+- Email engagement analytics were not captured
+- Google showed error: "The previous page is sending you to an invalid url"
+
+### Fix Description
+
+Added `.trim()` to all `PUBLIC_APP_URL` usages across the worker codebase to ensure any leading/trailing whitespace in the environment variable doesn't cause malformed URLs.
+
+**Changed pattern**:
+```typescript
+// BEFORE (8 locations):
+const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+
+// AFTER:
+const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
+```
+
+**Files affected**:
+1. `emailAdapter.ts` - Email link construction (3 instances)
+2. `smsAdapter.ts` - SMS link construction (1 instance)
+3. `email-sender.ts` - Email service base URL (1 instance)
+4. `queueConfig.ts` - Configuration validation (1 instance)
+5. `onboardingAnalysisService.ts` - LLM service referer (1 instance)
+6. `briefGenerator.ts` - LLM service referer (1 instance)
+7. `smsMessageGenerator.ts` - LLM service referer (1 instance)
+
+Note: `webhookUrl` on line 341 of emailAdapter.ts already had `.trim()` - this fix brings all other usages into consistency.
+
+### Files Changed
+
+**Modified** (8 files):
+
+1. `/apps/worker/src/workers/notification/emailAdapter.ts:25,54,153` - Added `.trim()` to 3 baseUrl declarations
+2. `/apps/worker/src/workers/notification/smsAdapter.ts:528` - Added `.trim()` to baseUrl
+3. `/apps/worker/src/lib/services/email-sender.ts:30` - Added `.trim()` to baseUrl property
+4. `/apps/worker/src/config/queueConfig.ts:200` - Added `.trim()` to appUrl validation
+5. `/apps/worker/src/workers/onboarding/onboardingAnalysisService.ts:29` - Added `.trim()` to httpReferer
+6. `/apps/worker/src/workers/brief/briefGenerator.ts:417` - Added `.trim()` to httpReferer
+7. `/apps/worker/src/lib/services/smsMessageGenerator.ts:58` - Added `.trim()` to httpReferer
+8. `/docs/BUGFIX_CHANGELOG.md` - Added this entry
+
+**Total Changes**: 10 lines modified (8 functional + 1 doc + 1 changelog)
+
+### Manual Verification Steps
+
+1. **Email Link Verification**:
+   - Trigger a daily brief email
+   - Inspect the HTML source of the email
+   - Verify all tracking links are formatted correctly: `https://build-os.com/api/email-tracking/...` (no space before `/api`)
+   - Click a link in the email and verify it navigates correctly
+
+2. **Click Tracking Verification**:
+   - Look for click tracking URLs in email (format: `/api/email-tracking/{id}/click?url=...`)
+   - Decode the `url` parameter and verify no `%20` appears between domain and path
+   - Click the link and verify proper redirection
+
+3. **Environment Check**:
+   - Check your `.env` or deployment config for `PUBLIC_APP_URL`
+   - Look for trailing/leading spaces: `PUBLIC_APP_URL=https://build-os.com ` (space at end)
+   - This fix handles that automatically now
+
+### Related Docs
+
+- **Worker Service**: `/apps/worker/CLAUDE.md`
+- **Email Tracking**: `/apps/worker/EMAIL_TRACKING.md`
+- **Daily Briefs**: `/apps/worker/docs/features/daily-briefs/README.md`
+
+### Cross-references
+
+**Code Locations**:
+- Email tracking URL generation: `/apps/worker/src/workers/notification/emailAdapter.ts:25-42` (rewriteLinksForTracking function)
+- Email template base URL: `/apps/worker/src/workers/notification/emailAdapter.ts:54,153`
+- Webhook URL (already had .trim()): `/apps/worker/src/workers/notification/emailAdapter.ts:341`
+
+**Related Issues**:
+- All instances of `PUBLIC_APP_URL` usage now consistently apply `.trim()`
+- Prevents similar issues in SMS links, LLM service configuration, and email sending
+
+**Design Pattern**:
+Going forward, always use: `(process.env.PUBLIC_APP_URL || 'https://build-os.com').trim()` when accessing this environment variable.
 
 ---
 

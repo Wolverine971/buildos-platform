@@ -414,7 +414,7 @@ export async function generateDailyBrief(
 
 			try {
 				const llmService = new SmartLLMService({
-					httpReferer: process.env.PUBLIC_APP_URL || 'https://build-os.com',
+					httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 					appName: 'BuildOS Daily Brief Worker'
 				});
 

@@ -525,7 +525,7 @@ async function shortenUrlsInMessage(
 				}
 
 				// Replace URL with shortened version
-				const baseUrl = process.env.PUBLIC_APP_URL || 'https://build-os.com';
+				const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
 				const shortUrl = `${baseUrl}/l/${shortCode}`;
 				result = result.replace(url, shortUrl);
 				shortenedCount++;

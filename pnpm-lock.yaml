@@ -113,8 +113,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(svelte@5.39.6)
       nodemailer:
-        specifier: ^7.0.5
-        version: 7.0.6
+        specifier: ^7.0.10
+        version: 7.0.10
       openai:
         specifier: ^5.11.0
         version: 5.23.1(ws@8.18.3)(zod@3.25.76)
@@ -240,8 +240,8 @@ importers:
         specifier: ^16.3.0
         version: 16.4.0
       happy-dom:
-        specifier: ^18.0.1
-        version: 18.0.1
+        specifier: ^20.0.8
+        version: 20.0.8
       husky:
         specifier: ^9.0.0
         version: 9.1.7
@@ -304,7 +304,7 @@ importers:
         version: 0.5.1(vite@7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
       yaml:
         specifier: ^2.3.4
         version: 2.8.1
@@ -392,7 +392,7 @@ importers:
         version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
       '@vitest/coverage-v8':
         specifier: ^1.6.1
-        version: 1.6.1(vitest@1.6.1(@types/node@20.19.17)(happy-dom@18.0.1)(jsdom@26.1.0))
+        version: 1.6.1(vitest@1.6.1(@types/node@20.19.17)(happy-dom@20.0.8)(jsdom@26.1.0))
       eslint:
         specifier: ^8.54.0
         version: 8.57.1
@@ -404,7 +404,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^1.6.1
-        version: 1.6.1(@types/node@20.19.17)(happy-dom@18.0.1)(jsdom@26.1.0)
+        version: 1.6.1(@types/node@20.19.17)(happy-dom@20.0.8)(jsdom@26.1.0)
 
   packages/shared-types:
     devDependencies:
@@ -441,7 +441,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
 
   packages/supabase-client:
     dependencies:
@@ -488,7 +488,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
 
 packages:
 
@@ -3487,8 +3487,8 @@ packages:
   guid-typescript@1.0.9:
     resolution: {integrity: sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ==}
 
-  happy-dom@18.0.1:
-    resolution: {integrity: sha512-qn+rKOW7KWpVTtgIUi6RVmTBZJSe2k0Db0vh1f7CWrWclkkc7/Q+FrOfkZIb2eiErLyqu5AXEzE7XthO9JVxRA==}
+  happy-dom@20.0.8:
+    resolution: {integrity: sha512-TlYaNQNtzsZ97rNMBAm8U+e2cUQXNithgfCizkDgc11lgmN4j9CKMhO3FPGKWQYPwwkFcPpoXYF/CqEPLgzfOg==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -4297,6 +4297,10 @@ packages:
 
   node-releases@2.0.21:
     resolution: {integrity: sha512-5b0pgg78U3hwXkCM8Z9b2FJdPZlr9Psr9V2gQPESdGHqbntyFJKFW4r5TeWGFzafGY3hzs1JC62VEQMbl1JFkw==}
+
+  nodemailer@7.0.10:
+    resolution: {integrity: sha512-Us/Se1WtT0ylXgNFfyFSx4LElllVLJXQjWi2Xz17xWw7amDKO2MLtFnVp1WACy7GkVGs+oBlRopVNUzlrGSw1w==}
+    engines: {node: '>=6.0.0'}
 
   nodemailer@7.0.6:
     resolution: {integrity: sha512-F44uVzgwo49xboqbFgBGkRaiMgtoBrBEWCVincJPK9+S9Adkzt/wXCLKbf7dxucmxfTI5gHGB+bEmdyzN6QKjw==}
@@ -7809,7 +7813,7 @@ snapshots:
       svelte: 5.39.6
     optionalDependencies:
       vite: 7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
 
   '@tiptap/core@3.6.1(@tiptap/pm@3.6.1)':
     dependencies:
@@ -8361,7 +8365,7 @@ snapshots:
       react: 19.1.1
       svelte: 5.39.6
 
-  '@vitest/coverage-v8@1.6.1(vitest@1.6.1(@types/node@20.19.17)(happy-dom@18.0.1)(jsdom@26.1.0))':
+  '@vitest/coverage-v8@1.6.1(vitest@1.6.1(@types/node@20.19.17)(happy-dom@20.0.8)(jsdom@26.1.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -8376,7 +8380,7 @@ snapshots:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@20.19.17)(happy-dom@18.0.1)(jsdom@26.1.0)
+      vitest: 1.6.1(@types/node@20.19.17)(happy-dom@20.0.8)(jsdom@26.1.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -8455,7 +8459,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1)
 
   '@vitest/utils@1.6.1':
     dependencies:
@@ -9688,7 +9692,7 @@ snapshots:
 
   guid-typescript@1.0.9: {}
 
-  happy-dom@18.0.1:
+  happy-dom@20.0.8:
     dependencies:
       '@types/node': 20.19.17
       '@types/whatwg-mimetype': 3.0.2
@@ -10658,6 +10662,8 @@ snapshots:
   node-gyp-build@4.8.4: {}
 
   node-releases@2.0.21: {}
+
+  nodemailer@7.0.10: {}
 
   nodemailer@7.0.6: {}
 
@@ -12343,7 +12349,7 @@ snapshots:
     optionalDependencies:
       vite: 7.1.7(@types/node@24.5.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
 
-  vitest@1.6.1(@types/node@20.19.17)(happy-dom@18.0.1)(jsdom@26.1.0):
+  vitest@1.6.1(@types/node@20.19.17)(happy-dom@20.0.8)(jsdom@26.1.0):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1
@@ -12367,7 +12373,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.19.17
-      happy-dom: 18.0.1
+      happy-dom: 20.0.8
       jsdom: 26.1.0
     transitivePeerDependencies:
       - less
@@ -12379,7 +12385,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1):
+  vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.17)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -12408,7 +12414,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.17
       '@vitest/ui': 3.2.4(vitest@3.2.4)
-      happy-dom: 18.0.1
+      happy-dom: 20.0.8
       jsdom: 26.1.0
     transitivePeerDependencies:
       - jiti
@@ -12424,7 +12430,7 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1):
+  vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -12453,7 +12459,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 24.5.2
       '@vitest/ui': 3.2.4(vitest@3.2.4)
-      happy-dom: 18.0.1
+      happy-dom: 20.0.8
       jsdom: 26.1.0
     transitivePeerDependencies:
       - jiti

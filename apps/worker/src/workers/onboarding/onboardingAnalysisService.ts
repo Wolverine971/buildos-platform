@@ -26,7 +26,7 @@ export class OnboardingAnalysisService {
 		this.supabase = supabase;
 		this.llmService = new SmartLLMService({
 			supabase,
-			httpReferer: process.env.PUBLIC_APP_URL || 'https://build-os.com',
+			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 			appName: 'BuildOS Onboarding Analyst'
 		});
 	}

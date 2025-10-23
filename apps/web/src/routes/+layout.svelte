@@ -5,7 +5,7 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { setContext, onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import { goto, replaceState, onNavigate } from '$app/navigation';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import { navigationStore } from '$lib/stores/navigation.store';
@@ -59,6 +59,14 @@
 	} from '$lib/services/project-synthesis-notification.bridge';
 	import { backgroundJobs } from '$lib/stores/backgroundJobs';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
+
+	// Vercel Analytics & Speed Insights
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+
+	// Initialize Speed Insights in production
+	if (browser && !dev) {
+		injectSpeedInsights();
+	}
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data }: { data: LayoutData } = $props();
