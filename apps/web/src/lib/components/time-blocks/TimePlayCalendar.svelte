@@ -18,7 +18,9 @@
 		onBlockCreate,
 		onBlockClick,
 		onCalendarEventClick,
-		onSlotClick
+		onSlotClick,
+		onNavigate,
+		onViewModeChange
 	}: {
 		blocks?: TimeBlockWithProject[];
 		days?: Date[];
@@ -31,6 +33,8 @@
 		onBlockClick?: (block: TimeBlockWithProject) => void;
 		onCalendarEventClick?: (event: CalendarEvent) => void;
 		onSlotClick?: (slot: AvailableSlot) => void;
+		onNavigate?: (date: Date) => void;
+		onViewModeChange?: (mode: 'day' | 'week' | 'month') => void;
 	} = $props();
 
 	// Calendar configuration
@@ -335,6 +339,15 @@
 		}
 	}
 
+	// View mode change handler
+	function changeViewMode(mode: 'day' | 'week' | 'month') {
+		if (onViewModeChange) {
+			onViewModeChange(mode);
+		} else {
+			viewMode = mode;
+		}
+	}
+
 	// Navigation functions
 	function navigatePrevious() {
 		const newDate = new Date(selectedDate);
@@ -345,7 +358,12 @@
 		} else {
 			newDate.setMonth(newDate.getMonth() - 1);
 		}
-		selectedDate = newDate;
+
+		if (onNavigate) {
+			onNavigate(newDate);
+		} else {
+			selectedDate = newDate;
+		}
 	}
 
 	function navigateNext() {
@@ -357,11 +375,21 @@
 		} else {
 			newDate.setMonth(newDate.getMonth() + 1);
 		}
-		selectedDate = newDate;
+
+		if (onNavigate) {
+			onNavigate(newDate);
+		} else {
+			selectedDate = newDate;
+		}
 	}
 
 	function navigateToday() {
-		selectedDate = new Date();
+		const today = new Date();
+		if (onNavigate) {
+			onNavigate(today);
+		} else {
+			selectedDate = today;
+		}
 	}
 
 	// Keyboard shortcuts
@@ -378,15 +406,15 @@
 			switch (event.key.toLowerCase()) {
 				case 'd':
 					event.preventDefault();
-					viewMode = 'day';
+					changeViewMode('day');
 					break;
 				case 'w':
 					event.preventDefault();
-					viewMode = 'week';
+					changeViewMode('week');
 					break;
 				case 'm':
 					event.preventDefault();
-					viewMode = 'month';
+					changeViewMode('month');
 					break;
 				case 'arrowleft':
 					event.preventDefault();
@@ -608,21 +636,21 @@
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'day' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'day')}
+					onclick={() => changeViewMode('day')}
 				>
 					Day
 				</button>
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'week' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'week')}
+					onclick={() => changeViewMode('week')}
 				>
 					Week
 				</button>
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'month' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'month')}
+					onclick={() => changeViewMode('month')}
 				>
 					Month
 				</button>
@@ -681,21 +709,21 @@
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'day' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'day')}
+					onclick={() => changeViewMode('day')}
 				>
 					Day
 				</button>
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'week' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'week')}
+					onclick={() => changeViewMode('week')}
 				>
 					Week
 				</button>
 				<button
 					type="button"
 					class={`view-toggle ${viewMode === 'month' ? 'active' : ''}`}
-					onclick={() => (viewMode = 'month')}
+					onclick={() => changeViewMode('month')}
 				>
 					Month
 				</button>

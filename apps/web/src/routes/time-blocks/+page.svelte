@@ -11,6 +11,7 @@
 	import CalendarEventDetailModal from '$lib/components/time-blocks/CalendarEventDetailModal.svelte';
 	import AvailableSlotFinder from '$lib/components/time-blocks/AvailableSlotFinder.svelte';
 	import AvailableSlotList from '$lib/components/time-blocks/AvailableSlotList.svelte';
+	import CalendarConnectionOverlay from '$lib/components/calendar/CalendarConnectionOverlay.svelte';
 	import type { PageData } from './$types';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
@@ -34,23 +35,48 @@
 	// Calendar events from child component (for slot calculation)
 	let calendarEvents = $state<CalendarEvent[]>([]);
 
+	// Calendar view state
+	let calendarViewMode = $state<'day' | 'week' | 'month'>('week');
+	let calendarSelectedDate = $state(new Date());
+
 	// Calculate date range - use the store's selected date range
 	let calendarDateRange = $derived($timeBlocksStore.selectedDateRange);
 
-	// Calculate days array for calendar based on the selected date range
+	// Calculate days array for calendar based on view mode and selected date
 	let calendarDays = $derived.by(() => {
-		const start = new Date(calendarDateRange.start);
-		const end = new Date(calendarDateRange.end);
+		if (calendarViewMode === 'day') {
+			return [calendarSelectedDate];
+		} else if (calendarViewMode === 'week') {
+			// Get start of week (Monday)
+			const start = new Date(calendarSelectedDate);
+			const day = start.getDay();
+			const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+			start.setDate(diff);
+			start.setHours(0, 0, 0, 0);
 
-		// Calculate number of days between start and end
-		const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+			return Array.from({ length: 7 }, (_, i) => {
+				const d = new Date(start);
+				d.setDate(start.getDate() + i);
+				return d;
+			});
+		} else {
+			// Month view - return full 6-week calendar grid (42 days)
+			const year = calendarSelectedDate.getFullYear();
+			const month = calendarSelectedDate.getMonth();
+			const firstDayOfMonth = new Date(year, month, 1);
 
-		// Generate array of dates
-		return Array.from({ length: daysDiff + 1 }, (_, i) => {
-			const date = new Date(start);
-			date.setDate(start.getDate() + i);
-			return date;
-		});
+			// Get the day of week for the first day (0 = Sunday)
+			const firstDayOfWeek = firstDayOfMonth.getDay();
+
+			// Calculate the start date (Sunday before or on the 1st)
+			const startDate = new Date(firstDayOfMonth);
+			startDate.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
+
+			// Generate 42 days (6 weeks) for complete calendar grid
+			return Array.from({ length: 42 }, (_, i) => {
+				return new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+			});
+		}
 	});
 
 	// Calculate available slots based on blocks, events, config, and days
@@ -158,8 +184,29 @@
 		openCreateModal(slot.startTime, slot.endTime);
 	}
 
+	function handleCalendarNavigate(date: Date) {
+		calendarSelectedDate = date;
+		// Update the date range in the store to load blocks for new view
+		if (calendarDays.length > 0) {
+			const start = calendarDays[0];
+			const end = calendarDays[calendarDays.length - 1];
+			timeBlocksStore.setDateRange(start, end);
+		}
+	}
+
+	function handleViewModeChange(mode: 'day' | 'week' | 'month') {
+		calendarViewMode = mode;
+		// Update the date range in the store to load blocks for new view
+		if (calendarDays.length > 0) {
+			const start = calendarDays[0];
+			const end = calendarDays[calendarDays.length - 1];
+			timeBlocksStore.setDateRange(start, end);
+		}
+	}
+
 	$effect(() => {
-		if ($timeBlocksStore.error) {
+		// Clear positive feedback if there's an error
+		if ($timeBlocksStore.error && feedback) {
 			feedback = null;
 		}
 	});
@@ -258,43 +305,6 @@
 			</div>
 		{/if}
 
-		{#if !data.isCalendarConnected}
-			<div
-				class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/40 dark:bg-amber-950/20 sm:px-4 sm:py-3"
-			>
-				<div class="flex items-center justify-between gap-3">
-					<div class="flex items-center gap-2 flex-1 min-w-0">
-						<svg
-							class="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-							/>
-						</svg>
-						<div class="min-w-0 flex-1">
-							<p
-								class="text-xs font-medium text-amber-900 dark:text-amber-100 sm:text-sm"
-							>
-								Connect Google Calendar to see your events
-							</p>
-						</div>
-					</div>
-					<a
-						href="/profile?tab=calendar"
-						class="flex-shrink-0 inline-flex items-center rounded-md bg-amber-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 sm:px-3 sm:py-1.5"
-					>
-						Connect
-					</a>
-				</div>
-			</div>
-		{/if}
-
 		<!-- Time Allocation Summary -->
 		<div
 			class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
@@ -323,6 +333,8 @@
 				<TimePlayCalendar
 					blocks={$timeBlocksStore.blocks}
 					days={calendarDays}
+					bind:viewMode={calendarViewMode}
+					bind:selectedDate={calendarSelectedDate}
 					isCalendarConnected={data.isCalendarConnected}
 					{availableSlots}
 					bind:calendarEventsOut={calendarEvents}
@@ -330,6 +342,8 @@
 					onBlockClick={handleBlockClick}
 					onCalendarEventClick={handleCalendarEventClick}
 					onSlotClick={handleSlotClick}
+					onNavigate={handleCalendarNavigate}
+					onViewModeChange={handleViewModeChange}
 				/>
 			{:else}
 				<!-- List View: Show Available Slots List + Time Blocks List -->
@@ -387,4 +401,9 @@
 			selectedCalendarEvent = null;
 		}}
 	/>
+{/if}
+
+<!-- Calendar Connection Overlay - blocks page usage when not connected -->
+{#if !data.isCalendarConnected}
+	<CalendarConnectionOverlay />
 {/if}

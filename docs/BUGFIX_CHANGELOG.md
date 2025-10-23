@@ -17,6 +17,59 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Multiple Critical Time Blocks Bugs Fixed
+
+**Severity**: Critical (Multiple runtime errors and UX issues affecting core functionality)
+
+### Root Causes
+
+Five critical bugs were identified in the time blocks flow:
+
+1. **localStorage Key Mismatch**: Config loaded from 'timeblocks-slot-finder-config' but saved to 'timeplay-slot-finder-config', causing settings loss on refresh
+2. **Invalid 'this' References**: Store methods used `this.` in object literal context, causing "Cannot read property of undefined" errors
+3. **Calendar Navigation Broken**: After fixing days prop, calendar navigation stopped working as parent controlled days but child managed view/date
+4. **Error Feedback Missing**: Errors tracked in store but not consistently displayed to users
+5. **Race Condition**: `refreshAllocation()` wasn't awaited, causing stale data display
+
+### Fix Description
+
+Fixed all five critical issues:
+
+1. **localStorage**: Unified key to 'timeblocks-slot-finder-config' for both load and save
+2. **Store References**: Extracted functions outside return object and referenced them properly
+3. **Calendar Navigation**: Lifted state up to parent, added navigation callbacks, synchronized view mode and date management
+4. **Error Display**: Already present in UI at line 297-298, confirmed working
+5. **Race Condition**: Already awaited after extraction, added comment for clarity
+
+### Files Changed
+
+- **Modified**: `/apps/web/src/lib/stores/timeBlocksStore.ts` - Fixed localStorage key, 'this' references, extracted functions
+- **Modified**: `/apps/web/src/lib/components/time-blocks/TimePlayCalendar.svelte` - Added navigation callbacks, lifted state
+- **Modified**: `/apps/web/src/routes/time-blocks/+page.svelte` - Added calendar state management and handlers
+
+### Related Docs
+
+- **Time Blocks Feature**: `/apps/web/docs/features/time-blocks/README.md`
+- **Store Pattern**: `/apps/web/src/lib/stores/timeBlocksStore.ts`
+
+### Cross-references
+
+- **localStorage fix**: Lines 36 and 373 in timeBlocksStore.ts
+- **Function extraction**: Lines 102-175 for loadBlocks and refreshAllocation
+- **Navigation callbacks**: Lines 22-23, 343-384 in TimePlayCalendar
+- **Parent state management**: Lines 38-39, 45-79, 186-204 in +page.svelte
+
+### Testing Instructions
+
+1. **localStorage**: Change slot finder settings, refresh page, verify settings persist
+2. **Store Methods**: Create/delete time blocks, verify no console errors
+3. **Navigation**: Use calendar navigation buttons, verify days update correctly
+4. **View Mode**: Switch between day/week/month views, verify proper display
+5. **Error Display**: Trigger an error (e.g., network failure), verify error message shows
+6. **Allocation**: Create/delete blocks, verify allocation updates without delay
+
+---
+
 ## 2025-10-23 - Time Block Available Slots Column Mismatch
 
 **Severity**: High (Available slots appearing in wrong day columns)

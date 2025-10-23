@@ -99,52 +99,86 @@ function createTimeBlocksStore() {
 		return payload?.data?.allocation ?? null;
 	}
 
-	return {
-		subscribe,
+	// Define refreshAllocation as a separate function so it can be called internally
+	async function refreshAllocation(startDate?: Date, endDate?: Date) {
+		if (!browser) return;
 
-		async loadBlocks(startDate?: Date, endDate?: Date) {
-			if (!browser) return;
+		const rangeStart = startDate ?? currentState.selectedDateRange.start;
+		const rangeEnd = endDate ?? currentState.selectedDateRange.end;
 
-			const rangeStart = startDate ?? currentState.selectedDateRange.start;
-			const rangeEnd = endDate ?? currentState.selectedDateRange.end;
+		update((state) => ({
+			...state,
+			isAllocationLoading: true
+		}));
+
+		try {
+			const allocation = await requestAllocation(rangeStart, rangeEnd);
 
 			update((state) => ({
 				...state,
-				isLoading: true,
-				isAllocationLoading: true,
-				error: null
+				allocation: allocation ?? state.allocation,
+				selectedDateRange: { start: rangeStart, end: rangeEnd },
+				isAllocationLoading: false
 			}));
+		} catch (error) {
+			console.error('[TimeBlocksStore] refreshAllocation failed:', error);
+			update((state) => ({
+				...state,
+				isAllocationLoading: false
+			}));
+		}
+	}
 
-			try {
-				const [blocks, allocation] = await Promise.all([
-					requestBlocks(rangeStart, rangeEnd),
-					requestAllocation(rangeStart, rangeEnd).catch((allocationError) => {
-						console.error(
-							'[TimeBlocksStore] Failed to load allocation:',
-							allocationError
-						);
-						return null;
-					})
-				]);
+	// Define loadBlocks as a separate function so it can be called internally
+	async function loadBlocks(startDate?: Date, endDate?: Date) {
+		if (!browser) return;
 
-				update((state) => ({
-					...state,
-					blocks,
-					allocation: allocation ?? state.allocation,
-					selectedDateRange: { start: rangeStart, end: rangeEnd },
-					isLoading: false,
-					isAllocationLoading: false
-				}));
-			} catch (error) {
-				console.error('[TimeBlocksStore] loadBlocks failed:', error);
-				update((state) => ({
-					...state,
-					isLoading: false,
-					isAllocationLoading: false,
-					error: error instanceof Error ? error.message : 'Failed to load time blocks'
-				}));
-			}
-		},
+		const rangeStart = startDate ?? currentState.selectedDateRange.start;
+		const rangeEnd = endDate ?? currentState.selectedDateRange.end;
+
+		update((state) => ({
+			...state,
+			isLoading: true,
+			isAllocationLoading: true,
+			error: null
+		}));
+
+		try {
+			const [blocks, allocation] = await Promise.all([
+				requestBlocks(rangeStart, rangeEnd),
+				requestAllocation(rangeStart, rangeEnd).catch((allocationError) => {
+					console.error(
+						'[TimeBlocksStore] Failed to load allocation:',
+						allocationError
+					);
+					return null;
+				})
+			]);
+
+			update((state) => ({
+				...state,
+				blocks,
+				allocation: allocation ?? state.allocation,
+				selectedDateRange: { start: rangeStart, end: rangeEnd },
+				isLoading: false,
+				isAllocationLoading: false
+			}));
+		} catch (error) {
+			console.error('[TimeBlocksStore] loadBlocks failed:', error);
+			update((state) => ({
+				...state,
+				isLoading: false,
+				isAllocationLoading: false,
+				error: error instanceof Error ? error.message : 'Failed to load time blocks'
+			}));
+		}
+	}
+
+	return {
+		subscribe,
+
+		// Reference the extracted loadBlocks function
+		loadBlocks,
 
 		async loadBlocksOnly(startDate?: Date, endDate?: Date) {
 			if (!browser) return;
@@ -225,7 +259,8 @@ function createTimeBlocksStore() {
 					blocks: sortBlocks([...state.blocks, newBlock])
 				}));
 
-				await this.refreshAllocation();
+				// Await to prevent race condition
+				await refreshAllocation();
 
 				return newBlock;
 			} catch (error) {
@@ -314,7 +349,7 @@ function createTimeBlocksStore() {
 					blocks: state.blocks.filter((block) => block.id !== blockId)
 				}));
 
-				await this.refreshAllocation();
+				await refreshAllocation();
 			} catch (error) {
 				console.error('[TimeBlocksStore] deleteBlock failed:', error);
 				update((state) => ({
@@ -325,41 +360,15 @@ function createTimeBlocksStore() {
 			}
 		},
 
-		async refreshAllocation(startDate?: Date, endDate?: Date) {
-			if (!browser) return;
-
-			const rangeStart = startDate ?? currentState.selectedDateRange.start;
-			const rangeEnd = endDate ?? currentState.selectedDateRange.end;
-
-			update((state) => ({
-				...state,
-				isAllocationLoading: true
-			}));
-
-			try {
-				const allocation = await requestAllocation(rangeStart, rangeEnd);
-
-				update((state) => ({
-					...state,
-					allocation: allocation ?? state.allocation,
-					selectedDateRange: { start: rangeStart, end: rangeEnd },
-					isAllocationLoading: false
-				}));
-			} catch (error) {
-				console.error('[TimeBlocksStore] refreshAllocation failed:', error);
-				update((state) => ({
-					...state,
-					isAllocationLoading: false
-				}));
-			}
-		},
+		// Reference the extracted refreshAllocation function
+		refreshAllocation,
 
 		setDateRange(start: Date, end: Date) {
 			update((state) => ({
 				...state,
 				selectedDateRange: { start, end }
 			}));
-			this.loadBlocks(start, end);
+			loadBlocks(start, end);
 		},
 
 		updateSlotFinderConfig(updates: Partial<SlotFinderConfig>) {
@@ -370,7 +379,7 @@ function createTimeBlocksStore() {
 				if (browser) {
 					try {
 						localStorage.setItem(
-							'timeplay-slot-finder-config',
+							'timeblocks-slot-finder-config',
 							JSON.stringify(newConfig)
 						);
 					} catch (error) {
