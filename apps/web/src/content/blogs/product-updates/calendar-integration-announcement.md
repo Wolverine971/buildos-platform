@@ -15,4 +15,4 @@ pic: 'calendar-announcement'
 
 # Calendar Integration Announcement
 
-*Content coming soon...*
+_Content coming soon..._

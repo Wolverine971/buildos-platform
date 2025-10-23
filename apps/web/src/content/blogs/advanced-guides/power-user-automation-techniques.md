@@ -15,4 +15,4 @@ pic: 'power-user'
 
 # Power User Automation Techniques
 
-*Content coming soon...*
+_Content coming soon..._

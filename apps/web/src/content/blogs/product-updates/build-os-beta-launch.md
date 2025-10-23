@@ -15,4 +15,4 @@ pic: 'beta-launch'
 
 # BuildOS Beta Launch
 
-*Content coming soon...*
+_Content coming soon..._

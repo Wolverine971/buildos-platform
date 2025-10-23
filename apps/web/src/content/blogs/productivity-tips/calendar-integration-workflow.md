@@ -7,7 +7,8 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.7'
 published: false
-tags: ['productivity-tips', 'calendar', 'time-blocking', 'workflow', 'scheduling', 'google-calendar']
+tags:
+    ['productivity-tips', 'calendar', 'time-blocking', 'workflow', 'scheduling', 'google-calendar']
 readingTime: 8
 excerpt: 'Master the calendar integration workflow in BuildOS. Learn time blocking strategies and smart scheduling techniques.'
 pic: 'calendar-workflow'
@@ -15,4 +16,4 @@ pic: 'calendar-workflow'
 
 # Calendar Integration Workflow
 
-*Content coming soon...*
+_Content coming soon..._

@@ -755,23 +755,17 @@ export class SmartLLMService {
 
 			// Log to error tracking system
 			if (this.errorLogger) {
-				await this.errorLogger.logAPIError(
-					error,
-					this.apiUrl,
-					'POST',
-					options.userId,
-					{
-						operation: 'getJSONResponse',
-						errorType: 'llm_api_request_failure',
-						modelRequested: preferredModels[0],
-						profile,
-						complexity,
-						isTimeout: lastError.message.includes('timeout'),
-						projectId: options.projectId,
-						brainDumpId: options.brainDumpId,
-						taskId: options.taskId
-					}
-				);
+				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
+					operation: 'getJSONResponse',
+					errorType: 'llm_api_request_failure',
+					modelRequested: preferredModels[0],
+					profile,
+					complexity,
+					isTimeout: lastError.message.includes('timeout'),
+					projectId: options.projectId,
+					brainDumpId: options.brainDumpId,
+					taskId: options.taskId
+				});
 			}
 
 			// Log failure to database
@@ -925,23 +919,17 @@ export class SmartLLMService {
 
 			// Log to error tracking system
 			if (this.errorLogger) {
-				await this.errorLogger.logAPIError(
-					error,
-					this.apiUrl,
-					'POST',
-					options.userId,
-					{
-						operation: 'generateText',
-						errorType: 'llm_text_generation_failure',
-						modelRequested: preferredModels[0],
-						profile,
-						estimatedLength,
-						isTimeout: (error as Error).message.includes('timeout'),
-						projectId: options.projectId,
-						brainDumpId: options.brainDumpId,
-						taskId: options.taskId
-					}
-				);
+				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
+					operation: 'generateText',
+					errorType: 'llm_text_generation_failure',
+					modelRequested: preferredModels[0],
+					profile,
+					estimatedLength,
+					isTimeout: (error as Error).message.includes('timeout'),
+					projectId: options.projectId,
+					brainDumpId: options.brainDumpId,
+					taskId: options.taskId
+				});
 			}
 
 			// Log failure to database
@@ -1065,21 +1053,15 @@ export class SmartLLMService {
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') {
 				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(
-						error,
-						this.apiUrl,
-						'POST',
-						undefined,
-						{
-							operation: 'callOpenRouter_timeout',
-							errorType: 'llm_api_timeout',
-							modelRequested: params.model,
-							alternativeModels: params.models?.join(', ') || 'none',
-							timeoutMs: 120000,
-							temperature: params.temperature,
-							maxTokens: params.max_tokens
-						}
-					);
+					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', undefined, {
+						operation: 'callOpenRouter_timeout',
+						errorType: 'llm_api_timeout',
+						modelRequested: params.model,
+						alternativeModels: params.models?.join(', ') || 'none',
+						timeoutMs: 120000,
+						temperature: params.temperature,
+						maxTokens: params.max_tokens
+					});
 				}
 				throw new Error(`Request timeout for model ${params.model}`);
 			}

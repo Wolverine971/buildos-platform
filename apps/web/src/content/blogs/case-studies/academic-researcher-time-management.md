@@ -15,4 +15,4 @@ pic: 'academic-case-study'
 
 # Case Study: Academic Researcher Time Management
 
-*Content coming soon...*
+_Content coming soon..._

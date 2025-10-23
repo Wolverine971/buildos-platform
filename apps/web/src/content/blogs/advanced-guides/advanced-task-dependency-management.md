@@ -7,7 +7,15 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.7'
 published: false
-tags: ['advanced-guides', 'task-management', 'dependencies', 'workflows', 'project-management', 'power-users']
+tags:
+    [
+        'advanced-guides',
+        'task-management',
+        'dependencies',
+        'workflows',
+        'project-management',
+        'power-users'
+    ]
 readingTime: 12
 excerpt: 'Learn advanced techniques for managing task dependencies, critical paths, and complex project workflows in BuildOS. Bridge the gap between simple task lists and professional project management.'
 pic: 'task-dependencies'
@@ -15,4 +23,4 @@ pic: 'task-dependencies'
 
 # Advanced Task Dependency Management
 
-*Content coming soon...*
+_Content coming soon..._

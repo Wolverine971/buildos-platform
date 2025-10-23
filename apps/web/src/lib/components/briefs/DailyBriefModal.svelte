@@ -374,7 +374,6 @@
 		{#if displayBrief}
 			<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
 				<div class="flex flex-col sm:flex-row gap-2 w-full">
-					
 					<Button
 						on:click={copyToClipboard}
 						variant="outline"

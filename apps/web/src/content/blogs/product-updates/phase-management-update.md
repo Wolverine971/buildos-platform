@@ -15,4 +15,4 @@ pic: 'phase-update'
 
 # Phase Management Update
 
-*Content coming soon...*
+_Content coming soon..._

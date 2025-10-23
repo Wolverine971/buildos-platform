@@ -15,4 +15,4 @@ pic: 'focus-time'
 
 # Focus Time Optimization
 
-*Content coming soon...*
+_Content coming soon..._

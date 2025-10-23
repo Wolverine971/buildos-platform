@@ -15,4 +15,4 @@ pic: 'founder-case-study'
 
 # Case Study: Startup Founder Productivity Transformation
 
-*Content coming soon...*
+_Content coming soon..._

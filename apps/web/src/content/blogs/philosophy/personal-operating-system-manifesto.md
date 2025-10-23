@@ -15,4 +15,4 @@ pic: 'manifesto'
 
 # The Personal Operating System Manifesto
 
-*Content coming soon...*
+_Content coming soon..._

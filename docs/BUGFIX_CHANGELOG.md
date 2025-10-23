@@ -17,6 +17,247 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Blog Generation Script Missing Frontmatter
+
+**Severity**: Low (Content management issue)
+
+### Root Cause
+
+37 out of 48 blog markdown files were missing YAML frontmatter headers, causing the blog generation script (`generate-blog-context.ts`) to fail parsing them. The script reported only 11 successful blog posts instead of the expected 47.
+
+**Why This Happened**:
+
+- Blog post files were created as empty placeholders without frontmatter
+- Blog planning "interview" files contained content but lacked the YAML headers needed for the script to process them
+- One file had a YAML syntax error due to unescaped apostrophe in a single-quoted string
+
+**Impact**:
+
+- Only 24% of blog content (11 out of 48 files) was being indexed and available for display
+- Blog context generation appeared successful but silently excluded most files
+- Users would not see most blog posts in the blog listing
+
+### Fix Description
+
+Added proper YAML frontmatter to all 37 missing files:
+
+1. **Empty Blog Posts** (18 files): Added complete frontmatter with `published: false` flag for unpublished content
+    - Included: title, description, author, date, tags, readingTime, excerpt, pic
+    - Marked as unpublished to prevent display until content is written
+
+2. **Blog Planning Files** (17 files): Added frontmatter to "-interview" planning documents
+    - Marked with `published: false` and `priority: 0.1` (internal use only)
+    - Tagged as 'planning', 'outline', 'internal'
+
+3. **YAML Syntax Fix** (1 file): Fixed `productivity-vs-busy-work.md`
+    - Changed single quotes to double quotes to handle apostrophe in title
+    - Title: "Productivity vs Busy Work: Why Being Busy Doesn't Mean Being Productive"
+
+4. **File Already Had Content** (1 file): `productivity-vs-busy-work.md` already had a YAML parsing error that was fixed
+
+### Files Changed
+
+**Modified** (37 files):
+
+**Advanced Guides** (8 files):
+
+- `apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/api-integration-workflows.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/api-integration-workflows-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques.md` - Added frontmatter
+- `apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques-interview.md` - Added frontmatter
+
+**Case Studies** (8 files):
+
+- `apps/web/src/content/blogs/case-studies/academic-researcher-time-management.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/academic-researcher-time-management-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/creative-professional-project-organization.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/creative-professional-project-organization-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/remote-team-coordination-success.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/remote-team-coordination-success-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/startup-founder-productivity-transformation.md` - Added frontmatter
+- `apps/web/src/content/blogs/case-studies/startup-founder-productivity-transformation-interview.md` - Added frontmatter
+
+**Philosophy** (7 files):
+
+- `apps/web/src/content/blogs/philosophy/information-architecture-principles.md` - Added frontmatter
+- `apps/web/src/content/blogs/philosophy/information-architecture-principles-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto.md` - Added frontmatter
+- `apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/philosophy/productivity-vs-busy-work.md` - Fixed YAML syntax (quotes)
+- `apps/web/src/content/blogs/philosophy/productivity-vs-busy-work-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md` - Added frontmatter
+
+**Product Updates** (8 files):
+
+- `apps/web/src/content/blogs/product-updates/build-os-beta-launch.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/build-os-beta-launch-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/calendar-integration-announcement.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/calendar-integration-announcement-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/dynamic-context-feature.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/dynamic-context-feature-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/phase-management-update.md` - Added frontmatter
+- `apps/web/src/content/blogs/product-updates/phase-management-update-interview.md` - Added frontmatter
+
+**Productivity Tips** (6 files):
+
+- `apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow.md` - Added frontmatter
+- `apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/productivity-tips/focus-time-optimization.md` - Added frontmatter
+- `apps/web/src/content/blogs/productivity-tips/focus-time-optimization-interview.md` - Added frontmatter
+- `apps/web/src/content/blogs/productivity-tips/phase-based-project-execution.md` - Added frontmatter
+- `apps/web/src/content/blogs/productivity-tips/phase-based-project-execution-interview.md` - Added frontmatter
+
+**Total Changes**: 37 files created/modified
+
+### Manual Verification Steps
+
+1. **Run Blog Generation Script**:
+
+    ```bash
+    cd apps/web && pnpm run gen:blog-context
+    ```
+
+    - Verify output shows "✅ Flexible blog context generated successfully!"
+    - Verify no "failed to parse" warnings
+    - Check that total posts found is 47 (up from 11)
+
+2. **Verify Blog Context File**:
+
+    ```bash
+    cat apps/web/src/content/blogs/blog-context.json
+    ```
+
+    - Confirm `totalPosts: 47`
+    - Confirm `totalCategories: 6`
+    - Verify all categories have posts listed
+
+3. **Test gen:all Command**:
+    ```bash
+    pnpm run gen:all
+    ```
+
+    - Verify blog generation completes without errors
+    - Confirm the command runs successfully from root directory
+
+**Expected Results**:
+
+- ✅ All 47 blog files successfully parsed
+- ✅ No YAML frontmatter parsing errors
+- ✅ Blog context JSON file contains all categories and posts
+- ✅ Unpublished posts properly marked with `published: false`
+
+### Related Docs
+
+- **Script**: `/apps/web/scripts/generate-blog-context.ts` - Blog context generation script
+- **Blog Directory**: `/apps/web/src/content/blogs/` - All blog markdown files
+- **Blog Context Output**: `/apps/web/src/content/blogs/blog-context.json` - Generated context file
+
+### Cross-references
+
+- Blog generation is triggered by `gen:web` command in `/apps/web/package.json:43`
+- Root-level `gen:all` command calls `gen:web` via pnpm filter (see `/package.json:20`)
+- Related to BuildOS blog system and content management
+
+### Notes
+
+- **Interview files** are planning documents and should remain unpublished (`published: false`)
+- Empty blog posts are placeholders for future content - frontmatter allows them to be indexed but not displayed
+- All new files dated 2025-10-23 to track when frontmatter was added
+- YAML quote handling: Use double quotes when string contains apostrophes
+
+---
+
+## 2025-10-23 - SMS Service TypeScript Compilation Errors
+
+**Severity**: Medium (Build blocker for SMS service)
+
+### Root Cause
+
+Two TypeScript errors in the SMS service preventing compilation:
+
+1. **Invalid Import Path**: Line 3 attempted to import `ServiceResponse` from `'./base/types'`, but this file doesn't exist. The `ServiceResponse` interface is actually defined in `'./base/api-service.ts'` (lines 6-12).
+
+2. **Inheritance Violation**: Line 20 declared `errorLogger` as `private`, but the base class `ApiService` declares it as `protected` (line 16). TypeScript doesn't allow child classes to make inherited properties more restrictive, as this violates the Liskov Substitution Principle.
+
+**Why This Happened**:
+
+- The import error likely occurred from a refactor where types were moved from a separate file into the api-service file, but the SMS service wasn't updated.
+- The visibility error was an incorrect access modifier choice that violated TypeScript's inheritance rules.
+
+**Impact**: Prevented TypeScript compilation of the web app, blocking development and deployment of SMS functionality.
+
+### Fix Description
+
+Fixed both TypeScript errors:
+
+1. **Import Fix**: Combined imports into a single line and imported from the correct source
+    - Changed from: `import type { ServiceResponse } from './base/types';`
+    - Changed to: `import { ApiService, type ServiceResponse } from './base/api-service';`
+
+2. **Visibility Fix**: Corrected the access modifier to match the base class
+    - Changed from: `private errorLogger: ErrorLoggerService;`
+    - Changed to: `protected errorLogger: ErrorLoggerService;`
+
+### Files Changed
+
+**Modified** (1 file):
+
+- `/apps/web/src/lib/services/sms.service.ts`
+    - Line 2-3: Fixed import path (combined imports from './base/api-service')
+    - Line 19: Changed errorLogger visibility from private to protected
+
+**Total Changes**: 2 lines modified
+
+### Manual Verification Steps
+
+1. **TypeScript Compilation**:
+    - Run `cd apps/web && pnpm exec tsc --noEmit --project tsconfig.json`
+    - Verify no errors related to `sms.service.ts`
+    - Confirm no "Cannot find module './base/types'" errors
+    - Confirm no inheritance visibility errors
+
+2. **SMS Service Functionality**:
+    - Verify SMS service getInstance() works correctly
+    - Test sendSMS() method still functions as expected
+    - Confirm error logging via errorLogger still works
+
+**Expected Results**:
+
+- ✅ No TypeScript compilation errors in sms.service.ts
+- ✅ SMS service successfully extends ApiService
+- ✅ errorLogger properly inherits from base class
+
+### Related Docs
+
+- **Base API Service**: `/apps/web/src/lib/services/base/api-service.ts` - Where ServiceResponse is defined and errorLogger is declared as protected
+- **SMS Service**: `/apps/web/src/lib/services/sms.service.ts` - Fixed SMS service implementation
+- **Error Logger**: `/apps/web/src/lib/services/errorLogger.service.ts` - ErrorLoggerService implementation
+
+### Cross-references
+
+**Code Locations**:
+
+- ServiceResponse interface: `/apps/web/src/lib/services/base/api-service.ts:6-12`
+- ApiService errorLogger declaration: `/apps/web/src/lib/services/base/api-service.ts:16` (protected)
+- SMS service fixed import: `/apps/web/src/lib/services/sms.service.ts:2`
+- SMS service fixed errorLogger: `/apps/web/src/lib/services/sms.service.ts:19`
+
+**Related Files**:
+
+- `/apps/web/src/lib/services/base/api-service.ts` - Base class with correct types and visibility
+- `/apps/web/src/lib/services/base/cache-manager.ts` - Other file in base directory (not types.ts)
+
+**TypeScript Principles**:
+
+- Liskov Substitution Principle: Child classes cannot make inherited members more restrictive
+- Access modifiers: protected allows access in derived classes, private does not
+
+---
+
 ## 2025-10-23 - Windows `nul` Files Created by `/dev/null` Redirect
 
 **Severity**: Low (Code pollution, no functional impact)

@@ -7,7 +7,8 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.7'
 published: false
-tags: ['case-studies', 'creative', 'freelance', 'design', 'client-management', 'project-organization']
+tags:
+    ['case-studies', 'creative', 'freelance', 'design', 'client-management', 'project-organization']
 readingTime: 7
 excerpt: 'Discover how a creative professional transformed chaotic client work into organized, profitable projects without losing creative freedom.'
 pic: 'creative-case-study'
@@ -15,4 +16,4 @@ pic: 'creative-case-study'
 
 # Case Study: Creative Professional Project Organization
 
-*Content coming soon...*
+_Content coming soon..._

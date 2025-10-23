@@ -15,6 +15,16 @@ export interface TimeBlockSuggestion {
   confidence?: number | null;
 }
 
+export type TimeBlockSuggestionStatus = "pending" | "generating" | "completed" | "failed";
+
+export interface TimeBlockSuggestionsState {
+  status: TimeBlockSuggestionStatus;
+  progress?: string;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface TimeBlock {
   id: string;
   user_id: string;
@@ -33,6 +43,7 @@ export interface TimeBlock {
   suggestions_summary: string | null;
   suggestions_generated_at: string | null;
   suggestions_model: string | null;
+  suggestions_state: TimeBlockSuggestionsState | null;
   created_at: string;
   updated_at: string;
 }

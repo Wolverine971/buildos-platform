@@ -15,4 +15,4 @@ pic: 'dynamic-context'
 
 # Dynamic Context Feature
 
-*Content coming soon...*
+_Content coming soon..._

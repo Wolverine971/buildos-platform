@@ -7,7 +7,15 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.7'
 published: false
-tags: ['productivity-tips', 'phases', 'project-execution', 'project-management', 'planning', 'organization']
+tags:
+    [
+        'productivity-tips',
+        'phases',
+        'project-execution',
+        'project-management',
+        'planning',
+        'organization'
+    ]
 readingTime: 10
 excerpt: 'Master phase-based project execution. Break down complex projects into manageable phases and execute systematically.'
 pic: 'phase-execution'
@@ -15,4 +23,4 @@ pic: 'phase-execution'
 
 # Phase-Based Project Execution
 
-*Content coming soon...*
+_Content coming soon..._

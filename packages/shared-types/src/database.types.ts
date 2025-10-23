@@ -4189,6 +4189,7 @@ export type Database = {
           start_time: string
           suggestions_generated_at: string | null
           suggestions_model: string | null
+          suggestions_state: Json | null
           suggestions_summary: string | null
           sync_source: string | null
           sync_status: string
@@ -4210,6 +4211,7 @@ export type Database = {
           start_time: string
           suggestions_generated_at?: string | null
           suggestions_model?: string | null
+          suggestions_state?: Json | null
           suggestions_summary?: string | null
           sync_source?: string | null
           sync_status?: string
@@ -4231,6 +4233,7 @@ export type Database = {
           start_time?: string
           suggestions_generated_at?: string | null
           suggestions_model?: string | null
+          suggestions_state?: Json | null
           suggestions_summary?: string | null
           sync_source?: string | null
           sync_status?: string

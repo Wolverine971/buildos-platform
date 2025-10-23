@@ -7,7 +7,14 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.8'
 published: false
-tags: ['philosophy', 'information-architecture', 'knowledge-management', 'organization', 'systems-thinking']
+tags:
+    [
+        'philosophy',
+        'information-architecture',
+        'knowledge-management',
+        'organization',
+        'systems-thinking'
+    ]
 readingTime: 10
 excerpt: 'Explore the foundational principles of information architecture applied to personal productivity. Learn how to organize knowledge for maximum utility and minimal friction.'
 pic: 'information-architecture'
@@ -15,4 +22,4 @@ pic: 'information-architecture'
 
 # Information Architecture Principles
 
-*Content coming soon...*
+_Content coming soon..._

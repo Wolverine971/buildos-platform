@@ -79,20 +79,14 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to send SMS:', error);
-			await this.errorLogger.logAPIError(
-				error,
-				'/api/sms/send',
-				'POST',
-				params.userId,
-				{
-					operation: 'sendSMS',
-					errorType: 'sms_delivery_failure',
-					phoneNumber: params.phoneNumber ? 'provided' : 'from_preferences',
-					priority: params.priority || 'normal',
-					hasTemplate: !!params.templateKey,
-					scheduled: !!params.scheduledFor
-				}
-			);
+			await this.errorLogger.logAPIError(error, '/api/sms/send', 'POST', params.userId, {
+				operation: 'sendSMS',
+				errorType: 'sms_delivery_failure',
+				phoneNumber: params.phoneNumber ? 'provided' : 'from_preferences',
+				priority: params.priority || 'normal',
+				hasTemplate: !!params.templateKey,
+				scheduled: !!params.scheduledFor
+			});
 			return {
 				success: false,
 				errors: [error.message || 'Failed to send SMS']
@@ -181,17 +175,11 @@ export class SMSService extends ApiService {
 			const response = await this.post('/api/sms/verify', { phoneNumber });
 			return response;
 		} catch (error: any) {
-			await this.errorLogger.logAPIError(
-				error,
-				'/api/sms/verify',
-				'POST',
-				undefined,
-				{
-					operation: 'verifyPhoneNumber',
-					errorType: 'sms_verification_send_failure',
-					hasPhoneNumber: !!phoneNumber
-				}
-			);
+			await this.errorLogger.logAPIError(error, '/api/sms/verify', 'POST', undefined, {
+				operation: 'verifyPhoneNumber',
+				errorType: 'sms_verification_send_failure',
+				hasPhoneNumber: !!phoneNumber
+			});
 			return {
 				success: false,
 				errors: [error.message || 'Failed to send verification']
@@ -267,13 +255,9 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to get SMS messages:', error);
-			await this.errorLogger.logDatabaseError(
-				error,
-				'SELECT',
-				'sms_messages',
-				userId,
-				{ operation: 'getSMSMessages' }
-			);
+			await this.errorLogger.logDatabaseError(error, 'SELECT', 'sms_messages', userId, {
+				operation: 'getSMSMessages'
+			});
 			return {
 				success: false,
 				errors: [error.message || 'Failed to get SMS messages']

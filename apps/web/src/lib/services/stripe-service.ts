@@ -259,21 +259,15 @@ export class StripeService {
 			const subscription = event.data.object as any;
 			const userId = subscription?.metadata?.user_id;
 
-			await this.errorLogger.logAPIError(
-				error,
-				'/api/webhooks/stripe',
-				'POST',
-				userId,
-				{
-					operation: 'handleWebhookEvent',
-					errorType: 'stripe_webhook_processing_error',
-					eventId: event.id,
-					eventType: event.type,
-					stripeCustomerId: subscription?.customer,
-					stripeSubscriptionId: subscription?.id,
-					webhookAttempts: existingEvent ? (existingEvent.attempts || 1) + 1 : 1
-				}
-			);
+			await this.errorLogger.logAPIError(error, '/api/webhooks/stripe', 'POST', userId, {
+				operation: 'handleWebhookEvent',
+				errorType: 'stripe_webhook_processing_error',
+				eventId: event.id,
+				eventType: event.type,
+				stripeCustomerId: subscription?.customer,
+				stripeSubscriptionId: subscription?.id,
+				webhookAttempts: existingEvent ? (existingEvent.attempts || 1) + 1 : 1
+			});
 
 			// Mark as failed
 			await this.supabase

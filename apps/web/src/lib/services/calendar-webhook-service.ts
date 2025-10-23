@@ -369,19 +369,13 @@ export class CalendarWebhookService {
 			console.log('[RESYNC] Clearing sync token due to error...');
 
 			// Log to error tracking
-			await this.errorLogger.logCalendarError(
-				error,
-				'sync',
+			await this.errorLogger.logCalendarError(error, 'sync', calendarId, userId, {
 				calendarId,
-				userId,
-				{
-					calendarId,
-					operation: 'performFullResync',
-					errorType: 'calendar_full_resync_failure',
-					errorCode: error.code,
-					reason: error.message
-				}
-			);
+				operation: 'performFullResync',
+				errorType: 'calendar_full_resync_failure',
+				errorCode: error.code,
+				reason: error.message
+			});
 
 			await this.supabase
 				.from('calendar_webhook_channels')

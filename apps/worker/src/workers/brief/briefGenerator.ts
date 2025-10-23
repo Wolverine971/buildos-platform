@@ -1426,9 +1426,11 @@ async function generateMainBrief(
 
 						// Simple capacity heuristic: 1 task ≈ 60 minutes
 						const taskEffortMinutes = taskCount * 60;
-						const capacityRatio = taskEffortMinutes > 0 ? allocatedMinutes / taskEffortMinutes : 1;
+						const capacityRatio =
+							taskEffortMinutes > 0 ? allocatedMinutes / taskEffortMinutes : 1;
 
-						let capacityStatus: 'aligned' | 'underallocated' | 'overallocated' = 'aligned';
+						let capacityStatus: 'aligned' | 'underallocated' | 'overallocated' =
+							'aligned';
 						if (capacityRatio < 0.7) capacityStatus = 'underallocated';
 						if (capacityRatio > 1.3) capacityStatus = 'overallocated';
 

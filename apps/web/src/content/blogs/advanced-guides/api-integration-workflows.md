@@ -15,4 +15,4 @@ pic: 'api-integrations'
 
 # API Integration Workflows
 
-*Content coming soon...*
+_Content coming soon..._

@@ -1,6 +1,6 @@
 ---
 title: "Productivity vs Busy Work: Why Being Busy Doesn't Mean Being Productive"
-description: "The critical difference between productive work and busy work. How to identify and eliminate fake productivity from your life."
+description: 'The critical difference between productive work and busy work. How to identify and eliminate fake productivity from your life.'
 author: 'DJ Wayne'
 date: '2025-10-23'
 lastmod: '2025-10-23'
@@ -15,4 +15,4 @@ pic: 'productivity-vs-busy'
 
 # Productivity vs Busy Work
 
-*Content coming soon...*
+_Content coming soon..._

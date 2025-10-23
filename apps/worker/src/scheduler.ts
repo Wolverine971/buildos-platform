@@ -40,23 +40,27 @@ async function queueBriefGeneration(
 		isReengagement: boolean;
 		daysSinceLastLogin: number;
 	},
-	notificationScheduledFor?: Date
+	notificationScheduledFor?: Date,
+	userNameMap?: Map<string, string>
 ): Promise<any> {
-	// Fetch the latest timezone from users table (centralized source of truth)
+	// Fetch the latest timezone and name from users table (centralized source of truth)
 	const { data: user } = await supabase
 		.from('users')
-		.select('timezone')
+		.select('timezone, name, email')
 		.eq('id', userId)
 		.single();
 
 	// Use user's timezone from database, with fallback to provided timezone, then UTC
 	const userTimezone = user?.timezone || timezone || 'UTC';
 
+	// Get user display name (from map if available, otherwise from DB, otherwise use ID)
+	const userName = userNameMap?.get(userId) || user?.name || user?.email || userId;
+
 	// Calculate the brief date based on the scheduled time in the user's timezone
 	const zonedDate = utcToZonedTime(scheduledFor, userTimezone);
 	const briefDate = options?.requestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
 
-	console.log(`📅 Queueing brief for user ${userId}:`);
+	console.log(`📅 Queueing brief for user ${userName}:`);
 	console.log(`   - Generation starts (UTC): ${scheduledFor.toISOString()}`);
 	if (notificationScheduledFor) {
 		console.log(`   - Notification sends (UTC): ${notificationScheduledFor.toISOString()}`);
@@ -105,7 +109,7 @@ async function queueBriefGeneration(
 
 	const jobType = isImmediate ? 'immediate' : 'scheduled';
 	console.log(`📋 Queued ${jobType} brief generation:`);
-	console.log(`   - User: ${userId}`);
+	console.log(`   - User: ${userName}`);
 	console.log(`   - Brief date: ${briefDate}`);
 	console.log(`   - Job ID: ${job.queue_job_id}`);
 	console.log(`   - Priority: ${priority}`);
@@ -173,19 +177,24 @@ async function checkAndScheduleBriefs() {
 
 		console.log(`📋 Found ${preferences.length} active preference(s)`);
 
-		// PHASE 0: Batch fetch user timezones (centralized source of truth)
+		// PHASE 0: Batch fetch user timezones and names (centralized source of truth)
 		const userIds = preferences.map((p) => p.user_id).filter(Boolean);
 		const { data: users } = await supabase
 			.from('users')
-			.select('id, timezone')
+			.select('id, timezone, name, email')
 			.in('id', userIds);
 
-		// Create timezone lookup map
-		// Type assertion: timezone column exists but types haven't been regenerated yet
+		// Create timezone and name lookup maps
 		const userTimezoneMap = new Map<string, string>();
+		const userNameMap = new Map<string, string>();
 		(users as any)?.forEach((user: any) => {
 			if (user.id && user.timezone) {
 				userTimezoneMap.set(user.id, user.timezone);
+			}
+			if (user.id) {
+				// Use name if available, otherwise fall back to email
+				const displayName = user.name || user.email;
+				userNameMap.set(user.id, displayName);
 			}
 		});
 
@@ -276,8 +285,9 @@ async function checkAndScheduleBriefs() {
 				const backoffDecision = engagementDataMap.get(preference.user_id);
 
 				if (!backoffDecision?.shouldSend) {
+					const userName = userNameMap.get(preference.user_id) || preference.user_id;
 					console.log(
-						`⏸️ Skipping brief for user ${preference.user_id}: ${backoffDecision?.reason || 'unknown'}`
+						`⏸️ Skipping brief for user ${userName}: ${backoffDecision?.reason || 'unknown'}`
 					);
 					continue;
 				}
@@ -288,8 +298,9 @@ async function checkAndScheduleBriefs() {
 				};
 
 				const briefType = backoffDecision.isReengagement ? 're-engagement' : 'standard';
+				const userName = userNameMap.get(preference.user_id) || preference.user_id;
 				console.log(
-					`📧 Will queue ${briefType} brief for user ${preference.user_id} (inactive for ${backoffDecision.daysSinceLastLogin} days)`
+					`📧 Will queue ${briefType} brief for user ${userName} (inactive for ${backoffDecision.daysSinceLastLogin} days)`
 				);
 			}
 
@@ -300,7 +311,8 @@ async function checkAndScheduleBriefs() {
 			);
 
 			if (!nextRunTime) {
-				console.warn(`Could not calculate next run time for user ${preference.user_id}`);
+				const userName = userNameMap.get(preference.user_id) || preference.user_id;
+				console.warn(`Could not calculate next run time for user ${userName}`);
 				continue;
 			}
 
@@ -355,7 +367,8 @@ async function checkAndScheduleBriefs() {
 			);
 
 			if (hasConflict) {
-				console.log(`⏭️ Brief already scheduled for user ${preference.user_id}`);
+				const userName = userNameMap.get(preference.user_id) || preference.user_id;
+				console.log(`⏭️ Brief already scheduled for user ${userName}`);
 				return false;
 			}
 
@@ -372,7 +385,8 @@ async function checkAndScheduleBriefs() {
 		const queueResults = await Promise.allSettled(
 			usersToQueue.map(
 				async ({ preference, nextRunTime, generationStartTime, engagementMetadata }) => {
-					console.log(`⏰ Scheduling brief for user ${preference.user_id}:`);
+					const userName = userNameMap.get(preference.user_id) || preference.user_id;
+					console.log(`⏰ Scheduling brief for user ${userName}:`);
 					console.log(`   - Generation starts: ${generationStartTime.toISOString()}`);
 					console.log(`   - Notification sends: ${nextRunTime.toISOString()}`);
 					await queueBriefGeneration(
@@ -381,7 +395,8 @@ async function checkAndScheduleBriefs() {
 						undefined,
 						userTimezoneMap.get(preference.user_id) || 'UTC', // Use centralized timezone from users table
 						engagementMetadata,
-						nextRunTime // Send notification at user's scheduled time
+						nextRunTime, // Send notification at user's scheduled time
+						userNameMap
 					);
 					return preference.user_id;
 				}
@@ -397,8 +412,9 @@ async function checkAndScheduleBriefs() {
 			console.warn(`⚠️ Failed to queue ${failureCount} brief(s)`);
 			queueResults.forEach((result, i) => {
 				if (result.status === 'rejected') {
+					const userName = userNameMap.get(usersToQueue[i].preference.user_id) || usersToQueue[i].preference.user_id;
 					console.error(
-						`Failed to queue brief for user ${usersToQueue[i].preference.user_id}:`,
+						`Failed to queue brief for user ${userName}:`,
 						result.reason
 					);
 				}
@@ -623,18 +639,24 @@ async function checkAndScheduleDailySMS() {
 
 		console.log(`📋 [SMS Scheduler] Found ${smsPreferences.length} user(s) with SMS enabled`);
 
-		// Batch fetch user timezones (centralized source of truth)
+		// Batch fetch user timezones and names (centralized source of truth)
 		const smsUserIds = smsPreferences.map((p) => p.user_id).filter(Boolean);
 		const { data: smsUsers } = await supabase
 			.from('users')
-			.select('id, timezone')
+			.select('id, timezone, name, email')
 			.in('id', smsUserIds);
 
-		// Create timezone lookup map
+		// Create timezone and name lookup maps
 		const smsUserTimezoneMap = new Map<string, string>();
+		const smsUserNameMap = new Map<string, string>();
 		smsUsers?.forEach((user) => {
 			if (user.id && user.timezone) {
 				smsUserTimezoneMap.set(user.id, user.timezone);
+			}
+			if (user.id) {
+				// Use name if available, otherwise fall back to email
+				const displayName = user.name || user.email;
+				smsUserNameMap.set(user.id, displayName);
 			}
 		});
 
@@ -668,12 +690,14 @@ async function checkAndScheduleDailySMS() {
 				});
 
 				queuedCount++;
+				const userName = smsUserNameMap.get(pref.user_id) || pref.user_id;
 				console.log(
-					`✅ [SMS Scheduler] Queued SMS job for user ${pref.user_id} (${todayDate})`
+					`✅ [SMS Scheduler] Queued SMS job for user ${userName} (${todayDate})`
 				);
 			} catch (jobError) {
+				const userName = smsUserNameMap.get(pref.user_id) || pref.user_id;
 				console.error(
-					`❌ [SMS Scheduler] Error queuing SMS job for user ${pref.user_id}:`,
+					`❌ [SMS Scheduler] Error queuing SMS job for user ${userName}:`,
 					jobError
 				);
 				skippedCount++;

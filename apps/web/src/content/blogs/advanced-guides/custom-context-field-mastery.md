@@ -7,7 +7,15 @@ lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.7'
 published: false
-tags: ['advanced-guides', 'context-fields', 'project-management', 'customization', 'power-users', 'ai']
+tags:
+    [
+        'advanced-guides',
+        'context-fields',
+        'project-management',
+        'customization',
+        'power-users',
+        'ai'
+    ]
 readingTime: 11
 excerpt: 'Master custom context fields in BuildOS to capture what actually matters for YOUR specific projects. Learn design patterns and advanced techniques for project context.'
 pic: 'context-fields'
@@ -15,4 +23,4 @@ pic: 'context-fields'
 
 # Custom Context Field Mastery
 
-*Content coming soon...*
+_Content coming soon..._
