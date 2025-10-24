@@ -98,14 +98,12 @@
 
 				<div class="space-y-4 text-left max-w-md mx-auto">
 					{#each frameworkHints as hint}
+						{@const HintIcon = hint.icon}
 						<div class="flex items-start gap-3 group">
 							<div
 								class="flex-shrink-0 mt-0.5 p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover:scale-105 transition-transform duration-200"
 							>
-								<svelte:component
-									this={hint.icon}
-									class="w-4 h-4 text-purple-600 dark:text-purple-400"
-								/>
+								<HintIcon class="w-4 h-4 text-purple-600 dark:text-purple-400" />
 							</div>
 							<span class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
 								{hint.text}

@@ -16,6 +16,7 @@
 	} from 'lucide-svelte';
 
 	import type { PhaseWithTasks } from '$lib/types/project-page.types';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -222,29 +223,24 @@
 	}
 </script>
 
-{#if isOpen}
-	<div
-		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-		role="dialog"
-		aria-modal="true"
-	>
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-		>
-			<!-- Header -->
-			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-					{isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
-				</h3>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-					{isRegeneration
-						? 'Configure how to regenerate phases and schedule tasks'
-						: 'Configure how to generate phases and schedule tasks'}
-				</p>
-			</div>
+<Modal
+	{isOpen}
+	onClose={handleCancel}
+	title={isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
+	size="lg"
+>
+	<div slot="header" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+		<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+			{isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
+		</h3>
+		<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+			{isRegeneration
+				? 'Configure how to regenerate phases and schedule tasks'
+				: 'Configure how to generate phases and schedule tasks'}
+		</p>
+	</div>
 
-			<!-- Content -->
-			<div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+	<div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
 				<!-- Regeneration Warning -->
 				{#if isRegeneration && existingPhases.length > 0}
 					<div
@@ -1083,24 +1079,22 @@
 				{/if}
 			</div>
 
-			<!-- Footer -->
-			<div
-				class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3"
-			>
-				<Button on:click={handleCancel} variant="secondary" size="md">Cancel</Button>
-				<Button
-					on:click={handleConfirm}
-					disabled={!previewData ||
-						totalSelectedTasks === 0 ||
-						loading ||
-						!localProjectStartDate}
-					variant="primary"
-					size="md"
-					{loading}
-				>
-					{isRegeneration ? 'Regenerate Phases' : 'Generate Phases'}
-				</Button>
-			</div>
-		</div>
+	<div
+		slot="footer"
+		class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3"
+	>
+		<Button on:click={handleCancel} variant="secondary" size="md">Cancel</Button>
+		<Button
+			on:click={handleConfirm}
+			disabled={!previewData ||
+				totalSelectedTasks === 0 ||
+				loading ||
+				!localProjectStartDate}
+			variant="primary"
+			size="md"
+			{loading}
+		>
+			{isRegeneration ? 'Regenerate Phases' : 'Generate Phases'}
+		</Button>
 	</div>
-{/if}
+</Modal>

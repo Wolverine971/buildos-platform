@@ -40,10 +40,10 @@
 	let className = '';
 	export { className as class };
 
-	// Size classes ensuring minimum touch target of 44px
+	// Size classes ensuring minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
-		sm: 'px-3 py-2 text-sm min-h-[34px] min-w-[34px]',
-		md: 'px-4 py-2.5 text-base min-h-[42px] min-w-[42px]',
+		sm: 'px-3 py-2 text-sm min-h-[44px] min-w-[44px]',
+		md: 'px-4 py-2.5 text-base min-h-[44px] min-w-[44px]',
 		lg: 'px-6 py-3 text-lg min-h-[48px] min-w-[48px]',
 		xl: 'px-8 py-4 text-xl min-h-[56px] min-w-[56px]'
 	};

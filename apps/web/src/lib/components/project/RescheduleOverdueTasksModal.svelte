@@ -1,9 +1,10 @@
 <!-- apps/web/src/lib/components/project/RescheduleOverdueTasksModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { Clock, Info, X, Shuffle } from 'lucide-svelte';
+	import { Clock, Info, Shuffle } from 'lucide-svelte';
 
 	import type { TaskWithCalendarEvents, PhaseWithTasks } from '$lib/types/project-page.types';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { projectStoreV2 } from '$lib/stores/project.store';
@@ -119,12 +120,6 @@
 		dispatch('close');
 	}
 
-	function handleBackdropClick(event: MouseEvent) {
-		if (event.target === event.currentTarget) {
-			handleClose();
-		}
-	}
-
 	// Group overdue tasks by how overdue they are
 	$: overdueGroups = (() => {
 		const groups = {
@@ -144,54 +139,27 @@
 	})();
 </script>
 
-{#if isOpen}
-	<!-- Backdrop -->
+<Modal {isOpen} onClose={handleClose} title="Reschedule Overdue Tasks" size="lg">
 	<div
-		class="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-		on:click={handleBackdropClick}
-		role="button"
-		tabindex="-1"
+		slot="header"
+		class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
 	>
-		<!-- Modal -->
-		<div
-			class="bg-white dark:bg-gray-800 w-full sm:max-w-2xl sm:rounded-xl shadow-xl max-h-[90vh] sm:max-h-[85vh] flex flex-col animate-slide-up sm:animate-fade-in"
-			on:click|stopPropagation
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="modal-title"
-		>
-			<!-- Header -->
-			<header
-				class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
-			>
-				<div class="flex items-center gap-3">
-					<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-						<Clock class="w-5 h-5 text-orange-600 dark:text-orange-400" />
-					</div>
-					<div>
-						<h2
-							id="modal-title"
-							class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white"
-						>
-							Reschedule Overdue Tasks
-						</h2>
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-							{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''}
-							to reschedule
-						</p>
-					</div>
-				</div>
-				<button
-					on:click={handleClose}
-					class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5 text-gray-500" />
-				</button>
-			</header>
+		<div class="flex items-center gap-3">
+			<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+				<Clock class="w-5 h-5 text-orange-600 dark:text-orange-400" />
+			</div>
+			<div>
+				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+					Reschedule Overdue Tasks
+				</h2>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+					{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''} to reschedule
+				</p>
+			</div>
+		</div>
+	</div>
 
-			<!-- Content -->
-			<div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+	<div class="p-4 sm:p-6 space-y-6">
 				{#if error}
 					<div
 						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
@@ -344,56 +312,22 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
-			<footer
-				class="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+	<div
+		slot="footer"
+		class="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+	>
+		<div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+			<Button on:click={handleClose} variant="outline" disabled={loading}> Cancel </Button>
+			<Button
+				on:click={handleReschedule}
+				variant="primary"
+				disabled={loading || overdueTasks.length === 0}
+				{loading}
 			>
-				<div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-					<Button on:click={handleClose} variant="outline" disabled={loading}>
-						Cancel
-					</Button>
-					<Button
-						on:click={handleReschedule}
-						variant="primary"
-						disabled={loading || overdueTasks.length === 0}
-						{loading}
-					>
-						{loading
-							? 'Rescheduling...'
-							: `Reschedule ${overdueTasks.length} Task${overdueTasks.length !== 1 ? 's' : ''}`}
-					</Button>
-				</div>
-			</footer>
+				{loading
+					? 'Rescheduling...'
+					: `Reschedule ${overdueTasks.length} Task${overdueTasks.length !== 1 ? 's' : ''}`}
+			</Button>
 		</div>
 	</div>
-{/if}
-
-<style>
-	@keyframes slide-up {
-		from {
-			transform: translateY(100%);
-		}
-		to {
-			transform: translateY(0);
-		}
-	}
-
-	@keyframes fade-in {
-		from {
-			opacity: 0;
-			transform: scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-
-	.animate-slide-up {
-		animation: slide-up 0.3s ease-out;
-	}
-
-	.animate-fade-in {
-		animation: fade-in 0.2s ease-out;
-	}
-</style>
+</Modal>

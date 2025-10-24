@@ -137,7 +137,7 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-400"
+									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
 								>
 									Processing brain dump
 								</span>
@@ -154,7 +154,7 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-400"
+									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
 								>
 									Brain dump completed
 								</span>
@@ -178,7 +178,7 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-400"
+									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
 								>
 									Processing failed
 								</span>
@@ -219,11 +219,11 @@
 			>
 				<!-- Header -->
 				<div
-					class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-750"
+					class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
 				>
 					<div class="flex items-center justify-between">
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-gray-400 flex items-center gap-2"
+							class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2"
 						>
 							<span
 								class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
@@ -266,7 +266,7 @@
 					<!-- Active Jobs -->
 					{#each $activeBackgroundJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-750/50 transition-colors"
+							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -275,7 +275,7 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-400">
+									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
 										{job.status === 'processing' ? 'Processing' : 'Queued'}
 									</p>
 									<p
@@ -306,7 +306,7 @@
 					<!-- Recent Completed Jobs -->
 					{#each recentCompletedJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-750/50 transition-colors bg-green-50/50 dark:bg-green-900/10"
+							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors bg-green-50/50 dark:bg-green-900/10"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -315,11 +315,11 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-400">
+									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
 										Completed successfully
 									</p>
 									{#if job.result?.operationCount}
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<p class="text-xs text-gray-500 dark:text-gray-300 mt-1">
 											{job.result.operationCount} operations applied
 										</p>
 									{/if}
@@ -346,7 +346,7 @@
 					<!-- Recent Failed Jobs -->
 					{#each recentFailedJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-750/50 transition-colors bg-red-50/50 dark:bg-red-900/10"
+							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors bg-red-50/50 dark:bg-red-900/10"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -355,7 +355,7 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-400">
+									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
 										Processing failed
 									</p>
 									<p
@@ -382,7 +382,7 @@
 					<!-- Empty state -->
 					{#if $activeBackgroundJobs.length === 0 && recentCompletedJobs.length === 0 && recentFailedJobs.length === 0}
 						<div class="p-8 text-center">
-							<p class="text-sm text-gray-500 dark:text-gray-400">
+							<p class="text-sm text-gray-500 dark:text-gray-300">
 								No background jobs at the moment
 							</p>
 						</div>

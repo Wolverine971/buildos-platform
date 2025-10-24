@@ -51,8 +51,8 @@ async function handleRpcDashboard({ user, supabase, timezone }: any) {
 		const dateStart = format(addDays(new Date(today), -30), 'yyyy-MM-dd');
 		const dateEnd = format(addDays(new Date(today), 14), 'yyyy-MM-dd');
 
-		// Parallel fetch: RPC data and calendar status
-		const [rpcResult, calendarStatusPromise] = await Promise.all([
+		// Parallel fetch: RPC data, calendar status, and today's brief
+		const [rpcResult, calendarStatusPromise, todaysBriefResult] = await Promise.all([
 			// Single RPC call to get all dashboard data
 			supabase.rpc('get_dashboard_data', {
 				p_user_id: user.id,
@@ -71,11 +71,43 @@ async function handleRpcDashboard({ user, supabase, timezone }: any) {
 					console.warn('Calendar status check failed:', error);
 					return { isConnected: false, needsRefresh: false };
 				}
+			})(),
+
+			// Get today's daily brief
+			(async () => {
+				try {
+					const { data, error } = await supabase
+						.from('daily_briefs')
+						.select(
+							`
+							id,
+							brief_date,
+							summary_content,
+							priority_actions,
+							insights,
+							created_at,
+							updated_at
+						`
+						)
+						.eq('user_id', user.id)
+						.eq('brief_date', today)
+						.maybeSingle();
+
+					if (error) {
+						console.warn('Failed to fetch daily brief:', error);
+						return null;
+					}
+					return data;
+				} catch (error) {
+					console.warn('Error fetching daily brief:', error);
+					return null;
+				}
 			})()
 		]);
 
 		const { data: dashboardData, error } = rpcResult;
 		const calendarStatus = calendarStatusPromise;
+		const todaysBrief = todaysBriefResult;
 
 		if (error) {
 			console.error('Error calling dashboard RPC:', error);
@@ -229,7 +261,8 @@ async function handleRpcDashboard({ user, supabase, timezone }: any) {
 			stats: formattedStats,
 			timezone,
 			recurringTasks,
-			recurringInstancesCount: uniqueInstances.length
+			recurringInstancesCount: uniqueInstances.length,
+			todaysBrief
 		});
 	} catch (err) {
 		console.error('Error in RPC dashboard handler:', err);
@@ -273,8 +306,8 @@ async function handleOriginalDashboard({ user, supabase, timezone }: any) {
 	// Initialize recurring instance service
 	const instanceService = RecurringInstanceService.getInstance(supabase);
 
-	// Parallel fetch: regular tasks, recurring instances, and calendar status
-	const [tasksResult, instancesResult, calendarStatusPromise] = await Promise.all([
+	// Parallel fetch: regular tasks, recurring instances, calendar status, and today's brief
+	const [tasksResult, instancesResult, calendarStatusPromise, todaysBriefResult] = await Promise.all([
 		// Get tasks within date range for better performance - 30 days back to 14 days ahead
 		supabase
 			.from('tasks')
@@ -309,12 +342,44 @@ async function handleOriginalDashboard({ user, supabase, timezone }: any) {
 				console.warn('Calendar status check failed:', error);
 				return { isConnected: false, needsRefresh: false };
 			}
+		})(),
+
+		// Get today's daily brief
+		(async () => {
+			try {
+				const { data, error } = await supabase
+					.from('daily_briefs')
+					.select(
+						`
+						id,
+						brief_date,
+						summary_content,
+						priority_actions,
+						insights,
+						created_at,
+						updated_at
+					`
+					)
+					.eq('user_id', user.id)
+					.eq('brief_date', today)
+					.maybeSingle();
+
+				if (error) {
+					console.warn('Failed to fetch daily brief:', error);
+					return null;
+				}
+				return data;
+			} catch (error) {
+				console.warn('Error fetching daily brief:', error);
+				return null;
+			}
 		})()
 	]);
 
 	const { data: allTasks, error } = tasksResult;
 	const [overdueInstances, weekInstances] = instancesResult;
 	const calendarStatus = calendarStatusPromise;
+	const todaysBrief = todaysBriefResult;
 
 	if (error) {
 		console.error('Error fetching tasks:', error);
@@ -466,6 +531,7 @@ async function handleOriginalDashboard({ user, supabase, timezone }: any) {
 		stats,
 		timezone,
 		recurringTasks, // Include parent recurring tasks for reference
-		recurringInstancesCount: uniqueInstances.length
+		recurringInstancesCount: uniqueInstances.length,
+		todaysBrief
 	});
 }

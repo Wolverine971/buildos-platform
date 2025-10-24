@@ -8,7 +8,7 @@
 	import LogDeliveryTable from '$lib/components/admin/notifications/LogDeliveryTable.svelte';
 	import LogSystemTable from '$lib/components/admin/notifications/LogSystemTable.svelte';
 	import LogFilters from '$lib/components/admin/notifications/LogFilters.svelte';
-	import CorrelationViewer from '$lib/components/admin/notifications/CorrelationViewer.svelte';
+	import CorrelationViewerModal from '$lib/components/admin/notifications/CorrelationViewerModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	type Tab = 'events' | 'deliveries' | 'system';
@@ -34,7 +34,7 @@
 	let systemPagination = $state({ page: 1, limit: 100, total: 0, total_pages: 0 });
 
 	// Correlation Viewer State
-	let showCorrelationViewer = $state(false);
+	let showCorrelationViewerModal = $state(false);
 	let correlationId = $state<string | null>(null);
 	let correlationData = $state(null);
 	let correlationLoading = $state(false);
@@ -202,7 +202,7 @@
 
 	function handleViewCorrelation(id: string) {
 		correlationId = id;
-		showCorrelationViewer = true;
+		showCorrelationViewerModal = true;
 		loadCorrelationData(id);
 	}
 
@@ -513,13 +513,13 @@
 </div>
 
 <!-- Correlation Viewer Modal -->
-{#if showCorrelationViewer && correlationId}
-	<CorrelationViewer
+{#if showCorrelationViewerModal && correlationId}
+	<CorrelationViewerModal
 		{correlationId}
 		data={correlationData}
 		loading={correlationLoading}
 		onClose={() => {
-			showCorrelationViewer = false;
+			showCorrelationViewerModal = false;
 			correlationId = null;
 			correlationData = null;
 		}}

@@ -2,9 +2,9 @@
 <!--
 	TimeBlockModal Component
 
-	Modal for creating and editing time blocks with calendar integration and AI suggestions.
-	Follows TaskModal's two-column layout pattern but adapted for time blocks.
-	Uses FormModal for consistent modal structure.
+	High-density, responsive modal for creating and editing time blocks.
+	Matches the TaskModal design language with a two-column layout, rich metadata,
+	and edit controls that live in the sidebar.
 -->
 <script lang="ts">
 	import FormModal from '$lib/components/ui/FormModal.svelte';
@@ -12,12 +12,11 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Calendar, Clock, Zap, Trash2 } from 'lucide-svelte';
+	import { Calendar, Clock, Zap, PencilLine } from 'lucide-svelte';
 	import { format } from 'date-fns';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
 
-	// Props using Svelte 5 runes
 	type Props = {
 		isOpen: boolean;
 		block?: TimeBlockWithProject | null;
@@ -42,21 +41,31 @@
 		onDelete
 	}: Props = $props();
 
-	// Local state (Svelte 5 runes)
 	let blockType = $state<'project' | 'build'>(block?.block_type || 'project');
 	let selectedProjectId = $state<string | null>(block?.project_id || null);
 	let startDateTime = $state<string>('');
 	let endDateTime = $state<string>('');
-	let isSubmitting = $state(false);
 	let isRegenerating = $state(false);
+	let editingEnabled = $state(false);
+	let lastViewedBlockId = $state<string | null>(null);
 
-	// Derived values
 	const isEditing = $derived(!!block);
-	const modalTitle = $derived(isEditing ? 'Edit Focus Session' : 'Schedule Focus Session');
-	const submitText = $derived(isEditing ? 'Save Changes' : 'Create Focus Session');
-	const loadingText = $derived('Saving...');
+	const isViewMode = $derived(isEditing && !editingEnabled);
+	const sessionTypeLabel = $derived(blockType === 'project' ? 'Project Focus' : 'Build Session');
+	const modalTitle = $derived(
+		!isEditing ? 'Schedule Focus Session' : (editingEnabled ? 'Edit Focus Session' : 'Focus Session Overview')
+	);
+	const submitText = $derived(
+		!isEditing ? 'Create Focus Session' : (editingEnabled ? 'Save Changes' : 'Enable Editing')
+	);
+	const loadingText = $derived(
+		isEditing && !editingEnabled ? 'Preparing editor...' : 'Saving...'
+	);
 
-	// Calculate duration
+	const timezoneDisplay = $derived(
+		block?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+	);
+
 	const durationMinutes = $derived.by(() => {
 		if (!startDateTime || !endDateTime) return 0;
 		const start = new Date(startDateTime);
@@ -65,7 +74,6 @@
 		return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
 	});
 
-	// Format duration for display
 	const durationDisplay = $derived.by(() => {
 		if (durationMinutes === 0) return '';
 		const hours = Math.floor(durationMinutes / 60);
@@ -75,7 +83,26 @@
 		return `${hours}h ${mins}m`;
 	});
 
-	// Initialize values when block changes
+	const startDateSummary = $derived.by(() => {
+		const value = startDateTime || block?.start_time;
+		if (!value) return '';
+		try {
+			return format(new Date(value), 'EEE, MMM d | h:mm a');
+		} catch {
+			return '';
+		}
+	});
+
+	const endDateSummary = $derived.by(() => {
+		const value = endDateTime || block?.end_time;
+		if (!value) return '';
+		try {
+			return format(new Date(value), 'EEE, MMM d | h:mm a');
+		} catch {
+			return '';
+		}
+	});
+
 	$effect(() => {
 		if (block) {
 			blockType = block.block_type;
@@ -83,7 +110,6 @@
 			startDateTime = formatDateTimeForInput(block.start_time);
 			endDateTime = formatDateTimeForInput(block.end_time);
 		} else if (!isOpen) {
-			// Reset when modal closes
 			blockType = 'project';
 			selectedProjectId = null;
 			startDateTime = '';
@@ -91,22 +117,36 @@
 		}
 	});
 
-	// Auto-adjust end time if it's before start time
+	$effect(() => {
+		if (!isOpen) {
+			editingEnabled = false;
+			lastViewedBlockId = null;
+			return;
+		}
+
+		const currentId = block?.id ?? null;
+
+		if (!block) {
+			editingEnabled = true;
+		} else if (currentId !== lastViewedBlockId) {
+			editingEnabled = false;
+		}
+
+		lastViewedBlockId = currentId;
+	});
+
 	$effect(() => {
 		if (!startDateTime || !endDateTime) return;
 
 		const start = new Date(startDateTime);
 		const end = new Date(endDateTime);
 
-		// Check if dates are valid and end is before start
 		if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end <= start) {
-			// Set end time to 30 minutes after start time
 			const newEnd = new Date(start.getTime() + 30 * 60 * 1000);
 			endDateTime = formatDateTimeForInput(newEnd.toISOString());
 		}
 	});
 
-	// Helper functions
 	function formatDateTimeForInput(dateString: string): string {
 		if (!dateString) return '';
 		try {
@@ -141,7 +181,6 @@
 		}
 	}
 
-	// Validation
 	function validate(): string | null {
 		if (blockType === 'project' && !selectedProjectId) {
 			return 'Please select a project';
@@ -162,8 +201,12 @@
 		return null;
 	}
 
-	// Submit handler
 	async function handleSubmit(formData: Record<string, any>): Promise<void> {
+		if (isEditing && !editingEnabled) {
+			editingEnabled = true;
+			return;
+		}
+
 		const error = validate();
 		if (error) {
 			throw new Error(error);
@@ -178,7 +221,6 @@
 		};
 
 		if (isEditing && onUpdate && block) {
-			// Update existing block
 			const response = await fetch(`/api/time-blocks/blocks/${block.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
@@ -195,7 +237,6 @@
 			const { data } = await response.json();
 			onUpdate(data.time_block);
 		} else if (!isEditing && onCreate) {
-			// Create new block
 			const response = await fetch('/api/time-blocks/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -214,7 +255,6 @@
 		}
 	}
 
-	// Regenerate AI suggestions
 	async function handleRegenerate() {
 		if (!block) return;
 
@@ -241,7 +281,6 @@
 		}
 	}
 
-	// Delete handler
 	async function handleDelete(blockId: string): Promise<void> {
 		if (!block || !onDelete) return;
 
@@ -260,7 +299,6 @@
 		onDelete(block.id);
 	}
 
-	// Empty form config - we handle fields manually
 	const formConfig = {};
 	const initialData = block || {};
 </script>
@@ -279,215 +317,295 @@
 >
 	<div
 		slot="after-form"
-		class="flex flex-col flex-1 min-h-0 space-y-3 sm:space-y-4 pt-4 px-4 sm:px-6 lg:px-8"
+		class="flex flex-col flex-1 min-h-0 gap-4 sm:gap-5 pt-4 pb-2 px-4 sm:px-6 lg:px-8"
 	>
-		<!-- Main Content Area -->
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 min-h-[40vh] flex-1">
-			<!-- Content Section (Takes most space) -->
-			<div
-				class="lg:col-span-3 flex flex-col space-y-4 h-full min-h-0 bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-800 dark:to-gray-900/30 rounded-xl p-4 sm:p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow"
-			>
-				<!-- Block Type Selector -->
-				<div
-					class="bg-gradient-to-r from-purple-50/50 to-blue-50/50
-							dark:from-purple-900/20 dark:to-blue-900/20
-							-m-4 sm:-m-5 mb-0 p-4 sm:p-5 rounded-t-xl
-							border-b border-gray-200/50 dark:border-gray-700/50"
-				>
-					<FormField label="Session Type" labelFor="block-type" required>
-						<div class="flex gap-3">
-							<button
-								type="button"
-								class="flex-1 p-3 rounded-lg border-2 transition-all
-									   {blockType === 'project'
-									? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-									: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
-								onclick={() => (blockType = 'project')}
-							>
-								<div class="flex items-center gap-2">
-									<div
-										class="w-4 h-4 rounded-full border-2
-											   {blockType === 'project' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'}"
-									/>
-									<span class="font-semibold text-sm">Project Focus</span>
-								</div>
-								<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-									Work on a specific project
-								</p>
-							</button>
-
-							<button
-								type="button"
-								class="flex-1 p-3 rounded-lg border-2 transition-all
-									   {blockType === 'build'
-									? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-									: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
-								onclick={() => (blockType = 'build')}
-							>
-								<div class="flex items-center gap-2">
-									<div
-										class="w-4 h-4 rounded-full border-2
-											   {blockType === 'build' ? 'border-purple-500 bg-purple-500' : 'border-gray-400'}"
-									/>
-									<span class="font-semibold text-sm">Build Block</span>
-								</div>
-								<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-									Flexible deep work time
-								</p>
-							</button>
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 min-h-[38vh]">
+			<section class="lg:col-span-3 flex flex-col gap-4 lg:pr-1">
+				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
+					<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4">
+						<div class="space-y-1">
+							<p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+								Session Setup
+							</p>
+							<h2 class="text-base font-semibold text-slate-900 dark:text-white">
+								{sessionTypeLabel}
+							</h2>
 						</div>
-					</FormField>
-				</div>
-
-				<!-- Project Selector (conditional) -->
-				{#if blockType === 'project'}
-					<FormField label="Project" labelFor="project" required>
-						<Select id="project" bind:value={selectedProjectId} size="lg">
-							<option value="">Select a project...</option>
-							{#each projects as project}
-								<option value={project.id}>{project.name}</option>
-							{/each}
-						</Select>
-					</FormField>
-				{/if}
-
-				<!-- Time Selection -->
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Start Time" labelFor="start-time" required>
-						<TextInput
-							id="start-time"
-							type="datetime-local"
-							bind:value={startDateTime}
-							size="lg"
-						/>
-					</FormField>
-
-					<FormField label="End Time" labelFor="end-time" required>
-						<TextInput
-							id="end-time"
-							type="datetime-local"
-							bind:value={endDateTime}
-							min={startDateTime}
-							size="lg"
-						/>
-					</FormField>
-				</div>
-
-				<!-- Duration Display -->
-				{#if durationMinutes > 0}
-					<div
-						class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20
-							   border border-blue-200 dark:border-blue-700"
-					>
-						<div class="flex items-center gap-2 text-sm">
-							<Clock class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-							<span class="font-medium text-blue-900 dark:text-blue-100">
-								Duration: {durationDisplay}
-							</span>
-						</div>
+						{#if durationDisplay}
+							<div class="inline-flex items-center gap-1.5 rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200/60 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-500/30">
+								<Clock class="w-3.5 h-3.5" />
+								<span>{durationDisplay}</span>
+							</div>
+						{/if}
 					</div>
-				{/if}
 
-				<!-- AI Suggestions Section (edit mode only) -->
-				{#if isEditing && block}
-					<div class="mt-6">
-						<div class="flex items-center justify-between mb-3">
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-								<span class="mr-1.5">💡</span>Focus Suggestions
-							</h3>
-							<button
-								type="button"
-								class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
-									   flex items-center gap-1"
-								onclick={handleRegenerate}
-								disabled={isRegenerating}
-							>
-								<Zap class="w-3 h-3" />
-								{isRegenerating ? 'Regenerating...' : 'Regenerate'}
-							</button>
+					{#if isViewMode}
+						<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-5">
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
+									<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Start</span>
+									<p class="text-sm font-semibold text-slate-900 dark:text-white">{startDateSummary || 'Not scheduled'}</p>
+									{#if block?.start_time}
+										<p class="text-xs text-slate-500 dark:text-slate-400">Started {formatRelativeTime(block.start_time)}</p>
+									{/if}
+								</div>
+								<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
+									<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">End</span>
+									<p class="text-sm font-semibold text-slate-900 dark:text-white">{endDateSummary || 'Not scheduled'}</p>
+									{#if block?.end_time}
+										<p class="text-xs text-slate-500 dark:text-slate-400">Ends {formatRelativeTime(block.end_time)}</p>
+									{/if}
+								</div>
+							</div>
+
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
+									<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Focus type</span>
+									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+										{blockType === 'project' ? 'Project session' : 'Build session'}
+									</p>
+								</div>
+								<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
+									<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Timezone</span>
+									<p class="text-sm font-semibold text-slate-900 dark:text-white">{timezoneDisplay}</p>
+								</div>
+								{#if blockType === 'project' && block?.project?.name}
+									<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5 sm:col-span-2">
+										<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Project</span>
+										<p class="text-sm font-semibold text-slate-900 dark:text-white">{block.project.name}</p>
+									</div>
+								{/if}
+							</div>
 						</div>
-
-						{#if block.ai_suggestions && block.ai_suggestions.length > 0}
-							<div class="space-y-2">
-								{#each block.ai_suggestions as suggestion, index}
-									<div
-										class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50
-											   border border-gray-200 dark:border-gray-700"
+					{:else}
+						<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-6">
+							<FormField label="Session Type" labelFor="block-type" required>
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<button
+										type="button"
+										class="group rounded-xl border-2 p-3 sm:p-4 text-left transition-all duration-200 {blockType === 'project' ? 'border-blue-500 bg-blue-50/80 dark:border-blue-400 dark:bg-blue-950/40 shadow-md' : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}"
+										onclick={() => (blockType = 'project')}
 									>
-										<div class="flex items-start gap-3">
-											<span
-												class="flex-shrink-0 w-6 h-6 rounded-full
-													   bg-blue-500 text-white text-xs
-													   flex items-center justify-center font-bold"
-											>
+										<div class="flex items-center gap-2">
+											<div class="h-2.5 w-2.5 rounded-full border-2 {blockType === 'project' ? 'border-blue-500 bg-blue-500' : 'border-slate-400'}"></div>
+											<span class="text-sm font-semibold text-slate-900 dark:text-white">Project focus</span>
+										</div>
+										<p class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+											Connect this session to one of your projects.
+										</p>
+									</button>
+									<button
+										type="button"
+										class="group rounded-xl border-2 p-3 sm:p-4 text-left transition-all duration-200 {blockType === 'build' ? 'border-purple-500 bg-purple-50/80 dark:border-purple-400 dark:bg-purple-950/40 shadow-md' : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}"
+										onclick={() => (blockType = 'build')}
+									>
+										<div class="flex items-center gap-2">
+											<div class="h-2.5 w-2.5 rounded-full border-2 {blockType === 'build' ? 'border-purple-500 bg-purple-500' : 'border-slate-400'}"></div>
+											<span class="text-sm font-semibold text-slate-900 dark:text-white">Build session</span>
+										</div>
+										<p class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+											Flexible time to push high-impact work forward.
+										</p>
+									</button>
+								</div>
+							</FormField>
+							{#if blockType === 'project'}
+								<FormField label="Project" labelFor="project" required>
+									<Select
+										id="project"
+										bind:value={selectedProjectId}
+										size="lg"
+										class="w-full text-sm"
+									>
+										<option value="">Select a project...</option>
+										{#each projects as project}
+											<option value={project.id}>{project.name}</option>
+										{/each}
+									</Select>
+								</FormField>
+							{/if}
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField label="Start" labelFor="start-time" required>
+									<TextInput
+										id="start-time"
+										type="datetime-local"
+										bind:value={startDateTime}
+										size="lg"
+									/>
+								</FormField>
+								<FormField label="End" labelFor="end-time" required>
+									<TextInput
+										id="end-time"
+										type="datetime-local"
+										bind:value={endDateTime}
+										min={startDateTime}
+										size="lg"
+									/>
+								</FormField>
+							</div>
+							{#if durationMinutes > 0}
+								<div class="rounded-xl border border-blue-200/60 bg-blue-50/80 px-4 py-3 text-sm text-blue-800 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200">
+									<div class="flex items-center gap-2">
+										<Clock class="h-4 w-4" />
+										<span class="font-semibold">Duration: {durationDisplay}</span>
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
+					<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4">
+						<div>
+							<p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+								Focus Suggestions
+							</p>
+							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
+								{isEditing && block?.ai_suggestions?.length
+									? `${block.ai_suggestions.length} curated ideas`
+									: 'Personalized ideas'}
+							</h3>
+						</div>
+						{#if isEditing && block}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								on:click={handleRegenerate}
+								loading={isRegenerating}
+								class="hidden sm:inline-flex"
+							>
+								<Zap class="h-4 w-4" />
+								<span>{isRegenerating ? 'Regenerating...' : 'Refresh'}</span>
+							</Button>
+						{/if}
+					</div>
+					<div class="px-4 sm:px-6 py-4 sm:py-6">
+						{#if block?.ai_suggestions && block.ai_suggestions.length > 0}
+							<div class="space-y-3">
+								{#each block.ai_suggestions as suggestion, index}
+									<div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white/85 p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70">
+										<div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"></div>
+										<div class="relative flex gap-3">
+											<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-lg">
 												{index + 1}
-											</span>
-											<div class="flex-1">
-												<h4
-													class="text-sm font-medium text-gray-900 dark:text-white"
-												>
-													{suggestion.title}
-												</h4>
-												<p
-													class="text-xs text-gray-600 dark:text-gray-300 mt-1"
-												>
+											</div>
+											<div class="flex-1 space-y-1.5">
+												<div class="flex flex-wrap items-center gap-2">
+													<h4 class="text-sm font-semibold text-slate-900 dark:text-white">
+														{suggestion.title}
+													</h4>
+													{#if suggestion.project_name || suggestion.priority || suggestion.estimated_minutes}
+														<span class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/70 dark:text-slate-200 dark:ring-white/10">
+															{#if suggestion.project_name}
+																<span>{suggestion.project_name}</span>
+															{/if}
+															{#if suggestion.estimated_minutes}
+																{#if suggestion.project_name}
+																	<span class="text-slate-400">/</span>
+																{/if}
+																<span>{suggestion.estimated_minutes} min</span>
+															{/if}
+															{#if suggestion.priority}
+																{#if suggestion.project_name || suggestion.estimated_minutes}
+																	<span class="text-slate-400">/</span>
+																{/if}
+																<span>{suggestion.priority}</span>
+															{/if}
+														</span>
+													{/if}
+												</div>
+												<p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
 													{suggestion.reason}
 												</p>
-												{#if suggestion.project_name || suggestion.estimated_minutes}
-													<div
-														class="flex items-center gap-2 mt-2 text-xs text-gray-500"
-													>
-														{#if suggestion.project_name}
-															<span>{suggestion.project_name}</span>
-														{/if}
-														{#if suggestion.estimated_minutes}
-															{#if suggestion.project_name}
-																<span>•</span>
-															{/if}
-															<span
-																>{suggestion.estimated_minutes} min</span
-															>
-														{/if}
-														{#if suggestion.priority}
-															<span>•</span>
-															<span class="uppercase"
-																>{suggestion.priority}</span
-															>
-														{/if}
-													</div>
-												{/if}
 											</div>
 										</div>
 									</div>
 								{/each}
 							</div>
 						{:else}
-							<p class="text-sm text-gray-500 dark:text-gray-400">
-								No suggestions yet. Click "Regenerate" to get AI-powered focus
-								suggestions.
-							</p>
+							<div class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-slate-200/60 bg-slate-50/60 p-5 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300">
+								<p class="font-semibold text-slate-700 dark:text-slate-200">
+									No suggestions yet
+								</p>
+								<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+									Save this session or regenerate to receive tailored focus ideas.
+								</p>
+								{#if isEditing && block}
+									<Button
+										type="button"
+										variant="primary"
+										size="sm"
+										on:click={handleRegenerate}
+										loading={isRegenerating}
+										class="sm:hidden"
+									>
+										<Zap class="h-4 w-4" />
+										<span>{isRegenerating ? 'Generating...' : 'Generate Suggestions'}</span>
+									</Button>
+								{/if}
+							</div>
 						{/if}
 					</div>
-				{/if}
-			</div>
+				</div>
+			</section>
 
-			<!-- Metadata Sidebar -->
-			<div
-				class="lg:col-span-1 bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-800/50 dark:to-gray-900/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow lg:max-h-full lg:overflow-y-auto"
-			>
-				<!-- Calendar Sync Status -->
+			<aside class="lg:col-span-1 flex flex-col gap-4">
+				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4">
+					<div class="flex items-center justify-between">
+						<h3 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+							Session Controls
+						</h3>
+						{#if isEditing}
+							<span class="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+								{editingEnabled ? 'Editing' : 'Viewing'}
+							</span>
+						{/if}
+					</div>
+					{#if isEditing}
+						<Button
+							variant={editingEnabled ? 'outline' : 'primary'}
+							size="sm"
+							class="w-full justify-center"
+							on:click={() => (editingEnabled = !editingEnabled)}
+						>
+							<PencilLine class="h-4 w-4" />
+							<span>{editingEnabled ? 'Exit Edit Mode' : 'Edit Session'}</span>
+						</Button>
+						<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+							{editingEnabled
+								? 'Adjust session details and timing, then save your changes.'
+								: 'Enable editing to adjust timing, project context, or session type.'}
+						</p>
+						<Button
+							type="button"
+							variant="secondary"
+							size="sm"
+							class="w-full justify-center"
+							on:click={handleRegenerate}
+							loading={isRegenerating}
+							disabled={!block}
+						>
+							<Zap class="h-4 w-4" />
+							<span>{isRegenerating ? 'Regenerating...' : 'Regenerate Suggestions'}</span>
+						</Button>
+					{:else}
+						<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+							Craft the perfect block: set the type, project, and timing, then add it to your schedule.
+						</p>
+					{/if}
+				</div>
+
 				{#if isEditing && block}
-					<div class="space-y-2">
-						<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+					<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3">
+						<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
 							Calendar Sync
 						</h4>
-						<div class="flex items-center gap-2">
-							<div
-								class="w-2 h-2 rounded-full
-									   {block.sync_status === 'synced' ? 'bg-green-500' : 'bg-yellow-500'}"
-							/>
-							<span class="text-xs text-gray-600 dark:text-gray-300">
-								{block.sync_status === 'synced' ? 'Synced' : 'Pending'}
+						<div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+							<div class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced' ? 'bg-emerald-500' : 'bg-amber-500'}"></div>
+							<span class="font-medium">
+								{block.sync_status === 'synced' ? 'Synced to calendar' : 'Pending sync'}
 							</span>
 						</div>
 						{#if block.calendar_event_link}
@@ -495,46 +613,89 @@
 								href={block.calendar_event_link}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400
-									   flex items-center gap-1"
+								class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
 							>
-								<Calendar class="w-3 h-3" />
-								Open in Calendar
+								<Calendar class="h-4 w-4" />
+								<span>Open calendar event</span>
 							</a>
 						{/if}
 					</div>
 				{/if}
 
-				<!-- Metadata -->
-				<div class="space-y-2">
-					<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
-						Session Info
-					</h4>
-					<div class="text-xs space-y-1">
-						<div class="flex justify-between">
-							<span class="text-gray-500">Type</span>
-							<span class="font-medium text-gray-900 dark:text-white">
-								{blockType === 'project' ? 'Project' : 'Build'}
+				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4">
+					<div class="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+						<div class="flex items-center justify-between gap-3">
+							<span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.32em]">
+								Overview
 							</span>
 						</div>
-						{#if durationMinutes > 0}
-							<div class="flex justify-between">
-								<span class="text-gray-500">Duration</span>
-								<span class="font-medium text-gray-900 dark:text-white">
-									{durationDisplay}
+						<div class="space-y-2">
+							<div class="flex items-center justify-between gap-3">
+								<span>Focus type</span>
+								<span class="text-right font-semibold text-slate-900 dark:text-white">
+									{blockType === 'project' ? 'Project session' : 'Build session'}
 								</span>
 							</div>
-						{/if}
+							{#if durationMinutes > 0}
+								<div class="flex items-center justify-between gap-3">
+									<span>Duration</span>
+									<span class="text-right font-semibold text-slate-900 dark:text-white">
+										{durationDisplay}
+									</span>
+								</div>
+							{/if}
+							{#if startDateSummary}
+								<div class="flex items-start justify-between gap-3">
+									<span>Starts</span>
+									<span class="text-right font-semibold text-slate-900 dark:text-white">
+										{startDateSummary}
+									</span>
+								</div>
+							{/if}
+							{#if endDateSummary}
+								<div class="flex items-start justify-between gap-3">
+									<span>Ends</span>
+									<span class="text-right font-semibold text-slate-900 dark:text-white">
+										{endDateSummary}
+									</span>
+								</div>
+							{/if}
+							<div class="flex items-start justify-between gap-3">
+								<span>Timezone</span>
+								<span class="text-right font-semibold text-slate-900 dark:text-white">
+									{timezoneDisplay}
+								</span>
+							</div>
+						</div>
 					</div>
+					{#if blockType === 'project' && (block?.project?.name || selectedProjectId)}
+						<div class="rounded-xl border border-slate-200/60 bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+							<span class="font-semibold text-slate-700 dark:text-slate-200">
+								Project
+							</span>
+							<p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+								{#if block?.project?.name}
+									{block.project.name}
+								{:else if selectedProjectId}
+									{#each projects as project}
+										{#if project.id === selectedProjectId}
+											{project.name}
+										{/if}
+									{/each}
+								{:else}
+									Not selected
+								{/if}
+							</p>
+						</div>
+					{/if}
 				</div>
 
-				<!-- Activity (edit mode only) -->
 				{#if isEditing && block}
-					<div class="space-y-2">
-						<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+					<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3">
+						<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
 							Activity
 						</h4>
-						<div class="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+						<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
 							<div>Created {formatRelativeTime(block.created_at)}</div>
 							{#if block.updated_at !== block.created_at}
 								<div>Updated {formatRelativeTime(block.updated_at)}</div>
@@ -542,7 +703,7 @@
 						</div>
 					</div>
 				{/if}
-			</div>
+			</aside>
 		</div>
 	</div>
 </FormModal>

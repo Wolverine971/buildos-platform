@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Info, RefreshCw, Calendar, ChevronRight } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	export let isOpen = false;
@@ -94,32 +95,24 @@
 	$: hasChanges = filteredSuggestions.length > 0;
 </script>
 
-{#if isOpen && hasChanges}
-	<div
-		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-		role="dialog"
-		aria-modal="true"
-	>
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
-		>
-			<!-- Header -->
-			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-				<div class="flex items-center gap-3">
-					<RefreshCw class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Review Recurring Task Suggestions
-						</h3>
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-							The AI has suggested {filteredSuggestions.length} change{filteredSuggestions.length ===
-							1
-								? ''
-								: 's'} to optimize recurring tasks
-						</p>
-					</div>
+{#if hasChanges}
+	<Modal {isOpen} onClose={handleSkip} title="Review Recurring Task Suggestions" size="lg">
+		<div slot="header" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex items-center gap-3">
+				<RefreshCw class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+				<div>
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						Review Recurring Task Suggestions
+					</h3>
+					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+						The AI has suggested {filteredSuggestions.length} change{filteredSuggestions.length ===
+						1
+							? ''
+							: 's'} to optimize recurring tasks
+					</p>
 				</div>
 			</div>
+		</div>
 
 			<!-- Info Banner -->
 			<div
@@ -299,26 +292,25 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
-			<div
-				class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
-			>
-				<div class="flex justify-between items-center">
-					<p class="text-sm text-gray-500 dark:text-gray-400">
-						Changes will be applied after phases are generated
-					</p>
-					<div class="flex gap-3">
-						<Button variant="secondary" on:click={handleSkip}>Skip All Changes</Button>
-						<Button
-							variant="primary"
-							on:click={handleConfirm}
-							disabled={acceptedSuggestions.size === 0}
-						>
-							Apply Selected Changes ({acceptedSuggestions.size})
-						</Button>
-					</div>
+		<div
+			slot="footer"
+			class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+		>
+			<div class="flex justify-between items-center">
+				<p class="text-sm text-gray-500 dark:text-gray-400">
+					Changes will be applied after phases are generated
+				</p>
+				<div class="flex gap-3">
+					<Button variant="secondary" on:click={handleSkip}>Skip All Changes</Button>
+					<Button
+						variant="primary"
+						on:click={handleConfirm}
+						disabled={acceptedSuggestions.size === 0}
+					>
+						Apply Selected Changes ({acceptedSuggestions.size})
+					</Button>
 				</div>
 			</div>
 		</div>
-	</div>
+	</Modal>
 {/if}

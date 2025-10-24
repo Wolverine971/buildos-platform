@@ -276,6 +276,8 @@ Tone & Style:
 Structure & Format (300 words max):
 Use clean Markdown formatting with these sections:
 
+**IMPORTANT: Do not include a heading with the date or "Daily Brief" prefix - this is already displayed in the UI. Start directly with the Opening Context paragraph.**
+
 1. **Opening Context** (2-3 sentences)
    - What type of day is this? (Heavy workload, cleanup day, momentum building, etc.)
    - Reference holidays if present

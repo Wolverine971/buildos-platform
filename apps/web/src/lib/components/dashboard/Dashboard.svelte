@@ -15,7 +15,6 @@
 	import type { Task } from '$lib/types/project';
 	import type {
 		User,
-		DashboardStats,
 		UserFamiliarity,
 		NudgeCard,
 		PrimaryCTA,
@@ -25,7 +24,6 @@
 	import type { DashboardData } from '$lib/services/dashboardData.service';
 	import { dashboardStore } from '$lib/stores/dashboard.store';
 	import { dashboardDataService } from '$lib/services/dashboardData.service';
-	// REMOVED: Real-time dashboard service imports - not needed for dashboard functionality
 
 	// Components
 	import DailyBriefCard from '$lib/components/dashboard/DailyBriefCard.svelte';
@@ -177,7 +175,7 @@
 	let bottomSectionsLoaded = $state(false);
 	let bottomSectionsData = $state<BottomSectionsData>({});
 	let lazyLoadError = $state<string | null>(null);
-	let todaysBrief = $state<any>(null);
+	let todaysBrief = $state<any>(initialData?.todaysBrief || null);
 	let loadingBrief = $state(false);
 
 	// Lazy-loaded components
@@ -794,8 +792,8 @@
 				</section>
 			{/if}
 
-			<!-- Quick Actions - Only show if bottom sections are loaded and there's a daily brief -->
-			{#if bottomSectionsLoaded && todaysBrief && initialData?.activeProjects && displayMode !== 'first-time'}
+			<!-- Quick Actions - Show daily brief if available -->
+			{#if todaysBrief && initialData?.activeProjects && displayMode !== 'first-time'}
 				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 					<!-- Daily Brief -->
 					<DailyBriefCard brief={todaysBrief} on:openBrief={handleOpenBrief} />
@@ -804,6 +802,7 @@
 
 			<!-- Welcome Message with modern gradient -->
 			{#if showWelcomeMessages && primaryCTA && displayMode !== 'first-time'}
+				{@const Icon = primaryCTA.primaryAction.icon}
 				<div
 					class="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 				>
@@ -819,10 +818,7 @@
 								href={primaryCTA.primaryAction.href}
 								class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-sm font-semibold"
 							>
-								<svelte:component
-									this={primaryCTA.primaryAction.icon}
-									class="h-4 w-4 mr-2"
-								/>
+								<Icon class="h-4 w-4 mr-2" />
 								{primaryCTA.primaryAction.text}
 							</a>
 						</div>
@@ -834,6 +830,7 @@
 			{#if nudgeCards?.length}
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
 					{#each nudgeCards as card}
+					{@const CardIcon = card.icon}
 						<div
 							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
 						>
@@ -841,10 +838,7 @@
 								<div
 									class="p-2 bg-{card.color}-100 dark:bg-{card.color}-900/30 rounded-lg"
 								>
-									<svelte:component
-										this={card.icon}
-										class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400"
-									/>
+									<CardIcon class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400" />
 								</div>
 								<div class="flex-1">
 									<h4
@@ -871,22 +865,25 @@
 
 			<!-- Task Cards - Mobile Tabs / Desktop Grid -->
 			{#if showTaskCards}
-				<!-- Mobile: Tab view -->
+				<!-- Mobile: Tab view with Time Blocks -->
 				<section class="sm:hidden mb-6">
-					{#key [pastDueTasks, todaysTasks, tomorrowsTasks]}
+					{#key [pastDueTasks, todaysTasks, tomorrowsTasks, timeBlocks]}
 						<MobileTaskTabs
 							{pastDueTasks}
 							{todaysTasks}
 							{tomorrowsTasks}
+							{timeBlocks}
 							{calendarStatus}
 							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
+							onNewTimeBlock={handleNewTimeBlock}
 						/>
 					{/key}
 				</section>
 
 				<!-- Desktop: Grid view -->
 				<section
-					class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
+					class="hidden sm:grid auto-rows-fr items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
 				>
 					{#key pastDueTasks}
 						<TimeBlocksCard
@@ -898,7 +895,7 @@
 							emptyIcon={CheckCircle2}
 						/>
 					{/key}
-					{#key todaysTasks}
+					{#key [todaysTasks, timeBlocks]}
 						<TimeBlocksCard
 							title="Today"
 							tasks={todaysTasks || []}
@@ -911,7 +908,7 @@
 							emptyIcon={CheckCircle2}
 						/>
 					{/key}
-					{#key tomorrowsTasks}
+					{#key [tomorrowsTasks, timeBlocks]}
 						<TimeBlocksCard
 							title="Tomorrow"
 							tasks={tomorrowsTasks || []}
@@ -1060,13 +1057,13 @@
 			{#if showLazyLoadedSections && bottomSectionsLoaded}
 				{#if BraindumpWeekView}
 					<section class="mb-4 sm:mb-6">
-						<svelte:component this={BraindumpWeekView} data={bottomSectionsData} />
+						<BraindumpWeekView data={bottomSectionsData} />
 					</section>
 				{/if}
 
 				{#if PhaseCalendarView}
 					<section class="mb-4 sm:mb-6">
-						<svelte:component this={PhaseCalendarView} data={bottomSectionsData} />
+						<PhaseCalendarView data={bottomSectionsData} />
 					</section>
 				{/if}
 			{/if}
@@ -1093,8 +1090,7 @@
 <!-- Modals - Lazy Loaded -->
 
 {#if TaskModal && showTaskModal && selectedTask}
-	<svelte:component
-		this={TaskModal}
+	<TaskModal
 		isOpen={showTaskModal}
 		task={selectedTask}
 		projectId={selectedTask?.project_id}
@@ -1108,16 +1104,14 @@
 {/if}
 
 {#if DailyBriefModal}
-	<svelte:component
-		this={DailyBriefModal}
+	<DailyBriefModal
 		isOpen={showDailyBriefModal}
 		brief={selectedBrief}
 		onClose={handleCloseBriefModal}
 	/>
 {/if}
 {#if TimeBlockModal}
-	<svelte:component
-		this={TimeBlockModal}
+	<TimeBlockModal
 		isOpen={showTimeBlockModal}
 		block={selectedTimeBlock}
 		projects={activeProjects}

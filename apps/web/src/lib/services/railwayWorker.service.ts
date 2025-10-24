@@ -128,10 +128,17 @@ export class RailwayWorkerService {
 
 		if (!response.ok) {
 			const error = await response.json();
-			throw new Error(error.error || 'Failed to queue brief generation');
+			throw new Error(
+				error?.error || `Failed to queue brief generation (${response.status})`
+			);
 		}
 
-		return response.json();
+		const result = await response.json();
+		if (!result?.success || !result?.jobId) {
+			throw new Error('Invalid response format from worker');
+		}
+
+		return result;
 	}
 
 	/**
@@ -161,10 +168,17 @@ export class RailwayWorkerService {
 
 		if (!response.ok) {
 			const error = await response.json();
-			throw new Error(error.error || 'Failed to queue phases generation');
+			throw new Error(
+				error?.error || `Failed to queue phases generation (${response.status})`
+			);
 		}
 
-		return response.json();
+		const result = await response.json();
+		if (!result?.success || !result?.jobId) {
+			throw new Error('Invalid response format from worker');
+		}
+
+		return result;
 	}
 
 	/**
@@ -198,10 +212,17 @@ export class RailwayWorkerService {
 
 		if (!response.ok) {
 			const error = await response.json();
-			throw new Error(error.error || 'Failed to queue onboarding analysis');
+			throw new Error(
+				error?.error || `Failed to queue onboarding analysis (${response.status})`
+			);
 		}
 
-		return response.json();
+		const result = await response.json();
+		if (!result?.success || !result?.jobId) {
+			throw new Error('Invalid response format from worker');
+		}
+
+		return result;
 	}
 
 	/**

@@ -1452,6 +1452,51 @@ function buildTimeAllocationSection(
 	return section;
 }
 
+/**
+ * Escapes special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Adds markdown links to project and task mentions in the Executive Summary.
+ * Links only the first occurrence of each project/task name for better readability.
+ *
+ * @param text - The LLM-generated Executive Summary text
+ * @param projects - Array of projects with tasks and metadata
+ * @returns The text with project and task names converted to markdown links
+ */
+function addLinksToExecutiveSummary(
+	text: string,
+	projects: DailyBriefAnalysisProject[]
+): string {
+	let result = text;
+
+	// Link projects (first occurrence only per project)
+	for (const project of projects) {
+		const regex = new RegExp(`\\b${escapeRegex(project.project_name)}\\b`, 'i');
+		result = result.replace(regex, (match) => `[${match}](${project.project_link})`);
+	}
+
+	// Link tasks (first occurrence only per task)
+	for (const project of projects) {
+		const allTasks = [
+			...project.tasks_today,
+			...project.overdue_tasks,
+			...project.tasks_next_seven_days,
+			...project.recently_completed_tasks
+		];
+
+		for (const task of allTasks) {
+			const regex = new RegExp(`\\b${escapeRegex(task.title)}\\b`, 'i');
+			result = result.replace(regex, (match) => `[${match}](${task.link})`);
+		}
+	}
+
+	return result;
+}
+
 async function generateMainBrief(
 	projectBriefs: ProjectBriefWithContext[],
 	briefDate: string,
@@ -1462,7 +1507,7 @@ async function generateMainBrief(
 ): Promise<string> {
 	const formattedDate = formatDate(briefDate);
 
-	let mainBrief = `# 🌅 Daily Brief - ${formattedDate}\n\n`;
+	let mainBrief = `# 🌅 ${formattedDate}\n\n`;
 
 	// Check for holidays
 	const briefDateObj = parseISO(briefDate + 'T00:00:00');
@@ -1576,9 +1621,15 @@ async function generateMainBrief(
 			systemPrompt: ExecutiveSummaryPrompt.getSystemPrompt(hasTimeblocks)
 		});
 
-		mainBrief += `${executiveSummary.trim()}\n\n`;
+		// Add markdown links to task and project mentions
+		const executiveSummaryWithLinks = addLinksToExecutiveSummary(
+			executiveSummary.trim(),
+			analysisProjects
+		);
+
+		mainBrief += `${executiveSummaryWithLinks}\n\n`;
 		console.log(
-			`✨ Generated LLM executive summary for user ${userId} (${analysisProjects.length} projects)`
+			`✨ Generated LLM executive summary with links for user ${userId} (${analysisProjects.length} projects)`
 		);
 	} catch (error) {
 		console.error('Failed to generate LLM executive summary, using fallback:', error);

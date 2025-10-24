@@ -52,10 +52,15 @@
 		}
 	}
 
-	function handleContainerClick(event: MouseEvent | TouchEvent) {
-		// Check if the click was on the container (outside the modal content)
-		if (event.target === event.currentTarget && closeOnBackdrop && !persistent) {
-			onClose();
+	function handleModalContentClick(event: MouseEvent) {
+		event.stopPropagation();
+	}
+
+	function handleModalContentKeydown(event: KeyboardEvent) {
+		// Prevent event propagation on keyboard events to modal content
+		// This keeps focus within the modal while allowing keyboard navigation
+		if (event.key !== 'Escape') {
+			event.stopPropagation();
 		}
 	}
 
@@ -153,14 +158,13 @@
 			on:click={handleBackdropClick}
 			on:touchend={handleBackdropClick}
 			aria-hidden="true"
-		/>
+		></div>
 
 		<!-- Modal Container -->
 		<div class="fixed inset-0 z-[100] overflow-y-auto">
 			<div
 				class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4"
-				on:click={handleContainerClick}
-				on:touchend={handleContainerClick}
+				role="presentation"
 			>
 				<div
 					bind:this={modalElement}
@@ -174,7 +178,8 @@
 					aria-label={!title && ariaLabel ? ariaLabel : undefined}
 					aria-describedby={ariaDescribedBy || undefined}
 					tabindex="-1"
-					on:click|stopPropagation
+					on:click={handleModalContentClick}
+					on:keydown={handleModalContentKeydown}
 				>
 					<!-- Header -->
 					<slot name="header">
@@ -190,7 +195,7 @@
 										{title}
 									</h2>
 								{:else}
-									<div />
+									<div></div>
 								{/if}
 
 								{#if showCloseButton && !persistent}

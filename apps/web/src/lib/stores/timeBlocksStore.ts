@@ -414,6 +414,50 @@ function createTimeBlocksStore() {
 			}
 		},
 
+		async updateBlock(blockId: string, params: any) {
+			if (!browser) {
+				throw new Error('Cannot update blocks during server-side rendering');
+			}
+
+			update((state) => ({
+				...state,
+				error: null
+			}));
+
+			try {
+				const response = await fetch(`/api/time-blocks/blocks/${blockId}`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(params)
+				});
+
+				if (!response.ok) {
+					const payload = await response.json().catch(() => ({}));
+					throw new Error(payload?.error ?? 'Failed to update time block');
+				}
+
+				const updatedBlock = await response.json();
+
+				update((state) => ({
+					...state,
+					blocks: state.blocks.map((block) =>
+						block.id === blockId ? updatedBlock : block
+					)
+				}));
+
+				await refreshAllocation();
+			} catch (error) {
+				console.error('[TimeBlocksStore] updateBlock failed:', error);
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to update time block'
+				}));
+				throw error;
+			}
+		},
+
 		// Reference the extracted refreshAllocation function
 		refreshAllocation,
 

@@ -1175,7 +1175,7 @@
 			>
 				<!-- Title -->
 				<div
-					class="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 -m-4 sm:-m-5 mb-0 p-4 sm:p-5 rounded-t-xl border-b border-gray-200/50 dark:border-gray-700/50"
+					class="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 -mt-4 sm:-mx-5 mb-0 p-4 sm:p-5 rounded-t-xl border-b border-gray-200/50 dark:border-gray-700/50"
 				>
 					<FormField label="Title" labelFor="task-title" required={true}>
 						<TextInput

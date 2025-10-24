@@ -1,6 +1,7 @@
-<!-- apps/web/src/lib/components/admin/notifications/CorrelationViewer.svelte -->
+<!-- apps/web/src/lib/components/admin/notifications/CorrelationViewerModal.svelte -->
 <script lang="ts">
-	import { X, Copy, AlertCircle, CheckCircle, Clock, Info } from 'lucide-svelte';
+	import { Copy, AlertCircle, CheckCircle, Clock, Info } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
@@ -45,13 +46,14 @@
 	}
 
 	interface Props {
+		isOpen?: boolean;
 		correlationId: string;
 		data?: CorrelationData | null;
 		loading?: boolean;
 		onClose?: () => void;
 	}
 
-	let { correlationId, data = null, loading = false, onClose }: Props = $props();
+	let { isOpen = false, correlationId, data = null, loading = false, onClose }: Props = $props();
 
 	function formatDate(dateString: string): string {
 		return new Date(dateString).toLocaleTimeString();
@@ -112,49 +114,25 @@
 	}
 </script>
 
-<!-- Modal Overlay -->
-<div
-	class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-	onclick={onClose}
-	role="dialog"
-	aria-modal="true"
->
-	<!-- Modal Content -->
-	<div
-		class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-		onclick={(e) => e.stopPropagation()}
-		role="document"
-	>
-		<!-- Header -->
-		<div
-			class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
-		>
-			<div>
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-					Correlation Tracking
-				</h2>
-				<div class="flex items-center space-x-2 mt-1">
-					<span class="text-sm text-gray-500 dark:text-gray-400 font-mono">
-						{correlationId}
-					</span>
-					<button
-						onclick={() => copyToClipboard(correlationId)}
-						class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-					>
-						<Copy class="w-4 h-4" />
-					</button>
-				</div>
-			</div>
+<Modal {isOpen} onClose={onClose || (() => {})} title="Correlation Tracking" size="xl">
+	<div slot="header" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+		<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+			Correlation Tracking
+		</h2>
+		<div class="flex items-center space-x-2 mt-1">
+			<span class="text-sm text-gray-500 dark:text-gray-400 font-mono">
+				{correlationId}
+			</span>
 			<button
-				onclick={onClose}
-				class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+				onclick={() => copyToClipboard(correlationId)}
+				class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
 			>
-				<X class="w-6 h-6" />
+				<Copy class="w-4 h-4" />
 			</button>
 		</div>
+	</div>
 
-		<!-- Content -->
-		<div class="flex-1 overflow-y-auto p-6">
+	<div class="p-6">
 			{#if loading}
 				<div class="flex items-center justify-center h-64">
 					<div
@@ -352,9 +330,7 @@
 			{/if}
 		</div>
 
-		<!-- Footer -->
-		<div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-			<Button onclick={onClose} variant="secondary">Close</Button>
-		</div>
+	<div slot="footer" class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+		<Button onclick={onClose} variant="secondary">Close</Button>
 	</div>
-</div>
+</Modal>

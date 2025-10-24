@@ -485,6 +485,11 @@
 									id={`field-${field}`}
 									type="checkbox"
 									checked={formData[field] || false}
+									aria-invalid={false}
+									aria-required={config.required || false}
+									aria-describedby={config.description
+										? `field-${field}-description`
+										: undefined}
 									on:change={(e) => {
 										const target = e.target as HTMLInputElement | null;
 										handleFieldChange(
@@ -497,6 +502,7 @@
 								/>
 								{#if config.description}
 									<label
+										id={`field-${field}-description`}
 										for={`field-${field}`}
 										class="ml-2 text-sm text-gray-600 dark:text-gray-400"
 									>

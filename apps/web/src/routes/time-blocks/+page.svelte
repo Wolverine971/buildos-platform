@@ -166,6 +166,18 @@
 		}
 	}
 
+	async function handleUpdateBlock(blockId: string, params: any) {
+		try {
+			await timeBlocksStore.updateBlock(blockId, params);
+			feedback = 'Time block updated and calendar synced.';
+			showBlockDetailModal = false;
+			selectedBlock = null;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update time block';
+			throw new Error(message);
+		}
+	}
+
 	function handleBlockClick(block: TimeBlockWithProject) {
 		selectedBlock = block;
 		showBlockDetailModal = true;
@@ -390,6 +402,7 @@
 		}}
 		onDelete={() => handleDeleteBlock(currentBlock.id)}
 		onRegenerate={() => handleRegenerateBlock(currentBlock.id)}
+		onUpdate={(params) => handleUpdateBlock(currentBlock.id, params)}
 	/>
 {/if}
 

@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import UserContextPanel from './UserContextPanel.svelte';
-	import EmailHistoryViewer from './EmailHistoryViewer.svelte';
+	import EmailHistoryViewerModal from './EmailHistoryViewerModal.svelte';
 	import type { EmailGenerationContext } from '$lib/services/email-generation-service';
 	import {
 		Loader2,
@@ -48,7 +48,7 @@
 	let emailHistoryLoading = false;
 	let showEmailHistory = false;
 	let selectedEmailForViewer: any = null;
-	let emailHistoryViewerOpen = false;
+	let EmailHistoryViewerModalOpen = false;
 
 	const emailTemplates = [
 		{ value: 'custom', label: 'Custom Message' },
@@ -177,7 +177,7 @@ Guidelines:
 
 	function openEmailViewer(email: any) {
 		selectedEmailForViewer = email;
-		emailHistoryViewerOpen = true;
+		EmailHistoryViewerModalOpen = true;
 	}
 
 	async function generateEmail() {
@@ -352,7 +352,7 @@ Guidelines:
 	}
 </script>
 
-<EmailHistoryViewer bind:isOpen={emailHistoryViewerOpen} email={selectedEmailForViewer} />
+<EmailHistoryViewerModal bind:isOpen={EmailHistoryViewerModalOpen} email={selectedEmailForViewer} />
 
 <Modal {isOpen} onClose={closeModal} size="xl">
 	<div class="flex flex-col h-full max-h-[90vh]">

@@ -1,6 +1,7 @@
-<!-- apps/web/src/lib/components/admin/EmailHistoryViewer.svelte -->
+<!-- apps/web/src/lib/components/admin/EmailHistoryViewerModal.svelte -->
 <script lang="ts">
-	import { X, Mail, Calendar, User } from 'lucide-svelte';
+	import { Mail, Calendar, User } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	export let email: {
@@ -14,9 +15,14 @@
 	} | null = null;
 
 	export let isOpen = false;
+	export let onClose: (() => void) | undefined = undefined;
 
 	function closeViewer() {
-		isOpen = false;
+		if (onClose) {
+			onClose();
+		} else {
+			isOpen = false;
+		}
 	}
 
 	function formatDate(dateString: string | undefined): string {
@@ -31,61 +37,49 @@
 	}
 </script>
 
-{#if isOpen && email}
-	<div class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
-		>
-			<!-- Header -->
-			<div
-				class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
-			>
-				<div class="flex items-center gap-3 min-w-0">
-					<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-					<div class="min-w-0">
-						<h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
-							{email.subject || 'Email'}
-						</h2>
-						{#if email.to}
-							<p class="text-sm text-gray-600 dark:text-gray-400 truncate">
-								{email.to}
-							</p>
-						{/if}
-					</div>
-				</div>
-				<button
-					on:click={closeViewer}
-					class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-				>
-					<X class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-				</button>
-			</div>
-
-			<!-- Email Info -->
-			<div
-				class="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"
-			>
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+{#if email}
+	<Modal {isOpen} onClose={closeViewer} title={email.subject || 'Email'} size="lg">
+		<div slot="header" class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex items-center gap-3 min-w-0">
+				<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+				<div class="min-w-0">
+					<h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+						{email.subject || 'Email'}
+					</h2>
 					{#if email.to}
-						<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-							<User class="w-4 h-4 flex-shrink-0" />
-							<span class="truncate"><strong>To:</strong> {email.to}</span>
-						</div>
-					{/if}
-					{#if email.sent_at || email.created_at}
-						<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-							<Calendar class="w-4 h-4 flex-shrink-0" />
-							<span>
-								<strong>Sent:</strong>
-								{formatDate(email.sent_at || email.created_at)}
-							</span>
-						</div>
+						<p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+							{email.to}
+						</p>
 					{/if}
 				</div>
 			</div>
+		</div>
 
-			<!-- Email Content (scrollable) -->
-			<div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 px-4 sm:px-6 py-6">
+		<!-- Email Info -->
+		<div
+			class="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"
+		>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+				{#if email.to}
+					<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+						<User class="w-4 h-4 flex-shrink-0" />
+						<span class="truncate"><strong>To:</strong> {email.to}</span>
+					</div>
+				{/if}
+				{#if email.sent_at || email.created_at}
+					<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+						<Calendar class="w-4 h-4 flex-shrink-0" />
+						<span>
+							<strong>Sent:</strong>
+							{formatDate(email.sent_at || email.created_at)}
+						</span>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Email Content (scrollable) -->
+		<div class="px-4 sm:px-6 py-6">
 				<div
 					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
 				>
@@ -107,16 +101,15 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
-			<div
-				class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
-			>
-				<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">
-					Close
-				</Button>
-			</div>
+		<div
+			slot="footer"
+			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
+		>
+			<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">
+				Close
+			</Button>
 		</div>
-	</div>
+	</Modal>
 {/if}
 
 <style>

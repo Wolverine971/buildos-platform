@@ -449,8 +449,8 @@ export class BriefClientService {
 		}
 
 		const result = await projectBriefsResponse.json();
-		if (!result.success) {
-			throw new Error(result.error || 'Failed to load project briefs');
+		if (!result?.success || !result?.data) {
+			throw new Error(result?.error || 'Failed to load project briefs');
 		}
 
 		const projectBriefsData = result.data;

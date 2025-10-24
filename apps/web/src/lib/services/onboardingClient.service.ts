@@ -42,7 +42,10 @@ export class OnboardingClientService {
 		}
 
 		const result = await response.json();
-		return result.context;
+		if (!result?.success || !result?.data?.context) {
+			throw new Error('Invalid response format from server');
+		}
+		return result.data.context;
 	}
 
 	/**
@@ -80,11 +83,14 @@ export class OnboardingClientService {
 		}
 
 		const result = await response.json();
+		if (!result?.success || !result?.data) {
+			throw new Error('Invalid response format from server');
+		}
 		return {
-			context: result.context,
-			inputs: result.inputs,
-			completionStatus: result.completionStatus,
-			overallProgress: result.overallProgress
+			context: result.data.context,
+			inputs: result.data.inputs,
+			completionStatus: result.data.completionStatus,
+			overallProgress: result.data.overallProgress
 		};
 	}
 

@@ -9,18 +9,24 @@
 	interface $$Props extends HTMLTextareaAttributes {
 		size?: TextareaSize;
 		error?: boolean;
+		required?: boolean;
 		autoResize?: boolean;
 		maxRows?: number;
+		errorMessage?: string;
+		helperText?: string;
 		class?: string;
 	}
 
 	export let value = '';
 	export let size: TextareaSize = 'md';
 	export let error = false;
+	export let required = false;
 	export let disabled = false;
 	export let autoResize = false;
 	export let rows = 4;
 	export let maxRows = 10;
+	export let errorMessage: string | undefined = undefined;
+	export let helperText: string | undefined = undefined;
 
 	// Allow class prop to be passed through
 	let className = '';
@@ -53,7 +59,7 @@
 		// State classes
 		error
 			? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-			: 'border-gray-300 focus:ring-primary-500 dark:border-gray-600',
+			: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
 		// Background
 		'bg-white dark:bg-gray-800',
@@ -107,6 +113,13 @@
 	{value}
 	{disabled}
 	{rows}
+	aria-invalid={error}
+	aria-required={required}
+	aria-describedby={error && errorMessage
+		? 'textarea-error'
+		: helperText
+			? 'textarea-helper'
+			: undefined}
 	class={textareaClasses}
 	on:input={handleInput}
 	on:change
@@ -117,6 +130,20 @@
 	on:keypress
 	{...$$restProps}
 ></textarea>
+{#if error && errorMessage}
+	<p
+		id="textarea-error"
+		role="alert"
+		aria-live="polite"
+		class="mt-1 text-sm text-red-600 dark:text-red-400"
+	>
+		{errorMessage}
+	</p>
+{:else if helperText}
+	<p id="textarea-helper" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+		{helperText}
+	</p>
+{/if}
 
 <style>
 	/* Ensure consistent rendering across browsers */

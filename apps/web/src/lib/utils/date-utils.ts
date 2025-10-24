@@ -586,14 +586,17 @@ export function isDateToday(dateString: string, timezone?: string): boolean {
 
 /**
  * Check if a timestamptz date is tomorrow in user's timezone
+ * CRITICAL FIX: Must use startOfDay() + addDays() for timezone-safe date manipulation
+ * Calling setDate() on toZonedTime() result corrupts the timezone offset!
  */
 export function isDateTomorrow(dateString: string, timezone?: string): boolean {
 	const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 	const date = parseISO(dateString);
 	const zonedDate = toZonedTime(date, tz);
 	const todayInTz = toZonedTime(new Date(), tz);
-	const tomorrowInTz = new Date(todayInTz);
-	tomorrowInTz.setDate(tomorrowInTz.getDate() + 1);
+
+	// FIXED: Use addDays() + startOfDay() instead of setDate() to preserve timezone offset
+	const tomorrowInTz = addDays(startOfDay(todayInTz), 1);
 
 	// Compare year, month, and day in the target timezone
 	return (

@@ -14,7 +14,7 @@
 
 {#if show}
 	<div
-		class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+		class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100]"
 	>
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 m-4 max-w-md">
 			<div class="flex items-center mb-4">

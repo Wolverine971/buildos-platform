@@ -162,7 +162,7 @@
 		<div class="panel__content">
 			<div class="panel__visual">
 				<div class="panel__chart-shell">
-					<div class="panel__chart" style={`background: ${chartGradient}`}></div>
+					<div class="panel__chart" style="{`background: ${chartGradient}`}; padding: 4px; background-clip: content-box;"></div>
 					<div class="panel__chart-core">
 						<p>{formatHours(totalHours)}</p>
 						<span>Total hours</span>
@@ -381,133 +381,159 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.625rem;
+		gap: 1rem;
 	}
 
 	@media (min-width: 768px) {
 		.panel__visual {
 			flex-direction: row;
-			gap: 0.875rem;
+			gap: 1.25rem;
 		}
 	}
 
 	.panel__chart-shell {
 		position: relative;
-		height: 7rem;
-		width: 7rem;
+		height: 8.5rem;
+		width: 8.5rem;
 		flex-shrink: 0;
 		border-radius: 9999px;
-		background: #f1f5f9;
+		background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.05),
-			0 1px 3px 0 rgba(0, 0, 0, 0.1);
-		padding: 0.625rem;
+			0 4px 6px -1px rgba(0, 0, 0, 0.08),
+			0 2px 4px -1px rgba(0, 0, 0, 0.04),
+			inset 0 2px 4px 0 rgba(255, 255, 255, 0.9);
+		padding: 0.75rem;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	.panel__chart-shell:hover {
+		transform: translateY(-2px);
+		box-shadow:
+			0 8px 12px -2px rgba(0, 0, 0, 0.1),
+			0 4px 8px -2px rgba(0, 0, 0, 0.06),
+			inset 0 2px 4px 0 rgba(255, 255, 255, 0.9);
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-shell {
-			height: 8rem;
-			width: 8rem;
+			height: 9rem;
+			width: 9rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-shell {
-			height: 8.5rem;
-			width: 8.5rem;
-			padding: 0.75rem;
+			height: 10rem;
+			width: 10rem;
+			padding: 0.875rem;
 		}
 	}
 
 	:global(.dark) .panel__chart-shell {
-		background: #1f2937;
+		background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
 		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.1),
-			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			0 4px 6px -1px rgba(0, 0, 0, 0.3),
+			0 2px 4px -1px rgba(0, 0, 0, 0.2),
+			inset 0 2px 4px 0 rgba(255, 255, 255, 0.05);
+	}
+
+	:global(.dark) .panel__chart-shell:hover {
+		box-shadow:
+			0 8px 12px -2px rgba(0, 0, 0, 0.4),
+			0 4px 8px -2px rgba(0, 0, 0, 0.3),
+			inset 0 2px 4px 0 rgba(255, 255, 255, 0.05);
 	}
 
 	.panel__chart {
 		position: absolute;
-		inset: 0.625rem;
+		inset: 0.75rem;
 		border-radius: 9999px;
 		transition: background 0.3s ease;
+		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+	}
+
+	:global(.dark) .panel__chart {
+		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart {
-			inset: 0.75rem;
+			inset: 0.875rem;
 		}
 	}
 
 	.panel__chart-core {
 		position: absolute;
-		inset: 2.25rem;
+		inset: 1.75rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		border-radius: 9999px;
-		background: #ffffff;
+		background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
 		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.05),
-			0 1px 3px 0 rgba(0, 0, 0, 0.1);
+			0 4px 12px 0 rgba(0, 0, 0, 0.08),
+			0 2px 6px 0 rgba(0, 0, 0, 0.04),
+			inset 0 -2px 4px 0 rgba(0, 0, 0, 0.02);
 		text-align: center;
-		gap: 0.125rem;
+		gap: 0.25rem;
 		padding: 0.5rem;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-core {
-			inset: 2.5rem;
+			inset: 2.75rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core {
-			inset: 2.625rem;
+			inset: 2.125rem;
 			padding: 0.625rem;
 		}
 	}
 
 	:global(.dark) .panel__chart-core {
-		background: #111827;
+		background: linear-gradient(135deg, #111827 0%, #0a0f1a 100%);
 		color: #e2e8f0;
 		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.05),
-			0 2px 4px 0 rgba(0, 0, 0, 0.1);
+			0 4px 12px 0 rgba(0, 0, 0, 0.4),
+			0 2px 6px 0 rgba(0, 0, 0, 0.3),
+			inset 0 -2px 4px 0 rgba(255, 255, 255, 0.03);
 	}
 
 	.panel__chart-core p {
 		margin: 0;
-		font-size: 1.125rem;
-		font-weight: 700;
+		font-size: 1.375rem;
+		font-weight: 800;
 		color: #111827;
-		line-height: 1.1;
+		line-height: 1;
+		letter-spacing: -0.02em;
 	}
 
 	@media (min-width: 768px) {
 		.panel__chart-core p {
-			font-size: 1.25rem;
+			font-size: 1.5rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core p {
-			font-size: 1.375rem;
+			font-size: 1.625rem;
 		}
 	}
 
 	.panel__chart-core span {
-		font-size: 0.5625rem;
+		font-size: 0.625rem;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.08em;
 		color: #6b7280;
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	@media (min-width: 1024px) {
 		.panel__chart-core span {
-			font-size: 0.625rem;
+			font-size: 0.6875rem;
 		}
 	}
 
@@ -521,12 +547,17 @@
 
 	.panel__legend {
 		display: flex;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		justify-content: center;
+		flex-direction: column;
+		gap: 0.625rem;
 		font-size: 0.8125rem;
 		color: #4b5563;
 		font-weight: 500;
+	}
+
+	@media (min-width: 768px) {
+		.panel__legend {
+			gap: 0.75rem;
+		}
 	}
 
 	:global(.dark) .panel__legend {
@@ -536,28 +567,57 @@
 	.panel__legend-item {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
-		border-radius: 9999px;
-		padding: 0.35rem 0.85rem;
-		background: #ffffff;
-		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		gap: 0.625rem;
+		border-radius: 0.625rem;
+		padding: 0.5rem 0.875rem;
+		background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+		box-shadow:
+			0 2px 4px 0 rgba(0, 0, 0, 0.04),
+			0 1px 2px 0 rgba(0, 0, 0, 0.02);
+		border: 1px solid rgba(226, 232, 240, 0.6);
+		transition: all 0.2s ease;
+		font-weight: 600;
+		font-size: 0.8125rem;
+	}
+
+	.panel__legend-item:hover {
+		transform: translateX(4px);
+		box-shadow:
+			0 4px 8px 0 rgba(0, 0, 0, 0.08),
+			0 2px 4px 0 rgba(0, 0, 0, 0.04);
+		border-color: rgba(226, 232, 240, 0.8);
 	}
 
 	:global(.dark) .panel__legend-item {
-		background: #1f2937;
-		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		background: linear-gradient(135deg, #1f2937 0%, #1a222e 100%);
+		box-shadow:
+			0 2px 4px 0 rgba(0, 0, 0, 0.2),
+			0 1px 2px 0 rgba(0, 0, 0, 0.1);
+		border-color: rgba(55, 65, 81, 0.6);
+	}
+
+	:global(.dark) .panel__legend-item:hover {
+		box-shadow:
+			0 4px 8px 0 rgba(0, 0, 0, 0.3),
+			0 2px 4px 0 rgba(0, 0, 0, 0.2);
+		border-color: rgba(55, 65, 81, 0.8);
 	}
 
 	.panel__legend-item span {
 		display: inline-block;
-		height: 0.625rem;
-		width: 0.625rem;
-		border-radius: 9999px;
-		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75);
+		height: 0.75rem;
+		width: 0.75rem;
+		border-radius: 0.25rem;
+		box-shadow:
+			0 0 0 2px rgba(255, 255, 255, 0.9),
+			0 2px 4px 0 rgba(0, 0, 0, 0.1);
+		flex-shrink: 0;
 	}
 
 	:global(.dark) .panel__legend-item span {
-		box-shadow: 0 0 0 2px rgba(31, 41, 59, 0.75);
+		box-shadow:
+			0 0 0 2px rgba(31, 41, 59, 0.9),
+			0 2px 4px 0 rgba(0, 0, 0, 0.2);
 	}
 
 	.panel__stats-grid {

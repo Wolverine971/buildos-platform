@@ -17,6 +17,146 @@ Each entry includes:
 
 ---
 
+## 2025-10-24 - Critical Bug: Tomorrow's Tasks Not Displaying Due to Timezone Calculation Error
+
+**Severity**: High (Data Display / Feature Functionality)
+
+### Root Cause
+
+The root cause was a **critical timezone offset corruption** in the `isDateTomorrow()` function in `date-utils.ts`. The function was calling `setDate()` on a Date object returned from `toZonedTime()`, which corrupts the timezone offset adjustment.
+
+**Specific Issue:**
+
+The `isDateTomorrow()` function at `apps/web/src/lib/utils/date-utils.ts:590-603` contained:
+
+```typescript
+const todayInTz = toZonedTime(new Date(), tz);
+const tomorrowInTz = new Date(todayInTz);  // ← Creates copy
+tomorrowInTz.setDate(tomorrowInTz.getDate() + 1);  // ← BUG: Corrupts timezone!
+```
+
+**The Problem:**
+- `toZonedTime()` returns a Date object that is adjusted so its local components (year, month, date) match the target timezone
+- When you call `setDate()` on this Date, it modifies the **underlying UTC representation**, breaking the timezone adjustment
+- This causes the date comparison to fail, incorrectly classifying tomorrow's tasks
+- Example: In UTC-4 timezone (EDT), a task scheduled for tomorrow might get classified as "upcoming" instead of "tomorrow"
+
+**Why This Only Affected Mobile:**
+- Both desktop (TimeBlocksCard) and mobile (MobileTaskTabs) receive the same data
+- The issue occurred **on the API side** during task categorization in `/api/dashboard`
+- The API calls `isDateTomorrow()` for every task to categorize it
+- When the function returned false for tomorrow's tasks, they were not included in the `tomorrowsTasks` array
+- This affected both views equally, but the mobile view with tabbed interface made it more obvious when all tasks disappeared
+
+### Fix Description
+
+Replaced the buggy date manipulation with timezone-safe operations using `date-fns` functions:
+
+```typescript
+// BEFORE (Buggy):
+const tomorrowInTz = new Date(todayInTz);
+tomorrowInTz.setDate(tomorrowInTz.getDate() + 1);
+
+// AFTER (Fixed):
+const tomorrowInTz = addDays(startOfDay(todayInTz), 1);
+```
+
+This uses the same pattern as the working `isDateBeforeToday()` function, which properly handles timezone-aware date arithmetic.
+
+### Files Changed
+
+- `apps/web/src/lib/utils/date-utils.ts:587-607` - Fixed `isDateTomorrow()` function to use timezone-safe date manipulation
+
+### Related Docs
+
+- See `apps/web/src/lib/utils/date-utils.ts` for complete date utility implementation
+- See `/api/dashboard/+server.ts` for task categorization logic that depends on these utilities
+- See `apps/web/docs/technical/database/` for timezone handling documentation
+
+### Cross-references
+
+- Dashboard API: `apps/web/src/routes/api/dashboard/+server.ts:119-130`
+- Task Categorization: `apps/web/src/routes/api/dashboard/+server.ts:165-175`
+- Date Utils Module: `apps/web/src/lib/utils/date-utils.ts`
+- MobileTaskTabs Component: `apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte`
+- Dashboard Service: `apps/web/src/lib/services/dashboardData.service.ts:145-147`
+
+### Impact Analysis
+
+**Before Fix:**
+- Tomorrow's tasks were not appearing in either desktop or mobile views
+- Tasks with `start_date` exactly equal to tomorrow's date would be misclassified
+- Users couldn't see their scheduled tasks for the next day
+- Recurring task instances for tomorrow would also be affected
+
+**After Fix:**
+- Tomorrow's date calculation now respects timezone offset
+- Tasks scheduled for tomorrow are correctly categorized in `tomorrowsTasks` array
+- Both desktop and mobile views show consistent task lists
+- Timezone edge cases (DST boundaries, UTC offset changes) are handled correctly
+
+---
+
+## 2025-10-24 - Mobile Dashboard: Tomorrow Tasks Not Displaying Correctly
+
+**Severity**: Medium (User Experience / Data Display)
+
+### Root Cause
+
+The `tabs` array in `MobileTaskTabs.svelte` was defined as a static `const` instead of a reactive `$derived` value. This caused the array to only evaluate once when the component mounts, with the initial (possibly empty) task data. When dashboard data loaded asynchronously and the reactive task arrays updated, the `tabs` array was never refreshed. This resulted in stale tab configurations and prevented proper task synchronization between desktop and mobile views.
+
+**Specific Issue:**
+
+The component at `apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte:33-37` defined:
+
+```javascript
+const tabs = [
+	{ id: 0, label: 'Past Due', count: pastDueTasks.length, icon: AlertTriangle, color: 'red' },
+	{ id: 1, label: 'Today', count: todaysTasks.length, icon: Clock, color: 'blue' },
+	{ id: 2, label: 'Tomorrow', count: tomorrowsTasks.length, icon: Calendar, color: 'green' }
+];
+```
+
+This meant when `pastDueTasks`, `todaysTasks`, or `tomorrowsTasks` changed, the tabs array was never recreated with the new values. The derived value `activeTabConfig = tabs[activeTab]` would reference stale data.
+
+**Why This Happened**:
+
+- Missing use of `$derived` for computed state that depends on reactive values
+- Data loads asynchronously after component mounts, but the tabs array only captures the initial state
+- The `{#key [pastDueTasks, todaysTasks, tomorrowsTasks]}` in Dashboard.svelte causes component recreation, but tabs would still be stale after recreation
+
+### Fix Description
+
+Converted the `tabs` array to a reactive `$derived` value using Svelte 5 runes:
+
+```javascript
+const tabs = $derived([
+	{ id: 0, label: 'Past Due', count: pastDueTasks.length, icon: AlertTriangle, color: 'red' },
+	{ id: 1, label: 'Today', count: todaysTasks.length, icon: Clock, color: 'blue' },
+	{ id: 2, label: 'Tomorrow', count: tomorrowsTasks.length, icon: Calendar, color: 'green' }
+]);
+```
+
+This ensures the tabs array updates automatically whenever the task arrays change, keeping counts and configurations in sync.
+
+### Files Changed
+
+- `apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte:33-37` - Converted tabs to reactive $derived
+
+### Related Docs
+
+- See `apps/web/docs/features/dashboard/README.md` for dashboard feature documentation
+- See `apps/web/CLAUDE.md` for Svelte 5 runes patterns and reactivity guidance
+- Related Component: `/apps/web/src/lib/components/dashboard/TimeBlocksCard.svelte` (desktop view - working correctly)
+
+### Cross-references
+
+- Dashboard Component: `apps/web/src/lib/components/dashboard/Dashboard.svelte:873-883`
+- Time Blocks Card (desktop equivalent): `apps/web/src/lib/components/dashboard/TimeBlocksCard.svelte`
+- MobileTaskTabs Component: `apps/web/src/lib/components/dashboard/MobileTaskTabs.svelte`
+
+---
+
 ## 2025-10-23 - LLM Generating Fake Bit.ly Links in Calendar SMS Reminders
 
 **Severity**: Medium (User Experience / Functionality)

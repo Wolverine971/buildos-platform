@@ -9,17 +9,23 @@
 	interface $$Props extends HTMLInputAttributes {
 		size?: InputSize;
 		error?: boolean;
+		required?: boolean;
 		icon?: any; // Lucide icon component
 		iconPosition?: 'left' | 'right';
+		errorMessage?: string;
+		helperText?: string;
 		class?: string;
 	}
 
 	export let value: string | number | null = '';
 	export let size: InputSize = 'md';
 	export let error = false;
+	export let required = false;
 	export let disabled = false;
 	export let icon: any = undefined;
 	export let iconPosition: 'left' | 'right' = 'left';
+	export let errorMessage: string | undefined = undefined;
+	export let helperText: string | undefined = undefined;
 
 	// Allow class prop to be passed through
 	let className = '';
@@ -27,9 +33,9 @@
 
 	const dispatch = createEventDispatcher();
 
-	// Size classes with consistent heights
+	// Size classes with minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
-		sm: 'px-3 py-2 text-sm min-h-[40px]',
+		sm: 'px-3 py-2 text-sm min-h-[44px]',
 		md: 'px-4 py-2.5 text-base min-h-[44px]',
 		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
@@ -73,7 +79,7 @@
 		// State classes
 		error
 			? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-			: 'border-gray-300 focus:ring-primary-500 dark:border-gray-600',
+			: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
 		// Background
 		'bg-white dark:bg-gray-800',
@@ -110,6 +116,13 @@
 	<input
 		{value}
 		{disabled}
+		aria-invalid={error}
+		aria-required={required}
+		aria-describedby={error && errorMessage
+			? 'input-error'
+			: helperText
+				? 'input-helper'
+				: undefined}
 		class={inputClasses}
 		on:input={handleInput}
 		on:change
@@ -121,6 +134,20 @@
 		{...$$restProps}
 	/>
 </div>
+{#if error && errorMessage}
+	<p
+		id="input-error"
+		role="alert"
+		aria-live="polite"
+		class="mt-1 text-sm text-red-600 dark:text-red-400"
+	>
+		{errorMessage}
+	</p>
+{:else if helperText}
+	<p id="input-helper" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+		{helperText}
+	</p>
+{/if}
 
 <style>
 	/* Ensure consistent rendering across browsers */

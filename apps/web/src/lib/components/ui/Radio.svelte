@@ -80,14 +80,14 @@
 
 		// State classes
 		checked
-			? 'bg-primary-600 border-primary-600 dark:bg-primary-500 dark:border-primary-500'
+			? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
 			: 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600',
 
 		// Error state
 		error && !checked ? 'border-red-500 dark:border-red-400' : '',
 
 		// Focus ring color
-		error ? 'focus:ring-red-500' : 'focus:ring-primary-500',
+		error ? 'focus:ring-red-500' : 'focus:ring-blue-500',
 
 		// Hover state (only when not disabled)
 		!disabled && !checked ? 'hover:border-gray-400 dark:hover:border-gray-500' : '',

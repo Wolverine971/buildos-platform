@@ -14,6 +14,7 @@ export interface DashboardData {
 	weeklyTasksByDate: Record<string, TaskWithCalendarEvents[]>;
 	activeProjects: Project[];
 	recentBriefs: DailyBrief[];
+	todaysBrief?: DailyBrief | null; // Today's daily brief (loaded eagerly)
 	stats: {
 		totalProjects: number;
 		activeTasks: number;

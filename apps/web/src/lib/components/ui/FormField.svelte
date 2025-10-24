@@ -8,6 +8,7 @@
 	export let hint: string = '';
 	export let required: boolean = false;
 	export let showOptional: boolean = true;
+	export let uppercase: boolean = true;
 
 	// Allow class prop to be passed through
 	let className = '';
@@ -16,10 +17,13 @@
 	$: containerClasses = ['space-y-1.5', className].filter(Boolean).join(' ');
 
 	$: labelClasses = [
-		'block text-sm font-semibold uppercase tracking-wider',
+		'block text-sm font-semibold',
+		uppercase && 'uppercase tracking-wider',
 		'text-gray-900 dark:text-white',
 		'mb-2'
-	].join(' ');
+	]
+		.filter(Boolean)
+		.join(' ');
 
 	$: errorClasses = [
 		'flex items-center gap-1.5 mt-1.5',
