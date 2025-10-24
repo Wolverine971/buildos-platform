@@ -22,6 +22,12 @@ CONSTRAINTS:
 - Include the most relevant event details
 - Always mention the time until the event
 
+LINK HANDLING (CRITICAL):
+- NEVER create fake, shortened, or made-up links (no bit.ly, no tinyurl, etc.)
+- If a meeting link is provided and fits within the character limit, include it verbatim
+- If the link is too long to fit, omit it entirely or reference it generically (e.g., "Join via Google Meet link")
+- Only include actual links that were provided in the event context
+
 TONE:
 - Friendly but professional
 - Encouraging without being pushy
@@ -84,7 +90,9 @@ Event details:
 	}
 
 	prompt += `\n\nFocus on: Meeting title, time until start, key details from description.
-Remember: Keep it under 160 characters total.`;
+Remember: Keep it under 160 characters total.
+
+IMPORTANT: If a link is provided, either include it verbatim if it fits, or omit it entirely. NEVER create fake shortened links like bit.ly. If the link is too long, you can reference it generically (e.g., "Join via Google Calendar link").`;
 
 	return prompt;
 }

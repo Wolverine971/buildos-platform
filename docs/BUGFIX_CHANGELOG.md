@@ -17,6 +17,109 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - LLM Generating Fake Bit.ly Links in Calendar SMS Reminders
+
+**Severity**: Medium (User Experience / Functionality)
+
+### Root Cause
+
+The LLM prompt for calendar event SMS reminders was providing meeting links to the LLM but **did not include explicit instructions** on how to handle them. This caused the LLM to hallucinate fake bit.ly shortened links instead of using actual links or omitting them.
+
+**Specific Issue:**
+
+The prompt at `apps/worker/src/workers/sms/prompts.ts:82-84` included the meeting link:
+
+```typescript
+if (context.meeting_link) {
+    prompt += `\n- Link: ${context.meeting_link}`;
+}
+```
+
+But then instructed the LLM to "Keep it under 160 characters total" without specifying what to do with long links. The LLM would see a long Google Calendar/Meet URL, realize it wouldn't fit in 160 characters, and "helpfully" create a fake shortened bit.ly link that doesn't actually exist.
+
+**Example of buggy behavior:**
+```
+Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Join via Google Calendar link. Let's make this session productive! Details: https://bit.ly/3xYz9Ab
+```
+(The bit.ly link is fake and doesn't work)
+
+**Why This Happened**:
+
+- No explicit instruction to never create fake links
+- No guidance on what to do with links that are too long
+- LLM attempting to be "helpful" by shortening links, but creating non-existent URLs
+
+**Impact**:
+
+- Users received SMS reminders with broken bit.ly links
+- Users couldn't join meetings via the SMS link
+- Unprofessional and confusing user experience
+- Undermines trust in the SMS reminder system
+
+### Fix Description
+
+Updated the LLM prompts to include explicit instructions about link handling:
+
+1. **Added LINK HANDLING section to system prompt** (lines 25-29):
+   ```
+   LINK HANDLING (CRITICAL):
+   - NEVER create fake, shortened, or made-up links (no bit.ly, no tinyurl, etc.)
+   - If a meeting link is provided and fits within the character limit, include it verbatim
+   - If the link is too long to fit, omit it entirely or reference it generically (e.g., "Join via Google Meet link")
+   - Only include actual links that were provided in the event context
+   ```
+
+2. **Added explicit instruction to meeting reminder prompt** (lines 95):
+   ```
+   IMPORTANT: If a link is provided, either include it verbatim if it fits, or omit it entirely.
+   NEVER create fake shortened links like bit.ly. If the link is too long, you can reference it
+   generically (e.g., "Join via Google Calendar link").
+   ```
+
+**Expected behavior after fix:**
+
+Option 1 (link fits):
+```
+Meeting in 30 mins: 'Project Sync'. Join: https://meet.google.com/abc-defg-hij
+```
+
+Option 2 (link too long, generic reference):
+```
+Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Join via Google Calendar link.
+```
+
+Option 3 (link too long, omitted):
+```
+Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Let's make this session productive!
+```
+
+**Verification**:
+
+Manual verification steps:
+1. Trigger daily SMS worker for a user with calendar events
+2. Ensure calendar events have Google Meet/Calendar links
+3. Check generated SMS messages in `scheduled_sms_messages` table
+4. Verify messages either include the actual link verbatim OR reference it generically OR omit it
+5. Verify NO fake bit.ly or shortened links are present
+
+**Files Changed**:
+
+- `apps/worker/src/workers/sms/prompts.ts` - Updated SYSTEM_PROMPT and meeting reminder prompt with explicit link handling instructions
+
+**Related Docs**:
+
+- `/docs/features/sms-event-scheduling/README.md` - SMS event scheduling system specification
+
+**Cross-references**:
+
+- LLM message generator service: `/apps/worker/src/lib/services/smsMessageGenerator.ts:66-127`
+- Daily SMS worker: `/apps/worker/src/workers/dailySmsWorker.ts:255-288`
+- Template fallback (already handles links correctly): `/apps/worker/src/lib/services/smsMessageGenerator.ts:182-230`
+
+Last updated: 2025-10-23
+
+---
+
 ## 2025-10-23 - Daily Brief Notification Links Using Old URL Pattern
 
 **Severity**: Medium (User Experience)
