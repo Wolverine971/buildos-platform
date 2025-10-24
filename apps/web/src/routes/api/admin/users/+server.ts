@@ -80,13 +80,20 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			{ data: briefCounts },
 			{ data: projectCounts },
 			{ data: calendarTokens },
-			{ data: phaseGenerations }
+			{ data: phaseGenerations },
+			{ data: smsPreferences }
 		] = await Promise.all([
 			supabase.from('brain_dumps').select('user_id').in('user_id', userIds),
 			supabase.from('daily_briefs').select('user_id').in('user_id', userIds),
 			supabase.from('projects').select('user_id').in('user_id', userIds),
 			supabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),
-			supabase.from('phases').select('user_id').in('user_id', userIds)
+			supabase.from('phases').select('user_id').in('user_id', userIds),
+			supabase
+				.from('user_sms_preferences')
+				.select(
+					'user_id, daily_sms_count, daily_sms_limit, event_reminders_enabled, phone_verified'
+				)
+				.in('user_id', userIds)
 		]);
 
 		// Create count maps
@@ -137,6 +144,29 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{} as Record<string, boolean>
 			) || {};
 
+		// Create SMS preferences map
+		const smsPreferencesMap =
+			smsPreferences?.reduce(
+				(acc, pref) => {
+					acc[pref.user_id] = {
+						daily_sms_count: pref.daily_sms_count || 0,
+						daily_sms_limit: pref.daily_sms_limit || 10,
+						event_reminders_enabled: pref.event_reminders_enabled || false,
+						phone_verified: pref.phone_verified || false
+					};
+					return acc;
+				},
+				{} as Record<
+					string,
+					{
+						daily_sms_count: number;
+						daily_sms_limit: number;
+						event_reminders_enabled: boolean;
+						phone_verified: boolean;
+					}
+				>
+			) || {};
+
 		// Enrich user data
 		const enrichedUsers = users?.map((user) => ({
 			...user,
@@ -144,7 +174,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			brief_count: briefCountMap[user.id] || 0,
 			project_count: projectCountMap[user.id] || 0,
 			calendar_connected: calendarConnectedMap[user.id] || false,
-			has_generated_phases: hasGeneratedPhasesMap[user.id] || false
+			has_generated_phases: hasGeneratedPhasesMap[user.id] || false,
+			sms_preferences: smsPreferencesMap[user.id] || null
 		}));
 
 		return ApiResponse.success({

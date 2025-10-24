@@ -62,6 +62,40 @@
 		}>;
 	}
 
+	interface CalendarPreviewResult {
+		user_id: string;
+		user_email: string;
+		user_name: string | null;
+		timezone: string;
+		calendar_connected: boolean;
+		total_events: number;
+		synced_events: number;
+		events_that_would_trigger_sms: number;
+		events_skipped: {
+			past_reminder_time: number;
+			all_day: number;
+			quiet_hours: number;
+			no_start_time: number;
+		};
+		sms_preferences: {
+			event_reminders_enabled: boolean;
+			phone_verified: boolean;
+			daily_sms_count: number;
+			daily_sms_limit: number;
+			quiet_hours_start: string | null;
+			quiet_hours_end: string | null;
+		} | null;
+		event_details: Array<{
+			event_title: string;
+			event_start: string;
+			event_end: string | null;
+			would_trigger_sms: boolean;
+			skip_reason: string | null;
+			reminder_time: string | null;
+		}>;
+		errors: string[];
+	}
+
 	// User search and selection
 	let userSearch = $state('');
 	let selectedUsers = $state<string[]>([]);
@@ -81,6 +115,11 @@
 	let isPolling = $state(false);
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let activeTab = $state<'trigger' | 'results' | 'monitor'>('trigger');
+
+	// Calendar preview state
+	let isLoadingCalendarPreview = $state(false);
+	let calendarPreviewResults = $state<CalendarPreviewResult[]>([]);
+	let showCalendarPreview = $state(false);
 
 	// Search users
 	async function searchUsers() {
@@ -241,6 +280,41 @@
 		skipQuietHours = false;
 		skipDailyLimit = false;
 		overrideDate = format(new Date(), 'yyyy-MM-dd');
+	}
+
+	// Fetch calendar preview
+	async function fetchCalendarPreview() {
+		if (selectedUsers.length === 0) {
+			toastService.error('Please select at least one user to preview calendar info');
+			return;
+		}
+
+		isLoadingCalendarPreview = true;
+		calendarPreviewResults = [];
+		showCalendarPreview = false;
+
+		try {
+			const response = await fetch(
+				`/api/admin/sms/calendar-preview?user_ids=${encodeURIComponent(JSON.stringify(selectedUsers))}&date=${encodeURIComponent(overrideDate)}`
+			);
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				calendarPreviewResults = result.data.results;
+				showCalendarPreview = true;
+				toastService.success(
+					`Calendar preview loaded for ${result.data.total_users} user(s)`
+				);
+			} else {
+				toastService.error(result.error || 'Failed to fetch calendar preview');
+			}
+		} catch (error) {
+			toastService.error('Failed to fetch calendar preview');
+			console.error('Calendar preview error:', error);
+		} finally {
+			isLoadingCalendarPreview = false;
+		}
 	}
 
 	// Lifecycle
@@ -508,8 +582,280 @@
 								</div>
 							</div>
 						</label>
+
+						<!-- Calendar Preview Button -->
+						<div class="pt-4 border-t dark:border-gray-700">
+							<Button
+								onclick={fetchCalendarPreview}
+								disabled={isLoadingCalendarPreview || selectedUsers.length === 0}
+								variant="secondary"
+								class="w-full"
+							>
+								{#if isLoadingCalendarPreview}
+									<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+									Loading Calendar Info...
+								{:else}
+									<Calendar class="h-4 w-4 mr-2" />
+									Check Calendar Info for Selected Users
+								{/if}
+							</Button>
+							{#if selectedUsers.length === 0}
+								<p
+									class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center"
+								>
+									Select users above to check their calendar info
+								</p>
+							{/if}
+						</div>
 					</div>
 				</div>
+
+				<!-- Calendar Preview Results -->
+				{#if showCalendarPreview && calendarPreviewResults.length > 0}
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								Calendar Preview Results
+							</h3>
+							<button
+								onclick={() => (showCalendarPreview = false)}
+								class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+							>
+								<XCircle class="h-5 w-5" />
+							</button>
+						</div>
+
+						<div class="space-y-4">
+							{#each calendarPreviewResults as result}
+								<div
+									class="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+								>
+									<!-- User Header -->
+									<div class="flex items-start justify-between mb-3">
+										<div>
+											<div class="font-medium text-gray-900 dark:text-white">
+												{result.user_email}
+											</div>
+											{#if result.user_name}
+												<div
+													class="text-sm text-gray-500 dark:text-gray-400"
+												>
+													{result.user_name}
+												</div>
+											{/if}
+											<div
+												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+											>
+												Timezone: {result.timezone}
+											</div>
+										</div>
+										<div class="flex gap-2">
+											{#if result.calendar_connected}
+												<span
+													class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+												>
+													<CheckCircle class="h-3 w-3 mr-1" />
+													Calendar Connected
+												</span>
+											{:else}
+												<span
+													class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+												>
+													<XCircle class="h-3 w-3 mr-1" />
+													No Calendar
+												</span>
+											{/if}
+										</div>
+									</div>
+
+									<!-- Stats Grid -->
+									{#if result.calendar_connected}
+										<div class="grid grid-cols-4 gap-3 mb-3">
+											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+												<div
+													class="text-xs text-gray-600 dark:text-gray-400"
+												>
+													Total Events
+												</div>
+												<div
+													class="text-lg font-semibold text-gray-900 dark:text-white"
+												>
+													{result.total_events}
+												</div>
+											</div>
+											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+												<div
+													class="text-xs text-gray-600 dark:text-gray-400"
+												>
+													Synced Events
+												</div>
+												<div
+													class="text-lg font-semibold text-gray-900 dark:text-white"
+												>
+													{result.synced_events}
+												</div>
+											</div>
+											<div
+												class="bg-green-50 dark:bg-green-900/20 p-3 rounded"
+											>
+												<div
+													class="text-xs text-green-600 dark:text-green-400 font-medium"
+												>
+													Would Trigger SMS
+												</div>
+												<div
+													class="text-lg font-semibold text-green-700 dark:text-green-400"
+												>
+													{result.events_that_would_trigger_sms}
+												</div>
+											</div>
+											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+												<div
+													class="text-xs text-gray-600 dark:text-gray-400"
+												>
+													SMS Usage
+												</div>
+												<div
+													class="text-lg font-semibold text-gray-900 dark:text-white"
+												>
+													{result.sms_preferences?.daily_sms_count ||
+														0}/{result.sms_preferences
+														?.daily_sms_limit || 10}
+												</div>
+											</div>
+										</div>
+
+										<!-- Events Skipped -->
+										{#if result.events_skipped.past_reminder_time > 0 || result.events_skipped.all_day > 0 || result.events_skipped.quiet_hours > 0 || result.events_skipped.no_start_time > 0}
+											<div class="mb-3">
+												<div
+													class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+												>
+													Events Skipped:
+												</div>
+												<div class="flex flex-wrap gap-2">
+													{#if result.events_skipped.past_reminder_time > 0}
+														<span
+															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+														>
+															Past time: {result.events_skipped
+																.past_reminder_time}
+														</span>
+													{/if}
+													{#if result.events_skipped.all_day > 0}
+														<span
+															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+														>
+															All-day: {result.events_skipped.all_day}
+														</span>
+													{/if}
+													{#if result.events_skipped.quiet_hours > 0}
+														<span
+															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+														>
+															Quiet hours: {result.events_skipped
+																.quiet_hours}
+														</span>
+													{/if}
+													{#if result.events_skipped.no_start_time > 0}
+														<span
+															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+														>
+															No start time: {result.events_skipped
+																.no_start_time}
+														</span>
+													{/if}
+												</div>
+											</div>
+										{/if}
+
+										<!-- Event Details -->
+										{#if result.event_details.length > 0}
+											<details class="mt-3">
+												<summary
+													class="text-sm font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
+												>
+													View {result.event_details.length} Event Details
+												</summary>
+												<div
+													class="mt-2 space-y-2 max-h-64 overflow-y-auto"
+												>
+													{#each result.event_details as event}
+														<div
+															class="text-sm p-2 rounded {event.would_trigger_sms
+																? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+																: 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}"
+														>
+															<div
+																class="flex items-start justify-between gap-2"
+															>
+																<div class="flex-1">
+																	<div
+																		class="font-medium text-gray-900 dark:text-white"
+																	>
+																		{event.event_title}
+																	</div>
+																	<div
+																		class="text-xs text-gray-500 dark:text-gray-400"
+																	>
+																		{format(
+																			new Date(
+																				event.event_start
+																			),
+																			'MMM d, yyyy h:mm a'
+																		)}
+																	</div>
+																	{#if event.reminder_time}
+																		<div
+																			class="text-xs text-green-600 dark:text-green-400"
+																		>
+																			SMS would send at: {format(
+																				new Date(
+																					event.reminder_time
+																				),
+																				'h:mm a'
+																			)}
+																		</div>
+																	{/if}
+																</div>
+																<div>
+																	{#if event.would_trigger_sms}
+																		<CheckCircle
+																			class="h-4 w-4 text-green-600 dark:text-green-400"
+																		/>
+																	{:else}
+																		<span
+																			class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+																		>
+																			{event.skip_reason}
+																		</span>
+																	{/if}
+																</div>
+															</div>
+														</div>
+													{/each}
+												</div>
+											</details>
+										{/if}
+									{/if}
+
+									<!-- Errors -->
+									{#if result.errors.length > 0}
+										<div class="mt-3">
+											{#each result.errors as error}
+												<div
+													class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded"
+												>
+													⚠️ {error}
+												</div>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				<!-- Action Buttons -->
 				<div class="flex justify-end gap-4">

@@ -274,7 +274,11 @@ async function handlePhaseAssignment(
 	}
 }
 
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({
+	params,
+	locals: { supabase, safeGetSession },
+	request
+}) => {
 	try {
 		const { user } = await safeGetSession();
 		if (!user) {
@@ -283,7 +287,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		const { id: projectId } = params;
 
-		// Verify project ownership and get tasks
+		// PERFORMANCE: Single optimized query with strategic field selection
+		// Uses LEFT joins to include tasks without calendar events/phases
 		const { data: tasks, error } = await supabase
 			.from('tasks')
 			.select(
@@ -299,11 +304,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					event_title,
 					sync_status,
 					sync_error,
-					last_synced_at,
-					organizer_email,
-					organizer_display_name,
-					organizer_self,
-					attendees
+					last_synced_at
 				),
 				phase_tasks(
 					id,
@@ -315,16 +316,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						start_date,
 						end_date
 					)
-				),
-				project:projects!inner(
-					id,
-					user_id
 				)
 			`
 			)
 			.eq('project_id', projectId)
-			.eq('project.user_id', user.id)
-			.order('created_at', { ascending: false });
+			.eq('user_id', user.id)
+			.is('deleted_at', null)
+			.order('created_at', { ascending: false })
+			.limit(500);
 
 		if (error) {
 			throw error;

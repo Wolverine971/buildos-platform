@@ -9,8 +9,7 @@
 		Loader2,
 		AlertTriangle
 	} from 'lucide-svelte';
-	import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
 	import { formatFullDate, differenceInHours } from '$lib/utils/date-utils';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { Task } from '$lib/types/project';
@@ -34,7 +33,6 @@
 	import MobileTaskTabs from '$lib/components/dashboard/MobileTaskTabs.svelte';
 	import WeeklyTaskCalendar from '$lib/components/dashboard/WeeklyTaskCalendar.svelte';
 	import FirstTimeBrainDumpCard from '$lib/components/dashboard/FirstTimeBrainDumpCard.svelte';
-	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
 	import {
 		brainDumpV2Store,
 		isModalOpen as brainDumpModalIsOpen
@@ -45,7 +43,6 @@
 	let TaskModal = $state<any>(null);
 	let DailyBriefModal = $state<any>(null);
 	let TimeBlockModal = $state<any>(null);
-	// BrainDumpModal is imported directly, not lazy loaded
 
 	// Props with proper types
 	type Props = {
@@ -139,9 +136,36 @@
 	let showDailyBriefModal = $state(false);
 	let selectedBrief = $state<any>(null);
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
-	let selectedBrainDumpProject = $state<any>(null);
 	let showTimeBlockModal = $state(false);
 	let selectedTimeBlock = $state<TimeBlockWithProject | null>(null);
+	let brainDumpModalWasOpen = false;
+	let pendingBrainDumpRefresh = false;
+
+	$effect(() => {
+		const isOpen = showBrainDumpModal;
+		const storeSnapshot = $brainDumpV2Store;
+		const activeCount =
+			storeSnapshot?.activeBrainDumps instanceof Map
+				? storeSnapshot.activeBrainDumps.size
+				: 0;
+		const processingPhase = storeSnapshot?.processing?.phase ?? 'idle';
+		const handoffActive = activeCount > 0 || processingPhase !== 'idle';
+
+		if (!isOpen && brainDumpModalWasOpen) {
+			if (handoffActive) {
+				pendingBrainDumpRefresh = true;
+			} else {
+				pendingBrainDumpRefresh = false;
+				void requestRefresh();
+			}
+		}
+
+		if (pendingBrainDumpRefresh && !handoffActive) {
+			pendingBrainDumpRefresh = false;
+			void requestRefresh();
+		}
+		brainDumpModalWasOpen = isOpen;
+	});
 
 	// Time block states
 	let timeBlocks = $state<TimeBlockWithProject[]>([]);
@@ -581,27 +605,8 @@
 
 	function handleStartBrainDump() {
 		console.log('[Dashboard] Opening brain dump modal');
-		brainDumpV2Store.openModal();
-		selectedBrainDumpProject = null; // Let user select project in modal
+		brainDumpV2Store.openModal({ resetSelection: true });
 	}
-
-	async function handleBrainDumpClose() {
-		brainDumpV2Store.closeModal();
-		selectedBrainDumpProject = null;
-		// Refresh dashboard data after brain dump
-		await requestRefresh();
-	}
-
-	async function handleBrainDumpNavigate(event: CustomEvent) {
-		const { url } = event.detail;
-		brainDumpV2Store.closeModal();
-		selectedBrainDumpProject = null;
-		await tick();
-		if (url) {
-			await goto(url);
-		}
-	}
-
 	function handleCloseTaskModal() {
 		showTaskModal = false;
 		selectedTask = null;
@@ -1110,23 +1115,6 @@
 		onClose={handleCloseBriefModal}
 	/>
 {/if}
-
-<BrainDumpModal
-	isOpen={showBrainDumpModal}
-	project={selectedBrainDumpProject}
-	showNavigationOnSuccess={true}
-	on:close={handleBrainDumpClose}
-	on:navigateAndClose={handleBrainDumpNavigate}
-	onNavigateToProject={async (url: string) => {
-		brainDumpV2Store.closeModal();
-		selectedBrainDumpProject = null;
-		await tick();
-		if (url) {
-			await goto(url);
-		}
-	}}
-/>
-
 {#if TimeBlockModal}
 	<svelte:component
 		this={TimeBlockModal}

@@ -44,12 +44,34 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.badRequest('Invalid date format. Use YYYY-MM-DD format.');
 	}
 
+	// Validate date is not too far in the past (more than 30 days)
+	if (options.override_date) {
+		const targetDate = new Date(options.override_date);
+		const thirtyDaysAgo = new Date();
+		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+		if (targetDate < thirtyDaysAgo) {
+			return ApiResponse.badRequest('Cannot process dates more than 30 days in the past');
+		}
+	}
+
 	if (options.user_ids && !Array.isArray(options.user_ids)) {
 		return ApiResponse.badRequest('user_ids must be an array');
 	}
 
 	if (options.user_ids && options.user_ids.length > 100) {
 		return ApiResponse.badRequest('Maximum 100 users can be processed at once');
+	}
+
+	// Validate user IDs are valid UUIDs
+	if (options.user_ids && options.user_ids.length > 0) {
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		const invalidIds = options.user_ids.filter((id) => !uuidRegex.test(id));
+		if (invalidIds.length > 0) {
+			return ApiResponse.badRequest(
+				`Invalid user IDs: ${invalidIds.slice(0, 3).join(', ')}${invalidIds.length > 3 ? '...' : ''}`
+			);
+		}
 	}
 
 	try {
@@ -128,6 +150,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				if (!queueError) {
 					results.jobs_queued++;
+				} else {
+					console.error(
+						`Failed to queue SMS scheduling job for user ${pref.user_id}:`,
+						queueError
+					);
 				}
 
 				results.details.push({
@@ -202,7 +229,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		)
 		.eq('user_id', userId)
 		.gte('scheduled_for', `${date}T00:00:00`)
-		.lt('scheduled_for', `${date}T23:59:59`)
+		.lte('scheduled_for', `${date}T23:59:59`)
 		.order('scheduled_for', { ascending: true });
 
 	if (error) {

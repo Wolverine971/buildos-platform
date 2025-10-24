@@ -233,99 +233,119 @@ export interface ReengagementPromptInput {
 }
 
 /**
- * Executive Summary Prompt - for generating concise daily brief summaries
+ * Executive Summary Prompt - for generating rich, contextual daily brief summaries
  */
 
 export interface ExecutiveSummaryPromptInput {
 	date: string;
 	timezone: string;
-	totalProjects: number;
-	projectsWithTodaysTasks: number;
-	totalTodaysTasks: number;
-	totalOverdueTasks: number;
-	totalUpcomingTasks: number;
-	totalNextSevenDaysTasks: number;
-	totalRecentlyCompleted: number;
+	projects: DailyBriefAnalysisProject[];
 	timeAllocationContext?: TimeAllocationContext;
 	holidays?: string[];
 }
 
 export class ExecutiveSummaryPrompt {
 	static getSystemPrompt(includeTimeblocks: boolean = false): string {
-		const basePrompt = `You are a BuildOS productivity strategist writing a concise, action-oriented executive summary for a daily brief.
+		const basePrompt = `You are a BuildOS productivity strategist writing an insightful executive summary for a daily brief.
 
 Your goals:
-- Provide a straight-to-the-point summary of the user's day
-- Highlight key numbers and priorities without unnecessary filler
-- Be encouraging but realistic about the workload
-- Make it scannable and immediately useful`;
+- Synthesize the user's day into a clear, actionable overview
+- Identify cross-project patterns, priorities, and strategic focus areas
+- Highlight critical items (overdue, starting today, blockers) while maintaining encouraging tone
+- Reference specific projects and tasks by name to provide immediate context
+- Make the summary scannable with clear formatting and structure`;
 
 		const timeblockGoals = includeTimeblocks
 			? `
-- Reference time allocation when it provides critical context about capacity
-- Mention scheduling gaps or overallocations if they're significant`
+- Assess whether scheduled time aligns with actual workload across projects
+- Flag significant capacity mismatches (under/overallocated projects)
+- Suggest time reallocation opportunities when relevant`
 			: '';
 
 		const toneAndFormat = `
 
-Tone & format:
-- Direct, professional, and action-focused
-- 2-3 sentences maximum
-- No greeting or sign-off - just the summary
-- Use exact numbers provided in the data
-- Focus on what matters most: tasks starting today, overdue items, and time constraints`;
+Tone & Style:
+- Professional yet encouraging - acknowledge challenges while highlighting momentum
+- Strategic and synthesized - don't just list stats, show how pieces connect
+- Specific - use actual project names, task titles, and phase names from the data
+- Action-oriented - guide the user toward clear next steps`;
+
+		const structure = `
+
+Structure & Format (300 words max):
+Use clean Markdown formatting with these sections:
+
+1. **Opening Context** (2-3 sentences)
+   - What type of day is this? (Heavy workload, cleanup day, momentum building, etc.)
+   - Reference holidays if present
+   - Set expectations for the day's flow
+
+2. **Key Focus Areas** (Bulleted list)
+   - List 3-5 most important things to focus on today
+   - Reference specific project names and task counts
+   - Mention overdue items and tasks starting today
+   - Connect tasks to their project phases when relevant
+
+3. **Project Insights** (2-3 sentences)
+   - Brief mention of notable projects (those with high activity or concerns)
+   - Reference current phases when they provide context
+   - Highlight any cross-project dependencies or patterns${includeTimeblocks ? '\n   - Note capacity allocation issues if significant' : ''}
+
+4. **Momentum & Outlook** (1-2 sentences)
+   - Acknowledge recent progress if any
+   - Brief look ahead to what's coming in next 7 days if relevant
+   - Encouraging close that guides action`;
 
 		const guidelines = `
 
-Guidelines:
-- Start with the most important information (tasks starting today or overdue items)
-- Mention total projects only if relevant to context
-- Include upcoming tasks if they impact today's priorities
-- Reference recent completions only if they provide momentum context
-- Keep it under 100 words
-- Output plain text only - no markdown formatting needed`;
+Critical Guidelines:
+- **Never invent data** - only reference projects, tasks, and phases provided in the input
+- **Use actual names** - don't say "Project A" when you have the real project name
+- **Be selective** - don't mention every project if some are more critical
+- **Stay within 300 words** - be concise but comprehensive
+- **Format with Markdown** - use bold, bullets, and clear structure
+- **No placeholders** - every statement should reference actual data`;
 
-		return basePrompt + timeblockGoals + toneAndFormat + guidelines;
+		return basePrompt + timeblockGoals + toneAndFormat + structure + guidelines;
 	}
 
 	static buildUserPrompt(input: ExecutiveSummaryPromptInput): string {
-		const {
-			date,
-			timezone,
-			totalProjects,
-			projectsWithTodaysTasks,
-			totalTodaysTasks,
-			totalOverdueTasks,
-			totalUpcomingTasks,
-			totalNextSevenDaysTasks,
-			totalRecentlyCompleted,
-			timeAllocationContext,
-			holidays
-		} = input;
+		const { date, timezone, projects, timeAllocationContext, holidays } = input;
 
-		let prompt = `Generate an executive summary for this daily brief:
+		// Calculate aggregate stats for overview
+		const totalProjects = projects.length;
+		const totalTodaysTasks = projects.reduce((sum, p) => sum + p.stats.todays_task_count, 0);
+		const totalOverdueTasks = projects.reduce((sum, p) => sum + p.stats.overdue_task_count, 0);
+		const totalUpcomingTasks = projects.reduce(
+			(sum, p) => sum + p.stats.next_seven_days_task_count,
+			0
+		);
+		const totalRecentlyCompleted = projects.reduce(
+			(sum, p) => sum + p.stats.recently_completed_count,
+			0
+		);
+
+		let prompt = `Generate an executive summary for this daily brief.
 
 Date: ${date}
 Timezone: ${timezone}
-${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
-Statistics:
-- Total active projects: ${totalProjects}
-- Projects with tasks starting today: ${projectsWithTodaysTasks}
-- Tasks starting today: ${totalTodaysTasks}
-- Overdue tasks: ${totalOverdueTasks}
-- Upcoming tasks: ${totalUpcomingTasks}
-- Tasks in next 7 days: ${totalNextSevenDaysTasks}
-- Recently completed (last 24h): ${totalRecentlyCompleted}
+${holidays && holidays.length > 0 ? `🎉 Today is ${holidays.join(' and ')}\n` : ''}
+Overview Stats:
+- ${totalProjects} active projects
+- ${totalTodaysTasks} tasks starting today
+- ${totalOverdueTasks} overdue tasks
+- ${totalUpcomingTasks} tasks in next 7 days
+- ${totalRecentlyCompleted} completed in last 24h
+
 `;
 
 		// Add timeblock context if available
 		if (timeAllocationContext) {
 			const totalHours = (timeAllocationContext.totalAllocatedMinutes / 60).toFixed(1);
-			prompt += `
-Time Allocation:
-- Total scheduled time today: ${totalHours}h across ${timeAllocationContext.projectAllocations.length} project(s)`;
+			prompt += `Time Allocation Today:
+- Total scheduled: ${totalHours}h
+`;
 
-			// Mention significant capacity issues
 			const underallocated = timeAllocationContext.projectAllocations.filter(
 				(p) => p.capacityStatus === 'underallocated'
 			);
@@ -334,24 +354,84 @@ Time Allocation:
 			);
 
 			if (underallocated.length > 0) {
-				prompt += `\n- ${underallocated.length} project(s) underallocated`;
+				prompt += `- Underallocated: ${underallocated.map((p) => p.projectName).join(', ')}\n`;
 			}
 			if (overallocated.length > 0) {
-				prompt += `\n- ${overallocated.length} project(s) overallocated`;
+				prompt += `- Overallocated: ${overallocated.map((p) => p.projectName).join(', ')}\n`;
 			}
 
 			if (timeAllocationContext.unscheduledTimeAnalysis.totalMinutes > 0) {
 				const unscheduledHours = (
 					timeAllocationContext.unscheduledTimeAnalysis.totalMinutes / 60
 				).toFixed(1);
-				prompt += `\n- ${unscheduledHours}h unscheduled time available`;
+				prompt += `- Unscheduled time available: ${unscheduledHours}h\n`;
 			}
 
 			prompt += `\n`;
 		}
 
+		// Format each project with rich context
+		prompt += `Project Details:\n\n`;
+
+		projects.forEach((project) => {
+			prompt += `**${project.project_name}**\n`;
+
+			if (project.description) {
+				prompt += `Description: ${project.description}\n`;
+			}
+
+			if (project.current_phase) {
+				prompt += `Current Phase: ${project.current_phase.name} (${project.current_phase.start_date} to ${project.current_phase.end_date})\n`;
+			}
+
+			// Task breakdown for this project
+			prompt += `Tasks:\n`;
+			if (project.stats.todays_task_count > 0) {
+				prompt += `  - Starting today: ${project.stats.todays_task_count}\n`;
+				// List actual task titles for today
+				if (project.tasks_today.length > 0) {
+					project.tasks_today.slice(0, 3).forEach((task) => {
+						prompt += `    • ${task.title}${task.priority && task.priority !== 'medium' ? ` (${task.priority} priority)` : ''}\n`;
+					});
+					if (project.tasks_today.length > 3) {
+						prompt += `    • ... and ${project.tasks_today.length - 3} more\n`;
+					}
+				}
+			}
+
+			if (project.stats.overdue_task_count > 0) {
+				prompt += `  - Overdue: ${project.stats.overdue_task_count}\n`;
+				// List overdue task titles
+				if (project.overdue_tasks.length > 0) {
+					project.overdue_tasks.slice(0, 2).forEach((task) => {
+						prompt += `    • ${task.title}\n`;
+					});
+					if (project.overdue_tasks.length > 2) {
+						prompt += `    • ... and ${project.overdue_tasks.length - 2} more\n`;
+					}
+				}
+			}
+
+			if (project.stats.next_seven_days_task_count > 0) {
+				prompt += `  - Next 7 days: ${project.stats.next_seven_days_task_count}\n`;
+			}
+
+			if (project.stats.recently_completed_count > 0) {
+				prompt += `  - Recently completed: ${project.stats.recently_completed_count}\n`;
+			}
+
+			// Note if project has recent activity (notes)
+			if (project.recent_notes.length > 0) {
+				prompt += `  - Recent notes: ${project.recent_notes.length}\n`;
+			}
+
+			prompt += `\n`;
+		});
+
 		prompt += `
-Write a concise executive summary (2-3 sentences max) that gives the user immediate clarity on their day.`;
+Using the project details above, write a 300-word executive summary that synthesizes the user's day.
+Follow the structure in the system prompt (Opening Context, Key Focus Areas, Project Insights, Momentum & Outlook).
+Use Markdown formatting and reference specific project names and task titles.`;
 
 		return prompt;
 	}

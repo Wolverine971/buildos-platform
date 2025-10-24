@@ -428,7 +428,10 @@
 								id={`field-${field}`}
 								value={formData[field] || ''}
 								on:change={(e) =>
-									handleFieldChange(field, e.detail || e.target?.value)}
+									handleFieldChange(
+										field,
+										e.detail || (e.target as HTMLSelectElement)?.value
+									)}
 								disabled={loading}
 								size="md"
 							>
@@ -463,11 +466,13 @@
 								id={`field-${field}`}
 								type="number"
 								value={getFieldValue(field)}
-								on:input={(e) =>
+								on:input={(e) => {
+									const target = e.target as HTMLInputElement | null;
 									handleFieldChange(
 										field,
-										e.detail || e.target.valueAsNumber || e.target.value
-									)}
+										e.detail || target?.valueAsNumber || target?.value
+									);
+								}}
 								min={config.min}
 								max={config.max}
 								disabled={loading}
@@ -480,11 +485,13 @@
 									id={`field-${field}`}
 									type="checkbox"
 									checked={formData[field] || false}
-									on:change={(e) =>
+									on:change={(e) => {
+										const target = e.target as HTMLInputElement | null;
 										handleFieldChange(
 											field,
-											e.target?.checked || e.target.value || e.detail
-										)}
+											target?.checked ?? target?.value ?? false
+										);
+									}}
 									disabled={loading}
 									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
 								/>

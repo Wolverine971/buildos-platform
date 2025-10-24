@@ -2,17 +2,13 @@
 <script lang="ts">
 	import { onDestroy, createEventDispatcher, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import Modal from '$lib/components/ui/Modal.svelte';
 
 	// Lazy load heavy components - use $state for reactive component references
 	let ProjectSelectionView = $state<any>(null);
 	let RecordingView = $state<any>(null);
-	let ParseResultsDiffView = $state<any>(null);
 	let SuccessView = $state<any>(null);
-	let ProcessingModal = $state<any>(null);
-	let DualProcessingResults = $state<any>(null);
 	let OperationEditModal = $state<any>(null);
 
 	// Import lighter components that are always needed
@@ -249,18 +245,6 @@
 					componentsLoaded.recording = true;
 				}
 				// Preload components that might be needed soon
-				if (!componentsLoaded.processing) {
-					import('./ProcessingModal.svelte').then((m) => {
-						ProcessingModal = m.default;
-						componentsLoaded.processing = true;
-					});
-				}
-				if (!componentsLoaded.parseResults) {
-					import('./ParseResultsDiffView.svelte').then((m) => {
-						ParseResultsDiffView = m.default;
-						componentsLoaded.parseResults = true;
-					});
-				}
 				break;
 			case 'success':
 				if (!componentsLoaded.success) {
@@ -631,10 +615,7 @@
 		// 7. Clear component references (helps with garbage collection) and reset load state
 		ProjectSelectionView = null;
 		RecordingView = null;
-		ParseResultsDiffView = null;
 		SuccessView = null;
-		ProcessingModal = null;
-		DualProcessingResults = null;
 		OperationEditModal = null;
 		componentsLoaded = { ...initialComponentLoadState };
 

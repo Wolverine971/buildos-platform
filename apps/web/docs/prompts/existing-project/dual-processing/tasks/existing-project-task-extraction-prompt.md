@@ -1,30 +1,32 @@
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2025-10-21T20:05:48.403Z
+**Generated at:** 2025-10-24T01:06:50.581Z
 **Environment:** Development
+
 
 ## Metadata
 
 ```json
 {
-	"userId": "test-user-123",
-	"projectId": "existing-project-123",
-	"brainDumpLength": 41,
-	"existingTasksCount": 0,
-	"hasDisplayedQuestions": false,
-	"timestamp": "2025-10-21T20:05:48.403Z"
+  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+  "projectId": "1747a600-cf41-4c66-bb67-98d6786aa709",
+  "brainDumpLength": 510,
+  "existingTasksCount": 7,
+  "hasDisplayedQuestions": false,
+  "timestamp": "2025-10-24T01:06:50.580Z"
 }
 ```
 
+
 ## System Prompt
 
-````
+```
 You are a task extraction engine that can CREATE new tasks or UPDATE existing ones.
 
-Mode: Extract/Update for EXISTING project existing-project-123
+Mode: Extract/Update for EXISTING project 1747a600-cf41-4c66-bb67-98d6786aa709
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-21T20:05:48.403Z
+Current date and time: 2025-10-24T01:06:42.048Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references
@@ -66,7 +68,7 @@ Current date and time: 2025-10-21T20:05:48.403Z
 {
   "operation": "create",
   "title": "New task title (required)",
-  "project_id": "existing-project-123",
+  "project_id": "1747a600-cf41-4c66-bb67-98d6786aa709",
   "description": "Task summary",
   "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
   "priority": "low|medium|high",
@@ -161,7 +163,7 @@ Include these questions in your response within the main JSON structure:
         "title": "New task from brain dump",
         "description": "Brief task summary",
         "details": "COMPREHENSIVE: All implementation details, research notes, ideas, observations, references, and any other context from the brain dump related to this task. Nothing should be lost.",
-        "project_id": "existing-project-123",
+        "project_id": "1747a600-cf41-4c66-bb67-98d6786aa709",
         "priority": "medium",
         "status": "backlog",
         "task_type": "one_off",
@@ -177,7 +179,7 @@ Include these questions in your response within the main JSON structure:
         "title": "Daily standup meeting",
         "description": "Morning team sync",
         "details": "Quick 15-minute sync to share updates and blockers",
-        "project_id": "existing-project-123",
+        "project_id": "1747a600-cf41-4c66-bb67-98d6786aa709",
         "priority": "medium",
         "status": "backlog",
         "task_type": "recurring",
@@ -205,35 +207,46 @@ Include these questions in your response within the main JSON structure:
     }
   ]
 }
-````
+```
 
 Respond with valid JSON matching the complete structure above.
-
 ```
 
 ## User Prompt
 
 ```
-
 ## Current Project Data:
 
-No existing tasks
+**EXISTING TASKS (7):**
+[{"id":"dc28ae49-096e-4533-98ed-87ff901270c9","title":"Design the prophecy","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":90,"description":"Create a prophecy that drives the plot.","details":"The prophecy should be integral to the story, hinting at the main character's journey and the challenges she will face."},{"id":"7efa2b1e-2389-4393-9203-630f9dd6c858","title":"Research medieval blacksmithing techniques","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":120,"description":"Gather information on historical blacksmithing methods.","details":"Focus on techniques that could influence the main character's abilities and the magical aspects of forging weapons."},{"id":"96c38ee8-acd3-4f28-8bd5-5eb75da5ee23","title":"Outline first three chapters","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Create an outline for the initial chapters of the novel.","details":"Detail the main events, character introductions, and plot points for the first three chapters to establish the story's tone and direction."},{"id":"8eb82987-2039-4560-8a6a-8bb692479f35","title":"Write character profiles for the antagonist","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Develop detailed profiles for the antagonist.","details":"The antagonist is The Shadow King. Explore his motivations, background, and how he opposes the main character."},{"id":"ed3f07db-0c0f-49b9-b7de-492b414c723f","title":"Map out the kingdom of Aethermoor","status":"backlog","priority":"medium","task_type":"one_off","duration_minutes":240,"description":"Create a detailed map of the kingdom.","details":"Include key locations, geographical features, and any significant landmarks that will play a role in the story."},{"id":"7e7ab668-b800-47c1-9365-0a46e69768db","title":"Create magic system","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":180,"description":"Develop a unique magic system for the novel.","details":"The magic system should be based on metal and fire, detailing how it works, its limitations, and its impact on the world and characters."},{"id":"6877df7b-55b3-4141-8cef-ff083637234b","title":"Develop main character backstory","status":"backlog","priority":"high","task_type":"one_off","duration_minutes":120,"description":"Create a detailed backstory for the main character.","details":"The main character is an orphan raised by a master blacksmith. Explore her childhood, motivations, and how her upbringing influences her abilities and decisions."}]
 
 ---
 
 Extract and update tasks from the following brain dump, also keep in mind that the brain dump may contain instructions for organizing the info:
 
-Add authentication feature to the project
+Finished chapter 2 today - 4,500 words. The scene where Elena discovers the dragon forge went really well.
 
+Issues to address:
+
+- Need to strengthen the dialogue between Elena and Master Thorne
+- The pacing in the middle feels slow
+- Add more sensory details about the forge
+
+Chapter 3 plans:
+
+- Elena's first attempt at magical forging
+- Introduce the Shadow King's herald
+- Foreshadow the prophecy
+
+Also need to go back and fix continuity issue - Elena's age mentioned as 16 in chapter 1 but 17 in chapter 2.
 ```
 
 ## Token Estimates
 
-- **System Prompt:** ~2097 tokens
-- **User Prompt:** ~59 tokens
-- **Total Estimate:** ~2156 tokens
+- **System Prompt:** ~2113 tokens
+- **User Prompt:** ~833 tokens
+- **Total Estimate:** ~2946 tokens
 
 
 ---
 *This file is automatically generated in development mode for prompt auditing purposes.*
-```

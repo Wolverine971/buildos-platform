@@ -208,6 +208,7 @@ class ProjectStoreV2 {
 
 		// Start performance monitoring
 		performanceMonitor.startTimer('store-operation-loadTasks', { projectId, force });
+		const t0 = performance.now();
 
 		try {
 			// Add timeout to prevent hanging forever
@@ -217,33 +218,68 @@ class ProjectStoreV2 {
 				console.error('[Store] Tasks fetch timed out after 15s');
 			}, 15000); // 15 second timeout
 
+			// DETAILED TIMING: Track fetch time
+			const fetchStart = performance.now();
 			const response = await fetch(`/api/projects/${projectId}/tasks`, {
 				signal: controller.signal
 			});
+			const fetchTime = performance.now() - fetchStart;
 
 			clearTimeout(timeoutId);
 
 			if (!response.ok) throw new Error('Failed to fetch tasks');
 
+			// DETAILED TIMING: Track JSON parsing time
+			const parseStart = performance.now();
 			const result = await response.json();
+			const parseTime = performance.now() - parseStart;
 
 			if (result.success) {
 				// The tasks endpoint returns { tasks: [...] } directly in data
 				const tasksList = result.data?.tasks || result.tasks || [];
+
+				// DETAILED TIMING: Track merge time
+				const mergeStart = performance.now();
+				const mergedTasks = this.mergeWithOptimistic(tasksList, 'task');
+				const mergeTime = performance.now() - mergeStart;
+
+				// DETAILED TIMING: Track store update time
+				const storeUpdateStart = performance.now();
 				this.store.update((state) => ({
 					...state,
-					tasks: this.mergeWithOptimistic(tasksList, 'task'),
+					tasks: mergedTasks,
 					loadingStates: { ...state.loadingStates, tasks: 'success' },
 					errors: { ...state.errors, tasks: null },
 					lastFetch: { ...state.lastFetch, tasks: Date.now() }
 				}));
+				const storeUpdateTime = performance.now() - storeUpdateStart;
 
+				// DETAILED TIMING: Track stats calculation time
+				const statsStart = performance.now();
 				this.updateStats();
+				const statsTime = performance.now() - statsStart;
+
+				const totalTime = performance.now() - t0;
+
+				// Log detailed breakdown
+				console.log(`[Store] loadTasks breakdown (${totalTime.toFixed(0)}ms total):`, {
+					fetch: `${fetchTime.toFixed(0)}ms`,
+					parse: `${parseTime.toFixed(0)}ms`,
+					merge: `${mergeTime.toFixed(0)}ms`,
+					storeUpdate: `${storeUpdateTime.toFixed(0)}ms`,
+					stats: `${statsTime.toFixed(0)}ms`,
+					taskCount: tasksList.length
+				});
 
 				// End performance monitoring on success
 				performanceMonitor.endTimer('store-operation-loadTasks', {
 					projectId,
-					taskCount: tasksList.length
+					taskCount: tasksList.length,
+					fetchTime,
+					parseTime,
+					mergeTime,
+					storeUpdateTime,
+					statsTime
 				});
 			} else {
 				console.error('[Store] Tasks API returned success: false', result);
@@ -1122,31 +1158,65 @@ class ProjectStoreV2 {
 		const state = get(this.store);
 		const tasks = state.tasks;
 
-		const activeTasks = tasks.filter((t) => !t.deleted_at && t.status !== 'done');
-		const doneTasks = tasks.filter((t) => !t.deleted_at && t.status === 'done');
-		const deletedTasks = tasks.filter((t) => t.deleted_at);
-
-		// Calculate backlog (tasks not in phases)
+		// PERFORMANCE OPTIMIZATION: Single-pass calculation instead of multiple filters
+		// Pre-calculate phased task IDs once
 		const phasedTaskIds = new Set(state.phases.flatMap((p) => p.tasks?.map((t) => t.id) || []));
-		const backlogTasks = activeTasks.filter((t) => !phasedTaskIds.has(t.id));
 
-		// Calculate scheduled (tasks with calendar events)
-		const scheduledTasks = activeTasks.filter((t) => {
-			const events = t.task_calendar_events || [];
-			return events.some((e) => e.sync_status === 'synced' || e.sync_status === 'pending');
-		});
+		// Single pass through tasks to calculate all stats at once
+		let activeCount = 0;
+		let completedCount = 0;
+		let inProgressCount = 0;
+		let blockedCount = 0;
+		let deletedCount = 0;
+		let scheduledCount = 0;
+		let backlogCount = 0;
+
+		for (const task of tasks) {
+			// Deleted tasks
+			if (task.deleted_at) {
+				deletedCount++;
+				continue;
+			}
+
+			// Completed tasks
+			if (task.status === 'done') {
+				completedCount++;
+				continue;
+			}
+
+			// Active tasks (not deleted, not done)
+			activeCount++;
+
+			// Status counts
+			if (task.status === 'in_progress') {
+				inProgressCount++;
+			} else if (task.status === 'blocked') {
+				blockedCount++;
+			}
+
+			// Scheduled tasks (have synced or pending calendar events)
+			const events = task.task_calendar_events || [];
+			if (events.some((e) => e.sync_status === 'synced' || e.sync_status === 'pending')) {
+				scheduledCount++;
+			}
+
+			// Backlog tasks (not in any phase)
+			if (!phasedTaskIds.has(task.id)) {
+				backlogCount++;
+			}
+		}
 
 		this.store.update((s) => ({
 			...s,
 			stats: {
-				total: activeTasks.length + doneTasks.length,
-				completed: doneTasks.length,
-				inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
-				blocked: activeTasks.filter((t) => t.status === 'blocked').length,
-				deleted: deletedTasks.length,
-				active: activeTasks.length,
-				scheduled: scheduledTasks.length,
-				backlog: backlogTasks.length
+				total: activeCount + completedCount,
+				completed: completedCount,
+				inProgress: inProgressCount,
+				blocked: blockedCount,
+				deleted: deletedCount,
+				active: activeCount,
+				scheduled: scheduledCount,
+				backlog: backlogCount
 			}
 		}));
 	}

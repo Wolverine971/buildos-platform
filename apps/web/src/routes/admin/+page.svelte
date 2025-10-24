@@ -375,6 +375,33 @@
 		return 'text-gray-600';
 	}
 
+	function formatMilliseconds(ms: number): string {
+		if (ms < 1000) {
+			return `${ms}ms`;
+		}
+
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		const remainingMs = Math.floor(ms % 1000);
+
+		const parts: string[] = [];
+
+		if (minutes > 0) {
+			parts.push(`${minutes} min`);
+		}
+
+		if (seconds > 0) {
+			parts.push(`${seconds} sec`);
+		}
+
+		if (remainingMs > 0 || parts.length === 0) {
+			parts.push(`${remainingMs}ms`);
+		}
+
+		return parts.join(' ');
+	}
+
 	function getActivityIcon(activityType: string) {
 		switch (activityType) {
 			case 'brief_generated':
@@ -1729,11 +1756,13 @@
 												metric.metric_unit
 											)}"
 										>
-											{metric.metric_value}{metric.metric_unit ===
-											'percentage'
-												? '%'
-												: ''}
-											{metric.metric_unit === 'milliseconds' ? 'ms' : ''}
+											{#if metric.metric_unit === 'percentage'}
+												{metric.metric_value}%
+											{:else if metric.metric_unit === 'milliseconds'}
+												{formatMilliseconds(metric.metric_value)}
+											{:else}
+												{metric.metric_value}
+											{/if}
 										</div>
 									</div>
 								</div>

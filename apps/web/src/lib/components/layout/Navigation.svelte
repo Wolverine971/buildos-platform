@@ -58,9 +58,11 @@
 
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	const currentPath = $derived($page.url.pathname);
-	const currentProject = $derived(
+	const storeProject = $derived($brainDumpV2Store?.core?.selectedProject ?? null);
+	const routeProject = $derived(
 		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null
 	);
+	const modalProject = $derived(storeProject ?? routeProject ?? null);
 
 	const NAV_ITEMS = [
 		{ href: '/', label: 'Dashboard', icon: Home },
@@ -175,7 +177,7 @@
 
 	function handleOpenBrainDump() {
 		closeAllMenus();
-		brainDumpV2Store.openModal();
+		brainDumpV2Store.openModal({ resetSelection: true });
 	}
 
 	function handleBrainDumpClose() {
@@ -726,7 +728,7 @@
 <!-- Brain Dump Modal -->
 <BrainDumpModal
 	isOpen={showBrainDumpModal}
-	project={currentProject}
+	project={modalProject}
 	showNavigationOnSuccess={true}
 	on:close={handleBrainDumpClose}
 />

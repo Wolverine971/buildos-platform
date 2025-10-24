@@ -11,10 +11,14 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
 	DailyBriefAnalysisPrompt,
 	DailyBriefAnalysisProject,
+	DailyBriefAnalysisTask,
+	DailyBriefAnalysisNote,
 	ReengagementBriefPrompt,
 	ReengagementPromptInput,
 	ExecutiveSummaryPrompt,
-	ExecutiveSummaryPromptInput
+	ExecutiveSummaryPromptInput,
+	TimeAllocationContext,
+	TimeBlockContextSuggestion
 } from './prompts';
 
 export type Project = Database['public']['Tables']['projects']['Row'];
@@ -46,6 +50,89 @@ export interface TimeBlockData {
 	projectTimeBlocks: Map<string, TimeBlock[]>;
 	unscheduledBlocks: TimeBlock[];
 	totalMinutesAllocated: number;
+}
+
+// Project brief metadata structure
+export interface ProjectBriefMetadata {
+	current_phase_name: string | null;
+	current_phase_id: string | null;
+	todays_task_count: number;
+	overdue_task_count: number;
+	upcoming_task_count: number;
+	next_seven_days_task_count: number;
+	recently_completed_count: number;
+	recent_notes_count: number;
+	capacity_analysis: {
+		status: 'aligned' | 'underallocated' | 'overallocated';
+		allocatedMinutes: number;
+		blockCount: number;
+		ratio: number;
+	} | null;
+}
+
+// Re-export types from prompts for consistency
+export type TaskAnalysis = DailyBriefAnalysisTask;
+export type NoteAnalysis = DailyBriefAnalysisNote;
+
+// Phase context for analysis
+export interface PhaseContext {
+	id: string;
+	name: string;
+	start_date: string;
+	end_date: string;
+}
+
+// Project analysis context
+export interface ProjectAnalysisContext {
+	description: string | null;
+	current_phase: PhaseContext | null;
+	todays_tasks: TaskAnalysis[];
+	next_seven_days_tasks: TaskAnalysis[];
+	overdue_tasks: TaskAnalysis[];
+	recently_completed_tasks: TaskAnalysis[];
+	recent_notes: NoteAnalysis[];
+}
+
+// Saved project brief from database
+export interface SavedProjectBrief {
+	id: string;
+	project_id: string;
+	user_id: string;
+	brief_date: string;
+	brief_content: string;
+	generation_status: string;
+	generation_started_at: string | null;
+	generation_completed_at: string | null;
+	metadata: ProjectBriefMetadata;
+	created_at?: string;
+	updated_at?: string;
+}
+
+// Extended project brief with analysis context
+export interface ProjectBriefWithContext extends SavedProjectBrief {
+	project_name: string;
+	project_description: string | null;
+	analysis_context: ProjectAnalysisContext;
+	executive_summary?: unknown; // Optional field that may not be present
+}
+
+// Daily brief from database
+export interface DailyBrief {
+	id: string;
+	user_id: string;
+	brief_date: string;
+	summary_content: string;
+	priority_actions: string[] | null;
+	project_brief_ids: string[] | null;
+	llm_analysis: string | null;
+	generation_status: string;
+	generation_started_at: string | null;
+	generation_completed_at: string | null;
+	generation_error: string | null;
+	generation_progress: { step: string; progress: number } | null;
+	metadata: Record<string, unknown> | null;
+	created_at?: string;
+	updated_at?: string;
 }
 
 // Helper function to get the start and end of a day in a specific timezone
@@ -241,7 +328,7 @@ export async function generateDailyBrief(
 	options: BriefJobData['options'],
 	timezone: string,
 	jobId?: string
-): Promise<any> {
+): Promise<DailyBrief> {
 	// Fetch user's timezone if not provided (from centralized users table)
 	let userTimezone = timezone;
 	if (!userTimezone) {
@@ -389,7 +476,7 @@ export async function generateDailyBrief(
 		// Filter out failed projects (null values)
 		const projectBriefs = projectBriefResults
 			.filter((result) => result.status === 'fulfilled' && result.value !== null)
-			.map((result) => (result as PromiseFulfilledResult<any>).value);
+			.map((result) => (result as PromiseFulfilledResult<ProjectBriefWithContext>).value);
 
 		// 3. Consolidate all project briefs into main daily brief
 		await updateProgress(dailyBrief.id, { step: 'consolidating_briefs', progress: 85 }, jobId);
@@ -493,7 +580,7 @@ export async function generateDailyBrief(
 					const hasTimeblocks = timeBlockData.totalMinutesAllocated > 0;
 
 					// Build time allocation context for LLM if timeblocks exist
-					let timeAllocationContext: any = undefined;
+					let timeAllocationContext: TimeAllocationContext | undefined = undefined;
 					if (hasTimeblocks) {
 						timeAllocationContext = {
 							totalAllocatedMinutes: timeBlockData.totalMinutesAllocated,
@@ -515,15 +602,17 @@ export async function generateDailyBrief(
 										?.capacity_analysis?.status || 'aligned',
 								suggestionsFromBlocks: normalizeTimeBlockSuggestions(blocks)
 									.slice(0, 2)
-									.map((s) => ({
-										title: s.title,
-										reason: s.reason,
-										project_id: s.project_id,
-										project_name: s.project_name,
-										priority: s.priority,
-										estimated_minutes: s.estimated_minutes,
-										confidence: s.confidence
-									}))
+									.map(
+										(s): TimeBlockContextSuggestion => ({
+											title: s.title,
+											reason: s.reason,
+											project_id: s.project_id ?? undefined,
+											project_name: s.project_name ?? undefined,
+											priority: s.priority ?? undefined,
+											estimated_minutes: s.estimated_minutes ?? undefined,
+											confidence: s.confidence
+										})
+									)
 							})),
 							unscheduledTimeAnalysis: {
 								totalMinutes: timeBlockData.unscheduledBlocks.reduce(
@@ -535,15 +624,17 @@ export async function generateDailyBrief(
 									timeBlockData.unscheduledBlocks
 								)
 									.slice(0, 3)
-									.map((s) => ({
-										title: s.title,
-										reason: s.reason,
-										project_id: s.project_id,
-										project_name: s.project_name,
-										priority: s.priority,
-										estimated_minutes: s.estimated_minutes,
-										confidence: s.confidence
-									}))
+									.map(
+										(s): TimeBlockContextSuggestion => ({
+											title: s.title,
+											reason: s.reason,
+											project_id: s.project_id ?? undefined,
+											project_name: s.project_name ?? undefined,
+											priority: s.priority ?? undefined,
+											estimated_minutes: s.estimated_minutes ?? undefined,
+											confidence: s.confidence
+										})
+									)
 							}
 						};
 					}
@@ -605,7 +696,7 @@ export async function generateDailyBrief(
 		if (updateError) throw updateError;
 
 		console.log(`🎉 Daily brief generated successfully for user ${userId}`);
-		return finalBrief;
+		return finalBrief as DailyBrief;
 	} catch (error) {
 		await supabase
 			.from('daily_briefs')
@@ -711,7 +802,7 @@ async function generateProjectBrief(
 	briefDate: string,
 	timezone: string,
 	timeBlockData?: TimeBlockData
-) {
+): Promise<ProjectBriefWithContext> {
 	// Get the bounds of "today" in the user's timezone
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 
@@ -847,11 +938,12 @@ async function generateProjectBrief(
 		project_name: project.name,
 		project_id: project.id,
 		project_description: project.description || null,
-		analysis_context: analysisContext
-	};
+		analysis_context: analysisContext,
+		metadata: savedBrief.metadata as unknown as ProjectBriefMetadata
+	} as ProjectBriefWithContext;
 }
 
-function getCurrentPhase(phases: Phase[], briefDate: string, timezone: string) {
+function getCurrentPhase(phases: Phase[], briefDate: string, timezone: string): Phase | null {
 	if (!phases || phases.length === 0) return null;
 
 	// For phase dates (which are just dates without timezone),
@@ -867,7 +959,11 @@ function getCurrentPhase(phases: Phase[], briefDate: string, timezone: string) {
 	);
 }
 
-function getOverdueTasks(tasks: TaskWithCalendarEvent[], briefDate: string, timezone: string) {
+function getOverdueTasks(
+	tasks: TaskWithCalendarEvent[],
+	briefDate: string,
+	timezone: string
+): TaskWithCalendarEvent[] {
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 
 	return tasks
@@ -890,7 +986,7 @@ function getUpcomingPhaseTasksFromToday(
 	phaseId: string,
 	briefDate: string,
 	timezone: string
-) {
+): TaskWithCalendarEvent[] {
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 	const phaseTaskIds = phaseTasks.filter((pt) => pt.phase_id === phaseId).map((pt) => pt.task_id);
 
@@ -914,7 +1010,7 @@ function getNext10UpcomingTasks(
 	tasks: TaskWithCalendarEvent[],
 	briefDate: string,
 	timezone: string
-) {
+): TaskWithCalendarEvent[] {
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 
 	return tasks
@@ -932,7 +1028,11 @@ function getNext10UpcomingTasks(
 		.slice(0, 10); // Get next 10 tasks
 }
 
-function getUpcomingTasks(tasks: TaskWithCalendarEvent[], briefDate: string, timezone: string) {
+function getUpcomingTasks(
+	tasks: TaskWithCalendarEvent[],
+	briefDate: string,
+	timezone: string
+): TaskWithCalendarEvent[] {
 	// Get bounds for today and next 7 days in user's timezone
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 	const nextWeekDate = new Date(todayBounds.end);
@@ -956,7 +1056,7 @@ function getRecentlyCompletedTasks(
 	tasks: TaskWithCalendarEvent[],
 	briefDate: string,
 	timezone: string
-) {
+): TaskWithCalendarEvent[] {
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 	const twentyFourHoursAgo = new Date(todayBounds.start);
 	twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
@@ -974,7 +1074,7 @@ function getRecentlyCompletedTasks(
 		});
 }
 
-function getRecentNotes(notes: Note[], briefDate: string, timezone: string) {
+function getRecentNotes(notes: Note[], briefDate: string, timezone: string): Note[] {
 	const todayBounds = getDayBoundsInTimezone(briefDate, timezone);
 	const sevenDaysAgo = new Date(todayBounds.start);
 	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -1236,10 +1336,10 @@ function mapTaskForAnalysis(
 	projectId: string,
 	timezone: string,
 	showCompletedDate: boolean = false
-) {
+): TaskAnalysis {
 	return {
 		id: task.id,
-		title: task.title,
+		title: task.title || 'Untitled Task',
 		status: task.status,
 		priority: task.priority,
 		start_date: task.start_date,
@@ -1258,7 +1358,7 @@ function mapTaskForAnalysis(
 	};
 }
 
-function mapNoteForAnalysis(note: Note, projectId: string, timezone: string) {
+function mapNoteForAnalysis(note: Note, projectId: string, timezone: string): NoteAnalysis {
 	return {
 		id: note.id,
 		title: note.title || 'Untitled Note',
@@ -1271,7 +1371,7 @@ function mapNoteForAnalysis(note: Note, projectId: string, timezone: string) {
 // Layer 5: Presentation - Build time allocation section
 function buildTimeAllocationSection(
 	timeBlockData: TimeBlockData,
-	projectBriefs: any[],
+	projectBriefs: ProjectBriefWithContext[],
 	projects: Project[]
 ): string {
 	if (!timeBlockData || timeBlockData.totalMinutesAllocated === 0) {
@@ -1353,7 +1453,7 @@ function buildTimeAllocationSection(
 }
 
 async function generateMainBrief(
-	projectBriefs: any[],
+	projectBriefs: ProjectBriefWithContext[],
 	briefDate: string,
 	timezone: string,
 	userId: string,
@@ -1408,8 +1508,12 @@ async function generateMainBrief(
 
 		const hasTimeblocks = timeBlockData && timeBlockData.totalMinutesAllocated > 0;
 
+		// Build structured project data for LLM analysis (reuse existing helper)
+		const analysisProjects: DailyBriefAnalysisProject[] =
+			buildDailyBriefAnalysisProjects(projectBriefs);
+
 		// Build time allocation context for the prompt
-		let timeAllocationContext;
+		let timeAllocationContext: TimeAllocationContext | undefined;
 		if (hasTimeblocks && timeBlockData) {
 			timeAllocationContext = {
 				totalAllocatedMinutes: timeBlockData.totalMinutesAllocated,
@@ -1458,13 +1562,7 @@ async function generateMainBrief(
 		const summaryPromptInput: ExecutiveSummaryPromptInput = {
 			date: briefDate,
 			timezone,
-			totalProjects,
-			projectsWithTodaysTasks,
-			totalTodaysTasks,
-			totalOverdueTasks,
-			totalUpcomingTasks,
-			totalNextSevenDaysTasks,
-			totalRecentlyCompleted,
+			projects: analysisProjects,
 			timeAllocationContext,
 			holidays: holidays || undefined
 		};
@@ -1472,14 +1570,16 @@ async function generateMainBrief(
 		const executiveSummary = await llmService.generateText({
 			prompt: ExecutiveSummaryPrompt.buildUserPrompt(summaryPromptInput),
 			userId,
-			profile: 'balanced',
-			temperature: 0.6,
-			maxTokens: 300,
+			profile: 'quality', // Use quality profile for better synthesis
+			temperature: 0.7, // Slightly higher for more natural, engaging writing
+			maxTokens: 800, // Enough for 300 words + formatting
 			systemPrompt: ExecutiveSummaryPrompt.getSystemPrompt(hasTimeblocks)
 		});
 
 		mainBrief += `${executiveSummary.trim()}\n\n`;
-		console.log(`✨ Generated LLM executive summary for user ${userId}`);
+		console.log(
+			`✨ Generated LLM executive summary for user ${userId} (${analysisProjects.length} projects)`
+		);
 	} catch (error) {
 		console.error('Failed to generate LLM executive summary, using fallback:', error);
 
@@ -1528,8 +1628,10 @@ async function generateMainBrief(
 	return mainBrief;
 }
 
-function buildDailyBriefAnalysisProjects(projectBriefs: any[]): DailyBriefAnalysisProject[] {
-	return projectBriefs.map((brief: any) => {
+function buildDailyBriefAnalysisProjects(
+	projectBriefs: ProjectBriefWithContext[]
+): DailyBriefAnalysisProject[] {
+	return projectBriefs.map((brief: ProjectBriefWithContext) => {
 		const context = brief.analysis_context || {};
 		const stats = brief.metadata || {};
 
@@ -1539,6 +1641,7 @@ function buildDailyBriefAnalysisProjects(projectBriefs: any[]): DailyBriefAnalys
 			project_link: `/projects/${brief.project_id}`,
 			description: brief.project_description || context.description || null,
 			current_phase: context.current_phase || null,
+			executive_summary: brief.executive_summary,
 			stats: {
 				todays_task_count:
 					stats.todays_task_count ||
@@ -1639,7 +1742,7 @@ async function updateProgress(
 	briefId: string,
 	progress: { step: string; progress: number },
 	jobId?: string
-) {
+): Promise<void> {
 	// Update daily brief progress
 	await supabase.from('daily_briefs').update({ generation_progress: progress }).eq('id', briefId);
 
@@ -1655,7 +1758,9 @@ async function updateProgress(
 			console.warn(`Failed to fetch job metadata for progress update: ${jobError.message}`);
 		}
 
-		const metaData: any = currentJob?.metadata ? currentJob?.metadata : {};
+		const metaData: Record<string, unknown> = currentJob?.metadata
+			? (currentJob.metadata as Record<string, unknown>)
+			: {};
 		const updatedMetadata = {
 			...metaData,
 			generation_progress: progress

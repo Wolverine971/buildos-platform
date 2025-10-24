@@ -17,6 +17,289 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Dashboard Bottom Sections Preload Warning
+
+**Severity**: Low (Performance/UX)
+
+### Root Cause
+
+The `/api/dashboard/bottom-sections` endpoint was preloaded immediately on dashboard page load, but the Dashboard component only fetches this data when the user scrolls to a certain point (lazy loading via IntersectionObserver). This caused a browser warning: "resource was preloaded using link preload but not used within a few seconds."
+
+**Why This Happened**:
+
+- The `+page.svelte` added a preload link for authenticated users to optimize performance
+- However, the Dashboard component was refactored to use lazy loading for bottom sections (braindumps, phases) to improve initial page load time
+- The preload and lazy load strategies were misaligned - preload assumed immediate use, but lazy loading deferred fetch until user interaction
+- IntersectionObserver with `rootMargin: '400px'` means the fetch only happens when user scrolls near the bottom sections
+
+**Impact**:
+
+- Browser console warning (cosmetic issue)
+- Wasted bandwidth preloading a resource that may never be needed (if user doesn't scroll)
+- Slight performance hit on initial page load
+- No functional impact on users
+
+### Fix Description
+
+1. **Removed preload link** from `/apps/web/src/routes/+page.svelte` for `/api/dashboard/bottom-sections`
+2. **Added explanatory comment** indicating the resource is lazy-loaded via IntersectionObserver
+3. **Result**: Resource is now only fetched when actually needed, saving bandwidth and eliminating the warning
+
+**Code Change**:
+
+```svelte
+<!-- Before -->
+{#if isAuthenticated}
+  <link
+    rel="preload"
+    href="/api/dashboard/bottom-sections"
+    as="fetch"
+    crossorigin="anonymous"
+  />
+{:else}
+
+<!-- After -->
+{#if isAuthenticated}
+  <!-- Note: /api/dashboard/bottom-sections is lazy-loaded via IntersectionObserver -->
+  <!-- No preload needed - saves bandwidth for users who don't scroll -->
+{:else}
+```
+
+### Files Changed
+
+- `/apps/web/src/routes/+page.svelte` - Removed preload link for bottom sections
+
+### Related Docs
+
+- [Dashboard Component](/apps/web/src/lib/components/dashboard/Dashboard.svelte) - Lazy loading implementation (lines 319-387)
+- [Bottom Sections API Endpoint](/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts)
+
+### Cross-references
+
+- Related to performance optimization pattern documented in [Performance Guidelines](/docs/technical/development/PERFORMANCE_OPTIMIZATION.md)
+- Lazy loading strategy in Dashboard.svelte:364-387
+
+### Manual Verification
+
+1. Load dashboard as authenticated user
+2. Open browser DevTools → Console
+3. Verify no preload warning appears
+4. Scroll down to bottom sections
+5. Verify bottom sections (braindumps, phases) still load correctly
+
+**Last updated**: 2025-10-23
+
+---
+
+## 2025-10-23 - Missing Admin Authorization Check in Comprehensive Analytics Endpoint
+
+**Severity**: Critical (Security vulnerability)
+
+### Root Cause
+
+The `/api/admin/analytics/comprehensive` endpoint was missing the `is_admin` authorization check, allowing any authenticated user (not just admins) to access comprehensive admin analytics data including user metrics, brain dump statistics, project data, and user leaderboards.
+
+**Why This Happened**:
+
+- All other admin analytics endpoints include proper admin authorization checks
+- The comprehensive endpoint only checked for user authentication (`if (!user)`) but not for admin role (`if (!user.is_admin)`)
+- Likely an oversight during initial endpoint creation
+- No automated tests to verify admin-only endpoints require admin role
+
+**Impact**:
+
+- **CRITICAL**: Any logged-in user could access sensitive admin analytics
+- Exposed user activity metrics, email addresses, brain dump counts, project statistics
+- Leaderboard data exposed private user emails
+- Potential compliance issues (data privacy)
+
+### Fix Description
+
+1. **Added admin role check** to `/api/admin/analytics/comprehensive/+server.ts` after user authentication check
+2. **Returns 403 Forbidden** with clear error message when non-admin users attempt access
+3. **Matches pattern** used in all other admin endpoints for consistency
+
+**Code Change**:
+
+```typescript
+if (!user.is_admin) {
+	return ApiResponse.forbidden('Admin access required');
+}
+```
+
+### Files Changed
+
+- `/apps/web/src/routes/api/admin/analytics/comprehensive/+server.ts:12-14` - Added admin authorization check
+
+### Verification Steps
+
+1. Test as non-admin user: `GET /api/admin/analytics/comprehensive` → Should return 403 Forbidden
+2. Test as admin user: `GET /api/admin/analytics/comprehensive` → Should return 200 OK with data
+3. Test without authentication: `GET /api/admin/analytics/comprehensive` → Should return 401 Unauthorized
+
+### Related Files
+
+- All other admin endpoints in `/apps/web/src/routes/api/admin/` use the same pattern
+- Authorization logic: `/apps/web/src/lib/utils/api-response.ts`
+
+### Cross-references
+
+- Admin dashboard page: `/apps/web/src/routes/admin/+page.svelte:242`
+- Related endpoint patterns:
+    - `/apps/web/src/routes/api/admin/analytics/overview/+server.ts:11`
+    - `/apps/web/src/routes/api/admin/analytics/visitor-overview/+server.ts:11`
+    - `/apps/web/src/routes/api/admin/beta/overview/+server.ts:12`
+
+---
+
+## 2025-10-23 - Poor Time Display Formatting in Admin System Health
+
+**Severity**: Low (UI/UX enhancement)
+
+### Root Cause
+
+System Health metrics displaying milliseconds were shown as raw numbers (e.g., "1523ms") instead of human-readable format (e.g., "1 min 32 sec 300ms"), making it difficult to quickly understand response times and performance metrics.
+
+**Why This Happened**:
+
+- Initial implementation only converted metric value to string with "ms" suffix
+- No formatting function for time duration display
+- Other parts of the codebase likely have similar issues with duration display
+
+**Impact**:
+
+- Harder to quickly assess performance issues
+- Less intuitive admin dashboard experience
+- Cognitive load for admins reviewing system health
+
+### Fix Description
+
+1. **Created `formatMilliseconds()` helper function** in admin page component
+    - Formats values < 1000ms as "XXXms"
+    - Formats larger values as "X min Y sec Zms"
+    - Omits zero values intelligently (e.g., "2 min 15ms" if seconds is 0)
+    - Handles edge cases (0ms, exactly 1000ms, etc.)
+
+2. **Updated System Health display** to use new formatter
+    - Replaced inline ternary formatting with `{#if}/{:else if}` blocks
+    - Applied formatter only to milliseconds unit type
+    - Preserved existing formatting for percentage and other units
+
+**Examples**:
+
+- 150ms → "150ms"
+- 1200ms → "1 sec 200ms"
+- 92500ms → "1 min 32 sec 500ms"
+- 120000ms → "2 min"
+
+### Files Changed
+
+- `/apps/web/src/routes/admin/+page.svelte:378-403` - Added `formatMilliseconds()` helper function
+- `/apps/web/src/routes/admin/+page.svelte:1752-1767` - Updated System Health metric display
+
+### Verification Steps
+
+1. Navigate to `/admin` page
+2. Scroll to "System Health" section
+3. Verify millisecond metrics display as "X min Y sec Zms" format
+4. Test with various metric values (< 1sec, > 1min, exact seconds, etc.)
+
+### Cross-references
+
+- System Health section: `/apps/web/src/routes/admin/+page.svelte:1699-1745`
+- System metrics API: `/apps/web/src/routes/api/admin/analytics/system-metrics/+server.ts`
+
+---
+
+## 2025-10-23 - TypeScript Event Handler Errors in FormModal
+
+**Severity**: Low (Type safety issue, no runtime impact)
+
+### Root Cause
+
+Event handlers in FormModal.svelte were accessing properties (`value`, `valueAsNumber`, `checked`) on the generic `EventTarget` type, which doesn't have these properties. Handlers needed proper type casting to specific HTML element types.
+
+**Why This Happened**:
+
+- TypeScript's default event types use `EventTarget` as the base type
+- Specific properties like `value`, `checked`, `valueAsNumber` only exist on typed elements (HTMLInputElement, HTMLSelectElement)
+- Code used optional chaining (`e.target?.`) but didn't cast to proper types
+- Mixed usage of custom Svelte events (with `detail`) and native DOM events
+
+**Impact**:
+
+- TypeScript compilation errors on lines 431, 469, and 486
+- IDE warnings for developers working with form components
+- Code worked correctly at runtime but failed type safety checks
+
+### Fix Description
+
+1. **Select handler (line 431)**: Cast `e.target` to `HTMLSelectElement` for accessing `value` property
+2. **Number input handler (lines 467-471)**: Extract target as `HTMLInputElement | null` typed variable to safely access `valueAsNumber` and `value`
+3. **Checkbox handler (lines 486-490)**: Extract target as `HTMLInputElement | null` typed variable to safely access `checked` property, using nullish coalescing for cleaner fallback
+
+### Files Changed
+
+- `/apps/web/src/lib/components/ui/FormModal.svelte` - Fixed type casting in 3 event handlers
+
+### Related Docs
+
+- Form configuration system: `/apps/web/src/lib/types/form.ts`
+- TypeScript event handling patterns in Svelte
+
+### Cross-references
+
+- Component: `/apps/web/src/lib/components/ui/FormModal.svelte:426-494` (select, number, checkbox handlers)
+- Related components using similar patterns: TextInput.svelte, Select.svelte
+
+Last updated: 2025-10-23
+
+---
+
+## 2025-10-23 - TypeScript Errors in Calendar Task Edit Modal
+
+**Severity**: Low (Type safety issue, no runtime impact)
+
+### Root Cause
+
+The `FieldConfig` interface in `field-config-generator.ts` was missing the `rows?: number` property, even though this property was being used in field configurations and accessed in the CalendarTaskEditModal component.
+
+**Why This Happened**:
+
+- The `FieldConfig` interface was defined without a `rows` property
+- Code in `calendar-task-field-config.ts` added `rows` to textarea field configs (lines 59, 68) without corresponding type support
+- The CalendarTaskEditModal.svelte accessed `config.rows` (lines 204, 210), triggering TypeScript errors
+
+**Impact**:
+
+- TypeScript compilation errors preventing type checking from passing
+- IDE errors for developers working with calendar task editing
+- Code worked correctly at runtime but failed type safety checks
+
+### Fix Description
+
+1. **Added `rows` property to `FieldConfig` interface**: Added `rows?: number;` to the interface definition in `field-config-generator.ts` line 29
+2. **Added optional chaining for type safety**: Used `config?.` optional chaining in CalendarTaskEditModal.svelte to handle potential undefined config access (lines 198, 210-211)
+
+### Files Changed
+
+- `/apps/web/src/lib/utils/field-config-generator.ts` - Added `rows?: number;` to FieldConfig interface
+- `/apps/web/src/lib/components/calendar/CalendarTaskEditModal.svelte` - Added optional chaining for config property access
+
+### Related Docs
+
+- Field configuration system used across BuildOS for dynamic form generation
+- Calendar task editing: `/apps/web/src/lib/utils/calendar-task-field-config.ts`
+
+### Cross-references
+
+- Related utility: `/apps/web/src/lib/utils/field-config-generator.ts` (base FieldConfig type)
+- Usage: `/apps/web/src/lib/components/calendar/CalendarTaskEditModal.svelte:198-215` (textarea field rendering)
+
+Last updated: 2025-10-23
+
+---
+
 ## 2025-10-23 - Blog Generation Script Missing Frontmatter
 
 **Severity**: Low (Content management issue)
@@ -136,6 +419,7 @@ Added proper YAML frontmatter to all 37 missing files:
     - Verify all categories have posts listed
 
 3. **Test gen:all Command**:
+
     ```bash
     pnpm run gen:all
     ```

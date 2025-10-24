@@ -9,6 +9,10 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return ApiResponse.unauthorized();
 		}
 
+		if (!user.is_admin) {
+			return ApiResponse.forbidden('Admin access required');
+		}
+
 		// Get timeframe from query params
 		const timeframe = url.searchParams.get('timeframe') || '7d';
 

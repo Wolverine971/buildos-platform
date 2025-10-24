@@ -123,13 +123,8 @@
 
 	<!-- PERFORMANCE: Conditional preloads based on auth state -->
 	{#if isAuthenticated}
-		<!-- Preload dashboard-specific resources -->
-		<link
-			rel="preload"
-			href="/api/dashboard/bottom-sections"
-			as="fetch"
-			crossorigin="anonymous"
-		/>
+		<!-- Note: /api/dashboard/bottom-sections is lazy-loaded via IntersectionObserver -->
+		<!-- No preload needed - saves bandwidth for users who don't scroll -->
 	{:else}
 		<!-- Preload critical landing page resources -->
 		<link rel="preload" href="/s-brain-bolt.webp" as="image" type="image/webp" />

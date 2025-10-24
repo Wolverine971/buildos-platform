@@ -30,9 +30,11 @@ export interface CustomerPortalOptions {
 }
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
-	const subscription = (invoice as Stripe.Invoice & {
-		subscription?: string | Stripe.Subscription | null;
-	}).subscription;
+	const subscription = (
+		invoice as Stripe.Invoice & {
+			subscription?: string | Stripe.Subscription | null;
+		}
+	).subscription;
 
 	if (!subscription) return null;
 	return typeof subscription === 'string' ? subscription : subscription.id;
@@ -327,7 +329,9 @@ export class StripeService {
 		// Session will have subscription ID if it was a subscription checkout
 		if (session.subscription) {
 			const stripe = StripeService.getClient();
-			const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+			const subscription = await stripe.subscriptions.retrieve(
+				session.subscription as string
+			);
 			await this.handleSubscriptionUpdate(subscription);
 		}
 	}
@@ -348,10 +352,12 @@ export class StripeService {
 			return;
 		}
 
-		const primaryItem = subscription.items.data[0] as (Stripe.SubscriptionItem & {
-			current_period_start?: number | null;
-			current_period_end?: number | null;
-		}) | undefined;
+		const primaryItem = subscription.items.data[0] as
+			| (Stripe.SubscriptionItem & {
+					current_period_start?: number | null;
+					current_period_end?: number | null;
+			  })
+			| undefined;
 
 		const currentPeriodStart = primaryItem?.current_period_start
 			? new Date(primaryItem.current_period_start * 1000).toISOString()
@@ -486,23 +492,21 @@ export class StripeService {
 		}
 
 		// Record invoice (idempotent)
-		await this.supabase
-			.from('invoices')
-			.upsert(
-				{
-					user_id: userId,
-					stripe_invoice_id: invoice.id,
-					stripe_customer_id: customerId,
-					subscription_id: customerSubscriptionId,
-					amount_paid: invoice.amount_paid,
-					amount_due: invoice.amount_due,
-					currency: invoice.currency,
-					status: invoice.status || 'paid',
-					invoice_pdf: invoice.invoice_pdf,
-					hosted_invoice_url: invoice.hosted_invoice_url
-				},
-				{ onConflict: 'stripe_invoice_id' }
-			);
+		await this.supabase.from('invoices').upsert(
+			{
+				user_id: userId,
+				stripe_invoice_id: invoice.id,
+				stripe_customer_id: customerId,
+				subscription_id: customerSubscriptionId,
+				amount_paid: invoice.amount_paid,
+				amount_due: invoice.amount_due,
+				currency: invoice.currency,
+				status: invoice.status || 'paid',
+				invoice_pdf: invoice.invoice_pdf,
+				hosted_invoice_url: invoice.hosted_invoice_url
+			},
+			{ onConflict: 'stripe_invoice_id' }
+		);
 
 		// Sync subscription state from Stripe to capture the latest status changes
 		try {

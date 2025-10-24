@@ -606,7 +606,7 @@ export type BrainDumpV2Store = {
 
 	// ===== LEGACY ACTIONS (for backward compatibility when MULTI_BRAINDUMP_ENABLED=false) =====
 	// UI Actions
-	openModal: () => void;
+	openModal: (options?: { project?: any; resetSelection?: boolean }) => void;
 	closeModal: () => void;
 	setModalView: (view: UnifiedBrainDumpState['ui']['modal']['currentView']) => void;
 	startModalHandoff: () => void;
@@ -1299,18 +1299,38 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 		// ===== LEGACY ACTIONS (for backward compatibility) =====
 		// ===== UI Actions =====
-		openModal: () =>
-			update((state) => ({
-				...state,
-				ui: {
-					...state.ui,
-					modal: {
-						...state.ui.modal,
-						isOpen: true,
-						currentView: 'project-selection'
-					}
+		openModal: (options) =>
+			update((state) => {
+				let nextSelectedProject = state.core.selectedProject;
+
+				if (options?.resetSelection) {
+					nextSelectedProject = null;
 				}
-			})),
+
+				if (options && 'project' in options) {
+					nextSelectedProject = options.project ?? null;
+				}
+
+				const shouldShowRecording =
+					options && 'project' in options && nextSelectedProject !== null;
+
+				return {
+					...state,
+					core: {
+						...state.core,
+						selectedProject: nextSelectedProject,
+						isNewProject: !nextSelectedProject || nextSelectedProject.id === 'new'
+					},
+					ui: {
+						...state.ui,
+						modal: {
+							...state.ui.modal,
+							isOpen: true,
+							currentView: shouldShowRecording ? 'recording' : 'project-selection'
+						}
+					}
+				};
+			}),
 
 		closeModal: () =>
 			update((state) => ({
@@ -1462,7 +1482,6 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 					}
 				}
 			})),
-
 		updateInputText: (text: string) =>
 			update((state) => ({
 				...state,

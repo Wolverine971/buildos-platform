@@ -31,7 +31,6 @@
 	let NewProjectModal = $state<any>(null);
 	let ProjectBriefModal = $state<any>(null);
 	let DailyBriefModal = $state<any>(null);
-	let BrainDumpModal = $state<any>(null);
 	let QuickProjectModal = $state<any>(null);
 
 	// Utils and types
@@ -117,10 +116,38 @@
 	let briefModalOpen = $state(false); // Daily brief modal
 	let selectedBriefDate = $state<string | null>(null); // Date for daily brief modal
 	let showNewProjectModal = $state(false);
-	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	let showQuickProjectModal = $state(false);
 	let creatingProject = $state(false);
-	let selectedBrainDumpProject = $state<any>(null);
+	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
+	let brainDumpModalWasOpen = false;
+	let pendingBrainDumpRefresh = false;
+
+	$effect(() => {
+		const isOpen = showBrainDumpModal;
+		const storeSnapshot = $brainDumpV2Store;
+		const activeCount =
+			storeSnapshot?.activeBrainDumps instanceof Map
+				? storeSnapshot.activeBrainDumps.size
+				: 0;
+		const processingPhase = storeSnapshot?.processing?.phase ?? 'idle';
+		const handoffActive = activeCount > 0 || processingPhase !== 'idle';
+
+		if (!isOpen && brainDumpModalWasOpen) {
+			if (handoffActive) {
+				pendingBrainDumpRefresh = true;
+			} else {
+				pendingBrainDumpRefresh = false;
+				handleBrainDumpClose();
+			}
+		}
+
+		if (pendingBrainDumpRefresh && !handoffActive) {
+			pendingBrainDumpRefresh = false;
+			handleBrainDumpClose();
+		}
+
+		brainDumpModalWasOpen = isOpen;
+	});
 
 	// Navigation state
 	let currentPath = '';
@@ -151,14 +178,6 @@
 				.default;
 		}
 		return DailyBriefModal;
-	}
-
-	async function loadBrainDumpModal() {
-		if (!BrainDumpModal) {
-			BrainDumpModal = (await import('$lib/components/brain-dump/BrainDumpModal.svelte'))
-				.default;
-		}
-		return BrainDumpModal;
 	}
 
 	async function loadQuickProjectModal() {
@@ -386,11 +405,9 @@
 	}
 
 	async function handleBrainDump() {
-		await loadBrainDumpModal();
 		showNewProjectModal = false;
-		brainDumpV2Store.openModal();
-		// Pass new project selection to BrainDumpModal
-		selectedBrainDumpProject = { id: 'new', name: 'New Project / Note', isProject: false };
+		const newProjectSelection = { id: 'new', name: 'New Project / Note', isProject: false };
+		brainDumpV2Store.openModal({ project: newProjectSelection });
 	}
 
 	async function handleCreateEmptyProject() {
@@ -464,9 +481,6 @@
 	}
 
 	function handleBrainDumpClose() {
-		brainDumpV2Store.closeModal();
-		selectedBrainDumpProject = null;
-
 		// Clear ALL cache layers
 		if (typeof window !== 'undefined' && browser) {
 			const projectService = ProjectService.getInstance();
@@ -786,15 +800,6 @@
 		onClose={closeDailyBriefModal}
 	/>
 {/if}
-
-{#if BrainDumpModal}
-	<BrainDumpModal
-		isOpen={showBrainDumpModal}
-		project={selectedBrainDumpProject}
-		on:close={handleBrainDumpClose}
-	/>
-{/if}
-
 {#if QuickProjectModal}
 	<QuickProjectModal isOpen={showQuickProjectModal} on:close={handleQuickProjectClose} />
 {/if}

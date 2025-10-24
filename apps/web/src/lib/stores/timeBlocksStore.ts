@@ -47,9 +47,7 @@ function normalizeBlock(block: TimeBlockWithProject): TimeBlockWithProject {
 function sortBlocks(blocks: TimeBlockWithProject[]): TimeBlockWithProject[] {
 	return [...blocks]
 		.map((block) => normalizeBlock(block))
-		.sort(
-			(a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-		);
+		.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 }
 
 function createDefaultDateRange(): { start: Date; end: Date } {
@@ -309,7 +307,7 @@ function createTimeBlocksStore() {
 				const nextBlocks = hasExisting
 					? state.blocks.map((existing) =>
 							existing.id === normalized.id ? normalized : existing
-					  )
+						)
 					: [...state.blocks, normalized];
 
 				return {

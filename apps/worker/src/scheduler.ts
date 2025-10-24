@@ -412,11 +412,10 @@ async function checkAndScheduleBriefs() {
 			console.warn(`⚠️ Failed to queue ${failureCount} brief(s)`);
 			queueResults.forEach((result, i) => {
 				if (result.status === 'rejected') {
-					const userName = userNameMap.get(usersToQueue[i].preference.user_id) || usersToQueue[i].preference.user_id;
-					console.error(
-						`Failed to queue brief for user ${userName}:`,
-						result.reason
-					);
+					const userName =
+						userNameMap.get(usersToQueue[i].preference.user_id) ||
+						usersToQueue[i].preference.user_id;
+					console.error(`Failed to queue brief for user ${userName}:`, result.reason);
 				}
 			});
 		}
