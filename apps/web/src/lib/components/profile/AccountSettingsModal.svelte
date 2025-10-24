@@ -241,7 +241,7 @@
 			<div class="modal-grab-handle"></div>
 		</div>
 		<div
-			class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700"
+			class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex items-start justify-between">
 				<div class="flex items-center space-x-3">
@@ -357,9 +357,9 @@
 
 			<!-- Profile Tab -->
 			{#if activeTab === 'profile'}
-				<div class="p-6 space-y-6">
+				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 					<div
-						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
 					>
 						<div class="flex items-center gap-3 mb-6">
 							<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -415,9 +415,9 @@
 
 			<!-- Password Tab -->
 			{#if activeTab === 'password'}
-				<div class="p-6 space-y-6">
+				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 					<div
-						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
 					>
 						<div class="flex items-center gap-3 mb-6">
 							<Lock class="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -537,7 +537,7 @@
 
 			<!-- Danger Zone Tab -->
 			{#if activeTab === 'danger'}
-				<div class="p-6 space-y-6">
+				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 					<div
 						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
 					>

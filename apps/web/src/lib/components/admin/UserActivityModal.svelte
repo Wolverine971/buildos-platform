@@ -108,7 +108,7 @@
 <Modal {isOpen} onClose={handleClose} size="xl" customClasses="max-h-[95vh] overflow-y-auto">
 	<svelte:fragment slot="header">
 		<div
-			class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 min-w-0"
+			class="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 min-w-0"
 		>
 			<div
 				class="h-10 sm:h-12 w-10 sm:w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0"
@@ -126,12 +126,12 @@
 		</div>
 	</svelte:fragment>
 
-	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6">
+	<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 		<!-- User Overview Cards -->
-		<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+		<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 			<!-- Last Visit -->
 			<div
-				class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-2 sm:p-4"
+				class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 sm:p-4"
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
@@ -152,7 +152,7 @@
 
 			<!-- Onboarding Status -->
 			<div
-				class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-2 sm:p-4"
+				class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-3 sm:p-4"
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
@@ -177,7 +177,7 @@
 
 			<!-- Total Projects -->
 			<div
-				class="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-2 sm:p-4"
+				class="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-3 sm:p-4"
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
@@ -200,7 +200,7 @@
 
 			<!-- Total Tasks -->
 			<div
-				class="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-2 sm:p-4"
+				class="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-3 sm:p-4"
 			>
 				<div class="flex items-start sm:items-center justify-between gap-2">
 					<div class="min-w-0 flex-1">
@@ -223,7 +223,7 @@
 		</div>
 
 		<!-- Activity Stats Grid - Compact on Mobile -->
-		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
 			<div
 				class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
 			>
@@ -296,7 +296,7 @@
 					<Activity class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-green-600 flex-shrink-0" />
 					Enhanced Activity Metrics
 				</h3>
-				<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+				<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
 					<div
 						class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
 					>
@@ -553,7 +553,7 @@
 					<span class="truncate">Projects ({projects.length})</span>
 				</h3>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
 					{#each projects.slice(0, 6) as project}
 						<div
 							class="border border-gray-200 dark:border-gray-600 rounded-lg p-2 sm:p-3"

@@ -504,10 +504,16 @@ export class TimeBlockService {
 		};
 
 		if (suggestionResult) {
+			const completedAtIso = suggestionResult.generatedAt.toISOString();
 			updatePayload.ai_suggestions = suggestionResult.suggestions;
 			updatePayload.suggestions_summary = suggestionResult.summary ?? null;
-			updatePayload.suggestions_generated_at = suggestionResult.generatedAt.toISOString();
+			updatePayload.suggestions_generated_at = completedAtIso;
 			updatePayload.suggestions_model = suggestionResult.model ?? null;
+			updatePayload.suggestions_state = {
+				status: 'completed',
+				startedAt: completedAtIso,
+				completedAt: completedAtIso
+			} as TimeBlockSuggestionsState;
 		}
 
 		const { data: updatedBlock, error: updateError } = await this.supabase

@@ -213,7 +213,7 @@
 	</div>
 
 	<!-- Content -->
-	<div class="px-4 sm:px-6 py-4 sm:py-5">
+	<div class="px-4 sm:px-6 py-4">
 		{#if processingType === 'dual'}
 			<!-- Dual Processing Content -->
 			<div class="space-y-4">

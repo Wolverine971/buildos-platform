@@ -22,6 +22,7 @@
 	let PhaseGenerationModalContent = $state<any>(null);
 	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
+	let TimeBlockModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -59,6 +60,14 @@
 						CalendarAnalysisModalContent = module.default;
 					}
 					break;
+				case 'time-block':
+					if (!TimeBlockModalContent) {
+						const module = await import(
+							'./types/time-block/TimeBlockModalContent.svelte'
+						);
+						TimeBlockModalContent = module.default;
+					}
+					break;
 				default:
 					break;
 			}
@@ -69,7 +78,13 @@
 
 	// Auto-load component when notification type changes
 	$effect(() => {
-		loadTypeSpecificComponent();
+		void (async () => {
+			try {
+				await loadTypeSpecificComponent();
+			} catch (error) {
+				console.error('[NotificationModal] Failed to load type-specific component:', error);
+			}
+		})();
 	});
 
 	// Resolve the type-specific component (if loaded)
@@ -83,7 +98,9 @@
 					? ProjectSynthesisModalContent
 					: notification.type === 'calendar-analysis'
 						? CalendarAnalysisModalContent
-						: null
+						: notification.type === 'time-block'
+							? TimeBlockModalContent
+							: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
@@ -99,7 +116,9 @@
 						? 'Calendar Analysis'
 						: notification.type === 'generic'
 							? notification.data.title
-							: 'Processing'
+							: notification.type === 'time-block'
+								? 'Time Block Suggestions'
+								: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)

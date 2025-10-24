@@ -57,6 +57,10 @@
 		initProjectSynthesisNotificationBridge,
 		cleanupProjectSynthesisNotificationBridge
 	} from '$lib/services/project-synthesis-notification.bridge';
+	import {
+		initTimeBlockNotificationBridge,
+		destroyTimeBlockNotificationBridge
+	} from '$lib/services/time-block-notification.bridge';
 	import { backgroundJobs } from '$lib/stores/backgroundJobs';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
 
@@ -329,6 +333,7 @@
 		initPhaseGenerationNotificationBridge();
 		initCalendarAnalysisNotificationBridge();
 		initProjectSynthesisNotificationBridge();
+		initTimeBlockNotificationBridge();
 
 		// Pre-load authenticated resources if user is already available
 		if (user) {
@@ -398,6 +403,7 @@
 		if (browser) {
 			// FIXED: Destroy stores to prevent subscription leaks
 			backgroundJobs.destroy();
+			destroyTimeBlockNotificationBridge();
 			timeBlocksStore.destroy?.();
 
 			// Cleanup notification bridges

@@ -7,7 +7,11 @@
  * All notification types extend BaseNotification and use discriminated unions.
  */
 
-import type { TimeBlockSuggestionsState, TimeBlockType } from '@buildos/shared-types';
+import type {
+	TimeBlockSuggestion,
+	TimeBlockSuggestionsState,
+	TimeBlockType
+} from '@buildos/shared-types';
 import type { BrainDumpParseResult, ParsedOperation } from './brain-dump';
 import type { Phase, Task } from './project';
 import type { SynthesisOptions } from './synthesis';
@@ -203,7 +207,9 @@ export interface TimeBlockNotification extends BaseNotification {
 		calendarEventId?: string | null;
 		calendarEventLink?: string | null;
 		suggestionsState?: TimeBlockSuggestionsState | null;
+		suggestions?: TimeBlockSuggestion[] | null;
 		suggestionsSummary?: string | null;
+		suggestionsModel?: string | null;
 		error?: string | null;
 	};
 	progress: NotificationProgress;
@@ -411,6 +417,12 @@ export function isCalendarAnalysisNotification(
 	notification: Notification
 ): notification is CalendarAnalysisNotification {
 	return notification.type === 'calendar-analysis';
+}
+
+export function isTimeBlockNotification(
+	notification: Notification
+): notification is TimeBlockNotification {
+	return notification.type === 'time-block';
 }
 
 export function isGenericNotification(

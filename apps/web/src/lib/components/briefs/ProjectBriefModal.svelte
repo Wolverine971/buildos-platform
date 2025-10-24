@@ -24,7 +24,7 @@
 		<!-- Custom Header -->
 		<svelte:fragment slot="header">
 			<div
-				class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
+				class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
 			>
 				<div class="flex items-center space-x-3">
 					<div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
@@ -40,7 +40,7 @@
 						</h2>
 						{#if brief.metadata}
 							<div
-								class="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-gray-500 dark:!text-gray-400"
+								class="flex flex-wrap items-center gap-3 sm:gap-4 mt-2 text-xs sm:text-sm text-gray-500 dark:!text-gray-400"
 							>
 								{#if brief.metadata.task_count}
 									<span class="flex items-center">
@@ -78,7 +78,7 @@
 		</svelte:fragment>
 
 		<!-- Main Content - Let Modal handle the scrolling -->
-		<div class="px-4 sm:px-6">
+		<div class="px-4 sm:px-6 py-4">
 			<div
 				class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none overflow-x-auto
 				prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
@@ -92,7 +92,7 @@
 
 			{#if brief.metadata?.key_insights && brief.metadata.key_insights.length > 0}
 				<div
-					class="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+					class="mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
 				>
 					<h3 class="font-semibold text-primary-900 dark:!text-primary-200 mb-2">
 						Key Insights
@@ -112,7 +112,7 @@
 		<!-- Custom Footer -->
 		<svelte:fragment slot="footer">
 			<div
-				class="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
+				class="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
 			>
 				<div
 					class="text-xs sm:text-sm text-gray-500 dark:!text-gray-400 text-center sm:text-left"

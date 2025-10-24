@@ -24,6 +24,7 @@
 	let PhaseGenerationMinimizedView = $state<any>(null);
 	let ProjectSynthesisMinimizedView = $state<any>(null);
 	let CalendarAnalysisMinimizedView = $state<any>(null);
+	let TimeBlockMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -61,6 +62,14 @@
 						CalendarAnalysisMinimizedView = module.default;
 					}
 					break;
+				case 'time-block':
+					if (!TimeBlockMinimizedView) {
+						const module = await import(
+							'./types/time-block/TimeBlockMinimizedView.svelte'
+						);
+						TimeBlockMinimizedView = module.default;
+					}
+					break;
 				default:
 					break;
 			}
@@ -71,7 +80,16 @@
 
 	// Auto-load component when notification type changes
 	$effect(() => {
-		void loadTypeSpecificComponent();
+		void (async () => {
+			try {
+				await loadTypeSpecificComponent();
+			} catch (error) {
+				console.error(
+					'[MinimizedNotification] Failed to load type-specific component:',
+					error
+				);
+			}
+		})();
 	});
 
 	// Resolve the type-specific component (if loaded)
@@ -85,7 +103,9 @@
 					? ProjectSynthesisMinimizedView
 					: notification.type === 'calendar-analysis'
 						? CalendarAnalysisMinimizedView
-						: null
+						: notification.type === 'time-block'
+							? TimeBlockMinimizedView
+							: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
@@ -123,13 +143,37 @@
 								: notification.status === 'error'
 									? 'Calendar analysis failed'
 									: 'Calendar analysis'
-						: notification.type === 'generic'
-							? notification.data.title
-							: 'Processing'
+						: notification.type === 'time-block'
+							? notification.status === 'processing'
+								? 'Creating time block'
+								: notification.status === 'success'
+									? 'Time block ready'
+									: notification.status === 'warning'
+										? 'Time block created (no suggestions)'
+										: 'Time block'
+							: notification.type === 'generic'
+								? notification.data.title
+								: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants
 	function resolveSubtitle() {
+		if (notification.type === 'time-block') {
+			const suggestionsState = notification.data.suggestionsState;
+			if (notification.status === 'processing') {
+				return suggestionsState?.progress ?? 'Generating AI suggestions...';
+			}
+			if (notification.status === 'success') {
+				const suggestionCount = notification.data.suggestions?.length ?? 0;
+				return suggestionCount > 0
+					? `${suggestionCount} suggestion${suggestionCount === 1 ? '' : 's'} ready`
+					: 'Time block ready';
+			}
+			if (notification.status === 'warning') {
+				return 'AI suggestions unavailable';
+			}
+		}
+
 		if (!notification.progress) {
 			return '';
 		}

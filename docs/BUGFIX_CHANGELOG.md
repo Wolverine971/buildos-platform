@@ -31,16 +31,18 @@ The prompt at `apps/worker/src/workers/sms/prompts.ts:82-84` included the meetin
 
 ```typescript
 if (context.meeting_link) {
-    prompt += `\n- Link: ${context.meeting_link}`;
+	prompt += `\n- Link: ${context.meeting_link}`;
 }
 ```
 
 But then instructed the LLM to "Keep it under 160 characters total" without specifying what to do with long links. The LLM would see a long Google Calendar/Meet URL, realize it wouldn't fit in 160 characters, and "helpfully" create a fake shortened bit.ly link that doesn't actually exist.
 
 **Example of buggy behavior:**
+
 ```
 Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Join via Google Calendar link. Let's make this session productive! Details: https://bit.ly/3xYz9Ab
 ```
+
 (The bit.ly link is fake and doesn't work)
 
 **Why This Happened**:
@@ -61,34 +63,38 @@ Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Join via Google Calend
 Updated the LLM prompts to include explicit instructions about link handling:
 
 1. **Added LINK HANDLING section to system prompt** (lines 25-29):
-   ```
-   LINK HANDLING (CRITICAL):
-   - NEVER create fake, shortened, or made-up links (no bit.ly, no tinyurl, etc.)
-   - If a meeting link is provided and fits within the character limit, include it verbatim
-   - If the link is too long to fit, omit it entirely or reference it generically (e.g., "Join via Google Meet link")
-   - Only include actual links that were provided in the event context
-   ```
+
+    ```
+    LINK HANDLING (CRITICAL):
+    - NEVER create fake, shortened, or made-up links (no bit.ly, no tinyurl, etc.)
+    - If a meeting link is provided and fits within the character limit, include it verbatim
+    - If the link is too long to fit, omit it entirely or reference it generically (e.g., "Join via Google Meet link")
+    - Only include actual links that were provided in the event context
+    ```
 
 2. **Added explicit instruction to meeting reminder prompt** (lines 95):
-   ```
-   IMPORTANT: If a link is provided, either include it verbatim if it fits, or omit it entirely.
-   NEVER create fake shortened links like bit.ly. If the link is too long, you can reference it
-   generically (e.g., "Join via Google Calendar link").
-   ```
+    ```
+    IMPORTANT: If a link is provided, either include it verbatim if it fits, or omit it entirely.
+    NEVER create fake shortened links like bit.ly. If the link is too long, you can reference it
+    generically (e.g., "Join via Google Calendar link").
+    ```
 
 **Expected behavior after fix:**
 
 Option 1 (link fits):
+
 ```
 Meeting in 30 mins: 'Project Sync'. Join: https://meet.google.com/abc-defg-hij
 ```
 
 Option 2 (link too long, generic reference):
+
 ```
 Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Join via Google Calendar link.
 ```
 
 Option 3 (link too long, omitted):
+
 ```
 Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Let's make this session productive!
 ```
@@ -96,6 +102,7 @@ Meeting in 30 mins: 'Create BuildOS Guides for Tech PMs.' Let's make this sessio
 **Verification**:
 
 Manual verification steps:
+
 1. Trigger daily SMS worker for a user with calendar events
 2. Ensure calendar events have Google Meet/Calendar links
 3. Check generated SMS messages in `scheduled_sms_messages` table
@@ -148,26 +155,29 @@ Two locations in the codebase were using the old URL pattern `/briefs/${brief_id
 Updated both locations to use the correct URL pattern:
 
 1. **Push notifications** (`packages/shared-types/src/payloadTransformer.ts:80`):
-   ```typescript
-   // Before:
-   action_url: `/briefs/${payload.brief_id}`,
 
-   // After:
-   action_url: `/projects?briefDate=${payload.brief_date}`,
-   ```
+    ```typescript
+    // Before:
+    action_url: `/briefs/${payload.brief_id}`,
+
+    // After:
+    action_url: `/projects?briefDate=${payload.brief_date}`,
+    ```
 
 2. **Email webhooks** (`apps/web/src/routes/webhooks/daily-brief-email/+server.ts:250`):
-   ```html
-   <!-- Before: -->
-   <a href="https://build-os.com/daily-briefs/${payload.briefId}">
 
-   <!-- After: -->
-   <a href="https://build-os.com/projects?briefDate=${payload.briefDate}">
-   ```
+    ```html
+    <!-- Before: -->
+    <a href="https://build-os.com/daily-briefs/${payload.briefId}">
+    	<!-- After: -->
+    	<a href="https://build-os.com/projects?briefDate=${payload.briefDate}"></a
+    ></a>
+    ```
 
 **Verification**:
 
 Manual verification steps:
+
 1. Trigger a `brief.completed` notification event
 2. Click the push notification → Should open `/projects?briefDate=2025-10-23` with daily brief modal
 3. Click "View in BuildOS" link in email → Should open same URL

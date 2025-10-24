@@ -238,7 +238,7 @@
 			</header>
 
 			<!-- Content -->
-			<div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+			<div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 				{#if error}
 					<div
 						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"

@@ -125,7 +125,7 @@
 	.tab-container {
 		border-bottom: 1px solid rgb(229 231 235);
 		/* background: white; */
-		position: relative;
+		/* position: relative; */
 	}
 
 	:global(.dark) .tab-container {

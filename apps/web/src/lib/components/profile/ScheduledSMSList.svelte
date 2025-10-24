@@ -47,7 +47,7 @@
 	let cancelling = $state<Set<string>>(new Set());
 
 	// Derived
-	let filteredMessages = $derived(() => {
+	let filteredMessages = $derived.by(() => {
 		if (filterStatus === 'all') return scheduledMessages;
 		return scheduledMessages.filter((msg) => msg.status === filterStatus);
 	});
@@ -242,7 +242,7 @@
 				</div>
 			</div>
 		</div>
-	{:else if filteredMessages().length === 0}
+	{:else if filteredMessages.length === 0}
 		<!-- Empty State -->
 		<div class="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg" transition:fade>
 			<MessageSquare class="w-12 h-12 mx-auto text-gray-400" />
@@ -260,7 +260,7 @@
 	{:else}
 		<!-- Messages List -->
 		<div class="space-y-3">
-			{#each filteredMessages() as message (message.id)}
+			{#each filteredMessages as message (message.id)}
 				{@const StatusIcon = getStatusIcon(message.status)}
 				<div
 					class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"

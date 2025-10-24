@@ -485,6 +485,25 @@ export class CalendarWebhookService {
 					errorDetails: syncError
 				});
 
+				// Log the sync error
+				await this.errorLogger.logCalendarError(
+					syncError,
+					'sync',
+					channel.calendar_id,
+					channel.user_id,
+					{
+						operation: 'handleWebhookNotification_syncCalendarChanges',
+						errorType: 'calendar_webhook_sync_failure',
+						calendarId: channel.calendar_id,
+						channelId: channel.channel_id,
+						resourceState,
+						syncToken: channel.sync_token ? 'present' : 'null',
+						processedCount: processed,
+						isAuthError:
+							syncError.code === 401 || syncError.message?.includes('unauthorized')
+					}
+				);
+
 				// If it's an auth error, we might need to refresh tokens
 				if (syncError.code === 401 || syncError.message?.includes('unauthorized')) {
 					console.error('[WEBHOOK] Authentication failure detected');
@@ -520,6 +539,15 @@ export class CalendarWebhookService {
 				errorStack: error.stack,
 				errorDetails: error
 			});
+
+			// Log unhandled webhook error
+			await this.errorLogger.logAPIError(error, '/api/webhooks/calendar', 'POST', undefined, {
+				operation: 'handleWebhookNotification',
+				errorType: 'calendar_webhook_unhandled_error',
+				channelId,
+				resourceId
+			});
+
 			return {
 				success: false,
 				processed: 0,
@@ -633,6 +661,23 @@ export class CalendarWebhookService {
 						message: listError.message,
 						errors: listError.errors
 					});
+
+					// Log calendar events list error
+					await this.errorLogger.logAPIError(
+						listError,
+						'https://www.googleapis.com/calendar/v3/calendars/events/list',
+						'GET',
+						userId,
+						{
+							operation: 'syncCalendarChanges_eventsList',
+							errorType: 'calendar_events_list_failure',
+							calendarId,
+							requestNumber: requestCount,
+							syncToken: syncToken ? 'present' : 'null',
+							pageToken: pageToken ? 'present' : 'null'
+						}
+					);
+
 					throw listError;
 				}
 
@@ -772,9 +817,35 @@ export class CalendarWebhookService {
 					return resyncCount;
 				} catch (resyncError) {
 					console.error('[SYNC] Full resync also failed:', resyncError);
+
+					// Log resync failure
+					await this.errorLogger.logCalendarError(
+						resyncError,
+						'sync',
+						calendarId,
+						userId,
+						{
+							operation: 'syncCalendarChanges_resyncAfterTokenExpired',
+							errorType: 'calendar_resync_after_token_expired_failure',
+							calendarId,
+							wasRetry: true,
+							originalErrorCode: error.code
+						}
+					);
+
 					throw resyncError;
 				}
 			}
+
+			// Log general sync error
+			await this.errorLogger.logCalendarError(error, 'sync', calendarId, userId, {
+				operation: 'syncCalendarChanges',
+				errorType: 'calendar_sync_changes_failure',
+				calendarId,
+				syncToken: syncToken ? 'present' : 'null',
+				isRetry,
+				errorCode: error.code
+			});
 
 			console.error('[SYNC] Unhandled error in syncCalendarChanges:', error);
 			throw error;
@@ -1309,11 +1380,40 @@ export class CalendarWebhookService {
 			} catch (smsError) {
 				// Don't fail the entire batch if SMS updates fail
 				console.error('[BATCH_PROCESS] Error updating scheduled SMS:', smsError);
+
+				// Log SMS update error
+				await this.errorLogger.logAPIError(
+					smsError,
+					'/api/sms/update-scheduled',
+					'POST',
+					userId,
+					{
+						operation: 'processBatchEventChanges_smsUpdate',
+						errorType: 'sms_scheduled_update_failure',
+						eventChangesCount:
+							batchUpdates.taskEventUpdates.length + batchUpdates.deletions.length
+					}
+				);
 			}
 
 			return processedCount;
 		} catch (error) {
 			console.error('[BATCH_PROCESS] Error in batch processing:', error);
+
+			// Log batch processing error
+			await this.errorLogger.logDatabaseError(
+				error,
+				'UPSERT',
+				'task_calendar_events',
+				userId,
+				{
+					operation: 'processBatchEventChanges',
+					errorType: 'calendar_batch_processing_failure',
+					calendarId,
+					eventsCount: events.length
+				}
+			);
+
 			return 0;
 		}
 	}
@@ -1374,6 +1474,21 @@ export class CalendarWebhookService {
 			return false;
 		} catch (error) {
 			console.error('Error processing event change:', error);
+
+			// Log event processing error
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'task_calendar_events',
+				userId,
+				{
+					operation: 'processEventChange',
+					errorType: 'calendar_event_processing_failure',
+					calendarId,
+					eventId: event.id
+				}
+			);
+
 			return false;
 		}
 	}
@@ -1478,6 +1593,21 @@ export class CalendarWebhookService {
 			return true;
 		} catch (error) {
 			console.error('Error handling event deletion:', error);
+
+			// Log event deletion error
+			await this.errorLogger.logCalendarError(
+				error,
+				'delete',
+				taskEvent.calendar_id,
+				userId,
+				{
+					operation: 'handleEventDeletion',
+					errorType: 'calendar_event_deletion_failure',
+					taskEventId: taskEvent.id,
+					taskId: taskEvent.task_id
+				}
+			);
+
 			return false;
 		}
 	}
@@ -1534,6 +1664,22 @@ export class CalendarWebhookService {
 			return true;
 		} catch (error) {
 			console.error('Error handling event update:', error);
+
+			// Log event update error
+			await this.errorLogger.logCalendarError(
+				error,
+				'update',
+				taskEvent.calendar_id,
+				userId,
+				{
+					operation: 'handleEventUpdate',
+					errorType: 'calendar_event_update_failure',
+					taskEventId: taskEvent.id,
+					taskId: taskEvent.task_id,
+					googleEventId: googleEvent.id
+				}
+			);
+
 			return false;
 		}
 	}
@@ -1565,6 +1711,20 @@ export class CalendarWebhookService {
 					});
 				} catch (error) {
 					console.error('Error stopping Google channel:', error);
+
+					// Log channel stop error
+					await this.errorLogger.logAPIError(
+						error,
+						'https://www.googleapis.com/calendar/v3/channels/stop',
+						'POST',
+						userId,
+						{
+							operation: 'unregisterWebhook_stopChannel',
+							errorType: 'calendar_channel_stop_failure',
+							channelId: channel.channel_id,
+							calendarId
+						}
+					);
 				}
 
 				// Delete from database
@@ -1572,6 +1732,19 @@ export class CalendarWebhookService {
 			}
 		} catch (error) {
 			console.error('Error unregistering webhook:', error);
+
+			// Log webhook unregister error
+			await this.errorLogger.logDatabaseError(
+				error,
+				'DELETE',
+				'calendar_webhook_channels',
+				userId,
+				{
+					operation: 'unregisterWebhook',
+					errorType: 'calendar_webhook_unregister_failure',
+					calendarId
+				}
+			);
 		}
 	}
 
@@ -1604,6 +1777,20 @@ export class CalendarWebhookService {
 							`Failed to sync before renewal for user ${channel.user_id}:`,
 							syncError
 						);
+
+						// Log sync error before renewal
+						await this.errorLogger.logCalendarError(
+							syncError,
+							'sync',
+							channel.calendar_id,
+							channel.user_id,
+							{
+								operation: 'renewExpiringWebhooks_preRenewalSync',
+								errorType: 'calendar_pre_renewal_sync_failure',
+								calendarId: channel.calendar_id,
+								channelId: channel.channel_id
+							}
+						);
 					}
 
 					// Unregister old webhook
@@ -1615,6 +1802,19 @@ export class CalendarWebhookService {
 			}
 		} catch (error) {
 			console.error('Error renewing webhooks:', error);
+
+			// Log webhook renewal error
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'calendar_webhook_channels',
+				undefined,
+				{
+					operation: 'renewExpiringWebhooks',
+					errorType: 'calendar_webhook_renewal_failure',
+					webhookUrl
+				}
+			);
 		}
 	}
 
@@ -1654,6 +1854,14 @@ export class CalendarWebhookService {
 			};
 		} catch (error: any) {
 			console.error('Manual resync failed:', error);
+
+			// Log manual resync error
+			await this.errorLogger.logCalendarError(error, 'sync', calendarId, userId, {
+				operation: 'manualResync',
+				errorType: 'calendar_manual_resync_failure',
+				calendarId
+			});
+
 			return {
 				success: false,
 				processed: 0,
@@ -1729,10 +1937,32 @@ export class CalendarWebhookService {
 					};
 				}
 
+				// Log webhook health check sync error
+				await this.errorLogger.logCalendarError(error, 'sync', calendarId, userId, {
+					operation: 'checkAndRepairWebhook_syncTokenCheck',
+					errorType: 'calendar_webhook_health_check_failure',
+					calendarId,
+					errorCode: error.code
+				});
+
 				throw error;
 			}
 		} catch (error: any) {
 			console.error('Webhook health check failed:', error);
+
+			// Log webhook health check error
+			await this.errorLogger.logDatabaseError(
+				error,
+				'SELECT',
+				'calendar_webhook_channels',
+				userId,
+				{
+					operation: 'checkAndRepairWebhook',
+					errorType: 'calendar_webhook_health_check_outer_failure',
+					calendarId
+				}
+			);
+
 			return {
 				healthy: false,
 				repaired: false,

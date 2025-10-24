@@ -65,7 +65,7 @@
 	closeOnBackdrop={!loading}
 	closeOnEscape={!loading}
 >
-	<div class="p-6">
+	<div class="px-4 sm:px-6 py-4">
 		<!-- Header with warning icon -->
 		<div class="flex items-start gap-3 mb-6">
 			<div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex-shrink-0">

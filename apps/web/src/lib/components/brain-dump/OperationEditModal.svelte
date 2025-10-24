@@ -290,7 +290,7 @@
 <Modal {isOpen} {onClose} title="Edit Operation" size="lg">
 	<svelte:fragment slot="header">
 		<!-- Compact Header -->
-		<div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+		<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<Database class="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -385,7 +385,10 @@
 		{/if}
 
 		<!-- Compact Form -->
-		<form on:submit|preventDefault={handleSave} class="px-4 py-3 space-y-4">
+		<form
+			on:submit|preventDefault={handleSave}
+			class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
+		>
 			{#if fieldsToDisplay.length === 0}
 				<div class="text-center py-8">
 					<div

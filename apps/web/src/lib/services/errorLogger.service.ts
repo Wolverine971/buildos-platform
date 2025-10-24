@@ -289,6 +289,7 @@ export class ErrorLoggerService {
 			reason?: string;
 			taskStatus?: string;
 			taskStartDate?: string;
+			[key: string]: any; // Allow additional properties for extensibility
 		}
 	): Promise<string | null> {
 		const errorType: ErrorType =

@@ -279,10 +279,10 @@
 >
 	<div
 		slot="after-form"
-		class="flex flex-col flex-1 min-h-0 space-y-6 -mt-4 px-4 sm:px-6 lg:px-8"
+		class="flex flex-col flex-1 min-h-0 space-y-3 sm:space-y-4 pt-4 px-4 sm:px-6 lg:px-8"
 	>
 		<!-- Main Content Area -->
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 min-h-[40vh] flex-1">
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 min-h-[40vh] flex-1">
 			<!-- Content Section (Takes most space) -->
 			<div
 				class="lg:col-span-3 flex flex-col space-y-4 h-full min-h-0 bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-800 dark:to-gray-900/30 rounded-xl p-4 sm:p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow"

@@ -483,8 +483,8 @@ Guidelines:
 			{/if}
 
 			<!-- Email Configuration -->
-			<div class="space-y-2 sm:space-y-3">
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+			<div class="space-y-3 sm:space-y-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 					<!-- Template Selection -->
 					<div>
 						<label
@@ -537,7 +537,7 @@ Guidelines:
 
 				<!-- Instructions / System Prompt Section -->
 				{#if editMode !== 'manual'}
-					<div class="space-y-2 sm:space-y-3">
+					<div class="space-y-3 sm:space-y-4">
 						<!-- Instructions -->
 						<div>
 							<label
@@ -641,7 +641,7 @@ Guidelines:
 				{/if}
 
 				<!-- Email Editors -->
-				<div class="space-y-2 sm:space-y-3">
+				<div class="space-y-3 sm:space-y-4">
 					{#if editMode === 'split'}
 						<!-- Copy buttons in split mode -->
 						<div
@@ -674,7 +674,7 @@ Guidelines:
 
 					<div
 						class={editMode === 'split'
-							? 'grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3'
+							? 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4'
 							: ''}
 					>
 						<!-- Manual Editor -->
@@ -741,11 +741,11 @@ Guidelines:
 		<div
 			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 		>
-			<div class="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-between">
+			<div class="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between">
 				<Button variant="outline" on:click={closeModal} class="text-sm">Cancel</Button>
 
 				{#if generatedEmail || manualEmail}
-					<div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+					<div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
 						<Button variant="outline" on:click={copyToClipboard} class="text-sm">
 							<Copy class="w-4 h-4 mr-2" />
 							<span class="hidden sm:inline">Copy to Clipboard</span>

@@ -321,7 +321,9 @@ function createTimeBlocksStore() {
 			update((state) => ({
 				...state,
 				blocks: state.blocks.map((block) =>
-					block.id === blockId ? { ...block, suggestions_state: suggestionsState } : block
+					block.id === blockId
+						? normalizeBlock({ ...block, suggestions_state: suggestionsState })
+						: block
 				)
 			}));
 		},
