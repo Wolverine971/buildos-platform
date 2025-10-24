@@ -17,6 +17,155 @@ Each entry includes:
 
 ---
 
+## 2025-10-23 - Daily Brief Notification Links Using Old URL Pattern
+
+**Severity**: Medium (User Experience)
+
+### Root Cause
+
+Two locations in the codebase were using the old URL pattern `/briefs/${brief_id}` instead of the new pattern `/projects?briefDate=${brief_date}`:
+
+1. **Push notification action URL** (`packages/shared-types/src/payloadTransformer.ts:80`): When users clicked push notifications for daily brief completion, they were directed to a non-existent page
+2. **Email webhook link** (`apps/web/src/routes/webhooks/daily-brief-email/+server.ts:250`): When users clicked "View in BuildOS" in emails sent via webhook, they were directed to a non-existent page
+
+**Why This Happened**:
+
+- These files were missed during the URL migration documented in `/thoughts/shared/research/2025-10-21_17-23-41_daily-brief-modal-implementation-complete.md`
+- The worker email sender (`apps/worker/src/lib/services/email-sender.ts`) was correctly updated, but these two locations were overlooked
+- The old `/briefs/` page route was removed but notification links weren't updated
+
+**Impact**:
+
+- Users clicking push notifications for daily briefs were sent to a 404 page
+- Users clicking email links (from webhook-delivered emails) were sent to a 404 page
+- Direct email delivery (via worker service) was working correctly with proper links
+
+### Fix Description
+
+Updated both locations to use the correct URL pattern:
+
+1. **Push notifications** (`packages/shared-types/src/payloadTransformer.ts:80`):
+   ```typescript
+   // Before:
+   action_url: `/briefs/${payload.brief_id}`,
+
+   // After:
+   action_url: `/projects?briefDate=${payload.brief_date}`,
+   ```
+
+2. **Email webhooks** (`apps/web/src/routes/webhooks/daily-brief-email/+server.ts:250`):
+   ```html
+   <!-- Before: -->
+   <a href="https://build-os.com/daily-briefs/${payload.briefId}">
+
+   <!-- After: -->
+   <a href="https://build-os.com/projects?briefDate=${payload.briefDate}">
+   ```
+
+**Verification**:
+
+Manual verification steps:
+1. Trigger a `brief.completed` notification event
+2. Click the push notification → Should open `/projects?briefDate=2025-10-23` with daily brief modal
+3. Click "View in BuildOS" link in email → Should open same URL
+4. Verify brief modal displays correctly with the specified date
+
+**Files Changed**:
+
+- `packages/shared-types/src/payloadTransformer.ts` - Updated push notification action URL
+- `apps/web/src/routes/webhooks/daily-brief-email/+server.ts` - Updated email webhook link
+
+**Related Docs**:
+
+- `/thoughts/shared/research/2025-10-21_17-23-41_daily-brief-modal-implementation-complete.md` - Original URL migration documentation
+
+**Cross-references**:
+
+- Worker email sender uses correct pattern: `/apps/worker/src/lib/services/email-sender.ts:192,215,227`
+- Daily brief modal implementation: `/apps/web/src/routes/projects/+page.svelte`
+
+Last updated: 2025-10-23
+
+---
+
+## 2025-10-23 - Calendar Preview TypeScript Errors
+
+**Severity**: Medium (Build/Type Safety)
+
+### Root Cause
+
+The calendar preview API endpoint had 6 TypeScript errors preventing compilation:
+
+1. **Incorrect date-fns-tz imports**: Using deprecated API from older version
+    - Used: `utcToZonedTime` and `zonedTimeToUtc`
+    - Required: `toZonedTime` and `fromZonedTime` (date-fns-tz v3.2.0)
+    - Other files in web app already used correct imports
+
+2. **Quiet hours undefined handling**: Type narrowing issue with array destructuring
+    - `quietStart.split(':').map(Number)` returns array that may not have exactly 2 elements
+    - TypeScript couldn't guarantee destructured values exist
+    - Lines 62-67 used potentially undefined values in calculations
+
+**Why This Happened**:
+
+- File was likely created/copied from older code using deprecated date-fns-tz API
+- TypeScript strict null checks caught potential undefined values from array destructuring
+- Date-fns-tz v3.x changed API surface, but this file wasn't updated
+
+**Impact**:
+
+- Prevented TypeScript compilation of web app
+- Blocked deployment and development workflow
+- Affected admin calendar preview functionality
+- Potential runtime errors if quiet hours format was invalid
+
+### Fix Description
+
+1. **Updated date-fns-tz imports** (line 5):
+    - Changed `utcToZonedTime` → `toZonedTime`
+    - Changed `zonedTimeToUtc` → `fromZonedTime`
+    - Updated all 5 usages throughout the file
+
+2. **Fixed quiet hours undefined handling** (lines 62-68):
+
+    ```typescript
+    // Before:
+    const [quietStartHour, quietStartMinute] = quietStart.split(':').map(Number);
+    const [quietEndHour, quietEndMinute] = quietEnd.split(':').map(Number);
+
+    // After:
+    const quietStartParts = quietStart.split(':').map(Number);
+    const quietEndParts = quietEnd.split(':').map(Number);
+
+    const quietStartHour = quietStartParts[0] ?? 0;
+    const quietStartMinute = quietStartParts[1] ?? 0;
+    const quietEndHour = quietEndParts[0] ?? 0;
+    const quietEndMinute = quietEndParts[1] ?? 0;
+    ```
+
+    - Added explicit array access with nullish coalescing operator
+    - Provides default values (0) if array doesn't have expected elements
+    - Prevents undefined errors and provides reasonable fallback behavior
+
+**Verification**:
+
+- Ran `pnpm run check` - no TypeScript errors in calendar-preview file
+- All 6 errors resolved
+- Other date-fns-tz usages aligned with web app patterns
+
+**Files Changed**:
+
+- `/apps/web/src/routes/api/admin/sms/calendar-preview/+server.ts`
+
+**Related Code**:
+
+- Similar patterns: `/apps/web/src/lib/services/task-time-slot-finder.ts:16` (correct imports)
+- Similar patterns: `/apps/web/src/lib/services/calendar-service.ts:9` (correct imports)
+
+**Last updated**: 2025-10-23
+
+---
+
 ## 2025-10-23 - Dashboard Bottom Sections Preload Warning
 
 **Severity**: Low (Performance/UX)

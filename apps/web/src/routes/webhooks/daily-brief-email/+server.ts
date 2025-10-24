@@ -247,7 +247,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
 			<div style="text-align: center; margin-top: 24px;">
-				<a href="https://build-os.com/daily-briefs/${payload.briefId}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS �</a>
+				<a href="https://build-os.com/projects?briefDate=${payload.briefDate}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
 				<span style="color: #d1d5db; margin: 0 8px;">|</span>
 				<a href="https://build-os.com/settings/daily-briefs" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
 			</div>

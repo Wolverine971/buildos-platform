@@ -77,7 +77,7 @@ function transformBriefCompleted(payload: BriefCompletedEventPayload): Notificat
 	return {
 		title: 'Your Daily Brief is Ready! 📋',
 		body: `${taskSummary} across ${projectText}`,
-		action_url: `/briefs/${payload.brief_id}`,
+		action_url: `/projects?briefDate=${payload.brief_date}`,
 		icon_url: '/AppImages/android/android-launchericon-192-192.png',
 		data: {
 			brief_id: payload.brief_id,

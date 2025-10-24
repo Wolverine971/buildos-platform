@@ -89,7 +89,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs</loc>
-    <lastmod>2025-10-08</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -124,6 +124,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/case-studies</loc>
+    <lastmod>2025-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/getting-started</loc>
     <lastmod>2025-06-27</lastmod>
     <changefreq>weekly</changefreq>
@@ -132,6 +138,12 @@
   <url>
     <loc>https://build-os.com/blogs/philosophy</loc>
     <lastmod>2025-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/product-updates</loc>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -64,6 +64,7 @@ export interface DailyBriefAnalysisProject {
 		start_date: string;
 		end_date: string;
 	} | null;
+	executive_summary?: unknown; // Project-level executive summary if available
 	stats: {
 		todays_task_count: number;
 		next_seven_days_task_count: number;

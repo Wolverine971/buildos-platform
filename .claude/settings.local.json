@@ -1,16 +1,17 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash(pnpm outdated:*)",
-			"Bash(git config:*)",
-			"Bash(pnpm audit:*)",
-			"Bash(pnpm add:*)",
-			"WebFetch(domain:kit.svelte.dev)",
-			"Bash(git rev-parse:*)",
-			"Bash(git remote:*)",
-			"Bash(pnpm typecheck:*)"
-		],
-		"deny": [],
-		"ask": []
-	}
+  "permissions": {
+    "allow": [
+      "Bash(pnpm outdated:*)",
+      "Bash(git config:*)",
+      "Bash(pnpm audit:*)",
+      "Bash(pnpm add:*)",
+      "WebFetch(domain:kit.svelte.dev)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
 }
