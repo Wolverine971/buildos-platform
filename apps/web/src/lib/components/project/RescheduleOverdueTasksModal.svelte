@@ -139,27 +139,27 @@
 	})();
 </script>
 
-<Modal {isOpen} onClose={handleClose} title="Reschedule Overdue Tasks" size="lg">
+<Modal {isOpen} onClose={handleClose} size="lg">
 	<div
 		slot="header"
-		class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
+		class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 	>
-		<div class="flex items-center gap-3">
-			<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+		<div class="flex items-center gap-2 sm:gap-2">
+			<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex-shrink-0">
 				<Clock class="w-5 h-5 text-orange-600 dark:text-orange-400" />
 			</div>
-			<div>
-				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+			<div class="min-w-0">
+				<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Reschedule Overdue Tasks
 				</h2>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 					{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''} to reschedule
 				</p>
 			</div>
 		</div>
 	</div>
 
-	<div class="p-4 sm:p-6 space-y-6">
+	<div class="p-4 sm:p-5 md:p-6 space-y-6">
 				{#if error}
 					<div
 						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
@@ -174,7 +174,7 @@
 						Overdue Tasks Summary
 					</h3>
 
-					<div class="grid grid-cols-3 gap-3">
+					<div class="grid grid-cols-3 gap-2">
 						{#if overdueGroups.recent.length > 0}
 							<div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
 								<p class="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
@@ -232,7 +232,7 @@
 
 					<!-- Shift Existing Tasks Option -->
 					<label
-						class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
+						class="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
 					>
 						<input
 							type="checkbox"
@@ -314,15 +314,16 @@
 
 	<div
 		slot="footer"
-		class="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 	>
-		<div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-			<Button on:click={handleClose} variant="outline" disabled={loading}> Cancel </Button>
+		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
+			<Button on:click={handleClose} variant="outline" disabled={loading} class="w-full sm:w-auto"> Cancel </Button>
 			<Button
 				on:click={handleReschedule}
 				variant="primary"
 				disabled={loading || overdueTasks.length === 0}
 				{loading}
+				class="w-full sm:w-auto"
 			>
 				{loading
 					? 'Rescheduling...'

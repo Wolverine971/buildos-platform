@@ -226,27 +226,26 @@
 <Modal
 	{isOpen}
 	onClose={handleCancel}
-	title={isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
 	size="lg"
 >
-	<div slot="header" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-		<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+	<div slot="header" class="p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700">
+		<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 			{isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
 		</h3>
-		<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+		<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
 			{isRegeneration
 				? 'Configure how to regenerate phases and schedule tasks'
 				: 'Configure how to generate phases and schedule tasks'}
 		</p>
 	</div>
 
-	<div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+	<div class="p-4 sm:p-5 md:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
 				<!-- Regeneration Warning -->
 				{#if isRegeneration && existingPhases.length > 0}
 					<div
 						class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
 					>
-						<div class="flex items-start gap-3">
+						<div class="flex items-start gap-2">
 							<AlertTriangle
 								class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
 							/>
@@ -263,7 +262,7 @@
 
 								<!-- Preserve/Wipe Toggle -->
 								<div class="mt-4 space-y-2">
-									<label class="flex items-start gap-3">
+									<label class="flex items-start gap-2">
 										<input
 											type="radio"
 											bind:group={preserveHistoricalPhases}
@@ -285,7 +284,7 @@
 										</div>
 									</label>
 
-									<label class="flex items-start gap-3">
+									<label class="flex items-start gap-2">
 										<input
 											type="radio"
 											bind:group={preserveHistoricalPhases}
@@ -315,7 +314,7 @@
 				<!-- Scheduling Method Selection -->
 				<div class="mb-6">
 					<h4
-						class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+						class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
 					>
 						<Target class="w-4 h-4" />
 						Scheduling Method
@@ -339,7 +338,7 @@
 								aria-checked={selectedSchedulingMethod === method.value}
 								aria-disabled={method.disabled}
 							>
-								<div class="flex items-start gap-3">
+								<div class="flex items-start gap-2">
 									<!-- Radio button -->
 									<div class="flex items-center h-5">
 										<input
@@ -403,7 +402,7 @@
 				<!-- Project Dates Section -->
 				<div class="mb-6">
 					<h4
-						class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+						class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
 					>
 						<Calendar class="w-4 h-4" />
 						Project Timeline
@@ -469,7 +468,7 @@
 				{#if selectedSchedulingMethod !== 'phases_only'}
 					<div class="mb-6">
 						<h4
-							class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+							class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
 						>
 							<Clock class="w-4 h-4" />
 							Task Date Handling
@@ -532,14 +531,14 @@
 					{#if calendarConnected}
 						<div class="mb-6">
 							<h4
-								class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+								class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
 							>
 								<CalendarDays class="w-4 h-4" />
 								Calendar Event Handling
 							</h4>
 							<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
 								<div class="space-y-3">
-									<label class="flex items-start gap-3">
+									<label class="flex items-start gap-2">
 										<input
 											type="radio"
 											bind:group={calendarHandling}
@@ -561,7 +560,7 @@
 										</div>
 									</label>
 
-									<label class="flex items-start gap-3">
+									<label class="flex items-start gap-2">
 										<input
 											type="radio"
 											bind:group={calendarHandling}
@@ -583,7 +582,7 @@
 										</div>
 									</label>
 
-									<label class="flex items-start gap-3">
+									<label class="flex items-start gap-2">
 										<input
 											type="radio"
 											bind:group={calendarHandling}
@@ -650,7 +649,7 @@
 
 				<!-- Task Status Selection -->
 				<div class="mb-6">
-					<h4 class="font-medium text-gray-900 dark:text-white mb-3">
+					<h4 class="font-medium text-gray-900 dark:text-white mb-4">
 						Include Tasks by Status
 					</h4>
 					<div class="flex flex-wrap gap-2">
@@ -676,7 +675,7 @@
 				{#if hasRecurringTasks}
 					<div class="mb-6">
 						<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-							<div class="flex items-start gap-3">
+							<div class="flex items-start gap-2">
 								<RefreshCw
 									class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
 								/>
@@ -1043,7 +1042,7 @@
 								>
 									{#each Object.entries(previewData.task_breakdown) as [status, tasks]}
 										{#if tasks.length > 0}
-											<div class="mb-3 last:mb-0">
+											<div class="mb-4 last:mb-0">
 												<h5
 													class="font-medium text-gray-900 dark:text-white mb-1 capitalize"
 												>
@@ -1081,9 +1080,9 @@
 
 	<div
 		slot="footer"
-		class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3"
+		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4"
 	>
-		<Button on:click={handleCancel} variant="secondary" size="md">Cancel</Button>
+		<Button on:click={handleCancel} variant="secondary" size="md" class="w-full sm:w-auto">Cancel</Button>
 		<Button
 			on:click={handleConfirm}
 			disabled={!previewData ||
@@ -1093,6 +1092,7 @@
 			variant="primary"
 			size="md"
 			{loading}
+			class="w-full sm:w-auto"
 		>
 			{isRegeneration ? 'Regenerate Phases' : 'Generate Phases'}
 		</Button>

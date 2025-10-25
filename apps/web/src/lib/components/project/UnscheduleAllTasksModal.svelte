@@ -133,24 +133,23 @@
 <Modal
 	{isOpen}
 	onClose={handleClose}
-	title={totalTasksInPhases === 0 && hasTasksWithDates ? 'Clear All Dates' : 'Unschedule All Tasks'}
 	size="md"
 >
 	<div
 		slot="header"
-		class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
+		class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 	>
-		<div class="flex items-center gap-3">
-			<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+		<div class="flex items-center gap-2 sm:gap-2">
+			<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg flex-shrink-0">
 				<CalendarX class="w-5 h-5 text-red-600 dark:text-red-400" />
 			</div>
-			<div>
-				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+			<div class="min-w-0">
+				<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					{totalTasksInPhases === 0 && hasTasksWithDates
 						? 'Clear All Dates'
 						: 'Unschedule All Tasks'}
 				</h2>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 					{#if clearDates && !moveToBacklog}
 						{affectedTasks.length} task{affectedTasks.length !== 1 ? 's' : ''} will
 						have dates cleared
@@ -166,7 +165,7 @@
 		</div>
 	</div>
 
-	<div class="p-4 sm:p-6 space-y-6">
+	<div class="p-4 sm:p-5 md:p-6 space-y-6">
 				{#if error}
 					<div
 						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
@@ -181,7 +180,7 @@
 				>
 					<div class="flex gap-2">
 						<AlertTriangle
-							class="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5"
+							class="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-1"
 						/>
 						<div class="space-y-2">
 							<p class="text-sm font-medium text-orange-800 dark:text-orange-200">
@@ -205,7 +204,7 @@
 					</h3>
 
 					<label
-						class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
+						class="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
 					>
 						<input
 							type="checkbox"
@@ -216,7 +215,7 @@
 							<p class="text-sm font-medium text-gray-900 dark:text-white">
 								Clear task dates
 							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 								Remove start and due dates from tasks (tasks will become
 								unscheduled)
 							</p>
@@ -225,7 +224,7 @@
 
 					{#if totalTasksInPhases > 0}
 						<label
-							class="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors {moveToBacklog
+							class="flex items-start gap-2 p-3 rounded-lg cursor-pointer transition-colors {moveToBacklog
 								? 'bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40'
 								: 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/70'}"
 						>
@@ -245,7 +244,7 @@
 								<p
 									class="text-xs {moveToBacklog
 										? 'text-orange-700 dark:text-orange-300'
-										: 'text-gray-500 dark:text-gray-400'} mt-0.5"
+										: 'text-gray-500 dark:text-gray-400'} mt-1"
 								>
 									Remove ALL tasks from their phases and move them to the project
 									backlog. This will clear all phase assignments.
@@ -255,7 +254,7 @@
 					{/if}
 
 					<div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg opacity-60">
-						<div class="flex items-start gap-3">
+						<div class="flex items-start gap-2">
 							<input
 								type="checkbox"
 								checked={removeCalendarEvents}
@@ -266,7 +265,7 @@
 								<p class="text-sm font-medium text-gray-900 dark:text-white">
 									Remove calendar events
 								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 									Calendar events will always be removed (required)
 								</p>
 							</div>
@@ -280,7 +279,7 @@
 				>
 					<div class="flex gap-2">
 						<Info
-							class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
+							class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1"
 						/>
 						<div class="text-sm text-blue-700 dark:text-blue-300">
 							{#if moveToBacklog}
@@ -333,13 +332,13 @@
 
 	<div
 		slot="footer"
-		class="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 	>
-		<div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-			<Button on:click={handleClose} variant="outline" disabled={loading}>
+		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
+			<Button on:click={handleClose} variant="outline" disabled={loading} class="w-full sm:w-auto">
 				Cancel
 			</Button>
-			<Button on:click={handleUnschedule} variant="danger" disabled={loading} {loading}>
+			<Button on:click={handleUnschedule} variant="danger" disabled={loading} {loading} class="w-full sm:w-auto">
 				{#if loading}
 					Processing...
 				{:else if totalTasksInPhases === 0 && hasTasksWithDates}

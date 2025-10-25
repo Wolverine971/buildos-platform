@@ -187,27 +187,27 @@
 	}
 </script>
 
-<Modal {isOpen} onClose={handleClose} title="Assign Backlog Tasks" size="lg">
+<Modal {isOpen} onClose={handleClose} size="lg">
 	<div
 		slot="header"
-		class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
+		class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 	>
-		<div class="flex items-center gap-3">
-			<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+		<div class="flex items-center gap-2 sm:gap-3">
+			<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
 				<Inbox class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 			</div>
-			<div>
-				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+			<div class="min-w-0">
+				<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Assign Backlog Tasks
 				</h2>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 					{backlogTasks.length} task{backlogTasks.length !== 1 ? 's' : ''} to assign
 				</p>
 			</div>
 		</div>
 	</div>
 
-	<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+	<div class="p-4 sm:p-5 md:p-6 space-y-4">
 				{#if error}
 					<div
 						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
@@ -371,15 +371,16 @@
 
 	<div
 		slot="footer"
-		class="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 	>
-		<div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-			<Button on:click={handleClose} variant="outline" disabled={loading}> Cancel </Button>
+		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
+			<Button on:click={handleClose} variant="outline" disabled={loading} class="w-full sm:w-auto"> Cancel </Button>
 			<Button
 				on:click={handleAssign}
 				variant="primary"
 				disabled={loading || (!autoAssign && Object.keys(taskPhaseAssignments).length === 0)}
 				{loading}
+				class="w-full sm:w-auto"
 			>
 				{loading
 					? 'Assigning...'

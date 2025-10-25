@@ -38,12 +38,12 @@
 </script>
 
 {#if email}
-	<Modal {isOpen} onClose={closeViewer} title={email.subject || 'Email'} size="lg">
-		<div slot="header" class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center gap-3 min-w-0">
+	<Modal {isOpen} onClose={closeViewer} size="lg">
+		<div slot="header" class="p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 				<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
 				<div class="min-w-0">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
 						{email.subject || 'Email'}
 					</h2>
 					{#if email.to}
@@ -57,9 +57,9 @@
 
 		<!-- Email Info -->
 		<div
-			class="px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"
+			class="px-4 sm:px-5 md:px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700"
 		>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
 				{#if email.to}
 					<div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
 						<User class="w-4 h-4 flex-shrink-0" />
@@ -79,9 +79,9 @@
 		</div>
 
 		<!-- Email Content (scrollable) -->
-		<div class="px-4 sm:px-6 py-6">
+		<div class="p-4 sm:p-5 md:p-6">
 				<div
-					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
+					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-5 md:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
 				>
 					{#if email.html}
 						<!-- Render HTML email content safely -->
@@ -103,7 +103,7 @@
 
 		<div
 			slot="footer"
-			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
+			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
 		>
 			<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">
 				Close

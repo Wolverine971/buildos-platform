@@ -96,15 +96,15 @@
 </script>
 
 {#if hasChanges}
-	<Modal {isOpen} onClose={handleSkip} title="Review Recurring Task Suggestions" size="lg">
-		<div slot="header" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center gap-3">
-				<RefreshCw class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-				<div>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+	<Modal {isOpen} onClose={handleSkip} size="lg">
+		<div slot="header" class="p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700">
+			<div class="flex items-center gap-2 sm:gap-3">
+				<RefreshCw class="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+				<div class="min-w-0">
+					<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 						Review Recurring Task Suggestions
 					</h3>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
 						The AI has suggested {filteredSuggestions.length} change{filteredSuggestions.length ===
 						1
 							? ''
@@ -116,7 +116,7 @@
 
 			<!-- Info Banner -->
 			<div
-				class="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800"
+				class="px-4 sm:px-5 md:px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800"
 			>
 				<div class="flex items-start gap-2">
 					<Info class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -129,9 +129,9 @@
 
 			<!-- Selection Controls -->
 			<div
-				class="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700"
+				class="px-4 sm:px-5 md:px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700"
 			>
-				<div class="flex items-center justify-between">
+				<div class="flex items-center justify-between gap-4">
 					<span class="text-sm text-gray-600 dark:text-gray-400">
 						{acceptedSuggestions.size} of {filteredSuggestions.length} selected
 					</span>
@@ -154,7 +154,7 @@
 			</div>
 
 			<!-- Suggestions List -->
-			<div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-300px)]">
+			<div class="p-4 sm:p-5 md:p-6 overflow-y-auto max-h-[calc(90vh-300px)]">
 				<div class="space-y-4">
 					{#each filteredSuggestions as suggestion}
 						<div
@@ -164,7 +164,7 @@
 								? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700'
 								: ''}"
 						>
-							<div class="flex items-start gap-3">
+							<div class="flex items-start gap-4">
 								<!-- Checkbox -->
 								<input
 									type="checkbox"
@@ -188,7 +188,7 @@
 									</div>
 
 									<!-- Changes -->
-									<div class="grid grid-cols-2 gap-4 mb-3">
+									<div class="grid grid-cols-2 gap-4 mb-4">
 										<!-- Current State -->
 										<div>
 											<h5
@@ -294,18 +294,19 @@
 
 		<div
 			slot="footer"
-			class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
 		>
-			<div class="flex justify-between items-center">
+			<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 				<p class="text-sm text-gray-500 dark:text-gray-400">
 					Changes will be applied after phases are generated
 				</p>
-				<div class="flex gap-3">
-					<Button variant="secondary" on:click={handleSkip}>Skip All Changes</Button>
+				<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+					<Button variant="secondary" on:click={handleSkip} class="w-full sm:w-auto">Skip All Changes</Button>
 					<Button
 						variant="primary"
 						on:click={handleConfirm}
 						disabled={acceptedSuggestions.size === 0}
+						class="w-full sm:w-auto"
 					>
 						Apply Selected Changes ({acceptedSuggestions.size})
 					</Button>
