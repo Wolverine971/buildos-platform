@@ -88,15 +88,16 @@
 			}
 
 			const result = await response.json();
+			const data = result.data
 			// API returns { brief: DailyBrief } when found, { brief: null, message: string } when not found
-			if (result.brief) {
-				fetchedBrief = result.brief;
+			if (data.brief) {
+				fetchedBrief = data.brief;
 				error = null;
-			} else if (result.message) {
-				error = result.message;
+			} else if (data.message) {
+				error = data.message;
 				fetchedBrief = null;
-			} else if (result.error) {
-				throw new Error(result.error);
+			} else if (data.error) {
+				throw new Error(data.error);
 			} else {
 				error = 'No brief found for this date';
 				fetchedBrief = null;
@@ -318,7 +319,7 @@
 		<!-- Header Info -->
 
 		<!-- Brief Content -->
-		<div class="px-4 sm:px-6 py-6 max-h-[60vh] overflow-y-auto">
+		<div class="px-4 sm:px-6 py-6">
 			<div
 				class="prose prose-sm dark:prose-invert max-w-none
 				prose-headings:font-semibold prose-headings:text-gray-900 dark:prose-headings:text-white

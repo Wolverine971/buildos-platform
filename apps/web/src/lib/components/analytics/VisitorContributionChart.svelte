@@ -2,23 +2,34 @@
 <script lang="ts">
 	import { format, parseISO, startOfWeek, addDays, subDays, startOfDay } from 'date-fns';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 
-	export let visitors: Array<{ date: string; visitor_count: number }> = [];
-	export let signups: Array<{ date: string; signup_count: number }> = [];
-	export let isLoading: boolean = false;
+	// Using $props() for Svelte 5 runes mode
+	let {
+		visitors = [],
+		signups = [],
+		isLoading = false
+	}: {
+		visitors?: Array<{ date: string; visitor_count: number }>;
+		signups?: Array<{ date: string; signup_count: number }>;
+		isLoading?: boolean;
+	} = $props();
 
+	// DOM reference - regular let for bind:this
 	let chartContainer: HTMLElement;
-	let hoveredDay: { date: string; count: number; x: number; y: number } | null = null;
-	let hoveredPoint: { date: string; count: number; x: number; y: number; type?: string } | null =
-		null;
-	let hoveredSignup: { date: string; count: number; x: number; y: number } | null = null;
-	let viewMode: 'chart' | 'graph' = 'graph';
 
-	// Generate last 30 days and group by weeks
-	$: weeks = generateVisitorGrid(visitors);
-	$: monthLabels = getMonthLabels();
-	$: graphData = generateGraphData(visitors);
-	$: signupGraphData = generateSignupGraphData(signups);
+	// Reactive state using $state() - required in runes mode for reactivity
+	let hoveredDay = $state<{ date: string; count: number; x: number; y: number } | null>(null);
+	let hoveredPoint = $state<{ date: string; count: number; x: number; y: number; type?: string } | null>(null);
+	let hoveredSignup = $state<{ date: string; count: number; x: number; y: number } | null>(null);
+	let viewMode = $state<'chart' | 'graph'>('graph');
+
+	// Generate last 30 days and group by weeks - Using $derived for automatic memoization
+	let weeks = $derived(generateVisitorGrid(visitors));
+	let monthLabels = $derived(getMonthLabels());
+	let graphData = $derived(generateGraphData(visitors));
+	let signupGraphData = $derived(generateSignupGraphData(signups));
 
 	function generateVisitorGrid(visitorData: typeof visitors) {
 		// Generate the last 30 days
@@ -251,20 +262,21 @@
 	// Day labels - only show Mon, Wed, Fri for space
 	const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-	// Calculate total visitors and signups
-	$: totalVisitors = visitors.reduce((sum, day) => sum + day.visitor_count, 0);
-	$: totalSignups = signups.reduce((sum, day) => sum + day.signup_count, 0);
-	$: averageDaily = visitors.length > 0 ? (totalVisitors / visitors.length).toFixed(1) : '0';
-	$: averageSignups = signups.length > 0 ? (totalSignups / signups.length).toFixed(1) : '0';
-	$: maxVisitors = Math.max(...visitors.map((v) => v.visitor_count), 1);
-	$: maxSignups = Math.max(...signups.map((s) => s.signup_count), 1);
-	$: maxValue = Math.max(maxVisitors, maxSignups, 1);
+	// Calculate total visitors and signups - Using $derived for automatic recalculation
+	let totalVisitors = $derived(visitors.reduce((sum, day) => sum + day.visitor_count, 0));
+	let totalSignups = $derived(signups.reduce((sum, day) => sum + day.signup_count, 0));
+	let averageDaily = $derived(visitors.length > 0 ? (totalVisitors / visitors.length).toFixed(1) : '0');
+	let averageSignups = $derived(signups.length > 0 ? (totalSignups / signups.length).toFixed(1) : '0');
+	let maxVisitors = $derived(Math.max(...visitors.map((v) => v.visitor_count), 1));
+	let maxSignups = $derived(Math.max(...signups.map((s) => s.signup_count), 1));
+	let maxValue = $derived(Math.max(maxVisitors, maxSignups, 1));
 </script>
 
-<div
+<Card
+	variant="default"
 	bind:this={chartContainer}
-	class="relative bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6"
 >
+	<CardBody padding="md" class="relative">
 	{#if isLoading}
 		<div class="flex items-center justify-center py-8 sm:py-12">
 			<div class="animate-pulse flex space-x-1">
@@ -631,4 +643,5 @@
 			</div>
 		</div>
 	{/if}
-</div>
+	</CardBody>
+</Card>

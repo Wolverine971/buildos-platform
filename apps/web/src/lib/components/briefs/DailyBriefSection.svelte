@@ -11,7 +11,7 @@
 	} from '$lib/services/briefClient.service';
 	import { RealtimeBriefService } from '$lib/services/realtimeBrief.service';
 	import type { DailyBrief, StreamingBriefData, StreamingStatus } from '$lib/types/daily-brief';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { getMarkdownPreview } from '$lib/utils/markdown';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getContext } from 'svelte';
@@ -296,9 +296,7 @@
 					<div class="generation-preview">
 						<p class="preview-label">Live preview</p>
 						<p class="preview-content">
-							{currentStreamingData.mainBrief.content
-								.replace(/[#*]/g, '')
-								.substring(0, 220)}...
+							{getMarkdownPreview(currentStreamingData.mainBrief.content, 220)}
 						</p>
 					</div>
 				{/if}
@@ -339,9 +337,7 @@
 				{#if displayDailyBrief.summary_content}
 					<div class="collapsed-preview">
 						<p class="preview-text">
-							{displayDailyBrief.summary_content
-								.replace(/[#*]/g, '')
-								.substring(0, 200)}...
+							{getMarkdownPreview(displayDailyBrief.summary_content, 200)}
 						</p>
 						{#if displayDailyBrief.priority_actions?.length}
 							<span class="preview-pill">

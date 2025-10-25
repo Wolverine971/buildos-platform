@@ -15,6 +15,9 @@
 	import { format, formatDistanceToNow, differenceInHours } from 'date-fns';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 
 	export let braindump: any;
 	export let onClick: () => void;
@@ -120,20 +123,21 @@
 	$: linkedTypes = braindump.linkedTypes || [];
 </script>
 
-<div
-	class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2 transition-all duration-200 cursor-pointer group hover:shadow-md
+<Card
+	variant="interactive"
+	class="group cursor-pointer border-2 transition-all duration-200
 	{isUnlinked
 		? 'border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700'
 		: isNewProject
 			? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700'
 			: 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'}"
-	on:click={onClick}
-	on:keydown={(e) => e.key === 'Enter' && onClick()}
+	onclick={onClick}
+	onkeydown={(e) => e.key === 'Enter' && onClick()}
 	role="button"
 	tabindex="0"
 >
 	<!-- Header: Project/Note name + Time -->
-	<div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-gray-700">
+	<CardHeader variant="default">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center space-x-2 min-w-0 flex-1">
 				{#if isUnlinked}
@@ -181,10 +185,10 @@
 				</Button>
 			</div>
 		</div>
-	</div>
+	</CardHeader>
 
 	<!-- Content -->
-	<div class="px-3 py-2 sm:px-4 sm:py-3">
+	<CardBody padding="md">
 		<!-- Content preview -->
 		{#if braindump.content || braindump.ai_summary}
 			{@const contentToShow = braindump.ai_summary || braindump.content}
@@ -241,5 +245,5 @@
 				</div>
 			</div>
 		</div>
-	</div>
-</div>
+	</CardBody>
+</Card>

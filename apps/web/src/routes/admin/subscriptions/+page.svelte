@@ -1,6 +1,5 @@
 <!-- apps/web/src/routes/admin/subscriptions/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
 		Search,
 		ChevronLeft,
@@ -24,31 +23,30 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	let isLoading = true;
-	let error: string | null = null;
-	let users: any[] = [];
-	let searchQuery = '';
-	let statusFilter = 'all';
-	let currentPage = 1;
-	let totalPages = 1;
-	let totalUsers = 0;
-	let selectedUser: any = null;
-	let showActionMenu: string | null = null;
-	let processingAction = false;
-	let showEmailModal = false;
-	let emailUserId = '';
-	let emailUserName = '';
-	let emailUserEmail = '';
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let users = $state<any[]>([]);
+	let searchQuery = $state('');
+	let statusFilter = $state('all');
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalUsers = $state(0);
+	let selectedUser = $state<any>(null);
+	let showActionMenu = $state<string | null>(null);
+	let processingAction = $state(false);
+	let showEmailModal = $state(false);
+	let emailUserId = $state('');
+	let emailUserName = $state('');
+	let emailUserEmail = $state('');
 
 	const ITEMS_PER_PAGE = 50;
 
-	onMount(() => {
+	// Load users on mount and when filters change
+	$effect(() => {
+		statusFilter; // Track dependency
+		currentPage;  // Track dependency
 		loadUsers();
 	});
-
-	$: if (statusFilter || currentPage) {
-		loadUsers();
-	}
 
 	async function loadUsers() {
 		if (!browser) return;

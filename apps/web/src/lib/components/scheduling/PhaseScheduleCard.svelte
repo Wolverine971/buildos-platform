@@ -10,6 +10,8 @@
 	} from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import ScheduleConflictAlert from './ScheduleConflictAlert.svelte';
 	import TaskScheduleItem from './TaskScheduleItem.svelte';
 	import { formatDate, formatTaskTime, parseLocalDate } from '$lib/utils/schedulingUtils';
@@ -42,10 +44,7 @@
 	$: hasIssues = errorCount > 0 || warningCount > 0;
 </script>
 
-<div
-	class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden
-	{hasIssues ? 'ring-2 ring-amber-500/20' : ''}"
->
+<Card variant="default" class="overflow-hidden {hasIssues ? 'ring-2 ring-amber-500/20' : ''}">
 	<!-- Phase Header (Always Visible) -->
 	<button
 		on:click={toggleExpanded}
@@ -127,7 +126,7 @@
 
 	<!-- Phase Content (Expanded) -->
 	{#if isExpanded && scheduleData}
-		<div class="p-4 space-y-4 bg-white dark:bg-gray-900">
+		<CardBody padding="md" class="space-y-4 bg-white dark:bg-gray-900">
 			<!-- Phase Conflicts/Warnings -->
 			{#if scheduleData.conflicts.length > 0}
 				<ScheduleConflictAlert conflicts={scheduleData.conflicts} compact={true} />
@@ -249,11 +248,11 @@
 					</div>
 				</div>
 			{/if}
-		</div>
+		</CardBody>
 	{:else if isExpanded && loading}
-		<div class="p-4 text-center text-gray-500 dark:text-gray-400">
+		<CardBody padding="md" class="text-center text-gray-500 dark:text-gray-400">
 			<Clock class="w-6 h-6 animate-spin mx-auto mb-2" />
 			<p class="text-sm">Loading schedule data...</p>
-		</div>
+		</CardBody>
 	{/if}
-</div>
+</Card>

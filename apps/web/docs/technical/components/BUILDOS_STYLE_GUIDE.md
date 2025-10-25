@@ -2,6 +2,9 @@
 
 > A comprehensive design system for BuildOS - High-end Apple-inspired design with ADHD-optimized UX
 
+**📍 Status**: Updated with new Card component system (v1.1.0)
+**🔗 Related**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md) for refactoring progress and implementation guidance.
+
 ## Design Philosophy
 
 BuildOS follows a **premium Apple-inspired aesthetic** with subtle gradients, generous whitespace, and smooth animations. The design prioritizes clarity, focus, and reduced cognitive load for ADHD users while maintaining a sophisticated, modern appearance.
@@ -362,9 +365,42 @@ $breakpoint-xl: 1280px; // Large desktop
 
 **Decision**: Use gradient buttons for primary actions, solid for secondary
 
-### Cards
+### Cards (Component System)
 
-#### Standard Card
+#### New Card System (v1.1.0+)
+
+BuildOS now uses a composable Card component system for consistency and maintainability:
+
+**Base Components**:
+
+- `Card.svelte` - Container with 4 variants
+- `CardHeader.svelte` - Optional header section with 3 styling variants
+- `CardBody.svelte` - Content area with responsive padding
+- `CardFooter.svelte` - Optional footer section
+
+**Card Variants**: `default`, `elevated`, `interactive`, `outline`
+**CardHeader Variants**: `default`, `gradient`, `accent`
+**Padding Options**: `sm`, `md`, `lg`
+
+```svelte
+<!-- Modern approach -->
+<Card variant="elevated">
+	<CardHeader variant="accent">
+		<div class="flex items-center gap-2">
+			<Icon class="h-5 w-5" />
+			<h3>Card Title</h3>
+		</div>
+	</CardHeader>
+	<CardBody padding="md">
+		<!-- Content here -->
+	</CardBody>
+	<CardFooter>
+		<!-- Optional footer -->
+	</CardFooter>
+</Card>
+```
+
+**Legacy Card Classes** (for reference):
 
 ```scss
 .card {
@@ -373,26 +409,18 @@ $breakpoint-xl: 1280px; // Large desktop
          shadow-md hover:shadow-lg
          transition-all duration-300;
 }
-```
 
-#### Interactive Card
-
-```scss
 .card-interactive {
 	@apply card hover:scale-105 cursor-pointer;
 }
-```
 
-#### Status Card (with gradient)
-
-```scss
 .card-processing {
 	@apply bg-gradient-to-br from-blue-50 to-purple-50
          dark:from-blue-900/20 dark:to-purple-900/20;
 }
 ```
 
-**Decision**: Gradients for active/processing states only
+**📝 Note**: New components should use the Card system. See [Component Refactoring Guide](#component-refactoring-guide) for migration steps.
 
 ### Modals
 
@@ -638,6 +666,33 @@ Always design for mobile first, then enhance for larger screens.
 
 ### When to Use Each Component
 
+#### Card System (Primary for Layouts)
+
+**`Card.svelte`** - Container wrapper (required)
+
+- Use `variant="default"` for standard cards
+- Use `variant="elevated"` for prominent cards
+- Use `variant="interactive"` for clickable cards
+- Use `variant="outline"` for minimal styling
+
+**`CardHeader.svelte`** - Optional header section
+
+- Use `variant="default"` for neutral headers
+- Use `variant="gradient"` for blue-indigo gradient accent
+- Use `variant="accent"` for purple-pink gradient accent
+
+**`CardBody.svelte`** - Main content area (required)
+
+- Use `padding="sm"` for compact spacing
+- Use `padding="md"` for standard spacing (recommended)
+- Use `padding="lg"` for generous spacing
+
+**`CardFooter.svelte`** - Optional footer section
+
+- Action buttons
+- Additional metadata
+- Status information
+
 #### Button.svelte
 
 - Primary actions (gradient style)
@@ -652,19 +707,70 @@ Always design for mobile first, then enhance for larger screens.
 - Information display
 - Complex workflows
 
-#### Card Components
-
-- Content grouping
-- Interactive selections
-- Status displays
-- Data presentation
-
 #### Form Components
 
 - Consistent form layouts
-- Validation feedback
+- Validation feedback (error messages, aria-invalid)
 - Accessible input groups
-- Error handling
+- Error and helper text support
+
+---
+
+## Component Refactoring Guide
+
+### Migrating to Card System
+
+**Pattern**: Replace raw `<div>` card structures with the new Card component system.
+
+#### Before (Legacy)
+
+```svelte
+<div
+	class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md p-6"
+>
+	<div class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+		<Icon />
+		<h3>Title</h3>
+	</div>
+	<div class="mt-4">
+		<!-- Content -->
+	</div>
+</div>
+```
+
+#### After (Card System)
+
+```svelte
+<Card variant="elevated">
+	<CardHeader variant="default">
+		<div class="flex items-center gap-3">
+			<Icon />
+			<h3>Title</h3>
+		</div>
+	</CardHeader>
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+</Card>
+```
+
+#### Benefits
+
+1. **Consistency**: Unified card styling across the application
+2. **Maintainability**: Update styling in one place, affects all cards
+3. **Accessibility**: Proper structure and spacing built-in
+4. **Dark Mode**: Full dark mode support pre-configured
+5. **Responsive**: Mobile-first responsive padding included
+
+### Implementation Steps
+
+1. Add imports at top of component
+2. Identify the card's structure (header/content/footer)
+3. Replace `<div>` with appropriate Card components
+4. Choose variant and padding options
+5. Remove duplicate styling classes
+
+For detailed refactoring progress and identified components, see [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md#phase-3-remaining-refactoring-in-progress).
 
 ---
 
@@ -691,9 +797,25 @@ Always design for mobile first, then enhance for larger screens.
 
 ---
 
+## WCAG AA Compliance Checklist
+
+When implementing new components or updating existing ones:
+
+- ✅ **Touch Targets**: All interactive elements ≥ 44×44px
+- ✅ **Contrast Ratios**: Text ≥ 4.5:1 (AA standard)
+- ✅ **ARIA Attributes**: Form inputs have aria-invalid, aria-required, aria-describedby
+- ✅ **Error Display**: Error messages use role="alert" with aria-live="polite"
+- ✅ **Dark Mode**: All colors have dark: variants
+- ✅ **Focus States**: Visible focus rings on all interactive elements
+- ✅ **Keyboard Navigation**: All features accessible via keyboard
+
+**Status**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md#wcag-aa-compliance-status) for current compliance metrics.
+
 ## Migration Guide
 
 When adapting existing or new components to this style guide:
+
+### General Component Updates
 
 1. **Audit current styling** against this guide
 2. **Update color usage** to match semantic color system
@@ -703,7 +825,7 @@ When adapting existing or new components to this style guide:
 6. **Test accessibility** with screen readers
 7. **Verify responsive behavior** across breakpoints
 
-### Example Migration
+### Button Migration Example
 
 ```svelte
 <!-- Before -->
@@ -719,6 +841,24 @@ When adapting existing or new components to this style guide:
 	Click me
 </Button>
 ```
+
+### Card Migration Example
+
+```svelte
+<!-- Before -->
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 shadow-md p-6">
+	<!-- Content -->
+</div>
+
+<!-- After -->
+<Card variant="elevated">
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+</Card>
+```
+
+For comprehensive refactoring patterns and migration guides, see [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md#phase-3-remaining-refactoring-in-progress).
 
 ---
 
@@ -742,10 +882,10 @@ When adapting existing or new components to this style guide:
 
 ## Version History
 
-- **v1.0.0** (2025-09-26): Initial style guide creation based on existing patterns
+- **v1.1.0** (2025-10-24): Major update - Added new Card component system with CardHeader/CardBody/CardFooter. Added WCAG AA compliance section. Added refactoring guide and links to DESIGN_REFACTOR_STATUS.md. Design health score improved from 62/100 to 79/100.
 - **v1.0.1** (2025-09-27): Updated Button.svelte color refinements for improved contrast
-- Analysis based on commit: main branch snapshot
-- Last Updated: September 27, 2025
+- **v1.0.0** (2025-09-26): Initial style guide creation based on existing patterns
+- Last Updated: October 24, 2025
 
 ---
 

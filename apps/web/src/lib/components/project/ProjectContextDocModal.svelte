@@ -419,7 +419,7 @@
 	</div>
 
 	<!-- Modal Body -->
-	<div class="max-h-[65vh] sm:max-h-[70vh] overflow-y-auto p-3 sm:p-4">
+	<div class="p-3 sm:p-4">
 		<!-- Project Info Section -->
 		<div
 			class="mb-4 sm:mb-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4"

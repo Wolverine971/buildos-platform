@@ -1,6 +1,5 @@
 <!-- apps/web/src/routes/admin/beta/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
 		UserCheck,
 		Filter,
@@ -32,53 +31,53 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { formatDateTimeForDisplay } from '$lib/utils/date-utils';
 
-	let activeTab: 'signups' | 'members' | 'emails' | 'dataview' = 'signups';
-	let isLoading = true;
-	let error: string | null = null;
-	let searchQuery = '';
-	let currentPage = 1;
-	let totalPages = 1;
-	let totalItems = 0;
-	let selectedItem: any = null;
-	let showModal = false;
-	let showMobileFilters = false;
-	let showEmailModal = false;
-	let emailUserId = '';
-	let emailUserName = '';
-	let emailUserEmail = '';
+	let activeTab = $state<'signups' | 'members' | 'emails' | 'dataview'>('signups');
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalItems = $state(0);
+	let selectedItem = $state<any>(null);
+	let showModal = $state(false);
+	let showMobileFilters = $state(false);
+	let showEmailModal = $state(false);
+	let emailUserId = $state('');
+	let emailUserName = $state('');
+	let emailUserEmail = $state('');
 
 	// Approval confirmation modal state
-	let showApprovalModal = false;
-	let pendingApprovalSignup: any = null;
-	let isApproving = false;
+	let showApprovalModal = $state(false);
+	let pendingApprovalSignup = $state<any>(null);
+	let isApproving = $state(false);
 
 	// Signups data
-	let signups: any[] = [];
-	let signupFilters = {
+	let signups = $state<any[]>([]);
+	let signupFilters = $state({
 		status: 'all',
 		sortBy: 'created_at',
 		sortOrder: 'desc'
-	};
+	});
 
 	// Members data
-	let members: any[] = [];
-	let memberFilters = {
+	let members = $state<any[]>([]);
+	let memberFilters = $state({
 		tier: 'all',
 		activeOnly: false,
 		sortBy: 'joined_at',
 		sortOrder: 'desc'
-	};
+	});
 
 	// Data view specific state
-	let dataViewFilters = {
+	let dataViewFilters = $state({
 		status: 'all',
 		sortBy: 'created_at',
 		sortOrder: 'desc',
 		showAllColumns: false
-	};
+	});
 
 	// Actions
-	let isUpdating = false;
+	let isUpdating = $state(false);
 
 	// Add sorting functions for signups and members tables
 	function handleSignupSort(column: string) {
@@ -103,9 +102,7 @@
 		loadMembers();
 	}
 
-	onMount(() => {
-		loadData();
-	});
+	// onMount removed - effects handle initial load
 
 	function handleSort(column) {
 		if (dataViewFilters.sortBy === column) {
@@ -156,42 +153,52 @@
 		return sourceMap[source.toLowerCase()] || source;
 	}
 
-	$: if (searchQuery || signupFilters.status || signupFilters.sortBy || signupFilters.sortOrder) {
+	// Load signups when on signups tab and filters change
+	$effect(() => {
 		if (activeTab === 'signups') {
+			searchQuery;
+			signupFilters.status;
+			signupFilters.sortBy;
+			signupFilters.sortOrder;
+
 			currentPage = 1;
 			loadSignups();
 		}
-	}
+	});
 
-	$: if (
-		searchQuery ||
-		dataViewFilters.status ||
-		dataViewFilters.sortBy ||
-		dataViewFilters.sortOrder
-	) {
+	// Load signups when on dataview tab and filters change
+	$effect(() => {
 		if (activeTab === 'dataview') {
+			searchQuery;
+			dataViewFilters.status;
+			dataViewFilters.sortBy;
+			dataViewFilters.sortOrder;
+
 			currentPage = 1;
 			loadSignups();
 		}
-	}
+	});
 
-	$: if (
-		searchQuery ||
-		memberFilters.tier ||
-		memberFilters.activeOnly ||
-		memberFilters.sortBy ||
-		memberFilters.sortOrder
-	) {
+	// Load members when on members tab and filters change
+	$effect(() => {
 		if (activeTab === 'members') {
+			searchQuery;
+			memberFilters.tier;
+			memberFilters.activeOnly;
+			memberFilters.sortBy;
+			memberFilters.sortOrder;
+
 			currentPage = 1;
 			loadMembers();
 		}
-	}
+	});
 
-	$: if (activeTab) {
+	// Load data when tab changes
+	$effect(() => {
+		activeTab; // Track tab changes
 		currentPage = 1;
 		loadData();
-	}
+	});
 
 	async function loadData() {
 		if (activeTab === 'signups' || activeTab === 'dataview') {

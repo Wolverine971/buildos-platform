@@ -1,6 +1,5 @@
 <!-- apps/web/src/routes/admin/revenue/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
 		DollarSign,
 		TrendingUp,
@@ -23,14 +22,14 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	let isLoading = true;
-	let error: string | null = null;
-	let selectedPeriod = 'month';
-	let selectedYear = new Date().getFullYear();
-	let selectedMonth = new Date().getMonth() + 1;
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let selectedPeriod = $state('month');
+	let selectedYear = $state(new Date().getFullYear());
+	let selectedMonth = $state(new Date().getMonth() + 1);
 
 	// Revenue data
-	let revenueData = {
+	let revenueData = $state({
 		recognized: {
 			current_period: 0,
 			previous_period: 0,
@@ -66,15 +65,15 @@
 			lifetime_value: 0,
 			gross_margin: 0
 		}
-	};
-
-	onMount(() => {
-		loadRevenueData();
 	});
 
-	$: if (selectedPeriod || selectedYear || selectedMonth) {
+	// Load revenue data on mount and when filters change
+	$effect(() => {
+		selectedPeriod;  // Track dependency
+		selectedYear;    // Track dependency
+		selectedMonth;   // Track dependency
 		loadRevenueData();
-	}
+	});
 
 	async function loadRevenueData() {
 		if (!browser) return;

@@ -153,7 +153,7 @@
 				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</span>
 
 				<!-- Sort field dropdown -->
-				<div class="relative">
+				<div class="">
 					<Button
 						onclick={(e) => {
 							e.stopPropagation();

@@ -19,6 +19,8 @@
 		isDateTomorrow
 	} from '$lib/utils/date-utils';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import { format } from 'date-fns-tz';
 
@@ -339,173 +341,302 @@
 	}
 </script>
 
-<div
-	class="flex h-full min-h-[21rem] flex-col rounded-2xl border border-gray-200/60 bg-white/95 p-4 shadow-sm transition-all duration-300 hover:shadow-md dark:border-gray-800/60 dark:bg-gray-900/70 sm:p-5"
->
-	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div class="flex min-w-0 items-center gap-3">
-			<div
-				class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 via-white to-white text-gray-600 shadow-inner dark:from-gray-800/70 dark:via-gray-900 dark:to-gray-900"
-			>
-				{#if title.includes('Past Due')}
-					<AlertTriangle class="h-4 w-4 text-red-600" />
-				{:else if title.includes('Today')}
-					<Clock class="h-4 w-4 text-blue-600" />
-				{:else}
-					<Calendar class="h-4 w-4 text-green-600" />
+<Card variant="default">
+	<CardBody padding="md" class="flex h-full min-h-[21rem] flex-col">
+		<div class="flex flex-wrap items-start justify-between gap-3">
+			<div class="flex min-w-0 items-center gap-3">
+				<div
+					class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 via-white to-white text-gray-600 shadow-inner dark:from-gray-800/70 dark:via-gray-900 dark:to-gray-900"
+				>
+					{#if title.includes('Past Due')}
+						<AlertTriangle class="h-4 w-4 text-red-600" />
+					{:else if title.includes('Today')}
+						<Clock class="h-4 w-4 text-blue-600" />
+					{:else}
+						<Calendar class="h-4 w-4 text-green-600" />
+					{/if}
+				</div>
+				<div class="min-w-0">
+					<h3
+						class="truncate text-base font-semibold text-gray-900 tracking-tight dark:text-white sm:text-lg"
+					>
+						{title}
+					</h3>
+					<p class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+						{headerSubtitle}
+					</p>
+				</div>
+			</div>
+
+			<div class="flex flex-wrap items-center justify-end gap-2">
+				<span
+					class="inline-flex items-center gap-1 rounded-full border border-gray-200/70 bg-gray-50/90 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-gray-700/60 dark:bg-gray-800/70 dark:text-gray-300"
+				>
+					<span class="text-sm font-semibold text-gray-900 dark:text-white">
+						{totalItems}
+					</span>
+					<span
+						class="uppercase tracking-wide text-[10px] text-gray-500 dark:text-gray-400"
+					>
+						items
+					</span>
+				</span>
+
+				{#if calendarStatus !== undefined && calendarStatus !== null}
+					<span
+						class={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+							calendarIsConnected
+								? 'border border-emerald-200/60 bg-emerald-50/80 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300'
+								: 'border border-amber-200/60 bg-amber-50/80 text-amber-700 dark:border-amber-800/50 dark:bg-amber-900/25 dark:text-amber-300'
+						}`}
+					>
+						{#if calendarIsConnected}
+							<CalendarCheck class="h-3.5 w-3.5" />
+							<span>Calendar linked</span>
+						{:else}
+							<AlertTriangle class="h-3.5 w-3.5" />
+							<span>Calendar offline</span>
+						{/if}
+					</span>
 				{/if}
 			</div>
-			<div class="min-w-0">
-				<h3
-					class="truncate text-base font-semibold text-gray-900 tracking-tight dark:text-white sm:text-lg"
-				>
-					{title}
-				</h3>
-				<p class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-					{headerSubtitle}
-				</p>
-			</div>
 		</div>
 
-		<div class="flex flex-wrap items-center justify-end gap-2">
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-gray-200/70 bg-gray-50/90 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-gray-700/60 dark:bg-gray-800/70 dark:text-gray-300"
-			>
-				<span class="text-sm font-semibold text-gray-900 dark:text-white">
-					{totalItems}
-				</span>
-				<span class="uppercase tracking-wide text-[10px] text-gray-500 dark:text-gray-400">
-					items
-				</span>
-			</span>
-
-			{#if calendarStatus !== undefined && calendarStatus !== null}
-				<span
-					class={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-						calendarIsConnected
-							? 'border border-emerald-200/60 bg-emerald-50/80 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300'
-							: 'border border-amber-200/60 bg-amber-50/80 text-amber-700 dark:border-amber-800/50 dark:bg-amber-900/25 dark:text-amber-300'
-					}`}
-				>
-					{#if calendarIsConnected}
-						<CalendarCheck class="h-3.5 w-3.5" />
-						<span>Calendar linked</span>
-					{:else}
-						<AlertTriangle class="h-3.5 w-3.5" />
-						<span>Calendar offline</span>
-					{/if}
-				</span>
-			{/if}
-		</div>
-	</div>
-
-	{#if showTimeBlocks}
-		<div class="mt-3 flex flex-wrap items-center gap-2">
-			<span
-				class={`${metricChipClass} border-purple-200/60 bg-purple-50/70 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/25 dark:text-purple-300`}
-			>
-				<span class="font-semibold">{focusSessionCount}</span>
-				<span>sessions</span>
-			</span>
-			<span
-				class={`${metricChipClass} border-emerald-200/60 bg-emerald-50/70 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300`}
-			>
-				<span class="font-semibold">{scheduledTaskCount}</span>
-				<span>planned</span>
-			</span>
-			<span
-				class={`${metricChipClass} border-slate-200/60 bg-slate-50/80 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/30 dark:text-slate-300`}
-			>
-				<span class="font-semibold">{ungroupedTaskCount}</span>
-				<span>{title.includes('Past Due') ? 'overdue' : 'loose'}</span>
-			</span>
-		</div>
-	{:else}
-		<div class="mt-3 flex flex-wrap items-center gap-2">
-			<span
-				class={`${metricChipClass} border-red-200/60 bg-red-50/70 text-red-700 dark:border-red-800/50 dark:bg-red-900/25 dark:text-red-300`}
-			>
-				<span class="font-semibold">{totalItems}</span>
-				<span>overdue</span>
-			</span>
-		</div>
-	{/if}
-
-	<div class="mt-4 flex-1 overflow-hidden">
 		{#if showTimeBlocks}
-			{#if hasTimeBlockContent}
-				<div class="flex h-full flex-col gap-4">
-					<div class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-80 sm:max-h-96">
-						<div class="space-y-4">
-							{#each groupedContent.timeBlockGroups as { block, tasks: blockTasks }}
-								{@const blockStyle = getTimeBlockStyle(block)}
-								<section class="space-y-2">
-									<button
-										on:click={() => onTimeBlockClick(block)}
-										class="timeblock-card group relative w-full overflow-hidden rounded-2xl border border-gray-200/60 bg-transparent px-4 py-3 text-left shadow-sm transition-shadow duration-200 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-500/40 appearance-none dark:border-gray-700/60"
-									>
-										<span
-											class={`absolute inset-0 rounded-2xl opacity-95 ${blockStyle.surface}`}
-											aria-hidden="true"
-										/>
-										<span
-											class={`absolute inset-0 rounded-2xl ring-1 ring-inset ${blockStyle.ring}`}
-											aria-hidden="true"
-										/>
-										<div class="relative flex flex-col gap-2">
-											<div class="flex items-center justify-between gap-3">
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<span
+					class={`${metricChipClass} border-purple-200/60 bg-purple-50/70 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/25 dark:text-purple-300`}
+				>
+					<span class="font-semibold">{focusSessionCount}</span>
+					<span>sessions</span>
+				</span>
+				<span
+					class={`${metricChipClass} border-emerald-200/60 bg-emerald-50/70 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300`}
+				>
+					<span class="font-semibold">{scheduledTaskCount}</span>
+					<span>planned</span>
+				</span>
+				<span
+					class={`${metricChipClass} border-slate-200/60 bg-slate-50/80 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/30 dark:text-slate-300`}
+				>
+					<span class="font-semibold">{ungroupedTaskCount}</span>
+					<span>{title.includes('Past Due') ? 'overdue' : 'loose'}</span>
+				</span>
+			</div>
+		{:else}
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<span
+					class={`${metricChipClass} border-red-200/60 bg-red-50/70 text-red-700 dark:border-red-800/50 dark:bg-red-900/25 dark:text-red-300`}
+				>
+					<span class="font-semibold">{totalItems}</span>
+					<span>overdue</span>
+				</span>
+			</div>
+		{/if}
+
+		<div class="mt-4 flex-1 overflow-hidden">
+			{#if showTimeBlocks}
+				{#if hasTimeBlockContent}
+					<div class="flex h-full flex-col gap-4">
+						<div
+							class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-80 sm:max-h-96"
+						>
+							<div class="space-y-4">
+								{#each groupedContent.timeBlockGroups as { block, tasks: blockTasks }}
+									{@const blockStyle = getTimeBlockStyle(block)}
+									<section class="space-y-2">
+										<button
+											on:click={() => onTimeBlockClick(block)}
+											class="timeblock-card group relative w-full overflow-hidden rounded-2xl border border-gray-200/60 bg-transparent px-4 py-3 text-left shadow-sm transition-shadow duration-200 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-500/40 appearance-none dark:border-gray-700/60"
+										>
+											<span
+												class={`absolute inset-0 rounded-2xl opacity-95 ${blockStyle.surface}`}
+												aria-hidden="true"
+											/>
+											<span
+												class={`absolute inset-0 rounded-2xl ring-1 ring-inset ${blockStyle.ring}`}
+												aria-hidden="true"
+											/>
+											<div class="relative flex flex-col gap-2">
 												<div
-													class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+													class="flex items-center justify-between gap-3"
 												>
-													<span
-														class={`flex h-2.5 w-2.5 rounded-full ${blockStyle.bullet}`}
+													<div
+														class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+													>
+														<span
+															class={`flex h-2.5 w-2.5 rounded-full ${blockStyle.bullet}`}
+														/>
+														<span
+															class={`font-semibold ${blockStyle.accentText}`}
+														>
+															{formatTimeBlockTime(block.start_time)} -
+															{formatTimeBlockTime(block.end_time)}
+														</span>
+														<span
+															class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${blockStyle.badge}`}
+														>
+															{block.duration_minutes} min
+														</span>
+													</div>
+													<ChevronRight
+														class="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:translate-x-0.5"
 													/>
-													<span
-														class={`font-semibold ${blockStyle.accentText}`}
-													>
-														{formatTimeBlockTime(block.start_time)} - {formatTimeBlockTime(
-															block.end_time
-														)}
-													</span>
-													<span
-														class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${blockStyle.badge}`}
-													>
-														{block.duration_minutes} min
-													</span>
 												</div>
-												<ChevronRight
-													class="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:translate-x-0.5"
-												/>
-											</div>
-											<div class="flex flex-wrap items-center gap-2">
-												<h4
-													class="text-sm font-semibold text-gray-900 dark:text-white"
-												>
-													{block.block_type === 'build'
-														? 'Build session'
-														: block.project?.name || 'Focus session'}
-												</h4>
-												{#if block.project?.name && block.block_type !== 'build'}
-													<span
-														class="rounded-full bg-white/60 px-2 py-0.5 text-[11px] font-medium text-gray-500 shadow-sm backdrop-blur-sm dark:bg-gray-900/60 dark:text-gray-300"
+												<div class="flex flex-wrap items-center gap-2">
+													<h4
+														class="text-sm font-semibold text-gray-900 dark:text-white"
 													>
-														{block.project.name}
-													</span>
+														{block.block_type === 'build'
+															? 'Build session'
+															: block.project?.name ||
+																'Focus session'}
+													</h4>
+													{#if block.project?.name && block.block_type !== 'build'}
+														<span
+															class="rounded-full bg-white/60 px-2 py-0.5 text-[11px] font-medium text-gray-500 shadow-sm backdrop-blur-sm dark:bg-gray-900/60 dark:text-gray-300"
+														>
+															{block.project.name}
+														</span>
+													{/if}
+												</div>
+												{#if block.suggestions_summary}
+													<p
+														class="text-xs text-gray-600 line-clamp-1 dark:text-gray-400"
+													>
+														{block.suggestions_summary}
+													</p>
 												{/if}
 											</div>
-											{#if block.suggestions_summary}
-												<p
-													class="text-xs text-gray-600 line-clamp-1 dark:text-gray-400"
-												>
-													{block.suggestions_summary}
-												</p>
-											{/if}
-										</div>
-									</button>
+										</button>
 
-									{#if blockTasks.length > 0}
-										<div class="timeline-connector ml-6 space-y-2 pl-2">
-											{#each blockTasks as task}
+										{#if blockTasks.length > 0}
+											<div class="timeline-connector ml-6 space-y-2 pl-2">
+												{#each blockTasks as task}
+													{@const displayInfo = getTaskDisplayInfo(task)}
+													<button
+														on:click={() => onTaskClick(task)}
+														class={`${taskCardBaseClass} ${getPriorityClasses(task.priority)}`}
+													>
+														<div
+															class="flex items-start justify-between gap-3"
+														>
+															<div class="min-w-0 space-y-1">
+																<h5
+																	class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white"
+																>
+																	{task.title}
+																</h5>
+																{#if task.description}
+																	<p
+																		class="line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
+																	>
+																		{task.description}
+																	</p>
+																{/if}
+															</div>
+															<div
+																class="flex flex-col items-end gap-1"
+															>
+																{#if task.priority}
+																	<span
+																		class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
+																			task.priority
+																		)}`}
+																	>
+																		{task.priority}
+																	</span>
+																{/if}
+																<RecentActivityIndicator
+																	createdAt={task.created_at}
+																	updatedAt={task.updated_at}
+																	size="xs"
+																/>
+															</div>
+														</div>
+														<div
+															class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
+														>
+															<span
+																class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+															>
+																<span class="font-medium"
+																	>{displayInfo.formattedDate}</span
+																>
+																{#if displayInfo.isOverdue}
+																	<span
+																		>&middot; {getOverdueText(
+																			displayInfo.daysOverdue
+																		)}</span
+																	>
+																{/if}
+															</span>
+															{#if task.projects?.name}
+																<span class="truncate">
+																	{task.projects.name}
+																</span>
+															{/if}
+															{#if task.task_type === 'meeting'}
+																<span
+																	class="flex items-center gap-1"
+																>
+																	<ExternalLink
+																		class="h-3 w-3 opacity-60"
+																	/>
+																	<span>Meeting</span>
+																</span>
+															{/if}
+															{#if task.isRecurringInstance || task.task_type === 'recurring'}
+																<span
+																	class="flex items-center gap-1 text-blue-500 dark:text-blue-300"
+																>
+																	<RefreshCw class="h-3 w-3" />
+																	<span>Recurring</span>
+																</span>
+															{/if}
+															{#if calendarIsConnected}
+																{#if task.task_calendar_events && task.task_calendar_events.length > 0}
+																	<span
+																		class="flex items-center gap-1 text-emerald-600 dark:text-emerald-300"
+																	>
+																		<CalendarCheck
+																			class="h-3 w-3"
+																		/>
+																		<span>Synced</span>
+																	</span>
+																{:else}
+																	<span
+																		class="flex items-center gap-1 opacity-70"
+																	>
+																		<Calendar class="h-3 w-3" />
+																		<span>Unsynced</span>
+																	</span>
+																{/if}
+															{/if}
+														</div>
+													</button>
+												{/each}
+											</div>
+										{/if}
+									</section>
+								{/each}
+
+								{#if groupedContent.ungroupedTasks.length > 0}
+									<section class="space-y-3">
+										<div class="flex items-center justify-between">
+											<h4
+												class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+											>
+												Loose tasks
+											</h4>
+											<span
+												class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+											>
+												{groupedContent.ungroupedTasks.length}
+											</span>
+										</div>
+										<div class="space-y-2">
+											{#each groupedContent.ungroupedTasks as task}
 												{@const displayInfo = getTaskDisplayInfo(task)}
 												<button
 													on:click={() => onTaskClick(task)}
@@ -606,258 +737,145 @@
 												</button>
 											{/each}
 										</div>
-									{/if}
-								</section>
-							{/each}
-
-							{#if groupedContent.ungroupedTasks.length > 0}
-								<section class="space-y-3">
-									<div class="flex items-center justify-between">
-										<h4
-											class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
-										>
-											Loose tasks
-										</h4>
-										<span
-											class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-										>
-											{groupedContent.ungroupedTasks.length}
-										</span>
-									</div>
-									<div class="space-y-2">
-										{#each groupedContent.ungroupedTasks as task}
-											{@const displayInfo = getTaskDisplayInfo(task)}
-											<button
-												on:click={() => onTaskClick(task)}
-												class={`${taskCardBaseClass} ${getPriorityClasses(task.priority)}`}
-											>
-												<div class="flex items-start justify-between gap-3">
-													<div class="min-w-0 space-y-1">
-														<h5
-															class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white"
-														>
-															{task.title}
-														</h5>
-														{#if task.description}
-															<p
-																class="line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
-															>
-																{task.description}
-															</p>
-														{/if}
-													</div>
-													<div class="flex flex-col items-end gap-1">
-														{#if task.priority}
-															<span
-																class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
-																	task.priority
-																)}`}
-															>
-																{task.priority}
-															</span>
-														{/if}
-														<RecentActivityIndicator
-															createdAt={task.created_at}
-															updatedAt={task.updated_at}
-															size="xs"
-														/>
-													</div>
-												</div>
-												<div
-													class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
-												>
-													<span
-														class={`flex items-center gap-1 ${displayInfo.dateColor}`}
-													>
-														<span class="font-medium"
-															>{displayInfo.formattedDate}</span
-														>
-														{#if displayInfo.isOverdue}
-															<span
-																>&middot; {getOverdueText(
-																	displayInfo.daysOverdue
-																)}</span
-															>
-														{/if}
-													</span>
-													{#if task.projects?.name}
-														<span class="truncate">
-															{task.projects.name}
-														</span>
-													{/if}
-													{#if task.task_type === 'meeting'}
-														<span class="flex items-center gap-1">
-															<ExternalLink
-																class="h-3 w-3 opacity-60"
-															/>
-															<span>Meeting</span>
-														</span>
-													{/if}
-													{#if task.isRecurringInstance || task.task_type === 'recurring'}
-														<span
-															class="flex items-center gap-1 text-blue-500 dark:text-blue-300"
-														>
-															<RefreshCw class="h-3 w-3" />
-															<span>Recurring</span>
-														</span>
-													{/if}
-													{#if calendarIsConnected}
-														{#if task.task_calendar_events && task.task_calendar_events.length > 0}
-															<span
-																class="flex items-center gap-1 text-emerald-600 dark:text-emerald-300"
-															>
-																<CalendarCheck class="h-3 w-3" />
-																<span>Synced</span>
-															</span>
-														{:else}
-															<span
-																class="flex items-center gap-1 opacity-70"
-															>
-																<Calendar class="h-3 w-3" />
-																<span>Unsynced</span>
-															</span>
-														{/if}
-													{/if}
-												</div>
-											</button>
-										{/each}
-									</div>
-								</section>
-							{/if}
+									</section>
+								{/if}
+							</div>
 						</div>
-					</div>
 
-					<button
-						on:click={onNewTimeBlock}
-						class="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300/70 bg-blue-50/50 px-4 py-2 text-sm font-semibold text-blue-600 transition-all duration-200 hover:bg-blue-100/70 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-blue-500/40 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
-					>
-						<Plus class="h-4 w-4" />
-						<span>Schedule focus session</span>
-					</button>
+						<button
+							on:click={onNewTimeBlock}
+							class="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300/70 bg-blue-50/50 px-4 py-2 text-sm font-semibold text-blue-600 transition-all duration-200 hover:bg-blue-100/70 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-blue-500/40 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
+						>
+							<Plus class="h-4 w-4" />
+							<span>Schedule focus session</span>
+						</button>
+					</div>
+				{:else}
+					<div class="flex h-full flex-col items-center justify-center gap-3 text-center">
+						<EmptyIcon class="h-12 w-12 text-gray-300 dark:text-gray-600" />
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+								{emptyMessage}
+							</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400">
+								Start your day with a focused session.
+							</p>
+						</div>
+						<button
+							on:click={onNewTimeBlock}
+							class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+						>
+							<Plus class="h-4 w-4" />
+							<span>Schedule focus session</span>
+						</button>
+					</div>
+				{/if}
+			{:else if tasks.length > 0}
+				<div class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-80 sm:max-h-96">
+					<div class="space-y-3">
+						{#each tasks as task}
+							{@const displayInfo = getTaskDisplayInfo(task)}
+							<button
+								on:click={() => onTaskClick(task)}
+								class={`${taskCardBaseClass} ${getPriorityClasses(task.priority)}`}
+							>
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0 space-y-1">
+										<h4
+											class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white"
+										>
+											{task.title}
+										</h4>
+										{#if task.description}
+											<p
+												class="line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
+											>
+												{task.description}
+											</p>
+										{/if}
+									</div>
+									<div class="flex flex-col items-end gap-1">
+										{#if task.priority}
+											<span
+												class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
+													task.priority
+												)}`}
+											>
+												{task.priority}
+											</span>
+										{/if}
+										<RecentActivityIndicator
+											createdAt={task.created_at}
+											updatedAt={task.updated_at}
+											size="xs"
+										/>
+									</div>
+								</div>
+								<div
+									class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
+								>
+									<span
+										class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+									>
+										<span class="font-medium">{displayInfo.formattedDate}</span>
+										{#if displayInfo.isOverdue}
+											<span
+												>&middot; {getOverdueText(
+													displayInfo.daysOverdue
+												)}</span
+											>
+										{/if}
+									</span>
+									{#if task.projects?.name}
+										<span class="truncate">
+											{task.projects.name}
+										</span>
+									{/if}
+									{#if task.task_type === 'meeting'}
+										<span class="flex items-center gap-1">
+											<ExternalLink class="h-3 w-3 opacity-60" />
+											<span>Meeting</span>
+										</span>
+									{/if}
+									{#if task.isRecurringInstance || task.task_type === 'recurring'}
+										<span
+											class="flex items-center gap-1 text-blue-500 dark:text-blue-300"
+										>
+											<RefreshCw class="h-3 w-3" />
+											<span>Recurring</span>
+										</span>
+									{/if}
+									{#if calendarIsConnected}
+										{#if task.task_calendar_events && task.task_calendar_events.length > 0}
+											<span
+												class="flex items-center gap-1 text-emerald-600 dark:text-emerald-300"
+											>
+												<CalendarCheck class="h-3 w-3" />
+												<span>Synced</span>
+											</span>
+										{:else}
+											<span class="flex items-center gap-1 opacity-70">
+												<Calendar class="h-3 w-3" />
+												<span>Unsynced</span>
+											</span>
+										{/if}
+									{/if}
+								</div>
+							</button>
+						{/each}
+					</div>
 				</div>
 			{:else}
 				<div class="flex h-full flex-col items-center justify-center gap-3 text-center">
 					<EmptyIcon class="h-12 w-12 text-gray-300 dark:text-gray-600" />
-					<div class="space-y-1">
-						<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-							{emptyMessage}
-						</p>
-						<p class="text-xs text-gray-500 dark:text-gray-400">
-							Start your day with a focused session.
-						</p>
-					</div>
-					<button
-						on:click={onNewTimeBlock}
-						class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
-					>
-						<Plus class="h-4 w-4" />
-						<span>Schedule focus session</span>
-					</button>
+					<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+						{emptyMessage}
+					</p>
 				</div>
 			{/if}
-		{:else if tasks.length > 0}
-			<div class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-80 sm:max-h-96">
-				<div class="space-y-3">
-					{#each tasks as task}
-						{@const displayInfo = getTaskDisplayInfo(task)}
-						<button
-							on:click={() => onTaskClick(task)}
-							class={`${taskCardBaseClass} ${getPriorityClasses(task.priority)}`}
-						>
-							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0 space-y-1">
-									<h4
-										class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white"
-									>
-										{task.title}
-									</h4>
-									{#if task.description}
-										<p
-											class="line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
-										>
-											{task.description}
-										</p>
-									{/if}
-								</div>
-								<div class="flex flex-col items-end gap-1">
-									{#if task.priority}
-										<span
-											class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
-												task.priority
-											)}`}
-										>
-											{task.priority}
-										</span>
-									{/if}
-									<RecentActivityIndicator
-										createdAt={task.created_at}
-										updatedAt={task.updated_at}
-										size="xs"
-									/>
-								</div>
-							</div>
-							<div
-								class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
-							>
-								<span class={`flex items-center gap-1 ${displayInfo.dateColor}`}>
-									<span class="font-medium">{displayInfo.formattedDate}</span>
-									{#if displayInfo.isOverdue}
-										<span
-											>&middot; {getOverdueText(
-												displayInfo.daysOverdue
-											)}</span
-										>
-									{/if}
-								</span>
-								{#if task.projects?.name}
-									<span class="truncate">
-										{task.projects.name}
-									</span>
-								{/if}
-								{#if task.task_type === 'meeting'}
-									<span class="flex items-center gap-1">
-										<ExternalLink class="h-3 w-3 opacity-60" />
-										<span>Meeting</span>
-									</span>
-								{/if}
-								{#if task.isRecurringInstance || task.task_type === 'recurring'}
-									<span
-										class="flex items-center gap-1 text-blue-500 dark:text-blue-300"
-									>
-										<RefreshCw class="h-3 w-3" />
-										<span>Recurring</span>
-									</span>
-								{/if}
-								{#if calendarIsConnected}
-									{#if task.task_calendar_events && task.task_calendar_events.length > 0}
-										<span
-											class="flex items-center gap-1 text-emerald-600 dark:text-emerald-300"
-										>
-											<CalendarCheck class="h-3 w-3" />
-											<span>Synced</span>
-										</span>
-									{:else}
-										<span class="flex items-center gap-1 opacity-70">
-											<Calendar class="h-3 w-3" />
-											<span>Unsynced</span>
-										</span>
-									{/if}
-								{/if}
-							</div>
-						</button>
-					{/each}
-				</div>
-			</div>
-		{:else}
-			<div class="flex h-full flex-col items-center justify-center gap-3 text-center">
-				<EmptyIcon class="h-12 w-12 text-gray-300 dark:text-gray-600" />
-				<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-					{emptyMessage}
-				</p>
-			</div>
-		{/if}
-	</div>
-</div>
+		</div>
+	</CardBody>
+</Card>
 
 <style>
 	.line-clamp-2 {

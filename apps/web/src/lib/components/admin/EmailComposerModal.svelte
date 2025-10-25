@@ -378,7 +378,7 @@ Guidelines:
 		</div>
 
 		<!-- Content -->
-		<div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+		<div class="flex-1 px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 			<!-- Email History Section -->
 			{#if showEmailHistory && emailHistory.length > 0}
 				<div

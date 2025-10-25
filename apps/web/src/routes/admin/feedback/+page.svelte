@@ -27,41 +27,48 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	let feedback: any[] = [];
-	let isLoading = true;
-	let error: string | null = null;
-	let searchQuery = '';
-	let currentPage = 1;
-	let totalPages = 1;
-	let totalItems = 0;
-	let selectedFeedback: any = null;
-	let showFeedbackModal = false;
-	let showMobileFilters = false;
-	let showEmailModal = false;
-	let emailUserId = '';
-	let emailUserName = '';
-	let emailUserEmail = '';
+	let feedback = $state<any[]>([]);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalItems = $state(0);
+	let selectedFeedback = $state<any>(null);
+	let showFeedbackModal = $state(false);
+	let showMobileFilters = $state(false);
+	let showEmailModal = $state(false);
+	let emailUserId = $state('');
+	let emailUserName = $state('');
+	let emailUserEmail = $state('');
 
 	// Filters
-	let filterByStatus = 'all';
-	let filterByCategory = 'all';
-	let sortBy = 'created_at';
-	let sortOrder = 'desc';
+	let filterByStatus = $state('all');
+	let filterByCategory = $state('all');
+	let sortBy = $state('created_at');
+	let sortOrder = $state('desc');
 
 	// Status update
-	let isUpdating = false;
+	let isUpdating = $state(false);
 
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 	onMount(() => {
-		loadFeedback();
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	});
 
-	$: if (searchQuery || filterByStatus || filterByCategory || sortBy || sortOrder) {
+	// Load feedback on mount and when filters change
+	$effect(() => {
+		// Track all filter dependencies
+		searchQuery;
+		filterByStatus;
+		filterByCategory;
+		sortBy;
+		sortOrder;
+
 		currentPage = 1;
 		loadFeedback();
-	}
+	});
 
 	async function loadFeedback() {
 		if (!browser) return;

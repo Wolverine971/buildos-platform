@@ -2,6 +2,9 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { ExternalLink, FileText, Clock, Hash } from 'lucide-svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 
 	export let brief: ProjectDailyBrief;
@@ -52,15 +55,16 @@
 	$: wordCount = getWordCount(brief.brief_content || '');
 </script>
 
-<div
-	class="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden h-full flex flex-col"
+<Card
+	variant="interactive"
+	class="h-full group cursor-pointer"
 	onclick={handleClick}
 	onkeydown={(e) => e.key === 'Enter' && handleClick()}
 	role="button"
 	tabindex="0"
 >
 	<!-- Card Header -->
-	<div class="p-4 border-b border-gray-100 dark:border-gray-700">
+	<CardHeader variant="default">
 		<div class="flex items-start justify-between">
 			<h3 class="font-semibold text-gray-900 dark:text-white text-lg line-clamp-1 flex-1">
 				{brief?.projects?.name}
@@ -102,10 +106,10 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
+	</CardHeader>
 
 	<!-- Card Body -->
-	<div class="p-4 flex-1 flex flex-col">
+	<CardBody padding="md" class="flex-1 flex flex-col">
 		<p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-4 flex-1">
 			{previewText}
 		</p>
@@ -118,8 +122,8 @@
 				<FileText class="w-4 h-4 text-blue-600 dark:text-blue-400" />
 			</div>
 		</div>
-	</div>
-</div>
+	</CardBody>
+</Card>
 
 <style>
 	.line-clamp-1 {

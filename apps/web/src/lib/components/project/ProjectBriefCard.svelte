@@ -3,6 +3,9 @@
 	import { createEventDispatcher } from 'svelte';
 	import { Calendar, FileText, ExternalLink, Eye, AlertTriangle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { formatRelativeTime, formatTimeOnly } from '$lib/utils/date-utils';
 	import { goto } from '$app/navigation';
 
@@ -36,11 +39,9 @@
 	$: isCompleted = brief.generation_status === 'completed';
 </script>
 
-<div
-	class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700"
->
+<Card variant="default">
 	<!-- Header -->
-	<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+	<CardHeader variant="default">
 		<div class="flex items-start justify-between">
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center space-x-2 mb-1">
@@ -106,10 +107,10 @@
 				{/if}
 			</div>
 		</div>
-	</div>
+	</CardHeader>
 
 	<!-- Content -->
-	<div class="p-4">
+	<CardBody padding="md">
 		{#if isGenerating}
 			<div class="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
 				<div
@@ -181,5 +182,5 @@
 				<p class="text-sm">No content available</p>
 			</div>
 		{/if}
-	</div>
-</div>
+	</CardBody>
+</Card>

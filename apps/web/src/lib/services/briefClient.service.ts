@@ -394,7 +394,7 @@ export class BriefClientService {
 
 		if (dailyBriefResponse.ok) {
 			const dailyBriefData = await dailyBriefResponse.json();
-			if (dailyBriefData.brief) {
+			if (dailyBriefData?.data.brief) {
 				// Update streaming data
 				const currentBriefData = get(streamingBriefData);
 				unifiedBriefGenerationStore.update(
@@ -402,9 +402,9 @@ export class BriefClientService {
 						streamingData: {
 							...currentBriefData,
 							mainBrief: {
-								id: dailyBriefData.brief.id,
-								content: dailyBriefData.brief.summary_content,
-								priority_actions: dailyBriefData.brief.priority_actions || []
+								id: dailyBriefData.data.brief.id,
+								content: dailyBriefData.data.brief.summary_content,
+								priority_actions: dailyBriefData.data.brief.priority_actions || []
 							}
 						}
 					},
@@ -761,7 +761,8 @@ export class BriefClientService {
 			const response = await fetch(`/api/daily-briefs/status?date=${briefDate}`);
 			if (!response.ok) return false;
 
-			const data = await response.json();
+			const result = await response.json();
+			const data = result.data
 			return data.generation_status === 'processing' || data.isGenerating;
 		} catch {
 			return false;

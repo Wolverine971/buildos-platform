@@ -28,28 +28,28 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 
-	let users: any[] = [];
-	let isLoading = true;
-	let error: string | null = null;
-	let searchQuery = '';
-	let currentPage = 1;
-	let totalPages = 1;
-	let totalUsers = 0;
-	let selectedUser: any = null;
-	let showUserModal = false;
-	let showActivityModal = false;
-	let showEmailModal = false;
-	let emailUserId = '';
-	let emailUserName = '';
-	let emailUserEmail = '';
+	let users = $state<any[]>([]);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalUsers = $state(0);
+	let selectedUser = $state<any>(null);
+	let showUserModal = $state(false);
+	let showActivityModal = $state(false);
+	let showEmailModal = $state(false);
+	let emailUserId = $state('');
+	let emailUserName = $state('');
+	let emailUserEmail = $state('');
 
 	// Filters
-	let filterByAdmin = 'all'; // 'all', 'admin', 'regular'
-	let filterByOnboarding = 'all'; // 'all', 'completed', 'pending'
-	let sortBy = 'last_visit';
-	let sortOrder = 'desc';
+	let filterByAdmin = $state('all'); // 'all', 'admin', 'regular'
+	let filterByOnboarding = $state('all'); // 'all', 'completed', 'pending'
+	let sortBy = $state('last_visit');
+	let sortOrder = $state('desc');
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	let rawUsers: any[] = []; // Store raw data for client-side sorting
+	let rawUsers = $state<any[]>([]); // Store raw data for client-side sorting
 
 	function handleSort(column: string) {
 		if (sortBy === column) {
@@ -103,14 +103,21 @@
 	}
 
 	onMount(() => {
-		loadUsers();
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	});
 
-	$: if (searchQuery || filterByAdmin || filterByOnboarding || sortBy || sortOrder) {
+	// Load users on mount and when filters change
+	$effect(() => {
+		// Track all filter dependencies
+		searchQuery;
+		filterByAdmin;
+		filterByOnboarding;
+		sortBy;
+		sortOrder;
+
 		currentPage = 1;
 		loadUsers();
-	}
+	});
 
 	async function loadUsers() {
 		if (!browser) {

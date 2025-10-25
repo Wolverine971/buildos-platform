@@ -45,12 +45,12 @@
 		hasChanges: boolean;
 	}
 
-	let versions: ProjectVersion[] = [];
-	let comparisons: VersionComparison[] = [];
-	let currentComparisonIndex = 0;
-	let loading = true;
-	let error: string | null = null;
-	let expandedBraindump = false;
+	let versions = $state<ProjectVersion[]>([]);
+	let comparisons = $state<VersionComparison[]>([]);
+	let currentComparisonIndex = $state(0);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+	let expandedBraindump = $state(false);
 
 	// Field configuration for display
 	const fieldConfig: Record<string, { label: string; priority: number }> = {
@@ -85,7 +85,7 @@
 		source_metadata: { label: 'Source Metadata', priority: 5 }
 	};
 
-	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -353,7 +353,7 @@
 			</div>
 
 			<!-- Scrollable Content Area -->
-			<div class="flex-1 overflow-y-auto">
+			<div class="flex-1">
 				<div class="flex flex-col lg:flex-row min-h-full">
 					<!-- Diff Content - Scrolls independently -->
 					<div

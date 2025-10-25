@@ -1,4 +1,7 @@
-# Build OS Design System Guide
+# BuildOS Design System Guide
+
+**📍 Status**: Updated with Card component system implementation (v1.1.0)
+**🔗 Related**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md) for refactoring progress and WCAG AA compliance status.
 
 ## 🎨 Design Philosophy
 
@@ -218,10 +221,53 @@ tracking-widest:  0.1em    // Uppercase labels
 
 ## 🎭 Component Patterns
 
-### Cards
+### Cards (Composable Component System)
+
+#### Modern Approach (v1.1.0+)
+
+Use the new Card component system for consistency and maintainability:
+
+```svelte
+<!-- Simple card -->
+<Card variant="default">
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+</Card>
+
+<!-- Card with header -->
+<Card variant="elevated">
+	<CardHeader variant="gradient">
+		<div class="flex items-center gap-2">
+			<div class="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+				<Icon class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+			</div>
+			<h4 class="text-sm font-semibold text-gray-900 dark:text-white">Card Title</h4>
+		</div>
+	</CardHeader>
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+</Card>
+
+<!-- Interactive card -->
+<Card variant="interactive">
+	<CardBody padding="lg">
+		<!-- Clickable content -->
+	</CardBody>
+</Card>
+```
+
+**Available Variants**:
+
+- `Card`: `default`, `elevated`, `interactive`, `outline`
+- `CardHeader`: `default`, `gradient`, `accent`
+- `CardBody`: `sm` (compact), `md` (standard), `lg` (generous)
+
+#### Legacy Approach (Reference)
 
 ```jsx
-// Base Card
+// Base Card (legacy)
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
 	// Card Header with Gradient
 	<div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-t-xl">
@@ -236,6 +282,8 @@ tracking-widest:  0.1em    // Uppercase labels
 	<div class="p-4">// Content</div>
 </div>
 ```
+
+**📝 Note**: New cards should use the Card component system. Refactoring existing cards is in progress - see [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md#phase-3-remaining-refactoring-in-progress).
 
 ### Buttons
 
@@ -431,6 +479,64 @@ class="sm:hidden" // Mobile only
 
 ---
 
+## 🏗️ Component Composition Patterns
+
+### Using the Card System
+
+The Card system provides flexible composition for consistent layouts:
+
+**Basic Pattern**:
+
+```svelte
+<Card variant="variant-name">
+	<CardBody padding="padding-size">
+		<!-- Your content -->
+	</CardBody>
+</Card>
+```
+
+**With Header**:
+
+```svelte
+<Card variant="elevated">
+	<CardHeader variant="gradient">
+		<h3>Title</h3>
+	</CardHeader>
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+</Card>
+```
+
+**With Header and Footer**:
+
+```svelte
+<Card variant="default">
+	<CardHeader variant="default">
+		<h3>Title</h3>
+	</CardHeader>
+	<CardBody padding="md">
+		<!-- Content -->
+	</CardBody>
+	<CardFooter>
+		<Button>Action</Button>
+	</CardFooter>
+</Card>
+```
+
+### Variant Selection Guide
+
+- **`default`** - Standard card with subtle shadow
+- **`elevated`** - Prominent card with higher shadow (dashboards, highlights)
+- **`interactive`** - Hover effects for clickable cards
+- **`outline`** - Minimal style with border only (low-emphasis content)
+
+**HeaderVariants**:
+
+- **`default`** - Neutral gray background
+- **`gradient`** - Blue-to-indigo gradient (information, primary)
+- **`accent`** - Purple-to-pink gradient (special, featured)
+
 ## 🎯 Usage Guidelines
 
 ### When to Use Gradients
@@ -447,12 +553,17 @@ class="sm:hidden" // Mobile only
 - **Data Tables**: Keep simple and scannable
 - **Small UI Elements**: Avoid gradient noise
 
-### Accessibility
+### Accessibility (WCAG AA Compliance)
 
-- **Contrast Ratios**: Minimum 4.5:1 for body text, 3:1 for large text
-- **Focus States**: Always visible with ring-2 ring-blue-500
-- **Touch Targets**: Minimum 44px on mobile
-- **Color Blind**: Don't rely on color alone, use icons and text
+- **Contrast Ratios**: ✅ Minimum 4.5:1 for body text, 3:1 for large text
+- **Touch Targets**: ✅ Minimum 44×44px on all interactive elements
+- **Focus States**: ✅ Always visible with ring-2 ring-blue-500
+- **ARIA Attributes**: ✅ Form inputs use aria-invalid, aria-required, aria-describedby
+- **Error Messages**: ✅ Use role="alert" with aria-live="polite"
+- **Color Blind**: ✅ Never rely on color alone, use icons and text
+- **Dark Mode**: ✅ All colors have dark: variants with proper contrast
+
+**Status**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md#wcag-aa-compliance-status) for full compliance metrics.
 
 ### Performance
 
@@ -497,23 +608,46 @@ module.exports = {
 
 ```
 components/
-├── ui/              # Base UI components
+├── ui/              # Base UI components (foundational building blocks)
 │   ├── Button.svelte
-│   ├── Card.svelte
+│   ├── Card.svelte           # Container (v1.1.0+)
+│   ├── CardHeader.svelte     # Optional header section
+│   ├── CardBody.svelte       # Content area with responsive padding
+│   ├── CardFooter.svelte     # Optional footer section
 │   ├── Modal.svelte
+│   ├── Badge.svelte          # Status indicators (planned)
+│   ├── Alert.svelte          # System messages (planned)
 │   └── Form/
 │       ├── Input.svelte
 │       ├── Select.svelte
-│       └── Textarea.svelte
-├── patterns/        # Composite patterns
+│       ├── Textarea.svelte
+│       ├── Radio.svelte
+│       ├── Checkbox.svelte
+│       ├── FormField.svelte
+│       └── FormModal.svelte
+├── patterns/        # Composite patterns using base components
 │   ├── TaskCard.svelte
 │   ├── StatusBadge.svelte
-│   └── GradientHeader.svelte
+│   ├── GradientHeader.svelte
+│   └── [Card-based patterns]
 └── layouts/         # Layout components
     ├── PageHeader.svelte
-    ├── SectionCard.svelte
+    ├── SectionCard.svelte (uses Card system)
     └── GridContainer.svelte
 ```
+
+### Component Status
+
+| Component   | Status     | Notes                          |
+| ----------- | ---------- | ------------------------------ |
+| Card        | ✅ Active  | New composable system (v1.1.0) |
+| CardHeader  | ✅ Active  | Optional header with variants  |
+| CardBody    | ✅ Active  | Required content area          |
+| CardFooter  | ✅ Active  | Optional footer section        |
+| Button      | ✅ Active  | WCAG AA compliant (44×44px)    |
+| Form inputs | ✅ Active  | Full ARIA support              |
+| Badge       | 🔄 Planned | Status indicators              |
+| Alert       | 🔄 Planned | System messages                |
 
 ---
 
@@ -554,4 +688,26 @@ components/
 - **Purple**: Special, premium, recurring
 - **Gray**: Neutral, disabled, secondary
 
-This design system ensures consistency across the Build OS application while maintaining flexibility for unique component needs. Follow these patterns to create cohesive, beautiful interfaces that users will love.
+## 📚 Related Documentation
+
+- **[BUILDOS_STYLE_GUIDE.md](./BUILDOS_STYLE_GUIDE.md)** - Comprehensive style guide with design philosophy, colors, typography, spacing
+- **[DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md)** - Refactoring progress, WCAG AA compliance status, component migration guide
+- **Component Files**: `src/lib/components/ui/Card*.svelte`, `src/lib/components/ui/Form*.svelte`
+
+## 📝 Contribution Guidelines
+
+When creating new components:
+
+1. **Use Card system** for layout-based components
+2. **Follow color semantics** (blue=info, green=success, amber=warning, rose=error)
+3. **Ensure dark mode** support on all color variants
+4. **Maintain 44×44px** touch targets for interactive elements
+5. **Add ARIA attributes** to form inputs and interactive regions
+6. **Test contrast ratios** using WCAG AA standards (4.5:1 minimum)
+7. **Implement responsive** padding and sizing using Tailwind breakpoints
+
+---
+
+This design system ensures consistency across the BuildOS application while maintaining flexibility for unique component needs. Follow these patterns to create cohesive, beautiful interfaces that users will love.
+
+**Last Updated**: October 24, 2025 (v1.1.0)

@@ -26,6 +26,7 @@ Each entry includes:
 The LLM prompt in `extractProjectContext()` for existing project updates did not explicitly communicate that the database performs a **complete field overwrite** when updating the `context` field. The prompt said "PRESERVE all existing context" and "MERGE new insights organically," but LLMs interpreted this as conceptual preservation rather than "include everything in your output."
 
 **Specific Issue:**
+
 - Database UPDATE operation completely overwrites the `context` TEXT field (not an append)
 - LLM prompt assumed the system would merge partial responses with existing context
 - LLM would return only NEW strategic information, omitting unchanged sections
@@ -34,6 +35,7 @@ The LLM prompt in `extractProjectContext()` for existing project updates did not
 - Breaks the "living document" design pattern completely
 
 **Impact:**
+
 - Users lose accumulated project context from all previous brain dumps
 - Affects ALL existing projects receiving context updates
 - Strategic information (goals, stakeholders, decisions) vanishes
@@ -46,31 +48,32 @@ Enhanced the LLM prompt in `getExistingProjectContextSystemPrompt()` with multip
 **Changes Made:**
 
 1. **Added CRITICAL WARNING Section** (new section before Update Rules):
-   - Explicit statement: "The context field will be COMPLETELY OVERWRITTEN"
-   - Clear responsibility: "You MUST return the ENTIRE EXISTING CONTEXT DOCUMENT"
-   - Forbidden actions list with ❌ symbols
-   - Mental model: "You are REWRITING THE ENTIRE DOCUMENT, not editing in place"
-   - Consequence warning: "If you return partial context, ALL PREVIOUS CONTEXT IS PERMANENTLY LOST"
+    - Explicit statement: "The context field will be COMPLETELY OVERWRITTEN"
+    - Clear responsibility: "You MUST return the ENTIRE EXISTING CONTEXT DOCUMENT"
+    - Forbidden actions list with ❌ symbols
+    - Mental model: "You are REWRITING THE ENTIRE DOCUMENT, not editing in place"
+    - Consequence warning: "If you return partial context, ALL PREVIOUS CONTEXT IS PERMANENTLY LOST"
 
 2. **Rewrote CONTEXT FIELD Update Rules** with step-by-step process:
-   - STEP 1: START WITH entire existing context document
-   - STEP 2-7: Clear instructions for merging and verification
-   - Concrete example showing "if existing has 3 sections, your response must have all 3 + new"
-   - Explicit verification step: "VERIFY every paragraph from existing context is present"
+    - STEP 1: START WITH entire existing context document
+    - STEP 2-7: Clear instructions for merging and verification
+    - Concrete example showing "if existing has 3 sections, your response must have all 3 + new"
+    - Explicit verification step: "VERIFY every paragraph from existing context is present"
 
 3. **Updated JSON Example** with in-line critical warning:
-   - Added ⚠️ CRITICAL comment in the "context" field example
-   - Stated explicitly: "DO NOT return partial context - include every word from the existing document"
+    - Added ⚠️ CRITICAL comment in the "context" field example
+    - Stated explicitly: "DO NOT return partial context - include every word from the existing document"
 
 4. **Added Reinforcement Notes** after JSON examples:
-   - "The 'context' field MUST contain the COMPLETE document"
-   - Clarified core dimensions have same overwrite behavior
+    - "The 'context' field MUST contain the COMPLETE document"
+    - Clarified core dimensions have same overwrite behavior
 
 5. **Added Final Reminder** at end of prompt:
-   - "When you update the context field, you MUST return the COMPLETE existing document plus your additions"
-   - "Partial responses cause permanent data loss"
+    - "When you update the context field, you MUST return the COMPLETE existing document plus your additions"
+    - "Partial responses cause permanent data loss"
 
 **Prompt Engineering Techniques Used:**
+
 - Multiple redundant warnings (repetition for emphasis)
 - Visual markers (⚠️, ✅, ❌) for critical points
 - Concrete examples showing what "complete" means
@@ -98,61 +101,75 @@ Enhanced the LLM prompt in `getExistingProjectContextSystemPrompt()` with multip
 ### Testing Notes
 
 **Manual Verification Steps:**
+
 1. **Setup**: Create a project with substantial context (3-4 sections, multiple paragraphs per section, at least 500 words total)
 2. **Test Basic Update**: Do a brain dump that adds NEW strategic information (e.g., "We decided to add a mobile app")
 3. **Verify Preservation**: Check that updated context includes:
-   - ✅ ALL original context sections (completely unchanged sections preserved word-for-word)
-   - ✅ NEW information added appropriately in new section or merged into existing section
-   - ✅ No summarization or truncation of any existing content
-   - ✅ All paragraphs from original document present
+    - ✅ ALL original context sections (completely unchanged sections preserved word-for-word)
+    - ✅ NEW information added appropriately in new section or merged into existing section
+    - ✅ No summarization or truncation of any existing content
+    - ✅ All paragraphs from original document present
 4. **Test Edge Cases**:
-   - Brain dump with only a tiny strategic note (1 sentence) - should still return full context
-   - Brain dump that updates multiple core dimensions - should include complete content for each dimension
-   - Brain dump with NO strategic information (purely tactical) - should return empty operations array (no update)
+    - Brain dump with only a tiny strategic note (1 sentence) - should still return full context
+    - Brain dump that updates multiple core dimensions - should include complete content for each dimension
+    - Brain dump with NO strategic information (purely tactical) - should return empty operations array (no update)
 5. **Test Core Dimensions**: Update a core dimension (e.g., "core_goals_momentum") and verify the COMPLETE dimension content is returned, not partial
 
 **What to Look For:**
+
 - Context field in database should grow over time (never shrink)
 - Word count should increase or stay same, never decrease
 - All historical sections should remain intact
 - New information should be integrated, not replace existing
 
 **Before/After Example:**
+
 ```markdown
 # Before (existing context - 300 words)
+
 ## Background
+
 The project started in January 2025 to solve...
 
 ## Goals
+
 Our primary objectives are...
 
 ## Stakeholders
+
 Key people involved include...
 
 # After brain dump "We're adding a mobile app component" (should be 350+ words)
+
 ## Background
+
 The project started in January 2025 to solve...
 [ALL ORIGINAL CONTENT PRESERVED]
 
 ## Goals
+
 Our primary objectives are...
 [ALL ORIGINAL CONTENT PRESERVED]
 
 ## Stakeholders
+
 Key people involved include...
 [ALL ORIGINAL CONTENT PRESERVED]
 
 ## Technical Architecture [NEW SECTION]
+
 Updated 2025-10-24: We're adding a mobile app component...
 ```
 
 ### Prevention
 
 **Why This Was Caught:**
+
 - User reported context field being overwritten with partial content
 - Investigation revealed fundamental mismatch between LLM interpretation and database behavior
 
 **Future Prevention:**
+
 - When designing prompts that update database fields, explicitly state the database operation type (OVERWRITE vs APPEND vs MERGE)
 - Use concrete examples showing "before" and "after" states
 - Add verification steps to prompts ("VERIFY every paragraph is present")
@@ -169,6 +186,7 @@ Updated 2025-10-24: We're adding a mobile app component...
 The codebase was using the Svelte 4 pattern `<svelte:component this={Component} />` for dynamic component rendering. In Svelte 5 with runes mode, this syntax is deprecated because components are now dynamic by default. The framework now supports direct component variable rendering with the simpler syntax `<Component />`.
 
 **Specific Issue:**
+
 - Dashboard components used `<svelte:component this={icon} />` for rendering dynamic icons
 - Modal components used `<svelte:component this={ModalComponent} />` for lazy-loaded modals
 - Svelte 5 deprecation warnings appeared in the dev console
@@ -181,33 +199,36 @@ Replaced all deprecated `<svelte:component>` syntax with direct component render
 **Pattern Changes:**
 
 1. **Capitalized Component Variables** (modals, lazy-loaded components):
-   ```svelte
-   <!-- Before -->
-   <svelte:component this={TaskModal} {props} />
 
-   <!-- After -->
-   <TaskModal {props} />
-   ```
+    ```svelte
+    <!-- Before -->
+    <svelte:component this={TaskModal} {props} />
+
+    <!-- After -->
+    <TaskModal {props} />
+    ```
 
 2. **Object Properties** (icons from objects):
-   ```svelte
-   <!-- Before -->
-   <svelte:component this={card.icon} class="..." />
 
-   <!-- After -->
-   {@const CardIcon = card.icon}
-   <CardIcon class="..." />
-   ```
+    ```svelte
+    <!-- Before -->
+    <svelte:component this={card.icon} class="..." />
+
+    <!-- After -->
+    {@const CardIcon = card.icon}
+    <CardIcon class="..." />
+    ```
 
 3. **Lowercase Variables** (props that need capitalization):
-   ```svelte
-   <!-- Before -->
-   <svelte:component this={emptyIcon} class="..." />
 
-   <!-- After -->
-   const EmptyIcon = $derived(emptyIcon);
-   <EmptyIcon class="..." />
-   ```
+    ```svelte
+    <!-- Before -->
+    <svelte:component this={emptyIcon} class="..." />
+
+    <!-- After -->
+    const EmptyIcon = $derived(emptyIcon);
+    <EmptyIcon class="..." />
+    ```
 
 ### Files Changed
 
@@ -224,20 +245,21 @@ Replaced all deprecated `<svelte:component>` syntax with direct component render
 ### Testing Notes
 
 **Manual Verification Steps:**
+
 1. Load the dashboard at `/` - verify no deprecation warnings in console
 2. Test dynamic components still render correctly:
-   - Primary CTA icons should display
-   - Nudge card icons should display
-   - Time block empty states should show icons
-   - Mobile tab icons should render
-   - First-time brain dump card hints should show icons
+    - Primary CTA icons should display
+    - Nudge card icons should display
+    - Time block empty states should show icons
+    - Mobile tab icons should render
+    - First-time brain dump card hints should show icons
 3. Test lazy-loaded modals:
-   - Click task → Task modal should open
-   - Click daily brief → Brief modal should open
-   - Click time block → Time block modal should open
+    - Click task → Task modal should open
+    - Click daily brief → Brief modal should open
+    - Click time block → Time block modal should open
 4. Test bottom section lazy loading:
-   - Scroll down → Braindump week view should load
-   - Phase calendar view should load
+    - Scroll down → Braindump week view should load
+    - Phase calendar view should load
 
 ---
 
@@ -252,11 +274,13 @@ The Daily Brief Card is positioned at the top of the dashboard (`Dashboard.svelt
 **Specific Issue:**
 
 The daily brief display condition was:
+
 ```typescript
 {#if bottomSectionsLoaded && todaysBrief && initialData?.activeProjects && displayMode !== 'first-time'}
 ```
 
 **The Problem:**
+
 - `bottomSectionsLoaded` becomes `true` only when the IntersectionObserver fires
 - The observer watches a trigger element positioned near the bottom of the page (`Dashboard.svelte:1057`)
 - The observer has `rootMargin: '400px'` which helps but doesn't guarantee immediate loading
@@ -266,6 +290,7 @@ The daily brief display condition was:
 ### Why This Behavior Was Intermittent
 
 **Factors affecting whether the brief loaded:**
+
 1. **Viewport height**: Larger screens were more likely to have the trigger in view immediately
 2. **Dashboard content length**: Fewer tasks/projects = shorter page = trigger higher up = more likely to load
 3. **Rendering timing**: Race conditions in IntersectionObserver initialization
@@ -280,31 +305,34 @@ Moved the daily brief loading from lazy "bottom sections" to eager initial dashb
 **Changes:**
 
 1. **API Endpoint** (`apps/web/src/routes/api/dashboard/+server.ts`):
-   - Added daily brief query to both `handleRpcDashboard()` and `handleOriginalDashboard()`
-   - Brief now fetched in parallel with tasks, calendar status, and recurring instances
-   - Returns `todaysBrief` in the initial dashboard response
+    - Added daily brief query to both `handleRpcDashboard()` and `handleOriginalDashboard()`
+    - Brief now fetched in parallel with tasks, calendar status, and recurring instances
+    - Returns `todaysBrief` in the initial dashboard response
 
 2. **Dashboard Component** (`apps/web/src/lib/components/dashboard/Dashboard.svelte`):
-   - Initialize `todaysBrief` from `initialData?.todaysBrief` instead of `null`
-   - Removed `bottomSectionsLoaded` dependency from display condition
-   - Brief now shows immediately on page load if available
+    - Initialize `todaysBrief` from `initialData?.todaysBrief` instead of `null`
+    - Removed `bottomSectionsLoaded` dependency from display condition
+    - Brief now shows immediately on page load if available
 
 **Query added to both dashboard handlers:**
+
 ```typescript
 // Get today's daily brief
 (async () => {
-  try {
-    const { data, error } = await supabase
-      .from('daily_briefs')
-      .select('id, brief_date, summary_content, priority_actions, insights, created_at, updated_at')
-      .eq('user_id', user.id)
-      .eq('brief_date', today)
-      .maybeSingle();
-    return error ? null : data;
-  } catch (error) {
-    return null;
-  }
-})()
+	try {
+		const { data, error } = await supabase
+			.from('daily_briefs')
+			.select(
+				'id, brief_date, summary_content, priority_actions, insights, created_at, updated_at'
+			)
+			.eq('user_id', user.id)
+			.eq('brief_date', today)
+			.maybeSingle();
+		return error ? null : data;
+	} catch (error) {
+		return null;
+	}
+})();
 ```
 
 ### Files Changed
@@ -332,12 +360,14 @@ Moved the daily brief loading from lazy "bottom sections" to eager initial dashb
 ### Impact Analysis
 
 **Before Fix:**
+
 - Daily brief appeared inconsistently on page load
 - Users confused about whether brief feature was working
 - Brief would eventually load after scrolling on some viewports
 - Smaller viewports less likely to show brief immediately
 
 **After Fix:**
+
 - Daily brief loads immediately with initial dashboard data
 - Consistent behavior across all viewport sizes
 - No dependency on scroll position or IntersectionObserver timing
@@ -347,6 +377,7 @@ Moved the daily brief loading from lazy "bottom sections" to eager initial dashb
 ### Performance Considerations
 
 The change adds one additional database query to the initial dashboard load, but:
+
 - Query runs in parallel with existing queries (no sequential delay)
 - Uses `maybeSingle()` for optimal performance (returns 0 or 1 row)
 - Brief query is simple and fast (indexed by `user_id` and `brief_date`)
@@ -380,12 +411,14 @@ const isWithinTimeRange = taskDate >= blockStart && taskDate <= blockEnd;
 ```
 
 **The Critical Problem:**
+
 - `task.start_date` is stored as just a DATE: `"2025-10-25"` (no time)
 - `new Date("2025-10-25")` is interpreted as `"2025-10-25T00:00:00Z"` (midnight UTC)
 - `block.start_time` is a full TIMESTAMP: `"2025-10-25T09:00:00Z"` (9 AM)
 - Comparison: Is `00:00:00Z` >= `09:00:00Z`? **NO!** ❌
 
 **Result:**
+
 - Task at midnight is always BEFORE any morning time block
 - No tasks ever matched any time blocks
 - All tasks ended up in "ungrouped" section
@@ -409,13 +442,18 @@ const isWithinTimeRange = taskDate >= blockStart && taskDate <= blockEnd;
 
 // AFTER (Fixed):
 const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-const blockStartDate = new Date(blockStart.getFullYear(), blockStart.getMonth(), blockStart.getDate());
+const blockStartDate = new Date(
+	blockStart.getFullYear(),
+	blockStart.getMonth(),
+	blockStart.getDate()
+);
 const blockEndDate = new Date(blockEnd.getFullYear(), blockEnd.getMonth(), blockEnd.getDate());
 const isWithinDateRange = taskDateOnly >= blockStartDate && taskDateOnly <= blockEndDate;
 const isWithinTimeRange = isWithinDateRange;
 ```
 
 Now compares:
+
 - `2025-10-25T00:00:00Z` (date only) >= `2025-10-25T00:00:00Z` (date only) = TRUE ✅
 
 ### Files Changed
@@ -437,12 +475,14 @@ Now compares:
 ### Impact Analysis
 
 **Before Fix:**
+
 - Time blocks displayed but completely empty
 - All tasks forced into "ungrouped" section
 - Time blocks feature non-functional
 - Desktop and mobile both affected
 
 **After Fix:**
+
 - Tasks correctly matched to their scheduled time blocks
 - Time blocks show with tasks grouped under them
 - Ungrouped tasks show separately
@@ -464,17 +504,19 @@ The `isDateTomorrow()` function at `apps/web/src/lib/utils/date-utils.ts:590-603
 
 ```typescript
 const todayInTz = toZonedTime(new Date(), tz);
-const tomorrowInTz = new Date(todayInTz);  // ← Creates copy
-tomorrowInTz.setDate(tomorrowInTz.getDate() + 1);  // ← BUG: Corrupts timezone!
+const tomorrowInTz = new Date(todayInTz); // ← Creates copy
+tomorrowInTz.setDate(tomorrowInTz.getDate() + 1); // ← BUG: Corrupts timezone!
 ```
 
 **The Problem:**
+
 - `toZonedTime()` returns a Date object that is adjusted so its local components (year, month, date) match the target timezone
 - When you call `setDate()` on this Date, it modifies the **underlying UTC representation**, breaking the timezone adjustment
 - This causes the date comparison to fail, incorrectly classifying tomorrow's tasks
 - Example: In UTC-4 timezone (EDT), a task scheduled for tomorrow might get classified as "upcoming" instead of "tomorrow"
 
 **Why This Only Affected Mobile:**
+
 - Both desktop (TimeBlocksCard) and mobile (MobileTaskTabs) receive the same data
 - The issue occurred **on the API side** during task categorization in `/api/dashboard`
 - The API calls `isDateTomorrow()` for every task to categorize it
@@ -517,12 +559,14 @@ This uses the same pattern as the working `isDateBeforeToday()` function, which 
 ### Impact Analysis
 
 **Before Fix:**
+
 - Tomorrow's tasks were not appearing in either desktop or mobile views
 - Tasks with `start_date` exactly equal to tomorrow's date would be misclassified
 - Users couldn't see their scheduled tasks for the next day
 - Recurring task instances for tomorrow would also be affected
 
 **After Fix:**
+
 - Tomorrow's date calculation now respects timezone offset
 - Tasks scheduled for tomorrow are correctly categorized in `tomorrowsTasks` array
 - Both desktop and mobile views show consistent task lists

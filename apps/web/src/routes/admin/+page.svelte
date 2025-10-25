@@ -1,6 +1,5 @@
 <!-- apps/web/src/routes/admin/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
 		BarChart3,
 		Users,
@@ -33,24 +32,24 @@
 
 	import { browser } from '$app/environment';
 
-	let isLoading = true;
-	let error: string | null = null;
-	let selectedTimeframe: '7d' | '30d' | '90d' = '30d';
-	let autoRefresh = false;
-	let refreshInterval: number;
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let selectedTimeframe = $state<'7d' | '30d' | '90d'>('30d');
+	let autoRefresh = $state(false);
+	let refreshInterval = $state<number | undefined>(undefined);
 
 	// Analytics data
-	let systemOverview = {
+	let systemOverview = $state({
 		total_users: 0,
 		active_users_7d: 0,
 		active_users_30d: 0,
 		total_briefs: 0,
 		avg_brief_length: 0,
 		top_active_users: []
-	};
+	});
 
 	// Comprehensive analytics data
-	let comprehensiveAnalytics = {
+	let comprehensiveAnalytics = $state({
 		userMetrics: {
 			totalUsers: 0,
 			totalBetaUsers: 0,
@@ -75,36 +74,36 @@
 			tasksScheduled: [],
 			phasesCreated: []
 		}
-	};
+	});
 
-	let dailyActiveUsers: Array<{ date: string; active_users: number }> = [];
-	let briefGenerationStats: Array<{
+	let dailyActiveUsers = $state<Array<{ date: string; active_users: number }>>([]);
+	let briefGenerationStats = $state<Array<{
 		date: string;
 		total_briefs: number;
 		unique_users: number;
 		avg_briefs_per_user: number;
-	}> = [];
-	let systemMetrics: Array<{
+	}>>([]);
+	let systemMetrics = $state<Array<{
 		metric_name: string;
 		metric_value: number;
 		metric_unit: string;
 		metric_description: string;
 		recorded_at: string;
-	}> = [];
-	let recentActivity: Array<{
+	}>>([]);
+	let recentActivity = $state<Array<{
 		activity_type: string;
 		user_email: string;
 		created_at: string;
 		activity_data: any;
-	}> = [];
-	let templateUsageStats: Array<{
+	}>>([]);
+	let templateUsageStats = $state<Array<{
 		template_name: string;
 		usage_count: number;
 		template_type: string;
-	}> = [];
+	}>>([]);
 
 	// Feedback data
-	let feedbackOverview = {
+	let feedbackOverview = $state({
 		overview: {
 			total_feedback: 0,
 			recent_24h: 0,
@@ -114,10 +113,10 @@
 		category_breakdown: {},
 		status_breakdown: {},
 		recent_feedback: []
-	};
+	});
 
 	// Beta program data
-	let betaOverview = {
+	let betaOverview = $state({
 		signups: {
 			total: 0,
 			pending: 0,
@@ -133,19 +132,19 @@
 			total_feedback: 0
 		},
 		recent_activity: []
-	};
+	});
 
 	// Errors data
-	let errorsData = {
+	let errorsData = $state({
 		total_errors: 0,
 		unresolved_errors: 0,
 		critical_errors: 0,
 		recent_errors_24h: 0,
 		error_trend: 0
-	};
+	});
 
 	// Subscription data
-	let subscriptionData = {
+	let subscriptionData = $state({
 		overview: {
 			total_subscribers: 0,
 			active_subscriptions: 0,
@@ -168,42 +167,31 @@
 		failedPayments: [],
 		discountUsage: [],
 		stripeEnabled: false
-	};
+	});
 
-	let visitorOverview = {
+	let visitorOverview = $state({
 		total_visitors: 0,
 		visitors_7d: 0,
 		visitors_30d: 0,
 		unique_visitors_today: 0
-	};
-
-	let dailyVisitors: Array<{ date: string; visitor_count: number }> = [];
-	let dailySignups: Array<{ date: string; signup_count: number }> = [];
-
-	onMount(async () => {
-		await loadAnalytics();
-
-		// Set up auto-refresh if enabled
-		if (autoRefresh) {
-			refreshInterval = setInterval(loadAnalytics, 30000);
-		}
-
-		return () => {
-			if (refreshInterval) {
-				clearInterval(refreshInterval);
-			}
-		};
 	});
 
-	$: if (selectedTimeframe) {
-		loadAnalytics();
-	}
+	let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
+	let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
 
-	$: if (autoRefresh) {
-		refreshInterval = setInterval(loadAnalytics, 30000);
-	} else if (refreshInterval) {
-		clearInterval(refreshInterval);
-	}
+	// Load data on mount and when timeframe changes
+	$effect(() => {
+		selectedTimeframe; // Track this dependency
+		loadAnalytics();
+	});
+
+	// Set up auto-refresh interval when enabled
+	$effect(() => {
+		if (autoRefresh) {
+			const interval = setInterval(loadAnalytics, 30000);
+			return () => clearInterval(interval); // Cleanup on unmount or when autoRefresh changes
+		}
+	});
 
 	async function loadAnalytics() {
 		if (!browser) return;
