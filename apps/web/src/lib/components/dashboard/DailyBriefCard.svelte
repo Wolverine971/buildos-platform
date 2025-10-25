@@ -75,7 +75,7 @@
 	<CardBody padding="md">
 		{#if brief}
 			<!-- Brief Available - Clean Mobile-First Design -->
-			<div class="space-y-3 sm:space-y-4">
+			<div class="space-y-2.5">
 				<!-- Header - Simplified for mobile -->
 				<div class="flex items-start justify-between gap-2">
 					<div class="flex items-start flex-1 min-w-0">
@@ -137,7 +137,7 @@
 			</div>
 		{:else}
 			<!-- No Brief - Clean Prompt with Apple Aesthetics -->
-			<div class="space-y-3 sm:space-y-4">
+			<div class="space-y-2.5">
 				<!-- Header with refined gradient -->
 				<div class="flex items-start">
 					<div

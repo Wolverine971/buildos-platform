@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/admin/emails/attachments/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import sharp from 'sharp';
+import { ApiResponse } from '$lib/utils/api-response';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -62,10 +62,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			})
 		);
 
-		return json({ attachments: attachmentsWithUrls });
+		return ApiResponse.success({ attachments: attachmentsWithUrls });
 	} catch (error) {
 		console.error('Error fetching attachments:', error);
-		return json({ error: 'Failed to fetch attachments' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch attachments');
 	}
 };
 
@@ -73,7 +73,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -84,15 +84,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const is_inline = formData.get('is_inline') === 'true';
 
 		if (!file) {
-			return json({ error: 'No file provided' }, { status: 400 });
+			return ApiResponse.badRequest('No file provided');
 		}
 
 		if (file.size > MAX_FILE_SIZE) {
-			return json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
+			return ApiResponse.badRequest('File too large. Maximum size is 10MB');
 		}
 
 		if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-			return json({ error: 'File type not allowed' }, { status: 400 });
+			return ApiResponse.badRequest('File type not allowed');
 		}
 
 		// Generate unique filename
@@ -193,8 +193,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.from('email-attachments')
 			.createSignedUrl(storagePath, 60 * 60); // 1 hour
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			attachment: {
 				...attachment,
 				url: signedUrl?.signedUrl || null
@@ -202,7 +201,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		});
 	} catch (error) {
 		console.error('Error uploading attachment:', error);
-		return json({ error: 'Failed to upload attachment' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to upload attachment');
 	}
 };
 
@@ -210,14 +209,14 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const attachment_id = url.searchParams.get('id');
 
 		if (!attachment_id) {
-			return json({ error: 'Attachment ID required' }, { status: 400 });
+			return ApiResponse.badRequest('Attachment ID required');
 		}
 
 		// Get attachment details
@@ -229,7 +228,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		if (fetchError) {
 			if (fetchError.code === 'PGRST116') {
-				return json({ error: 'Attachment not found' }, { status: 404 });
+				return ApiResponse.notFound('Attachment');
 			}
 			throw fetchError;
 		}
@@ -259,9 +258,9 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		if (deleteError) throw deleteError;
 
-		return json({ success: true });
+		return ApiResponse.success({ success: true });
 	} catch (error) {
 		console.error('Error deleting attachment:', error);
-		return json({ error: 'Failed to delete attachment' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to delete attachment');
 	}
 };

@@ -162,7 +162,10 @@
 		<div class="panel__content">
 			<div class="panel__visual">
 				<div class="panel__chart-shell">
-					<div class="panel__chart" style="{`background: ${chartGradient}`}; padding: 4px; background-clip: content-box;"></div>
+					<div
+						class="panel__chart"
+						style="{`background: ${chartGradient}`}; padding: 4px; background-clip: content-box;"
+					></div>
 					<div class="panel__chart-core">
 						<p>{formatHours(totalHours)}</p>
 						<span>Total hours</span>
@@ -403,7 +406,9 @@
 			0 2px 4px -1px rgba(0, 0, 0, 0.04),
 			inset 0 2px 4px 0 rgba(255, 255, 255, 0.9);
 		padding: 0.75rem;
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
 	}
 
 	.panel__chart-shell:hover {

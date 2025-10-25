@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/daily-briefs/cancel/+server.ts
-import { error, json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -44,11 +45,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				.eq('generation_status', 'processing')
 		]);
 
-		return json({
-			success: true,
-			brief_id: updatedBrief?.id,
-			message: 'Brief generation cancelled successfully'
-		});
+		return ApiResponse.success(
+			{
+				brief_id: updatedBrief?.id
+			},
+			'Brief generation cancelled successfully'
+		);
 	} catch (err) {
 		console.error('Error cancelling brief generation:', err);
 		throw error(500, 'Failed to cancel brief generation');

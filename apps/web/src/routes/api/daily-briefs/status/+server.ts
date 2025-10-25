@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/status/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
@@ -60,7 +60,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			};
 		}
 
-		return json({
+		return ApiResponse.success({
 			brief: brief || null,
 			generation_status: brief?.generation_status || (hasActiveJob ? activeJob.status : null),
 			isGenerating,
@@ -80,6 +80,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching brief status:', error);
-		return json({ error: 'Failed to fetch brief status' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch brief status');
 	}
 };

@@ -101,13 +101,13 @@ function createTimeBlocksStore() {
 		const response = await fetch(
 			`/api/time-blocks/blocks?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
-		const payload = await response.json().catch(() => ({}));
+		const result = await response.json().catch(() => ({}));
 
-		if (!response.ok) {
-			throw new Error(payload?.error ?? 'Failed to load time blocks');
+		if (!result?.success) {
+			throw new Error(result?.error?.[0] ?? 'Failed to load time blocks');
 		}
 
-		return sortBlocks(payload?.data?.blocks ?? []);
+		return sortBlocks(result.data?.blocks ?? []);
 	}
 
 	async function requestAllocation(
@@ -117,13 +117,13 @@ function createTimeBlocksStore() {
 		const response = await fetch(
 			`/api/time-blocks/allocation?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
-		const payload = await response.json().catch(() => ({}));
+		const result = await response.json().catch(() => ({}));
 
-		if (!response.ok) {
-			throw new Error(payload?.error ?? 'Failed to load time allocation');
+		if (!result?.success) {
+			throw new Error(result?.error?.[0] ?? 'Failed to load time allocation');
 		}
 
-		return payload?.data?.allocation ?? null;
+		return result.data?.allocation ?? null;
 	}
 
 	// Define refreshAllocation as a separate function so it can be called internally
@@ -269,13 +269,13 @@ function createTimeBlocksStore() {
 					body: JSON.stringify(payload)
 				});
 
-				if (!response.ok) {
-					const payload = await response.json().catch(() => ({}));
-					throw new Error(payload?.error ?? 'Failed to create time block');
+				const result = await response.json().catch(() => ({}));
+
+				if (!result?.success) {
+					throw new Error(result?.error?.[0] ?? 'Failed to create time block');
 				}
 
-				const { data } = await response.json();
-				const newBlock: TimeBlockWithProject = data.time_block;
+				const newBlock: TimeBlockWithProject = result.data?.time_block;
 				const normalizedBlock = normalizeBlock(newBlock);
 
 				update((state) => ({
@@ -346,13 +346,13 @@ function createTimeBlocksStore() {
 					method: 'POST'
 				});
 
-				if (!response.ok) {
-					const payload = await response.json().catch(() => ({}));
-					throw new Error(payload?.error ?? 'Failed to refresh suggestions');
+				const result = await response.json().catch(() => ({}));
+
+				if (!result?.success) {
+					throw new Error(result?.error?.[0] ?? 'Failed to refresh suggestions');
 				}
 
-				const { data } = await response.json();
-				const updatedBlock: TimeBlockWithProject = normalizeBlock(data.time_block);
+				const updatedBlock: TimeBlockWithProject = normalizeBlock(result.data?.time_block);
 
 				update((state) => ({
 					...state,
@@ -393,9 +393,10 @@ function createTimeBlocksStore() {
 					method: 'DELETE'
 				});
 
-				if (!response.ok) {
-					const payload = await response.json().catch(() => ({}));
-					throw new Error(payload?.error ?? 'Failed to delete time block');
+				const result = await response.json().catch(() => ({}));
+
+				if (!result?.success) {
+					throw new Error(result?.error?.[0] ?? 'Failed to delete time block');
 				}
 
 				update((state) => ({
@@ -433,12 +434,13 @@ function createTimeBlocksStore() {
 					body: JSON.stringify(params)
 				});
 
-				if (!response.ok) {
-					const payload = await response.json().catch(() => ({}));
-					throw new Error(payload?.error ?? 'Failed to update time block');
+				const result = await response.json().catch(() => ({}));
+
+				if (!result?.success) {
+					throw new Error(result?.error?.[0] ?? 'Failed to update time block');
 				}
 
-				const updatedBlock = await response.json();
+				const updatedBlock = result.data?.time_block;
 
 				update((state) => ({
 					...state,

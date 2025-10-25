@@ -282,12 +282,10 @@ async function startSuggestionGeneration(timeBlockId: string): Promise<void> {
 			body: JSON.stringify({ time_block_id: timeBlockId })
 		});
 
-		if (!response.ok) {
-			const errorPayload = await response.json().catch(() => ({}));
-			const errorMessage =
-				typeof errorPayload?.error === 'string'
-					? errorPayload.error
-					: 'Failed to generate time-block suggestions';
+		const result = await response.json().catch(() => ({}));
+
+		if (!result?.success) {
+			const errorMessage = result?.error?.[0] || 'Failed to generate time-block suggestions';
 
 			updateSuggestionsState(timeBlockId, {
 				status: 'failed',
@@ -299,8 +297,7 @@ async function startSuggestionGeneration(timeBlockId: string): Promise<void> {
 			throw new Error(errorMessage);
 		}
 
-		const payload = await response.json().catch(() => ({}));
-		const updatedBlock = payload?.data?.time_block;
+		const updatedBlock = result.data?.time_block;
 		if (updatedBlock) {
 			timeBlocksStore.upsertBlock(updatedBlock);
 		}

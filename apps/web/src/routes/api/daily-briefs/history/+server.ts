@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/history/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const { count: totalCount } = await totalQuery;
 
-		return json({
+		return ApiResponse.success({
 			briefs: briefs || [],
 			pagination: {
 				page,
@@ -76,6 +76,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching brief history:', error);
-		return json({ error: 'Failed to fetch brief history' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch brief history');
 	}
 };

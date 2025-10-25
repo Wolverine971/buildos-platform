@@ -1,9 +1,9 @@
 // apps/web/src/routes/api/time-blocks/blocks/[id]/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import type { UpdateTimeBlockParams } from '@buildos/shared-types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const PATCH: RequestHandler = async ({
 	params,
@@ -13,19 +13,19 @@ export const PATCH: RequestHandler = async ({
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const blockId = params.id;
 	if (!blockId) {
-		return json({ error: 'Missing time block id' }, { status: 400 });
+		return ApiResponse.badRequest('Missing time block id');
 	}
 
 	let body: UpdateTimeBlockParams;
 	try {
 		body = await request.json();
 	} catch (error) {
-		return json({ error: 'Invalid request body' }, { status: 400 });
+		return ApiResponse.badRequest('Invalid request body');
 	}
 
 	// Parse dates if provided
@@ -41,16 +41,10 @@ export const PATCH: RequestHandler = async ({
 
 		const updatedBlock = await timeBlockService.updateTimeBlock(blockId, updateParams);
 
-		return json({
-			success: true,
-			data: {
-				time_block: updatedBlock
-			}
-		});
+		return ApiResponse.success({ time_block: updatedBlock });
 	} catch (error) {
 		console.error('[TimeBlocks] Failed to update time block:', error);
-		const message = error instanceof Error ? error.message : 'Failed to update time block';
-		return json({ error: message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update time block');
 	}
 };
 
@@ -58,12 +52,12 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const blockId = params.id;
 	if (!blockId) {
-		return json({ error: 'Missing time block id' }, { status: 400 });
+		return ApiResponse.badRequest('Missing time block id');
 	}
 
 	try {
@@ -72,13 +66,9 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 
 		await timeBlockService.deleteTimeBlock(blockId);
 
-		return json({
-			success: true,
-			message: 'Time block deleted successfully'
-		});
+		return ApiResponse.success(null, 'Time block deleted successfully');
 	} catch (error) {
 		console.error('[TimeBlocks] Failed to delete time block:', error);
-		const message = error instanceof Error ? error.message : 'Failed to delete time block';
-		return json({ error: message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to delete time block');
 	}
 };

@@ -15,10 +15,11 @@
 	let className = '';
 	export { className as class };
 
+	// Optimized for high information density (Apple-style)
 	const paddingClasses = {
-		sm: 'px-3 sm:px-4 py-3 sm:py-4',
-		md: 'px-4 sm:px-5 md:px-6 py-4 sm:py-5 md:py-6',
-		lg: 'px-6 sm:px-8 md:px-10 py-6 sm:py-8 md:py-10'
+		sm: 'px-2 py-1.5', // Ultra compact: 8px horizontal, 6px vertical
+		md: 'px-3 py-2.5', // Compact: 12px horizontal, 10px vertical
+		lg: 'px-4 py-3' // Comfortable: 16px horizontal, 12px vertical
 	};
 
 	$: bodyClasses = twMerge(paddingClasses[padding], className);

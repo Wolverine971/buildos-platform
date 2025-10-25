@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/[id]/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -20,10 +20,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		if (error) throw error;
 
-		return json({ brief: data });
+		return ApiResponse.success({ brief: data });
 	} catch (error) {
 		console.error('Error fetching daily brief:', error);
-		return json({ error: 'Brief not found' }, { status: 404 });
+		return ApiResponse.notFound('Brief');
 	}
 };
 
@@ -34,7 +34,7 @@ export const PUT: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -52,17 +52,17 @@ export const PUT: RequestHandler = async ({
 
 		if (error) throw error;
 
-		return json({ brief: data });
+		return ApiResponse.success({ brief: data });
 	} catch (error) {
 		console.error('Error updating daily brief:', error);
-		return json({ error: 'Failed to update brief' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update brief');
 	}
 };
 
 export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const { id } = params;
@@ -79,9 +79,9 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			throw deleteError;
 		}
 
-		return json({ success: true });
+		return ApiResponse.success({ success: true });
 	} catch (err) {
 		console.error('Error deleting brief:', err);
-		return json({ error: 'Failed to delete brief' }, { status: 500 });
+		return ApiResponse.internalError(err, 'Failed to delete brief');
 	}
 };

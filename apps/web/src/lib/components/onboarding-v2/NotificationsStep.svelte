@@ -72,8 +72,10 @@
 					})
 				});
 
-				if (!response.ok) {
-					throw new Error('Failed to save SMS preferences');
+				const result = await response.json();
+
+				if (!result?.success) {
+					throw new Error(result?.error?.[0] || 'Failed to save SMS preferences');
 				}
 
 				// Also enable daily brief SMS if any SMS options are enabled

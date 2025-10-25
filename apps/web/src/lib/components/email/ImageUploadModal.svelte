@@ -71,11 +71,13 @@
 			});
 
 			const response = await fetch(`/api/admin/emails/attachments?${params}`);
-			if (!response.ok) throw new Error('Failed to load images');
-
 			const result = await response.json();
-			const data = result.data || result;
-			images = data.attachments || [];
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to load images');
+			}
+
+			images = result.data?.attachments || [];
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load images';
 		} finally {

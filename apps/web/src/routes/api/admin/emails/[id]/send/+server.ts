@@ -1,8 +1,7 @@
 // apps/web/src/routes/api/admin/emails/[id]/send/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
-
+import { ApiResponse } from '$lib/utils/api-response';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { createGmailTransporterByEmail, getSenderByEmail } from '$lib/utils/email-config';
 
@@ -16,7 +15,7 @@ export const POST: RequestHandler = async ({
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -50,17 +49,17 @@ export const POST: RequestHandler = async ({
 
 		if (fetchError) {
 			if (fetchError.code === 'PGRST116') {
-				return json({ error: 'Email not found' }, { status: 404 });
+				return ApiResponse.notFound('Email');
 			}
 			throw fetchError;
 		}
 
 		if (email.status === 'sent' || email.status === 'delivered') {
-			return json({ error: 'Email already sent' }, { status: 400 });
+			return ApiResponse.badRequest('Email already sent');
 		}
 
 		if (!email.email_recipients || email.email_recipients.length === 0) {
-			return json({ error: 'No recipients found' }, { status: 400 });
+			return ApiResponse.badRequest('No recipients found');
 		}
 
 		// Ensure email has a tracking_id if tracking is enabled
@@ -77,16 +76,16 @@ export const POST: RequestHandler = async ({
 		// Validate sender configuration
 		const sender = getSenderByEmail(email.from_email);
 		if (!sender) {
-			return json(
-				{ error: `No sender configuration found for ${email.from_email}` },
-				{ status: 500 }
+			return ApiResponse.internalError(
+				new Error('No sender configuration'),
+				`No sender configuration found for ${email.from_email}`
 			);
 		}
 
 		if (!sender.password) {
-			return json(
-				{ error: `Gmail credentials not configured for ${email.from_email}` },
-				{ status: 500 }
+			return ApiResponse.internalError(
+				new Error('Gmail credentials missing'),
+				`Gmail credentials not configured for ${email.from_email}`
 			);
 		}
 
@@ -221,8 +220,7 @@ export const POST: RequestHandler = async ({
 				})
 				.eq('id', email.id);
 
-			return json({
-				success: true,
+			return ApiResponse.success({
 				results,
 				summary: {
 					sent: sentCount,
@@ -240,10 +238,10 @@ export const POST: RequestHandler = async ({
 				})
 				.eq('id', email.id);
 
-			return json({ success: true, message: 'Email scheduled for sending' });
+			return ApiResponse.success(null, 'Email scheduled for sending');
 		}
 	} catch (error) {
 		console.error('Error sending email:', error);
-		return json({ error: 'Failed to send email' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to send email');
 	}
 };

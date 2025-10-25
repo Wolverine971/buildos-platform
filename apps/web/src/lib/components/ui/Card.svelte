@@ -30,12 +30,12 @@
 			'bg-transparent border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors'
 	};
 
-	// Padding styles
+	// Padding styles - optimized for high information density (Apple-style)
 	const paddingClasses = {
 		none: 'p-0',
-		sm: 'p-3 sm:p-4',
-		md: 'p-4 sm:p-5 md:p-6',
-		lg: 'p-6 sm:p-8 md:p-10'
+		sm: 'p-1',
+		md: 'p-2', // Compact: 8px - provides just enough breathing room for shadow/border
+		lg: 'p-3 sm:p-4' // Comfortable: 12-16px - for special emphasis cards
 	};
 
 	$: cardClasses = twMerge(

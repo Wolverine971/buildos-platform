@@ -209,13 +209,13 @@ Guidelines:
 				})
 			});
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.message || 'Failed to generate email');
+			const result = await response.json();
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to generate email');
 			}
 
-			const data = await response.json();
-			generatedEmail = data.data.email;
+			generatedEmail = result.data?.email;
 			toastService.success('Email generated successfully');
 		} catch (error) {
 			console.error('Error generating email:', error);
@@ -289,9 +289,10 @@ Guidelines:
 				})
 			});
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.message || 'Failed to send email');
+			const result = await response.json();
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to send email');
 			}
 
 			toastService.success('Email sent successfully');

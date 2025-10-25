@@ -75,13 +75,26 @@
 				if (!task.start_date) return false;
 				const taskDate = new Date(task.start_date);
 
-					// CRITICAL FIX: Compare dates only, not times!
+				// CRITICAL FIX: Compare dates only, not times!
 				// task.start_date is just a date (e.g., "2025-10-25"), becomes midnight UTC
 				// Comparing with time block (e.g., "09:00") fails because midnight < 09:00
-				const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-				const blockStartDate = new Date(blockStart.getFullYear(), blockStart.getMonth(), blockStart.getDate());
-				const blockEndDate = new Date(blockEnd.getFullYear(), blockEnd.getMonth(), blockEnd.getDate());
-				const isWithinDateRange = taskDateOnly >= blockStartDate && taskDateOnly <= blockEndDate;
+				const taskDateOnly = new Date(
+					taskDate.getFullYear(),
+					taskDate.getMonth(),
+					taskDate.getDate()
+				);
+				const blockStartDate = new Date(
+					blockStart.getFullYear(),
+					blockStart.getMonth(),
+					blockStart.getDate()
+				);
+				const blockEndDate = new Date(
+					blockEnd.getFullYear(),
+					blockEnd.getMonth(),
+					blockEnd.getDate()
+				);
+				const isWithinDateRange =
+					taskDateOnly >= blockStartDate && taskDateOnly <= blockEndDate;
 				const isWithinTimeRange = isWithinDateRange; // Use date range instead of time range
 				const isMatchingProject =
 					block.block_type === 'build' || task.project_id === block.project_id;

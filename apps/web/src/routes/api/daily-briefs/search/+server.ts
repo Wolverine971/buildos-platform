@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/search/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const limit = parseInt(url.searchParams.get('limit') || '10');
 
 	if (!query) {
-		return json({ results: [] });
+		return ApiResponse.success({ results: [] });
 	}
 
 	try {
@@ -89,13 +89,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			})
 			.slice(0, limit);
 
-		return json({
+		return ApiResponse.success({
 			results: sortedResults,
 			total: results.length,
 			query
 		});
 	} catch (error) {
 		console.error('Error searching briefs:', error);
-		return json({ error: 'Failed to search briefs' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to search briefs');
 	}
 };

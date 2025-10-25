@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/sms/metrics/user/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createServiceClient } from '@buildos/supabase-client';
 import { smsMetricsService } from '@buildos/shared-utils';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * GET /api/sms/metrics/user
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const session = await locals.safeGetSession();
 
 		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		// Get query parameters
@@ -28,16 +28,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Validate days parameter
 		if (isNaN(days) || days < 1 || days > 365) {
-			return json(
-				{ error: 'Invalid days parameter. Must be between 1 and 365' },
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest('Invalid days parameter. Must be between 1 and 365');
 		}
 
 		// Only allow users to view their own metrics (unless admin)
 		// TODO: Add admin check if needed
 		if (userId !== session.user.id) {
-			return json({ error: 'Forbidden - can only view own metrics' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden - can only view own metrics');
 		}
 
 		// Fetch user metrics
@@ -53,8 +50,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const deliveryRate =
 			totalSent > 0 ? ((totalDelivered / totalSent) * 100).toFixed(2) : '0.00';
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			data: {
 				metrics,
 				summary: {
@@ -71,9 +67,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error fetching user metrics:', error);
-		return json(
-			{ error: 'Failed to fetch user metrics', message: error.message },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to fetch user metrics');
 	}
 };

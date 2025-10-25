@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/sms/preferences/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 // Default preferences structure
 // Note: timezone removed - now centralized in users table (ADR-002-timezone-centralization)
@@ -25,7 +25,7 @@ const DEFAULT_PREFERENCES = {
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -49,7 +49,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		// If no preferences exist, return defaults with timezone from users table
 		if (!preferences) {
-			return json({
+			return ApiResponse.success({
 				preferences: {
 					user_id: user.id,
 					...DEFAULT_PREFERENCES,
@@ -59,7 +59,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		}
 
 		// Return preferences with timezone from users table (centralized source of truth)
-		return json({
+		return ApiResponse.success({
 			preferences: {
 				...preferences,
 				timezone: userData?.timezone || 'UTC'
@@ -67,7 +67,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		});
 	} catch (error) {
 		console.error('Error fetching SMS preferences:', error);
-		return json({ error: 'Failed to fetch SMS preferences' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch SMS preferences');
 	}
 };
 
@@ -78,7 +78,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -143,20 +143,10 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			throw error;
 		}
 
-		return json({
-			success: true,
-			preferences,
-			message: 'SMS preferences updated successfully'
-		});
+		return ApiResponse.success({ preferences }, 'SMS preferences updated successfully');
 	} catch (error: any) {
 		console.error('Error updating SMS preferences:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to update SMS preferences'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to update SMS preferences');
 	}
 };
 

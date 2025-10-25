@@ -830,7 +830,7 @@
 			{#if nudgeCards?.length}
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
 					{#each nudgeCards as card}
-					{@const CardIcon = card.icon}
+						{@const CardIcon = card.icon}
 						<div
 							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
 						>
@@ -838,7 +838,9 @@
 								<div
 									class="p-2 bg-{card.color}-100 dark:bg-{card.color}-900/30 rounded-lg"
 								>
-									<CardIcon class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400" />
+									<CardIcon
+										class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400"
+									/>
 								</div>
 								<div class="flex-1">
 									<h4

@@ -1,14 +1,14 @@
 // apps/web/src/routes/api/time-blocks/create/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import { CalendarService } from '$lib/services/calendar-service';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	let payload: any;
@@ -16,31 +16,28 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		payload = await request.json();
 	} catch (err) {
 		console.error('[TimeBlocks] Invalid JSON payload:', err);
-		return json({ error: 'Invalid JSON payload' }, { status: 400 });
+		return ApiResponse.badRequest('Invalid JSON payload');
 	}
 
 	const { block_type, project_id, start_time, end_time, timezone } = payload ?? {};
 
 	if (block_type !== 'project' && block_type !== 'build') {
-		return json(
-			{ error: 'Invalid block_type. Expected "project" or "build".' },
-			{ status: 400 }
-		);
+		return ApiResponse.badRequest('Invalid block_type. Expected "project" or "build".');
 	}
 
 	if (block_type === 'project' && !project_id) {
-		return json({ error: 'project_id is required for project blocks.' }, { status: 400 });
+		return ApiResponse.badRequest('project_id is required for project blocks.');
 	}
 
 	if (!start_time || !end_time) {
-		return json({ error: 'Missing required fields: start_time, end_time' }, { status: 400 });
+		return ApiResponse.badRequest('Missing required fields: start_time, end_time');
 	}
 
 	const startDate = new Date(start_time);
 	const endDate = new Date(end_time);
 
 	if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-		return json({ error: 'Invalid start_time or end_time.' }, { status: 400 });
+		return ApiResponse.badRequest('Invalid start_time or end_time.');
 	}
 
 	try {
@@ -55,15 +52,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			timezone
 		});
 
-		return json({
-			success: true,
-			data: {
-				time_block: timeBlock
-			}
-		});
+		return ApiResponse.created({ time_block: timeBlock });
 	} catch (error) {
 		console.error('[TimeBlocks] Failed to create time block:', error);
-		const message = error instanceof Error ? error.message : 'Failed to create time block';
-		return json({ error: message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to create time block');
 	}
 };

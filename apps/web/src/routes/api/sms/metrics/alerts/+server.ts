@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/sms/metrics/alerts/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { smsAlertsService } from '@buildos/shared-utils';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * GET /api/sms/metrics/alerts
@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const session = await locals.safeGetSession();
 
 		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		// Get query parameters
@@ -31,7 +31,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Validate limit
 		if (isNaN(limit) || limit < 1) {
-			return json({ error: 'Invalid limit parameter' }, { status: 400 });
+			return ApiResponse.badRequest('Invalid limit parameter');
 		}
 
 		let alerts;
@@ -40,8 +40,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			// Get unresolved alerts
 			alerts = await smsAlertsService.getUnresolvedAlerts(limit);
 
-			return json({
-				success: true,
+			return ApiResponse.success({
 				data: alerts,
 				type: 'unresolved',
 				count: alerts.length
@@ -49,19 +48,18 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		} else if (type === 'history') {
 			// Get alert history
 			if (!startDate) {
-				return json({ error: 'start_date is required for history type' }, { status: 400 });
+				return ApiResponse.badRequest('start_date is required for history type');
 			}
 
 			// Validate date format
 			const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 			if (!dateRegex.test(startDate) || (endDate && !dateRegex.test(endDate))) {
-				return json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
+				return ApiResponse.badRequest('Invalid date format. Use YYYY-MM-DD');
 			}
 
 			alerts = await smsAlertsService.getAlertHistory(startDate, endDate || undefined, limit);
 
-			return json({
-				success: true,
+			return ApiResponse.success({
 				data: alerts,
 				type: 'history',
 				count: alerts.length,
@@ -71,14 +69,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				}
 			});
 		} else {
-			return json(
-				{ error: 'Invalid type parameter. Must be unresolved or history' },
-				{ status: 400 }
-			);
+			return ApiResponse.badRequest('Invalid type parameter. Must be unresolved or history');
 		}
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error fetching alerts:', error);
-		return json({ error: 'Failed to fetch alerts', message: error.message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch alerts');
 	}
 };
 
@@ -95,25 +90,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const session = await locals.safeGetSession();
 
 		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const { alert_id } = await request.json();
 
 		if (!alert_id) {
-			return json({ error: 'alert_id is required' }, { status: 400 });
+			return ApiResponse.badRequest('alert_id is required');
 		}
 
 		// Resolve the alert
 		await smsAlertsService.resolveAlert(alert_id);
 
-		return json({
-			success: true,
-			message: 'Alert resolved successfully',
-			alert_id
-		});
+		return ApiResponse.success({ alert_id }, 'Alert resolved successfully');
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error resolving alert:', error);
-		return json({ error: 'Failed to resolve alert', message: error.message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to resolve alert');
 	}
 };

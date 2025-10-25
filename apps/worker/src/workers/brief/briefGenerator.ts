@@ -1467,10 +1467,7 @@ function escapeRegex(str: string): string {
  * @param projects - Array of projects with tasks and metadata
  * @returns The text with project and task names converted to markdown links
  */
-function addLinksToExecutiveSummary(
-	text: string,
-	projects: DailyBriefAnalysisProject[]
-): string {
+function addLinksToExecutiveSummary(text: string, projects: DailyBriefAnalysisProject[]): string {
 	let result = text;
 
 	// Link projects (first occurrence only per project)

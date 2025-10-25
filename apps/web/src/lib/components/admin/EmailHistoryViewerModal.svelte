@@ -43,7 +43,9 @@
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 				<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
 				<div class="min-w-0">
-					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+					<h2
+						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate"
+					>
 						{email.subject || 'Email'}
 					</h2>
 					{#if email.to}
@@ -80,34 +82,32 @@
 
 		<!-- Email Content (scrollable) -->
 		<div class="p-4 sm:p-5 md:p-6">
-				<div
-					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-5 md:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
-				>
-					{#if email.html}
-						<!-- Render HTML email content safely -->
-						<div class="break-words">
-							{@html email.html}
-						</div>
-					{:else if email.body}
-						<!-- Plain text email content -->
-						<div class="whitespace-pre-wrap text-gray-900 dark:text-gray-100 text-sm">
-							{email.body}
-						</div>
-					{:else}
-						<div class="text-gray-500 dark:text-gray-400 italic">
-							No email content available
-						</div>
-					{/if}
-				</div>
+			<div
+				class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:p-5 md:p-6 border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none"
+			>
+				{#if email.html}
+					<!-- Render HTML email content safely -->
+					<div class="break-words">
+						{@html email.html}
+					</div>
+				{:else if email.body}
+					<!-- Plain text email content -->
+					<div class="whitespace-pre-wrap text-gray-900 dark:text-gray-100 text-sm">
+						{email.body}
+					</div>
+				{:else}
+					<div class="text-gray-500 dark:text-gray-400 italic">
+						No email content available
+					</div>
+				{/if}
 			</div>
+		</div>
 
 		<div
 			slot="footer"
 			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
 		>
-			<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">
-				Close
-			</Button>
+			<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">Close</Button>
 		</div>
 	</Modal>
 {/if}

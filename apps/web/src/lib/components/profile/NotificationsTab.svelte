@@ -25,10 +25,13 @@
 		try {
 			loadingPreferences = true;
 			const response = await fetch('/api/sms/preferences');
-			if (!response.ok) throw new Error('Failed to load preferences');
-
 			const result = await response.json();
-			smsPreferences = result.preferences;
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to load preferences');
+			}
+
+			smsPreferences = result.data?.preferences;
 
 			// Set state from preferences
 			userTimezone = smsPreferences?.timezone || 'UTC';

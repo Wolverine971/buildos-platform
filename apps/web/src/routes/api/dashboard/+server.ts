@@ -307,50 +307,51 @@ async function handleOriginalDashboard({ user, supabase, timezone }: any) {
 	const instanceService = RecurringInstanceService.getInstance(supabase);
 
 	// Parallel fetch: regular tasks, recurring instances, calendar status, and today's brief
-	const [tasksResult, instancesResult, calendarStatusPromise, todaysBriefResult] = await Promise.all([
-		// Get tasks within date range for better performance - 30 days back to 14 days ahead
-		supabase
-			.from('tasks')
-			.select(taskSelectFields)
-			.eq('user_id', user.id)
-			.neq('status', 'done')
-			.is('deleted_at', null)
-			.gte('start_date', getDatePlusDays(-30, timezone)) // 30 days back for overdue
-			.lte('start_date', getDatePlusDays(14, timezone)) // 14 days ahead for future
-			.order('priority', { ascending: false })
-			.order('start_date', { ascending: true }),
+	const [tasksResult, instancesResult, calendarStatusPromise, todaysBriefResult] =
+		await Promise.all([
+			// Get tasks within date range for better performance - 30 days back to 14 days ahead
+			supabase
+				.from('tasks')
+				.select(taskSelectFields)
+				.eq('user_id', user.id)
+				.neq('status', 'done')
+				.is('deleted_at', null)
+				.gte('start_date', getDatePlusDays(-30, timezone)) // 30 days back for overdue
+				.lte('start_date', getDatePlusDays(14, timezone)) // 14 days ahead for future
+				.order('priority', { ascending: false })
+				.order('start_date', { ascending: true }),
 
-		// Get recurring instances for the week ahead (including overdue)
-		Promise.all([
-			// Get overdue instances
-			instanceService.getOverdueInstances(user.id, new Date(today), timezone),
-			// Get instances for next 7 days
-			instanceService.getInstancesForDateRange(
-				user.id,
-				new Date(today),
-				addDays(new Date(weekEnd), 1),
-				timezone
-			)
-		]),
+			// Get recurring instances for the week ahead (including overdue)
+			Promise.all([
+				// Get overdue instances
+				instanceService.getOverdueInstances(user.id, new Date(today), timezone),
+				// Get instances for next 7 days
+				instanceService.getInstancesForDateRange(
+					user.id,
+					new Date(today),
+					addDays(new Date(weekEnd), 1),
+					timezone
+				)
+			]),
 
-		// Get calendar status in parallel - non-blocking
-		(async () => {
-			try {
-				const googleCalendarService = new GoogleOAuthService(supabase);
-				return await googleCalendarService.getCalendarStatus(user.id);
-			} catch (error) {
-				console.warn('Calendar status check failed:', error);
-				return { isConnected: false, needsRefresh: false };
-			}
-		})(),
+			// Get calendar status in parallel - non-blocking
+			(async () => {
+				try {
+					const googleCalendarService = new GoogleOAuthService(supabase);
+					return await googleCalendarService.getCalendarStatus(user.id);
+				} catch (error) {
+					console.warn('Calendar status check failed:', error);
+					return { isConnected: false, needsRefresh: false };
+				}
+			})(),
 
-		// Get today's daily brief
-		(async () => {
-			try {
-				const { data, error } = await supabase
-					.from('daily_briefs')
-					.select(
-						`
+			// Get today's daily brief
+			(async () => {
+				try {
+					const { data, error } = await supabase
+						.from('daily_briefs')
+						.select(
+							`
 						id,
 						brief_date,
 						summary_content,
@@ -359,22 +360,22 @@ async function handleOriginalDashboard({ user, supabase, timezone }: any) {
 						created_at,
 						updated_at
 					`
-					)
-					.eq('user_id', user.id)
-					.eq('brief_date', today)
-					.maybeSingle();
+						)
+						.eq('user_id', user.id)
+						.eq('brief_date', today)
+						.maybeSingle();
 
-				if (error) {
-					console.warn('Failed to fetch daily brief:', error);
+					if (error) {
+						console.warn('Failed to fetch daily brief:', error);
+						return null;
+					}
+					return data;
+				} catch (error) {
+					console.warn('Error fetching daily brief:', error);
 					return null;
 				}
-				return data;
-			} catch (error) {
-				console.warn('Error fetching daily brief:', error);
-				return null;
-			}
-		})()
-	]);
+			})()
+		]);
 
 	const { data: allTasks, error } = tasksResult;
 	const [overdueInstances, weekInstances] = instancesResult;

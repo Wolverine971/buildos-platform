@@ -22,8 +22,9 @@
 		accent: 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 border-b border-gray-200 dark:border-gray-700'
 	};
 
+	// Optimized for high information density (Apple-style)
 	$: headerClasses = twMerge(
-		'px-4 sm:px-5 md:px-6 py-3 sm:py-4',
+		'px-3 py-2 sm:py-2.5', // Compact: 12px horizontal, 8-10px vertical
 		variantClasses[variant],
 		className
 	);

@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/sms/metrics/summary/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { smsMetricsService, smsAlertsService } from '@buildos/shared-utils';
 import { format, subDays } from 'date-fns';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * GET /api/sms/metrics/summary
@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const session = await locals.safeGetSession();
 
 		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const today = format(new Date(), 'yyyy-MM-dd');
@@ -73,49 +73,43 @@ export const GET: RequestHandler = async ({ locals }) => {
 			(alert) => alert.severity === 'critical'
 		);
 
-		return json({
-			success: true,
-			data: {
-				today: todayMetrics || {
-					scheduled_count: 0,
-					sent_count: 0,
-					delivered_count: 0,
-					failed_count: 0,
-					delivery_rate_percent: 0,
-					llm_success_rate_percent: 0,
-					active_users: 0
-				},
-				week: {
-					totals: weeklyTotals,
-					delivery_rate_percent: parseFloat(weeklyDeliveryRate),
-					llm_success_rate_percent: parseFloat(weeklyLLMSuccessRate),
-					avg_daily_cost_usd: (weeklyTotals.llmCost / 7).toFixed(4)
-				},
-				alerts: {
-					unresolved_count: unresolvedAlerts.length,
-					has_critical: hasActiveCriticalAlerts,
-					recent: unresolvedAlerts.slice(0, 5) // Top 5 most recent
-				},
-				health: {
-					delivery_healthy: deliveryHealthy,
-					llm_healthy: llmHealthy,
-					alerts_healthy: !hasActiveCriticalAlerts,
-					overall_healthy: deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts,
-					status:
-						deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts
-							? 'healthy'
-							: hasActiveCriticalAlerts
-								? 'critical'
-								: 'degraded'
-				}
+		return ApiResponse.success({
+			today: todayMetrics || {
+				scheduled_count: 0,
+				sent_count: 0,
+				delivered_count: 0,
+				failed_count: 0,
+				delivery_rate_percent: 0,
+				llm_success_rate_percent: 0,
+				active_users: 0
+			},
+			week: {
+				totals: weeklyTotals,
+				delivery_rate_percent: parseFloat(weeklyDeliveryRate),
+				llm_success_rate_percent: parseFloat(weeklyLLMSuccessRate),
+				avg_daily_cost_usd: (weeklyTotals.llmCost / 7).toFixed(4)
+			},
+			alerts: {
+				unresolved_count: unresolvedAlerts.length,
+				has_critical: hasActiveCriticalAlerts,
+				recent: unresolvedAlerts.slice(0, 5) // Top 5 most recent
+			},
+			health: {
+				delivery_healthy: deliveryHealthy,
+				llm_healthy: llmHealthy,
+				alerts_healthy: !hasActiveCriticalAlerts,
+				overall_healthy: deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts,
+				status:
+					deliveryHealthy && llmHealthy && !hasActiveCriticalAlerts
+						? 'healthy'
+						: hasActiveCriticalAlerts
+							? 'critical'
+							: 'degraded'
 			},
 			timestamp: new Date().toISOString()
 		});
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error fetching summary:', error);
-		return json(
-			{ error: 'Failed to fetch metrics summary', message: error.message },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to fetch metrics summary');
 	}
 };

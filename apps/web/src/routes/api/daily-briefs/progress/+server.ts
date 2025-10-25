@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/daily-briefs/progress/+server.ts
-import { error, json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -21,7 +22,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.single();
 
 		if (!brief) {
-			return json({
+			return ApiResponse.success({
 				exists: false,
 				progress: null
 			});
@@ -49,7 +50,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					})) || []
 		};
 
-		return json({
+		return ApiResponse.success({
 			exists: true,
 			brief_status: brief.generation_status,
 			main_brief:

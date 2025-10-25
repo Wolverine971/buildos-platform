@@ -296,38 +296,56 @@
 	<div class="px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5">
 			<section class="lg:col-span-3 order-2 flex flex-col gap-4 lg:order-1 lg:pr-1">
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
-					<div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+				>
+					<div
+						class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+					>
 						<div class="space-y-2">
-							<p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+							>
 								Session Overview
 							</p>
 							<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
 								{dayOfWeek}, {monthDay}
 							</h2>
-							<div class="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+							<div
+								class="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+							>
 								<Clock class="h-4 w-4 text-blue-500 dark:text-blue-300" />
-								<span class="font-semibold text-slate-900 dark:text-white">{timeRange}</span>
+								<span class="font-semibold text-slate-900 dark:text-white"
+									>{timeRange}</span
+								>
 								{#if durationDisplay}
 									<span class="text-slate-400">|</span>
 									<span>{durationDisplay}</span>
 								{/if}
 							</div>
-							<div class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+							<div
+								class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
 								{timezoneDisplay}
 							</div>
 						</div>
 						<div class="flex flex-wrap gap-2">
-							<span class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-200">
+							<span
+								class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-200"
+							>
 								{block.block_type === 'project' ? 'Project focus' : 'Build session'}
 							</span>
 							{#if block.block_type === 'build'}
-								<span class="inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
+								<span
+									class="inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+								>
 									Flexible window
 								</span>
 							{/if}
 							{#if block.block_type === 'project' && block.project?.name}
-								<span class="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+								<span
+									class="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+								>
 									{block.project.name}
 								</span>
 							{/if}
@@ -335,15 +353,33 @@
 					</div>
 					<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-5">
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
-								<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Start</span>
-								<p class="text-sm font-semibold text-slate-900 dark:text-white">{startDateSummary}</p>
-								<p class="text-xs text-slate-500 dark:text-slate-400">Started {formatRelativeTime(block.start_time)}</p>
+							<div
+								class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+							>
+								<span
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									>Start</span
+								>
+								<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									{startDateSummary}
+								</p>
+								<p class="text-xs text-slate-500 dark:text-slate-400">
+									Started {formatRelativeTime(block.start_time)}
+								</p>
 							</div>
-							<div class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5">
-								<span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">End</span>
-								<p class="text-sm font-semibold text-slate-900 dark:text-white">{endDateSummary}</p>
-								<p class="text-xs text-slate-500 dark:text-slate-400">Ends {formatRelativeTime(block.end_time)}</p>
+							<div
+								class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+							>
+								<span
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									>End</span
+								>
+								<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									{endDateSummary}
+								</p>
+								<p class="text-xs text-slate-500 dark:text-slate-400">
+									Ends {formatRelativeTime(block.end_time)}
+								</p>
 							</div>
 						</div>
 						{#if block.calendar_event_link}
@@ -360,19 +396,32 @@
 					</div>
 				</div>
 
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
-					<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+				>
+					<div
+						class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+					>
 						<div>
-							<p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+							>
 								Focus Suggestions
 							</p>
 							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-								{suggestionCount > 0 ? `${suggestionCount} curated ideas` : 'Personalized guidance'}
+								{suggestionCount > 0
+									? `${suggestionCount} curated ideas`
+									: 'Personalized guidance'}
 							</h3>
 						</div>
 						{#if block.suggestions_generated_at}
-							<span class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-								Updated {format(new Date(block.suggestions_generated_at), 'MMM d, h:mm a')}
+							<span
+								class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Updated {format(
+									new Date(block.suggestions_generated_at),
+									'MMM d, h:mm a'
+								)}
 							</span>
 						{/if}
 					</div>
@@ -380,24 +429,36 @@
 						{#if suggestionCount > 0}
 							<div class="space-y-3">
 								{#each suggestions as suggestion, index}
-									<div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white/85 p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70">
-										<div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"></div>
+									<div
+										class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white/85 p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70"
+									>
+										<div
+											class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"
+										></div>
 										<div class="relative flex gap-3">
-											<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-lg">
+											<div
+												class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-lg"
+											>
 												{index + 1}
 											</div>
 											<div class="flex-1 space-y-1.5">
 												<div class="flex flex-wrap items-center gap-2">
-													<h4 class="text-sm font-semibold text-slate-900 dark:text-white">
+													<h4
+														class="text-sm font-semibold text-slate-900 dark:text-white"
+													>
 														{suggestion.title}
 													</h4>
 													{#if suggestionMeta(suggestion)}
-														<span class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/70 dark:text-slate-200 dark:ring-white/10">
+														<span
+															class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/70 dark:text-slate-200 dark:ring-white/10"
+														>
 															{suggestionMeta(suggestion)}
 														</span>
 													{/if}
 												</div>
-												<p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+												<p
+													class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+												>
 													{suggestion.reason}
 												</p>
 											</div>
@@ -406,11 +467,15 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-slate-200/60 bg-slate-50/60 p-5 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300">
+							<div
+								class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-slate-200/60 bg-slate-50/60 p-5 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+							>
 								<p class="font-semibold text-slate-700 dark:text-slate-200">
 									No suggestions yet
 								</p>
-								<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+								<p
+									class="text-xs leading-relaxed text-slate-500 dark:text-slate-400"
+								>
 									Generate tailored focus ideas to make the most of this block.
 								</p>
 								{#if onRegenerate}
@@ -423,7 +488,11 @@
 										class="sm:hidden"
 									>
 										<Zap class="h-4 w-4" />
-										<span>{isRegenerating ? 'Generating...' : 'Generate Suggestions'}</span>
+										<span
+											>{isRegenerating
+												? 'Generating...'
+												: 'Generate Suggestions'}</span
+										>
 									</Button>
 								{/if}
 							</div>
@@ -432,8 +501,12 @@
 				</div>
 
 				{#if block.suggestions_summary}
-					<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-5 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-						<p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+					<div
+						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-5 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+					>
+						<p
+							class="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+						>
 							AI Summary
 						</p>
 						<p>{block.suggestions_summary}</p>
@@ -442,12 +515,18 @@
 			</section>
 
 			<aside class="lg:col-span-1 order-1 flex flex-col gap-4 lg:order-2">
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+				>
 					<div class="flex items-center justify-between">
-						<h3 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+						<h3
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+						>
 							Session Controls
 						</h3>
-						<span class="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+						<span
+							class="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300"
+						>
 							{isEditMode ? 'Editing' : 'Viewing'}
 						</span>
 					</div>
@@ -472,21 +551,32 @@
 							disabled={isRegenerating}
 						>
 							<Zap class="h-4 w-4" />
-							<span>{isRegenerating ? 'Regenerating...' : 'Regenerate Suggestions'}</span>
+							<span
+								>{isRegenerating
+									? 'Regenerating...'
+									: 'Regenerate Suggestions'}</span
+							>
 						</Button>
 					{/if}
 					<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-						Keep this block aligned with your schedule. Toggle editing to adjust timing or refresh suggestions.
+						Keep this block aligned with your schedule. Toggle editing to adjust timing
+						or refresh suggestions.
 					</p>
 				</div>
 
 				{#if isEditMode}
-					<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4">
-						<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+					<div
+						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+					>
+						<h4
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+						>
 							Edit details
 						</h4>
 						{#if validationErrors.length > 0 || saveError}
-							<div class="space-y-2 rounded-xl border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200">
+							<div
+								class="space-y-2 rounded-xl border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200"
+							>
 								{#each validationErrors as error}
 									<p>{error}</p>
 								{/each}
@@ -497,7 +587,10 @@
 						{/if}
 						<div class="space-y-4 text-sm text-slate-600 dark:text-slate-300">
 							<div class="space-y-2">
-								<label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" for="edit-start">Start date & time</label>
+								<label
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									for="edit-start">Start date & time</label
+								>
 								<input
 									id="edit-start"
 									type="datetime-local"
@@ -506,7 +599,10 @@
 								/>
 							</div>
 							<div class="space-y-2">
-								<label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" for="edit-end">End date & time</label>
+								<label
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									for="edit-end">End date & time</label
+								>
 								<input
 									id="edit-end"
 									type="datetime-local"
@@ -515,7 +611,10 @@
 								/>
 							</div>
 							<div class="space-y-2">
-								<label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" for="edit-timezone">Timezone</label>
+								<label
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									for="edit-timezone">Timezone</label
+								>
 								<select
 									id="edit-timezone"
 									bind:value={editFormData.timezone}
@@ -526,7 +625,9 @@
 									{/each}
 								</select>
 							</div>
-							<label class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+							<label
+								class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
 								<input
 									type="checkbox"
 									bind:checked={editFormData.regenerate_suggestions}
@@ -534,40 +635,61 @@
 								/>
 								<span>Regenerate suggestions after saving</span>
 							</label>
-							<div class="rounded-lg border border-slate-200/60 bg-slate-50/70 px-3 py-2 text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300">
-								New duration: {calculateDuration(editFormData.start_time, editFormData.end_time)} minutes
+							<div
+								class="rounded-lg border border-slate-200/60 bg-slate-50/70 px-3 py-2 text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+							>
+								New duration: {calculateDuration(
+									editFormData.start_time,
+									editFormData.end_time
+								)} minutes
 							</div>
 						</div>
 					</div>
 				{/if}
 
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3">
-					<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+				>
+					<h4
+						class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+					>
 						Calendar Sync
 					</h4>
 					<div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-						<div class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced' ? 'bg-emerald-500' : 'bg-amber-500'}"></div>
+						<div
+							class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced'
+								? 'bg-emerald-500'
+								: 'bg-amber-500'}"
+						></div>
 						<span class="font-medium">
 							{block.sync_status === 'synced' ? 'Synced to calendar' : 'Pending sync'}
 						</span>
 					</div>
 				</div>
 
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4">
-					<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+				>
+					<h4
+						class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+					>
 						Overview
 					</h4>
 					<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
 						<div class="flex items-center justify-between gap-3">
 							<span>Focus type</span>
 							<span class="text-right font-semibold text-slate-900 dark:text-white">
-								{block.block_type === 'project' ? 'Project session' : 'Build session'}
+								{block.block_type === 'project'
+									? 'Project session'
+									: 'Build session'}
 							</span>
 						</div>
 						{#if durationDisplay}
 							<div class="flex items-center justify-between gap-3">
 								<span>Duration</span>
-								<span class="text-right font-semibold text-slate-900 dark:text-white">
+								<span
+									class="text-right font-semibold text-slate-900 dark:text-white"
+								>
 									{durationDisplay}
 								</span>
 							</div>
@@ -599,7 +721,9 @@
 						{#if block.block_type === 'project' && block.project?.name}
 							<div class="flex items-start justify-between gap-3">
 								<span>Project</span>
-								<span class="text-right font-semibold text-slate-900 dark:text-white">
+								<span
+									class="text-right font-semibold text-slate-900 dark:text-white"
+								>
 									{block.project.name}
 								</span>
 							</div>
@@ -607,8 +731,12 @@
 					</div>
 				</div>
 
-				<div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3">
-					<h4 class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400">
+				<div
+					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+				>
+					<h4
+						class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+					>
 						Activity
 					</h4>
 					<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
@@ -650,20 +778,10 @@
 			</div>
 		{:else}
 			<div class="flex flex-col sm:flex-row gap-3 w-full sm:justify-between">
-				<Button
-					variant="danger"
-					size="sm"
-					class="w-full sm:w-auto"
-					on:click={handleDelete}
-				>
+				<Button variant="danger" size="sm" class="w-full sm:w-auto" on:click={handleDelete}>
 					Delete Block
 				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					class="w-full sm:w-auto"
-					on:click={onClose}
-				>
+				<Button variant="outline" size="sm" class="w-full sm:w-auto" on:click={onClose}>
 					Close
 				</Button>
 			</div>

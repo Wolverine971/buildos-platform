@@ -4,9 +4,10 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { Loader2, AlertCircle, CheckCircle, Calendar, Clock } from 'lucide-svelte';
+	import { Loader2, AlertCircle, CheckCircle, Calendar, Clock, X } from 'lucide-svelte';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 	import { format } from 'date-fns';
+	import Button from '$components/ui/Button.svelte';
 
 	let { notification } = $props<{
 		notification: TimeBlockNotification;
@@ -49,7 +50,7 @@
 
 	const status = $derived(notification.status);
 
-	const statusCopy = $derived(() => {
+	const statusCopy = $derived.by(() => {
 		if (status === 'processing') {
 			return {
 				icon: Loader2,
@@ -110,6 +111,7 @@
 	size="lg"
 	showCloseButton={true}
 	title="Time Block Suggestions"
+	closeOnBackdrop={true}
 >
 	<div slot="header" class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
 		<svelte:component this={statusCopy.icon} class={statusCopy.iconClass} />
@@ -121,6 +123,14 @@
 				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{statusCopy.message}</p>
 			{/if}
 		</div>
+		<Button
+			on:click={handleClose}
+			variant="ghost"
+			size="sm"
+			icon={X}
+			class="!p-2 flex-shrink-0"
+			aria-label="Close dialog"
+		/>
 	</div>
 
 	<div class="px-6 py-5 space-y-6">

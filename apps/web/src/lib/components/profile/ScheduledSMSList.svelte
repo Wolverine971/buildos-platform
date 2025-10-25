@@ -68,11 +68,12 @@
 			error = null;
 
 			const response = await fetch('/api/sms/scheduled?limit=100');
-			if (!response.ok) {
-				throw new Error('Failed to load scheduled messages');
+			const result = await response.json();
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to load scheduled messages');
 			}
 
-			const result = await response.json();
 			scheduledMessages = result.data || [];
 		} catch (err: any) {
 			console.error('Error loading scheduled SMS:', err);
@@ -94,8 +95,10 @@
 				method: 'DELETE'
 			});
 
-			if (!response.ok) {
-				throw new Error('Failed to cancel message');
+			const result = await response.json();
+
+			if (!result?.success) {
+				throw new Error(result?.error?.[0] || 'Failed to cancel message');
 			}
 
 			// Refresh the list

@@ -1,19 +1,19 @@
 // apps/web/src/routes/api/time-blocks/blocks/[id]/suggestions/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { TimeBlockService } from '$lib/services/time-block.service';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const blockId = params.id;
 	if (!blockId) {
-		return json({ error: 'Missing time block id' }, { status: 400 });
+		return ApiResponse.badRequest('Missing time block id');
 	}
 
 	try {
@@ -22,16 +22,9 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession, s
 
 		const updatedBlock = await timeBlockService.regenerateSuggestions(blockId);
 
-		return json({
-			success: true,
-			data: {
-				time_block: updatedBlock
-			}
-		});
+		return ApiResponse.success({ time_block: updatedBlock });
 	} catch (error) {
 		console.error('[TimeBlocks] Failed to regenerate suggestions:', error);
-		const message =
-			error instanceof Error ? error.message : 'Failed to regenerate block suggestions';
-		return json({ error: message }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to regenerate block suggestions');
 	}
 };

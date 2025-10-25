@@ -4,7 +4,6 @@ import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
 import type { ParsedOperation } from '$lib/types/brain-dump';
-import dayjs from 'dayjs';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
@@ -17,6 +16,20 @@ import {
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
 import { formatProjectsSummaryList } from './prompts/core/data-formatter';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
+
+// Helper functions for date arithmetic (replacing dayjs)
+function addDays(date: Date, days: number): Date {
+	const result = new Date(date);
+	result.setDate(result.getDate() + days);
+	return result;
+}
+
+function formatDateYYYYMMDD(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
 
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
 type CalendarProjectSuggestion =
@@ -168,19 +181,20 @@ export class CalendarAnalysisService extends ApiService {
 		} = {}
 	): Promise<AnalysisResult> {
 		const { daysBack = 30, daysForward = 60 } = options;
+		const now = new Date();
 
 		// Create analysis record
 		const analysis = await this.createAnalysisRecord(userId, {
-			date_range_start: dayjs().subtract(daysBack, 'days').format('YYYY-MM-DD'),
-			date_range_end: dayjs().add(daysForward, 'days').format('YYYY-MM-DD'),
+			date_range_start: formatDateYYYYMMDD(addDays(now, -daysBack)),
+			date_range_end: formatDateYYYYMMDD(addDays(now, daysForward)),
 			calendars_analyzed: options.calendarsToAnalyze || []
 		});
 
 		try {
 			// Fetch calendar events using the existing CalendarService
 			const eventsResponse = await this.calendarService.getCalendarEvents(userId, {
-				timeMin: dayjs().subtract(daysBack, 'days').toISOString(),
-				timeMax: dayjs().add(daysForward, 'days').toISOString(),
+				timeMin: addDays(now, -daysBack).toISOString(),
+				timeMax: addDays(now, daysForward).toISOString(),
 				maxResults: 300,
 				calendarId: 'primary' // Start with primary calendar
 			});

@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/sms/metrics/daily/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { smsMetricsService } from '@buildos/shared-utils';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * GET /api/sms/metrics/daily
@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const session = await locals.safeGetSession();
 
 		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		// Get query parameters
@@ -25,20 +25,19 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const endDate = url.searchParams.get('end_date');
 
 		if (!startDate) {
-			return json({ error: 'start_date parameter is required' }, { status: 400 });
+			return ApiResponse.badRequest('start_date parameter is required');
 		}
 
 		// Validate date format (YYYY-MM-DD)
 		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 		if (!dateRegex.test(startDate) || (endDate && !dateRegex.test(endDate))) {
-			return json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
+			return ApiResponse.badRequest('Invalid date format. Use YYYY-MM-DD');
 		}
 
 		// Fetch daily metrics
 		const metrics = await smsMetricsService.getDailyMetrics(startDate, endDate || undefined);
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			data: metrics,
 			date_range: {
 				start: startDate,
@@ -47,9 +46,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 	} catch (error: any) {
 		console.error('[SMS Metrics API] Error fetching daily metrics:', error);
-		return json(
-			{ error: 'Failed to fetch daily metrics', message: error.message },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to fetch daily metrics');
 	}
 };

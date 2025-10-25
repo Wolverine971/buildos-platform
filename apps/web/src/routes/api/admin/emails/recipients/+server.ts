@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/admin/emails/recipients/+server.ts
 
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -65,10 +65,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				})) || [];
 		}
 
-		return json({ recipients });
+		return ApiResponse.success({ recipients });
 	} catch (error) {
 		console.error('Error fetching recipients:', error);
-		return json({ error: 'Failed to fetch recipients' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch recipients');
 	}
 };
 
@@ -76,14 +76,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const { email_id, recipients } = await request.json();
 
 		if (!email_id || !recipients || !Array.isArray(recipients)) {
-			return json({ error: 'Email ID and recipients array required' }, { status: 400 });
+			return ApiResponse.badRequest('Email ID and recipients array required');
 		}
 
 		// Validate email exists
@@ -95,7 +95,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		if (emailError) {
 			if (emailError.code === 'PGRST116') {
-				return json({ error: 'Email not found' }, { status: 404 });
+				return ApiResponse.notFound('Email');
 			}
 			throw emailError;
 		}
@@ -119,9 +119,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		if (insertError) throw insertError;
 
-		return json({ success: true, recipients: newRecipients });
+		return ApiResponse.success({ recipients: newRecipients });
 	} catch (error) {
 		console.error('Error updating recipients:', error);
-		return json({ error: 'Failed to update recipients' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update recipients');
 	}
 };

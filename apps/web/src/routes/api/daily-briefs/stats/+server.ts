@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/stats/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -71,7 +71,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			}
 		}
 
-		return json({
+		return ApiResponse.success({
 			total_briefs: totalBriefs.count || 0,
 			briefs_this_week: weeklyBriefs.count || 0,
 			briefs_this_month: monthlyBriefs.count || 0,
@@ -81,6 +81,6 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		});
 	} catch (error) {
 		console.error('Error fetching brief stats:', error);
-		return json({ error: 'Failed to fetch brief statistics' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch brief statistics');
 	}
 };

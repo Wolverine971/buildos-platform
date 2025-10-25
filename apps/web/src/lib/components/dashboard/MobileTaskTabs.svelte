@@ -113,10 +113,23 @@
 				// CRITICAL FIX: Compare dates only, not times!
 				// task.start_date is just a date (e.g., "2025-10-25"), becomes midnight UTC
 				// Comparing with time block (e.g., "09:00") fails because midnight < 09:00
-				const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-				const blockStartDate = new Date(blockStart.getFullYear(), blockStart.getMonth(), blockStart.getDate());
-				const blockEndDate = new Date(blockEnd.getFullYear(), blockEnd.getMonth(), blockEnd.getDate());
-				const isWithinDateRange = taskDateOnly >= blockStartDate && taskDateOnly <= blockEndDate;
+				const taskDateOnly = new Date(
+					taskDate.getFullYear(),
+					taskDate.getMonth(),
+					taskDate.getDate()
+				);
+				const blockStartDate = new Date(
+					blockStart.getFullYear(),
+					blockStart.getMonth(),
+					blockStart.getDate()
+				);
+				const blockEndDate = new Date(
+					blockEnd.getFullYear(),
+					blockEnd.getMonth(),
+					blockEnd.getDate()
+				);
+				const isWithinDateRange =
+					taskDateOnly >= blockStartDate && taskDateOnly <= blockEndDate;
 				const isWithinTimeRange = isWithinDateRange; // Use date range instead of time range
 				const isMatchingProject =
 					block.block_type === 'build' || task.project_id === block.project_id;
@@ -244,7 +257,9 @@
 				{#if activeTab > 0 && groupedContent.timeBlockGroups.length > 0}
 					<div class="space-y-3">
 						{#each groupedContent.timeBlockGroups as { block, tasks: blockTasks }}
-							<div class="bg-gradient-to-br from-blue-50/50 via-white to-white dark:from-blue-900/10 dark:via-gray-900/60 dark:to-gray-900/70 rounded-xl border border-blue-200/50 dark:border-blue-800/50 overflow-hidden">
+							<div
+								class="bg-gradient-to-br from-blue-50/50 via-white to-white dark:from-blue-900/10 dark:via-gray-900/60 dark:to-gray-900/70 rounded-xl border border-blue-200/50 dark:border-blue-800/50 overflow-hidden"
+							>
 								<!-- Time Block Header -->
 								<Button
 									onclick={() => handleTimeBlockClickInternal(block)}
@@ -253,13 +268,21 @@
 									size="sm"
 								>
 									<div class="flex items-center gap-2 min-w-0 flex-1">
-										<div class="h-2.5 w-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+										<div
+											class="h-2.5 w-2.5 rounded-full bg-blue-500 flex-shrink-0"
+										/>
 										<div class="min-w-0">
-											<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-												{block.block_type === 'build' ? 'Build session' : block.project?.name || 'Focus session'}
+											<p
+												class="text-sm font-semibold text-gray-900 dark:text-white truncate"
+											>
+												{block.block_type === 'build'
+													? 'Build session'
+													: block.project?.name || 'Focus session'}
 											</p>
 											<p class="text-xs text-gray-600 dark:text-gray-400">
-												{formatTimeBlockTime(block.start_time)} - {formatTimeBlockTime(block.end_time)}
+												{formatTimeBlockTime(block.start_time)} - {formatTimeBlockTime(
+													block.end_time
+												)}
 											</p>
 										</div>
 									</div>
@@ -267,7 +290,9 @@
 
 								<!-- Tasks under this time block -->
 								{#if blockTasks.length > 0}
-									<div class="space-y-2 px-3 py-2 border-t border-blue-200/50 dark:border-blue-800/50">
+									<div
+										class="space-y-2 px-3 py-2 border-t border-blue-200/50 dark:border-blue-800/50"
+									>
 										{#each blockTasks as task}
 											{@const displayInfo = getTaskDisplayInfo(task)}
 											<Button
@@ -279,13 +304,19 @@
 												variant="ghost"
 												size="sm"
 											>
-												<div class="flex items-start justify-between gap-2 w-full">
+												<div
+													class="flex items-start justify-between gap-2 w-full"
+												>
 													<div class="flex-1 min-w-0">
-														<h5 class="font-semibold text-gray-900 dark:text-white break-words">
+														<h5
+															class="font-semibold text-gray-900 dark:text-white break-words"
+														>
 															{task.title}
 														</h5>
 														{#if task.description}
-															<p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
+															<p
+																class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1"
+															>
 																{task.description}
 															</p>
 														{/if}
@@ -311,7 +342,9 @@
 				{#if groupedContent.ungroupedTasks.length > 0}
 					<div class="space-y-3">
 						{#if activeTab > 0 && groupedContent.timeBlockGroups.length > 0}
-							<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-4 pt-2">
+							<h4
+								class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-4 pt-2"
+							>
 								Loose tasks
 							</h4>
 						{/if}
@@ -367,7 +400,9 @@
 
 											<!-- Project -->
 											{#if task.projects?.name}
-												<span class="text-xs text-gray-500 dark:text-gray-400">
+												<span
+													class="text-xs text-gray-500 dark:text-gray-400"
+												>
 													• {task.projects.name}
 												</span>
 											{/if}
@@ -375,7 +410,8 @@
 											<!-- Priority (text only on mobile) -->
 											{#if task.priority}
 												<span
-													class="text-xs font-medium {task.priority === 'high'
+													class="text-xs font-medium {task.priority ===
+													'high'
 														? 'text-red-600 dark:text-red-400'
 														: task.priority === 'medium'
 															? 'text-orange-600 dark:text-orange-400'
