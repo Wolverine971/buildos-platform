@@ -230,9 +230,9 @@
 					<a href="/" class="flex items-center" on:click={() => handleMenuItemClick('/')}>
 						<!-- Logo - switches based on theme -->
 						{#if isDark}
-							<img src="\blogs\BuildOS-White (123 x 40 px).png" alt="BuildOS" />
+							<img src="\blogs\BuildOS-White (246 x 80 px).png" alt="BuildOS" style="width: 80%;"/>
 						{:else}
-							<img src="\blogs\BuildOS (123 x 40 px).png" alt="BuildOS" />
+							<img src="\blogs\BuildOS-Black (246 x 80 px).png" alt="BuildOS" style="width: 80%;"/>
 						{/if}
 					</a>
 				</div>
