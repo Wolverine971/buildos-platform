@@ -293,6 +293,34 @@
 		return format(new Date(dateString), 'h:mm a');
 	}
 
+	function formatTaskTimeRange(task: any): string | null {
+		const event = task?.task_calendar_events?.[0];
+		const startSource = event?.event_start || task?.start_date;
+		if (!startSource) return null;
+
+		const start = new Date(startSource);
+		if (Number.isNaN(start.getTime())) return null;
+
+		let end: Date | null = null;
+		const endSource = event?.event_end;
+		if (endSource) {
+			const parsedEnd = new Date(endSource);
+			if (!Number.isNaN(parsedEnd.getTime())) {
+				end = parsedEnd;
+			}
+		}
+
+		if (!end && typeof task?.duration_minutes === 'number' && task.duration_minutes > 0) {
+			end = new Date(start.getTime() + task.duration_minutes * 60_000);
+		}
+
+		const startLabel = format(start, 'h:mm a');
+		if (end) {
+			return `${startLabel} - ${format(end, 'h:mm a')}`;
+		}
+		return startLabel;
+	}
+
 	function getTaskDisplayInfo(task: any) {
 		const category = categorizeTaskByDate(task.start_date);
 		const isOverdue = isTaskOverdue(task.start_date);
@@ -303,6 +331,7 @@
 			isOverdue,
 			daysOverdue,
 			formattedDate: formatTaskDateForDisplay(task.start_date),
+			timeRange: formatTaskTimeRange(task),
 			dateColor: isOverdue
 				? 'text-red-600 dark:text-red-400'
 				: 'text-gray-600 dark:text-gray-400'
@@ -367,43 +396,14 @@
 					</p>
 				</div>
 			</div>
-
-			<div class="flex flex-wrap items-center justify-end gap-2">
-				<span
-					class="inline-flex items-center gap-1 rounded-full border border-gray-200/70 bg-gray-50/90 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-gray-700/60 dark:bg-gray-800/70 dark:text-gray-300"
-				>
-					<span class="text-sm font-semibold text-gray-900 dark:text-white">
-						{totalItems}
-					</span>
-					<span
-						class="uppercase tracking-wide text-[10px] text-gray-500 dark:text-gray-400"
-					>
-						items
-					</span>
-				</span>
-
-				{#if calendarStatus !== undefined && calendarStatus !== null}
-					<span
-						class={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-							calendarIsConnected
-								? 'border border-emerald-200/60 bg-emerald-50/80 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300'
-								: 'border border-amber-200/60 bg-amber-50/80 text-amber-700 dark:border-amber-800/50 dark:bg-amber-900/25 dark:text-amber-300'
-						}`}
-					>
-						{#if calendarIsConnected}
-							<CalendarCheck class="h-3.5 w-3.5" />
-							<span>Calendar linked</span>
-						{:else}
-							<AlertTriangle class="h-3.5 w-3.5" />
-							<span>Calendar offline</span>
-						{/if}
-					</span>
-				{/if}
-			</div>
 		</div>
 
 		{#if showTimeBlocks}
 			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<span class={metricChipClass}>
+					<span class="font-semibold">{totalItems}</span>
+					<span>items</span>
+				</span>
 				<span
 					class={`${metricChipClass} border-purple-200/60 bg-purple-50/70 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/25 dark:text-purple-300`}
 				>
@@ -414,13 +414,14 @@
 					class={`${metricChipClass} border-emerald-200/60 bg-emerald-50/70 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/25 dark:text-emerald-300`}
 				>
 					<span class="font-semibold">{scheduledTaskCount}</span>
-					<span>planned</span>
+					<span>scheduled tasks</span>
 				</span>
 				<span
 					class={`${metricChipClass} border-slate-200/60 bg-slate-50/80 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/30 dark:text-slate-300`}
 				>
 					<span class="font-semibold">{ungroupedTaskCount}</span>
-					<span>{title.includes('Past Due') ? 'overdue' : 'loose'}</span>
+					<span>{title.includes('Past Due') ? 'overdue tasks' : 'unscheduled tasks'}</span
+					>
 				</span>
 			</div>
 		{:else}
@@ -429,7 +430,7 @@
 					class={`${metricChipClass} border-red-200/60 bg-red-50/70 text-red-700 dark:border-red-800/50 dark:bg-red-900/25 dark:text-red-300`}
 				>
 					<span class="font-semibold">{totalItems}</span>
-					<span>overdue</span>
+					<span>overdue tasks</span>
 				</span>
 			</div>
 		{/if}
@@ -543,6 +544,8 @@
 																		class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
 																			task.priority
 																		)}`}
+																		aria-label={`Priority: ${task.priority}`}
+																		title={`Priority level: ${task.priority}`}
 																	>
 																		{task.priority}
 																	</span>
@@ -557,6 +560,18 @@
 														<div
 															class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
 														>
+															{#if displayInfo.timeRange}
+																<span
+																	class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+																>
+																	<Clock
+																		class="h-3 w-3 opacity-60"
+																	/>
+																	<span class="font-medium"
+																		>{displayInfo.timeRange}</span
+																	>
+																</span>
+															{/if}
 															<span
 																class={`flex items-center gap-1 ${displayInfo.dateColor}`}
 															>
@@ -627,7 +642,7 @@
 											<h4
 												class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
 											>
-												Loose tasks
+												Unscheduled tasks
 											</h4>
 											<span
 												class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
@@ -665,6 +680,8 @@
 																	class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
 																		task.priority
 																	)}`}
+																	aria-label={`Priority: ${task.priority}`}
+																	title={`Priority level: ${task.priority}`}
 																>
 																	{task.priority}
 																</span>
@@ -679,6 +696,16 @@
 													<div
 														class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
 													>
+														{#if displayInfo.timeRange}
+															<span
+																class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+															>
+																<Clock class="h-3 w-3 opacity-60" />
+																<span class="font-medium"
+																	>{displayInfo.timeRange}</span
+																>
+															</span>
+														{/if}
 														<span
 															class={`flex items-center gap-1 ${displayInfo.dateColor}`}
 														>
@@ -800,6 +827,8 @@
 												class={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${getPriorityBadge(
 													task.priority
 												)}`}
+												aria-label={`Priority: ${task.priority}`}
+												title={`Priority level: ${task.priority}`}
 											>
 												{task.priority}
 											</span>
@@ -814,6 +843,14 @@
 								<div
 									class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
 								>
+									{#if displayInfo.timeRange}
+										<span
+											class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+										>
+											<Clock class="h-3 w-3 opacity-60" />
+											<span class="font-medium">{displayInfo.timeRange}</span>
+										</span>
+									{/if}
 									<span
 										class={`flex items-center gap-1 ${displayInfo.dateColor}`}
 									>
@@ -868,9 +905,14 @@
 			{:else}
 				<div class="flex h-full flex-col items-center justify-center gap-3 text-center">
 					<EmptyIcon class="h-12 w-12 text-gray-300 dark:text-gray-600" />
-					<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-						{emptyMessage}
-					</p>
+					<div class="space-y-1">
+						<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							{emptyMessage}
+						</p>
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							Add tasks to organize your work
+						</p>
+					</div>
 				</div>
 			{/if}
 		</div>

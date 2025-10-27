@@ -37,10 +37,15 @@
 	// Remove debug logging that causes unnecessary re-runs
 
 	// Track collapsed state for each phase - use array for reactivity in Svelte 5
+	// Initialize with completed phases collapsed by default
 	let collapsedPhaseIds = $state<string[]>([]);
 	let previousPhaseIds = $state<string[]>([]);
 	// Track which phases have been manually expanded by the user
 	let manuallyExpandedPhaseIds = $state<string[]>([]);
+	// Track which phases we've already auto-collapsed to prevent re-collapsing
+	let autoCollapsedPhaseIds = $state<string[]>([]);
+	// Track if we've initialized collapsed state for the first time
+	let initializedCollapsedState = $state(false);
 
 	// Calculate backlog tasks (tasks not in any phase) using Svelte 5 runes
 	let currentBacklogTasks = $derived.by(() => {
@@ -76,6 +81,16 @@
 	let overallProgress = $derived(
 		totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 	);
+
+	// Helper functions for phase status
+	function getPhaseProgress(phase: any): number {
+		if (phase.task_count === 0) return 100;
+		return Math.round((phase.completed_tasks / phase.task_count) * 100);
+	}
+
+	function isPhaseComplete(phase: any): boolean {
+		return getPhaseProgress(phase) === 100;
+	}
 
 	// Collapse/expand functionality
 	function togglePhaseCollapse(phaseId: string) {
@@ -128,6 +143,23 @@
 		});
 	}
 
+	// Initialize collapsed state on first load to collapse completed phases by default
+	$effect(() => {
+		// Only run once when phases first load
+		if (!initializedCollapsedState && phases.length > 0) {
+			const completedPhaseIds = phases
+				.filter((phase) => isPhaseComplete(phase))
+				.map((phase) => phase.id);
+
+			if (completedPhaseIds.length > 0) {
+				collapsedPhaseIds = completedPhaseIds;
+				autoCollapsedPhaseIds = completedPhaseIds;
+			}
+
+			initializedCollapsedState = true;
+		}
+	});
+
 	// Consolidated effect to handle all collapse state updates and prevent loops
 	$effect(() => {
 		const currentPhaseIds = phases.map((p) => p.id);
@@ -147,7 +179,10 @@
 			// Clear all state on regeneration
 			collapsedPhaseIds = [];
 			manuallyExpandedPhaseIds = [];
+			autoCollapsedPhaseIds = [];
 			previousPhaseIds = currentPhaseIds;
+			// Reset initialization flag so completed phases get collapsed again
+			initializedCollapsedState = false;
 			return; // Exit early to prevent further processing
 		}
 
@@ -161,6 +196,7 @@
 
 		// Process auto-collapse/expand logic
 		let newCollapsed = [...currentCollapsed];
+		let newAutoCollapsed = [...(untrack(() => autoCollapsedPhaseIds) || [])];
 		let hasChanges = false;
 
 		phases.forEach((phase) => {
@@ -177,8 +213,22 @@
 					newCollapsed.push(phase.id);
 					hasChanges = true;
 				}
-			} else if (hasMatchingTasks && isCurrentlyCollapsed) {
+			} else if (
+				hasMatchingTasks &&
+				isCurrentlyCollapsed &&
+				!newAutoCollapsed.includes(phase.id)
+			) {
+				// Only auto-expand if it wasn't auto-collapsed due to completion
 				newCollapsed = newCollapsed.filter((id) => id !== phase.id);
+				hasChanges = true;
+			}
+
+			// Auto-collapse completed phases
+			if (isPhaseComplete(phase) && !newAutoCollapsed.includes(phase.id)) {
+				if (!newCollapsed.includes(phase.id)) {
+					newCollapsed.push(phase.id);
+				}
+				newAutoCollapsed.push(phase.id);
 				hasChanges = true;
 			}
 		});
@@ -186,6 +236,7 @@
 		// Only update if there were actual changes
 		if (hasChanges) {
 			collapsedPhaseIds = newCollapsed;
+			autoCollapsedPhaseIds = newAutoCollapsed;
 		}
 	});
 
@@ -193,6 +244,7 @@
 	onDestroy(() => {
 		collapsedPhaseIds = [];
 		manuallyExpandedPhaseIds = [];
+		autoCollapsedPhaseIds = [];
 	});
 </script>
 

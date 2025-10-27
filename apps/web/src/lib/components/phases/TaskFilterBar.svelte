@@ -121,11 +121,11 @@
 				count: size === 'sm' ? 'bg-white/20 text-current' : 'bg-white/20 '
 			};
 		} else {
-			// Inactive state - use custom colors
+			// Inactive state - use custom colors with improved contrast
 			return {
 				icon: color,
 				text: 'text-gray-700 dark:text-gray-300',
-				count: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+				count: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
 			};
 		}
 	}
@@ -138,7 +138,7 @@
 			variant={getAllButtonVariant()}
 			size="sm"
 			class="rounded-full transition-all duration-200 transform hover:scale-105 {size === 'sm'
-				? 'px-2 py-1.5 min-h-[32px] min-w-[32px] text-xs'
+				? 'px-2 py-1.5 min-h-[44px] min-w-[44px] text-xs'
 				: 'px-3 py-2'}"
 			aria-pressed={allFiltersActive}
 		>
@@ -160,7 +160,7 @@
 			size="sm"
 			class="rounded-full group transition-all duration-200 transform hover:scale-105 {size ===
 			'sm'
-				? 'px-2 py-1.5 min-h-[32px] min-w-[32px] text-xs'
+				? 'px-2 py-1.5 min-h-[44px] min-w-[44px] text-xs'
 				: 'px-3 py-2'}"
 			aria-pressed={isActive}
 			aria-label="{option.label} tasks: {count} {isActive ? 'shown' : 'hidden'}"
@@ -217,11 +217,11 @@
 		outline-offset: 2px;
 	}
 
-	/* Better touch targets on mobile */
+	/* Better touch targets on mobile (WCAG AA 44x44px minimum) */
 	@media (max-width: 640px) {
 		:global(.group) {
-			min-height: 36px;
-			min-width: 36px;
+			min-height: 44px;
+			min-width: 44px;
 		}
 	}
 </style>

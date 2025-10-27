@@ -121,15 +121,45 @@
 </div>
 
 <style>
+	/* CSS custom properties for consistent color management */
+	:global(:root) {
+		--project-tab-border: rgb(229 231 235);
+		--project-tab-border-dark: rgb(55 65 81);
+		--project-tab-active-color: rgb(37 99 235);
+		--project-tab-active-color-dark: rgb(96 165 250);
+		--project-tab-active-border: rgb(59 130 246);
+		--project-tab-active-border-dark: rgb(96 165 250);
+		--project-tab-inactive-color: rgb(107 114 128);
+		--project-tab-inactive-color-dark: rgb(156 163 175);
+		--project-tab-hover-color: rgb(55 65 81);
+		--project-tab-hover-border: rgb(209 213 219);
+		--project-tab-hover-color-dark: rgb(229 231 235);
+		--project-tab-hover-border-dark: rgb(75 85 99);
+		--project-tab-focus-color: rgb(59 130 246);
+		--project-tab-focus-color-dark: rgb(96 165 250);
+		--project-badge-active-bg: rgb(219 234 254);
+		--project-badge-active-color: rgb(29 78 216);
+		--project-badge-active-bg-dark: rgba(30, 64, 175, 0.3);
+		--project-badge-active-color-dark: rgb(147 197 253);
+		--project-badge-inactive-bg: rgb(243 244 246);
+		--project-badge-inactive-color: rgb(107 114 128);
+		--project-badge-inactive-bg-dark: rgb(55 65 81);
+		--project-badge-inactive-color-dark: rgb(156 163 175);
+		--project-badge-hover-bg: rgb(229 231 235);
+		--project-badge-hover-color: rgb(75 85 99);
+		--project-badge-hover-bg-dark: rgb(75 85 99);
+		--project-badge-hover-color-dark: rgb(209 213 219);
+	}
+
 	/* Apple-quality tab container */
 	.tab-container {
-		border-bottom: 1px solid rgb(229 231 235);
+		border-bottom: 1px solid var(--project-tab-border);
 		/* background: white; */
 		/* position: relative; */
 	}
 
 	:global(.dark) .tab-container {
-		border-bottom-color: rgb(55 65 81);
+		border-bottom-color: var(--project-tab-border-dark);
 		/* background: rgb(31 41 55); */
 	}
 
@@ -189,39 +219,39 @@
 
 	/* Active tab - refined Apple aesthetic */
 	.tab-active {
-		border-bottom-color: rgb(59 130 246);
-		color: rgb(37 99 235);
+		border-bottom-color: var(--project-tab-active-border);
+		color: var(--project-tab-active-color);
 		background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.08));
 		font-weight: 600;
 		letter-spacing: -0.01em;
 	}
 
 	:global(.dark) .tab-active {
-		border-bottom-color: rgb(96 165 250);
-		color: rgb(96 165 250);
+		border-bottom-color: var(--project-tab-active-border-dark);
+		color: var(--project-tab-active-color-dark);
 		background: linear-gradient(to bottom, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.12));
 	}
 
 	/* Inactive tab - subtle and refined */
 	.tab-inactive {
 		border-bottom-color: transparent;
-		color: rgb(107 114 128);
+		color: var(--project-tab-inactive-color);
 	}
 
 	:global(.dark) .tab-inactive {
-		color: rgb(156 163 175);
+		color: var(--project-tab-inactive-color-dark);
 	}
 
 	/* Hover state - preview active state */
 	.tab-inactive:hover {
-		color: rgb(55 65 81);
-		border-bottom-color: rgb(209 213 219);
+		color: var(--project-tab-hover-color);
+		border-bottom-color: var(--project-tab-hover-border);
 		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.03));
 	}
 
 	:global(.dark) .tab-inactive:hover {
-		color: rgb(229 231 235);
-		border-bottom-color: rgb(75 85 99);
+		color: var(--project-tab-hover-color-dark);
+		border-bottom-color: var(--project-tab-hover-border-dark);
 		background: linear-gradient(
 			to bottom,
 			rgba(255, 255, 255, 0.03),
@@ -231,13 +261,13 @@
 
 	/* Focus state for keyboard navigation */
 	.tab-button:focus-visible {
-		outline: 2px solid rgb(59 130 246);
+		outline: 2px solid var(--project-tab-focus-color);
 		outline-offset: -2px;
 		border-radius: 0.375rem;
 	}
 
 	:global(.dark) .tab-button:focus-visible {
-		outline-color: rgb(96 165 250);
+		outline-color: var(--project-tab-focus-color-dark);
 	}
 
 	/* Active state on press */
@@ -287,33 +317,33 @@
 	}
 
 	.badge-active {
-		background: rgb(219 234 254);
-		color: rgb(29 78 216);
+		background: var(--project-badge-active-bg);
+		color: var(--project-badge-active-color);
 	}
 
 	:global(.dark) .badge-active {
-		background: rgba(30, 64, 175, 0.3);
-		color: rgb(147 197 253);
+		background: var(--project-badge-active-bg-dark);
+		color: var(--project-badge-active-color-dark);
 	}
 
 	.badge-inactive {
-		background: rgb(243 244 246);
-		color: rgb(107 114 128);
+		background: var(--project-badge-inactive-bg);
+		color: var(--project-badge-inactive-color);
 	}
 
 	:global(.dark) .badge-inactive {
-		background: rgb(55 65 81);
-		color: rgb(156 163 175);
+		background: var(--project-badge-inactive-bg-dark);
+		color: var(--project-badge-inactive-color-dark);
 	}
 
 	.tab-inactive:hover .badge-inactive {
-		background: rgb(229 231 235);
-		color: rgb(75 85 99);
+		background: var(--project-badge-hover-bg);
+		color: var(--project-badge-hover-color);
 	}
 
 	:global(.dark) .tab-inactive:hover .badge-inactive {
-		background: rgb(75 85 99);
-		color: rgb(209 213 219);
+		background: var(--project-badge-hover-bg-dark);
+		color: var(--project-badge-hover-color-dark);
 	}
 
 	/* Reduce motion for accessibility */

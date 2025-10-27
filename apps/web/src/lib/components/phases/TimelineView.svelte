@@ -68,15 +68,18 @@
 	const dispatch = createEventDispatcher();
 
 	// Track collapsed state for each phase - use array for reactivity in Svelte 5
+	// Initialize with completed phases collapsed by default
 	let collapsedPhaseIds = $state<string[]>([]);
 	let previousPhaseIds = $state<string[]>([]);
 	// Track which phases have been manually expanded by the user
 	let manuallyExpandedPhaseIds = $state<string[]>([]);
 	// Track which phases we've already auto-collapsed to prevent re-collapsing
 	let autoCollapsedPhaseIds = $state<string[]>([]);
+	// Track if we've initialized collapsed state for the first time
+	let initializedCollapsedState = $state(false);
 
 	function getPhaseProgress(phase: ProcessedPhase): number {
-		if (phase.task_count === 0) return 0;
+		if (phase.task_count === 0) return 100;
 		return Math.round((phase.completed_tasks / phase.task_count) * 100);
 	}
 
@@ -91,7 +94,9 @@
 	}
 
 	function isPhaseComplete(phase: ProcessedPhase): boolean {
-		return getPhaseProgress(phase) === 100;
+		let res = getPhaseProgress(phase) === 100;
+		console.log(res, phase);
+		return res;
 	}
 
 	function togglePhaseCollapse(phaseId: string) {
@@ -146,6 +151,23 @@
 		storeState.globalTaskFilters || ['active', 'scheduled', 'overdue', 'recurring']
 	);
 
+	// Initialize collapsed state on first load to collapse completed phases by default
+	$effect(() => {
+		// Only run once when phases first load
+		if (!initializedCollapsedState && phases.length > 0) {
+			const completedPhaseIds = phases
+				.filter((phase) => isPhaseComplete(phase))
+				.map((phase) => phase.id);
+
+			if (completedPhaseIds.length > 0) {
+				collapsedPhaseIds = completedPhaseIds;
+				autoCollapsedPhaseIds = completedPhaseIds;
+			}
+
+			initializedCollapsedState = true;
+		}
+	});
+
 	// Consolidated effect to handle all collapse state updates and prevent loops
 	$effect(() => {
 		const currentPhaseIds = phases.map((p) => p.id);
@@ -168,6 +190,8 @@
 			manuallyExpandedPhaseIds = [];
 			autoCollapsedPhaseIds = [];
 			previousPhaseIds = currentPhaseIds;
+			// Reset initialization flag so completed phases get collapsed again
+			initializedCollapsedState = false;
 			return; // Exit early to prevent further processing
 		}
 

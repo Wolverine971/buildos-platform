@@ -59,14 +59,24 @@
 </div>
 
 <style>
+	/* CSS custom properties for consistent color management */
+	:global(:root) {
+		--tab-border-color: rgb(229 231 235);
+		--tab-border-color-dark: rgb(55 65 81);
+		--tab-active-color: rgb(37 99 235);
+		--tab-active-color-dark: rgb(96 165 250);
+		--tab-active-border: rgb(59 130 246);
+		--tab-active-border-dark: rgb(96 165 250);
+	}
+
 	/* Apple-quality tab container */
 	.tab-container {
-		border-bottom: 1px solid rgb(229 231 235);
+		border-bottom: 1px solid var(--tab-border-color);
 		position: relative;
 	}
 
 	:global(.dark) .tab-container {
-		border-bottom-color: rgb(55 65 81);
+		border-bottom-color: var(--tab-border-color-dark);
 	}
 
 	/* Tab navigation with smooth scrolling */
@@ -125,16 +135,16 @@
 
 	/* Active tab - refined Apple aesthetic */
 	.tab-active {
-		border-bottom-color: rgb(59 130 246);
-		color: rgb(37 99 235);
+		border-bottom-color: var(--tab-active-border);
+		color: var(--tab-active-color);
 		background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.08));
 		font-weight: 600;
 		letter-spacing: -0.01em;
 	}
 
 	:global(.dark) .tab-active {
-		border-bottom-color: rgb(96 165 250);
-		color: rgb(96 165 250);
+		border-bottom-color: var(--tab-active-border-dark);
+		color: var(--tab-active-color-dark);
 		background: linear-gradient(to bottom, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.12));
 	}
 

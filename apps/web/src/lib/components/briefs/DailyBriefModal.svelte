@@ -88,7 +88,7 @@
 			}
 
 			const result = await response.json();
-			const data = result.data
+			const data = result.data;
 			// API returns { brief: DailyBrief } when found, { brief: null, message: string } when not found
 			if (data.brief) {
 				fetchedBrief = data.brief;

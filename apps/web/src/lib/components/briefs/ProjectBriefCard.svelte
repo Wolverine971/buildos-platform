@@ -7,7 +7,8 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 
-	export let brief: ProjectDailyBrief;
+	// Using $props() for Svelte 5 runes mode
+	let { brief }: { brief: ProjectDailyBrief } = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -50,9 +51,10 @@
 		return words.length;
 	}
 
-	$: previewText = getPlainTextPreview(brief.brief_content || '');
-	$: projectId = brief.projects?.id;
-	$: wordCount = getWordCount(brief.brief_content || '');
+	// Using $derived for computed values - automatic memoization in Svelte 5
+	let previewText = $derived(getPlainTextPreview(brief.brief_content || ''));
+	let projectId = $derived(brief.projects?.id);
+	let wordCount = $derived(getWordCount(brief.brief_content || ''));
 </script>
 
 <Card

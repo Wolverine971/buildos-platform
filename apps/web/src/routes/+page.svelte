@@ -11,6 +11,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import BuildOSFlow from '$lib/components/dashboard/BuildOSFlow.svelte';
+	import Button from '$components/ui/Button.svelte';
 
 	export let data: PageData;
 
@@ -258,12 +259,8 @@
 						</p>
 
 						<!-- CTA -->
-						<a
-							href="/auth/register"
-							class="inline-block bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all transform hover:scale-105 shadow-lg hover:shadow-xl fade-in touch-target"
-							aria-label="Start building with BuildOS"
-						>
-							Start Brain Dumping →
+						<a href="/auth/register" aria-label="Start building with BuildOS">
+							<Button variant="primary">Start Brain Dumping →</Button>
 						</a>
 
 						<!-- Trust Signal -->
@@ -523,12 +520,8 @@
 					BuildOS is your home base. The one place where your chaos becomes clarity.
 				</p>
 				<div class="space-y-4">
-					<a
-						href="/auth/register"
-						class="inline-block bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-medium transition-all transform hover:scale-105 shadow-lg hover:shadow-xl touch-target"
-						aria-label="Start your free trial with BuildOS"
-					>
-						Find Your Home Base →
+					<a href="/auth/register" aria-label="Start your free trial with BuildOS">
+						<Button variant="primary">Find Your Home Base →</Button>
 					</a>
 					<p class="text-sm text-gray-500 dark:text-gray-400">
 						Join 500+ ADHD minds who finally stick with their system<br />

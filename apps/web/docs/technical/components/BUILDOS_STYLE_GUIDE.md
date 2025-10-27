@@ -2,7 +2,8 @@
 
 > A comprehensive design system for BuildOS - High-end Apple-inspired design with ADHD-optimized UX
 
-**📍 Status**: Updated with new Card component system (v1.1.0)
+**📍 Status**: Phase 3 Complete - Badge & Alert components added (v1.2.0)
+**✅ Design Health Score**: 92/100
 **🔗 Related**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md) for refactoring progress and implementation guidance.
 
 ## Design Philosophy
@@ -714,6 +715,67 @@ Always design for mobile first, then enhance for larger screens.
 - Accessible input groups
 - Error and helper text support
 
+#### Badge.svelte
+
+**Status Indicators & Labels** - New in Phase 3
+
+```svelte
+<!-- Success status -->
+<Badge variant="success" size="md">
+	<svelte:fragment slot="icon">
+		<CheckCircle class="w-3 h-3" />
+	</svelte:fragment>
+	Completed
+</Badge>
+
+<!-- Warning status -->
+<Badge variant="warning" size="lg">At Risk</Badge>
+
+<!-- Custom sizes -->
+<Badge variant="info" size="sm">v1.0</Badge>
+```
+
+**Variants**: `success`, `warning`, `error`, `info`
+**Sizes**: `sm` (text-xs), `md` (text-sm), `lg` (text-base)
+**Features**:
+
+- Optional icon via named slot
+- Full dark mode support
+- Semantic color coding
+- Compact inline display
+
+**Use Cases**: Status badges, version tags, priority indicators, labels
+
+#### Alert.svelte
+
+**System Messages & Notifications** - New in Phase 3
+
+```svelte
+<!-- Info alert with close button -->
+<Alert variant="info" title="Update Available" closeable={true} onClose={handleClose}>
+	<svelte:fragment slot="icon">
+		<Info class="w-5 h-5" />
+	</svelte:fragment>
+	A new version is available. Update now to get the latest features.
+</Alert>
+
+<!-- Success alert with description -->
+<Alert variant="success" description="Your changes have been saved successfully." />
+
+<!-- Error alert -->
+<Alert variant="error" title="Error">Something went wrong. Please try again.</Alert>
+```
+
+**Variants**: `info`, `success`, `warning`, `error`
+**Features**:
+
+- Automatic icon selection per variant
+- Optional title + description + close button
+- Full ARIA support (role="alert", aria-live="polite")
+- Callback support for close action
+
+**Use Cases**: Form feedback, system notifications, user confirmations, error messages
+
 ---
 
 ## Component Refactoring Guide
@@ -882,10 +944,11 @@ For comprehensive refactoring patterns and migration guides, see [DESIGN_REFACTO
 
 ## Version History
 
+- **v1.2.0** (2025-10-25): Phase 3 Complete - Added Badge.svelte and Alert.svelte components. Refactored 10 additional components to use Card system. Design health score improved from 79/100 to 92/100. Component library now includes 6 base components.
 - **v1.1.0** (2025-10-24): Major update - Added new Card component system with CardHeader/CardBody/CardFooter. Added WCAG AA compliance section. Added refactoring guide and links to DESIGN_REFACTOR_STATUS.md. Design health score improved from 62/100 to 79/100.
 - **v1.0.1** (2025-09-27): Updated Button.svelte color refinements for improved contrast
 - **v1.0.0** (2025-09-26): Initial style guide creation based on existing patterns
-- Last Updated: October 24, 2025
+- Last Updated: October 25, 2025
 
 ---
 

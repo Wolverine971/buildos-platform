@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/sms/monitoring/LLMMetricsChart.svelte -->
 <script lang="ts">
-	// apps/web/src/lib/components/sms/monitoring/LLMMetricsChart.svelte
 	/**
 	 * LLM Metrics Chart
 	 *

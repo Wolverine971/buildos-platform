@@ -55,6 +55,7 @@
 	let loadingLink = $state('');
 	let lastLogoutAttempt = $state(0);
 	let previousPath = $state('');
+	let isDark = $state(false);
 
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	const currentPath = $derived($page.url.pathname);
@@ -187,10 +188,28 @@
 	onMount(() => {
 		if (!browser) return;
 
+		// Check if we're in dark mode
+		isDark = document.documentElement.classList.contains('dark');
+
+		// Listen for theme changes
+		const themeObserver = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+					isDark = document.documentElement.classList.contains('dark');
+				}
+			});
+		});
+
+		themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['class']
+		});
+
 		document.addEventListener('keydown', handleKeydown);
 		document.addEventListener('click', handleClickOutside);
 
 		return () => {
+			themeObserver.disconnect();
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
 		};
@@ -209,11 +228,12 @@
 				<!-- Logo -->
 				<div class="flex-shrink-0 flex items-center">
 					<a href="/" class="flex items-center" on:click={() => handleMenuItemClick('/')}>
-						<!-- Logo text - big and bold -->
-						<span
-							class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent"
-							>BuildOS</span
-						>
+						<!-- Logo - switches based on theme -->
+						{#if isDark}
+							<img src="\blogs\BuildOS-White (123 x 40 px).png" alt="BuildOS" />
+						{:else}
+							<img src="\blogs\BuildOS (123 x 40 px).png" alt="BuildOS" />
+						{/if}
 					</a>
 				</div>
 

@@ -272,7 +272,7 @@
 	}
 </script>
 
-<Modal {isOpen} onClose={handleClose} title="" {size} {customClasses}>
+<Modal {isOpen} onClose={handleClose} title="" {size} {customClasses} closeOnBackdrop={true}>
 	<!-- Custom header with gradient and improved styling -->
 	<div slot="header">
 		{#if $$slots.header}

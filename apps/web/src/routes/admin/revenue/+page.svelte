@@ -69,9 +69,9 @@
 
 	// Load revenue data on mount and when filters change
 	$effect(() => {
-		selectedPeriod;  // Track dependency
-		selectedYear;    // Track dependency
-		selectedMonth;   // Track dependency
+		selectedPeriod; // Track dependency
+		selectedYear; // Track dependency
+		selectedMonth; // Track dependency
 		loadRevenueData();
 	});
 

@@ -262,15 +262,19 @@
 	}
 
 	function handleGlobalSelectAll() {
+		// Toggle behavior: if all filters are active, unselect all; otherwise, select all
+		const allFilters: TaskFilter[] = [
+			'active',
+			'scheduled',
+			'deleted',
+			'completed',
+			'overdue',
+			'recurring'
+		];
+		const allActive = allFilters.every((f) => globalTaskFilters.includes(f));
+
 		projectStoreV2.updateStoreState({
-			globalTaskFilters: [
-				'active',
-				'scheduled',
-				'deleted',
-				'completed',
-				'overdue',
-				'recurring'
-			]
+			globalTaskFilters: allActive ? [] : allFilters
 		});
 	}
 

@@ -77,30 +77,38 @@
 	});
 
 	let dailyActiveUsers = $state<Array<{ date: string; active_users: number }>>([]);
-	let briefGenerationStats = $state<Array<{
-		date: string;
-		total_briefs: number;
-		unique_users: number;
-		avg_briefs_per_user: number;
-	}>>([]);
-	let systemMetrics = $state<Array<{
-		metric_name: string;
-		metric_value: number;
-		metric_unit: string;
-		metric_description: string;
-		recorded_at: string;
-	}>>([]);
-	let recentActivity = $state<Array<{
-		activity_type: string;
-		user_email: string;
-		created_at: string;
-		activity_data: any;
-	}>>([]);
-	let templateUsageStats = $state<Array<{
-		template_name: string;
-		usage_count: number;
-		template_type: string;
-	}>>([]);
+	let briefGenerationStats = $state<
+		Array<{
+			date: string;
+			total_briefs: number;
+			unique_users: number;
+			avg_briefs_per_user: number;
+		}>
+	>([]);
+	let systemMetrics = $state<
+		Array<{
+			metric_name: string;
+			metric_value: number;
+			metric_unit: string;
+			metric_description: string;
+			recorded_at: string;
+		}>
+	>([]);
+	let recentActivity = $state<
+		Array<{
+			activity_type: string;
+			user_email: string;
+			created_at: string;
+			activity_data: any;
+		}>
+	>([]);
+	let templateUsageStats = $state<
+		Array<{
+			template_name: string;
+			usage_count: number;
+			template_type: string;
+		}>
+	>([]);
 
 	// Feedback data
 	let feedbackOverview = $state({

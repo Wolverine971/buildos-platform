@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/layout/Footer.svelte -->
 <script lang="ts">
+	import Button from '$components/ui/Button.svelte';
 	import {
 		Brain,
 		Target,
@@ -429,23 +430,11 @@
 							</p>
 							<!-- CTA Buttons -->
 							<div class="flex gap-3 pt-2">
-								<a
-									href="/auth/register"
-									class="inline-flex items-center px-4 py-2 text-sm font-medium text-white
-										bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700
-										hover:to-purple-700 rounded-md transition-all transform hover:scale-105 shadow-md"
-								>
-									<Brain class="w-4 h-4 mr-2" />
-									Start Free
+								<a href="/auth/register">
+									<Button icon={Brain} variant="primary">Start Free</Button>
 								</a>
-								<a
-									href="/beta"
-									class="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600
-										dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100
-										dark:hover:bg-blue-900/30 rounded-md transition-colors"
-								>
-									<Users class="w-4 h-4 mr-2" />
-									Join Beta
+								<a href="/beta">
+									<Button icon={Users} variant="outline">Join Beta</Button>
 								</a>
 							</div>
 						</div>

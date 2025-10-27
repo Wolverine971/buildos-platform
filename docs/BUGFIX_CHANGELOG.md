@@ -17,6 +17,524 @@ Each entry includes:
 
 ---
 
+## 2025-10-27 - Task Filter "All" Button Cannot Unselect All Filters
+
+**Severity**: Low (UI/UX Issue)
+
+### Root Cause
+
+The "All" button in task filters always selected all filters without checking if all filters were already selected, preventing users from unselecting all filters with a single click.
+
+**Technical Details:**
+
+- `handleGlobalSelectAll()` in PhasesSection.svelte:264 always set all filters without toggle logic
+- `selectAllFilters()` in TasksList.svelte:266 had the same issue
+- Both functions needed to check if all filters are already active and toggle accordingly
+
+**Affected Components:**
+
+- `/apps/web/src/lib/components/project/PhasesSection.svelte:264` - Phases section filter handler
+- `/apps/web/src/lib/components/project/TasksList.svelte:266` - Tasks section filter handler
+
+**Impact:**
+
+- Users could not quickly clear all filters with one click
+- Required manual deselection of each filter individually
+- Reduced UI flexibility and user efficiency
+
+### Fix Description
+
+Added toggle behavior to both "All" button handlers to check if all filters are already selected:
+
+**Before:**
+
+```typescript
+function handleGlobalSelectAll() {
+	projectStoreV2.updateStoreState({
+		globalTaskFilters: ['active', 'scheduled', 'deleted', 'completed', 'overdue', 'recurring']
+	});
+}
+```
+
+**After:**
+
+```typescript
+function handleGlobalSelectAll() {
+	// Toggle behavior: if all filters are active, unselect all; otherwise, select all
+	const allFilters: TaskFilter[] = [
+		'active',
+		'scheduled',
+		'deleted',
+		'completed',
+		'overdue',
+		'recurring'
+	];
+	const allActive = allFilters.every((f) => globalTaskFilters.includes(f));
+
+	projectStoreV2.updateStoreState({
+		globalTaskFilters: allActive ? [] : allFilters
+	});
+}
+```
+
+### Files Changed
+
+- `/apps/web/src/lib/components/project/PhasesSection.svelte`
+    - Modified `handleGlobalSelectAll()` function (line 264)
+    - Added toggle logic to check if all filters are already active
+    - Sets filters to empty array if all active, otherwise selects all
+
+- `/apps/web/src/lib/components/project/TasksList.svelte`
+    - Modified `selectAllFilters()` function (line 266)
+    - Added same toggle logic for tasks section
+    - Uses Set for filter management instead of array
+
+### Manual Verification Steps
+
+1. Navigate to `/projects/[id]` (any project detail page)
+2. **Test Phases Section:**
+    - Click "All" button → All filters should be selected
+    - Click "All" button again → All filters should be unselected
+    - Click "All" button again → All filters should be selected again
+3. **Test Tasks Section:**
+    - Scroll to Tasks section
+    - Click "All" button → All filters should be selected
+    - Click "All" button again → All filters should be unselected
+    - Click "All" button again → All filters should be selected again
+4. **Edge Cases:**
+    - Select some filters manually, then click "All" → Should select all
+    - With all selected, deselect one filter, then click "All" → Should select all again
+    - Click "All" twice rapidly → Should toggle on/off correctly
+
+### Related Components
+
+- `/apps/web/src/lib/components/phases/TaskFilterBar.svelte` - Shared filter UI component
+- `/apps/web/src/lib/components/phases/TaskFilterDropdown.svelte` - Mobile filter dropdown
+
+**Last Updated:** 2025-10-27
+
+---
+
+## 2025-10-27 - Completed Phases Not Collapsed by Default
+
+**Severity**: Low (UI/UX Issue)
+
+### Root Cause
+
+When navigating to `/projects/[id]`, completed phases (100% progress) were rendered in an expanded state initially, then collapsed after the reactive `$effect` ran. This created a visual flash as the UI updated after initial render.
+
+**Technical Details:**
+
+- `collapsedPhaseIds` in TimelineView and KanbanView was initialized as an empty array
+- Phases rendered with `isCollapsed={collapsedPhaseIds.includes(phase.id)}`, which evaluated to `false` for all phases initially
+- The reactive `$effect` (lines 150-226 in TimelineView) ran after initial render and auto-collapsed completed phases
+- This caused a visible flash where completed phases appeared expanded, then immediately collapsed
+
+**Affected Components:**
+
+- `/apps/web/src/lib/components/phases/TimelineView.svelte:71` - `collapsedPhaseIds` initialization
+- `/apps/web/src/lib/components/phases/KanbanView.svelte:40` - `collapsedPhaseIds` initialization
+
+**Impact:**
+
+- Visual flash on project page load when completed phases exist
+- Jarring user experience, especially on projects with many completed phases
+- No functional impact - phases eventually collapsed correctly
+
+### Fix Description
+
+Added initialization logic to collapse completed phases **before** initial render, eliminating the visual flash:
+
+**Key Changes:**
+
+1. Added `initializedCollapsedState` flag to track if phases have been initialized
+2. Added initialization `$effect` that runs once when phases first load
+3. Identifies completed phases (100% progress) and adds them to `collapsedPhaseIds` immediately
+4. Reset initialization flag on phase regeneration to re-apply logic
+
+**Before:**
+
+```typescript
+// Empty array - all phases render expanded initially
+let collapsedPhaseIds = $state<string[]>([]);
+
+// Later, after render, effect runs and collapses completed phases
+$effect(() => {
+	// Auto-collapse completed phases (causes visual flash)
+	if (isPhaseComplete(phase) && !currentAutoCollapsed.includes(phase.id)) {
+		// ...collapse logic...
+	}
+});
+```
+
+**After:**
+
+```typescript
+// Initialize with tracking flag
+let collapsedPhaseIds = $state<string[]>([]);
+let initializedCollapsedState = $state(false);
+
+// Initialize collapsed state BEFORE render
+$effect(() => {
+	if (!initializedCollapsedState && phases.length > 0) {
+		const completedPhaseIds = phases
+			.filter((phase) => isPhaseComplete(phase))
+			.map((phase) => phase.id);
+
+		if (completedPhaseIds.length > 0) {
+			collapsedPhaseIds = completedPhaseIds; // Set before render
+			autoCollapsedPhaseIds = completedPhaseIds;
+		}
+
+		initializedCollapsedState = true;
+	}
+});
+
+// Existing effect maintains collapse state reactively
+// Reset initialization flag on phase regeneration
+```
+
+### Files Changed
+
+- `/apps/web/src/lib/components/phases/TimelineView.svelte`
+    - Added `initializedCollapsedState` flag (line 79)
+    - Added initialization effect (lines 152-167)
+    - Reset flag on regeneration (line 192)
+
+- `/apps/web/src/lib/components/phases/KanbanView.svelte`
+    - Added `initializedCollapsedState` flag (line 48)
+    - Added `autoCollapsedPhaseIds` tracking (line 46)
+    - Added `isPhaseComplete()` helper (lines 91-93)
+    - Added initialization effect (lines 146-161)
+    - Reset flag on regeneration (line 185)
+    - Added auto-collapse logic in consolidated effect (lines 226-233)
+    - Updated cleanup logic (line 247)
+
+### Manual Verification Steps
+
+1. Navigate to a project with completed phases (100% progress)
+2. Verify completed phases are collapsed on initial page load (no visual flash)
+3. Click to expand a completed phase - verify it expands
+4. Refresh page - verify manually expanded phase stays collapsed (respects completion status)
+5. Change task filters - verify completed phases remain collapsed
+6. Regenerate phases - verify completed phases collapse again after regeneration
+7. Switch to Kanban view - verify same behavior applies
+8. Test with projects that have:
+    - All completed phases
+    - Mix of completed and incomplete phases
+    - No completed phases
+
+### Related Docs
+
+- Phase Component Documentation: `/apps/web/docs/technical/components/`
+- Svelte 5 Runes: https://svelte.dev/docs/svelte/$effect
+
+### Cross-references
+
+- **Phase Collapse Logic**:
+    - TimelineView: `/apps/web/src/lib/components/phases/TimelineView.svelte:152-167,169-244`
+    - KanbanView: `/apps/web/src/lib/components/phases/KanbanView.svelte:146-161,163-241`
+- **PhaseCard Component**: `/apps/web/src/lib/components/phases/PhaseCard.svelte:52,316`
+- **Phase Progress Calculation**:
+    - TimelineView: `/apps/web/src/lib/components/phases/TimelineView.svelte:81-95`
+    - KanbanView: `/apps/web/src/lib/components/phases/KanbanView.svelte:86-93`
+
+Last updated: 2025-10-27
+
+---
+
+## 2025-10-25 - Svelte 5 Reactive Variable Missing $state() Wrapper
+
+**Severity**: High (Reactivity Broken)
+
+### Root Cause
+
+After comprehensive scan of all 88 Svelte 5 components (using `$props()` syntax), found that `ProjectHistoryModal.svelte` had reactive variables that were mutated but NOT declared with `$state()`. This breaks Svelte 5 reactivity because plain `let` variables are not tracked for changes in Svelte 5.
+
+**Affected Variables** (apps/web/src/lib/components/project/ProjectHistoryModal.svelte):
+
+- Lines 48-53: `versions`, `comparisons`, `currentComparisonIndex`, `loading`, `error`, `expandedBraindump`
+- Line 88: `timeZone`
+
+**Impact:**
+
+- Component state changes wouldn't trigger UI updates
+- Broken reactivity for version comparison navigation
+- UI would appear frozen despite state changing in memory
+
+### Fix Description
+
+Converted all 7 reactive variables to use `$state()` wrapper:
+
+**Before:**
+
+```typescript
+let versions: ProjectVersion[] = [];
+let comparisons: VersionComparison[] = [];
+let currentComparisonIndex = 0;
+let loading = true;
+let error: string | null = null;
+let expandedBraindump = false;
+let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+```
+
+**After:**
+
+```typescript
+let versions = $state<ProjectVersion[]>([]);
+let comparisons = $state<VersionComparison[]>([]);
+let currentComparisonIndex = $state(0);
+let loading = $state(true);
+let error = $state<string | null>(null);
+let expandedBraindump = $state(false);
+let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
+```
+
+### Investigation Process
+
+1. **Comprehensive Scan**: Searched all 88 Svelte 5 components (files using `$props()`)
+2. **Pattern Analysis**: Looked for variables that are:
+    - Declared with plain `let` (not `$state()`, `$derived()`, `$props()`)
+    - Mutated somewhere in the component
+    - Used in templates or derived state
+3. **Verification**: Sampled multiple complex components (Dashboard, BrainDumpModal, TimeBlockModal, NotificationModal) - all correct
+4. **Result**: Only ProjectHistoryModal had issues; all other 87 components were correctly implemented
+
+### Files Changed
+
+- `/apps/web/src/lib/components/project/ProjectHistoryModal.svelte` - Fixed 7 reactive variables
+
+### Verification
+
+Type checking passed with ZERO new errors introduced. All Svelte components compile correctly.
+
+### Related Docs
+
+- Svelte 5 Runes Documentation: https://svelte.dev/docs/svelte/$state
+- BuildOS Style Guide: `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+
+### Cross-references
+
+- **Pattern Found**: `/apps/web/src/lib/components/project/ProjectHistoryModal.svelte:48-53,88`
+- **Svelte 5 Migration**: 88 components scanned, 1 component fixed
+- **Testing**: Manual verification required for version comparison UI
+
+Last updated: 2025-10-25
+
+---
+
+## 2025-10-25 - SSR Fetch Warnings - Phase 1 (Priority 1 Files)
+
+**Severity**: Medium (Build Warnings / Architecture Violation)
+
+### Root Cause
+
+Multiple components across the `/apps/web` codebase were using Svelte 4 reactive statements (`$:`) to trigger fetch calls. These reactive statements execute during both server-side rendering (SSR) and client-side rendering, causing SvelteKit to emit warnings:
+
+```
+Avoid calling `fetch` eagerly during server-side rendering — put your `fetch` calls inside `onMount` or a `load` function instead
+```
+
+The root issue was twofold:
+
+1. **Using old Svelte 4 syntax** (`$:`) instead of Svelte 5 runes (`$effect()`)
+2. **Architecture violation**: The codebase is documented as using Svelte 5 (`CLAUDE.md:3` states "uses Svelte 5 with new runes syntax") but many files still used Svelte 4 patterns
+
+Reactive statements in Svelte 4 run on both server and client. Svelte 5's `$effect()` only runs on the client, which is the correct behavior for side effects like fetch calls.
+
+**Impact:**
+
+- Console warnings during development and production builds
+- Potential SSR failures if fetch calls fail during server rendering
+- Inconsistent behavior between server and client rendering
+- Performance impact from unnecessary server-side fetch attempts
+- Architecture violation - not following Svelte 5 best practices
+
+### Fix Description
+
+Converted 7 Priority 1 files (Analytics & Admin pages) from Svelte 4 to Svelte 5 syntax completely. This was not a simple patch - entire files needed conversion to avoid mixing Svelte 4 and 5 syntax.
+
+**Conversion Rules Applied:**
+
+1. **State Variables**: `let x = value` → `let x = $state(value)`
+2. **Derived Values**: `$: x = computation` → `let x = $derived(computation)`
+3. **Side Effects**: `$: if (dep) { action(); }` → `$effect(() => { action(); })`
+4. **Keep onMount**: Unchanged (still valid in Svelte 5)
+
+**Example Transformation:**
+
+BEFORE (Svelte 4 - Problematic):
+
+```javascript
+let analytics: BriefAnalytics | null = null;
+let isLoading = true;
+let selectedTimeframe: 'week' | 'month' | 'quarter' = 'month';
+
+$: if (selectedTimeframe) {
+    loadAnalytics(); // ❌ Runs during SSR!
+}
+
+$: achievements = analytics ? getAchievements(analytics) : [];
+```
+
+AFTER (Svelte 5 - Fixed):
+
+```javascript
+let analytics = ($state < BriefAnalytics) | (null > null);
+let isLoading = $state(true);
+let selectedTimeframe = ($state < 'week') | 'month' | ('quarter' > 'month');
+
+$effect(() => {
+	loadAnalytics(); // ✅ Only runs on client!
+});
+
+let achievements = $derived(analytics ? getAchievements(analytics) : []);
+```
+
+### Files Changed (Phase 1 - Priority 1)
+
+**Analytics & Admin Pages (7 files):**
+
+- `apps/web/src/lib/components/analytics/BriefAnalyticsDashboard.svelte` - Full Svelte 5 conversion
+- `apps/web/src/routes/admin/+page.svelte` - Full Svelte 5 conversion (1915 lines)
+- `apps/web/src/routes/admin/users/+page.svelte` - Full Svelte 5 conversion
+- `apps/web/src/routes/admin/subscriptions/+page.svelte` - Full Svelte 5 conversion
+- `apps/web/src/routes/admin/revenue/+page.svelte` - Full Svelte 5 conversion
+- `apps/web/src/routes/admin/feedback/+page.svelte` - Full Svelte 5 conversion
+- `apps/web/src/routes/admin/beta/+page.svelte` - Full Svelte 5 conversion
+
+**Changes per file:**
+
+- Converted all state variables to `$state()`
+- Converted all derived values to `$derived()`
+- Converted all reactive side effects to `$effect()`
+- Maintained exact behavior while fixing SSR issues
+
+### Remaining Work
+
+**Phase 2** (14 files remaining): Email & Project Management components
+**Phase 3** (Profile & Settings components)
+
+Total: 21 files identified across the codebase with this pattern, 7 converted in Phase 1.
+
+### Related Docs
+
+- `/CLAUDE.md:3` - Documents Svelte 5 requirement
+- `/apps/web/CLAUDE.md` - Web app development guide
+- `/apps/web/docs/technical/development/svelte5-runes.md` - Svelte 5 runes documentation
+
+### Cross-references
+
+- **Architecture Decision**: Project uses Svelte 5 (see `/CLAUDE.md`)
+- **Pattern Documentation**: See `/apps/web/docs/technical/development/svelte5-runes.md` for complete Svelte 5 patterns
+
+### Manual Verification Steps
+
+After Phase 1 conversion:
+
+1. Run `pnpm dev` - verify no SSR warnings in terminal
+2. Navigate to affected pages (analytics, admin pages)
+3. Test reactive behavior (change filters, timeframes)
+4. Verify `pnpm typecheck` passes
+5. Verify `pnpm build` completes without SSR errors
+
+---
+
+## 2025-10-25 - Double Scrollbar in Multiple Modal Components
+
+**Severity**: Low (UX Issue)
+
+### Root Cause
+
+Multiple modal components had nested `overflow-y-auto` declarations that created double scrollbars. The Modal component's content slot already has `overflow-y-auto flex-1 min-h-0` (Modal.svelte:216), but several child components also declared `overflow-y-auto` in their content divs. This caused both containers to try to handle scrolling independently.
+
+**Impact:**
+
+- Users saw two scrollbars when viewing long content in modals
+- Confusing UX with nested scrolling behavior
+- Made modal content harder to navigate
+- Affected daily briefs, project context viewer, email composer, and project history modals
+
+### Fix Description
+
+Removed redundant overflow handling from content divs in affected modals, allowing the Modal component to handle all scrolling via its content slot mechanism.
+
+**Changes Made:**
+
+1. **DailyBriefModal.svelte:322** - Removed `overflow-y-auto max-h-[60vh]` from content wrapper
+2. **ProjectContextDocModal.svelte:422** - Removed `overflow-y-auto max-h-[65vh] sm:max-h-[70vh]` from content wrapper
+3. **EmailComposerModal.svelte:381** - Removed `overflow-y-auto` from flex-1 content div (kept flex-1 for proper layout)
+4. **ProjectHistoryModal.svelte:356** - Removed `overflow-y-auto` from flex-1 scrollable content area (kept flex-1 for proper layout)
+
+All files kept their padding and flex layout classes for proper spacing and structure. The Modal component's existing overflow handling now controls all scrolling using its flex layout (`flex flex-col`) with content area as `flex-1 min-h-0 overflow-y-auto`.
+
+### Files Changed
+
+- `apps/web/src/lib/components/briefs/DailyBriefModal.svelte:322` - Removed redundant overflow styles
+- `apps/web/src/lib/components/project/ProjectContextDocModal.svelte:422` - Removed redundant overflow styles
+- `apps/web/src/lib/components/admin/EmailComposerModal.svelte:381` - Removed redundant overflow styles
+- `apps/web/src/lib/components/project/ProjectHistoryModal.svelte:356` - Removed redundant overflow styles
+
+### Related Docs
+
+- **Modal Component**: `/apps/web/src/lib/components/ui/Modal.svelte:216` - Content slot with `overflow-y-auto flex-1 min-h-0`
+- **Modal Layout**: Modal uses flex layout with max-height constraints (`max-h-[90vh] sm:max-h-[85vh]`) on the modal container
+
+### Cross-references
+
+- **Design Pattern**: Avoid nested scrollable containers - let parent Modal component handle all scrolling
+- **Future Prevention**: When using Modal component, do not add `overflow-y-auto` to child content containers
+
+---
+
+## 2025-10-25 - Daily Brief Preview Shows Raw Markdown Syntax
+
+**Severity**: Low (Display/UX Issue)
+
+### Root Cause
+
+DailyBriefSection.svelte was using incomplete manual regex `.replace(/[#*]/g, '')` to strip markdown formatting from preview text. This only removed `#` and `*` characters, leaving other markdown syntax visible (bold `**text**`, links `[text](url)`, lists, etc.). The component already imported the `renderMarkdown` utility but wasn't using the proper `getMarkdownPreview` function.
+
+**Impact:**
+
+- Users saw malformed preview text with markdown artifacts like `**bold**`, `[link](url)`
+- Affected both streaming preview and static display preview
+- Made previews harder to read and less professional
+
+### Fix Description
+
+Replaced manual markdown stripping with the existing `getMarkdownPreview` utility function that properly strips all markdown syntax and provides clean plain text previews.
+
+**Changes Made:**
+
+1. Updated import from `renderMarkdown` to `getMarkdownPreview`
+2. Replaced manual stripping in streaming preview (line 299):
+    - Before: `{currentStreamingData.mainBrief.content.replace(/[#*]/g, '').substring(0, 220)}...`
+    - After: `{getMarkdownPreview(currentStreamingData.mainBrief.content, 220)}`
+3. Replaced manual stripping in display preview (line 340):
+    - Before: `{displayDailyBrief.summary_content.replace(/[#*]/g, '').substring(0, 200)}...`
+    - After: `{getMarkdownPreview(displayDailyBrief.summary_content, 200)}`
+
+The `getMarkdownPreview` function handles all markdown syntax comprehensively and adds the ellipsis automatically.
+
+### Files Changed
+
+- `apps/web/src/lib/components/briefs/DailyBriefSection.svelte:14` - Updated import
+- `apps/web/src/lib/components/briefs/DailyBriefSection.svelte:299` - Fixed streaming preview
+- `apps/web/src/lib/components/briefs/DailyBriefSection.svelte:340` - Fixed display preview
+
+### Related Docs
+
+- **Markdown Utilities**: `/apps/web/src/lib/utils/markdown.ts:151-161` - `getMarkdownPreview` implementation
+- **Component Reference**: Similar pattern used in `/apps/web/src/lib/components/dashboard/DailyBriefCard.svelte:42` and `/apps/web/src/lib/components/project/NotesSection.svelte:90`
+
+### Cross-references
+
+- **Full Content Rendering**: `DailyBriefModal.svelte:335` uses `{@html renderMarkdown(displayBrief.summary_content)}` for full expanded view
+- **Data Model**: `displayDailyBrief.summary_content` and `currentStreamingData.mainBrief.content` contain AI-generated markdown
+
+---
+
 ## 2025-10-24 - CRITICAL: Brain Dump Context Extraction Returns Partial Context (Data Loss Bug)
 
 **Severity**: Critical (Data Loss - Living Context Document Failure)

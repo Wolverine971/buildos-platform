@@ -15,7 +15,8 @@
 			.filter((project) => project.name)
 			.slice(0, 8) // Show top 8 projects to fit better
 			.map((project) => ({
-				name: project.name.length > 12 ? project.name.substring(0, 12) + '...' : project.name,
+				name:
+					project.name.length > 12 ? project.name.substring(0, 12) + '...' : project.name,
 				fullName: project.name,
 				tasks: project.task_count || 0,
 				notes: project.notes_count || 0,
@@ -27,10 +28,7 @@
 
 	// Calculate max value for chart scaling - Using $derived
 	let maxValue = $derived(
-		Math.max(
-			...chartData.map((d) => Math.max(d.tasks, d.notes, d.completed_tasks)),
-			1
-		)
+		Math.max(...chartData.map((d) => Math.max(d.tasks, d.notes, d.completed_tasks)), 1)
 	);
 
 	// Calculate bar width based on number of items - Using $derived

@@ -264,14 +264,18 @@
 	}
 
 	function selectAllFilters() {
-		activeFilters = new Set([
+		// Toggle behavior: if all filters are active, unselect all; otherwise, select all
+		const allFilters: TaskFilter[] = [
 			'active',
 			'scheduled',
 			'deleted',
 			'completed',
 			'overdue',
 			'recurring'
-		]);
+		];
+		const allActive = allFilters.every((f) => activeFilters.has(f));
+
+		activeFilters = allActive ? new Set() : new Set(allFilters);
 	}
 
 	// Sort management

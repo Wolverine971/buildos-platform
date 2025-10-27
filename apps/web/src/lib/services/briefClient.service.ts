@@ -762,7 +762,7 @@ export class BriefClientService {
 			if (!response.ok) return false;
 
 			const result = await response.json();
-			const data = result.data
+			const data = result.data;
 			return data.generation_status === 'processing' || data.isGenerating;
 		} catch {
 			return false;

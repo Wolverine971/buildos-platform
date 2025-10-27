@@ -51,15 +51,19 @@
 		'w-full rounded-lg appearance-none cursor-pointer',
 		'border transition-colors duration-200',
 		'focus:outline-none focus:ring-2 focus:ring-offset-2',
-		'disabled:cursor-not-allowed disabled:opacity-50',
+		'disabled:cursor-not-allowed',
 
 		// Size classes
 		sizeClasses[size],
 
-		// State classes
-		error
-			? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-			: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+		// State classes - error takes precedence over normal state
+		disabled && error
+			? 'border-red-300 dark:border-red-500/50 opacity-50'
+			: error
+				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
+				: disabled
+					? 'border-gray-300 dark:border-gray-600 opacity-50'
+					: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
 		// Background
 		'bg-white dark:bg-gray-800',

@@ -33,9 +33,9 @@
 	// Padding styles - optimized for high information density (Apple-style)
 	const paddingClasses = {
 		none: 'p-0',
-		sm: 'p-1',
-		md: 'p-2', // Compact: 8px - provides just enough breathing room for shadow/border
-		lg: 'p-3 sm:p-4' // Comfortable: 12-16px - for special emphasis cards
+		sm: 'p-2', // Compact: 8px - consistent with 8px grid system
+		md: 'p-3 sm:p-4', // Compact: 12px/16px - provides just enough breathing room for shadow/border
+		lg: 'p-4 sm:p-6' // Comfortable: 16-24px - for special emphasis cards
 	};
 
 	$: cardClasses = twMerge(

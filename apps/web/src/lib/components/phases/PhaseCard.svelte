@@ -761,10 +761,10 @@
 					<div class="text-right flex-shrink-0 ml-2">
 						<div
 							class="text-xl sm:text-2xl font-bold {isComplete
-								? 'text-green-600'
+								? 'text-green-600 dark:text-green-400'
 								: status === 'active'
-									? 'text-blue-600'
-									: 'text-gray-600'}"
+									? 'text-blue-600 dark:text-blue-400'
+									: 'text-gray-600 dark:text-gray-400'}"
 						>
 							{progress}%
 						</div>

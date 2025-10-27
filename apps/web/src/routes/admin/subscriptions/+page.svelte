@@ -44,7 +44,7 @@
 	// Load users on mount and when filters change
 	$effect(() => {
 		statusFilter; // Track dependency
-		currentPage;  // Track dependency
+		currentPage; // Track dependency
 		loadUsers();
 	});
 

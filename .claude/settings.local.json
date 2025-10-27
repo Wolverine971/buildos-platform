@@ -10,7 +10,11 @@
 			"Bash(git remote:*)",
 			"Bash(pnpm typecheck:*)",
 			"Bash(pnpm build:*)",
-			"Bash(pnpm run check:*)"
+			"Bash(pnpm run check:*)",
+			"Bash(pnpm run build:*)",
+			"WebSearch",
+			"Bash(timeout 30 tail:*)",
+			"Bash(find:*)"
 		],
 		"deny": [],
 		"ask": []

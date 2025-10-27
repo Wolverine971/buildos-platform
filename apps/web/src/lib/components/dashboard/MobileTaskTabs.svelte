@@ -159,6 +159,34 @@
 		return format(new Date(dateString), 'h:mm a');
 	}
 
+	function formatTaskTimeRange(task: any): string | null {
+		const event = task?.task_calendar_events?.[0];
+		const startSource = event?.event_start || task?.start_date;
+		if (!startSource) return null;
+
+		const start = new Date(startSource);
+		if (Number.isNaN(start.getTime())) return null;
+
+		let end: Date | null = null;
+		const endSource = event?.event_end;
+		if (endSource) {
+			const parsedEnd = new Date(endSource);
+			if (!Number.isNaN(parsedEnd.getTime())) {
+				end = parsedEnd;
+			}
+		}
+
+		if (!end && typeof task?.duration_minutes === 'number' && task.duration_minutes > 0) {
+			end = new Date(start.getTime() + task.duration_minutes * 60_000);
+		}
+
+		const startLabel = format(start, 'h:mm a');
+		if (end) {
+			return `${startLabel} - ${format(end, 'h:mm a')}`;
+		}
+		return startLabel;
+	}
+
 	function getTaskDisplayInfo(task: any) {
 		const category = categorizeTaskByDate(task.start_date);
 		const isOverdue = isTaskOverdue(task.start_date);
@@ -169,6 +197,7 @@
 			isOverdue,
 			daysOverdue,
 			formattedDate: formatTaskDateForDisplay(task.start_date),
+			timeRange: formatTaskTimeRange(task),
 			dateColor: isOverdue
 				? 'text-red-600 dark:text-red-400'
 				: 'text-gray-500 dark:text-gray-400'
@@ -320,6 +349,45 @@
 																{task.description}
 															</p>
 														{/if}
+														<div
+															class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
+														>
+															{#if displayInfo.timeRange}
+																<span
+																	class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+																>
+																	<Clock
+																		class="h-3 w-3 opacity-60"
+																	/>
+																	<span class="font-medium"
+																		>{displayInfo.timeRange}</span
+																	>
+																</span>
+															{/if}
+															<span
+																class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+															>
+																<span class="font-medium"
+																	>{displayInfo.formattedDate}</span
+																>
+																{#if displayInfo.isOverdue}
+																	<span
+																		>&middot; {getOverdueText(
+																			displayInfo.daysOverdue
+																		)}</span
+																	>
+																{/if}
+															</span>
+															{#if task.projects?.name}
+																<span
+																	class="flex items-center gap-1 text-gray-500 dark:text-gray-400"
+																>
+																	<span>&middot;</span>
+																	<span>{task.projects.name}</span
+																	>
+																</span>
+															{/if}
+														</div>
 													</div>
 													<div class="flex-shrink-0">
 														<RecentActivityIndicator
@@ -345,7 +413,7 @@
 							<h4
 								class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-4 pt-2"
 							>
-								Loose tasks
+								Unscheduled tasks
 							</h4>
 						{/if}
 						{#each groupedContent.ungroupedTasks as task}
@@ -385,25 +453,38 @@
 											</p>
 										{/if}
 
-										<div class="flex flex-wrap items-center gap-2 mt-2">
-											<!-- Time/Date -->
-											<span class="text-xs {displayInfo.dateColor}">
-												{displayInfo.formattedDate}
+										<div
+											class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+										>
+											{#if displayInfo.timeRange}
+												<span
+													class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+												>
+													<Clock class="h-3 w-3 opacity-60" />
+													<span class="font-medium"
+														>{displayInfo.timeRange}</span
+													>
+												</span>
+											{/if}
+											<span
+												class={`flex items-center gap-1 ${displayInfo.dateColor}`}
+											>
+												<span class="font-medium"
+													>{displayInfo.formattedDate}</span
+												>
 												{#if displayInfo.isOverdue && displayInfo.daysOverdue > 0}
 													<span
-														class="text-red-600 dark:text-red-400 font-medium"
+														>&middot; {getOverdueText(
+															displayInfo.daysOverdue
+														)}</span
 													>
-														• {getOverdueText(displayInfo.daysOverdue)}
-													</span>
 												{/if}
 											</span>
 
-											<!-- Project -->
 											{#if task.projects?.name}
-												<span
-													class="text-xs text-gray-500 dark:text-gray-400"
-												>
-													• {task.projects.name}
+												<span class="flex items-center gap-1">
+													<span>&middot;</span>
+													<span>{task.projects.name}</span>
 												</span>
 											{/if}
 
