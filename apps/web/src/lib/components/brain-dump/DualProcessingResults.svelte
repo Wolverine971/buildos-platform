@@ -529,12 +529,12 @@
 				</div>
 			</Card>
 		{:else}
-			<Card
-				variant="elevated"
-				padding="lg"
-				class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-md dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
-				transition:fly={{ y: -12, duration: 400, easing: quintOut }}
-			>
+			<div transition:fly={{ y: -12, duration: 400, easing: quintOut }}>
+				<Card
+					variant="elevated"
+					padding="lg"
+					class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-md dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
+				>
 				<div class="absolute inset-0 opacity-50">
 					<div
 						class="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 blur-2xl dark:from-indigo-500/40 dark:to-purple-500/40"
@@ -603,6 +603,7 @@
 					{/if}
 				</div>
 			</Card>
+		</div>
 		{/if}
 	{/if}
 
@@ -610,12 +611,12 @@
 		class={`grid gap-4 md:gap-6 ${showContextPanel ? 'sm:grid-cols-2' : 'grid-cols-1'} ${inModal ? '' : 'min-h-[420px]'}`}
 	>
 		{#if showContextPanel}
-			<Card
-				variant="elevated"
-				padding="none"
-				class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70"
-				transition:fly={{ x: -12, duration: 350, easing: quintOut }}
-			>
+			<div transition:fly={{ x: -12, duration: 350, easing: quintOut }}>
+				<Card
+					variant="elevated"
+					padding="none"
+					class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70"
+				>
 				<CardHeader
 					variant="gradient"
 					class="flex flex-wrap items-center justify-between gap-3 from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
@@ -714,13 +715,14 @@
 					{/if}
 				</CardBody>
 			</Card>
+		</div>
 		{/if}
-		<Card
-			variant="elevated"
-			padding="none"
-			class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
-			transition:fly={{ x: showContextPanel ? 12 : 0, duration: 350, easing: quintOut }}
-		>
+		<div transition:fly={{ x: showContextPanel ? 12 : 0, duration: 350, easing: quintOut }}>
+			<Card
+				variant="elevated"
+				padding="none"
+				class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
+			>
 			<CardHeader
 				variant="gradient"
 				class="flex flex-wrap items-center justify-between gap-3 from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
@@ -799,6 +801,7 @@
 				{/if}
 			</CardBody>
 		</Card>
+	</div>
 	</div>
 </div>
 

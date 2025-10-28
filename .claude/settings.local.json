@@ -1,24 +1,26 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash(pnpm outdated:*)",
-			"Bash(git config:*)",
-			"Bash(pnpm audit:*)",
-			"Bash(pnpm add:*)",
-			"WebFetch(domain:kit.svelte.dev)",
-			"Bash(git rev-parse:*)",
-			"Bash(git remote:*)",
-			"Bash(pnpm typecheck:*)",
-			"Bash(pnpm build:*)",
-			"Bash(pnpm run check:*)",
-			"Bash(pnpm run build:*)",
-			"WebSearch",
-			"Bash(timeout 30 tail:*)",
-			"Bash(find:*)",
-			"Bash(tree:*)",
-			"Bash(pnpm check:*)"
-		],
-		"deny": [],
-		"ask": []
-	}
+  "permissions": {
+    "allow": [
+      "Bash(pnpm outdated:*)",
+      "Bash(git config:*)",
+      "Bash(pnpm audit:*)",
+      "Bash(pnpm add:*)",
+      "WebFetch(domain:kit.svelte.dev)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm run check:*)",
+      "Bash(pnpm run build:*)",
+      "WebSearch",
+      "Bash(timeout 30 tail:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(pnpm check:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
 }
