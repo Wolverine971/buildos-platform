@@ -9,6 +9,10 @@
 		FileText,
 		Sparkles
 	} from 'lucide-svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import type {
 		ProjectContextResult,
 		TaskNoteExtractionResult,
@@ -17,8 +21,8 @@
 	import type { StreamingMessage } from '$lib/types/sse-messages';
 	import ProjectContextPreview from './ProjectContextPreview.svelte';
 	import TasksNotesPreview from './TasksNotesPreview.svelte';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { quintOut, backOut } from 'svelte/easing';
+	import { fade, fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 	import { tweened } from 'svelte/motion';
 
 	interface Props {
@@ -66,6 +70,117 @@
 		'Optimizing processing...'
 	];
 
+	type SharedStatus = 'pending' | 'processing' | 'completed' | 'failed';
+	type ProcessStatus = SharedStatus | 'not_needed';
+	type BadgeVariant = 'success' | 'warning' | 'error' | 'info';
+
+	const STATUS_META: Record<
+		ProcessStatus,
+		{ label: string; description: string; badge: BadgeVariant }
+	> = {
+		pending: {
+			label: 'Queued',
+			description: 'Waiting to start',
+			badge: 'info'
+		},
+		processing: {
+			label: 'Processing',
+			description: 'Running now',
+			badge: 'info'
+		},
+		completed: {
+			label: 'Ready',
+			description: 'Latest insights available',
+			badge: 'success'
+		},
+		failed: {
+			label: 'Needs attention',
+			description: 'We hit an issue',
+			badge: 'error'
+		},
+		not_needed: {
+			label: 'Skipped',
+			description: 'Not required for this braindump',
+			badge: 'warning'
+		}
+	};
+
+	const STATUS_TONE: Record<ProcessStatus, string> = {
+		pending: 'text-blue-600 dark:text-blue-300',
+		processing: 'text-blue-600 dark:text-blue-300',
+		completed: 'text-emerald-600 dark:text-emerald-300',
+		failed: 'text-rose-600 dark:text-rose-300',
+		not_needed: 'text-slate-600 dark:text-slate-300'
+	};
+
+	const PROGRESS_GRADIENTS = {
+		analysis: 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500',
+		context: 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500',
+		tasks: 'bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500'
+	} as const;
+
+	const classificationThemes: Record<string, { label: string; classes: string }> = {
+		strategic: {
+			label: 'Strategic',
+			classes:
+				'bg-gradient-to-r from-blue-100/80 to-indigo-100/80 text-blue-700 dark:from-blue-900/40 dark:to-indigo-900/40 dark:text-blue-200'
+		},
+		tactical: {
+			label: 'Tactical',
+			classes:
+				'bg-gradient-to-r from-purple-100/80 to-pink-100/80 text-purple-700 dark:from-purple-900/40 dark:to-pink-900/40 dark:text-purple-200'
+		},
+		mixed: {
+			label: 'Mixed',
+			classes:
+				'bg-gradient-to-r from-cyan-100/80 to-blue-100/80 text-cyan-700 dark:from-cyan-900/40 dark:to-blue-900/40 dark:text-cyan-200'
+		},
+		status_update: {
+			label: 'Status Update',
+			classes:
+				'bg-gradient-to-r from-emerald-100/80 to-lime-100/80 text-emerald-700 dark:from-emerald-900/40 dark:to-lime-900/40 dark:text-emerald-200'
+		},
+		unrelated: {
+			label: 'Unrelated',
+			classes: 'bg-slate-100/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200'
+		}
+	};
+
+	function formatLabel(value: string) {
+		return value
+			.split('_')
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
+	function getStatusMeta(status: ProcessStatus) {
+		return STATUS_META[status] ?? STATUS_META.pending;
+	}
+
+	function getStatusTone(status: ProcessStatus) {
+		return STATUS_TONE[status] ?? STATUS_TONE.pending;
+	}
+
+	function getClassificationTheme(classification?: string | null) {
+		if (!classification) {
+			return {
+				label: 'Uncategorized',
+				classes: 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'
+			};
+		}
+
+		const theme = classificationThemes[classification];
+		if (theme) {
+			return theme;
+		}
+
+		return {
+			label: formatLabel(classification),
+			classes:
+				'bg-gradient-to-r from-slate-100/80 to-slate-200/80 text-slate-700 dark:from-slate-800/40 dark:to-slate-700/40 dark:text-slate-200'
+		};
+	}
+
 	// Animate through phases while processing
 	$effect(() => {
 		if (analysisStatus === 'processing') {
@@ -82,6 +197,9 @@
 
 	// Track if analysis is prominent (processing or just completed)
 	let isAnalysisProminent = $derived(analysisStatus === 'processing');
+	let analysisClassificationTheme = $derived(
+		getClassificationTheme(analysisResult?.braindump_classification ?? null)
+	);
 
 	// Update progress based on status
 	$effect(() => {
@@ -106,25 +224,6 @@
 		else if (tasksStatus === 'failed') tasksProgress.set(0);
 		else tasksProgress.set(0);
 	});
-
-	// Processing steps
-	const getProcessingStep = (
-		status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_needed'
-	) => {
-		switch (status) {
-			case 'pending':
-				return { text: 'Waiting to start', icon: '⏳' };
-			case 'processing':
-				return { text: 'Processing', icon: '⚡' };
-			case 'completed':
-				return { text: 'Complete', icon: '✨' };
-			case 'failed':
-				return { text: 'Failed', icon: '⚠️' };
-			case 'not_needed':
-				return { text: 'Not needed', icon: '✅' };
-		}
-	};
-
 	// Update status based on incoming SSE messages
 	export function handleStreamUpdate(status: StreamingMessage) {
 		switch (status.type) {
@@ -269,968 +368,527 @@
 	}
 </script>
 
-<svg width="0" height="0" style="position: absolute; pointer-events: none;">
+<svg width="0" height="0" class="pointer-events-none absolute">
 	<defs>
 		<linearGradient id="analysisGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-			<stop offset="0%" style="stop-color: rgb(245 158 11); stop-opacity: 1" />
-			<stop offset="100%" style="stop-color: rgb(251 146 60); stop-opacity: 1" />
+			<stop offset="0%" style="stop-color: rgb(37 99 235); stop-opacity: 1" />
+			<stop offset="100%" style="stop-color: rgb(147 51 234); stop-opacity: 1" />
 		</linearGradient>
 	</defs>
 </svg>
 
-<div class="w-full {inModal ? '' : 'max-w-7xl mx-auto'}">
-	<!-- Analysis Panel (shown for existing projects) -->
+<div class={`w-full space-y-6 ${inModal ? '' : 'max-w-7xl mx-auto'}`}>
 	{#if showAnalysisPanel && analysisStatus !== 'not_needed'}
-		<!-- Prominent Analysis View when Processing -->
 		{#if isAnalysisProminent}
-			<div
-				class="analysis-prominent-container"
-				transition:fly={{ y: -20, duration: 500, easing: quintOut }}
+			<Card
+				variant="elevated"
+				padding="lg"
+				class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-xl dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
 			>
-				<div class="analysis-prominent-card">
-					<!-- Animated Background Glow -->
-					<div class="analysis-glow-bg"></div>
-
-					<!-- Content -->
-					<div class="analysis-content-wrapper">
-						<!-- Icon -->
-						<div class="analysis-icon-container">
-							<div class="analysis-icon-ring">
-								<Sparkles class="w-8 h-8" />
-							</div>
-						</div>
-
-						<!-- Main Title -->
-						<div class="analysis-main-content">
-							<h2 class="analysis-main-title">Analyzing Your Braindump</h2>
-
-							<!-- Animated Phase Message -->
-							<p class="analysis-phase-message">{analysisPhaseMessage}</p>
-
-							<!-- Circular Progress Indicator -->
-							<div class="analysis-progress-container">
-								<div class="analysis-progress-circle">
-									<svg class="progress-ring" viewBox="0 0 44 44">
-										<circle
-											class="progress-ring-bg"
-											cx="22"
-											cy="22"
-											r="20"
-											fill="none"
-											stroke-width="2"
-										/>
-										<circle
-											class="progress-ring-fill"
-											cx="22"
-											cy="22"
-											r="20"
-											fill="none"
-											stroke-width="2"
-											style="stroke-dasharray: 125.6; stroke-dashoffset: {125.6 -
-												(125.6 * $analysisProgress) / 100}"
-										/>
-									</svg>
-									<span class="progress-text"
-										>{Math.round($analysisProgress)}%</span
-									>
-								</div>
-								<p class="progress-hint">Optimizing for your project...</p>
-							</div>
-
-							<!-- Subtle dots animation -->
-							<div class="analysis-dots-animation">
-								<span class="dot" style="animation-delay: 0s"></span>
-								<span class="dot" style="animation-delay: 0.3s"></span>
-								<span class="dot" style="animation-delay: 0.6s"></span>
-							</div>
-						</div>
-					</div>
+				<div class="absolute inset-0 opacity-60">
+					<div
+						class="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 blur-3xl dark:from-indigo-500/40 dark:to-purple-500/40"
+					></div>
+					<div
+						class="absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-gradient-to-br from-blue-200 to-cyan-200 blur-3xl dark:from-blue-500/30 dark:to-cyan-500/30"
+					></div>
 				</div>
-			</div>
-		{:else}
-			<!-- Compact Analysis Result View when Complete/Failed -->
-			<div
-				class="analysis-compact-container"
-				transition:fly={{ y: -20, duration: 500, easing: quintOut }}
-			>
-				<div class="analysis-compact-card">
-					<div class="analysis-compact-content">
-						<div class="analysis-compact-header">
-							<div class="analysis-compact-icon">
-								{#if analysisStatus === 'completed'}
-									<CircleCheck class="w-5 h-5" />
-								{:else if analysisStatus === 'failed'}
-									<XCircle class="w-5 h-5" />
-								{/if}
+				<div class="relative grid gap-8 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+					<div class="space-y-5">
+						<div class="flex items-center gap-4">
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 text-blue-600 shadow-lg ring-1 ring-white/80 dark:bg-white/10 dark:text-blue-200 dark:ring-white/10"
+							>
+								<Sparkles class="h-6 w-6" />
 							</div>
-							<h3 class="analysis-compact-title">
-								{analysisStatus === 'completed'
-									? 'Analysis Complete'
-									: 'Analysis Failed'}
-							</h3>
-						</div>
-
-						{#if analysisStatus === 'completed' && analysisResult}
-							<div class="analysis-compact-results">
-								<div class="results-row">
-									<span
-										class="classification-badge classification-{analysisResult.braindump_classification}"
-									>
-										{analysisResult.braindump_classification}
-									</span>
-									{#if analysisResult.relevant_task_ids.length > 0}
-										<span class="analysis-stat analysis-stat-compact">
-											{analysisResult.relevant_task_ids.length} relevant task{analysisResult
-												.relevant_task_ids.length === 1
-												? ''
-												: 's'}
-										</span>
-									{/if}
-									{#if analysisResult.new_tasks_detected}
-										<span class="analysis-stat analysis-stat-compact"
-											>New tasks</span
-										>
-									{/if}
-								</div>
-								<p class="analysis-compact-summary">
-									{analysisResult.analysis_summary}
+							<div class="space-y-1">
+								<h2
+									class="text-2xl font-semibold text-slate-900 dark:text-slate-50"
+								>
+									Analyzing your braindump
+								</h2>
+								<p class="text-sm text-slate-600 dark:text-slate-300">
+									We are calibrating context and extracting tasks in parallel.
 								</p>
 							</div>
-						{:else if analysisStatus === 'failed'}
-							<p class="analysis-compact-message">
-								Analysis couldn't complete, but we'll proceed with full processing
-							</p>
+						</div>
+						<p class="text-base font-medium text-slate-700 dark:text-slate-100">
+							{analysisPhaseMessage}
+						</p>
+						<div class="grid gap-3 sm:grid-cols-3">
+							<div class="status-tile">
+								<div class="status-tile__header">
+									<div class="status-tile__label">
+										<Sparkles
+											class="h-4 w-4 text-blue-500 dark:text-blue-300"
+										/>
+										<span>Analysis</span>
+									</div>
+									<Badge variant={getStatusMeta(analysisStatus).badge} size="sm">
+										{getStatusMeta(analysisStatus).label}
+									</Badge>
+								</div>
+								<div class="status-tile__progress">
+									<div
+										class={`status-tile__fill ${PROGRESS_GRADIENTS.analysis}`}
+										style={`width: ${$analysisProgress}%;`}
+									></div>
+								</div>
+							</div>
+							{#if showContextPanel}
+								<div class="status-tile">
+									<div class="status-tile__header">
+										<div class="status-tile__label">
+											<Brain
+												class="h-4 w-4 text-blue-500 dark:text-blue-300"
+											/>
+											<span>Context</span>
+										</div>
+										<Badge
+											variant={getStatusMeta(contextStatus).badge}
+											size="sm"
+										>
+											{getStatusMeta(contextStatus).label}
+										</Badge>
+									</div>
+									<div class="status-tile__progress">
+										<div
+											class={`status-tile__fill ${PROGRESS_GRADIENTS.context}`}
+											style={`width: ${$contextProgress}%;`}
+										></div>
+									</div>
+								</div>
+							{/if}
+							<div class="status-tile">
+								<div class="status-tile__header">
+									<div class="status-tile__label">
+										<FileText
+											class="h-4 w-4 text-purple-500 dark:text-purple-300"
+										/>
+										<span>Tasks &amp; Notes</span>
+									</div>
+									<Badge variant={getStatusMeta(tasksStatus).badge} size="sm">
+										{getStatusMeta(tasksStatus).label}
+									</Badge>
+								</div>
+								<div class="status-tile__progress">
+									<div
+										class={`status-tile__fill ${PROGRESS_GRADIENTS.tasks}`}
+										style={`width: ${$tasksProgress}%;`}
+									></div>
+								</div>
+							</div>
+						</div>
+						{#if retryStatus}
+							<div class="retry-banner">
+								<span class="retry-dot"></span>
+								<span class="font-medium">
+									Retrying {retryStatus.processName} ({retryStatus.attempt}/{retryStatus.maxAttempts})
+								</span>
+								<span class="text-sm opacity-80"
+									>We’ll keep going automatically.</span
+								>
+							</div>
 						{/if}
 					</div>
-				</div>
-			</div>
-		{/if}
-	{/if}
-
-	<!-- Main grid with mobile-first responsive design -->
-	<div
-		class="flex flex-col gap-4 {showContextPanel
-			? 'sm:grid sm:grid-cols-2'
-			: 'max-w-2xl mx-auto'} {inModal
-			? ''
-			: 'min-h-[400px]'} md:gap-6 transition-all duration-500 ease-out"
-	>
-		<!-- Left side: Project Context (only shown when needed) -->
-		{#if showContextPanel}
-			<div
-				class="processing-card"
-				transition:fly={{ x: -20, duration: 400, easing: quintOut }}
-			>
-				<!-- Card Header with Progress -->
-				<div class="card-header">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div class="icon-wrapper icon-wrapper-context">
-								<Brain class="w-5 h-5" />
-							</div>
-							<div>
-								<h3 class="card-title">Project Context</h3>
-								<p class="card-subtitle">
-									{#if isShortBraindump && contextStatus === 'pending'}
-										Update required based on tasks
-									{:else}
-										{getProcessingStep(contextStatus).text}
-									{/if}
-								</p>
-							</div>
+					<div class="flex flex-col items-center justify-center gap-4">
+						<div class="analysis-progress-circle">
+							<svg class="progress-ring" viewBox="0 0 44 44">
+								<circle
+									class="progress-ring-bg"
+									cx="22"
+									cy="22"
+									r="20"
+									fill="none"
+									stroke-width="2"
+								/>
+								<circle
+									class="progress-ring-fill"
+									cx="22"
+									cy="22"
+									r="20"
+									fill="none"
+									stroke-width="2"
+									style="stroke-dasharray: 125.6; stroke-dashoffset: {125.6 -
+										(125.6 * $analysisProgress) / 100}"
+								/>
+							</svg>
+							<span class="progress-text">{Math.round($analysisProgress)}%</span>
 						</div>
-						<div class="status-icon">
-							{#if contextStatus === 'processing'}
-								<div transition:scale={{ duration: 200 }}>
-									<LoaderCircle class="w-5 h-5 animate-spin text-blue-500" />
-								</div>
-							{:else if contextStatus === 'completed'}
-								<div transition:scale={{ duration: 200, easing: backOut }}>
-									<CircleCheck class="w-5 h-5 text-green-500" />
-								</div>
-							{:else if contextStatus === 'failed'}
-								<div transition:scale={{ duration: 200 }}>
-									<XCircle class="w-5 h-5 text-red-500" />
-								</div>
+						<p
+							class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300"
+						>
+							Optimizing insights…
+						</p>
+						<div class="loading-dots">
+							<span class="loading-dot" style="animation-delay: 0s"></span>
+							<span class="loading-dot" style="animation-delay: 0.2s"></span>
+							<span class="loading-dot" style="animation-delay: 0.4s"></span>
+						</div>
+					</div>
+				</div>
+			</Card>
+		{:else}
+			<Card
+				variant="elevated"
+				padding="lg"
+				class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-md dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
+				transition:fly={{ y: -12, duration: 400, easing: quintOut }}
+			>
+				<div class="absolute inset-0 opacity-50">
+					<div
+						class="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 blur-2xl dark:from-indigo-500/40 dark:to-purple-500/40"
+					></div>
+				</div>
+				<div
+					class="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
+				>
+					<div class="flex items-start gap-3">
+						<div
+							class={`status-icon-wrap ${analysisStatus === 'failed' ? 'status-icon-wrap--error' : ''}`}
+						>
+							{#if analysisStatus === 'completed'}
+								<CircleCheck class="h-6 w-6" />
+							{:else if analysisStatus === 'failed'}
+								<XCircle class="h-6 w-6" />
+							{/if}
+						</div>
+						<div class="space-y-2">
+							<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+								{analysisStatus === 'completed'
+									? 'Analysis complete'
+									: 'Analysis needs attention'}
+							</h3>
+							<p class={`text-sm ${getStatusTone(analysisStatus)}`}>
+								{getStatusMeta(analysisStatus).description}
+							</p>
+							{#if analysisStatus === 'completed' && analysisResult}
+								<p
+									class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+								>
+									{analysisResult.analysis_summary}
+								</p>
+							{:else if analysisStatus === 'failed'}
+								<p
+									class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+								>
+									Analysis couldn't complete, but we'll continue with your data.
+								</p>
 							{/if}
 						</div>
 					</div>
-					<!-- Progress Bar -->
-					<div class="progress-bar">
+					{#if analysisStatus === 'completed' && analysisResult}
+						<div class="flex flex-wrap gap-2 md:max-w-sm">
+							{#if analysisResult.braindump_classification}
+								<span
+									class={`classification-chip ${analysisClassificationTheme.classes}`}
+								>
+									{analysisClassificationTheme.label}
+								</span>
+							{/if}
+							{#if analysisResult.relevant_task_ids.length > 0}
+								<Badge variant="info" size="sm" class="shadow-sm">
+									{analysisResult.relevant_task_ids.length} relevant task{analysisResult
+										.relevant_task_ids.length === 1
+										? ''
+										: 's'}
+								</Badge>
+							{/if}
+							{#if analysisResult.new_tasks_detected}
+								<Badge variant="success" size="sm" class="shadow-sm">
+									New tasks spotted
+								</Badge>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			</Card>
+		{/if}
+	{/if}
+
+	<div
+		class={`grid gap-4 md:gap-6 ${showContextPanel ? 'sm:grid-cols-2' : 'grid-cols-1'} ${inModal ? '' : 'min-h-[420px]'}`}
+	>
+		{#if showContextPanel}
+			<Card
+				variant="elevated"
+				padding="none"
+				class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70"
+				transition:fly={{ x: -12, duration: 350, easing: quintOut }}
+			>
+				<CardHeader
+					variant="gradient"
+					class="flex flex-wrap items-center justify-between gap-3 from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+				>
+					<div class="flex items-center gap-3">
 						<div
-							class="progress-fill progress-fill-context"
-							style="width: {$contextProgress}%"
+							class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+						>
+							<Brain class="h-5 w-5" />
+						</div>
+						<div class="space-y-1">
+							<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+								Project Context
+							</h3>
+							<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+								{#if isShortBraindump && contextStatus === 'pending'}
+									Update required based on tasks
+								{:else}
+									{getStatusMeta(contextStatus).description}
+								{/if}
+							</p>
+						</div>
+					</div>
+					<Badge variant={getStatusMeta(contextStatus).badge} size="sm">
+						{getStatusMeta(contextStatus).label}
+					</Badge>
+				</CardHeader>
+				<div class="px-4 pt-3">
+					<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
+						<div
+							class={`h-full rounded-full ${PROGRESS_GRADIENTS.context}`}
+							style={`width: ${$contextProgress}%; transition: width 0.45s ease;`}
 						></div>
 					</div>
 				</div>
-
-				<!-- Card Content -->
-				<div class="card-content">
+				<CardBody
+					padding="lg"
+					class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+				>
 					{#if contextStatus === 'pending'}
-						<div class="empty-state" transition:fade={{ duration: 200 }}>
-							<div class="pulse-dot"></div>
-							<p>Preparing to analyze...</p>
+						<div
+							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+						>
+							<div class="flex items-center gap-2">
+								<span
+									class="inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400"
+								></span>
+								<span>Preparing to analyze...</span>
+							</div>
 						</div>
 					{:else if contextStatus === 'processing'}
 						{#if !contextResult}
-							<div class="skeleton-container" transition:fade={{ duration: 200 }}>
-								<div class="skeleton skeleton-title"></div>
-								<div class="skeleton skeleton-text"></div>
-								<div class="skeleton skeleton-text" style="width: 80%"></div>
-								<div class="skeleton skeleton-tags">
-									<div class="skeleton-tag"></div>
-									<div class="skeleton-tag"></div>
-									<div class="skeleton-tag"></div>
+							<div class="space-y-3">
+								<div
+									class="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/60"
+								></div>
+								<div
+									class="h-3 w-full animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+								></div>
+								<div
+									class="h-3 w-5/6 animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+								></div>
+								<div class="flex gap-2 pt-2">
+									<div
+										class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+									></div>
+									<div
+										class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+									></div>
+									<div
+										class="h-6 w-12 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+									></div>
 								</div>
 							</div>
 						{:else}
-							<div transition:fade={{ duration: 300 }}>
+							<div transition:fade={{ duration: 250 }}>
 								<ProjectContextPreview result={contextResult} />
 							</div>
 						{/if}
 					{:else if contextStatus === 'completed' && contextResult}
-						<div transition:fade={{ duration: 300 }}>
+						<div transition:fade={{ duration: 250 }}>
 							<ProjectContextPreview result={contextResult} />
 						</div>
 					{:else if contextStatus === 'failed'}
-						<div class="error-state" transition:fade={{ duration: 200 }}>
-							<TriangleAlert class="w-5 h-5" />
+						<div class="error-state">
+							<TriangleAlert class="h-5 w-5" />
 							<p>Failed to process context</p>
-							<span>You can still proceed with tasks</span>
+							<span>You can still continue with tasks.</span>
+						</div>
+					{:else if contextStatus === 'not_needed'}
+						<div
+							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-300"
+						>
+							Context was already up to date — nothing to do.
 						</div>
 					{/if}
-				</div>
-			</div>
+				</CardBody>
+			</Card>
 		{/if}
-
-		<!-- Right side (or full width): Tasks & Notes -->
-		<div
-			class="processing-card"
-			transition:fly={{ x: showContextPanel ? 20 : 0, duration: 400, easing: quintOut }}
+		<Card
+			variant="elevated"
+			padding="none"
+			class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
+			transition:fly={{ x: showContextPanel ? 12 : 0, duration: 350, easing: quintOut }}
 		>
-			<!-- Card Header with Progress -->
-			<div class="card-header">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="icon-wrapper icon-wrapper-tasks">
-							<FileText class="w-5 h-5" />
-						</div>
-						<div>
-							<h3 class="card-title">Tasks & Notes</h3>
-							<p class="card-subtitle">
-								{getProcessingStep(tasksStatus).text}
-							</p>
-						</div>
+			<CardHeader
+				variant="gradient"
+				class="flex flex-wrap items-center justify-between gap-3 from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
+			>
+				<div class="flex items-center gap-3">
+					<div
+						class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+					>
+						<FileText class="h-5 w-5" />
 					</div>
-					<div class="status-icon">
-						{#if tasksStatus === 'processing'}
-							<div transition:scale={{ duration: 200 }}>
-								<LoaderCircle class="w-5 h-5 animate-spin text-purple-500" />
-							</div>
-						{:else if tasksStatus === 'completed'}
-							<div transition:scale={{ duration: 200, easing: backOut }}>
-								<CircleCheck class="w-5 h-5 text-green-500" />
-							</div>
-						{:else if tasksStatus === 'failed'}
-							<div transition:scale={{ duration: 200 }}>
-								<XCircle class="w-5 h-5 text-red-500" />
-							</div>
-						{/if}
+					<div class="space-y-1">
+						<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+							Tasks &amp; Notes
+						</h3>
+						<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+							{getStatusMeta(tasksStatus).description}
+						</p>
 					</div>
 				</div>
-				<!-- Progress Bar -->
-				<div class="progress-bar">
+				<Badge variant={getStatusMeta(tasksStatus).badge} size="sm">
+					{getStatusMeta(tasksStatus).label}
+				</Badge>
+			</CardHeader>
+			<div class="px-4 pt-3">
+				<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
 					<div
-						class="progress-fill progress-fill-tasks"
-						style="width: {$tasksProgress}%"
+						class={`h-full rounded-full ${PROGRESS_GRADIENTS.tasks}`}
+						style={`width: ${$tasksProgress}%; transition: width 0.45s ease;`}
 					></div>
 				</div>
 			</div>
-
-			<!-- Card Content -->
-			<div class="card-content">
+			<CardBody
+				padding="lg"
+				class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+			>
 				{#if tasksStatus === 'pending'}
-					<div class="empty-state" transition:fade={{ duration: 200 }}>
-						<div class="pulse-dot"></div>
-						<p>Preparing to extract...</p>
+					<div
+						class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+					>
+						<div class="flex items-center gap-2">
+							<span
+								class="inline-flex h-2 w-2 animate-ping rounded-full bg-purple-400"
+							></span>
+							<span>Waiting for analysis to begin...</span>
+						</div>
 					</div>
 				{:else if tasksStatus === 'processing'}
-					{#if !tasksResult || !tasksResult.tasks || !Array.isArray(tasksResult.tasks)}
-						<div class="skeleton-container" transition:fade={{ duration: 200 }}>
-							<!-- Task skeletons -->
-							<div class="skeleton-task">
-								<div class="skeleton skeleton-checkbox"></div>
-								<div class="flex-1">
-									<div class="skeleton skeleton-title" style="width: 60%"></div>
-									<div class="skeleton skeleton-text" style="width: 90%"></div>
-								</div>
+					{#if !tasksResult}
+						<div class="space-y-3">
+							<div class="flex flex-col gap-3">
+								<div class="skeleton-row"></div>
+								<div class="skeleton-row"></div>
+								<div class="skeleton-row-short"></div>
 							</div>
-							<div class="skeleton-task">
-								<div class="skeleton skeleton-checkbox"></div>
-								<div class="flex-1">
-									<div class="skeleton skeleton-title" style="width: 45%"></div>
-									<div class="skeleton skeleton-text" style="width: 75%"></div>
-								</div>
-							</div>
-							<div class="skeleton-task">
-								<div class="skeleton skeleton-checkbox"></div>
-								<div class="flex-1">
-									<div class="skeleton skeleton-title" style="width: 70%"></div>
-									<div class="skeleton skeleton-text" style="width: 85%"></div>
-								</div>
+							<div class="flex flex-wrap gap-2">
+								<div class="skeleton-pill"></div>
+								<div class="skeleton-pill"></div>
+								<div class="skeleton-pill"></div>
 							</div>
 						</div>
 					{:else}
-						<div transition:fade={{ duration: 300 }}>
+						<div transition:fade={{ duration: 250 }}>
 							<TasksNotesPreview result={tasksResult} />
 						</div>
 					{/if}
 				{:else if tasksStatus === 'completed' && tasksResult}
-					<div transition:fade={{ duration: 300 }}>
+					<div transition:fade={{ duration: 250 }}>
 						<TasksNotesPreview result={tasksResult} />
 					</div>
 				{:else if tasksStatus === 'failed'}
-					<div class="error-state" transition:fade={{ duration: 200 }}>
-						<TriangleAlert class="w-5 h-5" />
-						<p>Failed to extract items</p>
-						<span>The retry mechanism will attempt to recover</span>
+					<div class="error-state">
+						<TriangleAlert class="h-5 w-5" />
+						<p>We couldn't extract tasks this time</p>
+						<span>Try again or edit the braindump.</span>
 					</div>
 				{/if}
-			</div>
-		</div>
+			</CardBody>
+		</Card>
 	</div>
-
-	<!-- Context not needed indicator for short braindumps -->
-	{#if isShortBraindump && contextStatus === 'not_needed' && tasksStatus === 'completed'}
-		<div class="mt-4" transition:fade={{ duration: 300 }}>
-			<div class="context-not-needed-indicator">
-				<div class="flex items-center gap-2">
-					<CircleCheck class="w-5 h-5 text-green-500" />
-					<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-						No context update needed - tasks are self-contained
-					</p>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Retry status indicator -->
-	{#if retryStatus}
-		<div class="mt-4" transition:fade={{ duration: 200 }}>
-			<div class="retry-indicator">
-				<LoaderCircle class="w-4 h-4 animate-spin text-amber-500" />
-				<p>
-					Retrying {retryStatus.processName}
-					<span class="retry-attempt"
-						>Attempt {retryStatus.attempt}/{retryStatus.maxAttempts}</span
-					>
-				</p>
-			</div>
-		</div>
-	{/if}
 </div>
 
 <style>
-	/* Context not needed indicator */
-	.context-not-needed-indicator {
-		background: rgb(243 250 247);
-		border: 1px solid rgb(134 239 172);
-		border-radius: 0.75rem;
-		padding: 0.75rem 1rem;
+	.status-tile {
 		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	:global(.dark) .context-not-needed-indicator {
-		background: rgb(22 30 26);
-		border-color: rgb(34 80 50);
-	}
-
-	/* Apple-inspired card design */
-	.processing-card {
-		background: white;
-		border: 1px solid rgb(229 231 235);
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 0.875rem 1rem;
 		border-radius: 1rem;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		box-shadow:
-			0 1px 3px 0 rgb(0 0 0 / 0.1),
-			0 1px 2px -1px rgb(0 0 0 / 0.1);
-		transition: box-shadow 0.3s ease;
+		background: rgba(255, 255, 255, 0.8);
+		border: 1px solid rgba(148, 163, 184, 0.25);
+		backdrop-filter: blur(12px);
 	}
 
-	:global(.dark) .processing-card {
-		background: rgb(17 24 39);
-		border-color: rgb(55 65 81);
-		box-shadow:
-			0 1px 3px 0 rgb(0 0 0 / 0.3),
-			0 1px 2px -1px rgb(0 0 0 / 0.3);
+	:global(.dark) .status-tile {
+		background: rgba(15, 23, 42, 0.55);
+		border-color: rgba(96, 165, 250, 0.25);
 	}
 
-	.processing-card:hover {
-		box-shadow:
-			0 4px 6px -1px rgb(0 0 0 / 0.1),
-			0 2px 4px -2px rgb(0 0 0 / 0.1);
-	}
-
-	:global(.dark) .processing-card:hover {
-		box-shadow:
-			0 4px 6px -1px rgb(0 0 0 / 0.3),
-			0 2px 4px -2px rgb(0 0 0 / 0.3);
-	}
-
-	/* Card Header with mobile-optimized padding */
-	.card-header {
-		padding: 1rem;
-		border-bottom: 1px solid rgb(229 231 235);
-		background: linear-gradient(to bottom, rgb(249 250 251), rgb(243 244 246));
-	}
-
-	/* Larger padding on bigger screens */
-	@media (min-width: 640px) {
-		.card-header {
-			padding: 1.25rem;
-		}
-	}
-
-	:global(.dark) .card-header {
-		border-bottom-color: rgb(55 65 81);
-		background: linear-gradient(to bottom, rgb(31 41 55), rgb(17 24 39));
-	}
-
-	.card-title {
-		font-size: 1rem;
-		font-weight: 600;
-		color: rgb(17 24 39);
-		margin: 0;
-	}
-
-	:global(.dark) .card-title {
-		color: rgb(243 244 246);
-	}
-
-	.card-subtitle {
-		font-size: 0.75rem;
-		color: rgb(107 114 128);
-		margin: 0.125rem 0 0;
-	}
-
-	:global(.dark) .card-subtitle {
-		color: rgb(156 163 175);
-	}
-
-	/* Icon Wrapper */
-	.icon-wrapper {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 0.75rem;
+	.status-tile__header {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		background: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
-		color: white;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.icon-wrapper-context {
-		--gradient-from: rgb(59 130 246);
-		--gradient-to: rgb(99 102 241);
-	}
-
-	.icon-wrapper-tasks {
-		--gradient-from: rgb(168 85 247);
-		--gradient-to: rgb(236 72 153);
-	}
-
-	/* Status Icon */
-	.status-icon {
-		display: flex;
-		align-items: center;
-	}
-
-	/* Progress Bar */
-	.progress-bar {
-		height: 3px;
-		background: rgb(229 231 235);
-		position: relative;
-		overflow: hidden;
-	}
-
-	:global(.dark) .progress-bar {
-		background: rgb(55 65 81);
-	}
-
-	.progress-fill {
-		height: 100%;
-		transition: width 0.3s ease;
-		background: linear-gradient(90deg, var(--fill-from), var(--fill-to));
-		box-shadow: 0 0 10px var(--fill-glow);
-	}
-
-	.progress-fill-context {
-		--fill-from: rgb(59 130 246);
-		--fill-to: rgb(99 102 241);
-		--fill-glow: rgba(59, 130, 246, 0.4);
-	}
-
-	.progress-fill-tasks {
-		--fill-from: rgb(168 85 247);
-		--fill-to: rgb(236 72 153);
-		--fill-glow: rgba(168, 85, 247, 0.4);
-	}
-
-	/* Card Content with mobile-optimized height */
-	.card-content {
-		flex: 1;
-		padding: 1.5rem;
-		overflow-y: auto;
-		/* Mobile: More generous height, Desktop: Original constraints */
-		max-height: min(40vh, 20rem);
-	}
-
-	/* Increase content height on larger screens */
-	@media (min-width: 640px) {
-		.card-content {
-			max-height: min(60vh, 24rem);
-		}
-	}
-
-	/* For mobile in modal, ensure both cards are visible */
-	@media (max-width: 639px) {
-		.processing-card {
-			/* Ensure cards don't take up full viewport on mobile */
-			max-height: 35vh;
-		}
-
-		.card-content {
-			/* More constrained on mobile to fit both cards */
-			max-height: min(25vh, 16rem);
-			padding: 1rem;
-		}
-	}
-
-	/* Empty State with mobile optimization */
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		min-height: 8rem;
+		justify-content: space-between;
 		gap: 0.75rem;
 	}
 
-	/* Larger on bigger screens */
-	@media (min-width: 640px) {
-		.empty-state {
-			min-height: 10rem;
-			gap: 1rem;
-		}
-	}
-
-	.empty-state p {
-		font-size: 0.875rem;
-		color: rgb(107 114 128);
-		margin: 0;
-	}
-
-	:global(.dark) .empty-state p {
-		color: rgb(156 163 175);
-	}
-
-	/* Pulse Dot */
-	.pulse-dot {
-		width: 0.75rem;
-		height: 0.75rem;
-		border-radius: 50%;
-		background: rgb(156 163 175);
-		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	}
-
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.5;
-		}
-	}
-
-	/* Skeleton Loading */
-	.skeleton-container {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.skeleton {
-		background: linear-gradient(
-			90deg,
-			rgb(229 231 235) 0%,
-			rgb(243 244 246) 50%,
-			rgb(229 231 235) 100%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.5s ease-in-out infinite;
-		border-radius: 0.375rem;
-	}
-
-	:global(.dark) .skeleton {
-		background: linear-gradient(90deg, rgb(55 65 81) 0%, rgb(75 85 99) 50%, rgb(55 65 81) 100%);
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	.skeleton-title {
-		height: 1.25rem;
-		width: 50%;
-		margin-bottom: 0.5rem;
-	}
-
-	.skeleton-text {
-		height: 0.875rem;
-		margin-bottom: 0.375rem;
-	}
-
-	.skeleton-tags {
-		display: flex;
+	.status-tile__label {
+		display: inline-flex;
+		align-items: center;
 		gap: 0.5rem;
-		margin-top: 1rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: rgb(71 85 105);
 	}
 
-	.skeleton-tag {
-		height: 1.5rem;
-		width: 4rem;
+	:global(.dark) .status-tile__label {
+		color: rgb(203 213 225);
+	}
+
+	.status-tile__progress {
+		height: 0.4rem;
 		border-radius: 9999px;
-		background: rgb(229 231 235);
-	}
-
-	:global(.dark) .skeleton-tag {
-		background: rgb(55 65 81);
-	}
-
-	.skeleton-task {
-		display: flex;
-		gap: 0.75rem;
-		padding: 0.75rem;
-		border: 1px solid rgb(229 231 235);
-		border-radius: 0.5rem;
-	}
-
-	:global(.dark) .skeleton-task {
-		border-color: rgb(55 65 81);
-	}
-
-	.skeleton-checkbox {
-		width: 1.25rem;
-		height: 1.25rem;
-		border-radius: 0.25rem;
-		background: rgb(229 231 235);
-		flex-shrink: 0;
-	}
-
-	:global(.dark) .skeleton-checkbox {
-		background: rgb(55 65 81);
-	}
-
-	/* Error State with mobile optimization */
-	.error-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		min-height: 8rem;
-		gap: 0.5rem;
-		padding: 1.5rem;
-		background: rgb(254 242 242);
-		border: 1px solid rgb(254 226 226);
-		border-radius: 0.75rem;
-	}
-
-	/* Larger on bigger screens */
-	@media (min-width: 640px) {
-		.error-state {
-			min-height: 10rem;
-			gap: 0.75rem;
-			padding: 2rem;
-		}
-	}
-
-	:global(.dark) .error-state {
-		background: rgba(239, 68, 68, 0.1);
-		border-color: rgba(239, 68, 68, 0.2);
-	}
-
-	.error-state p {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: rgb(185 28 28);
-		margin: 0;
-	}
-
-	:global(.dark) .error-state p {
-		color: rgb(252 165 165);
-	}
-
-	.error-state span {
-		font-size: 0.75rem;
-		color: rgb(153 27 27);
-	}
-
-	:global(.dark) .error-state span {
-		color: rgb(254 202 202);
-	}
-
-	/* Retry Indicator */
-	.retry-indicator {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1.25rem;
-		background: linear-gradient(135deg, rgb(254 243 199), rgb(254 240 138));
-		border: 1px solid rgb(251 191 36);
-		border-radius: 0.75rem;
-		box-shadow: 0 2px 4px rgba(251, 191, 36, 0.1);
-	}
-
-	:global(.dark) .retry-indicator {
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
-		border-color: rgba(251, 191, 36, 0.3);
-	}
-
-	.retry-indicator p {
-		font-size: 0.875rem;
-		color: rgb(146 64 14);
-		margin: 0;
-		font-weight: 500;
-	}
-
-	:global(.dark) .retry-indicator p {
-		color: rgb(254 215 170);
-	}
-
-	.retry-attempt {
-		opacity: 0.8;
-		margin-left: 0.5rem;
-		font-weight: normal;
-	}
-
-	/* Enhanced glowing hammer with smooth transitions */
-	.glowing-hammer {
-		animation:
-			pulse-glow 2s ease-in-out infinite,
-			rotate-sway 3s ease-in-out infinite;
-		display: inline-block; /* required for transforms */
-		text-shadow: 0 0 0 currentColor;
-		font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'Symbola', sans-serif;
-		transition: filter var(--transition-normal) var(--ease-out);
-	}
-
-	/* Define light mode by default */
-	.glowing-hammer {
-		filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.8));
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.glowing-hammer {
-			filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
-		}
-	}
-
-	@keyframes pulse-glow {
-		0%,
-		100% {
-			transform: scale(1) rotate(0deg);
-			filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.8));
-		}
-		50% {
-			transform: scale(1.05) rotate(0deg);
-			filter: drop-shadow(0 0 16px rgba(0, 0, 0, 1)) drop-shadow(0 0 24px rgba(0, 0, 0, 0.6));
-		}
-	}
-
-	/* Dark mode overrides within keyframes */
-	@media (prefers-color-scheme: dark) {
-		@keyframes pulse-glow {
-			0%,
-			100% {
-				transform: scale(1) rotate(0deg);
-				filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
-			}
-			50% {
-				transform: scale(1.05) rotate(0deg);
-				filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1))
-					drop-shadow(0 0 24px rgba(255, 255, 255, 0.6));
-			}
-		}
-	}
-
-	@keyframes rotate-sway {
-		0%,
-		100% {
-			transform: rotate(-5deg);
-		}
-		50% {
-			transform: rotate(5deg);
-		}
-	}
-
-	/* ===== PROMINENT ANALYSIS VIEW (when processing) ===== */
-	.analysis-prominent-container {
-		margin-bottom: 2rem;
-		padding: 0;
-	}
-
-	.analysis-prominent-card {
-		position: relative;
-		background: linear-gradient(135deg, rgb(254 252 232), rgb(254 249 195));
-		border: 1px solid rgb(250 204 21);
-		border-radius: 1.5rem;
-		padding: 3rem 2rem;
+		background: rgba(148, 163, 184, 0.2);
 		overflow: hidden;
-		box-shadow:
-			0 4px 6px -1px rgba(250, 204, 21, 0.15),
-			0 2px 4px -2px rgba(250, 204, 21, 0.1);
 	}
 
-	:global(.dark) .analysis-prominent-card {
-		background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(245, 158, 11, 0.08));
-		border-color: rgba(250, 204, 21, 0.2);
-		box-shadow:
-			0 4px 6px -1px rgba(250, 204, 21, 0.1),
-			0 2px 4px -2px rgba(250, 204, 21, 0.05);
+	:global(.dark) .status-tile__progress {
+		background: rgba(30, 41, 59, 0.6);
 	}
 
-	.analysis-glow-bg {
-		position: absolute;
-		top: -50%;
-		right: -10%;
-		width: 30rem;
-		height: 30rem;
-		background: radial-gradient(circle, rgba(250, 204, 21, 0.1) 0%, transparent 70%);
-		border-radius: 50%;
-		pointer-events: none;
+	.status-tile__fill {
+		height: 100%;
+		border-radius: 9999px;
+		transition: width 400ms ease;
 	}
 
-	.analysis-content-wrapper {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		text-align: center;
-		gap: 1.5rem;
-	}
-
-	/* Animated Icon Container */
-	.analysis-icon-container {
-		display: flex;
-		justify-content: center;
-		padding-bottom: 0.5rem;
-	}
-
-	.analysis-icon-ring {
-		width: 4rem;
-		height: 4rem;
-		border-radius: 50%;
-		background: linear-gradient(135deg, rgb(245 158 11), rgb(251 146 60));
+	.retry-banner {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		color: white;
-		box-shadow:
-			0 0 0 0 rgba(245, 158, 11, 0.3),
-			inset 0 2px 4px rgba(255, 255, 255, 0.2);
-		animation: analysisIconPulse 2s ease-in-out infinite;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border-radius: 0.9rem;
+		background: rgba(59, 130, 246, 0.08);
+		border: 1px solid rgba(59, 130, 246, 0.3);
+		font-size: 0.85rem;
+		color: rgb(30 64 175);
 	}
 
-	@keyframes analysisIconPulse {
-		0%,
-		100% {
-			box-shadow:
-				0 0 0 0 rgba(245, 158, 11, 0.3),
-				inset 0 2px 4px rgba(255, 255, 255, 0.2);
-			transform: scale(1);
-		}
-		50% {
-			box-shadow:
-				0 0 0 8px rgba(245, 158, 11, 0),
-				inset 0 2px 4px rgba(255, 255, 255, 0.2);
-			transform: scale(1.05);
-		}
+	:global(.dark) .retry-banner {
+		background: rgba(37, 99, 235, 0.15);
+		border-color: rgba(56, 189, 248, 0.25);
+		color: rgb(191 219 254);
 	}
 
-	/* Main Content */
-	.analysis-main-content {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		width: 100%;
-		max-width: 28rem;
-	}
-
-	.analysis-main-title {
-		font-size: 1.875rem;
-		font-weight: 600;
-		letter-spacing: -0.025em;
-		color: rgb(120 53 15);
-		margin: 0;
-	}
-
-	:global(.dark) .analysis-main-title {
-		color: rgb(254 215 170);
-	}
-
-	.analysis-phase-message {
-		font-size: 1rem;
-		font-weight: 500;
-		color: rgb(146 64 14);
-		margin: 0;
-		min-height: 1.5rem;
-		animation: fadeInOutText 2s ease-in-out infinite;
-	}
-
-	:global(.dark) .analysis-phase-message {
-		color: rgb(253 224 71);
-	}
-
-	@keyframes fadeInOutText {
-		0%,
-		10% {
-			opacity: 1;
-		}
-		45%,
-		55% {
-			opacity: 1;
-		}
-		90%,
-		100% {
-			opacity: 0.7;
-		}
-	}
-
-	/* Circular Progress Indicator */
-	.analysis-progress-container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 1rem 0;
+	.retry-dot {
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 9999px;
+		background: linear-gradient(135deg, rgb(37 99 235), rgb(147 51 234));
+		box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 	}
 
 	.analysis-progress-circle {
 		position: relative;
-		width: 7rem;
-		height: 7rem;
+		width: 7.5rem;
+		height: 7.5rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1243,251 +901,174 @@
 	}
 
 	.progress-ring-bg {
-		stroke: rgb(250 204 21 / 0.2);
+		stroke: rgba(96, 165, 250, 0.25);
 	}
 
 	:global(.dark) .progress-ring-bg {
-		stroke: rgba(250, 204, 21, 0.15);
+		stroke: rgba(59, 130, 246, 0.3);
 	}
 
 	.progress-ring-fill {
 		stroke: url(#analysisGradient);
 		stroke-linecap: round;
-		transition: stroke-dashoffset 0.3s ease;
-		filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.3));
+		transition: stroke-dashoffset 0.35s ease;
+		filter: drop-shadow(0 0 8px rgba(129, 140, 248, 0.35));
 	}
 
 	.progress-text {
 		position: absolute;
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: rgb(120 53 15);
+		color: rgb(30 41 59);
 	}
 
 	:global(.dark) .progress-text {
-		color: rgb(254 215 170);
+		color: rgb(226 232 240);
 	}
 
-	.progress-hint {
-		font-size: 0.8125rem;
-		color: rgb(146 64 14);
-		margin: 0;
-	}
-
-	:global(.dark) .progress-hint {
-		color: rgb(253 224 71);
-	}
-
-	/* Animated Dots */
-	.analysis-dots-animation {
+	.loading-dots {
 		display: flex;
-		justify-content: center;
+		align-items: center;
 		gap: 0.4rem;
-		padding-top: 0.5rem;
 	}
 
-	.dot {
-		width: 0.5rem;
-		height: 0.5rem;
-		border-radius: 50%;
-		background: rgb(146 64 14 / 0.6);
-		animation: analysisDotBounce 1.4s ease-in-out infinite;
+	.loading-dot {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 9999px;
+		background: linear-gradient(135deg, rgb(37 99 235), rgb(147 51 234));
+		animation: dualPulse 1.4s ease-in-out infinite;
+		opacity: 0.7;
 	}
 
-	:global(.dark) .dot {
-		background: rgb(253 224 71 / 0.6);
-	}
-
-	@keyframes analysisDotBounce {
+	@keyframes dualPulse {
 		0%,
-		80%,
 		100% {
-			transform: translateY(0) scale(1);
-			opacity: 0.5;
+			transform: translateY(0) scale(0.95);
+			opacity: 0.6;
 		}
-		40% {
-			transform: translateY(-0.5rem) scale(1.1);
+
+		50% {
+			transform: translateY(-0.4rem) scale(1);
 			opacity: 1;
 		}
 	}
 
-	/* ===== COMPACT ANALYSIS VIEW (after complete) ===== */
-	.analysis-compact-container {
-		margin-bottom: 1.5rem;
-		padding: 0;
-	}
-
-	.analysis-compact-card {
-		background: linear-gradient(135deg, rgb(254 252 232), rgb(254 249 195));
-		border: 1px solid rgb(250 204 21);
-		border-radius: 1rem;
-		padding: 1rem 1.25rem;
-		box-shadow:
-			0 2px 4px -1px rgba(250, 204, 21, 0.1),
-			0 1px 2px -1px rgba(250, 204, 21, 0.05);
-	}
-
-	:global(.dark) .analysis-compact-card {
-		background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(245, 158, 11, 0.08));
-		border-color: rgba(250, 204, 21, 0.2);
-		box-shadow:
-			0 2px 4px -1px rgba(250, 204, 21, 0.05),
-			0 1px 2px -1px rgba(250, 204, 21, 0.02);
-	}
-
-	.analysis-compact-content {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.analysis-compact-header {
-		display: flex;
-		align-items: center;
-		gap: 0.625rem;
-	}
-
-	.analysis-compact-icon {
-		display: flex;
-		align-items: center;
-		color: rgb(245 158 11);
-		flex-shrink: 0;
-	}
-
-	:global(.dark) .analysis-compact-icon {
-		color: rgb(253 224 71);
-	}
-
-	.analysis-compact-title {
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: rgb(120 53 15);
-		margin: 0;
-	}
-
-	:global(.dark) .analysis-compact-title {
-		color: rgb(254 215 170);
-	}
-
-	.analysis-compact-results {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.results-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		align-items: center;
-	}
-
-	.analysis-stat-compact {
-		padding: 0.2rem 0.5rem;
-		font-size: 0.7rem;
-		background: rgba(255, 255, 255, 0.4) !important;
-		border-color: rgba(250, 204, 21, 0.2) !important;
-	}
-
-	:global(.dark) .analysis-stat-compact {
-		background: rgba(0, 0, 0, 0.15) !important;
-	}
-
-	.analysis-compact-summary {
-		font-size: 0.8125rem;
-		color: rgb(120 53 15);
-		margin: 0;
-		line-height: 1.4;
-	}
-
-	:global(.dark) .analysis-compact-summary {
-		color: rgb(253 224 71);
-	}
-
-	.analysis-compact-message {
-		font-size: 0.8125rem;
-		color: rgb(146 64 14);
-		margin: 0;
-	}
-
-	:global(.dark) .analysis-compact-message {
-		color: rgb(253 224 71);
-	}
-
-	/* ===== CLASSIFICATION BADGES ===== */
-	.classification-badge {
+	.status-icon-wrap {
 		display: inline-flex;
 		align-items: center;
-		padding: 0.25rem 0.75rem;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 1rem;
+		background: rgba(255, 255, 255, 0.9);
+		color: rgb(37 99 235);
+		box-shadow:
+			0 10px 20px -12px rgba(37, 99, 235, 0.6),
+			inset 0 1px 0 rgba(255, 255, 255, 0.7);
+	}
+
+	.status-icon-wrap--error {
+		color: rgb(225 29 72);
+		box-shadow:
+			0 10px 20px -12px rgba(225, 29, 72, 0.65),
+			inset 0 1px 0 rgba(255, 255, 255, 0.7);
+	}
+
+	:global(.dark) .status-icon-wrap {
+		background: rgba(15, 23, 42, 0.85);
+		color: rgb(165 180 252);
+	}
+
+	:global(.dark) .status-icon-wrap--error {
+		color: rgb(248 113 113);
+	}
+
+	.classification-chip {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.35rem 0.75rem;
 		border-radius: 9999px;
 		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.025em;
+		letter-spacing: 0.04em;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 	}
 
-	.classification-strategic {
-		background: rgb(219 234 254);
-		color: rgb(30 58 138);
+	.error-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		text-align: center;
+		padding: 1.5rem;
+		border-radius: 1rem;
+		background: rgba(248, 113, 113, 0.08);
+		border: 1px solid rgba(248, 113, 113, 0.2);
+		color: rgb(220 38 38);
+		min-height: 10rem;
 	}
 
-	:global(.dark) .classification-strategic {
-		background: rgba(59, 130, 246, 0.2);
-		color: rgb(147 197 253);
-	}
-
-	.classification-tactical {
-		background: rgb(233 213 255);
-		color: rgb(88 28 135);
-	}
-
-	:global(.dark) .classification-tactical {
-		background: rgba(168, 85, 247, 0.2);
-		color: rgb(216 180 254);
-	}
-
-	.classification-mixed {
-		background: rgb(254 240 138);
-		color: rgb(120 53 15);
-	}
-
-	:global(.dark) .classification-mixed {
-		background: rgba(250, 204, 21, 0.2);
-		color: rgb(254 215 170);
-	}
-
-	.classification-status_update {
-		background: rgb(209 250 229);
-		color: rgb(6 78 59);
-	}
-
-	:global(.dark) .classification-status_update {
-		background: rgba(52, 211, 153, 0.2);
-		color: rgb(167 243 208);
-	}
-
-	.classification-unrelated {
-		background: rgb(243 244 246);
-		color: rgb(75 85 99);
-	}
-
-	:global(.dark) .classification-unrelated {
-		background: rgba(107, 114, 128, 0.2);
-		color: rgb(209 213 219);
-	}
-
-	.analysis-stat {
+	.error-state span {
 		font-size: 0.75rem;
-		color: rgb(120 53 15);
-		background: white;
-		padding: 0.25rem 0.625rem;
-		border-radius: 0.375rem;
-		border: 1px solid rgb(253 224 71);
+		color: inherit;
+		opacity: 0.8;
 	}
 
-	:global(.dark) .analysis-stat {
-		color: rgb(254 215 170);
-		background: rgba(0, 0, 0, 0.2);
-		border-color: rgba(250, 204, 21, 0.3);
+	:global(.dark) .error-state {
+		background: rgba(248, 113, 113, 0.12);
+		border-color: rgba(248, 113, 113, 0.35);
+		color: rgb(252 165 165);
+	}
+
+	.skeleton-row,
+	.skeleton-row-short,
+	.skeleton-pill {
+		border-radius: 0.75rem;
+		background: linear-gradient(
+			90deg,
+			rgba(226, 232, 240, 0.6) 0%,
+			rgba(241, 245, 249, 0.9) 50%,
+			rgba(226, 232, 240, 0.6) 100%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
+
+	:global(.dark) .skeleton-row,
+	:global(.dark) .skeleton-row-short,
+	:global(.dark) .skeleton-pill {
+		background: linear-gradient(
+			90deg,
+			rgba(30, 41, 59, 0.6) 0%,
+			rgba(51, 65, 85, 0.9) 50%,
+			rgba(30, 41, 59, 0.6) 100%
+		);
+	}
+
+	.skeleton-row {
+		height: 2.5rem;
+	}
+
+	.skeleton-row-short {
+		height: 2rem;
+		width: 80%;
+	}
+
+	.skeleton-pill {
+		height: 1.75rem;
+		width: 6rem;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+
+		100% {
+			background-position: -200% 0;
+		}
 	}
 </style>

@@ -218,6 +218,18 @@
 			"exports": ["CalendarWebhookService"]
 		},
 		{
+			"file": "src/lib/services/chat-compression-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ChatCompressionService"]
+		},
+		{
+			"file": "src/lib/services/chat-context-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ChatContextService"]
+		},
+		{
 			"file": "src/lib/services/dashboardData.service.ts",
 			"type": "service",
 			"components": [],

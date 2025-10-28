@@ -997,6 +997,298 @@ export type Database = {
           },
         ]
       }
+      chat_compressions: {
+        Row: {
+          compressed_message_count: number
+          compressed_tokens: number
+          compression_ratio: number | null
+          created_at: string | null
+          first_message_id: string | null
+          id: string
+          key_points: Json | null
+          last_message_id: string | null
+          original_message_count: number
+          original_tokens: number
+          session_id: string
+          summary: string
+          tool_usage_summary: Json | null
+        }
+        Insert: {
+          compressed_message_count: number
+          compressed_tokens: number
+          compression_ratio?: number | null
+          created_at?: string | null
+          first_message_id?: string | null
+          id?: string
+          key_points?: Json | null
+          last_message_id?: string | null
+          original_message_count: number
+          original_tokens: number
+          session_id: string
+          summary: string
+          tool_usage_summary?: Json | null
+        }
+        Update: {
+          compressed_message_count?: number
+          compressed_tokens?: number
+          compression_ratio?: number | null
+          created_at?: string | null
+          first_message_id?: string | null
+          id?: string
+          key_points?: Json | null
+          last_message_id?: string | null
+          original_message_count?: number
+          original_tokens?: number
+          session_id?: string
+          summary?: string
+          tool_usage_summary?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_compressions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_context_cache: {
+        Row: {
+          abbreviated_context: Json
+          abbreviated_tokens: number
+          access_count: number | null
+          accessed_at: string | null
+          cache_key: string | null
+          context_type: string
+          created_at: string | null
+          entity_id: string | null
+          expires_at: string
+          full_context_available: boolean | null
+          full_tokens_estimate: number | null
+          id: string
+          metadata: Json | null
+          related_entity_ids: string[] | null
+          user_id: string
+        }
+        Insert: {
+          abbreviated_context: Json
+          abbreviated_tokens: number
+          access_count?: number | null
+          accessed_at?: string | null
+          cache_key?: string | null
+          context_type: string
+          created_at?: string | null
+          entity_id?: string | null
+          expires_at?: string
+          full_context_available?: boolean | null
+          full_tokens_estimate?: number | null
+          id?: string
+          metadata?: Json | null
+          related_entity_ids?: string[] | null
+          user_id: string
+        }
+        Update: {
+          abbreviated_context?: Json
+          abbreviated_tokens?: number
+          access_count?: number | null
+          accessed_at?: string | null
+          cache_key?: string | null
+          context_type?: string
+          created_at?: string | null
+          entity_id?: string | null
+          expires_at?: string
+          full_context_available?: boolean | null
+          full_tokens_estimate?: number | null
+          id?: string
+          metadata?: Json | null
+          related_entity_ids?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          completion_tokens: number | null
+          content: string
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          prompt_tokens: number | null
+          role: string
+          session_id: string
+          tool_call_id: string | null
+          tool_calls: Json | null
+          tool_name: string | null
+          tool_result: Json | null
+          total_tokens: number | null
+        }
+        Insert: {
+          completion_tokens?: number | null
+          content: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          prompt_tokens?: number | null
+          role: string
+          session_id: string
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          total_tokens?: number | null
+        }
+        Update: {
+          completion_tokens?: number | null
+          content?: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          prompt_tokens?: number | null
+          role?: string
+          session_id?: string
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          total_tokens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          archived_at: string | null
+          auto_title: string | null
+          compressed_at: string | null
+          context_type: string
+          created_at: string | null
+          entity_id: string | null
+          id: string
+          last_message_at: string | null
+          message_count: number | null
+          preferences: Json | null
+          status: string
+          title: string | null
+          tool_call_count: number | null
+          total_tokens_used: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          auto_title?: string | null
+          compressed_at?: string | null
+          context_type: string
+          created_at?: string | null
+          entity_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          preferences?: Json | null
+          status?: string
+          title?: string | null
+          tool_call_count?: number | null
+          total_tokens_used?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          auto_title?: string | null
+          compressed_at?: string | null
+          context_type?: string
+          created_at?: string | null
+          entity_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          preferences?: Json | null
+          status?: string
+          title?: string | null
+          tool_call_count?: number | null
+          total_tokens_used?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_tool_executions: {
+        Row: {
+          arguments: Json
+          created_at: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          message_id: string | null
+          requires_user_action: boolean | null
+          result: Json | null
+          session_id: string
+          success: boolean
+          tokens_consumed: number | null
+          tool_category: string | null
+          tool_name: string
+        }
+        Insert: {
+          arguments: Json
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          message_id?: string | null
+          requires_user_action?: boolean | null
+          result?: Json | null
+          session_id: string
+          success?: boolean
+          tokens_consumed?: number | null
+          tool_category?: string | null
+          tool_name: string
+        }
+        Update: {
+          arguments?: Json
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          message_id?: string | null
+          requires_user_action?: boolean | null
+          result?: Json | null
+          session_id?: string
+          success?: boolean
+          tokens_consumed?: number | null
+          tool_category?: string | null
+          tool_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_tool_executions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_tool_executions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_logs: {
         Row: {
           created_at: string | null
@@ -5325,6 +5617,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      clean_expired_context_cache: { Args: never; Returns: undefined }
       cleanup_duplicate_brain_dump_drafts: {
         Args: never
         Returns: {

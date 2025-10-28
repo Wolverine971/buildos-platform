@@ -26,17 +26,17 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Documentation Structure
 
-| Folder           | Contents                           | README | Key Documents                                                    |
-| ---------------- | ---------------------------------- | ------ | ---------------------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | ⭐ Yes | brain-dump, calendar, notifications, onboarding, admin-dashboard |
-| `/audits/`       | Feature audits & implementation    | ⭐ Yes | Core columns, notifications, implementation reviews              |
-| `/design/`       | Design system and UI specs         | ⭐ Yes | style guide, design patterns, component standards                |
-| `/development/`  | Dev guides and conventions         | Yes    | testing, patterns, setup, migration tracking                     |
-| `/operations/`   | Deployment and ops                 | ⭐ Yes | Vercel config, runbooks, monitoring                              |
-| `/migrations/`   | Migration tracking                 | ⭐ Yes | active migrations (Phase 2.2, Phase 3, type updates)             |
-| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)   |
-| `/prompts/`      | LLM prompt templates               | Yes    | brain dump prompts, AI processing                                |
-| `/technical/`    | Technical documentation (detailed) | No     | architecture, API, database, services, deployment                |
+| Folder           | Contents                           | README | Key Documents                                                         |
+| ---------------- | ---------------------------------- | ------ | --------------------------------------------------------------------- |
+| `/features/`     | Feature specs and designs          | ⭐ Yes | brain-dump, calendar, **chat-system**, notifications, admin-dashboard |
+| `/audits/`       | Feature audits & implementation    | ⭐ Yes | Core columns, notifications, implementation reviews                   |
+| `/design/`       | Design system and UI specs         | ⭐ Yes | style guide, design patterns, component standards                     |
+| `/development/`  | Dev guides and conventions         | Yes    | testing, patterns, setup, migration tracking                          |
+| `/operations/`   | Deployment and ops                 | ⭐ Yes | Vercel config, runbooks, monitoring                                   |
+| `/migrations/`   | Migration tracking                 | ⭐ Yes | active migrations (Phase 2.2, Phase 3, type updates)                  |
+| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)        |
+| `/prompts/`      | LLM prompt templates               | Yes    | brain dump prompts, AI processing, **chat context**                   |
+| `/technical/`    | Technical documentation (detailed) | No     | architecture, API, database, services, deployment                     |
 
 **Note:**
 
@@ -71,9 +71,24 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Key Features
 
+### 🤖 AI Chat System with Progressive Disclosure
+
+**Location:** `/features/chat-system/`
+**Architecture:** `/features/chat-system/ARCHITECTURE.md`
+**Implementation Status:** ✅ **COMPLETE** (October 2025)
+
+Revolutionary context-aware chat system with 72% token reduction:
+
+- **Progressive Disclosure Pattern**: Two-tier data loading (abbreviated → detailed)
+- **20+ Integrated Tools**: Calendar, tasks, projects, notes management
+- **Real-time SSE Streaming**: Instant AI responses with tool visualization
+- **Smart Context Management**: Automatic context assembly from current page
+- **Secure Markdown Rendering**: Centralized HTML sanitization
+- **Multiple Access Methods**: Keyboard shortcut (Cmd/Ctrl+K), header button, FAB
+
 ### Brain Dump System
 
-**Location:** `/features/brain-dump/`  
+**Location:** `/features/brain-dump/`
 **Architecture:** `/technical/architecture/brain-dump-flow.md`
 
 Stream-of-consciousness input that AI processes into projects and tasks. Supports:

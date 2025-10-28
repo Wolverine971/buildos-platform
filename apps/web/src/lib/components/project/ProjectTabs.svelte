@@ -204,7 +204,7 @@
 		white-space: nowrap;
 		cursor: pointer;
 		transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-		
+
 		outline: none;
 		min-height: 44px; /* Apple touch target minimum */
 		flex-shrink: 0;

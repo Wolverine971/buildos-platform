@@ -1,4 +1,5 @@
 <!-- apps/web/src/routes/projects/[id]/tasks/[taskId]/+page.svelte -->
+<!-- Redesigned with high information density and Apple-inspired aesthetics -->
 <!-- https://claude.ai/chat/bb4907d4-80f4-414f-ac8b-0af5ff37ecbe -->
 <script lang="ts">
 	import {
@@ -14,12 +15,18 @@
 		Trash2,
 		AlertCircle,
 		Info,
-		RefreshCw
+		RefreshCw,
+		MessageCircle,
+		Calendar,
+		Timer,
+		RepeatIcon,
+		ChevronRight
 	} from 'lucide-svelte';
 	import { invalidate, goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import ProjectContextModal from '$lib/components/project/ProjectContextModal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import ChatModal from '$lib/components/chat/ChatModal.svelte';
 	import { ProjectService } from '$lib/services/projectService';
 	import type { PageData } from './$types';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
@@ -43,13 +50,11 @@
 	// Get project service instance
 	const projectService = ProjectService.getInstance();
 
-	// Tab management
-	type TabType = 'info' | 'steps';
-	let activeTab: TabType = 'info';
-
 	// Modal state
 	let showProjectContextModal = false;
 	let showDeleteConfirmation = false;
+	let showChatModal = false;
+	let expandedSections = { steps: false };
 
 	// Reactive values
 	$: project = data.project;
@@ -76,22 +81,6 @@
 	// UI state
 	let savingField: string | null = null;
 	let isDeleting = false;
-
-	// Tab configuration
-	const tabConfig = [
-		{
-			id: 'info' as TabType,
-			label: 'Task Details',
-			icon: Edit3,
-			count: null
-		},
-		{
-			id: 'steps' as TabType,
-			label: 'Task Steps',
-			icon: Sparkles,
-			count: null
-		}
-	];
 
 	// Options for select fields
 	const statusOptions = [
@@ -166,20 +155,13 @@
 
 			if (result?.success) {
 				await invalidateTaskData();
-				// toastService.success('Task updated successfully');
 			}
 		} catch (error) {
 			console.error(`Error updating ${field}:`, error);
 			toastService.error(`Failed to update ${field}`);
 		} finally {
 			savingField = null;
-			editingField = null;
 		}
-	}
-
-	// Tab switching
-	function switchTab(tab: TabType) {
-		activeTab = tab;
 	}
 
 	// Project context modal handlers
@@ -191,27 +173,81 @@
 		showProjectContextModal = false;
 	}
 
+	// Chat modal handlers
+	function openChatModal() {
+		showChatModal = true;
+	}
+
+	function closeChatModal() {
+		showChatModal = false;
+	}
+
+	// Get initial chat message based on task context
+	function getInitialChatMessage() {
+		if (!task) return '';
+
+		// Create a context-aware greeting
+		const taskStatus =
+			statusValue === 'done'
+				? 'completed'
+				: statusValue === 'in_progress'
+					? 'currently working on'
+					: statusValue === 'blocked'
+						? 'blocked on'
+						: 'planned';
+
+		return `I can help you with "${task.title}" which you're ${taskStatus}. You can ask me to:
+
+• Break down this task into smaller steps
+• Suggest implementation approaches
+• Help with technical challenges
+• Schedule time for this task
+• Find related tasks or documentation
+• Update task details or status
+
+What would you like help with?`;
+	}
+
+	// Keyboard shortcut handler
+	function handleKeyboardShortcut(event: KeyboardEvent) {
+		// Cmd/Ctrl + K for chat
+		if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+			event.preventDefault();
+			openChatModal();
+		}
+	}
+
 	// Get status display info
 	function getStatusDisplay(status: string) {
-		const configs: Record<string, { label: string; color: string; icon: typeof Clock }> = {
+		const configs: Record<
+			string,
+			{ label: string; color: string; bgColor: string; icon: typeof Clock }
+		> = {
 			backlog: {
 				label: 'Backlog',
-				color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+				color: 'text-gray-600 dark:text-gray-400',
+				bgColor: 'bg-gray-50 dark:bg-gray-900/50',
 				icon: Clock
 			},
 			in_progress: {
 				label: 'In Progress',
-				color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+				color: 'text-blue-700 dark:text-blue-400',
+				bgColor:
+					'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20',
 				icon: Clock
 			},
 			done: {
 				label: 'Done',
-				color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+				color: 'text-emerald-700 dark:text-emerald-400',
+				bgColor:
+					'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20',
 				icon: CheckCircle2
 			},
 			blocked: {
 				label: 'Blocked',
-				color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+				color: 'text-rose-700 dark:text-rose-400',
+				bgColor:
+					'bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20',
 				icon: AlertTriangle
 			}
 		};
@@ -219,18 +255,21 @@
 	}
 
 	function getPriorityDisplay(priority: string) {
-		const configs: Record<string, { label: string; color: string }> = {
+		const configs: Record<string, { label: string; color: string; dotColor: string }> = {
 			low: {
 				label: 'Low',
-				color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+				color: 'text-gray-500 dark:text-gray-400',
+				dotColor: 'bg-gray-400'
 			},
 			medium: {
 				label: 'Medium',
-				color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+				color: 'text-amber-600 dark:text-amber-400',
+				dotColor: 'bg-amber-500'
 			},
 			high: {
 				label: 'High',
-				color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+				color: 'text-rose-600 dark:text-rose-400',
+				dotColor: 'bg-rose-500'
 			}
 		};
 		return configs[priority] || configs.medium;
@@ -253,10 +292,10 @@
 
 		if (project?.end_date) {
 			const endDate = new Date(project.end_date);
-			return `This task will recur until the project ends on ${format(endDate, 'MMM d, yyyy')}`;
+			return `Recurs until ${format(endDate, 'MMM d, yyyy')}`;
 		}
 
-		return 'This task will recur indefinitely as the project has no end date';
+		return 'Recurs indefinitely';
 	})();
 
 	// Use centralized date formatter for calendar events
@@ -311,357 +350,397 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<!-- Deleted Task Warning Banner -->
+<svelte:window on:keydown={handleKeyboardShortcut} />
+
+<div
+	class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
+>
+	<!-- Deleted Task Warning -->
 	{#if isDeleted}
-		<div class="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-				<div class="flex items-center gap-3">
-					<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-					<div class="flex-1">
-						<p class="text-sm font-medium text-red-900 dark:text-red-200">
-							This task was deleted on {formatDateTimeForDisplay(task.deleted_at)}
-						</p>
-						<p class="text-xs text-red-700 dark:text-red-300 mt-0.5">
-							Deleted tasks are retained for record-keeping but cannot be edited or
-							scheduled.
-						</p>
-					</div>
+		<div
+			class="bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border-b border-rose-200 dark:border-rose-800"
+		>
+			<div class="max-w-6xl mx-auto px-4 py-2">
+				<div class="flex items-center gap-2">
+					<AlertCircle class="w-4 h-4 text-rose-600 dark:text-rose-400" />
+					<p class="text-xs font-medium text-rose-700 dark:text-rose-300">
+						Deleted {formatDateTimeForDisplay(task.deleted_at)} • Read-only
+					</p>
 				</div>
 			</div>
 		</div>
 	{/if}
 
-	<!-- Header Navigation Bar -->
+	<!-- Compact Header -->
 	<header
-		class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky {isDeleted
-			? 'top-[68px]'
-			: 'top-0'} z-10"
+		class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 sticky {isDeleted
+			? 'top-[32px]'
+			: 'top-0'} z-30"
 	>
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="flex items-center justify-between h-16">
-				<!-- Left: Back Navigation -->
-				<nav aria-label="Task navigation" class="flex items-center space-x-4">
+		<div class="max-w-6xl mx-auto px-4">
+			<div class="flex items-center justify-between h-12">
+				<!-- Navigation -->
+				<div class="flex items-center gap-2 min-w-0">
 					<a
 						href="/projects/{projectId}"
-						class="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
-						aria-label="Return to {project.name} project"
+						class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
 					>
-						<ArrowLeft
-							class="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform"
-							aria-hidden="true"
-						/>
+						<ArrowLeft class="w-3.5 h-3.5" />
 						<span class="font-medium">{project.name}</span>
 					</a>
-					<span class="text-gray-300 dark:text-gray-600">/</span>
-					<span
-						class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-md"
-					>
+					<ChevronRight class="w-3 h-3 text-gray-400 dark:text-gray-600" />
+					<span class="text-xs font-semibold text-gray-900 dark:text-white truncate">
 						{titleValue}
 					</span>
-				</nav>
+				</div>
 
-				<!-- Right: Actions -->
-				<div class="flex items-center space-x-3">
-					<!-- Recent Activity Indicator -->
+				<!-- Quick Actions -->
+				<div class="flex items-center gap-1.5">
 					<RecentActivityIndicator
 						createdAt={task.created_at}
 						updatedAt={task.updated_at}
-						size="sm"
+						size="xs"
 					/>
-					<!-- Status Badge -->
-					{#if isDeleted}
-						<span
-							class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-						>
-							<AlertCircle class="w-4 h-4 mr-1.5" />
-							Deleted
-						</span>
-					{:else}
-						<span
-							class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {statusDisplay.color}"
-						>
-							<svelte:component this={statusDisplay.icon} class="w-4 h-4 mr-1.5" />
-							{statusDisplay.label}
-						</span>
-					{/if}
-
-					<!-- Priority Badge -->
-					<span
-						class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {priorityDisplay.color}"
+					<button
+						on:click={openChatModal}
+						class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-all"
+						title="Chat (⌘K)"
+						disabled={isDeleted}
 					>
-						{priorityDisplay.label}
-					</span>
-
-					<!-- Project Context -->
-					<Button
-						type="button"
+						<MessageCircle class="w-4 h-4" />
+					</button>
+					<button
 						on:click={openProjectContextModal}
-						variant="ghost"
-						size="sm"
-						class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-						aria-label="View project context"
+						class="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
 						title="Project Context"
-						icon={Settings}
-					></Button>
+					>
+						<Settings class="w-4 h-4" />
+					</button>
 				</div>
 			</div>
 		</div>
 	</header>
 
 	<!-- Main Content -->
-	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-		<!-- Tab Navigation -->
-		<div class="mb-6">
-			<div
-				class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1"
-			>
-				<nav class="flex space-x-1">
-					{#each tabConfig as tab (tab.id)}
-						<Button
-							on:click={() => switchTab(tab.id)}
-							variant={activeTab === tab.id ? 'primary' : 'ghost'}
-							size="md"
-							btnType="container"
-							class="relative flex-1 justify-center gap-2 {activeTab === tab.id
-								? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 shadow-sm'
-								: ''}"
-						>
-							<svelte:component this={tab.icon} class="w-5 h-5 flex-shrink-0" />
-							<span class="truncate font-semibold">{tab.label}</span>
-							{#if tab.count !== null && tab.count !== undefined}
-								<span
-									class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full flex-shrink-0"
-								>
-									{tab.count}
-								</span>
-							{/if}
-							{#if tab.badge}
-								<span
-									class="text-xs px-2 py-1 rounded-full flex-shrink-0 font-medium
-									{tab.badge.color === 'blue'
-										? 'bg-blue-500 text-white'
-										: tab.badge.color === 'purple'
-											? 'bg-purple-500 text-white'
-											: 'bg-gray-500 text-white'}"
-								>
-									{tab.badge.text}
-								</span>
-							{/if}
-						</Button>
-					{/each}
-				</nav>
-			</div>
-		</div>
-
-		<!-- Tab Content -->
-		{#if activeTab === 'info'}
-			<!-- Main Task Content -->
-			<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-16rem)]">
-				<!-- Content Section (3/4 width) -->
-				<div class="lg:col-span-3 space-y-6 {isDeleted ? 'opacity-75' : ''}">
-					<!-- Title -->
+	<main class="max-w-6xl mx-auto px-4 py-3">
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+			<!-- Main Content Area -->
+			<div class="lg:col-span-2 space-y-3 {isDeleted ? 'opacity-75' : ''}">
+				<!-- Unified Task Card -->
+				<div
+					class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+				>
+					<!-- Status & Priority Bar -->
 					<div
-						class="{isDeleted
-							? 'bg-red-50 dark:bg-red-950/20'
-							: 'bg-white dark:bg-gray-800'} rounded-xl shadow-sm border {isDeleted
-							? 'border-red-200 dark:border-red-800'
-							: 'border-gray-200 dark:border-gray-700'} p-6"
+						class="flex items-center justify-between px-4 py-2 {statusDisplay.bgColor} border-b border-gray-200 dark:border-gray-700"
 					>
-						<FormField label="Task Title" labelFor="task-title">
-							<TextInput
-								id="task-title"
-								bind:value={titleValue}
-								on:blur={() => !isDeleted && quickUpdateField('title', titleValue)}
-								placeholder="Task title..."
-								size="lg"
-								class="w-full text-2xl font-bold {isDeleted ? 'opacity-60' : ''}"
-								disabled={isDeleted}
-								readonly={isDeleted}
+						<div class="flex items-center gap-3">
+							<svelte:component
+								this={statusDisplay.icon}
+								class="w-4 h-4 {statusDisplay.color}"
 							/>
-							{#if savingField === 'title'}
+							<span class="text-sm font-medium {statusDisplay.color}"
+								>{statusDisplay.label}</span
+							>
+							{#if taskTypeValue === 'recurring'}
 								<div
-									class="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center"
+									class="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400"
 								>
-									<Save class="w-4 h-4 mr-1 animate-pulse" />
-									Saving...
+									<RepeatIcon class="w-3 h-3" />
+									<span>Recurring</span>
 								</div>
 							{/if}
-						</FormField>
+						</div>
+						<div class="flex items-center gap-2">
+							<span
+								class="flex items-center gap-1 text-xs font-medium {priorityDisplay.color}"
+							>
+								<span class="w-1.5 h-1.5 rounded-full {priorityDisplay.dotColor}"
+								></span>
+								{priorityDisplay.label} Priority
+							</span>
+						</div>
 					</div>
 
-					<!-- Description -->
-					<div
-						class="{isDeleted
-							? 'bg-red-50 dark:bg-red-950/20'
-							: 'bg-white dark:bg-gray-800'} rounded-xl shadow-sm border {isDeleted
-							? 'border-red-200 dark:border-red-800'
-							: 'border-gray-200 dark:border-gray-700'} p-6"
-					>
-						<FormField label="Description" labelFor="task-description">
-							<Textarea
-								id="task-description"
-								bind:value={descriptionValue}
-								on:blur={() =>
-									!isDeleted && quickUpdateField('description', descriptionValue)}
-								placeholder="Brief task description..."
-								rows={3}
-								size="lg"
-								class="w-full text-lg {isDeleted ? 'opacity-60' : ''}"
-								disabled={isDeleted}
-								readonly={isDeleted}
-							/>
-							{#if savingField === 'description'}
+					<!-- Title Section -->
+					<div class="px-4 pt-3 pb-2">
+						<input
+							type="text"
+							bind:value={titleValue}
+							on:blur={() => !isDeleted && quickUpdateField('title', titleValue)}
+							placeholder="Task title..."
+							class="w-full text-xl font-semibold bg-transparent border-0 p-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+							disabled={isDeleted}
+							readonly={isDeleted}
+						/>
+						{#if savingField === 'title'}
+							<div
+								class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
+							>
+								<Save class="w-3 h-3 mr-1 animate-pulse" />
+								Saving...
+							</div>
+						{/if}
+					</div>
+
+					<!-- Description Section -->
+					<div class="px-4 pb-3">
+						<textarea
+							bind:value={descriptionValue}
+							on:blur={() =>
+								!isDeleted && quickUpdateField('description', descriptionValue)}
+							placeholder="Brief description..."
+							rows={2}
+							class="w-full text-sm text-gray-600 dark:text-gray-400 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600"
+							disabled={isDeleted}
+							readonly={isDeleted}
+						></textarea>
+						{#if savingField === 'description'}
+							<div
+								class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
+							>
+								<Save class="w-3 h-3 mr-1 animate-pulse" />
+								Saving...
+							</div>
+						{/if}
+					</div>
+
+					<!-- Quick Metadata Grid -->
+					{#if startDateValue || durationMinutesValue !== 60}
+						<div class="px-4 pb-3 flex flex-wrap gap-3 text-xs">
+							{#if startDateValue}
 								<div
-									class="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center"
+									class="flex items-center gap-1 text-gray-500 dark:text-gray-400"
 								>
-									<Save class="w-4 h-4 mr-1 animate-pulse" />
-									Saving...
+									<Calendar class="w-3 h-3" />
+									<span
+										>{formatDateForDisplay(
+											convertDatetimeLocalToUTC(startDateValue)
+										)}</span
+									>
 								</div>
 							{/if}
-						</FormField>
-					</div>
+							{#if durationMinutesValue !== 60}
+								<div
+									class="flex items-center gap-1 text-gray-500 dark:text-gray-400"
+								>
+									<Timer class="w-3 h-3" />
+									<span>{durationMinutesValue} min</span>
+								</div>
+							{/if}
+							{#if recurrencePatternValue && taskTypeValue === 'recurring'}
+								<div
+									class="flex items-center gap-1 text-purple-600 dark:text-purple-400"
+								>
+									<RepeatIcon class="w-3 h-3" />
+									<span>{recurrencePatternValue}</span>
+								</div>
+							{/if}
+						</div>
+					{/if}
 
-					<!-- Details -->
-					<div
-						class="{isDeleted
-							? 'bg-red-50 dark:bg-red-950/20'
-							: 'bg-white dark:bg-gray-800'} rounded-xl shadow-sm border {isDeleted
-							? 'border-red-200 dark:border-red-800'
-							: 'border-gray-200 dark:border-gray-700'} p-6 flex-1"
-					>
-						<label
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
-						>
-							Detailed Information
-						</label>
-						<div class="group h-full">
-							<Textarea
+					<!-- Details Section -->
+					<div class="border-t border-gray-200 dark:border-gray-700">
+						<div class="px-4 py-3">
+							<label
+								class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>Details</label
+							>
+							<textarea
 								bind:value={detailsValue}
 								on:blur={() =>
 									!isDeleted && quickUpdateField('details', detailsValue)}
-								on:input={(e) => !isDeleted && autoResize(e.currentTarget)}
-								placeholder="Detailed task information, steps, notes, requirements..."
-								rows={24}
-								size="lg"
-								class="w-full leading-relaxed {isDeleted ? 'opacity-60' : ''}"
+								on:input={(e) => autoResize(e.target)}
+								placeholder="Add detailed information, requirements, or notes..."
+								rows={6}
+								class="w-full mt-2 text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600"
 								disabled={isDeleted}
 								readonly={isDeleted}
-							/>
-							{#if savingField === 'details'}
-								<div
-									class="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-4 h-4 mr-1 animate-pulse" />
-									Saving...
+							></textarea>
+							{#if detailsValue}
+								<div class="mt-1 text-xs text-gray-400">
+									{detailsValue.length} characters
 								</div>
 							{/if}
-							<div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-								{detailsValue.length} characters
-							</div>
 						</div>
 					</div>
+
+					<!-- Task Steps Section -->
+					{#if taskStepsValue || !isDeleted}
+						<div class="border-t border-gray-200 dark:border-gray-700">
+							<button
+								on:click={() => (expandedSections.steps = !expandedSections.steps)}
+								class="w-full px-4 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+								type="button"
+							>
+								<div class="flex items-center gap-2">
+									<Sparkles
+										class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400"
+									/>
+									<span
+										class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+										>Task Steps</span
+									>
+									{#if taskStepsValue}
+										<span class="text-xs text-gray-500 dark:text-gray-400"
+											>({taskStepsValue.split('\n').filter((l) => l.trim())
+												.length} steps)</span
+										>
+									{/if}
+								</div>
+								<ChevronRight
+									class="w-4 h-4 text-gray-400 transition-transform {expandedSections.steps
+										? 'rotate-90'
+										: ''}"
+								/>
+							</button>
+
+							{#if expandedSections.steps}
+								<div class="px-4 pb-3">
+									<textarea
+										bind:value={taskStepsValue}
+										on:blur={() =>
+											!isDeleted &&
+											quickUpdateField('task_steps', taskStepsValue)}
+										on:input={(e) => autoResize(e.target)}
+										placeholder="1. First step&#10;2. Second step&#10;3. Third step..."
+										rows={6}
+										class="w-full text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600 font-mono"
+										disabled={isDeleted}
+										readonly={isDeleted}
+									></textarea>
+								</div>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
-				<!-- Metadata Sidebar (1/4 width) -->
-				<div class="lg:col-span-1 space-y-4">
+				<!-- Calendar Events (if any) -->
+				{#if calendarEvents.length > 0}
 					<div
-						class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 space-y-4 sticky top-24"
+						class="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800"
+					>
+						<div class="flex items-center justify-between mb-2">
+							<span
+								class="text-xs font-medium text-emerald-700 dark:text-emerald-300 uppercase tracking-wider"
+								>Calendar Events</span
+							>
+							<span class="text-xs text-emerald-600 dark:text-emerald-400"
+								>{calendarEvents.length} scheduled</span
+							>
+						</div>
+						<div class="space-y-1.5">
+							{#each calendarEvents.slice(0, 3) as event}
+								<div class="flex items-center justify-between">
+									<span class="text-xs text-emerald-700 dark:text-emerald-300">
+										{formatEventDate(event.event_start)}
+									</span>
+									{#if event.event_link && event.sync_status === 'synced'}
+										<a
+											href={event.event_link}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+										>
+											View
+											<ExternalLink class="w-3 h-3" />
+										</a>
+									{/if}
+								</div>
+							{/each}
+							{#if calendarEvents.length > 3}
+								<div class="text-xs text-emerald-600 dark:text-emerald-400">
+									+{calendarEvents.length - 3} more...
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Compact Sidebar -->
+			<div class="lg:col-span-1">
+				<div
+					class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 sticky top-16 overflow-hidden"
+				>
+					<!-- Sidebar Header -->
+					<div
+						class="px-3 py-2 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-900 border-b border-gray-200 dark:border-gray-700"
 					>
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide"
+							class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
 						>
-							Task Details
+							Properties
 						</h3>
+					</div>
 
+					<!-- Compact Controls -->
+					<div class="p-3 space-y-2.5">
 						<!-- Status -->
-						<FormField label="Status" labelFor="task-status">
-							<Select
-								id="task-status"
+						<div>
+							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+								>Status</label
+							>
+							<select
 								bind:value={statusValue}
-								on:change={(e) => {
-									if (!isDeleted) {
-										statusValue = e.detail;
-										quickUpdateField('status', statusValue);
-									}
-								}}
-								size="sm"
+								on:change={() =>
+									!isDeleted && quickUpdateField('status', statusValue)}
+								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
 							>
 								{#each statusOptions as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
-							</Select>
+							</select>
 							{#if savingField === 'status'}
-								<div
-									class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-3 h-3 mr-1 animate-pulse" />
+								<div class="mt-1 text-xs text-blue-600 dark:text-blue-400">
 									Saving...
 								</div>
 							{/if}
-						</FormField>
+						</div>
 
 						<!-- Priority -->
-						<FormField label="Priority" labelFor="task-priority">
-							<Select
-								id="task-priority"
+						<div>
+							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+								>Priority</label
+							>
+							<select
 								bind:value={priorityValue}
-								on:change={(e) => {
-									if (!isDeleted) {
-										priorityValue = e.detail;
-										quickUpdateField('priority', priorityValue);
-									}
-								}}
-								size="sm"
+								on:change={() =>
+									!isDeleted && quickUpdateField('priority', priorityValue)}
+								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
 							>
 								{#each priorityOptions as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
-							</Select>
-							{#if savingField === 'priority'}
-								<div
-									class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-3 h-3 mr-1 animate-pulse" />
-									Saving...
-								</div>
-							{/if}
-						</FormField>
+							</select>
+						</div>
 
 						<!-- Task Type -->
-						<FormField label="Task Type" labelFor="task-type">
-							<Select
-								id="task-type"
+						<div>
+							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+								>Type</label
+							>
+							<select
 								bind:value={taskTypeValue}
-								on:change={(e) => {
-									if (!isDeleted) {
-										taskTypeValue = e.detail;
-										quickUpdateField('task_type', taskTypeValue);
-									}
-								}}
-								size="sm"
+								on:change={() =>
+									!isDeleted && quickUpdateField('task_type', taskTypeValue)}
+								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
 							>
 								{#each taskTypeOptions as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
-							</Select>
-							{#if savingField === 'task_type'}
-								<div
-									class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-3 h-3 mr-1 animate-pulse" />
-									Saving...
-								</div>
-							{/if}
-						</FormField>
+							</select>
+						</div>
 
 						<!-- Start Date -->
-						<FormField label="Start Date & Time" labelFor="task-start-date">
-							<TextInput
-								id="task-start-date"
+						<div>
+							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+								>Start Date</label
+							>
+							<input
 								type="datetime-local"
 								bind:value={startDateValue}
 								on:change={() =>
@@ -670,98 +749,59 @@
 										'start_date',
 										convertDatetimeLocalToUTC(startDateValue)
 									)}
-								size="sm"
+								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
 							/>
-							{#if savingField === 'start_date'}
-								<div
-									class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-3 h-3 mr-1 animate-pulse" />
-									Saving...
-								</div>
-							{/if}
-						</FormField>
+						</div>
 
 						<!-- Duration -->
-						<FormField label="Duration (minutes)" labelFor="task-duration">
-							<TextInput
-								id="task-duration"
+						<div>
+							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+								>Duration (min)</label
+							>
+							<input
 								type="number"
 								bind:value={durationMinutesValue}
 								on:change={() =>
 									!isDeleted &&
 									quickUpdateField('duration_minutes', durationMinutesValue)}
 								min="1"
-								size="sm"
+								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
 							/>
-							{#if savingField === 'duration_minutes'}
-								<div
-									class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-3 h-3 mr-1 animate-pulse" />
-									Saving...
-								</div>
-							{/if}
-						</FormField>
+						</div>
 
 						<!-- Recurrence Pattern (only for recurring tasks with start date) -->
 						{#if taskTypeValue === 'recurring' && startDateValue}
-							<FormField label="Recurrence Pattern" labelFor="recurrence-pattern">
-								<Select
-									id="recurrence-pattern"
+							<div>
+								<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+									>Recurrence</label
+								>
+								<select
 									bind:value={recurrencePatternValue}
-									on:change={(e) => {
-										if (!isDeleted) {
-											recurrencePatternValue = e.detail;
-											quickUpdateField(
-												'recurrence_pattern',
-												recurrencePatternValue
-											);
-										}
-									}}
-									size="sm"
+									on:change={() =>
+										!isDeleted &&
+										quickUpdateField(
+											'recurrence_pattern',
+											recurrencePatternValue
+										)}
+									class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 									disabled={isDeleted}
 								>
 									{#each recurrenceOptions as option}
 										<option value={option.value}>{option.label}</option>
 									{/each}
-								</Select>
-								{#if savingField === 'recurrence_pattern'}
-									<div
-										class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-									>
-										<Save class="w-3 h-3 mr-1 animate-pulse" />
-										Saving...
-									</div>
-								{/if}
-							</FormField>
+								</select>
+							</div>
 
-							<!-- Recurrence End Options -->
-							<FormField label="Recurrence Ends" labelFor="recurrence-end-option">
-								<Select
-									id="recurrence-end-option"
-									bind:value={recurrenceEndOption}
-									on:change={(e) => {
-										if (!isDeleted) {
-											recurrenceEndOption = e.detail;
-										}
-									}}
-									size="sm"
-									disabled={isDeleted}
-								>
-									{#each recurrenceEndOptions as option}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</Select>
-							</FormField>
-
-							<!-- End Date Input (if "On date" selected) -->
+							<!-- Recurrence End -->
 							{#if recurrenceEndOption === 'date'}
-								<FormField label="End Date" labelFor="recurrence-end-date">
-									<TextInput
-										id="recurrence-end-date"
+								<div>
+									<label
+										class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+										>End Date</label
+									>
+									<input
 										type="date"
 										bind:value={recurrenceEndsValue}
 										on:change={() =>
@@ -774,273 +814,48 @@
 														).toISOString()
 													: null
 											)}
-										size="sm"
+										class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 										disabled={isDeleted}
 									/>
-									{#if savingField === 'recurrence_ends'}
-										<div
-											class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-										>
-											<Save class="w-3 h-3 mr-1 animate-pulse" />
-											Saving...
-										</div>
-									{/if}
-								</FormField>
-							{/if}
-
-							<!-- Recurrence End Message -->
-							{#if recurrenceEndMessage}
-								<div
-									class="mt-3 flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
-								>
-									<Info
-										class="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
-									/>
-									<span class="text-sm text-blue-900 dark:text-blue-100">
-										{recurrenceEndMessage}
-									</span>
-								</div>
-							{/if}
-						{/if}
-
-						<!-- Calendar Events -->
-						{#if calendarEvents.length > 0}
-							<div>
-								<label
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-								>
-									Calendar Events
-								</label>
-								<div class="space-y-2">
-									{#each calendarEvents as event}
-										<div
-											class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
-										>
-											<div class="flex items-center space-x-2">
-												{#if event.sync_status === 'synced'}
-													<CheckCircle2
-														class="w-4 h-4 text-green-600 dark:text-green-400"
-													/>
-												{:else if event.sync_status === ('error' as any)}
-													<AlertTriangle
-														class="w-4 h-4 text-red-600 dark:text-red-400"
-													/>
-												{:else}
-													<Clock
-														class="w-4 h-4 text-yellow-600 dark:text-yellow-400"
-													/>
-												{/if}
-												<div class="flex-1">
-													<p
-														class="text-xs font-medium text-green-800 dark:text-green-200"
-													>
-														{formatEventDate(event.event_start)}
-													</p>
-													{#if event.event_link && event.sync_status === 'synced'}
-														<a
-															href={event.event_link}
-															target="_blank"
-															rel="noopener noreferrer"
-															class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center mt-1"
-														>
-															View <ExternalLink
-																class="w-3 h-3 ml-1"
-															/>
-														</a>
-													{/if}
-												</div>
-											</div>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/if}
-
-						<!-- Creation/Update Info -->
-						{#if task}
-							<hr class="border-gray-200 dark:border-gray-700" />
-							<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-								{#if task.created_at}
-									<div>
-										<span class="font-medium">Created:</span>
-										<br />
-										{formatDateForDisplay(task.created_at)}
-									</div>
-								{/if}
-								{#if task.updated_at}
-									<div>
-										<span class="font-medium">Updated:</span>
-										<br />
-										{formatDateForDisplay(task.updated_at)}
-									</div>
-								{/if}
-								{#if task.deleted_at}
-									<div class="text-red-600 dark:text-red-400">
-										<span class="font-medium">Deleted:</span>
-										<br />
-										{formatDateForDisplay(task.deleted_at)}
-									</div>
-								{/if}
-							</div>
-
-							<!-- Delete Task Button (only show if not already deleted) -->
-							{#if !isDeleted}
-								<hr class="border-gray-200 dark:border-gray-700" />
-								<div class="pt-2">
-									<Button
-										variant="danger"
-										size="sm"
-										fullWidth={true}
-										on:click={handleDeleteClick}
-										disabled={isDeleting}
-										icon={Trash2}
-									>
-										Delete Task
-									</Button>
 								</div>
 							{/if}
 						{/if}
 					</div>
+
+					<!-- Timestamps -->
+					<div
+						class="px-3 pb-3 space-y-1.5 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3"
+					>
+						{#if task?.created_at}
+							<div class="flex justify-between">
+								<span>Created</span>
+								<span>{formatDateForDisplay(task.created_at)}</span>
+							</div>
+						{/if}
+						{#if task?.updated_at}
+							<div class="flex justify-between">
+								<span>Updated</span>
+								<span>{formatDateForDisplay(task.updated_at)}</span>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Delete Button -->
+					{#if !isDeleted}
+						<div class="p-3 border-t border-gray-200 dark:border-gray-700">
+							<button
+								on:click={handleDeleteClick}
+								disabled={isDeleting}
+								class="w-full text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 py-2 px-3 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+							>
+								<Trash2 class="w-3.5 h-3.5 inline mr-1.5" />
+								Delete Task
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
-		{:else if activeTab === 'steps'}
-			<!-- Task Steps Tab -->
-			<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-				<div class="lg:col-span-3">
-					<div
-						class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-					>
-						<div class="mb-4">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-								Step-by-Step Instructions
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Document the steps needed to complete this task
-							</p>
-						</div>
-
-						<FormField labelFor="task-steps" class="flex-1 flex flex-col">
-							<Textarea
-								id="task-steps"
-								bind:value={taskStepsValue}
-								on:blur={() =>
-									!isDeleted && quickUpdateField('task_steps', taskStepsValue)}
-								on:input={(e) => !isDeleted && autoResize(e.currentTarget)}
-								placeholder="1. First step&#10;2. Second step&#10;3. Third step&#10;..."
-								rows={16}
-								size="lg"
-								class="w-full leading-relaxed {isDeleted ? 'opacity-60' : ''}"
-								disabled={isDeleted}
-								readonly={isDeleted}
-							/>
-							{#if savingField === 'task_steps'}
-								<div
-									class="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center"
-								>
-									<Save class="w-4 h-4 mr-1 animate-pulse" />
-									Saving...
-								</div>
-							{/if}
-							<div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-								{taskStepsValue.length} characters
-							</div>
-						</FormField>
-					</div>
-				</div>
-
-				<!-- Steps Sidebar -->
-				<div class="lg:col-span-1">
-					<div
-						class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sticky top-24"
-					>
-						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide mb-4"
-						>
-							Task Information
-						</h3>
-
-						<!-- Task Type Badge -->
-						<div class="mb-4">
-							<p
-								class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
-							>
-								Type
-							</p>
-							<span
-								class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {taskTypeValue ===
-								'recurring'
-									? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-									: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}"
-							>
-								{taskTypeValue === 'recurring' ? 'Recurring' : 'One-off'}
-							</span>
-						</div>
-
-						<!-- Priority Badge -->
-						{#if priorityDisplay}
-							<div class="mb-4">
-								<p
-									class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
-								>
-									Priority
-								</p>
-								<span
-									class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {priorityDisplay.color}"
-								>
-									{priorityDisplay.label}
-								</span>
-							</div>
-						{/if}
-
-						<!-- Status Badge -->
-						{#if statusDisplay}
-							<div class="mb-4">
-								<p
-									class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
-								>
-									Status
-								</p>
-								<span
-									class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {statusDisplay.color}"
-								>
-									<svelte:component
-										this={statusDisplay.icon}
-										class="w-4 h-4 mr-1.5"
-									/>
-									{statusDisplay.label}
-								</span>
-							</div>
-						{/if}
-
-						<hr class="border-gray-200 dark:border-gray-700 my-4" />
-
-						<!-- Metadata -->
-						<div class="space-y-3 text-xs text-gray-600 dark:text-gray-400">
-							{#if task?.created_at}
-								<div>
-									<span class="font-medium block text-gray-700 dark:text-gray-300"
-										>Created</span
-									>
-									<span class="text-gray-600 dark:text-gray-400"
-										>{formatDateForDisplay(task.created_at)}</span
-									>
-								</div>
-							{/if}
-							{#if task?.updated_at}
-								<div>
-									<span class="font-medium block text-gray-700 dark:text-gray-300"
-										>Updated</span
-									>
-									<span class="text-gray-600 dark:text-gray-400"
-										>{formatDateForDisplay(task.updated_at)}</span
-									>
-								</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
+		</div>
 	</main>
 </div>
 
@@ -1074,41 +889,52 @@
 	</div>
 </ConfirmationModal>
 
+<!-- Chat Modal -->
+{#if task}
+	<ChatModal
+		isOpen={showChatModal}
+		contextType="task"
+		entityId={task.id}
+		initialMessage={getInitialChatMessage()}
+		onClose={closeChatModal}
+	/>
+{/if}
+
+<!-- Floating Chat Button -->
+{#if !isDeleted}
+	<button
+		on:click={openChatModal}
+		class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+		aria-label="Chat about this task"
+		title="Chat (⌘K)"
+	>
+		<MessageCircle class="w-5 h-5" />
+	</button>
+{/if}
+
 <style>
-	/* Smooth transitions for tab switching */
+	/* Smooth transitions */
 	main {
 		transition: opacity 0.2s ease-in-out;
 	}
 
-	/* Custom scrollbar for content areas */
-	:global(.task-content-scroll) {
-		scrollbar-width: thin;
-		scrollbar-color: rgb(203 213 225) transparent;
+	/* Compact input styles */
+	input[type='text'],
+	input[type='number'],
+	input[type='date'],
+	input[type='datetime-local'],
+	select,
+	textarea {
+		transition: all 0.15s ease-in-out;
 	}
 
-	:global(.task-content-scroll::-webkit-scrollbar) {
-		width: 6px;
-	}
-
-	:global(.task-content-scroll::-webkit-scrollbar-track) {
-		background: transparent;
-	}
-
-	:global(.task-content-scroll::-webkit-scrollbar-thumb) {
-		background-color: rgb(203 213 225);
-		border-radius: 3px;
-	}
-
-	:global(.dark .task-content-scroll) {
-		scrollbar-color: rgb(75 85 99) transparent;
-	}
-
-	:global(.dark .task-content-scroll::-webkit-scrollbar-thumb) {
-		background-color: rgb(75 85 99);
-	}
-
-	/* Input hover effects */
-	:global(.group:hover input, .group:hover textarea, .group:hover select) {
-		border-color: rgb(156 163 175);
+	input[type='text']:focus,
+	input[type='number']:focus,
+	input[type='date']:focus,
+	input[type='datetime-local']:focus,
+	select:focus,
+	textarea:focus {
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 	}
 </style>

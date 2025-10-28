@@ -269,8 +269,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Speed tier (<1s)
-	'groq/llama-3.1-8b-instant': {
-		id: 'groq/llama-3.1-8b-instant',
+	'x-ai/grok-4-fast': {
+		id: 'x-ai/grok-4-fast',
 		name: 'Llama 3.1 8B Groq',
 		speed: 5,
 		smartness: 3,
@@ -400,7 +400,7 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 };
 
 const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
-	speed: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'groq/llama-3.1-8b-instant'],
+	speed: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'x-ai/grok-4-fast'],
 	balanced: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001', 'deepseek/deepseek-chat'],
 	quality: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'deepseek/deepseek-chat'],
 	creative: ['anthropic/claude-3-opus', 'anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
@@ -479,8 +479,9 @@ export class SmartLLMService {
 		}
 
 		try {
+			const sanitizedUserId = this.normalizeUserIdForLogging(params.userId);
 			const { error } = await this.supabase.from('llm_usage_logs').insert({
-				user_id: params.userId,
+				user_id: sanitizedUserId,
 				operation_type: params.operationType,
 				model_requested: params.modelRequested,
 				model_used: params.modelUsed,
@@ -531,6 +532,14 @@ export class SmartLLMService {
 				);
 			}
 		}
+	}
+
+	private normalizeUserIdForLogging(userId?: string | null): string | null {
+		if (!userId) return null;
+		const trimmed = userId.trim();
+		const uuidRegex =
+			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+		return uuidRegex.test(trimmed) ? trimmed : null;
 	}
 
 	// ============================================
@@ -1247,7 +1256,7 @@ export class SmartLLMService {
 			'google/gemini-flash-1.5',
 			'google/gemini-flash-1.5-8b',
 			'google/gemini-2.5-flash-lite',
-			'groq/llama-3.1-8b-instant',
+			'x-ai/grok-4-fast',
 			'x-ai/grok-4-fast:free',
 			'x-ai/grok-code-fast-1',
 			'z-ai/glm-4.6'
@@ -1481,5 +1490,296 @@ You must respond with valid JSON only. Follow these rules:
 		}
 
 		return { json: jsonProfile, text: textProfile };
+	}
+
+	// ============================================
+	// STREAMING TEXT METHOD FOR CHAT
+	// ============================================
+
+	/**
+	 * Stream text responses for chat system with tool support
+	 * Returns an async generator for real-time streaming
+	 */
+	async *streamText(options: {
+		messages: Array<{
+			role: string;
+			content: string;
+			tool_calls?: any[];
+			tool_call_id?: string;
+		}>;
+		tools?: any[];
+		tool_choice?: 'auto' | 'none' | 'required';
+		userId: string;
+		profile?: TextProfile;
+		temperature?: number;
+		maxTokens?: number;
+		sessionId?: string;
+		messageId?: string;
+	}): AsyncGenerator<{
+		type: 'text' | 'tool_call' | 'done' | 'error';
+		content?: string;
+		tool_call?: any;
+		usage?: any;
+		error?: string;
+		finished_reason?: string;
+	}> {
+		const requestStartedAt = new Date();
+		const startTime = performance.now();
+		const profile = options.profile || 'speed'; // Default to speed for chat
+
+		try {
+			// Select models optimized for chat streaming
+			const preferredModels = this.selectTextModels(
+				profile,
+				'chat',
+				{ maxLatency: 2000 } // Fast response for chat
+			);
+
+			// Build request with streaming enabled
+			const headers = {
+				Authorization: `Bearer ${this.apiKey}`,
+				'Content-Type': 'application/json',
+				'HTTP-Referer': this.httpReferer,
+				'X-Title': this.appName
+			};
+
+			const body: any = {
+				model: preferredModels[0],
+				models: preferredModels,
+				messages: options.messages,
+				temperature: options.temperature ?? 0.7,
+				max_tokens: options.maxTokens ?? 2000,
+				stream: true,
+				transforms: ['middle-out'],
+				route: 'fallback'
+			};
+
+			// Add tools if provided
+			if (options.tools && options.tools.length > 0) {
+				body.tools = options.tools;
+				body.tool_choice = options.tool_choice || 'auto';
+			}
+
+			// Make streaming request
+			const response = await fetch(this.apiUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(body)
+			});
+
+			if (!response.ok) {
+				const error = await response.text();
+				yield {
+					type: 'error',
+					error: `OpenRouter API error: ${response.status} - ${error}`
+				};
+				return;
+			}
+
+			// Process SSE stream
+			const reader = response.body?.getReader();
+			if (!reader) {
+				yield {
+					type: 'error',
+					error: 'No response stream available'
+				};
+				return;
+			}
+
+			const decoder = new TextDecoder();
+			let buffer = '';
+			let accumulatedContent = '';
+			let currentToolCall: any = null;
+			let usage: any = null;
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || '';
+
+				for (const line of lines) {
+					if (!line.trim() || !line.startsWith('data: ')) continue;
+
+					const data = line.slice(6); // Remove 'data: ' prefix
+					if (data === '[DONE]') {
+						// Stream completed
+						const duration = performance.now() - startTime;
+						const requestCompletedAt = new Date();
+
+						// Log usage if available
+						if (usage) {
+							const actualModel = preferredModels[0];
+							const modelConfig = TEXT_MODELS[actualModel];
+							const inputCost = modelConfig
+								? ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+								: 0;
+							const outputCost = modelConfig
+								? ((usage.completion_tokens || 0) / 1_000_000) *
+									modelConfig.outputCost
+								: 0;
+
+							// Log to database (async, non-blocking)
+							this.logUsageToDatabase({
+								userId: options.userId,
+								operationType: 'chat_stream',
+								modelRequested: preferredModels[0],
+								modelUsed: actualModel,
+								provider: modelConfig?.provider,
+								promptTokens: usage.prompt_tokens || 0,
+								completionTokens: usage.completion_tokens || 0,
+								totalTokens: usage.total_tokens || 0,
+								inputCost,
+								outputCost,
+								totalCost: inputCost + outputCost,
+								responseTimeMs: Math.round(duration),
+								requestStartedAt,
+								requestCompletedAt,
+								status: 'success',
+								temperature: options.temperature,
+								maxTokens: options.maxTokens,
+								profile,
+								streaming: true,
+								metadata: {
+									sessionId: options.sessionId,
+									messageId: options.messageId,
+									hasTools: !!options.tools
+								}
+							}).catch((err) => console.error('Failed to log usage:', err));
+						}
+
+						yield {
+							type: 'done',
+							usage,
+							finished_reason: 'stop'
+						};
+						break;
+					}
+
+					try {
+						const chunk = JSON.parse(data);
+
+						// Handle different chunk types
+						if (chunk.choices && chunk.choices[0]) {
+							const choice = chunk.choices[0];
+							const delta = choice.delta;
+
+							if (delta.content) {
+								// Text content
+								accumulatedContent += delta.content;
+								yield {
+									type: 'text',
+									content: delta.content
+								};
+							}
+
+							if (delta.tool_calls && delta.tool_calls[0]) {
+								// Tool call
+								const toolCallDelta = delta.tool_calls[0];
+
+								if (!currentToolCall) {
+									currentToolCall = {
+										id: toolCallDelta.id,
+										type: 'function',
+										function: {
+											name: toolCallDelta.function?.name || '',
+											arguments: ''
+										}
+									};
+								}
+
+								if (toolCallDelta.function?.arguments) {
+									currentToolCall.function.arguments +=
+										toolCallDelta.function.arguments;
+								}
+
+								// Check if tool call is complete
+								if (
+									choice.finish_reason === 'tool_calls' ||
+									(currentToolCall.function.name &&
+										currentToolCall.function.arguments &&
+										this.isCompleteJSON(currentToolCall.function.arguments))
+								) {
+									yield {
+										type: 'tool_call',
+										tool_call: currentToolCall
+									};
+									currentToolCall = null;
+								}
+							}
+
+							// Track usage
+							if (chunk.usage) {
+								usage = chunk.usage;
+							}
+						}
+					} catch (parseError) {
+						console.error('Failed to parse SSE chunk:', parseError);
+						// Continue processing other chunks
+					}
+				}
+			}
+		} catch (error) {
+			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
+
+			console.error('Streaming failed:', error);
+
+			// Log error
+			if (this.errorLogger) {
+				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
+					operation: 'streamText',
+					errorType: 'llm_streaming_failure',
+					sessionId: options.sessionId,
+					messageId: options.messageId
+				});
+			}
+
+			// Log failure
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: 'chat_stream',
+				modelRequested: preferredModels[0],
+				modelUsed: preferredModels[0],
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: 0,
+				responseTimeMs: Math.round(duration),
+				requestStartedAt,
+				requestCompletedAt,
+				status: 'failure',
+				errorMessage: (error as Error).message,
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				profile,
+				streaming: true,
+				metadata: {
+					sessionId: options.sessionId,
+					messageId: options.messageId
+				}
+			}).catch((err) => console.error('Failed to log error:', err));
+
+			yield {
+				type: 'error',
+				error: `Stream failed: ${(error as Error).message}`
+			};
+		}
+	}
+
+	/**
+	 * Check if a string is complete valid JSON
+	 */
+	private isCompleteJSON(str: string): boolean {
+		try {
+			JSON.parse(str);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 }

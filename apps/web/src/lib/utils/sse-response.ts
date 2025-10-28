@@ -154,4 +154,21 @@ export class SSEResponse {
 			console.warn('Error closing SSE stream:', error);
 		}
 	}
+
+	/**
+	 * Create an SSE stream response for chat
+	 */
+	static createChatStream() {
+		const { response, writer, encoder } = SSEResponse.createStream();
+
+		return {
+			response,
+			sendMessage: async (data: any) => {
+				await SSEResponse.sendMessage(writer, encoder, data);
+			},
+			close: async () => {
+				await SSEResponse.close(writer);
+			}
+		};
+	}
 }

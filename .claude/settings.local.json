@@ -14,7 +14,9 @@
 			"Bash(pnpm run build:*)",
 			"WebSearch",
 			"Bash(timeout 30 tail:*)",
-			"Bash(find:*)"
+			"Bash(find:*)",
+			"Bash(tree:*)",
+			"Bash(pnpm check:*)"
 		],
 		"deny": [],
 		"ask": []

@@ -11,7 +11,6 @@
 <script lang="ts">
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -41,6 +40,7 @@
 	import { format } from 'date-fns';
 	import { formatDateForDisplay } from '$lib/utils/date-utils';
 	import { onMount } from 'svelte';
+	import type { ComponentType } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	export let isOpen = false;
@@ -106,6 +106,44 @@
 		removingFromCalendar: false,
 		addingToCalendar: false
 	};
+
+	type CalendarPanelAction =
+		| {
+				type: 'button';
+				label: string;
+				icon?: ComponentType;
+				onClick: () => void | Promise<void>;
+				variant?: 'primary' | 'ghost';
+				disabled?: boolean;
+				loading?: boolean;
+				className?: string;
+		  }
+		| {
+				type: 'message';
+				message: string;
+				className?: string;
+		  };
+
+	type CalendarPanelBadge = {
+		icon: ComponentType;
+		text: string;
+		classes: string;
+	};
+
+	type CalendarPanelConfig = {
+		icon: ComponentType;
+		iconClasses: string;
+		iconContainerClasses: string;
+		cardClasses: string;
+		title: string;
+		titleClasses: string;
+		description: string;
+		descriptionClasses: string;
+		actions: CalendarPanelAction[];
+		badges?: CalendarPanelBadge[];
+	};
+
+	let calendarPanel: CalendarPanelConfig | null = null;
 
 	// Recurring deletion state
 	let showRecurringDeleteModal = false;
@@ -693,7 +731,6 @@
 					dependencies: dependenciesValue.length > 0 ? dependenciesValue : null,
 					parent_task_id: parentTaskIdValue || null,
 					task_steps: taskStepsValue || null,
-					// Removed outdated field from update data
 					project_id: projectId,
 					addTaskToCalendar: true, // Signal that we want to add to calendar
 					timeZone
@@ -795,6 +832,239 @@
 	$: errorEventCount = calendarEvents.filter((e) => e.sync_status === 'error').length;
 	$: pendingEventCount = calendarEvents.filter((e) => e.sync_status === 'pending').length;
 	$: canAddToCalendar = isEditing && startDateValue && !isTaskScheduled;
+	$: scheduledStartDisplay = (() => {
+		if (startDateValue) {
+			const parsedFromInput = new Date(startDateValue);
+			if (!isNaN(parsedFromInput.getTime())) {
+				return formatDateTime(parsedFromInput);
+			}
+		}
+		if (task?.start_date) {
+			const parsedFromTask = new Date(task.start_date);
+			if (!isNaN(parsedFromTask.getTime())) {
+				return formatDateTime(parsedFromTask);
+			}
+		}
+		return '';
+	})();
+	$: calendarPanel = (() => {
+		if (!startDateValue) return null;
+
+		const baseCardClasses =
+			'border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/60';
+		const sharedButtonClass = 'w-full sm:w-auto';
+		const badges: CalendarPanelBadge[] = [];
+
+		if (!isCalendarConnected) {
+			return {
+				icon: Calendar,
+				iconClasses: 'h-5 w-5 text-primary-600 dark:text-primary-300',
+				iconContainerClasses:
+					'bg-primary-100/80 dark:bg-primary-900/30 text-primary-600 dark:text-primary-300',
+				cardClasses: `${baseCardClasses} border-primary-200/60 dark:border-primary-800/50 bg-primary-50/70 dark:bg-primary-950/20`,
+				title: 'Connect Google Calendar',
+				titleClasses: 'text-primary-900 dark:text-primary-100',
+				description:
+					'Link your calendar so this scheduled task can stay in sync automatically.',
+				descriptionClasses: 'text-gray-600 dark:text-gray-400',
+				actions: [
+					{
+						type: 'button',
+						label: 'Connect calendar',
+						icon: Link,
+						onClick: handleConnectCalendar,
+						variant: 'primary',
+						disabled: calendarState.connectingCalendar,
+						loading: calendarState.connectingCalendar,
+						className: sharedButtonClass
+					}
+				]
+			} satisfies CalendarPanelConfig;
+		}
+
+		if (calendarState.refreshingTokens) {
+			return {
+				icon: RefreshCw,
+				iconClasses: 'h-5 w-5 text-primary-600 dark:text-primary-300 animate-spin',
+				iconContainerClasses:
+					'bg-primary-100/70 dark:bg-primary-900/20 text-primary-600 dark:text-primary-300',
+				cardClasses: `${baseCardClasses} border-primary-200/60 dark:border-primary-800/50 bg-primary-50/60 dark:bg-primary-950/20`,
+				title: 'Refreshing connection',
+				titleClasses: 'text-primary-900 dark:text-primary-100',
+				description: "We're refreshing your Google Calendar access. Hang tight.",
+				descriptionClasses: 'text-gray-600 dark:text-gray-400',
+				actions: [
+					{
+						type: 'message',
+						message: 'This usually only takes a moment.',
+						className:
+							'block w-full text-xs text-gray-500 dark:text-gray-400 sm:text-right'
+					}
+				]
+			} satisfies CalendarPanelConfig;
+		}
+
+		if (calendarState.refreshFailedNeedsReconnect) {
+			return {
+				icon: AlertTriangle,
+				iconClasses: 'h-5 w-5 text-rose-600 dark:text-rose-400',
+				iconContainerClasses:
+					'bg-rose-100/80 dark:bg-rose-900/25 text-rose-600 dark:text-rose-400',
+				cardClasses: `${baseCardClasses} border-rose-200/60 dark:border-rose-800/40 bg-rose-50/70 dark:bg-rose-950/20`,
+				title: 'Reconnect required',
+				titleClasses: 'text-rose-700 dark:text-rose-300',
+				description: 'Your Google Calendar session expired. Reconnect to keep syncing.',
+				descriptionClasses: 'text-rose-700/90 dark:text-rose-300/90',
+				actions: [
+					{
+						type: 'button',
+						label: 'Reconnect',
+						icon: Link,
+						onClick: handleConnectCalendar,
+						variant: 'primary',
+						disabled: calendarState.connectingCalendar,
+						loading: calendarState.connectingCalendar,
+						className: sharedButtonClass
+					}
+				]
+			} satisfies CalendarPanelConfig;
+		}
+
+		if (calendarNeedsRefresh) {
+			return {
+				icon: AlertTriangle,
+				iconClasses: 'h-5 w-5 text-amber-600 dark:text-amber-400',
+				iconContainerClasses:
+					'bg-amber-100/80 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+				cardClasses: `${baseCardClasses} border-amber-200/70 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/20`,
+				title: 'Refresh Google Calendar',
+				titleClasses: 'text-amber-700 dark:text-amber-300',
+				description: 'Update your connection to sync this task to your calendar.',
+				descriptionClasses: 'text-amber-700/90 dark:text-amber-300/90',
+				actions: [
+					{
+						type: 'button',
+						label: 'Refresh connection',
+						icon: RefreshCw,
+						onClick: handleRefreshTokens,
+						variant: 'ghost',
+						disabled: calendarState.refreshingTokens,
+						loading: calendarState.refreshingTokens,
+						className: `${sharedButtonClass} sm:ml-0`
+					}
+				]
+			} satisfies CalendarPanelConfig;
+		}
+
+		if (isTaskScheduled) {
+			if (hasMultipleEvents) {
+				badges.push({
+					icon: Calendar,
+					text: 'Multiple linked events',
+					classes: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+				});
+			}
+			if (pendingEventCount > 0) {
+				badges.push({
+					icon: RefreshCw,
+					text: `${pendingEventCount} syncing`,
+					classes: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+				});
+			}
+			if (errorEventCount > 0) {
+				badges.push({
+					icon: AlertTriangle,
+					text: `${errorEventCount} need attention`,
+					classes: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+				});
+			}
+
+			const actions: CalendarPanelAction[] = [];
+			if (primaryCalendarEvent?.calendar_event_id) {
+				actions.push({
+					type: 'button',
+					label: 'Open in calendar',
+					icon: ExternalLink,
+					onClick: handleOpenInCalendar,
+					variant: 'ghost',
+					className: sharedButtonClass
+				});
+			}
+			actions.push({
+				type: 'button',
+				label: 'Remove from calendar',
+				icon: Trash2,
+				onClick: handleRemoveFromCalendar,
+				variant: 'ghost',
+				disabled:
+					calendarState.removingFromCalendar ||
+					primaryCalendarEvent?.sync_status === 'pending',
+				loading: calendarState.removingFromCalendar,
+				className: `${sharedButtonClass} text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20`
+			});
+
+			return {
+				icon: CheckCircle,
+				iconClasses: 'h-5 w-5 text-emerald-600 dark:text-emerald-400',
+				iconContainerClasses:
+					'bg-emerald-100/80 dark:bg-emerald-900/25 text-emerald-600 dark:text-emerald-400',
+				cardClasses: `${baseCardClasses} border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20`,
+				title: 'Synced with Google Calendar',
+				titleClasses: 'text-emerald-700 dark:text-emerald-300',
+				description: scheduledStartDisplay
+					? `Scheduled for ${scheduledStartDisplay} and kept up to date automatically.`
+					: 'This task is linked to Google Calendar and will stay in sync.',
+				descriptionClasses: 'text-emerald-700/90 dark:text-emerald-200/90',
+				actions,
+				badges
+			} satisfies CalendarPanelConfig;
+		}
+
+		if (canAddToCalendar) {
+			return {
+				icon: Calendar,
+				iconClasses: 'h-5 w-5 text-emerald-600 dark:text-emerald-400',
+				iconContainerClasses:
+					'bg-emerald-100/80 dark:bg-emerald-900/25 text-emerald-600 dark:text-emerald-400',
+				cardClasses: `${baseCardClasses} border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20`,
+				title: 'Ready to add',
+				titleClasses: 'text-emerald-700 dark:text-emerald-300',
+				description: 'Add task to Google Calendar.',
+				descriptionClasses: 'text-emerald-700/90 dark:text-emerald-200/90',
+				actions: [
+					{
+						type: 'button',
+						label: 'Add to calendar',
+						icon: Calendar,
+						onClick: handleAddToCalendar,
+						variant: 'primary',
+						disabled: calendarState.addingToCalendar,
+						loading: calendarState.addingToCalendar,
+						className: sharedButtonClass
+					}
+				]
+			} satisfies CalendarPanelConfig;
+		}
+
+		return {
+			icon: CheckCircle,
+			iconClasses: 'h-5 w-5 text-emerald-600 dark:text-emerald-400',
+			iconContainerClasses:
+				'bg-emerald-100/80 dark:bg-emerald-900/25 text-emerald-600 dark:text-emerald-400',
+			cardClasses: baseCardClasses,
+			title: 'Google Calendar connected',
+			titleClasses: 'text-emerald-700 dark:text-emerald-300',
+			description: 'Save the task to make it available for calendar syncing.',
+			descriptionClasses: 'text-emerald-700/90 dark:text-emerald-200/90',
+			actions: [
+				{
+					type: 'message',
+					message: 'Once saved, you can add it to Google Calendar.',
+					className: 'block w-full text-xs text-gray-500 dark:text-gray-400 sm:text-right'
+				}
+			]
+		} satisfies CalendarPanelConfig;
+	})();
 </script>
 
 <FormModal
@@ -814,21 +1084,28 @@
 			<div class="modal-grab-handle"></div>
 		</div>
 		<div
-			class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700"
+			class="relative border-b border-slate-200/60 dark:border-slate-700/60 bg-white/85 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5 dark:bg-slate-900/80"
 		>
 			<!-- Mobile Layout -->
 			<div class="sm:hidden">
 				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white flex-1 pr-2">
-						{modalTitle}
-					</h2>
+					<div class="flex-1 pr-2 space-y-1.5">
+						<p
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+						>
+							Task Detail
+						</p>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+							{modalTitle}
+						</h2>
+					</div>
 					<!-- Close button for mobile -->
 					<Button
 						type="button"
 						on:click={onClose}
 						variant="ghost"
 						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
 						aria-label="Close modal"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -841,266 +1118,28 @@
 						</svg>
 					</Button>
 				</div>
-				<!-- Calendar status below title on mobile -->
-				<div class="flex items-center gap-2">
-					{#if !isCalendarConnected}
-						<div
-							class="inline-flex items-center gap-2 px-2 py-1 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-md"
-						>
-							<Calendar class="w-3 h-3 text-primary-600 dark:text-primary-400" />
-							<span class="text-xs text-primary-900 dark:text-primary-100"
-								>Not connected</span
-							>
-							<Button
-								type="button"
-								on:click={handleConnectCalendar}
-								disabled={calendarState.connectingCalendar}
-								loading={calendarState.connectingCalendar}
-								icon={Link}
-								size="sm"
-								variant="primary"
-							>
-								Connect
-							</Button>
-						</div>
-					{:else}
-						<div
-							class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md"
-						>
-							{#if calendarState.refreshingTokens}
-								<RefreshCw class="w-3 h-3 text-primary-600 animate-spin" />
-								<span class="text-xs text-primary-800 dark:text-primary-200"
-									>Refreshing...</span
-								>
-							{:else if calendarState.refreshFailedNeedsReconnect}
-								<AlertTriangle class="w-3 h-3 text-rose-600" />
-								<span class="text-xs text-rose-800 dark:text-rose-200"
-									>Auth expired</span
-								>
-								<Button
-									type="button"
-									on:click={handleConnectCalendar}
-									disabled={calendarState.connectingCalendar}
-									loading={calendarState.connectingCalendar}
-									icon={Link}
-									size="sm"
-									variant="primary"
-								>
-									Reconnect
-								</Button>
-							{:else if calendarNeedsRefresh}
-								<AlertTriangle class="w-3 h-3 text-amber-600" />
-								<span class="text-xs text-amber-800 dark:text-amber-200"
-									>Needs refresh</span
-								>
-								<Button
-									type="button"
-									on:click={handleRefreshTokens}
-									disabled={calendarState.refreshingTokens}
-									loading={calendarState.refreshingTokens}
-									icon={RefreshCw}
-									size="sm"
-									variant="ghost"
-								>
-									Refresh
-								</Button>
-							{:else if isTaskScheduled}
-								{@const event = primaryCalendarEvent}
-								<CheckCircle
-									class="w-3 h-3 text-emerald-600 dark:text-emerald-400"
-								/>
-								<span class="text-xs text-emerald-800 dark:text-emerald-200">
-									Scheduled
-								</span>
-								{#if primaryCalendarEvent?.calendar_event_id}
-									<Button
-										type="button"
-										on:click={handleOpenInCalendar}
-										icon={ExternalLink}
-										size="sm"
-										variant="ghost"
-										title="Open in Google Calendar"
-										class="!p-1"
-									/>
-								{/if}
-								<div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-								<Button
-									type="button"
-									on:click={handleRemoveFromCalendar}
-									disabled={calendarState.removingFromCalendar ||
-										primaryCalendarEvent?.sync_status === 'pending'}
-									loading={calendarState.removingFromCalendar}
-									icon={Trash2}
-									size="sm"
-									variant="ghost"
-									title="Remove from calendar"
-									class="!p-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20"
-								/>
-							{:else if canAddToCalendar}
-								<Calendar class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-								<span class="text-xs text-emerald-800 dark:text-emerald-200"
-									>Ready</span
-								>
-								<Button
-									type="button"
-									on:click={handleAddToCalendar}
-									icon={Calendar}
-									size="sm"
-									variant="ghost"
-									disabled={calendarState.addingToCalendar}
-									loading={calendarState.addingToCalendar}
-								>
-									Add
-								</Button>
-							{:else}
-								<CheckCircle
-									class="w-3 h-3 text-emerald-600 dark:text-emerald-400"
-								/>
-								<span class="text-xs text-emerald-800 dark:text-emerald-200"
-									>Connected</span
-								>
-							{/if}
-						</div>
-					{/if}
-				</div>
 			</div>
 
 			<!-- Desktop Layout -->
 			<div class="hidden sm:flex sm:items-start sm:justify-between">
-				<div class="flex-1">
-					<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+				<div class="flex-1 space-y-1.5">
+					<p
+						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+					>
+						Task Detail
+					</p>
+					<h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
 						{modalTitle}
 					</h2>
 				</div>
 
-				<!-- Calendar Integration Section -->
-				<div class="flex items-center gap-2">
-					{#if !isCalendarConnected}
-						<div
-							class="inline-flex items-center gap-2 px-2 py-1 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-md"
-						>
-							<Calendar class="w-3 h-3 text-primary-600 dark:text-primary-400" />
-							<span class="text-xs text-primary-900 dark:text-primary-100"
-								>Not connected</span
-							>
-							<Button
-								type="button"
-								on:click={handleConnectCalendar}
-								disabled={calendarState.connectingCalendar}
-								loading={calendarState.connectingCalendar}
-								icon={Link}
-								size="sm"
-								variant="primary"
-							>
-								Connect
-							</Button>
-						</div>
-					{:else}
-						<div
-							class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md"
-						>
-							{#if calendarState.refreshingTokens}
-								<RefreshCw class="w-3 h-3 text-primary-600 animate-spin" />
-								<span class="text-xs text-primary-800 dark:text-primary-200"
-									>Refreshing...</span
-								>
-							{:else if calendarState.refreshFailedNeedsReconnect}
-								<AlertTriangle class="w-3 h-3 text-rose-600" />
-								<span class="text-xs text-rose-800 dark:text-rose-200"
-									>Auth expired</span
-								>
-								<Button
-									type="button"
-									on:click={handleConnectCalendar}
-									disabled={calendarState.connectingCalendar}
-									loading={calendarState.connectingCalendar}
-									icon={Link}
-									size="sm"
-									variant="primary"
-								>
-									Reconnect
-								</Button>
-							{:else if calendarNeedsRefresh}
-								<AlertTriangle class="w-3 h-3 text-amber-600" />
-								<span class="text-xs text-amber-800 dark:text-amber-200"
-									>Needs refresh</span
-								>
-								<Button
-									type="button"
-									on:click={handleRefreshTokens}
-									disabled={calendarState.refreshingTokens}
-									loading={calendarState.refreshingTokens}
-									icon={RefreshCw}
-									size="sm"
-									variant="ghost"
-								>
-									Refresh
-								</Button>
-							{:else if isTaskScheduled}
-								{@const event = primaryCalendarEvent}
-								<CheckCircle
-									class="w-3 h-3 text-emerald-600 dark:text-emerald-400"
-								/>
-								<span class="text-xs text-emerald-800 dark:text-emerald-200">
-									Scheduled
-								</span>
-								{#if primaryCalendarEvent?.calendar_event_id}
-									<Button
-										type="button"
-										on:click={handleOpenInCalendar}
-										icon={ExternalLink}
-										size="sm"
-										variant="ghost"
-										title="Open in Google Calendar"
-									/>
-								{/if}
-								<div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-								<Button
-									type="button"
-									on:click={handleRemoveFromCalendar}
-									disabled={calendarState.removingFromCalendar ||
-										primaryCalendarEvent?.sync_status === 'pending'}
-									loading={calendarState.removingFromCalendar}
-									icon={Trash2}
-									size="sm"
-									variant="ghost"
-									title="Remove from calendar"
-									class="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20"
-								/>
-							{:else if canAddToCalendar}
-								<Calendar class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-								<span class="text-xs text-emerald-800 dark:text-emerald-200"
-									>Ready</span
-								>
-								<Button
-									type="button"
-									on:click={handleAddToCalendar}
-									icon={Calendar}
-									size="sm"
-									variant="ghost"
-									disabled={calendarState.addingToCalendar}
-									loading={calendarState.addingToCalendar}
-								>
-									Add
-								</Button>
-							{:else}
-								<CheckCircle
-									class="w-3 h-3 text-emerald-600 dark:text-emerald-400"
-								/>
-								<span class="text-xs text-emerald-800 dark:text-emerald-200"
-									>Connected</span
-								>
-							{/if}
-						</div>
-					{/if}
-
-					<!-- Close button -->
+				<div class="flex items-center">
 					<Button
 						type="button"
 						on:click={onClose}
 						variant="ghost"
 						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
+						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
 						aria-label="Close modal"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1171,62 +1210,72 @@
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 min-h-[40vh] flex-1">
 			<!-- Content Section (Takes most space) -->
 			<div
-				class="lg:col-span-3 flex flex-col space-y-4 h-full min-h-0 bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-800 dark:to-gray-900/30 rounded-xl p-4 sm:p-5 lg:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow"
+				class="lg:col-span-3 flex flex-col space-y-5 h-full min-h-0 rounded-2xl border border-slate-200/60 bg-white/85 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-5 lg:p-6"
 			>
 				<!-- Title -->
-				<div
-					class="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 -mt-4 sm:-mx-5 mb-0 p-4 sm:p-5 rounded-t-xl border-b border-gray-200/50 dark:border-gray-700/50"
-				>
-					<FormField label="Title" labelFor="task-title" required={true}>
+				<div class="border-b border-slate-200/60 pb-5 sm:pb-6 dark:border-slate-700/60">
+					<p
+						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+					>
+						Task Overview
+					</p>
+					<div class="mt-4 space-y-2">
+						<label
+							for="task-title"
+							class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							<span>Title</span>
+							<span class="text-rose-500">*</span>
+						</label>
 						<TextInput
 							id="task-title"
 							bind:value={titleValue}
 							placeholder="What needs to be done?"
 							size="lg"
-							class="font-semibold bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-gray-300/50 dark:border-gray-600/50"
+							class="font-semibold border-slate-200/60 bg-white/85 text-slate-900 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-white"
 						/>
-					</FormField>
+					</div>
 				</div>
 
 				<!-- Description -->
-				<div class="mt-4">
-					<FormField label="Description" labelFor="task-description">
-						<label
-							class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-							>Summary</label
-						>
-						<Textarea
-							id="task-description"
-							bind:value={descriptionValue}
-							placeholder="Brief overview of the task..."
-							rows={2}
-							class="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50"
-						/>
-					</FormField>
+				<div class="space-y-2">
+					<label
+						for="task-description"
+						class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+					>
+						Summary
+					</label>
+					<Textarea
+						id="task-description"
+						bind:value={descriptionValue}
+						placeholder="Brief overview of the task..."
+						rows={2}
+						class="border-slate-200/60 bg-white/80 text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+					/>
 				</div>
 
 				<!-- Details -->
-				<div class="flex-1 flex flex-col">
+				<div class="flex flex-1 flex-col space-y-2">
 					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>Full Details</label
+						for="task-details"
+						class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 					>
-					<FormField labelFor="task-details" class="flex-1 flex flex-col">
-						<Textarea
-							id="task-details"
-							bind:value={detailsValue}
-							placeholder="Detailed task information, implementation notes, acceptance criteria..."
-							autoResize={true}
-							rows={8}
-							maxRows={20}
-							class="flex-1 leading-relaxed bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50"
-						/>
-					</FormField>
+						Full Details
+					</label>
+					<Textarea
+						id="task-details"
+						bind:value={detailsValue}
+						placeholder="Detailed task information, implementation notes, acceptance criteria..."
+						autoResize={true}
+						rows={8}
+						maxRows={20}
+						class="flex-1 border-slate-200/60 bg-white/80 leading-relaxed text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+					/>
 				</div>
 
 				<!-- Content Stats -->
 				<div
-					class="text-sm text-gray-500 dark:text-gray-400 flex justify-between items-center"
+					class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
 				>
 					<span>
 						{#if detailsValue.length > 0}
@@ -1243,31 +1292,30 @@
 
 			<!-- Metadata Sidebar -->
 			<div
-				class="lg:col-span-1 bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-800/50 dark:to-gray-900/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow lg:max-h-full lg:overflow-y-auto"
+				class="lg:col-span-1 rounded-2xl border border-slate-200/60 bg-white/85 p-3 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-4 lg:max-h-full lg:overflow-y-auto"
 			>
 				<div
-					class="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-900/20 dark:to-blue-900/20 -m-3 sm:-m-4 mb-0 p-3 sm:p-4 rounded-t-xl border-b border-gray-200/50 dark:border-gray-700/50"
+					class="-m-3 -mb-0 border-b border-slate-200/60 px-3 pb-4 pt-3 dark:border-slate-700/60 sm:-m-4 sm:px-4 sm:pt-4"
 				>
 					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center"
+						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
 					>
-						<span class="w-2 h-2 bg-indigo-500 rounded-full mr-2"></span>
-						Metadata
+						Task Metadata
 					</h3>
 				</div>
 
 				<!-- Status -->
-				<div class="mt-4">
+				<div class="mt-4 space-y-2">
 					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>Status</label
-					>
+						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>Status
+					</label>
 					<Select
 						id="task-status"
 						bind:value={statusValue}
 						size="sm"
 						on:change={(e) => (statusValue = e.detail)}
-						class="bg-white/70 dark:bg-gray-800/70 border-gray-200/50 dark:border-gray-700/50"
+						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
 						{#each statusOptions as option}
 							<option value={option.value}>{option.label}</option>
@@ -1276,17 +1324,17 @@
 				</div>
 
 				<!-- Priority -->
-				<div>
+				<div class="space-y-2">
 					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>Priority</label
-					>
+						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>Priority
+					</label>
 					<Select
 						id="task-priority"
 						bind:value={priorityValue}
 						on:change={(e) => (priorityValue = e.detail)}
 						size="sm"
-						class="bg-white/70 dark:bg-gray-800/70 border-gray-200/50 dark:border-gray-700/50"
+						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
 						{#each priorityOptions as option}
 							<option value={option.value}>{option.label}</option>
@@ -1295,11 +1343,11 @@
 				</div>
 
 				<!-- Start Date -->
-				<div>
+				<div class="space-y-2">
 					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>Schedule</label
-					>
+						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>Schedule
+					</label>
 					<TextInput
 						id="task-start-date"
 						type="datetime-local"
@@ -1308,9 +1356,9 @@
 							? formatDateTimeForInput(project.end_date)
 							: undefined}
 						size="sm"
-						class="bg-white/70 dark:bg-gray-800/70 border-gray-200/50 dark:border-gray-700/50 {dateOutsidePhaseWarning
-							? 'border-amber-500 dark:border-amber-400'
-							: ''}"
+						class={`border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60 ${
+							dateOutsidePhaseWarning ? 'border-amber-500 dark:border-amber-400' : ''
+						}`}
 					/>
 					{#if dateOutsidePhaseWarning && phase}
 						<div class="mt-1 flex items-start space-x-1">
@@ -1327,11 +1375,11 @@
 				</div>
 
 				<!-- Duration -->
-				<div>
+				<div class="space-y-2">
 					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>Duration</label
-					>
+						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>Duration
+					</label>
 					<TextInput
 						id="task-duration"
 						type="number"
@@ -1339,24 +1387,31 @@
 						min="1"
 						size="sm"
 						placeholder="Minutes"
-						class="bg-white/70 dark:bg-gray-800/70 border-gray-200/50 dark:border-gray-700/50"
+						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					/>
 				</div>
 
 				<!-- Task Type - Only show when start date is selected -->
 				{#if startDateValue}
-					<FormField label="Task Type" labelFor="task-type">
+					<div class="space-y-2">
+						<label
+							for="task-type"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Task Type
+						</label>
 						<Select
 							id="task-type"
 							bind:value={taskTypeValue}
 							on:change={(e) => (taskTypeValue = e.detail)}
 							size="sm"
+							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 						>
 							{#each taskTypeOptions as option}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</Select>
-					</FormField>
+					</div>
 
 					<!-- Recurrence -->
 					{#if taskTypeValue === 'recurring'}
@@ -1385,6 +1440,81 @@
 								</span>
 							</div>
 						{/if}
+					{/if}
+
+					{#if calendarPanel}
+						<div
+							class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-sm transition-colors ${calendarPanel.cardClasses}`}
+						>
+							<div
+								class="flex flex-col gap-4 sm:items-start sm:justify-between sm:gap-6"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${calendarPanel.iconContainerClasses}`}
+									>
+										<svelte:component
+											this={calendarPanel.icon}
+											class={calendarPanel.iconClasses}
+										/>
+									</div>
+									<div class="space-y-1">
+										<p
+											class={`text-sm font-semibold ${calendarPanel.titleClasses}`}
+										>
+											{calendarPanel.title}
+										</p>
+										<p
+											class={`text-xs leading-relaxed ${calendarPanel.descriptionClasses}`}
+										>
+											{calendarPanel.description}
+										</p>
+									</div>
+								</div>
+
+								{#if calendarPanel.actions.length > 0}
+									<div
+										class="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:flex-row sm:flex-wrap sm:justify-center"
+									>
+										{#each calendarPanel.actions as action}
+											{#if action.type === 'button'}
+												<Button
+													type="button"
+													on:click={action.onClick}
+													icon={action.icon}
+													size="sm"
+													variant={action.variant ?? 'ghost'}
+													disabled={action.disabled}
+													loading={action.loading}
+													class={action.className ?? ''}
+												>
+													{action.label}
+												</Button>
+											{:else if action.type === 'message'}
+												<span class={`text-xs ${action.className ?? ''}`}>
+													{action.message}
+												</span>
+											{/if}
+										{/each}
+									</div>
+								{/if}
+							</div>
+
+							{#if calendarPanel.badges && calendarPanel.badges.length > 0}
+								<div
+									class="mt-3 flex flex-wrap items-center gap-2 text-[11px] leading-4"
+								>
+									{#each calendarPanel.badges as badge}
+										<span
+											class={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium ${badge.classes}`}
+										>
+											<svelte:component this={badge.icon} class="h-3 w-3" />
+											{badge.text}
+										</span>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					{/if}
 				{/if}
 
@@ -1436,15 +1566,22 @@
 				</FormField> -->
 
 				<!-- Task Steps -->
-				<FormField label="Task Steps" labelFor="task-steps">
+				<div class="space-y-2">
+					<label
+						for="task-steps"
+						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+					>
+						Task Steps
+					</label>
 					<Textarea
 						id="task-steps"
 						bind:value={taskStepsValue}
 						placeholder="Step-by-step instructions..."
 						rows={3}
 						size="sm"
+						class="border-slate-200/60 bg-white/85 text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
 					/>
-				</FormField>
+				</div>
 
 				<!-- Braindumps Section (only show when editing) -->
 				{#if isEditing && task?.id}
@@ -1466,14 +1603,14 @@
 
 				<!-- Creation/Update Info (if editing) -->
 				{#if isEditing && task}
-					<hr class="border-gray-200/50 dark:border-gray-700/50" />
+					<hr class="border-slate-200/60 dark:border-slate-700/60" />
 					<div
-						class="bg-gradient-to-br from-gray-50/30 to-gray-100/20 dark:from-gray-800/30 dark:to-gray-900/20 rounded-lg p-3 space-y-3"
+						class="rounded-xl border border-slate-200/60 bg-white/85 p-3 space-y-3 dark:border-slate-700/60 dark:bg-slate-900/70"
 					>
 						<!-- Activity Indicator -->
 						<div class="flex items-center justify-between">
 							<span
-								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+								class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400"
 								>Activity</span
 							>
 							<RecentActivityIndicator
@@ -1486,10 +1623,11 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
 							{#if task.created_at}
 								<div class="space-y-1">
-									<span class="text-gray-500 dark:text-gray-400 font-medium block"
+									<span
+										class="block font-medium text-slate-500 dark:text-slate-400"
 										>Created</span
 									>
-									<span class="text-gray-700 dark:text-gray-300">
+									<span class="text-slate-700 dark:text-slate-300">
 										{format(new Date(task.created_at), 'MMM d, yyyy')}
 										<span class="hidden sm:inline">
 											• {format(new Date(task.created_at), 'h:mm a')}</span
@@ -1499,10 +1637,11 @@
 							{/if}
 							{#if task.updated_at}
 								<div class="space-y-1">
-									<span class="text-gray-500 dark:text-gray-400 font-medium block"
+									<span
+										class="block font-medium text-slate-500 dark:text-slate-400"
 										>Updated</span
 									>
-									<span class="text-gray-700 dark:text-gray-300">
+									<span class="text-slate-700 dark:text-slate-300">
 										{format(new Date(task.updated_at), 'MMM d, yyyy')}
 										<span class="hidden sm:inline">
 											• {format(new Date(task.updated_at), 'h:mm a')}</span
@@ -1512,10 +1651,11 @@
 							{/if}
 							{#if task.completed_at}
 								<div class="col-span-2 sm:col-span-1 space-y-1">
-									<span class="text-gray-500 dark:text-gray-400 font-medium block"
+									<span
+										class="block font-medium text-slate-500 dark:text-slate-400"
 										>Completed</span
 									>
-									<span class="text-gray-700 dark:text-gray-300">
+									<span class="text-slate-700 dark:text-slate-300">
 										{format(new Date(task.completed_at), 'MMM d, yyyy')}
 										<span class="hidden sm:inline">
 											• {format(new Date(task.completed_at), 'h:mm a')}</span

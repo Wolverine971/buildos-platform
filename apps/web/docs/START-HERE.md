@@ -30,6 +30,7 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 │
 ├── /features/              ← ⭐ Feature specs and implementation guides
 │   ├── README.md           (Feature index - START HERE)
+│   ├── /chat-system/       (2 docs - ✅ COMPLETE - Progressive Disclosure) ⭐
 │   ├── /brain-dump/        (10 docs - comprehensive)
 │   ├── /calendar-integration/ (7 docs - with improvement plans)
 │   ├── /notifications/     (6 docs - excellent docs map)
@@ -289,6 +290,34 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
     - [features/brain-dump/MULTI_BRAINDUMP_TESTING_GUIDE.md](features/brain-dump/MULTI_BRAINDUMP_TESTING_GUIDE.md)
     - Run: `pnpm test:llm` (costs money - uses real OpenAI API)
 
+### Task: Working with the AI Chat System
+
+1. **Feature overview:** [features/chat-system/README.md](features/chat-system/README.md)
+2. **Architecture:** [features/chat-system/ARCHITECTURE.md](features/chat-system/ARCHITECTURE.md)
+3. **Implementation files:**
+    - Components: `/apps/web/src/lib/components/chat/`
+    - Services: `/apps/web/src/lib/services/chat-*.ts`
+    - Tools: `/apps/web/src/lib/chat/tools.config.ts`
+    - API: `/apps/web/src/routes/api/chat/stream/+server.ts`
+
+4. **Integration example (Task Page):**
+
+    ```svelte
+    import ChatModal from '$lib/components/chat/ChatModal.svelte';
+
+    <ChatModal
+    	isOpen={showChat}
+    	contextType="task"
+    	entityId={task.id}
+    	onClose={() => (showChat = false)}
+    />
+    ```
+
+5. **Progressive Disclosure Pattern:**
+    - Initial load: ~400 tokens (abbreviated data)
+    - On-demand: ~800 tokens (full details)
+    - Automatic compression after 5 turns
+
 ### Task: Working with Calendar Integration
 
 1. **Feature overview:** [features/calendar-integration/README.md](features/calendar-integration/README.md)
@@ -300,6 +329,45 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 ---
 
 ## 📖 Complete Feature Index
+
+### ✅ AI Chat System with Progressive Disclosure (NEW - 2 docs) ⭐
+
+**Entry Point:** [features/chat-system/README.md](features/chat-system/README.md)
+
+**Key Documents:**
+
+- **Main Documentation:** [README.md](features/chat-system/README.md) - Complete implementation guide
+- **Architecture:** [ARCHITECTURE.md](features/chat-system/ARCHITECTURE.md) - System design and data flow
+
+**Features:**
+
+- **72% Token Reduction** via Progressive Disclosure Pattern
+- Two-tier data loading (abbreviated → detailed)
+- 20+ integrated tools for tasks, projects, calendar
+- Real-time SSE streaming
+- Secure markdown rendering with HTML sanitization
+- Multiple access methods (Cmd/Ctrl+K, header button, FAB)
+
+**Implementation Highlights:**
+
+- Smart context assembly based on current page
+- Automatic conversation compression after 5 turns
+- Tool execution with visual feedback
+- Session persistence across page refreshes
+- Cost-effective at ~$0.02 per session
+
+**Cross-References:**
+
+- Components: `/apps/web/src/lib/components/chat/`
+- Services: `/apps/web/src/lib/services/chat-*`
+- Tools: `/apps/web/src/lib/chat/`
+- API: `/apps/web/src/routes/api/chat/`
+- Database: `/supabase/migrations/20251027_create_chat_tables.sql`
+- Types: `/packages/shared-types/src/chat.types.ts`
+
+**Status:** ✅ Production Ready (October 2025)
+
+---
 
 ### ✅ Brain Dump System (Most Comprehensive - 10 docs)
 

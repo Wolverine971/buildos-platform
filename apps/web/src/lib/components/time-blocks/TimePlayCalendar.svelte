@@ -1258,7 +1258,7 @@
 	   DAY HEADERS
 	   ======================================== */
 	.day-headers {
-		@apply sticky top-0 z-10 grid;
+		@apply sticky top-0 z-0 grid;
 		grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
 		background: rgb(255 255 255);
 		border-bottom: 1px solid rgb(226 232 240);

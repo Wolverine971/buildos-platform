@@ -288,7 +288,7 @@
 		{:else}
 			<!-- Navigation Header - Sticky at top -->
 			<div
-				class="sticky top-0 z-10 px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50"
+				class="sticky top-0 z-0 px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50"
 			>
 				<div class="space-y-3">
 					<!-- Version info and controls -->

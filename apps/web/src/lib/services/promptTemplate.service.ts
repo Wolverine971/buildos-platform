@@ -8,7 +8,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PhaseGenerationConfig } from '$lib/services/phase-generation/types';
 
 // Import refactored services
-import { DataFormatterService, formatProjectData } from './prompts/core/data-formatter';
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
 import {
 	DataModelsComponent,

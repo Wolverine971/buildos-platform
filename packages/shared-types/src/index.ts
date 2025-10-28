@@ -16,6 +16,9 @@ export * from './payloadTransformer';
 // Export brief types
 export * from './brief.types';
 
+// Export chat system types
+export * from './chat.types';
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
 	id: string;

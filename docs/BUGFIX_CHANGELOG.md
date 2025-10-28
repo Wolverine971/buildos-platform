@@ -17,6 +17,233 @@ Each entry includes:
 
 ---
 
+## 2025-10-28 - LLM Usage Stats Database Relationship Error
+
+**Severity**: High (Admin dashboard completely broken)
+
+### Root Cause
+
+The `llm_usage_logs` table has a foreign key reference to `auth.users(id)` but the admin stats API endpoint was trying to join with the `users` table in the public schema using Supabase's relationship syntax (`users!inner(email, name)`), which requires a foreign key relationship between the tables.
+
+**Technical Details:**
+
+- Migration created: `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
+- Query attempted: `users!inner(email, name)` expecting public.users relationship
+- No foreign key exists from `llm_usage_logs.user_id` to `public.users.id`
+
+**Affected Components:**
+
+- `/apps/web/src/routes/api/admin/llm-usage/stats/+server.ts:164` - Incorrect join syntax
+- Admin dashboard LLM usage stats page - Complete failure to load data
+
+**Impact:**
+
+- Admin users unable to view LLM usage statistics
+- Error: "Could not find a relationship between 'llm_usage_logs' and 'users'"
+
+### Fix Description
+
+1. **Modified API endpoint** to use separate queries instead of relationship syntax:
+    - Removed `users!inner(email, name)` from the select statement
+    - Added separate query to fetch user information
+    - Created manual join logic to enrich logs with user data
+
+2. **Implementation details:**
+    - Query logs without user data
+    - Extract unique user IDs from results
+    - Fetch users separately from public.users table
+    - Map and combine data in application code
+
+### Files Changed
+
+- `/apps/web/src/routes/api/admin/llm-usage/stats/+server.ts` - Fixed query logic
+
+### Related Documentation
+
+- `/packages/shared-types/src/database.schema.ts` - Database schema reference
+- `/apps/web/supabase/migrations/llm_usage_tracking.sql` - Original migration
+
+### Cross-references
+
+- **Schema definition**: `/packages/shared-types/src/database.schema.ts:599-630`
+- **Migration**: `/apps/web/supabase/migrations/llm_usage_tracking.sql:41`
+- **API endpoint**: `/apps/web/src/routes/api/admin/llm-usage/stats/+server.ts:151-203`
+
+---
+
+## 2025-10-28 - Svelte 5 Deprecation Warnings in ChatModal
+
+**Severity**: Low (Deprecation warnings, future compatibility)
+
+### Root Cause
+
+The ChatModal component was using deprecated Svelte 4 event handler syntax (`on:click`, `on:submit`, etc.) and the deprecated `<svelte:component>` directive, which are being phased out in Svelte 5.
+
+**Technical Details:**
+
+- Old syntax: `on:click={handler}`, `on:submit|preventDefault={handler}`
+- New syntax: `onclick={handler}`, `onsubmit={(e) => {e.preventDefault(); handler();}}`
+- `<svelte:component this={Component}>` deprecated in favor of dynamic components
+
+**Affected Components:**
+
+- `/apps/web/src/lib/components/chat/ChatModal.svelte` - Multiple event handlers
+
+### Fix Description
+
+1. **Updated all event handlers** to new Svelte 5 syntax:
+    - Changed `on:click` to `onclick`
+    - Changed `on:submit|preventDefault` to `onsubmit` with manual preventDefault
+    - Changed `on:keydown` to `onkeydown`
+
+2. **Replaced deprecated `<svelte:component>`**:
+    - Attempted to use `{@const}` blocks for dynamic component rendering
+    - Note: Some issues remain with `{@const}` placement that may need further fixes
+
+### Files Changed
+
+- `/apps/web/src/lib/components/chat/ChatModal.svelte` - Updated event handler syntax
+
+### Related Documentation
+
+- Svelte 5 migration guide: https://svelte.dev/docs/svelte/v5-migration-guide
+- Event handler deprecation: https://svelte.dev/e/event_directive_deprecated
+- Component deprecation: https://svelte.dev/e/svelte_component_deprecated
+
+---
+
+## 2025-10-28 - Chat API Response Consistency Issues
+
+**Severity**: Medium (Inconsistent API consumption)
+
+### Root Cause
+
+The ChatModal component was inconsistently handling API responses, sometimes expecting `payload.data` and sometimes expecting `payload` directly. This was defensive programming to handle potential response format variations, but caused confusion and potential bugs.
+
+**Technical Details:**
+
+- All chat API endpoints consistently use `ApiResponse` utility returning `{ success: true, data: ... }`
+- Frontend was inconsistently checking both `payload?.data?.field` and `payload?.field`
+- No clear type definitions for API response structures
+
+**Affected Components:**
+
+- `/apps/web/src/lib/components/chat/ChatModal.svelte` - Inconsistent response handling
+- All `/api/chat/*` endpoints - Verified consistent response format
+
+**Impact:**
+
+- Potential for frontend bugs when API responses changed
+- Confusing code with defensive checks for multiple response formats
+- No type safety for API responses
+
+### Fix Description
+
+1. **Fixed ChatModal component** to consistently expect the correct response structure:
+    - Sessions: `payload.data.sessions`
+    - Session: `payload.data.session`
+    - Title: `payload.data.title`
+
+2. **Created type definitions** for API responses in `/apps/web/src/lib/types/api-responses.ts`
+
+3. **Documented API response patterns** in `/apps/web/docs/technical/api/chat-api-documentation.md`
+
+### Files Changed
+
+- `/apps/web/src/lib/components/chat/ChatModal.svelte` - Fixed response handling
+- `/apps/web/src/lib/types/api-responses.ts` - Created type definitions
+- `/apps/web/docs/technical/api/chat-api-documentation.md` - Created API documentation
+
+### Related Documentation
+
+- `/apps/web/src/lib/utils/api-response.ts` - ApiResponse utility class
+- `/apps/web/docs/technical/api/chat-api-documentation.md` - Chat API documentation
+
+---
+
+## 2025-10-28 - Chat Services API Mismatches and Type Errors
+
+**Severity**: High (Multiple features broken)
+
+### Root Cause
+
+Multiple chat services had API mismatches and type errors:
+
+1. **ChatCompressionService**: Methods were calling SmartLLMService.generateText() with incorrect parameters
+    - Passing `messages` array instead of required `prompt` string parameter
+    - Expecting returned object with `content` property, but method returns string directly
+
+2. **ChatContextService**: Missing proper typing and database query issues
+    - Missing Database type in SupabaseClient generic
+    - Missing `cache_key` field in cacheContext method
+    - Duplicate relation alias in Supabase query for subtasks/parent
+
+**Technical Details:**
+
+- `generateText()` expects `prompt` and optional `systemPrompt` strings per interface
+- ChatContextService needed `SupabaseClient<Database>` typing for proper type safety
+- Cache operations were failing due to missing cache_key field
+- Supabase queries cannot use same relation name twice in single select
+
+**Affected Methods:**
+
+- `/apps/web/src/lib/services/chat-compression-service.ts:23` - generateTitle()
+- `/apps/web/src/lib/services/chat-compression-service.ts:82` - compressSession()
+- `/apps/web/src/lib/services/chat-compression-service.ts:344` - summarizeChunk()
+- `/apps/web/src/lib/services/chat-context-service.ts:869` - cacheContext()
+- `/apps/web/src/lib/services/chat-context-service.ts:707` - loadFullTaskContext()
+
+**Impact:**
+
+- Chat title generation completely failed with "Untitled Chat"
+- Chat compression features would fail
+- Chat summarization would fail
+
+### Fix Description
+
+Updated all three methods to use correct API:
+
+**Before:**
+
+```typescript
+await this.llmService.generateText({
+	messages: [
+		{ role: 'system', content: 'system prompt' },
+		{ role: 'user', content: prompt }
+	]
+	// ... other params
+});
+// Then accessing: response.content
+```
+
+**After:**
+
+```typescript
+await this.llmService.generateText({
+	prompt: prompt,
+	systemPrompt: 'system prompt'
+	// ... other params
+});
+// Direct use: response (already a string)
+```
+
+### Files Changed
+
+- `/apps/web/src/lib/services/chat-compression-service.ts` - Fixed generateTitle(), compressSession(), and summarizeChunk() methods
+- `/apps/web/src/lib/services/chat-context-service.ts` - Fixed SupabaseClient typing, cache key issues, and duplicate relation aliases
+
+### Related Documentation
+
+- `/apps/web/src/lib/services/smart-llm-service.ts:810-913` - generateText implementation
+- `/apps/web/CLAUDE.md` - Service patterns documentation
+
+### Cross-references
+
+- Smart LLM Service: `/apps/web/src/lib/services/smart-llm-service.ts`
+- Chat Compression Service: `/apps/web/src/lib/services/chat-compression-service.ts`
+
+---
+
 ## 2025-10-27 - Task Filter "All" Button Cannot Unselect All Filters
 
 **Severity**: Low (UI/UX Issue)
