@@ -16,9 +16,11 @@
 		ChevronRight,
 		Loader2,
 		Zap,
-		Clock
+		Clock,
+		Sun,
+		Moon
 	} from 'lucide-svelte';
-	import ThemeToggle from './ThemeToggle.svelte';
+	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
@@ -258,7 +260,7 @@
 <nav
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-0 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-colors"
+	class="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-colors"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2">
@@ -353,22 +355,22 @@
 						<span class="hidden xl:inline-block leading-none">Brain Dump</span>
 					</Button>
 
-					<!-- Multi-Agent Chat Button -->
-					<Button
-						variant="outline"
-						size="sm"
-						on:click={handleOpenChat}
-						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
-						aria-label="Open Multi-Agent Chat"
-						title="Multi-Agent System - Planner + Executor Agents"
-						btnType="container"
-					>
-						<Sparkles class="w-4 h-4 transition-transform group-hover:scale-110" />
-						<span class="hidden xl:inline-block leading-none">Agents</span>
-					</Button>
+					{#if dev}
+						<!-- Multi-Agent Chat Button -->
+						<Button
+							variant="outline"
+							size="sm"
+							on:click={handleOpenChat}
+							class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
+							aria-label="Open Multi-Agent Chat"
+							title="Multi-Agent System - Planner + Executor Agents"
+							btnType="container"
+						>
+							<Sparkles class="w-4 h-4 transition-transform group-hover:scale-110" />
+							<span class="hidden xl:inline-block leading-none">Agents</span>
+						</Button>
+					{/if}
 				{/if}
-
-				<ThemeToggle />
 
 				{#if user}
 					<!-- Onboarding CTA with enhanced gradient styling -->
@@ -559,6 +561,22 @@
 											Admin Dashboard
 										</a>
 									{/if}
+
+									<button
+										on:click={toggleMode}
+										class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+										disabled={loggingOut}
+										aria-label="Toggle theme"
+									>
+										{#if isDark}
+											<Sun class="w-4 h-4 mr-3" />
+											Light Mode
+										{:else}
+											<Moon class="w-4 h-4 mr-3" />
+											Dark Mode
+										{/if}
+									</button>
 
 									<Button
 										on:click={handleSignOut}
@@ -758,6 +776,22 @@
 								Admin Dashboard
 							</a>
 						{/if}
+
+						<button
+							on:click={toggleMode}
+							class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+							disabled={loggingOut}
+							aria-label="Toggle theme"
+						>
+							{#if isDark}
+								<Sun class="w-5 h-5 mr-3" />
+								Light Mode
+							{:else}
+								<Moon class="w-5 h-5 mr-3" />
+								Dark Mode
+							{/if}
+						</button>
 
 						<Button
 							on:click={handleSignOut}

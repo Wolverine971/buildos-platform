@@ -4,11 +4,11 @@
 	import { marked } from 'marked';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LoadingSpinner from '$lib/components/icons/LoadingSpinner.svelte';
-	import type { AgentChatType, AgentSSEMessage, ChatOperation } from '@buildos/shared-types';
+	import type { ChatContextType, AgentSSEMessage, ChatOperation } from '@buildos/shared-types';
 
 	// Props using Svelte 5 syntax
 	interface Props {
-		chatType: AgentChatType;
+		chatType: ChatContextType;
 		entityId: string | null;
 		sessionId: string | null;
 		autoAcceptOperations: boolean;
@@ -47,7 +47,7 @@
 	});
 
 	// Get welcome message based on chat type
-	function getWelcomeMessage(type: AgentChatType): string {
+	function getWelcomeMessage(type: ChatContextType): string {
 		switch (type) {
 			case 'project_create':
 				return "What project are you working on? Tell me everything that's on your mind about it.";
@@ -57,8 +57,21 @@
 				return 'Let me review your project with a critical eye. What concerns you most?';
 			case 'project_forecast':
 				return "Let's forecast scenarios for your project. What situation should we analyze?";
-			default:
+			case 'task_update':
+				return "What task would you like to update?";
+			case 'daily_brief_update':
+				return "Let's configure your daily brief preferences.";
+			case 'global':
+			case 'general':
 				return 'How can I help you with your projects today?';
+			case 'project':
+				return "Let's discuss this project. What would you like to know?";
+			case 'task':
+				return "Let's work on this task. What do you need?";
+			case 'calendar':
+				return "I can help you with scheduling and calendar management.";
+			default:
+				return 'How can I help you today?';
 		}
 	}
 
@@ -102,9 +115,8 @@
 				body: JSON.stringify({
 					message: userMessage,
 					session_id: sessionId,
-					chat_type: chatType,
+					context_type: chatType,
 					entity_id: entityId,
-					auto_accept: autoAcceptOperations,
 					conversation_history: conversationHistory // Pass conversation history for compression
 				}),
 				signal: streamController.signal
@@ -170,35 +182,120 @@
 				}
 				break;
 
+			case 'analysis':
+				// Planner is analyzing the request
+				currentPhase = 'analyzing';
+				if (event.analysis) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*Strategy: ${event.analysis.strategy || 'Planning'}*`
+						}
+					];
+				}
+				break;
+
+			case 'plan_created':
+				// Plan created with steps
+				currentPhase = 'executing';
+				if (event.plan) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*Plan created with ${event.plan.steps?.length || 0} steps*`
+						}
+					];
+				}
+				break;
+
+			case 'step_start':
+				// Starting a plan step
+				if (event.step) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*Step ${event.step.stepNumber}: ${event.step.description}*`
+						}
+					];
+				}
+				break;
+
+			case 'step_complete':
+				// Step completed
+				if (event.step) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*✓ Step ${event.step.stepNumber} complete*`
+						}
+					];
+				}
+				break;
+
+			case 'executor_spawned':
+				// Executor agent spawned
+				if (event.task) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*🤖 Executor working on: ${event.task.description}*`
+						}
+					];
+				}
+				break;
+
+			case 'executor_result':
+				// Executor finished
+				if (event.result) {
+					const success = event.result.success ? '✅' : '❌';
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*${success} Executor ${event.result.success ? 'completed' : 'failed'}*`
+						}
+					];
+				}
+				break;
+
+			case 'tool_call':
+				// Tool being called
+				if (event.tool_call?.function?.name) {
+					messages = [
+						...messages,
+						{
+							role: 'system',
+							content: `*🔧 Using tool: ${event.tool_call.function.name}*`
+						}
+					];
+				}
+				break;
+
+			case 'tool_result':
+				// Tool result received
+				messages = [
+					...messages,
+					{
+						role: 'system',
+						content: '*✅ Tool completed*'
+					}
+				];
+				break;
+
 			case 'text':
 				// Update assistant message
 				messages[assistantIndex].content += event.content;
 				messages = messages;
 				break;
 
-			case 'operation':
-				dispatch('operation', event.operation);
-				break;
-
-			case 'queue_update':
-				dispatch('queue', event.operations);
-				break;
-
-			case 'phase_update':
-				currentPhase = event.phase;
-				if (event.message) {
-					messages = [
-						...messages,
-						{
-							role: 'system',
-							content: `*${event.message}*`
-						}
-					];
-				}
-				break;
-
-			case 'dimension_update':
-				// Could show dimension updates in UI
+			case 'done':
+				// All done - clear phase and finalize
+				currentPhase = 'completed';
 				break;
 
 			case 'error':

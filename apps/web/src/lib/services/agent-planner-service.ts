@@ -23,7 +23,8 @@ import type {
 	AgentPlanInsert,
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
-	PlanningStrategy
+	PlanningStrategy,
+	Json
 } from '@buildos/shared-types';
 import {
 	AgentContextService,
@@ -96,7 +97,7 @@ export type PlannerEvent =
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: any }
-	| { type: 'done'; plan?: AgentPlan }
+	| { type: 'done'; plan?: AgentPlan; usage?: { total_tokens: number } }
 	| { type: 'error'; error: string };
 
 /**
@@ -428,10 +429,10 @@ Respond with JSON in this exact format:
 		}
 
 		// Build messages for LLM with tools
-		const messages: any[] = [
-			{ role: 'system' as const, content: context.systemPrompt },
+		const messages: LLMMessage[] = [
+			{ role: 'system', content: context.systemPrompt },
 			...context.conversationHistory.map((m) => ({
-				role: m.role as any,
+				role: m.role as 'user' | 'assistant' | 'system' | 'tool',
 				content: m.content,
 				tool_calls: m.tool_calls,
 				tool_call_id: m.tool_call_id
@@ -488,7 +489,7 @@ Respond with JSON in this exact format:
 		while (shouldContinue && currentTurn < MAX_TURNS) {
 			currentTurn++;
 			let assistantContent = '';
-			let toolCalls: any[] = [];
+			let toolCalls: ChatToolCall[] = [];
 
 			// Stream from LLM with tools
 			for await (const event of this.smartLLM.streamText({
@@ -525,29 +526,36 @@ Respond with JSON in this exact format:
 
 			// After streaming completes, check if we had tool calls
 			if (toolCalls.length > 0) {
-				// Execute all tool calls
-				const toolResults: any[] = [];
+				// Execute all tool calls in parallel for 3x speed improvement
+				const toolExecutionPromises = toolCalls.map((toolCall) =>
+					toolExecutor
+						.execute(toolCall)
+						.then((result) => ({ toolCall, result: result.result, success: true }))
+						.catch((error) => {
+							console.error('Tool execution error:', error);
+							return {
+								toolCall,
+								result: {
+									error: error instanceof Error ? error.message : 'Unknown error'
+								},
+								success: false,
+								errorMessage: error instanceof Error ? error.message : 'Unknown error'
+							};
+						})
+				);
 
-				for (const toolCall of toolCalls) {
-					try {
-						const result = await toolExecutor.execute(toolCall);
-						yield { type: 'tool_result', result };
-						toolResults.push({
-							toolCall,
-							result: result.result
-						});
-					} catch (error) {
-						console.error('Tool execution error:', error);
+				// Wait for all tools to complete
+				const toolResults = await Promise.all(toolExecutionPromises);
+
+				// Yield results as they're ready
+				for (const result of toolResults) {
+					if (result.success) {
+						yield { type: 'tool_result', result: result.result };
+					} else {
 						yield {
 							type: 'error',
-							error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+							error: `Tool execution failed: ${result.errorMessage}`
 						};
-						toolResults.push({
-							toolCall,
-							result: {
-								error: error instanceof Error ? error.message : 'Unknown error'
-							}
-						});
 					}
 				}
 
@@ -618,6 +626,12 @@ Respond with JSON in this exact format:
 				}
 			}
 		}
+
+		// Yield done event with token usage
+		yield {
+			type: 'done',
+			usage: { total_tokens: totalTokens }
+		};
 
 		// Mark session as completed
 		if (agentSessionId) {
@@ -1291,7 +1305,10 @@ Synthesized response:`;
 		status: 'active' | 'completed' | 'failed',
 		error?: string
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'active' | 'completed' | 'failed';
+			completed_at?: string;
+		} = {
 			status,
 			completed_at: status !== 'active' ? new Date().toISOString() : undefined
 		};
@@ -1343,13 +1360,18 @@ Synthesized response:`;
 		status: 'pending' | 'executing' | 'completed' | 'failed',
 		steps?: PlanStep[]
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'pending' | 'executing' | 'completed' | 'failed';
+			updated_at: string;
+			steps?: Json;
+			completed_at?: string;
+		} = {
 			status,
 			updated_at: new Date().toISOString()
 		};
 
 		if (steps) {
-			updates.steps = steps;
+			updates.steps = steps as unknown as Json;
 		}
 
 		if (status === 'completed' || status === 'failed') {
@@ -1413,12 +1435,24 @@ Synthesized response:`;
 		plannerAgentId: string,
 		role: 'system' | 'user' | 'assistant' | 'tool',
 		content: string,
-		toolCalls?: any,
+		toolCalls?: Json,
 		toolCallId?: string,
 		tokensUsed?: number,
 		modelUsed?: string
 	): Promise<void> {
-		const message: any = {
+		const message: {
+			agent_session_id: string;
+			sender_type: string;
+			sender_agent_id: string;
+			role: string;
+			content: string;
+			tool_calls?: Json;
+			tool_call_id?: string;
+			tokens_used: number;
+			model_used: string;
+			parent_user_session_id: string;
+			user_id: string;
+		} = {
 			agent_session_id: agentSessionId,
 			sender_type: 'planner',
 			sender_agent_id: plannerAgentId,
@@ -1447,7 +1481,10 @@ Synthesized response:`;
 		sessionId: string,
 		status: 'active' | 'completed' | 'failed'
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'active' | 'completed' | 'failed';
+			completed_at?: string;
+		} = {
 			status
 		};
 

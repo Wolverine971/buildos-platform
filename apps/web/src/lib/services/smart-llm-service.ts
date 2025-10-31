@@ -1557,7 +1557,6 @@ You must respond with valid JSON only. Follow these rules:
 		);
 
 		try {
-
 			// Build request with streaming enabled
 			const headers = {
 				Authorization: `Bearer ${this.apiKey}`,

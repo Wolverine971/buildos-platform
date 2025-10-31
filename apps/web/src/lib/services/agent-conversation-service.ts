@@ -14,7 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, ChatToolDefinition, LLMMessage } from '@buildos/shared-types';
+import type { Database, ChatToolDefinition, LLMMessage, Json } from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 import { getToolsForAgent } from '@buildos/shared-types';
@@ -107,6 +107,7 @@ export class AgentConversationService {
 	// Configuration
 	private readonly CONFIG = {
 		MAX_TURNS: 10, // Maximum conversation turns
+		MAX_CONVERSATION_TIME_MS: 300000, // 5 minutes total conversation time
 		EXECUTOR_TIMEOUT_MS: 60000, // 60 seconds per executor turn
 		PLANNER_TIMEOUT_MS: 30000 // 30 seconds per planner response
 	};
@@ -242,6 +243,29 @@ export class AgentConversationService {
 			// 2. ITERATIVE CONVERSATION LOOP
 			while (session.turnCount < session.maxTurns && session.status === 'active') {
 				session.turnCount++;
+
+				// Check for conversation timeout
+				const elapsedTime = Date.now() - startTime;
+				if (elapsedTime > this.CONFIG.MAX_CONVERSATION_TIME_MS) {
+					session.status = 'failed';
+					session.error = `Conversation timeout: exceeded ${this.CONFIG.MAX_CONVERSATION_TIME_MS / 1000}s limit`;
+					session.completedAt = new Date();
+
+					await this.updateConversationSession(
+						session.id,
+						session.status,
+						undefined,
+						session.error
+					);
+
+					yield {
+						type: 'message',
+						content: `Conversation timed out after ${Math.round(elapsedTime / 1000)}s. The task may be too complex or require manual intervention.`,
+						messageType: 'error'
+					};
+
+					break;
+				}
 
 				yield {
 					type: 'thinking',
@@ -448,27 +472,52 @@ export class AgentConversationService {
 
 				case 'tool_call':
 					toolCalls.push(event.tool_call);
-					// Execute tool
-					const result = await toolExecutor.execute(event.tool_call!);
 
-					// Add to messages for context
-					messages.push({
-						role: 'assistant',
-						content: '',
-						tool_calls: [event.tool_call!]
-					});
-					messages.push({
-						role: 'tool',
-						content: JSON.stringify(result.result),
-						tool_call_id: event.tool_call!.id
-					});
+					// Execute tool with error handling
+					try {
+						const result = await toolExecutor.execute(event.tool_call!);
 
-					if (!responseData) responseData = {};
-					if (!responseData.toolResults) responseData.toolResults = [];
-					responseData.toolResults.push({
-						tool: event.tool_call!.function.name,
-						result: result.result
-					});
+						// Add to messages for context
+						messages.push({
+							role: 'assistant',
+							content: '',
+							tool_calls: [event.tool_call!]
+						});
+						messages.push({
+							role: 'tool',
+							content: JSON.stringify(result.result),
+							tool_call_id: event.tool_call!.id
+						});
+
+						if (!responseData) responseData = {};
+						if (!responseData.toolResults) responseData.toolResults = [];
+						responseData.toolResults.push({
+							tool: event.tool_call!.function.name,
+							result: result.result
+						});
+					} catch (toolError) {
+						console.error('Tool execution failed:', toolError);
+
+						// Add error to message history so LLM knows what happened
+						const errorMessage = toolError instanceof Error ? toolError.message : 'Unknown error';
+						messages.push({
+							role: 'assistant',
+							content: '',
+							tool_calls: [event.tool_call!]
+						});
+						messages.push({
+							role: 'tool',
+							content: JSON.stringify({ error: errorMessage }),
+							tool_call_id: event.tool_call!.id
+						});
+
+						if (!responseData) responseData = {};
+						if (!responseData.toolResults) responseData.toolResults = [];
+						responseData.toolResults.push({
+							tool: event.tool_call!.function.name,
+							error: errorMessage
+						});
+					}
 					break;
 
 				case 'done':
@@ -881,10 +930,13 @@ Conversation turn: ${session.turnCount}/${session.maxTurns}`;
 	private async updateConversationSession(
 		sessionId: string,
 		status: 'active' | 'completed' | 'failed',
-		result?: any,
+		result?: Json,
 		error?: string
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'active' | 'completed' | 'failed';
+			completed_at?: string;
+		} = {
 			status
 		};
 

@@ -20,7 +20,8 @@ import type {
 	AgentInsert,
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
-	AgentExecutionInsert
+	AgentExecutionInsert,
+	Json
 } from '@buildos/shared-types';
 import {
 	AgentContextService,
@@ -601,7 +602,10 @@ export class AgentExecutorService {
 		agentId: string,
 		status: 'active' | 'completed' | 'failed'
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'active' | 'completed' | 'failed';
+			completed_at?: string;
+		} = {
 			status
 		};
 
@@ -670,11 +674,23 @@ export class AgentExecutorService {
 		executorAgentId: string,
 		role: 'system' | 'user' | 'assistant' | 'tool',
 		content: string,
-		toolCalls?: any,
+		toolCalls?: Json,
 		toolCallId?: string,
 		tokensUsed?: number
 	): Promise<void> {
-		const message: any = {
+		const message: {
+			agent_session_id: string;
+			sender_type: string;
+			sender_agent_id: string;
+			role: string;
+			content: string;
+			tool_calls?: Json;
+			tool_call_id?: string;
+			tokens_used: number;
+			model_used: string;
+			parent_user_session_id: string;
+			user_id: string;
+		} = {
 			agent_session_id: agentSessionId,
 			sender_type: 'executor',
 			sender_agent_id: executorAgentId,
@@ -703,7 +719,10 @@ export class AgentExecutorService {
 		sessionId: string,
 		status: 'active' | 'completed' | 'failed'
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'active' | 'completed' | 'failed';
+			completed_at?: string;
+		} = {
 			status
 		};
 
@@ -777,7 +796,17 @@ export class AgentExecutorService {
 		messageCount: number,
 		error?: string
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			result: Json | null;
+			success: boolean;
+			tokens_used: number;
+			duration_ms: number;
+			tool_calls_made: number;
+			message_count: number;
+			status: string;
+			completed_at: string;
+			error?: string | null;
+		} = {
 			result: result,
 			success,
 			tokens_used: tokensUsed,

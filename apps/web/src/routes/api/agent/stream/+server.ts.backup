@@ -173,12 +173,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				.from('chat_messages')
 				.select('*')
 				.eq('session_id', session_id)
-				.order('created_at', { ascending: false })
-				.limit(50); // Limit to recent 50 messages to prevent memory bloat
+				.order('created_at', { ascending: true });
 
 			if (!messagesError && messages) {
-				// Reverse to get chronological order (oldest first)
-				loadedConversationHistory = messages.reverse();
+				loadedConversationHistory = messages;
 			}
 		} else {
 			// Create new agent chat session
@@ -289,8 +287,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					await agentStream.sendMessage(sseMessage);
 
 					// Track token usage
-					if (event.type === 'done' && event.usage?.total_tokens) {
-						totalTokens += event.usage.total_tokens;
+					if (event.type === 'done' && event.plan?.tokensUsed) {
+						totalTokens += event.plan.tokensUsed;
 					}
 				}
 
@@ -319,9 +317,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 					// Save tool result messages (one per tool call)
 					// These are separate messages with role='tool' linked to their tool_call_id
-					for (const toolCall of toolCalls) {
+					for (let i = 0; i < toolCalls.length; i++) {
+						const toolCall = toolCalls[i];
 						// Match result by tool_call_id instead of array index for safety
-						const result = toolResults.find((r) => r.tool_call_id === toolCall.id);
+					const result = toolResults.find((r) => r.tool_call_id === toolCall.id);
 
 						if (result) {
 							const { error: toolError } = await supabase
@@ -339,12 +338,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							if (toolError) {
 								console.error('Failed to save tool result message:', toolError);
 							}
-						} else {
-							console.warn(
-								`No result found for tool call ${toolCall.id} (${toolCall.function?.name})`
-							);
 						}
 					}
+				}
 
 				// Update rate limiter with token usage
 				const currentRate = rateLimiter.get(userId);
@@ -378,16 +374,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			} finally {
 				await agentStream.close();
 			}
-		})().catch((uncaughtError) => {
-			// Safety net for errors in error handling or finally block
-			console.error('Uncaught error in agent stream:', uncaughtError);
-			// Attempt to close stream if possible
-			try {
-				agentStream.close();
-			} catch {
-				// Ignore - stream may already be closed
-			}
-		});
+		})();
 
 		// Return SSE response
 		return agentStream.response;

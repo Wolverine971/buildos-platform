@@ -2018,7 +2018,13 @@ IMPORTANT:
 		projectId?: string | null,
 		reason?: string
 	): Promise<void> {
-		const updates: any = {
+		const updates: {
+			status: 'accepted' | 'rejected' | 'modified' | 'deferred';
+			status_changed_at: string;
+			updated_at: string;
+			created_project_id?: string | null;
+			rejection_reason?: string;
+		} = {
 			status,
 			status_changed_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()

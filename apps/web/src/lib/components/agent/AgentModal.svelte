@@ -11,7 +11,7 @@
 	import OperationsQueue from './OperationsQueue.svelte';
 	import DraftsList from './DraftsList.svelte';
 	import type {
-		AgentChatType,
+		ChatContextType,
 		ProjectDraft,
 		ChatOperation,
 		AgentSSEMessage
@@ -21,7 +21,7 @@
 
 	// Props using Svelte 5 syntax
 	interface Props {
-		chatType?: AgentChatType;
+		chatType?: ChatContextType;
 		entityId?: string | null;
 		onClose: () => void;
 	}

@@ -448,73 +448,120 @@ export class ChatToolExecutor {
 		}
 
 		// Limit
-		const limit = Math.min(args.limit || 10, 20);
+		const limit = Math.min(args.limit || 20, 30);
 		query = query.limit(limit);
 
 		const { data: projects, count, error } = await query;
 
 		if (error) throw error;
 
-		// For each project, query related data separately to avoid relationship issues
-		const abbreviatedProjects: AbbreviatedProject[] = await Promise.all(
-			(projects || []).map(async (p) => {
-				// Query tasks for this project
-				const { data: tasks } = await this.supabase
-					.from('tasks')
-					.select('id, status')
-					.eq('project_id', p.id)
-					.eq('user_id', this.userId);
+		// Optimize: Batch fetch all related data instead of N+1 queries
+		const projectIds = (projects || []).map((p) => p.id);
 
-				// Apply active tasks filter if needed
-				let filteredTasks = tasks || [];
-				if (args.has_active_tasks) {
-					filteredTasks = filteredTasks.filter((t) =>
-						['in_progress', 'backlog', 'blocked'].includes(t.status)
-					);
-				}
+		// Batch fetch all tasks, phases, notes, and brain_dumps for all projects in parallel
+		const [allTasks, allPhases, allNotes, allBrainDumps] = await Promise.all([
+			// Fetch all tasks for all projects
+			this.supabase
+				.from('tasks')
+				.select('id, status, project_id')
+				.in('project_id', projectIds)
+				.eq('user_id', this.userId)
+				.then((res) => res.data || []),
 
-				// Query counts for phases, notes, and brain dumps
-				const [phasesCount, notesCount, brainDumpsCount] = await Promise.all([
-					this.supabase
-						.from('phases')
-						.select('id', { count: 'exact', head: true })
-						.eq('project_id', p.id)
-						.eq('user_id', this.userId),
-					this.supabase
-						.from('notes')
-						.select('id', { count: 'exact', head: true })
-						.eq('project_id', p.id)
-						.eq('user_id', this.userId),
-					this.supabase
-						.from('brain_dumps')
-						.select('id', { count: 'exact', head: true })
-						.eq('project_id', p.id)
-						.eq('user_id', this.userId)
-				]);
+			// Fetch phase counts per project
+			this.supabase
+				.from('phases')
+				.select('project_id')
+				.in('project_id', projectIds)
+				.eq('user_id', this.userId)
+				.then((res) => res.data || []),
 
-				const taskStats = this.calculateTaskStats(filteredTasks);
+			// Fetch note counts per project
+			this.supabase
+				.from('notes')
+				.select('project_id')
+				.in('project_id', projectIds)
+				.eq('user_id', this.userId)
+				.then((res) => res.data || []),
 
-				return {
-					id: p.id,
-					name: p.name,
-					slug: p.slug,
-					status: p.status,
-					start_date: p.start_date,
-					end_date: p.end_date,
-					description: p.description,
-					executive_summary: p.executive_summary,
-					tags: p.tags,
-					context_preview: p.context?.substring(0, 500) || null,
-					task_count: taskStats.total,
-					active_task_count: taskStats.active,
-					completed_task_count: taskStats.completed,
-					completion_percentage: taskStats.percentage,
-					has_phases: (phasesCount.count || 0) > 0,
-					has_notes: (notesCount.count || 0) > 0,
-					has_brain_dumps: (brainDumpsCount.count || 0) > 0
-				};
-			})
-		);
+			// Fetch brain dump counts per project
+			this.supabase
+				.from('brain_dumps')
+				.select('project_id')
+				.in('project_id', projectIds)
+				.eq('user_id', this.userId)
+				.then((res) => res.data || [])
+		]);
+
+		// Group data by project_id for fast lookup
+		const tasksByProject = new Map<string, any[]>();
+		const phasesCountByProject = new Map<string, number>();
+		const notesCountByProject = new Map<string, number>();
+		const brainDumpsCountByProject = new Map<string, number>();
+
+		// Group tasks by project
+		for (const task of allTasks) {
+			if (!tasksByProject.has(task.project_id)) {
+				tasksByProject.set(task.project_id, []);
+			}
+			tasksByProject.get(task.project_id)!.push(task);
+		}
+
+		// Count phases per project
+		for (const phase of allPhases) {
+			phasesCountByProject.set(
+				phase.project_id,
+				(phasesCountByProject.get(phase.project_id) || 0) + 1
+			);
+		}
+
+		// Count notes per project
+		for (const note of allNotes) {
+			notesCountByProject.set(note.project_id, (notesCountByProject.get(note.project_id) || 0) + 1);
+		}
+
+		// Count brain dumps per project
+		for (const brainDump of allBrainDumps) {
+			brainDumpsCountByProject.set(
+				brainDump.project_id,
+				(brainDumpsCountByProject.get(brainDump.project_id) || 0) + 1
+			);
+		}
+
+		// Build abbreviated projects using pre-fetched data
+		const abbreviatedProjects: AbbreviatedProject[] = (projects || []).map((p) => {
+			const projectTasks = tasksByProject.get(p.id) || [];
+
+			// Apply active tasks filter if needed
+			let filteredTasks = projectTasks;
+			if (args.has_active_tasks) {
+				filteredTasks = projectTasks.filter((t) =>
+					['in_progress', 'backlog', 'blocked'].includes(t.status)
+				);
+			}
+
+			const taskStats = this.calculateTaskStats(filteredTasks);
+
+			return {
+				id: p.id,
+				name: p.name,
+				slug: p.slug,
+				status: p.status,
+				start_date: p.start_date,
+				end_date: p.end_date,
+				description: p.description,
+				executive_summary: p.executive_summary,
+				tags: p.tags,
+				context_preview: p.context?.substring(0, 500) || null,
+				task_count: taskStats.total,
+				active_task_count: taskStats.active,
+				completed_task_count: taskStats.completed,
+				completion_percentage: taskStats.percentage,
+				has_phases: (phasesCountByProject.get(p.id) || 0) > 0,
+				has_notes: (notesCountByProject.get(p.id) || 0) > 0,
+				has_brain_dumps: (brainDumpsCountByProject.get(p.id) || 0) > 0
+			};
+		});
 
 		return {
 			projects: abbreviatedProjects,
@@ -557,7 +604,7 @@ export class ChatToolExecutor {
 		query = query.order('created_at', { ascending: false });
 
 		// Limit
-		const limit = Math.min(args.limit || 10, 20);
+		const limit = Math.min(args.limit || 20, 30);
 		query = query.limit(limit);
 
 		const { data: notes, count, error } = await query;
@@ -616,7 +663,7 @@ export class ChatToolExecutor {
 		query = query.order('created_at', { ascending: false });
 
 		// Limit
-		const limit = Math.min(args.limit || 10, 20);
+		const limit = Math.min(args.limit || 20, 30);
 		query = query.limit(limit);
 
 		const { data: dumps, count, error } = await query;
@@ -764,7 +811,7 @@ export class ChatToolExecutor {
 				.eq('project_id', args.project_id)
 				.eq('user_id', this.userId)
 				.order('created_at', { ascending: false })
-				.limit(10);
+				.limit(20);
 
 			notes = (data || []).map((n) => ({
 				...n,
@@ -781,7 +828,7 @@ export class ChatToolExecutor {
 				.eq('project_id', args.project_id)
 				.eq('user_id', this.userId)
 				.order('created_at', { ascending: false })
-				.limit(10);
+				.limit(20);
 
 			brainDumps = data || [];
 		}
@@ -1070,7 +1117,7 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		try {
-			// Set defaults
+			// Set defaults 
 			const timeMin = args.timeMin || new Date().toISOString();
 			const timeMax =
 				args.timeMax || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
