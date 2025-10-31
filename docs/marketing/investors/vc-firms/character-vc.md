@@ -1,17 +1,17 @@
 ---
-title: "Character VC - VC Firm Profile"
-doc_type: "firm-profile"
-firm_name: "Character VC"
-priority: "high"
-last_updated: "2025-10-29"
-status: "active"
+title: 'Character VC - VC Firm Profile'
+doc_type: 'firm-profile'
+firm_name: 'Character VC'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'active'
 tags: [vc-firms, design-first, ai-productivity, seed, character-labs, design-sprint]
 related_docs:
-  - ../buildos-fundraising-strategy.md
-  - ../investor-optimists.md
-contact_verified: "yes"
-fund_size: "$52M Fund II (May 2025)"
-recent_update: "Jake Knapp joined full-time in 2024, max check size increased to $2M"
+    - ../buildos-fundraising-strategy.md
+    - ../investor-optimists.md
+contact_verified: 'yes'
+fund_size: '$52M Fund II (May 2025)'
+recent_update: 'Jake Knapp joined full-time in 2024, max check size increased to $2M'
 ---
 
 # Character VC - VC Firm Profile

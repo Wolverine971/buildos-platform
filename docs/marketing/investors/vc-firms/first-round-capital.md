@@ -1,17 +1,17 @@
 ---
-title: "First Round Capital - VC Firm Profile"
-doc_type: "firm-profile"
-firm_name: "First Round Capital"
-priority: "high"
-last_updated: "2025-10-29"
-status: "active"
+title: 'First Round Capital - VC Firm Profile'
+doc_type: 'firm-profile'
+firm_name: 'First Round Capital'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'active'
 tags: [vc-firms, productivity-tools, seed, series-a, founder-focused, first-round-review]
 related_docs:
-  - ../buildos-fundraising-strategy.md
-  - ../investor-optimists.md
-contact_verified: "yes"
-fund_size: "Fund X targeting $500M"
-recent_update: "Liz Wessel joined as Partner, Clay became unicorn at $3B (June 2025)"
+    - ../buildos-fundraising-strategy.md
+    - ../investor-optimists.md
+contact_verified: 'yes'
+fund_size: 'Fund X targeting $500M'
+recent_update: 'Liz Wessel joined as Partner, Clay became unicorn at $3B (June 2025)'
 ---
 
 # First Round Capital - VC Firm Profile

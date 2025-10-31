@@ -1,17 +1,17 @@
 ---
-title: "Jack Raines - Slow Ventures Profile"
-doc_type: "profile"
-investor_name: "Jack Raines"
-firm_name: "Slow Ventures"
-priority: "high"
-last_updated: "2025-10-29"
-status: "active"
+title: 'Jack Raines - Slow Ventures Profile'
+doc_type: 'profile'
+investor_name: 'Jack Raines'
+firm_name: 'Slow Ventures'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'active'
 tags: [investors, slow-ventures, creator-fund, young-money, early-stage, generalist, columbia]
 related_docs:
-  - ../vc-firms/slow-ventures.md
-  - ../warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md
-  - ../buildos-fundraising-strategy.md
-contact_verified: "yes"
+    - ../vc-firms/slow-ventures.md
+    - ../warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md
+    - ../buildos-fundraising-strategy.md
+contact_verified: 'yes'
 ---
 
 # Jack Raines - Slow Ventures Profile

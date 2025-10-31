@@ -1,18 +1,29 @@
 ---
-title: "Tim Hsia - Context Ventures Profile"
-doc_type: "profile"
-investor_name: "Tim Hsia"
-firm_name: "Context Ventures"
-priority: "medium"
-last_updated: "2025-10-29"
-status: "active"
-tags: [investors, military-veterans, west-point, consumer, fintech, pre-seed, seed, series-a, stanford]
+title: 'Tim Hsia - Context Ventures Profile'
+doc_type: 'profile'
+investor_name: 'Tim Hsia'
+firm_name: 'Context Ventures'
+priority: 'medium'
+last_updated: '2025-10-29'
+status: 'active'
+tags:
+    [
+        investors,
+        military-veterans,
+        west-point,
+        consumer,
+        fintech,
+        pre-seed,
+        seed,
+        series-a,
+        stanford
+    ]
 related_docs:
-  - ../vc-firms/context-ventures.md
-  - ../outreach/tim-hsia-coffee-meeting-strategy.md
-  - ../warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md
-  - ../buildos-fundraising-strategy.md
-contact_verified: "yes"
+    - ../vc-firms/context-ventures.md
+    - ../outreach/tim-hsia-coffee-meeting-strategy.md
+    - ../warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md
+    - ../buildos-fundraising-strategy.md
+contact_verified: 'yes'
 ---
 
 # Tim Hsia - Context Ventures Profile

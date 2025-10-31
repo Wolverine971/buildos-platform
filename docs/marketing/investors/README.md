@@ -11,6 +11,7 @@
 ## 🎉 Recent Updates (Oct 29, 2025)
 
 ### Phase 1 Enrichment Complete
+
 - ✅ Added YAML frontmatter to all 7 individual investor profiles
 - ✅ Added YAML frontmatter to top 6 VC firm profiles (a16z, Sequoia, First Round, Point Nine, AIX, Character)
 - ✅ Enhanced contact information (emails, LinkedIn, Twitter) for all investor profiles
@@ -18,6 +19,7 @@
 - ✅ Added cross-references between related documents
 
 ### NEW: Content Creator Angel Investors Research (Oct 29, 2025) ⭐
+
 - ✅ **8 individual angel investors researched and profiled**: Shaan Puri, Ali Abdaal, Sahil Bloom, Naval Ravikant, Justin Welsh, Sam Parr, Andrew Wilkinson, Codie Sanchez
 - ✅ **Financial analysis**: Net worth estimates, liquidity analysis, check size projections
 - ✅ **Audience analysis**: 25M+ combined reach, demographics, strategic value assessment
@@ -27,14 +29,17 @@
 - ✅ **Comprehensive research document**: [`thoughts/shared/research/2025-10-29_16-52-26_investor-research.md`](../../thoughts/shared/research/2025-10-29_16-52-26_investor-research.md)
 
 **Potential from Content Creator Angels:**
+
 - **Capital**: $400K - $1M+ (8 investors)
 - **Strategic Value**: $2M - $5M equivalent in distribution/credibility
 - **Timeline**: 8-12 weeks for full outreach cycle
 
 **📧 Contact Info Verified:**
+
 - Paige Craig, Jack Raines, Tom Blomfield, Brian Singerman, Casey Caruso, Tim Hsia, Dennis Mortensen
 
 **⚠️ Key Updates:**
+
 - **Brian Singerman**: Now at GPx with Peter Thiel backing (~50% of fund)
 - **AIX Ventures**: Christopher Manning (Stanford AI Lab Director) joined as GP (July 2025)
 - **Character VC**: $52M Fund II (May 2025), Jake Knapp joined full-time
@@ -59,13 +64,13 @@
 
 ### Immediate Actions Required
 
-| Priority | Action | Deadline | File |
-|----------|--------|----------|------|
-| ⚡ **URGENT** | Apply to Standard Capital | **Sept 17, 2025** | [vc-firms/standard-capital.md](./vc-firms/standard-capital.md) |
-| ⭐ **HIGH** | Follow up with Tim Hsia (Context Ventures) | This week | [outreach/tim-hsia-coffee-meeting-strategy.md](./outreach/tim-hsia-coffee-meeting-strategy.md) |
-| ⭐ **HIGH** | Follow up with Mike Steadman (Context Ventures) | This week | [vc-firms/context-ventures.md](./vc-firms/context-ventures.md) |
-| 🟢 **MEDIUM** | Prepare AIX Ventures outreach | Next 2 weeks | [vc-firms/aix-ventures.md](./vc-firms/aix-ventures.md) |
-| 🟢 **MEDIUM** | Research Sequoia Arc application | Next 2 weeks | [vc-firms/sequoia-capital.md](./vc-firms/sequoia-capital.md) |
+| Priority      | Action                                          | Deadline          | File                                                                                           |
+| ------------- | ----------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| ⚡ **URGENT** | Apply to Standard Capital                       | **Sept 17, 2025** | [vc-firms/standard-capital.md](./vc-firms/standard-capital.md)                                 |
+| ⭐ **HIGH**   | Follow up with Tim Hsia (Context Ventures)      | This week         | [outreach/tim-hsia-coffee-meeting-strategy.md](./outreach/tim-hsia-coffee-meeting-strategy.md) |
+| ⭐ **HIGH**   | Follow up with Mike Steadman (Context Ventures) | This week         | [vc-firms/context-ventures.md](./vc-firms/context-ventures.md)                                 |
+| 🟢 **MEDIUM** | Prepare AIX Ventures outreach                   | Next 2 weeks      | [vc-firms/aix-ventures.md](./vc-firms/aix-ventures.md)                                         |
+| 🟢 **MEDIUM** | Research Sequoia Arc application                | Next 2 weeks      | [vc-firms/sequoia-capital.md](./vc-firms/sequoia-capital.md)                                   |
 
 ### Active Connections
 
@@ -79,25 +84,28 @@
 
 ### Core Strategic Documents
 
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| [BuildOS Fundraising Strategy](./buildos-fundraising-strategy.md) | Complete fundraising playbook with tier strategy, pitch deck framework, objection handling | **PRIMARY REFERENCE** - Read before any investor outreach |
-| [Fundraising Preparedness Checklist](./fundraising-preparedness-checklist.md) | Pre-raise checklist covering metrics, materials, processes | Before starting formal fundraise |
-| [Fundraising Preparedness Checklist Part 2](./fundraising-preparedness-checklist-part-2.md) | Additional checklist items and preparation | Comprehensive preparation review |
-| [VC Notes](./VC-notes.md) | Quick reference notes and insights | Quick lookup during calls |
+| Document                                                                                    | Purpose                                                                                    | When to Use                                               |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| [BuildOS Fundraising Strategy](./buildos-fundraising-strategy.md)                           | Complete fundraising playbook with tier strategy, pitch deck framework, objection handling | **PRIMARY REFERENCE** - Read before any investor outreach |
+| [Fundraising Preparedness Checklist](./fundraising-preparedness-checklist.md)               | Pre-raise checklist covering metrics, materials, processes                                 | Before starting formal fundraise                          |
+| [Fundraising Preparedness Checklist Part 2](./fundraising-preparedness-checklist-part-2.md) | Additional checklist items and preparation                                                 | Comprehensive preparation review                          |
+| [VC Notes](./VC-notes.md)                                                                   | Quick reference notes and insights                                                         | Quick lookup during calls                                 |
 
 ### Strategic Framework
 
 **Tier 1 Targets (Lead Investors):**
+
 - AIX Ventures, First Round Capital, Greylock Partners, Sequoia Capital
 - Target: $2M-$5M checks, 6-8 week timeline
 - See [buildos-fundraising-strategy.md](./buildos-fundraising-strategy.md#investment-tier-strategy)
 
 **Tier 2 Targets (Co-investors):**
+
 - Bessemer, Lightspeed, a16z, Context Ventures
 - Target: $1M-$3M checks, 4-6 week timeline
 
 **Tier 3 Targets (Strategic Fill):**
+
 - Smaller funds, angel investors, strategic participants
 - Target: $500K-$1.5M checks, 3-4 week timeline
 
@@ -110,6 +118,7 @@
 **[→ Browse Complete VC Firms Directory](./vc-firms/)**
 
 Comprehensive profiles of 24 venture capital firms with:
+
 - Fund overview, investment thesis, portfolio analysis
 - Approach strategy, pitch guidance, contact info
 - Priority rankings and stage alignment
@@ -117,24 +126,28 @@ Comprehensive profiles of 24 venture capital firms with:
 #### Quick Filters:
 
 **By Priority:**
+
 - [🟢 Highest Priority (8 firms)](./vc-firms/README.md#-highest-priority-immediate-target) - AIX, a16z, First Round, Greylock, Khosla, Lightspeed, Sequoia, Thiel
 - [🟢 High Priority (11 firms)](./vc-firms/README.md#-high-priority) - Bessemer, Character, Coatue, Context ⭐, Craft, etc.
 - [🟡 Medium Priority (3 firms)](./vc-firms/README.md#-medium-priority--future-targets) - Insight, Obvious, Pioneer
 - [🔴 Low Priority (2 firms)](./vc-firms/README.md#-low-priority--stage-mismatch) - Matrix, Point Nine (B2B mismatch)
 
 **By Stage:**
+
 - [Pre-Seed/Seed Focus](./vc-firms/README.md#pre-seed--seed-focus)
 - [Seed to Series A](./vc-firms/README.md#seed-to-series-a)
 - [Series A Primary](./vc-firms/README.md#series-a-primary)
 - [Multi-Stage](./vc-firms/README.md#multi-stage-seed-through-growth)
 
 **By Focus:**
+
 - [AI-Native / AI-First](./vc-firms/README.md#ai-native--ai-first)
 - [Enterprise / B2B Productivity](./vc-firms/README.md#enterprise--b2b-productivity)
 - [Developer Tools](./vc-firms/README.md#developer-tools--technical-founders)
 - [Design / UX Focus](./vc-firms/README.md#design--ux-focus)
 
 **Special Programs:**
+
 - South Park Commons - Founder Fellowship ($1M, 12-18mo)
 - Character VC - Design Sprint (4 weeks)
 - First Round Capital - First Round Academy
@@ -147,50 +160,54 @@ Comprehensive profiles of 24 venture capital firms with:
 
 **[→ Browse VC Individual Profiles Directory](./profiles/)**
 
-| Investor | Firm | Profile | Outreach Strategy |
-|----------|------|---------|-------------------|
-| **Tim Hsia** ⭐ | Context Ventures | [Profile](./profiles/tim-hsia-context-ventures-profile.md) | [Coffee Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md) |
-| **Brian Singerman** | GPx (ex-Founders Fund) | [Profile](./profiles/brian-singerman-founders-fund-profile.md) | [Warm Intro](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md) |
-| **Casey Caruso** | Topology Ventures | [Profile](./profiles/casey-caruso-topology-ventures-profile.md) | [Warm Intro](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
-| **Paige Craig** | Outlander VC | [Profile](./profiles/paige-craig-profile.md) | [Outreach Template](./outreach/paige-craig-outreach-template.md) |
-| **Jack Raines** | Slow Ventures | [Profile](./profiles/slow-ventures-jack-raines-profile.md) | [Warm Intro](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md) |
-| **Tom Blomfield** | Y Combinator | [Profile](./profiles/tom-blomfield-profile.md) | [Warm Intro](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md) |
-| **Dennis Mortensen** | Advisory/Angel | [Profile](./profiles/dennis-mortensen-profile.md) | [Outreach Email](./outreach/dennis-mortensen-advisory-outreach-email.md) |
-| **Sarah Guo** | Conviction | N/A | [Warm Intro](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md) |
+| Investor             | Firm                   | Profile                                                         | Outreach Strategy                                                                    |
+| -------------------- | ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Tim Hsia** ⭐      | Context Ventures       | [Profile](./profiles/tim-hsia-context-ventures-profile.md)      | [Coffee Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md)                    |
+| **Brian Singerman**  | GPx (ex-Founders Fund) | [Profile](./profiles/brian-singerman-founders-fund-profile.md)  | [Warm Intro](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md)            |
+| **Casey Caruso**     | Topology Ventures      | [Profile](./profiles/casey-caruso-topology-ventures-profile.md) | [Warm Intro](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
+| **Paige Craig**      | Outlander VC           | [Profile](./profiles/paige-craig-profile.md)                    | [Outreach Template](./outreach/paige-craig-outreach-template.md)                     |
+| **Jack Raines**      | Slow Ventures          | [Profile](./profiles/slow-ventures-jack-raines-profile.md)      | [Warm Intro](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md)      |
+| **Tom Blomfield**    | Y Combinator           | [Profile](./profiles/tom-blomfield-profile.md)                  | [Warm Intro](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md)               |
+| **Dennis Mortensen** | Advisory/Angel         | [Profile](./profiles/dennis-mortensen-profile.md)               | [Outreach Email](./outreach/dennis-mortensen-advisory-outreach-email.md)             |
+| **Sarah Guo**        | Conviction             | N/A                                                             | [Warm Intro](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md)           |
 
 #### Content Creator Angel Investors (8 Profiles) ⭐ NEW
 
 **[→ Browse Content Creator Angel Directory](./individual-investors/)** | [Research Summary](../../thoughts/shared/research/2025-10-29_16-52-26_investor-research.md)
 
 **Why These Investors Are Strategic:**
+
 - Combined 25M+ audience reach in BuildOS target demographics
 - $400K - $1M+ potential capital from 8 investors
 - $2M - $5M equivalent value in distribution and credibility
 - High-liquidity individuals from recent exits or content businesses
 
-| Investor | Net Worth | Check Size | Audience | Fit Score | Profile |
-|----------|-----------|------------|----------|-----------|---------|
-| **Shaan Puri** ⭐ | $40-60M | $75-100K | 5M+ | 9.5/10 | [Profile](./individual-investors/shaan-puri-profile.md) |
-| **Ali Abdaal** ⭐ | $6-10M | $25-50K | 10M+ | 9/10 | [Profile](./individual-investors/ali-abdaal-profile.md) |
-| **Sahil Bloom** | $15-50M | $100-250K | 2M+ | 9/10 | Summary in [README](./individual-investors/README.md) |
-| **Naval Ravikant** | $120-200M | $100-250K | 2M+ | 9/10 | Summary in [README](./individual-investors/README.md) |
-| **Justin Welsh** | $10-15M | $25-50K | 1M+ | 8.5/10 | Summary in [README](./individual-investors/README.md) |
-| **Sam Parr** | $20-30M | $50-75K | 5M+ | 8/10 | Summary in [README](./individual-investors/README.md) |
-| **Andrew Wilkinson** | $300-500M | $250-500K | 500K+ | 8/10 | Summary in [README](./individual-investors/README.md) |
-| **Codie Sanchez** | $15-20M | $50-75K | 3M+ | 7/10 | Summary in [README](./individual-investors/README.md) |
+| Investor             | Net Worth | Check Size | Audience | Fit Score | Profile                                                 |
+| -------------------- | --------- | ---------- | -------- | --------- | ------------------------------------------------------- |
+| **Shaan Puri** ⭐    | $40-60M   | $75-100K   | 5M+      | 9.5/10    | [Profile](./individual-investors/shaan-puri-profile.md) |
+| **Ali Abdaal** ⭐    | $6-10M    | $25-50K    | 10M+     | 9/10      | [Profile](./individual-investors/ali-abdaal-profile.md) |
+| **Sahil Bloom**      | $15-50M   | $100-250K  | 2M+      | 9/10      | Summary in [README](./individual-investors/README.md)   |
+| **Naval Ravikant**   | $120-200M | $100-250K  | 2M+      | 9/10      | Summary in [README](./individual-investors/README.md)   |
+| **Justin Welsh**     | $10-15M   | $25-50K    | 1M+      | 8.5/10    | Summary in [README](./individual-investors/README.md)   |
+| **Sam Parr**         | $20-30M   | $50-75K    | 5M+      | 8/10      | Summary in [README](./individual-investors/README.md)   |
+| **Andrew Wilkinson** | $300-500M | $250-500K  | 500K+    | 8/10      | Summary in [README](./individual-investors/README.md)   |
+| **Codie Sanchez**    | $15-20M   | $50-75K    | 3M+      | 7/10      | Summary in [README](./individual-investors/README.md)   |
 
 **Top 3 Priority Targets:**
+
 1. **Shaan Puri** (My First Million podcast) - Perfect audience fit, accessible via Twitter, actively deploying
 2. **Ali Abdaal** (4.1M YouTube) - Productivity educator, 10M+ reach, perfect ICP match
 3. **Sahil Bloom** (SRB Ventures) - $10M fund deploying, 800K+ newsletter, entrepreneur audience
 
 **Outreach Strategy:**
+
 - **Phase 1 (Weeks 1-4)**: Shaan, Ali, Sahil - Target $200-400K
 - **Phase 2 (Weeks 5-8)**: Justin, Sam, Naval - Target $175-375K
 - **Phase 3 (Weeks 9-12)**: Andrew, Codie - Target $300-575K
 - **Total Potential**: $675K - $1.35M across 8-12 weeks
 
 **See [Individual Investors README](./individual-investors/README.md) for:**
+
 - Complete financial profiles and check size analysis
 - Audience demographics and strategic value breakdown
 - Positioning strategies and outreach templates
@@ -203,20 +220,22 @@ Comprehensive profiles of 24 venture capital firms with:
 
 ### Core Positioning Documents
 
-| Document | Audience | Use Case |
-|----------|----------|----------|
-| [Investor Optimists](./investor-optimists.md) | Vision-focused investors who bet on big ideas | Pitch to funds like Khosla, Thiel, Greylock |
-| [Investor Skeptics](./investor-skeptics.md) | Data-driven investors who need proof | Pitch to funds like Point Nine, Matrix, Bessemer |
+| Document                                      | Audience                                      | Use Case                                         |
+| --------------------------------------------- | --------------------------------------------- | ------------------------------------------------ |
+| [Investor Optimists](./investor-optimists.md) | Vision-focused investors who bet on big ideas | Pitch to funds like Khosla, Thiel, Greylock      |
+| [Investor Skeptics](./investor-skeptics.md)   | Data-driven investors who need proof          | Pitch to funds like Point Nine, Matrix, Bessemer |
 
 ### Key Messaging Frameworks
 
 **For Optimists (Vision-Driven):**
+
 - **Frame:** Cognitive infrastructure for human-AI collaboration
 - **Pitch:** "BuildOS is building the bridge between human creativity and AI capability"
 - **Themes:** Inevitable future, market timing, platform potential
 - **Best for:** Khosla Ventures, Thiel Capital, Greylock, Obvious Ventures
 
 **For Skeptics (Data-Driven):**
+
 - **Frame:** Market validation and differentiation in overlooked segment
 - **Pitch:** "While everyone's chasing AI agents, we're solving a validated problem for 10M+ people with ADHD"
 - **Themes:** Market size, retention data, sustainable growth
@@ -224,12 +243,12 @@ Comprehensive profiles of 24 venture capital firms with:
 
 ### Positioning by Investor Type
 
-| Investor Type | Primary Message | Key Metrics | Document |
-|--------------|-----------------|-------------|----------|
-| **AI-Native Funds** | AI-first architecture, not AI wrapper | AI model performance, technical depth | [Optimists](./investor-optimists.md) |
-| **Enterprise/B2B** | Path to enterprise, PLG foundation | B2B traction signals, enterprise interest | [Skeptics](./investor-skeptics.md) |
-| **Productivity Focus** | Next evolution of productivity tools | User engagement, retention, NPS | Both |
-| **Mission-Driven** | ADHD market validation, life-changing impact | User testimonials, retention, outcomes | [Optimists](./investor-optimists.md) |
+| Investor Type          | Primary Message                              | Key Metrics                               | Document                             |
+| ---------------------- | -------------------------------------------- | ----------------------------------------- | ------------------------------------ |
+| **AI-Native Funds**    | AI-first architecture, not AI wrapper        | AI model performance, technical depth     | [Optimists](./investor-optimists.md) |
+| **Enterprise/B2B**     | Path to enterprise, PLG foundation           | B2B traction signals, enterprise interest | [Skeptics](./investor-skeptics.md)   |
+| **Productivity Focus** | Next evolution of productivity tools         | User engagement, retention, NPS           | Both                                 |
+| **Mission-Driven**     | ADHD market validation, life-changing impact | User testimonials, retention, outcomes    | [Optimists](./investor-optimists.md) |
 
 ---
 
@@ -237,28 +256,29 @@ Comprehensive profiles of 24 venture capital firms with:
 
 ### Outreach Strategy Documents
 
-| Document | Purpose | Target |
-|----------|---------|--------|
-| [Investor Outreach Research Analysis](./outreach/2025-09-17_investor-outreach-research-analysis.md) | Research-based outreach strategy | General outreach planning |
-| [Tim Hsia Coffee Meeting Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md) | ⭐ Context Ventures follow-up plan | Tim Hsia (Context Ventures) |
-| [Paige Craig Outreach Template](./outreach/paige-craig-outreach-template.md) | Outlander VC approach | Paige Craig |
-| [Dennis Mortensen Advisory Outreach](./outreach/dennis-mortensen-advisory-outreach-email.md) | Advisory/angel outreach | Dennis Mortensen |
+| Document                                                                                            | Purpose                            | Target                      |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------- |
+| [Investor Outreach Research Analysis](./outreach/2025-09-17_investor-outreach-research-analysis.md) | Research-based outreach strategy   | General outreach planning   |
+| [Tim Hsia Coffee Meeting Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md)                  | ⭐ Context Ventures follow-up plan | Tim Hsia (Context Ventures) |
+| [Paige Craig Outreach Template](./outreach/paige-craig-outreach-template.md)                        | Outlander VC approach              | Paige Craig                 |
+| [Dennis Mortensen Advisory Outreach](./outreach/dennis-mortensen-advisory-outreach-email.md)        | Advisory/angel outreach            | Dennis Mortensen            |
 
 ### Warm Introduction Email Templates
 
 **Ready-to-Use Templates:**
 
-| Template | Target | Status | Link |
-|----------|--------|--------|------|
-| Tim Hsia (Context Ventures) | Context Ventures | ⭐ **Active connection** | [Template](./warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md) |
-| Brian Singerman (Founders Fund) | Founders Fund | Research phase | [Template](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md) |
-| Casey Caruso (Topology Ventures) | Topology Ventures | Research phase | [Template](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
-| Jack Raines (Slow Ventures) | Slow Ventures | Research phase | [Template](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md) |
-| Tom Blomfield (YC) | Y Combinator | Research phase | [Template](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md) |
-| Paige Craig (Outlander VC) | Outlander VC | Research phase | [Template](./warm-intro-emails/paige-craig-outlander-vc-warm-intro-email.md) |
-| Sarah Guo (Conviction) | Conviction | Research phase | [Template](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md) |
+| Template                         | Target            | Status                   | Link                                                                               |
+| -------------------------------- | ----------------- | ------------------------ | ---------------------------------------------------------------------------------- |
+| Tim Hsia (Context Ventures)      | Context Ventures  | ⭐ **Active connection** | [Template](./warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md)      |
+| Brian Singerman (Founders Fund)  | Founders Fund     | Research phase           | [Template](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md)            |
+| Casey Caruso (Topology Ventures) | Topology Ventures | Research phase           | [Template](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
+| Jack Raines (Slow Ventures)      | Slow Ventures     | Research phase           | [Template](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md)      |
+| Tom Blomfield (YC)               | Y Combinator      | Research phase           | [Template](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md)               |
+| Paige Craig (Outlander VC)       | Outlander VC      | Research phase           | [Template](./warm-intro-emails/paige-craig-outlander-vc-warm-intro-email.md)       |
+| Sarah Guo (Conviction)           | Conviction        | Research phase           | [Template](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md)           |
 
 **Template Usage:**
+
 1. Review investor profile first
 2. Customize template with specific metrics/traction
 3. Add mutual connection context
@@ -270,21 +290,21 @@ Comprehensive profiles of 24 venture capital firms with:
 
 ### Angel & Advisory Targets
 
-| Name | Role | Why Relevant | Profile | Outreach |
-|------|------|--------------|---------|----------|
-| **Dennis Mortensen** | x.ai founder, advisor | AI + productivity expertise | [Profile](./profiles/dennis-mortensen-profile.md) | [Email](./outreach/dennis-mortensen-advisory-outreach-email.md) |
-| **Tom Blomfield** | YC Partner, Monzo founder | Fintech → productivity, YC network | [Profile](./profiles/tom-blomfield-profile.md) | [Warm Intro](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md) |
+| Name                 | Role                      | Why Relevant                       | Profile                                           | Outreach                                                               |
+| -------------------- | ------------------------- | ---------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Dennis Mortensen** | x.ai founder, advisor     | AI + productivity expertise        | [Profile](./profiles/dennis-mortensen-profile.md) | [Email](./outreach/dennis-mortensen-advisory-outreach-email.md)        |
+| **Tom Blomfield**    | YC Partner, Monzo founder | Fintech → productivity, YC network | [Profile](./profiles/tom-blomfield-profile.md)    | [Warm Intro](./warm-intro-emails/tom-blomfield-yc-warm-intro-email.md) |
 
 ### Partner-Level Investors
 
-| Name | Firm | Focus | Profile | Outreach |
-|------|------|-------|---------|----------|
-| **Tim Hsia** ⭐ | Context Ventures | Veteran founders, enterprise | [Profile](./profiles/tim-hsia-context-ventures-profile.md) | [Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md) |
-| **Brian Singerman** | Founders Fund | Deep tech, AI, transformative | [Profile](./profiles/brian-singerman-founders-fund-profile.md) | [Warm Intro](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md) |
-| **Casey Caruso** | Topology Ventures | Enterprise SaaS, technical | [Profile](./profiles/casey-caruso-topology-ventures-profile.md) | [Warm Intro](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
-| **Paige Craig** | Outlander VC | Global, high-conviction bets | [Profile](./profiles/paige-craig-profile.md) | [Template](./outreach/paige-craig-outreach-template.md) |
-| **Jack Raines** | Slow Ventures | Consumer, storytelling | [Profile](./profiles/slow-ventures-jack-raines-profile.md) | [Warm Intro](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md) |
-| **Sarah Guo** | Conviction | Enterprise AI, infrastructure | N/A | [Warm Intro](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md) |
+| Name                | Firm              | Focus                         | Profile                                                         | Outreach                                                                             |
+| ------------------- | ----------------- | ----------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Tim Hsia** ⭐     | Context Ventures  | Veteran founders, enterprise  | [Profile](./profiles/tim-hsia-context-ventures-profile.md)      | [Strategy](./outreach/tim-hsia-coffee-meeting-strategy.md)                           |
+| **Brian Singerman** | Founders Fund     | Deep tech, AI, transformative | [Profile](./profiles/brian-singerman-founders-fund-profile.md)  | [Warm Intro](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md)            |
+| **Casey Caruso**    | Topology Ventures | Enterprise SaaS, technical    | [Profile](./profiles/casey-caruso-topology-ventures-profile.md) | [Warm Intro](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md) |
+| **Paige Craig**     | Outlander VC      | Global, high-conviction bets  | [Profile](./profiles/paige-craig-profile.md)                    | [Template](./outreach/paige-craig-outreach-template.md)                              |
+| **Jack Raines**     | Slow Ventures     | Consumer, storytelling        | [Profile](./profiles/slow-ventures-jack-raines-profile.md)      | [Warm Intro](./warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md)      |
+| **Sarah Guo**       | Conviction        | Enterprise AI, infrastructure | N/A                                                             | [Warm Intro](./warm-intro-emails/sarah-guo-conviction-warm-intro-email.md)           |
 
 **Note:** Sequoia Capital also has [dedicated profile](./profiles/sequoia-capital-investor-profile.md) in addition to [VC firm profile](./vc-firms/sequoia-capital.md)
 
@@ -295,6 +315,7 @@ Comprehensive profiles of 24 venture capital firms with:
 ### General Warm Intro Guidelines
 
 See [buildos-fundraising-strategy.md - Warm Introduction Strategy](./buildos-fundraising-strategy.md#warm-introduction-strategy) for:
+
 - Network mapping methodology
 - Introduction request templates
 - Follow-up protocols
@@ -303,12 +324,14 @@ See [buildos-fundraising-strategy.md - Warm Introduction Strategy](./buildos-fun
 ### Available Warm Intro Templates
 
 All templates include:
+
 - Context setter for introducer
 - Customizable intro paragraph
 - Key BuildOS highlights
 - Call to action
 
 **Templates by Investor:**
+
 - [Tim Hsia - Context Ventures](./warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md) ⭐
 - [Brian Singerman - Founders Fund](./warm-intro-emails/brian-singerman-gpx-warm-intro-email.md)
 - [Casey Caruso - Topology Ventures](./warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md)
@@ -333,30 +356,34 @@ Before any investor meeting:
 
 ### Key Documents by Scenario
 
-| Scenario | Documents to Review |
-|----------|-------------------|
-| **First investor meeting ever** | [Fundraising Strategy](./buildos-fundraising-strategy.md), [Preparedness Checklist](./fundraising-preparedness-checklist.md) |
-| **Meeting with AI-focused fund** | [VC Firm Profile](./vc-firms/), [Investor Optimists](./investor-optimists.md) |
-| **Meeting with data-driven fund** | [VC Firm Profile](./vc-firms/), [Investor Skeptics](./investor-skeptics.md) |
-| **Requesting warm introduction** | [Warm Intro Strategy](./buildos-fundraising-strategy.md#warm-introduction-strategy), Specific [template](./warm-intro-emails/) |
-| **Following up after meeting** | [Context Ventures strategy](./outreach/tim-hsia-coffee-meeting-strategy.md) as example |
-| **Handling objections** | [Common Objections section](./buildos-fundraising-strategy.md#common-objections--responses) |
+| Scenario                          | Documents to Review                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **First investor meeting ever**   | [Fundraising Strategy](./buildos-fundraising-strategy.md), [Preparedness Checklist](./fundraising-preparedness-checklist.md)   |
+| **Meeting with AI-focused fund**  | [VC Firm Profile](./vc-firms/), [Investor Optimists](./investor-optimists.md)                                                  |
+| **Meeting with data-driven fund** | [VC Firm Profile](./vc-firms/), [Investor Skeptics](./investor-skeptics.md)                                                    |
+| **Requesting warm introduction**  | [Warm Intro Strategy](./buildos-fundraising-strategy.md#warm-introduction-strategy), Specific [template](./warm-intro-emails/) |
+| **Following up after meeting**    | [Context Ventures strategy](./outreach/tim-hsia-coffee-meeting-strategy.md) as example                                         |
+| **Handling objections**           | [Common Objections section](./buildos-fundraising-strategy.md#common-objections--responses)                                    |
 
 ### Priority Targets by Characteristic
 
 **Best for Current Stage (Pre-Seed/Seed):**
+
 - Context Ventures ⭐, South Park Commons, Soma Capital, Vermilion Fund
 - See [VC Firms - By Stage](./vc-firms/README.md#by-investment-stage)
 
 **Best for AI-Native Positioning:**
+
 - AIX Ventures, Standard Capital ⚡, Khosla Ventures, Greylock, Lightspeed
 - See [VC Firms - AI-Native Focus](./vc-firms/README.md#ai-native--ai-first)
 
 **Best for Enterprise Future:**
+
 - Sequoia, a16z, General Catalyst, Index, Coatue
 - See [VC Firms - Enterprise Focus](./vc-firms/README.md#enterprise--b2b-productivity)
 
 **Best for Technical Founders:**
+
 - South Park Commons, Vermilion, Standard Capital, Index, AIX
 - See [VC Firms - Technical Focus](./vc-firms/README.md#developer-tools--technical-founders)
 
@@ -365,24 +392,28 @@ Before any investor meeting:
 Core metrics to track for investor conversations:
 
 **User Metrics:**
+
 - [ ] Total users
 - [ ] Active users (DAU/WAU/MAU)
 - [ ] Retention (30/60/90 day)
 - [ ] Engagement metrics
 
 **Growth Metrics:**
+
 - [ ] MoM growth rate
 - [ ] User acquisition channels
 - [ ] CAC by channel
 - [ ] Viral coefficient
 
 **Product Metrics:**
+
 - [ ] Feature adoption rates
 - [ ] Session duration
 - [ ] AI interaction metrics
 - [ ] User satisfaction (NPS)
 
 **Financial Metrics:**
+
 - [ ] Current MRR/ARR
 - [ ] ARPU
 - [ ] Churn rate
@@ -468,6 +499,7 @@ docs/marketing/investors/
 ## 📝 Maintenance
 
 **Update Frequency:**
+
 - **Active Opportunities** - Daily during active fundraising
 - **Investor Profiles** - As meetings occur or new intel gathered
 - **Metrics Dashboard** - Weekly
@@ -482,13 +514,13 @@ docs/marketing/investors/
 
 Track fundraising progress:
 
-- [ ] Warm introductions requested: __ / Target
-- [ ] Investor meetings scheduled: __ / Target
-- [ ] Term sheets received: __ / Target
+- [ ] Warm introductions requested: \_\_ / Target
+- [ ] Investor meetings scheduled: \_\_ / Target
+- [ ] Term sheets received: \_\_ / Target
 - [ ] Lead investor committed: Yes/No
 - [ ] Round closed: Yes/No
 
-Target timeline: ___ to ___
+Target timeline: **_ to _**
 
 ---
 

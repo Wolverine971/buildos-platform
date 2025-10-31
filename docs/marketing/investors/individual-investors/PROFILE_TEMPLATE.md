@@ -8,6 +8,7 @@ _Last Updated: [Date]_
 **Quick Take**: [2-3 sentence overview of who they are, their background, and why they're relevant as an investor]
 
 **Investment Profile**:
+
 - **Estimated Net Worth**: $[X]M - $[Y]M
 - **Estimated Liquid Assets**: $[X]M - $[Y]M (approximately [X]% of net worth)
 - **Typical Check Size**: $[X]K - $[Y]K
@@ -22,6 +23,7 @@ _Last Updated: [Date]_
 **Total Estimated Net Worth**: $[X]M - $[Y]M
 
 **Assets Composition** (estimated):
+
 - **Public Equity**: $[X]M ([Company] stock, index funds, etc.)
 - **Private Equity**: $[X]M (startup investments, private companies)
 - **Business Ownership**: $[X]M (operating businesses, content businesses)
@@ -34,6 +36,7 @@ _Last Updated: [Date]_
 **Estimated Liquid Assets**: $[X]M - $[Y]M
 
 **Liquidity Sources**:
+
 - Cash/savings/money market accounts
 - Publicly traded stocks that could be sold
 - Annual income from businesses/content
@@ -47,6 +50,7 @@ _Last Updated: [Date]_
 **Potential Annual Investment Capacity**: $[X]M - $[Y]M
 
 **Typical Check Size Range**:
+
 - **Minimum**: $[X]K (for strategic/interesting opportunities)
 - **Standard**: $[X]K - $[Y]K (typical deals)
 - **Maximum**: $[X]M (for exceptional opportunities with strong conviction)
@@ -58,6 +62,7 @@ _Last Updated: [Date]_
 ## Personal Background
 
 ### Early Life & Education
+
 - [Education details]
 - [Early career/formative experiences]
 - [Key influences and mentors]
@@ -73,13 +78,13 @@ _Last Updated: [Date]_
 ### Major Exits & Wealth Creation Events
 
 1. **[Company/Asset]** - [Year]
-   - Sale price: $[X]M
-   - Personal proceeds: $[X]M (estimated)
-   - Buyer: [Company]
-   - Key details: [Brief description]
+    - Sale price: $[X]M
+    - Personal proceeds: $[X]M (estimated)
+    - Buyer: [Company]
+    - Key details: [Brief description]
 
 2. **[Company/Asset]** - [Year]
-   - [Similar format]
+    - [Similar format]
 
 ## Audience & Platform Reach
 
@@ -88,15 +93,18 @@ _Last Updated: [Date]_
 #### Platform Breakdown
 
 **[Platform 1]**: [X] followers/subscribers
+
 - Engagement rate: [X]%
 - Primary content: [Description]
 - Posting frequency: [X] times per week
 - Audience demographics: [Description]
 
 **[Platform 2]**: [X] followers/subscribers
+
 - [Similar format]
 
 **Newsletter/Email**: [X] subscribers
+
 - Open rate: [X]%
 - Frequency: [Weekly/Daily/etc.]
 - Revenue: $[X]K - $[Y]K per month (estimated from sponsorships)
@@ -119,6 +127,7 @@ _Last Updated: [Date]_
 [2-3 paragraphs describing their overall investment philosophy, what they look for, and why]
 
 **Key Principles**:
+
 1. [Principle 1]
 2. [Principle 2]
 3. [Principle 3]
@@ -129,21 +138,25 @@ _Last Updated: [Date]_
 **What They Look For**:
 
 ✅ **Founder Qualities**:
+
 - [Quality 1]
 - [Quality 2]
 - [Quality 3]
 
 ✅ **Business Characteristics**:
+
 - [Characteristic 1]
 - [Characteristic 2]
 - [Characteristic 3]
 
 ✅ **Market Attributes**:
+
 - [Attribute 1]
 - [Attribute 2]
 - [Attribute 3]
 
 **Investment Focus Areas**:
+
 - [Area 1]: [X]% of portfolio
 - [Area 2]: [X]% of portfolio
 - [Area 3]: [X]% of portfolio
@@ -151,19 +164,22 @@ _Last Updated: [Date]_
 ### Investment History
 
 **Notable Investments**:
+
 1. **[Company]** - [Investment year] | [Exit status/outcome]
-   - [Brief description and why notable]
+    - [Brief description and why notable]
 
 2. **[Company]** - [Investment year] | [Exit status/outcome]
-   - [Brief description]
+    - [Brief description]
 
 **Investment Vehicles**:
+
 - [AngelList syndicate / Rolling fund / Direct investments]
 - [Fund name if applicable] - $[X]M committed capital
 
 **Portfolio Performance** (where publicly known):
-- [X] exits
-- [X] active investments
+
+- [x] exits
+- [x] active investments
 - [Notable returns or outcomes]
 
 ## Personality & Communication Style
@@ -174,11 +190,13 @@ _Last Updated: [Date]_
 [Explanation based on observable traits, public statements, decision-making patterns]
 
 **Core Motivations**:
+
 - [Motivation 1]
 - [Motivation 2]
 - [Motivation 3]
 
 **Communication Preferences**:
+
 - [Preference 1]
 - [Preference 2]
 - [Preference 3]
@@ -186,14 +204,17 @@ _Last Updated: [Date]_
 ### Public Persona Traits
 
 **Observable Characteristics**:
+
 - [Trait 1]: [Evidence/examples]
 - [Trait 2]: [Evidence/examples]
 - [Trait 3]: [Evidence/examples]
 
 **Decision-Making Style**:
+
 - [Description of how they seem to make decisions based on public information]
 
 **Values & Priorities** (inferred from content):
+
 - [Value 1]
 - [Value 2]
 - [Value 3]
@@ -203,36 +224,36 @@ _Last Updated: [Date]_
 ### Strategic Value They Bring
 
 1. **Audience Access**: [X]M+ potential customers/users
-   - [Specific ways they could leverage their audience]
+    - [Specific ways they could leverage their audience]
 
 2. **Content Amplification**:
-   - [Platform 1]: Could create content featuring the product
-   - [Platform 2]: Could mention/review on [show/channel]
-   - Potential reach: [X]M impressions
+    - [Platform 1]: Could create content featuring the product
+    - [Platform 2]: Could mention/review on [show/channel]
+    - Potential reach: [X]M impressions
 
 3. **Credibility & Social Proof**:
-   - [Description of how their endorsement adds value]
+    - [Description of how their endorsement adds value]
 
 4. **Network Access**:
-   - [Description of their network and who they can introduce to]
+    - [Description of their network and who they can introduce to]
 
 5. **Expertise & Advice**:
-   - [Areas where they have deep expertise]
-   - [How they typically support portfolio companies]
+    - [Areas where they have deep expertise]
+    - [How they typically support portfolio companies]
 
 6. **Market Validation**:
-   - [How their involvement validates product-market fit]
+    - [How their involvement validates product-market fit]
 
 ### Potential ROI of Their Involvement
 
 **Beyond Financial Return**:
 
-| Value Type | Estimated Value | Timeline |
-|------------|----------------|----------|
-| Audience exposure | $[X]K - $[Y]K in equivalent ad spend | Immediate |
-| Product feedback | [X] hours of expert advice | Ongoing |
-| Network introductions | [X-Y] high-value connections | 3-6 months |
-| Credibility boost | [Qualitative description] | Immediate |
+| Value Type            | Estimated Value                         | Timeline    |
+| --------------------- | --------------------------------------- | ----------- |
+| Audience exposure     | $[X]K - $[Y]K in equivalent ad spend    | Immediate   |
+| Product feedback      | [X] hours of expert advice              | Ongoing     |
+| Network introductions | [X-Y] high-value connections            | 3-6 months  |
+| Credibility boost     | [Qualitative description]               | Immediate   |
 | Content collaboration | [X] pieces of content featuring product | 6-12 months |
 
 ## How to Approach [Investor Name]
@@ -240,38 +261,42 @@ _Last Updated: [Date]_
 ### Optimal Positioning for BuildOS
 
 **Hook/Opening Line**:
+
 > "[Crafted opening that would resonate with this investor based on their interests and values]"
 
 **Key Positioning Elements**:
 
 1. **Problem Frame**:
-   - [How to frame the problem in a way that resonates with them]
+    - [How to frame the problem in a way that resonates with them]
 
 2. **Solution Position**:
-   - [How to position BuildOS based on their interests]
+    - [How to position BuildOS based on their interests]
 
 3. **Traction/Proof Points**:
-   - [Which metrics/testimonials would be most compelling to them]
+    - [Which metrics/testimonials would be most compelling to them]
 
 4. **Vision/Opportunity**:
-   - [How to frame the opportunity in their language]
+    - [How to frame the opportunity in their language]
 
 5. **Personal Connection**:
-   - [How BuildOS aligns with their content/interests/portfolio]
+    - [How BuildOS aligns with their content/interests/portfolio]
 
 ### Outreach Strategy
 
 **Best Channels**:
+
 1. [Channel 1] - [Why/how to use]
 2. [Channel 2] - [Why/how to use]
 3. [Channel 3] - [Why/how to use]
 
 **Warm Intro Paths** (if available):
+
 - [Mutual connection 1]
 - [Mutual connection 2]
 - [Alternative paths]
 
 **Cold Outreach Template** (if warm intro not available):
+
 ```
 Subject: [Subject line]
 
@@ -296,6 +321,7 @@ Subject: [Subject line]
 ### Expected Timeline & Process
 
 **Typical Investment Process**:
+
 1. [Step 1] - [Timeline]
 2. [Step 2] - [Timeline]
 3. [Step 3] - [Timeline]
@@ -341,6 +367,7 @@ Subject: [Subject line]
 ### Fit Score: [X]/10
 
 **Scoring Breakdown**:
+
 - **Thesis Alignment**: [X]/10 - [Explanation]
 - **Check Size Fit**: [X]/10 - [Explanation]
 - **Strategic Value**: [X]/10 - [Explanation]
@@ -363,11 +390,13 @@ Subject: [Subject line]
 **Optimal Check Size to Request**: $[X]K
 
 **Rationale**:
+
 - [Why this amount]
 - [How it fits their typical pattern]
 - [Strategic considerations]
 
 **Alternative Ask** (if initial declined):
+
 - $[Y]K with [specific value exchange]
 - Advisory role with small equity stake
 - [Other creative structures]

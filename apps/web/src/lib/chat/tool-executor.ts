@@ -517,7 +517,10 @@ export class ChatToolExecutor {
 
 		// Count notes per project
 		for (const note of allNotes) {
-			notesCountByProject.set(note.project_id, (notesCountByProject.get(note.project_id) || 0) + 1);
+			notesCountByProject.set(
+				note.project_id,
+				(notesCountByProject.get(note.project_id) || 0) + 1
+			);
 		}
 
 		// Count brain dumps per project
@@ -1117,7 +1120,7 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		try {
-			// Set defaults 
+			// Set defaults
 			const timeMin = args.timeMin || new Date().toISOString();
 			const timeMax =
 				args.timeMax || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

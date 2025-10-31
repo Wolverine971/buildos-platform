@@ -1,6 +1,6 @@
 ---
-title: "Thomas Frank Needs 5 Database Properties to Create a Recurring Task in Notion. You Need One Sentence in BuildOS."
-description: "Watching Thomas Frank explain how to create recurring tasks in Notion is painful. Complex formulas, manual updates, database properties—all to do what should take 5 seconds."
+title: 'Thomas Frank Needs 5 Database Properties to Create a Recurring Task in Notion. You Need One Sentence in BuildOS.'
+description: 'Watching Thomas Frank explain how to create recurring tasks in Notion is painful. Complex formulas, manual updates, database properties—all to do what should take 5 seconds.'
 slug: 'notion-recurring-tasks-complexity'
 publishDate: '2025-10-29'
 author: 'DJ Wayne'
@@ -9,7 +9,7 @@ tags: ['notion', 'productivity', 'complexity', 'recurring-tasks', 'simplicity', 
 featured: true
 draft: false
 seo:
-    title: "Why Creating Recurring Tasks in Notion Is Absurdly Complex | BuildOS Alternative"
+    title: 'Why Creating Recurring Tasks in Notion Is Absurdly Complex | BuildOS Alternative'
     description: 'Thomas Frank needs 5 database properties, complex formulas, and manual updates to create recurring tasks in Notion. BuildOS does it with one sentence.'
     keywords:
         [
@@ -27,7 +27,7 @@ I watched [Thomas Frank's YouTube short](https://youtube.com/shorts/yYNbf__-gx4)
 
 And I felt **physical pain**.
 
-Not because Thomas did anything wrong. He's brilliant. But because what he's explaining—the *minimum viable setup* for recurring tasks in Notion—is **absurdly, unnecessarily complex**.
+Not because Thomas did anything wrong. He's brilliant. But because what he's explaining—the _minimum viable setup_ for recurring tasks in Notion—is **absurdly, unnecessarily complex**.
 
 Let me show you what I mean.
 
@@ -46,6 +46,7 @@ According to [Thomas Frank's comprehensive tutorial](https://thomasjfrank.com/ho
 ### The Formula Complexity
 
 **Next Due Formula**: A nested conditional monster with approximately **15+ operations** that handles:
+
 - Tasks due today/future (simple interval addition)
 - Overdue tasks (complex math dividing days elapsed by interval)
 - Accounting for the `now()` function always including time values
@@ -76,6 +77,7 @@ Even with all this complexity, **Notion still can't actually automate recurring 
 Let me be crystal clear: **Recurring tasks should not require formulas.**
 
 They shouldn't require:
+
 - Database schema design
 - Property configuration
 - Formula debugging
@@ -91,6 +93,7 @@ Here's the entire workflow in BuildOS:
 **You say**: "Create a recurring task to review my goals every Monday"
 
 **AI does**:
+
 - Creates the task
 - Sets it to recur weekly on Mondays
 - Adds it to your project
@@ -113,6 +116,7 @@ Want to get fancy? Try this:
 **You say**: "I need to review quarterly goals every 3 months starting next week, follow up with my team lead every Tuesday, and do a quick check-in with clients every other Friday"
 
 **BuildOS creates**:
+
 - Quarterly goal review (every 3 months, starts next week)
 - Team lead follow-up (weekly on Tuesdays)
 - Client check-in (bi-weekly on Fridays)
@@ -174,12 +178,13 @@ You're not organizing your tasks. You're architecting a task management system. 
 ## Real Talk: When Notion Makes Sense
 
 Notion isn't bad. It's powerful for:
+
 - Team wikis and documentation
 - Rich content creation
 - Collaborative databases
 - Complex information architecture
 
-**But for recurring tasks?** Using Notion for recurring tasks is like using a Swiss Army knife to hammer a nail. Yes, it *can* work, but there are better tools.
+**But for recurring tasks?** Using Notion for recurring tasks is like using a Swiss Army knife to hammer a nail. Yes, it _can_ work, but there are better tools.
 
 ## The Reality Check for Disorganized Minds
 
@@ -221,6 +226,7 @@ I hear you. Some people genuinely enjoy setting up complex systems. They find it
 But here's the thing: that preference becomes a **barrier to entry for everyone else**.
 
 When recurring tasks require formula expertise, you've created a system that excludes:
+
 - People who struggle with organization and executive function
 - Non-technical users
 - Anyone who just wants to get stuff done
@@ -246,6 +252,7 @@ Think about it:
 ### If You're Deep in Notion
 
 You don't have to abandon Notion entirely. Use it for what it's good at:
+
 - Documentation
 - Knowledge bases
 - Team collaboration
@@ -263,7 +270,7 @@ Just say what you need, and it happens.
 
 ### If You Struggle with Organization
 
-You already know the pain of tools that demand organization *before* they help you get organized.
+You already know the pain of tools that demand organization _before_ they help you get organized.
 
 BuildOS flips that script. It meets you in the chaos and creates structure from it.
 
@@ -277,11 +284,11 @@ Those hours are gone. But future hours don't have to be.
 
 ## What BuildOS Users Say
 
-*"I spent a weekend trying to set up recurring tasks in Notion. BuildOS did it in 10 seconds."* - Former Notion power user
+_"I spent a weekend trying to set up recurring tasks in Notion. BuildOS did it in 10 seconds."_ - Former Notion power user
 
-*"Thomas Frank's tutorials are amazing, but they made me realize I was learning database design when I just wanted to remember to water my plants."* - Overwhelmed entrepreneur
+_"Thomas Frank's tutorials are amazing, but they made me realize I was learning database design when I just wanted to remember to water my plants."_ - Overwhelmed entrepreneur
 
-*"The fact that recurring tasks are this hard in Notion is insane. BuildOS just works."* - Product manager who switched
+_"The fact that recurring tasks are this hard in Notion is insane. BuildOS just works."_ - Product manager who switched
 
 **The pattern is clear: Complexity isn't a feature. It's a bug.**
 
@@ -352,7 +359,7 @@ This blog post directly addresses a viral pain point: the absurd complexity of r
 ### Conversion Funnel
 
 1. **Discovery**: Users searching for Notion recurring task help find this post
-2. **Pain Recognition**: "Wait, this *is* unnecessarily complex"
+2. **Pain Recognition**: "Wait, this _is_ unnecessarily complex"
 3. **Solution Awareness**: "There's a simpler way?"
 4. **Action**: Try BuildOS free trial
 5. **Retention**: Experience the simplicity, never go back

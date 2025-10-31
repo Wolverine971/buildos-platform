@@ -499,7 +499,8 @@ export class AgentConversationService {
 						console.error('Tool execution failed:', toolError);
 
 						// Add error to message history so LLM knows what happened
-						const errorMessage = toolError instanceof Error ? toolError.message : 'Unknown error';
+						const errorMessage =
+							toolError instanceof Error ? toolError.message : 'Unknown error';
 						messages.push({
 							role: 'assistant',
 							content: '',

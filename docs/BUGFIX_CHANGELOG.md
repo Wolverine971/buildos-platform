@@ -49,6 +49,7 @@ rateLimiter.set(userId, userRateLimit);
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/routes/api/agent/stream/+server.ts:116-130`
 
 ---
@@ -62,7 +63,7 @@ Tool results matched by array index instead of `tool_call_id` at `apps/web/src/r
 ```typescript
 // ❌ INCORRECT - Fragile array index matching
 for (let i = 0; i < toolCalls.length; i++) {
-    const result = toolResults[i]; // Could be wrong or undefined
+	const result = toolResults[i]; // Could be wrong or undefined
 }
 ```
 
@@ -73,16 +74,17 @@ for (let i = 0; i < toolCalls.length; i++) {
 ```typescript
 // ✅ CORRECT
 for (const toolCall of toolCalls) {
-    const result = toolResults.find((r) => r.tool_call_id === toolCall.id);
-    if (result) {
-        // Save to database
-    } else {
-        console.warn(`No result found for tool call ${toolCall.id}`);
-    }
+	const result = toolResults.find((r) => r.tool_call_id === toolCall.id);
+	if (result) {
+		// Save to database
+	} else {
+		console.warn(`No result found for tool call ${toolCall.id}`);
+	}
 }
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/routes/api/agent/stream/+server.ts:320-345`
 
 ---
@@ -96,11 +98,11 @@ Async IIFE without `.catch()` handler at `apps/web/src/routes/api/agent/stream/+
 ```typescript
 // ❌ INCORRECT - Errors in catch/finally not handled
 (async () => {
-    try {
-        // ... streaming code
-    } catch (error) {
-        await agentStream.sendMessage({ type: 'error' }); // Could throw!
-    }
+	try {
+		// ... streaming code
+	} catch (error) {
+		await agentStream.sendMessage({ type: 'error' }); // Could throw!
+	}
 })(); // No .catch()
 ```
 
@@ -121,6 +123,7 @@ Async IIFE without `.catch()` handler at `apps/web/src/routes/api/agent/stream/+
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/routes/api/agent/stream/+server.ts:379-388`
 
 ---
@@ -134,10 +137,10 @@ Loading ALL messages from database without limit at `apps/web/src/routes/api/age
 ```typescript
 // ❌ INCORRECT - No limit
 const { data: messages } = await supabase
-    .from('chat_messages')
-    .select('*')
-    .eq('session_id', session_id)
-    .order('created_at', { ascending: true }); // Could load thousands
+	.from('chat_messages')
+	.select('*')
+	.eq('session_id', session_id)
+	.order('created_at', { ascending: true }); // Could load thousands
 ```
 
 **Impact**: Memory bloat for long conversations (thousands of messages loaded into memory).
@@ -147,18 +150,19 @@ const { data: messages } = await supabase
 ```typescript
 // ✅ CORRECT
 const { data: messages } = await supabase
-    .from('chat_messages')
-    .select('*')
-    .eq('session_id', session_id)
-    .order('created_at', { ascending: false })
-    .limit(50);
+	.from('chat_messages')
+	.select('*')
+	.eq('session_id', session_id)
+	.order('created_at', { ascending: false })
+	.limit(50);
 
 if (messages) {
-    loadedConversationHistory = messages.reverse();
+	loadedConversationHistory = messages.reverse();
 }
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/routes/api/agent/stream/+server.ts:172-181`
 
 ---
@@ -180,6 +184,7 @@ if (event.type === 'done' && event.plan?.tokensUsed) {
 ```
 
 **Impact**:
+
 - Token-based rate limiting completely broken
 - Users could exceed token limits without restriction
 - Rate limiter never updated with actual usage
@@ -187,11 +192,13 @@ if (event.type === 'done' && event.plan?.tokensUsed) {
 **Fix**:
 
 1. Update PlannerEvent type to include usage (`agent-planner-service.ts:99`):
+
 ```typescript
 | { type: 'done'; plan?: AgentPlan; usage?: { total_tokens: number } }
 ```
 
 2. Yield done event with tokens at end of processUserMessage (`agent-planner-service.ts:622-626`):
+
 ```typescript
 yield {
     type: 'done',
@@ -200,13 +207,15 @@ yield {
 ```
 
 3. Fix API route to use correct field (`+server.ts:292-293`):
+
 ```typescript
 if (event.type === 'done' && event.usage?.total_tokens) {
-    totalTokens += event.usage.total_tokens;
+	totalTokens += event.usage.total_tokens;
 }
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/lib/services/agent-planner-service.ts:99` (PlannerEvent type)
 - `/apps/web/src/lib/services/agent-planner-service.ts:622-626` (yield done event)
 - `/apps/web/src/routes/api/agent/stream/+server.ts:292-293` (use correct field)
@@ -216,6 +225,7 @@ if (event.type === 'done' && event.usage?.total_tokens) {
 ### Overall Impact Summary
 
 **Before fixes**:
+
 - ❌ Server crashes on concurrent requests
 - ❌ Database errors from tool result mismatches
 - ❌ Unhandled promise rejections
@@ -223,6 +233,7 @@ if (event.type === 'done' && event.usage?.total_tokens) {
 - ❌ Token rate limiting completely broken
 
 **After fixes**:
+
 - ✅ Concurrent requests handled safely
 - ✅ Tool results matched reliably by ID
 - ✅ All promise errors caught and handled
@@ -239,6 +250,7 @@ if (event.type === 'done' && event.usage?.total_tokens) {
 ### Cross-references
 
 **Affected Systems**:
+
 - Agent chat streaming (`/api/agent/stream/+server.ts`)
 - Rate limiting (in-memory Map)
 - Tool execution and result handling
@@ -246,6 +258,7 @@ if (event.type === 'done' && event.usage?.total_tokens) {
 - Conversation history loading
 
 **Remaining Issues** (from code review - not addressed in this fix):
+
 - Multi-turn tool loop (appears to be working correctly, requires verification)
 - Missing tool error handling in conversation service
 - N+1 database queries in search_projects
@@ -269,14 +282,15 @@ The `search_projects` tool executed 4 separate database queries for each project
 ```typescript
 // ❌ INCORRECT - 40 queries for 10 projects
 for (const project of projects) {
-    const tasks = await supabase.from('tasks').select('*').eq('project_id', p.id);
-    const phases = await supabase.from('phases').select('*').eq('project_id', p.id);
-    const notes = await supabase.from('notes').select('*').eq('project_id', p.id);
-    const brainDumps = await supabase.from('brain_dumps').select('*').eq('project_id', p.id);
+	const tasks = await supabase.from('tasks').select('*').eq('project_id', p.id);
+	const phases = await supabase.from('phases').select('*').eq('project_id', p.id);
+	const notes = await supabase.from('notes').select('*').eq('project_id', p.id);
+	const brainDumps = await supabase.from('brain_dumps').select('*').eq('project_id', p.id);
 }
 ```
 
 **Impact**:
+
 - 90% of database queries were redundant
 - With 10 projects: 40 queries instead of 4
 - Significant performance degradation for project searches
@@ -291,22 +305,23 @@ Batch fetch all data in parallel, then group by project_id in memory:
 const projectIds = projects.map((p) => p.id);
 
 const [allTasks, allPhases, allNotes, allBrainDumps] = await Promise.all([
-    supabase.from('tasks').select('*').in('project_id', projectIds),
-    supabase.from('phases').select('*').in('project_id', projectIds),
-    supabase.from('notes').select('*').in('project_id', projectIds),
-    supabase.from('brain_dumps').select('*').in('project_id', projectIds)
+	supabase.from('tasks').select('*').in('project_id', projectIds),
+	supabase.from('phases').select('*').in('project_id', projectIds),
+	supabase.from('notes').select('*').in('project_id', projectIds),
+	supabase.from('brain_dumps').select('*').in('project_id', projectIds)
 ]);
 
 // Group by project_id using Map for O(1) lookup
 const tasksByProject = new Map();
 for (const task of allTasks) {
-    // Group logic
+	// Group logic
 }
 ```
 
 **Performance Improvement**: **90% query reduction** (40 queries → 4 queries)
 
 **Files Changed**:
+
 - `/apps/web/src/lib/chat/tool-executor.ts:458-564`
 
 ---
@@ -320,12 +335,13 @@ Tool calls were executed sequentially in a for loop at `agent-planner-service.ts
 ```typescript
 // ❌ INCORRECT - Sequential execution
 for (const toolCall of toolCalls) {
-    const result = await toolExecutor.execute(toolCall); // Waits for each
+	const result = await toolExecutor.execute(toolCall); // Waits for each
 }
 // 3 tools × 2 seconds each = 6 seconds total
 ```
 
 **Impact**:
+
 - 3x slower for multiple tool calls
 - User wait time unnecessarily long
 - Poor user experience during agent interactions
@@ -337,15 +353,15 @@ Execute all tools in parallel using `Promise.all()`:
 ```typescript
 // ✅ CORRECT - Parallel execution
 const toolExecutionPromises = toolCalls.map((toolCall) =>
-    toolExecutor
-        .execute(toolCall)
-        .then((result) => ({ toolCall, result: result.result, success: true }))
-        .catch((error) => ({
-            toolCall,
-            result: { error: error.message },
-            success: false,
-            errorMessage: error.message
-        }))
+	toolExecutor
+		.execute(toolCall)
+		.then((result) => ({ toolCall, result: result.result, success: true }))
+		.catch((error) => ({
+			toolCall,
+			result: { error: error.message },
+			success: false,
+			errorMessage: error.message
+		}))
 );
 
 const toolResults = await Promise.all(toolExecutionPromises);
@@ -355,6 +371,7 @@ const toolResults = await Promise.all(toolExecutionPromises);
 **Performance Improvement**: **3x speed increase** (6s → 2s for 3 tools)
 
 **Files Changed**:
+
 - `/apps/web/src/lib/services/agent-planner-service.ts:528-559`
 
 ---
@@ -377,6 +394,7 @@ case 'tool_call':
 ```
 
 **Impact**:
+
 - Tool failures crashed the conversation loop
 - LLM never knew about tool errors
 - Agents got stuck retrying failed tools
@@ -408,6 +426,7 @@ case 'tool_call':
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/lib/services/agent-conversation-service.ts:450-496`
 
 ---
@@ -417,12 +436,14 @@ case 'tool_call':
 **Finding**: The code review claimed 1,800+ lines of dead code in unused agent services. Investigation revealed this was **mostly incorrect**.
 
 **Used Services** (via dependency chain):
+
 - ✅ `agent-planner-service.ts` - Used directly by API route
 - ✅ `agent-executor-service.ts` - Used (passed to planner service)
 - ✅ `agent-conversation-service.ts` - Used (by planner service)
 - ✅ `agent-context-service.ts` - Used (by conversation service)
 
 **Potentially Unused**:
+
 - ❓ `agent-orchestrator.service.ts` - 1,110 lines, never imported (possibly old implementation kept as reference)
 
 **Recommendation**: All agent services are actively used in the current multi-agent architecture. The orchestrator service may be old code but should not be deleted without explicit approval.
@@ -432,12 +453,14 @@ case 'tool_call':
 ### Overall Impact Summary
 
 **Before fixes**:
+
 - ❌ 40 database queries for 10 projects (N+1 problem)
 - ❌ 3x slower tool execution (sequential)
 - ❌ Tool errors crashed conversations
 - ❌ Poor error recovery and user experience
 
 **After fixes**:
+
 - ✅ 4 database queries for any number of projects (90% reduction)
 - ✅ 3x faster tool execution (parallel)
 - ✅ Graceful tool error handling
@@ -454,6 +477,7 @@ case 'tool_call':
 ### Cross-references
 
 **Affected Systems**:
+
 - Project search tool (`search_projects`)
 - Tool execution in agent conversations
 - Multi-tool parallel execution
@@ -461,6 +485,7 @@ case 'tool_call':
 - Database query performance
 
 **Related to Previous Fixes**:
+
 - Builds on agent system fixes from 2025-10-31 Part 1
 - Completes performance optimization identified in architecture review
 
@@ -477,11 +502,13 @@ This is the third batch of improvements for the agent chat system, focusing on p
 **Root Cause**:
 
 The executor conversation loop had no time-based timeout at `agent-conversation-service.ts:243-355`. While it had a turn limit (MAX_TURNS = 10), each turn could take a long time, leading to:
+
 - Potential 10 minutes+ of LLM calls
 - Runaway API costs
 - User frustration from hung conversations
 
 **Impact**:
+
 - No protection against expensive infinite-like loops
 - Could drain API budget quickly
 - Poor user experience when tasks don't complete
@@ -518,6 +545,7 @@ if (elapsedTime > this.CONFIG.MAX_CONVERSATION_TIME_MS) {
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/lib/services/agent-conversation-service.ts:108-113` (added constant)
 - `/apps/web/src/lib/services/agent-conversation-service.ts:247-268` (added timeout check)
 
@@ -533,21 +561,22 @@ After careful trace-through, the multi-turn tool loop works perfectly:
 
 ```typescript
 while (shouldContinue && currentTurn < MAX_TURNS) {
-    // ← streamText called HERE (line 494)
-    for await (const event of this.smartLLM.streamText({ messages, tools })) {
-        // Collect tool calls
-    }
+	// ← streamText called HERE (line 494)
+	for await (const event of this.smartLLM.streamText({ messages, tools })) {
+		// Collect tool calls
+	}
 
-    if (toolCalls.length > 0) {
-        // Execute tools
-        // Add assistant message to messages[]
-        // Add tool results to messages[]
-        continue; // ← Goes back to WHILE, then streamText sees updated messages
-    }
+	if (toolCalls.length > 0) {
+		// Execute tools
+		// Add assistant message to messages[]
+		// Add tool results to messages[]
+		continue; // ← Goes back to WHILE, then streamText sees updated messages
+	}
 }
 ```
 
 **Why it works**:
+
 1. `streamText` is at the **top** of the while loop
 2. When `continue` executes, control goes back to while condition
 3. Loop continues → `streamText` called AGAIN with updated messages array
@@ -564,6 +593,7 @@ while (shouldContinue && currentTurn < MAX_TURNS) {
 **Investigation Result**: **FALSE - No circular dependency exists**
 
 **Evidence**:
+
 - ✅ ChatContextService does NOT import or reference SmartLLMService
 - ✅ SmartLLMService does NOT import or reference ChatContextService
 - ✅ No runtime circular dependency
@@ -586,6 +616,7 @@ let toolCalls: any[] = [];
 ```
 
 **Impact**:
+
 - TypeScript can't catch type errors
 - No IDE autocomplete
 - Runtime errors possible
@@ -597,19 +628,20 @@ Replaced critical `any` types with proper interfaces:
 ```typescript
 // ✅ CORRECT - Type safe
 const messages: LLMMessage[] = [
-    { role: 'system', content: context.systemPrompt },
-    ...context.conversationHistory.map((m) => ({
-        role: m.role as 'user' | 'assistant' | 'system' | 'tool',
-        content: m.content,
-        tool_calls: m.tool_calls,
-        tool_call_id: m.tool_call_id
-    }))
+	{ role: 'system', content: context.systemPrompt },
+	...context.conversationHistory.map((m) => ({
+		role: m.role as 'user' | 'assistant' | 'system' | 'tool',
+		content: m.content,
+		tool_calls: m.tool_calls,
+		tool_call_id: m.tool_call_id
+	}))
 ];
 
 let toolCalls: ChatToolCall[] = [];
 ```
 
 **Files Changed**:
+
 - `/apps/web/src/lib/services/agent-planner-service.ts:431` (messages type)
 - `/apps/web/src/lib/services/agent-planner-service.ts:491` (toolCalls type)
 
@@ -620,12 +652,14 @@ let toolCalls: ChatToolCall[] = [];
 ### Overall Impact Summary
 
 **Before fixes**:
+
 - ❌ No timeout protection (runaway costs possible)
 - ⚠️ Confusion about multi-turn tool loop (code review claimed bug)
 - ⚠️ Confusion about circular dependency (code review claimed issue)
 - ❌ Type safety lost on critical message structures
 
 **After fixes**:
+
 - ✅ 5-minute timeout prevents runaway costs
 - ✅ Verified multi-turn tool loop works correctly
 - ✅ Verified no circular dependency exists
@@ -642,11 +676,13 @@ let toolCalls: ChatToolCall[] = [];
 ### Cross-references
 
 **Affected Systems**:
+
 - Executor conversation loops (timeout protection)
 - Multi-agent tool execution (verified working)
 - Type safety in LLM message handling
 
 **Summary of All 3 Parts**:
+
 - **Part 1**: 5 critical stability bugs fixed
 - **Part 2**: 3 performance optimizations + 1 investigation
 - **Part 3**: 1 timeout fix + 2 verifications + type safety improvements

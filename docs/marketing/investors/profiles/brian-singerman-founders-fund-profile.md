@@ -1,18 +1,18 @@
 ---
-title: "Brian Singerman - GPx & Founders Fund Partner Emeritus Profile"
-doc_type: "profile"
-investor_name: "Brian Singerman"
-firm_name: "GPx (Co-founder) / Founders Fund (Partner Emeritus)"
-priority: "high"
-last_updated: "2025-10-29"
-status: "needs-update"
+title: 'Brian Singerman - GPx & Founders Fund Partner Emeritus Profile'
+doc_type: 'profile'
+investor_name: 'Brian Singerman'
+firm_name: 'GPx (Co-founder) / Founders Fund (Partner Emeritus)'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'needs-update'
 tags: [investors, gpx, founders-fund, partner-emeritus, series-b, growth, moonshots, spacex]
 related_docs:
-  - ../vc-firms/thiel-capital-founders-fund.md
-  - ../warm-intro-emails/brian-singerman-gpx-warm-intro-email.md
-  - ../buildos-fundraising-strategy.md
-contact_verified: "partial"
-critical_update: "Left Founders Fund as Partner Emeritus in Dec 2024. Now raising GPx fund ($500M+) with Peter Thiel backing"
+    - ../vc-firms/thiel-capital-founders-fund.md
+    - ../warm-intro-emails/brian-singerman-gpx-warm-intro-email.md
+    - ../buildos-fundraising-strategy.md
+contact_verified: 'partial'
+critical_update: 'Left Founders Fund as Partner Emeritus in Dec 2024. Now raising GPx fund ($500M+) with Peter Thiel backing'
 ---
 
 # Brian Singerman - GPx & Founders Fund Partner Emeritus Profile

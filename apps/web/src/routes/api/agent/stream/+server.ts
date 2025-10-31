@@ -345,6 +345,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							);
 						}
 					}
+				}
 
 				// Update rate limiter with token usage
 				const currentRate = rateLimiter.get(userId);

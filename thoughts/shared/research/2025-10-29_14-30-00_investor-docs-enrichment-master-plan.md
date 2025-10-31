@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: d44e3dde44d5dba41dfeac4c0ff729cab1ff63c6
 branch: main
 repository: buildos-platform
-topic: "Investor Documentation Enrichment Master Plan"
+topic: 'Investor Documentation Enrichment Master Plan'
 tags: [research, investors, documentation, data-enrichment, fundraising]
 status: complete
 last_updated: 2025-10-29
@@ -77,18 +77,18 @@ Five parallel research agents completed comprehensive investigations:
 
 ```yaml
 ---
-title: "[Document Title]"
-doc_type: "[profile|strategy|outreach|warm-intro|firm-profile]"
-investor_name: "[Name if applicable]"
-firm_name: "[Firm if applicable]"
-priority: "[high|medium|low]"
-last_updated: "2025-10-29"
-status: "[active|archived|needs-update]"
+title: '[Document Title]'
+doc_type: '[profile|strategy|outreach|warm-intro|firm-profile]'
+investor_name: '[Name if applicable]'
+firm_name: '[Firm if applicable]'
+priority: '[high|medium|low]'
+last_updated: '2025-10-29'
+status: '[active|archived|needs-update]'
 tags: [investors, fundraising, relevant-tags]
 related_docs:
-  - path/to/related/doc1.md
-  - path/to/related/doc2.md
-contact_verified: "[yes|no|partial]"
+    - path/to/related/doc1.md
+    - path/to/related/doc2.md
+contact_verified: '[yes|no|partial]'
 ---
 ```
 
@@ -101,12 +101,14 @@ contact_verified: "[yes|no|partial]"
 #### Individual Investor Profiles (7 docs)
 
 **Paige Craig Profile** (`profiles/paige-craig-profile.md`)
+
 - ✅ Already has email, phone, LinkedIn, Twitter
 - ➕ Add: Recent investments (HavocAI $85M, Applied Labs $4.2M)
 - ➕ Update: 2025 investment activity (7 investments vs 2 in 2024)
 - ➕ Add: Defense tech focus (maritime autonomy)
 
 **Dennis Mortensen Profile** (`profiles/dennis-mortensen-profile.md`)
+
 - ➕ Add: Email - dennis@launchbrightly.com
 - ➕ Add: LinkedIn - https://www.linkedin.com/in/dennismortensen/
 - ➕ Add: Twitter - @DennisMortensen
@@ -115,6 +117,7 @@ contact_verified: "[yes|no|partial]"
 - ➕ Add: Personal website - https://evcrp.com/
 
 **Tom Blomfield Profile** (`profiles/tom-blomfield-profile.md`)
+
 - ➕ Add: Email - tom@ycombinator.com
 - ➕ Add: LinkedIn - https://www.linkedin.com/in/tomblomfield/
 - ➕ Add: Twitter - @t_blom
@@ -122,6 +125,7 @@ contact_verified: "[yes|no|partial]"
 - ➕ Add: YC role details and Monzo background
 
 **Brian Singerman Profile** (`profiles/brian-singerman-founders-fund-profile.md`)
+
 - ⚠️ **CRITICAL UPDATE**: Left Founders Fund as Partner Emeritus (Dec 3, 2024)
 - ➕ Add: New venture - GPx with Lee Linden (raising $500M+)
 - ➕ Add: Email - brian@foundersfund.com (legacy) or new GPx contact
@@ -131,6 +135,7 @@ contact_verified: "[yes|no|partial]"
 - ➕ Add: Peter Thiel backing (~50% of GPx fund)
 
 **Casey Caruso Profile** (`profiles/casey-caruso-topology-ventures-profile.md`)
+
 - ➕ Add: Email - casey@topology.vc (inferred) or info@topology.vc
 - ➕ Add: LinkedIn - https://www.linkedin.com/in/casey-k-caruso/
 - ➕ Add: Twitter - @caseykcaruso
@@ -138,6 +143,7 @@ contact_verified: "[yes|no|partial]"
 - ➕ Add: Forbes 30 Under 30 for VC
 
 **Jack Raines Profile** (`profiles/slow-ventures-jack-raines-profile.md`)
+
 - ➕ Add: Email (VC) - jack@slow.co
 - ➕ Add: Email (Newsletter) - jack@youngmoney.co
 - ➕ Add: LinkedIn - https://www.linkedin.com/in/jackraines/
@@ -148,6 +154,7 @@ contact_verified: "[yes|no|partial]"
 - ➕ Add: Book deal with Penguin Random House
 
 **Tim Hsia Profile** (`profiles/tim-hsia-context-ventures-profile.md`)
+
 - ➕ Add: Email - tim@contextvc.com (inferred) or leaders@contextvc.com
 - ➕ Add: LinkedIn - https://www.linkedin.com/in/timhsia/
 - ➕ Add: Website - https://www.contextvc.com/
@@ -159,48 +166,48 @@ contact_verified: "[yes|no|partial]"
 **High Priority Updates**:
 
 1. **Andreessen Horowitz** (`vc-firms/andreessen-horowitz-a16z.md`)
-   - ➕ Add: $7.2B raised April 2024 (5 funds)
-   - ➕ Add: Raghu Raghuram joined as GP (Oct 2025)
-   - ➕ Add: Recent investments (Counsel Health $25M, FurtherAI $25M, Zar $12.9M)
-   - ➕ Add: Partnership with Eli Lilly ($500M Biotech Fund)
-   - ➕ Update: 111 unicorns, 33 IPOs, $46B AUM
+    - ➕ Add: $7.2B raised April 2024 (5 funds)
+    - ➕ Add: Raghu Raghuram joined as GP (Oct 2025)
+    - ➕ Add: Recent investments (Counsel Health $25M, FurtherAI $25M, Zar $12.9M)
+    - ➕ Add: Partnership with Eli Lilly ($500M Biotech Fund)
+    - ➕ Update: 111 unicorns, 33 IPOs, $46B AUM
 
 2. **Sequoia Capital** (`vc-firms/sequoia-capital.md`)
-   - ➕ Add: $950M raised Oct 2025 ($750M Series A, $200M Seed)
-   - ➕ Add: Recent investments (Fal AI $250M at $4B+)
-   - ➕ Add: 2025 investment thesis (AI Commerce, Security/Observability)
-   - ➕ Update: 127 unicorns, 121 IPOs, ~$56B AUM
-   - ⚠️ Note: Zero IPOs in 2025 (challenging exit environment)
+    - ➕ Add: $950M raised Oct 2025 ($750M Series A, $200M Seed)
+    - ➕ Add: Recent investments (Fal AI $250M at $4B+)
+    - ➕ Add: 2025 investment thesis (AI Commerce, Security/Observability)
+    - ➕ Update: 127 unicorns, 121 IPOs, ~$56B AUM
+    - ⚠️ Note: Zero IPOs in 2025 (challenging exit environment)
 
 3. **First Round Capital** (`vc-firms/first-round-capital.md`)
-   - ➕ Add: Fund X targeting $500M
-   - ➕ Add: Liz Wessel joined as Partner (Forbes Midas Brink 2025)
-   - ➕ Add: Recent investments (Dyna Robotics $120M Series A, Solidroad $6.5M seed)
-   - ➕ Add: Clay became unicorn ($3B, June 2025)
-   - ➕ Add: Contact - info@firstround.com
+    - ➕ Add: Fund X targeting $500M
+    - ➕ Add: Liz Wessel joined as Partner (Forbes Midas Brink 2025)
+    - ➕ Add: Recent investments (Dyna Robotics $120M Series A, Solidroad $6.5M seed)
+    - ➕ Add: Clay became unicorn ($3B, June 2025)
+    - ➕ Add: Contact - info@firstround.com
 
 4. **Point Nine Capital** (`vc-firms/point-nine-capital.md`)
-   - ➕ Add: Fund VI €180M (Sept 2022)
-   - ➕ Add: Recent investment (Poolside became unicorn 2024)
-   - ➕ Add: Pitch submission link - https://bit.ly/3Oh7MoB
-   - ➕ Add: Email format - first@pointninecap.com
-   - ➕ Add: Email best practices (avoid "pitch", "deck" in subject)
+    - ➕ Add: Fund VI €180M (Sept 2022)
+    - ➕ Add: Recent investment (Poolside became unicorn 2024)
+    - ➕ Add: Pitch submission link - https://bit.ly/3Oh7MoB
+    - ➕ Add: Email format - first@pointninecap.com
+    - ➕ Add: Email best practices (avoid "pitch", "deck" in subject)
 
 5. **AIX Ventures** (`vc-firms/aix-ventures.md`)
-   - ➕ Add: $202M Fund II (Feb 2024)
-   - ➕ Add: Christopher Manning joined as GP (July 2025) - Stanford AI Lab Director
-   - ➕ Add: Perplexity valuation growth ($520M→$18B in 18 months)
-   - ➕ Add: Hugging Face $45B+ valuation
-   - ➕ Add: Contact - first@aixventures.com or website contact form
-   - ➕ Add: Recent investments (Moonlake AI, ALIGNMT AI, Tahoe Bio)
+    - ➕ Add: $202M Fund II (Feb 2024)
+    - ➕ Add: Christopher Manning joined as GP (July 2025) - Stanford AI Lab Director
+    - ➕ Add: Perplexity valuation growth ($520M→$18B in 18 months)
+    - ➕ Add: Hugging Face $45B+ valuation
+    - ➕ Add: Contact - first@aixventures.com or website contact form
+    - ➕ Add: Recent investments (Moonlake AI, ALIGNMT AI, Tahoe Bio)
 
 6. **Character VC** (`vc-firms/character-vc.md`)
-   - ➕ Add: $52M Fund II (May 2025) - up from $30M Fund I
-   - ➕ Add: Jake Knapp joined full-time (2024)
-   - ➕ Add: Max check size increased to $2M
-   - ➕ Add: Recent portfolio (Phaidra $50M Series B at $200M+)
-   - ➕ Add: Contact - via website, office in Milwaukee
-   - ➕ Add: Character Labs design sprint program
+    - ➕ Add: $52M Fund II (May 2025) - up from $30M Fund I
+    - ➕ Add: Jake Knapp joined full-time (2024)
+    - ➕ Add: Max check size increased to $2M
+    - ➕ Add: Recent portfolio (Phaidra $50M Series B at $200M+)
+    - ➕ Add: Contact - via website, office in Milwaukee
+    - ➕ Add: Character Labs design sprint program
 
 **Medium Priority** (9 firms):
 
@@ -223,6 +230,7 @@ contact_verified: "[yes|no|partial]"
 #### Cross-Link Patterns
 
 **Pattern 1: Profile → Firm → Outreach**
+
 ```markdown
 ## Related Documents
 
@@ -232,6 +240,7 @@ contact_verified: "[yes|no|partial]"
 ```
 
 **Pattern 2: Firm → Investor Profiles**
+
 ```markdown
 ## Key Partners at This Firm
 
@@ -239,6 +248,7 @@ contact_verified: "[yes|no|partial]"
 ```
 
 **Pattern 3: Strategy Docs → Specific Profiles**
+
 ```markdown
 ## Tier 1 Priority Investors
 
@@ -249,22 +259,26 @@ contact_verified: "[yes|no|partial]"
 #### Document Relationship Map
 
 **Individual Profiles Should Link To**:
+
 - Associated VC firm profile
 - Outreach templates mentioning them
 - Warm introduction emails for them
 - Fundraising strategy (if mentioned)
 
 **VC Firm Profiles Should Link To**:
+
 - Individual investor profiles at the firm
 - Fundraising strategy (for tier classification)
 - Related outreach templates
 
 **Outreach Templates Should Link To**:
+
 - Investor profile (detailed background)
 - VC firm profile (firm context)
 - Fundraising strategy (positioning)
 
 **Strategy Docs Should Link To**:
+
 - All mentioned firms and investors
 - Relevant outreach templates
 - Investor optimists/skeptics docs
@@ -278,34 +292,34 @@ contact_verified: "[yes|no|partial]"
 **Standard Sections to Add/Update**:
 
 1. **Contact Information** (if missing)
-   - Email (verified or inferred format)
-   - LinkedIn URL
-   - Twitter/X handle
-   - Personal website/blog
-   - Phone (if publicly available)
+    - Email (verified or inferred format)
+    - LinkedIn URL
+    - Twitter/X handle
+    - Personal website/blog
+    - Phone (if publicly available)
 
 2. **Recent Activity (2024-2025)** (new section)
-   - Recent investments with amounts
-   - New funds announced
-   - Role changes or new ventures
-   - Speaking engagements
-   - Blog posts or thought leadership
-   - Podcast appearances
+    - Recent investments with amounts
+    - New funds announced
+    - Role changes or new ventures
+    - Speaking engagements
+    - Blog posts or thought leadership
+    - Podcast appearances
 
 3. **Current Investment Thesis** (update)
-   - Latest public statements about market
-   - Investment focus areas for 2025
-   - Portfolio company updates
+    - Latest public statements about market
+    - Investment focus areas for 2025
+    - Portfolio company updates
 
 4. **Social Media Presence** (new section)
-   - Twitter activity level
-   - Notable recent posts/threads
-   - Blog/newsletter if active
-   - Podcast if hosting
+    - Twitter activity level
+    - Notable recent posts/threads
+    - Blog/newsletter if active
+    - Podcast if hosting
 
 5. **BuildOS Alignment** (update)
-   - How 2025 focus aligns with BuildOS
-   - Updated approach strategy
+    - How 2025 focus aligns with BuildOS
+    - Updated approach strategy
 
 **Example Addition** (Jack Raines):
 
@@ -313,18 +327,21 @@ contact_verified: "[yes|no|partial]"
 ## Recent Activity (2024-2025)
 
 ### Creator Fund Launch
+
 - **$63M Creator Fund** announced early 2025
 - Investment thesis: Creators are underpriced as investable entrepreneurs
 - Structure: $1M-3M investments for ~10% equity in creator holding companies
 - Focus: Built-in audiences reduce customer acquisition risk
 
 ### Content & Thought Leadership
+
 - **Young Money Newsletter**: 65,000+ subscribers (active weekly)
 - **Book Deal**: Penguin Random House for upcoming book on creator economy
 - **Notable Post**: "Investing in Creators" (February 2025) - defines creator investment thesis
 - **Active Twitter**: @Jack_Raines with strong following in finance/creator space
 
 ### Investment Philosophy
+
 > "Creators with large audiences have asymmetric advantages in customer acquisition.
 > They've already built trust and distribution—the hardest parts of building a business."
 ```
@@ -334,36 +351,36 @@ contact_verified: "[yes|no|partial]"
 **Standard Sections to Add/Update**:
 
 1. **2024-2025 Updates** (new section at top)
-   - Latest fund announcements with amounts
-   - Partnership changes (new GPs, departures)
-   - Major investments (3-5 most notable)
-   - Investment thesis updates
+    - Latest fund announcements with amounts
+    - Partnership changes (new GPs, departures)
+    - Major investments (3-5 most notable)
+    - Investment thesis updates
 
 2. **Contact & Submission Information** (enhance existing)
-   - General email
-   - Pitch submission process/link
-   - Email format for partners
-   - Office addresses
-   - LinkedIn company page
-   - Twitter account
+    - General email
+    - Pitch submission process/link
+    - Email format for partners
+    - Office addresses
+    - LinkedIn company page
+    - Twitter account
 
 3. **Recent Portfolio Milestones** (new or update)
-   - Recent unicorns
-   - IPOs in 2024-2025
-   - Major acquisitions
-   - Notable portfolio expansions
+    - Recent unicorns
+    - IPOs in 2024-2025
+    - Major acquisitions
+    - Notable portfolio expansions
 
 4. **2025 Investment Focus** (new section)
-   - Current market views
-   - Specific sectors/technologies prioritizing
-   - Check sizes and stage focus
-   - Geographic expansion
+    - Current market views
+    - Specific sectors/technologies prioritizing
+    - Check sizes and stage focus
+    - Geographic expansion
 
 5. **Approach Strategy for BuildOS** (update)
-   - How to position given 2025 focus
-   - Relevant portfolio companies to mention
-   - Specific partners to target
-   - Recent investments similar to BuildOS
+    - How to position given 2025 focus
+    - Relevant portfolio companies to mention
+    - Specific partners to target
+    - Recent investments similar to BuildOS
 
 **Example Addition** (AIX Ventures):
 
@@ -371,12 +388,15 @@ contact_verified: "[yes|no|partial]"
 ## 2024-2025 Updates
 
 ### Fund II Announcement
+
 - **$202M Fund II** raised (February 2024)
 - Focus: Early-stage AI companies across enterprise, healthcare, developer tools
 - Built by and for AI industry practitioners
 
 ### Major Partnership Addition
+
 **Christopher Manning Joins as General Partner** (July 2025)
+
 - Former Stanford AI Lab Director
 - World's most cited NLP researcher
 - Co-founded Stanford's Institute for Human-Centered AI (HAI)
@@ -384,10 +404,12 @@ contact_verified: "[yes|no|partial]"
 - On leave from Stanford to focus full-time on backing deep AI companies
 
 ### Portfolio Explosive Growth
+
 **Perplexity**: $520M (Jan 2024) → $18B (July 2025) - 35x in 18 months
 **Hugging Face**: $45B+ valuation (recent reports)
 
 ### Recent Investments (2025)
+
 - Moonlake AI (Seed, October 2025)
 - ALIGNMT AI (recent first-time investment)
 - Tahoe Bio (recent investment)
@@ -398,21 +420,21 @@ contact_verified: "[yes|no|partial]"
 **Updates Needed**:
 
 1. **Personalization Variables** (add section)
-   - Recent news to reference (fund raise, investment, blog post)
-   - Portfolio companies to mention
-   - Specific thesis alignment points
-   - Recent public statements to acknowledge
+    - Recent news to reference (fund raise, investment, blog post)
+    - Portfolio companies to mention
+    - Specific thesis alignment points
+    - Recent public statements to acknowledge
 
 2. **Updated Context** (revise templates)
-   - Current fund information
-   - Recent role changes
-   - Latest investment focus
-   - New contact information
+    - Current fund information
+    - Recent role changes
+    - Latest investment focus
+    - New contact information
 
 3. **Timing Hooks** (add suggestions)
-   - Best times to reach out (post fund raise, after specific announcement)
-   - What to reference from recent activity
-   - Market timing considerations
+    - Best times to reach out (post fund raise, after specific announcement)
+    - What to reference from recent activity
+    - Market timing considerations
 
 **Example Update** (Brian Singerman):
 
@@ -423,12 +445,15 @@ Brian Singerman left Founders Fund as Partner Emeritus on December 3, 2024 and i
 a $500M+ fund with Lee Linden. Update your outreach accordingly:
 
 ### New GPx Context
+
 - **Novel Strategy**: 20% in emerging VC funds, 80% co-leading Series B of their breakout companies
 - **Major Backer**: Peter Thiel committing ~50% of fund
 - **Still at Founders Fund**: Serves as strategic advisor and Partner Emeritus
 
 ### Updated Outreach Approach
+
 Instead of pitching Founders Fund, reference:
+
 - His new fund-of-funds + growth strategy
 - Series B focus (if you're there)
 - Emerging manager support (if relevant for future)
@@ -439,20 +464,20 @@ Instead of pitching Founders Fund, reference:
 **Updates Needed**:
 
 1. **Tier Classifications** (update with 2025 info)
-   - Fund sizes raised in 2024-2025
-   - Recent check size averages
-   - Updated timeline estimates
-   - New funds to add
+    - Fund sizes raised in 2024-2025
+    - Recent check size averages
+    - Updated timeline estimates
+    - New funds to add
 
 2. **Common Objections** (add 2025-specific)
-   - Market condition responses
-   - AI competitive landscape updates
-   - Exit environment concerns
+    - Market condition responses
+    - AI competitive landscape updates
+    - Exit environment concerns
 
 3. **Warm Introduction Strategy** (enhance)
-   - Updated portfolio companies to target
-   - Recent successful warm intro examples
-   - 2025-specific networking opportunities
+    - Updated portfolio companies to target
+    - Recent successful warm intro examples
+    - 2025-specific networking opportunities
 
 ---
 
@@ -471,6 +496,7 @@ Instead of pitching Founders Fund, reference:
 #### Verification Checklist
 
 For each VC firm profile:
+
 - [ ] Verify fund size is current
 - [ ] Check partner roster is accurate
 - [ ] Confirm office locations
@@ -496,6 +522,7 @@ Last Updated: October 29, 2025
 ## Quick Navigation
 
 ### By Document Type
+
 - [Fundraising Strategy](#fundraising-strategy)
 - [Individual Investor Profiles](#investor-profiles)
 - [VC Firm Profiles](#vc-firm-profiles)
@@ -503,11 +530,13 @@ Last Updated: October 29, 2025
 - [Warm Introduction Emails](#warm-intro-emails)
 
 ### By Priority
+
 - [Tier 1 Priority Targets](#tier-1-priority)
 - [Tier 2 Strong Secondary](#tier-2-secondary)
 - [Tier 3 Strategic Filling](#tier-3-strategic)
 
 ### By Investment Focus
+
 - [AI-Focused VCs](#ai-focused-vcs)
 - [SaaS-Focused VCs](#saas-focused-vcs)
 - [Enterprise Productivity VCs](#enterprise-productivity-vcs)
@@ -518,11 +547,13 @@ Last Updated: October 29, 2025
 ## Fundraising Strategy
 
 ### Core Documents
+
 - [BuildOS Fundraising Strategy & VC Pitch Guide](buildos-fundraising-strategy.md) - Comprehensive fundraising guide
 - [Fundraising Preparedness Checklist](fundraising-preparedness-checklist.md) - Pre-fundraising preparation
 - [Fundraising Preparedness Checklist Part 2](fundraising-preparedness-checklist-part-2.md) - Extended checklist
 
 ### Positioning & Messaging
+
 - [Investor Optimists](investor-optimists.md) - Vision-focused messaging for optimistic investors
 - [Investor Skeptics](investor-skeptics.md) - Risk-mitigation messaging for skeptical investors
 - [VC Notes](VC-notes.md) - Research notes and contact information
@@ -534,11 +565,13 @@ Last Updated: October 29, 2025
 High-quality, detailed profiles of key individual investors:
 
 ### Tier 1 Priority
+
 - [Paige Craig - Outlander VC](profiles/paige-craig-profile.md) ⭐ Military background, systematic evaluation
 - [Dennis Mortensen](profiles/dennis-mortensen-profile.md) - x.ai founder, productivity expertise
 - [Jack Raines - Slow Ventures](profiles/slow-ventures-jack-raines-profile.md) - Creator fund, Young Money newsletter
 
 ### Strategic Targets
+
 - [Brian Singerman - GPx/Founders Fund](profiles/brian-singerman-founders-fund-profile.md) ⚠️ Now at GPx
 - [Casey Caruso - Topology Ventures](profiles/casey-caruso-topology-ventures-profile.md) - Engineering-first frontier tech
 - [Tim Hsia - Context Ventures](profiles/tim-hsia-context-ventures-profile.md) - Military veteran founders
@@ -553,14 +586,17 @@ Comprehensive profiles of 22 VC firms organized by tier and focus:
 ### Tier 1: Top Priority Targets
 
 **AI-Native Focus:**
+
 - [AIX Ventures](vc-firms/aix-ventures.md) ⭐ $202M Fund II, Stanford AI Lab GP
 - [Character VC](vc-firms/character-vc.md) - $52M Fund II, design-first, Character Labs
 
 **SaaS/Enterprise Focus:**
+
 - [Point Nine Capital](vc-firms/point-nine-capital.md) ⭐ €180M seed fund, B2B SaaS specialist
 - [First Round Capital](vc-firms/first-round-capital.md) - $500M Fund X target, productivity expertise
 
 **Mega Funds:**
+
 - [Andreessen Horowitz (a16z)](vc-firms/andreessen-horowitz-a16z.md) ⭐ $7.2B raised 2024, 111 unicorns
 - [Sequoia Capital](vc-firms/sequoia-capital.md) ⭐ $950M 2025 funds, 127 unicorns
 
@@ -603,11 +639,13 @@ Comprehensive profiles of 22 VC firms organized by tier and focus:
 Ready-to-use outreach email templates with preparation guides:
 
 ### Investor-Specific Templates
+
 - [Dennis Mortensen - Advisory Outreach](outreach/dennis-mortensen-advisory-outreach-email.md)
 - [Paige Craig - Outreach Template](outreach/paige-craig-outreach-template.md) - Outlander VC approach
 - [Tim Hsia - Coffee Meeting Strategy](outreach/tim-hsia-coffee-meeting-strategy.md) - Context Ventures
 
 ### Analysis & Research
+
 - [2025 Investor Outreach Research Analysis](outreach/2025-09-17_investor-outreach-research-analysis.md) - Dated Sept 17, 2025
 
 ---
@@ -629,6 +667,7 @@ Pre-written warm introduction email templates for connectors:
 ## Quick Reference by Investment Focus
 
 ### AI-Focused VCs
+
 - [AIX Ventures](vc-firms/aix-ventures.md) - Stanford AI Lab, NLP expertise
 - [Andreessen Horowitz](vc-firms/andreessen-horowitz-a16z.md) - AI-native apps, $1.25B infrastructure
 - [Sequoia Capital](vc-firms/sequoia-capital.md) - AI action engines
@@ -637,6 +676,7 @@ Pre-written warm introduction email templates for connectors:
 - [Coatue Management](vc-firms/coatue-management.md) - $1B AI-focused fund
 
 ### SaaS & Enterprise Productivity
+
 - [Point Nine Capital](vc-firms/point-nine-capital.md) - B2B SaaS specialist
 - [First Round Capital](vc-firms/first-round-capital.md) - Productivity platform expertise
 - [Matrix Partners](vc-firms/matrix-partners.md) - Enterprise SaaS
@@ -644,12 +684,14 @@ Pre-written warm introduction email templates for connectors:
 - [Insight Partners](vc-firms/insight-partners.md) - ScaleUp software
 
 ### Founder-Focused VCs
+
 - [First Round Capital](vc-firms/first-round-capital.md) - First Round Review, founder development
 - [South Park Commons](vc-firms/south-park-commons.md) - Community for technical founders
 - [Character VC](vc-firms/character-vc.md) - Design sprints, Character Labs
 - [Slow Ventures](vc-firms/slow-ventures.md) - Creator-focused, generalist
 
 ### Military/Veteran Focus
+
 - [Paige Craig - Outlander VC](profiles/paige-craig-profile.md) - Marine Corps background
 - [Tim Hsia - Context Ventures](profiles/tim-hsia-context-ventures-profile.md) - West Point, Infantry officer
 - [Context Ventures](vc-firms/context-ventures.md) - Pre-seed for veteran founders
@@ -689,6 +731,7 @@ When updating investor documentation:
 ## Related Research
 
 Research documents with deep-dive analysis:
+
 - [Investor Documentation Enrichment Master Plan](../../thoughts/shared/research/2025-10-29_14-30-00_investor-docs-enrichment-master-plan.md)
 - [VC Firm Research 2024-2025](../../thoughts/shared/research/[timestamp]_vc-firms-2024-2025-updates.md)
 - [Individual Investor Research](../../thoughts/shared/research/[timestamp]_investor-research.md)
@@ -703,6 +746,7 @@ Research documents with deep-dive analysis:
 **Goal**: Add structure and critical updates to most important documents.
 
 **Tasks**:
+
 1. Add YAML frontmatter to all 7 individual investor profiles
 2. Add YAML frontmatter to top 6 VC firm profiles (a16z, Sequoia, First Round, Point Nine, AIX, Character)
 3. Update Brian Singerman profile with GPx information
@@ -718,6 +762,7 @@ Research documents with deep-dive analysis:
 **Goal**: Update all VC firm profiles with 2024-2025 news and contact info.
 
 **Tasks**:
+
 1. Enrich top 6 firms with 2024-2025 updates (funds, investments, partners)
 2. Add contact information sections to top 6 firms
 3. Add YAML frontmatter to remaining 16 VC firm profiles
@@ -733,6 +778,7 @@ Research documents with deep-dive analysis:
 **Goal**: Connect related documents and update strategy materials.
 
 **Tasks**:
+
 1. Add cross-links between profiles ↔ firms ↔ outreach templates
 2. Add related_docs to all YAML frontmatter
 3. Update fundraising strategy doc with 2025 fund info and tiers
@@ -749,6 +795,7 @@ Research documents with deep-dive analysis:
 **Goal**: Update outreach templates and add finishing touches.
 
 **Tasks**:
+
 1. Update all 9 outreach templates with 2024-2025 context
 2. Update 3 warm intro emails with recent info
 3. Add 2024-2025 activity sections to all 7 investor profiles
@@ -765,6 +812,7 @@ Research documents with deep-dive analysis:
 **Goal**: Ensure accuracy and completeness.
 
 **Tasks**:
+
 1. Verify all contact information is sourced
 2. Check all cross-links work correctly
 3. Validate all 2024-2025 dates and facts
@@ -832,6 +880,7 @@ Research documents with deep-dive analysis:
 ### Appendix A: Research Sources
 
 All research findings sourced from:
+
 - Official VC firm websites and blogs
 - Verified LinkedIn company and individual profiles
 - Twitter/X official accounts
@@ -843,11 +892,13 @@ All research findings sourced from:
 ### Appendix B: Contact Information Confidence Levels
 
 **High Confidence** (publicly confirmed):
+
 - Paige Craig (all contact info on website)
 - Jack Raines (email confirmed in multiple sources)
 - Dennis Mortensen (verified on personal site)
 
 **Medium Confidence** (based on company email patterns):
+
 - Brian Singerman (Founders Fund format verified 43.4%)
 - Casey Caruso (general email confirmed, format inferred)
 - Tim Hsia (partial verification, standard format)
@@ -872,14 +923,17 @@ All research findings sourced from:
 ## Related Documentation
 
 ### Related Profiles
+
 - [Investor Name Profile](../profiles/investor-name-profile.md)
 - [Firm Name Profile](../vc-firms/firm-name.md)
 
 ### Related Outreach
+
 - [Investor Name Outreach Template](../outreach/investor-outreach-template.md)
 - [Firm Name Warm Intro Email](../warm-intro-emails/firm-warm-intro.md)
 
 ### Strategic Context
+
 - [Fundraising Strategy Guide](../buildos-fundraising-strategy.md)
 - [Investor Optimists Positioning](../investor-optimists.md)
 ```

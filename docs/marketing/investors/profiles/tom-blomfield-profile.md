@@ -1,16 +1,16 @@
 ---
-title: "Tom Blomfield - Y Combinator Group Partner Profile"
-doc_type: "profile"
-investor_name: "Tom Blomfield"
-firm_name: "Y Combinator"
-priority: "high"
-last_updated: "2025-10-29"
-status: "active"
+title: 'Tom Blomfield - Y Combinator Group Partner Profile'
+doc_type: 'profile'
+investor_name: 'Tom Blomfield'
+firm_name: 'Y Combinator'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'active'
 tags: [investors, yc, fintech, monzo, gocardless, ai-tools, product-focused]
 related_docs:
-  - ../warm-intro-emails/tom-blomfield-yc-warm-intro-email.md
-  - ../buildos-fundraising-strategy.md
-contact_verified: "yes"
+    - ../warm-intro-emails/tom-blomfield-yc-warm-intro-email.md
+    - ../buildos-fundraising-strategy.md
+contact_verified: 'yes'
 ---
 
 # Tom Blomfield - Y Combinator Group Partner Profile

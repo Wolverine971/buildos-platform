@@ -58,7 +58,7 @@
 			case 'project_forecast':
 				return "Let's forecast scenarios for your project. What situation should we analyze?";
 			case 'task_update':
-				return "What task would you like to update?";
+				return 'What task would you like to update?';
 			case 'daily_brief_update':
 				return "Let's configure your daily brief preferences.";
 			case 'global':
@@ -69,7 +69,7 @@
 			case 'task':
 				return "Let's work on this task. What do you need?";
 			case 'calendar':
-				return "I can help you with scheduling and calendar management.";
+				return 'I can help you with scheduling and calendar management.';
 			default:
 				return 'How can I help you today?';
 		}

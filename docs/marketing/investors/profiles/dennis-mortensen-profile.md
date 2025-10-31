@@ -1,16 +1,16 @@
 ---
-title: "Dennis R. Mortensen - Entrepreneur Profile"
-doc_type: "profile"
-investor_name: "Dennis R. Mortensen"
-firm_name: "LaunchBrightly (CEO)"
-priority: "low"
-last_updated: "2025-10-29"
-status: "archived"
+title: 'Dennis R. Mortensen - Entrepreneur Profile'
+doc_type: 'profile'
+investor_name: 'Dennis R. Mortensen'
+firm_name: 'LaunchBrightly (CEO)'
+priority: 'low'
+last_updated: '2025-10-29'
+status: 'archived'
 tags: [not-an-investor, entrepreneur, productivity-saas, x-ai, launchbrightly]
 related_docs:
-  - ../buildos-fundraising-strategy.md
-contact_verified: "yes"
-note: "NOT AN INVESTOR - Serial entrepreneur who explicitly avoids investing to maintain focus on building companies"
+    - ../buildos-fundraising-strategy.md
+contact_verified: 'yes'
+note: 'NOT AN INVESTOR - Serial entrepreneur who explicitly avoids investing to maintain focus on building companies'
 ---
 
 # Dennis R. Mortensen - Entrepreneur Profile

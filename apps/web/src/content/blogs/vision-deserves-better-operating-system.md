@@ -1,15 +1,25 @@
 ---
-title: "Your Vision Deserves a Better Operating System"
+title: 'Your Vision Deserves a Better Operating System'
 description: "For builders creating something that exceeds the capacity of human working memory, productivity apps aren't enough. You need infrastructure that matches your ambition."
 slug: 'vision-deserves-better-operating-system'
 publishDate: '2025-10-30'
 author: 'DJ Wayne'
 category: 'Philosophy'
-tags: ['vision', 'empire-building', 'founders', 'creators', 'context', 'ambition', 'systems-thinking', 'productivity-philosophy']
+tags:
+    [
+        'vision',
+        'empire-building',
+        'founders',
+        'creators',
+        'context',
+        'ambition',
+        'systems-thinking',
+        'productivity-philosophy'
+    ]
 featured: true
 draft: false
 seo:
-    title: "Your Vision Deserves Better Infrastructure | BuildOS for Empire Builders"
+    title: 'Your Vision Deserves Better Infrastructure | BuildOS for Empire Builders'
     description: 'Stop shrinking your ambition to fit your tools. BuildOS is the operating system for visionaries building something too complex for traditional productivity apps.'
     keywords:
         [
@@ -37,6 +47,7 @@ This isn't a productivity problem. This is an **architecture problem**.
 If you're reading this, you probably have too many ideas, not too few. You don't struggle with motivation—you struggle with **coherence**. Your problem isn't that you can't start; it's that you can't hold the whole vision in working memory while also executing on it.
 
 You're building something ambitious:
+
 - A startup that requires coordinating engineering, fundraising, product, and narrative
 - A creative project with sprawling worldbuilding, collaborators, and arcs that span months
 - A research initiative where every decision needs to trace back to first principles
@@ -92,6 +103,7 @@ For anyone who has ever felt their vision **dissolve in the friction between thi
 We're not building a productivity app. We're building **the operating system for ambitious thought**.
 
 A place where:
+
 - **Context is automatic**, not manual
 - **Memory is shared**, not siloed
 - **Decisions trace back to intent**, not just outcomes
@@ -108,6 +120,7 @@ Where your brain holds the vision, BuildOS holds **everything else**.
 If you're building something that matters—something big enough to break your existing tools, complex enough to exceed your working memory, important enough to demand more from your systems—**you deserve infrastructure that matches your ambition**.
 
 You deserve tools that:
+
 - Don't force you to choose between capturing thoughts and executing on them
 - Don't punish you for thinking in networks instead of hierarchies
 - Don't make you rebuild context every time you return to a thread
@@ -158,28 +171,32 @@ Let's build it.
 
 **BuildOS: The operating system for ambitious thought.**
 
-*Turn your grand vision into a working system. [Join the early access list →](https://buildos.com/signup)*
+_Turn your grand vision into a working system. [Join the early access list →](https://buildos.com/signup)_
 
 ---
 
 ## Who This Is For
 
 ### The Founder-Architect
+
 Early-stage founders juggling strategy, fundraising, hiring, and product. Your vision is sprawling, stored across 40 docs, 12 tools, and 3 group chats. You lose the "why" behind decisions.
 
 **BuildOS becomes your living brain**—turning chaos into structured execution and traceable rationale.
 
 ### The Creator-Strategist
+
 YouTubers, writers, game devs, agency owners managing long arcs and collaborators. You can't keep narrative, tasks, and collaborators aligned across creative projects.
 
 **BuildOS keeps the creative through-line alive**—every idea, draft, and decision captured in context.
 
 ### The Polymath Builder
+
 Indie hackers, designer-engineer hybrids, consultants with multiple projects. Context-switching kills flow. Ideas fragment between Figma, Notion, and Slack.
 
 **BuildOS acts as the context mesh**—one place where all projects evolve with preserved memory.
 
 ### The Vision Collective
+
 Small teams working on ambitious social or technical problems. Institutional memory decays. No shared rationale chain for decisions.
 
 **BuildOS is the continuity layer**—a collective brain that never forgets how ideas evolved.
@@ -187,29 +204,35 @@ Small teams working on ambitious social or technical problems. Institutional mem
 ## The Core Workflow
 
 ### 1. Dump Your Brain
+
 Capture everything—ideas, links, meeting notes, voice memos—no structure required.
 
 ### 2. BuildOS Organizes It for You
+
 It parses the chaos into Projects, Contexts, and Threads. You see dependencies, rationales, and next steps.
 
 ### 3. Collaborate with Memory
-Everyone sees not just *what* to do, but *why*. The project has living memory. You move faster without losing coherence.
+
+Everyone sees not just _what_ to do, but _why_. The project has living memory. You move faster without losing coherence.
 
 ---
 
 ## What Makes BuildOS Different
 
 ### Notion = Canvas for Pages
+
 **BuildOS = Operating System for Evolving Context**
 
 ### Notion = Manual Linking
+
 **BuildOS = Automatic Context Graph**
 
 ### Notion = Database of Notes
+
 **BuildOS = Memory of Intent, Decisions, and Next Moves**
 
 ---
 
-*Your vision is too big for traditional productivity tools. BuildOS is purpose-built infrastructure for empire builders.*
+_Your vision is too big for traditional productivity tools. BuildOS is purpose-built infrastructure for empire builders._
 
-*[Start building →](https://buildos.com/signup)*
+_[Start building →](https://buildos.com/signup)_

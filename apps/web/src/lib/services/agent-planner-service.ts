@@ -539,7 +539,8 @@ Respond with JSON in this exact format:
 									error: error instanceof Error ? error.message : 'Unknown error'
 								},
 								success: false,
-								errorMessage: error instanceof Error ? error.message : 'Unknown error'
+								errorMessage:
+									error instanceof Error ? error.message : 'Unknown error'
 							};
 						})
 				);

@@ -1,18 +1,28 @@
 ---
-title: "SLAUSON & Co. - VC Firm Profile"
-doc_type: "firm-profile"
-firm_name: "SLAUSON & Co."
-priority: "high"
-last_updated: "2025-10-29"
-status: "active"
-tags: [vc-firms, economic-inclusion, underrepresented-founders, smb-tech, culturally-aligned-consumer, seed, accelerator, los-angeles]
+title: 'SLAUSON & Co. - VC Firm Profile'
+doc_type: 'firm-profile'
+firm_name: 'SLAUSON & Co.'
+priority: 'high'
+last_updated: '2025-10-29'
+status: 'active'
+tags:
+    [
+        vc-firms,
+        economic-inclusion,
+        underrepresented-founders,
+        smb-tech,
+        culturally-aligned-consumer,
+        seed,
+        accelerator,
+        los-angeles
+    ]
 related_docs:
-  - ../buildos-fundraising-strategy.md
-  - ../profiles/austin-clements-profile.md
-  - ../profiles/ajay-relan-profile.md
-contact_verified: "yes"
-fund_size: "$100M Fund II (2024), $75M Fund I (2020)"
-recent_update: "Friends & Family 2025 cohort announced with $300K checks (up from $150K), 10 companies selected from 800+ applications"
+    - ../buildos-fundraising-strategy.md
+    - ../profiles/austin-clements-profile.md
+    - ../profiles/ajay-relan-profile.md
+contact_verified: 'yes'
+fund_size: '$100M Fund II (2024), $75M Fund I (2020)'
+recent_update: 'Friends & Family 2025 cohort announced with $300K checks (up from $150K), 10 companies selected from 800+ applications'
 ---
 
 # SLAUSON & Co. - VC Firm Profile
@@ -37,21 +47,24 @@ Founded by Ajay Relan and Austin Clements in 2020, SLAUSON & Co. has consistentl
 ## Core Investment Philosophy
 
 The firm believes that investing intentionally with a focus on inclusivity and representation allows them to access a much larger pool of talented founders who are historically overlooked by traditional venture capitalists. This creates both:
+
 - **Social Impact**: Democratizing access to capital for underrepresented communities
 - **Exceptional Returns**: Access to untapped talent pool with unique market insights
 
 ## Fund Structure & Recent Activity
 
 ### Fund I Performance (2020-2024)
+
 - **Total Deployed**: $75 million
 - **Companies Backed**: 38 companies, led by 66 founders across the US
 - **Diversity Metrics**:
-  - 95% of portfolio companies led by founders of color
-  - 50%+ of founding teams led or co-led by a woman
+    - 95% of portfolio companies led by founders of color
+    - 50%+ of founding teams led or co-led by a woman
 - **Outcomes**: Portfolio companies have raised hundreds of millions in follow-on funding
 - **Notable Exits/Milestones**: The Folklore Group ($3.4M seed), Pressed Roots ($3.1M seed)
 
 ### Fund II Details (Closed September 2024)
+
 - **Fund Size**: $100 million
 - **Target Investments**: 30 investments over next 3 years
 - **Check Size**: $500K-$2M per investment
@@ -63,18 +76,22 @@ The firm believes that investing intentionally with a focus on inclusivity and r
 SLAUSON & Co. focuses on two primary categories:
 
 #### 1. SMB Tech
+
 Tools and businesses that support the next generation of small business owners, with the potential to transform the economic landscape.
 
 **What They Look For:**
+
 - Innovative products that bridge gaps and meet emerging needs for SMBs
 - Recurring revenue models or links to scalable goods and services
 - Founders with deep understanding of small business challenges
 - Solutions with potential to scale across diverse SMB communities
 
 #### 2. Culturally-Aligned Consumer Tech
+
 Scalable companies that authentically serve specific customers, with founders utilizing their lived experiences to create brands that build community or solve problems for historically underserved populations.
 
 **What They Look For:**
+
 - Founders who leverage their lived experiences to serve underrepresented communities
 - Deep understanding of customer needs, values, and commitment to building strong brands
 - Solutions that appeal to expanding customer segments without exclusion
@@ -86,14 +103,16 @@ Scalable companies that authentically serve specific customers, with founders ut
 ### Austin Clements - Managing Partner
 
 **Background:**
+
 - **Education**: BA from Morehouse College (2005), MBA from NYU Stern
 - **Kauffman Fellow**: Class 25
 - **Previous Experience**:
-  - Principal at TenOneTen Ventures (2015-2019)
-  - Founder of Pi Digital Media (2009-2012)
-  - Private Client Associate at AllianceBernstein (2007-2009)
+    - Principal at TenOneTen Ventures (2015-2019)
+    - Founder of Pi Digital Media (2009-2012)
+    - Private Client Associate at AllianceBernstein (2007-2009)
 
 **Leadership Roles:**
+
 - Knight Foundation Board of Trustees (elected 2022) - serves on Investment and Program Committees
 - Founding Chairman of PledgeLA (Annenberg Foundation initiative for diversity in LA tech)
 - Former Board Member: Library Foundation of Los Angeles, HBCUvc
@@ -106,12 +125,14 @@ Scalable companies that authentically serve specific customers, with founders ut
 ### Ajay Relan - Managing Partner
 
 **Background:**
+
 - **Education**: UC Santa Barbara (2002-2006)
 - **Previous Experience**:
-  - Founding Partner at Queensbridge Venture Partners (Nas's VC firm)
-  - Community entrepreneur and hospitality operator
+    - Founding Partner at Queensbridge Venture Partners (Nas's VC firm)
+    - Community entrepreneur and hospitality operator
 
 **Entrepreneurial Ventures:**
+
 - **Co-founder of GVO Hospitality** - Hilltop Coffee + Kitchen (staple in diverse LA neighborhoods)
 - **Founder of #HashtagLunchbag** (2012) - Grassroots movement that has fed 1.5 million+ hungry and unhoused people in 150+ cities globally
 - **Living Through Giving Foundation** - Non-profit platform empowering community programs
@@ -125,12 +146,14 @@ Scalable companies that authentically serve specific customers, with founders ut
 SLAUSON & Co. has attracted exceptional backing from technology giants and influential individuals:
 
 ### Corporate Backers
+
 - **PayPal** - Major commitment toward racial equity
 - **Google**
 - **Meta (Facebook)**
 - **Twitter**
 
 ### Individual Backers & Advisors
+
 - **Ron Conway** - Legendary Silicon Valley investor, serves as advisor to founding partners
 - **Jeff Wilke** - Former Amazon CEO Worldwide Consumer
 - **will.i.am** - Musician, entrepreneur, tech investor
@@ -139,6 +162,7 @@ SLAUSON & Co. has attracted exceptional backing from technology giants and influ
 - **Alpaca VC**
 
 This backing provides SLAUSON & Co. with:
+
 - Exceptional credibility in the venture ecosystem
 - Access to enterprise customer networks
 - Strategic advice from proven operators
@@ -147,6 +171,7 @@ This backing provides SLAUSON & Co. with:
 ## Portfolio Analysis
 
 ### Portfolio Scale
+
 - **Fund I**: 38 companies, 66 founders
 - **Total Deployed**: ~$24M initial investments (Fund I)
 - **Follow-on Funding**: Portfolio companies raised hundreds of millions post-investment
@@ -155,41 +180,50 @@ This backing provides SLAUSON & Co. with:
 ### Notable Portfolio Companies
 
 #### The Folklore Group
+
 - **Description**: B2B marketplace and eCommerce platform for luxury and emerging brands from Africa and the diaspora
 - **Milestone**: Raised $3.4 million seed round (2024)
 - **Category**: Culturally-aligned consumer tech
 
 #### Pressed Roots
+
 - **Description**: "Blow Out Bar" salon chain specializing in textured hair care
 - **Milestone**: Raised $3.1 million seed (2024)
 - **Notable Investors**: Naomi Osaka, Howard Schultz, Meg Whitman
 - **Category**: Culturally-aligned consumer services
 
 #### Charger Help
+
 - **Description**: EV charging reliability company
 - **Category**: SMB tech / Infrastructure
 
 #### Bundle
+
 - **Description**: Platform that procures materials for construction SMBs
 - **Category**: SMB tech
 
 #### A-Frame Brands
+
 - **Description**: Portfolio of talent-led clean beauty and personal care brands
 - **Category**: Culturally-aligned consumer
 
 #### Gigs
+
 - **Description**: Marketplace for the US hourly worker economy
 - **Category**: SMB tech / Future of work
 
 #### Loma
+
 - **Description**: Marketing platform supporting franchise businesses
 - **Category**: SMB tech
 
 #### Tourus
+
 - **Description**: Platform helping properties and renters manage touring and leasing process
 - **Category**: SMB tech / Proptech
 
 #### Bags
+
 - **Description**: Helps digital-native SMBs access financing options, targeting BIPOC, women, and LGBTQ+ founders
 - **Category**: SMB fintech
 
@@ -204,22 +238,26 @@ This backing provides SLAUSON & Co. with:
 ## Friends & Family Accelerator Program
 
 ### Program Overview
+
 Launched in 2021 as a response to decreasing venture funding for diverse founders. Provides catalytic capital, institutional knowledge, and values-aligned community support.
 
 ### Program Evolution
 
 **2021-2023 Cohorts:**
+
 - **Investment**: $20K non-dilutive grants
 - **Support**: Educational resources, mentorship
 - **Results**: First two cohorts received $1M total grants, raised $7M+ post-accelerator
 
 **2024 Cohort:**
+
 - **Investment**: $150K equity investment from core fund
 - **Companies**: 20 companies from 12 cities
 - **Duration**: 12-week virtual program
 - **Focus**: Enterprise SaaS, Consumer Tech, Health & Wellness, SMB Tech
 
 **2025 Cohort (Current):**
+
 - **Investment**: $300K equity investment (2x increase from 2024!)
 - **Companies**: 10 companies (more selective)
 - **Applications**: 800+ submissions
@@ -228,18 +266,21 @@ Launched in 2021 as a response to decreasing venture funding for diverse founder
 ### 2025 Cohort Companies
 
 **AI-Focused:**
+
 - **Ballin AI** - AI-powered scouting and recruiting tools for athletes/athletic departments
 - **LegalEase** - AI-powered tools streamlining legal processes for non-complex matters
 - **Offside** - Next-gen sports media platform leveraging AI for content creation
 - **ThriveLink** - Telephonic AI agents for patient enrollment in government programs
 
 **Other Categories:**
+
 - **Coblr** - Platform powering the fashion repair ecosystem
 - **Crucible** - Making 3rd party fertility safer and less costly
 - **Satlyt** - Software platform helping satellite operators monetize space resources
 - **Tansy** (formerly Koala Health) - Proactive healthcare and wellness agent
 
 ### Application Process
+
 - **Timing**: Applications reviewed on rolling basis
 - **Highly Competitive**: 800+ applications for 10 spots (1.25% acceptance rate)
 - **Recommendation**: Apply early - limited interview spots
@@ -250,6 +291,7 @@ Launched in 2021 as a response to decreasing venture funding for diverse founder
 ### Strategic Considerations
 
 #### Strong Fit Indicators ✅
+
 1. **SMB Tech Potential**: BuildOS's productivity platform could serve SMB market
 2. **AI Focus Growing**: 2025 cohort shows strong AI investment interest
 3. **Product-Led Growth**: Values authentic problem-solving through lived experience
@@ -257,6 +299,7 @@ Launched in 2021 as a response to decreasing venture funding for diverse founder
 5. **Accelerator Path**: Friends & Family could be entry point ($300K at earlier stage)
 
 #### Potential Challenges ⚠️
+
 1. **Diversity Focus**: 95% of portfolio is POC-led - need to understand if BuildOS founders fit this thesis
 2. **Culturally-Aligned Requirement**: Firm prioritizes founders whose lived experience creates competitive advantage in serving underrepresented communities
 3. **Stage Alignment**: Fund II check sizes ($500K-$2M) may be later than current BuildOS stage
@@ -281,12 +324,14 @@ Launched in 2021 as a response to decreasing venture funding for diverse founder
 ### Application Pathways
 
 #### Option 1: Friends & Family Accelerator
+
 - **Best For**: Earlier stage, seeking $300K + 12-week program + community
 - **Timeline**: Rolling applications, apply early
 - **Requirements**: Demonstrate founder-market fit, lived experience advantage
 - **Benefit**: Entry point to SLAUSON & Co. ecosystem with strong community support
 
 #### Option 2: Direct Fund II Investment
+
 - **Best For**: Post-product-market-fit, seeking $500K-$2M lead investment
 - **Timeline**: Standard VC process
 - **Requirements**: Strong traction, clear path to serving underrepresented markets
@@ -353,12 +398,12 @@ Launched in 2021 as a response to decreasing venture funding for diverse founder
 ### Partner Contact
 
 - **Austin Clements**
-  - LinkedIn: https://www.linkedin.com/in/austinclements/
-  - Email: austin@slauson.co (typical format)
+    - LinkedIn: https://www.linkedin.com/in/austinclements/
+    - Email: austin@slauson.co (typical format)
 
 - **Ajay Relan**
-  - LinkedIn: https://www.linkedin.com/in/ajay-relan-7518215/
-  - Email: ajay@slauson.co (typical format)
+    - LinkedIn: https://www.linkedin.com/in/ajay-relan-7518215/
+    - Email: ajay@slauson.co (typical format)
 
 ### Warm Introduction Paths
 
@@ -395,18 +440,21 @@ The firm is named after **Slauson Avenue**, a prominent thoroughfare in South Lo
 ## Strategic Value Beyond Capital
 
 ### Network Access
+
 - **Enterprise Customers**: Through Google, Meta, PayPal, Twitter relationships
 - **Strategic Advisors**: Ron Conway, Jeff Wilke, Ashton Kutcher
 - **Community Leaders**: will.i.am, entertainment industry connections
 - **Founder Network**: 100+ portfolio company founders across diverse industries
 
 ### Operational Support
+
 - **Brand Building**: Ajay's expertise in culturally-aligned brands
 - **Community Engagement**: Authentic community-building frameworks
 - **PR & Storytelling**: Strong media relationships and narrative development
 - **Recruiting**: Access to diverse talent pipelines through HBCU VC and other initiatives
 
 ### Platform & Programs
+
 - **Summer Camps**: Portfolio company gatherings and knowledge sharing
 - **Operator Network**: Built network of operators and investors to support founders
 - **Friends & Family Community**: Active engagement with accelerator alumni
@@ -417,12 +465,14 @@ The firm is named after **Slauson Avenue**, a prominent thoroughfare in South Lo
 ### Optimal Timing Considerations
 
 **Market Momentum:**
+
 - ✅ AI productivity focus aligning with 2025 cohort direction
 - ✅ SMB tech remains core focus area
 - ✅ $100M Fund II actively deploying capital
 - ✅ Friends & Family growing (2x check size increase shows commitment)
 
 **Program Timing:**
+
 - Friends & Family: Rolling applications (apply early recommended)
 - Fund II: Active deployment phase (30 investments over 3 years)
 - Portfolio Support: Ongoing for companies showing traction
@@ -439,6 +489,7 @@ The firm is named after **Slauson Avenue**, a prominent thoroughfare in South Lo
 ### Decision Timeline Expectations
 
 **Friends & Family Accelerator:**
+
 - **Application Review**: Rolling basis, but apply early (limited interview spots)
 - **Interview Process**: 2-3 weeks after application
 - **Decision**: 1-2 weeks post-interview
@@ -446,6 +497,7 @@ The firm is named after **Slauson Avenue**, a prominent thoroughfare in South Lo
 - **Total Timeline**: 4-8 weeks application to acceptance
 
 **Fund II Investment:**
+
 - **Initial Meeting**: 1-2 weeks after warm introduction
 - **Partner Meetings**: 2-3 rounds with Austin and/or Ajay
 - **Due Diligence**: 4-6 weeks (community validation, reference checks)
@@ -473,11 +525,13 @@ SLAUSON & Co. represents an exceptional investor for BuildOS **IF there is authe
 ### Recommendation: Conditional High Priority
 
 **If BuildOS founders identify as underrepresented and/or have strong connection to serving underserved communities:**
+
 - 🟢 **Highest Priority** - Perfect alignment with mission-driven firm that has exceptional network
 - Apply to Friends & Family for $300K + community support (earlier stage)
 - Or pursue Fund II for $500K-$2M lead investment (later stage)
 
 **If BuildOS founders do not align with diversity thesis:**
+
 - 🔴 **Low Priority** - Firm's core mission is economic inclusion for underrepresented founders
 - Would be misalignment to pursue without authentic diversity fit
 - Consider other investors better aligned with founder backgrounds
@@ -495,6 +549,7 @@ If no → Respectfully pursue other investors better aligned with BuildOS's spec
 
 **Research Conducted**: October 29, 2025
 **Primary Sources**:
+
 - SLAUSON & Co. official website and Medium posts
 - TechCrunch, AfroTech, and UrbanGeekz coverage (2024-2025)
 - Crunchbase and PitchBook data
