@@ -1,4 +1,19 @@
-# Dennis R. Mortensen - Investor Profile
+---
+title: "Dennis R. Mortensen - Entrepreneur Profile"
+doc_type: "profile"
+investor_name: "Dennis R. Mortensen"
+firm_name: "LaunchBrightly (CEO)"
+priority: "low"
+last_updated: "2025-10-29"
+status: "archived"
+tags: [not-an-investor, entrepreneur, productivity-saas, x-ai, launchbrightly]
+related_docs:
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+note: "NOT AN INVESTOR - Serial entrepreneur who explicitly avoids investing to maintain focus on building companies"
+---
+
+# Dennis R. Mortensen - Entrepreneur Profile
 
 ## Executive Summary
 
@@ -84,8 +99,14 @@ AI-powered automation for SaaS customer support - automatically updates product 
 
 ### Contact Information
 
-- **Email**: dennis@launchbrightly.com or dennis.mortensen@evcrp.com
+- **Email**: dennis@launchbrightly.com
+- **Alternative Email**: dennis.mortensen@launchbrightly.com
+- **LinkedIn**: https://www.linkedin.com/in/dennismortensen/
+- **Twitter/X**: @DennisMortensen
+- **Personal Website**: https://evcrp.com/
+- **Instagram**: @dennismortensen
 - **Phone**: +1-781-856-1247 or +1-617-515-8206
+- **Company**: LaunchBrightly (AI-powered product screenshot automation)
 
 ---
 

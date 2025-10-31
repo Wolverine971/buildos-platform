@@ -33,7 +33,7 @@ All technical documentation is organized under `/docs/`:
 
 ### What is BuildOS?
 
-BuildOS is an AI-powered productivity platform for ADHD minds that transforms unstructured thoughts into actionable plans. The system's innovation lies in its "brain dump" approach - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
+BuildOS is an AI-powered productivity platform that transforms unstructured thoughts into actionable plans. It's designed for anyone struggling with disorganization who needs to get organized—from ADHD minds to overwhelmed professionals. The system's innovation lies in its "brain dump" approach - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
 
 ## Essential Commands
 

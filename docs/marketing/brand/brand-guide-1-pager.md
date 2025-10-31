@@ -124,7 +124,7 @@ For **people with ADHD and scattered minds** who struggle with traditional produ
 
 ## Proof Points
 
-- Built by someone with ADHD who tried everything else
+- Built by someone who struggled with organization and tried everything else
 - Users report 70% less time organizing, 2x more executing
 - "It's the only tool I actually stick with" - Beta user
 - From brain dump to calendar in under 60 seconds

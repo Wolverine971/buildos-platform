@@ -1,4 +1,20 @@
-# AIX Ventures - BuildOS Investor Profile
+---
+title: "AIX Ventures - VC Firm Profile"
+doc_type: "firm-profile"
+firm_name: "AIX Ventures"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [vc-firms, ai-native, stanford-ai-lab, seed, series-a, technical-depth]
+related_docs:
+  - ../buildos-fundraising-strategy.md
+  - ../investor-optimists.md
+contact_verified: "yes"
+fund_size: "$202M Fund II (Feb 2024)"
+recent_update: "Christopher Manning (Stanford AI Lab Director) joined as GP in July 2025"
+---
+
+# AIX Ventures - VC Firm Profile
 
 ## Fund Overview
 

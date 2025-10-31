@@ -1,4 +1,20 @@
-# Andreessen Horowitz (a16z) - BuildOS Investor Profile
+---
+title: "Andreessen Horowitz (a16z) - VC Firm Profile"
+doc_type: "firm-profile"
+firm_name: "Andreessen Horowitz (a16z)"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [vc-firms, ai-native, enterprise-software, seed, series-a, growth, mega-fund]
+related_docs:
+  - ../buildos-fundraising-strategy.md
+  - ../investor-optimists.md
+contact_verified: "yes"
+fund_size: "$46B AUM, $7.2B raised in 2024"
+recent_update: "Raghu Raghuram (ex-VMware CEO) joined as GP in October 2025"
+---
+
+# Andreessen Horowitz (a16z) - VC Firm Profile
 
 ## Fund Overview
 

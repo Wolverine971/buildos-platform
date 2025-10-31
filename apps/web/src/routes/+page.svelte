@@ -70,10 +70,10 @@
 </script>
 
 <svelte:head>
-	<title>BuildOS - Your Home Base for ADHD Productivity | Brain Dump to Action</title>
+	<title>BuildOS - Your Home Base for Scattered Minds | Brain Dump to Action</title>
 	<meta
 		name="description"
-		content="Built for ADHD minds by someone with ADHD. Transform scattered thoughts into organized action. Brain dump, get AI organization, execute. 14-day free trial."
+		content="Built for disorganized minds who need to get organized. Transform scattered thoughts into organized action. Brain dump, get AI organization, execute. 14-day free trial."
 	/>
 
 	<meta
@@ -115,10 +115,10 @@
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://build-os.com/" />
-	<meta property="og:title" content="BuildOS - Your Home Base for ADHD Productivity" />
+	<meta property="og:title" content="BuildOS - Your Home Base for Scattered Minds" />
 	<meta
 		property="og:description"
-		content="Finally, a productivity tool that gets how your brain works. BuildOS: where scattered thoughts become organized action. Built by someone with ADHD who abandoned Notion 6 times."
+		content="Finally, a productivity tool that gets how your brain works. BuildOS: where scattered thoughts become organized action. Built by someone who struggled with organization and needed a better way."
 	/>
 	<meta property="og:image" content="https://build-os.com/brain-bolt.png" />
 
@@ -137,7 +137,7 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:site" content="@build_os" />
 	<meta name="twitter:creator" content="@djwayne3" />
-	<meta name="twitter:title" content="BuildOS - Your Home Base for ADHD Productivity" />
+	<meta name="twitter:title" content="BuildOS - Your Home Base for Scattered Minds" />
 	<meta
 		name="twitter:description"
 		content="Finally, a productivity tool that gets how your brain works. Transform scattered thoughts into organized action. 14-day free trial."
@@ -156,7 +156,7 @@
 		"@context": "https://schema.org",
 		"@type": "SoftwareApplication",
 		"name": "BuildOS",
-		"description": "AI-first project organization platform that transforms brain dumps into structured projects. Perfect for ADHD minds, founders, and creators.",
+		"description": "AI-first project organization platform that transforms brain dumps into structured projects. Perfect for disorganized minds, founders, and creators who need clarity.",
 		"applicationCategory": "ProductivityApplication",
 		"operatingSystem": "Web",
 		"offers": {
@@ -378,7 +378,7 @@
 					id="trust-heading"
 					class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
 				>
-					Built by someone with ADHD who gets it
+					Built by someone who struggled with chaos and needed better
 				</h2>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -388,7 +388,7 @@
 						</h3>
 						<p class="text-gray-600 dark:text-gray-300">
 							We know you've abandoned Notion 6 times. BuildOS works even on your
-							worst brain days. No complex setup. No maintenance guilt.
+							worst days. No complex setup. No maintenance guilt.
 						</p>
 					</div>
 
@@ -524,7 +524,7 @@
 						<Button variant="primary">Find Your Home Base →</Button>
 					</a>
 					<p class="text-sm text-gray-500 dark:text-gray-400">
-						Join 500+ ADHD minds who finally stick with their system<br />
+						Join 500+ scattered minds who finally stick with their system<br />
 						14 days free • Cancel anytime • No shame in trying
 					</p>
 				</div>

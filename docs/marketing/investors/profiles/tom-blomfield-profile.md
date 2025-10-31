@@ -1,4 +1,19 @@
-# Tom Blomfield - Y Combinator Partner Profile
+---
+title: "Tom Blomfield - Y Combinator Group Partner Profile"
+doc_type: "profile"
+investor_name: "Tom Blomfield"
+firm_name: "Y Combinator"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [investors, yc, fintech, monzo, gocardless, ai-tools, product-focused]
+related_docs:
+  - ../warm-intro-emails/tom-blomfield-yc-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+---
+
+# Tom Blomfield - Y Combinator Group Partner Profile
 
 ## Executive Summary
 
@@ -169,7 +184,17 @@ Given Tom's background and interests, position BuildOS as:
 - **Prepare for Direct Feedback**: Be ready for honest, potentially harsh feedback about the idea
 - **Demonstrate Independent Thinking**: Show ability to think critically about advice
 
-### Contact & Application
+### Contact Information
+
+- **Email**: tom@ycombinator.com (based on YC email format)
+- **LinkedIn**: https://www.linkedin.com/in/tomblomfield/
+- **Twitter/X**: @t_blom
+- **Personal Website**: https://tomblomfield.com/
+- **Blog**: https://tomblomfield.tumblr.com/ (previous blog)
+- **Company**: Y Combinator
+- **YC Email Format**: [first]@ycombinator.com (66-83% of staff use this format)
+
+### Application Process
 
 - **Apply through**: YC application portal (applications open twice yearly)
 - **Timeline**: YC runs two batches per year (Winter and Summer)

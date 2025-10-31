@@ -1,4 +1,20 @@
-# Slow Ventures & Jack Raines Profile
+---
+title: "Jack Raines - Slow Ventures Profile"
+doc_type: "profile"
+investor_name: "Jack Raines"
+firm_name: "Slow Ventures"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [investors, slow-ventures, creator-fund, young-money, early-stage, generalist, columbia]
+related_docs:
+  - ../vc-firms/slow-ventures.md
+  - ../warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+---
+
+# Jack Raines - Slow Ventures Profile
 
 ## Executive Summary
 
@@ -247,15 +263,22 @@ Jack has written critically about SBF/FTX collapse:
 
 ### Slow Ventures
 
-- **Website**: slow.vc
+- **Website**: https://slow.co/
 - **General Email**: info@slow.vc
-- **Location**: San Francisco (primary)
+- **Contact Form**: https://slow.co/contact/
+- **Toll Free**: 888-616-7569
+- **Locations**: San Francisco (HQ), Boston, New York
+- **Email Format**: [first]@slow.co (45.4% of staff)
 
 ### Jack Raines
 
-- **Email**: Jack@slow.co (for creator fund inquiries)
-- **Twitter**: @jack_raines
-- **LinkedIn**: Jack Raines
+- **Email (VC)**: jack@slow.co
+- **Email (Newsletter)**: jack@youngmoney.co
+- **LinkedIn**: https://www.linkedin.com/in/jackraines/
+- **Twitter/X**: @Jack_Raines (70,000+ followers)
+- **Personal Website**: https://www.youngmoney.co/
+- **Newsletter**: Young Money (65,000+ subscribers)
+- **Book**: Upcoming with Penguin Random House
 
 ---
 

@@ -1,3 +1,20 @@
+---
+title: "Paige Craig - Outlander VC Profile"
+doc_type: "profile"
+investor_name: "Paige Craig"
+firm_name: "Outlander VC"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [investors, military-background, founder-evaluation, systematic-approach, pre-seed, seed, series-a]
+related_docs:
+  - ../vc-firms/outlander-vc.md
+  - ../outreach/paige-craig-outreach-template.md
+  - ../warm-intro-emails/paige-craig-outlander-vc-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+---
+
 # Paige Craig - Outlander VC Profile
 
 ## Executive Summary

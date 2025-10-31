@@ -1,4 +1,21 @@
-# Tim Hsia & Context Ventures - Comprehensive VC Profile
+---
+title: "Tim Hsia - Context Ventures Profile"
+doc_type: "profile"
+investor_name: "Tim Hsia"
+firm_name: "Context Ventures"
+priority: "medium"
+last_updated: "2025-10-29"
+status: "active"
+tags: [investors, military-veterans, west-point, consumer, fintech, pre-seed, seed, series-a, stanford]
+related_docs:
+  - ../vc-firms/context-ventures.md
+  - ../outreach/tim-hsia-coffee-meeting-strategy.md
+  - ../warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+---
+
+# Tim Hsia - Context Ventures Profile
 
 _Research Date: September 17, 2025_
 
@@ -256,14 +273,19 @@ _Research Date: September 17, 2025_
 
 **Tim Hsia**
 
-- Email: tim@contextvc.com (likely)
-- LinkedIn: Active poster (top 2% creator)
-- Apply: https://contextventures.typeform.com/to/B3l5yqv4
+- **Email**: tim@contextvc.com (inferred from company format)
+- **LinkedIn**: https://www.linkedin.com/in/timhsia/ (Top 2% creator globally)
+- **Apply**: https://contextventures.typeform.com/to/B3l5yqv4
+- **Podcast**: TheMilVet Podcast (co-host)
+- **Location**: Auburn, WA / San Francisco, CA
 
 **Context Ventures**
 
-- General: leaders@contextvc.com
-- Location: San Francisco / Auburn, WA
+- **General Email**: leaders@contextvc.com
+- **Website**: https://www.contextvc.com/
+- **LinkedIn**: Active presence
+- **Locations**: Auburn, WA (HQ) / San Francisco, CA
+- **Company Email Format**: Likely [first]@contextvc.com
 
 **Key Events**:
 

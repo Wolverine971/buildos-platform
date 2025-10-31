@@ -82,11 +82,11 @@ ADHD minds don't have the executive function reserves for perpetual learning. Th
 
 **Every hour learning Notion is an hour not creating.**
 
-## Enter BuildOS: The Tool ADHD Minds Have Been Searching For
+## Enter BuildOS: The Tool Disorganized Minds Have Been Searching For
 
-We didn't build BuildOS to compete with Notion. We built it because **ADHD creatives were drowning in complexity** and nobody was throwing them a lifeline.
+We didn't build BuildOS to compete with Notion. We built it because **people struggling with organization were drowning in complexity** and nobody was throwing them a lifeline.
 
-What we discovered changed everything: **ADHD minds don't need better organization. They need zero friction.**
+What we discovered changed everything: **Disorganized minds don't need better organization systems. They need zero friction.**
 
 ### Frictionless by Design
 
@@ -115,7 +115,7 @@ Here's what actually happens when ADHD minds use BuildOS:
 
 **Mental load**: Zero
 
-_"It's like having an executive assistant who lives in my brain"_ - BuildOS user with severe ADHD
+_"It's like having an executive assistant who lives in my brain"_ - BuildOS user who struggles with organization
 
 ### Built for Bad Brain Days
 
@@ -127,18 +127,18 @@ Can't prioritize? Let AI handle it.
 
 BuildOS doesn't require you to be organized to get organized. It meets you in the chaos and creates clarity.
 
-_"Other tools require me to be at my best. BuildOS works when I'm at my worst."_ - Creative director with ADHD
+_"Other tools require me to be at my best. BuildOS works when I'm at my worst."_ - Creative director
 
 ### The Creative Multiplier Effect
 
-**When you remove friction, ADHD traits become superpowers:**
+**When you remove friction, your natural strengths shine:**
 
 - **Rapid ideation** → Every idea captured, none lost to friction
-- **Hyperfocus** → Deployed instantly, not wasted on setup
+- **Deep focus** → Deployed instantly, not wasted on setup
 - **Pattern recognition** → AI connects your scattered insights
 - **Creative leaps** → Captured in real-time, processed into action
 
-BuildOS doesn't try to "fix" your ADHD brain. It amplifies what makes it brilliant.
+BuildOS doesn't try to "fix" your brain. It amplifies what makes you brilliant.
 
 ## The Quiet Revolution Happening Now
 
@@ -154,7 +154,7 @@ Something interesting is happening in ADHD communities online:
 
 ### The First Movers
 
-A small group of ADHD creators and founders have discovered BuildOS. They're not evangelizing it yet—they're too busy shipping.
+A small group of creators and founders who struggled with chaos have discovered BuildOS. They're not evangelizing it yet—they're too busy shipping.
 
 But their output is noticeable. Their stress is lower. Their creative flow is returning.
 
@@ -185,7 +185,7 @@ _"My Notion took 3 months to set up. BuildOS took 3 minutes."_ - UX designer
 
 _"I've captured more ideas this week than the past year combined."_ - Content creator
 
-_"It's the first tool that doesn't make me feel broken."_ - Developer with ADHD
+_"It's the first tool that doesn't make me feel broken."_ - Developer who struggled with organization
 
 **The pattern is clear: Remove friction, unlock potential.**
 
@@ -193,12 +193,12 @@ _"It's the first tool that doesn't make me feel broken."_ - Developer with ADHD
 
 You know that feeling when you discover a tool that just... works? When technology finally gets out of your way and lets you create?
 
-**That's BuildOS for ADHD minds.**
+**That's BuildOS for disorganized minds.**
 
 We're not claiming to be perfect. We're not for everyone. But if you're:
 
 - Tired of spending more time organizing than doing
-- Frustrated with tools that punish your ADHD traits
+- Frustrated with tools that demand perfect organization upfront
 - Searching for something that just lets you capture and go
 
 **You've found it.**
@@ -211,9 +211,9 @@ _No credit card required. No complex onboarding. Just sign up and start creating
 
 ## One Last Thing
 
-**Your ADHD isn't a productivity problem. It's a tool problem.**
+**Your disorganization isn't a personal failure. It's a tool problem.**
 
-You don't need to be more organized.
+You don't need to be more disciplined.
 You don't need better habits.
 You don't need another complex system.
 

@@ -1,3 +1,19 @@
+---
+title: "Casey Caruso - Topology Ventures Profile"
+doc_type: "profile"
+investor_name: "Casey Caruso"
+firm_name: "Topology Ventures"
+priority: "medium"
+last_updated: "2025-10-29"
+status: "active"
+tags: [investors, frontier-tech, ai, crypto, neurotech, engineering-first, forbes-30-under-30, harvard]
+related_docs:
+  - ../vc-firms/topology-ventures.md
+  - ../warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "yes"
+---
+
 # Casey Caruso - Topology Ventures Profile
 
 ## Executive Summary
@@ -264,10 +280,13 @@ Oversaw investments in:
 
 ### How to Reach Casey
 
-- **Primary Email**: info@topology.vc
-- **LinkedIn**: linkedin.com/in/casey-k-caruso
+- **Email**: casey@topology.vc (inferred from company format)
+- **General Contact**: info@topology.vc
+- **LinkedIn**: https://www.linkedin.com/in/casey-k-caruso/
 - **Twitter/X**: @caseykcaruso
-- **Website**: www.topology.vc
+- **Website**: https://www.topology.vc/
+- **Location**: San Francisco, CA / Miami Beach, FL
+- **Company Email Format**: Likely [first]@topology.vc
 
 ### Best Approach for BuildOS
 

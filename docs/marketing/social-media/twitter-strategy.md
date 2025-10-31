@@ -4,7 +4,7 @@
 
 ### Bio
 
-**Primary:** "The productivity tool for scattered minds 🧠 | Talk → Organize → Execute | Built by someone with ADHD who gets it"
+**Primary:** "The productivity tool for scattered minds 🧠 | Talk → Organize → Execute | Built by someone who struggled with chaos"
 
 **Alternative:** "Your home base for getting shit done | Brain dump → AI organizes → You execute | Built for minds that move fast ⚡"
 
@@ -16,7 +16,7 @@ Visual showing: Chaotic thoughts (left) → BuildOS logo (center) → Organized 
 
 "I tried Notion 6 times. Abandoned it 6 times.
 
-Built BuildOS because ADHD brains need different tools.
+Built BuildOS because disorganized minds need different tools.
 
 Just talk. AI organizes. You execute.
 

@@ -1,4 +1,20 @@
-# Point Nine Capital - BuildOS Investor Profile
+---
+title: "Point Nine Capital - VC Firm Profile"
+doc_type: "firm-profile"
+firm_name: "Point Nine Capital"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [vc-firms, b2b-saas, saas-metrics, seed, europe, productivity-tools]
+related_docs:
+  - ../buildos-fundraising-strategy.md
+  - ../investor-optimists.md
+contact_verified: "yes"
+fund_size: "€180M Fund VI (Sept 2022)"
+recent_update: "Poolside became unicorn in 2024, 1 year after first investment"
+---
+
+# Point Nine Capital - VC Firm Profile
 
 ## Fund Overview
 

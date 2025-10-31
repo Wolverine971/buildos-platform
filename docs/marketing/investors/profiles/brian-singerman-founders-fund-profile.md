@@ -1,6 +1,24 @@
-# Brian Singerman - Founders Fund & GPx Profile
+---
+title: "Brian Singerman - GPx & Founders Fund Partner Emeritus Profile"
+doc_type: "profile"
+investor_name: "Brian Singerman"
+firm_name: "GPx (Co-founder) / Founders Fund (Partner Emeritus)"
+priority: "high"
+last_updated: "2025-10-29"
+status: "needs-update"
+tags: [investors, gpx, founders-fund, partner-emeritus, series-b, growth, moonshots, spacex]
+related_docs:
+  - ../vc-firms/thiel-capital-founders-fund.md
+  - ../warm-intro-emails/brian-singerman-gpx-warm-intro-email.md
+  - ../buildos-fundraising-strategy.md
+contact_verified: "partial"
+critical_update: "Left Founders Fund as Partner Emeritus in Dec 2024. Now raising GPx fund ($500M+) with Peter Thiel backing"
+---
+
+# Brian Singerman - GPx & Founders Fund Partner Emeritus Profile
 
 _Research Date: September 17, 2025_
+_**CRITICAL UPDATE (October 2025)**: Transitioned to Partner Emeritus at Founders Fund (Dec 2024), now co-founding GPx fund_
 
 ## Executive Summary
 
@@ -323,10 +341,13 @@ Given Singerman's background and preferences, position BuildOS as:
 
 ### Contact Information
 
-- **Email**: Likely accessible through Founders Fund during transition period
-- **GPx Fund**: New contact information being established
-- **Network**: Stanford Computer Science alumni, Founders Fund ecosystem
+- **Email (Founders Fund)**: brian@foundersfund.com (legacy, based on FF email format)
+- **LinkedIn**: https://www.linkedin.com/in/brian-singerman-9333b52/
+- **Twitter/X**: @briansin
+- **GPx Fund**: New contact information being established (as of 2025)
+- **Network**: Stanford Computer Science alumni (Class of 1999), Founders Fund ecosystem
 - **Location**: San Francisco Bay Area
+- **Founders Fund Email Format**: [first]@foundersfund.com (43.4% of staff)
 
 ### Timing Considerations
 

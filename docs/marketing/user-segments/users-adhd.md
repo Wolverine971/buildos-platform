@@ -4,7 +4,7 @@
 
 **Their Reality:** Traditional productivity tools are built for neurotypical brains. ADHD users don't need more features - they need different approaches.
 
-**Our Message:** BuildOS is built BY someone with ADHD, FOR people with ADHD. We get it because we live it.
+**Our Message:** BuildOS is built FOR people with ADHD (and anyone who struggles with organization). We get it because we've experienced the pain of tools that don't match how chaotic minds work.
 
 ---
 
@@ -86,7 +86,7 @@ Dump your thoughts. See them organized. Pick one thing to do.
 
 That's it. That's the whole system.
 
-Built by someone with ADHD who was tired of pretending Notion would save them.
+Built by someone who struggled with disorganization and needed a better way.
 
 [Try BuildOS free - no 47-step setup required]
 
@@ -116,7 +116,7 @@ Your ADHD brain doesn't need more systems. It needs the RIGHT system.
 
 BuildOS: Dump thoughts → Get clarity → Actually do things
 
-Built by someone with ADHD who tried all the planners too 🧠"
+Built by someone who struggled with organization and tried all the planners too 🧠"
 
 **TikTok Hook:**
 "If you have ADHD and have abandoned Notion at least twice, this is for you..."
@@ -240,14 +240,14 @@ Small wins are still wins. What's your win today?"
 
 ### Founder Story
 
-"I'm DJ, and I have ADHD. I've:
+"I'm DJ, and I've struggled with organization my whole life. I've:
 
 - Abandoned Notion 6 times
 - Bought 47 planners
 - Tried every productivity system
 - Failed at all of them
 
-I built BuildOS because I needed it to exist. Not as a business idea, but as a survival tool. It's built by someone with ADHD, for people with ADHD. I use it every day to build itself."
+I built BuildOS because I needed it to exist. Not as a business idea, but as a tool to help me get organized. It's built by someone who understands the chaos, for people who need clarity. I use it every day to build itself."
 
 ### ADHD-Specific Features
 
@@ -289,7 +289,7 @@ Myth-busting content about ADHD and productivity. "You don't need more disciplin
 
 ### ADHD Influencers
 
-"We're not another productivity app pretending to understand ADHD. Built by someone with ADHD, used daily by hundreds with ADHD. Would love to show you how it actually works for our brains."
+"We're not another productivity app pretending to understand ADHD. Built by someone who struggled with organization and designed specifically to help people with ADHD and disorganized minds. Used daily by hundreds with ADHD. Would love to show you how it actually works."
 
 ---
 

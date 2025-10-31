@@ -26,9 +26,9 @@ Analyze ADHD customer feedback to extract language patterns and create a compreh
 - "I always know where to start my day"
 - "My home base when I'm spiraling"
 
-## ADHD Founder's Authentic Experience (Customer #1)
+## Founder's Authentic Experience (Customer #1 - Struggles with Organization)
 
-- "I'm DJ, and I have ADHD. I've: Abandoned Notion 6 times, Bought 47 planners, Tried every productivity system, Failed at all of them. I built BuildOS because I needed it to exist. Not as a business idea, but as a survival tool."
+- "I'm DJ, and I've struggled with organization my whole life. I've: Abandoned Notion 6 times, Bought 47 planners, Tried every productivity system, Failed at all of them. I built BuildOS because I needed it to exist. Not as a business idea, but as a tool to help me get organized."
 - "I'm the kind of person who acts first and asks questions later. I've got coding projects, side hustles, two kids, a family, hobbies, home maintenance, and about a million ideas bouncing around in my head at any given moment."
 - "I am tired of checking my notes app on my phone, obsidian, slack, emails, and text messages. I wanted to create the one place where I could organize my ideas."
 
@@ -95,7 +95,7 @@ Analyze ADHD customer feedback to extract language patterns and create a compreh
 - Industry: AI-powered productivity software specifically designed for neurodivergent minds
 - Target audience: Adults with ADHD (diagnosed and self-identified), ADHD entrepreneurs, ADHD students, ADHD professionals in high-cognitive-load jobs
 - Current brand voice: Empathetic without being patronizing, authentic from lived experience, practical solutions over theory, shame-free productivity
-- Founder credibility: Built by someone with ADHD who uses BuildOS daily and shares real struggles
+- Founder credibility: Built by someone who struggled with organization, uses BuildOS daily, and shares real struggles with chaos
 
 # ANALYSIS FRAMEWORK (ADHD-SPECIFIC)
 

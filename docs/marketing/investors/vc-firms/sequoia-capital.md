@@ -1,4 +1,21 @@
-# Sequoia Capital - BuildOS Investor Profile
+---
+title: "Sequoia Capital - VC Firm Profile"
+doc_type: "firm-profile"
+firm_name: "Sequoia Capital"
+priority: "high"
+last_updated: "2025-10-29"
+status: "active"
+tags: [vc-firms, ai-action-engines, enterprise-productivity, seed, series-a, growth, legendary-track-record]
+related_docs:
+  - ../profiles/sequoia-capital-investor-profile.md
+  - ../buildos-fundraising-strategy.md
+  - ../investor-optimists.md
+contact_verified: "yes"
+fund_size: "$85B+ AUM, $950M raised in Oct 2025"
+recent_update: "$950M across two early-stage funds announced October 2025"
+---
+
+# Sequoia Capital - VC Firm Profile
 
 ## Fund Overview
 

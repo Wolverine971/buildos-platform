@@ -30,7 +30,8 @@
       "Bash(do echo \"   • $dir/\")",
       "Bash(done)",
       "Bash(while read file)",
-      "Bash(do echo \"   • $file\")"
+      "Bash(do echo \"   • $file\")",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
