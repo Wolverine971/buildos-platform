@@ -48,12 +48,24 @@
 - ✅ `/api/chat/stream` - Main SSE endpoint
 - ✅ `/api/chat/compress` - Conversation compression
 - ✅ `/api/chat/generate-title` - Auto-titling
+- ✅ `/api/admin/chat/*` - **NEW: Admin monitoring APIs (October 2024)**
+
+### Admin Monitoring (NEW - October 2024)
+
+- ✅ **Dashboard** - Real-time KPIs for sessions, tokens, agents, costs
+- ✅ **Session List** - Filter, search, and paginate all chat sessions
+- ✅ **Session Detail Modal** - Quick audit with agent-to-agent conversations
+- ✅ **Export Functionality** - JSON/CSV data export
+- ✅ **Multi-Agent Visibility** - View planner-executor conversations
+- ✅ **Tool Monitoring** - Track all tool executions and success rates
+- ✅ **Cost Analytics** - Token usage tracking with cost estimates
 
 ### UI Components
 
 - ✅ ChatModal - Main interface
 - ✅ ChatMessage - Secure markdown rendering
 - ✅ ToolVisualization - Execution feedback
+- ✅ SessionDetailModal - **NEW: Admin session inspection (October 2024)**
 
 ### Security
 
@@ -194,8 +206,9 @@ Three new tools added for intelligent task-calendar management:
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System design
 - [QUICK_START.md](QUICK_START.md) - 5-minute setup
 - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - This document
-- [TOOL_EXECUTOR_API_PATTERN.md](TOOL_EXECUTOR_API_PATTERN.md) - **NEW: API pattern documentation**
-- [LLM_TOOL_INSTRUCTIONS.md](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - **NEW: LLM usage guide**
+- [TOOL_EXECUTOR_API_PATTERN.md](TOOL_EXECUTOR_API_PATTERN.md) - API pattern documentation
+- [ADMIN_MONITORING.md](ADMIN_MONITORING.md) - **NEW: Admin monitoring system (October 2024)**
+- [LLM_TOOL_INSTRUCTIONS.md](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - LLM usage guide
 
 ### Updated Documentation
 

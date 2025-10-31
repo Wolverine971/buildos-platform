@@ -36,6 +36,7 @@
 	} from '@buildos/shared-types';
 	import ChatMessageComponent from './ChatMessage.svelte';
 	import ToolVisualization from './ToolVisualization.svelte';
+	import ContextSelectionScreen from './ContextSelectionScreen.svelte';
 	import {
 		voiceRecordingService,
 		type TranscriptionService
@@ -49,6 +50,7 @@
 		entityId?: string;
 		initialMessage?: string;
 		sessionId?: string;
+		showContextSelection?: boolean;
 		onClose?: () => void;
 	}
 
@@ -58,6 +60,7 @@
 		entityId,
 		initialMessage,
 		sessionId,
+		showContextSelection = false,
 		onClose
 	}: Props = $props();
 
@@ -79,6 +82,11 @@
 	let hasPrefetchedSessions = $state(false);
 	let lastSessionsFetchAt = $state(0);
 	let loadingSessionId = $state<string | null>(null);
+
+	// Context selection state
+	let selectedContextType = $state<ChatContextType | null>(contextType || null);
+	let selectedEntityId = $state<string | null>(entityId || null);
+	let showingContextSelection = $state(showContextSelection && !contextType);
 
 	// Voice recording state
 	let isVoiceSupported = $state(false);
@@ -502,37 +510,57 @@
 
 	// Context indicator badge
 	const contextLabel = $derived.by(() => {
-		switch (contextType) {
-			case 'project':
-				return '📁 Project Context';
-			case 'task':
-				return '✅ Task Context';
-			case 'calendar':
-				return '📅 Calendar Context';
-			default:
-				return '🌍 Global Context';
-		}
+		const currentType = selectedContextType || contextType;
+		const meta = CONTEXT_META[currentType];
+		return meta ? `${meta.badge} ${meta.description}` : '🌍 Global Context';
 	});
 
-	const CONTEXT_META: Record<ChatContextType | 'global', { badge: string; description: string }> =
-		{
-			global: {
-				badge: '🌍 Global',
-				description: 'No specific context'
-			},
-			project: {
-				badge: '📁 Project',
-				description: 'Project-focused session'
-			},
-			task: {
-				badge: '✅ Task',
-				description: 'Task-focused session'
-			},
-			calendar: {
-				badge: '📅 Calendar',
-				description: 'Calendar session'
-			}
-		};
+	const CONTEXT_META: Record<ChatContextType, { badge: string; description: string }> = {
+		global: {
+			badge: '🌍 Global',
+			description: 'No specific context'
+		},
+		project: {
+			badge: '📁 Project',
+			description: 'Project-focused session'
+		},
+		task: {
+			badge: '✅ Task',
+			description: 'Task-focused session'
+		},
+		calendar: {
+			badge: '📅 Calendar',
+			description: 'Calendar session'
+		},
+		general: {
+			badge: '💬 General',
+			description: 'General conversation'
+		},
+		project_create: {
+			badge: '➕ New Project',
+			description: 'Creating new project'
+		},
+		project_update: {
+			badge: '🔄 Update Project',
+			description: 'Updating project'
+		},
+		project_audit: {
+			badge: '🔍 Audit',
+			description: 'Project audit'
+		},
+		project_forecast: {
+			badge: '📊 Forecast',
+			description: 'Project forecast'
+		},
+		task_update: {
+			badge: '✏️ Update Task',
+			description: 'Updating task'
+		},
+		daily_brief_update: {
+			badge: '📮 Brief Settings',
+			description: 'Daily brief preferences'
+		}
+	};
 
 	function getContextMeta(type?: ChatContextType | null) {
 		if (!type) return CONTEXT_META.global;
@@ -731,6 +759,19 @@
 		inputValue = prefillFromInitial && initialMessage ? initialMessage : '';
 	}
 
+	function handleContextSelect(
+		event: CustomEvent<{ contextType: ChatContextType; entityId?: string }>
+	) {
+		const { contextType: selected, entityId: selectedEntity } = event.detail;
+
+		selectedContextType = selected;
+		selectedEntityId = selectedEntity || null;
+		showingContextSelection = false;
+
+		// Start new session with selected context
+		createNewSession(true);
+	}
+
 	function clearSession() {
 		createNewSession();
 	}
@@ -793,8 +834,8 @@
 				body: JSON.stringify({
 					message: trimmed,
 					session_id: currentSession?.id || activeSessionId || sessionId,
-					context_type: contextType,
-					entity_id: entityId
+					context_type: selectedContextType || contextType,
+					entity_id: selectedEntityId || entityId
 				})
 			});
 
@@ -1008,7 +1049,7 @@
 	{@const VoiceIcon = voiceButtonState.icon}
 	<div
 		slot="header"
-		class="relative z-[60] flex items-center justify-between gap-4 border-b border-white/20 bg-gradient-to-r from-white/85 via-white/65 to-white/45 px-6 py-5 backdrop-blur-[18px] dark:border-white/10 dark:from-gray-950/85 dark:via-gray-950/65 dark:to-gray-900/55"
+		class="relative z-[60] flex items-center justify-between gap-4 border-b border-slate-200/60 bg-white/90 px-6 py-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/85"
 	>
 		<div class="flex items-center gap-4">
 			<div
@@ -1023,7 +1064,7 @@
 				<div class="flex flex-wrap items-center gap-2">
 					<Badge
 						size="sm"
-						class="!rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 shadow-sm backdrop-blur-md dark:bg-gray-900/60 dark:text-gray-200"
+						class="!rounded-full border border-slate-200/60 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 shadow-sm backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80 dark:text-gray-200"
 					>
 						{contextLabel}
 					</Badge>
@@ -1045,7 +1086,7 @@
 					size="sm"
 					icon={MoreHorizontal}
 					aria-label="Chat session actions"
-					class="rounded-full border border-white/30 bg-white/40 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/70 dark:border-gray-800/60 dark:bg-gray-900/60 dark:text-gray-200 dark:hover:bg-gray-900/80 disabled:opacity-40"
+					class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:opacity-40"
 					on:click={toggleSessionMenu}
 					aria-haspopup="true"
 					aria-expanded={showSessionMenu}
@@ -1058,7 +1099,7 @@
 
 				{#if showSessionMenu}
 					<div
-						class="absolute right-0 z-[70] mt-3 w-56 rounded-2xl border border-white/30 bg-white/90 p-2 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-950/90"
+						class="absolute right-0 z-[70] mt-3 w-56 rounded-2xl border border-slate-200/60 bg-white/95 p-2 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/95"
 					>
 						<button
 							type="button"
@@ -1083,7 +1124,7 @@
 				variant="ghost"
 				size="sm"
 				icon={Plus}
-				class="rounded-full border border-white/30 bg-white/40 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/70 dark:border-gray-800/60 dark:bg-gray-900/60 dark:text-gray-200 dark:hover:bg-gray-900/80"
+				class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				aria-label="Start new chat"
 				on:click={clearSession}
 			/>
@@ -1091,7 +1132,7 @@
 				variant="ghost"
 				size="sm"
 				icon={X}
-				class="rounded-full border border-white/30 bg-white/40 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/70 dark:border-gray-800/60 dark:bg-gray-900/60 dark:text-gray-200 dark:hover:bg-gray-900/80"
+				class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				aria-label="Close chat"
 				on:click={handleClose}
 			/>
@@ -1099,13 +1140,13 @@
 	</div>
 
 	<div
-		class="relative z-[10] flex h-[min(82vh,820px)] flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-white/92 via-slate-50/85 to-slate-100/70 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.65)] backdrop-blur-md dark:from-gray-950/90 dark:via-gray-900/85 dark:to-gray-950/80 md:flex-row"
+		class="relative z-[10] flex h-[min(82vh,820px)] flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90 md:flex-row"
 	>
 		<aside
-			class="order-2 flex w-full flex-shrink-0 flex-col border-t border-white/25 bg-white/55 backdrop-blur-md transition-colors duration-200 dark:border-white/5 dark:bg-gray-950/30 md:order-1 md:w-72 md:border-t-0 md:border-r"
+			class="order-2 flex w-full flex-shrink-0 flex-col border-t border-slate-200/60 bg-white/80 backdrop-blur-md transition-colors duration-200 dark:border-slate-700/60 dark:bg-slate-900/70 md:order-1 md:w-72 md:border-t-0 md:border-r"
 		>
 			<div
-				class="flex items-center justify-between gap-2 border-b border-white/25 bg-white/40 px-5 py-4 backdrop-blur-md dark:border-white/5 dark:bg-gray-950/40"
+				class="flex items-center justify-between gap-2 border-b border-slate-200/60 bg-white/60 px-5 py-4 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/60"
 			>
 				<div>
 					<h3
@@ -1123,7 +1164,7 @@
 					icon={Plus}
 					aria-label="Start new chat"
 					on:click={clearSession}
-					class="hidden rounded-full border border-white/25 bg-white/50 px-3 py-2 text-sm font-medium text-gray-700 backdrop-blur md:inline-flex dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-200"
+					class="hidden rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 backdrop-blur hover:bg-white/90 md:inline-flex dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				/>
 			</div>
 			<div class="flex-1 overflow-y-auto">
@@ -1161,10 +1202,10 @@
 							{@const updatedLabel = formatSessionUpdatedAt(session)}
 							<button
 								type="button"
-								class={`group w-full rounded-2xl px-5 py-3 text-left transition-all duration-200 ${
+								class={`group w-full rounded-2xl border px-5 py-3 text-left transition-all duration-200 ${
 									isActive
-										? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-[0_18px_45px_-30px_rgba(37,99,235,0.55)] ring-1 ring-blue-500/20 dark:text-blue-200'
-										: 'hover:bg-white/65 hover:shadow-sm dark:hover:bg-gray-900/45'
+										? 'border-blue-200/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 dark:border-blue-800/60 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 dark:text-blue-200'
+										: 'border-transparent hover:border-slate-200/60 hover:bg-white/80 hover:shadow-sm dark:hover:border-slate-700/60 dark:hover:bg-slate-900/60'
 								} disabled:cursor-not-allowed disabled:opacity-60`}
 								on:click={() => handleSessionSelect(session.id)}
 								disabled={isStreaming && activeSessionId !== session.id}
@@ -1191,10 +1232,10 @@
 									class="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
 								>
 									<span
-										class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+										class={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
 											isActive
-												? 'bg-white/80 text-blue-700 shadow-sm dark:bg-gray-950/70 dark:text-blue-200'
-												: 'bg-white/70 text-gray-600 shadow-sm dark:bg-gray-900/70 dark:text-gray-300'
+												? 'border-blue-200/60 bg-blue-50/80 text-blue-700 shadow-sm dark:border-blue-800/60 dark:bg-blue-950/50 dark:text-blue-200'
+												: 'border-slate-200/60 bg-white/70 text-gray-600 shadow-sm dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-gray-300'
 										}`}
 									>
 										{context.badge}
@@ -1214,215 +1255,225 @@
 			</div>
 		</aside>
 
-		<div class="order-1 flex flex-1 flex-col md:order-2">
-			<div
-				bind:this={messagesContainer}
-				class="chat-scroll relative flex-1 space-y-4 overflow-y-auto px-6 py-6 bg-white/35 backdrop-blur-sm dark:bg-gray-950/35"
-			>
-				{#if isLoading}
-					<div class="flex justify-center py-12">
+		{#if showingContextSelection}
+			<!-- Context Selection Screen -->
+			<div class="order-1 flex flex-1 flex-col items-center justify-center md:order-2">
+				<ContextSelectionScreen on:select={handleContextSelect} />
+			</div>
+		{:else}
+			<!-- Main Chat Interface -->
+			<div class="order-1 flex flex-1 flex-col md:order-2">
+				<div
+					bind:this={messagesContainer}
+					class="chat-scroll relative flex-1 space-y-4 overflow-y-auto px-6 py-6 bg-white/70 backdrop-blur-sm dark:bg-slate-900/70"
+				>
+					{#if isLoading}
+						<div class="flex justify-center py-12">
+							<div
+								class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
+								aria-hidden="true"
+							></div>
+						</div>
+					{:else if messages.length === 0 && !isStreaming}
 						<div
-							class="h-10 w-10 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-							aria-hidden="true"
-						></div>
-					</div>
-				{:else if messages.length === 0 && !isStreaming}
-					<div
-						class="flex flex-col items-center justify-center gap-4 py-16 text-center text-gray-600 dark:text-gray-300"
-					>
+							class="flex flex-col items-center justify-center gap-4 py-16 text-center text-gray-600 dark:text-gray-300"
+						>
+							<div class="relative">
+								<div
+									class="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-br from-blue-500/12 via-indigo-500/10 to-purple-500/12 blur-xl"
+								></div>
+								<div
+									class="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/12 to-purple-500/15 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/18 dark:via-indigo-400/12 dark:to-purple-400/18"
+								>
+									<MessageSquare
+										class="h-7 w-7 text-blue-600 dark:text-blue-300"
+									/>
+								</div>
+							</div>
+							<h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+								Start a calm, focused conversation
+							</h3>
+							<p
+								class="max-w-sm text-sm leading-relaxed text-gray-500 dark:text-gray-400"
+							>
+								Ask about your projects, tasks, or calendar. I'll surface what
+								matters first, then refine with you.
+							</p>
+						</div>
+					{:else}
+						{#each messages as message (message.id)}
+							<ChatMessageComponent {message} />
+						{/each}
+
+						{#if isStreaming && currentStreamingMessage}
+							<ChatMessageComponent
+								message={{
+									id: 'streaming',
+									session_id: currentSession?.id || activeSessionId || '',
+									role: 'assistant',
+									content: currentStreamingMessage,
+									tool_calls: null,
+									tool_call_id: null,
+									metadata: {},
+									error_code: null,
+									error_message: null,
+									prompt_tokens: null,
+									completion_tokens: null,
+									total_tokens: null,
+									created_at: new Date().toISOString()
+								} as ChatMessage}
+								{isStreaming}
+							/>
+						{/if}
+
+						{#if currentToolCalls.length > 0}
+							<ToolVisualization
+								toolCalls={currentToolCalls}
+								toolResults={currentToolResults}
+								isExecuting={isStreaming}
+							/>
+						{/if}
+					{/if}
+
+					{#if error}
+						<div
+							class="rounded-2xl border border-rose-200/60 bg-rose-50/80 p-3 text-sm text-rose-600 shadow-[0_10px_32px_-24px_rgba(244,63,94,0.45)] dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300"
+							role="alert"
+						>
+							{error}
+						</div>
+					{/if}
+				</div>
+
+				<div
+					class="border-t border-slate-200/60 bg-white/85 px-4 py-5 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/85 sm:px-6"
+				>
+					<form on:submit|preventDefault={sendMessage} class="space-y-3">
 						<div class="relative">
 							<div
-								class="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-br from-blue-500/12 via-indigo-500/10 to-purple-500/12 blur-xl"
-							></div>
-							<div
-								class="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/12 to-purple-500/15 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/18 dark:via-indigo-400/12 dark:to-purple-400/18"
+								class="relative rounded-[28px] border border-slate-200/60 bg-white/90 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.4)] transition duration-200 ease-out focus-within:border-blue-300 focus-within:shadow-[0_20px_48px_-24px_rgba(59,130,246,0.45)] focus-within:ring-1 focus-within:ring-blue-200/40 dark:border-slate-700/60 dark:bg-slate-900/80 dark:shadow-[0_20px_40px_-24px_rgba(15,23,42,0.6)] dark:focus-within:border-blue-500/40 dark:focus-within:ring-blue-500/20"
 							>
-								<MessageSquare class="h-7 w-7 text-blue-600 dark:text-blue-300" />
+								<Textarea
+									bind:value={inputValue}
+									class="border-none bg-transparent px-6 py-4 pr-[7.25rem] text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
+									placeholder="Ask anything about your work, projects, or ideas…"
+									autoResize
+									rows={1}
+									maxRows={8}
+									disabled={isStreaming || isInitializingRecording}
+									on:keydown={handleKeyDown}
+								/>
+
+								<div class="absolute inset-y-1 right-2 flex items-end gap-2">
+									<button
+										type="button"
+										class={`group relative flex h-11 w-11 items-center justify-center rounded-full border text-gray-700 shadow-sm backdrop-blur transition-all duration-200 ease-out hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 dark:text-gray-200 ${
+											voiceButtonState.variant === 'recording'
+												? 'border-rose-300 bg-gradient-to-br from-rose-500 via-rose-500/95 to-rose-500/90 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)]'
+												: voiceButtonState.variant === 'prompt'
+													? 'border-blue-200 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-600 dark:border-blue-700 dark:text-blue-300'
+													: 'border-slate-200/60 bg-white/70 hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:hover:bg-slate-900/90'
+										} ${voiceButtonState.disabled ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+										on:click={(event) => {
+											event.preventDefault();
+											void handleVoiceToggle();
+										}}
+										aria-label={voiceButtonState.label}
+										title={voiceButtonState.label}
+										disabled={voiceButtonState.disabled}
+									>
+										<VoiceIcon
+											class={`h-5 w-5 ${voiceButtonState.isLoading ? 'animate-spin' : ''}`}
+										/>
+									</button>
+
+									<button
+										type="submit"
+										class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_16px_32px_-20px_rgba(59,130,246,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+										aria-label="Send message"
+										disabled={isSendDisabled}
+									>
+										<Send class="h-5 w-5" />
+									</button>
+								</div>
 							</div>
 						</div>
-						<h3 class="text-lg font-semibold text-gray-800 dark:text-white">
-							Start a calm, focused conversation
-						</h3>
-						<p
-							class="max-w-sm text-sm leading-relaxed text-gray-500 dark:text-gray-400"
-						>
-							Ask about your projects, tasks, or calendar. I'll surface what matters
-							first, then refine with you.
-						</p>
-					</div>
-				{:else}
-					{#each messages as message (message.id)}
-						<ChatMessageComponent {message} />
-					{/each}
 
-					{#if isStreaming && currentStreamingMessage}
-						<ChatMessageComponent
-							message={{
-								id: 'streaming',
-								session_id: currentSession?.id || activeSessionId || '',
-								role: 'assistant',
-								content: currentStreamingMessage,
-								tool_calls: null,
-								tool_call_id: null,
-								metadata: {},
-								error_code: null,
-								error_message: null,
-								prompt_tokens: null,
-								completion_tokens: null,
-								total_tokens: null,
-								created_at: new Date().toISOString()
-							} as ChatMessage}
-							{isStreaming}
-						/>
-					{/if}
-
-					{#if currentToolCalls.length > 0}
-						<ToolVisualization
-							toolCalls={currentToolCalls}
-							toolResults={currentToolResults}
-							isExecuting={isStreaming}
-						/>
-					{/if}
-				{/if}
-
-				{#if error}
-					<div
-						class="rounded-2xl border border-rose-200/60 bg-rose-50/80 p-3 text-sm text-rose-600 shadow-[0_10px_32px_-24px_rgba(244,63,94,0.45)] dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300"
-						role="alert"
-					>
-						{error}
-					</div>
-				{/if}
-			</div>
-
-			<div
-				class="border-t border-white/25 bg-gradient-to-t from-white/85 via-white/65 to-white/45 px-4 py-5 backdrop-blur-xl dark:border-white/10 dark:from-gray-950/70 dark:via-gray-900/60 dark:to-gray-900/45 sm:px-6"
-			>
-				<form on:submit|preventDefault={sendMessage} class="space-y-3">
-					<div class="relative">
 						<div
-							class="relative rounded-[28px] border border-white/50 bg-white/80 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.6)] transition duration-200 ease-out focus-within:border-blue-300 focus-within:shadow-[0_28px_70px_-34px_rgba(59,130,246,0.55)] focus-within:ring-1 focus-within:ring-blue-200/60 dark:border-white/10 dark:bg-gray-950/65 dark:shadow-[0_36px_80px_-42px_rgba(15,23,42,0.9)] dark:focus-within:border-blue-500/40 dark:focus-within:ring-blue-500/20"
+							class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500 dark:text-gray-400"
 						>
-							<Textarea
-								bind:value={inputValue}
-								class="border-none bg-transparent px-6 py-4 pr-[7.25rem] text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
-								placeholder="Ask anything about your work, projects, or ideas…"
-								autoResize
-								rows={1}
-								maxRows={8}
-								disabled={isStreaming || isInitializingRecording}
-								on:keydown={handleKeyDown}
-							/>
-
-							<div class="absolute inset-y-1 right-2 flex items-end gap-2">
-								<button
-									type="button"
-									class={`group relative flex h-11 w-11 items-center justify-center rounded-full border border-transparent bg-gradient-to-br from-gray-900/6 to-gray-900/10 text-gray-600 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.6)] backdrop-blur transition-all duration-200 ease-out hover:scale-105 hover:shadow-[0_22px_45px_-24px_rgba(15,23,42,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 dark:from-gray-100/12 dark:to-gray-100/5 dark:text-gray-200 ${
-										voiceButtonState.variant === 'recording'
-											? 'bg-gradient-to-br from-rose-500 via-rose-500/90 to-rose-500/80 text-white shadow-[0_22px_44px_-28px_rgba(244,63,94,0.7)]'
-											: voiceButtonState.variant === 'prompt'
-												? 'bg-gradient-to-br from-blue-500/25 to-indigo-500/25 text-blue-600 dark:text-blue-300'
-												: ''
-									} ${voiceButtonState.disabled ? 'opacity-60 cursor-not-allowed hover:scale-100' : ''}`}
-									on:click={(event) => {
-										event.preventDefault();
-										void handleVoiceToggle();
-									}}
-									aria-label={voiceButtonState.label}
-									title={voiceButtonState.label}
-									disabled={voiceButtonState.disabled}
-								>
-									<VoiceIcon
-										class={`h-5 w-5 ${voiceButtonState.isLoading ? 'animate-spin' : ''}`}
-									/>
-								</button>
-
-								<button
-									type="submit"
-									class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_24px_48px_-26px_rgba(37,99,235,0.75)] transition-all duration-200 hover:scale-105 hover:shadow-[0_30px_60px_-24px_rgba(99,102,241,0.75)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
-									aria-label="Send message"
-									disabled={isSendDisabled}
-								>
-									<Send class="h-5 w-5" />
-								</button>
-							</div>
-						</div>
-					</div>
-
-					<div
-						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500 dark:text-gray-400"
-					>
-						<div class="flex flex-wrap items-center gap-3">
-							{#if isCurrentlyRecording}
-								<span
-									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
-								>
+							<div class="flex flex-wrap items-center gap-3">
+								{#if isCurrentlyRecording}
 									<span
-										class="relative flex h-2.5 w-2.5 items-center justify-center"
+										class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
 									>
 										<span
-											class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/60"
-										></span>
-										<span
-											class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
-										></span>
-									</span>
-									<span class="flex items-center gap-1">
-										Listening
-										<span class="font-semibold tracking-wide">
-											{formatDuration(recordingDuration)}
+											class="relative flex h-2.5 w-2.5 items-center justify-center"
+										>
+											<span
+												class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/60"
+											></span>
+											<span
+												class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
+											></span>
+										</span>
+										<span class="flex items-center gap-1">
+											Listening
+											<span class="font-semibold tracking-wide">
+												{formatDuration(recordingDuration)}
+											</span>
 										</span>
 									</span>
-								</span>
-							{:else if isTranscribing}
-								<span class="flex items-center gap-2">
-									<Loader2 class="h-4 w-4 animate-spin" />
-									<span>Transcribing your voice note…</span>
-								</span>
-							{:else}
-								<span>Press Enter to send · Shift + Enter for a new line</span>
-							{/if}
+								{:else if isTranscribing}
+									<span class="flex items-center gap-2">
+										<Loader2 class="h-4 w-4 animate-spin" />
+										<span>Transcribing your voice note…</span>
+									</span>
+								{:else}
+									<span>Press Enter to send · Shift + Enter for a new line</span>
+								{/if}
 
-							{#if canUseLiveTranscript && isCurrentlyRecording}
+								{#if canUseLiveTranscript && isCurrentlyRecording}
+									<span
+										class="hidden rounded-full border border-blue-200/40 bg-blue-50/60 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+									>
+										Live transcript
+									</span>
+								{/if}
+							</div>
+
+							{#if voiceError}
 								<span
-									class="hidden rounded-full border border-blue-200/40 bg-blue-50/60 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+									role="alert"
+									class="flex items-center gap-2 rounded-full bg-rose-50/80 px-3 py-1 text-rose-500 dark:bg-rose-900/20 dark:text-rose-300"
 								>
-									Live transcript
+									{voiceError}
 								</span>
 							{/if}
 						</div>
+					</form>
 
-						{#if voiceError}
-							<span
-								role="alert"
-								class="flex items-center gap-2 rounded-full bg-rose-50/80 px-3 py-1 text-rose-500 dark:bg-rose-900/20 dark:text-rose-300"
-							>
-								{voiceError}
-							</span>
-						{/if}
-					</div>
-				</form>
-
-				{#if isStreaming}
-					<div
-						class="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
-						aria-live="polite"
-					>
-						<div class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
-						<span>Assistant is composing a response…</span>
-					</div>
-				{/if}
+					{#if isStreaming}
+						<div
+							class="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+							aria-live="polite"
+						>
+							<div class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
+							<span>Assistant is composing a response…</span>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 
 		{#if sessionDialog}
 			<div
-				class="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-white/65 via-white/55 to-white/45 backdrop-blur-xl dark:from-gray-950/80 dark:via-gray-950/70 dark:to-gray-900/70"
+				class="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-xl dark:bg-slate-950/85"
 				role="presentation"
 			>
 				<div
 					bind:this={sessionDialogElement}
-					class="w-[min(92%,420px)] rounded-3xl border border-white/40 bg-white/90 p-6 shadow-[0_32px_90px_-42px_rgba(15,23,42,0.65)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-950/90"
+					class="w-[min(92%,420px)] rounded-3xl border border-slate-200/60 bg-white/95 p-6 shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/95"
 					role="dialog"
 					aria-modal="true"
 					aria-labelledby={sessionDialog === 'rename'
@@ -1454,7 +1505,7 @@
 								<input
 									bind:this={renameInputElement}
 									type="text"
-									class="w-full rounded-2xl border border-gray-200/70 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/30"
+									class="w-full rounded-2xl border border-slate-200/70 bg-white/90 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200/40 dark:border-slate-700/70 dark:bg-slate-900/80 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/30"
 									bind:value={renameInputValue}
 									placeholder="Project catch-up, Strategy sync…"
 									maxlength="120"
@@ -1476,7 +1527,7 @@
 							<div class="flex items-center justify-end gap-3">
 								<button
 									type="button"
-									class="rounded-full px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+									class="rounded-full border border-slate-200/60 bg-white/70 px-5 py-2 text-sm font-medium text-gray-700 backdrop-blur transition hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-60"
 									on:click={closeSessionDialogs}
 									disabled={isSessionActionLoading}
 								>
@@ -1484,7 +1535,7 @@
 								</button>
 								<button
 									type="submit"
-									class="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-[0_20px_48px_-30px_rgba(59,130,246,0.75)] transition hover:scale-[1.03] hover:shadow-[0_26px_56px_-26px_rgba(79,70,229,0.7)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+									class="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_-16px_rgba(59,130,246,0.6)] transition hover:scale-[1.02] hover:shadow-[0_16px_32px_-14px_rgba(79,70,229,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
 									disabled={isSessionActionLoading || !renameInputValue.trim()}
 								>
 									{isSessionActionLoading ? 'Saving…' : 'Save'}
@@ -1513,7 +1564,7 @@
 							<div class="flex items-center justify-end gap-3">
 								<button
 									type="button"
-									class="rounded-full px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+									class="rounded-full border border-slate-200/60 bg-white/70 px-5 py-2 text-sm font-medium text-gray-700 backdrop-blur transition hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-60"
 									on:click={closeSessionDialogs}
 									disabled={isSessionActionLoading}
 								>
@@ -1521,7 +1572,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded-full bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_20px_48px_-30px_rgba(244,63,94,0.75)] transition hover:scale-[1.03] hover:shadow-[0_26px_56px_-26px_rgba(225,29,72,0.7)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+									class="rounded-full bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_-16px_rgba(244,63,94,0.6)] transition hover:scale-[1.02] hover:shadow-[0_16px_32px_-14px_rgba(225,29,72,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
 									on:click={confirmDeleteSession}
 									disabled={isSessionActionLoading}
 								>

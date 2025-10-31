@@ -17,7 +17,7 @@ export class DailyBriefGenerator {
 	) {
 		this.smartLLM = new SmartLLMService({
 			supabase: repository.supabase,
-			httpReferer: 'https://buildos.io',
+			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Daily Brief Generator'
 		});
 		this.projectBriefGenerator = new ProjectBriefGenerator(repository, this.smartLLM);

@@ -3,7 +3,6 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import {
-		Brain,
 		FolderOpen,
 		Home,
 		StickyNote,
@@ -23,13 +22,15 @@
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
+	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import {
 		brainDumpV2Store,
 		isModalOpen as brainDumpModalIsOpen
 	} from '$lib/stores/brain-dump-v2.store';
 	import { logout } from '$lib/utils/auth';
 	import { toastService } from '$lib/stores/toast.store';
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
+	import type { ChatContextType } from '@buildos/shared-types';
 
 	type Props = {
 		user: any | null;
@@ -56,6 +57,7 @@
 	let lastLogoutAttempt = $state(0);
 	let previousPath = $state('');
 	let isDark = $state(false);
+	let showChatModal = $state(false);
 
 	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	const currentPath = $derived($page.url.pathname);
@@ -64,6 +66,34 @@
 		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null
 	);
 	const modalProject = $derived(storeProject ?? routeProject ?? null);
+
+	// Context-aware chat configuration based on current page
+	const chatContextType = $derived.by((): ChatContextType => {
+		// Task page: /projects/[id]/tasks/[taskId]
+		if (currentPath.match(/^\/projects\/[^/]+\/tasks\/[^/]+/)) {
+			return 'task';
+		}
+		// Project page: /projects/[id]
+		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
+			return 'project_update';
+		}
+		// Default: global context
+		return 'global';
+	});
+
+	const chatEntityId = $derived.by((): string | undefined => {
+		// Task page: return task ID
+		const taskMatch = currentPath.match(/^\/projects\/[^/]+\/tasks\/([^/]+)/);
+		if (taskMatch) {
+			return taskMatch[1];
+		}
+		// Project page: return project ID
+		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
+			return $page.data.project.id;
+		}
+		// No entity
+		return undefined;
+	});
 
 	const NAV_ITEMS = [
 		{ href: '/', label: 'Dashboard', icon: Home },
@@ -185,6 +215,15 @@
 		brainDumpV2Store.closeModal();
 	}
 
+	function handleOpenChat() {
+		closeAllMenus();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
+
 	onMount(() => {
 		if (!browser) return;
 
@@ -219,7 +258,7 @@
 <nav
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-colors"
+	class="sticky top-0 z-0 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-colors"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2">
@@ -228,20 +267,11 @@
 				<!-- Logo -->
 				<div class="flex-shrink-0 flex items-center">
 					<a href="/" class="flex items-center" on:click={() => handleMenuItemClick('/')}>
-						<!-- Logo - switches based on theme -->
-						{#if isDark}
-							<img
-								src="\blogs\BuildOS-White (246 x 80 px).png"
-								alt="BuildOS"
-								style="width: 80%;"
-							/>
-						{:else}
-							<img
-								src="\blogs\BuildOS-Black (246 x 80 px).png"
-								alt="BuildOS"
-								style="width: 80%;"
-							/>
-						{/if}
+						<span class="sr-only">BuildOS</span>
+						<span class="buildos-logo" aria-hidden="true">
+							<span class="buildos-logo__word">Build</span>
+							<span class="buildos-logo__accent">OS</span>
+						</span>
 					</a>
 				</div>
 
@@ -321,6 +351,20 @@
 						</div>
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">Brain Dump</span>
+					</Button>
+
+					<!-- Multi-Agent Chat Button -->
+					<Button
+						variant="outline"
+						size="sm"
+						on:click={handleOpenChat}
+						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
+						aria-label="Open Multi-Agent Chat"
+						title="Multi-Agent System - Planner + Executor Agents"
+						btnType="container"
+					>
+						<Sparkles class="w-4 h-4 transition-transform group-hover:scale-110" />
+						<span class="hidden xl:inline-block leading-none">Agents</span>
 					</Button>
 				{/if}
 
@@ -759,12 +803,69 @@
 	project={modalProject}
 	showNavigationOnSuccess={true}
 	on:close={handleBrainDumpClose}
+	on:openAgent={handleOpenChat}
 />
+
+<!-- Multi-Agent Chat Modal -->
+{#if showChatModal && dev}
+	<AgentChatModal
+		isOpen={showChatModal}
+		contextType={chatContextType}
+		entityId={chatEntityId}
+		onClose={handleChatClose}
+	/>
+{/if}
 
 <style>
 	/* Optimized logo animation - replaces heavy video */
 	.logo-container {
 		position: relative;
+	}
+
+	/* Recreated BuildOS wordmark as text to replace legacy image */
+	.buildos-logo {
+		display: inline-flex;
+		align-items: baseline;
+		font-family:
+			'SF Pro Display',
+			'SF Pro Text',
+			'Helvetica Neue',
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			sans-serif;
+		font-weight: 700;
+		font-size: clamp(1.55rem, 2.4vw, 1.85rem);
+		letter-spacing: -0.045em;
+		line-height: 1;
+		gap: 0.05em;
+		padding-inline: 0.1rem;
+	}
+
+	.buildos-logo__word {
+		color: #0f172a;
+		letter-spacing: -0.04em;
+		padding-left: 3px;
+	}
+
+	.buildos-logo__accent {
+		padding-right: 3px;
+		background: linear-gradient(120deg, #1d4ed8 0%, #4338ca 45%, #7c3aed 100%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		letter-spacing: -0.06em;
+		text-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+	}
+
+	:global(.dark) .buildos-logo__word {
+		color: #f8fafc;
+	}
+
+	:global(.dark) .buildos-logo__accent {
+		/* background: linear-gradient(118deg, #bfdbfe 0%, #c7d2fe 35%, #ddd6fe 65%, #ede9fe 100%); */
+		text-shadow: 0 10px 22px rgba(148, 163, 246, 0.45);
+		filter: drop-shadow(0 6px 14px rgba(29, 78, 216, 0.28));
 	}
 
 	.logo-glow {

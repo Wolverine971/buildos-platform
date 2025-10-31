@@ -167,6 +167,114 @@ When managing calendar events for tasks, follow these guidelines:
     3. Confirm new schedule with user
 ```
 
+## Project Update Tool
+
+### `update_project`
+
+A flexible tool for updating any project field including basic information, calendar settings, and core dimensions.
+
+```typescript
+// Usage Examples
+
+// Update basic fields
+{
+  project_id: "project-uuid",
+  updates: {
+    name: "Updated Project Name",
+    description: "New description",
+    status: "completed",
+    end_date: "2024-12-31"
+  }
+}
+
+// Update context
+{
+  project_id: "project-uuid",
+  updates: {
+    context: "Additional project context and background information..."
+  }
+}
+
+// Update calendar settings
+{
+  project_id: "project-uuid",
+  updates: {
+    calendar_sync_enabled: true,
+    calendar_color_id: "7"
+  }
+}
+
+// Update core dimensions (9 dimensions framework)
+{
+  project_id: "project-uuid",
+  updates: {
+    core_goals_momentum: "Clear milestone progression defined",
+    core_people_bonds: "Team collaboration patterns established",
+    core_power_resources: "Budget and resources allocated"
+  }
+}
+
+// Returns
+{
+  project: { ... },  // Updated project data
+  message: "Updated project \"Project Name\": name, description, status"
+}
+```
+
+### Updatable Fields
+
+The tool supports updating any of these project fields:
+
+**Basic Information:**
+
+- `name` - Project name
+- `description` - Short description
+- `executive_summary` - Executive summary
+- `context` - Detailed context and background
+- `status` - Project status (active, paused, completed, archived)
+- `start_date` - Start date (YYYY-MM-DD)
+- `end_date` - End date (YYYY-MM-DD)
+- `tags` - Array of tags
+
+**Calendar Settings:**
+
+- `calendar_color_id` - Google Calendar color ID
+- `calendar_sync_enabled` - Enable/disable calendar sync
+
+**Core Dimensions (9 Dimensions Framework):**
+
+- `core_goals_momentum` - Goals & Momentum
+- `core_harmony_integration` - Harmony & Integration
+- `core_integrity_ideals` - Integrity & Ideals
+- `core_meaning_identity` - Meaning & Identity
+- `core_opportunity_freedom` - Opportunity & Freedom
+- `core_people_bonds` - People & Bonds
+- `core_power_resources` - Power & Resources
+- `core_reality_understanding` - Reality & Understanding
+- `core_trust_safeguards` - Trust & Safeguards
+
+### Validation
+
+The tool includes comprehensive validation:
+
+- **Empty updates check**: Requires at least one field to update
+- **Field whitelist**: Only allows updating valid, non-protected fields
+- **Authorization**: Verifies user has access to the project
+- **Clear error messages**: Provides helpful feedback for invalid requests
+
+### Example Error Messages
+
+```typescript
+// No fields provided
+'No fields provided to update. Please specify at least one field.';
+
+// Invalid field
+'Invalid field(s): invalid_field. Allowed fields: name, description, ...';
+
+// Project not found
+'Project not found or unauthorized';
+```
+
 ## Edge Cases Handled Automatically
 
 The API endpoints handle these complex scenarios automatically:
@@ -196,14 +304,14 @@ The API endpoints handle these complex scenarios automatically:
 
 ## API Endpoints Used
 
-| Operation      | Endpoint                            | Method | Key Parameters                 |
-| -------------- | ----------------------------------- | ------ | ------------------------------ |
-| Create Task    | `/api/projects/[id]/tasks`          | POST   | title, description, start_date |
-| Update Task    | `/api/projects/[id]/tasks/[taskId]` | PATCH  | Any field + addTaskToCalendar  |
-| Delete Task    | `/api/projects/[id]/tasks/[taskId]` | DELETE | deletion_scope                 |
-| Create Note    | `/api/notes`                        | POST   | title, content, project_id     |
-| Update Note    | `/api/notes/[id]`                   | PATCH  | title, content                 |
-| Update Project | `/api/projects/[id]`                | PATCH  | context, name, etc.            |
+| Operation      | Endpoint                            | Method | Key Parameters                                                  |
+| -------------- | ----------------------------------- | ------ | --------------------------------------------------------------- |
+| Create Task    | `/api/projects/[id]/tasks`          | POST   | title, description, start_date                                  |
+| Update Task    | `/api/projects/[id]/tasks/[taskId]` | PATCH  | Any field + addTaskToCalendar                                   |
+| Delete Task    | `/api/projects/[id]/tasks/[taskId]` | DELETE | deletion_scope                                                  |
+| Create Note    | `/api/notes`                        | POST   | title, content, project_id                                      |
+| Update Note    | `/api/notes/[id]`                   | PATCH  | title, content                                                  |
+| Update Project | `/api/projects/[id]`                | PATCH  | Any field: name, description, context, status, dates, tags, etc |
 
 ## Type Safety
 
@@ -214,10 +322,40 @@ import type {
 	ListTasksArgs,
 	CreateTaskArgs,
 	UpdateTaskArgs,
+	UpdateProjectArgs,
 	GetTaskCalendarEventsArgs,
 	UpdateOrScheduleTaskArgs
 	// ... all other arg types
 } from '@buildos/shared-types';
+```
+
+### UpdateProjectArgs Type
+
+```typescript
+interface UpdateProjectArgs {
+	project_id: string;
+	updates: {
+		name?: string;
+		description?: string;
+		executive_summary?: string;
+		context?: string;
+		status?: 'active' | 'paused' | 'completed' | 'archived';
+		start_date?: string;
+		end_date?: string;
+		tags?: string[];
+		calendar_color_id?: string;
+		calendar_sync_enabled?: boolean;
+		core_goals_momentum?: string;
+		core_harmony_integration?: string;
+		core_integrity_ideals?: string;
+		core_meaning_identity?: string;
+		core_opportunity_freedom?: string;
+		core_people_bonds?: string;
+		core_power_resources?: string;
+		core_reality_understanding?: string;
+		core_trust_safeguards?: string;
+	};
+}
 ```
 
 ## Error Handling

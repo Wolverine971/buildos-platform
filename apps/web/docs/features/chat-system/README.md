@@ -347,6 +347,49 @@ Compress a long conversation.
 }
 ```
 
+## 🔧 Admin Monitoring System
+
+The BuildOS Chat System includes a comprehensive admin monitoring interface for tracking sessions, analyzing multi-agent conversations, and monitoring system performance.
+
+### Key Features
+
+- **📊 Real-time Dashboard**: KPIs for sessions, tokens, agents, and costs
+- **🔍 Session Management**: Filter, search, and inspect all chat sessions
+- **🤖 Multi-Agent Visibility**: View planner-executor conversations
+- **⚙️ Tool Monitoring**: Track all tool executions and success rates
+- **💰 Cost Analytics**: Token usage tracking with cost estimates
+- **⚡ Quick Audit Modal**: Pop-out modal for rapid session inspection
+
+### Quick Start
+
+1. Navigate to `/admin/chat` (requires admin permission)
+2. View real-time dashboard with 8 KPI metrics
+3. Click "Sessions" to browse all conversations
+4. Click any session to open detail modal
+5. Review agent plans, executor conversations, and tool executions
+
+### Admin Routes
+
+```bash
+/admin/chat                 # Dashboard with KPIs
+/admin/chat/sessions        # Session list with filters
+```
+
+### Admin API Endpoints
+
+```bash
+GET /api/admin/chat/dashboard      # Dashboard metrics
+GET /api/admin/chat/sessions       # Paginated session list
+GET /api/admin/chat/sessions/[id]  # Detailed session info
+GET /api/admin/chat/export         # Data export (JSON/CSV)
+```
+
+### Documentation
+
+For complete admin monitoring documentation, see:
+
+- **[Admin Monitoring Guide](./ADMIN_MONITORING.md)** - Full implementation details
+
 ## 🚦 Deployment Checklist
 
 - [x] Run database migration: `supabase migration up`
@@ -357,6 +400,7 @@ Compress a long conversation.
 - [x] Test SSE streaming
 - [x] Verify token usage
 - [x] Check tool permissions
+- [x] Grant admin access: Add users to `admin_users` table
 
 ## 🔮 Future Enhancements
 
@@ -371,8 +415,9 @@ Compress a long conversation.
 
 ### Core Documentation
 
-- [Tool Executor API Pattern](./TOOL_EXECUTOR_API_PATTERN.md) - **NEW: API-based tool implementation**
-- [LLM Tool Instructions](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - **NEW: Guide for LLM tool usage**
+- [Admin Monitoring Guide](./ADMIN_MONITORING.md) - **Admin interface for chat monitoring**
+- [Tool Executor API Pattern](./TOOL_EXECUTOR_API_PATTERN.md) - API-based tool implementation
+- [LLM Tool Instructions](/apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md) - Guide for LLM tool usage
 - [Chat Architecture](./ARCHITECTURE.md) - System architecture overview
 - [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Phase completion details
 

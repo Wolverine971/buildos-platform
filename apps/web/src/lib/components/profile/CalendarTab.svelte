@@ -32,8 +32,7 @@
 	import { startCalendarAnalysis as startCalendarAnalysisNotification } from '$lib/services/calendar-analysis-notification.bridge';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
-	// import { getSupabase } from '$lib/supabase';
-	import { getSupabase } from '$lib/supabase-helpers';
+	import { supabase } from '$lib/supabase';
 	import CalendarDisconnectModal from '$lib/components/calendar/CalendarDisconnectModal.svelte';
 	import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
 	import { invalidate } from '$app/navigation';
@@ -325,7 +324,7 @@
 
 	async function loadCalendarProjects() {
 		try {
-			const supabase = getSupabase();
+			if (!supabase) return; // Guard for SSR
 			const { data, error } = await supabase
 				.from('projects')
 				.select('id, name, created_at, description, task_count')
@@ -363,7 +362,10 @@
 	async function handleDisconnectClick() {
 		checkingDependencies = true;
 		try {
-			const supabase = getSupabase();
+			if (!supabase) {
+				toastService.error('Unable to access database');
+				return;
+			}
 			const service = new CalendarDisconnectService(supabase);
 			calendarDependencies = await service.checkCalendarDependencies(data.user.id);
 
@@ -395,7 +397,10 @@
 	async function disconnectCalendar(removeData: boolean) {
 		disconnecting = true;
 		try {
-			const supabase = getSupabase();
+			if (!supabase) {
+				toastService.error('Unable to access database');
+				return;
+			}
 
 			// If removeData is true, remove calendar data first
 			if (removeData) {

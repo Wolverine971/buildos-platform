@@ -132,6 +132,36 @@
 			]
 		},
 		{
+			"file": "src/lib/services/agent-context-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentContextService"]
+		},
+		{
+			"file": "src/lib/services/agent-conversation-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentConversationService"]
+		},
+		{
+			"file": "src/lib/services/agent-executor-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentExecutorService"]
+		},
+		{
+			"file": "src/lib/services/agent-orchestrator.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentOrchestrator"]
+		},
+		{
+			"file": "src/lib/services/agent-planner-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentPlannerService"]
+		},
+		{
 			"file": "src/lib/services/brain-dump-notification.bridge.ts",
 			"type": "service",
 			"components": [],
@@ -234,6 +264,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["DashboardDataService", "dashboardDataService"]
+		},
+		{
+			"file": "src/lib/services/draft.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["DraftService"]
 		},
 		{
 			"file": "src/lib/services/dunning-service.ts",

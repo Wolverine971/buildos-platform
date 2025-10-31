@@ -1,5 +1,5 @@
-// apps/web/src/lib/database.schema.ts
-// Generated on: 2025-10-28T21:40:36.636Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2025-10-31T01:14:52.060Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -16,6 +16,86 @@ export type DatabaseSchema = {
 		created_at: string;
 		granted_at: string | null;
 		granted_by: string | null;
+		user_id: string;
+	};
+	agent_chat_messages: {
+		agent_session_id: string;
+		content: string;
+		created_at: string;
+		id: string;
+		model_used: string | null;
+		parent_user_session_id: string;
+		role: string;
+		sender_agent_id: string | null;
+		sender_type: string;
+		tokens_used: number | null;
+		tool_call_id: string | null;
+		tool_calls: Json | null;
+		user_id: string;
+	};
+	agent_chat_sessions: {
+		completed_at: string | null;
+		context_type: string | null;
+		created_at: string;
+		entity_id: string | null;
+		executor_agent_id: string | null;
+		id: string;
+		initial_context: Json;
+		message_count: number;
+		parent_session_id: string;
+		plan_id: string | null;
+		planner_agent_id: string;
+		session_type: string;
+		status: string;
+		step_number: number | null;
+		user_id: string;
+	};
+	agent_executions: {
+		agent_session_id: string;
+		completed_at: string | null;
+		created_at: string;
+		duration_ms: number | null;
+		error: string | null;
+		executor_agent_id: string;
+		id: string;
+		message_count: number | null;
+		plan_id: string;
+		result: Json | null;
+		status: string;
+		step_number: number;
+		success: boolean;
+		task: Json;
+		tokens_used: number | null;
+		tool_calls_made: number | null;
+		tools_available: Json;
+		user_id: string;
+	};
+	agent_plans: {
+		completed_at: string | null;
+		created_at: string;
+		id: string;
+		planner_agent_id: string;
+		session_id: string;
+		status: string;
+		steps: Json;
+		strategy: string;
+		updated_at: string;
+		user_id: string;
+		user_message: string;
+	};
+	agents: {
+		available_tools: Json | null;
+		completed_at: string | null;
+		created_at: string;
+		created_for_plan: string | null;
+		created_for_session: string;
+		id: string;
+		model_preference: string;
+		name: string;
+		permissions: string;
+		status: string;
+		system_prompt: string;
+		type: string;
 		user_id: string;
 	};
 	api_keys: {
@@ -306,7 +386,9 @@ export type DatabaseSchema = {
 		error_code: string | null;
 		error_message: string | null;
 		id: string;
+		message_type: string | null;
 		metadata: Json | null;
+		operation_ids: string[] | null;
 		prompt_tokens: number | null;
 		role: string;
 		session_id: string;
@@ -315,10 +397,38 @@ export type DatabaseSchema = {
 		tool_name: string | null;
 		tool_result: Json | null;
 		total_tokens: number | null;
+		user_id: string;
+	};
+	chat_operations: {
+		after_data: Json | null;
+		batch_id: string | null;
+		before_data: Json | null;
+		chat_session_id: string;
+		conditions: Json | null;
+		created_at: string | null;
+		data: Json;
+		duration_ms: number | null;
+		enabled: boolean | null;
+		entity_id: string | null;
+		error_message: string | null;
+		executed_at: string | null;
+		id: string;
+		operation_type: string;
+		reasoning: string | null;
+		ref: string | null;
+		result: Json | null;
+		search_query: string | null;
+		sequence_number: number | null;
+		status: string | null;
+		table_name: string;
+		user_id: string;
 	};
 	chat_sessions: {
+		agent_metadata: Json | null;
 		archived_at: string | null;
+		auto_accept_operations: boolean | null;
 		auto_title: string | null;
+		chat_type: string | null;
 		compressed_at: string | null;
 		context_type: string;
 		created_at: string | null;
@@ -333,6 +443,24 @@ export type DatabaseSchema = {
 		total_tokens_used: number | null;
 		updated_at: string | null;
 		user_id: string;
+	};
+	chat_sessions_daily_briefs: {
+		chat_session_id: string;
+		daily_brief_id: string;
+		id: string;
+		linked_at: string | null;
+	};
+	chat_sessions_projects: {
+		chat_session_id: string;
+		id: string;
+		linked_at: string | null;
+		project_id: string;
+	};
+	chat_sessions_tasks: {
+		chat_session_id: string;
+		id: string;
+		linked_at: string | null;
+		task_id: string;
 	};
 	chat_tool_executions: {
 		arguments: Json;
@@ -411,6 +539,33 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		valid_from: string | null;
 		valid_until: string | null;
+	};
+	draft_tasks: {
+		completed_at: string | null;
+		created_at: string | null;
+		deleted_at: string | null;
+		dependencies: string[] | null;
+		description: string | null;
+		details: string | null;
+		draft_project_id: string;
+		duration_minutes: number | null;
+		finalized_task_id: string | null;
+		id: string;
+		outdated: boolean | null;
+		parent_task_id: string | null;
+		priority: string | null;
+		recurrence_end_source: string | null;
+		recurrence_ends: string | null;
+		recurrence_pattern: string | null;
+		source: string | null;
+		source_calendar_event_id: string | null;
+		start_date: string | null;
+		status: string | null;
+		task_steps: Json | null;
+		task_type: string | null;
+		title: string;
+		updated_at: string | null;
+		user_id: string;
 	};
 	email_attachments: {
 		cid: string | null;
@@ -809,6 +964,40 @@ export type DatabaseSchema = {
 		project_id: string;
 		template_id: string | null;
 		updated_at: string;
+		user_id: string;
+	};
+	project_drafts: {
+		calendar_color_id: string | null;
+		calendar_settings: Json | null;
+		calendar_sync_enabled: boolean | null;
+		chat_session_id: string | null;
+		completed_at: string | null;
+		context: string | null;
+		core_goals_momentum: string | null;
+		core_harmony_integration: string | null;
+		core_integrity_ideals: string | null;
+		core_meaning_identity: string | null;
+		core_opportunity_freedom: string | null;
+		core_people_bonds: string | null;
+		core_power_resources: string | null;
+		core_reality_understanding: string | null;
+		core_trust_safeguards: string | null;
+		created_at: string | null;
+		description: string | null;
+		dimensions_covered: string[] | null;
+		end_date: string | null;
+		executive_summary: string | null;
+		finalized_project_id: string | null;
+		id: string;
+		name: string | null;
+		question_count: number | null;
+		slug: string | null;
+		source: string | null;
+		source_metadata: Json | null;
+		start_date: string | null;
+		status: string | null;
+		tags: string[] | null;
+		updated_at: string | null;
 		user_id: string;
 	};
 	project_questions: {
@@ -1406,6 +1595,11 @@ export type DatabaseSchema = {
 export const tableNames = [
 	'admin_analytics',
 	'admin_users',
+	'agent_chat_messages',
+	'agent_chat_sessions',
+	'agent_executions',
+	'agent_plans',
+	'agents',
 	'api_keys',
 	'beta_event_attendance',
 	'beta_events',
@@ -1424,12 +1618,17 @@ export const tableNames = [
 	'chat_compressions',
 	'chat_context_cache',
 	'chat_messages',
+	'chat_operations',
 	'chat_sessions',
+	'chat_sessions_daily_briefs',
+	'chat_sessions_projects',
+	'chat_sessions_tasks',
 	'chat_tool_executions',
 	'cron_logs',
 	'customer_subscriptions',
 	'daily_briefs',
 	'discount_codes',
+	'draft_tasks',
 	'email_attachments',
 	'email_logs',
 	'email_recipients',
@@ -1456,6 +1655,7 @@ export const tableNames = [
 	'project_brief_templates',
 	'project_calendars',
 	'project_daily_briefs',
+	'project_drafts',
 	'project_questions',
 	'project_synthesis',
 	'projects',

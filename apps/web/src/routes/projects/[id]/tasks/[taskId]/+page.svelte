@@ -375,7 +375,7 @@ What would you like help with?`;
 	<header
 		class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 sticky {isDeleted
 			? 'top-[32px]'
-			: 'top-0'} z-30"
+			: 'top-0'} z-0"
 	>
 		<div class="max-w-6xl mx-auto px-4">
 			<div class="flex items-center justify-between h-12">
@@ -904,7 +904,7 @@ What would you like help with?`;
 {#if !isDeleted}
 	<button
 		on:click={openChatModal}
-		class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+		class="fixed bottom-6 right-6 z-0 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30"
 		aria-label="Chat about this task"
 		title="Chat (⌘K)"
 	>

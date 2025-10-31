@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatMessage, ChatSession, ChatCompression, LLMMessage } from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
+import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
 export class ChatCompressionService {
 	private llmService: SmartLLMService;
@@ -30,7 +31,9 @@ export class ChatCompressionService {
 			const relevantMessages = messages.slice(0, 5);
 
 			// Create prompt for title generation
-			const prompt = `Based on the following conversation, generate a concise, descriptive title (max 50 characters):
+			const systemPrompt =
+				'You are a helpful assistant that generates concise titles for conversations.';
+			const userPrompt = `Based on the following conversation, generate a concise, descriptive title (max 50 characters):
 
 ${relevantMessages.map((m) => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}
 
@@ -42,10 +45,21 @@ Title requirements:
 
 Title:`;
 
+			// Save prompt for audit
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType: 'chat-compression-title-generation',
+				metadata: {
+					sessionId,
+					messageCount: relevantMessages.length,
+					userId: userId || 'system'
+				}
+			});
+
 			const titleResponse = await this.llmService.generateText({
-				prompt: prompt,
-				systemPrompt:
-					'You are a helpful assistant that generates concise titles for conversations.',
+				prompt: userPrompt,
+				systemPrompt,
 				userId: userId || 'system',
 				profile: 'speed',
 				temperature: 0.3,
@@ -127,7 +141,9 @@ Title:`;
 			}
 
 			// Create compression prompt
-			const compressionPrompt = `Compress the following conversation into a concise summary that preserves key information, decisions, and context. Target approximately ${Math.floor(targetTokens * 0.3)} tokens.
+			const systemPrompt =
+				'You are an expert at compressing conversations while preserving essential information.';
+			const userPrompt = `Compress the following conversation into a concise summary that preserves key information, decisions, and context. Target approximately ${Math.floor(targetTokens * 0.3)} tokens.
 
 Conversation to compress:
 ${toCompress.map((m) => `${m.role}: ${m.content}`).join('\n\n')}
@@ -141,10 +157,23 @@ Requirements:
 
 Compressed summary:`;
 
+			// Save prompt for audit
+			await savePromptForAudit({
+				systemPrompt,
+				userPrompt,
+				scenarioType: 'chat-compression-conversation',
+				metadata: {
+					sessionId,
+					messagesToCompress: toCompress.length,
+					targetTokens,
+					currentTokens,
+					userId: userId || 'system'
+				}
+			});
+
 			const compressionResponse = await this.llmService.generateText({
-				prompt: compressionPrompt,
-				systemPrompt:
-					'You are an expert at compressing conversations while preserving essential information.',
+				prompt: userPrompt,
+				systemPrompt,
 				userId: userId || 'system',
 				profile: 'balanced',
 				temperature: 0.2,
@@ -370,16 +399,29 @@ Compressed summary:`;
 	): Promise<string> {
 		const content = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
-		const prompt = `Summarize this conversation segment concisely, preserving key points and decisions:
+		const systemPrompt = 'Create concise summaries that preserve essential information.';
+		const userPrompt = `Summarize this conversation segment concisely, preserving key points and decisions:
 Context: ${contextType}
 Messages: ${content}
 
 Summary (max 100 words):`;
 
+		// Save prompt for audit
+		await savePromptForAudit({
+			systemPrompt,
+			userPrompt,
+			scenarioType: 'chat-compression-segment',
+			metadata: {
+				contextType,
+				messageCount: messages.length,
+				userId: userId || 'system'
+			}
+		});
+
 		try {
 			const response = await this.llmService.generateText({
-				prompt: prompt,
-				systemPrompt: 'Create concise summaries that preserve essential information.',
+				prompt: userPrompt,
+				systemPrompt,
 				userId: userId || 'system',
 				profile: 'speed',
 				temperature: 0.2,

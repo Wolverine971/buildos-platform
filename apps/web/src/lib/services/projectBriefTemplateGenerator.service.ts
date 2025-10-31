@@ -34,7 +34,7 @@ export class ProjectBriefTemplateGeneratorService {
 	constructor(private supabase: SupabaseClient<Database>) {
 		this.smartLLM = new SmartLLMService({
 			supabase,
-			httpReferer: 'https://buildos.io',
+			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Brief Template Generator'
 		});
 		this.promptTemplateService = new PromptTemplateService(supabase);

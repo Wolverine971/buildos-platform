@@ -24,7 +24,7 @@
 	import { createFieldDiff } from '$lib/utils/diff';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DiffView from '$lib/components/ui/DiffView.svelte';
-	import { getSupabase } from '$lib/supabase-helpers';
+	import { supabase } from '$lib/supabase';
 
 	export let parseResults: BrainDumpParseResult;
 	export let disabledOperations: Set<string>;
@@ -93,8 +93,6 @@
 
 		loadingExistingData = true;
 		try {
-			const supabase = await getSupabase();
-
 			// Initialize item states for all update operations
 			const initialStates: LoadingItem[] = [];
 			const projectIds = new Set<string>();

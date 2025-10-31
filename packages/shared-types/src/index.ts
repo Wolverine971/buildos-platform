@@ -19,6 +19,9 @@ export * from './brief.types';
 // Export chat system types
 export * from './chat.types';
 
+// Export agent types
+export * from './agent.types';
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
 	id: string;

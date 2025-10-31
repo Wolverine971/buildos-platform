@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/brain-dump/SuccessView.svelte -->
 <script lang="ts">
-	import { Check, ExternalLink, FileText, Sparkles, ArrowRight } from 'lucide-svelte';
+	import { Check, ExternalLink, FileText, Sparkles, ArrowRight, Brain } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OperationErrorsDisplay from './OperationErrorsDisplay.svelte';
@@ -40,6 +40,11 @@
 	function handleGoToProject(e: Event) {
 		e.stopPropagation();
 		dispatch('goToProject');
+	}
+
+	function handleContinueWithAgent(e: Event) {
+		e.stopPropagation();
+		dispatch('continueWithAgent', { projectId: successData.projectId });
 	}
 </script>
 
@@ -190,6 +195,19 @@
 
 			<!-- Secondary Actions -->
 			<div class="space-y-2">
+				{#if successData.projectId}
+					<Button
+						on:click={handleContinueWithAgent}
+						variant="outline"
+						size="md"
+						fullWidth
+						class="text-sm sm:text-base bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+					>
+						<Brain class="w-4 h-4 mr-2" />
+						Continue with AI Agent
+					</Button>
+				{/if}
+
 				<Button
 					on:click={handleStartNew}
 					variant="outline"

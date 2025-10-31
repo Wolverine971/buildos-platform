@@ -17,6 +17,1368 @@ Each entry includes:
 
 ---
 
+## 2025-10-30 - SmartLLMService streamText() Model Selection Bug
+
+**Severity**: Medium
+
+### Root Cause
+
+The `streamText()` method in `SmartLLMService` was passing incorrect parameters to `selectTextModels()`:
+
+```typescript
+// ❌ INCORRECT (line 1544-1548)
+const preferredModels = this.selectTextModels(
+    profile,
+    'chat',                    // Wrong: should be a number
+    { maxLatency: 2000 }
+);
+
+// ✅ EXPECTED signature
+private selectTextModels(
+    profile: TextProfile,
+    estimatedLength: number,   // Should receive a NUMBER
+    requirements?: any
+): string[]
+```
+
+**Impact**:
+- Model selection logic based on content length was broken
+- String `'chat'` compared against numeric thresholds always failed (`'chat' > 3000` = false, `'chat' < 500` = false)
+- Always used base profile models without length-based optimization
+- Could use overpowered (expensive) models for short messages
+- Could use underpowered models for long content
+- Requirements object `{ maxLatency: 2000 }` was ignored
+
+### Fix Description
+
+1. **Calculate estimated length from messages array** (`smart-llm-service.ts:1544-1551`)
+   - Sum up all message content lengths
+   - Pass total length to `estimateResponseLength()` helper
+   - This matches the pattern used in `generateText()` method
+
+2. **Pass correct parameters to selectTextModels()** (`smart-llm-service.ts:1553-1557`)
+   - First param: `profile` (TextProfile) ✓
+   - Second param: `estimatedLength` (number) - now correct
+   - Third param: `{ maxLatency: 2000 }` - preserved default fast response requirement
+
+3. **Declare preferredModels outside try block** (`smart-llm-service.ts:1543-1557`)
+   - Moved model selection outside try-catch so it's accessible in error handling
+   - Ensures error logging has access to the model information
+
+### Files Changed
+
+- `/apps/web/src/lib/services/smart-llm-service.ts` - Fixed `streamText()` method (lines 1544-1558)
+
+### Related Docs
+
+- `/apps/web/docs/technical/services/LLM_USAGE_TRACKING.md` - Documents SmartLLMService usage patterns
+- Method signature at `/apps/web/src/lib/services/smart-llm-service.ts:1193-1197`
+- `estimateResponseLength()` helper at `/apps/web/src/lib/services/smart-llm-service.ts:1327-1335`
+
+### Cross-references
+
+**Affected Systems**:
+- Agent chat streaming (`/api/agent/stream/+server.ts`)
+- Multi-agent conversations (`agent-conversation-service.ts`)
+- Agent planner streaming (`agent-planner-service.ts`)
+- Agent executor streaming (`agent-executor-service.ts`)
+- Agent orchestrator (`agent-orchestrator.service.ts`)
+- Chat API streaming (`/api/chat/stream/+server.ts`)
+
+**Verification**: All services using `streamText()` will now benefit from proper model selection based on conversation length.
+
+---
+
+## 2025-10-30 - Agent Chat Session Replay Missing LLM Responses and Tool Calls
+
+**Severity**: High
+
+### Root Cause
+
+The agent chat admin dashboard (`/admin/chat/sessions`) was only showing user messages, with **no visibility** into:
+
+- LLM responses (assistant messages)
+- Tool calls made by the agent
+- Tool execution results
+- Complete conversation flow
+
+**Four critical issues** identified:
+
+1. **Only Text Events Captured** (`/api/agent/stream/+server.ts:262-264`)
+    - Streaming loop only accumulated `event.type === 'text'`
+    - Tool call and tool result events were streamed to frontend but never captured for database storage
+
+2. **No Data Structures for Tool Tracking** (`/api/agent/stream/+server.ts:237`)
+    - Only `assistantResponse` string existed
+    - Missing: `toolCalls[]` array and `toolResults[]` array
+
+3. **Silent Data Loss for Tool-Only Responses** (`/api/agent/stream/+server.ts:279-286`)
+    - Messages only saved if `assistantResponse.trim()` had content
+    - If LLM made ONLY tool calls (no text), nothing was saved to `chat_messages`
+    - `tool_calls` field never populated even when messages were saved
+
+4. **Admin UI Limited to Available Data** (`SessionDetailModal.svelte:475-512`)
+    - Could only display `message.content` because `tool_calls` and `tool_result` fields were empty
+    - No UI components to render tool execution details
+
+**Technical Details:**
+
+- **Affected Architecture**: Two-table conversation system
+    - `chat_messages` - User-visible conversation (user ↔ assistant) - **read by admin panel**
+    - `agent_chat_messages` - Internal agent-to-agent conversation (planner ↔ executor) - **not visible to admin**
+- **Data Loss Pattern**: Tool calls saved to `agent_chat_messages` but never to `chat_messages`
+- **Impact Scope**:
+    - Admin cannot replay chat sessions
+    - Cannot debug tool execution issues
+    - Cannot see what the agent actually did
+    - Missing tool arguments, results, and success/failure status
+    - Tool-only assistant turns completely lost (silent failure)
+
+**Code Locations:**
+
+- `/api/agent/stream/+server.ts:262-264` - Only text accumulation
+- `/api/agent/stream/+server.ts:237` - Missing tool tracking structures
+- `/api/agent/stream/+server.ts:279-286` - Silent tool-only failure
+- `SessionDetailModal.svelte:475-512` - No tool display components
+- `agent-planner-service.ts:440-450` - Tool events emitted but not captured
+
+**Why LLM Responses Were Lost:**
+
+The planner service correctly emitted all events:
+
+- ✅ `tool_call` events (line 440)
+- ✅ `tool_result` events (line 445)
+- ✅ `text` events for streaming responses
+
+But the API endpoint only captured text:
+
+- ❌ Tool events forwarded to frontend, never saved to DB
+- ❌ Condition `if (assistantResponse.trim())` excluded tool-only turns
+
+### Fix Description
+
+Implemented **comprehensive logging enhancement** following OpenAI message format (Option A):
+
+#### Part 1: Endpoint Enhancement - Capture All Events
+
+**File**: `apps/web/src/routes/api/agent/stream/+server.ts`
+
+**Changes:**
+
+1. **Added Tool Tracking Structures** (line 238-239)
+
+    ```typescript
+    let toolCalls: any[] = []; // Accumulate tool calls for this turn
+    let toolResults: any[] = []; // Accumulate tool results (in same order)
+    ```
+
+2. **Capture Tool Events** (lines 268-276)
+
+    ```typescript
+    // Accumulate tool calls
+    if (event.type === 'tool_call' && event.toolCall) {
+    	toolCalls.push(event.toolCall);
+    }
+
+    // Accumulate tool results
+    if (event.type === 'tool_result' && event.result) {
+    	toolResults.push(event.result);
+    }
+    ```
+
+3. **Enhanced Message Saving** (lines 290-335)
+    - Changed condition: `if (assistantResponse.trim() || toolCalls.length > 0)` (now saves tool-only turns)
+    - Include `tool_calls` field in assistant messages
+    - Save separate tool messages with `role: 'tool'` for each result
+    - Link tool results to their calls via `tool_call_id`
+    - Added error handling with console.error for debugging
+
+**Why This Fixes It:**
+
+- ✅ ALL LLM responses saved (text + tool calls)
+- ✅ Tool-only assistant turns captured (no silent data loss)
+- ✅ Tool results linked to their calls via ID
+- ✅ Follows OpenAI message format standard
+- ✅ Complete conversation preserved for replay
+
+#### Part 2: Admin UI Enhancement - Display Tool Execution
+
+**File**: `apps/web/src/lib/components/admin/SessionDetailModal.svelte`
+
+**Changes:**
+
+1. **Tool Calls Display** (lines 504-549)
+    - Shows tool calls on assistant messages
+    - Expandable `<details>` sections per tool
+    - Displays tool name, arguments (formatted JSON), and call ID
+    - Orange color scheme for tool calls
+    - Wrench icon for visual identification
+
+2. **Tool Results Display** (lines 551-579)
+    - Shows tool results on tool role messages
+    - Expandable result JSON viewer
+    - Displays tool name and result data
+    - Green color scheme for successful results
+    - CheckCircle icon for visual identification
+    - Shows linking `tool_call_id`
+
+**Why This Fixes It:**
+
+- ✅ Admin can see complete conversation including tool execution
+- ✅ Tool arguments visible for debugging
+- ✅ Tool results visible with success/failure status
+- ✅ Expandable sections keep UI clean
+- ✅ Color-coded for easy scanning (orange=call, green=result)
+
+### Files Changed
+
+- **Modified**: `apps/web/src/routes/api/agent/stream/+server.ts`
+    - Lines 238-239: Added tool tracking structures
+    - Lines 268-276: Added tool event capture logic
+    - Lines 290-335: Enhanced message saving with tool calls and results
+- **Modified**: `apps/web/src/lib/components/admin/SessionDetailModal.svelte`
+    - Lines 504-549: Added tool calls display component
+    - Lines 551-579: Added tool results display component
+- **Modified**: `docs/BUGFIX_CHANGELOG.md` - This entry
+
+### Related Docs
+
+- **Admin Monitoring**: `/apps/web/docs/features/chat-system/ADMIN_MONITORING.md` - Admin dashboard overview
+- **Database Schema**: `/packages/shared-types/src/database.schema.ts` - `chat_messages` table structure
+- **Planner Service**: `/apps/web/src/lib/services/agent-planner-service.ts` - Event emission logic
+
+### Cross-references
+
+- **Agent Stream API**: `/apps/web/src/routes/api/agent/stream/+server.ts:234-335`
+- **Session Detail Modal**: `/apps/web/src/lib/components/admin/SessionDetailModal.svelte:504-579`
+- **Database Schema**: `chat_messages` table (lines 382-401 in `database.schema.ts`)
+    - `tool_calls` (JSON) - Array of OpenAI format tool calls
+    - `tool_call_id` (string) - Links tool messages to their calls
+    - `tool_name` (string) - Tool that was executed
+    - `tool_result` (JSON) - Tool execution result
+
+### Testing & Verification
+
+**Manual Verification Steps:**
+
+1. Create test agent conversation with tool use:
+    - Example: "find my project called 'Website Redesign' and update its description"
+2. Navigate to `/admin/chat/sessions`
+3. Click on the test session
+4. **Verify** conversation shows:
+    - ✅ User message
+    - ✅ Assistant message with expandable tool calls section
+    - ✅ Tool call details (name, arguments, ID)
+    - ✅ Tool result messages (success, result data, linked call ID)
+    - ✅ Final assistant text response
+
+**Database Verification:**
+
+```sql
+SELECT role, content, tool_calls, tool_name, tool_result
+FROM chat_messages
+WHERE session_id = '<test_session_id>'
+ORDER BY created_at;
+```
+
+Expected:
+
+- Assistant messages with `tool_calls` populated (JSON array)
+- Tool messages with `tool_result` populated (JSON object)
+- Tool messages linked via `tool_call_id`
+
+### Impact
+
+- ✅ **Admin visibility**: Complete conversation replay now available
+- ✅ **Debugging**: Tool execution details visible for troubleshooting
+- ✅ **Data integrity**: No more silent data loss for tool-only turns
+- ✅ **Standards compliance**: Follows OpenAI message format
+- ✅ **User confidence**: Can verify agent performed correct actions
+
+**Last updated**: 2025-10-30
+
+---
+
+## 2025-10-30 - Chat Admin Dashboard Foreign Key Relationship Error
+
+**Severity**: High
+
+### Root Cause
+
+The chat admin dashboard API was completely broken due to a **foreign key inconsistency** between `chat_sessions` and `users` tables:
+
+1. **`chat_sessions.user_id`** referenced `auth.users(id)` (incorrect)
+2. **`chat_messages.user_id`** referenced `public.users(id)` (correct)
+3. **Supabase PostgREST** only auto-detects relationships within the `public` schema
+4. Dashboard queries tried to join `chat_sessions` → `users`, but FK pointed to `auth.users`, causing PostgREST error: **"Could not find a relationship between 'chat_sessions' and 'users' in the schema cache"**
+
+**Technical Details:**
+
+- **Error Type**: PostgREST relationship detection failure
+- **Affected Operations**: Chat admin dashboard API - all queries joining chat_sessions to users
+- **Root Issue**: Migration `20251027_create_chat_tables.sql` line 14 used `REFERENCES auth.users(id)` instead of `REFERENCES users(id)`
+- **Impact**:
+    - Admin dashboard completely non-functional (500 errors)
+    - Activity feed query failed (lines 261-277)
+    - Top users query failed (lines 294-305)
+    - No ability to monitor chat system usage
+
+**Code locations:**
+
+- `supabase/migrations/20251027_create_chat_tables.sql:14` - Incorrect FK to `auth.users(id)`
+- `apps/web/src/routes/api/admin/chat/dashboard/+server.ts:269-272` - Activity feed query (failed join)
+- `apps/web/src/routes/api/admin/chat/dashboard/+server.ts:294-302` - Top users query (failed join)
+- `apps/web/src/routes/api/admin/chat/dashboard/+server.ts:283` - Logic bug (always returned 'message')
+
+**Why this wasn't caught earlier:**
+
+- Chat system is new (migration from Oct 27)
+- Admin dashboard not yet in production use
+- PostgREST relationship detection is runtime-only (no compile-time check)
+- FK to `auth.users` is technically valid, just doesn't work with PostgREST
+
+### Fix Description
+
+Implemented **two-part fix** to align FK constraint and fix API logic bug:
+
+#### Part 1: Database Migration - Fix Foreign Key Constraint
+
+**File**: `supabase/migrations/20251030_fix_chat_sessions_user_fk.sql`
+
+**Changes:**
+
+1. Drop old FK constraint: `ALTER TABLE chat_sessions DROP CONSTRAINT chat_sessions_user_id_fkey`
+2. Add new FK to public.users: `ADD CONSTRAINT chat_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`
+3. Added migration comment documenting the change
+
+**Why this fixes it:**
+
+- `chat_sessions.user_id` now points to `public.users(id)` (same as `chat_messages.user_id`)
+- PostgREST can detect the relationship since both tables are in the `public` schema
+- Dashboard queries with joins to `users` table now work correctly
+- Maintains data integrity with CASCADE delete behavior
+
+#### Part 2: Fix Activity Feed Type Bug
+
+**File**: `apps/web/src/routes/api/admin/chat/dashboard/+server.ts:283`
+
+**Change:**
+
+- **Before**: `type: msg.role === 'user' ? 'message' : 'message'` (always 'message')
+- **After**: `type: msg.role` (uses actual role: 'user', 'assistant', 'system', 'tool')
+
+**Why this fixes it:**
+
+- Activity feed now properly differentiates message types
+- Frontend can filter/style based on actual role
+- More semantic and useful for monitoring
+
+### Files Changed
+
+- **Created**: `supabase/migrations/20251030_fix_chat_sessions_user_fk.sql` - Migration to fix FK constraint
+- **Modified**: `apps/web/src/routes/api/admin/chat/dashboard/+server.ts:283` - Fixed activity feed type logic
+- **Modified**: `docs/BUGFIX_CHANGELOG.md` - This entry
+
+### Related Docs
+
+- `/supabase/migrations/20251027_create_chat_tables.sql` - Original chat tables migration
+- `/supabase/migrations/20251028_add_user_id_to_chat_messages.sql` - Chat messages user_id (correct FK)
+- `/packages/shared-types/src/database.schema.ts` - Database schema types
+
+### Cross-references
+
+- Related spec: `/apps/web/docs/features/chat-system/DATABASE_SCHEMA_ANALYSIS.md`
+- Dashboard API: `/apps/web/src/routes/api/admin/chat/dashboard/+server.ts`
+- Admin UI: `/apps/web/src/routes/admin/chat/+page.svelte`
+
+### Manual Verification Steps
+
+After running migration:
+
+1. Apply migration to database: `supabase migration up`
+2. Hit dashboard API: `GET /api/admin/chat/dashboard?timeframe=7d`
+3. Verify response includes populated `activity_feed` and `top_users` arrays
+4. Check `activity_feed` entries have:
+    - `user_email` field populated
+    - `type` field shows 'user' or 'assistant' (not always 'message')
+    - `session_id`, `timestamp`, `details`, `tokens_used` present
+5. Check `top_users` array has user statistics with email addresses
+6. Verify no PostgREST relationship errors in logs
+
+### Post-Fix Notes
+
+**Schema Consistency Check**: All chat tables now consistently reference `public.users(id)`:
+
+- ✅ `chat_sessions.user_id` → `users(id)`
+- ✅ `chat_messages.user_id` → `users(id)`
+- ✅ `chat_tool_executions` → via `session_id` → `chat_sessions.user_id` → `users(id)`
+
+**Future Prevention**: When creating migrations:
+
+- Always reference `public` schema tables (e.g., `users(id)`) not `auth` schema
+- Test PostgREST joins in development before deploying
+- Ensure FK consistency across related tables
+
+---
+
+## 2025-10-29 - Supabase Query Schema Mismatches in ChatToolExecutor
+
+**Severity**: High
+
+### Root Cause
+
+The `ChatToolExecutor` had three critical schema mismatches that caused runtime failures:
+
+1. **Non-existent table reference**: Query referenced `brain_dump_operations` table which doesn't exist in the schema
+2. **Missing required field**: `chat_tool_executions` insert was missing required `session_id` field (NOT NULL constraint)
+3. **Wrong field used**: Insert used non-existent `user_id` field instead of `session_id`
+
+**Technical Details:**
+
+- **Error Type**: Database constraint violations and failed queries
+- **Affected Operations**: Tool execution logging and brain dump search
+- **Root Issue**: Code was written before schema was finalized, never updated to match actual schema
+- **Impact**: All tool execution logging failed silently; brain dump searches returned incomplete data
+
+**Code locations:**
+
+- `tool-executor.ts:583` - Non-existent `brain_dump_operations` table in query
+- `tool-executor.ts:1418` - Used `user_id` field that doesn't exist in `chat_tool_executions` table
+- `tool-executor.ts:1410-1419` - Missing required `session_id` field in insert
+- Constructor didn't accept `sessionId` parameter needed for logging
+
+**Why this wasn't caught earlier:**
+
+- Tool execution logging failures were silent (wrapped in try-catch)
+- Brain dumps query worked but just returned empty operations count
+- No type checking on database inserts (Supabase client doesn't validate at compile time)
+- SessionId was created in calling code but never passed to ChatToolExecutor
+
+### Fix Description
+
+Implemented **three-part fix** to align code with database schema:
+
+#### Part 1: Remove Non-Existent Table References
+
+**File**: `/apps/web/src/lib/chat/tool-executor.ts:579-624`
+
+**Changes:**
+
+1. Line 583: Removed `operations:brain_dump_operations(id)` from query select
+2. Line 623: Changed `operation_count: d.operations?.length || 0` to `operation_count: 0` with comment explaining operations are tracked separately in `chat_operations` table
+
+**Why this fixes it:**
+
+- Brain dumps now query only fields that exist in the schema
+- Operations are properly tracked in `chat_operations` table (linked via `chat_session_id`)
+- Query no longer fails on non-existent relationship
+
+#### Part 2: Add Session Tracking to ChatToolExecutor
+
+**File**: `/apps/web/src/lib/chat/tool-executor.ts:89-113`
+
+**Changes:**
+
+1. Line 92: Added `private sessionId?: string` field to class
+2. Line 97: Added optional `sessionId?: string` parameter to constructor
+3. Line 100: Store sessionId in constructor
+4. Lines 107-113: Added `setSessionId(sessionId: string)` method for post-construction assignment
+
+**Why this design:**
+
+- SessionId is often unknown at construction time (session created later in API flow)
+- Optional parameter allows flexibility: pass during construction OR set later via method
+- Enables proper session tracking for tool execution logging
+
+#### Part 3: Fix chat_tool_executions Insert
+
+**File**: `/apps/web/src/lib/chat/tool-executor.ts:1417-1437`
+
+**Changes:**
+
+1. Lines 1418-1423: Added guard check - if `sessionId` not set, log warning and return early
+2. Line 1429: Changed insert to use `session_id: this.sessionId` instead of non-existent `user_id: this.userId`
+3. Removed `user_id` field from insert entirely
+
+**Why this fixes it:**
+
+- Schema requires `session_id` (NOT NULL) - now provided correctly
+- Schema has NO `user_id` field - no longer incorrectly included
+- Guard prevents silent failures if sessionId not set
+- Warning helps developers catch missing setSessionId() calls
+
+#### Part 4: Update All Callsites
+
+**Files:**
+
+- `/apps/web/src/routes/api/chat/stream/+server.ts:156`
+- `/apps/web/src/lib/services/agent-conversation-service.ts:395`
+- `/apps/web/src/lib/services/agent-executor-service.ts:136,273`
+- `/apps/web/src/lib/services/agent-planner-service.ts:436`
+
+**Changes:**
+
+1. **Main chat endpoint** (`api/chat/stream/+server.ts:156`):
+    - Added `toolExecutor.setSessionId(chatSession.id)` after session is created/retrieved
+
+2. **Agent conversation service** (`agent-conversation-service.ts:395`):
+    - Added `toolExecutor.setSessionId(session.parentSessionId)` after construction
+
+3. **Agent executor service** (`agent-executor-service.ts:136,273`):
+    - Updated `executeWithContext()` signature to accept `userId` parameter
+    - Changed constructor call from `new ChatToolExecutor(supabase, sessionId)` to `new ChatToolExecutor(supabase, userId, sessionId)`
+    - Now passes both userId and sessionId correctly
+
+4. **Agent planner service** (`agent-planner-service.ts:436`):
+    - Changed from `new ChatToolExecutor(this.supabase, context.metadata.sessionId)` to `new ChatToolExecutor(this.supabase, userId, context.metadata.sessionId)`
+    - Fixed parameter order: userId first, sessionId second
+
+**Why callsite updates matter:**
+
+- Ensures sessionId is set before any tool execution occurs
+- Prevents "sessionId not set" warnings in production
+- Maintains proper tracking of tool executions per session
+- Fixes agent services that were incorrectly passing sessionId as userId
+
+### Files Changed
+
+- `/apps/web/src/lib/chat/tool-executor.ts:89-113,579-624,1417-1437` - Core fixes to class and queries
+- `/apps/web/src/routes/api/chat/stream/+server.ts:156` - Set sessionId in main chat endpoint
+- `/apps/web/src/lib/services/agent-conversation-service.ts:395` - Set sessionId in conversation service
+- `/apps/web/src/lib/services/agent-executor-service.ts:136,245-247,273` - Fix userId/sessionId parameter passing
+- `/apps/web/src/lib/services/agent-planner-service.ts:436` - Fix userId/sessionId parameter passing
+
+### Related Docs
+
+- Database schema: `/packages/shared-types/src/database.schema.ts`
+    - `chat_tool_executions` table (lines 465-479) - Shows required `session_id` field
+    - `brain_dumps` table (lines 223-237) - Shows no `brain_dump_operations` relationship
+- Chat system architecture: `/apps/web/docs/features/chat-system/ARCHITECTURE.md`
+- Tool executor documentation: `/apps/web/docs/features/chat-system/TOOL_EXECUTOR_API_PATTERN.md`
+
+### Cross-references
+
+- Related to chat tool execution flow
+- See chat_operations table for how operations are actually tracked
+- Ensures tool execution analytics are properly logged per session
+
+### Manual Verification Steps
+
+1. Start a chat session and execute tools - verify no console warnings about missing sessionId
+2. Check `chat_tool_executions` table - verify new rows have valid `session_id` values
+3. Search brain dumps - verify queries complete without errors
+4. Test agent services (planner, executor, conversation) - verify tool execution logging works
+5. Check console for any "sessionId not set" warnings
+
+---
+
+## 2025-10-29 - LLM Usage Logging Foreign Key Constraint Violation
+
+**Severity**: Medium
+
+### Root Cause
+
+The agent planner service was passing **session IDs** instead of **user IDs** to the SmartLLMService for usage logging. This caused foreign key constraint violations when attempting to insert into `llm_usage_logs`:
+
+```
+Error: insert or update on table "llm_usage_logs" violates foreign key constraint "llm_usage_logs_user_id_fkey"
+Details: Key is not present in table "users".
+```
+
+**Technical Details:**
+
+- **Error Type**: PostgreSQL Foreign Key Constraint Violation (23503)
+- **Affected Table**: `llm_usage_logs.user_id` (foreign key to `users.id`)
+- **Root Issue**: Agent planner passed `context.metadata.sessionId` instead of real `user_id`
+- **Why It Happened**: Code already fetched real `userId` but didn't use it - comment said "Use session ID as user ID **for now**"
+- **Impact**: All LLM usage from agent system failed to log, causing console errors
+
+**Code locations:**
+
+- `agent-planner-service.ts:412` - `userId: context.metadata.sessionId` in `handleSimpleQuery()`
+- `agent-planner-service.ts:500` - `userId: context.metadata.sessionId` in `handleToolQuery()`
+- Line 191 correctly fetched `realUserId` but didn't pass it to handler methods
+
+**Why session IDs passed validation:**
+
+- Session IDs are valid UUIDs, so they passed `normalizeUserIdForLogging()` UUID regex check
+- However, session IDs don't exist in `users` table, causing foreign key violation
+- No defensive check prevented invalid user IDs from reaching database insert
+
+### Fix Description
+
+Implemented **two-layer defense** to fix root cause and prevent future occurrences:
+
+#### Layer 1: Agent Planner - Use Real User IDs (Primary Fix)
+
+**File**: `/apps/web/src/lib/services/agent-planner-service.ts`
+
+**Changes:**
+
+1. Line 231: Pass `realUserId` parameter to `handleSimpleQuery()` call
+2. Line 391-394: Update `handleSimpleQuery()` signature to accept `realUserId: string` parameter
+3. Line 413: Replace `context.metadata.sessionId` with `realUserId` in LLM call
+4. Line 501: Replace `context.metadata.sessionId` with `userId` parameter in `handleToolQuery()` LLM call (parameter already existed but wasn't used!)
+5. Removed outdated "Use session ID as user ID for now" comments
+
+**Why this fixes it:**
+
+- Line 191 already fetches real user_id from `chat_sessions` table via `getUserIdFromSession()`
+- Now that real user_id is passed through to LLM service, foreign key constraint is satisfied
+- Ensures proper user tracking for LLM usage analytics
+
+#### Layer 2: Defensive Logging - Skip Invalid User IDs (Safety Net)
+
+**File**: `/apps/web/src/lib/services/smart-llm-service.ts`
+
+**Changes:**
+
+1. Line 486-497: Added defensive null check after `normalizeUserIdForLogging()`
+2. If `sanitizedUserId` is null, log warning with context and return early
+3. Warning includes: `providedUserId`, `operationType`, `modelUsed`, `status`
+4. Prevents database insert attempt with invalid user_id
+
+**Why this is important:**
+
+- Prevents crashes if invalid user IDs slip through from other code paths in the future
+- Non-blocking: logs warning and skips logging rather than throwing error
+- Maintains backward compatibility
+- Provides visibility via warning logs for debugging
+
+### Files Changed
+
+- `/apps/web/src/lib/services/agent-planner-service.ts:231,391-413,501` - Use real user IDs in LLM calls
+- `/apps/web/src/lib/services/smart-llm-service.ts:486-497` - Defensive null check before database insert
+
+### Related Docs
+
+- Database schema: `/packages/shared-types/src/database.schema.ts` (llm_usage_logs table)
+- Foreign key: `llm_usage_logs.user_id` → `users.id` (NOT NULL constraint)
+- Agent context service: `/apps/web/src/lib/services/agent-context-service.ts`
+- Chat sessions: Used to resolve real user_id from session_id
+
+### Manual Verification Steps
+
+1. Open the agent chat modal in the web app
+2. Send any message that triggers the agent system (e.g., "Show me my projects")
+3. **Check server logs** - should see:
+    - "JSON Response Success" or "Text Generation Success" messages
+    - NO "Failed to log LLM usage to database" errors
+    - NO foreign key constraint violation errors
+4. **Query database**:
+    ```sql
+    SELECT user_id, operation_type, model_used, status, created_at
+    FROM llm_usage_logs
+    ORDER BY created_at DESC
+    LIMIT 10;
+    ```
+5. **Verify results**:
+    - `user_id` column contains valid user UUIDs (not session IDs)
+    - Records exist for recent agent interactions
+    - All foreign keys resolve to existing users
+6. **Test defensive layer**: Look for warning logs if invalid IDs are somehow passed (should never happen with Layer 1 fix)
+
+### Cross-references
+
+- Issue identified in: Agent chat system LLM usage tracking
+- Related to: Database foreign key constraints, session/user ID management
+- Similar pattern: Any service that logs user activity must use real user IDs, not session IDs
+
+---
+
+## 2025-10-29 - Supabase Relationship Error in search_projects Tool
+
+**Severity**: High
+
+### Root Cause
+
+The `searchProjectsAbbreviated` method in `/apps/web/src/lib/chat/tool-executor.ts` was using PostgREST relationship syntax to query related tables (`phases`, `notes`, `brain_dumps`, `tasks`) in a single query:
+
+```typescript
+let query = this.supabase.from('projects').select(
+	`
+  ...,
+  tasks!inner(id, status),
+  phases(id),
+  notes(id),
+  brain_dumps(id)
+`,
+	{ count: 'exact' }
+);
+```
+
+When Supabase/PostgREST attempted to resolve the `phases(id)` relationship, it looked for a relationship named `project_phases` instead of `phases`, resulting in the error:
+
+**Error**: `"Could not find a relationship between 'projects' and 'project_phases' in the schema cache"`
+
+**Technical Details:**
+
+- **Error Type**: Supabase/PostgREST Schema Cache Error
+- **Affected Method**: `ChatToolExecutor.searchProjectsAbbreviated()` at line 411-485
+- **Root Issue**: PostgREST relationship syntax + schema cache naming convention mismatch
+- **Foreign Key**: `phases.project_id` → `projects.id` (relationship exists but name resolution fails)
+- **Impact**: Agent `search_projects` tool completely broken - unable to search for projects
+
+### Fix Description
+
+Removed the problematic PostgREST relationship syntax and instead query related tables separately using individual queries (following the pattern already used in `getProjectComplete`):
+
+**Changes:**
+
+1. Removed `phases(id)`, `notes(id)`, `brain_dumps(id)`, `tasks!inner(id, status)` from main query
+2. Query projects first, then for each project:
+    - Query tasks separately
+    - Query phases count (using `{ count: 'exact', head: true }`)
+    - Query notes count
+    - Query brain_dumps count
+3. Use `Promise.all` to parallelize count queries for performance
+
+**Why This Works:**
+
+- Avoids Supabase relationship syntax entirely
+- Queries are explicit and don't rely on schema cache resolution
+- Pattern already proven to work in `getProjectComplete` (line 688-696)
+- Count-only queries are efficient (no data transfer, just counts)
+
+### Files Changed
+
+- `/apps/web/src/lib/chat/tool-executor.ts:411-513` - Refactored `searchProjectsAbbreviated` to use separate queries
+
+### Related Docs
+
+- Database schema: `/packages/shared-types/src/database.schema.ts:907-918` (phases table)
+- Database relationships: `/packages/shared-types/src/database.types.ts` (phases_project_id_fkey)
+- Tool definitions: `/apps/web/src/lib/chat/tools.config.ts:306-332` (search_projects tool)
+- Similar pattern: `/apps/web/src/lib/chat/tool-executor.ts:688-696` (getProjectComplete queries phases separately)
+
+### Manual Verification Steps
+
+1. Open the agent chat modal in the web app
+2. Ask the agent to search for projects, e.g., "Show me my active projects"
+3. Expected: Agent successfully searches projects and returns results
+4. Verify the results include:
+    - Project details (name, status, description, etc.)
+    - Task counts and stats
+    - `has_phases`, `has_notes`, `has_brain_dumps` flags are correct
+5. Test with different filters:
+    - Status filter: "Show me paused projects"
+    - Search query: "Find projects about marketing"
+    - Active tasks filter: "Show projects with active tasks"
+
+### Cross-references
+
+- Issue identified in: Agent chat system tool execution
+- Related to: Supabase PostgREST relationship resolution
+- Pattern reference: `getProjectComplete` method (line 671-761)
+
+---
+
+## 2025-10-29 - Chat Tool Executor Using Wrong HTTP Method for Project Updates
+
+**Severity**: Medium
+
+### Root Cause
+
+The `updateProject` method in `tool-executor.ts` was calling the project update API endpoint using the `PATCH` HTTP method, but the actual API route at `/api/projects/[id]/+server.ts` only supports `GET`, `PUT`, and `DELETE` methods. This caused all project update attempts from the chat tool to fail with a 405 Method Not Allowed error.
+
+**Technical Details:**
+
+- **Error Type**: HTTP Method Not Allowed (405)
+- **Affected Method**: `ChatToolExecutor.updateProject()` at line 897-941
+- **API Call**: Line 947 - `this.apiRequest('/api/projects/${args.project_id}', { method: 'PATCH' })`
+- **Actual Endpoint**: `/apps/web/src/routes/api/projects/[id]/+server.ts` supports: GET, PUT, DELETE
+- **Impact**: Chat agents unable to update project fields (name, status, dates, core dimensions, etc.)
+
+### Fix Description
+
+Changed the HTTP method from `PATCH` to `PUT` on line 948 of `tool-executor.ts`. This aligns the tool executor with the actual API endpoint implementation.
+
+**Verification performed:**
+
+- ✅ Verified all other API endpoints in tool-executor are correct
+    - `/api/projects/[id]/tasks` - POST ✅ (line 807)
+    - `/api/projects/[id]/tasks/[taskId]` - PATCH ✅ (lines 843, 1269)
+    - `/api/notes` - POST ✅ (line 956)
+- ✅ Verified all UPDATABLE_PROJECT_FIELDS exist in database schema
+- ✅ Confirmed database.schema.ts alignment with whitelist fields
+
+### Files Changed
+
+- `/apps/web/src/lib/chat/tool-executor.ts:948` - Changed HTTP method from 'PATCH' to 'PUT'
+
+### Related Docs
+
+- API endpoint: `/apps/web/src/routes/api/projects/[id]/+server.ts:37` (PUT handler)
+- Database schema: `/packages/shared-types/src/database.schema.ts:957` (projects table)
+- Tool definitions: `/apps/web/src/lib/chat/tools.config.ts`
+
+### Manual Verification Steps
+
+1. Open the chat modal in the web app
+2. Select a project as context
+3. Ask the agent to update a project field, e.g., "Update the project status to 'paused'"
+4. Expected: Agent successfully updates the project and confirms the change
+5. Verify the update persists in the database and UI
+6. Test updating various fields: name, description, dates, core dimensions
+
+---
+
+## 2025-10-29 - Chat Agent Providing Incorrect Status Values
+
+**Severity**: Low
+
+### Root Cause
+
+The LLM in the chat system was hallucinating field values instead of using authoritative schema information when users asked about valid statuses, priorities, and other enum fields. This led to:
+
+1. Confusing project statuses with task statuses (giving task statuses when asked about projects)
+2. Providing incomplete or incorrect status enums (missing 'paused' from project statuses)
+3. General unreliability when answering schema-related questions
+
+The correct values exist in the database schema, but the LLM had no reliable way to query them during conversations.
+
+### Fix Description
+
+Implemented a **curated schema reference tool** following the progressive disclosure pattern:
+
+**1. Created `get_field_info` Tool** (`tools.config.ts`)
+
+- New utility tool that returns authoritative field information
+- Progressive disclosure: Can query all fields or specific field
+- Returns type, description, valid enum values, and examples
+- Covers high-value fields for: projects, tasks, notes, brain_dumps
+
+**2. Curated Schema Data** (`ENTITY_FIELD_INFO` in `tools.config.ts`)
+
+- Manually curated field information for commonly-used fields
+- **Project fields (16 fields):**
+    - Basic: status, name, description, start_date, end_date, tags
+    - Context: context (living narrative)
+    - **9 Core Dimensions:** core_integrity_ideals, core_people_bonds, core_goals_momentum, core_meaning_identity, core_reality_understanding, core_trust_safeguards, core_opportunity_freedom, core_power_resources, core_harmony_integration
+- Task fields: status, priority, title, description, start_date, duration_minutes, task_type, recurrence_pattern
+- Note fields: title, content, category, tags
+- Brain dump fields: content, status
+- Includes descriptions, examples, and enum values for each field
+- All markdown fields include formatting examples showing natural structure evolution
+
+**3. Tool Executor Implementation** (`tool-executor.ts`)
+
+- `getFieldInfo()` method validates entity type and returns schema
+- Supports both specific field queries and full entity schema requests
+- Provides helpful error messages for invalid entities/fields
+
+**4. Updated System Prompt** (`chat-context-service.ts:203`)
+
+- Instructs LLM to use `get_field_info` tool for schema questions
+- Eliminates guessing and hallucination of valid values
+
+**Design Decisions:**
+
+- ✅ **Curated over auto-generated**: Manual curation ensures accuracy and maintainability
+- ✅ **High-value fields only**: Focused on fields users actually query/update (not all 25+ project fields)
+- ✅ **Progressive disclosure**: Optional field_name parameter for narrow queries
+- ✅ **Tool-based over prompt-based**: Explicit tool call is more reliable than hoping LLM introspects its own schemas
+- ✅ **Expandable**: Can add more fields organically as needs arise
+
+### Files Changed
+
+- `/apps/web/src/lib/chat/tools.config.ts:25-235` - Added ENTITY_FIELD_INFO curated schema data (16 project fields including 9 core dimensions, 8 task fields, 4 note fields, 2 brain_dump fields)
+- `/apps/web/src/lib/chat/tools.config.ts:1035-1062` - Added get_field_info tool definition to CHAT_TOOLS array
+- `/apps/web/src/lib/chat/tools.config.ts:1109-1113` - Added utility tool category
+- `/apps/web/src/lib/chat/tool-executor.ts:42` - Added import for ENTITY_FIELD_INFO
+- `/apps/web/src/lib/chat/tool-executor.ts:270-272` - Added case handler for get_field_info tool
+- `/apps/web/src/lib/chat/tool-executor.ts:1315-1362` - Implemented getFieldInfo() method
+- `/apps/web/src/lib/services/chat-context-service.ts:203` - Updated base system prompt to reference tool
+- `/apps/web/src/lib/services/chat-context-service.ts:1720-1751` - Added UTILITY_TOOLS definition with get_field_info
+- `/apps/web/src/lib/services/chat-context-service.ts:1755-1849` - Added get_field_info to ALL context types (global, project, task, calendar, general, project_create, project_update, project_audit, project_forecast, task_update, daily_brief_update)
+
+### Integration Notes
+
+**Complete Integration Verified:**
+
+- ✅ Tool definition added to CHAT_TOOLS array in tools.config.ts
+- ✅ Tool executor implements getFieldInfo() method
+- ✅ Tool added to chat-context-service.ts getTools() for ALL context types
+- ✅ Agent-orchestrator.service.ts uses chat-context-service (no changes needed)
+- ✅ System prompt updated to instruct LLM to use the tool
+
+**Architecture Note:**
+The chat system has dual tool definitions - both in `tools.config.ts` (exported CHAT_TOOLS array) and inline in `chat-context-service.ts` (REACTIVE_TOOLS, PROACTIVE_TOOLS, UTILITY_TOOLS). This is intentional for context-specific tool filtering. The get_field_info tool was added to both locations for consistency.
+
+**Future Refactoring Opportunity:**
+Brain dump processing prompts in `/apps/web/src/lib/services/prompts/core/` contain hardcoded status enums for output generation. These could eventually reference ENTITY_FIELD_INFO as the single source of truth, but were left as-is since they serve a different purpose (output schema for generation vs query/reference for chat).
+
+### Related Docs
+
+- Original tool definitions: `/apps/web/src/lib/chat/tools.config.ts` (search_projects, update_task, etc.)
+- Database schema: `/packages/shared-types/src/database.schema.ts`
+- Project context framework: Used to generate core dimension descriptions
+
+### Manual Verification Steps
+
+1. Open the chat modal in the web app
+2. **Test status enums:**
+    - Ask: "What are the valid project statuses?"
+    - Expected: Agent calls `get_field_info(entity_type: 'project', field_name: 'status')` and returns: `active, paused, completed, archived`
+3. **Test task statuses:**
+    - Ask: "What are the valid task statuses?"
+    - Expected: Agent calls tool and returns: `backlog, in_progress, done, blocked`
+4. **Test full schema:**
+    - Ask: "What fields can I set on a project?"
+    - Expected: Agent calls `get_field_info(entity_type: 'project')` and lists all 16 fields including the 9 core dimensions
+5. **Test specific core dimension:**
+    - Ask: "Tell me about the core_integrity_ideals field"
+    - Expected: Agent returns field info with description about quality standards and non-negotiables
+6. **Test markdown formatting:**
+    - Ask: "Show me an example of the context field"
+    - Expected: Agent shows markdown-formatted example with headers, bullets, timestamps
+7. **Verify no confusion:** Agent doesn't confuse project/task fields, no hallucinated values, correctly identifies markdown fields
+
+---
+
+## 2025-10-29 - CRITICAL SECURITY FIX: Missing user_id Filters in Chat System
+
+**Severity**: CRITICAL (Security Vulnerability)
+
+### Root Cause
+
+Multiple chat-related services and tools were querying the database without filtering by `user_id`, allowing potential unauthorized access to other users' data. This is a severe security vulnerability that could have enabled:
+
+- Users viewing other users' projects, tasks, and notes
+- Users accessing other users' chat contexts and conversations
+- Data leakage across user boundaries
+- Potential unauthorized data modification
+
+**Technical Details:**
+
+- **Vulnerability Type**: Broken Access Control / Insecure Direct Object Reference (IDOR)
+- **Affected Services**:
+    - `/apps/web/src/lib/chat/tool-executor.ts` - Chat tool execution (15+ queries missing user_id filter)
+    - `/apps/web/src/lib/services/chat-context-service.ts` - Context loading (10+ queries missing user_id filter)
+    - `/apps/web/src/lib/services/agent-orchestrator.service.ts` - Agent context loading calls
+- **Attack Vector**: Any authenticated user could potentially access another user's data by providing valid IDs
+- **Discovered During**: Code security audit
+
+**Queries That Were Vulnerable:**
+
+**tool-executor.ts:**
+
+1. `listTasksAbbreviated()` - Line ~268: Tasks query
+2. `searchProjectsAbbreviated()` - Line ~349: Projects query
+3. `searchNotesAbbreviated()` - Line ~422: Notes query
+4. `searchBrainDumpsAbbreviated()` - Line ~478: Brain dumps query
+5. `getTaskComplete()` - Line ~539, 560, 572: Task, subtasks, and project context queries
+6. `getProjectComplete()` - Line ~597, 609, 621, 642, 658: Project, phases, tasks, notes, and brain dumps queries
+7. `getNoteComplete()` - Line ~684: Note query
+8. `getBrainDumpComplete()` - Line ~708: Brain dump query
+9. `updateTaskViaAPI()` - Line ~769: Existing task fetch
+
+**chat-context-service.ts:**
+
+1. `loadTaskContext()` - Line ~547: Main task query
+2. `loadCalendarContext()` - Line ~602: Calendar events query
+3. `loadGlobalContext()` - Line ~643, 650: Projects and tasks queries
+4. `loadRelatedData()` - Line ~690, 712, 719, 731: Notes and task-related queries
+5. `getAbbreviatedProject()` - Line ~763: Project data query
+6. `getAbbreviatedTasks()` - Line ~808: Tasks query
+7. `loadFullProjectContext()` - Line ~847: Full project query
+8. `loadFullTaskContext()` - Line ~923, 940: Task and parent task queries
+
+**Impact:**
+
+- **Data Confidentiality**: CRITICAL - Users could access other users' private data
+- **Data Integrity**: HIGH - Users could potentially modify other users' data
+- **Compliance**: HIGH - Violates data privacy requirements and user trust
+- **User Trust**: CRITICAL - Severe breach of expected security boundaries
+
+### Fix Description
+
+**Comprehensive Security Hardening:**
+
+1. **tool-executor.ts - Added user_id filtering to all database queries:**
+    - Added `.eq('user_id', this.userId)` to 15 database queries
+    - All list, search, get, and update operations now properly filter by user
+
+2. **chat-context-service.ts - Complete refactoring for security:**
+    - Modified `loadLocationContext()` to require `userId` parameter
+    - Updated all private context loading methods to accept and use `userId`:
+        - `loadProjectContext()`
+        - `loadTaskContext()`
+        - `loadCalendarContext()`
+        - `loadGlobalContext()`
+        - `loadRelatedData()`
+        - `getAbbreviatedProject()`
+        - `getAbbreviatedTasks()`
+        - `loadFullProjectContext()`
+        - `loadFullTaskContext()`
+    - Added `.eq('user_id', userId)` to all database queries
+    - Added validation: throws error if `userId` not provided
+
+3. **agent-orchestrator.service.ts - Updated all context loading calls:**
+    - Updated 4 calls to `loadLocationContext()` to pass `userId` parameter
+    - Ensured proper userId propagation through the call chain
+
+4. **API Endpoints - Verified security:**
+    - Confirmed `/api/chat/stream` properly filters by user_id ✅
+    - Confirmed `/api/agent/stream` properly filters by user_id ✅
+    - Confirmed `/api/chat/sessions/[id]` properly filters by user_id ✅
+    - All endpoints already had proper authentication and user filtering
+
+**Why This Happened:**
+
+1. **Missing Security Review**: Code was written without comprehensive security audit
+2. **Inconsistent Patterns**: Some queries had user_id filtering, others didn't
+3. **Copied Code**: Vulnerable patterns were propagated across files
+4. **Implicit Trust**: Assumed RLS policies or other layers would handle access control
+5. **Lack of Defense in Depth**: Application layer didn't enforce user boundaries
+
+**Defense in Depth Measures Added:**
+
+- ✅ Application-layer user_id filtering on ALL queries
+- ✅ Explicit userId parameter requirements (compile-time safety)
+- ✅ Validation checks that throw errors if userId missing
+- ✅ Consistent patterns across all services
+- ✅ Comments marking critical security filters
+
+### Files Changed
+
+**Backend Services (CRITICAL):**
+
+- `/apps/web/src/lib/chat/tool-executor.ts` - Added user_id filtering to 15+ queries
+- `/apps/web/src/lib/services/chat-context-service.ts` - Complete security refactoring, added user_id to 10+ queries
+- `/apps/web/src/lib/services/agent-orchestrator.service.ts` - Updated 4 context loading calls to pass userId
+
+**API Endpoints (Verified Secure):**
+
+- `/apps/web/src/routes/api/chat/stream/+server.ts` - ✅ Already secure
+- `/apps/web/src/routes/api/agent/stream/+server.ts` - ✅ Already secure
+- `/apps/web/src/routes/api/chat/sessions/[id]/+server.ts` - ✅ Already secure
+
+**Documentation:**
+
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+### Verification Steps
+
+**CRITICAL - Test for Security Vulnerability:**
+
+1. **Test User Data Isolation:**
+    - Log in as User A
+    - Note a project ID, task ID, note ID from User A
+    - Log in as User B
+    - Attempt to access User A's IDs through chat tools
+    - **Expected**: All queries should return "not found" or empty results
+    - **Previously**: Would have returned User A's data (CRITICAL BUG)
+
+2. **Test Chat Tool Execution:**
+    - Use `search_projects` tool - should only see your projects
+    - Use `get_task_details` with another user's task ID - should fail
+    - Use `list_tasks` - should only see your tasks
+
+3. **Test Context Loading:**
+    - Open chat in project context - should only load your project data
+    - Check that calendar events only show your events
+    - Verify global context only shows your active projects and tasks
+
+4. **Code Review Verification:**
+    - Search for `.from('projects')` - all should have `.eq('user_id'...)`
+    - Search for `.from('tasks')` - all should have `.eq('user_id', ...)`
+    - Search for `.from('notes')` - all should have `.eq('user_id', ...)`
+    - Search for `.from('brain_dumps')` - all should have `.eq('user_id', ...)`
+
+### Security Recommendations
+
+1. **Immediate Actions Required:**
+    - ✅ Deploy this fix immediately to production
+    - ⚠️ Review access logs for potential unauthorized access
+    - ⚠️ Audit other services for similar vulnerabilities
+    - ⚠️ Consider security disclosure if data was compromised
+
+2. **Future Prevention:**
+    - Implement automated security testing for data isolation
+    - Add ESLint rules to detect missing user_id filters
+    - Require security review for all database queries
+    - Implement integration tests that verify multi-tenant isolation
+    - Add database RLS policies as additional defense layer
+
+3. **Code Review Checklist:**
+    - ✅ Every `.from('table')` query MUST have user_id filter
+    - ✅ Never trust client-provided IDs without ownership verification
+    - ✅ Always implement defense in depth (app layer + RLS + row-level checks)
+    - ✅ Mark security-critical filters with comments
+
+### Related Documentation
+
+- Security best practices: (TO BE CREATED)
+- Multi-tenant data isolation guide: (TO BE CREATED)
+- Database access patterns: `/apps/web/docs/technical/database/`
+- Chat system architecture: `/apps/web/docs/features/chat-system/`
+
+**Last updated**: 2025-10-29
+
+---
+
+## 2025-10-29 - Chat Tool Executor & Chat Context Service: Incorrect Table Name for Project Phases
+
+**Severity**: Medium
+
+### Root Cause
+
+Multiple services were querying a table called `project_phases` which doesn't exist in the database schema. The actual table name is `phases`.
+
+**Technical Details:**
+
+- **Error**: `"Could not find a relationship between 'projects' and 'project_phases' in the schema cache"`
+- **Triggered by**:
+    - Calling `search_projects` tool in chat system
+    - Loading project context for chat sessions
+    - Building initial chat context with project data
+- **Locations**:
+    - `/apps/web/src/lib/chat/tool-executor.ts:354` and `:609`
+    - `/apps/web/src/lib/services/chat-context-service.ts:769` and `:852`
+- **Schema location**: `/apps/web/src/lib/database.schema.ts:827-838` - Table is named `phases`, not `project_phases`
+
+**Affected Components:**
+
+- **tool-executor.ts**:
+    - `searchProjectsAbbreviated()` - Failed to load project phases in search results
+    - `getProjectComplete()` - Failed to include phases when fetching full project details
+    - Chat system's `search_projects` and `get_project_details` tools
+
+- **chat-context-service.ts**:
+    - `getAbbreviatedProject()` - Failed to load phases for initial context
+    - `loadFullProjectContext()` - Failed to include phases in full context loading
+    - Progressive disclosure context loading system
+
+**Impact:**
+
+- Chat system unable to search projects with phases included
+- Chat system unable to fetch complete project details with phases
+- Chat context service unable to load project phases for conversation context
+- Users received database relationship errors when using project-related chat tools
+- Initial chat context loading failed when projects had phases
+
+### Fix Description
+
+**Fix: Corrected table name references in all affected files**
+
+**tool-executor.ts:**
+
+1. Line 354: Changed `phases:project_phases(id)` → `phases(id)` in select query
+2. Line 609: Changed `.from('project_phases')` → `.from('phases')`
+
+**chat-context-service.ts:** 3. Line 769: Changed `phases:project_phases(id)` → `phases(id)` in `getAbbreviatedProject()` 4. Line 852: Changed `phases:project_phases(*)` → `phases(*)` in `loadFullProjectContext()`
+
+**Why This Happened:**
+
+Naming inconsistency - either the table was renamed from `project_phases` to `phases` at some point, or the code was written with an incorrect assumption about the table name. The schema clearly defines the table as `phases` (line 827-838 in database.schema.ts). This bug appeared in multiple service files, suggesting it may have been propagated during code copying or refactoring.
+
+### Files Changed
+
+**Backend Services:**
+
+- `/apps/web/src/lib/chat/tool-executor.ts:354, :609` - Fixed relationship references in search and detail methods
+- `/apps/web/src/lib/services/chat-context-service.ts:769, :852` - Fixed relationship references in context loading methods
+
+**Other Files Checked (No Issues Found):**
+
+- `/apps/web/src/lib/services/draft.service.ts` - All table references correct (uses `project_drafts` and `draft_tasks`)
+- `/apps/web/src/lib/services/agent-orchestrator.service.ts` - No direct database queries with joins
+
+**Documentation:**
+
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+### Verification Steps
+
+1. Open chat interface in the web app
+2. Use the `search_projects` tool with a query
+3. Verify projects are returned with phase information
+4. Use the `get_project_details` tool with `include_phases: true`
+5. Verify phases are included in the response
+
+### Related Documentation
+
+- Chat system architecture: `/apps/web/docs/features/chat-system/`
+- Database schema: `/packages/shared-types/src/database.schema.ts`
+- Tool executor implementation: `/apps/web/src/lib/chat/tool-executor.ts`
+
+**Last updated**: 2025-10-29
+
+---
+
+## 2025-10-28 - Agent Chat Session Creation Schema Errors (Complete Architectural Fix)
+
+**Severity**: Critical (Conversational agent completely non-functional)
+
+### Root Cause
+
+The agent streaming endpoint had two critical database schema errors preventing chat session creation:
+
+1. **Incorrect column name**: Used `total_tokens` instead of `total_tokens_used`
+2. **Check constraint violation**: Database `context_type` constraint only allowed legacy values ('global', 'project', 'task', 'calendar'), but agent system needed agent-specific values ('project_create', 'general', etc.) to route to specialized system prompts
+
+**Technical Details:**
+
+- **Error 1**: `PGRST204 - Could not find the 'total_tokens' column of 'chat_sessions' in the schema cache`
+- **Error 2**: `23514 - new row for relation "chat_sessions" violates check constraint "chat_sessions_context_type_check"`
+- Triggered by: Creating a new chat session via `/api/agent/stream` endpoint
+- Location: `/apps/web/src/routes/api/agent/stream/+server.ts:65-82`
+
+**Affected Components:**
+
+- `/apps/web/src/routes/api/agent/stream/+server.ts` - Session creation with schema errors
+- `/apps/web/src/lib/services/agent-orchestrator.service.ts` - Unable to route to specialized system prompts
+- All conversational agent functionality (7 agent types total)
+
+**Impact:**
+
+- Users completely unable to use the conversational agent feature
+- All agent chat sessions failed to create
+- System prompts could not be properly routed
+- Database insert errors on every attempt to start a new conversation
+
+### Fix Description
+
+**Fix 1: Column Name Correction**
+
+1. Changed from: `total_tokens: 0`
+2. Changed to: `total_tokens_used: 0`
+3. Fixed in: `/apps/web/src/routes/api/agent/stream/+server.ts:73`
+
+**Fix 2: Database Constraint Migration (PROPER FIX)**
+
+1. Created migration: `/supabase/migrations/20251028_fix_context_type_constraint.sql`
+2. Updated `context_type` CHECK constraint to allow all agent types:
+    - Legacy: `'global', 'project', 'task', 'calendar'`
+    - Agent: `'general', 'project_create', 'project_update', 'project_audit', 'project_forecast', 'task_update', 'daily_brief_update'`
+3. Both `context_type` and `chat_type` now store the same agent type value
+4. `context_type` is primary field used for routing to system prompts
+
+**Fix 3: Complete System Prompt Coverage**
+
+1. Added missing system prompts to orchestrator:
+    - `general` - General BuildOS assistant
+    - `task_update` - Focused task assistant
+    - `daily_brief_update` - Brief preferences manager
+2. Added corresponding handlers with specialized behavior
+3. Updated routing logic to use `context_type` for system prompt selection
+4. Total: 7 agent types with unique system prompts
+
+**Fix 4: Endpoint Simplification**
+
+1. Removed hacky mapping function
+2. Set `context_type = chatType` directly
+3. Added documentation comments explaining the architecture
+
+**Why This Happened:**
+
+1. **Column naming inconsistency**: `chat_messages` uses `total_tokens`, but `chat_sessions` uses `total_tokens_used`
+2. **Constraint outdated**: Original migration created constraint for generic chat, but agent system needed specialized types
+3. **Architecture mismatch**: `context_type` is used to route to system prompts, so it MUST contain the actual agent type, not a generic category
+4. **Missing system prompts**: Three agent types lacked system prompts and handlers
+
+### Files Changed
+
+**Database Migration:**
+
+- `/supabase/migrations/20251028_fix_context_type_constraint.sql` - NEW: Updated context_type constraint
+
+**Backend Services:**
+
+- `/apps/web/src/lib/services/agent-orchestrator.service.ts:38-176` - Added 3 system prompts, 2 handlers, updated routing
+- `/apps/web/src/routes/api/agent/stream/+server.ts:51-82` - Fixed column name, removed mapping hack
+
+**Documentation:**
+
+- `/apps/web/docs/features/conversational-agent/SYSTEM_PROMPT_ARCHITECTURE.md` - NEW: Complete system prompt documentation
+- `/docs/BUGFIX_CHANGELOG.md` - This entry
+
+### System Architecture
+
+**Flow**: User Request → API Endpoint → Database (context_type) → Orchestrator → System Prompt → LLM → Response
+
+Each `context_type` maps 1:1 with a specialized system prompt:
+
+- `general` → General assistant prompt
+- `project_create` → Project creation consultant
+- `project_update` → Efficient updater
+- `project_audit` → Critical auditor (read-only)
+- `project_forecast` → Strategic forecaster (read-only)
+- `task_update` → Focused task assistant
+- `daily_brief_update` → Brief manager
+
+### Related Docs
+
+- **System Prompt Architecture**: `/apps/web/docs/features/conversational-agent/SYSTEM_PROMPT_ARCHITECTURE.md` ⭐ Complete flow documentation
+- **Database Migration**: `/supabase/migrations/20251028_fix_context_type_constraint.sql`
+- **Original Chat Migration**: `/supabase/migrations/20251027_create_chat_tables.sql`
+- **Agent Extension Migration**: `/supabase/migrations/20251028_create_agent_tables.sql`
+- **Agent Overview**: `/apps/web/docs/features/conversational-agent/README.md`
+- **Type Definitions**: `/packages/shared-types/src/agent.types.ts`
+
+### Cross-references
+
+- **Database schema**:
+    - `chat_sessions.total_tokens_used` (aggregate) vs `chat_messages.total_tokens` (individual)
+    - `chat_sessions.context_type` (primary - routes to system prompts) vs `chat_sessions.chat_type` (backward compatibility)
+- **Migrations**: Three-stage evolution
+    1. Original chat system with generic types
+    2. Agent extension with new column
+    3. Constraint fix to allow agent types in context_type
+- **Architecture**: context_type → switch statement → handler → system prompt → LLM
+
+---
+
+## 2025-10-28 - Calendar Disconnect Svelte Lifecycle Error
+
+**Severity**: High (Calendar disconnect functionality completely broken)
+
+### Root Cause
+
+The `getSupabase()` helper function in `/apps/web/src/lib/supabase-helpers.ts` was calling `hasContext('supabase')` which can only be invoked during Svelte component initialization, not in event handlers or async functions.
+
+**Technical Details:**
+
+- Error: `lifecycle_outside_component - hasContext(...) can only be used during component initialisation`
+- Triggered by: `handleDisconnectClick()` event handler in CalendarTab.svelte
+- The helper tried to check for Supabase context using `hasContext()` in line 9
+
+**Affected Components:**
+
+- `/apps/web/src/lib/components/profile/CalendarTab.svelte:366` - Event handler calling getSupabase()
+- All calendar disconnect and dependency checking functionality
+
+**Impact:**
+
+- Users unable to disconnect their Google Calendar integration
+- Error thrown when clicking the disconnect button
+
+### Fix Description
+
+1. **Replaced getSupabase() helper with direct import** of the Supabase browser singleton:
+    - Changed from: `import { getSupabase } from '$lib/supabase-helpers'`
+    - Changed to: `import { supabase } from '$lib/supabase'`
+2. **Added SSR guards** to check if Supabase client exists before using it
+3. **Updated all event handlers** to use the imported singleton instead of calling getSupabase()
+
+### Files Changed
+
+- `/apps/web/src/lib/components/profile/CalendarTab.svelte` - Fixed imports and Supabase usage
+
+### Related Docs
+
+- `/apps/web/src/lib/supabase/index.ts` - Proper Supabase client usage patterns
+- `/apps/web/CLAUDE.md` - Svelte 5 patterns and lifecycle documentation
+
+### Cross-references
+
+- **Svelte documentation**: https://svelte.dev/e/lifecycle_outside_component
+- **Pattern to follow**: Use browser singleton `import { supabase } from '$lib/supabase'` in Svelte components
+- **See also**: `/apps/web/docs/features/calendar-integration/README.md`
+
+---
+
 ## 2025-10-28 - LLM Usage Stats Database Relationship Error
 
 **Severity**: High (Admin dashboard completely broken)

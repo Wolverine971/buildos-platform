@@ -4,7 +4,7 @@ researcher: Claude
 git_commit: 4c89b78f549befdd7e8529032830fa7cebc6113c
 branch: main
 repository: buildos-platform
-topic: "Audit and Tailor Conversational Agent Design Spec to BuildOS Codebase"
+topic: 'Audit and Tailor Conversational Agent Design Spec to BuildOS Codebase'
 tags: [research, codebase, chat-system, conversational-agent, architecture, spec-audit]
 status: complete
 last_updated: 2025-10-28
@@ -34,6 +34,7 @@ After comprehensive analysis of the existing BuildOS codebase and the proposed c
 ### 1. Existing Infrastructure Analysis
 
 #### Chat System (Already Production-Ready)
+
 - **Progressive Disclosure Pattern**: Reduces tokens by 72% with abbreviated → detailed loading
 - **20+ Integrated Tools**: List/search (abbreviated), detail (full), action (mutations), calendar
 - **SSE Streaming**: Real-time responses with <100ms latency
@@ -42,14 +43,16 @@ After comprehensive analysis of the existing BuildOS codebase and the proposed c
 - **UI Components**: ChatModal (1573 lines), ChatMessage, ToolVisualization
 
 #### BrainDumpProcessor (Reusable for Agent)
+
 - **Operation Framework**: ParsedOperation types with create/update/delete support
 - **Dual Processing**: Parallel context and task extraction
 - **Reference Resolution**: Maps project_ref → project_id for batch operations
 - **Operations Executor**: Validates, executes, and rolls back operations
-- **9 Dimensions Framework**: Already implemented in core_* fields
+- **9 Dimensions Framework**: Already implemented in core\_\* fields
 - **Question Generation**: Structured questions with categories and priorities
 
 #### Key Services
+
 - **SmartLLMService**: Multi-model support with streaming
 - **PromptTemplateService**: 2070 lines of sophisticated prompts
 - **PhaseGenerationOrchestrator**: Creates project phases with tasks
@@ -57,50 +60,56 @@ After comprehensive analysis of the existing BuildOS codebase and the proposed c
 
 ### 2. Proposed Spec vs. Existing System Mapping
 
-| Proposed Feature | Existing System | Integration Strategy |
-|-----------------|-----------------|---------------------|
-| Draft tables (project_drafts, task_drafts) | ParsedOperation queue | Use operation queue pattern instead |
-| chat_operations table | OperationsExecutor | Extend existing executor |
-| AgentOrchestrator | ChatContextService + BrainDumpProcessor | Combine existing services |
-| Operation approval flow | Not implemented | Add approval layer to executor |
-| 9 dimensions framework | core_* fields in projects table | Already exists, just needs UI |
-| Agent modes (create/update/audit/forecast) | Not implemented | Add as chat session modes |
-| Project selector UI | Not implemented | Build new component |
-| Operations panel | Not implemented | Build new component |
+| Proposed Feature                           | Existing System                         | Integration Strategy                |
+| ------------------------------------------ | --------------------------------------- | ----------------------------------- |
+| Draft tables (project_drafts, task_drafts) | ParsedOperation queue                   | Use operation queue pattern instead |
+| chat_operations table                      | OperationsExecutor                      | Extend existing executor            |
+| AgentOrchestrator                          | ChatContextService + BrainDumpProcessor | Combine existing services           |
+| Operation approval flow                    | Not implemented                         | Add approval layer to executor      |
+| 9 dimensions framework                     | core\_\* fields in projects table       | Already exists, just needs UI       |
+| Agent modes (create/update/audit/forecast) | Not implemented                         | Add as chat session modes           |
+| Project selector UI                        | Not implemented                         | Build new component                 |
+| Operations panel                           | Not implemented                         | Build new component                 |
 
 ### 3. Critical Conflicts Identified
 
 1. **Database Schema Conflicts**
-   - Spec proposes `chat_type` but system uses `context_type`
-   - Spec wants new draft tables, but operation queue pattern is superior
-   - Spec duplicates existing operation execution logic
+    - Spec proposes `chat_type` but system uses `context_type`
+    - Spec wants new draft tables, but operation queue pattern is superior
+    - Spec duplicates existing operation execution logic
 
 2. **Service Layer Conflicts**
-   - AgentOrchestrator duplicates BrainDumpProcessor functionality
-   - New prompt system ignores existing PromptTemplateService
-   - Operation manager recreates OperationsExecutor
+    - AgentOrchestrator duplicates BrainDumpProcessor functionality
+    - New prompt system ignores existing PromptTemplateService
+    - Operation manager recreates OperationsExecutor
 
 3. **UI/UX Conflicts**
-   - Spec proposes new modal structure, existing ChatModal is extensible
-   - Tool visualization already exists, doesn't need recreation
+    - Spec proposes new modal structure, existing ChatModal is extensible
+    - Tool visualization already exists, doesn't need recreation
 
 ### 4. Architecture Insights
 
 #### Progressive Disclosure Success
+
 The existing system's progressive disclosure pattern is highly successful:
+
 - Initial context: ~1,400 tokens (under 1,500 target)
 - Detail loading: ~800 tokens on demand
 - Average session cost: ~$0.02 (under $0.03 target)
 
 #### Operation Framework Maturity
+
 The BrainDumpProcessor's operation framework is production-tested:
+
 - Handles complex batch operations
 - Automatic reference resolution
 - Rollback on failure
 - Activity logging
 
 #### Security Patterns
+
 Existing security measures are comprehensive:
+
 - Prompt injection detection (2-tier validation)
 - Rate limiting
 - RLS policies on all tables
@@ -109,6 +118,7 @@ Existing security measures are comprehensive:
 ### 5. Historical Context from thoughts/
 
 The thoughts/ directory reveals important context:
+
 - Multiple chat system iterations were explored
 - Progressive disclosure was a key breakthrough
 - The operation framework evolved from brain dump needs
@@ -259,61 +269,61 @@ export class ConversationalAgentService {
 // apps/web/src/lib/chat/agent-tools.config.ts
 
 export const AGENT_TOOLS: ChatToolDefinition[] = [
-  ...EXISTING_TOOLS, // Keep all existing tools
+	...EXISTING_TOOLS, // Keep all existing tools
 
-  {
-    type: 'function',
-    function: {
-      name: 'queue_operation',
-      description: 'Queue an operation for user approval',
-      parameters: {
-        type: 'object',
-        properties: {
-          operation: {
-            type: 'object',
-            description: 'ParsedOperation object'
-          },
-          requiresApproval: {
-            type: 'boolean',
-            default: true
-          }
-        },
-        required: ['operation']
-      }
-    }
-  },
+	{
+		type: 'function',
+		function: {
+			name: 'queue_operation',
+			description: 'Queue an operation for user approval',
+			parameters: {
+				type: 'object',
+				properties: {
+					operation: {
+						type: 'object',
+						description: 'ParsedOperation object'
+					},
+					requiresApproval: {
+						type: 'boolean',
+						default: true
+					}
+				},
+				required: ['operation']
+			}
+		}
+	},
 
-  {
-    type: 'function',
-    function: {
-      name: 'analyze_dimensions',
-      description: 'Analyze which of 9 dimensions are relevant',
-      parameters: {
-        type: 'object',
-        properties: {
-          braindump: { type: 'string' },
-          existing_project: { type: 'object' }
-        },
-        required: ['braindump']
-      }
-    }
-  },
+	{
+		type: 'function',
+		function: {
+			name: 'analyze_dimensions',
+			description: 'Analyze which of 9 dimensions are relevant',
+			parameters: {
+				type: 'object',
+				properties: {
+					braindump: { type: 'string' },
+					existing_project: { type: 'object' }
+				},
+				required: ['braindump']
+			}
+		}
+	},
 
-  {
-    type: 'function',
-    function: {
-      name: 'generate_clarifying_questions',
-      description: 'Generate questions about missing information',
-      parameters: {
-        type: 'object',
-        properties: {
-          dimensions_needed: { type: 'array', items: { type: 'string' } },
-          context: { type: 'string' }
-        },
-        required: ['dimensions_needed']
-      }
-    }
-  }
+	{
+		type: 'function',
+		function: {
+			name: 'generate_clarifying_questions',
+			description: 'Generate questions about missing information',
+			parameters: {
+				type: 'object',
+				properties: {
+					dimensions_needed: { type: 'array', items: { type: 'string' } },
+					context: { type: 'string' }
+				},
+				required: ['dimensions_needed']
+			}
+		}
+	}
 ];
 ```
 
@@ -323,76 +333,72 @@ export const AGENT_TOOLS: ChatToolDefinition[] = [
 <!-- Extend existing ChatModal.svelte -->
 
 <script lang="ts">
-  import { AgentModeSelector } from './AgentModeSelector.svelte';
-  import { OperationsPanel } from './OperationsPanel.svelte';
-  import { PastConversations } from './PastConversations.svelte';
+	import { AgentModeSelector } from './AgentModeSelector.svelte';
+	import { OperationsPanel } from './OperationsPanel.svelte';
+	import { PastConversations } from './PastConversations.svelte';
 
-  // Detect agent mode based on context
-  let agentMode = detectAgentMode(contextType, entityId);
+	// Detect agent mode based on context
+	let agentMode = detectAgentMode(contextType, entityId);
 
-  // Track pending operations
-  let pendingOperations: ParsedOperation[] = [];
+	// Track pending operations
+	let pendingOperations: ParsedOperation[] = [];
 
-  // Handle operation approval
-  async function approveOperations() {
-    const result = await operationsExecutor.executeOperations({
-      operations: pendingOperations,
-      userId: user.id
-    });
+	// Handle operation approval
+	async function approveOperations() {
+		const result = await operationsExecutor.executeOperations({
+			operations: pendingOperations,
+			userId: user.id
+		});
 
-    // Update UI with results
-    pendingOperations = [];
-    showSuccessToast('Operations completed');
-  }
+		// Update UI with results
+		pendingOperations = [];
+		showSuccessToast('Operations completed');
+	}
 </script>
 
 <!-- Add agent mode selector to header -->
 {#if showAgentModes}
-  <AgentModeSelector
-    bind:mode={agentMode}
-    currentProject={entityId}
-  />
+	<AgentModeSelector bind:mode={agentMode} currentProject={entityId} />
 {/if}
 
 <!-- Main chat interface (existing) -->
 <div class="flex-1">
-  <!-- Existing chat UI -->
+	<!-- Existing chat UI -->
 </div>
 
 <!-- Operations panel (new) -->
 {#if pendingOperations.length > 0}
-  <OperationsPanel
-    operations={pendingOperations}
-    onApprove={approveOperations}
-    onReject={() => pendingOperations = []}
-  />
+	<OperationsPanel
+		operations={pendingOperations}
+		onApprove={approveOperations}
+		onReject={() => (pendingOperations = [])}
+	/>
 {/if}
 ```
 
 ### Phase 5: Integration Points (Week 4)
 
 1. **Navigation Integration**
-   ```svelte
-   <!-- Update existing header -->
-   <button on:click={() => openChat('project_create')}>
-     AI Assistant
-   </button>
-   ```
+
+    ```svelte
+    <!-- Update existing header -->
+    <button on:click={() => openChat('project_create')}> AI Assistant </button>
+    ```
 
 2. **Keyboard Shortcuts**
-   - Keep `Cmd+K` for standard chat
-   - Add `Cmd+Shift+N` for project creation
-   - Add `Cmd+Shift+A` for audit mode
+    - Keep `Cmd+K` for standard chat
+    - Add `Cmd+Shift+N` for project creation
+    - Add `Cmd+Shift+A` for audit mode
 
 3. **Project Pages**
-   ```svelte
-   <!-- Add to project header -->
-   <div class="flex gap-2">
-     <button on:click={() => openChat('project_update')}>Update</button>
-     <button on:click={() => openChat('project_audit')}>Audit</button>
-     <button on:click={() => openChat('project_forecast')}>Forecast</button>
-   </div>
-   ```
+    ```svelte
+    <!-- Add to project header -->
+    <div class="flex gap-2">
+    	<button on:click={() => openChat('project_update')}>Update</button>
+    	<button on:click={() => openChat('project_audit')}>Audit</button>
+    	<button on:click={() => openChat('project_forecast')}>Forecast</button>
+    </div>
+    ```
 
 ### Phase 6: Testing Strategy (Week 5)
 
@@ -400,31 +406,30 @@ export const AGENT_TOOLS: ChatToolDefinition[] = [
 // apps/web/src/lib/tests/agent/conversational-agent.test.ts
 
 describe('ConversationalAgent', () => {
-  it('should identify relevant dimensions', async () => {
-    const agent = new ConversationalAgentService();
-    const dimensions = await agent.identifyDimensions(
-      "I want to build a mobile app..."
-    );
-    expect(dimensions).toContain('core_goals_momentum');
-  });
+	it('should identify relevant dimensions', async () => {
+		const agent = new ConversationalAgentService();
+		const dimensions = await agent.identifyDimensions('I want to build a mobile app...');
+		expect(dimensions).toContain('core_goals_momentum');
+	});
 
-  it('should queue operations without executing', async () => {
-    const operations = await agent.generateOperations(message);
-    expect(operations).toHaveLength(3);
-    expect(operations[0].enabled).toBe(false); // Not executed
-  });
+	it('should queue operations without executing', async () => {
+		const operations = await agent.generateOperations(message);
+		expect(operations).toHaveLength(3);
+		expect(operations[0].enabled).toBe(false); // Not executed
+	});
 
-  it('should use existing BrainDumpProcessor patterns', async () => {
-    const result = await agent.processWithBrainDump(message);
-    expect(result.operations).toBeDefined();
-    expect(result.projectQuestions).toBeDefined();
-  });
+	it('should use existing BrainDumpProcessor patterns', async () => {
+		const result = await agent.processWithBrainDump(message);
+		expect(result.operations).toBeDefined();
+		expect(result.projectQuestions).toBeDefined();
+	});
 });
 ```
 
 ## Implementation Checklist
 
 ### ✅ Can Reuse Immediately (70%)
+
 - [x] Chat infrastructure (sessions, messages, tools)
 - [x] Progressive disclosure pattern
 - [x] SSE streaming
@@ -436,6 +441,7 @@ describe('ConversationalAgent', () => {
 - [x] Security patterns (injection detection, rate limiting)
 
 ### 🔧 Need Minor Modifications (20%)
+
 - [ ] Extend chat_sessions table
 - [ ] Add agent_conversation_state table
 - [ ] Create AgentService wrapping BrainDumpProcessor
@@ -443,6 +449,7 @@ describe('ConversationalAgent', () => {
 - [ ] Extend ChatModal with operation panel
 
 ### 🆕 Need to Build New (10%)
+
 - [ ] Agent mode selector UI
 - [ ] Operations approval panel
 - [ ] Past conversations sidebar

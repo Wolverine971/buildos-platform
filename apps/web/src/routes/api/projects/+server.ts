@@ -10,40 +10,61 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		// Get pagination parameters
+		const mode = url.searchParams.get('mode');
 		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '20');
+		const limit = parseInt(
+			url.searchParams.get('limit') || (mode === 'context-selection' ? '100' : '20')
+		);
 		const offset = (page - 1) * limit;
+		const statusParam = url.searchParams.get('status');
+		const statuses = statusParam
+			? statusParam
+					.split(',')
+					.map((status) => status.trim())
+					.filter(Boolean)
+			: mode === 'context-selection'
+				? ['active', 'paused']
+				: ['active'];
+		const includeCounts =
+			(mode === 'context-selection' && url.searchParams.get('include_counts') !== 'false') ||
+			url.searchParams.get('include_counts') === 'true';
 
-		// Get total count
-		const { count, error: countError } = await supabase
+		const selectFields = includeCounts
+			? `id, name, description, status, slug, updated_at, tasks:tasks(count)`
+			: '*';
+
+		const {
+			data: projects,
+			error,
+			count
+		} = await supabase
 			.from('projects')
-			.select('*', { count: 'exact', head: true })
+			.select(selectFields, { count: 'exact' })
 			.eq('user_id', user.id)
-			.eq('status', 'active');
-
-		if (countError) {
-			return ApiResponse.databaseError(countError);
-		}
-
-		// Get paginated projects
-		const { data: projects, error: projectsError } = await supabase
-			.from('projects')
-			.select('*')
-			.eq('user_id', user.id)
-			.eq('status', 'active')
+			.in('status', statuses)
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 
-		if (projectsError) {
-			return ApiResponse.databaseError(projectsError);
+		if (error) {
+			return ApiResponse.databaseError(error);
 		}
 
+		const normalizedProjects = (projects || []).map((project: any) => {
+			if (!includeCounts) return project;
+			const taskCount = project.tasks?.[0]?.count ?? 0;
+			const { tasks, ...rest } = project;
+			return {
+				...rest,
+				task_count: taskCount
+			};
+		});
+
 		return ApiResponse.success({
-			projects: projects || [],
-			total: count || 0,
+			projects: normalizedProjects,
+			total: count ?? normalizedProjects.length,
 			page,
-			limit
+			limit,
+			statuses
 		});
 	} catch (err) {
 		return ApiResponse.internalError(err);

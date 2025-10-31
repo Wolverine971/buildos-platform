@@ -90,7 +90,24 @@ export async function savePromptForAudit({
 				'project-synthesis/task-synthesis-modular-prompt.md',
 
 			// Preparatory analysis
-			'preparatory-analysis': 'existing-project/preparatory-analysis/prep-analysis-prompt.md'
+			'preparatory-analysis': 'existing-project/preparatory-analysis/prep-analysis-prompt.md',
+
+			// Chat compression service
+			'chat-compression-title-generation': 'chat/compression/title-generation-prompt.md',
+			'chat-compression-conversation': 'chat/compression/conversation-compression-prompt.md',
+			'chat-compression-segment': 'chat/compression/segment-compression-prompt.md',
+
+			// Agent conversation service
+			'agent-conversation-executor-turn': 'agent/conversation/executor-turn-prompt.md',
+			'agent-conversation-planner-response': 'agent/conversation/planner-response-prompt.md',
+
+			// Agent executor service
+			'agent-executor-task-execution': 'agent/executor/task-execution-prompt.md',
+
+			// Agent planner service
+			'agent-planner-complexity-analysis': 'agent/planner/complexity-analysis-prompt.md',
+			'agent-planner-tool-query': 'agent/planner/tool-query-prompt.md',
+			'agent-planner-synthesis': 'agent/planner/synthesis-prompt.md'
 		};
 
 		const filePath = scenarioMap[scenarioType];
@@ -177,10 +194,24 @@ Part 2 includes full data models and deduplication logic against existing projec
 
 		// Write the file (overwrite if exists)
 		await writeFile(fullPath, content, 'utf-8');
-		console.log(`✅ Prompt audit saved: ${filePath}`);
+
+		// Enhanced logging with more context
+		console.log('\n' + '='.repeat(80));
+		console.log('📝 PROMPT AUDIT SAVED');
+		console.log('='.repeat(80));
+		console.log(`Scenario: ${scenarioType}`);
+		console.log(`File: docs/prompts/${filePath}`);
+		console.log(`Tokens: ~${Math.round((systemPrompt.length + userPrompt.length) / 4)}`);
+		if (metadata.userId) {
+			console.log(`User: ${metadata.userId}`);
+		}
+		console.log('='.repeat(80) + '\n');
 	} catch (error) {
 		// Don't throw errors in audit logging - it's a non-critical feature
-		console.error('Failed to save prompt audit:', error);
+		console.error('\n' + '❌ FAILED TO SAVE PROMPT AUDIT');
+		console.error(`Scenario: ${scenarioType}`);
+		console.error(`Error:`, error);
+		console.error('='.repeat(80) + '\n');
 	}
 }
 

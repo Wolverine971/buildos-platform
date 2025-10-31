@@ -62,6 +62,427 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_chat_messages: {
+        Row: {
+          agent_session_id: string
+          content: string
+          created_at: string
+          id: string
+          model_used: string | null
+          parent_user_session_id: string
+          role: Database["public"]["Enums"]["message_role"]
+          sender_agent_id: string | null
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used: number | null
+          tool_call_id: string | null
+          tool_calls: Json | null
+          user_id: string
+        }
+        Insert: {
+          agent_session_id: string
+          content: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          parent_user_session_id: string
+          role: Database["public"]["Enums"]["message_role"]
+          sender_agent_id?: string | null
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used?: number | null
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          user_id: string
+        }
+        Update: {
+          agent_session_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          parent_user_session_id?: string
+          role?: Database["public"]["Enums"]["message_role"]
+          sender_agent_id?: string | null
+          sender_type?: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used?: number | null
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chat_messages_parent_user_session_id_fkey"
+            columns: ["parent_user_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_sender"
+            columns: ["sender_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_session"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_chat_sessions: {
+        Row: {
+          completed_at: string | null
+          context_type: string | null
+          created_at: string
+          entity_id: string | null
+          executor_agent_id: string | null
+          id: string
+          initial_context: Json
+          message_count: number
+          parent_session_id: string
+          plan_id: string | null
+          planner_agent_id: string
+          session_type: Database["public"]["Enums"]["agent_session_type"]
+          status: Database["public"]["Enums"]["agent_status"]
+          step_number: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          context_type?: string | null
+          created_at?: string
+          entity_id?: string | null
+          executor_agent_id?: string | null
+          id?: string
+          initial_context: Json
+          message_count?: number
+          parent_session_id: string
+          plan_id?: string | null
+          planner_agent_id: string
+          session_type: Database["public"]["Enums"]["agent_session_type"]
+          status?: Database["public"]["Enums"]["agent_status"]
+          step_number?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          context_type?: string | null
+          created_at?: string
+          entity_id?: string | null
+          executor_agent_id?: string | null
+          id?: string
+          initial_context?: Json
+          message_count?: number
+          parent_session_id?: string
+          plan_id?: string | null
+          planner_agent_id?: string
+          session_type?: Database["public"]["Enums"]["agent_session_type"]
+          status?: Database["public"]["Enums"]["agent_status"]
+          step_number?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chat_sessions_parent_session_id_fkey"
+            columns: ["parent_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_sessions_executor"
+            columns: ["executor_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_sessions_plan"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_sessions_planner"
+            columns: ["planner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_sessions_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_executions: {
+        Row: {
+          agent_session_id: string
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          executor_agent_id: string
+          id: string
+          message_count: number | null
+          plan_id: string
+          result: Json | null
+          status: Database["public"]["Enums"]["execution_status"]
+          step_number: number
+          success: boolean
+          task: Json
+          tokens_used: number | null
+          tool_calls_made: number | null
+          tools_available: Json
+          user_id: string
+        }
+        Insert: {
+          agent_session_id: string
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          executor_agent_id: string
+          id?: string
+          message_count?: number | null
+          plan_id: string
+          result?: Json | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          step_number: number
+          success?: boolean
+          task: Json
+          tokens_used?: number | null
+          tool_calls_made?: number | null
+          tools_available?: Json
+          user_id: string
+        }
+        Update: {
+          agent_session_id?: string
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          executor_agent_id?: string
+          id?: string
+          message_count?: number | null
+          plan_id?: string
+          result?: Json | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          step_number?: number
+          success?: boolean
+          task?: Json
+          tokens_used?: number | null
+          tool_calls_made?: number | null
+          tools_available?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_executions_executor"
+            columns: ["executor_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_executions_plan"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_executions_session"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_executions_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_plans: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          planner_agent_id: string
+          session_id: string
+          status: Database["public"]["Enums"]["execution_status"]
+          steps: Json
+          strategy: Database["public"]["Enums"]["planning_strategy"]
+          updated_at: string
+          user_id: string
+          user_message: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          planner_agent_id: string
+          session_id: string
+          status?: Database["public"]["Enums"]["execution_status"]
+          steps?: Json
+          strategy: Database["public"]["Enums"]["planning_strategy"]
+          updated_at?: string
+          user_id: string
+          user_message: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          planner_agent_id?: string
+          session_id?: string
+          status?: Database["public"]["Enums"]["execution_status"]
+          steps?: Json
+          strategy?: Database["public"]["Enums"]["planning_strategy"]
+          updated_at?: string
+          user_id?: string
+          user_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_plans_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_plans_planner"
+            columns: ["planner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_plans_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          available_tools: Json | null
+          completed_at: string | null
+          created_at: string
+          created_for_plan: string | null
+          created_for_session: string
+          id: string
+          model_preference: string
+          name: string
+          permissions: Database["public"]["Enums"]["agent_permission"]
+          status: Database["public"]["Enums"]["agent_status"]
+          system_prompt: string
+          type: Database["public"]["Enums"]["agent_type"]
+          user_id: string
+        }
+        Insert: {
+          available_tools?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          created_for_plan?: string | null
+          created_for_session: string
+          id?: string
+          model_preference: string
+          name: string
+          permissions: Database["public"]["Enums"]["agent_permission"]
+          status?: Database["public"]["Enums"]["agent_status"]
+          system_prompt: string
+          type: Database["public"]["Enums"]["agent_type"]
+          user_id: string
+        }
+        Update: {
+          available_tools?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          created_for_plan?: string | null
+          created_for_session?: string
+          id?: string
+          model_preference?: string
+          name?: string
+          permissions?: Database["public"]["Enums"]["agent_permission"]
+          status?: Database["public"]["Enums"]["agent_status"]
+          system_prompt?: string
+          type?: Database["public"]["Enums"]["agent_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_created_for_session_fkey"
+            columns: ["created_for_session"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agents_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           api_key: string
@@ -1115,7 +1536,9 @@ export type Database = {
           error_code: string | null
           error_message: string | null
           id: string
+          message_type: string | null
           metadata: Json | null
+          operation_ids: string[] | null
           prompt_tokens: number | null
           role: string
           session_id: string
@@ -1124,6 +1547,7 @@ export type Database = {
           tool_name: string | null
           tool_result: Json | null
           total_tokens: number | null
+          user_id: string
         }
         Insert: {
           completion_tokens?: number | null
@@ -1132,7 +1556,9 @@ export type Database = {
           error_code?: string | null
           error_message?: string | null
           id?: string
+          message_type?: string | null
           metadata?: Json | null
+          operation_ids?: string[] | null
           prompt_tokens?: number | null
           role: string
           session_id: string
@@ -1141,6 +1567,7 @@ export type Database = {
           tool_name?: string | null
           tool_result?: Json | null
           total_tokens?: number | null
+          user_id: string
         }
         Update: {
           completion_tokens?: number | null
@@ -1149,7 +1576,9 @@ export type Database = {
           error_code?: string | null
           error_message?: string | null
           id?: string
+          message_type?: string | null
           metadata?: Json | null
+          operation_ids?: string[] | null
           prompt_tokens?: number | null
           role?: string
           session_id?: string
@@ -1158,6 +1587,7 @@ export type Database = {
           tool_name?: string | null
           tool_result?: Json | null
           total_tokens?: number | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -1167,12 +1597,112 @@ export type Database = {
             referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_operations: {
+        Row: {
+          after_data: Json | null
+          batch_id: string | null
+          before_data: Json | null
+          chat_session_id: string
+          conditions: Json | null
+          created_at: string | null
+          data: Json
+          duration_ms: number | null
+          enabled: boolean | null
+          entity_id: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          operation_type: string
+          reasoning: string | null
+          ref: string | null
+          result: Json | null
+          search_query: string | null
+          sequence_number: number | null
+          status: string | null
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          after_data?: Json | null
+          batch_id?: string | null
+          before_data?: Json | null
+          chat_session_id: string
+          conditions?: Json | null
+          created_at?: string | null
+          data: Json
+          duration_ms?: number | null
+          enabled?: boolean | null
+          entity_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          operation_type: string
+          reasoning?: string | null
+          ref?: string | null
+          result?: Json | null
+          search_query?: string | null
+          sequence_number?: number | null
+          status?: string | null
+          table_name: string
+          user_id: string
+        }
+        Update: {
+          after_data?: Json | null
+          batch_id?: string | null
+          before_data?: Json | null
+          chat_session_id?: string
+          conditions?: Json | null
+          created_at?: string | null
+          data?: Json
+          duration_ms?: number | null
+          enabled?: boolean | null
+          entity_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          operation_type?: string
+          reasoning?: string | null
+          ref?: string | null
+          result?: Json | null
+          search_query?: string | null
+          sequence_number?: number | null
+          status?: string | null
+          table_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_operations_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_operations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       chat_sessions: {
         Row: {
+          agent_metadata: Json | null
           archived_at: string | null
+          auto_accept_operations: boolean | null
           auto_title: string | null
+          chat_type: string | null
           compressed_at: string | null
           context_type: string
           created_at: string | null
@@ -1189,8 +1719,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agent_metadata?: Json | null
           archived_at?: string | null
+          auto_accept_operations?: boolean | null
           auto_title?: string | null
+          chat_type?: string | null
           compressed_at?: string | null
           context_type: string
           created_at?: string | null
@@ -1207,8 +1740,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agent_metadata?: Json | null
           archived_at?: string | null
+          auto_accept_operations?: boolean | null
           auto_title?: string | null
+          chat_type?: string | null
           compressed_at?: string | null
           context_type?: string
           created_at?: string | null
@@ -1224,7 +1760,130 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions_daily_briefs: {
+        Row: {
+          chat_session_id: string
+          daily_brief_id: string
+          id: string
+          linked_at: string | null
+        }
+        Insert: {
+          chat_session_id: string
+          daily_brief_id: string
+          id?: string
+          linked_at?: string | null
+        }
+        Update: {
+          chat_session_id?: string
+          daily_brief_id?: string
+          id?: string
+          linked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_daily_briefs_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_daily_briefs_daily_brief_id_fkey"
+            columns: ["daily_brief_id"]
+            isOneToOne: false
+            referencedRelation: "daily_briefs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions_projects: {
+        Row: {
+          chat_session_id: string
+          id: string
+          linked_at: string | null
+          project_id: string
+        }
+        Insert: {
+          chat_session_id: string
+          id?: string
+          linked_at?: string | null
+          project_id: string
+        }
+        Update: {
+          chat_session_id?: string
+          id?: string
+          linked_at?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_projects_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions_tasks: {
+        Row: {
+          chat_session_id: string
+          id: string
+          linked_at: string | null
+          task_id: string
+        }
+        Insert: {
+          chat_session_id: string
+          id?: string
+          linked_at?: string | null
+          task_id: string
+        }
+        Update: {
+          chat_session_id?: string
+          id?: string
+          linked_at?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_tasks_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_task_summary"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_tool_executions: {
         Row: {
@@ -1519,6 +2178,126 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: []
+      }
+      draft_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          deleted_at: string | null
+          dependencies: string[] | null
+          description: string | null
+          details: string | null
+          draft_project_id: string
+          duration_minutes: number | null
+          finalized_task_id: string | null
+          id: string
+          outdated: boolean | null
+          parent_task_id: string | null
+          priority: string | null
+          recurrence_end_source: string | null
+          recurrence_ends: string | null
+          recurrence_pattern: string | null
+          source: string | null
+          source_calendar_event_id: string | null
+          start_date: string | null
+          status: string | null
+          task_steps: Json | null
+          task_type: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          dependencies?: string[] | null
+          description?: string | null
+          details?: string | null
+          draft_project_id: string
+          duration_minutes?: number | null
+          finalized_task_id?: string | null
+          id?: string
+          outdated?: boolean | null
+          parent_task_id?: string | null
+          priority?: string | null
+          recurrence_end_source?: string | null
+          recurrence_ends?: string | null
+          recurrence_pattern?: string | null
+          source?: string | null
+          source_calendar_event_id?: string | null
+          start_date?: string | null
+          status?: string | null
+          task_steps?: Json | null
+          task_type?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          dependencies?: string[] | null
+          description?: string | null
+          details?: string | null
+          draft_project_id?: string
+          duration_minutes?: number | null
+          finalized_task_id?: string | null
+          id?: string
+          outdated?: boolean | null
+          parent_task_id?: string | null
+          priority?: string | null
+          recurrence_end_source?: string | null
+          recurrence_ends?: string | null
+          recurrence_pattern?: string | null
+          source?: string | null
+          source_calendar_event_id?: string | null
+          start_date?: string | null
+          status?: string | null
+          task_steps?: Json | null
+          task_type?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_tasks_draft_project_id_fkey"
+            columns: ["draft_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_tasks_finalized_task_id_fkey"
+            columns: ["finalized_task_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_task_summary"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "draft_tasks_finalized_task_id_fkey"
+            columns: ["finalized_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "draft_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_attachments: {
         Row: {
@@ -3109,6 +3888,133 @@ export type Database = {
           },
           {
             foreignKeyName: "project_daily_briefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_drafts: {
+        Row: {
+          calendar_color_id: string | null
+          calendar_settings: Json | null
+          calendar_sync_enabled: boolean | null
+          chat_session_id: string | null
+          completed_at: string | null
+          context: string | null
+          core_goals_momentum: string | null
+          core_harmony_integration: string | null
+          core_integrity_ideals: string | null
+          core_meaning_identity: string | null
+          core_opportunity_freedom: string | null
+          core_people_bonds: string | null
+          core_power_resources: string | null
+          core_reality_understanding: string | null
+          core_trust_safeguards: string | null
+          created_at: string | null
+          description: string | null
+          dimensions_covered: string[] | null
+          end_date: string | null
+          executive_summary: string | null
+          finalized_project_id: string | null
+          id: string
+          name: string | null
+          question_count: number | null
+          slug: string | null
+          source: string | null
+          source_metadata: Json | null
+          start_date: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          calendar_color_id?: string | null
+          calendar_settings?: Json | null
+          calendar_sync_enabled?: boolean | null
+          chat_session_id?: string | null
+          completed_at?: string | null
+          context?: string | null
+          core_goals_momentum?: string | null
+          core_harmony_integration?: string | null
+          core_integrity_ideals?: string | null
+          core_meaning_identity?: string | null
+          core_opportunity_freedom?: string | null
+          core_people_bonds?: string | null
+          core_power_resources?: string | null
+          core_reality_understanding?: string | null
+          core_trust_safeguards?: string | null
+          created_at?: string | null
+          description?: string | null
+          dimensions_covered?: string[] | null
+          end_date?: string | null
+          executive_summary?: string | null
+          finalized_project_id?: string | null
+          id?: string
+          name?: string | null
+          question_count?: number | null
+          slug?: string | null
+          source?: string | null
+          source_metadata?: Json | null
+          start_date?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          calendar_color_id?: string | null
+          calendar_settings?: Json | null
+          calendar_sync_enabled?: boolean | null
+          chat_session_id?: string | null
+          completed_at?: string | null
+          context?: string | null
+          core_goals_momentum?: string | null
+          core_harmony_integration?: string | null
+          core_integrity_ideals?: string | null
+          core_meaning_identity?: string | null
+          core_opportunity_freedom?: string | null
+          core_people_bonds?: string | null
+          core_power_resources?: string | null
+          core_reality_understanding?: string | null
+          core_trust_safeguards?: string | null
+          created_at?: string | null
+          description?: string | null
+          dimensions_covered?: string[] | null
+          end_date?: string | null
+          executive_summary?: string | null
+          finalized_project_id?: string | null
+          id?: string
+          name?: string | null
+          question_count?: number | null
+          slug?: string | null
+          source?: string | null
+          source_metadata?: Json | null
+          start_date?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_drafts_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: true
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_drafts_finalized_project_id_fkey"
+            columns: ["finalized_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_drafts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -5631,6 +6537,10 @@ export type Database = {
         Args: { p_days_old?: number }
         Returns: number
       }
+      cleanup_orphaned_drafts: {
+        Args: { p_days_old?: number }
+        Returns: number
+      }
       cleanup_project_history: {
         Args: { target_project_id: string }
         Returns: undefined
@@ -5677,6 +6587,10 @@ export type Database = {
       fail_queue_job: {
         Args: { p_error_message: string; p_job_id: string; p_retry?: boolean }
         Returns: boolean
+      }
+      finalize_draft_project: {
+        Args: { p_draft_id: string; p_user_id: string }
+        Returns: string
       }
       generate_recurring_instances: {
         Args: { p_end_date: string; p_start_date: string; p_task_id: string }
@@ -6346,9 +7260,14 @@ export type Database = {
       }
     }
     Enums: {
+      agent_permission: "read_only" | "read_write"
+      agent_session_type: "planner_thinking" | "planner_executor"
+      agent_status: "active" | "completed" | "failed"
+      agent_type: "planner" | "executor"
       brain_dump_status: "pending" | "parsed" | "saved" | "parsed_and_deleted"
       calendar_sync_status: "active" | "paused" | "error"
       calendar_visibility: "public" | "private" | "shared"
+      execution_status: "pending" | "executing" | "completed" | "failed"
       llm_operation_type:
         | "brain_dump"
         | "brain_dump_short"
@@ -6370,6 +7289,9 @@ export type Database = {
         | "timeout"
         | "rate_limited"
         | "invalid_response"
+      message_role: "system" | "user" | "assistant" | "tool"
+      message_sender_type: "planner" | "executor" | "system"
+      planning_strategy: "direct" | "complex"
       priority_level: "low" | "medium" | "high"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:
@@ -6551,9 +7473,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agent_permission: ["read_only", "read_write"],
+      agent_session_type: ["planner_thinking", "planner_executor"],
+      agent_status: ["active", "completed", "failed"],
+      agent_type: ["planner", "executor"],
       brain_dump_status: ["pending", "parsed", "saved", "parsed_and_deleted"],
       calendar_sync_status: ["active", "paused", "error"],
       calendar_visibility: ["public", "private", "shared"],
+      execution_status: ["pending", "executing", "completed", "failed"],
       llm_operation_type: [
         "brain_dump",
         "brain_dump_short",
@@ -6577,6 +7504,9 @@ export const Constants = {
         "rate_limited",
         "invalid_response",
       ],
+      message_role: ["system", "user", "assistant", "tool"],
+      message_sender_type: ["planner", "executor", "system"],
+      planning_strategy: ["direct", "complex"],
       priority_level: ["low", "medium", "high"],
       project_status: ["active", "paused", "completed", "archived"],
       queue_status: [

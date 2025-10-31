@@ -11,18 +11,18 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ChatContextService } from '$lib/services/chat-context-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
-import { CHAT_TOOLS } from '$lib/chat/tools.config';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { ApiResponse } from '$lib/utils/api-response';
 import type {
 	ChatStreamRequest,
 	ChatMessage,
-	ChatMessageInsert,
 	ChatSession,
 	ChatSessionInsert,
 	ChatToolCall,
+	ChatToolDefinition,
 	LLMMessage,
-	ChatSSEMessage
+	ChatSSEMessage,
+	ChatContextType
 } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -152,6 +152,18 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			chatSession = newSession;
 		}
 
+		// Set session ID for tool execution logging
+		toolExecutor.setSessionId(chatSession.id);
+
+		// Get context-appropriate tools based on chat mode
+		// Different contexts (global, project, task, etc.) get different tool sets
+		const contextTools = contextService.getTools(chatSession.context_type as ChatContextType);
+
+		// Check if this context should auto-execute tools (reactive) or queue them (proactive)
+		const shouldAutoExecute = contextService.shouldAutoExecute(
+			chatSession.context_type as ChatContextType
+		);
+
 		// Build initial context using progressive disclosure
 		const initialContext = await contextService.buildInitialContext(
 			chatSession.id,
@@ -250,8 +262,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		});
 
 		// Save user message
-		const userMessageData: ChatMessageInsert = {
+		const userMessageData = {
 			session_id: chatSession.id,
+			user_id: userId,
 			role: 'user',
 			content: message
 		};
@@ -285,10 +298,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					session: chatSession
 				});
 
-				// Stream LLM response
+				// Stream LLM response with context-appropriate tools
 				for await (const chunk of llmService.streamText({
 					messages: messages as any,
-					tools: CHAT_TOOLS as any,
+					tools: contextTools as any,
 					tool_choice: 'auto',
 					userId,
 					profile: 'speed',
@@ -320,7 +333,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 						await chatStream.sendMessage(sseMessage);
 
-						// Execute tool
+						// Execute tool immediately
+						// NOTE: Currently all tools execute immediately. Future enhancement:
+						// - If shouldAutoExecute === false (proactive mode)
+						// - Check chatSession.auto_accept_operations flag
+						// - If false, queue operation for user approval instead of executing
 						const toolResult = await toolExecutor.execute(toolCall);
 
 						// Send tool result
@@ -341,7 +358,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 						// Continue streaming with tool result
 						for await (const continuationChunk of llmService.streamText({
 							messages: messages as any,
-							tools: CHAT_TOOLS as any,
+							tools: contextTools as any,
 							tool_choice: 'auto',
 							userId,
 							profile: 'speed',
@@ -387,12 +404,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				}
 
 				// Save assistant message
-				const assistantMessageData: ChatMessageInsert = {
+				const assistantMessageData = {
 					id: assistantMessageId,
 					session_id: chatSession.id,
+					user_id: userId,
 					role: 'assistant',
 					content: accumulatedContent,
-					tool_calls: toolCalls.length > 0 ? toolCalls : null,
+					tool_calls: toolCalls.length > 0 ? (toolCalls as any) : null,
 					total_tokens: totalTokens
 				};
 

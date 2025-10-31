@@ -26,7 +26,7 @@ import type {
 	GetBrainDumpDetailsArgs,
 	CreateTaskArgs,
 	UpdateTaskArgs,
-	UpdateProjectContextArgs,
+	UpdateProjectArgs,
 	CreateNoteArgs,
 	CreateBrainDumpArgs,
 	GetCalendarEventsArgs,
@@ -39,21 +39,77 @@ import type {
 	UpdateOrScheduleTaskArgs
 } from '@buildos/shared-types';
 import { CalendarService } from '$lib/services/calendar-service';
-import { getToolCategory } from './tools.config';
+import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
+
+/**
+ * Type for task query result with project relationship
+ */
+interface TaskWithProject {
+	id: string;
+	title: string;
+	status: string;
+	priority: string;
+	start_date: string | null;
+	duration_minutes: number | null;
+	description: string | null;
+	details: string | null;
+	task_type: string;
+	recurrence_pattern: string | null;
+	project: { name: string } | null;
+	subtasks: { id: string }[];
+	dependencies: string[] | null;
+}
+
+/**
+ * Whitelist of updatable project fields
+ * This prevents invalid or protected fields from being updated
+ */
+const UPDATABLE_PROJECT_FIELDS = new Set([
+	'name',
+	'description',
+	'executive_summary',
+	'context',
+	'status',
+	'start_date',
+	'end_date',
+	'tags',
+	'calendar_color_id',
+	'calendar_sync_enabled',
+	'core_goals_momentum',
+	'core_harmony_integration',
+	'core_integrity_ideals',
+	'core_meaning_identity',
+	'core_opportunity_freedom',
+	'core_people_bonds',
+	'core_power_resources',
+	'core_reality_understanding',
+	'core_trust_safeguards'
+]);
 
 export class ChatToolExecutor {
 	private calendarService: CalendarService;
 	private baseUrl: string = ''; // Will be set based on environment
+	private sessionId?: string; // Optional, can be set after construction
 
 	constructor(
 		private supabase: SupabaseClient,
-		private userId: string
+		private userId: string,
+		sessionId?: string
 	) {
 		this.calendarService = new CalendarService(supabase);
+		this.sessionId = sessionId;
 		// In browser context, we can use relative URLs
 		if (typeof window !== 'undefined') {
 			this.baseUrl = window.location.origin;
 		}
+	}
+
+	/**
+	 * Set the session ID for tool execution logging
+	 * This can be called after construction once the session is known
+	 */
+	setSessionId(sessionId: string): void {
+		this.sessionId = sessionId;
 	}
 
 	/**
@@ -72,9 +128,14 @@ export class ChatToolExecutor {
 
 	/**
 	 * Make authenticated API request
+	 * @param path - API endpoint path
+	 * @param options - Fetch options
+	 * @returns Parsed JSON response
+	 * @throws {Error} If request fails with detailed error information
 	 */
 	private async apiRequest<T = any>(path: string, options: RequestInit = {}): Promise<T> {
 		const headers = await this.getAuthHeaders();
+		const method = options.method || 'GET';
 
 		const response = await fetch(`${this.baseUrl}${path}`, {
 			...options,
@@ -86,7 +147,9 @@ export class ChatToolExecutor {
 
 		if (!response.ok) {
 			const error = await response.text();
-			throw new Error(`API request failed: ${response.statusText} - ${error}`);
+			throw new Error(
+				`API ${method} ${path} failed: ${response.status} ${response.statusText} - ${error}`
+			);
 		}
 
 		return response.json();
@@ -157,8 +220,8 @@ export class ChatToolExecutor {
 					result = await this.updateTaskViaAPI(args as UpdateTaskArgs);
 					break;
 
-				case 'update_project_context':
-					result = await this.updateProjectContext(args as UpdateProjectContextArgs);
+				case 'update_project':
+					result = await this.updateProject(args as UpdateProjectArgs);
 					break;
 
 				case 'create_note':
@@ -209,6 +272,16 @@ export class ChatToolExecutor {
 
 				case 'update_or_schedule_task':
 					result = await this.updateOrScheduleTask(args as UpdateOrScheduleTaskArgs);
+					break;
+
+				// ========================================
+				// UTILITY OPERATIONS (Schema & Reference)
+				// ========================================
+
+				case 'get_field_info':
+					result = await this.getFieldInfo(
+						args as { entity_type: string; field_name?: string }
+					);
 					break;
 
 				default:
@@ -276,6 +349,9 @@ export class ChatToolExecutor {
 			{ count: 'exact' }
 		);
 
+		// Filter by user_id (CRITICAL: prevents accessing other users' data)
+		query = query.eq('user_id', this.userId);
+
 		// Apply filters
 		if (args.project_id) {
 			query = query.eq('project_id', args.project_id);
@@ -314,21 +390,23 @@ export class ChatToolExecutor {
 		if (error) throw error;
 
 		// Convert to abbreviated format
-		const abbreviatedTasks: AbbreviatedTask[] = (tasks || []).map((t) => ({
-			id: t.id,
-			title: t.title,
-			status: t.status,
-			priority: t.priority,
-			start_date: t.start_date,
-			duration_minutes: t.duration_minutes,
-			description_preview: t.description?.substring(0, 100) || '',
-			details_preview: t.details?.substring(0, 100) || null,
-			has_subtasks: t.subtasks?.length > 0,
-			has_dependencies: t.dependencies?.length > 0,
-			is_recurring: !!t.recurrence_pattern,
-			project_name: (t.project as any)?.name,
-			is_overdue: this.isOverdue(t.start_date, t.status)
-		}));
+		const abbreviatedTasks: AbbreviatedTask[] = ((tasks || []) as TaskWithProject[]).map(
+			(t) => ({
+				id: t.id,
+				title: t.title,
+				status: t.status,
+				priority: t.priority,
+				start_date: t.start_date,
+				duration_minutes: t.duration_minutes,
+				description_preview: t.description?.substring(0, 100) || '',
+				details_preview: t.details?.substring(0, 100) || null,
+				has_subtasks: t.subtasks?.length > 0,
+				has_dependencies: t.dependencies?.length > 0,
+				is_recurring: !!t.recurrence_pattern,
+				project_name: t.project?.name || undefined,
+				is_overdue: this.isOverdue(t.start_date, t.status)
+			})
+		);
 
 		const total = count || 0;
 		const hasMore = total > limit;
@@ -349,14 +427,13 @@ export class ChatToolExecutor {
 		let query = this.supabase.from('projects').select(
 			`
 				id, name, slug, status, start_date, end_date,
-				description, executive_summary, tags, context,
-				tasks!inner(id, status),
-				phases:project_phases(id),
-				notes(id),
-				brain_dumps(id)
+				description, executive_summary, tags, context
 			`,
 			{ count: 'exact' }
 		);
+
+		// Filter by user_id (CRITICAL: prevents accessing other users' data)
+		query = query.eq('user_id', this.userId);
 
 		// Apply search
 		if (args.query) {
@@ -370,11 +447,6 @@ export class ChatToolExecutor {
 			query = query.eq('status', args.status);
 		}
 
-		// Apply active tasks filter
-		if (args.has_active_tasks) {
-			query = query.in('tasks.status', ['in_progress', 'backlog', 'blocked']);
-		}
-
 		// Limit
 		const limit = Math.min(args.limit || 10, 20);
 		query = query.limit(limit);
@@ -383,29 +455,66 @@ export class ChatToolExecutor {
 
 		if (error) throw error;
 
-		// Convert to abbreviated format
-		const abbreviatedProjects: AbbreviatedProject[] = (projects || []).map((p) => {
-			const taskStats = this.calculateTaskStats(p.tasks || []);
-			return {
-				id: p.id,
-				name: p.name,
-				slug: p.slug,
-				status: p.status,
-				start_date: p.start_date,
-				end_date: p.end_date,
-				description: p.description,
-				executive_summary: p.executive_summary,
-				tags: p.tags,
-				context_preview: p.context?.substring(0, 500) || null,
-				task_count: taskStats.total,
-				active_task_count: taskStats.active,
-				completed_task_count: taskStats.completed,
-				completion_percentage: taskStats.percentage,
-				has_phases: p.phases?.length > 0,
-				has_notes: p.notes?.length > 0,
-				has_brain_dumps: p.brain_dumps?.length > 0
-			};
-		});
+		// For each project, query related data separately to avoid relationship issues
+		const abbreviatedProjects: AbbreviatedProject[] = await Promise.all(
+			(projects || []).map(async (p) => {
+				// Query tasks for this project
+				const { data: tasks } = await this.supabase
+					.from('tasks')
+					.select('id, status')
+					.eq('project_id', p.id)
+					.eq('user_id', this.userId);
+
+				// Apply active tasks filter if needed
+				let filteredTasks = tasks || [];
+				if (args.has_active_tasks) {
+					filteredTasks = filteredTasks.filter((t) =>
+						['in_progress', 'backlog', 'blocked'].includes(t.status)
+					);
+				}
+
+				// Query counts for phases, notes, and brain dumps
+				const [phasesCount, notesCount, brainDumpsCount] = await Promise.all([
+					this.supabase
+						.from('phases')
+						.select('id', { count: 'exact', head: true })
+						.eq('project_id', p.id)
+						.eq('user_id', this.userId),
+					this.supabase
+						.from('notes')
+						.select('id', { count: 'exact', head: true })
+						.eq('project_id', p.id)
+						.eq('user_id', this.userId),
+					this.supabase
+						.from('brain_dumps')
+						.select('id', { count: 'exact', head: true })
+						.eq('project_id', p.id)
+						.eq('user_id', this.userId)
+				]);
+
+				const taskStats = this.calculateTaskStats(filteredTasks);
+
+				return {
+					id: p.id,
+					name: p.name,
+					slug: p.slug,
+					status: p.status,
+					start_date: p.start_date,
+					end_date: p.end_date,
+					description: p.description,
+					executive_summary: p.executive_summary,
+					tags: p.tags,
+					context_preview: p.context?.substring(0, 500) || null,
+					task_count: taskStats.total,
+					active_task_count: taskStats.active,
+					completed_task_count: taskStats.completed,
+					completion_percentage: taskStats.percentage,
+					has_phases: (phasesCount.count || 0) > 0,
+					has_notes: (notesCount.count || 0) > 0,
+					has_brain_dumps: (brainDumpsCount.count || 0) > 0
+				};
+			})
+		);
 
 		return {
 			projects: abbreviatedProjects,
@@ -426,6 +535,9 @@ export class ChatToolExecutor {
 			`,
 			{ count: 'exact' }
 		);
+
+		// Filter by user_id (CRITICAL: prevents accessing other users' data)
+		query = query.eq('user_id', this.userId);
 
 		// Apply search
 		if (args.query) {
@@ -478,11 +590,13 @@ export class ChatToolExecutor {
 		let query = this.supabase.from('brain_dumps').select(
 			`
 				id, title, ai_summary, status, created_at,
-				project:projects(name),
-				operations:brain_dump_operations(id)
+				project:projects(name)
 			`,
 			{ count: 'exact' }
 		);
+
+		// Filter by user_id (CRITICAL: prevents accessing other users' data)
+		query = query.eq('user_id', this.userId);
 
 		// Apply search
 		if (args.query) {
@@ -517,7 +631,7 @@ export class ChatToolExecutor {
 			status: d.status,
 			created_at: d.created_at,
 			project_name: d.project?.name,
-			operation_count: d.operations?.length || 0
+			operation_count: 0 // Operations tracked separately in chat_operations table
 		}));
 
 		return {
@@ -546,6 +660,7 @@ export class ChatToolExecutor {
 			`
 			)
 			.eq('id', args.task_id)
+			.eq('user_id', this.userId)
 			.single();
 
 		const { data: task, error } = await query;
@@ -560,6 +675,7 @@ export class ChatToolExecutor {
 				.from('tasks')
 				.select('*')
 				.eq('parent_task_id', args.task_id)
+				.eq('user_id', this.userId)
 				.order('order', { ascending: true });
 
 			subtasks = data || [];
@@ -574,6 +690,7 @@ export class ChatToolExecutor {
 					'context, executive_summary, core_problem, target_audience, success_metrics'
 				)
 				.eq('id', task.project_id)
+				.eq('user_id', this.userId)
 				.single();
 
 			projectContext = project;
@@ -597,6 +714,7 @@ export class ChatToolExecutor {
 			.from('projects')
 			.select('*')
 			.eq('id', args.project_id)
+			.eq('user_id', this.userId)
 			.single();
 
 		if (error) throw error;
@@ -606,9 +724,10 @@ export class ChatToolExecutor {
 		let phases: any[] = [];
 		if (args.include_phases) {
 			const { data } = await this.supabase
-				.from('project_phases')
+				.from('phases')
 				.select('*')
 				.eq('project_id', args.project_id)
+				.eq('user_id', this.userId)
 				.order('order', { ascending: true });
 
 			phases = data || [];
@@ -626,6 +745,7 @@ export class ChatToolExecutor {
 				`
 				)
 				.eq('project_id', args.project_id)
+				.eq('user_id', this.userId)
 				.order('priority', { ascending: false })
 				.limit(50);
 
@@ -642,6 +762,7 @@ export class ChatToolExecutor {
 				.from('notes')
 				.select('id, title, content, category, created_at')
 				.eq('project_id', args.project_id)
+				.eq('user_id', this.userId)
 				.order('created_at', { ascending: false })
 				.limit(10);
 
@@ -658,6 +779,7 @@ export class ChatToolExecutor {
 				.from('brain_dumps')
 				.select('id, title, ai_summary, status, created_at')
 				.eq('project_id', args.project_id)
+				.eq('user_id', this.userId)
 				.order('created_at', { ascending: false })
 				.limit(10);
 
@@ -689,6 +811,7 @@ export class ChatToolExecutor {
 			`
 			)
 			.eq('id', args.note_id)
+			.eq('user_id', this.userId)
 			.single();
 
 		if (error) throw error;
@@ -714,6 +837,7 @@ export class ChatToolExecutor {
 			`
 			)
 			.eq('id', args.brain_dump_id)
+			.eq('user_id', this.userId)
 			.single();
 
 		if (error) throw error;
@@ -769,6 +893,7 @@ export class ChatToolExecutor {
 			.from('tasks')
 			.select('project_id, title')
 			.eq('id', args.task_id)
+			.eq('user_id', this.userId)
 			.single();
 
 		if (fetchError || !existingTask) {
@@ -798,14 +923,69 @@ export class ChatToolExecutor {
 		};
 	}
 
-	private async updateProjectContext(args: UpdateProjectContextArgs): Promise<{
+	/**
+	 * Update any fields on a project
+	 *
+	 * This method allows updating any project field including basic info,
+	 * calendar settings, and core dimensions. All updates are validated
+	 * against a whitelist of allowed fields.
+	 *
+	 * @param args - Project ID and fields to update
+	 * @returns Updated project data and success message
+	 * @throws {Error} If no fields provided, invalid fields, or project not found
+	 *
+	 * @example
+	 * // Update project status and end date
+	 * await updateProject({
+	 *   project_id: "abc-123",
+	 *   updates: {
+	 *     status: "completed",
+	 *     end_date: "2024-12-31"
+	 *   }
+	 * });
+	 *
+	 * @example
+	 * // Update project context
+	 * await updateProject({
+	 *   project_id: "abc-123",
+	 *   updates: {
+	 *     context: "Additional context about the project..."
+	 *   }
+	 * });
+	 *
+	 * @example
+	 * // Update core dimensions
+	 * await updateProject({
+	 *   project_id: "abc-123",
+	 *   updates: {
+	 *     core_goals_momentum: "Clear goals defined",
+	 *     core_people_bonds: "Team collaboration improved"
+	 *   }
+	 * });
+	 */
+	private async updateProject(args: UpdateProjectArgs): Promise<{
 		project: any;
 		message: string;
 	}> {
-		// Get current project context
+		// Validate that at least one field is being updated
+		const updateFields = Object.keys(args.updates);
+		if (updateFields.length === 0) {
+			throw new Error('No fields provided to update. Please specify at least one field.');
+		}
+
+		// Validate all fields are in the whitelist
+		const invalidFields = updateFields.filter((field) => !UPDATABLE_PROJECT_FIELDS.has(field));
+		if (invalidFields.length > 0) {
+			throw new Error(
+				`Invalid field(s): ${invalidFields.join(', ')}. ` +
+					`Allowed fields: ${Array.from(UPDATABLE_PROJECT_FIELDS).join(', ')}`
+			);
+		}
+
+		// Verify project exists and user has access
 		const { data: project, error: fetchError } = await this.supabase
 			.from('projects')
-			.select('context')
+			.select('id, name')
 			.eq('id', args.project_id)
 			.eq('user_id', this.userId)
 			.single();
@@ -813,38 +993,19 @@ export class ChatToolExecutor {
 		if (fetchError) throw fetchError;
 		if (!project) throw new Error('Project not found or unauthorized');
 
-		// Merge context based on strategy
-		let newContext: string;
-		const currentContext = project.context || '';
-		const strategy = args.merge_strategy || 'append';
-
-		switch (strategy) {
-			case 'replace':
-				newContext = args.context_update;
-				break;
-			case 'append':
-				newContext = currentContext
-					? `${currentContext}\n\n${args.context_update}`
-					: args.context_update;
-				break;
-			case 'prepend':
-				newContext = currentContext
-					? `${args.context_update}\n\n${currentContext}`
-					: args.context_update;
-				break;
-			default:
-				newContext = args.context_update;
-		}
-
-		// Update project via API endpoint
+		// Update project via API endpoint with provided updates
 		const result = await this.apiRequest(`/api/projects/${args.project_id}`, {
-			method: 'PATCH',
-			body: JSON.stringify({ context: newContext })
+			method: 'PUT',
+			body: JSON.stringify(args.updates)
 		});
+
+		// Build a descriptive message about what was updated
+		const fieldsList = updateFields.join(', ');
+		const message = `Updated project "${result.project.name}": ${fieldsList}`;
 
 		return {
 			project: result.project,
-			message: `Updated project context using ${strategy} strategy`
+			message
 		};
 	}
 
@@ -1183,9 +1344,59 @@ export class ChatToolExecutor {
 			task: result.task,
 			calendar_event: result.task?.task_calendar_events?.[0],
 			message:
-				taskEvents?.length > 0
+				taskEvents && taskEvents.length > 0
 					? `Updated task schedule and calendar event`
 					: `Scheduled task to calendar`
+		};
+	}
+
+	// ========================================
+	// UTILITY OPERATIONS (Schema & Reference)
+	// ========================================
+
+	/**
+	 * Get field information for an entity type
+	 * Returns authoritative schema information including types, valid values, and descriptions
+	 */
+	private async getFieldInfo(args: { entity_type: string; field_name?: string }): Promise<{
+		entity_type: string;
+		fields: any;
+		message: string;
+	}> {
+		const { entity_type, field_name } = args;
+
+		// Validate entity type
+		if (!ENTITY_FIELD_INFO[entity_type]) {
+			throw new Error(
+				`Unknown entity type: ${entity_type}. Valid types: ${Object.keys(ENTITY_FIELD_INFO).join(', ')}`
+			);
+		}
+
+		const entitySchema = ENTITY_FIELD_INFO[entity_type];
+
+		// If specific field requested
+		if (field_name) {
+			if (!entitySchema[field_name]) {
+				const availableFields = Object.keys(entitySchema).join(', ');
+				throw new Error(
+					`Field "${field_name}" not found for entity "${entity_type}". Available fields: ${availableFields}`
+				);
+			}
+
+			return {
+				entity_type,
+				fields: {
+					[field_name]: entitySchema[field_name]
+				},
+				message: `Field information for ${entity_type}.${field_name}`
+			};
+		}
+
+		// Return all commonly-used fields
+		return {
+			entity_type,
+			fields: entitySchema,
+			message: `Commonly-used fields for ${entity_type} (${Object.keys(entitySchema).length} fields)`
 		};
 	}
 
@@ -1203,18 +1414,26 @@ export class ChatToolExecutor {
 		success: boolean,
 		errorMessage?: string
 	): Promise<void> {
+		// Check if session_id is set (required for logging)
+		if (!this.sessionId) {
+			console.warn(
+				`Cannot log tool execution for ${toolCall.function.name}: session_id not set. Call setSessionId() first.`
+			);
+			return;
+		}
+
 		const category = getToolCategory(toolCall.function.name);
 
 		try {
 			await this.supabase.from('chat_tool_executions').insert({
+				session_id: this.sessionId,
 				tool_name: toolCall.function.name,
 				tool_category: category,
 				arguments: JSON.parse(toolCall.function.arguments),
 				result: success ? result : null,
 				execution_time_ms: duration,
 				success,
-				error_message: errorMessage || null,
-				user_id: this.userId
+				error_message: errorMessage || null
 			});
 		} catch (error) {
 			// Log error but don't fail the tool execution

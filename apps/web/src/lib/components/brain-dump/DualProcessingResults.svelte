@@ -535,75 +535,76 @@
 					padding="lg"
 					class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-md dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
 				>
-				<div class="absolute inset-0 opacity-50">
-					<div
-						class="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 blur-2xl dark:from-indigo-500/40 dark:to-purple-500/40"
-					></div>
-				</div>
-				<div
-					class="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
-				>
-					<div class="flex items-start gap-3">
+					<div class="absolute inset-0 opacity-50">
 						<div
-							class={`status-icon-wrap ${analysisStatus === 'failed' ? 'status-icon-wrap--error' : ''}`}
-						>
-							{#if analysisStatus === 'completed'}
-								<CircleCheck class="h-6 w-6" />
-							{:else if analysisStatus === 'failed'}
-								<XCircle class="h-6 w-6" />
-							{/if}
-						</div>
-						<div class="space-y-2">
-							<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-								{analysisStatus === 'completed'
-									? 'Analysis complete'
-									: 'Analysis needs attention'}
-							</h3>
-							<p class={`text-sm ${getStatusTone(analysisStatus)}`}>
-								{getStatusMeta(analysisStatus).description}
-							</p>
-							{#if analysisStatus === 'completed' && analysisResult}
-								<p
-									class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
-								>
-									{analysisResult.analysis_summary}
-								</p>
-							{:else if analysisStatus === 'failed'}
-								<p
-									class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
-								>
-									Analysis couldn't complete, but we'll continue with your data.
-								</p>
-							{/if}
-						</div>
+							class="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 blur-2xl dark:from-indigo-500/40 dark:to-purple-500/40"
+						></div>
 					</div>
-					{#if analysisStatus === 'completed' && analysisResult}
-						<div class="flex flex-wrap gap-2 md:max-w-sm">
-							{#if analysisResult.braindump_classification}
-								<span
-									class={`classification-chip ${analysisClassificationTheme.classes}`}
-								>
-									{analysisClassificationTheme.label}
-								</span>
-							{/if}
-							{#if analysisResult.relevant_task_ids.length > 0}
-								<Badge variant="info" size="sm" class="shadow-sm">
-									{analysisResult.relevant_task_ids.length} relevant task{analysisResult
-										.relevant_task_ids.length === 1
-										? ''
-										: 's'}
-								</Badge>
-							{/if}
-							{#if analysisResult.new_tasks_detected}
-								<Badge variant="success" size="sm" class="shadow-sm">
-									New tasks spotted
-								</Badge>
-							{/if}
+					<div
+						class="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
+					>
+						<div class="flex items-start gap-3">
+							<div
+								class={`status-icon-wrap ${analysisStatus === 'failed' ? 'status-icon-wrap--error' : ''}`}
+							>
+								{#if analysisStatus === 'completed'}
+									<CircleCheck class="h-6 w-6" />
+								{:else if analysisStatus === 'failed'}
+									<XCircle class="h-6 w-6" />
+								{/if}
+							</div>
+							<div class="space-y-2">
+								<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+									{analysisStatus === 'completed'
+										? 'Analysis complete'
+										: 'Analysis needs attention'}
+								</h3>
+								<p class={`text-sm ${getStatusTone(analysisStatus)}`}>
+									{getStatusMeta(analysisStatus).description}
+								</p>
+								{#if analysisStatus === 'completed' && analysisResult}
+									<p
+										class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+									>
+										{analysisResult.analysis_summary}
+									</p>
+								{:else if analysisStatus === 'failed'}
+									<p
+										class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+									>
+										Analysis couldn't complete, but we'll continue with your
+										data.
+									</p>
+								{/if}
+							</div>
 						</div>
-					{/if}
-				</div>
-			</Card>
-		</div>
+						{#if analysisStatus === 'completed' && analysisResult}
+							<div class="flex flex-wrap gap-2 md:max-w-sm">
+								{#if analysisResult.braindump_classification}
+									<span
+										class={`classification-chip ${analysisClassificationTheme.classes}`}
+									>
+										{analysisClassificationTheme.label}
+									</span>
+								{/if}
+								{#if analysisResult.relevant_task_ids.length > 0}
+									<Badge variant="info" size="sm" class="shadow-sm">
+										{analysisResult.relevant_task_ids.length} relevant task{analysisResult
+											.relevant_task_ids.length === 1
+											? ''
+											: 's'}
+									</Badge>
+								{/if}
+								{#if analysisResult.new_tasks_detected}
+									<Badge variant="success" size="sm" class="shadow-sm">
+										New tasks spotted
+									</Badge>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</Card>
+			</div>
 		{/if}
 	{/if}
 
@@ -617,105 +618,107 @@
 					padding="none"
 					class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70"
 				>
-				<CardHeader
-					variant="gradient"
-					class="flex flex-wrap items-center justify-between gap-3 from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
-				>
-					<div class="flex items-center gap-3">
-						<div
-							class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
-						>
-							<Brain class="h-5 w-5" />
-						</div>
-						<div class="space-y-1">
-							<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
-								Project Context
-							</h3>
-							<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
-								{#if isShortBraindump && contextStatus === 'pending'}
-									Update required based on tasks
-								{:else}
-									{getStatusMeta(contextStatus).description}
-								{/if}
-							</p>
-						</div>
-					</div>
-					<Badge variant={getStatusMeta(contextStatus).badge} size="sm">
-						{getStatusMeta(contextStatus).label}
-					</Badge>
-				</CardHeader>
-				<div class="px-4 pt-3">
-					<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
-						<div
-							class={`h-full rounded-full ${PROGRESS_GRADIENTS.context}`}
-							style={`width: ${$contextProgress}%; transition: width 0.45s ease;`}
-						></div>
-					</div>
-				</div>
-				<CardBody
-					padding="lg"
-					class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
-				>
-					{#if contextStatus === 'pending'}
-						<div
-							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
-						>
-							<div class="flex items-center gap-2">
-								<span
-									class="inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400"
-								></span>
-								<span>Preparing to analyze...</span>
+					<CardHeader
+						variant="gradient"
+						class="flex flex-wrap items-center justify-between gap-3 from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+					>
+						<div class="flex items-center gap-3">
+							<div
+								class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+							>
+								<Brain class="h-5 w-5" />
+							</div>
+							<div class="space-y-1">
+								<h3
+									class="text-base font-semibold text-slate-900 dark:text-slate-100"
+								>
+									Project Context
+								</h3>
+								<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+									{#if isShortBraindump && contextStatus === 'pending'}
+										Update required based on tasks
+									{:else}
+										{getStatusMeta(contextStatus).description}
+									{/if}
+								</p>
 							</div>
 						</div>
-					{:else if contextStatus === 'processing'}
-						{#if !contextResult}
-							<div class="space-y-3">
-								<div
-									class="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/60"
-								></div>
-								<div
-									class="h-3 w-full animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
-								></div>
-								<div
-									class="h-3 w-5/6 animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
-								></div>
-								<div class="flex gap-2 pt-2">
-									<div
-										class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
-									></div>
-									<div
-										class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
-									></div>
-									<div
-										class="h-6 w-12 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
-									></div>
+						<Badge variant={getStatusMeta(contextStatus).badge} size="sm">
+							{getStatusMeta(contextStatus).label}
+						</Badge>
+					</CardHeader>
+					<div class="px-4 pt-3">
+						<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
+							<div
+								class={`h-full rounded-full ${PROGRESS_GRADIENTS.context}`}
+								style={`width: ${$contextProgress}%; transition: width 0.45s ease;`}
+							></div>
+						</div>
+					</div>
+					<CardBody
+						padding="lg"
+						class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+					>
+						{#if contextStatus === 'pending'}
+							<div
+								class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+							>
+								<div class="flex items-center gap-2">
+									<span
+										class="inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400"
+									></span>
+									<span>Preparing to analyze...</span>
 								</div>
 							</div>
-						{:else}
+						{:else if contextStatus === 'processing'}
+							{#if !contextResult}
+								<div class="space-y-3">
+									<div
+										class="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/60"
+									></div>
+									<div
+										class="h-3 w-full animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+									></div>
+									<div
+										class="h-3 w-5/6 animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+									></div>
+									<div class="flex gap-2 pt-2">
+										<div
+											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+										></div>
+										<div
+											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+										></div>
+										<div
+											class="h-6 w-12 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+										></div>
+									</div>
+								</div>
+							{:else}
+								<div transition:fade={{ duration: 250 }}>
+									<ProjectContextPreview result={contextResult} />
+								</div>
+							{/if}
+						{:else if contextStatus === 'completed' && contextResult}
 							<div transition:fade={{ duration: 250 }}>
 								<ProjectContextPreview result={contextResult} />
 							</div>
+						{:else if contextStatus === 'failed'}
+							<div class="error-state">
+								<TriangleAlert class="h-5 w-5" />
+								<p>Failed to process context</p>
+								<span>You can still continue with tasks.</span>
+							</div>
+						{:else if contextStatus === 'not_needed'}
+							<div
+								class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-300"
+							>
+								Context was already up to date — nothing to do.
+							</div>
 						{/if}
-					{:else if contextStatus === 'completed' && contextResult}
-						<div transition:fade={{ duration: 250 }}>
-							<ProjectContextPreview result={contextResult} />
-						</div>
-					{:else if contextStatus === 'failed'}
-						<div class="error-state">
-							<TriangleAlert class="h-5 w-5" />
-							<p>Failed to process context</p>
-							<span>You can still continue with tasks.</span>
-						</div>
-					{:else if contextStatus === 'not_needed'}
-						<div
-							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-300"
-						>
-							Context was already up to date — nothing to do.
-						</div>
-					{/if}
-				</CardBody>
-			</Card>
-		</div>
+					</CardBody>
+				</Card>
+			</div>
 		{/if}
 		<div transition:fly={{ x: showContextPanel ? 12 : 0, duration: 350, easing: quintOut }}>
 			<Card
@@ -723,85 +726,85 @@
 				padding="none"
 				class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
 			>
-			<CardHeader
-				variant="gradient"
-				class="flex flex-wrap items-center justify-between gap-3 from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
-			>
-				<div class="flex items-center gap-3">
-					<div
-						class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
-					>
-						<FileText class="h-5 w-5" />
-					</div>
-					<div class="space-y-1">
-						<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
-							Tasks &amp; Notes
-						</h3>
-						<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
-							{getStatusMeta(tasksStatus).description}
-						</p>
-					</div>
-				</div>
-				<Badge variant={getStatusMeta(tasksStatus).badge} size="sm">
-					{getStatusMeta(tasksStatus).label}
-				</Badge>
-			</CardHeader>
-			<div class="px-4 pt-3">
-				<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
-					<div
-						class={`h-full rounded-full ${PROGRESS_GRADIENTS.tasks}`}
-						style={`width: ${$tasksProgress}%; transition: width 0.45s ease;`}
-					></div>
-				</div>
-			</div>
-			<CardBody
-				padding="lg"
-				class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
-			>
-				{#if tasksStatus === 'pending'}
-					<div
-						class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
-					>
-						<div class="flex items-center gap-2">
-							<span
-								class="inline-flex h-2 w-2 animate-ping rounded-full bg-purple-400"
-							></span>
-							<span>Waiting for analysis to begin...</span>
+				<CardHeader
+					variant="gradient"
+					class="flex flex-wrap items-center justify-between gap-3 from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
+				>
+					<div class="flex items-center gap-3">
+						<div
+							class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+						>
+							<FileText class="h-5 w-5" />
+						</div>
+						<div class="space-y-1">
+							<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+								Tasks &amp; Notes
+							</h3>
+							<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+								{getStatusMeta(tasksStatus).description}
+							</p>
 						</div>
 					</div>
-				{:else if tasksStatus === 'processing'}
-					{#if !tasksResult}
-						<div class="space-y-3">
-							<div class="flex flex-col gap-3">
-								<div class="skeleton-row"></div>
-								<div class="skeleton-row"></div>
-								<div class="skeleton-row-short"></div>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<div class="skeleton-pill"></div>
-								<div class="skeleton-pill"></div>
-								<div class="skeleton-pill"></div>
+					<Badge variant={getStatusMeta(tasksStatus).badge} size="sm">
+						{getStatusMeta(tasksStatus).label}
+					</Badge>
+				</CardHeader>
+				<div class="px-4 pt-3">
+					<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
+						<div
+							class={`h-full rounded-full ${PROGRESS_GRADIENTS.tasks}`}
+							style={`width: ${$tasksProgress}%; transition: width 0.45s ease;`}
+						></div>
+					</div>
+				</div>
+				<CardBody
+					padding="lg"
+					class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+				>
+					{#if tasksStatus === 'pending'}
+						<div
+							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+						>
+							<div class="flex items-center gap-2">
+								<span
+									class="inline-flex h-2 w-2 animate-ping rounded-full bg-purple-400"
+								></span>
+								<span>Waiting for analysis to begin...</span>
 							</div>
 						</div>
-					{:else}
+					{:else if tasksStatus === 'processing'}
+						{#if !tasksResult}
+							<div class="space-y-3">
+								<div class="flex flex-col gap-3">
+									<div class="skeleton-row"></div>
+									<div class="skeleton-row"></div>
+									<div class="skeleton-row-short"></div>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<div class="skeleton-pill"></div>
+									<div class="skeleton-pill"></div>
+									<div class="skeleton-pill"></div>
+								</div>
+							</div>
+						{:else}
+							<div transition:fade={{ duration: 250 }}>
+								<TasksNotesPreview result={tasksResult} />
+							</div>
+						{/if}
+					{:else if tasksStatus === 'completed' && tasksResult}
 						<div transition:fade={{ duration: 250 }}>
 							<TasksNotesPreview result={tasksResult} />
 						</div>
+					{:else if tasksStatus === 'failed'}
+						<div class="error-state">
+							<TriangleAlert class="h-5 w-5" />
+							<p>We couldn't extract tasks this time</p>
+							<span>Try again or edit the braindump.</span>
+						</div>
 					{/if}
-				{:else if tasksStatus === 'completed' && tasksResult}
-					<div transition:fade={{ duration: 250 }}>
-						<TasksNotesPreview result={tasksResult} />
-					</div>
-				{:else if tasksStatus === 'failed'}
-					<div class="error-state">
-						<TriangleAlert class="h-5 w-5" />
-						<p>We couldn't extract tasks this time</p>
-						<span>Try again or edit the braindump.</span>
-					</div>
-				{/if}
-			</CardBody>
-		</Card>
-	</div>
+				</CardBody>
+			</Card>
+		</div>
 	</div>
 </div>
 

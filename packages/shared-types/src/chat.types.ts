@@ -34,10 +34,36 @@ export type ChatCompressionInsert = Database['public']['Tables']['chat_compressi
 // Core Types
 // =====================================================
 
-export type ChatContextType = 'global' | 'project' | 'task' | 'calendar';
+export type ChatContextType =
+	// Original reactive chat modes
+	| 'global'
+	| 'project'
+	| 'task'
+	| 'calendar'
+	// Agent proactive modes
+	| 'general' // General agent assistant
+	| 'project_create' // Creating new project with guided questions
+	| 'project_update' // Updating existing project
+	| 'project_audit' // Critical review of project
+	| 'project_forecast' // Scenario forecasting
+	| 'task_update' // Quick task updates
+	| 'daily_brief_update'; // Daily brief preferences
 export type ChatRole = 'user' | 'assistant' | 'system' | 'tool';
 export type ChatSessionStatus = 'active' | 'archived' | 'compressed';
 export type ToolCategory = 'list' | 'detail' | 'action' | 'calendar';
+
+/**
+ * Metadata for system prompt customization
+ * Used to inject dynamic values into agent mode prompts
+ */
+export interface SystemPromptMetadata {
+	userName?: string; // User's name for personalization
+	projectName?: string; // Project name for project-specific modes
+	projectId?: string; // Project ID for context
+	dimensionsCovered?: string[]; // Already covered dimensions (project_create)
+	auditHarshness?: number; // Audit severity 1-10 (project_audit)
+	taskTitle?: string; // Task title for task_update mode
+}
 
 // =====================================================
 // Abbreviated Data Structures (Progressive Disclosure)
@@ -227,10 +253,31 @@ export interface UpdateTaskArgs {
   };
 }
 
-export interface UpdateProjectContextArgs {
+export interface UpdateProjectArgs {
   project_id: string;
-  context_update: string;
-  merge_strategy?: 'replace' | 'append' | 'prepend';
+  updates: {
+    name?: string;
+    description?: string;
+    executive_summary?: string;
+    context?: string;
+    status?: 'active' | 'paused' | 'completed' | 'archived';
+    start_date?: string;
+    end_date?: string;
+    tags?: string[];
+    // Calendar settings
+    calendar_color_id?: string;
+    calendar_sync_enabled?: boolean;
+    // Core dimensions (9 dimensions framework)
+    core_goals_momentum?: string;
+    core_harmony_integration?: string;
+    core_integrity_ideals?: string;
+    core_meaning_identity?: string;
+    core_opportunity_freedom?: string;
+    core_people_bonds?: string;
+    core_power_resources?: string;
+    core_reality_understanding?: string;
+    core_trust_safeguards?: string;
+  };
 }
 
 export interface GetCalendarEventsArgs {
@@ -330,8 +377,14 @@ export interface LocationContext {
   content: string;
   tokens: number;
   metadata: {
+    contextType?: ChatContextType;
     projectId?: string;
+    projectName?: string;
+    projectStatus?: string;
+    completionPercentage?: number;
     taskId?: string;
+    taskTitle?: string;
+    userName?: string;
     abbreviated: boolean;
     taskCount?: number;
     hasPhases?: boolean;

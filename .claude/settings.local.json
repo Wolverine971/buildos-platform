@@ -18,7 +18,19 @@
       "Bash(tree:*)",
       "Bash(pnpm check:*)",
       "Bash(wc:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm -w run typecheck:*)",
+      "Bash(node -e:*)",
+      "Read(///**)",
+      "Bash(git log:*)",
+      "WebFetch(domain:svelte.dev)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(while read dir)",
+      "Bash(do echo \"   • $dir/\")",
+      "Bash(done)",
+      "Bash(while read file)",
+      "Bash(do echo \"   • $file\")"
     ],
     "deny": [],
     "ask": []

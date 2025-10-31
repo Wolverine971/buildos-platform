@@ -1366,6 +1366,14 @@
 		brainDumpActions.clearParseResults();
 	}
 
+	function handleContinueWithAgent(event: CustomEvent) {
+		const { projectId } = event.detail;
+		// Close brain dump modal
+		handleModalClose();
+		// Dispatch event to parent to open agent modal
+		dispatch('openAgent', { projectId, chatType: 'project_update' });
+	}
+
 	// Keep edit operation handler for potential future use
 	async function handleEditOperation(event: CustomEvent) {
 		await loadOperationEditModal();
@@ -1598,6 +1606,7 @@
 						inModal={true}
 						on:goToProject={handleGoToProject}
 						on:startNew={handleStartNew}
+						on:continueWithAgent={handleContinueWithAgent}
 						on:close={handleModalClose}
 					/>
 				</div>

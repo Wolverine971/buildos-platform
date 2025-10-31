@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
 	Database,
 	ChatContextType,
+	SystemPromptMetadata,
 	ContextLayer,
 	LocationContext,
 	ContextBundle,
@@ -75,6 +76,7 @@ export class ChatContextService {
 			throw new Error('Chat session not found');
 		}
 
+		const userId = session.user_id;
 		const layers: ContextLayer[] = [];
 
 		// Layer 1: System instructions (always included)
@@ -88,7 +90,7 @@ export class ChatContextService {
 		});
 
 		// Layer 2: User profile (abbreviated)
-		const userProfile = await this.loadUserProfile(session.user_id);
+		const userProfile = await this.loadUserProfile(userId);
 		if (userProfile) {
 			layers.push({
 				priority: 2,
@@ -103,7 +105,8 @@ export class ChatContextService {
 		const locationContext = await this.loadLocationContext(
 			contextType,
 			entityId,
-			true // abbreviated = true
+			true, // abbreviated = true
+			userId
 		);
 		layers.push({
 			priority: 3,
@@ -118,7 +121,8 @@ export class ChatContextService {
 		const relatedData = await this.loadRelatedData(
 			contextType,
 			entityId,
-			true // abbreviated = true
+			true, // abbreviated = true
+			userId
 		);
 		if (relatedData) {
 			layers.push({
@@ -136,17 +140,29 @@ export class ChatContextService {
 		return {
 			...assembled,
 			systemPrompt,
-			userContext: userProfile,
+			userContext: userProfile || undefined,
 			locationContext: locationContext.content,
 			relatedData: relatedData?.content
 		};
 	}
 
-	/**
-	 * Get system prompt with progressive disclosure instructions
-	 */
-	private getSystemPrompt(contextType: ChatContextType): string {
-		const basePrompt = `You are an AI assistant integrated into BuildOS, a productivity system designed for ADHD minds.
+	public getSystemPrompt(contextType: ChatContextType, metadata?: SystemPromptMetadata): string {
+		return `${this.getBaseSystemPrompt()}${this.getContextAddition(contextType, metadata)}`;
+	}
+
+	public getProgressiveDisclosurePrompt(): string {
+		return this.getBaseSystemPrompt();
+	}
+
+	public getContextGuidance(
+		contextType: ChatContextType,
+		metadata?: SystemPromptMetadata
+	): string {
+		return this.getContextAddition(contextType, metadata);
+	}
+
+	private getBaseSystemPrompt(): string {
+		return `You are an AI assistant integrated into BuildOS, a productivity system designed for ADHD minds.
 Current date: ${new Date().toISOString().split('T')[0]}
 
 ## Critical: Progressive Information Access Pattern
@@ -192,21 +208,36 @@ Tools:
 - Show abbreviated lists with key information
 - Only drill down when user shows interest
 - Explain what you're doing when calling tools
-- If calendar isn't connected, explain how to connect it`;
+- If calendar isn't connected, explain how to connect it
+- **When users ask about valid field values (statuses, priorities, types, etc.), use the get_field_info tool to get authoritative schema information. Never guess or hallucinate valid values.**`;
+	}
 
-		// Add context-specific instructions
+	private getContextAddition(
+		contextType: ChatContextType,
+		metadata?: SystemPromptMetadata
+	): string {
 		const contextAdditions: Record<ChatContextType, string> = {
+			// =====================================================
+			// REACTIVE MODES (Original Chat System)
+			// =====================================================
+
+			global: `
+
+## Current Context: Global
+You're in general assistant mode. Help with any BuildOS-related questions or tasks.
+You can search across all projects, tasks, and notes as needed.`,
+
 			project: `
 
 ## Current Context: Project
 You're focused on a specific project. The abbreviated project context has been loaded.
-Prioritize project-related tasks and information in your responses.`,
+Prioritize project-related tasks and information in your responses.${metadata?.projectName ? `\nProject: ${metadata.projectName}` : ''}`,
 
 			task: `
 
 ## Current Context: Task
 You're focused on a specific task. The abbreviated task context has been loaded.
-Consider subtasks, dependencies, and parent project context when relevant.`,
+Consider subtasks, dependencies, and parent project context when relevant.${metadata?.taskTitle ? `\nTask: ${metadata.taskTitle}` : ''}`,
 
 			calendar: `
 
@@ -214,14 +245,223 @@ Consider subtasks, dependencies, and parent project context when relevant.`,
 You're in calendar mode. Focus on scheduling, time management, and calendar events.
 Use calendar tools to help with scheduling tasks and finding available time slots.`,
 
-			global: `
+			// =====================================================
+			// PROACTIVE MODES (Agent System)
+			// =====================================================
 
-## Current Context: Global
-You're in general assistant mode. Help with any BuildOS-related questions or tasks.
-You can search across all projects, tasks, and notes as needed.`
+			general: `
+
+## Your Role
+Help users understand what BuildOS can do and guide them to the right features. Be friendly and concise.${metadata?.userName ? `\nUser: ${metadata.userName}` : ''}
+
+## Capabilities
+- Create new projects through conversation
+- Update existing projects and tasks
+- Audit projects for gaps and issues
+- Forecast project outcomes and scenarios
+- Update daily briefs
+- Update individual tasks
+
+## Guidelines
+- Keep responses brief and actionable
+- Suggest specific agent modes when appropriate
+- Use tools when helpful, and when conversation requires deeper support, guide the user toward the specialized agent modes`,
+
+			project_create: `
+
+## Your Role
+You are a friendly, patient project consultant helping users organize their ideas into structured projects.${metadata?.userName ? ` You're working with ${metadata.userName}.` : ''}
+
+Listen first, then ask thoughtful questions about relevant dimensions from the 9 core project dimensions. Gather enough information to create a well-defined project without overwhelming the user.
+
+## Core Dimensions (only ask about relevant ones)
+1. **Integrity & Ideals** - What does success look like? Quality standards, non-negotiables.
+2. **People & Bonds** - Who's involved? Stakeholders, team members, collaborators.
+3. **Goals & Momentum** - Timeline and milestones. When do things need to happen?
+4. **Meaning & Identity** - Why this matters. What makes this unique?
+5. **Reality & Understanding** - Current state. What's the situation and constraints?
+6. **Trust & Safeguards** - Risks and mitigations. What could go wrong?
+7. **Opportunity & Freedom** - Options and experiments. What alternatives exist?
+8. **Power & Resources** - Budget and assets. What resources are available?
+9. **Harmony & Integration** - Feedback loops. How does this fit with other work?
+${
+	metadata?.dimensionsCovered?.length
+		? `
+## Already Covered Dimensions
+You've already gathered information about: ${metadata.dimensionsCovered.join(', ')}
+
+Focus your questions on the remaining relevant dimensions. Don't re-ask about covered areas unless clarification is needed.`
+		: ''
+}
+## Guidelines
+- Let users brain dump without interruption initially
+- Prioritize questions from most to least important (Integrity → Reality → Goals → People → others)
+- Accept "I don't know" and move on gracefully
+- Ask 3-5 questions for simple projects, 7-10 for complex ones
+- After initial questions, offer: "Ready to create the project, or would you like to answer a few more questions?"
+- Be warm, encouraging, and patient - you're a thoughtful consultant, not a form`,
+
+			project_update: `
+
+## Your Role
+You are an efficient project assistant focused on quickly updating existing projects.${metadata?.projectName ? ` You're working on: ${metadata.projectName}` : ''}
+
+Identify what needs changing and execute updates efficiently. Be direct and action-oriented.
+
+## Available Context
+The abbreviated project context has been loaded, including:
+- Project summary and executive summary
+- 500-char context preview (use get_project_details() for full context if needed)
+- Task counts and completion percentage
+- Top 5 active tasks (abbreviated)
+
+## Progressive Disclosure Tools Available
+Use these tools to get more information as needed:
+- \`list_tasks(project_id)\` - Get all tasks for this project
+- \`get_project_details(project_id, include_tasks: true)\` - Get full project context
+- \`get_task_details(task_id)\` - Get specific task details
+
+## Guidelines
+- Don't ask unnecessary questions - act on clear requests
+- Show what you're about to change before applying updates
+- Execute quickly unless there's ambiguity
+- Focus mainly on task updates unless project-level context needs updating
+- Use progressive disclosure - only fetch full details when needed`,
+
+			project_audit: `
+
+## Your Role
+You are a critical but constructive consultant performing a project audit.${metadata?.projectName ? ` You're auditing: ${metadata.projectName}` : ''}
+
+## Audit Severity: ${metadata?.auditHarshness || 7}/10
+- Be honest and direct about issues (severity ${metadata?.auditHarshness || 7} means frank but not demoralizing)
+- Frame problems as opportunities for improvement
+- Acknowledge what's working well
+- Provide actionable recommendations
+
+## Available Context
+The abbreviated project context has been loaded. Use \`get_project_details()\` to access:
+- Full project context and all 9 core dimensions
+- All phases and milestones
+- Complete task list with details
+- Recent notes and brain dumps
+
+## Focus Areas for Audit
+1. **Missing Dimensions** - Which of the 9 core dimensions are underdeveloped?
+2. **Inconsistencies** - Do goals align with resources? Timeline realistic?
+3. **Unidentified Risks** - What hasn't been considered in Trust & Safeguards?
+4. **Feasibility** - Is this achievable given the constraints?
+5. **Process Improvements** - How can workflows and feedback loops improve?
+
+## Output Format
+Provide:
+1. **Strengths** - What's working well (be specific)
+2. **Critical Issues** - Major problems that need immediate attention
+3. **Improvement Opportunities** - Areas for enhancement
+4. **Risk Assessment** - Identified risks and their severity
+5. **Recommendations** - Prioritized action items
+
+**Note:** You have read-only access. Generate suggestions and recommendations only - do not execute changes.`,
+
+			project_forecast: `
+
+## Your Role
+You are a strategic advisor helping forecast project outcomes.${metadata?.projectName ? ` You're forecasting: ${metadata.projectName}` : ''}
+
+## Forecasting Framework
+Generate three distinct scenarios based on available data:
+
+### 1. Optimistic Scenario (80th percentile)
+Best reasonable outcome if things go well
+
+### 2. Realistic Scenario (50th percentile)
+Most likely outcome given current trajectory
+
+### 3. Pessimistic Scenario (20th percentile)
+Challenging but plausible outcome if issues arise
+
+## For Each Scenario Provide:
+- **Likelihood** - Probability percentage and conditions
+- **Key Outcomes** - Specific deliverables and results
+- **Critical Factors** - What drives this scenario
+- **Timeline Estimate** - When key milestones are hit
+- **Warning Signs** - Early indicators this scenario is unfolding
+- **Decision Points** - When you'd need to pivot strategies
+
+## Available Context
+Use \`get_project_details()\` to analyze:
+- Project timeline and milestones
+- Resource allocation and constraints
+- Dependencies and risks
+- Historical progress data (if available)
+- Team capacity and availability
+
+## Guidelines
+- Ground forecasts in data from the project context
+- Be specific with dates and metrics where possible
+- Identify inflection points where outcomes could diverge
+- Provide actionable insights for each scenario
+- Consider external factors (market, team, resources)
+
+**Note:** Read-only access for analysis. No changes will be made.`,
+
+			task_update: `
+
+## Your Role
+You are a focused task assistant helping users quickly update task details.${metadata?.taskTitle ? ` Current task: ${metadata.taskTitle}` : ''}
+
+Quickly understand what needs updating on the task and make changes efficiently.
+
+## Available Tools
+- \`list_tasks()\` - Find tasks if user doesn't specify which one
+- \`get_task_details(task_id)\` - Get complete task information
+- \`update_task(task_id, updates)\` - Apply changes
+
+## Guidelines
+- Be direct and action-oriented - no unnecessary questions
+- Confirm what you're changing before executing
+- Handle multiple task updates in sequence if requested
+- If the task doesn't exist, offer to create it
+- Keep responses brief and focused
+
+## Common Updates You Can Handle
+- Status changes (backlog → in_progress → done → blocked)
+- Priority adjustments (low, medium, high)
+- Due date / start date changes
+- Adding or updating task descriptions and details
+- Breaking down tasks into subtasks
+- Updating duration estimates
+- Adding dependencies`,
+
+			daily_brief_update: `
+
+## Your Role
+You are a helpful assistant for updating daily brief preferences and content.
+
+## Capabilities
+- Update brief delivery time and timezone
+- Modify content preferences (what sections to include)
+- Adjust notification channels (email, SMS, in-app)
+- Add or remove brief sections
+- Configure frequency (daily, weekdays only, custom)
+- Set focus areas (tasks, calendar, projects, insights)
+
+## Guidelines
+- Confirm changes before applying them
+- Explain implications of changes (e.g., "Changing delivery time to 6am means you'll receive briefs earlier before your workday starts")
+- Suggest optimal settings based on user's stated needs
+- Keep responses concise and actionable
+- Offer examples when helpful ("For example, you could focus on just tasks and calendar events for a streamlined brief")
+
+## Common Requests
+- "Send my brief earlier/later"
+- "Add calendar events to my brief"
+- "Stop including completed tasks"
+- "Make my brief more/less detailed"
+- "Only send on weekdays"`
 		};
 
-		return basePrompt + contextAdditions[contextType];
+		return contextAdditions[contextType] ?? '';
 	}
 
 	/**
@@ -230,53 +470,119 @@ You can search across all projects, tasks, and notes as needed.`
 	private async loadUserProfile(userId: string): Promise<string | null> {
 		const { data: user } = await this.supabase
 			.from('users')
-			.select(
-				`
-        email,
-        timezone,
-        work_style_preferences,
-        notification_preferences
-      `
-			)
+			.select('email, name')
 			.eq('id', userId)
 			.single();
 
 		if (!user) return null;
 
-		const preferences = user.work_style_preferences || {};
-
 		return `## User Profile
-- Timezone: ${user.timezone || 'America/New_York'}
-- Work Style: ${preferences.work_style || 'flexible'}
-- Focus Hours: ${preferences.focus_hours || '9am-5pm'}
-- Task Batching: ${preferences.prefers_batching ? 'Yes' : 'No'}
-- Calendar Connected: ${preferences.calendar_connected ? 'Yes' : 'No'}`;
+- Name: ${user.name || user.email || 'User'}
+- Email: ${user.email}`;
 	}
 
 	/**
 	 * Load location-specific context (abbreviated or full)
 	 */
-	private async loadLocationContext(
+	public async loadLocationContext(
 		contextType: ChatContextType,
 		entityId?: string,
-		abbreviated = true
+		abbreviated = true,
+		userId?: string
 	): Promise<LocationContext> {
-		switch (contextType) {
+		if (!userId) {
+			throw new Error('userId is required for loading location context');
+		}
+
+		const resolvedType = this.resolveLocationContextType(contextType);
+
+		switch (resolvedType) {
+			case 'project_create':
+				return this.buildProjectCreationContext(userId);
+
 			case 'project':
 				if (!entityId) throw new Error('Project ID required for project context');
-				return this.loadProjectContext(entityId, abbreviated);
+				return this.loadProjectContext(entityId, abbreviated, userId, contextType);
 
 			case 'task':
 				if (!entityId) throw new Error('Task ID required for task context');
-				return this.loadTaskContext(entityId, abbreviated);
+				return this.loadTaskContext(entityId, abbreviated, userId, contextType);
 
 			case 'calendar':
-				return this.loadCalendarContext(abbreviated);
+				return this.loadCalendarContext(abbreviated, userId);
 
 			case 'global':
 			default:
-				return this.loadGlobalContext(abbreviated);
+				return this.loadGlobalContext(abbreviated, userId);
 		}
+	}
+
+	private resolveLocationContextType(contextType: ChatContextType): ChatContextType {
+		switch (contextType) {
+			case 'project_update':
+			case 'project_audit':
+			case 'project_forecast':
+				return 'project';
+			case 'task_update':
+				return 'task';
+			case 'general':
+				return 'global';
+			default:
+				return contextType;
+		}
+	}
+
+	private async buildProjectCreationContext(userId: string): Promise<LocationContext> {
+		const { data: user } = await this.supabase
+			.from('users')
+			.select('name, email')
+			.eq('id', userId)
+			.single();
+
+		const displayName = user?.name || user?.email || 'the user';
+
+		const content = `
+## Project Creation Framework (Abbreviated)
+You are supporting ${displayName} in translating ideas into a structured BuildOS project.
+
+- Start by inviting an open brain dump so the user can share context without interruption.
+- Listen for clues across the 9 core dimensions and ask thoughtful follow-ups that fill gaps.
+- Keep the tone calm and encouraging; the goal is clarity, not interrogation.
+
+### 9 Core Dimensions Checklist
+1. **Integrity & Ideals** – Definition of success, quality standards, non-negotiables.
+2. **People & Bonds** – Stakeholders, collaborators, who needs to be involved.
+3. **Goals & Momentum** – Milestones, checkpoints, sense of timing or urgency.
+4. **Meaning & Identity** – Purpose, why this project matters to the user.
+5. **Reality & Understanding** – Current state, known constraints, unknowns.
+6. **Trust & Safeguards** – Risks, blockers, things that could derail progress.
+7. **Opportunity & Freedom** – Experiments, optional paths, creative angles.
+8. **Power & Resources** – Budget, time, energy, assets, support available.
+9. **Harmony & Integration** – How this project fits with the rest of their world.
+
+### Conversational Flow (Progressive Disclosure)
+1. Welcome the user and acknowledge key themes from their brain dump.
+2. Ask 3-5 high-leverage questions targeting missing dimensions (start with Integrity → Reality → Goals → People).
+3. Summarize what you have heard so far and confirm accuracy.
+4. Offer a choice: continue refining details or proceed to draft the project.
+
+### When Ready to Draft
+- Capture project title and short description.
+- Note any must-have tasks or milestones mentioned.
+- Identify initial risks and resource needs.
+- Confirm next steps or follow-up questions for later.
+
+Use progressive disclosure tools (search_projects, list_tasks) only if the user references existing work that should be linked. Otherwise stay focused on planning the new project.`;
+
+		return {
+			content,
+			tokens: this.estimateTokens(content),
+			metadata: {
+				contextType: 'project_create',
+				userName: user?.name || undefined,
+				abbreviated: true
+			}
+		};
 	}
 
 	/**
@@ -284,11 +590,13 @@ You can search across all projects, tasks, and notes as needed.`
 	 */
 	private async loadProjectContext(
 		projectId: string,
-		abbreviated: boolean
+		abbreviated: boolean,
+		userId: string,
+		sourceContextType?: ChatContextType
 	): Promise<LocationContext> {
 		if (abbreviated) {
-			const project = await this.getAbbreviatedProject(projectId);
-			const tasks = await this.getAbbreviatedTasks(projectId, 5);
+			const project = await this.getAbbreviatedProject(projectId, userId);
+			const tasks = await this.getAbbreviatedTasks(projectId, userId, 5);
 
 			const content = `
 ## Current Project: ${project.name}
@@ -315,7 +623,11 @@ Use tools to explore more details.`;
 				content,
 				tokens: this.estimateTokens(content),
 				metadata: {
+					contextType: sourceContextType ?? 'project',
 					projectId,
+					projectName: project.name,
+					projectStatus: project.status,
+					completionPercentage: project.completion_percentage,
 					abbreviated: true,
 					taskCount: project.task_count,
 					hasPhases: project.has_phases,
@@ -324,14 +636,19 @@ Use tools to explore more details.`;
 			};
 		} else {
 			// Full context (only loaded via tool)
-			return this.loadFullProjectContext(projectId);
+			return this.loadFullProjectContext(projectId, userId, sourceContextType);
 		}
 	}
 
 	/**
 	 * Load task context (abbreviated or full)
 	 */
-	private async loadTaskContext(taskId: string, abbreviated: boolean): Promise<LocationContext> {
+	private async loadTaskContext(
+		taskId: string,
+		abbreviated: boolean,
+		userId: string,
+		sourceContextType?: ChatContextType
+	): Promise<LocationContext> {
 		const { data: task } = await this.supabase
 			.from('tasks')
 			.select(
@@ -343,6 +660,7 @@ Use tools to explore more details.`;
       `
 			)
 			.eq('id', taskId)
+			.eq('user_id', userId)
 			.single();
 
 		if (!task) throw new Error('Task not found');
@@ -356,12 +674,12 @@ Use tools to explore more details.`;
 ${task.recurrence_pattern ? `- Recurring: ${task.recurrence_pattern}` : ''}
 
 ### Description Preview (100 chars)
-${task.description?.substring(0, 100) || 'No description'}${task.description?.length > 100 ? '...' : ''}
+${task.description?.substring(0, 100) || 'No description'}${(task.description?.length || 0) > 100 ? '...' : ''}
 
 ### Details Preview (100 chars)
-${task.details?.substring(0, 100) || 'No details'}${task.details?.length > 100 ? '...' : ''}
+${task.details?.substring(0, 100) || 'No details'}${(task.details?.length || 0) > 100 ? '...' : ''}
 
-${task.subtasks?.length > 0 ? `Has ${task.subtasks.length} subtasks` : 'No subtasks'}
+${Array.isArray(task.subtasks) && task.subtasks.length > 0 ? `Has ${task.subtasks.length} subtasks` : 'No subtasks'}
 
 Use get_task_details('${taskId}') for complete information.`;
 
@@ -369,30 +687,36 @@ Use get_task_details('${taskId}') for complete information.`;
 				content,
 				tokens: this.estimateTokens(content),
 				metadata: {
+					contextType: sourceContextType ?? 'task',
 					taskId,
 					projectId: task.project?.id,
+					taskTitle: task.title,
 					abbreviated: true
 				}
 			};
 		} else {
 			// Full task context
-			return this.loadFullTaskContext(taskId);
+			return this.loadFullTaskContext(taskId, userId, sourceContextType);
 		}
 	}
 
 	/**
 	 * Load calendar context (abbreviated)
 	 */
-	private async loadCalendarContext(abbreviated: boolean): Promise<LocationContext> {
+	private async loadCalendarContext(
+		abbreviated: boolean,
+		userId: string
+	): Promise<LocationContext> {
 		const today = new Date();
 		const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
 		const { data: events } = await this.supabase
-			.from('calendar_events')
-			.select('id, summary, start_time, end_time, is_all_day')
-			.gte('start_time', today.toISOString())
-			.lte('start_time', nextWeek.toISOString())
-			.order('start_time')
+			.from('task_calendar_events')
+			.select('id, event_title, event_start, event_end')
+			.eq('user_id', userId)
+			.gte('event_start', today.toISOString())
+			.lte('event_start', nextWeek.toISOString())
+			.order('event_start')
 			.limit(10);
 
 		const content = `
@@ -404,9 +728,11 @@ Use get_task_details('${taskId}') for complete information.`;
 ${
 	events
 		?.map((e) => {
-			const start = new Date(e.start_time);
-			return `- ${start.toLocaleDateString()} ${e.is_all_day ? 'All day' : start.toLocaleTimeString()}: ${e.summary}`;
+			const start = e.event_start ? new Date(e.event_start) : null;
+			if (!start) return '';
+			return `- ${start.toLocaleDateString()} ${start.toLocaleTimeString()}: ${e.event_title || 'Untitled'}`;
 		})
+		.filter(Boolean)
 		.join('\n') || 'No upcoming events'
 }
 
@@ -416,6 +742,7 @@ Use calendar tools to find available time slots or schedule tasks.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
+				contextType: 'calendar',
 				abbreviated: true
 			}
 		};
@@ -424,11 +751,15 @@ Use calendar tools to find available time slots or schedule tasks.`;
 	/**
 	 * Load global context (abbreviated)
 	 */
-	private async loadGlobalContext(abbreviated: boolean): Promise<LocationContext> {
+	private async loadGlobalContext(
+		abbreviated: boolean,
+		userId: string
+	): Promise<LocationContext> {
 		// Get user's active projects and recent tasks
 		const { data: projects } = await this.supabase
 			.from('projects')
-			.select('id, name, status, active_task_count')
+			.select('id, name, status')
+			.eq('user_id', userId)
 			.eq('status', 'active')
 			.order('updated_at', { ascending: false })
 			.limit(3);
@@ -436,6 +767,7 @@ Use calendar tools to find available time slots or schedule tasks.`;
 		const { data: tasks } = await this.supabase
 			.from('tasks')
 			.select('id, title, priority, start_date')
+			.eq('user_id', userId)
 			.in('status', ['in_progress', 'blocked'])
 			.order('priority', { ascending: false })
 			.limit(5);
@@ -444,7 +776,7 @@ Use calendar tools to find available time slots or schedule tasks.`;
 ## BuildOS Overview
 
 ### Active Projects (${projects?.length || 0})
-${projects?.map((p) => `- ${p.name} (${p.active_task_count} active tasks)`).join('\n') || 'No active projects'}
+${projects?.map((p) => `- ${p.name}`).join('\n') || 'No active projects'}
 
 ### Current Tasks (${tasks?.length || 0})
 ${tasks?.map((t) => `- [${t.priority}] ${t.title}`).join('\n') || 'No active tasks'}
@@ -455,6 +787,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
+				contextType: 'global',
 				abbreviated: true
 			}
 		};
@@ -466,17 +799,23 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	private async loadRelatedData(
 		contextType: ChatContextType,
 		entityId?: string,
-		abbreviated = true
+		abbreviated = true,
+		userId?: string
 	): Promise<LocationContext | null> {
+		if (!userId) return null;
+
 		let content = '## Related Information\n';
 		let hasContent = false;
 
-		if (contextType === 'project' && entityId) {
+		const resolvedType = this.resolveLocationContextType(contextType);
+
+		if (resolvedType === 'project' && entityId) {
 			// Get recent notes and brain dumps for the project
 			const { data: notes } = await this.supabase
 				.from('notes')
 				.select('id, title, content')
 				.eq('project_id', entityId)
+				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(3);
 
@@ -493,12 +832,13 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			}
 		}
 
-		if (contextType === 'task' && entityId) {
+		if (resolvedType === 'task' && entityId) {
 			// Get parent task and sibling tasks
 			const { data: task } = await this.supabase
 				.from('tasks')
 				.select('parent_task_id, project_id')
 				.eq('id', entityId)
+				.eq('user_id', userId)
 				.single();
 
 			if (task?.parent_task_id) {
@@ -506,6 +846,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 					.from('tasks')
 					.select('id, title, status')
 					.eq('id', task.parent_task_id)
+					.eq('user_id', userId)
 					.single();
 
 				if (parentTask) {
@@ -518,6 +859,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 					.from('tasks')
 					.select('id, title, status, priority')
 					.eq('parent_task_id', task.parent_task_id)
+					.eq('user_id', userId)
 					.neq('id', entityId)
 					.limit(5);
 
@@ -537,6 +879,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
+				contextType: resolvedType,
 				abbreviated: true
 			}
 		};
@@ -545,7 +888,10 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	/**
 	 * Get abbreviated project data
 	 */
-	private async getAbbreviatedProject(projectId: string): Promise<AbbreviatedProject> {
+	private async getAbbreviatedProject(
+		projectId: string,
+		userId: string
+	): Promise<AbbreviatedProject> {
 		const { data } = await this.supabase
 			.from('projects')
 			.select(
@@ -553,12 +899,13 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
         id, name, slug, status, start_date, end_date,
         description, executive_summary, tags, context,
         tasks!inner(id, status),
-        phases:project_phases(id),
+        phases(id),
         notes(id),
         brain_dumps(id)
       `
 			)
 			.eq('id', projectId)
+			.eq('user_id', userId)
 			.single();
 
 		if (!data) throw new Error('Project not found');
@@ -590,7 +937,11 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	/**
 	 * Get abbreviated tasks for a project
 	 */
-	private async getAbbreviatedTasks(projectId: string, limit = 10): Promise<AbbreviatedTask[]> {
+	private async getAbbreviatedTasks(
+		projectId: string,
+		userId: string,
+		limit = 10
+	): Promise<AbbreviatedTask[]> {
 		const { data: tasks } = await this.supabase
 			.from('tasks')
 			.select(
@@ -602,6 +953,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
       `
 			)
 			.eq('project_id', projectId)
+			.eq('user_id', userId)
 			.in('status', ['in_progress', 'backlog', 'blocked'])
 			.order('priority', { ascending: false })
 			.order('start_date', { ascending: true })
@@ -629,22 +981,29 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	/**
 	 * Load full project context (called via tool)
 	 */
-	private async loadFullProjectContext(projectId: string): Promise<LocationContext> {
+	private async loadFullProjectContext(
+		projectId: string,
+		userId: string,
+		sourceContextType?: ChatContextType
+	): Promise<LocationContext> {
 		const { data: project } = await this.supabase
 			.from('projects')
 			.select(
 				`
         *,
         tasks(*),
-        phases:project_phases(*),
+        phases(*),
         notes(*),
         brain_dumps(*)
       `
 			)
 			.eq('id', projectId)
+			.eq('user_id', userId)
 			.single();
 
 		if (!project) throw new Error('Project not found');
+
+		const taskStats = this.calculateTaskStats(project.tasks || []);
 
 		// Build comprehensive context
 		let content = `## Project: ${project.name} (Full Context)\n\n`;
@@ -693,9 +1052,13 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
+				contextType: sourceContextType ?? 'project',
 				projectId,
+				projectName: project.name,
+				projectStatus: project.status,
+				completionPercentage: taskStats.percentage,
 				abbreviated: false,
-				taskCount: project.tasks?.length || 0,
+				taskCount: taskStats.total,
 				hasPhases: project.phases?.length > 0,
 				hasNotes: project.notes?.length > 0
 			}
@@ -705,7 +1068,11 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	/**
 	 * Load full task context (called via tool)
 	 */
-	private async loadFullTaskContext(taskId: string): Promise<LocationContext> {
+	private async loadFullTaskContext(
+		taskId: string,
+		userId: string,
+		sourceContextType?: ChatContextType
+	): Promise<LocationContext> {
 		const { data: task } = await this.supabase
 			.from('tasks')
 			.select(
@@ -716,6 +1083,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
       `
 			)
 			.eq('id', taskId)
+			.eq('user_id', userId)
 			.single();
 
 		if (!task) throw new Error('Task not found');
@@ -727,6 +1095,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				.from('tasks')
 				.select('id, title, status')
 				.eq('id', task.parent_task_id)
+				.eq('user_id', userId)
 				.single();
 			parentTask = data;
 		}
@@ -771,8 +1140,10 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
+				contextType: sourceContextType ?? 'task',
 				taskId,
 				projectId: task.project_id,
+				taskTitle: task.title,
 				abbreviated: false
 			}
 		};
@@ -949,6 +1320,657 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				cachedData.layers.find((l: any) => l.type === 'location')?.content || '',
 			relatedData: cachedData.layers.find((l: any) => l.type === 'related')?.content
 		};
+	}
+
+	/**
+	 * Get tools available for a given context type
+	 * Different contexts get different tool sets
+	 */
+	public getTools(
+		contextType: ChatContextType
+	): import('@buildos/shared-types').ChatToolDefinition[] {
+		// REACTIVE MODE TOOLS (List/Detail pattern)
+		const REACTIVE_TOOLS = {
+			list_tasks: {
+				type: 'function' as const,
+				function: {
+					name: 'list_tasks',
+					description:
+						'List tasks with abbreviated information (titles + 100 char previews). Use this FIRST before get_task_details.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							project_id: {
+								type: 'string',
+								description: 'Filter to specific project (optional)'
+							},
+							status: {
+								type: 'array',
+								items: {
+									type: 'string',
+									enum: ['backlog', 'in_progress', 'done', 'blocked']
+								},
+								description: 'Filter by status (optional)'
+							},
+							priority: {
+								type: 'array',
+								items: { type: 'string', enum: ['low', 'medium', 'high'] },
+								description: 'Filter by priority (optional)'
+							},
+							has_date: {
+								type: 'boolean',
+								description: 'Filter to tasks with/without dates (optional)'
+							},
+							limit: {
+								type: 'number',
+								description: 'Maximum number of tasks to return (default: 20)'
+							}
+						}
+					}
+				}
+			},
+			get_task_details: {
+				type: 'function' as const,
+				function: {
+					name: 'get_task_details',
+					description:
+						'Get COMPLETE task details including full descriptions. Only call after list_tasks when user needs full details.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							task_id: {
+								type: 'string',
+								description: 'Task ID'
+							},
+							include_subtasks: {
+								type: 'boolean',
+								description: 'Include subtasks in response'
+							},
+							include_project_context: {
+								type: 'boolean',
+								description: 'Include parent project context'
+							}
+						},
+						required: ['task_id']
+					}
+				}
+			},
+			search_projects: {
+				type: 'function' as const,
+				function: {
+					name: 'search_projects',
+					description:
+						'Search projects with abbreviated summaries (500 char context previews). Use this FIRST.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							query: {
+								type: 'string',
+								description: 'Search query for project name or description'
+							},
+							status: {
+								type: 'string',
+								enum: ['active', 'paused', 'completed', 'archived'],
+								description: 'Filter by status'
+							},
+							has_active_tasks: {
+								type: 'boolean',
+								description: 'Filter to projects with active tasks'
+							},
+							limit: {
+								type: 'number',
+								description: 'Maximum number of projects (default: 10)'
+							}
+						}
+					}
+				}
+			},
+			get_project_details: {
+				type: 'function' as const,
+				function: {
+					name: 'get_project_details',
+					description:
+						'Get COMPLETE project details including full context and all dimensions. Only call after search_projects when needed.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							project_id: {
+								type: 'string',
+								description: 'Project ID'
+							},
+							include_tasks: {
+								type: 'boolean',
+								description: 'Include full task list'
+							},
+							include_phases: {
+								type: 'boolean',
+								description: 'Include project phases'
+							},
+							include_notes: {
+								type: 'boolean',
+								description: 'Include project notes'
+							},
+							include_brain_dumps: {
+								type: 'boolean',
+								description: 'Include brain dumps'
+							}
+						},
+						required: ['project_id']
+					}
+				}
+			},
+			search_notes: {
+				type: 'function' as const,
+				function: {
+					name: 'search_notes',
+					description:
+						'Search notes with abbreviated content (200 char previews). Use FIRST.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							query: {
+								type: 'string',
+								description: 'Search query'
+							},
+							project_id: {
+								type: 'string',
+								description: 'Filter to specific project'
+							},
+							category: {
+								type: 'string',
+								description: 'Filter by category'
+							},
+							limit: {
+								type: 'number',
+								description: 'Maximum number of notes (default: 10)'
+							}
+						}
+					}
+				}
+			},
+			get_note_details: {
+				type: 'function' as const,
+				function: {
+					name: 'get_note_details',
+					description:
+						'Get COMPLETE note content. Only call after search_notes when needed.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							note_id: {
+								type: 'string',
+								description: 'Note ID'
+							}
+						},
+						required: ['note_id']
+					}
+				}
+			},
+			get_calendar_events: {
+				type: 'function' as const,
+				function: {
+					name: 'get_calendar_events',
+					description: 'Get calendar events for a time range (times and titles only).',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							timeMin: {
+								type: 'string',
+								description: 'Start time (ISO 8601)'
+							},
+							timeMax: {
+								type: 'string',
+								description: 'End time (ISO 8601)'
+							},
+							limit: {
+								type: 'number',
+								description: 'Maximum number of events'
+							}
+						}
+					}
+				}
+			},
+			find_available_slots: {
+				type: 'function' as const,
+				function: {
+					name: 'find_available_slots',
+					description: 'Find available time slots in calendar.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							timeMin: {
+								type: 'string',
+								description: 'Start of search range (ISO 8601)'
+							},
+							timeMax: {
+								type: 'string',
+								description: 'End of search range (ISO 8601)'
+							},
+							duration_minutes: {
+								type: 'number',
+								description: 'Required duration in minutes'
+							},
+							preferred_hours: {
+								type: 'array',
+								items: { type: 'number' },
+								description: 'Preferred hours of day (0-23)'
+							}
+						},
+						required: ['timeMin', 'timeMax']
+					}
+				}
+			},
+			search_brain_dumps: {
+				type: 'function' as const,
+				function: {
+					name: 'search_brain_dumps',
+					description: 'Search brain dumps with AI summaries.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							query: {
+								type: 'string',
+								description: 'Search query'
+							},
+							project_id: {
+								type: 'string',
+								description: 'Filter to specific project'
+							},
+							status: {
+								type: 'string',
+								enum: ['pending', 'processing', 'completed', 'failed'],
+								description: 'Filter by status'
+							},
+							limit: {
+								type: 'number',
+								description: 'Maximum number (default: 10)'
+							}
+						}
+					}
+				}
+			},
+			get_brain_dump_details: {
+				type: 'function' as const,
+				function: {
+					name: 'get_brain_dump_details',
+					description: 'Get complete brain dump content and operations.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							brain_dump_id: {
+								type: 'string',
+								description: 'Brain dump ID'
+							}
+						},
+						required: ['brain_dump_id']
+					}
+				}
+			}
+		};
+
+		// PROACTIVE MODE TOOLS (Operation pattern)
+		const PROACTIVE_TOOLS = {
+			create_project: {
+				type: 'function' as const,
+				function: {
+					name: 'create_project',
+					description: 'Create a new project with context and dimensions.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							name: {
+								type: 'string',
+								description: 'Project name'
+							},
+							description: {
+								type: 'string',
+								description: 'Project description'
+							},
+							context: {
+								type: 'string',
+								description: 'Detailed project context'
+							},
+							executive_summary: {
+								type: 'string',
+								description: 'Executive summary'
+							},
+							start_date: {
+								type: 'string',
+								description: 'Start date (ISO 8601)'
+							},
+							end_date: {
+								type: 'string',
+								description: 'Target end date (ISO 8601)'
+							},
+							tags: {
+								type: 'array',
+								items: { type: 'string' },
+								description: 'Project tags'
+							}
+						},
+						required: ['name']
+					}
+				}
+			},
+			update_project: {
+				type: 'function' as const,
+				function: {
+					name: 'update_project',
+					description: 'Update project fields or dimensions.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							project_id: {
+								type: 'string',
+								description: 'Project ID'
+							},
+							updates: {
+								type: 'object',
+								description: 'Fields to update'
+							}
+						},
+						required: ['project_id', 'updates']
+					}
+				}
+			},
+			create_task: {
+				type: 'function' as const,
+				function: {
+					name: 'create_task',
+					description: 'Create a new task.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							title: {
+								type: 'string',
+								description: 'Task title'
+							},
+							description: {
+								type: 'string',
+								description: 'Task description'
+							},
+							project_id: {
+								type: 'string',
+								description: 'Parent project ID'
+							},
+							priority: {
+								type: 'string',
+								enum: ['low', 'medium', 'high'],
+								description: 'Task priority'
+							},
+							task_type: {
+								type: 'string',
+								enum: ['one_off', 'recurring'],
+								description: 'Task type'
+							},
+							duration_minutes: {
+								type: 'number',
+								description: 'Estimated duration in minutes'
+							},
+							start_date: {
+								type: 'string',
+								description: 'Start date (ISO 8601)'
+							},
+							parent_task_id: {
+								type: 'string',
+								description: 'Parent task ID for subtasks'
+							}
+						},
+						required: ['title']
+					}
+				}
+			},
+			update_task: {
+				type: 'function' as const,
+				function: {
+					name: 'update_task',
+					description: 'Update task fields.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							task_id: {
+								type: 'string',
+								description: 'Task ID'
+							},
+							updates: {
+								type: 'object',
+								description:
+									'Fields to update (title, description, status, priority, etc.)'
+							}
+						},
+						required: ['task_id', 'updates']
+					}
+				}
+			},
+			schedule_task: {
+				type: 'function' as const,
+				function: {
+					name: 'schedule_task',
+					description: 'Schedule a task on the calendar.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							task_id: {
+								type: 'string',
+								description: 'Task ID'
+							},
+							start_time: {
+								type: 'string',
+								description: 'Start time (ISO 8601)'
+							},
+							duration_minutes: {
+								type: 'number',
+								description: 'Duration in minutes'
+							},
+							recurrence_pattern: {
+								type: 'string',
+								enum: ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly'],
+								description: 'Recurrence pattern'
+							}
+						},
+						required: ['task_id', 'start_time']
+					}
+				}
+			},
+			create_note: {
+				type: 'function' as const,
+				function: {
+					name: 'create_note',
+					description: 'Create a new note.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							title: {
+								type: 'string',
+								description: 'Note title'
+							},
+							content: {
+								type: 'string',
+								description: 'Note content'
+							},
+							project_id: {
+								type: 'string',
+								description: 'Associated project ID'
+							},
+							category: {
+								type: 'string',
+								description: 'Note category'
+							},
+							tags: {
+								type: 'array',
+								items: { type: 'string' },
+								description: 'Note tags'
+							}
+						},
+						required: ['content']
+					}
+				}
+			},
+			create_brain_dump: {
+				type: 'function' as const,
+				function: {
+					name: 'create_brain_dump',
+					description: 'Create a brain dump for processing.',
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							content: {
+								type: 'string',
+								description: 'Brain dump content'
+							},
+							project_id: {
+								type: 'string',
+								description: 'Associated project ID'
+							}
+						},
+						required: ['content']
+					}
+				}
+			}
+		};
+
+		// UTILITY TOOLS (Schema & Reference)
+		const UTILITY_TOOLS = {
+			get_field_info: {
+				type: 'function' as const,
+				function: {
+					name: 'get_field_info',
+					description: `Get authoritative information about entity fields including data types, valid values, and descriptions.
+Use this when users ask questions like:
+- "What are the valid project statuses?"
+- "What priority levels can tasks have?"
+- "What fields can I set on a project?"
+- "What is the core_integrity_ideals field?"
+- Any question about valid values, field types, or entity schemas.`,
+					parameters: {
+						type: 'object' as const,
+						properties: {
+							entity_type: {
+								type: 'string',
+								enum: ['project', 'task', 'note', 'brain_dump'],
+								description: 'The entity type to get field information for'
+							},
+							field_name: {
+								type: 'string',
+								description:
+									'Specific field name (optional). If provided, returns info for that field only. If omitted, returns commonly-used fields summary.'
+							}
+						},
+						required: ['entity_type']
+					}
+				}
+			}
+		};
+
+		// Tool selection based on context type
+		switch (contextType) {
+			case 'global':
+				// Global gets all list/search tools plus note/brain dump creation
+				return [
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.search_projects,
+					REACTIVE_TOOLS.get_project_details,
+					REACTIVE_TOOLS.search_notes,
+					REACTIVE_TOOLS.get_note_details,
+					REACTIVE_TOOLS.search_brain_dumps,
+					REACTIVE_TOOLS.get_brain_dump_details,
+					REACTIVE_TOOLS.get_calendar_events,
+					REACTIVE_TOOLS.find_available_slots,
+					PROACTIVE_TOOLS.create_note,
+					PROACTIVE_TOOLS.create_brain_dump,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'project':
+			case 'task':
+			case 'calendar':
+				// Reactive contexts get list/detail tools only
+				return [
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.search_projects,
+					REACTIVE_TOOLS.get_project_details,
+					REACTIVE_TOOLS.search_notes,
+					REACTIVE_TOOLS.get_note_details,
+					REACTIVE_TOOLS.get_calendar_events,
+					REACTIVE_TOOLS.find_available_slots,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'general':
+				// General mode - mostly informational
+				return [
+					REACTIVE_TOOLS.search_projects,
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_calendar_events,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'project_create':
+				// Project creation mode - includes schema tool for understanding project fields
+				return [
+					PROACTIVE_TOOLS.create_project,
+					PROACTIVE_TOOLS.create_task,
+					REACTIVE_TOOLS.search_projects, // For reference
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'project_update':
+				// Project update mode - includes schema tool for field reference
+				return [
+					PROACTIVE_TOOLS.update_project,
+					PROACTIVE_TOOLS.create_task,
+					PROACTIVE_TOOLS.update_task,
+					PROACTIVE_TOOLS.schedule_task,
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.get_project_details,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'project_audit':
+			case 'project_forecast':
+				// Read-only analysis modes - includes schema tool for understanding dimensions
+				return [
+					REACTIVE_TOOLS.get_project_details,
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.search_notes,
+					REACTIVE_TOOLS.get_note_details,
+					REACTIVE_TOOLS.get_calendar_events,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'task_update':
+				// Task-focused update mode
+				return [
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					PROACTIVE_TOOLS.update_task,
+					PROACTIVE_TOOLS.create_task,
+					PROACTIVE_TOOLS.schedule_task,
+					UTILITY_TOOLS.get_field_info
+				];
+
+			case 'daily_brief_update':
+				// Daily brief configuration (would need specific tools)
+				return [UTILITY_TOOLS.get_field_info];
+
+			default:
+				return [];
+		}
+	}
+
+	/**
+	 * Determine if operations should auto-execute for this context type
+	 * Reactive modes: always execute immediately
+	 * Proactive modes: respect session setting
+	 */
+	public shouldAutoExecute(contextType: ChatContextType): boolean {
+		// Reactive modes always execute immediately
+		const reactiveModes: ChatContextType[] = ['global', 'project', 'task', 'calendar'];
+		return reactiveModes.includes(contextType);
 	}
 
 	/**

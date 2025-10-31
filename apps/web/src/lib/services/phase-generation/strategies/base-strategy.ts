@@ -125,7 +125,7 @@ export abstract class BaseSchedulingStrategy {
 
 		const smartLLM = new SmartLLMService({
 			supabase: this.supabase,
-			httpReferer: 'https://buildos.io',
+			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Phase Generation'
 		});
 

@@ -480,6 +480,19 @@ export class SmartLLMService {
 
 		try {
 			const sanitizedUserId = this.normalizeUserIdForLogging(params.userId);
+
+			// Defensive check: Skip logging if user_id is invalid
+			// This prevents foreign key constraint violations
+			if (!sanitizedUserId) {
+				console.warn('Invalid user_id for LLM usage logging, skipping database insert', {
+					providedUserId: params.userId,
+					operationType: params.operationType,
+					modelUsed: params.modelUsed,
+					status: params.status
+				});
+				return;
+			}
+
 			const { error } = await this.supabase.from('llm_usage_logs').insert({
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
@@ -1527,13 +1540,23 @@ You must respond with valid JSON only. Follow these rules:
 		const startTime = performance.now();
 		const profile = options.profile || 'speed'; // Default to speed for chat
 
+		// Estimate total input length from all messages
+		const totalInputLength = options.messages.reduce(
+			(sum, msg) => sum + (msg.content?.length || 0),
+			0
+		);
+		const estimatedLength = this.estimateResponseLength(
+			totalInputLength > 0 ? 'x'.repeat(totalInputLength) : 'default chat message'
+		);
+
+		// Select models optimized for chat streaming
+		const preferredModels = this.selectTextModels(
+			profile,
+			estimatedLength,
+			{ maxLatency: 2000 } // Fast response for chat
+		);
+
 		try {
-			// Select models optimized for chat streaming
-			const preferredModels = this.selectTextModels(
-				profile,
-				'chat',
-				{ maxLatency: 2000 } // Fast response for chat
-			);
 
 			// Build request with streaming enabled
 			const headers = {

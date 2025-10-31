@@ -563,6 +563,21 @@
 			</a>
 
 			<a
+				href="/admin/chat"
+				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+			>
+				<div class="flex items-center">
+					<MessageSquare class="h-8 w-8 text-cyan-600 mr-3" />
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Chat Monitoring
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400">AI chat analytics</p>
+					</div>
+				</div>
+			</a>
+
+			<a
 				href="/admin/beta"
 				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
 			>

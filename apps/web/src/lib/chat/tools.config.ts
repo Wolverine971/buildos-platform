@@ -10,6 +10,239 @@
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
 /**
+ * Curated field information for entities
+ * This provides the LLM with authoritative information about field types,
+ * valid values, and descriptions for commonly-queried fields.
+ */
+export interface FieldInfo {
+	type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'enum';
+	description: string;
+	required?: boolean;
+	enum_values?: string[];
+	example?: string;
+}
+
+export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
+	project: {
+		status: {
+			type: 'enum',
+			enum_values: ['active', 'paused', 'completed', 'archived'],
+			description:
+				'Project lifecycle status. Use "active" for ongoing work, "paused" for temporarily stopped projects, "completed" for finished projects, "archived" to hide from active view.',
+			required: true,
+			example: 'active'
+		},
+		name: {
+			type: 'string',
+			description: 'Project name or title',
+			required: true,
+			example: 'Website Redesign'
+		},
+		description: {
+			type: 'string',
+			description: 'Brief description of the project',
+			required: false,
+			example: 'Redesign company website with modern UI'
+		},
+		start_date: {
+			type: 'date',
+			description: 'Project start date (ISO 8601 format: YYYY-MM-DD)',
+			required: false,
+			example: '2025-11-01'
+		},
+		end_date: {
+			type: 'date',
+			description: 'Target completion date (ISO 8601 format: YYYY-MM-DD)',
+			required: false,
+			example: '2025-12-31'
+		},
+		tags: {
+			type: 'array',
+			description: 'Tags for categorizing and filtering projects',
+			required: false,
+			example: '["design", "web", "high-priority"]'
+		},
+		context: {
+			type: 'string',
+			description:
+				"Living project narrative in markdown. Strategic overview that captures WHY the project matters, WHAT we're doing, HOW we're approaching it, and the evolution of thinking. Not a task list.",
+			required: false,
+			example:
+				'## Project Origin\n\nStarted in Q4 2025 to modernize our web presence...\n\n**[2025-10-15]** Pivot: Focus on mobile-first after user research...'
+		},
+		core_integrity_ideals: {
+			type: 'string',
+			description:
+				'Ideal end-state, quality standards, and non-negotiables. Defines what "done right" looks like (markdown format).',
+			required: false,
+			example:
+				'## Quality Standards\n- 95+ Lighthouse score\n- WCAG 2.1 AA compliance\n- Sub-2s load time'
+		},
+		core_people_bonds: {
+			type: 'string',
+			description:
+				"Team members, stakeholders, roles, and relationship dynamics. Who's involved and how they work together (markdown format).",
+			required: false,
+			example:
+				'**Team:**\n- Sarah (Design Lead) - final UI approval\n- Dev team (3 engineers)\n\n**Stakeholders:** Marketing VP needs weekly updates'
+		},
+		core_goals_momentum: {
+			type: 'string',
+			description:
+				'Milestones, deliverables, metrics, and timeline. How progress is measured and maintained (markdown format).',
+			required: false,
+			example:
+				'**Phase 1:** Designs by Nov 15\n**Phase 2:** Dev complete Dec 1\n**Launch:** Dec 15\n\n*KPI:* 50% increase in mobile conversions'
+		},
+		core_meaning_identity: {
+			type: 'string',
+			description:
+				"Why this project matters, its unique value, and strategic positioning. The project's purpose and differentiation (markdown format).",
+			required: false,
+			example:
+				'This positions us as a modern, user-first brand. Differentiator: Accessibility-first design that competitors lack.'
+		},
+		core_reality_understanding: {
+			type: 'string',
+			description:
+				'Current state, constraints, and environmental factors. Ground truth that informs planning (markdown format).',
+			required: false,
+			example:
+				'**Current site:** Built in 2018, no mobile optimization, 60% bounce rate on mobile.\n\n**Constraints:** Limited budget, must use existing CMS'
+		},
+		core_trust_safeguards: {
+			type: 'string',
+			description:
+				'Risks, mitigations, contingencies, and reliability measures. What could go wrong and how to prevent it (markdown format).',
+			required: false,
+			example:
+				'**Risk:** Timeline tight for holidays\n**Mitigation:** Soft launch Dec 10 with rollback plan\n\n**Backup:** Staged rollout to 10% traffic first'
+		},
+		core_opportunity_freedom: {
+			type: 'string',
+			description:
+				'Alternative approaches, experiments, and pivot options. Maintaining adaptability and exploring possibilities (markdown format).',
+			required: false,
+			example:
+				'**Exploring:**\n- A/B test hero layouts\n- Consider headless CMS migration (phase 2?)\n- Potential partnership with accessibility consultants'
+		},
+		core_power_resources: {
+			type: 'string',
+			description:
+				'Budget, tools, infrastructure, and permissions. Available resources and their constraints (markdown format).',
+			required: false,
+			example:
+				'**Budget:** $50k total\n**Tools:** Figma (licensed), Vercel hosting\n**Team capacity:** 3 devs @ 50% allocation\n\n*No budget for additional licenses*'
+		},
+		core_harmony_integration: {
+			type: 'string',
+			description:
+				'Feedback loops, integration points, and learning mechanisms. How the project evolves and connects with other systems (markdown format).',
+			required: false,
+			example:
+				'**Weekly design reviews** with stakeholders\n\n**Integrations:** Marketing automation (HubSpot), Analytics (GA4)\n\n*Learning:* User testing every 2 weeks'
+		}
+	},
+	task: {
+		status: {
+			type: 'enum',
+			enum_values: ['backlog', 'in_progress', 'done', 'blocked'],
+			description:
+				'Task completion status. Tasks typically move: backlog → in_progress → done. Use "blocked" for tasks waiting on dependencies or external factors.',
+			required: true,
+			example: 'in_progress'
+		},
+		priority: {
+			type: 'enum',
+			enum_values: ['low', 'medium', 'high'],
+			description: 'Task priority level for scheduling and focus',
+			required: true,
+			example: 'high'
+		},
+		title: {
+			type: 'string',
+			description: 'Task title or name',
+			required: true,
+			example: 'Create homepage mockup'
+		},
+		description: {
+			type: 'string',
+			description: 'Brief description of what needs to be done',
+			required: false,
+			example: 'Design the landing page layout with hero section and features'
+		},
+		start_date: {
+			type: 'date',
+			description: 'Scheduled start date (ISO 8601 format: YYYY-MM-DD)',
+			required: false,
+			example: '2025-11-05'
+		},
+		duration_minutes: {
+			type: 'number',
+			description: 'Estimated time to complete in minutes',
+			required: false,
+			example: '60'
+		},
+		task_type: {
+			type: 'enum',
+			enum_values: ['one_off', 'recurring'],
+			description: 'Whether this is a one-time task or recurring task',
+			required: false,
+			example: 'one_off'
+		},
+		recurrence_pattern: {
+			type: 'enum',
+			enum_values: ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly'],
+			description: 'For recurring tasks, the repetition pattern',
+			required: false,
+			example: 'weekly'
+		}
+	},
+	note: {
+		title: {
+			type: 'string',
+			description: 'Note title',
+			required: false,
+			example: 'Meeting notes - Design review'
+		},
+		content: {
+			type: 'string',
+			description: 'Note content (markdown supported)',
+			required: true,
+			example: '# Key decisions\n- Use blue color scheme\n- Launch in Q4'
+		},
+		category: {
+			type: 'string',
+			description: 'Note category for organization',
+			required: false,
+			example: 'meeting-notes'
+		},
+		tags: {
+			type: 'array',
+			description: 'Tags for categorizing notes',
+			required: false,
+			example: '["design", "decisions"]'
+		}
+	},
+	brain_dump: {
+		content: {
+			type: 'string',
+			description: 'Stream-of-consciousness content that will be processed by AI',
+			required: true,
+			example:
+				'Need to redesign the homepage, add user testimonials, and improve mobile experience...'
+		},
+		status: {
+			type: 'enum',
+			enum_values: ['pending', 'processing', 'completed', 'failed'],
+			description: 'Processing status of the brain dump',
+			required: false,
+			example: 'completed'
+		}
+	}
+};
+
+/**
  * Complete set of tools available to the chat system
  * Tools are organized by category for the progressive disclosure pattern
  */
@@ -379,8 +612,9 @@ all phases, and optionally tasks and notes.`,
 	{
 		type: 'function',
 		function: {
-			name: 'update_project_context',
-			description: 'Update or append to project context',
+			name: 'update_project',
+			description: `Update any field(s) on a project including name, description, context, status, dates, tags, and core dimensions.
+This is a flexible tool that can update multiple fields at once.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -388,18 +622,94 @@ all phases, and optionally tasks and notes.`,
 						type: 'string',
 						description: 'Project ID to update'
 					},
-					context_update: {
-						type: 'string',
-						description: 'New context or addition'
-					},
-					merge_strategy: {
-						type: 'string',
-						enum: ['replace', 'append', 'prepend'],
-						default: 'append',
-						description: 'How to merge with existing context'
+					updates: {
+						type: 'object',
+						description: 'Fields to update',
+						properties: {
+							name: {
+								type: 'string',
+								description: 'Project name'
+							},
+							description: {
+								type: 'string',
+								description: 'Project description'
+							},
+							executive_summary: {
+								type: 'string',
+								description: 'Executive summary of the project'
+							},
+							context: {
+								type: 'string',
+								description: 'Project context and background information'
+							},
+							status: {
+								type: 'string',
+								enum: ['active', 'paused', 'completed', 'archived'],
+								description: 'Project status'
+							},
+							start_date: {
+								type: 'string',
+								format: 'date',
+								description: 'Project start date (YYYY-MM-DD)'
+							},
+							end_date: {
+								type: 'string',
+								format: 'date',
+								description: 'Project end date (YYYY-MM-DD)'
+							},
+							tags: {
+								type: 'array',
+								items: { type: 'string' },
+								description: 'Project tags'
+							},
+							calendar_color_id: {
+								type: 'string',
+								description: 'Google Calendar color ID'
+							},
+							calendar_sync_enabled: {
+								type: 'boolean',
+								description: 'Enable/disable calendar sync'
+							},
+							core_goals_momentum: {
+								type: 'string',
+								description: 'Goals & Momentum dimension'
+							},
+							core_harmony_integration: {
+								type: 'string',
+								description: 'Harmony & Integration dimension'
+							},
+							core_integrity_ideals: {
+								type: 'string',
+								description: 'Integrity & Ideals dimension'
+							},
+							core_meaning_identity: {
+								type: 'string',
+								description: 'Meaning & Identity dimension'
+							},
+							core_opportunity_freedom: {
+								type: 'string',
+								description: 'Opportunity & Freedom dimension'
+							},
+							core_people_bonds: {
+								type: 'string',
+								description: 'People & Bonds dimension'
+							},
+							core_power_resources: {
+								type: 'string',
+								description: 'Power & Resources dimension'
+							},
+							core_reality_understanding: {
+								type: 'string',
+								description: 'Reality & Understanding dimension'
+							},
+							core_trust_safeguards: {
+								type: 'string',
+								description: 'Trust & Safeguards dimension'
+							}
+						}
 					}
 				},
-				required: ['project_id', 'context_update']
+				required: ['project_id', 'updates']
 			}
 		}
 	},
@@ -724,6 +1034,39 @@ Handles task_calendar_events relationships properly.`,
 				required: ['project_id', 'task_id', 'start_time']
 			}
 		}
+	},
+
+	// ============================================
+	// UTILITY TOOLS (Schema & Reference)
+	// ============================================
+
+	{
+		type: 'function',
+		function: {
+			name: 'get_field_info',
+			description: `Get authoritative information about entity fields including data types, valid values, and descriptions.
+Use this when users ask questions like:
+- "What are the valid project statuses?"
+- "What priority levels can tasks have?"
+- "What fields can I set on a project?"
+- Any question about valid values, field types, or entity schemas.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					entity_type: {
+						type: 'string',
+						enum: ['project', 'task', 'note', 'brain_dump'],
+						description: 'The entity type to get field information for'
+					},
+					field_name: {
+						type: 'string',
+						description:
+							'Specific field name (optional). If provided, returns info for that field only. If omitted, returns commonly-used fields summary.'
+					}
+				},
+				required: ['entity_type']
+			}
+		}
 	}
 ];
 
@@ -747,13 +1090,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'medium'
 	},
 	action: {
-		tools: [
-			'create_task',
-			'update_task',
-			'update_project_context',
-			'create_note',
-			'create_brain_dump'
-		],
+		tools: ['create_task', 'update_task', 'update_project', 'create_note', 'create_brain_dump'],
 		averageTokens: 150,
 		costTier: 'low'
 	},
@@ -770,6 +1107,11 @@ export const TOOL_CATEGORIES = {
 		],
 		averageTokens: 300,
 		costTier: 'medium'
+	},
+	utility: {
+		tools: ['get_field_info'],
+		averageTokens: 100,
+		costTier: 'low'
 	}
 };
 
