@@ -79,9 +79,32 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 3. Use `pnpm lint:fix` before committing
 4. Run `pnpm pre-push` before pushing
 
+## Design & API Standards (Web App)
+
+**All UI components must:**
+
+- ✅ Be fully responsive (mobile + desktop)
+- ✅ Support light & dark modes with `dark:` prefix
+- ✅ Follow BuildOS Style Guide (see `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`)
+- ✅ Use high information density with Apple-inspired design
+
+**All API endpoints must:**
+
+- ✅ Access Supabase via `locals.supabase` in API routes
+- ✅ Use `ApiResponse` wrapper from `$lib/utils/api-response`
+- ✅ Return consistent response format (success/error)
+
+**Documentation:**
+
+- After making changes, update relevant docs in `/apps/*/docs/`
+- Mark progress and document key decisions
+
+**See `/CLAUDE.md` and `/apps/web/CLAUDE.md` for complete guidelines.**
+
 ## Project Documentation
 
 - [Web App Documentation](./apps/web/README.md)
 - [Worker Documentation](./apps/worker/README.md)
+- [Complete Development Guide](./CLAUDE.md) ⭐
 - [Architecture Overview](./docs/ARCHITECTURE.md)
 - [Migration Guide](./MIGRATION_GUIDE.md)

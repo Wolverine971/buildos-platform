@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-10-31T03:53:16.708Z
+// Generated on: 2025-11-04T18:02:49.892Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -884,6 +884,295 @@ export type DatabaseSchema = {
 		metadata: Json | null;
 		short_code: string;
 	};
+	onto_actors: {
+		created_at: string;
+		email: string | null;
+		id: string;
+		kind: string;
+		metadata: Json;
+		name: string;
+		org_id: string | null;
+		user_id: string | null;
+	};
+	onto_assignments: {
+		actor_id: string;
+		created_at: string;
+		id: string;
+		object_id: string;
+		object_kind: string;
+		role_key: string;
+	};
+	onto_decisions: {
+		created_at: string;
+		created_by: string;
+		decision_at: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		rationale: string | null;
+		title: string;
+	};
+	onto_deliverable_versions: {
+		created_at: string;
+		created_by: string;
+		deliverable_id: string;
+		id: string;
+		number: number;
+		props: Json;
+		storage_uri: string;
+	};
+	onto_deliverables: {
+		created_at: string;
+		created_by: string;
+		facet_stage: string | null;
+		id: string;
+		name: string;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_document_versions: {
+		created_at: string;
+		created_by: string;
+		document_id: string;
+		embedding: string | null;
+		id: string;
+		number: number;
+		props: Json;
+		storage_uri: string;
+	};
+	onto_documents: {
+		created_at: string;
+		created_by: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		title: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_edges: {
+		created_at: string;
+		dst_id: string;
+		dst_kind: string;
+		id: string;
+		props: Json;
+		rel: string;
+		src_id: string;
+		src_kind: string;
+	};
+	onto_facet_definitions: {
+		allowed_values: Json;
+		applies_to: string[];
+		created_at: string;
+		description: string | null;
+		is_multi_value: boolean | null;
+		is_required: boolean | null;
+		key: string;
+		name: string;
+	};
+	onto_facet_values: {
+		color: string | null;
+		created_at: string;
+		description: string | null;
+		facet_key: string;
+		icon: string | null;
+		id: string;
+		label: string;
+		parent_value_id: string | null;
+		sort_order: number | null;
+		value: string;
+	};
+	onto_goals: {
+		created_at: string;
+		created_by: string;
+		id: string;
+		name: string;
+		project_id: string;
+		props: Json;
+		type_key: string | null;
+	};
+	onto_insights: {
+		created_at: string;
+		derived_from_signal_id: string | null;
+		id: string;
+		project_id: string;
+		props: Json;
+		title: string;
+	};
+	onto_metric_points: {
+		created_at: string;
+		id: string;
+		metric_id: string;
+		numeric_value: number;
+		props: Json;
+		ts: string;
+	};
+	onto_metrics: {
+		created_at: string;
+		created_by: string;
+		definition: string | null;
+		id: string;
+		name: string;
+		project_id: string;
+		props: Json;
+		type_key: string | null;
+		unit: string;
+	};
+	onto_milestones: {
+		created_at: string;
+		created_by: string;
+		due_at: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		title: string;
+		type_key: string | null;
+	};
+	onto_output_versions: {
+		created_at: string;
+		created_by: string;
+		id: string;
+		number: number;
+		output_id: string;
+		props: Json;
+		storage_uri: string;
+	};
+	onto_outputs: {
+		created_at: string;
+		created_by: string;
+		facet_stage: string | null;
+		id: string;
+		name: string;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_permissions: {
+		access: string;
+		actor_id: string | null;
+		created_at: string;
+		id: string;
+		object_id: string;
+		object_kind: string;
+		role_key: string | null;
+	};
+	onto_plans: {
+		created_at: string;
+		created_by: string;
+		facet_context: string | null;
+		facet_scale: string | null;
+		facet_stage: string | null;
+		id: string;
+		name: string;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_projects: {
+		also_types: string[] | null;
+		context_document_id: string | null;
+		created_at: string;
+		created_by: string;
+		description: string | null;
+		end_at: string | null;
+		facet_context: string | null;
+		facet_scale: string | null;
+		facet_stage: string | null;
+		id: string;
+		name: string;
+		org_id: string | null;
+		props: Json;
+		start_at: string | null;
+		state_key: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_requirements: {
+		created_at: string;
+		created_by: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		text: string;
+		type_key: string;
+	};
+	onto_risks: {
+		created_at: string;
+		created_by: string;
+		id: string;
+		impact: string;
+		probability: number | null;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		title: string;
+		type_key: string | null;
+	};
+	onto_signals: {
+		channel: string;
+		created_at: string;
+		id: string;
+		payload: Json;
+		project_id: string;
+		ts: string;
+	};
+	onto_sources: {
+		captured_at: string | null;
+		created_at: string;
+		created_by: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		snapshot_uri: string | null;
+		uri: string;
+	};
+	onto_tasks: {
+		created_at: string;
+		created_by: string;
+		due_at: string | null;
+		facet_scale: string | null;
+		id: string;
+		plan_id: string | null;
+		priority: number | null;
+		project_id: string;
+		props: Json;
+		state_key: string;
+		title: string;
+		updated_at: string;
+	};
+	onto_templates: {
+		created_at: string;
+		created_by: string;
+		default_props: Json;
+		default_views: Json;
+		facet_defaults: Json;
+		fsm: Json;
+		id: string;
+		is_abstract: boolean | null;
+		metadata: Json;
+		name: string;
+		parent_template_id: string | null;
+		schema: Json;
+		scope: string;
+		status: string;
+		type_key: string;
+		updated_at: string;
+	};
+	onto_tools: {
+		capability_key: string;
+		config: Json;
+		created_at: string;
+		id: string;
+		name: string;
+	};
 	payment_methods: {
 		card_brand: string | null;
 		card_last4: string | null;
@@ -1649,6 +1938,33 @@ export const tableNames = [
 	'notification_logs',
 	'notification_subscriptions',
 	'notification_tracking_links',
+	'onto_actors',
+	'onto_assignments',
+	'onto_decisions',
+	'onto_deliverable_versions',
+	'onto_deliverables',
+	'onto_document_versions',
+	'onto_documents',
+	'onto_edges',
+	'onto_facet_definitions',
+	'onto_facet_values',
+	'onto_goals',
+	'onto_insights',
+	'onto_metric_points',
+	'onto_metrics',
+	'onto_milestones',
+	'onto_output_versions',
+	'onto_outputs',
+	'onto_permissions',
+	'onto_plans',
+	'onto_projects',
+	'onto_requirements',
+	'onto_risks',
+	'onto_signals',
+	'onto_sources',
+	'onto_tasks',
+	'onto_templates',
+	'onto_tools',
 	'payment_methods',
 	'phase_tasks',
 	'phases',

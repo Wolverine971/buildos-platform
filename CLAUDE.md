@@ -190,6 +190,26 @@ For detailed patterns, see:
 - **Web Architecture:** `/apps/web/docs/technical/architecture/`
 - **API Documentation:** `/apps/web/docs/technical/api/`
 
+### UI/Design & API Patterns (Web App)
+
+**Critical requirements for web development:**
+
+#### UI Design Requirements
+
+- **Responsive Design:** ALL components must work on mobile and desktop
+- **Dark Mode:** Every component requires light/dark mode support with `dark:` prefix
+- **Style Guide:** Always consult `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+- **Design Philosophy:** High-end Apple-inspired aesthetic with high information density
+- **Components:** Use Card system (Card, CardHeader, CardBody, CardFooter)
+
+#### API Patterns
+
+- **Supabase Access:** Use `locals.supabase` in API routes (`+server.ts`)
+- **Admin Operations:** Import via `createAdminSupabaseClient` from `$lib/supabase/admin`
+- **Response Format:** ALWAYS use `ApiResponse` wrapper from `$lib/utils/api-response`
+
+**See `/apps/web/CLAUDE.md` for complete UI/Design and API patterns with code examples.**
+
 ## 🎯 Context for LLM Agents
 
 ### Determining Scope
@@ -268,6 +288,20 @@ pnpm test:run       # Run tests
 ```bash
 pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ```
+
+### Documentation Updates (Critical)
+
+**After making code changes, AI agents and developers MUST update documentation:**
+
+- Update feature docs in appropriate `/apps/*/docs/features/` directory
+- Update component READMEs for UI changes
+- Update API documentation for endpoint changes
+- Mark progress with completion status and known issues
+- Document key decisions and implementation patterns
+
+**Why:** Creates audit trail, prevents duplicate work, preserves knowledge for future developers and AI agents.
+
+**See `/apps/web/CLAUDE.md` Development Workflow section for detailed documentation update patterns.**
 
 ### Working with Turborepo
 

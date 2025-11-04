@@ -3535,6 +3535,1151 @@ export type Database = {
           },
         ]
       }
+      onto_actors: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          kind: Database["public"]["Enums"]["onto_actor_kind"]
+          metadata: Json
+          name: string
+          org_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["onto_actor_kind"]
+          metadata?: Json
+          name: string
+          org_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["onto_actor_kind"]
+          metadata?: Json
+          name?: string
+          org_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_actors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_assignments: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          object_id: string
+          object_kind: string
+          role_key: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          object_id: string
+          object_kind: string
+          role_key: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          object_id?: string
+          object_kind?: string
+          role_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_assignments_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_decisions: {
+        Row: {
+          created_at: string
+          created_by: string
+          decision_at: string
+          id: string
+          project_id: string
+          props: Json
+          rationale: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          decision_at: string
+          id?: string
+          project_id: string
+          props?: Json
+          rationale?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          decision_at?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          rationale?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_decisions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_deliverable_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          deliverable_id: string
+          id: string
+          number: number
+          props: Json
+          storage_uri: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deliverable_id: string
+          id?: string
+          number: number
+          props?: Json
+          storage_uri: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deliverable_id?: string
+          id?: string
+          number?: number
+          props?: Json
+          storage_uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_deliverable_versions_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "onto_deliverables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_deliverables: {
+        Row: {
+          created_at: string
+          created_by: string
+          facet_stage: string | null
+          id: string
+          name: string
+          project_id: string
+          props: Json
+          state_key: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          facet_stage?: string | null
+          id?: string
+          name: string
+          project_id: string
+          props?: Json
+          state_key?: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          facet_stage?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          props?: Json
+          state_key?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      onto_document_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          document_id: string
+          embedding: string | null
+          id: string
+          number: number
+          props: Json
+          storage_uri: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          number: number
+          props?: Json
+          storage_uri: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          number?: number
+          props?: Json
+          storage_uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_documents: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          props: Json
+          state_key: string
+          title: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          project_id: string
+          props?: Json
+          state_key?: string
+          title: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          state_key?: string
+          title?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_edges: {
+        Row: {
+          created_at: string
+          dst_id: string
+          dst_kind: string
+          id: string
+          props: Json
+          rel: string
+          src_id: string
+          src_kind: string
+        }
+        Insert: {
+          created_at?: string
+          dst_id: string
+          dst_kind: string
+          id?: string
+          props?: Json
+          rel: string
+          src_id: string
+          src_kind: string
+        }
+        Update: {
+          created_at?: string
+          dst_id?: string
+          dst_kind?: string
+          id?: string
+          props?: Json
+          rel?: string
+          src_id?: string
+          src_kind?: string
+        }
+        Relationships: []
+      }
+      onto_facet_definitions: {
+        Row: {
+          allowed_values: Json
+          applies_to: string[]
+          created_at: string
+          description: string | null
+          is_multi_value: boolean | null
+          is_required: boolean | null
+          key: string
+          name: string
+        }
+        Insert: {
+          allowed_values: Json
+          applies_to?: string[]
+          created_at?: string
+          description?: string | null
+          is_multi_value?: boolean | null
+          is_required?: boolean | null
+          key: string
+          name: string
+        }
+        Update: {
+          allowed_values?: Json
+          applies_to?: string[]
+          created_at?: string
+          description?: string | null
+          is_multi_value?: boolean | null
+          is_required?: boolean | null
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      onto_facet_values: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          facet_key: string
+          icon: string | null
+          id: string
+          label: string
+          parent_value_id: string | null
+          sort_order: number | null
+          value: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          facet_key: string
+          icon?: string | null
+          id?: string
+          label: string
+          parent_value_id?: string | null
+          sort_order?: number | null
+          value: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          facet_key?: string
+          icon?: string | null
+          id?: string
+          label?: string
+          parent_value_id?: string | null
+          sort_order?: number | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_facet_values_facet_key_fkey"
+            columns: ["facet_key"]
+            isOneToOne: false
+            referencedRelation: "onto_facet_definitions"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "onto_facet_values_parent_value_id_fkey"
+            columns: ["parent_value_id"]
+            isOneToOne: false
+            referencedRelation: "onto_facet_values"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_goals: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          project_id: string
+          props: Json
+          type_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          project_id: string
+          props?: Json
+          type_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          project_id?: string
+          props?: Json
+          type_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_goals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_insights: {
+        Row: {
+          created_at: string
+          derived_from_signal_id: string | null
+          id: string
+          project_id: string
+          props: Json
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          derived_from_signal_id?: string | null
+          id?: string
+          project_id: string
+          props?: Json
+          title: string
+        }
+        Update: {
+          created_at?: string
+          derived_from_signal_id?: string | null
+          id?: string
+          project_id?: string
+          props?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_insights_derived_from_signal_id_fkey"
+            columns: ["derived_from_signal_id"]
+            isOneToOne: false
+            referencedRelation: "onto_signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_metric_points: {
+        Row: {
+          created_at: string
+          id: string
+          metric_id: string
+          numeric_value: number
+          props: Json
+          ts: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric_id: string
+          numeric_value: number
+          props?: Json
+          ts: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric_id?: string
+          numeric_value?: number
+          props?: Json
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_metric_points_metric_id_fkey"
+            columns: ["metric_id"]
+            isOneToOne: false
+            referencedRelation: "onto_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_metrics: {
+        Row: {
+          created_at: string
+          created_by: string
+          definition: string | null
+          id: string
+          name: string
+          project_id: string
+          props: Json
+          type_key: string | null
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          definition?: string | null
+          id?: string
+          name: string
+          project_id: string
+          props?: Json
+          type_key?: string | null
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          definition?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          props?: Json
+          type_key?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_milestones: {
+        Row: {
+          created_at: string
+          created_by: string
+          due_at: string
+          id: string
+          project_id: string
+          props: Json
+          title: string
+          type_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          due_at: string
+          id?: string
+          project_id: string
+          props?: Json
+          title: string
+          type_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          due_at?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          title?: string
+          type_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_output_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          number: number
+          output_id: string
+          props: Json
+          storage_uri: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          number: number
+          output_id: string
+          props?: Json
+          storage_uri: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          number?: number
+          output_id?: string
+          props?: Json
+          storage_uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_output_versions_output_id_fkey"
+            columns: ["output_id"]
+            isOneToOne: false
+            referencedRelation: "onto_outputs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_outputs: {
+        Row: {
+          created_at: string
+          created_by: string
+          facet_stage: string | null
+          id: string
+          name: string
+          project_id: string
+          props: Json
+          state_key: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          facet_stage?: string | null
+          id?: string
+          name: string
+          project_id: string
+          props?: Json
+          state_key?: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          facet_stage?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          props?: Json
+          state_key?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_outputs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_permissions: {
+        Row: {
+          access: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          object_id: string
+          object_kind: string
+          role_key: string | null
+        }
+        Insert: {
+          access: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          object_id: string
+          object_kind: string
+          role_key?: string | null
+        }
+        Update: {
+          access?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          object_id?: string
+          object_kind?: string
+          role_key?: string | null
+        }
+        Relationships: []
+      }
+      onto_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          facet_context: string | null
+          facet_scale: string | null
+          facet_stage: string | null
+          id: string
+          name: string
+          project_id: string
+          props: Json
+          state_key: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          name: string
+          project_id: string
+          props?: Json
+          state_key?: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          props?: Json
+          state_key?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_projects: {
+        Row: {
+          also_types: string[] | null
+          context_document_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          end_at: string | null
+          facet_context: string | null
+          facet_scale: string | null
+          facet_stage: string | null
+          id: string
+          name: string
+          org_id: string | null
+          props: Json
+          start_at: string | null
+          state_key: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          also_types?: string[] | null
+          context_document_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_at?: string | null
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          name: string
+          org_id?: string | null
+          props?: Json
+          start_at?: string | null
+          state_key?: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          also_types?: string[] | null
+          context_document_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_at?: string | null
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          name?: string
+          org_id?: string | null
+          props?: Json
+          start_at?: string | null
+          state_key?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_context_document"
+            columns: ["context_document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_requirements: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          props: Json
+          text: string
+          type_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          project_id: string
+          props?: Json
+          text: string
+          type_key?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          text?: string
+          type_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_requirements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_risks: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          impact: string
+          probability: number | null
+          project_id: string
+          props: Json
+          state_key: string
+          title: string
+          type_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          impact?: string
+          probability?: number | null
+          project_id: string
+          props?: Json
+          state_key?: string
+          title: string
+          type_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          impact?: string
+          probability?: number | null
+          project_id?: string
+          props?: Json
+          state_key?: string
+          title?: string
+          type_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_risks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_signals: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          payload: Json
+          project_id: string
+          ts: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          payload: Json
+          project_id: string
+          ts?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_signals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_sources: {
+        Row: {
+          captured_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          props: Json
+          snapshot_uri: string | null
+          uri: string
+        }
+        Insert: {
+          captured_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          project_id: string
+          props?: Json
+          snapshot_uri?: string | null
+          uri: string
+        }
+        Update: {
+          captured_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          snapshot_uri?: string | null
+          uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_tasks: {
+        Row: {
+          created_at: string
+          created_by: string
+          due_at: string | null
+          facet_scale: string | null
+          id: string
+          plan_id: string | null
+          priority: number | null
+          project_id: string
+          props: Json
+          state_key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          due_at?: string | null
+          facet_scale?: string | null
+          id?: string
+          plan_id?: string | null
+          priority?: number | null
+          project_id: string
+          props?: Json
+          state_key?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          due_at?: string | null
+          facet_scale?: string | null
+          id?: string
+          plan_id?: string | null
+          priority?: number | null
+          project_id?: string
+          props?: Json
+          state_key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "onto_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          default_props: Json
+          default_views: Json
+          facet_defaults: Json
+          fsm: Json
+          id: string
+          is_abstract: boolean | null
+          metadata: Json
+          name: string
+          parent_template_id: string | null
+          schema: Json
+          scope: string
+          status: Database["public"]["Enums"]["onto_template_status"]
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          default_props?: Json
+          default_views?: Json
+          facet_defaults?: Json
+          fsm?: Json
+          id?: string
+          is_abstract?: boolean | null
+          metadata?: Json
+          name: string
+          parent_template_id?: string | null
+          schema?: Json
+          scope: string
+          status?: Database["public"]["Enums"]["onto_template_status"]
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          default_props?: Json
+          default_views?: Json
+          facet_defaults?: Json
+          fsm?: Json
+          id?: string
+          is_abstract?: boolean | null
+          metadata?: Json
+          name?: string
+          parent_template_id?: string | null
+          schema?: Json
+          scope?: string
+          status?: Database["public"]["Enums"]["onto_template_status"]
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "onto_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_tools: {
+        Row: {
+          capability_key: string
+          config: Json
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          capability_key: string
+          config?: Json
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          capability_key?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       payment_methods: {
         Row: {
           card_brand: string | null
@@ -6584,6 +7729,7 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_actor_for_user: { Args: { p_user_id: string }; Returns: string }
       fail_queue_job: {
         Args: { p_error_message: string; p_job_id: string; p_retry?: boolean }
         Returns: boolean
@@ -6632,6 +7778,15 @@ export type Database = {
           total_cost: number
           total_tokens: number
           user_id: string
+        }[]
+      }
+      get_allowed_transitions: {
+        Args: { p_object_id: string; p_object_kind: string }
+        Returns: {
+          actions: Json
+          event: string
+          guards: Json
+          to_state: string
         }[]
       }
       get_brief_email_status: {
@@ -6838,6 +7993,13 @@ export type Database = {
         Args: { target_project_id: string; target_version: number }
         Returns: Json
       }
+      get_project_with_template: {
+        Args: { p_project_id: string }
+        Returns: {
+          project: Json
+          template: Json
+        }[]
+      }
       get_projects_with_stats: {
         Args: {
           p_limit?: number
@@ -6939,6 +8101,24 @@ export type Database = {
           paused_subscriptions: number
           total_subscribers: number
           trial_subscriptions: number
+        }[]
+      }
+      get_template_catalog: {
+        Args: { p_realm?: string; p_scope?: string; p_search?: string }
+        Returns: {
+          created_at: string
+          default_props: Json
+          default_views: Json
+          facet_defaults: Json
+          fsm: Json
+          id: string
+          metadata: Json
+          name: string
+          schema: Json
+          scope: string
+          status: Database["public"]["Enums"]["onto_template_status"]
+          type_key: string
+          updated_at: string
         }[]
       }
       get_user_active_generations: {
@@ -7059,6 +8239,26 @@ export type Database = {
           fixed_count: number
           skipped_count: number
         }[]
+      }
+      onto_check_guard: {
+        Args: { p_entity: Json; p_guard: Json }
+        Returns: boolean
+      }
+      onto_guards_pass: {
+        Args: { p_entity: Json; p_guards: Json }
+        Returns: boolean
+      }
+      onto_jsonb_extract: {
+        Args: { p_json: Json; p_path: string }
+        Returns: Json
+      }
+      onto_jsonb_extract_text: {
+        Args: { p_json: Json; p_path: string }
+        Returns: string
+      }
+      onto_jsonb_has_value: {
+        Args: { p_json: Json; p_path: string }
+        Returns: boolean
       }
       queue_sms_message: {
         Args: {
@@ -7258,6 +8458,14 @@ export type Database = {
           status: string
         }[]
       }
+      validate_facet_values: {
+        Args: { p_facets: Json }
+        Returns: {
+          error: string
+          facet_key: string
+          provided_value: string
+        }[]
+      }
     }
     Enums: {
       agent_permission: "read_only" | "read_write"
@@ -7291,6 +8499,8 @@ export type Database = {
         | "invalid_response"
       message_role: "system" | "user" | "assistant" | "tool"
       message_sender_type: "planner" | "executor" | "system"
+      onto_actor_kind: "human" | "agent"
+      onto_template_status: "draft" | "active" | "deprecated"
       planning_strategy: "direct" | "complex"
       priority_level: "low" | "medium" | "high"
       project_status: "active" | "paused" | "completed" | "archived"
@@ -7506,6 +8716,8 @@ export const Constants = {
       ],
       message_role: ["system", "user", "assistant", "tool"],
       message_sender_type: ["planner", "executor", "system"],
+      onto_actor_kind: ["human", "agent"],
+      onto_template_status: ["draft", "active", "deprecated"],
       planning_strategy: ["direct", "complex"],
       priority_level: ["low", "medium", "high"],
       project_status: ["active", "paused", "completed", "archived"],

@@ -14,7 +14,13 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, ChatToolDefinition, LLMMessage, Json } from '@buildos/shared-types';
+import type {
+	Database,
+	ChatToolDefinition,
+	LLMMessage,
+	Json,
+	ChatToolCall
+} from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 import { getToolsForAgent } from '@buildos/shared-types';
@@ -43,8 +49,8 @@ export type ConversationMessageType =
 export interface ConversationMessage {
 	type: ConversationMessageType;
 	content: string;
-	data?: any; // Structured data (results, questions, etc.)
-	toolCalls?: any[];
+	data?: Json; // Structured data (results, questions, etc.)
+	toolCalls?: ChatToolCall[];
 	timestamp: Date;
 }
 
@@ -417,8 +423,8 @@ export class AgentConversationService {
 	): Promise<{
 		messageType: ConversationMessageType;
 		content: string;
-		data?: any;
-		toolCalls?: any[];
+		data?: Json;
+		toolCalls?: ChatToolCall[];
 		tokensUsed: number;
 	}> {
 		// Build conversation history for executor
@@ -450,9 +456,9 @@ export class AgentConversationService {
 		});
 
 		let responseContent = '';
-		let toolCalls: any[] = [];
+		let toolCalls: ChatToolCall[] = [];
 		let tokensUsed = 0;
-		let responseData: any = null;
+		let responseData: Json | null = null;
 
 		// Stream from executor LLM
 		for await (const event of this.smartLLM.streamText({

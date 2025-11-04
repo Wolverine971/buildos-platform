@@ -31,7 +31,10 @@
 			"Bash(done)",
 			"Bash(while read file)",
 			"Bash(do echo \"   • $file\")",
-			"Bash(mkdir:*)"
+			"Bash(mkdir:*)",
+			"Bash(awk:*)",
+			"Bash(npx tsc:*)",
+			"mcp__ide__getDiagnostics"
 		],
 		"deny": [],
 		"ask": []

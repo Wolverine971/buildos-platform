@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/SessionDetailModal.svelte -->
+<!-- apps/web/src/lib/components/admin/SessionDetailModal.svelte -->
 <script lang="ts">
 	import {
 		X,

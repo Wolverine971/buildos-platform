@@ -73,7 +73,7 @@ export type ExecutorEvent =
 	| { type: 'thinking'; content: string }
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: ChatToolResult }
-	| { type: 'result'; data: any }
+	| { type: 'result'; data: Json }
 	| { type: 'done'; result: ExecutorResult }
 	| { type: 'error'; error: string };
 
@@ -256,7 +256,7 @@ export class AgentExecutorService {
 		const systemPrompt = context.systemPrompt;
 		const userPrompt = this.formatTaskForLLM(context.task);
 
-		const messages: any[] = [
+		const messages: LLMMessage[] = [
 			{ role: 'system', content: systemPrompt },
 			{
 				role: 'user',
@@ -477,7 +477,7 @@ export class AgentExecutorService {
 	 * Format execution result into structured output
 	 * Extracts key data and organizes for planner consumption
 	 */
-	private formatResult(toolResults: ChatToolResult[], task: ExecutorTask): any {
+	private formatResult(toolResults: ChatToolResult[], task: ExecutorTask): Json {
 		// Extract successful results
 		const successfulResults = toolResults.filter((r) => r.success);
 		const failedResults = toolResults.filter((r) => !r.success);
@@ -634,7 +634,17 @@ export class AgentExecutorService {
 		stepNumber?: number,
 		task?: ExecutorTask
 	): Promise<string> {
-		const session: any = {
+		const session: {
+			parent_session_id: string;
+			plan_id?: string;
+			step_number?: number;
+			planner_agent_id: string;
+			executor_agent_id: string;
+			session_type: string;
+			initial_context: Json;
+			user_id: string;
+			status: string;
+		} = {
 			parent_session_id: parentSessionId,
 			plan_id: planId || undefined,
 			step_number: stepNumber || undefined,
@@ -645,7 +655,7 @@ export class AgentExecutorService {
 				type: 'executor_task',
 				task: task || {},
 				timestamp: new Date().toISOString()
-			},
+			} as Json,
 			user_id: userId,
 			status: 'active'
 		};
@@ -753,13 +763,27 @@ export class AgentExecutorService {
 		toolsAvailable: string[],
 		userId: string
 	): Promise<string> {
-		const execution: any = {
+		const execution: {
+			plan_id: string;
+			step_number: number;
+			executor_agent_id: string;
+			agent_session_id: string;
+			task: Json;
+			tools_available: Json;
+			success: boolean;
+			status: string;
+			tokens_used: number;
+			duration_ms: number;
+			tool_calls_made: number;
+			message_count: number;
+			user_id: string;
+		} = {
 			plan_id: planId,
 			step_number: stepNumber,
 			executor_agent_id: executorAgentId,
 			agent_session_id: agentSessionId,
-			task: task,
-			tools_available: toolsAvailable,
+			task: task as unknown as Json,
+			tools_available: toolsAvailable as unknown as Json,
 			success: false,
 			status: 'pending',
 			tokens_used: 0,
@@ -788,7 +812,7 @@ export class AgentExecutorService {
 	 */
 	async updateAgentExecution(
 		executionId: string,
-		result: any,
+		result: Json,
 		success: boolean,
 		tokensUsed: number,
 		durationMs: number,

@@ -326,6 +326,133 @@ This project uses Svelte 5 with the new runes syntax:
 - Use `$derived()` for computed values
 - Use `$effect()` instead of reactive statements
 
+### UI & Design Patterns
+
+**Design Philosophy:** BuildOS follows a **high-end Apple-inspired aesthetic** with focus on clarity, high information density, and sophisticated UX.
+
+#### Core Design Requirements
+
+1. **Responsive Design (Critical)**
+    - ALL UI components must be responsive and work perfectly on mobile and desktop
+    - Use mobile-first approach with Tailwind breakpoints: `sm:`, `md:`, `lg:`, `xl:`
+    - Test on multiple screen sizes before considering a feature complete
+
+2. **Light & Dark Mode (Required)**
+    - Every component MUST support both light and dark modes
+    - Use Tailwind's `dark:` prefix for dark mode styles
+    - Maintain proper contrast ratios in both modes (WCAG AA: 4.5:1)
+
+3. **High Information Density**
+    - Maximize useful information visible without overwhelming the user
+    - Use compact layouts with clear visual hierarchy
+    - Progressive disclosure for complex information
+
+4. **Style Guide Reference**
+    - **ALWAYS consult:** `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+    - Follows color system, typography scale, spacing grid (8px base)
+    - Use the Card component system (Card, CardHeader, CardBody, CardFooter)
+    - Gradient buttons for primary actions, subtle animations
+
+#### Example Component Pattern
+
+```svelte
+<script lang="ts">
+	import { Card, CardHeader, CardBody } from '$lib/components/ui';
+
+	let data = $state([]);
+	let isLoading = $derived(data.length === 0);
+</script>
+
+<!-- Responsive card with dark mode -->
+<div class="p-4 sm:p-6 lg:p-8">
+	<Card variant="elevated">
+		<CardHeader variant="gradient">
+			<h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Title</h2>
+		</CardHeader>
+		<CardBody padding="md">
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				<!-- High-density information layout -->
+			</div>
+		</CardBody>
+	</Card>
+</div>
+```
+
+### API Patterns
+
+#### Supabase Access in API Routes
+
+In SvelteKit API routes (`+server.ts`), Supabase is accessed via the `locals` object:
+
+```typescript
+import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
+
+export const GET: RequestHandler = async ({ locals }) => {
+	// ✅ Access Supabase from locals
+	const supabase = locals.supabase;
+
+	const { data, error } = await supabase.from('table_name').select('*');
+
+	if (error) {
+		return ApiResponse.error(error.message, 500);
+	}
+
+	return ApiResponse.success(data);
+};
+```
+
+#### Admin Supabase Client
+
+For privileged operations (bypassing RLS), use the admin client:
+
+```typescript
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { ApiResponse } from '$lib/utils/api-response';
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+	// ✅ Create admin client for privileged operations
+	const adminSupabase = createAdminSupabaseClient();
+
+	const { data, error } = await adminSupabase.from('table_name').insert({
+		/* data */
+	});
+
+	if (error) {
+		return ApiResponse.error(error.message, 500);
+	}
+
+	return ApiResponse.success(data);
+};
+```
+
+#### API Response Wrapper (Required)
+
+**ALWAYS use `ApiResponse` for API endpoint responses:**
+
+```typescript
+import { ApiResponse } from '$lib/utils/api-response';
+
+// ✅ Success response
+return ApiResponse.success(data, 200); // Default 200
+
+// ✅ Error response
+return ApiResponse.error('Something went wrong', 500);
+
+// ✅ Validation error
+return ApiResponse.error('Invalid input', 400);
+
+// ✅ Not found
+return ApiResponse.error('Resource not found', 404);
+```
+
+**Benefits:**
+
+- Consistent response format across all endpoints
+- Automatic error handling and logging
+- Type-safe responses
+- Easy debugging
+
 ### API Service Pattern
 
 Services in `src/lib/services/base/api-service.ts` provide a consistent interface:
@@ -389,6 +516,42 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 2. Before committing: `pnpm run lint:fix` to fix formatting
 3. Before pushing: `pnpm run pre-push` to validate everything
 4. LLM prompt changes: Test with `pnpm run test:llm` (costs money)
+
+### Documentation Updates (Critical for AI Agents)
+
+**After making code changes, ALWAYS update documentation:**
+
+1. **Feature Documentation** - Update relevant feature docs in `/apps/web/docs/features/[feature]/`
+2. **Component Documentation** - Update component READMEs if you modify UI components
+3. **API Documentation** - Update API docs in `/apps/web/docs/technical/api/` for endpoint changes
+4. **Mark Progress** - Document what was completed, what works, and any known issues
+5. **Update Checklists** - Check off completed items in implementation checklists
+
+**Example Documentation Update Pattern:**
+
+```markdown
+## Progress Log
+
+### 2025-11-03: Implemented Feature X
+
+- ✅ Created API endpoint at `/api/feature-x/+server.ts`
+- ✅ Added UI component `FeatureX.svelte` with responsive design
+- ✅ Integrated with Supabase using `locals.supabase`
+- ✅ Added dark mode support with proper contrast ratios
+- ⚠️ Known Issue: Loading state needs spinner animation
+- 📝 Next Steps: Add unit tests, update E2E tests
+
+### Implementation Details
+
+[Document key decisions, patterns used, etc.]
+```
+
+**Why This Matters:**
+
+- Creates a clear audit trail of changes
+- Helps other developers (and future AI agents) understand decisions
+- Prevents duplicate work and confusion
+- Documents tribal knowledge that would otherwise be lost
 
 ## Key Directories
 

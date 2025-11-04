@@ -1,0 +1,87 @@
+<!-- apps/web/src/routes/ontology/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import Button from '$lib/components/ui/Button.svelte';
+	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
+	import { ArrowLeft } from 'lucide-svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+
+	/**
+	 * Handles saving the document output
+	 * Merges props and sends PATCH request to update output
+	 */
+	async function handleSave(saveData: {
+		title: string;
+		content: string;
+		props: Record<string, unknown>;
+	}): Promise<void> {
+		const response = await fetch(`/api/onto/outputs/${data.output.id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				name: saveData.title,
+				props: {
+					...data.output.props,
+					...saveData.props,
+					content: saveData.content,
+					content_type: 'html',
+					word_count: saveData.props.word_count
+				}
+			})
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+			throw new Error(errorData.error || 'Failed to save output');
+		}
+
+		// Success - DocumentEditor handles UI feedback
+	}
+
+	/**
+	 * Navigates back to the project detail page
+	 */
+	function goBack(): void {
+		goto(`/ontology/projects/${data.project.id}`);
+	}
+</script>
+
+<svelte:head>
+	<title>Edit {data.output.name} - {data.project.name} | BuildOS</title>
+</svelte:head>
+
+<div class="output-edit-page h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+	<!-- Header - Responsive with mobile-first design and proper accessibility -->
+	<header
+		class="page-header border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+	>
+		<!-- Back button with proper hover states and accessibility -->
+		<Button variant="ghost" size="sm" onclick={goBack} aria-label="Back to project">
+			<ArrowLeft class="w-4 h-4" aria-hidden="true" />
+			<span class="text-sm sm:text-base">Back to Project</span>
+		</Button>
+
+		<!-- Project name with responsive text and truncation -->
+		<div class="flex-1 min-w-0">
+			<p class="text-sm text-gray-600 dark:text-gray-400 truncate" title={data.project.name}>
+				{data.project.name}
+			</p>
+		</div>
+	</header>
+
+	<!-- Editor - Full height with overflow handling and proper semantics -->
+	<main class="flex-1 overflow-hidden">
+		<DocumentEditor
+			outputId={data.output.id}
+			templateKey={data.output.type_key}
+			resolvedTemplate={data.resolvedTemplate}
+			initialContent={(data.output.props?.content as string) ?? ''}
+			initialTitle={data.output.name}
+			initialProps={data.output.props ?? {}}
+			projectId={data.project.id}
+			onSave={handleSave}
+		/>
+	</main>
+</div>
