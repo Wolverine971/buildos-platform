@@ -341,15 +341,19 @@ export class EmailService {
 			errorMessage: string | null;
 		}
 	): Promise<void> {
+		const { recipientEmail, recipientId, sentAt, errorMessage } = options;
+		const status = errorMessage ? 'failed' : 'sent';
+		let existing: { id: string } | null = null;
+
 		try {
-			const { recipientEmail, recipientId, sentAt, errorMessage } = options;
-			const status = errorMessage ? 'failed' : 'sent';
-			const { data: existing } = await this.supabase
+			const { data } = await this.supabase
 				.from('email_recipients')
 				.select('id')
 				.eq('email_id', emailId)
 				.eq('recipient_email', recipientEmail)
 				.maybeSingle();
+
+			existing = data;
 
 			if (existing?.id) {
 				await this.supabase

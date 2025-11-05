@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/persistence/agent-persistence-service.test.ts
 /**
  * Test Suite for AgentPersistenceService
  *

@@ -10,7 +10,8 @@
 <button
 	class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
 	onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
-	aria-label="Toggle menu"
+	aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+	aria-expanded={isMobileMenuOpen}
 >
 	<svg
 		class="w-6 h-6 text-gray-700 dark:text-gray-300"
@@ -39,7 +40,7 @@
 <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
 	<!-- Sidebar -->
 	<aside
-		class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 {isMobileMenuOpen
+		class="fixed lg:static inset-y-0 left-0 z-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 {isMobileMenuOpen
 			? 'translate-x-0'
 			: '-translate-x-full lg:translate-x-0'}"
 	>
@@ -141,11 +142,19 @@
 
 	<!-- Overlay for mobile -->
 	{#if isMobileMenuOpen}
-		<button
+		<div
 			class="fixed inset-0 bg-black/50 z-30 lg:hidden cursor-default"
 			onclick={() => (isMobileMenuOpen = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+					e.preventDefault();
+					isMobileMenuOpen = false;
+				}
+			}}
+			role="button"
+			tabindex="0"
 			aria-label="Close menu"
-		></button>
+		></div>
 	{/if}
 
 	<!-- Main content -->

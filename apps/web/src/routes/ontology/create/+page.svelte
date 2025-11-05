@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/ontology/create/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { ProjectSpec } from '$lib/types/onto';
+	import type { ProjectSpec, Template } from '$lib/types/onto';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -15,10 +15,49 @@
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import { AlertCircle } from 'lucide-svelte';
 
+	interface FacetValue {
+		facet_key: string;
+		value: string;
+		label: string;
+		description: string | null;
+		color: string | null;
+	}
+
+	interface JSONSchemaProperty {
+		type?: string;
+		title?: string;
+		description?: string;
+		default?: unknown;
+		enum?: string[];
+		items?: JSONSchemaProperty;
+		minimum?: number;
+		maximum?: number;
+		minLength?: number;
+		maxLength?: number;
+		pattern?: string;
+	}
+
+	interface SchemaField {
+		key: string;
+		schema: JSONSchemaProperty;
+		required: boolean;
+	}
+
+	interface Goal {
+		name: string;
+		type_key?: string;
+	}
+
+	interface Task {
+		title: string;
+		plan_name?: string;
+		state_key?: string;
+	}
+
 	let { data } = $props();
 
-	const grouped = $derived(data.grouped || {});
-	const facets = $derived(data.facets || {});
+	const grouped = $derived(data.grouped as Record<string, Template[]> || {});
+	const facets = $derived(data.facets as Record<string, FacetValue[]> || {});
 
 	const facetOptions = $derived({
 		context: facets.context ?? [],
@@ -26,27 +65,21 @@
 		stage: facets.stage ?? []
 	});
 
-	let selectedTemplate = $state<any>(null);
+	let selectedTemplate = $state<Template | null>(null);
 	let projectName = $state('');
 	let projectDescription = $state('');
 	let facetContext = $state('');
 	let facetScale = $state('');
 	let facetStage = $state('');
 
-	let customProps = $state<Record<string, any>>({});
-	let schemaProperties = $state<Array<{ key: string; schema: any; required: boolean }>>([]);
-	let schemaMap = $state<Record<string, any>>({});
+	let customProps = $state<Record<string, unknown>>({});
+	let schemaProperties = $state<SchemaField[]>([]);
+	let schemaMap = $state<Record<string, JSONSchemaProperty>>({});
 	let isSubmitting = $state(false);
 	let error = $state('');
 	let formErrors = $state<string[]>([]);
-	let goals = $state<Array<{ name: string; type_key?: string }>>([]);
-	let tasks = $state<
-		Array<{
-			title: string;
-			plan_name?: string;
-			state_key?: string;
-		}>
-	>([]);
+	let goals = $state<Goal[]>([]);
+	let tasks = $state<Task[]>([]);
 	let showGoals = $state(false);
 	let showTasks = $state(false);
 
@@ -67,7 +100,7 @@
 		showTasks = false;
 	}
 
-	function selectTemplate(template: any) {
+	function selectTemplate(template: Template) {
 		selectedTemplate = template;
 
 		// Reset and apply template defaults
@@ -77,18 +110,18 @@
 		facetScale = template.facet_defaults?.scale ?? '';
 		facetStage = template.facet_defaults?.stage ?? '';
 
-		const newProps: Record<string, any> = {};
-		const propertyMap: Record<string, any> = {};
-		const props: Array<{ key: string; schema: any; required: boolean }> = [];
+		const newProps: Record<string, unknown> = {};
+		const propertyMap: Record<string, JSONSchemaProperty> = {};
+		const props: SchemaField[] = [];
 
 		if (template.schema?.properties) {
 			const required = Array.isArray(template.schema?.required)
 				? (template.schema.required as string[])
 				: [];
 
-			for (const [key, schema] of Object.entries(template.schema.properties as any)) {
+			for (const [key, schema] of Object.entries(template.schema.properties as Record<string, JSONSchemaProperty>)) {
 				const isRequired = required.includes(key);
-				let initial: any;
+				let initial: unknown;
 
 				if (schema.default !== undefined) {
 					initial = schema.default;
@@ -126,7 +159,7 @@
 		showTasks = false;
 	}
 
-	function updateCustomProp(key: string, value: any) {
+	function updateCustomProp(key: string, value: unknown) {
 		customProps = { ...customProps, [key]: value };
 	}
 
@@ -185,8 +218,8 @@
 		return issues;
 	}
 
-	function normalizeProps(): Record<string, any> {
-		const normalized: Record<string, any> = {};
+	function normalizeProps(): Record<string, unknown> {
+		const normalized: Record<string, unknown> = {};
 
 		for (const field of schemaProperties) {
 			const value = customProps[field.key];
@@ -341,9 +374,9 @@
 			isSubmitting = false;
 			// ✅ Extract from ApiResponse.data wrapper
 			goto(`/ontology/projects/${result.data.project_id}`);
-		} catch (err: any) {
+		} catch (err) {
 			console.error('[Create Project] Error:', err);
-			error = err.message || 'Failed to create project';
+			error = err instanceof Error ? err.message : 'Failed to create project';
 			isSubmitting = false;
 		}
 	}

@@ -178,7 +178,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			// const { data: tokens, error } = await Promise.race([tokensPromise, timeoutPromise]);
 			const { data: tokens, error } = await Promise.race([tokensPromise]);
 
-			if (error || !tokens) {
+			if (error || !tokens || !tokens.refresh_token) {
 				return null;
 			}
 
@@ -188,7 +188,12 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				: false;
 
 			return {
-				...tokens,
+				access_token: tokens.access_token,
+				refresh_token: tokens.refresh_token,
+				expiry_date: tokens.expiry_date,
+				scope: tokens.scope,
+				updated_at: tokens.updated_at,
+				token_type: tokens.token_type,
 				hasValidTokens,
 				needsRefresh
 			};
@@ -199,8 +204,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	};
 
 	// Initialize locals with default values
-	event.locals.session = undefined;
-	event.locals.user = undefined;
+	event.locals.session = null;
+	event.locals.user = null;
 	event.locals._explicitlyCleared = false;
 
 	// PERFORMANCE: Only load session data for routes that need it
@@ -247,10 +252,11 @@ export const handle = handleSupabase;
 // PERFORMANCE: Optimized error handler with minimal logging overhead
 export const handleError: HandleServerError = ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
+	const errorMessage = error instanceof Error ? error.message : String(error);
 
 	if (dev) {
 		console.error(`[${errorId}] Server error:`, {
-			message: error?.message,
+			message: errorMessage,
 			url: event.url.pathname,
 			method: event.request.method,
 			timestamp: new Date().toISOString(),
@@ -258,11 +264,11 @@ export const handleError: HandleServerError = ({ error, event }) => {
 		});
 	} else {
 		// Minimal logging in production
-		console.error(`[${errorId}] Error on ${event.url.pathname}:`, error?.message);
+		console.error(`[${errorId}] Error on ${event.url.pathname}:`, errorMessage);
 	}
 
 	return {
-		message: error?.message || 'Something went wrong',
+		message: errorMessage || 'Something went wrong',
 		errorId
 	};
 };

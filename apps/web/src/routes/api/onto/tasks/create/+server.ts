@@ -33,12 +33,13 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import type { EnsureActorResponse } from '$lib/types/onto-api';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
-	const session = await locals.safeGetSession();
-	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+	const { user } = await locals.safeGetSession();
+	if (!user) {
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -59,21 +60,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate required fields
 		if (!project_id || !title) {
-			return ApiResponse.error('Project ID and title are required', 400);
+			return ApiResponse.badRequest('Project ID and title are required');
 		}
 
 		// Get user's actor ID
-		const { data: actor } = await supabase
+		const { data: actorData } = await supabase
 			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
+				p_user_id: user.id
 			})
 			.single();
 
-		if (!actor) {
-			return ApiResponse.error('Failed to get user actor', 500);
+		if (!actorData) {
+			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
-		const actorId = (actor as any).actor_id;
+		const actorId = (actorData as EnsureActorResponse).actor_id;
 
 		// Verify user owns the project
 		const { data: project, error: projectError } = await supabase
@@ -84,7 +85,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.single();
 
 		if (projectError || !project) {
-			return ApiResponse.error('Project not found or access denied', 404);
+			return ApiResponse.notFound('Project');
 		}
 
 		// If plan_id is provided, verify it belongs to the project
@@ -97,7 +98,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.single();
 
 			if (planError || !plan) {
-				return ApiResponse.error('Plan not found in this project', 404);
+				return ApiResponse.notFound('Plan');
 			}
 		}
 
@@ -124,7 +125,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('Error creating task:', createError);
-			return ApiResponse.error('Failed to create task', 500);
+			return ApiResponse.databaseError(createError);
 		}
 
 		// Create an edge linking the task to the project
@@ -136,9 +137,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			rel: 'contains'
 		});
 
-		return ApiResponse.success({ task }, 201);
+		return ApiResponse.created({ task });
 	} catch (error) {
 		console.error('Error in task create endpoint:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error);
 	}
 };

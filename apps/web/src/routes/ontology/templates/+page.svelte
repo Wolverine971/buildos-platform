@@ -13,14 +13,39 @@
 	import TemplateDetailModal from '$lib/components/ontology/templates/TemplateDetailModal.svelte';
 	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
+	interface TemplateChild {
+		id: string;
+		type_key: string;
+		name: string;
+		scope: string;
+	}
+
+	interface FilterOptions {
+		realms: string[];
+		scopes: string[];
+		facets: Record<string, string[]>;
+	}
+
+	interface CurrentFilters {
+		scope?: string;
+		realm?: string;
+		search?: string;
+		contexts?: string[];
+		scales?: string[];
+		stages?: string[];
+		sort?: string;
+		direction?: string;
+		detail?: string;
+	}
+
 	let { data } = $props();
 
-	const templates = $derived(data.templates || []);
-	const grouped = $derived(data.grouped || {});
-	const byScope = $derived(data.byScope || {});
-	const filterOptions = $derived(data.filterOptions || { realms: [], scopes: [], facets: {} });
-	const currentFilters = $derived(data.currentFilters || {});
-	const isAdmin = $derived(data.isAdmin || false);
+	const templates = $derived(data.templates as Template[] || []);
+	const grouped = $derived(data.grouped as Record<string, Template[]> || {});
+	const byScope = $derived(data.byScope as Record<string, Template[]> || {});
+	const filterOptions = $derived((data.filterOptions || { realms: [], scopes: [], facets: {} }) as FilterOptions);
+	const currentFilters = $derived((data.currentFilters || {}) as CurrentFilters);
+	const isAdmin = $derived(data.isAdmin as boolean || false);
 
 	let viewMode = $state<'realm' | 'scope'>('realm');
 	let selectedScope = $state(currentFilters.scope || '');
@@ -38,7 +63,7 @@
 	let detailLoading = $state(false);
 	let detailError = $state<string | null>(null);
 	let detailTemplate = $state<ResolvedTemplate | null>(null);
-	let detailChildren = $state<any[]>([]);
+	let detailChildren = $state<TemplateChild[]>([]);
 	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 	const facetOptions = $derived(filterOptions.facets || {});

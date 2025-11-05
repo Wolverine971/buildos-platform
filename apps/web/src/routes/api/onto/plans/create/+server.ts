@@ -35,9 +35,9 @@ import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
-	const session = await locals.safeGetSession();
-	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+	const { user } = await locals.safeGetSession();
+	if (!user) {
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -58,18 +58,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate required fields
 		if (!project_id || !name) {
-			return ApiResponse.error('Project ID and name are required', 400);
+			return ApiResponse.badRequest('Project ID and name are required');
 		}
 
 		// Get user's actor ID
 		const { data: actor } = await supabase
 			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
+				p_user_id: user.id
 			})
 			.single();
 
 		if (!actor) {
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
 		const actorId = (actor as any).actor_id;
@@ -83,7 +83,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.single();
 
 		if (projectError || !project) {
-			return ApiResponse.error('Project not found or access denied', 404);
+			return ApiResponse.notFound('Project');
 		}
 
 		// Create the plan
@@ -109,7 +109,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('Error creating plan:', createError);
-			return ApiResponse.error('Failed to create plan', 500);
+			return ApiResponse.databaseError(createError);
 		}
 
 		// Create an edge linking the plan to the project
@@ -121,9 +121,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			rel: 'contains'
 		});
 
-		return ApiResponse.success({ plan }, 201);
+		return ApiResponse.created({ plan });
 	} catch (error) {
 		console.error('Error in plan create endpoint:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error);
 	}
 };

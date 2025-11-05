@@ -13,6 +13,7 @@
  * Phase: Phase 3 - API Integration
  */
 
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { AgentPlannerService } from '$lib/services/agent-planner-service';
 import { AgentExecutorService } from '$lib/services/agent-executor-service';
@@ -27,14 +28,14 @@ import type {
 	ChatContextType,
 	ChatMessage
 } from '@buildos/shared-types';
-// Add after existing imports
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
 import type {
 	LastTurnContext,
 	OntologyContext,
-	EnhancedAgentStreamRequest,
-	AgentSSEEvent
+	EnhancedAgentStreamRequest
 } from '$lib/types/agent-chat-enhancement';
+import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
+import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
 
 // ============================================
 // RATE LIMITING
@@ -67,6 +68,10 @@ interface AgentStreamRequest extends ChatStreamRequest {
 interface AgentSSEMessage {
 	type:
 		| 'session'
+		| 'ontology_loaded'
+		| 'last_turn_context'
+		| 'strategy_selected'
+		| 'clarifying_questions'
 		| 'analysis'
 		| 'plan_created'
 		| 'step_start'
@@ -419,154 +424,169 @@ export const POST: RequestHandler = async ({
 			});
 		}
 
-		// Initialize services
-		const smartLLM = new SmartLLMService({ supabase });
-		const executorService = new AgentExecutorService(supabase, smartLLM, fetch);
+		const historyToUse =
+			loadedConversationHistory.length > 0
+				? loadedConversationHistory
+				: conversationHistory;
 
-		// Initialize compression service for intelligent chat history compression
-		const compressionService = new ChatCompressionService(supabase);
-
-		// Initialize planner service with compression support
-		const plannerService = new AgentPlannerService(
-			supabase,
-			executorService,
-			smartLLM,
-			compressionService,
-			fetch
-		);
-
-		// Create SSE response
 		const agentStream = SSEResponse.createChatStream();
 
-		// Start streaming in background
-		(async () => {
-			let totalTokens = 0;
-			let assistantResponse = ''; // Accumulate assistant's response
-			let toolCalls: any[] = []; // Accumulate tool calls for this turn
-			let toolResults: any[] = []; // Accumulate tool results (in same order as tool calls)
+		const useNewArchitecture = env.ENABLE_NEW_AGENTIC_CHAT === 'true';
 
-			try {
-				// Send session hydration event
-				await agentStream.sendMessage({
-					type: 'session',
-					session: chatSession
-				});
+		let totalTokens = 0;
+		let assistantResponse = '';
+		const toolCalls: any[] = [];
+		const toolResults: any[] = [];
+		let completionSent = false;
 
-				// Send ontology context event if loaded
-				if (ontologyContext) {
+		const sendEvent = async (event: StreamEvent | AgentSSEMessage | null | undefined) => {
+			if (!event) return;
+
+			if ((event as StreamEvent).type === 'text' && (event as any).content) {
+				assistantResponse += (event as any).content;
+			}
+
+			if ((event as StreamEvent).type === 'tool_call' && (event as any).toolCall) {
+				toolCalls.push((event as any).toolCall);
+			}
+
+			if ((event as StreamEvent).type === 'tool_result' && (event as any).result) {
+				const result = (event as any).result;
+				toolResults.push(result);
+
+				if (result?.context_shift) {
+					const contextShift = result.context_shift;
+					console.log('[API] Context shift detected:', contextShift);
+
 					await agentStream.sendMessage({
-						type: 'ontology_loaded',
-						summary: `Loaded ${ontologyContext.type} ontology context with ${Object.keys(ontologyContext.metadata?.entity_count || {}).length} entity types`
-					});
-				}
-
-				// Send last turn context event if available
-				if (lastTurnContext) {
-					await agentStream.sendMessage({
-						type: 'last_turn_context',
-						context: lastTurnContext
-					});
-				}
-
-				// Use database history if available (source of truth), otherwise use frontend history
-				const historyToUse =
-					loadedConversationHistory.length > 0
-						? loadedConversationHistory
-						: conversationHistory;
-
-				// Process through planner (this is the entry point to the multi-agent system)
-				for await (const event of plannerService.processUserMessage({
-					sessionId: chatSession.id,
-					userId,
-					message,
-					contextType: normalizedContextType,
-					entityId: entity_id,
-					conversationHistory: historyToUse,
-					ontologyContext: ontologyContext || undefined,
-					lastTurnContext: lastTurnContext || undefined
-				})) {
-					// Accumulate text for saving to database
-					if (event.type === 'text' && event.content) {
-						assistantResponse += event.content;
-					}
-
-					// Accumulate tool calls for saving to database
-					if (event.type === 'tool_call' && event.toolCall) {
-						toolCalls.push(event.toolCall);
-					}
-
-					// Accumulate tool results for saving to database
-					if (event.type === 'tool_result' && event.result) {
-						toolResults.push(event.result);
-
-						// Check if tool result contains context_shift metadata
-						if (event.result?.context_shift) {
-							const contextShift = event.result.context_shift;
-							console.log('[API] Context shift detected:', contextShift);
-
-							// Send context_shift SSE event to client
-							await agentStream.sendMessage({
-								type: 'context_shift',
-								context_shift: {
-									new_context: contextShift.new_context,
-									entity_id: contextShift.entity_id,
-									entity_name: contextShift.entity_name,
-									entity_type: contextShift.entity_type,
-									message: `✓ Project created successfully. I'm now helping you manage "${contextShift.entity_name}". What would you like to add?`
-								}
-							});
-
-							// Update chat session with new context
-							const { error: updateError } = await supabase
-								.from('chat_sessions')
-								.update({
-									context_type: contextShift.new_context,
-									entity_id: contextShift.entity_id,
-									updated_at: new Date().toISOString()
-								})
-								.eq('id', chatSession.id);
-
-							if (updateError) {
-								console.error(
-									'[API] Failed to update chat session context:',
-									updateError
-								);
-							} else {
-								console.log('[API] Chat session context updated:', {
-									session_id: chatSession.id,
-									new_context: contextShift.new_context,
-									entity_id: contextShift.entity_id
-								});
-							}
-
-							// Insert system message to mark the context shift in conversation history
-							const { error: sysMessageError } = await supabase
-								.from('chat_messages')
-								.insert({
-									session_id: chatSession.id,
-									user_id: userId,
-									role: 'system',
-									content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
-								});
-
-							if (sysMessageError) {
-								console.error(
-									'[API] Failed to insert system message:',
-									sysMessageError
-								);
-							}
+						type: 'context_shift',
+						context_shift: {
+							new_context: contextShift.new_context,
+							entity_id: contextShift.entity_id,
+							entity_name: contextShift.entity_name,
+							entity_type: contextShift.entity_type,
+							message: `✓ Project created successfully. I'm now helping you manage "${contextShift.entity_name}". What would you like to add?`
 						}
+					});
+
+					const { error: updateError } = await supabase
+						.from('chat_sessions')
+						.update({
+							context_type: contextShift.new_context,
+							entity_id: contextShift.entity_id,
+							updated_at: new Date().toISOString()
+						})
+						.eq('id', chatSession.id);
+
+					if (updateError) {
+						console.error('[API] Failed to update chat session context:', updateError);
+					} else {
+						console.log('[API] Chat session context updated:', {
+							session_id: chatSession.id,
+							new_context: contextShift.new_context,
+							entity_id: contextShift.entity_id
+						});
 					}
 
-					// Map planner events to SSE messages
-					const sseMessage: AgentSSEMessage = mapPlannerEventToSSE(event);
+					const { error: sysMessageError } = await supabase
+						.from('chat_messages')
+						.insert({
+							session_id: chatSession.id,
+							user_id: userId,
+							role: 'system',
+							content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
+						});
 
-					// Send event to client
-					await agentStream.sendMessage(sseMessage);
+					if (sysMessageError) {
+						console.error('[API] Failed to insert system message:', sysMessageError);
+					}
+				}
+			}
 
-					// Track token usage
-					if (event.type === 'done' && event.usage?.total_tokens) {
-						totalTokens += event.usage.total_tokens;
+			if ((event as StreamEvent).type === 'done') {
+				completionSent = true;
+				if ((event as any).usage?.total_tokens) {
+					totalTokens += (event as any).usage.total_tokens;
+				}
+			}
+
+			const message = mapPlannerEventToSSE(event);
+			if (message) {
+				await agentStream.sendMessage(message);
+			}
+		};
+
+		(async () => {
+			try {
+				if (useNewArchitecture) {
+					const orchestrator = createAgentChatOrchestrator(supabase, {
+						fetchFn: fetch,
+						httpReferer: request.headers.get('referer') ?? undefined,
+						appName: 'BuildOS Agentic Chat'
+					});
+
+					const orchestratorRequest = {
+						userId,
+						sessionId: chatSession.id,
+						userMessage: message,
+						contextType: normalizedContextType,
+						entityId: entity_id,
+						conversationHistory: historyToUse,
+						chatSession,
+						ontologyContext: ontologyContext || undefined,
+						lastTurnContext: lastTurnContext || undefined
+					};
+
+					for await (const _ of orchestrator.streamConversation(
+						orchestratorRequest,
+						sendEvent
+					)) {
+						// Events are handled via the provided callback
+					}
+				} else {
+					const smartLLM = new SmartLLMService({ supabase });
+					const executorService = new AgentExecutorService(supabase, smartLLM, fetch);
+					const compressionService = new ChatCompressionService(supabase);
+					const plannerService = new AgentPlannerService(
+						supabase,
+						executorService,
+						smartLLM,
+						compressionService,
+						fetch
+					);
+
+					await sendEvent({
+						type: 'session',
+						session: chatSession
+					} as StreamEvent);
+
+					if (ontologyContext) {
+						await sendEvent({
+							type: 'ontology_loaded',
+							summary: `Loaded ${ontologyContext.type} ontology context with ${Object.keys(
+								ontologyContext.metadata?.entity_count || {}
+							).length} entity types`
+						} as StreamEvent);
+					}
+
+					if (lastTurnContext) {
+						await sendEvent({
+							type: 'last_turn_context',
+							context: lastTurnContext
+						} as StreamEvent);
+					}
+
+					for await (const event of plannerService.processUserMessage({
+						sessionId: chatSession.id,
+						userId,
+						message,
+						contextType: normalizedContextType,
+						entityId: entity_id,
+						conversationHistory: historyToUse,
+						ontologyContext: ontologyContext || undefined,
+						lastTurnContext: lastTurnContext || undefined
+					})) {
+						await sendEvent(event);
 					}
 				}
 
@@ -597,19 +617,24 @@ export const POST: RequestHandler = async ({
 					// These are separate messages with role='tool' linked to their tool_call_id
 					for (const toolCall of toolCalls) {
 						// Match result by tool_call_id instead of array index for safety
-						const result = toolResults.find((r) => r.tool_call_id === toolCall.id);
+						const result = toolResults.find(
+							(r) => r.tool_call_id === toolCall.id || r.toolCallId === toolCall.id
+						);
 
 						if (result) {
+							const normalizedResult =
+								result.tool_result ?? result.result ?? result;
+
 							const { error: toolError } = await supabase
 								.from('chat_messages')
 								.insert({
 									session_id: chatSession.id,
 									user_id: userId,
 									role: 'tool',
-									content: JSON.stringify(result),
+									content: JSON.stringify(normalizedResult),
 									tool_call_id: toolCall.id,
 									tool_name: toolCall.function?.name || 'unknown',
-									tool_result: result
+									tool_result: normalizedResult
 								});
 
 							if (toolError) {
@@ -633,15 +658,17 @@ export const POST: RequestHandler = async ({
 				}
 
 				// Send completion message
-				await agentStream.sendMessage({
-					type: 'done',
-					usage: {
-						prompt_tokens: 0,
-						completion_tokens: 0,
-						total_tokens: totalTokens
-					},
-					finished_reason: 'stop'
-				});
+				if (!completionSent) {
+					await agentStream.sendMessage({
+						type: 'done',
+						usage: {
+							prompt_tokens: 0,
+							completion_tokens: 0,
+							total_tokens: totalTokens
+						},
+						finished_reason: 'stop'
+					});
+				}
 			} catch (streamError) {
 				console.error('Agent streaming error:', streamError);
 
@@ -737,78 +764,68 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 /**
  * Map planner event types to SSE message format
  */
-function mapPlannerEventToSSE(event: any): AgentSSEMessage {
+function mapPlannerEventToSSE(
+	event: StreamEvent | AgentSSEMessage | null | undefined
+): AgentSSEMessage | null {
+	if (!event) {
+		return null;
+	}
+
 	switch (event.type) {
+		case 'session':
+			return { type: 'session', session: (event as any).session };
+		case 'ontology_loaded':
+			return { type: 'ontology_loaded', summary: (event as any).summary };
+		case 'last_turn_context':
+			return { type: 'last_turn_context', context: (event as any).context };
+		case 'strategy_selected':
+			return {
+				type: 'strategy_selected',
+				strategy: (event as any).strategy,
+				confidence: (event as any).confidence ?? 0
+			};
+		case 'clarifying_questions':
+			return {
+				type: 'clarifying_questions',
+				questions: (event as any).questions ?? []
+			};
 		case 'analysis':
-			return {
-				type: 'analysis',
-				analysis: event.analysis
-			};
-
+			return { type: 'analysis', analysis: (event as any).analysis };
 		case 'plan_created':
-			return {
-				type: 'plan_created',
-				plan: event.plan
-			};
-
+			return { type: 'plan_created', plan: (event as any).plan };
 		case 'step_start':
-			return {
-				type: 'step_start',
-				step: event.step
-			};
-
+			return { type: 'step_start', step: (event as any).step };
 		case 'step_complete':
-			return {
-				type: 'step_complete',
-				step: event.step
-			};
-
+			return { type: 'step_complete', step: (event as any).step };
 		case 'executor_spawned':
 			return {
 				type: 'executor_spawned',
-				executorId: event.executorId,
-				task: event.task
+				executorId: (event as any).executorId,
+				task: (event as any).task
 			};
-
 		case 'executor_result':
 			return {
 				type: 'executor_result',
-				executorId: event.executorId,
-				result: event.result
+				executorId: (event as any).executorId,
+				result: (event as any).result
 			};
-
 		case 'text':
-			return {
-				type: 'text',
-				content: event.content
-			};
-
+			return { type: 'text', content: (event as any).content };
 		case 'tool_call':
 			return {
 				type: 'tool_call',
-				tool_call: event.toolCall
+				tool_call: (event as any).toolCall ?? (event as any).tool_call
 			};
-
 		case 'tool_result':
 			return {
 				type: 'tool_result',
-				tool_result: event.result
+				tool_result: (event as any).result ?? (event as any).tool_result
 			};
-
 		case 'done':
-			return {
-				type: 'done',
-				plan: event.plan
-			};
-
+			return { type: 'done', plan: (event as any).plan, usage: (event as any).usage };
 		case 'error':
-			return {
-				type: 'error',
-				error: event.error
-			};
-
+			return { type: 'error', error: (event as any).error ?? 'Unknown error' };
 		default:
-			// Unknown event type, pass through
-			return event;
+			return null;
 	}
 }

@@ -98,19 +98,19 @@ export class OnboardingProgressService {
 		// Check if all input fields are completed
 		const allInputFieldsCompleted = inputFields.every((field) => {
 			const value = userContext[field as keyof UserContext];
-			return value && value.trim() !== '';
+			return value && typeof value === 'string' && value.trim() !== '';
 		});
 
 		// Find completed fields (existing logic for parsed fields)
 		const completedFields = this.ALL_FIELDS.filter((field) => {
 			const value = userContext[field as keyof UserContext];
-			return value && value.trim() !== '';
+			return value && typeof value === 'string' && value.trim() !== '';
 		});
 
 		// Find missing required fields
 		const missingRequiredFields = this.REQUIRED_FIELDS.filter((field) => {
 			const value = userContext[field as keyof UserContext];
-			return !value || value.trim() === '';
+			return !value || (typeof value === 'string' && value.trim() === '');
 		});
 
 		// Find all missing fields

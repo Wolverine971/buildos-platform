@@ -7,6 +7,13 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
+interface AdminUser {
+	id: string;
+	email?: string;
+	name?: string;
+	is_admin: boolean;
+}
+
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
 
@@ -15,17 +22,20 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		throw redirect(303, '/auth/login');
 	}
 
+	// Type-safe admin check
+	const adminUser = user as AdminUser;
+
 	// Check if user is admin
-	if (!(user as any).is_admin) {
+	if (!adminUser.is_admin) {
 		throw redirect(303, '/');
 	}
 
 	return {
 		user: {
-			id: user.id,
-			email: user.email,
-			name: (user as any).name,
-			is_admin: (user as any).is_admin
+			id: adminUser.id,
+			email: adminUser.email || '',
+			name: adminUser.name || '',
+			is_admin: adminUser.is_admin
 		}
 	};
 };

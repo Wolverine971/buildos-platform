@@ -102,11 +102,11 @@ function buildCacheControl(config: CacheConfig): string {
 export class ApiResponse {
 	// Success responses with optional caching
 	static success<T = any>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json<ApiSuccess<T>>({
+		const response = json({
 			success: true,
 			data,
 			message
-		});
+		} as ApiSuccess<T>);
 
 		if (cacheConfig) {
 			response.headers.set('Cache-Control', buildCacheControl(cacheConfig));
@@ -119,12 +119,12 @@ export class ApiResponse {
 	}
 
 	static created<T = any>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json<ApiSuccess<T>>(
+		const response = json(
 			{
 				success: true,
 				data,
 				message
-			},
+			} as ApiSuccess<T>,
 			{ status: HttpStatus.CREATED }
 		);
 
@@ -155,12 +155,12 @@ export class ApiResponse {
 		code?: string,
 		details?: any
 	) {
-		return json<ApiError>(
+		return json(
 			{
 				error: message,
 				code,
 				details
-			},
+			} as ApiError,
 			{ status }
 		);
 	}

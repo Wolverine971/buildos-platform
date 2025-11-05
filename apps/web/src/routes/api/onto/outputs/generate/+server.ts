@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (projectError) {
 			console.error('[Output Generate API] Failed to fetch project:', projectError);
-			return ApiResponse.databaseError(projectError.message);
+			return ApiResponse.databaseError(projectError);
 		}
 
 		if (!project) {
@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output Generate API] Failed to get actor:', actorCheckError);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
 		}
 
 		// ✅ SECURITY: Verify user owns the project (via actor)

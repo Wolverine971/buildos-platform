@@ -113,10 +113,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				'[Project API] Failed to fetch allowed transitions:',
 				allowedTransitionsResult.error
 			);
-			return ApiResponse.error(
-				`Failed to fetch allowed transitions: ${allowedTransitionsResult.error.message}`,
-				500
-			);
+			return ApiResponse.databaseError(allowedTransitionsResult.error);
 		}
 
 		const allowedTransitions = (allowedTransitionsResult.data || []).map((transition: any) => ({
@@ -147,6 +144,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (err) {
 		console.error('[Project API] Unexpected error:', err);
-		return ApiResponse.internalError('An unexpected error occurred');
+		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

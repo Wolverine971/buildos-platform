@@ -436,7 +436,7 @@ export class ErrorLoggerService {
 		}
 
 		// Extract unique user IDs from the errors
-		const userIds = [...new Set(errors.filter((e) => e.user_id).map((e) => e.user_id))];
+		const userIds = [...new Set(errors.filter((e) => e.user_id).map((e) => e.user_id!))];
 
 		// Fetch user data for all unique user IDs
 		let usersMap: Record<string, any> = {};

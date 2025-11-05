@@ -223,14 +223,10 @@ export class GoogleOAuthHandler {
 		// This ensures immediate recognition of the authenticated state
 		if (this.locals) {
 			this.locals.session = data.session;
-			this.locals.user = dbUser || {
-				id: data.user.id,
-				email: data.user.email,
-				name: data.user.user_metadata?.name || 'User',
-				is_admin: false,
-				completed_onboarding: false
-			};
-			console.log('Updated server locals with authenticated user:', this.locals.user.id);
+			this.locals.user = dbUser;
+			if (this.locals.user) {
+				console.log('Updated server locals with authenticated user:', this.locals.user.id);
+			}
 		}
 
 		return {

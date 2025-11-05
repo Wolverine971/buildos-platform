@@ -803,15 +803,18 @@ export class GoogleOAuthService {
 		// Method 3: Try to decode ID token
 		if (idToken) {
 			try {
-				const idTokenPayload = JSON.parse(atob(idToken.split('.')[1]));
-				if (idTokenPayload.sub && idTokenPayload.email) {
-					return {
-						id: idTokenPayload.sub,
-						email: idTokenPayload.email,
-						name:
-							idTokenPayload.name ||
-							`${idTokenPayload.given_name || ''} ${idTokenPayload.family_name || ''}`.trim()
-					};
+				const parts = idToken.split('.');
+				if (parts[1]) {
+					const idTokenPayload = JSON.parse(atob(parts[1]));
+					if (idTokenPayload.sub && idTokenPayload.email) {
+						return {
+							id: idTokenPayload.sub,
+							email: idTokenPayload.email,
+							name:
+								idTokenPayload.name ||
+								`${idTokenPayload.given_name || ''} ${idTokenPayload.family_name || ''}`.trim()
+						};
+					}
 				}
 			} catch (error) {
 				console.warn('ID token decode failed:', error);

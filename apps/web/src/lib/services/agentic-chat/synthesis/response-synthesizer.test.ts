@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/synthesis/response-synthesizer.test.ts
 /**
  * Test Suite for ResponseSynthesizer
  *
@@ -42,6 +43,7 @@ describe('ResponseSynthesizer', () => {
 			userId: 'user_123',
 			contextType: 'project',
 			entityId: 'proj_123',
+			plannerAgentId: 'planner_123',
 			conversationHistory: []
 		};
 	});
@@ -149,6 +151,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_123',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Analyze project health',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'completed',
@@ -206,6 +209,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_456',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Generate report',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'executing',
@@ -259,6 +263,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_789',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Do something complex',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'failed',
@@ -424,6 +429,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_123',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'executing',
@@ -449,6 +455,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_456',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'completed',
@@ -472,6 +479,7 @@ describe('ResponseSynthesizer', () => {
 				id: 'plan_789',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'failed',

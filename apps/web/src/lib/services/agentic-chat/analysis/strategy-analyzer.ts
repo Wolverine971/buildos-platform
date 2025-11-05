@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/analysis/strategy-analyzer.ts
 /**
  * Strategy Analyzer Service
  *

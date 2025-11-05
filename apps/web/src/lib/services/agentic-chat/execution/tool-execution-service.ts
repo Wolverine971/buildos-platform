@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts
 /**
  * Tool Execution Service
  *
@@ -15,11 +16,11 @@
  * - Extract entity references from tool outputs
  * - Manage timeouts and retries
  *
- * @module agentic-chat/tools
+ * @module agentic-chat/execution
  */
 
-import type { ServiceContext, ToolExecutionResult, BaseService } from '../shared/types';
 import { ToolExecutionError } from '../shared/types';
+import type { ServiceContext, ToolExecutionResult, BaseService } from '../shared/types';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 
 /**
@@ -86,7 +87,7 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		// Normalize arguments
-		const args = toolCall.arguments || {};
+		const args = this.normalizeArguments(toolCall.arguments);
 
 		try {
 			// Execute with timeout if specified
@@ -164,7 +165,7 @@ export class ToolExecutionService implements BaseService {
 		// Validate parameters if defined
 		if (toolDef.parameters && typeof toolDef.parameters === 'object') {
 			const params = toolDef.parameters as any;
-			const args = toolCall.arguments || {};
+			const args = this.normalizeArguments(toolCall.arguments);
 
 			// Check required parameters
 			if (params.required && Array.isArray(params.required)) {
@@ -418,5 +419,30 @@ export class ToolExecutionService implements BaseService {
 
 		// Return results in original order
 		return toolCalls.map((call) => results.find((r) => r.toolCallId === call.id)!);
+	}
+
+	/**
+	 * Normalize tool call arguments to an object
+	 */
+	private normalizeArguments(args: ChatToolCall['arguments']): Record<string, any> {
+		if (!args) {
+			return {};
+		}
+
+		if (typeof args === 'string') {
+			try {
+				return JSON.parse(args);
+			} catch (error) {
+				throw new ToolExecutionError(
+					`Invalid JSON for tool arguments: ${
+						error instanceof Error ? error.message : 'unknown error'
+					}`,
+					'unknown',
+					{ args }
+				);
+			}
+		}
+
+		return args;
 	}
 }

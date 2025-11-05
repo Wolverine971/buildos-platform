@@ -36,7 +36,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (fetchError) {
 			console.error('[Output API] Failed to fetch output:', fetchError);
-			return ApiResponse.databaseError(fetchError.message);
+			return ApiResponse.databaseError(fetchError);
 		}
 
 		if (!existingOutput) {
@@ -65,7 +65,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
 		}
 
 		// Check if user owns the project (via actor)
@@ -99,13 +99,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('[Output API] Failed to update output:', updateError);
-			return ApiResponse.databaseError(`Failed to update output: ${updateError.message}`);
+			return ApiResponse.databaseError(updateError);
 		}
 
 		return ApiResponse.success({ output: updatedOutput });
 	} catch (err) {
 		console.error('[Output API] Unexpected error in PATCH:', err);
-		return ApiResponse.internalError('An unexpected error occurred');
+		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
 
@@ -132,7 +132,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (fetchError) {
 			console.error('[Output API] Failed to fetch output:', fetchError);
-			return ApiResponse.databaseError(fetchError.message);
+			return ApiResponse.databaseError(fetchError);
 		}
 
 		if (!output) {
@@ -152,7 +152,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
 		}
 
 		if (project.created_by !== actorId) {
@@ -162,6 +162,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ output });
 	} catch (err) {
 		console.error('[Output API] Unexpected error in GET:', err);
-		return ApiResponse.internalError('An unexpected error occurred');
+		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

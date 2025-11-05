@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.test.ts
 /**
  * Test Suite for PlanOrchestrator
  *
@@ -75,6 +76,7 @@ describe('PlanOrchestrator', () => {
 			userId: 'user_123',
 			contextType: 'project',
 			entityId: 'proj_123',
+			plannerAgentId: 'planner_123',
 			conversationHistory: []
 		};
 
@@ -90,7 +92,8 @@ describe('PlanOrchestrator', () => {
 				sessionId: 'session_123',
 				contextType: 'project',
 				totalTokens: 1000,
-				hasOntology: false
+				hasOntology: false,
+				plannerAgentId: 'planner_123'
 			}
 		};
 	});
@@ -224,6 +227,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_123',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test message',
 				strategy: ChatStrategy.SIMPLE_RESEARCH,
 				status: 'pending',
@@ -315,6 +319,14 @@ describe('PlanOrchestrator', () => {
 				events.push(event);
 			}
 
+			expect(mockExecutorCoordinator.spawnExecutor).toHaveBeenCalledWith(
+				expect.objectContaining({
+					plan: mockPlan,
+					step: mockPlan.steps[0]
+				}),
+				mockContext
+			);
+
 			expect(mockExecutorCoordinator.spawnExecutor).toHaveBeenCalled();
 			expect(mockExecutorCoordinator.waitForExecutor).toHaveBeenCalledWith('executor_123');
 
@@ -396,6 +408,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_123',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.SIMPLE_RESEARCH,
 				status: 'pending',
@@ -423,6 +436,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_456',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.SIMPLE_RESEARCH,
 				status: 'pending',
@@ -441,6 +455,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_789',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',
@@ -476,6 +491,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_dep',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',
@@ -512,6 +528,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_circular',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',
@@ -550,6 +567,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_opt',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',
@@ -598,6 +616,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_dep_opt',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',
@@ -649,6 +668,7 @@ describe('PlanOrchestrator', () => {
 				id: 'plan_group',
 				sessionId: 'session_123',
 				userId: 'user_123',
+				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
 				strategy: ChatStrategy.COMPLEX_RESEARCH,
 				status: 'pending',

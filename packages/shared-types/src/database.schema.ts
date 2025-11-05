@@ -1,4 +1,4 @@
-// Lightweight database schema - auto-generated from database.types.ts
+// packages/shared-types/src/database.schema.ts
 // Generated on: 2025-11-05T18:56:29.241Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

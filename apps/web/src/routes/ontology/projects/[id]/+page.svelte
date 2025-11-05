@@ -32,6 +32,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import OutputCreateModal from '$lib/components/ontology/OutputCreateModal.svelte';
 	import TaskCreateModal from '$lib/components/ontology/TaskCreateModal.svelte';
@@ -41,20 +42,77 @@
 	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
 	import { Plus, FileEdit, Edit2, ChevronRight, Calendar, Target, FileText } from 'lucide-svelte';
 
+	interface Project {
+		id: string;
+		name: string;
+		description?: string;
+		type_key: string;
+		state_key: string;
+		facet_context?: string;
+		facet_scale?: string;
+		facet_stage?: string;
+		props?: Record<string, unknown>;
+	}
+
+	interface Task {
+		id: string;
+		title: string;
+		state_key: string;
+		plan_id?: string;
+		props?: {
+			description?: string;
+			priority?: 'low' | 'medium' | 'high' | 'urgent';
+			[key: string]: unknown;
+		};
+	}
+
+	interface Output {
+		id: string;
+		title: string;
+		props?: {
+			word_count?: number;
+			[key: string]: unknown;
+		};
+	}
+
+	interface Plan {
+		id: string;
+		name: string;
+		state_key: string;
+	}
+
+	interface Goal {
+		id: string;
+		name: string;
+		state_key: string;
+		props?: {
+			measurement?: string;
+			priority?: 'low' | 'medium' | 'high' | 'urgent';
+			[key: string]: unknown;
+		};
+	}
+
+	interface TransitionDetail {
+		event: string;
+		to: string;
+		guards?: string[];
+		actions?: string[];
+	}
+
 	let { data } = $props();
 
-	const project = $derived(data.project);
-	const tasks = $derived(data.tasks || []);
-	const outputs = $derived(data.outputs || []);
-	const documents = $derived(data.documents || []);
-	const plans = $derived(data.plans || []);
-	const goals = $derived(data.goals || []);
-	const requirements = $derived(data.requirements || []);
-	const milestones = $derived(data.milestones || []);
-	const risks = $derived(data.risks || []);
-	const allowedTransitions = $derived(data.allowed_transitions || []);
-	const initialTransitionDetails = $derived(
-		allowedTransitions.map((transition: any) => ({
+	const project = $derived(data.project as Project);
+	const tasks = $derived((data.tasks || []) as Task[]);
+	const outputs = $derived((data.outputs || []) as Output[]);
+	const documents = $derived((data.documents || []) as Output[]);
+	const plans = $derived((data.plans || []) as Plan[]);
+	const goals = $derived((data.goals || []) as Goal[]);
+	const requirements = $derived((data.requirements || []) as unknown[]);
+	const milestones = $derived((data.milestones || []) as unknown[]);
+	const risks = $derived((data.risks || []) as unknown[]);
+	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
+	const initialTransitionDetails = $derived<TransitionDetail[]>(
+		allowedTransitions.map((transition) => ({
 			event: transition.event,
 			to: transition.to,
 			guards: transition.guards ?? [],
@@ -123,13 +181,12 @@
 	<title>{project.name} | Ontology</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 	<!-- Header -->
-	<div
-		class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 mb-6"
-	>
+	<Card variant="elevated" padding="none" class="mb-6">
+		<CardBody padding="md">
 		<!-- Back button and transitions -->
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
 			<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
 				<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path
@@ -144,7 +201,7 @@
 		</div>
 
 		<!-- Project title and metadata -->
-		<div class="mb-5">
+		<div class="mb-6">
 			<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
 				{project.name}
 			</h1>
@@ -203,7 +260,8 @@
 			initialTransitions={initialTransitionDetails}
 			on:stateChange={handleStateChange}
 		/>
-	</div>
+		</CardBody>
+	</Card>
 
 	<!-- Tabs -->
 	<Card variant="elevated" padding="none">
@@ -217,7 +275,7 @@
 
 	<!-- Content -->
 	<Card variant="elevated" padding="none" class="rounded-t-none border-t-0">
-		<CardBody padding="md" class="min-h-96">
+		<CardBody padding="lg">
 			{#if activeTab === 'tasks'}
 				<div class="space-y-4">
 					<!-- Create button -->

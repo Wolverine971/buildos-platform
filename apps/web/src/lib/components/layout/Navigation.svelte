@@ -217,9 +217,10 @@
 		brainDumpV2Store.closeModal();
 	}
 
-	function handleOpenChat() {
+	function handleOpenChat(detail?: { projectId: string; chatType: string }) {
 		closeAllMenus();
 		showChatModal = true;
+		// TODO: Pass projectId and chatType to AgentChatModal when needed
 	}
 
 	function handleChatClose() {
@@ -319,7 +320,7 @@
 					<Button
 						variant="outline"
 						size="sm"
-						on:click={handleOpenBrainDump}
+						onclick={handleOpenBrainDump}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] ${showBrainDumpModal ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-200'}`}
 						aria-label="Open Brain Dump"
 						title="Brain Dump"
@@ -833,11 +834,11 @@
 
 <!-- Brain Dump Modal -->
 <BrainDumpModal
-	isOpen={showBrainDumpModal}
+	bind:isOpen={showBrainDumpModal}
 	project={modalProject}
 	showNavigationOnSuccess={true}
-	on:close={handleBrainDumpClose}
-	on:openAgent={handleOpenChat}
+	onClose={handleBrainDumpClose}
+	onOpenAgent={handleOpenChat}
 />
 
 <!-- Multi-Agent Chat Modal -->

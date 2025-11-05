@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/shared/types.ts
 /**
  * Shared Types for Agentic Chat System
  *
@@ -135,6 +136,31 @@ export interface AgentPlan {
 		actualDuration?: number;
 		totalTokensUsed?: number;
 	};
+}
+
+/**
+ * Parameters used when spawning executor agents for a plan step
+ */
+export interface ExecutorSpawnParams {
+	plan: AgentPlan;
+	step: PlanStep;
+	plannerContext: PlannerContext;
+	previousStepResults: Map<number, any>;
+}
+
+/**
+ * Request payload for the AgentChatOrchestrator
+ */
+export interface AgentChatRequest {
+	userId: string;
+	sessionId: string;
+	userMessage: string;
+	contextType: ChatContextType;
+	entityId?: string;
+	conversationHistory: ChatMessage[];
+	chatSession?: ChatSession;
+	ontologyContext?: OntologyContext;
+	lastTurnContext?: LastTurnContext;
 }
 
 /**

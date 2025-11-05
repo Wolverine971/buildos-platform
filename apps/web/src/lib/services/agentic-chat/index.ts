@@ -1,0 +1,118 @@
+/**
+ * Agentic Chat Service Factory
+ *
+ * Provides helpers to instantiate the refactored agentic chat architecture.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database, ChatToolCall } from '@buildos/shared-types';
+import { v4 as uuidv4 } from 'uuid';
+
+import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { ChatCompressionService } from '$lib/services/chat-compression-service';
+import { AgentContextService } from '$lib/services/agent-context-service';
+import { AgentExecutorService } from '$lib/services/agent-executor-service';
+import { ChatToolExecutor } from '$lib/chat/tool-executor';
+
+import { AgentPersistenceService } from './persistence/agent-persistence-service';
+import { ToolExecutionService, type ToolExecutorFunction } from './execution/tool-execution-service';
+import { ExecutorCoordinator } from './execution/executor-coordinator';
+import { StrategyAnalyzer } from './analysis/strategy-analyzer';
+import { PlanOrchestrator } from './planning/plan-orchestrator';
+import { ResponseSynthesizer } from './synthesis/response-synthesizer';
+import { AgentChatOrchestrator } from './orchestration/agent-chat-orchestrator';
+import type { AgentChatOrchestratorDependencies } from './orchestration/agent-chat-orchestrator';
+
+export interface AgenticChatFactoryOptions {
+	httpReferer?: string;
+	appName?: string;
+	fetchFn?: typeof fetch;
+}
+
+/**
+ * Create a configured AgentChatOrchestrator instance
+ */
+export function createAgentChatOrchestrator(
+	supabase: SupabaseClient<Database>,
+	options: AgenticChatFactoryOptions = {}
+): AgentChatOrchestrator {
+	const fetchFn = options.fetchFn ?? fetch;
+
+	const llmService = new SmartLLMService({
+		supabase,
+		httpReferer: options.httpReferer,
+		appName: options.appName ?? 'BuildOS Agentic Chat'
+	});
+
+	const compressionService = new ChatCompressionService(supabase);
+	const contextService = new AgentContextService(supabase, compressionService);
+
+	const persistenceService = new AgentPersistenceService(supabase);
+
+	const sharedToolExecutor = createToolExecutor(supabase, fetchFn);
+	const toolExecutionService = new ToolExecutionService(sharedToolExecutor);
+
+	const executorService = new AgentExecutorService(supabase, llmService, fetchFn);
+	const executorCoordinator = new ExecutorCoordinator(executorService, persistenceService);
+
+	const planOrchestrator = new PlanOrchestrator(
+		llmService,
+		sharedToolExecutor,
+		executorCoordinator,
+		persistenceService
+	);
+
+	const responseSynthesizer = new ResponseSynthesizer(llmService);
+	const strategyAnalyzer = new StrategyAnalyzer(llmService);
+
+	const dependencies: AgentChatOrchestratorDependencies = {
+		strategyAnalyzer,
+		planOrchestrator,
+		toolExecutionService,
+		responseSynthesizer,
+		executorCoordinator,
+		persistenceService,
+		contextService
+	};
+
+	return new AgentChatOrchestrator(dependencies);
+}
+
+/**
+ * Create a tool executor function backed by ChatToolExecutor
+ */
+function createToolExecutor(
+	supabase: SupabaseClient<Database>,
+	fetchFn: typeof fetch
+): ToolExecutorFunction {
+	return async (toolName, args, context) => {
+		const toolExecutor = new ChatToolExecutor(supabase, context.userId, context.sessionId, fetchFn);
+
+		const call: ChatToolCall = {
+			id: uuidv4(),
+			type: 'function',
+			function: {
+				name: toolName,
+				arguments: JSON.stringify(args ?? {})
+			}
+		} as ChatToolCall;
+
+		const result = await toolExecutor.execute(call);
+
+		if (!result.success) {
+			throw new Error(result.error || `Tool ${toolName} execution failed`);
+		}
+
+		return result.result ?? null;
+	};
+}
+
+export {
+	AgentChatOrchestrator,
+	AgentPersistenceService,
+	ToolExecutionService,
+	ExecutorCoordinator,
+	StrategyAnalyzer,
+	PlanOrchestrator,
+	ResponseSynthesizer
+};

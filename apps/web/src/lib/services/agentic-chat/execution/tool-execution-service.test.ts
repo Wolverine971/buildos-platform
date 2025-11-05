@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.test.ts
 /**
  * Test Suite for ToolExecutionService
  *
@@ -29,6 +30,7 @@ describe('ToolExecutionService', () => {
 			userId: 'user_123',
 			contextType: 'project',
 			entityId: 'proj_123',
+			plannerAgentId: 'planner_123',
 			conversationHistory: []
 		};
 

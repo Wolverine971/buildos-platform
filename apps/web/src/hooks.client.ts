@@ -41,9 +41,10 @@ if (browser) {
 
 export const handleError: HandleClientError = ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
+	const errorMessage = error instanceof Error ? error.message : String(error);
 
 	console.error(`[${errorId}] Client error:`, {
-		message: error.message,
+		message: errorMessage,
 		url: event.url?.pathname,
 		timestamp: new Date().toISOString()
 	});

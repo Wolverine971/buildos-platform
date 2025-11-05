@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import type { Json } from '$lib/database.schema';
 
 type ProjectRow = {
 	id: string;
@@ -13,7 +14,7 @@ type ProjectRow = {
 	description: string | null;
 	type_key: string;
 	state_key: string;
-	props: Record<string, unknown> | null;
+	props: Json;
 	facet_context: string | null;
 	facet_scale: string | null;
 	facet_stage: string | null;
@@ -79,6 +80,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 	} catch (err) {
 		console.error('[Ontology API] Unexpected error:', err);
-		return ApiResponse.internalError('An unexpected error occurred');
+		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

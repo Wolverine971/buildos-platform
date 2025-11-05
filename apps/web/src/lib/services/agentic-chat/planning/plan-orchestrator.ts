@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts
 /**
  * Plan Orchestrator Service
  *
@@ -28,7 +29,8 @@ import type {
 	StreamCallback,
 	StreamEvent,
 	ToolExecutionResult,
-	ExecutorResult
+	ExecutorResult,
+	ExecutorSpawnParams
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy, PlanningStrategy } from '$lib/types/agent-chat-enhancement';
@@ -62,7 +64,7 @@ interface LLMService {
  * Interface for executor coordinator
  */
 interface ExecutorCoordinator {
-	spawnExecutor(task: any, context: ServiceContext): Promise<string>;
+	spawnExecutor(params: ExecutorSpawnParams, context: ServiceContext): Promise<string>;
 	waitForExecutor(executorId: string): Promise<ExecutorResult>;
 }
 
@@ -73,7 +75,11 @@ interface PersistenceService {
 	createPlan(data: Omit<any, 'id'>): Promise<string>;
 	updatePlan(id: string, data: Partial<any>): Promise<void>;
 	getPlan(id: string): Promise<any | null>;
-	updatePlanStep(planId: string, stepNumber: number, stepUpdate: Record<string, any>): Promise<void>;
+	updatePlanStep(
+		planId: string,
+		stepNumber: number,
+		stepUpdate: Record<string, any>
+	): Promise<void>;
 }
 
 /**
@@ -248,7 +254,6 @@ export class PlanOrchestrator implements BaseService {
 
 					// Update plan in database
 					await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
-
 				} catch (error) {
 					// Handle step failure
 					step.status = 'failed';
@@ -289,7 +294,6 @@ export class PlanOrchestrator implements BaseService {
 			};
 			yield doneEvent;
 			await callback(doneEvent);
-
 		} catch (error) {
 			// Mark plan as failed
 			plan.status = 'failed';
@@ -368,7 +372,7 @@ export class PlanOrchestrator implements BaseService {
 		for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
 			const group = groups[groupIndex];
 			for (const stepNumber of group) {
-				const step = plan.steps.find(s => s.stepNumber === stepNumber);
+				const step = plan.steps.find((s) => s.stepNumber === stepNumber);
 				if (step) {
 					step.metadata = {
 						...step.metadata,
@@ -404,7 +408,7 @@ export class PlanOrchestrator implements BaseService {
 
 				// Check if all dependencies are satisfied
 				const deps = dependencies.get(step.stepNumber) || [];
-				const canExecute = deps.every(dep => processed.has(dep));
+				const canExecute = deps.every((dep) => processed.has(dep));
 
 				if (canExecute) {
 					currentGroup.push(step.stepNumber);
@@ -417,7 +421,7 @@ export class PlanOrchestrator implements BaseService {
 			}
 
 			groups.push(currentGroup);
-			currentGroup.forEach(step => processed.add(step));
+			currentGroup.forEach((step) => processed.add(step));
 		}
 
 		return groups;
@@ -464,7 +468,7 @@ export class PlanOrchestrator implements BaseService {
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): string {
-		const toolList = plannerContext.availableTools.map(t => t.name).join(', ');
+		const toolList = plannerContext.availableTools.map((t) => t.name).join(', ');
 
 		return `You are a plan generator for BuildOS chat.
 Strategy: ${strategy}
@@ -494,10 +498,7 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 	/**
 	 * Build prompt for plan generation
 	 */
-	private buildPlanPrompt(
-		userMessage: string,
-		plannerContext: PlannerContext
-	): string {
+	private buildPlanPrompt(userMessage: string, plannerContext: PlannerContext): string {
 		return `User request: "${userMessage}"
 
 Context: ${plannerContext.locationContext}
@@ -530,7 +531,7 @@ Generate an execution plan to fulfill this request.`;
 			return true;
 		}
 
-		return step.dependsOn.every(dep => completedSteps.has(dep));
+		return step.dependsOn.every((dep) => completedSteps.has(dep));
 	}
 
 	/**
@@ -552,21 +553,28 @@ Generate an execution plan to fulfill this request.`;
 		});
 
 		if (step.executorRequired) {
-			// Spawn executor agent
-			const task = {
-				step,
+			// Spawn executor agent with structured parameters
+			const spawnParams: ExecutorSpawnParams = {
 				plan,
-				context: stepResults,
-				tools: step.tools
+				step,
+				plannerContext,
+				previousStepResults: stepResults
 			};
 
-			const executorId = await this.executorCoordinator.spawnExecutor(task, context);
+			const executorId = await this.executorCoordinator.spawnExecutor(spawnParams, context);
+
+			const taskSummary = {
+				stepNumber: step.stepNumber,
+				description: step.description,
+				tools: step.tools,
+				type: step.type
+			};
 
 			// Emit executor spawned event
 			await callback({
 				type: 'executor_spawned',
 				executorId,
-				task
+				task: taskSummary
 			});
 
 			// Wait for executor to complete
@@ -584,7 +592,6 @@ Generate an execution plan to fulfill this request.`;
 			}
 
 			return result.data;
-
 		} else if (step.tools.length > 0) {
 			// Execute tools directly
 			const toolResults: any[] = [];
@@ -597,7 +604,6 @@ Generate an execution plan to fulfill this request.`;
 
 			// Return combined results
 			return toolResults.length === 1 ? toolResults[0] : toolResults;
-
 		} else {
 			// No execution needed
 			return { completed: true };
@@ -645,7 +651,7 @@ Generate an execution plan to fulfill this request.`;
 
 			visiting.add(stepNumber);
 
-			const step = plan.steps.find(s => s.stepNumber === stepNumber);
+			const step = plan.steps.find((s) => s.stepNumber === stepNumber);
 			if (step?.dependsOn) {
 				for (const dep of step.dependsOn) {
 					if (hasCycle(dep)) return true;
@@ -688,7 +694,7 @@ Generate an execution plan to fulfill this request.`;
 	private shouldStopOnFailure(step: PlanStep, plan: AgentPlan): boolean {
 		// Check if other steps depend on this one
 		const hasDependents = plan.steps.some(
-			s => s.dependsOn && s.dependsOn.includes(step.stepNumber)
+			(s) => s.dependsOn && s.dependsOn.includes(step.stepNumber)
 		);
 
 		// Stop if critical step or has dependents
@@ -708,5 +714,4 @@ Generate an execution plan to fulfill this request.`;
 			completed_at: completedAt?.toISOString()
 		});
 	}
-
 }

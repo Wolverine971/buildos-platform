@@ -5,15 +5,15 @@
 
 	type BodyPadding = 'sm' | 'md' | 'lg';
 
-	interface $$Props extends HTMLAttributes<HTMLDivElement> {
+	// Svelte 5 runes: Use $props() with rest syntax
+	let {
+		padding = 'md',
+		class: className = '',
+		...restProps
+	}: {
 		padding?: BodyPadding;
 		class?: string;
-	}
-
-	export let padding: BodyPadding = 'md';
-
-	let className = '';
-	export { className as class };
+	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	// Optimized for high information density (Apple-style)
 	const paddingClasses = {
@@ -22,9 +22,9 @@
 		lg: 'px-4 py-3' // Comfortable: 16px horizontal, 12px vertical
 	};
 
-	$: bodyClasses = twMerge(paddingClasses[padding], className);
+	let bodyClasses = $derived(twMerge(paddingClasses[padding], className));
 </script>
 
-<div class={bodyClasses} {...$$restProps}>
+<div class={bodyClasses} {...restProps}>
 	<slot />
 </div>

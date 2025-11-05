@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/synthesis/response-synthesizer.ts
 /**
  * Response Synthesizer Service
  *

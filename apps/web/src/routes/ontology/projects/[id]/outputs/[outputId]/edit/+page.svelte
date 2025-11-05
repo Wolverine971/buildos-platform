@@ -6,38 +6,53 @@
 	import { ArrowLeft } from 'lucide-svelte';
 	import type { PageData } from './$types';
 
+	interface SaveData {
+		title: string;
+		content: string;
+		props: Record<string, unknown>;
+	}
+
 	let { data }: { data: PageData } = $props();
+
+	let isSaving = $state(false);
+	let saveError = $state<string | null>(null);
 
 	/**
 	 * Handles saving the document output
 	 * Merges props and sends PATCH request to update output
 	 */
-	async function handleSave(saveData: {
-		title: string;
-		content: string;
-		props: Record<string, unknown>;
-	}): Promise<void> {
-		const response = await fetch(`/api/onto/outputs/${data.output.id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				name: saveData.title,
-				props: {
-					...data.output.props,
-					...saveData.props,
-					content: saveData.content,
-					content_type: 'html',
-					word_count: saveData.props.word_count
-				}
-			})
-		});
+	async function handleSave(saveData: SaveData): Promise<void> {
+		isSaving = true;
+		saveError = null;
 
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-			throw new Error(errorData.error || 'Failed to save output');
+		try {
+			const response = await fetch(`/api/onto/outputs/${data.output.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: saveData.title,
+					props: {
+						...data.output.props,
+						...saveData.props,
+						content: saveData.content,
+						content_type: 'html',
+						word_count: saveData.props.word_count
+					}
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+				throw new Error(errorData.error || 'Failed to save output');
+			}
+
+			// Success - DocumentEditor handles UI feedback
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save output';
+			throw error; // Re-throw so DocumentEditor can handle it
+		} finally {
+			isSaving = false;
 		}
-
-		// Success - DocumentEditor handles UI feedback
 	}
 
 	/**

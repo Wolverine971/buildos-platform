@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/analysis/strategy-analyzer.test.ts
 /**
  * Test Suite for StrategyAnalyzer
  *
@@ -37,6 +38,7 @@ describe('StrategyAnalyzer', () => {
 			userId: 'user_123',
 			contextType: 'project',
 			entityId: 'proj_123',
+			plannerAgentId: 'planner_123',
 			conversationHistory: []
 		};
 
@@ -54,7 +56,8 @@ describe('StrategyAnalyzer', () => {
 				contextType: 'project',
 				entityId: 'proj_123',
 				totalTokens: 1000,
-				hasOntology: true
+				hasOntology: true,
+				plannerAgentId: 'planner_123'
 			}
 		};
 	});

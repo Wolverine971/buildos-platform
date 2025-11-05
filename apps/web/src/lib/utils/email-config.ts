@@ -114,12 +114,14 @@ export function getAvailableSenders(): Array<{
 	name: string;
 	configured: boolean;
 }> {
-	return Object.entries(EMAIL_SENDERS).map(([type, config]) => ({
-		type: type as SenderType,
-		email: config.email,
-		name: config.name || config.email,
-		configured: !!(config.email && config.password)
-	}));
+	return (Object.entries(EMAIL_SENDERS) as Array<[SenderType, EmailSender]>).map(
+		([type, config]) => ({
+			type: type as SenderType,
+			email: config.email,
+			name: config.name || config.email,
+			configured: !!(config.email && config.password)
+		})
+	);
 }
 
 /**

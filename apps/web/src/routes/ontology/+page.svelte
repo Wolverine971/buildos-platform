@@ -2,6 +2,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 
 	let { data } = $props();
 
@@ -129,9 +131,9 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 	<!-- Header -->
-	<header class="mb-6 sm:mb-8">
+	<header class="mb-8 sm:mb-10">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<div>
 				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
@@ -164,10 +166,9 @@
 	</header>
 
 	<!-- Filters & Insights -->
-	<section class="mb-10 space-y-6">
-		<div
-			class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 space-y-4 shadow-sm"
-		>
+	<section class="mb-8 space-y-6">
+		<Card variant="elevated" padding="none">
+			<CardBody padding="md" class="space-y-4">
 			<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 				<div class="flex-1 flex items-center gap-3">
 					<div class="relative flex-1">
@@ -365,7 +366,8 @@
 					{/if}
 				</div>
 			</div>
-		</div>
+			</CardBody>
+		</Card>
 	</section>
 
 	<!-- Empty State -->

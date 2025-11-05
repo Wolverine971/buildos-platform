@@ -98,15 +98,15 @@ async function migrateTasksToProjectCalendar(
 							recurrence_ends: task?.recurrence_ends || undefined
 						});
 
-						if (scheduleResult.success && scheduleResult.event) {
+						if (scheduleResult.success && scheduleResult.event_id) {
 							// Update the task_calendar_events record with new event info
 							await supabase
 								.from('task_calendar_events')
 								.update({
 									project_calendar_id: projectCalendarId,
 									calendar_id: googleCalendarId,
-									calendar_event_id: scheduleResult.event.id || '',
-									event_link: scheduleResult.event.htmlLink || null,
+									calendar_event_id: scheduleResult.event_id || '',
+									event_link: scheduleResult.event_link || null,
 									sync_status:
 										'synced' as Database['public']['Enums']['sync_status'],
 									last_synced_at: new Date().toISOString(),
@@ -121,7 +121,7 @@ async function migrateTasksToProjectCalendar(
 						} else {
 							console.error(
 								`Failed to create new event for task ${taskEvent.task_id}:`,
-								scheduleResult.error
+								'No event ID returned'
 							);
 							// Update with error status
 							await supabase
@@ -131,7 +131,7 @@ async function migrateTasksToProjectCalendar(
 									calendar_id: googleCalendarId,
 									sync_status:
 										'error' as Database['public']['Enums']['sync_status'],
-									sync_error: scheduleResult.error || 'Failed to create event',
+									sync_error: 'Failed to create event - no event ID returned',
 									updated_at: new Date().toISOString()
 								})
 								.eq('id', taskEvent.id);
@@ -204,7 +204,7 @@ async function migrateTasksToProjectCalendar(
 							recurrence_ends: task.recurrence_ends || undefined
 						});
 
-						if (scheduleResult.success && scheduleResult.event) {
+						if (scheduleResult.success && scheduleResult.event_id) {
 							// Calculate event end time based on duration
 							const eventStart = new Date(task.start_date);
 							const eventEnd = new Date(
@@ -217,11 +217,11 @@ async function migrateTasksToProjectCalendar(
 								user_id: userId,
 								calendar_id: googleCalendarId,
 								project_calendar_id: projectCalendarId,
-								calendar_event_id: scheduleResult.event.id || '',
+								calendar_event_id: scheduleResult.event_id || '',
 								event_title: task.title,
 								event_start: task.start_date,
 								event_end: eventEnd.toISOString(),
-								event_link: scheduleResult.event.htmlLink || null,
+								event_link: scheduleResult.event_link || null,
 								sync_status: 'synced' as Database['public']['Enums']['sync_status'],
 								sync_source: 'build_os',
 								last_synced_at: new Date().toISOString()
@@ -244,7 +244,7 @@ async function migrateTasksToProjectCalendar(
 						} else {
 							console.error(
 								`Failed to schedule task ${task.id}:`,
-								scheduleResult.error
+								'No event ID returned'
 							);
 						}
 					} catch (error) {
