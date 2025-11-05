@@ -210,7 +210,7 @@
 				<div
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color} flex-shrink-0"
 				>
-					<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+					<{statusInfo.icon} class="w-3 h-3 mr-1" />
 					<span class="capitalize">{braindump?.status || 'draft'}</span>
 				</div>
 			</div>
@@ -301,7 +301,7 @@
 							<div
 								class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs {typeInfo.color}"
 							>
-								<svelte:component this={typeInfo.icon} class="w-3 h-3 mr-1" />
+								<{typeInfo.icon} class="w-3 h-3 mr-1" />
 								{typeInfo.label}
 							</div>
 						{/each}

@@ -91,6 +91,9 @@
 		}
 	}[errorConfig.color];
 
+	// Extract error icon for template usage
+	$: ErrorIcon = errorConfig.icon;
+
 	function handleRefresh() {
 		window.location.reload();
 	}
@@ -127,8 +130,7 @@
 					<div
 						class="w-20 h-20 {colorClasses.bg} {colorClasses.border} border-2 rounded-full flex items-center justify-center"
 					>
-						<svelte:component
-							this={errorConfig.icon}
+						<ErrorIcon
 							class="w-10 h-10 {colorClasses.icon}"
 						/>
 					</div>

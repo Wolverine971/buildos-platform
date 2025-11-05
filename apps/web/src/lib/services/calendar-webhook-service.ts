@@ -113,7 +113,7 @@ export class CalendarWebhookService {
 					type: 'web_hook',
 					address: webhookUrl,
 					token: webhookToken,
-					expiration: expiration,
+					expiration: expiration.toString(),
 					params: {
 						ttl: '604800' // 7 days in seconds
 					}
@@ -305,7 +305,7 @@ export class CalendarWebhookService {
 				})
 			);
 
-			newSyncToken = syncTokenResponse.data.nextSyncToken;
+			newSyncToken = syncTokenResponse.data.nextSyncToken || undefined;
 			console.log(
 				'[RESYNC] New sync token obtained:',
 				newSyncToken

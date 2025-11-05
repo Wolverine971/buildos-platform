@@ -1,8 +1,17 @@
 // apps/web/src/lib/config/dunning.ts
+
+export type EmailTemplateKey =
+	| 'payment_failed_initial'
+	| 'payment_failed_reminder'
+	| 'payment_failed_warning'
+	| 'payment_failed_restricted'
+	| 'payment_failed_final'
+	| 'subscription_cancelled';
+
 export interface DunningStage {
 	name: string;
 	daysAfterFailure: number;
-	emailTemplate: string;
+	emailTemplate: EmailTemplateKey;
 	action: 'email' | 'email_and_warn' | 'email_and_restrict' | 'cancel';
 	subject: string;
 	restrictAccess?: boolean;
@@ -61,7 +70,7 @@ export const DUNNING_CONFIG: DunningStage[] = [
 
 export const GRACE_PERIOD_DAYS = 21; // Total grace period before cancellation
 
-export const EMAIL_TEMPLATES = {
+export const EMAIL_TEMPLATES: Record<EmailTemplateKey, { subject: string; body: string }> = {
 	payment_failed_initial: {
 		subject: 'Payment Failed - Action Required',
 		body: `Hi {{name}},

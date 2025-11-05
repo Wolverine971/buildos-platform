@@ -205,7 +205,7 @@
 				<div
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color}"
 				>
-					<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+					<{statusInfo.icon} class="w-3 h-3 mr-1" />
 					<span>{statusInfo.label}</span>
 				</div>
 			</div>

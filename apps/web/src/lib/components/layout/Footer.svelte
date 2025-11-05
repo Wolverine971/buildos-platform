@@ -118,13 +118,13 @@
 					<!-- Quick Links Grid -->
 					<div class="grid grid-cols-2 gap-3">
 						{#each AUTH_LINKS as link}
+							{@const LinkIcon = link.icon}
 							<a
 								href={link.href}
 								class="flex items-center space-x-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50
 									hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
 							>
-								<svelte:component
-									this={link.icon}
+								<LinkIcon
 									class="w-5 h-5 text-gray-600 dark:text-gray-400
 									group-hover:text-gray-900 dark:group-hover:text-white transition-colors"
 								/>
@@ -154,13 +154,14 @@
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
+								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
 									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
 										transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
 									aria-label={social.label}
 								>
-									<svelte:component this={social.icon} class="w-5 h-5" />
+									<SocialIcon class="w-5 h-5" />
 								</a>
 							{/each}
 						</div>
@@ -259,13 +260,14 @@
 							</nav>
 							<div class="flex space-x-2">
 								{#each SOCIAL_LINKS as social}
+									{@const SocialIcon = social.icon}
 									<a
 										href={social.href}
 										class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
 											transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
 										aria-label={social.label}
 									>
-										<svelte:component this={social.icon} class="w-4 h-4" />
+										<SocialIcon class="w-4 h-4" />
 									</a>
 								{/each}
 							</div>
@@ -380,13 +382,14 @@
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
+								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
 									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
 										transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
 									aria-label={social.label}
 								>
-									<svelte:component this={social.icon} class="w-5 h-5" />
+									<SocialIcon class="w-5 h-5" />
 								</a>
 							{/each}
 						</div>
@@ -493,13 +496,14 @@
 						<!-- Social Icons -->
 						<div class="flex space-x-2">
 							{#each SOCIAL_LINKS as social}
+								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
 									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
 										transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
 									aria-label={social.label}
 								>
-									<svelte:component this={social.icon} class="w-4 h-4" />
+									<SocialIcon class="w-4 h-4" />
 								</a>
 							{/each}
 						</div>

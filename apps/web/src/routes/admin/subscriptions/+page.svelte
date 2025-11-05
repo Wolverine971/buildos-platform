@@ -342,15 +342,13 @@
 									</td>
 									<td class="px-6 py-4 whitespace-nowrap">
 										{#if subscription}
+											{@const StatusIcon = getStatusIcon(subscription.status)}
 											<span
 												class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium {getStatusColor(
 													subscription.status
 												)}"
 											>
-												<svelte:component
-													this={getStatusIcon(subscription.status)}
-													class="w-3 h-3 mr-1"
-												/>
+												<StatusIcon class="w-3 h-3 mr-1" />
 												{subscription.status}
 											</span>
 										{:else}

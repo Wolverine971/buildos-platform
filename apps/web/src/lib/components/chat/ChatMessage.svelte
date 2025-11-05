@@ -62,6 +62,9 @@
 	}
 
 	const proseClasses = getProseClasses('sm');
+
+	// Derive the role icon from the message role
+	let RoleIcon = $derived(getRoleIcon(message.role));
 </script>
 
 <div class={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -75,7 +78,7 @@
 					: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 		}`}
 	>
-		<svelte:component this={getRoleIcon(message.role)} class="w-4 h-4" />
+		<RoleIcon class="w-4 h-4" />
 	</div>
 
 	<!-- Message content -->

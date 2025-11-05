@@ -1061,7 +1061,7 @@
 										}}
 										class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
 									>
-										<svelte:component this={status.icon} class="w-3.5 h-3.5" />
+										<{status.icon} class="w-3.5 h-3.5" />
 										{status.label}
 									</button>
 								{/each}

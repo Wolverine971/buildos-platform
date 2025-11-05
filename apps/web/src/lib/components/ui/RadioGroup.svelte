@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher, setContext } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
+	import Radio from './Radio.svelte';
 
 	type RadioGroupOrientation = 'vertical' | 'horizontal';
 	type RadioSize = 'sm' | 'md' | 'lg';
@@ -139,25 +140,20 @@
 		onkeydown={handleKeyDown}
 	>
 		{#if options.length > 0}
-			<!-- Render options using Radio component -->
 			{#each options as option}
-				{#await import('./Radio.svelte') then Radio}
-					<svelte:component
-						this={Radio.default}
-						name={name || 'radio-group'}
-						value={option.value}
-						checked={value === option.value}
-						label={option.label}
-						description={option.description}
-						disabled={disabled || option.disabled}
-						{size}
-						{error}
-						onchange={() => handleChange(option.value)}
-					/>
-				{/await}
+				<Radio
+					name={name || 'radio-group'}
+					value={option.value}
+					checked={value === option.value}
+					label={option.label}
+					description={option.description}
+					disabled={disabled || option.disabled}
+					{size}
+					{error}
+					onchange={() => handleChange(option.value)}
+				/>
 			{/each}
 		{:else}
-			<!-- Slot for custom Radio components -->
 			<slot />
 		{/if}
 	</div>

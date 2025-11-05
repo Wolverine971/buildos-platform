@@ -1912,9 +1912,9 @@
 					{#if recentActivity.length > 0}
 						<div class="space-y-3">
 							{#each recentActivity.slice(0, 8) as activity}
+								{@const ActivityIcon = getActivityIcon(activity.activity_type)}
 								<div class="flex items-start space-x-3">
-									<svelte:component
-										this={getActivityIcon(activity.activity_type)}
+									<ActivityIcon
 										class="h-4 w-4 text-gray-400 flex-shrink-0 mt-1"
 									/>
 									<div class="flex-1 min-w-0">

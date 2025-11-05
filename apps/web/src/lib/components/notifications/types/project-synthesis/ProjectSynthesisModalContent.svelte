@@ -195,7 +195,7 @@
 							class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded-full text-xs font-medium"
 						>
 							{#if meta?.icon}
-								<svelte:component this={meta.icon} class="w-3.5 h-3.5" />
+								<{meta.icon} class="w-3.5 h-3.5" />
 							{/if}
 							<span>{meta?.name ?? module}</span>
 						</div>

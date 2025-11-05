@@ -287,6 +287,7 @@
 					{#each filterOptions as option}
 						{@const count = taskCounts[option.id] || 0}
 						{@const isChecked = isFilterActive(option.id)}
+						{@const OptionIcon = option.icon}
 
 						<Button
 							variant="ghost"
@@ -311,8 +312,7 @@
 									{/if}
 								</div>
 								<div class="flex items-center gap-2">
-									<svelte:component
-										this={option.icon}
+									<OptionIcon
 										class="w-4 h-4 {option.color} flex-shrink-0 transition-all duration-100"
 									/>
 									<span

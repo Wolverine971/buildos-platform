@@ -1443,6 +1443,7 @@
 					{/if}
 
 					{#if calendarPanel}
+						{@const PanelIcon = calendarPanel.icon}
 						<div
 							class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-sm transition-colors ${calendarPanel.cardClasses}`}
 						>
@@ -1453,8 +1454,7 @@
 									<div
 										class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${calendarPanel.iconContainerClasses}`}
 									>
-										<svelte:component
-											this={calendarPanel.icon}
+										<PanelIcon
 											class={calendarPanel.iconClasses}
 										/>
 									</div>
@@ -1505,10 +1505,11 @@
 									class="mt-3 flex flex-wrap items-center gap-2 text-[11px] leading-4"
 								>
 									{#each calendarPanel.badges as badge}
+										{@const BadgeIcon = badge.icon}
 										<span
 											class={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium ${badge.classes}`}
 										>
-											<svelte:component this={badge.icon} class="h-3 w-3" />
+											<BadgeIcon class="h-3 w-3" />
 											{badge.text}
 										</span>
 									{/each}

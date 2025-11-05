@@ -409,6 +409,7 @@
 				{@const isContext = field === 'context'}
 				{@const isExecutiveSummary = field === 'executive_summary'}
 				{@const isDateField = config.type === 'date'}
+				{@const FieldIcon = getFieldIcon(field, config)}
 				{@const bgGradient = isContext
 					? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800 border-green-200 dark:border-gray-700'
 					: isExecutiveSummary
@@ -424,10 +425,7 @@
 					<!-- Custom label with icon -->
 					<div class="flex items-center justify-between mb-3">
 						<div class="flex items-center gap-2">
-							<svelte:component
-								this={getFieldIcon(field, config)}
-								class="w-4 h-4 text-gray-600 dark:text-gray-400"
-							/>
+							<FieldIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
 							<label
 								for={`field-${field}`}
 								class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider"

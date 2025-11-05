@@ -223,6 +223,7 @@
 			</h3>
 			<div class="space-y-2">
 				{#each assignmentMethods as method}
+					{@const MethodIcon = method.icon}
 					<Button
 						onclick={() => handleMethodChange(method.value)}
 						disabled={method.disabled}
@@ -238,8 +239,7 @@
 									? 'bg-blue-100 dark:bg-blue-900/50'
 									: 'bg-gray-100 dark:bg-gray-700'}"
 							>
-								<svelte:component
-									this={method.icon}
+								<MethodIcon
 									class="w-4 h-4 {selectedMethod === method.value
 										? 'text-blue-600 dark:text-blue-400'
 										: 'text-gray-600 dark:text-gray-400'}"

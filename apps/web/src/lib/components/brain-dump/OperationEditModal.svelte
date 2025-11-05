@@ -385,8 +385,13 @@
 		{/if}
 
 		<!-- Compact Form -->
-		<form onsubmit={(e) => { e.preventDefault()
-		handleSave()}} class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSave();
+			}}
+			class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
+		>
 			{#if fieldsToDisplay.length === 0}
 				<div class="text-center py-8">
 					<div

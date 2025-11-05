@@ -253,6 +253,7 @@
 			</h3>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 				{#each contactMethods as method}
+					{@const MethodIcon = method.icon}
 					<a
 						href={method.href}
 						{...method.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}}
@@ -261,8 +262,7 @@
 						<div
 							class="flex items-center justify-center w-12 h-12 {method.bgColor} rounded-xl mb-4 mx-auto group-hover:scale-110 transition-transform"
 						>
-							<svelte:component
-								this={method.icon}
+							<MethodIcon
 								class="w-6 h-6 {method.iconColor}"
 							/>
 						</div>
@@ -283,6 +283,7 @@
 				</p>
 				<div class="flex justify-center space-x-4">
 					{#each founderContacts as founder}
+						{@const FounderIcon = founder.icon}
 						<a
 							href={founder.href}
 							{...founder.external
@@ -290,8 +291,7 @@
 								: {}}
 							class="inline-flex items-center space-x-2 px-4 py-2 {founder.bgColor} rounded-lg hover:shadow-md transition-all duration-300"
 						>
-							<svelte:component
-								this={founder.icon}
+							<FounderIcon
 								class="w-4 h-4 {founder.iconColor}"
 							/>
 							<div class="text-left">

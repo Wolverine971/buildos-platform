@@ -104,7 +104,7 @@
 				onclick={() => dispatch('change', tab.id)}
 				class="tab-button {activeTab === tab.id ? 'tab-active' : 'tab-inactive'}"
 			>
-				<svelte:component this={tab.icon} class="tab-icon" />
+				<{tab.icon} class="tab-icon" />
 				<span class="tab-label"
 					>{isMobile && tab.mobileLabel ? tab.mobileLabel : tab.label}</span
 				>

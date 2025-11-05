@@ -10,6 +10,13 @@ export interface SubscriptionStatus {
 	isTrialing: boolean;
 }
 
+interface UserSubscriptionRpcResponse {
+	has_subscription: boolean;
+	subscription_status: string;
+	current_period_end: string | null;
+	is_beta_user: boolean;
+}
+
 /**
  * Check if a user has an active subscription
  */
@@ -34,7 +41,7 @@ export async function checkUserSubscription(
 			.rpc('get_user_subscription_status', { user_uuid: userId })
 			.single();
 
-		if (error) {
+		if (error || !data) {
 			console.error('Error checking subscription:', error);
 			return {
 				hasActiveSubscription: false,
@@ -45,12 +52,15 @@ export async function checkUserSubscription(
 			};
 		}
 
+		// Type cast the RPC response
+		const rpcData = data as UserSubscriptionRpcResponse;
+
 		return {
-			hasActiveSubscription: data.has_subscription,
-			subscriptionStatus: data.subscription_status,
-			currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end) : null,
-			isBetaUser: data.is_beta_user,
-			isTrialing: data.subscription_status === 'trialing'
+			hasActiveSubscription: rpcData.has_subscription,
+			subscriptionStatus: rpcData.subscription_status,
+			currentPeriodEnd: rpcData.current_period_end ? new Date(rpcData.current_period_end) : null,
+			isBetaUser: rpcData.is_beta_user,
+			isTrialing: rpcData.subscription_status === 'trialing'
 		};
 	} catch (error) {
 		console.error('Error checking subscription:', error);

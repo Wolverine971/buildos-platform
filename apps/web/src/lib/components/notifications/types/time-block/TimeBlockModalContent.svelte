@@ -114,7 +114,7 @@
 	closeOnBackdrop={true}
 >
 	<div slot="header" class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
-		<svelte:component this={statusCopy.icon} class={statusCopy.iconClass} />
+		<{statusCopy.icon} class={statusCopy.iconClass} />
 		<div class="flex-1">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
 				{notification.data.blockType === 'project' ? 'Project Time Block' : 'Build Block'}

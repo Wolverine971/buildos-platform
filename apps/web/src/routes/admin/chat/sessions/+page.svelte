@@ -332,6 +332,7 @@
 		{:else}
 			<div class="space-y-4">
 				{#each sessions as session}
+					{@const StatusIcon = getStatusIcon(session.status)}
 					<Button
 						onclick={() => viewSession(session.id)}
 						class="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
@@ -348,10 +349,7 @@
 											session.status
 										)}"
 									>
-										<svelte:component
-											this={getStatusIcon(session.status)}
-											class="h-3 w-3 mr-1"
-										/>
+										<StatusIcon class="h-3 w-3 mr-1" />
 										{session.status}
 									</span>
 								</div>

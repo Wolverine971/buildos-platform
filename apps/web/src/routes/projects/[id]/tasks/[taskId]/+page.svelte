@@ -427,6 +427,7 @@ What would you like help with?`;
 			<!-- Main Content Area -->
 			<div class="lg:col-span-2 space-y-3 {isDeleted ? 'opacity-75' : ''}">
 				<!-- Unified Task Card -->
+				
 				<div
 					class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
 				>
@@ -435,10 +436,7 @@ What would you like help with?`;
 						class="flex items-center justify-between px-4 py-2 {statusDisplay.bgColor} border-b border-gray-200 dark:border-gray-700"
 					>
 						<div class="flex items-center gap-3">
-							<svelte:component
-								this={statusDisplay.icon}
-								class="w-4 h-4 {statusDisplay.color}"
-							/>
+							<StatusIcon class="w-4 h-4 {statusDisplay.color}" />
 							<span class="text-sm font-medium {statusDisplay.color}"
 								>{statusDisplay.label}</span
 							>

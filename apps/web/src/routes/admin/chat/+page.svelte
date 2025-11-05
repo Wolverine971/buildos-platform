@@ -574,11 +574,9 @@
 				{#if activityFeed.length > 0}
 					<div class="space-y-3 max-h-96 overflow-y-auto">
 						{#each activityFeed as event}
+							{@const ActivityIcon = getActivityIcon(event.type)}
 							<div class="flex items-start space-x-3 text-sm">
-								<svelte:component
-									this={getActivityIcon(event.type)}
-									class="h-4 w-4 text-gray-400 flex-shrink-0 mt-1"
-								/>
+								<ActivityIcon class="h-4 w-4 text-gray-400 flex-shrink-0 mt-1" />
 								<div class="flex-1 min-w-0">
 									<div class="text-gray-900 dark:text-white">
 										<span class="font-medium">{event.user_email}</span>

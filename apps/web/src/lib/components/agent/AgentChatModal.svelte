@@ -28,7 +28,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import ContextSelectionScreen from '$lib/components/chat/ContextSelectionScreen.svelte';
+	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type { ChatSession, ChatContextType } from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';

@@ -281,6 +281,7 @@
 							</label>
 							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 								{#each feedbackCategories as category}
+									{@const CategoryIcon = category.icon}
 									<Button
 										type="button"
 										onclick={() => (selectedCategory = category.id)}
@@ -294,8 +295,7 @@
 										<div
 											class="flex items-center justify-center w-10 h-10 bg-{category.color}-100 dark:bg-{category.color}-900/30 rounded-lg mr-4"
 										>
-											<svelte:component
-												this={category.icon}
+											<CategoryIcon
 												class="w-5 h-5 text-{category.color}-600 dark:text-{category.color}-400"
 											/>
 										</div>

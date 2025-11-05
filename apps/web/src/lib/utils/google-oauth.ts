@@ -182,7 +182,7 @@ export class GoogleOAuthHandler {
 		// Check if user exists in users table
 		const { data: userData, error: fetchError } = await this.supabase
 			.from('users')
-			.select('id, completed_onboarding, email, name, is_admin')
+			.select('*')
 			.eq('id', data.user.id)
 			.single();
 

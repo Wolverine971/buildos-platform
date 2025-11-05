@@ -310,6 +310,7 @@
 			</h4>
 			<div class="space-y-3">
 				{#each schedulingMethods as method}
+					{@const MethodIcon = method.icon}
 					<div
 						class="relative border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors {selectedSchedulingMethod ===
 						method.value
@@ -341,10 +342,8 @@
 							</div>
 
 							<!-- Icon -->
-							<svelte:component
-								this={method.icon}
-								class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
-							/>
+
+							<MethodIcon class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
 
 							<!-- Content -->
 							<div class="flex-1">

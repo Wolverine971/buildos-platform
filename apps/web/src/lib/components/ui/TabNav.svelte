@@ -43,7 +43,8 @@
 				class="tab-button {activeTab === tab.id ? 'tab-active' : 'tab-inactive'}"
 			>
 				{#if tab.icon}
-					<svelte:component this={tab.icon} class="tab-icon" />
+					{@const TabIcon = tab.icon}
+					<TabIcon class="tab-icon" />
 				{/if}
 				<span class="tab-label">{tab.label}</span>
 				{#if !tab.hideCount && tab.count !== undefined}

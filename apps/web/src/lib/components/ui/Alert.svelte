@@ -78,8 +78,9 @@
 					<slot name="icon" />
 				</div>
 			{:else}
+				{@const AlertIcon = config.icon}
 				<div class="flex-shrink-0 flex items-start pt-0.5">
-					<svelte:component this={config.icon} class="w-5 h-5 {config.icon_color}" />
+					<AlertIcon class="w-5 h-5 {config.icon_color}" />
 				</div>
 			{/if}
 

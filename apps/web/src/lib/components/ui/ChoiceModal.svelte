@@ -64,9 +64,9 @@
 					<div class="flex items-start space-x-3">
 						<!-- Icon -->
 						{#if option.icon}
+							{@const OptionIcon = option.icon}
 							<div class="flex-shrink-0 mt-1">
-								<svelte:component
-									this={option.icon}
+								<OptionIcon
 									class="w-5 h-5 text-gray-600 dark:text-gray-400"
 								/>
 							</div>

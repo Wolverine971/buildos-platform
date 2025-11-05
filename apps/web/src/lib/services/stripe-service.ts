@@ -519,7 +519,7 @@ export class StripeService {
 		if (!existingSubscription) return;
 
 		// If subscription was past_due, resolve any failed payments
-		if (existingSubscription.status === 'past_due') {
+		if (existingSubscription.status === 'past_due' && invoice.id) {
 			const { DunningService } = await import('./dunning-service');
 			const dunningService = new DunningService(this.supabase);
 
@@ -560,6 +560,7 @@ export class StripeService {
 			.single();
 
 		if (!subscription) return;
+		if (!invoice.id) return; // Invoice must have an ID to record
 
 		// Record the failed payment
 		const { DunningService } = await import('./dunning-service');

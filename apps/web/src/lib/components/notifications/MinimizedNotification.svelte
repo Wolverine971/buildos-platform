@@ -233,7 +233,7 @@
 >
 	{#if typeSpecificComponent}
 		<!-- Type-specific view (brain dump, phase generation, etc.) -->
-		<svelte:component this={typeSpecificComponent} {notification} />
+		<{typeSpecificComponent} {notification} />
 	{:else}
 		<!-- Generic fallback view -->
 		<div class="p-4">

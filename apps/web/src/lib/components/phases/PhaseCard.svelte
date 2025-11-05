@@ -1244,12 +1244,18 @@
 						bind:this={containerElement}
 						class:filter-transitioning={isFilterTransition}
 						class:has-custom-filters={hasCustomFilters}
-						ondragover={(e) => { e.preventDefault()
-						handleTaskDragOver(e)}}
-						ondragleave={(e) => { e.preventDefault()
-						handleTaskDragLeave(e)}}
-						ondrop={(e) => {e.preventDefault()
-						handleTaskDrop(e)}}
+						ondragover={(e) => {
+							e.preventDefault();
+							handleTaskDragOver(e);
+						}}
+						ondragleave={(e) => {
+							e.preventDefault();
+							handleTaskDragLeave(e);
+						}}
+						ondrop={(e) => {
+							e.preventDefault();
+							handleTaskDrop(e);
+						}}
 					>
 						{#if filteredTasks && filteredTasks.length > 0}
 							{@const sortedTasks = [...filteredTasks].sort(
@@ -1481,8 +1487,13 @@
 						{/if}
 
 						<!-- Phase editing form -->
-						<form class="space-y-3 mb-3" onsubmit={(e) => { e.preventDefault()
-						handleSavePhase()}}>
+						<form
+							class="space-y-3 mb-3"
+							onsubmit={(e) => {
+								e.preventDefault();
+								handleSavePhase();
+							}}
+						>
 							<FormField label="Description" error={validationErrors.description}>
 								<Textarea
 									id="phase-description-{phase.id}"
@@ -1565,12 +1576,18 @@
 					class:filter-transitioning={isFilterTransition}
 					style="max-height: 16rem; overflow-y: auto;"
 					bind:this={containerElement}
-					ondragover={(e) => { e.preventDefault()
-						handleTaskDragOver(e)}}
-					ondragleave={(e) => { e.preventDefault()
-						handleTaskDragLeave(e)}}
-					ondrop={(e) => { e.preventDefault()
-					handleTaskDrop(e)}}
+					ondragover={(e) => {
+						e.preventDefault();
+						handleTaskDragOver(e);
+					}}
+					ondragleave={(e) => {
+						e.preventDefault();
+						handleTaskDragLeave(e);
+					}}
+					ondrop={(e) => {
+						e.preventDefault();
+						handleTaskDrop(e);
+					}}
 					role="region"
 					aria-label="Tasks for {phase.name}"
 					aria-describedby="task-drop-instructions-{phase.id}"
