@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/fsm/actions/schedule-rrule.ts
-import { RRule } from 'rrule';
+import rrule from 'rrule';
+const { RRule } = rrule;
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { FSMAction } from '$lib/types/onto';
 import type { TransitionContext } from '../engine';

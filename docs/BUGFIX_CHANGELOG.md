@@ -6665,6 +6665,7 @@ Last updated: 2025-10-21
 **Root Cause**:
 
 The agent chat system was getting stuck in an infinite loop when the context was set to `project_create`. The LLM was repeatedly calling `listOntoTemplates` without proceeding to project creation, causing:
+
 1. **Ambiguous System Prompt**: Instructions said to "use list_onto_templates() to search more specifically" but didn't specify when to stop
 2. **No Loop Prevention**: The multi-turn loop had no mechanism to prevent repeated tool calls
 3. **Unclear Workflow**: After calling the tool, the LLM wasn't clearly instructed to proceed
@@ -6681,15 +6682,15 @@ The agent chat system was getting stuck in an infinite loop when the context was
 Implemented two-pronged solution to prevent infinite loops:
 
 1. **Updated System Prompt** (`agent-context-service.ts`):
-   - Added explicit instruction to call `list_onto_templates()` ONCE only
-   - Clear directive to proceed immediately after getting results
-   - Critical instructions emphasizing decision-making over searching
+    - Added explicit instruction to call `list_onto_templates()` ONCE only
+    - Clear directive to proceed immediately after getting results
+    - Critical instructions emphasizing decision-making over searching
 
 2. **Added Loop Prevention** (`agent-planner-service.ts`):
-   - Track tool call frequency with `toolCallHistory` Map
-   - Prevent `list_onto_templates` from being called more than once
-   - Add system message to guide LLM if it tries to repeat
-   - General protection against any tool being called >3 times
+    - Track tool call frequency with `toolCallHistory` Map
+    - Prevent `list_onto_templates` from being called more than once
+    - Add system message to guide LLM if it tries to repeat
+    - General protection against any tool being called >3 times
 
 **Technical Details**:
 
@@ -6704,19 +6705,19 @@ if (toolName === 'list_onto_templates' && callCount > 1) {
 		role: 'system',
 		content: `You have already called list_onto_templates. Please proceed with creating the project using create_onto_project() now.`
 	});
-	toolCalls = toolCalls.filter(tc => tc.id !== toolCall.id);
+	toolCalls = toolCalls.filter((tc) => tc.id !== toolCall.id);
 }
 ```
 
 **Files Changed**:
 
 1. `/apps/web/src/lib/services/agent-context-service.ts`
-   - Lines 322-324: Updated Step 1 workflow instructions
-   - Lines 383-389: Updated CRITICAL INSTRUCTIONS section
+    - Lines 322-324: Updated Step 1 workflow instructions
+    - Lines 383-389: Updated CRITICAL INSTRUCTIONS section
 
 2. `/apps/web/src/lib/services/agent-planner-service.ts`
-   - Line 570: Added toolCallHistory tracking
-   - Lines 612-639: Added loop prevention logic
+    - Line 570: Added toolCallHistory tracking
+    - Lines 612-639: Added loop prevention logic
 
 **Testing Recommendations**:
 

@@ -19,7 +19,7 @@
 		Zap,
 		BrainCircuit,
 		Sparkles,
-		CheckCircle,
+		CircleCheck,
 		Mic,
 		MicOff,
 		LoaderCircle
@@ -164,7 +164,7 @@
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
-	let messagesContainer: HTMLElement;
+	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
@@ -894,7 +894,7 @@
 							size="sm"
 							class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/90"
 							disabled={isStreaming}
-							on:click={changeContext}
+							onclick={changeContext}
 						>
 							{isStreaming ? 'Focus locked while running…' : 'Change focus'}
 						</Button>
@@ -905,7 +905,7 @@
 						icon={X}
 						class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 						aria-label="Close chat"
-						on:click={handleClose}
+						onclick={handleClose}
 					/>
 				</div>
 			</div>
@@ -1129,7 +1129,7 @@
 															: 'bg-purple-500/15 text-purple-700 dark:bg-purple-400/20 dark:text-purple-300'}"
 													>
 														{#if step.status === 'completed'}
-															<CheckCircle class="h-3.5 w-3.5" />
+															<CircleCheck class="h-3.5 w-3.5" />
 														{:else}
 															<span class="text-xs font-bold"
 																>{step.stepNumber}</span
@@ -1324,17 +1324,32 @@
 
 	<!-- Clarifying Questions Dialog -->
 	{#if showClarifyingDialog}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
 			onclick={() => (showClarifyingDialog = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') {
+					showClarifyingDialog = false;
+				}
+			}}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="clarifying-dialog-title"
+			tabindex="-1"
 		>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="relative mx-4 w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/95"
 				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
 			>
 				<div class="mb-4 flex items-start justify-between">
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3
+							id="clarifying-dialog-title"
+							class="text-lg font-semibold text-gray-900 dark:text-white"
+						>
 							Clarifying Questions
 						</h3>
 						<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -1376,7 +1391,7 @@
 						variant="primary"
 						size="md"
 						class="w-full"
-						on:click={() => (showClarifyingDialog = false)}
+						onclick={() => (showClarifyingDialog = false)}
 					>
 						Got it, I'll provide more details
 					</Button>

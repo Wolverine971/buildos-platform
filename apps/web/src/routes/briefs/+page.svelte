@@ -63,47 +63,47 @@
 	}
 
 	// Initialize with minimal data from server
-	let currentDate = '';
-	let selectedView: 'single' | 'list' | 'analytics' = 'single';
-	let userTimezone = '';
+	let currentDate = $state('');
+	let selectedView = $state<'single' | 'list' | 'analytics'>('single');
+	let userTimezone = $state('');
 
 	// Brief data - initially empty
-	let dailyBrief: DailyBrief | null = null;
-	let projectBriefs: any[] = [];
-	let briefHistory: DailyBrief[] = [];
+	let dailyBrief = $state<DailyBrief | null>(null);
+	let projectBriefs = $state<any[]>([]);
+	let briefHistory = $state<DailyBrief[]>([]);
 	let isToday = $state(false);
 
 	// Component state
 	let isInitialLoading = $state(true);
 	let isLoading = $state(false);
-	let error: string | null = null;
+	let error = $state<string | null>(null);
 	let showMobileMenu = $state(false);
-	let isRefreshing = false;
+	let isRefreshing = $state(false);
 
 	// Search and filter state
-	let searchQuery = '';
-	let selectedDateRange: 'today' | 'week' | 'month' | 'custom' = 'today';
-	let customStartDate = '';
-	let customEndDate = '';
-	let showFilters = false;
-	let filteredBriefs: DailyBrief[] = [];
+	let searchQuery = $state('');
+	let selectedDateRange = $state<'today' | 'week' | 'month' | 'custom'>('today');
+	let customStartDate = $state('');
+	let customEndDate = $state('');
+	let showFilters = $state(false);
+	let filteredBriefs = $state<DailyBrief[]>([]);
 
 	// Modal state
-	let showDeleteConfirmation = false;
-	let briefToDelete: DailyBrief | null = null;
-	let showSettingsModal = false;
+	let showDeleteConfirmation = $state(false);
+	let briefToDelete = $state<DailyBrief | null>(null);
+	let showSettingsModal = $state(false);
 
 	// Reactive streaming data
-	let currentStreamingStatus: StreamingStatus | null = $state(null);
-	let currentStreamingData: StreamingBriefData | null = $state(null);
-	let wasGenerating = false;
+	let currentStreamingStatus = $state<StreamingStatus | null>(null);
+	let currentStreamingData = $state<StreamingBriefData | null>(null);
+	let wasGenerating = $state(false);
 
-	let checkingExistingGeneration = false;
-	let railwayWorkerAvailable = false;
+	let checkingExistingGeneration = $state(false);
+	let railwayWorkerAvailable = $state(false);
 
 	// Next scheduled brief state
-	let nextScheduledBrief: { scheduledFor: string; status: string } | null = null;
-	let isLoadingNextBrief = true;
+	let nextScheduledBrief = $state<{ scheduledFor: string; status: string } | null>(null);
+	let isLoadingNextBrief = $state(true);
 
 	// Function to get user's timezone
 	function getUserTimezone(): string {

@@ -66,6 +66,7 @@
 
 	// Vercel Analytics & Speed Insights
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+	import type { Snippet } from 'svelte';
 
 	// Initialize Speed Insights in production
 	if (browser && !dev) {
@@ -73,15 +74,15 @@
 	}
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
-	let { data }: { data: LayoutData } = $props();
+	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
 
 	// Pre-load components that are commonly used - wrapped in $state for reactivity
-	let OnboardingModal = $state<any>(null);
-	let ToastContainer = $state<any>(null);
-	let toastService = $state<any>(null);
-	let PaymentWarning = $state<any>(null);
-	let TrialBanner = $state<any>(null);
-	let BackgroundJobIndicator = $state<any>(null);
+	let OnboardingModal = $state<any>(undefined);
+	let ToastContainer = $state<any>(undefined);
+	let toastService = $state<any>(undefined);
+	let PaymentWarning = $state<any>(undefined);
+	let TrialBanner = $state<any>(undefined);
+	let BackgroundJobIndicator = $state<any>(undefined);
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
 	let currentRouteId = $state('');
@@ -98,8 +99,8 @@
 	let animatingDismiss = $state(false);
 
 	// FIXED: Store cleanup functions to prevent memory leaks
-	let pwaCleanup = $state<(() => void) | void>(null);
-	let installPromptCleanup = $state<(() => void) | void>(null);
+	let pwaCleanup = $state<(() => void) | void>(undefined);
+	let installPromptCleanup = $state<(() => void) | void>(undefined);
 
 	// Create supabase client once and memoize
 	const supabase = browser ? createSupabaseBrowser() : null;
@@ -164,7 +165,7 @@
 	let showOnboardingModal = $derived(routeBasedState.showOnboardingModal);
 
 	// PERFORMANCE: Load authenticated resources with better caching
-	let resourcesLoadPromise = $state<Promise<void> | null>(null);
+	let resourcesLoadPromise = $state<Promise<void> | undefined>(undefined);
 	let resourcesLoaded = $state(false);
 
 	// Convert to $effect - load resources when user becomes available
@@ -209,10 +210,10 @@
 			BackgroundJobIndicator = backgroundJobIndicatorModule.default;
 
 			resourcesLoaded = true;
-			resourcesLoadPromise = null;
+			resourcesLoadPromise = undefined;
 		} catch (error) {
 			console.error('Failed to load authenticated resources:', error);
-			resourcesLoadPromise = null; // Reset to allow retry
+			resourcesLoadPromise = undefined; // Reset to allow retry
 		}
 	}
 
@@ -226,15 +227,15 @@
 	}
 
 	// PERFORMANCE: Debounced event handlers to prevent rapid fire
-	let briefCompleteTimeout = $state<number | null>(null);
-	let briefNotificationTimeout = $state<number | null>(null);
+	let briefCompleteTimeout = $state<number | undefined>(undefined);
+	let briefNotificationTimeout = $state<number | undefined>(undefined);
 
 	function handleBriefComplete() {
 		if (briefCompleteTimeout) return;
 
 		briefCompleteTimeout = setTimeout(() => {
 			toastService?.success('Daily brief generated successfully!');
-			briefCompleteTimeout = null;
+			briefCompleteTimeout = undefined;
 		}, 100) as any;
 	}
 
@@ -258,7 +259,7 @@
 				default:
 					toastService.info(message);
 			}
-			briefNotificationTimeout = null;
+			briefNotificationTimeout = undefined;
 		}, 100) as any;
 	}
 
@@ -415,15 +416,15 @@
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {
 				clearTimeout(briefCompleteTimeout);
-				briefCompleteTimeout = null;
+				briefCompleteTimeout = undefined;
 			}
 			if (briefNotificationTimeout) {
 				clearTimeout(briefNotificationTimeout);
-				briefNotificationTimeout = null;
+				briefNotificationTimeout = undefined;
 			}
 
 			// Reset promises and state
-			resourcesLoadPromise = null;
+			resourcesLoadPromise = undefined;
 			resourcesLoaded = false;
 			visitorTrackingInitialized = false;
 		}
@@ -492,23 +493,21 @@
 	{/if}
 
 	{#if user && trialStatus && TrialBanner && data.stripeEnabled}
-		<svelte:component this={TrialBanner} {user} />
+		<TrialBanner {user} />
 	{/if}
 
 	{#if paymentWarnings.length > 0 && PaymentWarning}
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
 			{#each paymentWarnings as warning (warning.id)}
-				<svelte:component
-					this={PaymentWarning}
-					notification={warning}
-					on:dismiss={handlePaymentWarningDismiss}
-				/>
+				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
 			{/each}
 		</div>
 	{/if}
 
 	<main id="main-content" class="main-content {showNavigation ? '' : 'min-h-screen'} !my-4">
-		<slot />
+		{#if children}
+			{@render children()}
+		{/if}
 	</main>
 
 	{#if showFooter}
@@ -516,11 +515,7 @@
 	{/if}
 
 	{#if needsOnboarding && OnboardingModal}
-		<svelte:component
-			this={OnboardingModal}
-			bind:element={modalElement}
-			{...onboardingModalProps}
-		/>
+		<OnboardingModal bind:element={modalElement} {...onboardingModalProps} />
 	{/if}
 
 	{#if ToastContainer}
@@ -529,13 +524,13 @@
 			aria-atomic="true"
 			class="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:p-6 z-50"
 		>
-			<svelte:component this={ToastContainer} />
+			<ToastContainer />
 		</div>
 	{/if}
 
 	<!-- Background Job Status Indicator -->
 	{#if BackgroundJobIndicator}
-		<svelte:component this={BackgroundJobIndicator} />
+		<BackgroundJobIndicator />
 	{/if}
 
 	<!-- Notification System -->

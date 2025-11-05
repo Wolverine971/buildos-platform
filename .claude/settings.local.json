@@ -35,7 +35,8 @@
 			"Bash(awk:*)",
 			"Bash(npx tsc:*)",
 			"mcp__ide__getDiagnostics",
-			"Bash(pnpm test:*)"
+			"Bash(pnpm test:*)",
+			"Bash(pnpm run gen:schema:*)"
 		],
 		"deny": [],
 		"ask": []

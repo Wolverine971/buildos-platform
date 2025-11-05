@@ -86,7 +86,8 @@ export default defineConfig(({ mode }) => {
 				'sanitize-html',
 				'lucide-svelte',
 				'mode-watcher',
-				'tailwind-merge'
+				'tailwind-merge',
+				'rrule'
 			],
 			exclude: [
 				'@xenova/transformers',
